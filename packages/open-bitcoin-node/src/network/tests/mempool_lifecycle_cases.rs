@@ -38,12 +38,14 @@ fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot
     MempoolSnapshot {
         records: transactions
             .into_iter()
-            .map(|transaction| MempoolSnapshotRecord {
-                txid: txid(&transaction),
-                wtxid: wtxid(&transaction),
-                transaction,
-                fee_sats: 1_000,
-                virtual_size: 100,
+            .map(|transaction| {
+                MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
+                    txid(&transaction),
+                    wtxid(&transaction),
+                    transaction,
+                    1_000,
+                    100,
+                )
             })
             .collect(),
     }

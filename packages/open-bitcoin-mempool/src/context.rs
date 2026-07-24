@@ -144,6 +144,11 @@ impl AdmissionContext {
             RelayIntent::NotRequested,
         ))
     }
+
+    /// Restores previously persisted admission facts during durable recovery.
+    pub const fn recovery(metadata: MempoolEntryMetadata) -> Self {
+        Self::new(metadata)
+    }
 }
 
 /// Immutable occupancy and time facts for one pressure decision.

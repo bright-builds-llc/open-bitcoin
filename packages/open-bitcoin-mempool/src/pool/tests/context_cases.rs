@@ -318,12 +318,18 @@ fn admission_context_constructors_map_trusted_source_facts() {
     let peer_time = PolicyTime::from_unix_seconds(std::hint::black_box(42));
     let local_time = PolicyTime::from_unix_seconds(std::hint::black_box(50));
     let reorg_time = PolicyTime::from_unix_seconds(std::hint::black_box(80));
+    let recovery_metadata = MempoolEntryMetadata::new(
+        MempoolAcceptanceTime::Known(local_time),
+        MempoolOrigin::Local,
+        RelayIntent::Requested,
+    );
 
     // Act
     let peer = AdmissionContext::peer(peer_time);
     let local_requested = AdmissionContext::local(local_time, RelayIntent::Requested);
     let local_not_requested = AdmissionContext::local(local_time, RelayIntent::NotRequested);
     let reorg = AdmissionContext::reorg(reorg_time);
+    let recovery = AdmissionContext::recovery(std::hint::black_box(recovery_metadata));
 
     // Assert
     assert_eq!(
@@ -351,6 +357,7 @@ fn admission_context_constructors_map_trusted_source_facts() {
     );
     assert_eq!(reorg.metadata.origin, MempoolOrigin::Reorg);
     assert_eq!(reorg.metadata.relay_intent, RelayIntent::NotRequested);
+    assert_eq!(recovery.metadata, recovery_metadata);
     assert_eq!(peer_time.unix_seconds(), 42);
     assert_eq!(local_time.unix_seconds(), 50);
 }

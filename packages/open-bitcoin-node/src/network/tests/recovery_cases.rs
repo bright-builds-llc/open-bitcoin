@@ -16,7 +16,10 @@ use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{PolicyConfig, TransactionVirtualSize};
+use open_bitcoin_mempool::{
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyConfig, PolicyTime,
+    RelayIntent, TransactionVirtualSize,
+};
 use open_bitcoin_network::{InventoryList, RelayActivationConfig, WireNetworkMessage};
 
 use super::{
@@ -36,13 +39,22 @@ fn wtxid(transaction: &Transaction) -> Wtxid {
 }
 
 fn snapshot_record(transaction: Transaction) -> MempoolSnapshotRecord {
-    MempoolSnapshotRecord {
-        txid: txid(&transaction),
-        wtxid: wtxid(&transaction),
+    MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
+        txid(&transaction),
+        wtxid(&transaction),
         transaction,
-        fee_sats: 1_000,
-        virtual_size: 100,
-    }
+        1_000,
+        100,
+    )
+}
+
+fn snapshot_record_with_metadata(
+    transaction: Transaction,
+    metadata: MempoolEntryMetadata,
+) -> MempoolSnapshotRecord {
+    let mut record = snapshot_record(transaction);
+    record.metadata = metadata;
+    record
 }
 
 fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot {
@@ -307,4 +319,91 @@ fn managed_recovery_drops_non_accepted_records_from_serving_and_fanout() {
         1
     );
     assert_eq!(duplicate_network.relay_fanout_info().known_transactions, 1);
+}
+
+#[test]
+fn recovery_metadata_managed_local_requested_preserves_facts_and_fanout() {
+    // Arrange
+    let (mut source, coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_090, 2, PolicyConfig::default());
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+    source
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            90,
+            RelayIntent::Requested,
+        )
+        .expect("admit local requested");
+    let snapshot = MempoolSnapshot::from_mempool(source.mempool().mempool());
+    let expected = MempoolEntryMetadata::new(
+        MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
+        MempoolOrigin::Local,
+        RelayIntent::Requested,
+    );
+    let (mut recovered, _coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_091, 2, PolicyConfig::default());
+
+    // Act
+    let summary = recovered
+        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
+        .expect("recover known local");
+
+    // Assert
+    assert_eq!(summary.recovered_count, 1);
+    assert_eq!(snapshot.records[0].metadata, expected);
+    let entry = recovered
+        .mempool()
+        .mempool()
+        .entry(&transaction_txid)
+        .expect("recovered entry");
+    assert_eq!(entry.metadata, expected);
+    assert!(entry.metadata.is_retry_eligible(true));
+    assert_eq!(recovered.relay_fanout_info().known_transactions, 1);
+    assert_eq!(recovered.relay_fanout_info().queued_transactions, 0);
+}
+
+#[test]
+fn recovery_metadata_managed_duplicate_preserves_original_canonical_metadata() {
+    // Arrange
+    let (mut network, coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_092, 2, PolicyConfig::default());
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+    let original = MempoolEntryMetadata::new(
+        MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
+        MempoolOrigin::Local,
+        RelayIntent::Requested,
+    );
+    let conflicting = MempoolEntryMetadata::new(
+        MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(999)),
+        MempoolOrigin::Peer,
+        RelayIntent::NotRequested,
+    );
+    let snapshot = MempoolSnapshot {
+        records: vec![
+            snapshot_record_with_metadata(transaction.clone(), original),
+            snapshot_record_with_metadata(transaction, conflicting),
+        ],
+    };
+
+    // Act
+    let summary = network
+        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
+        .expect("recover duplicate metadata");
+
+    // Assert
+    assert_eq!(summary.recovered_count, 1);
+    assert_eq!(summary.dropped_duplicate_count, 1);
+    assert_eq!(
+        network
+            .mempool()
+            .mempool()
+            .entry(&transaction_txid)
+            .expect("original")
+            .metadata,
+        original
+    );
 }

@@ -12,14 +12,13 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use open_bitcoin_core::{
-    consensus::{ConsensusParams, ScriptVerifyFlags},
-    primitives::Transaction,
-};
+use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
+use open_bitcoin_mempool::AdmissionContext;
 use open_bitcoin_network::TxServingRecordStatus;
 
 use crate::ChainstateStore;
 use crate::status::{SyncRecoveryCategory, relay_evidence::RelayRecoveryCounters};
+use crate::storage::mempool_snapshot::{recovery_status_from_outcome, transaction_is_confirmed};
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshot, StorageError};
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
@@ -87,18 +86,43 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkError> {
         let records = snapshot.records.clone();
         let chainstate = self.chainstate.chainstate().snapshot();
-        let recovery_records = snapshot.replay_into_mempool(
-            self.mempool.mempool_mut(),
-            &chainstate,
-            verify_flags,
-            consensus_params,
-        );
+        let mut recovery_records = Vec::with_capacity(records.len());
 
-        for (snapshot_record, recovery_record) in records.iter().zip(&recovery_records) {
-            match recovery_record.status {
-                MempoolRecoveryStatus::Recovered => {
-                    self.store_recovered_transaction(snapshot_record.transaction.clone())?;
+        for snapshot_record in &records {
+            let status = if transaction_is_confirmed(snapshot_record, &chainstate) {
+                MempoolRecoveryStatus::DroppedConfirmed
+            } else {
+                let transition_result = self
+                    .mempool
+                    .mempool_mut()
+                    .accept_transaction_transition_with_context(
+                        snapshot_record.transaction.clone(),
+                        &chainstate,
+                        verify_flags,
+                        consensus_params,
+                        AdmissionContext::recovery(snapshot_record.metadata),
+                    );
+                match transition_result {
+                    Ok(transition) => {
+                        let status = recovery_status_from_outcome(Ok(transition.outcome.clone()));
+                        self.apply_admitted_transition(
+                            &transition,
+                            snapshot_record.transaction.clone(),
+                        )?;
+                        if status == MempoolRecoveryStatus::Recovered {
+                            self.relay_fanout.seed_recovered_transaction(
+                                snapshot_record.txid,
+                                snapshot_record.wtxid,
+                            );
+                        }
+                        status
+                    }
+                    Err(error) => recovery_status_from_outcome(Err(error)),
                 }
+            };
+
+            match status {
+                MempoolRecoveryStatus::Recovered | MempoolRecoveryStatus::DroppedDuplicate => {}
                 MempoolRecoveryStatus::DroppedConfirmed => {
                     self.relay_serving.record_status(
                         snapshot_record.txid,
@@ -106,7 +130,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         TxServingRecordStatus::Confirmed,
                     );
                 }
-                MempoolRecoveryStatus::DroppedDuplicate => {}
                 MempoolRecoveryStatus::DroppedMissingParent
                 | MempoolRecoveryStatus::DroppedPolicyIncompatible => {
                     self.relay_serving.record_status(
@@ -123,6 +146,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     );
                 }
             }
+
+            recovery_records.push(MempoolRecoveryRecord {
+                txid: snapshot_record.txid,
+                status,
+            });
         }
 
         let summary = ManagedMempoolRecoverySummary::from_records(recovery_records);
@@ -146,14 +174,5 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
     pub fn latest_mempool_recovery_storage_error(&self) -> Option<SyncRecoveryCategory> {
         self.latest_mempool_recovery_storage_error
-    }
-
-    fn store_recovered_transaction(
-        &mut self,
-        transaction: Transaction,
-    ) -> Result<(), ManagedNetworkError> {
-        let (txid, wtxid) = self.store_transaction(transaction)?;
-        self.relay_fanout.seed_recovered_transaction(txid, wtxid);
-        Ok(())
     }
 }

@@ -73,13 +73,13 @@ fn mempool_snapshot() -> MempoolSnapshot {
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
 
     MempoolSnapshot {
-        records: vec![MempoolSnapshotRecord {
+        records: vec![MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
             txid,
             wtxid,
             transaction,
-            fee_sats: 1_000,
-            virtual_size: 100,
-        }],
+            1_000,
+            100,
+        )],
     }
 }
 

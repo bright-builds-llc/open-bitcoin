@@ -615,6 +615,8 @@ impl TryFrom<MempoolSnapshotRecordDto> for MempoolSnapshotRecord {
             transaction,
             fee_sats: dto.fee_sats,
             virtual_size: dto.virtual_size,
+            // Plan 130-08 Task 2 owns all-or-none durable metadata decoding.
+            metadata: open_bitcoin_mempool::MempoolEntryMetadata::legacy_unknown(),
         })
     }
 }
