@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-11-PLAN.md
-last_updated: "2026-07-24T04:01:25.793Z"
+stopped_at: Completed 130-09-PLAN.md
+last_updated: "2026-07-24T05:22:03.165Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 10
-  percent: 77
+  completed_plans: 11
+  percent: 85
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 11 of 13 complete; next incomplete is 09
+Plan: 11 of 13 complete; next incomplete is 12
 Status: Ready to execute
-Last activity: 2026-07-24 -- Completed Plan 130-11 local RPC admission timing
+Last activity: 2026-07-24 -- Completed Plan 130-09 authoritative mempool RPC evidence
 
-Progress: [████████░░] 77%
+Progress: [█████████░] 85%
 
-Next action: Execute Plan 130-09
+Next action: Execute Plan 130-12
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: 42 min
-- Total execution time: 6h 58m
+- Total execution time: 7h 45m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 10 | 6h 58m | 42 min |
+| 130–138 | 11 | 7h 45m | 42 min |
 
 ## Accumulated Context
 
@@ -85,6 +85,9 @@ Next action: Execute Plan 130-09
 - [Phase 130]: Sample SystemTime only in sendrawtransaction with checked conversion; never unwrap_or(0).
 - [Phase 130]: Resolve RelayIntent::Requested from relay activation enabled; otherwise NotRequested.
 - [Phase 130]: Migrate the final RPC caller and delete both no-time outcome adapters in one commit.
+- [Phase 130]: Keep getmempoolinfo.bytes=vsize, usage=accounted memory, maxmempool=accounted capacity, and mempoolminfee=effective max(static, rolling).
+- [Phase 130]: Serialize capacityenforcement as fixed legacy_vsize during Phase 130 without claiming accounted-capacity enforcement.
+- [Phase 130]: Expose rollingmempoolfee, effectiveadmissionfee, and incrementalrelayfee as distinct exact fields so incremental never contaminates mempoolminfee.
 
 ### Pending Todos
 
@@ -107,6 +110,6 @@ Next action: Execute Plan 130-09
 
 ## Session Continuity
 
-Last session: 2026-07-24T04:01:25.789Z
-Stopped at: Completed 130-11-PLAN.md
+Last session: 2026-07-24T05:22:03.162Z
+Stopped at: Completed 130-09-PLAN.md
 Resume file: None
