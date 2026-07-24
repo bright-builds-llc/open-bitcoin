@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13 planned, 12 completed, and Plan 130-13 is next.
+v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–138. All 40 requirements are mapped exactly once; Phase 130 has 13/13 plans complete.
 
 ## Milestones
 
@@ -28,7 +28,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 
 ## Phases
 
-- [ ] **Phase 130: Resource, Time, and Fee Primitives** — Establish unambiguous accounting, fee, time, metadata, and lifecycle outcome contracts for all later policy behavior.
+- [x] **Phase 130: Resource, Time, and Fee Primitives** — Establish unambiguous accounting, fee, time, metadata, and lifecycle outcome contracts for all later policy behavior. (completed 2026-07-24)
 - [ ] **Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core** — Enforce sustained-pressure capacity, eviction, expiry, and block-gated rolling-fee decay deterministically.
 - [ ] **Phase 132: Typed Package Vocabulary and Staged Admission** — Deliver dry-run and submission semantics with exact shape validation, partial acceptance, effective-fee grouping, and coherent commits.
 - [ ] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission.
@@ -67,7 +67,7 @@ Plans:
 - [x] 130-10-PLAN.md — Define bounded injected retry time and jitter inputs in the pure network crate.
 - [x] 130-11-PLAN.md — Migrate the RPC caller, sample local admission time safely, then remove no-time authority adapters.
 - [x] 130-12-PLAN.md — Register complete parity evidence and refresh contributor-facing README surfaces.
-- [ ] 130-13-PLAN.md — Install mutation-tested Phase 130 guardrails in the default repository verifier.
+- [x] 130-13-PLAN.md — Install mutation-tested Phase 130 guardrails in the default repository verifier.
 
 ### Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core
 
@@ -189,7 +189,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
-| 130. Resource, Time, and Fee Primitives | 12/13 | In Progress|  |
+| 130. Resource, Time, and Fee Primitives | 13/13 | Complete   | 2026-07-24 |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |

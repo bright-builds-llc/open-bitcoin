@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 130-12-PLAN.md
-last_updated: "2026-07-24T06:43:13.042Z"
+status: phase_complete
+stopped_at: Completed 130-13-PLAN.md
+last_updated: "2026-07-24T08:05:59.438Z"
 last_activity: 2026-07-24
 progress:
   total_phases: 9
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -26,26 +26,26 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 12 of 13 complete; next incomplete is 13
-Status: Ready to execute
-Last activity: 2026-07-24 -- Completed Plan 130-12 parity evidence and README truth
+Phase: 130 (Resource, Time, and Fee Primitives) — COMPLETE
+Plan: 13 of 13 complete
+Status: Phase complete; ready for verification/closeout
+Last activity: 2026-07-24
 
-Progress: [█████████░] 92%
+Progress: [██████████] 100%
 
-Next action: Execute Plan 130-13
+Next action: Run Phase 130 verification/closeout
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: 42 min
-- Total execution time: 8h 25m
+- Total execution time: 9h 4m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 12 | 8h 25m | 42 min |
+| 130–138 | 13 | 9h 4m | 42 min |
 
 ## Accumulated Context
 
@@ -91,6 +91,9 @@ Next action: Execute Plan 130-13
 - [Phase 130]: Register unique FEEP-01 through FEEP-05 ownership under v2-2-resource-time-fee-primitives with exact later-phase boundaries.
 - [Phase 130]: Document intentional Rust-owned accounting difference from C++ allocator estimates while preserving Knots RPC meanings.
 - [Phase 130]: Align documentation reconciliation with active v2.2 README truth instead of requiring /gsd-new-milestone in the root status block.
+- [Phase 130]: Reuse the Phase 129 string[] failure-list contract with no separate result alias.
+- [Phase 130]: Validate README freshness through three independent readTarget calls and dedicated stale-wording failures.
+- [Phase 130]: Keep FEEP requirements Pending until Phase 130 VERIFICATION.md exists for milestone traceability.
 
 ### Pending Todos
 
@@ -113,6 +116,6 @@ Next action: Execute Plan 130-13
 
 ## Session Continuity
 
-Last session: 2026-07-24T06:43:13.039Z
-Stopped at: Completed 130-12-PLAN.md
+Last session: 2026-07-24T08:05:59.435Z
+Stopped at: Completed 130-13-PLAN.md
 Resume file: None
