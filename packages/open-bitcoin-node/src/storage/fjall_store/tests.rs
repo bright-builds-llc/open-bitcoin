@@ -30,6 +30,8 @@ use crate::recovery::{
 };
 use crate::status::{FieldAvailability, SyncRecoveryCategory};
 use crate::storage::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
+use open_bitcoin_mempool::MempoolEntryMetadata;
+
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStorageSnapshot, PersistMode,
@@ -163,13 +165,14 @@ fn mempool_snapshot() -> MempoolSnapshot {
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
 
     MempoolSnapshot {
-        records: vec![MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
+        records: vec![MempoolSnapshotRecord {
             txid,
             wtxid,
             transaction,
-            1_000,
-            100,
-        )],
+            fee_sats: 1_000,
+            virtual_size: 100,
+            metadata: MempoolEntryMetadata::legacy_unknown(),
+        }],
     }
 }
 

@@ -13,9 +13,9 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    FinalMempoolMembership, MempoolAcceptanceTime, MempoolCapacityStatus, MempoolOrigin,
-    MempoolOutcome, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, PolicyTime, RelayIntent,
-    ReorgLifecycleContext, RollingFeeParityStatus,
+    FinalMempoolMembership, MempoolAcceptanceTime, MempoolCapacityStatus, MempoolEntryMetadata,
+    MempoolOrigin, MempoolOutcome, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig,
+    PolicyTime, RelayIntent, ReorgLifecycleContext, RollingFeeParityStatus,
 };
 use open_bitcoin_network::WireNetworkMessage;
 
@@ -38,14 +38,13 @@ fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot
     MempoolSnapshot {
         records: transactions
             .into_iter()
-            .map(|transaction| {
-                MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
-                    txid(&transaction),
-                    wtxid(&transaction),
-                    transaction,
-                    1_000,
-                    100,
-                )
+            .map(|transaction| MempoolSnapshotRecord {
+                txid: txid(&transaction),
+                wtxid: wtxid(&transaction),
+                transaction,
+                fee_sats: 1_000,
+                virtual_size: 100,
+                metadata: MempoolEntryMetadata::legacy_unknown(),
             })
             .collect(),
     }

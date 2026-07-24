@@ -20,28 +20,6 @@ pub struct MempoolSnapshotRecord {
     pub metadata: MempoolEntryMetadata,
 }
 
-impl MempoolSnapshotRecord {
-    /// Temporary fail-closed constructor for fixtures still awaiting Plan 130-08 Task 2 codec migration.
-    ///
-    /// Task 2 owns removing this helper after every durable and in-memory constructor migrates.
-    pub fn with_fail_closed_legacy_metadata(
-        txid: Txid,
-        wtxid: Wtxid,
-        transaction: Transaction,
-        fee_sats: i64,
-        virtual_size: usize,
-    ) -> Self {
-        Self {
-            txid,
-            wtxid,
-            transaction,
-            fee_sats,
-            virtual_size,
-            metadata: MempoolEntryMetadata::legacy_unknown(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct MempoolSnapshot {
     pub records: Vec<MempoolSnapshotRecord>,
@@ -234,13 +212,14 @@ mod tests {
     }
 
     fn snapshot_record(transaction: Transaction) -> MempoolSnapshotRecord {
-        MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
-            transaction_txid(&transaction).expect("txid"),
-            transaction_wtxid(&transaction).expect("wtxid"),
+        MempoolSnapshotRecord {
+            txid: transaction_txid(&transaction).expect("txid"),
+            wtxid: transaction_wtxid(&transaction).expect("wtxid"),
             transaction,
-            1_000,
-            100,
-        )
+            fee_sats: 1_000,
+            virtual_size: 100,
+            metadata: MempoolEntryMetadata::legacy_unknown(),
+        }
     }
 
     fn known_local_requested(accepted_at: i64) -> MempoolEntryMetadata {

@@ -22,9 +22,13 @@ use super::{
     encode_metrics_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
     encode_wallet_rescan_job, encode_wallet_snapshot,
 };
+use open_bitcoin_mempool::{
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyTime, RelayIntent,
+};
+
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
-    MetricKind, MetricSample, SelectedWalletRecord, StorageError, StorageNamespace,
+    MetricKind, MetricSample, SchemaVersion, SelectedWalletRecord, StorageError, StorageNamespace,
     WalletRegistrySnapshot, WalletRescanFreshness, WalletRescanJob, WalletRescanJobState,
 };
 
@@ -73,13 +77,18 @@ fn mempool_snapshot() -> MempoolSnapshot {
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
 
     MempoolSnapshot {
-        records: vec![MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
+        records: vec![MempoolSnapshotRecord {
             txid,
             wtxid,
             transaction,
-            1_000,
-            100,
-        )],
+            fee_sats: 1_000,
+            virtual_size: 100,
+            metadata: MempoolEntryMetadata::new(
+                MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
+                MempoolOrigin::Local,
+                RelayIntent::Requested,
+            ),
+        }],
     }
 }
 
@@ -305,4 +314,171 @@ fn malformed_json_maps_to_corruption() {
             ..
         }
     ));
+}
+
+#[test]
+fn mempool_snapshot_known_metadata_round_trips_all_three_fields() {
+    // Arrange
+    let snapshot = mempool_snapshot();
+
+    // Act
+    let encoded = encode_mempool_snapshot(&snapshot).expect("encode mempool");
+    let decoded = decode_mempool_snapshot(&encoded).expect("decode mempool");
+    let encoded_text = String::from_utf8(encoded.clone()).expect("utf8");
+
+    // Assert
+    assert_eq!(decoded, snapshot);
+    assert!(encoded_text.contains("\"accepted_at_unix_seconds\": 90"));
+    assert!(encoded_text.contains("\"origin\": \"local\""));
+    assert!(encoded_text.contains("\"relay_requested\": true"));
+}
+
+#[test]
+fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
+    // Arrange
+    let transaction = mempool_transaction(24);
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let encoded_tx = open_bitcoin_core::codec::encode_transaction(
+        &transaction,
+        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+    )
+    .expect("encode tx");
+    let legacy = serde_json::json!({
+        "schema_version": SchemaVersion::CURRENT.get(),
+        "payload": {
+            "records": [{
+                "txid": txid.to_byte_array(),
+                "wtxid": wtxid.to_byte_array(),
+                "transaction": encoded_tx,
+                "fee_sats": 1000,
+                "virtual_size": 100
+            }]
+        }
+    });
+    let bytes = serde_json::to_vec(&legacy).expect("serialize legacy");
+
+    // Act
+    let decoded = decode_mempool_snapshot(&bytes).expect("decode legacy");
+
+    // Assert
+    assert_eq!(decoded.records.len(), 1);
+    assert_eq!(
+        decoded.records[0].metadata,
+        MempoolEntryMetadata::legacy_unknown()
+    );
+    assert_eq!(SchemaVersion::CURRENT.get(), 1);
+}
+
+#[test]
+fn mempool_snapshot_partial_metadata_is_corruption() {
+    // Arrange
+    let transaction = mempool_transaction(25);
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let encoded_tx = open_bitcoin_core::codec::encode_transaction(
+        &transaction,
+        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+    )
+    .expect("encode tx");
+    let base = |accepted, origin, relay| {
+        let mut record = serde_json::json!({
+            "txid": txid.to_byte_array(),
+            "wtxid": wtxid.to_byte_array(),
+            "transaction": encoded_tx,
+            "fee_sats": 1000,
+            "virtual_size": 100
+        });
+        if let Some(value) = accepted {
+            record["accepted_at_unix_seconds"] = serde_json::json!(value);
+        }
+        if let Some(value) = origin {
+            record["origin"] = serde_json::json!(value);
+        }
+        if let Some(value) = relay {
+            record["relay_requested"] = serde_json::json!(value);
+        }
+        serde_json::to_vec(&serde_json::json!({
+            "schema_version": SchemaVersion::CURRENT.get(),
+            "payload": {"records": [record]}
+        }))
+        .expect("serialize")
+    };
+
+    // Act / Assert
+    for bytes in [
+        base(Some(90), None, None),
+        base(None, Some("local"), None),
+        base(None, None, Some(true)),
+        base(Some(90), Some("local"), None),
+        base(Some(90), None, Some(true)),
+        base(None, Some("local"), Some(true)),
+    ] {
+        let error = decode_mempool_snapshot(&bytes).expect_err("partial metadata");
+        assert!(matches!(
+            error,
+            StorageError::Corruption {
+                namespace: StorageNamespace::Mempool,
+                ..
+            }
+        ));
+    }
+}
+
+#[test]
+fn mempool_snapshot_invalid_origin_is_corruption() {
+    // Arrange
+    let transaction = mempool_transaction(26);
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let encoded_tx = open_bitcoin_core::codec::encode_transaction(
+        &transaction,
+        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+    )
+    .expect("encode tx");
+    let bytes = serde_json::to_vec(&serde_json::json!({
+        "schema_version": SchemaVersion::CURRENT.get(),
+        "payload": {
+            "records": [{
+                "txid": txid.to_byte_array(),
+                "wtxid": wtxid.to_byte_array(),
+                "transaction": encoded_tx,
+                "fee_sats": 1000,
+                "virtual_size": 100,
+                "accepted_at_unix_seconds": 90,
+                "origin": "miner",
+                "relay_requested": true
+            }]
+        }
+    }))
+    .expect("serialize");
+
+    // Act
+    let error = decode_mempool_snapshot(&bytes).expect_err("invalid origin");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption {
+            namespace: StorageNamespace::Mempool,
+            ..
+        }
+    ));
+}
+
+#[test]
+fn mempool_snapshot_encoded_schema_version_remains_current() {
+    // Arrange
+    let snapshot = mempool_snapshot();
+
+    // Act
+    let encoded = encode_mempool_snapshot(&snapshot).expect("encode");
+    let value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+
+    // Assert
+    assert_eq!(
+        value["schema_version"].as_u64().expect("schema"),
+        u64::from(SchemaVersion::CURRENT.get())
+    );
+    assert_eq!(SchemaVersion::CURRENT.get(), 1);
 }

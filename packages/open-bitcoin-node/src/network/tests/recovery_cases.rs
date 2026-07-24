@@ -39,13 +39,14 @@ fn wtxid(transaction: &Transaction) -> Wtxid {
 }
 
 fn snapshot_record(transaction: Transaction) -> MempoolSnapshotRecord {
-    MempoolSnapshotRecord::with_fail_closed_legacy_metadata(
-        txid(&transaction),
-        wtxid(&transaction),
+    MempoolSnapshotRecord {
+        txid: txid(&transaction),
+        wtxid: wtxid(&transaction),
         transaction,
-        1_000,
-        100,
-    )
+        fee_sats: 1_000,
+        virtual_size: 100,
+        metadata: MempoolEntryMetadata::legacy_unknown(),
+    }
 }
 
 fn snapshot_record_with_metadata(

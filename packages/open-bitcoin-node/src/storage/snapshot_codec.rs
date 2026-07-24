@@ -7,11 +7,9 @@ use std::collections::HashMap;
 
 use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
-    codec::{TransactionEncoding, encode_transaction, parse_transaction},
-    consensus::{block_hash, transaction_txid, transaction_wtxid},
+    consensus::block_hash,
     primitives::{
         Amount, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, TransactionOutput, Txid,
-        Wtxid,
     },
 };
 use open_bitcoin_network::HeaderEntry;
@@ -22,10 +20,10 @@ use crate::{
     StorageRecoveryAction, metrics::MetricSample,
 };
 
-use super::{MempoolSnapshot, MempoolSnapshotRecord};
-
+mod mempool;
 mod wallet;
 
+pub(crate) use mempool::{decode_mempool_snapshot, encode_mempool_snapshot};
 pub(crate) use wallet::{
     decode_selected_wallet, decode_wallet_registry_snapshot, decode_wallet_rescan_job,
     decode_wallet_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
@@ -117,20 +115,6 @@ struct HeaderEntryDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct HeaderEntriesDto {
     entries: Vec<HeaderEntryDto>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct MempoolSnapshotDto {
-    records: Vec<MempoolSnapshotRecordDto>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct MempoolSnapshotRecordDto {
-    txid: [u8; 32],
-    wtxid: [u8; 32],
-    transaction: Vec<u8>,
-    fee_sats: i64,
-    virtual_size: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -227,19 +211,7 @@ pub(crate) fn decode_metrics_snapshot(
     decode_versioned(StorageNamespace::Metrics, bytes)
 }
 
-pub(crate) fn encode_mempool_snapshot(snapshot: &MempoolSnapshot) -> Result<Vec<u8>, StorageError> {
-    encode_versioned(
-        StorageNamespace::Mempool,
-        &MempoolSnapshotDto::try_from(snapshot)?,
-    )
-}
-
-pub(crate) fn decode_mempool_snapshot(bytes: &[u8]) -> Result<MempoolSnapshot, StorageError> {
-    let dto: MempoolSnapshotDto = decode_versioned(StorageNamespace::Mempool, bytes)?;
-    dto.try_into()
-}
-
-fn encode_versioned<T: Serialize>(
+pub(super) fn encode_versioned<T: Serialize>(
     namespace: StorageNamespace,
     payload: &T,
 ) -> Result<Vec<u8>, StorageError> {
@@ -254,7 +226,7 @@ fn encode_versioned<T: Serialize>(
     })
 }
 
-fn decode_versioned<T: DeserializeOwned>(
+pub(super) fn decode_versioned<T: DeserializeOwned>(
     namespace: StorageNamespace,
     bytes: &[u8],
 ) -> Result<T, StorageError> {
@@ -271,7 +243,10 @@ fn decode_versioned<T: DeserializeOwned>(
     Ok(snapshot.payload)
 }
 
-fn corruption(namespace: StorageNamespace, detail: impl std::fmt::Display) -> StorageError {
+pub(super) fn corruption(
+    namespace: StorageNamespace,
+    detail: impl std::fmt::Display,
+) -> StorageError {
     StorageError::Corruption {
         namespace,
         detail: detail.to_string(),
@@ -541,84 +516,5 @@ impl TryFrom<HeaderEntryDto> for HeaderEntry {
     }
 }
 
-impl TryFrom<&MempoolSnapshot> for MempoolSnapshotDto {
-    type Error = StorageError;
-
-    fn try_from(snapshot: &MempoolSnapshot) -> Result<Self, Self::Error> {
-        let records = snapshot
-            .records
-            .iter()
-            .map(MempoolSnapshotRecordDto::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(Self { records })
-    }
-}
-
-impl TryFrom<MempoolSnapshotDto> for MempoolSnapshot {
-    type Error = StorageError;
-
-    fn try_from(dto: MempoolSnapshotDto) -> Result<Self, Self::Error> {
-        let records = dto
-            .records
-            .into_iter()
-            .map(MempoolSnapshotRecord::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(Self { records })
-    }
-}
-
-impl TryFrom<&MempoolSnapshotRecord> for MempoolSnapshotRecordDto {
-    type Error = StorageError;
-
-    fn try_from(record: &MempoolSnapshotRecord) -> Result<Self, Self::Error> {
-        Ok(Self {
-            txid: record.txid.to_byte_array(),
-            wtxid: record.wtxid.to_byte_array(),
-            transaction: encode_transaction(&record.transaction, TransactionEncoding::WithWitness)
-                .map_err(|error| corruption(StorageNamespace::Mempool, error))?,
-            fee_sats: record.fee_sats,
-            virtual_size: record.virtual_size,
-        })
-    }
-}
-
-impl TryFrom<MempoolSnapshotRecordDto> for MempoolSnapshotRecord {
-    type Error = StorageError;
-
-    fn try_from(dto: MempoolSnapshotRecordDto) -> Result<Self, Self::Error> {
-        let transaction = parse_transaction(&dto.transaction)
-            .map_err(|error| corruption(StorageNamespace::Mempool, error))?;
-        let txid = Txid::from_byte_array(dto.txid);
-        let wtxid = Wtxid::from_byte_array(dto.wtxid);
-        let actual_txid = transaction_txid(&transaction)
-            .map_err(|error| corruption(StorageNamespace::Mempool, error))?;
-        let actual_wtxid = transaction_wtxid(&transaction)
-            .map_err(|error| corruption(StorageNamespace::Mempool, error))?;
-        if actual_txid != txid {
-            return Err(corruption(
-                StorageNamespace::Mempool,
-                "stored mempool txid does not match transaction",
-            ));
-        }
-        if actual_wtxid != wtxid {
-            return Err(corruption(
-                StorageNamespace::Mempool,
-                "stored mempool wtxid does not match transaction",
-            ));
-        }
-
-        Ok(Self {
-            txid,
-            wtxid,
-            transaction,
-            fee_sats: dto.fee_sats,
-            virtual_size: dto.virtual_size,
-            // Plan 130-08 Task 2 owns all-or-none durable metadata decoding.
-            metadata: open_bitcoin_mempool::MempoolEntryMetadata::legacy_unknown(),
-        })
-    }
-}
 #[cfg(test)]
 mod tests;
