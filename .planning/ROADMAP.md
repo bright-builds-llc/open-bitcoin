@@ -62,7 +62,7 @@ Plans:
 - [x] 130-05-PLAN.md — Establish exact peer/local metadata and lifecycle-delta handling in the managed node admission authority.
 - [x] 130-06-PLAN.md — Migrate node-owned admission callers/tests to explicit time while retaining fail-closed RPC compatibility.
 - [x] 130-07-PLAN.md — Route explicit block/reorg contexts and semantic deltas through the runtime authority.
-- [ ] 130-08-PLAN.md — Preserve known snapshot metadata and decode legacy records through a fail-closed compatibility contract.
+- [x] 130-08-PLAN.md — Preserve known snapshot metadata and decode legacy records through a fail-closed compatibility contract.
 - [ ] 130-09-PLAN.md — Correct authoritative operator resource and fee evidence with unequal-value RPC tests.
 - [x] 130-10-PLAN.md — Define bounded injected retry time and jitter inputs in the pure network crate.
 - [ ] 130-11-PLAN.md — Migrate the RPC caller, sample local admission time safely, then remove no-time authority adapters.
@@ -189,7 +189,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
-| 130. Resource, Time, and Fee Primitives | 8/13 | In Progress|  |
+| 130. Resource, Time, and Fee Primitives | 9/13 | In Progress|  |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |

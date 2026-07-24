@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 130-07-PLAN.md
-last_updated: "2026-07-24T01:10:20.094Z"
-last_activity: 2026-07-24 -- Completed Plan 130-07 explicit block and reorg lifecycle integration
+stopped_at: Completed 130-08-PLAN.md
+last_updated: "2026-07-24T03:02:06.117Z"
+last_activity: 2026-07-24
 progress:
   total_phases: 9
   completed_phases: 0
   total_plans: 13
-  completed_plans: 8
-  percent: 62
+  completed_plans: 9
+  percent: 69
 ---
 
 # Project State
@@ -27,25 +27,25 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 130 (Resource, Time, and Fee Primitives) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Status: Ready to execute
-Last activity: 2026-07-24 -- Completed Plan 130-07 explicit block and reorg lifecycle integration
+Last activity: 2026-07-24 -- Completed Plan 130-08 legacy snapshot compatibility
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 69%
 
-Next action: Execute Plan 130-08
+Next action: Execute Plan 130-09
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 8
-- Average duration: 42 min
-- Total execution time: 5h 32m
+- Total plans completed: 9
+- Average duration: 44 min
+- Total execution time: 6h 33m
 
 | Phase | Plans | Total | Avg/Plan |
 | --- | ---: | ---: | ---: |
-| 130–138 | 8 | 5h 32m | 42 min |
+| 130–138 | 9 | 6h 33m | 44 min |
 
 ## Accumulated Context
 
@@ -79,6 +79,9 @@ Next action: Execute Plan 130-08
 - [Phase 130]: Use stored-block receive time and connected height while direct local blocks use explicit header time and connected height.
 - [Phase 130]: Use one explicit reorg operation time for replacement-block cleanup and disconnected transaction reacceptance.
 - [Phase 130]: Apply every reorg admission attempt through its semantic lifecycle delta without expanding Phase 134 cross-cache scope.
+- [Phase 130]: Keep SchemaVersion::CURRENT unchanged and encode metadata as three optional mempool-record fields.
+- [Phase 130]: All-absent decodes to LegacyUnknown, RecoveryUnknown, and NotRequested; any partial set is StorageError::Corruption in Mempool.
+- [Phase 130]: Known capture and recovery pass metadata through AdmissionContext::recovery without substituting restart time or local origin.
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ Next action: Execute Plan 130-08
 
 ## Session Continuity
 
-Last session: 2026-07-24T01:10:20.090Z
-Stopped at: Completed 130-07-PLAN.md
+Last session: 2026-07-24T03:02:06.113Z
+Stopped at: Completed 130-08-PLAN.md
 Resume file: None
