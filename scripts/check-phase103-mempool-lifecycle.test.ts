@@ -110,7 +110,7 @@ test("fails_when_required_behavior_test_is_missing", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
-      removeFromAllFiles(files, "managed_reorg_reconsiders_eligible_disconnected_transaction");
+      removeFromAllFiles(files, "managed_reorg_reacceptance_uses_explicit_event_time");
     },
   });
 

@@ -135,6 +135,15 @@ impl AdmissionContext {
             relay_intent,
         ))
     }
+
+    /// Creates reorg reacceptance facts from the explicit lifecycle event time.
+    pub const fn reorg(accepted_at: PolicyTime) -> Self {
+        Self::new(MempoolEntryMetadata::new(
+            MempoolAcceptanceTime::Known(accepted_at),
+            MempoolOrigin::Reorg,
+            RelayIntent::NotRequested,
+        ))
+    }
 }
 
 /// Immutable occupancy and time facts for one pressure decision.

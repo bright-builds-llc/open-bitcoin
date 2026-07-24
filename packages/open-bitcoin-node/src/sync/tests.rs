@@ -21,6 +21,7 @@ use open_bitcoin_core::{
         OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
     },
 };
+use open_bitcoin_mempool::PolicyTime;
 use open_bitcoin_network::{
     HeaderEntry, HeadersMessage, InventoryList, PeerId, VersionMessage, WireNetworkMessage,
 };
@@ -881,6 +882,18 @@ fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
         .expect("expected nonce at easy target");
     header.nonce = nonce;
     header
+}
+
+#[test]
+fn reorg_reconcile_context_preserves_explicit_event_time() {
+    // Arrange
+    let event_time = 80;
+
+    // Act
+    let context = super::block_reconcile::reorg_lifecycle_context(event_time);
+
+    // Assert
+    assert_eq!(context.occurred_at, PolicyTime::new(event_time));
 }
 
 #[test]

@@ -12,6 +12,7 @@ use open_bitcoin_core::{
     consensus::block_hash,
     primitives::{BlockHash, InventoryType},
 };
+use open_bitcoin_mempool::{PolicyTime, ReorgLifecycleContext};
 use open_bitcoin_network::{PeerId, WireNetworkMessage};
 
 use super::{DurableSyncRuntime, SyncRuntimeError, tip, types::SyncReconcileProgress};
@@ -270,6 +271,7 @@ fn reconcile_best_chain_inner(
         .reorg_to_branch(
             &disconnect_blocks,
             &replacement_branch,
+            reorg_lifecycle_context(timestamp),
             runtime.verify_flags,
             runtime.consensus_params,
         )
@@ -292,6 +294,10 @@ fn reconcile_best_chain_inner(
         &transition,
         &final_active_tip,
     )))
+}
+
+pub(super) const fn reorg_lifecycle_context(timestamp: i64) -> ReorgLifecycleContext {
+    ReorgLifecycleContext::new(PolicyTime::from_unix_seconds(timestamp))
 }
 
 fn reorg_runtime_error(error: ManagedNetworkAuthorityError) -> SyncRuntimeError {

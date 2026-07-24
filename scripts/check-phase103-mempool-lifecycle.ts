@@ -89,7 +89,7 @@ const REQUIRED_BEHAVIOR_TESTS = [
   "block_connect_removes_conflict_and_descendants",
   "managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_caches",
   "managed_block_connect_removes_conflict_and_descendant_caches",
-  "managed_reorg_reconsiders_eligible_disconnected_transaction",
+  "managed_reorg_reacceptance_uses_explicit_event_time",
   "mempool_snapshot_replay_recovers_accepted_records",
   "mempool_snapshot_replay_drops_confirmed_records_with_evidence",
   "mempool_snapshot_replay_drops_policy_incompatible_records_with_evidence",

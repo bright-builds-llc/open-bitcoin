@@ -13,7 +13,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{
     AdmissionContext, BlockLifecycleContext, FinalMempoolMembership, MempoolLifecycleDelta,
-    MempoolOutcome, MempoolRemovalCause, PolicyTime,
+    MempoolOutcome, MempoolRemovalCause, PolicyTime, ReorgLifecycleContext,
 };
 use open_bitcoin_network::TxServingRecordStatus;
 
@@ -112,6 +112,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &mut self,
         disconnect_blocks: &[Block],
         replacement_branch: &[AnchoredBlock],
+        context: ReorgLifecycleContext,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> ManagedResult<ChainTransition> {
@@ -134,6 +135,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             disconnect_blocks,
             replacement_branch,
             &transition.connected,
+            context,
             verify_flags,
             consensus_params,
         )?;
@@ -167,12 +169,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(ManagedMempoolBlockLifecycle { context, delta })
     }
 
-    #[allow(deprecated)] // Plan 130-07 Task 2 removes the explicit-header reorg adapter.
     pub(super) fn apply_reorg_mempool_lifecycle(
         &mut self,
         disconnect_blocks: &[Block],
         replacement_branch: &[AnchoredBlock],
         connected_positions: &[ChainPosition],
+        context: ReorgLifecycleContext,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedMempoolReorgLifecycle, ManagedNetworkError> {
@@ -185,10 +187,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
         let mut connected = Vec::with_capacity(replacement_branch.len());
         for (anchored_block, position) in replacement_branch.iter().zip(connected_positions) {
-            let context =
-                block_context_from_explicit_header(&anchored_block.block, position.height);
+            let block_context = block_lifecycle_context_from_reorg(context, position.height);
             connected.push(
-                self.apply_connected_block_mempool_lifecycle(&anchored_block.block, context)?,
+                self.apply_connected_block_mempool_lifecycle(&anchored_block.block, block_context)?,
             );
         }
 
@@ -200,28 +201,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     transaction.clone(),
                     verify_flags,
                     consensus_params,
-                    AdmissionContext::legacy_unknown(),
+                    AdmissionContext::reorg(context.occurred_at),
                 )?;
-                match &transition.outcome {
-                    MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {
-                        self.apply_admitted_transition(&transition, transaction.clone())?;
-                    }
-                    MempoolOutcome::Evicted { txid, .. } | MempoolOutcome::Expired { txid, .. } => {
-                        if let Some(removed_wtxid) = transition.outcome.maybe_wtxid() {
-                            self.peer_manager
-                                .on_mempool_transaction_removed(&removed_wtxid);
-                        }
-                        let status = match transition.outcome {
-                            MempoolOutcome::Evicted { .. } => TxServingRecordStatus::Evicted,
-                            MempoolOutcome::Expired { .. } => TxServingRecordStatus::Expired,
-                            _ => TxServingRecordStatus::Stale,
-                        };
-                        self.remove_stored_transactions_with_status(&[*txid], status)?;
-                    }
-                    MempoolOutcome::Rejected { .. }
-                    | MempoolOutcome::Duplicate { .. }
-                    | MempoolOutcome::Orphaned { .. } => {}
-                }
+                self.apply_admitted_transition(&transition, transaction.clone())?;
                 reconsidered.push(transition.outcome);
             }
         }
@@ -243,15 +225,11 @@ pub(super) fn block_lifecycle_context(
     )
 }
 
-/// Temporary reorg adapter retained only until Plan 130-07 Task 2 forwards event time.
-#[deprecated(
-    note = "Plan 130-07 Task 2 replaces this explicit-header adapter with ReorgLifecycleContext"
-)]
-fn block_context_from_explicit_header(block: &Block, height: u32) -> BlockLifecycleContext {
-    BlockLifecycleContext::new(
-        PolicyTime::from_unix_seconds(i64::from(block.header.time)),
-        height,
-    )
+pub(super) const fn block_lifecycle_context_from_reorg(
+    context: ReorgLifecycleContext,
+    height: u32,
+) -> BlockLifecycleContext {
+    BlockLifecycleContext::new(context.occurred_at, height)
 }
 
 fn serving_status_for_removal(cause: MempoolRemovalCause) -> TxServingRecordStatus {

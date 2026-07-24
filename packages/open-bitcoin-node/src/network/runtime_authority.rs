@@ -13,7 +13,7 @@ use open_bitcoin_core::{
     mempool::{AdmissionResult, MempoolOutcome},
     primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction},
 };
-use open_bitcoin_mempool::{PolicyConfig, RelayIntent};
+use open_bitcoin_mempool::{PolicyConfig, RelayIntent, ReorgLifecycleContext};
 use open_bitcoin_network::{
     BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
     InboundAdmissionPolicy, InboundAdmissionRequest, InboundResourceEvent,
@@ -426,6 +426,7 @@ impl ManagedNetworkHandle {
         &self,
         disconnect_blocks: &[Block],
         replacement_branch: &[AnchoredBlock],
+        context: ReorgLifecycleContext,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainTransition, ManagedNetworkAuthorityError> {
@@ -433,6 +434,7 @@ impl ManagedNetworkHandle {
             network.reorg_to_branch(
                 disconnect_blocks,
                 replacement_branch,
+                context,
                 verify_flags,
                 consensus_params,
             )

@@ -13,8 +13,9 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    FinalMempoolMembership, MempoolCapacityStatus, MempoolOutcome, MempoolRemovalCause,
-    MempoolRemovalRole, PolicyConfig, RelayIntent, RollingFeeParityStatus,
+    FinalMempoolMembership, MempoolAcceptanceTime, MempoolCapacityStatus, MempoolOrigin,
+    MempoolOutcome, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, PolicyTime, RelayIntent,
+    ReorgLifecycleContext, RollingFeeParityStatus,
 };
 use open_bitcoin_network::WireNetworkMessage;
 
@@ -399,7 +400,7 @@ fn recovered_replacement_cleans_old_txid_and_preserves_new_accepted_identity() {
 }
 
 #[test]
-fn managed_reorg_reconsiders_eligible_disconnected_transaction() {
+fn managed_reorg_reacceptance_uses_explicit_event_time() {
     // Arrange
     let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
     let disconnected_transaction = spend_transaction(coinbase_txids[0], 499_999_000);
@@ -420,6 +421,7 @@ fn managed_reorg_reconsiders_eligible_disconnected_transaction() {
             .entry(&disconnected_txid)
             .is_none()
     );
+    let reorg_context = ReorgLifecycleContext::new(PolicyTime::new(80));
 
     // Act
     network
@@ -429,6 +431,7 @@ fn managed_reorg_reconsiders_eligible_disconnected_transaction() {
                 block: replacement_tip,
                 chain_work: 3,
             }],
+            reorg_context,
             verify_flags(),
             consensus_params(),
         )
@@ -446,6 +449,22 @@ fn managed_reorg_reconsiders_eligible_disconnected_transaction() {
         network
             .transactions_by_txid
             .contains_key(&disconnected_txid)
+    );
+    let metadata = network
+        .mempool()
+        .mempool()
+        .entry(&disconnected_txid)
+        .expect("reaccepted entry")
+        .metadata;
+    assert_eq!(
+        metadata.accepted_at,
+        MempoolAcceptanceTime::Known(PolicyTime::new(80))
+    );
+    assert_eq!(metadata.origin, MempoolOrigin::Reorg);
+    assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
+    assert_eq!(
+        super::super::mempool_lifecycle::block_lifecycle_context_from_reorg(reorg_context, 2),
+        open_bitcoin_mempool::BlockLifecycleContext::new(PolicyTime::new(80), 2)
     );
 }
 
