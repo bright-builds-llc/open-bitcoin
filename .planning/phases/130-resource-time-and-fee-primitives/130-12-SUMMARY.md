@@ -70,7 +70,7 @@ completed: 2026-07-24
 1. **Task 1: Register complete parity evidence and deferred boundaries** - `0ce036c0` (docs)
 2. **Task 2: Refresh relevant contributor README surfaces** - `6c8f81e9` (docs)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:** `d867d9ae` (docs: complete plan)
 
 ## Files Created/Modified
 
