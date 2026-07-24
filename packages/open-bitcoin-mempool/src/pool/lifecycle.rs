@@ -16,9 +16,9 @@ use super::{
     resource_invariant_error,
 };
 use crate::{
-    AccountedMempoolMemory, EffectiveAdmissionFeeRate, IncrementalRelayFeeRate, MempoolCapacity,
-    RollingMempoolFeeRate, StaticRelayFeeRate, TransactionVirtualSize,
-    effective_admission_fee_rate,
+    AccountedMempoolMemory, BlockLifecycleContext, EffectiveAdmissionFeeRate,
+    IncrementalRelayFeeRate, MempoolCapacity, RollingMempoolFeeRate, StaticRelayFeeRate,
+    TransactionVirtualSize, effective_admission_fee_rate,
 };
 
 /// Stable semantic reason for removing a transaction from the mempool.
@@ -418,46 +418,17 @@ impl Mempool {
         }
     }
 
-    /// Compatibility summary projection retained until Plan 130-07 migrates lifecycle consumers.
-    #[deprecated(
-        note = "Plan 130-07 migrates block lifecycle consumers and removes this transition-derived summary projection"
-    )]
-    pub fn remove_for_connected_block(
-        &mut self,
-        block: &Block,
-    ) -> Result<MempoolLifecycleSummary, MempoolError> {
-        let delta = self.remove_for_connected_block_transition(block)?;
-        Ok(MempoolLifecycleSummary {
-            removed: delta.removed,
-            pressure: self.pressure_summary(),
-        })
-    }
-
     /// Removes block-confirmed and conflicting members and returns committed semantic facts.
     pub fn remove_for_connected_block_transition(
         &mut self,
         block: &Block,
+        _context: BlockLifecycleContext,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {
         self.remove_for_connected_transactions_transition(block.transactions.iter())
     }
 
-    /// Compatibility summary projection retained until Plan 130-07 migrates lifecycle consumers.
-    #[deprecated(
-        note = "Plan 130-07 migrates block lifecycle consumers and removes this transition-derived summary projection"
-    )]
-    pub fn remove_for_connected_transactions<'a>(
-        &mut self,
-        transactions: impl IntoIterator<Item = &'a Transaction>,
-    ) -> Result<MempoolLifecycleSummary, MempoolError> {
-        let delta = self.remove_for_connected_transactions_transition(transactions)?;
-        Ok(MempoolLifecycleSummary {
-            removed: delta.removed,
-            pressure: self.pressure_summary(),
-        })
-    }
-
     /// Removes confirmed and conflicting transactions and returns committed semantic facts.
-    pub fn remove_for_connected_transactions_transition<'a>(
+    fn remove_for_connected_transactions_transition<'a>(
         &mut self,
         transactions: impl IntoIterator<Item = &'a Transaction>,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {

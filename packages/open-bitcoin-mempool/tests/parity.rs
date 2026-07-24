@@ -11,12 +11,12 @@ use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header, transaction_txid,
 };
 use open_bitcoin_mempool::{
-    AccountedMempoolMemory, AdmissionContext, FeeRate, IncrementalRelayFeeRate, LimitDirection,
-    LimitKind, Mempool, MempoolCapacity, MempoolCapacityStatus, MempoolError,
-    MempoolLifecycleRemoval, MempoolLifecycleSummary, MempoolMemberIdentity,
-    MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, RbfPolicy,
-    RollingFeeParityStatus, RollingMempoolFeeRate, StaticRelayFeeRate, TransactionVirtualSize,
-    effective_admission_fee_rate,
+    AccountedMempoolMemory, AdmissionContext, BlockLifecycleContext, FeeRate,
+    IncrementalRelayFeeRate, LimitDirection, LimitKind, Mempool, MempoolCapacity,
+    MempoolCapacityStatus, MempoolError, MempoolLifecycleRemoval, MempoolLifecycleSummary,
+    MempoolMemberIdentity, MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole,
+    PolicyConfig, PolicyTime, RbfPolicy, RollingFeeParityStatus, RollingMempoolFeeRate,
+    StaticRelayFeeRate, TransactionVirtualSize, effective_admission_fee_rate,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
@@ -330,11 +330,20 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
     submit(&mut mempool, &snapshot, parent.clone()).expect("parent");
     submit(&mut mempool, &snapshot, child).expect("child");
     let initial_pressure = mempool.pressure_summary();
+    let empty_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 3, 499_999_000);
     let empty_cleanup = mempool
-        .remove_for_connected_transactions_transition(std::iter::empty::<&Transaction>())
+        .remove_for_connected_block_transition(
+            &empty_block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 3),
+        )
         .expect("empty cleanup");
+    let mut conflict_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 3, 499_999_000);
+    conflict_block.transactions.push(replacement);
     let conflict_cleanup = mempool
-        .remove_for_connected_transactions_transition([&replacement])
+        .remove_for_connected_block_transition(
+            &conflict_block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 3),
+        )
         .expect("conflict cleanup");
 
     assert_eq!(

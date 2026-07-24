@@ -7,59 +7,189 @@
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_core::{
-    chainstate::AnchoredBlock,
-    consensus::{ConsensusParams, ScriptVerifyFlags},
+    chainstate::{AnchoredBlock, ChainPosition, ChainTransition},
+    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::Block,
 };
-use open_bitcoin_mempool::{AdmissionContext, MempoolLifecycleSummary, MempoolOutcome};
+use open_bitcoin_mempool::{
+    AdmissionContext, BlockLifecycleContext, FinalMempoolMembership, MempoolLifecycleDelta,
+    MempoolOutcome, MempoolRemovalCause, PolicyTime,
+};
 use open_bitcoin_network::TxServingRecordStatus;
 
-use super::{ManagedNetworkError, ManagedPeerNetwork};
+use super::{BlockConnectDisposition, ManagedNetworkError, ManagedPeerNetwork, ManagedResult};
 use crate::ChainstateStore;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct ManagedMempoolBlockLifecycle {
+    pub context: BlockLifecycleContext,
+    pub delta: MempoolLifecycleDelta,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ManagedMempoolReorgLifecycle {
-    pub connected: Vec<MempoolLifecycleSummary>,
+    pub connected: Vec<ManagedMempoolBlockLifecycle>,
     pub reconsidered: Vec<MempoolOutcome>,
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
-    #[allow(deprecated)] // Plan 130-07 migrates this block lifecycle projection to the delta API.
-    pub(super) fn apply_connected_block_mempool_lifecycle(
+    pub fn connect_local_block(
         &mut self,
         block: &Block,
-    ) -> Result<MempoolLifecycleSummary, ManagedNetworkError> {
-        let summary = self
-            .mempool
-            .mempool_mut()
-            .remove_for_connected_block(block)?;
-        for removal in &summary.removed {
-            self.peer_manager
-                .on_mempool_transaction_removed(&removal.member.wtxid);
-        }
-        let removed_txids = summary
-            .removed
-            .iter()
-            .map(|removal| removal.member.txid)
-            .collect::<Vec<_>>();
-        self.remove_stored_transactions_with_status(
-            &removed_txids,
-            TxServingRecordStatus::Confirmed,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ChainPosition, ManagedNetworkError> {
+        let position = self.chainstate.connect_block(
+            block,
+            self.next_chain_work(),
+            verify_flags,
+            consensus_params,
         )?;
-
-        Ok(summary)
+        self.blocks_by_hash
+            .insert(position.block_hash, block.clone());
+        self.peer_manager.note_local_position(&position);
+        let context = block_lifecycle_context(i64::from(block.header.time), position.height);
+        self.apply_connected_block_mempool_lifecycle(block, context)?;
+        Ok(position)
     }
 
-    pub(super) fn apply_reorg_mempool_lifecycle(
+    pub fn connect_stored_block(
+        &mut self,
+        block: &Block,
+        chain_work: u128,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> ManagedResult<BlockConnectDisposition> {
+        let block_hash = block_hash(&block.header);
+        if self
+            .chainstate
+            .chainstate()
+            .snapshot()
+            .active_chain
+            .iter()
+            .any(|position| position.block_hash == block_hash)
+        {
+            self.blocks_by_hash.insert(block_hash, block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+            return Ok(BlockConnectDisposition::Duplicate(block_hash));
+        }
+
+        let maybe_tip = self.chainstate.chainstate().tip().cloned();
+        let extends_tip = maybe_tip
+            .as_ref()
+            .is_none_or(|tip| tip.block_hash == block.header.previous_block_hash);
+        let is_genesis = block.header.previous_block_hash.to_byte_array() == [0_u8; 32];
+        if maybe_tip.is_some() && !extends_tip {
+            self.blocks_by_hash.insert(block_hash, block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+            return Ok(BlockConnectDisposition::NonExtending {
+                block_hash,
+                previous_block_hash: block.header.previous_block_hash,
+            });
+        }
+        if maybe_tip.is_none() && !is_genesis {
+            self.blocks_by_hash.insert(block_hash, block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+            return Ok(BlockConnectDisposition::Disconnected { block_hash });
+        }
+
+        let position = self.chainstate.connect_block_with_current_time(
+            block,
+            chain_work,
+            timestamp,
+            verify_flags,
+            consensus_params,
+        )?;
+        self.blocks_by_hash.insert(block_hash, block.clone());
+        self.peer_manager.note_local_position(&position);
+        let context = block_lifecycle_context(timestamp, position.height);
+        self.apply_connected_block_mempool_lifecycle(block, context)?;
+        Ok(BlockConnectDisposition::Connected(position))
+    }
+
+    pub fn reorg_to_branch(
         &mut self,
         disconnect_blocks: &[Block],
         replacement_branch: &[AnchoredBlock],
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> Result<ManagedMempoolReorgLifecycle, ManagedNetworkError> {
-        let mut connected = Vec::with_capacity(replacement_branch.len());
+    ) -> ManagedResult<ChainTransition> {
+        let transition = self.chainstate.reorg(
+            disconnect_blocks,
+            replacement_branch,
+            verify_flags,
+            consensus_params,
+        )?;
         for anchored_block in replacement_branch {
-            connected.push(self.apply_connected_block_mempool_lifecycle(&anchored_block.block)?);
+            let block_hash = block_hash(&anchored_block.block.header);
+            self.blocks_by_hash
+                .insert(block_hash, anchored_block.block.clone());
+            self.peer_manager.note_local_block_hash(block_hash);
+        }
+        for position in &transition.connected {
+            self.peer_manager.note_local_position(position);
+        }
+        self.apply_reorg_mempool_lifecycle(
+            disconnect_blocks,
+            replacement_branch,
+            &transition.connected,
+            verify_flags,
+            consensus_params,
+        )?;
+        Ok(transition)
+    }
+
+    pub(super) fn apply_connected_block_mempool_lifecycle(
+        &mut self,
+        block: &Block,
+        context: BlockLifecycleContext,
+    ) -> Result<ManagedMempoolBlockLifecycle, ManagedNetworkError> {
+        let delta = self
+            .mempool
+            .mempool_mut()
+            .remove_for_connected_block_transition(block, context)?;
+        for removal in &delta.removed {
+            let is_absent = delta.final_membership.iter().any(|state| {
+                state.member == removal.member && state.membership == FinalMempoolMembership::Absent
+            });
+            if !is_absent {
+                continue;
+            }
+            self.peer_manager
+                .on_mempool_transaction_removed(&removal.member.wtxid);
+            self.remove_stored_transactions_with_status(
+                &[removal.member.txid],
+                serving_status_for_removal(removal.cause),
+            )?;
+        }
+
+        Ok(ManagedMempoolBlockLifecycle { context, delta })
+    }
+
+    #[allow(deprecated)] // Plan 130-07 Task 2 removes the explicit-header reorg adapter.
+    pub(super) fn apply_reorg_mempool_lifecycle(
+        &mut self,
+        disconnect_blocks: &[Block],
+        replacement_branch: &[AnchoredBlock],
+        connected_positions: &[ChainPosition],
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedMempoolReorgLifecycle, ManagedNetworkError> {
+        if replacement_branch.len() != connected_positions.len() {
+            return Err(open_bitcoin_mempool::MempoolError::InternalInvariant {
+                reason: "replacement branch and connected positions must have equal length"
+                    .to_string(),
+            }
+            .into());
+        }
+        let mut connected = Vec::with_capacity(replacement_branch.len());
+        for (anchored_block, position) in replacement_branch.iter().zip(connected_positions) {
+            let context =
+                block_context_from_explicit_header(&anchored_block.block, position.height);
+            connected.push(
+                self.apply_connected_block_mempool_lifecycle(&anchored_block.block, context)?,
+            );
         }
 
         let mut reconsidered = Vec::new();
@@ -100,5 +230,38 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             connected,
             reconsidered,
         })
+    }
+}
+
+pub(super) fn block_lifecycle_context(
+    connected_at_unix_seconds: i64,
+    height: u32,
+) -> BlockLifecycleContext {
+    BlockLifecycleContext::new(
+        PolicyTime::from_unix_seconds(connected_at_unix_seconds),
+        height,
+    )
+}
+
+/// Temporary reorg adapter retained only until Plan 130-07 Task 2 forwards event time.
+#[deprecated(
+    note = "Plan 130-07 Task 2 replaces this explicit-header adapter with ReorgLifecycleContext"
+)]
+fn block_context_from_explicit_header(block: &Block, height: u32) -> BlockLifecycleContext {
+    BlockLifecycleContext::new(
+        PolicyTime::from_unix_seconds(i64::from(block.header.time)),
+        height,
+    )
+}
+
+fn serving_status_for_removal(cause: MempoolRemovalCause) -> TxServingRecordStatus {
+    match cause {
+        MempoolRemovalCause::Replacement => TxServingRecordStatus::Replaced,
+        MempoolRemovalCause::Expiry => TxServingRecordStatus::Expired,
+        MempoolRemovalCause::Pressure => TxServingRecordStatus::Evicted,
+        MempoolRemovalCause::BlockConfirmation | MempoolRemovalCause::BlockConflict => {
+            TxServingRecordStatus::Confirmed
+        }
+        MempoolRemovalCause::Reorg => TxServingRecordStatus::Stale,
     }
 }

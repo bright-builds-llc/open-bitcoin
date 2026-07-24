@@ -10,8 +10,8 @@ use open_bitcoin_consensus::{
 use open_bitcoin_primitives::{BlockHash, Transaction, TransactionInput, Txid, Wtxid};
 
 use crate::{
-    AdmissionContext, FinalMempoolMembership, Mempool, MempoolEntryMetadata, MempoolError,
-    MempoolLifecycleDelta, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
+    AdmissionContext, BlockLifecycleContext, FinalMempoolMembership, Mempool, MempoolEntryMetadata,
+    MempoolError, MempoolLifecycleDelta, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
     MempoolMemberIdentity, MempoolMemberState, MempoolOrigin, MempoolOutcome, MempoolRemovalCause,
     MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause, PolicyConfig, PolicyTime,
     RelayIntent, RollingMempoolFeeRate, TransactionVirtualSize,
@@ -685,7 +685,10 @@ fn connected_block_transition_distinguishes_confirmation_from_conflict_descendan
 
     // Act
     let delta = mempool
-        .remove_for_connected_block_transition(&block)
+        .remove_for_connected_block_transition(
+            &block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 3),
+        )
         .expect("block transition");
 
     // Assert

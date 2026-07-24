@@ -16,9 +16,10 @@ use super::super::lifecycle::{
 };
 use super::{build_block, sample_chainstate_snapshot, spend_transaction, submit};
 use crate::{
-    AccountedMempoolMemory, Mempool, MempoolCapacity, MempoolCapacityStatus, MempoolError,
-    MempoolMemberIdentity, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig,
-    RollingFeeParityStatus, TransactionVirtualSize, transaction_weight_and_virtual_size,
+    AccountedMempoolMemory, BlockLifecycleContext, Mempool, MempoolCapacity, MempoolCapacityStatus,
+    MempoolError, MempoolMemberIdentity, MempoolRemovalCause, MempoolRemovalRole, PolicyConfig,
+    PolicyTime, RollingFeeParityStatus, TransactionVirtualSize,
+    transaction_weight_and_virtual_size,
 };
 
 #[test]
@@ -152,19 +153,22 @@ fn block_connect_removes_confirmed_transaction_and_recomputes_indexes() {
     block.transactions.push(parent.clone());
 
     // Act
-    let summary = mempool
-        .remove_for_connected_block(&block)
+    let delta = mempool
+        .remove_for_connected_block_transition(
+            &block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 3),
+        )
         .expect("block cleanup");
 
     // Assert
-    assert_eq!(summary.removed.len(), 1);
-    assert_eq!(summary.removed[0].member.txid, parent_txid);
+    assert_eq!(delta.removed.len(), 1);
+    assert_eq!(delta.removed[0].member.txid, parent_txid);
     assert_eq!(
-        summary.removed[0].cause,
+        delta.removed[0].cause,
         MempoolRemovalCause::BlockConfirmation
     );
-    assert_eq!(summary.removed[0].cause.as_str(), "block_confirmation");
-    assert_eq!(summary.removed[0].role, MempoolRemovalRole::Direct);
+    assert_eq!(delta.removed[0].cause.as_str(), "block_confirmation");
+    assert_eq!(delta.removed[0].role, MempoolRemovalRole::Direct);
     assert!(mempool.entry(&parent_txid).is_none());
     let child_entry = mempool.entry(&child_txid).expect("child remains");
     assert!(child_entry.parents.is_empty());
@@ -199,20 +203,25 @@ fn block_connect_removes_conflict_and_descendants() {
     let mut mempool = Mempool::default();
     submit(&mut mempool, &snapshot, original).expect("original admission");
     submit(&mut mempool, &snapshot, descendant).expect("descendant admission");
+    let mut block = build_block(BlockHash::from_byte_array([0_u8; 32]), 3, 499_999_000);
+    block.transactions.push(replacement);
 
     // Act
-    let summary = mempool
-        .remove_for_connected_transactions([&replacement])
+    let delta = mempool
+        .remove_for_connected_block_transition(
+            &block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 3),
+        )
         .expect("block cleanup");
 
     // Assert
-    assert_eq!(summary.removed.len(), 2);
-    assert!(summary.removed.iter().any(|removal| {
+    assert_eq!(delta.removed.len(), 2);
+    assert!(delta.removed.iter().any(|removal| {
         removal.member.txid == original_txid
             && removal.cause == MempoolRemovalCause::BlockConflict
             && removal.role == MempoolRemovalRole::Direct
     }));
-    assert!(summary.removed.iter().any(|removal| {
+    assert!(delta.removed.iter().any(|removal| {
         removal.member.txid == descendant_txid
             && removal.cause == MempoolRemovalCause::BlockConflict
             && removal.role == MempoolRemovalRole::Descendant
@@ -221,7 +230,7 @@ fn block_connect_removes_conflict_and_descendants() {
     assert!(mempool.entry(&descendant_txid).is_none());
     assert_eq!(mempool.total_virtual_size(), TransactionVirtualSize::ZERO);
     assert_eq!(
-        summary.pressure.capacity_status,
+        mempool.pressure_summary().capacity_status,
         MempoolCapacityStatus::Empty
     );
 }
@@ -244,14 +253,19 @@ fn block_connect_without_matches_returns_empty_summary() {
     );
     let mut mempool = Mempool::default();
     let accepted = submit(&mut mempool, &snapshot, existing).expect("admission");
+    let mut block = build_block(BlockHash::from_byte_array([0_u8; 32]), 3, 499_999_000);
+    block.transactions.push(unrelated);
 
     // Act
-    let summary = mempool
-        .remove_for_connected_transactions([&unrelated])
+    let delta = mempool
+        .remove_for_connected_block_transition(
+            &block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 3),
+        )
         .expect("block cleanup");
 
     // Assert
-    assert!(summary.removed.is_empty());
+    assert!(delta.removed.is_empty());
     assert!(mempool.entry(&accepted.accepted).is_some());
 }
 

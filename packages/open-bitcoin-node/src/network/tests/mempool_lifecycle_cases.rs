@@ -13,7 +13,8 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, BlockHeader, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolCapacityStatus, MempoolOutcome, PolicyConfig, RelayIntent, RollingFeeParityStatus,
+    FinalMempoolMembership, MempoolCapacityStatus, MempoolOutcome, MempoolRemovalCause,
+    MempoolRemovalRole, PolicyConfig, RelayIntent, RollingFeeParityStatus,
 };
 use open_bitcoin_network::WireNetworkMessage;
 
@@ -141,6 +142,73 @@ fn managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_cache
     assert_eq!(info.transaction_count, 0);
     assert_eq!(info.capacity_status, MempoolCapacityStatus::Empty);
     assert_eq!(info.rolling_fee_parity, RollingFeeParityStatus::Deferred);
+}
+
+#[test]
+fn managed_block_connect_uses_explicit_context_and_typed_delta() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let confirmed = spend_transaction(coinbase_txids[0], 499_999_000);
+    let confirmed_txid = txid(&confirmed);
+    let conflict = spend_transaction(coinbase_txids[1], 499_999_000);
+    let conflict_txid = txid(&conflict);
+    let descendant = spend_transaction(conflict_txid, 499_998_000);
+    let descendant_txid = txid(&descendant);
+    let in_block_conflict = spend_transaction(coinbase_txids[1], 499_997_000);
+    for (timestamp, transaction) in [(10, confirmed.clone()), (11, conflict), (12, descendant)] {
+        network
+            .submit_local_transaction_outcome_at(
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                timestamp,
+                RelayIntent::NotRequested,
+            )
+            .expect("submit lifecycle fixture");
+    }
+    let confirmation_block =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![confirmed]);
+    let conflict_block =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![in_block_conflict]);
+    let context = super::super::mempool_lifecycle::block_lifecycle_context(70, 2);
+
+    // Act
+    let confirmation_lifecycle = network
+        .apply_connected_block_mempool_lifecycle(&confirmation_block, context)
+        .expect("apply confirmation lifecycle");
+    let conflict_lifecycle = network
+        .apply_connected_block_mempool_lifecycle(&conflict_block, context)
+        .expect("apply conflict lifecycle");
+
+    // Assert
+    assert_eq!(confirmation_lifecycle.context, context);
+    assert_eq!(conflict_lifecycle.context, context);
+    assert!(confirmation_lifecycle.delta.removed.iter().any(|removal| {
+        removal.member.txid == confirmed_txid
+            && removal.cause == MempoolRemovalCause::BlockConfirmation
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(conflict_lifecycle.delta.removed.iter().any(|removal| {
+        removal.member.txid == conflict_txid
+            && removal.cause == MempoolRemovalCause::BlockConflict
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(conflict_lifecycle.delta.removed.iter().any(|removal| {
+        removal.member.txid == descendant_txid
+            && removal.cause == MempoolRemovalCause::BlockConflict
+            && removal.role == MempoolRemovalRole::Descendant
+    }));
+    assert!(
+        confirmation_lifecycle
+            .delta
+            .final_membership
+            .iter()
+            .chain(&conflict_lifecycle.delta.final_membership)
+            .all(|state| { state.membership == FinalMempoolMembership::Absent })
+    );
+    assert!(!network.transactions_by_txid.contains_key(&confirmed_txid));
+    assert!(!network.transactions_by_txid.contains_key(&conflict_txid));
+    assert!(!network.transactions_by_txid.contains_key(&descendant_txid));
 }
 
 #[test]

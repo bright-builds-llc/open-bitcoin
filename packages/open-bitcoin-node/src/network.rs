@@ -38,7 +38,7 @@ pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
 pub use block_serving::{ManagedBlockServeCompletion, ManagedBlockServeIntent};
 
 use open_bitcoin_core::{
-    chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
+    chainstate::{ChainPosition, ChainstateSnapshot},
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{Block, BlockHash, Transaction, Txid, Wtxid},
 };
@@ -375,25 +375,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .map_err(ManagedNetworkError::from)
     }
 
-    pub fn connect_local_block(
-        &mut self,
-        block: &Block,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<ChainPosition, ManagedNetworkError> {
-        let position = self.chainstate.connect_block(
-            block,
-            self.next_chain_work(),
-            verify_flags,
-            consensus_params,
-        )?;
-        self.blocks_by_hash
-            .insert(position.block_hash, block.clone());
-        self.peer_manager.note_local_position(&position);
-        self.apply_connected_block_mempool_lifecycle(block)?;
-        Ok(position)
-    }
-
     pub fn announce_block(
         &mut self,
         peer_id: PeerId,
@@ -500,91 +481,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.peer_manager
             .announce_transaction(peer_id, transaction)
             .map_err(ManagedNetworkError::from)
-    }
-
-    pub fn connect_stored_block(
-        &mut self,
-        block: &Block,
-        chain_work: u128,
-        timestamp: i64,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> ManagedResult<BlockConnectDisposition> {
-        let block_hash = block_hash(&block.header);
-        if self
-            .chainstate
-            .chainstate()
-            .snapshot()
-            .active_chain
-            .iter()
-            .any(|position| position.block_hash == block_hash)
-        {
-            self.blocks_by_hash.insert(block_hash, block.clone());
-            self.peer_manager.note_local_block_hash(block_hash);
-            return Ok(BlockConnectDisposition::Duplicate(block_hash));
-        }
-
-        let maybe_tip = self.chainstate.chainstate().tip().cloned();
-        let extends_tip = maybe_tip
-            .as_ref()
-            .is_none_or(|tip| tip.block_hash == block.header.previous_block_hash);
-        let is_genesis = block.header.previous_block_hash.to_byte_array() == [0_u8; 32];
-        if maybe_tip.is_some() && !extends_tip {
-            self.blocks_by_hash.insert(block_hash, block.clone());
-            self.peer_manager.note_local_block_hash(block_hash);
-            return Ok(BlockConnectDisposition::NonExtending {
-                block_hash,
-                previous_block_hash: block.header.previous_block_hash,
-            });
-        }
-        if maybe_tip.is_none() && !is_genesis {
-            self.blocks_by_hash.insert(block_hash, block.clone());
-            self.peer_manager.note_local_block_hash(block_hash);
-            return Ok(BlockConnectDisposition::Disconnected { block_hash });
-        }
-
-        let position = self.chainstate.connect_block_with_current_time(
-            block,
-            chain_work,
-            timestamp,
-            verify_flags,
-            consensus_params,
-        )?;
-        self.blocks_by_hash.insert(block_hash, block.clone());
-        self.peer_manager.note_local_position(&position);
-        self.apply_connected_block_mempool_lifecycle(block)?;
-        Ok(BlockConnectDisposition::Connected(position))
-    }
-
-    pub fn reorg_to_branch(
-        &mut self,
-        disconnect_blocks: &[Block],
-        replacement_branch: &[AnchoredBlock],
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> ManagedResult<ChainTransition> {
-        let transition = self.chainstate.reorg(
-            disconnect_blocks,
-            replacement_branch,
-            verify_flags,
-            consensus_params,
-        )?;
-        for anchored_block in replacement_branch {
-            let block_hash = block_hash(&anchored_block.block.header);
-            self.blocks_by_hash
-                .insert(block_hash, anchored_block.block.clone());
-            self.peer_manager.note_local_block_hash(block_hash);
-        }
-        for position in &transition.connected {
-            self.peer_manager.note_local_position(position);
-        }
-        self.apply_reorg_mempool_lifecycle(
-            disconnect_blocks,
-            replacement_branch,
-            verify_flags,
-            consensus_params,
-        )?;
-        Ok(transition)
     }
 
     fn handle_headers_message(

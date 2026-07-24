@@ -9,19 +9,19 @@ use std::error::Error as _;
 
 use open_bitcoin_consensus::{transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
-    Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
-    Txid,
+    Amount, BlockHash, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,
+    TransactionOutput, Txid,
 };
 
 use crate::resource::{checked_product, checked_sum};
 use crate::{
-    AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, Mempool, MempoolCapacity,
-    MempoolEntry, MempoolError, MempoolResourceLedger, PolicyConfig, ResourceAccountingError,
-    TransactionVirtualSize, accounted_memory_for_entry, build_resource_ledger,
-    recompute_resource_ledger,
+    AccountedMempoolMemory, BlockLifecycleContext, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, Mempool,
+    MempoolCapacity, MempoolEntry, MempoolError, MempoolResourceLedger, PolicyConfig, PolicyTime,
+    ResourceAccountingError, TransactionVirtualSize, accounted_memory_for_entry,
+    build_resource_ledger, recompute_resource_ledger,
 };
 
-use super::{sample_chainstate_snapshot, spend_transaction, submit};
+use super::{build_block, sample_chainstate_snapshot, spend_transaction, submit};
 
 fn sample_transaction(witness: ScriptWitness) -> Transaction {
     Transaction {
@@ -350,8 +350,13 @@ fn cached_resource_ledger_matches_recomputation_oracle() {
     submit(&mut mempool, &snapshot, replacement).expect("replacement");
     assert_ledger_matches_oracle(&mempool);
     submit(&mut mempool, &snapshot, confirmed.clone()).expect("confirmed candidate");
+    let mut block = build_block(BlockHash::from_byte_array([0_u8; 32]), 4, 499_999_000);
+    block.transactions.push(confirmed);
     mempool
-        .remove_for_connected_transactions_transition([&confirmed])
+        .remove_for_connected_block_transition(
+            &block,
+            BlockLifecycleContext::new(PolicyTime::new(70), 4),
+        )
         .expect("block removal");
 
     // Assert
