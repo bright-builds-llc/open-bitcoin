@@ -1,11 +1,11 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 131 context gathered
-last_updated: "2026-07-25T10:04:43.405Z"
-last_activity: 2026-07-25
+stopped_at: Phase 132 context gathered
+last_updated: "2026-07-25T18:39:08.224Z"
+last_activity: "2026-07-25"
 progress:
   total_phases: 9
   completed_phases: 2
@@ -118,6 +118,6 @@ Next action: `/gsd-discuss-phase 131` (or YOLO chain for Phase 131)
 
 ## Session Continuity
 
-Last session: 2026-07-24T22:35:28.240Z
-Stopped at: Phase 131 context gathered
-Resume file: .planning/phases/131-rolling-fee-expiry-and-descendant-eviction-core/131-CONTEXT.md
+Last session: 2026-07-25T18:39:08.217Z
+Stopped at: Phase 132 context gathered
+Resume file: .planning/phases/132-typed-package-vocabulary-and-staged-admission/132-CONTEXT.md
