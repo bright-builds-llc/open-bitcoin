@@ -441,9 +441,13 @@ impl Mempool {
     pub fn remove_for_connected_block_transition(
         &mut self,
         block: &Block,
-        _context: BlockLifecycleContext,
+        context: BlockLifecycleContext,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {
-        self.remove_for_connected_transactions_transition(block.transactions.iter())
+        let delta = self.remove_for_connected_transactions_transition(block.transactions.iter())?;
+        // Knots `removeForBlock`: open decay gate even when the block removes nothing.
+        self.rolling_fee_state
+            .open_decay_gate_after_block(context.connected_at);
+        Ok(delta)
     }
 
     /// Removes confirmed and conflicting transactions and returns committed semantic facts.

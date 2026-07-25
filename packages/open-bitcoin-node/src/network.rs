@@ -164,6 +164,24 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.mempool.set_rolling_mempool_fee_rate(rate);
     }
 
+    /// Knots `trackPackageRemoved` for hermetic rolling-fee fixtures.
+    pub fn track_package_removed_rolling_fee(
+        &mut self,
+        package_plus_incremental: open_bitcoin_mempool::FeeRate,
+    ) {
+        self.mempool
+            .mempool_mut()
+            .track_package_removed(package_plus_incremental);
+    }
+
+    /// Applies block-gated rolling decay with an injected policy clock.
+    pub fn materialize_rolling_mempool_fee_rate(
+        &mut self,
+        now: open_bitcoin_mempool::PolicyTime,
+    ) -> open_bitcoin_mempool::RollingMempoolFeeRate {
+        self.mempool.mempool_mut().materialize_rolling_fee_rate(now)
+    }
+
     pub fn mempool_info(&self) -> ManagedMempoolInfo {
         let entries = self.mempool.mempool().entries();
         let total_fee_sats = entries.values().map(|entry| entry.fee_sats()).sum();

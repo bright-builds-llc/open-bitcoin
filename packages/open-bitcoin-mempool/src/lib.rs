@@ -30,7 +30,9 @@ pub use context::{
     MempoolOrigin, PolicyTime, PressureDecisionContext, RelayIntent, ReorgLifecycleContext,
 };
 pub use error::{LimitDirection, LimitKind, MempoolError};
-pub use fee::rolling::RollingFeeState;
+pub use fee::rolling::{
+    ROLLING_FEE_HALFLIFE_SECONDS, ROLLING_FEE_UPDATE_INTERVAL_SECONDS, RollingFeeState,
+};
 pub use fee::{
     EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate, PackageFeeFloorAssessment,
     RollingMempoolFeeRate, StaticRelayFeeRate, effective_admission_fee_rate,

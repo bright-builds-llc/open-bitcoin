@@ -17,9 +17,10 @@ use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
 use crate::fee::rolling::RollingFeeState;
 use crate::{
-    EffectiveAdmissionFeeRate, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry,
-    MempoolError, MempoolResourceLedger, PolicyConfig, RbfPolicy, ResourceAccountingError,
-    RollingMempoolFeeRate, TransactionVirtualSize, build_resource_ledger, signals_opt_in_rbf,
+    EffectiveAdmissionFeeRate, FeeRate, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry,
+    MempoolError, MempoolResourceLedger, PolicyConfig, PolicyTime, RbfPolicy,
+    ResourceAccountingError, RollingMempoolFeeRate, TransactionVirtualSize, build_resource_ledger,
+    signals_opt_in_rbf,
 };
 
 mod admission;
@@ -108,6 +109,22 @@ impl Mempool {
     /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
     pub fn set_rolling_mempool_fee_rate(&mut self, rate: RollingMempoolFeeRate) {
         self.rolling_fee_state.set_rolling_fee_rate(rate);
+    }
+
+    /// Knots `trackPackageRemoved` for pressure bumps and hermetic fixtures.
+    pub fn track_package_removed(&mut self, package_plus_incremental: FeeRate) {
+        self.rolling_fee_state
+            .track_package_removed(package_plus_incremental);
+    }
+
+    /// Applies block-gated rolling decay with an injected policy clock.
+    pub fn materialize_rolling_fee_rate(&mut self, now: PolicyTime) -> RollingMempoolFeeRate {
+        self.rolling_fee_state.decay_toward(
+            now,
+            self.accounted_memory(),
+            self.config.mempool_capacity,
+            self.config.incremental_relay_fee_rate,
+        )
     }
 
     fn replacement_set(

@@ -10,13 +10,20 @@
 //! Rolling mempool fee state for pressure bumps and block-gated decay.
 
 use crate::context::PolicyTime;
-use crate::fee::{FeeRate, RollingMempoolFeeRate};
+use crate::fee::{FeeRate, IncrementalRelayFeeRate, RollingMempoolFeeRate};
+use crate::resource::{AccountedMempoolMemory, MempoolCapacity};
 
-/// Mutable rolling-fee machine used by pressure trim and (later) block-gated decay.
+/// Knots `CTxMemPool::ROLLING_FEE_HALFLIFE` — default 12-hour half-life in seconds.
+pub const ROLLING_FEE_HALFLIFE_SECONDS: i64 = 60 * 60 * 12;
+
+/// Knots `GetMinFee` minimum elapsed seconds before applying another decay step.
+pub const ROLLING_FEE_UPDATE_INTERVAL_SECONDS: i64 = 10;
+
+/// Mutable rolling-fee machine used by pressure trim and block-gated decay.
 #[derive(Debug, Clone, PartialEq)]
 pub struct RollingFeeState {
     rolling_fee_rate: RollingMempoolFeeRate,
-    /// Floating representation retained for Plan 02 occupancy-sensitive decay.
+    /// Floating representation retained for occupancy-sensitive decay (Knots `double`).
     rolling_minimum_fee_rate_f64: f64,
     block_since_last_rolling_fee_bump: bool,
     last_rolling_fee_update: PolicyTime,
@@ -70,13 +77,73 @@ impl RollingFeeState {
         self.rolling_minimum_fee_rate_f64 = package_plus_incremental.sats_per_kvb() as f64;
         self.block_since_last_rolling_fee_bump = false;
     }
+
+    /// Knots `removeForBlock` rolling-fee side effects: open the decay gate and refresh the clock.
+    pub fn open_decay_gate_after_block(&mut self, connected_at: PolicyTime) {
+        self.block_since_last_rolling_fee_bump = true;
+        self.last_rolling_fee_update = connected_at;
+    }
+
+    /// Knots `GetMinFee` decay step with injected time and occupancy.
+    ///
+    /// Returns the llround-equivalent integer rolling floor. Unlike Knots, this does **not**
+    /// raise the return value to the incremental relay fee — Open Bitcoin keeps incremental out
+    /// of ordinary admission (`max(static, rolling)` only). Rolling still collapses to zero when
+    /// the internal rate falls below `incremental / 2`.
+    pub fn decay_toward(
+        &mut self,
+        now: PolicyTime,
+        usage: AccountedMempoolMemory,
+        capacity: MempoolCapacity,
+        incremental: IncrementalRelayFeeRate,
+    ) -> RollingMempoolFeeRate {
+        if !self.block_since_last_rolling_fee_bump || self.rolling_minimum_fee_rate_f64 == 0.0 {
+            return self.sync_exposed_rolling_rate();
+        }
+
+        let now_secs = now.unix_seconds();
+        let last_secs = self.last_rolling_fee_update.unix_seconds();
+        if now_secs > last_secs + ROLLING_FEE_UPDATE_INTERVAL_SECONDS {
+            let mut halflife = ROLLING_FEE_HALFLIFE_SECONDS as f64;
+            let usage_bytes = usage.as_usize();
+            let capacity_bytes = capacity.as_usize();
+            if usage_bytes < capacity_bytes / 4 {
+                halflife /= 4.0;
+            } else if usage_bytes < capacity_bytes / 2 {
+                halflife /= 2.0;
+            }
+
+            let dt = (now_secs - last_secs) as f64;
+            self.rolling_minimum_fee_rate_f64 /= 2.0_f64.powf(dt / halflife);
+            self.last_rolling_fee_update = now;
+
+            let incremental_half = incremental.fee_rate().sats_per_kvb() as f64 / 2.0;
+            if self.rolling_minimum_fee_rate_f64 < incremental_half {
+                self.rolling_minimum_fee_rate_f64 = 0.0;
+            }
+        }
+
+        self.sync_exposed_rolling_rate()
+    }
+
+    fn sync_exposed_rolling_rate(&mut self) -> RollingMempoolFeeRate {
+        let rounded = llround_sats_per_kvb(self.rolling_minimum_fee_rate_f64);
+        self.rolling_fee_rate = RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(rounded));
+        self.rolling_fee_rate
+    }
+}
+
+/// Knots `llround` for non-negative fee rates (`f64::round` is half-away-from-zero).
+fn llround_sats_per_kvb(value: f64) -> i64 {
+    value.round() as i64
 }
 
 #[cfg(test)]
 mod tests {
-    use super::RollingFeeState;
+    use super::{ROLLING_FEE_HALFLIFE_SECONDS, RollingFeeState, llround_sats_per_kvb};
     use crate::context::PolicyTime;
-    use crate::fee::{FeeRate, RollingMempoolFeeRate};
+    use crate::fee::{FeeRate, IncrementalRelayFeeRate, RollingMempoolFeeRate};
+    use crate::resource::{AccountedMempoolMemory, MempoolCapacity};
 
     #[test]
     fn default_matches_new_baseline() {
@@ -125,5 +192,39 @@ mod tests {
 
         // Assert
         assert_eq!(state.rolling_fee_rate(), rate);
+    }
+
+    #[test]
+    fn open_decay_gate_after_block_sets_gate_and_clock() {
+        // Arrange
+        let mut state = RollingFeeState::new();
+        state.track_package_removed(FeeRate::from_sats_per_kvb(4_000));
+        let connected_at = PolicyTime::new(99);
+
+        // Act
+        state.open_decay_gate_after_block(connected_at);
+
+        // Assert
+        assert!(state.block_since_last_rolling_fee_bump());
+        assert_eq!(state.last_rolling_fee_update(), connected_at);
+    }
+
+    #[test]
+    fn llround_matches_half_away_from_zero_for_positive_rates() {
+        assert_eq!(llround_sats_per_kvb(2.5), 3);
+        assert_eq!(llround_sats_per_kvb(2.4), 2);
+        assert_eq!(llround_sats_per_kvb(10_000.0 / 2.0), 5_000);
+        assert_eq!(ROLLING_FEE_HALFLIFE_SECONDS, 43_200);
+
+        let mut state = RollingFeeState::new();
+        state.track_package_removed(FeeRate::from_sats_per_kvb(8_000));
+        state.open_decay_gate_after_block(PolicyTime::new(0));
+        let decayed = state.decay_toward(
+            PolicyTime::new(ROLLING_FEE_HALFLIFE_SECONDS),
+            AccountedMempoolMemory::new(100),
+            MempoolCapacity::new(100),
+            IncrementalRelayFeeRate::new(FeeRate::from_sats_per_kvb(1_000)),
+        );
+        assert_eq!(decayed.fee_rate().sats_per_kvb(), 4_000);
     }
 }
