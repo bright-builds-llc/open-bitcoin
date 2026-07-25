@@ -1,4 +1,9 @@
 ---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T05:51:58.000Z
+requirements-completed: []
 phase: 131-rolling-fee-expiry-and-descendant-eviction-core
 plan: 03
 subsystem: mempool
@@ -45,12 +50,7 @@ patterns-established:
   - "expire uses collect_descendants + single recompute_state like pressure trim"
   - "Shell samples PolicyTime and mutates solely through ManagedNetworkHandle"
 
-requirements-completed: []
 requirements-addressed: [PRESS-04]
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 131-2026-07-24T22-07-47
-generated_at: 2026-07-25T05:51:40.000Z
 
 duration: 90min
 completed: 2026-07-25
@@ -146,3 +146,11 @@ None - no external service configuration required.
 ---
 *Phase: 131-rolling-fee-expiry-and-descendant-eviction-core*
 *Completed: 2026-07-25*
+
+<!-- gsd-lifecycle-trailer -->
+---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T05:51:58.000Z
+---

@@ -1,12 +1,12 @@
 ---
 phase: 131-rolling-fee-expiry-and-descendant-eviction-core
-verified: 2026-07-25T10:04:13Z
+verified: 2026-07-25T10:28:23.000Z
 status: passed
 score: 5/5 must-haves verified
 generated_by: gsd-verifier
 lifecycle_mode: yolo
 phase_lifecycle_id: 131-2026-07-24T22-07-47
-generated_at: 2026-07-25T10:04:13Z
+generated_at: 2026-07-25T10:28:23.000Z
 lifecycle_validated: true
 overrides_applied: 0
 re_verification: false

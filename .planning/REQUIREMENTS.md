@@ -18,11 +18,11 @@ Requirements for package admission and relay, rolling minimum-fee behavior, init
 
 ### Rolling Fee and Sustained Pressure
 
-- [ ] **PRESS-01**: Node enforces the configured mempool capacity using deterministic accounted-memory usage while retaining virtual size as a separate fee and reporting measure.
-- [ ] **PRESS-02**: Pressure trimming selects and removes complete descendant packages by the pinned Knots descendant-score ordering and raises the rolling minimum fee from the actual evicted package.
-- [ ] **PRESS-03**: Rolling minimum-fee decay is block-gated, occupancy-sensitive, clock-safe, and matches pinned 12-hour, 6-hour, and 3-hour half-life behavior and rounding boundaries.
-- [ ] **PRESS-04**: Expiry and pressure removals clean every affected descendant and derived index while preserving mempool graph and fee-aggregate invariants.
-- [ ] **PRESS-05**: Sustained fill, trim, block, decay, expiry, refill, and reorg sequences remain bounded and agree with a deterministic recomputation oracle and performance thresholds.
+- [x] **PRESS-01**: Node enforces the configured mempool capacity using deterministic accounted-memory usage while retaining virtual size as a separate fee and reporting measure.
+- [x] **PRESS-02**: Pressure trimming selects and removes complete descendant packages by the pinned Knots descendant-score ordering and raises the rolling minimum fee from the actual evicted package.
+- [x] **PRESS-03**: Rolling minimum-fee decay is block-gated, occupancy-sensitive, clock-safe, and matches pinned 12-hour, 6-hour, and 3-hour half-life behavior and rounding boundaries.
+- [x] **PRESS-04**: Expiry and pressure removals clean every affected descendant and derived index while preserving mempool graph and fee-aggregate invariants.
+- [x] **PRESS-05**: Sustained fill, trim, block, decay, expiry, refill, and reorg sequences remain bounded and agree with a deterministic recomputation oracle and performance thresholds.
 
 ### Package Admission
 
@@ -115,11 +115,11 @@ Every v2.2 requirement maps to exactly one roadmap phase.
 | FEEP-03 | Phase 130 | Complete |
 | FEEP-04 | Phase 130 | Complete |
 | FEEP-05 | Phase 130 | Complete |
-| PRESS-01 | Phase 131 | Pending |
-| PRESS-02 | Phase 131 | Pending |
-| PRESS-03 | Phase 131 | Pending |
-| PRESS-04 | Phase 131 | Pending |
-| PRESS-05 | Phase 131 | Pending |
+| PRESS-01 | Phase 131 | Complete |
+| PRESS-02 | Phase 131 | Complete |
+| PRESS-03 | Phase 131 | Complete |
+| PRESS-04 | Phase 131 | Complete |
+| PRESS-05 | Phase 131 | Complete |
 | PACK-01 | Phase 132 | Pending |
 | PACK-02 | Phase 132 | Pending |
 | PACK-03 | Phase 132 | Pending |

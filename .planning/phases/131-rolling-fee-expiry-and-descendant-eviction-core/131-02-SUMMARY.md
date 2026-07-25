@@ -1,4 +1,9 @@
 ---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T04:09:00.000Z
+requirements-completed: []
 phase: 131-rolling-fee-expiry-and-descendant-eviction-core
 plan: 02
 subsystem: mempool
@@ -43,12 +48,7 @@ patterns-established:
   - "Bump clears block_since gate; connect sets gate true and last_update = connected_at"
   - "Mempool::materialize_rolling_fee_rate(now) applies GetMinFee-shaped decay for admission/evidence"
 
-requirements-completed: []
 requirements-addressed: [PRESS-03]
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 131-2026-07-24T22-07-47
-generated_at: 2026-07-25T04:03:00.000Z
 
 duration: 84min
 completed: 2026-07-25
@@ -152,3 +152,11 @@ None - no external service configuration required.
 ---
 *Phase: 131-rolling-fee-expiry-and-descendant-eviction-core*
 *Completed: 2026-07-25*
+
+<!-- gsd-lifecycle-trailer -->
+---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T04:09:00.000Z
+---

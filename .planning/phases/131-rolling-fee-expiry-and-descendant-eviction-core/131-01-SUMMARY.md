@@ -1,4 +1,9 @@
 ---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T02:11:00.000Z
+requirements-completed: []
 phase: 131-rolling-fee-expiry-and-descendant-eviction-core
 plan: 01
 subsystem: mempool
@@ -52,12 +57,7 @@ patterns-established:
   - "Pressure package feerate = descendant aggregate fee/vsize + incremental sats/kvB"
   - "Effective admission remains max(static, rolling); incremental is bump/replacement input only"
 
-requirements-completed: []
 requirements-addressed: [PRESS-01, PRESS-02]
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 131-2026-07-24T22-07-47
-generated_at: 2026-07-25T02:04:37.000Z
 
 duration: 102min
 completed: 2026-07-25
@@ -161,3 +161,11 @@ None - no external service configuration required.
 ---
 *Phase: 131-rolling-fee-expiry-and-descendant-eviction-core*
 *Completed: 2026-07-25*
+
+<!-- gsd-lifecycle-trailer -->
+---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T02:11:00.000Z
+---

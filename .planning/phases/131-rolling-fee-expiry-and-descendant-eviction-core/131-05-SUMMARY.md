@@ -1,4 +1,9 @@
 ---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T10:04:48.000Z
+requirements-completed: [PRESS-01, PRESS-02, PRESS-03, PRESS-04, PRESS-05]
 phase: 131-rolling-fee-expiry-and-descendant-eviction-core
 plan: 05
 subsystem: mempool
@@ -47,12 +52,7 @@ patterns-established:
   - "PRESS-05 oracle asserts recompute_resource_ledger + rolling expectation after every committed transition"
   - "Hermetic Pure bench thresholds live in the case module and fail default verify when exceeded"
 
-requirements-completed: []
 requirements-addressed: [PRESS-05]
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 131-2026-07-24T22-07-47
-generated_at: 2026-07-25T09:40:00.000Z
 
 duration: 58min
 completed: 2026-07-25
@@ -164,3 +164,11 @@ None - no external service configuration required.
 ---
 *Phase: 131-rolling-fee-expiry-and-descendant-eviction-core*
 *Completed: 2026-07-25*
+
+<!-- gsd-lifecycle-trailer -->
+---
+generated_by: gsd-executor
+lifecycle_mode: yolo
+phase_lifecycle_id: 131-2026-07-24T22-07-47
+generated_at: 2026-07-25T10:04:48.000Z
+---
