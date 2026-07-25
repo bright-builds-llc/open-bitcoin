@@ -123,9 +123,13 @@ pub(crate) const CHAINSTATE_MAPPING: KnotsMapping = KnotsMapping {
 };
 
 pub(crate) const MEMPOOL_POLICY_MAPPING: KnotsMapping = KnotsMapping {
-    benchmark_names: &["ComplexMemPool"],
-    source_files: &["packages/bitcoin-knots/src/bench/mempool_stress.cpp"],
-    notes: "Maps mempool policy smoke coverage to the Knots complex mempool stress benchmark.",
+    benchmark_names: &["ComplexMemPool", "MempoolEviction"],
+    source_files: &[
+        "packages/bitcoin-knots/src/bench/mempool_stress.cpp",
+        "packages/bitcoin-knots/src/bench/mempool_eviction.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+    ],
+    notes: "Maps mempool policy admission and hermetic sustained-pressure trim coverage to Knots mempool stress/eviction benches and TrimToSize.",
 };
 
 pub(crate) const NETWORK_WIRE_SYNC_MAPPING: KnotsMapping = KnotsMapping {

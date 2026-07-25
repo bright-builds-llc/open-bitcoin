@@ -295,7 +295,8 @@ fn wallet_fixtures() -> Result<WalletFixtures, BenchError> {
     })
 }
 
-fn sample_chainstate_snapshot(
+/// Builds a deterministic coinbase chain for mempool pressure/admission benches.
+pub(crate) fn sample_chainstate_snapshot(
     block_count: u32,
     output_script: ScriptBuf,
 ) -> Result<(ChainstateSnapshot, Vec<Txid>), BenchError> {
@@ -360,7 +361,7 @@ fn sample_tip(height: u32) -> open_bitcoin_chainstate::ChainPosition {
     )
 }
 
-fn p2sh_script() -> Result<ScriptBuf, BenchError> {
+pub(crate) fn p2sh_script() -> Result<ScriptBuf, BenchError> {
     let redeem_script = script(&[0x51])?;
     let redeem_hash = hash160(redeem_script.as_bytes());
     let mut bytes = vec![0xa9, 20];
@@ -393,7 +394,7 @@ fn coinbase_transaction(
     })
 }
 
-fn spend_transaction(
+pub(crate) fn spend_transaction(
     previous_txid: Txid,
     vout: u32,
     value: i64,

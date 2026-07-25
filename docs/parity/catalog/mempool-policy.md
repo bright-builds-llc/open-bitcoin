@@ -333,6 +333,22 @@ Phase 130 shipped the transitional RPC label fixed `legacy_vsize` during Phase 1
 before Plan 04 retired `PolicyConfig.legacy_vsize_trim_limit` and flipped live
 evidence to `accounted_memory`.
 
+### Sustained-pressure bounds (PRESS-05)
+
+Hermetic fill→trim→block→decay→expiry→refill→reorg scenarios must agree with
+`recompute_resource_ledger` and the rolling-fee state machine after each
+committed transition. Performance bounds for accounted-capacity trim loops are
+enforced by the Pure `open-bitcoin-bench` case
+`mempool-policy.sustained-pressure-trim` (N=24 admit/trim cycles, 2s wall-time
+ceiling under the default verifier). Phase 131 does not add public-network or
+non-deterministic soak gates.
+
+### Non-durable rolling fee (D-15)
+
+`RollingMempoolFeeRate` remains non-durable in this phase: a restarted mempool
+baseline is zero unless a later durability phase (MPDUR / Phase 135) redesigns
+persistence. Knots dump/load similarly does not restore the rolling minimum.
+
 ### Injected retry inputs
 
 `RetryJitterSeconds` (`0..=300`) and `RetryDecisionContext` carry exact injected

@@ -417,6 +417,8 @@ bun test scripts/check-phase129-integration-guardrails-and-milestone-reconciliat
 bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
 bun test scripts/check-phase130-resource-time-fee-primitives.test.ts
 bun run scripts/check-phase130-resource-time-fee-primitives.ts
+bun test scripts/check-phase131-rolling-fee-expiry-pressure.test.ts
+bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/check-current-documentation-reconciliation.test.ts
@@ -569,6 +571,8 @@ run_step "test Phase 129 integration guardrails and milestone reconciliation che
 run_step "check Phase 129 integration guardrails and milestone reconciliation" bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
 run_step "test Phase 130 resource time and fee primitives checker" bun test scripts/check-phase130-resource-time-fee-primitives.test.ts
 run_step "check Phase 130 resource time and fee primitives" bun run scripts/check-phase130-resource-time-fee-primitives.ts
+run_step "test Phase 131 rolling fee expiry pressure checker" bun test scripts/check-phase131-rolling-fee-expiry-pressure.test.ts
+run_step "check Phase 131 rolling fee expiry pressure" bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts

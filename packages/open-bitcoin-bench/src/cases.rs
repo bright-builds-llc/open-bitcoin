@@ -103,19 +103,27 @@ mod tests {
             BenchGroupId::StorageRecovery,
             BenchGroupId::WalletRescan,
         ] {
-            let Some(case) = cases.iter().find(|case| case.group == group) else {
-                panic!("missing stateful benchmark case for {:?}", group);
-            };
+            let group_cases = cases
+                .iter()
+                .filter(|case| case.group == group)
+                .collect::<Vec<_>>();
             assert!(
-                (case.run_once)().is_ok(),
-                "first run should succeed for {:?}",
+                !group_cases.is_empty(),
+                "missing stateful benchmark case for {:?}",
                 group
             );
-            assert!(
-                (case.run_once)().is_ok(),
-                "second run should succeed for {:?}",
-                group
-            );
+            for case in group_cases {
+                assert!(
+                    (case.run_once)().is_ok(),
+                    "first run should succeed for {}",
+                    case.id
+                );
+                assert!(
+                    (case.run_once)().is_ok(),
+                    "second run should succeed for {}",
+                    case.id
+                );
+            }
         }
     }
 
