@@ -7,11 +7,17 @@
 
 //! Opaque package identities and submission refinements.
 
+mod report;
 mod shape;
 
 use open_bitcoin_consensus::crypto::Sha256;
 use open_bitcoin_primitives::{Transaction, Txid, Wtxid};
 
+pub use report::{
+    EffectiveFeeGroup, EffectiveFeeGroupError, EffectiveFeeGroupId, ExistingMember,
+    HardMemberFailure, NewlyPresent, PackageMemberResult, PackageReport, PackageReportError,
+    PackageStatus, PostTrimAbsence, PriorMemberSuccess, ReconsiderableMemberFailure, WitnessAlias,
+};
 pub use shape::PackageShapeError;
 
 use crate::MempoolMemberIdentity;
