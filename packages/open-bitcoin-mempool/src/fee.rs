@@ -9,6 +9,8 @@
 
 //! Fee-rate arithmetic and compile-time-distinct mempool policy roles.
 
+pub mod rolling;
+
 use crate::resource::TransactionVirtualSize;
 
 const SATOSHIS_PER_KILOVBYTE: i64 = 1_000;

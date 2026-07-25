@@ -284,8 +284,19 @@ fn ancestor_limit_and_eviction_truths_hold_through_public_api() {
         }
     ));
 
+    let mut probe = Mempool::default();
+    submit(
+        &mut probe,
+        &snapshot,
+        spend_transaction(
+            coinbase_txids[2],
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+    )
+    .expect("probe");
     let mut trim_mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(140),
+        mempool_capacity: MempoolCapacity::new(probe.accounted_memory().as_usize()),
         ..PolicyConfig::default()
     });
     let low_fee_result = submit(

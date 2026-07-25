@@ -316,8 +316,9 @@ exposes Open Bitcoin extensions without redefining baseline fields:
 | `effectiveadmissionfee` | explicit effective admission (extension) |
 | `capacityenforcement` | fixed `legacy_vsize` during Phase 130 |
 
-Phase 130 trimming still uses `legacy_vsize_trim_limit` only; accounted capacity
-is reported and classified but does not reject or evict yet.
+Phase 131 activates accounted-memory trim against `MempoolCapacity`. The
+`legacy_vsize_trim_limit` field and RPC `capacityenforcement` label remain
+transitional until Phase 131 evidence/seam retirement.
 
 ### Injected retry inputs
 

@@ -10,12 +10,11 @@ use open_bitcoin_consensus::{
 use open_bitcoin_primitives::{BlockHash, Transaction, TransactionInput, Txid, Wtxid};
 
 use crate::{
-    AdmissionContext, BlockLifecycleContext, FinalMempoolMembership, Mempool, MempoolEntryMetadata,
-    MempoolError, MempoolLifecycleDelta, MempoolLifecycleInvariantError, MempoolLifecycleRemoval,
-    MempoolMemberIdentity, MempoolMemberState, MempoolOrigin, MempoolOutcome, MempoolRemovalCause,
-    MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause, PolicyConfig, PolicyTime,
-    RelayIntent, RollingMempoolFeeRate, TransactionVirtualSize,
-    transaction_weight_and_virtual_size,
+    AdmissionContext, BlockLifecycleContext, FinalMempoolMembership, Mempool, MempoolCapacity,
+    MempoolEntryMetadata, MempoolError, MempoolLifecycleDelta, MempoolLifecycleInvariantError,
+    MempoolLifecycleRemoval, MempoolMemberIdentity, MempoolMemberState, MempoolOrigin,
+    MempoolOutcome, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear,
+    MempoolRetryClearCause, PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
 };
 
 use super::{
@@ -585,7 +584,7 @@ fn replacement_transition_preserves_direct_and_descendant_roles() {
 }
 
 #[test]
-fn legacy_trim_transition_reports_pressure_without_rolling_fee_change() {
+fn pressure_transition_reports_roles_and_bumps_rolling_fee() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
     let low_fee_parent = spend_transaction(
@@ -602,18 +601,18 @@ fn legacy_trim_transition_reports_pressure_without_rolling_fee_change() {
         TransactionInput::SEQUENCE_FINAL,
     );
     let low_fee_child_txid = transaction_txid(&low_fee_child).expect("low fee child txid");
-    let (_parent_weight, parent_vsize) =
-        transaction_weight_and_virtual_size(&low_fee_parent).expect("parent size");
-    let (_child_weight, child_vsize) =
-        transaction_weight_and_virtual_size(&low_fee_child).expect("child size");
     let high_fee = spend_transaction(
         coinbase_txids[1],
         0,
         499_997_000,
         TransactionInput::SEQUENCE_FINAL,
     );
+    let mut staging = Mempool::default();
+    submit(&mut staging, &snapshot, low_fee_parent.clone()).expect("stage parent");
+    submit(&mut staging, &snapshot, low_fee_child.clone()).expect("stage child");
+    let package_usage = staging.accounted_memory().as_usize();
     let mut mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(parent_vsize + child_vsize),
+        mempool_capacity: MempoolCapacity::new(package_usage),
         ..PolicyConfig::default()
     });
     submit(&mut mempool, &snapshot, low_fee_parent).expect("low fee parent admission");
@@ -638,7 +637,7 @@ fn legacy_trim_transition_reports_pressure_without_rolling_fee_change() {
             && removal.cause == MempoolRemovalCause::Pressure
             && removal.role == MempoolRemovalRole::Descendant
     }));
-    assert_eq!(
+    assert_ne!(
         mempool.rolling_mempool_fee_rate(),
         RollingMempoolFeeRate::ZERO
     );

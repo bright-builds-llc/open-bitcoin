@@ -17,8 +17,8 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyConfig, PolicyTime,
-    RelayIntent, TransactionVirtualSize,
+    MempoolAcceptanceTime, MempoolCapacity, MempoolEntryMetadata, MempoolOrigin, PolicyConfig,
+    PolicyTime, RelayIntent,
 };
 use open_bitcoin_network::{InventoryList, RelayActivationConfig, WireNetworkMessage};
 
@@ -252,7 +252,7 @@ fn managed_recovery_drops_non_accepted_records_from_serving_and_fanout() {
             1_084,
             2,
             PolicyConfig {
-                legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
+                mempool_capacity: MempoolCapacity::new(0),
                 ..PolicyConfig::default()
             },
         );

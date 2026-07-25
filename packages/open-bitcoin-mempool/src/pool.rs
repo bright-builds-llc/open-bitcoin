@@ -15,6 +15,7 @@ use open_bitcoin_consensus::{
 };
 use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
+use crate::fee::rolling::RollingFeeState;
 use crate::{
     EffectiveAdmissionFeeRate, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry,
     MempoolError, MempoolResourceLedger, PolicyConfig, RbfPolicy, ResourceAccountingError,
@@ -24,6 +25,7 @@ use crate::{
 mod admission;
 mod admission_outcome;
 mod lifecycle;
+mod pressure;
 mod topology;
 use self::admission_outcome::accept as accept_outcome;
 use self::topology::{collect_ancestors, collect_conflicts_and_descendants, collect_descendants};
@@ -52,7 +54,7 @@ struct MempoolState {
 #[derive(Debug, Clone)]
 pub struct Mempool {
     config: PolicyConfig,
-    rolling_mempool_fee_rate: RollingMempoolFeeRate,
+    rolling_fee_state: RollingFeeState,
     entries: HashMap<Txid, MempoolEntry>,
     spent_outpoints: HashMap<OutPoint, Txid>,
     resource_ledger: MempoolResourceLedger,
@@ -68,7 +70,7 @@ impl Mempool {
     pub fn new(config: PolicyConfig) -> Self {
         Self {
             config,
-            rolling_mempool_fee_rate: RollingMempoolFeeRate::ZERO,
+            rolling_fee_state: RollingFeeState::new(),
             entries: HashMap::new(),
             spent_outpoints: HashMap::new(),
             resource_ledger: MempoolResourceLedger::ZERO,
@@ -100,12 +102,12 @@ impl Mempool {
     }
 
     pub const fn rolling_mempool_fee_rate(&self) -> RollingMempoolFeeRate {
-        self.rolling_mempool_fee_rate
+        self.rolling_fee_state.rolling_fee_rate()
     }
 
     /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
     pub fn set_rolling_mempool_fee_rate(&mut self, rate: RollingMempoolFeeRate) {
-        self.rolling_mempool_fee_rate = rate;
+        self.rolling_fee_state.set_rolling_fee_rate(rate);
     }
 
     fn replacement_set(
@@ -403,60 +405,6 @@ fn validate_limits(
     }
 
     Ok(())
-}
-
-fn trim_to_size(
-    mut state: MempoolState,
-    config: &PolicyConfig,
-) -> Result<
-    (
-        MempoolState,
-        std::collections::BTreeMap<MempoolMemberIdentity, MempoolRemovalRole>,
-    ),
-    MempoolError,
-> {
-    let mut evicted = std::collections::BTreeMap::new();
-
-    while state.resource_ledger.total_virtual_size() > config.legacy_vsize_trim_limit {
-        let Some(victim_txid) = select_eviction_candidate(&state.entries) else {
-            break;
-        };
-        let mut remove_set = collect_descendants(&state.entries, victim_txid);
-        remove_set.insert(victim_txid);
-        let removed_members = state
-            .entries
-            .iter()
-            .filter(|(txid, _entry)| remove_set.contains(txid))
-            .map(|(txid, entry)| MempoolMemberIdentity {
-                txid: *txid,
-                wtxid: entry.wtxid,
-            })
-            .collect::<Vec<_>>();
-        for member in removed_members {
-            state.entries.remove(&member.txid);
-            let role = if member.txid == victim_txid {
-                MempoolRemovalRole::Direct
-            } else {
-                MempoolRemovalRole::Descendant
-            };
-            evicted.insert(member, role);
-        }
-        state = recompute_state(state.entries).map_err(resource_invariant_error)?;
-    }
-
-    Ok((state, evicted))
-}
-
-fn select_eviction_candidate(entries: &HashMap<Txid, MempoolEntry>) -> Option<Txid> {
-    entries
-        .iter()
-        .min_by(|(left_txid, left_entry), (right_txid, right_entry)| {
-            left_entry
-                .descendant_score()
-                .cmp(&right_entry.descendant_score())
-                .then_with(|| left_txid.cmp(right_txid))
-        })
-        .map(|(txid, _entry)| *txid)
 }
 
 fn recompute_state(

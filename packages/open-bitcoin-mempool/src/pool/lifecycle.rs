@@ -420,7 +420,7 @@ impl Mempool {
             capacity_status(self.accounted_memory(), self.config.mempool_capacity);
         let effective_admission_fee_rate = effective_admission_fee_rate(
             self.config.static_relay_fee_rate,
-            self.rolling_mempool_fee_rate,
+            self.rolling_mempool_fee_rate(),
         );
         MempoolPressureSummary {
             transaction_count: self.entries.len(),
@@ -429,7 +429,7 @@ impl Mempool {
             mempool_capacity: self.config.mempool_capacity,
             static_relay_fee_rate: self.config.static_relay_fee_rate,
             incremental_relay_fee_rate: self.config.incremental_relay_fee_rate,
-            rolling_mempool_fee_rate: self.rolling_mempool_fee_rate,
+            rolling_mempool_fee_rate: self.rolling_mempool_fee_rate(),
             effective_admission_fee_rate,
             capacity_status,
             capacity_enforcement: MempoolCapacityEnforcement::LegacyVsize,

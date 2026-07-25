@@ -19,10 +19,11 @@ use crate::{
     validate_standard_transaction,
 };
 
+use super::pressure::trim_to_size;
 use super::{
     Mempool, accept_outcome, build_validation_context, derive_input_contexts,
     enforce_min_relay_fee, recompute_state, resource_invariant_error,
-    serialization_validation_error, trim_to_size, validate_limits,
+    serialization_validation_error, validate_limits,
 };
 
 pub(super) struct CommittedAdmission {
@@ -108,7 +109,7 @@ impl Mempool {
         )?;
         let effective_fee_rate = effective_admission_fee_rate(
             self.config.static_relay_fee_rate,
-            self.rolling_mempool_fee_rate,
+            self.rolling_mempool_fee_rate(),
         );
         enforce_min_relay_fee(effective_fee_rate, fee.to_sats(), virtual_size)?;
         let direct_conflicts = self.direct_conflicts(&transaction);
@@ -155,7 +156,9 @@ impl Mempool {
         let prospective_state =
             recompute_state(prospective_entries).map_err(resource_invariant_error)?;
         validate_limits(&prospective_state.entries, &self.config, txid)?;
-        let (trimmed_state, evicted) = trim_to_size(prospective_state, &self.config)?;
+        let mut prospective_rolling = self.rolling_fee_state.clone();
+        let (trimmed_state, evicted) =
+            trim_to_size(prospective_state, &self.config, &mut prospective_rolling)?;
         if !trimmed_state.entries.contains_key(&txid) {
             return Err(MempoolError::CandidateEvicted { txid });
         }
@@ -194,6 +197,7 @@ impl Mempool {
         self.entries = trimmed_state.entries;
         self.spent_outpoints = trimmed_state.spent_outpoints;
         self.resource_ledger = trimmed_state.resource_ledger;
+        self.rolling_fee_state = prospective_rolling;
 
         Ok(CommittedAdmission {
             result: AdmissionResult {

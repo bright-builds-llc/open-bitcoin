@@ -34,6 +34,7 @@ export const PHASE130_TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "packages/open-bitcoin-mempool/src/resource.rs",
   "packages/open-bitcoin-mempool/src/fee.rs",
+  "packages/open-bitcoin-mempool/src/types.rs",
   "packages/open-bitcoin-mempool/src/context.rs",
   "packages/open-bitcoin-mempool/src/pool.rs",
   "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
@@ -503,14 +504,16 @@ function checkDeterministicScope(repoRoot: string, failures: string[]): void {
 }
 
 function checkLegacyEnforcementSeam(repoRoot: string, failures: string[]): void {
-  const pool = readTarget(repoRoot, "packages/open-bitcoin-mempool/src/pool.rs");
+  // Phase 131 retires active legacy_vsize trimming from pool.rs while retaining the
+  // PolicyConfig field and LegacyVsize evidence label until Plan 04 seam deletion.
+  const types = readTarget(repoRoot, "packages/open-bitcoin-mempool/src/types.rs");
   const lifecycle = readTarget(
     repoRoot,
     "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
   );
   const catalog = readTarget(repoRoot, "docs/parity/catalog/mempool-policy.md");
   if (
-    !pool.includes("legacy_vsize_trim_limit") ||
+    !types.includes("legacy_vsize_trim_limit") ||
     !lifecycle.includes('Self::LegacyVsize => "legacy_vsize"') ||
     !catalog.includes("fixed `legacy_vsize` during Phase 130")
   ) {

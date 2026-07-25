@@ -364,34 +364,31 @@ fn cached_resource_ledger_matches_recomputation_oracle() {
 }
 
 #[test]
-fn legacy_vsize_trim_limit_is_independent_from_accounted_capacity() {
-    // Arrange
-    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
-    let low_fee = spend_transaction(
+fn trim_ignores_legacy_vsize_when_accounted_usage_is_within_capacity() {
+    // Arrange — leftover legacy_vsize_trim_limit would evict if it were still the limiter.
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = spend_transaction(
         coinbase_txids[0],
         0,
-        499_999_200,
+        499_999_000,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let high_fee = spend_transaction(
-        coinbase_txids[1],
-        0,
-        499_998_000,
-        TransactionInput::SEQUENCE_FINAL,
-    );
-    let config = PolicyConfig {
-        mempool_capacity: MempoolCapacity::new(1),
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(140),
+    let mut mempool = Mempool::new(PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(300_000_000),
+        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
         ..PolicyConfig::default()
-    };
-    let mut mempool = Mempool::new(config);
+    });
 
     // Act
-    let low_fee_result = submit(&mut mempool, &snapshot, low_fee).expect("low fee");
-    let high_fee_result = submit(&mut mempool, &snapshot, high_fee).expect("high fee");
+    let result = submit(&mut mempool, &snapshot, transaction).expect("admission under capacity");
 
     // Assert
-    assert_eq!(high_fee_result.evicted, vec![low_fee_result.accepted]);
+    assert!(mempool.entry(&result.accepted).is_some());
+    assert!(
+        mempool.total_virtual_size().as_usize()
+            > mempool.config().legacy_vsize_trim_limit.as_usize()
+    );
+    assert!(mempool.accounted_memory().as_usize() <= mempool.config().mempool_capacity.as_usize());
     assert_ledger_matches_oracle(&mempool);
     assert_eq!(
         PolicyConfig::default().mempool_capacity,

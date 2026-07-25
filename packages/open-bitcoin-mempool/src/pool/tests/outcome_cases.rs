@@ -14,8 +14,8 @@ use open_bitcoin_primitives::{
 
 use super::{non_standard_spend, sample_chainstate_snapshot, script, spend_transaction, submit};
 use crate::{
-    LimitDirection, LimitKind, Mempool, MempoolError, MempoolOutcome, MempoolOutcomeLabel,
-    MempoolRejectionCategory, PolicyConfig, RbfPolicy, TransactionVirtualSize,
+    LimitDirection, LimitKind, Mempool, MempoolCapacity, MempoolError, MempoolOutcome,
+    MempoolOutcomeLabel, MempoolRejectionCategory, PolicyConfig, RbfPolicy,
 };
 
 #[test]
@@ -380,7 +380,7 @@ fn accepted_duplicate_orphan_replaced_evicted_and_rejected_outcomes_are_typed() 
         transaction
     };
     let mut evicting_mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
+        mempool_capacity: MempoolCapacity::new(0),
         ..PolicyConfig::default()
     });
 
@@ -593,11 +593,6 @@ fn missing_parent_outcome_collects_unique_parent_txids() {
 fn replacement_outcome_distinguishes_replaced_and_evicted_transactions() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(4);
-    let mut mempool = Mempool::new(PolicyConfig {
-        rbf_policy: RbfPolicy::Always,
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(190),
-        ..PolicyConfig::default()
-    });
     let original = spend_transaction(
         coinbase_txids[0],
         0,
@@ -610,6 +605,15 @@ fn replacement_outcome_distinguishes_replaced_and_evicted_transactions() {
         499_999_300,
         TransactionInput::SEQUENCE_FINAL,
     );
+    let mut staging = Mempool::default();
+    submit(&mut staging, &snapshot, original.clone()).expect("stage original");
+    submit(&mut staging, &snapshot, unrelated_low_fee.clone()).expect("stage unrelated");
+    let two_entry_usage = staging.accounted_memory().as_usize();
+    let mut mempool = Mempool::new(PolicyConfig {
+        rbf_policy: RbfPolicy::Always,
+        mempool_capacity: MempoolCapacity::new(two_entry_usage),
+        ..PolicyConfig::default()
+    });
     let original_txid = submit(&mut mempool, &snapshot, original)
         .expect("original")
         .accepted;
@@ -844,7 +848,7 @@ fn no_partial_mutation_for_candidate_evicted() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(1);
     let mut mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
+        mempool_capacity: MempoolCapacity::new(0),
         ..PolicyConfig::default()
     });
     let candidate = spend_transaction(

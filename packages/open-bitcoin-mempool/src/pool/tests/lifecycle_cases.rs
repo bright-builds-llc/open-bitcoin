@@ -19,7 +19,7 @@ use crate::{
     AccountedMempoolMemory, BlockLifecycleContext, Mempool, MempoolCapacity,
     MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, MempoolMemberIdentity,
     MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, PolicyTime, RollingFeeParityStatus,
-    TransactionVirtualSize, transaction_weight_and_virtual_size,
+    TransactionVirtualSize,
 };
 
 #[test]
@@ -284,12 +284,7 @@ fn lifecycle_pressure_summary_uses_accounted_capacity_after_admission() {
         499_999_000,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let (_weight, virtual_size) =
-        transaction_weight_and_virtual_size(&transaction).expect("transaction size");
-    let mut mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(virtual_size),
-        ..PolicyConfig::default()
-    });
+    let mut mempool = Mempool::new(PolicyConfig::default());
 
     // Act
     submit(&mut mempool, &snapshot, transaction).expect("admission");

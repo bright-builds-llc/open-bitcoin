@@ -583,14 +583,17 @@
       "label": "mempool-policy",
       "files": [
         "packages/open-bitcoin-mempool/src/fee.rs",
+        "packages/open-bitcoin-mempool/src/fee/rolling.rs",
         "packages/open-bitcoin-mempool/src/outcome.rs",
         "packages/open-bitcoin-mempool/src/policy.rs",
         "packages/open-bitcoin-mempool/src/policy/output.rs",
         "packages/open-bitcoin-mempool/src/pool.rs",
         "packages/open-bitcoin-mempool/src/pool/admission_outcome.rs",
+        "packages/open-bitcoin-mempool/src/pool/pressure.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/outcome_cases.rs",
-        "packages/open-bitcoin-mempool/src/pool/tests.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/pressure_cases.rs",
         "packages/open-bitcoin-mempool/src/types.rs",
         "packages/open-bitcoin-mempool/tests/parity.rs"
       ],

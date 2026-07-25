@@ -14,6 +14,7 @@ mod lifecycle_cases;
 mod lifecycle_delta_cases;
 #[allow(deprecated)] // Compatibility projection regressions remain until Plans 130-05/130-11.
 mod outcome_cases;
+mod pressure_cases;
 mod resource_cases;
 
 use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot};
@@ -30,7 +31,7 @@ use open_bitcoin_primitives::{
 
 use super::Mempool;
 use crate::{
-    AccountedMempoolMemory, LimitDirection, LimitKind, MempoolEntry, MempoolError,
+    AccountedMempoolMemory, LimitDirection, LimitKind, MempoolCapacity, MempoolEntry, MempoolError,
     MempoolResourceLedger, PolicyConfig, RbfPolicy, TransactionVirtualSize,
 };
 
@@ -483,8 +484,20 @@ fn evicts_lowest_descendant_score_package_when_size_limit_is_exceeded() {
         499_998_000,
         TransactionInput::SEQUENCE_FINAL,
     );
+    let mut probe = Mempool::default();
+    submit(
+        &mut probe,
+        &snapshot,
+        spend_transaction(
+            coinbase_txids[2],
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        ),
+    )
+    .expect("probe");
     let mut mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(140),
+        mempool_capacity: MempoolCapacity::new(probe.accounted_memory().as_usize()),
         ..PolicyConfig::default()
     });
 
@@ -582,7 +595,7 @@ fn direct_helper_paths_cover_internal_edge_branches() {
     );
     assert!(missing_candidate.is_err());
 
-    assert!(super::select_eviction_candidate(&HashMap::new()).is_none());
+    assert!(super::pressure::select_eviction_candidate(&HashMap::new()).is_none());
     let missing_ancestors =
         super::collect_ancestors(&HashMap::new(), Txid::from_byte_array([1_u8; 32]));
     let missing_descendants =
@@ -800,19 +813,21 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
 
 #[test]
 fn trim_and_graph_helpers_cover_remaining_internal_branches() {
-    let empty_trimmed = super::trim_to_size(
+    let mut rolling = crate::RollingFeeState::new();
+    let empty_trimmed = super::pressure::trim_to_size(
         super::MempoolState {
             entries: HashMap::new(),
             spent_outpoints: HashMap::new(),
             resource_ledger: MempoolResourceLedger::new(
                 TransactionVirtualSize::new(1),
-                AccountedMempoolMemory::ZERO,
+                AccountedMempoolMemory::new(1),
             ),
         },
         &PolicyConfig {
-            legacy_vsize_trim_limit: TransactionVirtualSize::ZERO,
+            mempool_capacity: crate::MempoolCapacity::new(0),
             ..PolicyConfig::default()
         },
+        &mut rolling,
     );
     assert!(empty_trimmed.expect("empty trim").1.is_empty());
 
@@ -933,7 +948,7 @@ fn recompute_state_skips_invalid_parent_links_and_candidate_eviction_is_reported
 
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
     let mut mempool = Mempool::new(PolicyConfig {
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
+        mempool_capacity: MempoolCapacity::new(0),
         ..PolicyConfig::default()
     });
     let error = submit(
