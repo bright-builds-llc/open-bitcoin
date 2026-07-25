@@ -629,6 +629,17 @@
       ]
     },
     {
+      "label": "mempool-package-report",
+      "files": [
+        "packages/open-bitcoin-mempool/src/package/report.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/test/txpackage_tests.cpp"
+      ]
+    },
+    {
       "label": "mempool-entry-context",
       "files": [
         "packages/open-bitcoin-mempool/src/context.rs",
