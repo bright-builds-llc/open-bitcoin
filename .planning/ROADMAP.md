@@ -104,7 +104,17 @@ Plans:
 4. A valid parent can remain accepted when its child fails, while every accepted subpackage commits through one coherent delta and failed preparation leaves no partial mutation.
 5. Final results reflect post-trim membership and the scoped replacement, TRUC, ephemeral-dust, witness-identity, reconsiderable-failure, static-floor, and rolling-floor boundaries.
 
-**Plans**: TBD
+**Plans**: 8 plans
+
+Plans:
+- [ ] 132-01-PLAN.md — Define opaque package/refinement types, cached identities, fingerprints, and ordered reports.
+- [ ] 132-02-PLAN.md — Extract shared candidate preparation and revision-bound guarded apply.
+- [ ] 132-03-PLAN.md — Build the sparse prospective overlay, checked accounting oracle, and overlay trim.
+- [ ] 132-04-PLAN.md — Implement individual-first dry-run and child-with-unconfirmed-parents submission.
+- [ ] 132-05-PLAN.md — Enforce effective fee groups, one final trim, and final-membership lifecycle truth.
+- [ ] 132-06-PLAN.md — Implement bounded limited 1P1C package RBF.
+- [ ] 132-07-PLAN.md — Complete TRUC, pay-to-anchor, and ephemeral-dust policy.
+- [ ] 132-08-PLAN.md — Close parity evidence, mutation-tested guardrails, and whole-repo verification.
 
 ### Phase 133: Package-Aware Download and Orphan Bridge
 
