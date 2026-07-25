@@ -20,6 +20,7 @@ mod outcome_cases;
 mod pressure_cases;
 mod resource_cases;
 mod rolling_fee_cases;
+mod sustained_pressure_cases;
 
 use open_bitcoin_chainstate::{Chainstate, ChainstateSnapshot};
 use std::collections::{BTreeSet, HashMap};
