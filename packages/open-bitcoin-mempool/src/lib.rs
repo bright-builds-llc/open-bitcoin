@@ -20,6 +20,7 @@ pub mod context;
 pub mod error;
 pub mod fee;
 pub mod outcome;
+pub mod package;
 pub mod policy;
 pub mod pool;
 pub mod resource;
@@ -39,6 +40,10 @@ pub use fee::{
     evaluate_package_fee_floors,
 };
 pub use outcome::{MempoolOutcome, MempoolOutcomeLabel, MempoolRejectionCategory};
+pub use package::{
+    MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT, PackageFingerprint, PackageShapeError,
+    SubmissionPackage, SubmissionPackageKind, WellFormedPackage,
+};
 pub use policy::{
     dust_threshold_sats, signals_opt_in_rbf, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,
