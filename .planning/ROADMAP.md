@@ -29,7 +29,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 ## Phases
 
 - [x] **Phase 130: Resource, Time, and Fee Primitives** — Establish unambiguous accounting, fee, time, metadata, and lifecycle outcome contracts for all later policy behavior. (completed 2026-07-24)
-- [ ] **Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core** — Enforce sustained-pressure capacity, eviction, expiry, and block-gated rolling-fee decay deterministically.
+- [x] **Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core** — Enforce sustained-pressure capacity, eviction, expiry, and block-gated rolling-fee decay deterministically. (completed 2026-07-25)
 - [ ] **Phase 132: Typed Package Vocabulary and Staged Admission** — Deliver dry-run and submission semantics with exact shape validation, partial acceptance, effective-fee grouping, and coherent commits.
 - [ ] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission.
 - [ ] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state.
@@ -85,11 +85,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 131-01-PLAN.md — Accounted-capacity trim + descendant-package rolling bump (PRESS-01, PRESS-02)
-- [ ] 131-02-PLAN.md — Block-gated occupancy-sensitive rolling decay (PRESS-03)
-- [ ] 131-03-PLAN.md — Pure expiry API + ManagedNetworkHandle hook (PRESS-04)
-- [ ] 131-04-PLAN.md — Evidence label flip + delete legacy_vsize seam
-- [ ] 131-05-PLAN.md — Sustained oracle/perf, breadcrumbs, Phase 131 verifier (PRESS-05)
+- [x] 131-01-PLAN.md — Accounted-capacity trim + descendant-package rolling bump (PRESS-01, PRESS-02)
+- [x] 131-02-PLAN.md — Block-gated occupancy-sensitive rolling decay (PRESS-03)
+- [x] 131-03-PLAN.md — Pure expiry API + ManagedNetworkHandle hook (PRESS-04)
+- [x] 131-04-PLAN.md — Evidence label flip + delete legacy_vsize seam
+- [x] 131-05-PLAN.md — Sustained oracle/perf, breadcrumbs, Phase 131 verifier (PRESS-05)
 
 ### Phase 132: Typed Package Vocabulary and Staged Admission
 
@@ -197,7 +197,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 | --- | ---: | --- | --- |
 | 130. Resource, Time, and Fee Primitives | 13/13 | Complete    | 2026-07-24 |
-| 131. Rolling Fee, Expiry, and Descendant Eviction Core | 0/TBD | Not started | - |
+| 131. Rolling Fee, Expiry, and Descendant Eviction Core | 5/5 | Complete    | 2026-07-25 |
 | 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 0/TBD | Not started | - |

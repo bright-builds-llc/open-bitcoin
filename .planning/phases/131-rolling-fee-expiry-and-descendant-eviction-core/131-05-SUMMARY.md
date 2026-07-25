@@ -131,7 +131,7 @@ Each task was committed atomically:
 - **Fix:** Mirror Plans 01–04: `requirements-completed: []` with `requirements-addressed: [PRESS-05]` until phase verification
 - **Files modified:** `131-05-SUMMARY.md`
 - **Verification:** re-run docs commit verify
-- **Committed in:** _(docs commit)_
+- **Committed in:** `b58435fe`
 
 ---
 
