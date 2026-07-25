@@ -390,27 +390,31 @@ Follow CONTEXT natural commit order (planner should produce roughly these plans)
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Exact live `RollingFeeParityStatus` variant name**
    - What we know: must leave `Deferred` (D-09).
    - What's unclear: `Active` vs `Live` vs `Enforced` string for metrics/RPC.
    - Recommendation: `Active` with `as_str() -> "active"`; update checkers/tests in the evidence plan.
+   - **RESOLVED:** Use `RollingFeeParityStatus::Active` with `as_str() -> "active"` (Plan 04).
 
 2. **Whether `legacy_vsize_trim_limit` field is deleted or retained as dead/unused**
    - What we know: must not be the active limiter (D-02).
    - What's unclear: delete vs `#[deprecated]` stub for one release of fixtures.
    - Recommendation: delete from `PolicyConfig` in the evidence/seam plan once all call sites migrate—cleaner than a zombie field.
+   - **RESOLVED:** Delete `PolicyConfig.legacy_vsize_trim_limit` after call-site migration (Plan 04); do not keep a zombie field.
 
 3. **How closely to mirror Knots modified-fee / entry-time ordering**
    - What we know: D-04 locks existing score + txid tie-break; no modified-fee surface exists.
    - What's unclear: whether any PRESS differential fixture expects Knots multi-index equality cases.
    - Recommendation: document intentional difference; do not add prioritisation in Phase 131.
+   - **RESOLVED:** Keep descendant-score + txid tie-break (D-04 / Plan 01). Record intentional difference vs Knots entry-time/modified-fee multi-index ordering in `docs/parity/catalog/mempool-policy.md` and `docs/parity/index.json` (Plan 04 Task 2). Do not add prioritisation indexes in Phase 131.
 
 4. **Expiry scheduling cadence in the node**
    - What we know: shell must sample time and call through authority (D-12); full maintenance loops are Phase 136.
    - What's unclear: whether Phase 131 only exposes the API + test/authority hook, or also a minimal call from an existing tick.
    - Recommendation: ship pure API + `ManagedNetworkHandle` method + unit/integration invocation; optional call from an existing receive/maintenance seam only if already present—do not build Phase 136 timers.
+   - **RESOLVED:** Pure expire API + `ManagedNetworkHandle` authority method + unit/integration invocation only (Plan 03). No Phase 136 receive-independent timer/maintenance loop.
 
 ## Environment Availability
 
@@ -554,9 +558,7 @@ Step 2.6 note: Phase is code/config + hermetic tests; no external services requi
 
 ### Open Questions
 
-- Live rolling-parity label string (`active` recommended)
-- Delete vs temporarily keep `legacy_vsize_trim_limit` field after limiter retirement
-- How much node-side expiry scheduling beyond an authority API belongs in 131 vs 136
+All four research open questions are **RESOLVED** (see `## Open Questions (RESOLVED)`): `Active`/`"active"`; delete `legacy_vsize_trim_limit`; keep D-04 txid tie-break and document intentional Knots difference; expire via API + authority only (no Phase 136 timers).
 
 ### Ready for Planning
 
