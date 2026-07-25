@@ -17,7 +17,7 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 - deterministic ancestor or descendant accounting and limit enforcement
 - size-limit trimming that removes the lowest descendant-score package
 - typed pressure evidence for transaction count, virtual size, configured
-  capacity, relay fee floors, capacity status, and deferred rolling-fee parity
+  capacity, relay fee floors, capacity status, and active rolling-fee parity
 - pure block-connect lifecycle cleanup for confirmed transactions, conflicts,
   and conflict descendants
 - managed node cleanup of mempool state and txid/wtxid runtime caches after
@@ -56,6 +56,9 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
   deterministic limit checks
 - size-limit trimming removes the weakest descendant-score package instead of
   silently allowing unbounded growth
+- intentional eviction-order difference: Open Bitcoin keeps descendant-score then
+  txid tie-break for pressure victim selection; Knots may also consult
+  modified-fee / entry-time multi-index ordering for equal-score packages
 - block-connect cleanup removes confirmed transactions and true conflicts while
   preserving valid descendants whose parents just confirmed
 - managed reorg reconsideration replays disconnected non-coinbase transactions
@@ -84,8 +87,9 @@ Open Bitcoin. The behavioral baseline remains Bitcoin Knots
 The `v2-0-mempool-chainstate-lifecycle-durable-recovery` surface covers
 `MEM-03`, `MEM-04`, `MEM-05`, and `MEM-06`.
 
-- `MempoolPressureSummary` exposes fixed capacity and fee-floor evidence while
-  keeping full Knots rolling minimum fee decay explicitly deferred.
+- `MempoolPressureSummary` exposes fixed capacity and fee-floor evidence. Phase
+  103 kept full Knots rolling minimum fee decay deferred; Phase 131 activates
+  live bump/decay with `rolling_fee_parity=active`.
 - `remove_for_connected_block` and `remove_for_connected_transactions` remove
   confirmed transactions, true conflicts, and conflict descendants through one
   recomputed pure mempool graph path.
@@ -252,6 +256,13 @@ Rust mempool (`packages/open-bitcoin-mempool/src/resource.rs`):
 compile-time distinct. The cached ledger and independent recomputation oracle
 must agree; overflow maps to a typed invariant error.
 
+### Intentional eviction-order difference
+
+Pressure victim selection uses Knots-compatible descendant-score ordering with an
+intentional txid tie-break. Knots may also consult modified-fee / entry-time
+multi-index ordering when scores collide. This difference is recorded so parity
+reviewers do not treat equal-score eviction order as a silent mismatch.
+
 ### Intentional difference from Knots allocator estimates
 
 Knots `DynamicUsage` estimates C++ allocator and container behavior. Open
@@ -314,11 +325,13 @@ exposes Open Bitcoin extensions without redefining baseline fields:
 | `incrementalrelayfee` | incremental replacement/pressure bump |
 | `rollingmempoolfee` | raw rolling floor (extension) |
 | `effectiveadmissionfee` | explicit effective admission (extension) |
-| `capacityenforcement` | fixed `legacy_vsize` during Phase 130 |
+| `capacityenforcement` | `accounted_memory` |
 
-Phase 131 activates accounted-memory trim against `MempoolCapacity`. The
-`legacy_vsize_trim_limit` field and RPC `capacityenforcement` label remain
-transitional until Phase 131 evidence/seam retirement.
+Phase 131 enforces accounted-memory trim against `MempoolCapacity` and exposes
+live rolling-fee bump/decay with `rolling_fee_parity=active`. Historically,
+Phase 130 shipped the transitional RPC label fixed `legacy_vsize` during Phase 130
+before Plan 04 retired `PolicyConfig.legacy_vsize_trim_limit` and flipped live
+evidence to `accounted_memory`.
 
 ### Injected retry inputs
 
@@ -333,7 +346,8 @@ unbroadcast membership from transport receipts.
 Without weakening Phase 130:
 
 - **Phase 131** owns accounted-memory enforcement, trimming against accounted
-  capacity, rolling-fee bump/decay mechanics, and parity tolerances.
+  capacity, rolling-fee bump/decay mechanics, expiry, and hermetic PRESS
+  oracle/perf coverage (not Phase 138 adversarial soak).
 - **Phase 132** owns package execution and pinned package-policy exceptions
   (including TRUC) beyond the fee-role vocabulary already fixed here.
 - **Phase 134** owns complete cross-cache projection of lifecycle deltas through
@@ -376,7 +390,8 @@ production readiness, or production-funds wallet use.
 
 ## Known gaps
 
-- accounted-memory capacity enforcement and rolling-fee bump/decay (Phase 131)
+- Phase 138 adversarial soak and broader public-network pressure validation remain
+  outside Phase 131's hermetic PRESS oracle/perf coverage
 - package execution beyond fee-role vocabulary, including pinned TRUC exceptions
   (Phase 132)
 - complete lifecycle-delta projection across every dependent cache (Phase 134)

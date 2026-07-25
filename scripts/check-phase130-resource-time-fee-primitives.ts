@@ -30,6 +30,7 @@ export const PHASE130_TARGET_FILES = [
   "docs/parity/README.md",
   "docs/parity/catalog/mempool-policy.md",
   "docs/parity/index.json",
+  ".planning/phases/130-resource-time-and-fee-primitives/130-09-SUMMARY.md",
   "docs/parity/checklist.md",
   "docs/parity/source-breadcrumbs.json",
   "packages/open-bitcoin-mempool/src/resource.rs",
@@ -504,21 +505,21 @@ function checkDeterministicScope(repoRoot: string, failures: string[]): void {
 }
 
 function checkLegacyEnforcementSeam(repoRoot: string, failures: string[]): void {
-  // Phase 131 retires active legacy_vsize trimming from pool.rs while retaining the
-  // PolicyConfig field and LegacyVsize evidence label until Plan 04 seam deletion.
-  const types = readTarget(repoRoot, "packages/open-bitcoin-mempool/src/types.rs");
-  const lifecycle = readTarget(
+  // Phase 131 deleted the live PolicyConfig.legacy_vsize_trim_limit seam and flipped
+  // capacity-enforcement evidence to accounted_memory. Phase 130 history remains
+  // auditable through SUMMARY/catalog archive wording without resurrecting the live field.
+  const summary = readTarget(
     repoRoot,
-    "packages/open-bitcoin-mempool/src/pool/lifecycle.rs",
+    ".planning/phases/130-resource-time-and-fee-primitives/130-09-SUMMARY.md",
   );
   const catalog = readTarget(repoRoot, "docs/parity/catalog/mempool-policy.md");
   if (
-    !types.includes("legacy_vsize_trim_limit") ||
-    !lifecycle.includes('Self::LegacyVsize => "legacy_vsize"') ||
+    !summary.includes("MempoolCapacityEnforcement::LegacyVsize") ||
+    !summary.includes("legacy_vsize") ||
     !catalog.includes("fixed `legacy_vsize` during Phase 130")
   ) {
     failures.push(
-      "P130 legacy enforcement: Phase 130 must retain legacy_vsize capacity enforcement seam",
+      "P130 legacy enforcement: Phase 130 must retain historical legacy_vsize capacity enforcement documentation",
     );
   }
 }

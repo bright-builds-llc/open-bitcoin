@@ -262,7 +262,7 @@ impl RunningStatusRpcClient {
                 incrementalrelayfee: 1,
                 rollingmempoolfee: 0,
                 effectiveadmissionfee: 1,
-                capacityenforcement: "legacy_vsize".to_string(),
+                capacityenforcement: "accounted_memory".to_string(),
                 loaded: true,
             },
             wallet_info: GetWalletInfoResponse {

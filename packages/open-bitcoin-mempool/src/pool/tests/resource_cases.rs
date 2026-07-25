@@ -364,8 +364,8 @@ fn cached_resource_ledger_matches_recomputation_oracle() {
 }
 
 #[test]
-fn trim_ignores_legacy_vsize_when_accounted_usage_is_within_capacity() {
-    // Arrange — leftover legacy_vsize_trim_limit would evict if it were still the limiter.
+fn trim_does_not_evict_when_accounted_usage_is_within_capacity() {
+    // Arrange — accounted usage under MempoolCapacity must retain the admission.
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
     let transaction = spend_transaction(
         coinbase_txids[0],
@@ -375,7 +375,6 @@ fn trim_ignores_legacy_vsize_when_accounted_usage_is_within_capacity() {
     );
     let mut mempool = Mempool::new(PolicyConfig {
         mempool_capacity: MempoolCapacity::new(300_000_000),
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
         ..PolicyConfig::default()
     });
 
@@ -384,19 +383,12 @@ fn trim_ignores_legacy_vsize_when_accounted_usage_is_within_capacity() {
 
     // Assert
     assert!(mempool.entry(&result.accepted).is_some());
-    assert!(
-        mempool.total_virtual_size().as_usize()
-            > mempool.config().legacy_vsize_trim_limit.as_usize()
-    );
+    assert!(mempool.total_virtual_size().as_usize() > 0);
     assert!(mempool.accounted_memory().as_usize() <= mempool.config().mempool_capacity.as_usize());
     assert_ledger_matches_oracle(&mempool);
     assert_eq!(
         PolicyConfig::default().mempool_capacity,
         MempoolCapacity::new(300_000_000)
-    );
-    assert_eq!(
-        PolicyConfig::default().legacy_vsize_trim_limit,
-        TransactionVirtualSize::new(300_000_000)
     );
 }
 

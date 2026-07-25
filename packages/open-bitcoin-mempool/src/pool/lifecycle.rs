@@ -356,32 +356,31 @@ impl MempoolCapacityStatus {
     }
 }
 
-/// Truthful Phase-130 capacity-enforcement seam for operator evidence.
+/// Truthful capacity-enforcement evidence for operators.
 ///
-/// Accounted usage and capacity are reported separately; trimming still follows
-/// the legacy vsize limit until Phase 131.
+/// Capacity enforcement uses accounted memory against `MempoolCapacity`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MempoolCapacityEnforcement {
-    LegacyVsize,
+    AccountedMemory,
 }
 
 impl MempoolCapacityEnforcement {
     pub const fn as_str(self) -> &'static str {
         match self {
-            Self::LegacyVsize => "legacy_vsize",
+            Self::AccountedMemory => "accounted_memory",
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RollingFeeParityStatus {
-    Deferred,
+    Active,
 }
 
 impl RollingFeeParityStatus {
     pub fn as_str(self) -> &'static str {
         match self {
-            Self::Deferred => "deferred",
+            Self::Active => "active",
         }
     }
 }
@@ -432,8 +431,8 @@ impl Mempool {
             rolling_mempool_fee_rate: self.rolling_mempool_fee_rate(),
             effective_admission_fee_rate,
             capacity_status,
-            capacity_enforcement: MempoolCapacityEnforcement::LegacyVsize,
-            rolling_fee_parity: RollingFeeParityStatus::Deferred,
+            capacity_enforcement: MempoolCapacityEnforcement::AccountedMemory,
+            rolling_fee_parity: RollingFeeParityStatus::Active,
         }
     }
 

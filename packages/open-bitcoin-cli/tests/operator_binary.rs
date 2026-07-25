@@ -2529,7 +2529,7 @@ fn handle_rpc_connection(
             "incrementalrelayfee": 1000,
             "rollingmempoolfee": 0,
             "effectiveadmissionfee": 1000,
-            "capacityenforcement": "legacy_vsize",
+            "capacityenforcement": "accounted_memory",
             "loaded": true
         })
     } else if has_rpc_method(&request_methods, "buildandsigntransaction") {

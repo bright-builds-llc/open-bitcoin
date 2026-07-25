@@ -2773,7 +2773,7 @@ fn managed_network_info_exposes_rpc_projection_helpers() {
     assert_eq!(mempool_info.total_fee_sats, 1_000);
     assert_eq!(
         mempool_info.capacity_enforcement,
-        MempoolCapacityEnforcement::LegacyVsize
+        MempoolCapacityEnforcement::AccountedMemory
     );
     assert_eq!(network_info.connected_peers, 2);
     assert_eq!(network_info.inbound_peers, 1);
@@ -2849,9 +2849,9 @@ fn mempool_info_exposes_truthful_resource_and_fee_roles() {
     );
     assert_eq!(
         info.capacity_enforcement,
-        MempoolCapacityEnforcement::LegacyVsize
+        MempoolCapacityEnforcement::AccountedMemory
     );
-    assert_eq!(info.capacity_enforcement.as_str(), "legacy_vsize");
+    assert_eq!(info.capacity_enforcement.as_str(), "accounted_memory");
     for forbidden in [
         "txid",
         "wtxid",

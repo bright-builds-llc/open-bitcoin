@@ -144,7 +144,7 @@ fn managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_cache
     let info = network.mempool_info();
     assert_eq!(info.transaction_count, 0);
     assert_eq!(info.capacity_status, MempoolCapacityStatus::Empty);
-    assert_eq!(info.rolling_fee_parity, RollingFeeParityStatus::Deferred);
+    assert_eq!(info.rolling_fee_parity, RollingFeeParityStatus::Active);
 }
 
 #[test]

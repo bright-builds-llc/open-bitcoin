@@ -28,7 +28,6 @@ const DEFAULT_MAX_ANCESTOR_VIRTUAL_SIZE: usize = 101_000;
 const DEFAULT_MAX_DESCENDANT_COUNT: usize = 25;
 const DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE: usize = 101_000;
 const DEFAULT_MEMPOOL_CAPACITY: usize = 300_000_000;
-const DEFAULT_LEGACY_VSIZE_TRIM_LIMIT: usize = 300_000_000;
 /// Knots `DEFAULT_MEMPOOL_EXPIRY_HOURS` — entries older than this leave via Expire.
 pub const DEFAULT_MEMPOOL_EXPIRY_HOURS: u64 = 336;
 
@@ -55,8 +54,6 @@ pub struct PolicyConfig {
     pub max_descendant_count: usize,
     pub max_descendant_virtual_size: usize,
     pub mempool_capacity: MempoolCapacity,
-    /// Transitional vsize enforcement seam removed by Phase 131.
-    pub legacy_vsize_trim_limit: TransactionVirtualSize,
     /// Max age in hours for `Known` acceptance times before expiry (Knots default 336).
     pub mempool_expiry_hours: u64,
 }
@@ -82,7 +79,6 @@ impl Default for PolicyConfig {
             max_descendant_count: DEFAULT_MAX_DESCENDANT_COUNT,
             max_descendant_virtual_size: DEFAULT_MAX_DESCENDANT_VIRTUAL_SIZE,
             mempool_capacity: MempoolCapacity::new(DEFAULT_MEMPOOL_CAPACITY),
-            legacy_vsize_trim_limit: TransactionVirtualSize::new(DEFAULT_LEGACY_VSIZE_TRIM_LIMIT),
             mempool_expiry_hours: DEFAULT_MEMPOOL_EXPIRY_HOURS,
         }
     }

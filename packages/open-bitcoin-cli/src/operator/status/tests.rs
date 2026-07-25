@@ -2279,7 +2279,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
             incrementalrelayfee: 1_000,
             rollingmempoolfee: 0,
             effectiveadmissionfee: 1_000,
-            capacityenforcement: "legacy_vsize".to_string(),
+            capacityenforcement: "accounted_memory".to_string(),
             loaded: true,
         })
     }

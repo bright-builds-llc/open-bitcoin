@@ -1487,7 +1487,7 @@ fn get_mempool_info_exposes_truthful_resource_and_fee_evidence() {
             .as_i64()
             .expect("incremental")
     );
-    assert_eq!(mempool["capacityenforcement"], json!("legacy_vsize"));
+    assert_eq!(mempool["capacityenforcement"], json!("accounted_memory"));
     assert_eq!(mempool["loaded"], json!(true));
     for forbidden in [
         "txid",

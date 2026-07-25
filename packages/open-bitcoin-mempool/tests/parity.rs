@@ -369,9 +369,9 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
     assert_eq!(initial_pressure.capacity_status.as_str(), "under_capacity");
     assert_eq!(
         initial_pressure.rolling_fee_parity,
-        RollingFeeParityStatus::Deferred
+        RollingFeeParityStatus::Active
     );
-    assert_eq!(initial_pressure.rolling_fee_parity.as_str(), "deferred");
+    assert_eq!(initial_pressure.rolling_fee_parity.as_str(), "active");
     assert!(empty_cleanup.removed.is_empty());
     assert!(conflict_cleanup.removed.iter().any(|removal| {
         removal.member.txid == parent_txid
@@ -415,8 +415,8 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
             RollingMempoolFeeRate::ZERO,
         ),
         capacity_status: MempoolCapacityStatus::OverCapacity,
-        capacity_enforcement: MempoolCapacityEnforcement::LegacyVsize,
-        rolling_fee_parity: RollingFeeParityStatus::Deferred,
+        capacity_enforcement: MempoolCapacityEnforcement::AccountedMemory,
+        rolling_fee_parity: RollingFeeParityStatus::Active,
     };
     let summary = MempoolLifecycleSummary {
         removed: vec![removal.clone()],
@@ -424,8 +424,8 @@ fn lifecycle_cleanup_and_pressure_truths_hold_through_public_api() {
     };
 
     assert_eq!(
-        MempoolCapacityEnforcement::LegacyVsize.as_str(),
-        "legacy_vsize"
+        MempoolCapacityEnforcement::AccountedMemory.as_str(),
+        "accounted_memory"
     );
     assert_eq!(MempoolCapacityStatus::Empty.as_str(), "empty");
     assert_eq!(MempoolCapacityStatus::AtCapacity.as_str(), "at_capacity");

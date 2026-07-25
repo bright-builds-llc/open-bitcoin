@@ -64,11 +64,11 @@ fn lifecycle_pressure_summary_reports_capacity_and_fee_floor() {
     assert_eq!(summary.capacity_status.as_str(), "empty");
     assert_eq!(
         summary.capacity_enforcement,
-        MempoolCapacityEnforcement::LegacyVsize
+        MempoolCapacityEnforcement::AccountedMemory
     );
-    assert_eq!(summary.capacity_enforcement.as_str(), "legacy_vsize");
-    assert_eq!(summary.rolling_fee_parity, RollingFeeParityStatus::Deferred);
-    assert_eq!(summary.rolling_fee_parity.as_str(), "deferred");
+    assert_eq!(summary.capacity_enforcement.as_str(), "accounted_memory");
+    assert_eq!(summary.rolling_fee_parity, RollingFeeParityStatus::Active);
+    assert_eq!(summary.rolling_fee_parity.as_str(), "active");
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn lifecycle_labels_and_capacity_statuses_are_stable() {
         .iter()
         .map(|(status, _expected, _label)| format!("{:?}", black_box(*status)))
         .collect::<Vec<_>>();
-    let rolling_fee = black_box(RollingFeeParityStatus::Deferred);
+    let rolling_fee = black_box(RollingFeeParityStatus::Active);
     let rolling_fee_clone = rolling_fee;
 
     // Assert
@@ -129,8 +129,8 @@ fn lifecycle_labels_and_capacity_statuses_are_stable() {
         capacity_debugs,
         ["Empty", "UnderCapacity", "AtCapacity", "OverCapacity"]
     );
-    assert_eq!(rolling_fee_clone, RollingFeeParityStatus::Deferred);
-    assert_eq!(format!("{rolling_fee:?}"), "Deferred");
+    assert_eq!(rolling_fee_clone, RollingFeeParityStatus::Active);
+    assert_eq!(format!("{rolling_fee:?}"), "Active");
 }
 
 #[test]
@@ -371,8 +371,8 @@ fn lifecycle_public_types_cover_debug_clone_and_equality_contracts() {
             crate::RollingMempoolFeeRate::new(crate::FeeRate::from_sats_per_kvb(7)),
         ),
         capacity_status: MempoolCapacityStatus::OverCapacity,
-        capacity_enforcement: crate::MempoolCapacityEnforcement::LegacyVsize,
-        rolling_fee_parity: RollingFeeParityStatus::Deferred,
+        capacity_enforcement: crate::MempoolCapacityEnforcement::AccountedMemory,
+        rolling_fee_parity: RollingFeeParityStatus::Active,
     };
     let summary = crate::MempoolLifecycleSummary {
         removed: vec![removal.clone()],

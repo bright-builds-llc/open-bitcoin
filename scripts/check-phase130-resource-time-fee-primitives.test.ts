@@ -210,6 +210,15 @@ test.each([
     ),
   ],
   [
+    "historical legacy enforcement docs",
+    "P130 legacy enforcement: Phase 130 must retain historical legacy_vsize capacity enforcement documentation",
+    replace(
+      "docs/parity/catalog/mempool-policy.md",
+      "fixed `legacy_vsize` during Phase 130",
+      "fixed transitional capacity label during Phase 130",
+    ),
+  ],
+  [
     "verifier heredoc wiring",
     "P130 verifier heredoc: Phase 130 pair must run between Phase 129 and the Phase 117 gate",
     replace(

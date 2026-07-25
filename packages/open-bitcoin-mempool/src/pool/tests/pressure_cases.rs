@@ -16,7 +16,7 @@ use super::{sample_chainstate_snapshot, spend_transaction, submit};
 use crate::{
     AdmissionContext, FeeRate, IncrementalRelayFeeRate, Mempool, MempoolCapacity,
     MempoolRemovalCause, MempoolRemovalRole, PolicyConfig, RollingMempoolFeeRate,
-    TransactionVirtualSize, recompute_resource_ledger,
+    recompute_resource_ledger,
 };
 
 fn submit_transition(
@@ -72,10 +72,9 @@ fn accounted_capacity_trim_evicts_until_usage_within_capacity() {
         499_998_000,
         TransactionInput::SEQUENCE_FINAL,
     );
-    // Capacity fits one accounted entry; leftover legacy vsize limit would evict if still active.
+    // Capacity fits one accounted entry so pressure trim must evict on the next admission.
     let mut mempool = Mempool::new(PolicyConfig {
         mempool_capacity: MempoolCapacity::new(one_entry_usage),
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(1),
         ..PolicyConfig::default()
     });
 
@@ -90,9 +89,8 @@ fn accounted_capacity_trim_evicts_until_usage_within_capacity() {
         "accounted memory must drive trim to within MempoolCapacity"
     );
     assert!(
-        mempool.total_virtual_size().as_usize()
-            > mempool.config().legacy_vsize_trim_limit.as_usize(),
-        "total_virtual_size must not be the active trim limiter"
+        mempool.total_virtual_size().as_usize() > 0,
+        "virtual size remains a reporting measure after accounted trim"
     );
     assert!(mempool.entry(&low_fee_result.accepted).is_none());
     assert!(mempool.entry(&high_fee_result.accepted).is_some());
@@ -145,7 +143,6 @@ fn pressure_bump_uses_descendant_package_feerate_plus_incremental() {
     let mut mempool = Mempool::new(PolicyConfig {
         mempool_capacity: MempoolCapacity::new(package_usage),
         incremental_relay_fee_rate: incremental,
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(300_000_000),
         ..PolicyConfig::default()
     });
     submit(&mut mempool, &snapshot, low_fee_parent).expect("parent admission");
@@ -182,7 +179,6 @@ fn pressure_bump_skips_when_not_strictly_greater() {
     let one_entry_usage = accounted_usage_for_single_spend(&snapshot, coinbase_txids[2]);
     let mut mempool = Mempool::new(PolicyConfig {
         mempool_capacity: MempoolCapacity::new(one_entry_usage),
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(300_000_000),
         ..PolicyConfig::default()
     });
     submit(&mut mempool, &snapshot, low_fee).expect("low fee admission");
@@ -246,7 +242,6 @@ fn pressure_removes_victim_and_descendants_with_roles() {
     let package_usage = staging.accounted_memory().as_usize();
     let mut mempool = Mempool::new(PolicyConfig {
         mempool_capacity: MempoolCapacity::new(package_usage),
-        legacy_vsize_trim_limit: TransactionVirtualSize::new(300_000_000),
         ..PolicyConfig::default()
     });
     submit(&mut mempool, &snapshot, low_fee_parent).expect("parent admission");
