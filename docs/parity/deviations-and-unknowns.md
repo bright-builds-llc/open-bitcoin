@@ -19,6 +19,9 @@ differences from Bitcoin Knots `29.3.knots20260210`:
 - `mig-managed-wallet-backup-format`: Open Bitcoin exports managed-wallet
   backups as repo-owned JSON and does not copy or rewrite external
   `wallet.dat` files.
+- `mempool-eviction-txid-tie-break`: Open Bitcoin keeps descendant-score then
+  txid tie-break for pressure victim selection; Knots may also consult
+  modified-fee / entry-time multi-index ordering for equal-score packages.
 
 See [`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md)
 for the evidence matrix behind those differences.

@@ -51,6 +51,23 @@
         "level": "warn",
         "text": "Managed-wallet backup export is Open Bitcoin-owned JSON, not a Core-compatible wallet.dat copy or rewrite flow."
       }
+    },
+    {
+      "id": "mempool-eviction-txid-tie-break",
+      "surfaces": [
+        "mempool",
+        "policy"
+      ],
+      "summary": "Open Bitcoin pressure eviction selects the lowest descendant-score package and breaks ties by txid. Knots may also consult modified-fee / entry-time multi-index ordering for equal-score packages.",
+      "evidence": [
+        "docs/parity/catalog/mempool-policy.md",
+        "packages/open-bitcoin-mempool/src/pool.rs",
+        "packages/open-bitcoin-mempool/src/types.rs"
+      ],
+      "migration_notice": {
+        "level": "info",
+        "text": "Equal-score mempool pressure eviction order may differ from Knots when modified-fee or entry-time indexes would reorder victims; Open Bitcoin intentionally keeps descendant-score plus txid tie-break."
+      }
     }
   ],
   "catalog": {
@@ -838,7 +855,7 @@
         ],
         "rationale": "Admission, replacement, accounting, eviction, and policy deviations are verified and cataloged for the current surface.",
         "known_gaps": [
-          "Package relay, rolling minimum-fee decay, reorg-driven repair, and operator-facing mempool interfaces remain follow-up surfaces."
+          "Package relay, reorg-driven repair beyond current reconsideration, and broader operator-facing mempool interfaces remain follow-up surfaces; Phase 131 owns accounted trim and live rolling bump/decay."
         ],
         "suspected_unknowns": [
           "How closely long-lived mempool pressure and package-relay behavior should mirror Knots once runtime state grows."
@@ -3063,7 +3080,7 @@
           ".planning/phases/130-resource-time-and-fee-primitives/130-10-SUMMARY.md",
           ".planning/phases/130-resource-time-and-fee-primitives/130-11-SUMMARY.md"
         ],
-        "rationale": "Phase 130 uniquely owns FEEP-01 through FEEP-05 with distinct resource newtypes, a version-1 Rust-owned accounted-memory formula intentionally different from C++ allocator estimates, four fee roles with derived effective admission, typed acceptance/origin/relay metadata, explicit operation contexts, MempoolLifecycleDelta committed-fact vocabulary, injected retry jitter/time inputs, and Knots-compatible getmempoolinfo bytes/usage/maxmempool/mempoolminfee mappings plus Open Bitcoin extensions. Later phases own accounted enforcement (131), package execution (132), complete cross-cache projection (134), full snapshot schema (135), and retry scheduling/receipts (136).",
+        "rationale": "Phase 130 uniquely owns FEEP-01 through FEEP-05 with distinct resource newtypes, a version-1 Rust-owned accounted-memory formula intentionally different from C++ allocator estimates, four fee roles with derived effective admission, typed acceptance/origin/relay metadata, explicit operation contexts, MempoolLifecycleDelta committed-fact vocabulary, injected retry jitter/time inputs, and Knots-compatible getmempoolinfo bytes/usage/maxmempool/mempoolminfee mappings plus Open Bitcoin extensions. Phase 131 activates accounted-memory enforcement and live rolling bump/decay/expiry; later phases own package execution (132), complete cross-cache projection (134), full snapshot schema (135), and retry scheduling/receipts (136).",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/txmempool.h",
@@ -3084,7 +3101,7 @@
           ]
         },
         "known_gaps": [
-          "Phase 131 owns accounted-memory enforcement, rolling-fee bump/decay mechanics, and parity tolerances.",
+          "Phase 131 completes accounted-memory enforcement, live rolling-fee bump/decay, expiry, and hermetic PRESS oracle/perf coverage; Phase 138 owns adversarial soak.",
           "Phase 132 owns package execution and pinned package-policy exceptions beyond fee-role vocabulary.",
           "Phase 134 owns complete cross-cache projection of lifecycle deltas.",
           "Phase 135 owns full snapshot/checkpoint/recovery schema evolution.",
@@ -3092,7 +3109,7 @@
           "Phase 130 does not claim general package wire relay, whole-mempool rebroadcast, public/default relay, guaranteed propagation, public-network default CI, production readiness, or production-funds wallet use."
         ],
         "suspected_unknowns": [
-          "Accounted-memory parity tolerance against the Phase 130 ledger remains a Phase 131 planning decision."
+          "Phase 138 adversarial soak may still expose pressure edge cases beyond hermetic Phase 131 oracles."
         ]
       }
     ]
