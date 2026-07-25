@@ -55,7 +55,10 @@ pub use resource::{
     MempoolResourceLedger, ResourceAccountingError, TransactionVirtualSize,
     accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
 };
-pub use types::{AdmissionResult, AggregateStats, MempoolEntry, PolicyConfig, RbfPolicy};
+pub use types::{
+    AdmissionResult, AggregateStats, DEFAULT_MEMPOOL_EXPIRY_HOURS, MempoolEntry, PolicyConfig,
+    RbfPolicy,
+};
 
 /// Synthetic height used for in-mempool parents.
 pub const MEMPOOL_HEIGHT: u32 = 0x7fff_ffff;

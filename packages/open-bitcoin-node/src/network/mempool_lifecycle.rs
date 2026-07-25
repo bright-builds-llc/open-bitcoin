@@ -169,6 +169,29 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(ManagedMempoolBlockLifecycle { context, delta })
     }
 
+    /// Expires aged mempool entries using shell-injected `PolicyTime` (PRESS-04 / D-12).
+    pub fn expire_mempool(
+        &mut self,
+        now: PolicyTime,
+    ) -> Result<MempoolLifecycleDelta, ManagedNetworkError> {
+        let delta = self.mempool.mempool_mut().expire(now)?;
+        for removal in &delta.removed {
+            let is_absent = delta.final_membership.iter().any(|state| {
+                state.member == removal.member && state.membership == FinalMempoolMembership::Absent
+            });
+            if !is_absent {
+                continue;
+            }
+            self.peer_manager
+                .on_mempool_transaction_removed(&removal.member.wtxid);
+            self.remove_stored_transactions_with_status(
+                &[removal.member.txid],
+                serving_status_for_removal(removal.cause),
+            )?;
+        }
+        Ok(delta)
+    }
+
     pub(super) fn apply_reorg_mempool_lifecycle(
         &mut self,
         disconnect_blocks: &[Block],

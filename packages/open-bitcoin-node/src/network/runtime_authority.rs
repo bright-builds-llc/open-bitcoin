@@ -13,7 +13,9 @@ use open_bitcoin_core::{
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
     primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction, Txid},
 };
-use open_bitcoin_mempool::{PolicyConfig, RelayIntent, ReorgLifecycleContext};
+use open_bitcoin_mempool::{
+    MempoolLifecycleDelta, PolicyConfig, PolicyTime, RelayIntent, ReorgLifecycleContext,
+};
 use open_bitcoin_network::{
     BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
     InboundAdmissionPolicy, InboundAdmissionRequest, InboundResourceEvent,
@@ -505,6 +507,14 @@ impl ManagedNetworkHandle {
                 relay_intent,
             )
         })
+    }
+
+    /// Expires aged mempool entries through the sole mutation authority (PRESS-04 / D-12).
+    pub fn expire_mempool(
+        &self,
+        now: PolicyTime,
+    ) -> Result<MempoolLifecycleDelta, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| network.expire_mempool(now))
     }
 
     /// Reads canonical entry metadata for an accepted mempool transaction.

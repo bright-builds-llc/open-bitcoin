@@ -1,13 +1,16 @@
 // Parity breadcrumbs:
-// - packages/bitcoin-knots/src/txmempool.h
-// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/doc/policy/packages.md
+// - packages/bitcoin-knots/src/kernel/mempool_options.h
+// - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
+// - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/policy/policy.h
 // - packages/bitcoin-knots/src/policy/rbf.cpp
-// - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
-// - packages/bitcoin-knots/doc/policy/packages.md
+// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/txmempool.h
 
 mod context_cases;
+mod expiry_cases;
 mod fee_cases;
 #[allow(deprecated)] // Compatibility summary regressions remain until Plan 130-07.
 mod lifecycle_cases;

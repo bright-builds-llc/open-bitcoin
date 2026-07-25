@@ -589,8 +589,10 @@
         "packages/open-bitcoin-mempool/src/policy/output.rs",
         "packages/open-bitcoin-mempool/src/pool.rs",
         "packages/open-bitcoin-mempool/src/pool/admission_outcome.rs",
+        "packages/open-bitcoin-mempool/src/pool/expiry.rs",
         "packages/open-bitcoin-mempool/src/pool/pressure.rs",
         "packages/open-bitcoin-mempool/src/pool/tests.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/expiry_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/outcome_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/pressure_cases.rs",
@@ -599,13 +601,15 @@
         "packages/open-bitcoin-mempool/tests/parity.rs"
       ],
       "breadcrumbs": [
-        "packages/bitcoin-knots/src/txmempool.h",
-        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/doc/policy/packages.md",
+        "packages/bitcoin-knots/src/kernel/mempool_options.h",
+        "packages/bitcoin-knots/src/kernel/mempool_removal_reason.h",
+        "packages/bitcoin-knots/src/policy/packages.cpp",
         "packages/bitcoin-knots/src/policy/policy.h",
         "packages/bitcoin-knots/src/policy/rbf.cpp",
-        "packages/bitcoin-knots/src/policy/packages.cpp",
         "packages/bitcoin-knots/src/rpc/mempool.cpp",
-        "packages/bitcoin-knots/doc/policy/packages.md"
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/txmempool.h"
       ]
     },
     {

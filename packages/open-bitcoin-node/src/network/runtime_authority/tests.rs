@@ -8,7 +8,7 @@ use open_bitcoin_core::{
         TransactionOutput, Txid,
     },
 };
-use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig, RelayIntent};
+use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig, PolicyTime, RelayIntent};
 use open_bitcoin_network::LocalPeerConfig;
 
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
@@ -111,4 +111,19 @@ fn explicit_local_admission_flows_through_the_shared_authority() {
 
     // Assert
     assert!(matches!(outcome, MempoolOutcome::Orphaned { .. }));
+}
+
+#[test]
+fn expire_mempool_flows_through_the_shared_authority() {
+    // Arrange — empty authority; membership/serving age fixtures live in
+    // mempool_lifecycle_cases (`expire_mempool_authority_hook_removes_aged_entry`).
+    let handle = test_handle();
+
+    // Act
+    let delta = handle
+        .expire_mempool(PolicyTime::new(1_000))
+        .expect("expire through authority");
+
+    // Assert
+    assert!(delta.is_empty());
 }

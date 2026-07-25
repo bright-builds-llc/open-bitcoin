@@ -1,11 +1,13 @@
 // Parity breadcrumbs:
-// - packages/bitcoin-knots/src/txmempool.h
-// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/doc/policy/packages.md
+// - packages/bitcoin-knots/src/kernel/mempool_options.h
+// - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
+// - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/policy/policy.h
 // - packages/bitcoin-knots/src/policy/rbf.cpp
-// - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
-// - packages/bitcoin-knots/doc/policy/packages.md
+// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/txmempool.h
 
 use open_bitcoin_consensus::{ScriptPubKeyType, classify_script_pubkey};
 use open_bitcoin_primitives::TransactionOutput;
