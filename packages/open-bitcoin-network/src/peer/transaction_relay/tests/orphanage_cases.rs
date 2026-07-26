@@ -541,6 +541,28 @@ fn retained_byte_budget_rejects_late_announcer_state_growth() {
 }
 
 #[test]
+fn late_announcer_respects_per_peer_orphan_cap() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(10, 1, 120, 10));
+    let first_wtxid = wtxid(107);
+    let second_wtxid = wtxid(109);
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 106, 107, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 2, orphan_input(2, 108, 109, [8], 0));
+
+    // Act
+    let first_added = orphanage.add_announcer(first_wtxid, 3);
+    let second_added = orphanage.add_announcer(second_wtxid, 3);
+
+    // Assert
+    assert!(first_added);
+    assert!(!second_added);
+    assert_eq!(orphanage.peer_len(3), 1);
+    assert!(orphanage.contains(first_wtxid));
+    assert!(orphanage.contains(second_wtxid));
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
 fn late_announcer_missing_body_is_noop_and_existing_body_does_not_refresh_ttl() {
     // Arrange
     let mut orphanage = TxOrphanage::new(OrphanPolicy {

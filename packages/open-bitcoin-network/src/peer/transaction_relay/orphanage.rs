@@ -303,6 +303,9 @@ impl TxOrphanage {
     }
 
     pub fn add_announcer(&mut self, wtxid: Wtxid, peer_id: PeerId) -> bool {
+        if self.peer_len(peer_id) >= self.policy.max_orphans_per_peer {
+            return false;
+        }
         if self
             .retained_bytes()
             .saturating_add(std::mem::size_of::<PeerId>())
