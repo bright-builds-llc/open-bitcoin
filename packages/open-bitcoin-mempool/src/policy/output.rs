@@ -16,7 +16,7 @@
 use open_bitcoin_consensus::{ScriptPubKeyType, classify_script_pubkey};
 use open_bitcoin_primitives::TransactionOutput;
 
-use crate::{DustRelayFeeRate, MempoolError, PolicyConfig};
+use crate::{DustRelayFeeRate, EphemeralPolicy, MempoolError, PolicyConfig};
 
 pub fn dust_threshold_sats(output: &TransactionOutput) -> i64 {
     dust_threshold_sats_at_rate(output, DustRelayFeeRate::default())
@@ -41,6 +41,33 @@ pub fn dust_threshold_sats_at_rate(
     dust_relay_fee_rate
         .fee_rate()
         .fee_for_virtual_size(crate::TransactionVirtualSize::new(spend_virtual_size))
+}
+
+pub(crate) fn is_dust_output(
+    output: &TransactionOutput,
+    dust_relay_fee_rate: DustRelayFeeRate,
+) -> bool {
+    output.value.to_sats() < dust_threshold_sats_at_rate(output, dust_relay_fee_rate)
+}
+
+pub(crate) fn is_permitted_ephemeral_dust(
+    output: &TransactionOutput,
+    permissions: EphemeralPolicy,
+    dust_relay_fee_rate: DustRelayFeeRate,
+) -> bool {
+    if !is_dust_output(output, dust_relay_fee_rate) {
+        return false;
+    }
+    let is_anchor = matches!(
+        classify_script_pubkey(&output.script_pubkey),
+        ScriptPubKeyType::PayToAnchor
+    );
+    let form_is_permitted = if is_anchor {
+        permissions.anchor
+    } else {
+        permissions.send
+    };
+    form_is_permitted && (output.value.to_sats() == 0 || permissions.dust)
 }
 
 pub(super) fn validate_standard_output(

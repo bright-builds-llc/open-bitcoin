@@ -223,6 +223,10 @@ pub enum HardMemberFailure {
         requested: MempoolMemberIdentity,
         reason: String,
     },
+    EphemeralPolicy {
+        requested: MempoolMemberIdentity,
+        reason: String,
+    },
     PackageReplacement {
         requested: MempoolMemberIdentity,
         reason: String,
@@ -284,6 +288,7 @@ impl PackageMemberResult {
             Self::HardRejected(
                 HardMemberFailure::Policy { requested, .. }
                 | HardMemberFailure::TrucPolicy { requested, .. }
+                | HardMemberFailure::EphemeralPolicy { requested, .. }
                 | HardMemberFailure::PackageReplacement { requested, .. },
             ) => *requested,
             Self::Reconsiderable(

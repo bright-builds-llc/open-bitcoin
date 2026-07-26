@@ -16,6 +16,7 @@ use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_primitives::Transaction;
 
+use crate::policy::ephemeral::{EphemeralPolicyError, validate_ephemeral_spends};
 use crate::policy::truc::{TrucPolicyError, evaluate_truc_package};
 use crate::{
     AdmissionContext, DryRunPackageCommand, DryRunPackageResult, EffectiveFeeGroup,
@@ -323,6 +324,17 @@ fn evaluate_singleton<'base>(
     if let Err(error) = next.validate_candidate_limits(identity.txid) {
         return Ok(SingletonEvaluation::Hard(hard_failure(identity, error)));
     }
+    let config = next.policy_config();
+    if let Err(error) = validate_ephemeral_spends(
+        &next,
+        std::slice::from_ref(&prepared),
+        config.ephemeral_policy,
+        config.dust_relay_fee_rate,
+    ) {
+        return Ok(SingletonEvaluation::Hard(ephemeral_failure(
+            identity, error,
+        )));
+    }
     if let Err(error) = run_late_script_checks(&prepared, verify_flags) {
         return Ok(SingletonEvaluation::Hard(hard_failure(identity, error)));
     }
@@ -502,6 +514,16 @@ fn hard_failure(identity: MempoolMemberIdentity, error: MempoolError) -> Package
 
 fn truc_failure(identity: MempoolMemberIdentity, error: TrucPolicyError) -> PackageMemberResult {
     PackageMemberResult::HardRejected(HardMemberFailure::TrucPolicy {
+        requested: identity,
+        reason: error.to_string(),
+    })
+}
+
+fn ephemeral_failure(
+    identity: MempoolMemberIdentity,
+    error: EphemeralPolicyError,
+) -> PackageMemberResult {
+    PackageMemberResult::HardRejected(HardMemberFailure::EphemeralPolicy {
         requested: identity,
         reason: error.to_string(),
     })

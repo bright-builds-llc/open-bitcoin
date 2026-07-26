@@ -13,6 +13,7 @@
 // - packages/bitcoin-knots/src/txmempool.h
 // - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 
+pub(crate) mod ephemeral;
 mod output;
 pub(crate) mod replacement;
 pub(crate) mod truc;

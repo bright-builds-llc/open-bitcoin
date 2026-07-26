@@ -11,6 +11,7 @@ use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
+use crate::policy::ephemeral::validate_ephemeral_spends;
 use crate::policy::replacement::{MempoolView, evaluate_limited_package_replacement_with_intent};
 use crate::policy::truc::evaluate_truc_package;
 use crate::{
@@ -216,6 +217,24 @@ pub(super) fn evaluate(
             remove_individual_groups(groups, indices, individual_group_ids);
             return Ok(());
         }
+    }
+
+    let config = working.policy_config();
+    if let Err(error) = validate_ephemeral_spends(
+        &working,
+        &prepared_candidates,
+        config.ephemeral_policy,
+        config.dust_relay_fee_rate,
+    ) {
+        for (index, identity, _prepared) in &prepared_members {
+            results[*index] =
+                PackageMemberResult::HardRejected(HardMemberFailure::EphemeralPolicy {
+                    requested: *identity,
+                    reason: error.to_string(),
+                });
+        }
+        remove_individual_groups(groups, indices, individual_group_ids);
+        return Ok(());
     }
 
     for (_index, _identity, prepared) in &prepared_members {

@@ -64,6 +64,71 @@ fn p2sh_script() -> open_bitcoin_primitives::ScriptBuf {
     ])
 }
 
+fn ephemeral_parent(
+    confirmed_txid: Txid,
+    ordinary_value_sats: i64,
+) -> open_bitcoin_primitives::Transaction {
+    open_bitcoin_primitives::Transaction {
+        version: 3,
+        inputs: vec![TransactionInput {
+            previous_output: open_bitcoin_primitives::OutPoint {
+                txid: confirmed_txid,
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![
+            open_bitcoin_primitives::TransactionOutput {
+                value: Amount::from_sats(ordinary_value_sats).expect("valid ordinary value"),
+                script_pubkey: super::p2sh_script(),
+            },
+            open_bitcoin_primitives::TransactionOutput {
+                value: Amount::ZERO,
+                script_pubkey: p2a_script(),
+            },
+        ],
+        lock_time: 0,
+    }
+}
+
+fn ephemeral_child(
+    parent_txid: Txid,
+    spend_dust: bool,
+    output_value_sats: i64,
+) -> open_bitcoin_primitives::Transaction {
+    let mut inputs = vec![TransactionInput {
+        previous_output: open_bitcoin_primitives::OutPoint {
+            txid: parent_txid,
+            vout: 0,
+        },
+        script_sig: script(&[0x01, 0x51]),
+        sequence: TransactionInput::SEQUENCE_FINAL,
+        witness: ScriptWitness::default(),
+    }];
+    if spend_dust {
+        inputs.push(TransactionInput {
+            previous_output: open_bitcoin_primitives::OutPoint {
+                txid: parent_txid,
+                vout: 1,
+            },
+            script_sig: script(&[]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        });
+    }
+    open_bitcoin_primitives::Transaction {
+        version: 3,
+        inputs,
+        outputs: vec![open_bitcoin_primitives::TransactionOutput {
+            value: Amount::from_sats(output_value_sats).expect("valid child value"),
+            script_pubkey: super::p2sh_script(),
+        }],
+        lock_time: 0,
+    }
+}
+
 fn output_policy_result(
     script_pubkey: open_bitcoin_primitives::ScriptBuf,
     value_sats: i64,
@@ -202,6 +267,30 @@ fn pay_to_anchor_send_and_nonzero_dust_permissions_are_independent() {
         .to_string()
         .contains("nonzero")
     );
+}
+
+#[test]
+fn anchor_send_dust_permission_matrix_covers_forms_values_and_all_boolean_combinations() {
+    for anchor in [false, true] {
+        for send in [false, true] {
+            for dust in [false, true] {
+                // Arrange
+                let permissions = EphemeralPolicy { anchor, send, dust };
+
+                // Act
+                let anchor_zero = output_policy_result(p2a_script(), 0, permissions);
+                let anchor_nonzero = output_policy_result(p2a_script(), 1, permissions);
+                let ordinary_zero = output_policy_result(p2sh_script(), 0, permissions);
+                let ordinary_nonzero = output_policy_result(p2sh_script(), 1, permissions);
+
+                // Assert
+                assert_eq!(anchor_zero.is_ok(), anchor);
+                assert_eq!(anchor_nonzero.is_ok(), anchor && dust);
+                assert_eq!(ordinary_zero.is_ok(), send);
+                assert_eq!(ordinary_nonzero.is_ok(), send && dust);
+            }
+        }
+    }
 }
 
 #[test]
@@ -602,6 +691,221 @@ fn static_truc_rolling_limit_replacement_ephemeral_script_trim_order_is_objectiv
         ]
     );
     assert_eq!((scripts, trims), (1, 1), "trim_once_after_scripts");
+}
+
+#[test]
+fn ephemeral_rejection_runs_zero_scripts_and_rolls_back_dry_run_and_submit() {
+    // The pure policy matrix also covers nonzero base, nonzero modified fee, multiple dust
+    // outputs, and multiple parents before this package-engine integration probe.
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let parent = ephemeral_parent(coinbase_txids[0], 500_000_000);
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = ephemeral_child(parent_txid, false, 499_995_000);
+    let package =
+        WellFormedPackage::try_from(vec![parent.clone(), child.clone()]).expect("package");
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![parent, child]).expect("submission package"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let mut mempool = Mempool::new(PolicyConfig {
+        truc_policy: TrucPolicy::Enforce,
+        ..PolicyConfig::default()
+    });
+    mempool
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            1_000,
+        )))
+        .expect("rolling fee injection");
+    let before = mempool.complete_snapshot();
+    let verify_flags = ScriptVerifyFlags::P2SH
+        | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+        | ScriptVerifyFlags::CHECKSEQUENCEVERIFY;
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+
+    // Act
+    super::super::package_admission::reset_script_check_count_for_test();
+    let dry_run = mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("ephemeral dry-run rejection report");
+    assert_eq!(
+        super::super::package_admission::script_check_count_for_test(),
+        0
+    );
+    super::super::package_admission::reset_script_check_count_for_test();
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("ephemeral submission rejection report");
+
+    // Assert
+    assert_eq!(dry_run.report, submitted.report);
+    assert_eq!(
+        super::super::package_admission::script_check_count_for_test(),
+        0
+    );
+    assert!(submitted.delta.is_empty());
+    assert_eq!(mempool.complete_snapshot(), before);
+    assert!(submitted.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(crate::HardMemberFailure::EphemeralPolicy {
+            reason,
+            ..
+        }) if reason.contains("did not spend all parent ephemeral dust")
+    )));
+}
+
+#[test]
+fn ephemeral_success_calls_scripts_only_after_complete_dust_spending() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let parent = ephemeral_parent(coinbase_txids[0], 500_000_000);
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = ephemeral_child(parent_txid, true, 499_995_000);
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![parent, child]).expect("package"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let mut mempool = Mempool::new(PolicyConfig {
+        truc_policy: TrucPolicy::Enforce,
+        ..PolicyConfig::default()
+    });
+    mempool
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            1_000,
+        )))
+        .expect("rolling fee injection");
+
+    // Act
+    super::super::package_admission::reset_script_check_count_for_test();
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("complete ephemeral sweep");
+
+    // Assert
+    assert_eq!(
+        super::super::package_admission::script_check_count_for_test(),
+        2,
+        "{:?}",
+        submitted.report.members()
+    );
+    assert_eq!(
+        submitted.delta.admitted.len(),
+        2,
+        "{:?}",
+        submitted.report.members()
+    );
+    assert!(
+        submitted
+            .report
+            .members()
+            .iter()
+            .all(|member| matches!(member, PackageMemberResult::FinallyPresent(_)))
+    );
+}
+
+#[test]
+fn in_mempool_dust_parent_requires_complete_spend_before_ephemeral_script_stage() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let parent = ephemeral_parent(coinbase_txids[0], 500_000_000);
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let parent_submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![parent]).expect("parent package"),
+        &snapshot,
+    )
+    .expect("parent submission refinement");
+    let child = ephemeral_child(parent_txid, false, 499_995_000);
+    let child_submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![child]).expect("child package"),
+        &snapshot,
+    )
+    .expect("child submission refinement");
+    let mut mempool = Mempool::new(PolicyConfig {
+        truc_policy: TrucPolicy::Enforce,
+        ..PolicyConfig::default()
+    });
+    let verify_flags = ScriptVerifyFlags::P2SH
+        | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+        | ScriptVerifyFlags::CHECKSEQUENCEVERIFY;
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+    let parent_result = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: parent_submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("zero-fee dusty parent");
+    assert_eq!(parent_result.delta.admitted.len(), 1);
+    let before_child = mempool.complete_snapshot();
+
+    // Act
+    super::super::package_admission::reset_script_check_count_for_test();
+    let child_result = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: child_submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("in-mempool ephemeral rejection report");
+
+    // Assert
+    assert_eq!(
+        super::super::package_admission::script_check_count_for_test(),
+        0
+    );
+    assert!(child_result.delta.is_empty());
+    assert_eq!(mempool.complete_snapshot(), before_child);
+    assert!(matches!(
+        child_result.report.members(),
+        [PackageMemberResult::HardRejected(
+            crate::HardMemberFailure::EphemeralPolicy { .. }
+        )]
+    ));
 }
 
 #[test]

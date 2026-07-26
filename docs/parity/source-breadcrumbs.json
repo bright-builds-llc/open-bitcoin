@@ -651,6 +651,21 @@
       ]
     },
     {
+      "label": "mempool-ephemeral-spend-policy",
+      "files": [
+        "packages/open-bitcoin-mempool/src/policy/ephemeral.rs",
+        "packages/open-bitcoin-mempool/src/policy/ephemeral/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/policy/ephemeral_policy.h",
+        "packages/bitcoin-knots/src/policy/ephemeral_policy.cpp",
+        "packages/bitcoin-knots/src/policy/policy.h",
+        "packages/bitcoin-knots/src/policy/policy.cpp",
+        "packages/bitcoin-knots/src/test/txvalidation_tests.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py"
+      ]
+    },
+    {
       "label": "mempool-package-report",
       "files": [
         "packages/open-bitcoin-mempool/src/package/report.rs"
