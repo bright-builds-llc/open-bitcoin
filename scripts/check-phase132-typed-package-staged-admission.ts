@@ -68,16 +68,18 @@ export const PHASE132_TARGET_FILES = [
   "scripts/verify.sh",
 ] as const;
 
-const NO_CLAIM_MARKERS = [
-  "does not",
-  "do not",
-  "not ",
-  "without",
-  "outside",
-  "deferred",
-  "unsupported",
-  "no claim",
-] as const;
+const NEGATED_BOUNDARY_VERB =
+  /\b(?:does|do)\s+not\s+(?:add|claim|enable|expose|implement|include|provide|ship|support)\b/;
+const WITHOUT_BOUNDARY_VERB =
+  /\bwithout\s+(?:adding|claiming|enabling|exposing|implementing|including|providing|shipping|supporting)\b/;
+const DEFERRED_BOUNDARY_PREDICATE =
+  /\b(?:is|are|remain|remains)\s+(?:currently\s+)?(?:deferred|unsupported)\b/;
+const NEGATED_SUPPORT_BOUNDARY_PREDICATE =
+  /\b(?:is|are)\s+not\s+(?:available|enabled|implemented|included|provided|supported)\b/;
+const OUTSIDE_SCOPE_BOUNDARY_PREDICATE =
+  /\b(?:is|are|remain|remains)\s+outside\b[^.!?;—|]*\bscope\b/;
+const PREFIXED_DEFERRED_BOUNDARY =
+  /\b(?:currently\s+)?(?:deferred|unsupported)\s+(?:the\s+)?$/;
 
 export function checkPhase132TypedPackageStagedAdmission(
   maybeRepoRoot?: string,
@@ -653,7 +655,7 @@ function checkNarrowClaims(repoRoot: string, failures: string[]): void {
         const lower = clause.toLowerCase();
         for (const claim of forbiddenClaims) {
           if (!lower.includes(claim)) continue;
-          if (NO_CLAIM_MARKERS.some((marker) => lower.includes(marker))) {
+          if (hasExplicitClaimBoundary(lower, claim)) {
             continue;
           }
           failures.push(
@@ -676,6 +678,22 @@ function checkNarrowClaims(repoRoot: string, failures: string[]): void {
       );
     }
   }
+}
+
+function hasExplicitClaimBoundary(clause: string, claim: string): boolean {
+  const claimIndex = clause.indexOf(claim);
+  if (claimIndex === -1) return false;
+
+  const before = clause.slice(0, claimIndex);
+  const after = clause.slice(claimIndex + claim.length);
+  return (
+    NEGATED_BOUNDARY_VERB.test(before) ||
+    WITHOUT_BOUNDARY_VERB.test(before) ||
+    PREFIXED_DEFERRED_BOUNDARY.test(before) ||
+    DEFERRED_BOUNDARY_PREDICATE.test(after) ||
+    NEGATED_SUPPORT_BOUNDARY_PREDICATE.test(after) ||
+    OUTSIDE_SCOPE_BOUNDARY_PREDICATE.test(after)
+  );
 }
 
 function claimClauses(paragraph: string): string[] {

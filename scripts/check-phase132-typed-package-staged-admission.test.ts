@@ -259,6 +259,30 @@ test.each([
     ),
   ],
   [
+    "narrow claim with not deferred double negation",
+    "P132 claims: bounded local admission must not become a general package-wire or production claim",
+    append(
+      "README.md",
+      "\nGeneral package wire support is not deferred.\n",
+    ),
+  ],
+  [
+    "narrow claim with not unsupported double negation",
+    "P132 claims: bounded local admission must not become a general package-wire or production claim",
+    append(
+      "README.md",
+      "\nGeneral package wire support is not unsupported.\n",
+    ),
+  ],
+  [
+    "narrow claim with without deferring double negation",
+    "P132 claims: bounded local admission must not become a general package-wire or production claim",
+    append(
+      "README.md",
+      "\nGeneral package wire support is shipping without deferring it.\n",
+    ),
+  ],
+  [
     "verifier run step",
     "P132 verifier: checker test/run must follow Phase 131 and precede Phase 117 in both surfaces",
     replace(
@@ -276,6 +300,23 @@ test.each([
 
   // Assert
   expect(failures).toContain(expectedFailure);
+});
+
+test.each([
+  "General package wire support remains deferred.",
+  "Phase 132 does not add general package wire support.",
+  "General package wire support is not supported.",
+  "General package wire support remains outside this phase's scope.",
+  "The currently deferred general package wire boundary remains unchanged.",
+])("accepts explicit local boundary wording: %s", (boundary) => {
+  // Arrange
+  const root = createFixture(append("README.md", `\n${boundary}\n`));
+
+  // Act
+  const failures = checkPhase132TypedPackageStagedAdmission(root);
+
+  // Assert
+  expect(failures).toEqual([]);
 });
 
 function createFixture(maybeMutate?: Mutator): string {
