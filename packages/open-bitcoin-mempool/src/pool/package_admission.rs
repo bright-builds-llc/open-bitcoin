@@ -6,6 +6,7 @@
 //! Individual-first package evaluation and the dry-run/submit capability boundary.
 
 mod finalization;
+mod residual;
 #[cfg(test)]
 mod test_support;
 
@@ -27,6 +28,8 @@ use super::candidate::{PreparedCandidate, check_candidate_scripts, prepare_candi
 use super::prospective::ProspectiveMempool;
 use super::{Mempool, MempoolPatch, pressure::trim_prospective_to_capacity};
 use finalization::lifecycle_delta;
+#[cfg(test)]
+pub(super) use residual::force_duplicate_transition_entry_for_test;
 #[cfg(test)]
 pub(super) use test_support::{
     PackagePolicyStage, package_policy_probe_for_test, package_trim_count_for_test,
@@ -174,7 +177,7 @@ fn evaluate_package(
     }
 
     if !skip_residual && !reconsiderable_indices.is_empty() {
-        evaluate_residual(
+        residual::evaluate(
             &mut prospective,
             &request_members,
             &reconsiderable_indices,
@@ -260,6 +263,17 @@ fn evaluate_singleton<'base>(
         }
     };
 
+    if residual::has_direct_conflict(prospective, &prepared)? {
+        return Ok(SingletonEvaluation::Reconsiderable {
+            result: PackageMemberResult::Reconsiderable(
+                ReconsiderableMemberFailure::PackageReplacement {
+                    requested: identity,
+                },
+            ),
+            maybe_group: Some(group),
+        });
+    }
+
     let mut next = prospective.clone();
     next.stage_candidate(prepared.clone())?;
     if let Err(error) = next.validate_candidate_limits(identity.txid) {
@@ -276,100 +290,6 @@ fn evaluate_singleton<'base>(
         }),
         group,
     })
-}
-
-#[allow(clippy::too_many_arguments)]
-fn evaluate_residual(
-    prospective: &mut ProspectiveMempool<'_>,
-    request_members: &[(MempoolMemberIdentity, &Transaction)],
-    indices: &[usize],
-    results: &mut [PackageMemberResult],
-    groups: &mut BTreeMap<EffectiveFeeGroupId, EffectiveFeeGroup>,
-    individual_group_ids: &[Option<EffectiveFeeGroupId>],
-    context: AdmissionContext,
-    chainstate: &ChainstateSnapshot,
-    verify_flags: ScriptVerifyFlags,
-    consensus_params: ConsensusParams,
-) -> Result<(), MempoolError> {
-    let mut working = prospective.clone();
-    let mut prepared_members = Vec::with_capacity(indices.len());
-    for index in indices {
-        let (identity, transaction) = request_members[*index];
-        let prepared = match prepare_candidate(
-            &working,
-            transaction.clone(),
-            chainstate,
-            consensus_params,
-            context,
-        ) {
-            Ok(prepared) => prepared,
-            Err(MempoolError::MissingInput { .. }) => {
-                results[*index] = PackageMemberResult::Reconsiderable(
-                    ReconsiderableMemberFailure::MissingInputs {
-                        requested: identity,
-                    },
-                );
-                return Ok(());
-            }
-            Err(error) => {
-                results[*index] = hard_failure(identity, error);
-                return Ok(());
-            }
-        };
-        working.stage_candidate(prepared.clone())?;
-        if let Err(error) = working.validate_candidate_limits(identity.txid) {
-            results[*index] = hard_failure(identity, error);
-            return Ok(());
-        }
-        prepared_members.push((*index, identity, prepared));
-    }
-
-    let residual_group_id = group_id(indices[0]);
-    let group = match fee_group(
-        &working,
-        residual_group_id,
-        prepared_members
-            .iter()
-            .map(|(_index, identity, prepared)| (prepared, *identity)),
-    )? {
-        FeeGroupDecision::Accepted(group) => group,
-        FeeGroupDecision::Reconsiderable(group) => {
-            for (index, identity, _prepared) in &prepared_members {
-                results[*index] =
-                    PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::PackageFee {
-                        requested: *identity,
-                        effective_fee_group_id: group.id(),
-                    });
-            }
-            remove_individual_groups(groups, indices, individual_group_ids);
-            groups.insert(group.id(), group);
-            return Ok(());
-        }
-        FeeGroupDecision::Hard(error) => {
-            for (index, identity, _prepared) in &prepared_members {
-                results[*index] = hard_failure(*identity, error.clone());
-            }
-            remove_individual_groups(groups, indices, individual_group_ids);
-            return Ok(());
-        }
-    };
-
-    for (index, identity, prepared) in &prepared_members {
-        if let Err(error) = run_late_script_checks(prepared, verify_flags) {
-            results[*index] = hard_failure(*identity, error);
-            return Ok(());
-        }
-    }
-    for (index, identity, _prepared) in &prepared_members {
-        results[*index] = PackageMemberResult::FinallyPresent(NewlyPresent {
-            requested: *identity,
-            effective_fee_group_id: group.id(),
-        });
-    }
-    remove_individual_groups(groups, indices, individual_group_ids);
-    groups.insert(group.id(), group);
-    *prospective = working;
-    Ok(())
 }
 
 fn remove_individual_groups(

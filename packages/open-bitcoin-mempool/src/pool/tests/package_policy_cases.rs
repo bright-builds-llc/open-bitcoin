@@ -12,14 +12,14 @@ use open_bitcoin_primitives::{Amount, ScriptWitness, TransactionInput, Txid, Wtx
 
 use crate::{
     AdmissionContext, CandidateFees, DryRunPackageCommand, EffectiveFeeGroupId, FeeRate,
-    IncrementalRelayFeeRate, Mempool, MempoolCapacity, MempoolMemberIdentity, PackageFeeError,
-    PackageFeeMember, PackageMemberResult, PolicyConfig, PriorMemberSuccess,
-    ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate, SubmissionPackage,
-    SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
+    IncrementalRelayFeeRate, Mempool, MempoolCapacity, MempoolMemberIdentity, MempoolRemovalCause,
+    MempoolRemovalRole, PackageFeeError, PackageFeeMember, PackageMemberResult, PolicyConfig,
+    PriorMemberSuccess, ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate,
+    SubmissionPackage, SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
     evaluate_package_fee_group,
 };
 
-use super::{sample_chainstate_snapshot, spend_transaction, submit};
+use super::{sample_chainstate_snapshot, script, spend_transaction, submit};
 
 fn identity(byte: u8) -> MempoolMemberIdentity {
     MempoolMemberIdentity {
@@ -521,4 +521,334 @@ fn exact_existing_and_alias_targets_use_actual_identity_after_trim() {
             assert_ne!(submitted.delta.removed[0].member.wtxid, requested_wtxid);
         }
     }
+}
+
+fn package_rbf_transactions(
+    confirmed_txid: Txid,
+) -> (
+    open_bitcoin_primitives::Transaction,
+    open_bitcoin_primitives::Transaction,
+    open_bitcoin_primitives::Transaction,
+    open_bitcoin_primitives::Transaction,
+) {
+    let original_parent = spend_transaction(
+        confirmed_txid,
+        0,
+        499_999_000,
+        TransactionInput::MAX_SEQUENCE_NONFINAL - 1,
+    );
+    let original_parent_txid = transaction_txid(&original_parent).expect("original parent txid");
+    let original_child = spend_transaction(
+        original_parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let replacement_parent = spend_transaction(
+        confirmed_txid,
+        0,
+        499_996_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let replacement_parent_txid =
+        transaction_txid(&replacement_parent).expect("replacement parent txid");
+    let replacement_child = spend_transaction(
+        replacement_parent_txid,
+        0,
+        499_990_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    (
+        original_parent,
+        original_child,
+        replacement_parent,
+        replacement_child,
+    )
+}
+
+#[test]
+fn package_rbf_delta_is_atomic_and_dry_run_matches_submit() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let (original_parent, original_child, replacement_parent, replacement_child) =
+        package_rbf_transactions(coinbase_txids[0]);
+    let original_parent_txid = transaction_txid(&original_parent).expect("original parent txid");
+    let original_child_txid = transaction_txid(&original_child).expect("original child txid");
+    let replacement_parent_txid =
+        transaction_txid(&replacement_parent).expect("replacement parent txid");
+    let replacement_child_txid =
+        transaction_txid(&replacement_child).expect("replacement child txid");
+    let package =
+        WellFormedPackage::try_from(vec![replacement_parent.clone(), replacement_child.clone()])
+            .expect("well-formed replacement");
+    let submission = SubmissionPackage::try_from_package(package.clone(), &snapshot)
+        .expect("submission refinement");
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, original_parent).expect("original parent");
+    submit(&mut mempool, &snapshot, original_child).expect("original child");
+    let before_dry_run = mempool.complete_snapshot();
+    let verify_flags = ScriptVerifyFlags::P2SH
+        | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+        | ScriptVerifyFlags::CHECKSEQUENCEVERIFY;
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+
+    // Act
+    let dry_run = mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("replacement dry-run");
+    assert_eq!(mempool.complete_snapshot(), before_dry_run);
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("replacement submission");
+
+    // Assert
+    assert_eq!(dry_run.report, submitted.report);
+    assert_eq!(
+        submitted
+            .delta
+            .admitted
+            .iter()
+            .map(|member| member.txid)
+            .collect::<Vec<_>>(),
+        vec![replacement_parent_txid, replacement_child_txid]
+    );
+    assert_eq!(submitted.delta.removed.len(), 2);
+    assert!(submitted.delta.removed.iter().any(|removal| {
+        removal.member.txid == original_parent_txid
+            && removal.cause == MempoolRemovalCause::Replacement
+            && removal.role == MempoolRemovalRole::Direct
+    }));
+    assert!(submitted.delta.removed.iter().any(|removal| {
+        removal.member.txid == original_child_txid
+            && removal.cause == MempoolRemovalCause::Replacement
+            && removal.role == MempoolRemovalRole::Descendant
+    }));
+    assert!(!mempool.entries().contains_key(&original_parent_txid));
+    assert!(!mempool.entries().contains_key(&original_child_txid));
+    assert!(mempool.entries().contains_key(&replacement_parent_txid));
+    assert!(mempool.entries().contains_key(&replacement_child_txid));
+}
+
+#[test]
+fn package_rbf_replacement_rollback_preserves_complete_state() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let (original_parent, original_child, _replacement_parent, _replacement_child) =
+        package_rbf_transactions(coinbase_txids[0]);
+    let weak_parent = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_998_500,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let weak_parent_txid = transaction_txid(&weak_parent).expect("weak parent txid");
+    let weak_child = spend_transaction(
+        weak_parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![weak_parent, weak_child]).expect("well-formed package"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, original_parent).expect("original parent");
+    submit(&mut mempool, &snapshot, original_child).expect("original child");
+    let before = mempool.complete_snapshot();
+
+    // Act
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("policy rejection is reported");
+
+    // Assert
+    assert!(submitted.delta.is_empty());
+    assert!(submitted.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(crate::HardMemberFailure::PackageReplacement { .. })
+    )));
+    assert_eq!(mempool.complete_snapshot(), before);
+}
+
+#[test]
+fn package_rbf_replacement_rollback_after_staged_removals_on_script_failure() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let (original_parent, original_child, replacement_parent, mut replacement_child) =
+        package_rbf_transactions(coinbase_txids[0]);
+    replacement_child.inputs[0].script_sig = script(&[0x01, 0x52]);
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![replacement_parent, replacement_child])
+            .expect("well-formed package"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, original_parent).expect("original parent");
+    submit(&mut mempool, &snapshot, original_child).expect("original child");
+    let before = mempool.complete_snapshot();
+
+    // Act
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("script failure is reported");
+
+    // Assert
+    assert!(submitted.delta.is_empty());
+    assert!(submitted.report.members().iter().any(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(crate::HardMemberFailure::Policy { reason, .. })
+        if reason.contains("mandatory-script-verify-flag-failed")
+    )));
+    assert_eq!(mempool.complete_snapshot(), before);
+}
+
+#[test]
+fn package_rbf_replacement_trim_keeps_one_truthful_final_delta() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let (original_parent, original_child, replacement_parent, replacement_child) =
+        package_rbf_transactions(coinbase_txids[0]);
+    let original_txids = [
+        transaction_txid(&original_parent).expect("original parent txid"),
+        transaction_txid(&original_child).expect("original child txid"),
+    ];
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![replacement_parent, replacement_child])
+            .expect("well-formed package"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, original_parent).expect("original parent");
+    submit(&mut mempool, &snapshot, original_child).expect("original child");
+    super::super::package_admission::set_mempool_capacity_for_test(
+        &mut mempool,
+        MempoolCapacity::new(0),
+    );
+
+    // Act
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("replacement and trim");
+
+    // Assert
+    assert!(mempool.entries().is_empty());
+    assert!(submitted.delta.admitted.is_empty());
+    assert!(original_txids.iter().all(|txid| {
+        submitted.delta.removed.iter().any(|removal| {
+            removal.member.txid == *txid && removal.cause == MempoolRemovalCause::Replacement
+        })
+    }));
+    assert!(submitted.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::PostTrimAbsent(crate::PostTrimAbsence {
+            prior: PriorMemberSuccess::FinallyPresent { .. },
+            ..
+        })
+    )));
+}
+
+#[test]
+fn package_rbf_replacement_composition_failure_rolls_back() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let (original_parent, original_child, replacement_parent, replacement_child) =
+        package_rbf_transactions(coinbase_txids[0]);
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![replacement_parent, replacement_child])
+            .expect("well-formed package"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let mut mempool = Mempool::default();
+    submit(&mut mempool, &snapshot, original_parent).expect("original parent");
+    submit(&mut mempool, &snapshot, original_child).expect("original child");
+    let before = mempool.complete_snapshot();
+
+    // Act
+    super::super::package_admission::force_duplicate_transition_entry_for_test(true);
+    let result = mempool.submit_package(
+        SubmitPackageCommand {
+            package: submission,
+            context: AdmissionContext::legacy_unknown(),
+        },
+        &snapshot,
+        ScriptVerifyFlags::P2SH
+            | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+            | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+        ConsensusParams {
+            coinbase_maturity: 1,
+            ..ConsensusParams::default()
+        },
+    );
+    super::super::package_admission::force_duplicate_transition_entry_for_test(false);
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(crate::MempoolError::InternalInvariant { ref reason })
+        if reason.contains("duplicate txid")
+    ));
+    assert_eq!(mempool.complete_snapshot(), before);
 }

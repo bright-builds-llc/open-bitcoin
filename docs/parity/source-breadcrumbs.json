@@ -680,6 +680,7 @@
         "packages/open-bitcoin-mempool/src/pool/oracle.rs",
         "packages/open-bitcoin-mempool/src/pool/package_admission.rs",
         "packages/open-bitcoin-mempool/src/pool/package_admission/finalization.rs",
+        "packages/open-bitcoin-mempool/src/pool/package_admission/residual.rs",
         "packages/open-bitcoin-mempool/src/pool/package_admission/test_support.rs",
         "packages/open-bitcoin-mempool/src/pool/patch.rs",
         "packages/open-bitcoin-mempool/src/pool/patch/graph.rs",

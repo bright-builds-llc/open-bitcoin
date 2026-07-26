@@ -4,24 +4,19 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 //! Sparse overlay used to prepare one revision-bound mempool transition.
-
 mod limits;
-
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-
-use open_bitcoin_primitives::{OutPoint, Txid, Wtxid};
-
-use crate::fee::rolling::RollingFeeState;
-use crate::{
-    AggregateStats, MempoolEntry, MempoolError, MempoolLifecycleDelta, MempoolMemberIdentity,
-    MempoolRemovalCause, MempoolRemovalRole, MempoolResourceLedger,
-};
-
 use super::candidate::PreparedCandidate;
 use super::lifecycle::MempoolRemovalFact;
 use super::{
     Mempool, MempoolPatch, MempoolResourceDelta, TopologyUpdate, resource_invariant_error,
 };
+use crate::fee::rolling::RollingFeeState;
+use crate::{
+    AggregateStats, MempoolEntry, MempoolError, MempoolLifecycleDelta, MempoolMemberIdentity,
+    MempoolRemovalCause, MempoolRemovalRole, MempoolResourceLedger,
+};
+use open_bitcoin_primitives::{OutPoint, Txid, Wtxid};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 /// One checked sparse mutation that can be composed into a prospective view.
 #[derive(Debug, Clone)]
@@ -33,6 +28,13 @@ pub(super) struct SubDelta {
 impl SubDelta {
     pub(super) fn from_entries(
         entries: impl IntoIterator<Item = MempoolEntry>,
+    ) -> Result<Self, MempoolError> {
+        Self::transition(entries, BTreeMap::new())
+    }
+
+    pub(super) fn transition(
+        entries: impl IntoIterator<Item = MempoolEntry>,
+        removals: BTreeMap<MempoolMemberIdentity, MempoolRemovalFact>,
     ) -> Result<Self, MempoolError> {
         let mut entry_upserts = BTreeMap::new();
         let mut identities_by_wtxid = BTreeMap::<Wtxid, Txid>::new();
@@ -50,7 +52,7 @@ impl SubDelta {
         }
         Ok(Self {
             entry_upserts,
-            removals: BTreeMap::new(),
+            removals,
         })
     }
 
@@ -115,14 +117,12 @@ impl<'base> ProspectiveMempool<'base> {
             .filter(|txid| !self.is_removed_txid(*txid))
     }
 
-    #[allow(dead_code)] // Consumed by the package orchestration plan after this infrastructure lands.
     pub(super) fn stage_candidate(
         &mut self,
         candidate: PreparedCandidate,
     ) -> Result<SubDelta, MempoolError> {
         let sub_delta = SubDelta::from_entries([candidate.entry])?;
-        self.compose(sub_delta.clone())?;
-        Ok(sub_delta)
+        self.compose(sub_delta.clone()).map(|()| sub_delta)
     }
 
     pub(super) fn compose(&mut self, sub_delta: SubDelta) -> Result<(), MempoolError> {

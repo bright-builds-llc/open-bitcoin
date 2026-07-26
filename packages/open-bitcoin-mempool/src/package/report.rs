@@ -231,6 +231,9 @@ pub enum ReconsiderableMemberFailure {
     MissingInputs {
         requested: MempoolMemberIdentity,
     },
+    PackageReplacement {
+        requested: MempoolMemberIdentity,
+    },
     PackageFee {
         requested: MempoolMemberIdentity,
         effective_fee_group_id: EffectiveFeeGroupId,
@@ -278,9 +281,10 @@ impl PackageMemberResult {
                 HardMemberFailure::Policy { requested, .. }
                 | HardMemberFailure::PackageReplacement { requested, .. },
             ) => *requested,
-            Self::Reconsiderable(ReconsiderableMemberFailure::MissingInputs { requested }) => {
-                *requested
-            }
+            Self::Reconsiderable(
+                ReconsiderableMemberFailure::MissingInputs { requested }
+                | ReconsiderableMemberFailure::PackageReplacement { requested },
+            ) => *requested,
             Self::Reconsiderable(ReconsiderableMemberFailure::PackageFee { requested, .. }) => {
                 *requested
             }
@@ -305,7 +309,10 @@ impl PackageMemberResult {
             Self::AlreadyPresent(_)
             | Self::SameTxidDifferentWitness(_)
             | Self::HardRejected(_)
-            | Self::Reconsiderable(ReconsiderableMemberFailure::MissingInputs { .. })
+            | Self::Reconsiderable(
+                ReconsiderableMemberFailure::MissingInputs { .. }
+                | ReconsiderableMemberFailure::PackageReplacement { .. },
+            )
             | Self::PostTrimAbsent(PostTrimAbsence {
                 prior:
                     PriorMemberSuccess::AlreadyPresent

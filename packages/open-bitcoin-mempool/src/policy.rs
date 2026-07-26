@@ -10,7 +10,6 @@
 // - packages/bitcoin-knots/src/txmempool.h
 
 mod output;
-#[allow(dead_code)] // Wired into staged package admission by Plan 132-06 Task 2.
 pub(crate) mod replacement;
 
 use open_bitcoin_codec::{TransactionEncoding, encode_transaction};

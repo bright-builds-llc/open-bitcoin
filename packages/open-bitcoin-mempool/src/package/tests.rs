@@ -1036,14 +1036,19 @@ fn package_replacement_failure_preserves_requested_identity() {
         txid: Txid::from_byte_array([0x95; 32]),
         wtxid: Wtxid::from_byte_array([0x96; 32]),
     };
-    let result = PackageMemberResult::HardRejected(HardMemberFailure::PackageReplacement {
-        requested,
-        reason: "replacement policy".to_string(),
-    });
+    let results = [
+        PackageMemberResult::HardRejected(HardMemberFailure::PackageReplacement {
+            requested,
+            reason: "replacement policy".to_string(),
+        }),
+        PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::PackageReplacement {
+            requested,
+        }),
+    ];
 
     // Act
-    let actual = result.requested_identity();
+    let actual = results.map(|result| result.requested_identity());
 
     // Assert
-    assert_eq!(actual, requested);
+    assert_eq!(actual, [requested, requested]);
 }
