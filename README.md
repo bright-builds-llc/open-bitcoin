@@ -32,8 +32,8 @@ auditable, and modular.
 > integration links, and 11/11 end-to-end flows. v2.1 shipped and was archived
 > on 2026-07-22; see
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
-> General package wire relay, arbitrary multi-parent peer assembly, an RPC
-> package adapter, BIP37
+> Peer package assembly beyond that bounded 1P1C bridge, general package wire
+> relay, arbitrary multi-parent peer assembly, an RPC package adapter, BIP37
 > bloom-filter serving, compact-filter serving,
 > public serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,
