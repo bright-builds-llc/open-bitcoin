@@ -5,14 +5,21 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/test/functional/mempool_truc.py
 
-use open_bitcoin_primitives::{Amount, Txid, Wtxid};
+use open_bitcoin_consensus::{
+    ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid,
+};
+use open_bitcoin_primitives::{Amount, ScriptWitness, TransactionInput, Txid, Wtxid};
 
 use crate::{
-    CandidateFees, EffectiveFeeGroupId, FeeRate, IncrementalRelayFeeRate, Mempool,
-    MempoolMemberIdentity, PackageFeeError, PackageFeeMember, PolicyConfig,
-    ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate, TransactionVirtualSize,
-    TrucPolicy, evaluate_package_fee_group,
+    AdmissionContext, CandidateFees, DryRunPackageCommand, EffectiveFeeGroupId, FeeRate,
+    IncrementalRelayFeeRate, Mempool, MempoolCapacity, MempoolMemberIdentity, PackageFeeError,
+    PackageFeeMember, PackageMemberResult, PolicyConfig, PriorMemberSuccess,
+    ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate, SubmissionPackage,
+    SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
+    evaluate_package_fee_group,
 };
+
+use super::{sample_chainstate_snapshot, spend_transaction, submit};
 
 fn identity(byte: u8) -> MempoolMemberIdentity {
     MempoolMemberIdentity {
@@ -312,4 +319,206 @@ fn report_group_construction_rechecks_zero_virtual_size() {
         result,
         Err(crate::MempoolError::InternalInvariant { .. })
     ));
+}
+
+#[test]
+fn static_truc_rolling_limit_replacement_ephemeral_script_trim_order_is_objective() {
+    // Arrange
+    use super::super::package_admission::PackagePolicyStage;
+    let pre_script = [
+        PackagePolicyStage::Static,
+        PackagePolicyStage::Truc,
+        PackagePolicyStage::Rolling,
+        PackagePolicyStage::Limits,
+        PackagePolicyStage::Replacement,
+        PackagePolicyStage::Ephemeral,
+    ];
+
+    // Act and Assert
+    for failure in pre_script {
+        let (_trace, scripts, trims) =
+            super::super::package_admission::package_policy_probe_for_test(Some(failure));
+        assert_eq!(scripts, 0, "pre_script_failure_has_no_script");
+        assert_eq!(trims, 0, "pre_script_failure_has_no_trim");
+    }
+    let (_trace, scripts, trims) = super::super::package_admission::package_policy_probe_for_test(
+        Some(PackagePolicyStage::Scripts),
+    );
+    assert_eq!((scripts, trims), (1, 0), "script_failure_has_no_trim");
+    let (trace, scripts, trims) =
+        super::super::package_admission::package_policy_probe_for_test(None);
+    assert_eq!(
+        trace,
+        [
+            PackagePolicyStage::Static,
+            PackagePolicyStage::Truc,
+            PackagePolicyStage::Rolling,
+            PackagePolicyStage::Limits,
+            PackagePolicyStage::Replacement,
+            PackagePolicyStage::Ephemeral,
+            PackagePolicyStage::Scripts,
+            PackagePolicyStage::Trim,
+        ]
+    );
+    assert_eq!((scripts, trims), (1, 1), "trim_once_after_scripts");
+}
+
+#[test]
+fn newly_present_becomes_post_trim_absent_and_dry_run_submit_reports_are_equal() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let package =
+        WellFormedPackage::try_from(vec![transaction.clone()]).expect("well-formed package");
+    let submission = SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(vec![transaction]).expect("well-formed submission"),
+        &snapshot,
+    )
+    .expect("submission refinement");
+    let config = PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(0),
+        ..PolicyConfig::default()
+    };
+    let mut mempool = Mempool::new(config);
+    let verify_flags = ScriptVerifyFlags::P2SH
+        | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+        | ScriptVerifyFlags::CHECKSEQUENCEVERIFY;
+    let consensus_params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    };
+
+    // Act
+    super::super::package_admission::reset_package_trim_count_for_test();
+    let dry_run = mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("dry-run");
+    assert_eq!(
+        super::super::package_admission::package_trim_count_for_test(),
+        1
+    );
+    super::super::package_admission::reset_package_trim_count_for_test();
+    let submitted = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags,
+            consensus_params,
+        )
+        .expect("submit");
+
+    // Assert
+    assert_eq!(
+        super::super::package_admission::package_trim_count_for_test(),
+        1
+    );
+    assert_eq!(dry_run.report, submitted.report);
+    assert!(matches!(
+        submitted.report.members(),
+        [PackageMemberResult::PostTrimAbsent(
+            crate::PostTrimAbsence {
+                prior: PriorMemberSuccess::FinallyPresent { .. },
+                ..
+            }
+        )]
+    ));
+    assert!(submitted.delta.admitted.is_empty());
+    assert!(submitted.delta.removed.is_empty());
+    assert!(mempool.entries().is_empty());
+    assert!(mempool.rolling_mempool_fee_rate() > RollingMempoolFeeRate::ZERO);
+}
+
+#[test]
+fn exact_existing_and_alias_targets_use_actual_identity_after_trim() {
+    for request_alias in [false, true] {
+        // Arrange
+        let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+        let existing = spend_transaction(
+            coinbase_txids[0],
+            0,
+            499_999_000,
+            TransactionInput::SEQUENCE_FINAL,
+        );
+        let existing_txid = transaction_txid(&existing).expect("existing txid");
+        let existing_wtxid = transaction_wtxid(&existing).expect("existing wtxid");
+        let child = spend_transaction(
+            existing_txid,
+            0,
+            499_998_000,
+            TransactionInput::SEQUENCE_FINAL,
+        );
+        let mut requested = existing.clone();
+        if request_alias {
+            requested.inputs[0].witness = ScriptWitness::new(vec![vec![1_u8]]);
+        }
+        let requested_wtxid = transaction_wtxid(&requested).expect("requested wtxid");
+        let submission = SubmissionPackage::try_from_package(
+            WellFormedPackage::try_from(vec![requested, child]).expect("well-formed package"),
+            &snapshot,
+        )
+        .expect("submission refinement");
+        let mut mempool = Mempool::default();
+        submit(&mut mempool, &snapshot, existing).expect("existing admission");
+        let capacity =
+            MempoolCapacity::new(mempool.accounted_memory().as_usize().saturating_add(1));
+        super::super::package_admission::set_mempool_capacity_for_test(&mut mempool, capacity);
+
+        // Act
+        let submitted = mempool
+            .submit_package(
+                SubmitPackageCommand {
+                    package: submission,
+                    context: AdmissionContext::legacy_unknown(),
+                },
+                &snapshot,
+                ScriptVerifyFlags::P2SH
+                    | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                    | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+                ConsensusParams {
+                    coinbase_maturity: 1,
+                    ..ConsensusParams::default()
+                },
+            )
+            .expect("submit and trim");
+
+        // Assert
+        let [
+            PackageMemberResult::PostTrimAbsent(first),
+            PackageMemberResult::PostTrimAbsent(second),
+        ] = submitted.report.members()
+        else {
+            panic!("exact/alias target and new child should both be absent");
+        };
+        assert!(matches!(
+            first.prior,
+            PriorMemberSuccess::AlreadyPresent
+                | PriorMemberSuccess::SameTxidDifferentWitness { .. }
+        ));
+        assert!(matches!(
+            second.prior,
+            PriorMemberSuccess::FinallyPresent { .. }
+        ));
+        assert_eq!(submitted.delta.removed.len(), 1);
+        assert_eq!(submitted.delta.removed[0].member.wtxid, existing_wtxid);
+        if request_alias {
+            assert_ne!(requested_wtxid, existing_wtxid);
+            assert_ne!(submitted.delta.removed[0].member.wtxid, requested_wtxid);
+        }
+    }
 }

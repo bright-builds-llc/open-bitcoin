@@ -5,6 +5,10 @@
 
 //! Individual-first package evaluation and the dry-run/submit capability boundary.
 
+mod finalization;
+#[cfg(test)]
+mod test_support;
+
 use std::collections::BTreeMap;
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
@@ -13,17 +17,21 @@ use open_bitcoin_primitives::Transaction;
 
 use crate::{
     AdmissionContext, DryRunPackageCommand, DryRunPackageResult, EffectiveFeeGroup,
-    EffectiveFeeGroupId, FinalMempoolMembership, HardMemberFailure, MempoolError,
-    MempoolLifecycleDelta, MempoolMemberIdentity, MempoolMemberState, NewlyPresent,
-    PackageFeeError, PackageFeeMember, PackageMemberResult, PackageReport, PackageStatus,
-    ReconsiderableMemberFailure, SubmitPackageCommand, SubmittedPackageResult, WellFormedPackage,
-    WitnessAlias, evaluate_package_fee_group,
+    EffectiveFeeGroupId, HardMemberFailure, MempoolError, MempoolLifecycleDelta,
+    MempoolMemberIdentity, NewlyPresent, PackageFeeError, PackageFeeMember, PackageMemberResult,
+    PackageReport, PackageStatus, ReconsiderableMemberFailure, SubmitPackageCommand,
+    SubmittedPackageResult, WellFormedPackage, WitnessAlias, evaluate_package_fee_group,
 };
 
-use super::admission::lifecycle_invariant_error;
 use super::candidate::{PreparedCandidate, check_candidate_scripts, prepare_candidate};
 use super::prospective::ProspectiveMempool;
-use super::{Mempool, MempoolPatch};
+use super::{Mempool, MempoolPatch, pressure::trim_prospective_to_capacity};
+use finalization::lifecycle_delta;
+#[cfg(test)]
+pub(super) use test_support::{
+    PackagePolicyStage, package_policy_probe_for_test, package_trim_count_for_test,
+    reset_package_trim_count_for_test, set_mempool_capacity_for_test,
+};
 
 #[cfg(test)]
 use std::cell::Cell;
@@ -31,6 +39,7 @@ use std::cell::Cell;
 #[cfg(test)]
 thread_local! {
     static SCRIPT_CHECK_COUNT: Cell<usize> = const { Cell::new(0) };
+    static PACKAGE_TRIM_COUNT: Cell<usize> = const { Cell::new(0) };
     static FORCE_RESIDUAL_FEE_GROUP_ERROR: Cell<bool> = const { Cell::new(false) };
     static FORCE_RESIDUAL_FEE_GROUP_HARD: Cell<bool> = const { Cell::new(false) };
 }
@@ -179,15 +188,25 @@ fn evaluate_package(
         )?;
     }
 
+    if results
+        .iter()
+        .any(|result| matches!(result, PackageMemberResult::FinallyPresent(_)))
+    {
+        let config = prospective.policy_config().clone();
+        trim_prospective_to_capacity(&mut prospective, &config)?;
+        #[cfg(test)]
+        PACKAGE_TRIM_COUNT.with(|count| count.set(count.get() + 1));
+    }
+    rewrite_final_membership(&prospective, &mut results);
     let status = package_status(&results);
     let effective_fee_groups = groups.into_values().collect::<Vec<_>>();
     let report = PackageReport::try_new(package, status, results, effective_fee_groups)
         .map_err(report_invariant_error)?;
-    let delta = lifecycle_delta(&report)?;
-    let patch = if delta.admitted.is_empty() {
-        None
-    } else {
+    let delta = lifecycle_delta(&report, &prospective)?;
+    let patch = if prospective.has_staged_changes() {
         Some(prospective.prepare_patch(delta)?)
+    } else {
+        None
     };
     Ok(PreparedPackageEvaluation { report, patch })
 }
@@ -246,7 +265,7 @@ fn evaluate_singleton<'base>(
     if let Err(error) = next.validate_candidate_limits(identity.txid) {
         return Ok(SingletonEvaluation::Hard(hard_failure(identity, error)));
     }
-    if let Err(error) = run_script_checks(&prepared, verify_flags) {
+    if let Err(error) = run_late_script_checks(&prepared, verify_flags) {
         return Ok(SingletonEvaluation::Hard(hard_failure(identity, error)));
     }
     Ok(SingletonEvaluation::Accepted {
@@ -336,7 +355,7 @@ fn evaluate_residual(
     };
 
     for (index, identity, prepared) in &prepared_members {
-        if let Err(error) = run_script_checks(prepared, verify_flags) {
+        if let Err(error) = run_late_script_checks(prepared, verify_flags) {
             results[*index] = hard_failure(*identity, error);
             return Ok(());
         }
@@ -495,32 +514,20 @@ fn package_status(members: &[PackageMemberResult]) -> PackageStatus {
     }
 }
 
-fn lifecycle_delta(report: &PackageReport) -> Result<MempoolLifecycleDelta, MempoolError> {
-    let mut builder = MempoolLifecycleDelta::builder();
-    for member in report.members() {
-        let PackageMemberResult::FinallyPresent(result) = member else {
-            continue;
-        };
-        builder
-            .record_admitted(result.requested)
-            .map_err(lifecycle_invariant_error)?;
-        builder
-            .record_final_membership(MempoolMemberState {
-                member: result.requested,
-                membership: FinalMempoolMembership::Present,
-            })
-            .map_err(lifecycle_invariant_error)?;
-    }
-    builder.build().map_err(lifecycle_invariant_error)
-}
-
 fn report_invariant_error(error: crate::PackageReportError) -> MempoolError {
     MempoolError::InternalInvariant {
         reason: error.to_string(),
     }
 }
 
-fn run_script_checks(
+fn rewrite_final_membership(
+    prospective: &ProspectiveMempool<'_>,
+    results: &mut [PackageMemberResult],
+) {
+    finalization::rewrite_final_membership(prospective, results);
+}
+
+fn run_late_script_checks(
     prepared: &PreparedCandidate,
     verify_flags: ScriptVerifyFlags,
 ) -> Result<(), MempoolError> {

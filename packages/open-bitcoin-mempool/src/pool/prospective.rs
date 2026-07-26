@@ -229,6 +229,24 @@ impl<'base> ProspectiveMempool<'base> {
         self.rolling_fee_state.rolling_fee_rate()
     }
 
+    pub(super) fn removal_facts(
+        &self,
+    ) -> impl Iterator<Item = (MempoolMemberIdentity, MempoolRemovalFact)> + '_ {
+        self.removed.iter().map(|(member, fact)| (*member, *fact))
+    }
+    pub(super) fn base_contains(&self, member: MempoolMemberIdentity) -> bool {
+        self.base
+            .entries
+            .get(&member.txid)
+            .is_some_and(|entry| entry.wtxid == member.wtxid)
+    }
+    pub(super) fn has_staged_changes(&self) -> bool {
+        !self.added_or_updated.is_empty()
+            || !self.removed.is_empty()
+            || !self.spent_updates.is_empty()
+            || !self.topology_updates.is_empty()
+            || self.rolling_fee_state != self.base.rolling_fee_state
+    }
     #[cfg(test)]
     pub(super) const fn rolling_fee_state(&self) -> &RollingFeeState {
         &self.rolling_fee_state
@@ -240,7 +258,6 @@ impl<'base> ProspectiveMempool<'base> {
             self.trim_invocations += 1;
         }
     }
-
     fn apply_sub_delta(&mut self, sub_delta: SubDelta) -> Result<(), MempoolError> {
         self.validate_sub_delta(&sub_delta)?;
         let mut affected = BTreeSet::new();
