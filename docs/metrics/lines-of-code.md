@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 631 |
-| Total lines | 271,614 |
-| Code/content lines | 238,288 |
-| Comment-only lines | 10,576 |
-| Blank lines | 22,750 |
+| Included files | 632 |
+| Total lines | 271,955 |
+| Code/content lines | 238,609 |
+| Comment-only lines | 10,582 |
+| Blank lines | 22,764 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 120 | 99,285 | 86,054 | 5,629 | 7,602 |
 | Rust production | 320 | 93,590 | 81,443 | 3,291 | 8,856 |
-| TypeScript/Bun scripts | 132 | 62,047 | 55,023 | 1,588 | 5,436 |
+| TypeScript/Bun scripts | 133 | 62,388 | 55,344 | 1,594 | 5,450 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,361 | 3,893 | 57 | 411 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -109,6 +109,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase130-resource-time-fee-primitives.ts | 583 |
 | scripts/check-phase131-rolling-fee-expiry-pressure.test.ts | 184 |
 | scripts/check-phase131-rolling-fee-expiry-pressure.ts | 352 |
+| scripts/check-phase132-typed-package-staged-admission.test.ts | 341 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -213,7 +214,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | f0aede22a6490cb14c006bfc1f3ff12f71cd9ba12d5565ec780e92f6094976c2 |
+| Input fingerprint | 61fbb357fae5d3853e523476db61c30efdda9baa967ac7419626631ea2d3977b |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
