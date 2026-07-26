@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 133-01-PLAN.md
-last_updated: "2026-07-26T18:44:36.309Z"
-last_activity: "2026-07-26 -- Completed Plan 133-01 fixed-memory reject evidence and active-tip resets"
+stopped_at: Completed 133-02-PLAN.md
+last_updated: "2026-07-26T20:04:01.078Z"
+last_activity: "2026-07-26 -- Completed Plan 133-02 provenance-aware orphan bridge"
 progress:
   total_phases: 9
   completed_phases: 3
   total_plans: 30
-  completed_plans: 27
-  percent: 90
+  completed_plans: 28
+  percent: 93
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 133 (Package-Aware Download and Orphan Bridge) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
-Last activity: 2026-07-26 -- Completed Plan 133-01 fixed-memory reject evidence and active-tip resets
+Last activity: 2026-07-26 -- Completed Plan 133-02 provenance-aware orphan bridge
 
-Progress: [███░░░░░░░] 25%
+Progress: [█████░░░░░] 50%
 
-Next action: Continue with `133-02-PLAN.md`.
+Next action: Continue with `133-03-PLAN.md`.
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Next action: Continue with `133-02-PLAN.md`.
 | Plan | Duration | Tasks | Files |
 | --- | --- | --- | --- |
 | Phase 133 P01 | 1h 13m | 3 tasks | 16 files |
+| Phase 133 P02 | 1h 10m | 3 tasks | 28 files |
 
 ## Accumulated Context
 
@@ -107,6 +108,10 @@ Next action: Continue with `133-02-PLAN.md`.
 - [Phase 133]: Ordinary inventory consults hard and reconsiderable evidence, while orphan-parent requests bypass reconsiderable evidence and still honor hard rejects.
 - [Phase 133]: Both reject evidence domains reset together immediately after successful authoritative chainstate connect or reorg mutation.
 - [Phase 133]: Production tweak entropy is derived in the node shell with RandomState while network constructors retain fixed-tweak deterministic seams.
+- [Phase 133]: Capture receipt provenance before request cleanup, deterministically unioning bounded txid/wtxid announcers while retaining the delivering peer.
+- [Phase 133]: Retain one orphan body with a policy-bounded announcer set; late inventory changes ownership evidence only and never replaces the body or refreshes TTL.
+- [Phase 133]: Use an opaque consume-only same-peer 1P1C candidate as the proof of provenance and bounded eligibility.
+- [Phase 133]: Co-locate scheduler, orphanage, reject evidence, and disconnect mutation under PeerManager.
 
 ### Pending Todos
 
@@ -129,6 +134,6 @@ Next action: Continue with `133-02-PLAN.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-26T18:44:36.303Z
-Stopped at: Completed 133-01-PLAN.md
+Last session: 2026-07-26T20:04:01.075Z
+Stopped at: Completed 133-02-PLAN.md
 Resume file: None

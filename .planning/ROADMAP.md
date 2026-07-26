@@ -131,7 +131,7 @@ Plans:
 
 Plans:
 - [x] 133-01-PLAN.md — Replace exact reject state with typed fixed-memory rolling evidence and active-tip resets.
-- [ ] 133-02-PLAN.md — Retain bounded orphan announcers and construct opaque newest-first same-peer 1P1C candidates.
+- [x] 133-02-PLAN.md — Retain bounded orphan announcers and construct opaque newest-first same-peer 1P1C candidates.
 - [ ] 133-03-PLAN.md — Refine peer candidates once through authoritative package admission and apply bounded feedback.
 - [ ] 133-04-PLAN.md — Close deterministic parity, traceability, claim guardrails, and full repository verification.
 
@@ -215,7 +215,7 @@ Plans:
 | 130. Resource, Time, and Fee Primitives | 13/13 | Complete    | 2026-07-24 |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 5/5 | Complete    | 2026-07-25 |
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
-| 133. Package-Aware Download and Orphan Bridge | 1/4 | In Progress|  |
+| 133. Package-Aware Download and Orphan Bridge | 2/4 | In Progress|  |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 0/TBD | Not started | - |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
