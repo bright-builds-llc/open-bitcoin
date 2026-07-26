@@ -13,14 +13,15 @@
 // - packages/bitcoin-knots/src/txmempool.h
 // - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 
-use open_bitcoin_consensus::{ScriptPubKeyType, classify_script_pubkey};
-use open_bitcoin_primitives::TransactionOutput;
+use open_bitcoin_consensus::{ScriptPubKeyType, classify_script_pubkey, is_push_only};
+use open_bitcoin_primitives::{ScriptBuf, TransactionOutput};
 
 use crate::{DustRelayFeeRate, EphemeralPolicy, MempoolError, PolicyConfig};
 
 const SERIALIZED_AMOUNT_SIZE: usize = 8;
 const WITNESS_SPEND_VIRTUAL_SIZE: usize = 67;
 const LEGACY_SPEND_VIRTUAL_SIZE: usize = 148;
+const OP_RETURN: u8 = 0x6a;
 
 pub fn dust_threshold_sats(output: &TransactionOutput) -> i64 {
     dust_threshold_sats_at_rate(output, DustRelayFeeRate::default())
@@ -59,6 +60,16 @@ fn compact_size_len(value: usize) -> usize {
     if value <= 252 { 1 } else { 3 }
 }
 
+fn is_null_data_script(script: &ScriptBuf) -> bool {
+    let Some((opcode, suffix)) = script.as_bytes().split_first() else {
+        return false;
+    };
+    if *opcode != OP_RETURN {
+        return false;
+    }
+    ScriptBuf::from_bytes(suffix.to_vec()).is_ok_and(|suffix| is_push_only(&suffix))
+}
+
 pub(crate) fn is_dust_output(
     output: &TransactionOutput,
     dust_relay_fee_rate: DustRelayFeeRate,
@@ -92,7 +103,7 @@ pub(super) fn validate_standard_output(
     config: &PolicyConfig,
 ) -> Result<(), MempoolError> {
     let script = output.script_pubkey.as_bytes();
-    if script.first() == Some(&0x6a) {
+    if is_null_data_script(&output.script_pubkey) {
         if !config.accept_datacarrier {
             return Err(MempoolError::NonStandard {
                 reason: format!("output {output_index} null-data scripts are disabled"),
@@ -105,11 +116,6 @@ pub(super) fn validate_standard_output(
                     script.len(),
                     config.max_datacarrier_bytes
                 ),
-            });
-        }
-        if output.value.to_sats() != 0 {
-            return Err(MempoolError::NonStandard {
-                reason: format!("output {output_index} null-data outputs must carry zero value"),
             });
         }
         return Ok(());

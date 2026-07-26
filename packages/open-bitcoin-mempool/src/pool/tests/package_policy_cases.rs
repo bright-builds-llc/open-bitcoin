@@ -239,6 +239,26 @@ fn dust_threshold_counts_compact_size_script_length_boundaries() {
 }
 
 #[test]
+fn null_data_requires_push_only_suffix_and_may_carry_value() {
+    // Arrange
+    let permissions = EphemeralPolicy::default();
+
+    // Act
+    let empty = output_policy_result(script(&[]), 0, permissions);
+    let non_push = output_policy_result(script(&[0x6a, 0xac]), 0, permissions);
+    let truncated_push = output_policy_result(script(&[0x6a, 0x4c]), 0, permissions);
+    let pushed_payload = output_policy_result(script(&[0x6a, 0x01, 0x01]), 0, permissions);
+    let valued_payload = output_policy_result(script(&[0x6a, 0x01, 0x01]), 1, permissions);
+
+    // Assert
+    assert!(empty.is_err());
+    assert!(non_push.is_err());
+    assert!(truncated_push.is_err());
+    assert!(pushed_payload.is_ok());
+    assert!(valued_payload.is_ok());
+}
+
+#[test]
 fn pay_to_anchor_send_and_nonzero_dust_permissions_are_independent() {
     // Arrange
     let allow_all = EphemeralPolicy {

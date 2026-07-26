@@ -150,7 +150,7 @@ fn script_heavy_spend_transaction(
     previous_txid: open_bitcoin_core::primitives::Txid,
     value: i64,
 ) -> Transaction {
-    let mut datacarrier = vec![0x6a, 80];
+    let mut datacarrier = vec![0x6a, 0x4c, 80];
     datacarrier.extend(std::iter::repeat_n(0xab_u8, 80));
     Transaction {
         version: 2,

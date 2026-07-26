@@ -504,10 +504,12 @@ mod tests {
         .expect_err("datacarrier disabled should fail");
         assert!(disabled.to_string().contains("disabled"));
 
+        let mut long_datacarrier = vec![0x6a, 0x4c, 87];
+        long_datacarrier.extend_from_slice(&[0_u8; 87]);
         let too_long = validate_standard_output(
             &TransactionOutput {
                 value: Amount::ZERO,
-                script_pubkey: script(&[0x6a; 90]),
+                script_pubkey: script(&long_datacarrier),
             },
             0,
             &PolicyConfig::default(),
@@ -515,7 +517,7 @@ mod tests {
         .expect_err("long datacarrier should fail");
         assert!(too_long.to_string().contains("length"));
 
-        let non_zero_null_data = validate_standard_output(
+        validate_standard_output(
             &TransactionOutput {
                 value: Amount::from_sats(1).expect("valid amount"),
                 script_pubkey: script(&[0x6a, 0x01, 0x01]),
@@ -523,8 +525,7 @@ mod tests {
             0,
             &PolicyConfig::default(),
         )
-        .expect_err("non-zero null data should fail");
-        assert!(non_zero_null_data.to_string().contains("zero value"));
+        .expect("valued null data should be standard");
 
         validate_standard_output(
             &TransactionOutput {
