@@ -36,6 +36,8 @@ pub const MEMPOOL_RESOURCE_ACCOUNTING_VERSION: u32 = 1;
 pub enum ResourceAccountingError {
     /// Adding or multiplying the named component exceeded `usize`.
     Overflow { component: &'static str },
+    /// Subtracting the named component would make the ledger negative.
+    Underflow { component: &'static str },
 }
 
 impl core::fmt::Display for ResourceAccountingError {
@@ -45,6 +47,12 @@ impl core::fmt::Display for ResourceAccountingError {
                 write!(
                     formatter,
                     "mempool resource accounting overflow: {component}"
+                )
+            }
+            Self::Underflow { component } => {
+                write!(
+                    formatter,
+                    "mempool resource accounting underflow: {component}"
                 )
             }
         }
@@ -199,6 +207,44 @@ impl MempoolResourceLedger {
         self.accounted_memory = accounted_memory;
         Ok(())
     }
+
+    /// Removes one canonical entry without saturating or wrapping.
+    pub fn checked_remove_entry(
+        &mut self,
+        entry: &MempoolEntry,
+    ) -> Result<(), ResourceAccountingError> {
+        let virtual_size = self
+            .total_virtual_size
+            .0
+            .checked_sub(entry.virtual_size.0)
+            .ok_or(ResourceAccountingError::Underflow {
+                component: "total transaction virtual size",
+            })?;
+        let entry_memory = accounted_memory_for_entry(entry)?;
+        let accounted_memory = self.accounted_memory.0.checked_sub(entry_memory.0).ok_or(
+            ResourceAccountingError::Underflow {
+                component: "total entry accounted memory",
+            },
+        )?;
+
+        self.total_virtual_size = TransactionVirtualSize::new(virtual_size);
+        self.accounted_memory = AccountedMempoolMemory::new(accounted_memory);
+        Ok(())
+    }
+
+    /// Replaces one touched entry atomically in the cached totals.
+    pub fn checked_replace_entry(
+        &mut self,
+        old_entry: &MempoolEntry,
+        new_entry: &MempoolEntry,
+    ) -> Result<(), ResourceAccountingError> {
+        let mut next = *self;
+        next.checked_remove_entry(old_entry)?;
+        next.checked_add_entry(new_entry)?;
+        *self = next;
+        Ok(())
+    }
+
     pub fn checked_add_spent_outpoints(
         &mut self,
         count: usize,
@@ -209,6 +255,23 @@ impl MempoolResourceLedger {
         let spent_memory = AccountedMempoolMemory::new(spent_bytes);
         let accounted_memory = self.accounted_memory.checked_add(spent_memory, component)?;
         self.accounted_memory = accounted_memory;
+        Ok(())
+    }
+
+    /// Removes spent-index elements without saturating or wrapping.
+    pub fn checked_remove_spent_outpoints(
+        &mut self,
+        count: usize,
+    ) -> Result<(), ResourceAccountingError> {
+        let component = "total spent-outpoint accounted memory";
+        let element_bytes = spent_outpoint_accounted_bytes()?;
+        let spent_bytes = checked_product(count, element_bytes, component)?;
+        let accounted_memory = self
+            .accounted_memory
+            .0
+            .checked_sub(spent_bytes)
+            .ok_or(ResourceAccountingError::Underflow { component })?;
+        self.accounted_memory = AccountedMempoolMemory::new(accounted_memory);
         Ok(())
     }
 }

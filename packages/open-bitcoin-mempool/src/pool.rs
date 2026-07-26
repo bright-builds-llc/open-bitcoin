@@ -34,6 +34,8 @@ mod oracle;
 mod patch;
 #[cfg(test)]
 mod pressure;
+#[allow(dead_code)] // Package orchestration consumes this staged infrastructure in Plan 132-04.
+mod prospective;
 mod topology;
 use self::admission_outcome::accept as accept_outcome;
 use self::topology::collect_conflicts_and_descendants;

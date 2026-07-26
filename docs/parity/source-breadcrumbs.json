@@ -647,8 +647,11 @@
         "packages/open-bitcoin-mempool/src/pool/oracle.rs",
         "packages/open-bitcoin-mempool/src/pool/patch.rs",
         "packages/open-bitcoin-mempool/src/pool/patch/graph.rs",
+        "packages/open-bitcoin-mempool/src/pool/prospective.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/oracle_internal_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/patch_internal_cases.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/prospective_oracle_cases.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/prospective_failure_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/revision_cases.rs"
       ],
       "breadcrumbs": [
