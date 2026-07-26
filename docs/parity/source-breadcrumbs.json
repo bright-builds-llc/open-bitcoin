@@ -654,6 +654,26 @@
       ]
     },
     {
+      "label": "mempool-package-replacement",
+      "files": [
+        "packages/open-bitcoin-mempool/src/policy/replacement.rs",
+        "packages/open-bitcoin-mempool/src/policy/replacement/diagram.rs",
+        "packages/open-bitcoin-mempool/src/policy/replacement/diagram/tests.rs",
+        "packages/open-bitcoin-mempool/src/policy/replacement/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/policy/rbf.cpp",
+        "packages/bitcoin-knots/src/policy/rbf.h",
+        "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+        "packages/bitcoin-knots/src/test/feefrac_tests.cpp",
+        "packages/bitcoin-knots/src/test/rbf_tests.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/util/feefrac.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_package_rbf.py"
+      ]
+    },
+    {
       "label": "mempool-staged-admission",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/candidate.rs",

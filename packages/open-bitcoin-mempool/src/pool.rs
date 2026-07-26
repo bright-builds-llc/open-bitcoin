@@ -26,7 +26,7 @@ use crate::{
 
 mod admission;
 mod admission_outcome;
-mod candidate;
+pub(crate) mod candidate;
 mod expiry;
 mod lifecycle;
 #[cfg(test)]

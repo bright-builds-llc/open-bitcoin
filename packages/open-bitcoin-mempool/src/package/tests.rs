@@ -1028,3 +1028,22 @@ fn report_and_fee_group_errors_are_human_readable() {
     assert!(fee_messages.iter().all(|message| !message.is_empty()));
     assert!(report_messages.iter().all(|message| !message.is_empty()));
 }
+
+#[test]
+fn package_replacement_failure_preserves_requested_identity() {
+    // Arrange
+    let requested = MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x95; 32]),
+        wtxid: Wtxid::from_byte_array([0x96; 32]),
+    };
+    let result = PackageMemberResult::HardRejected(HardMemberFailure::PackageReplacement {
+        requested,
+        reason: "replacement policy".to_string(),
+    });
+
+    // Act
+    let actual = result.requested_identity();
+
+    // Assert
+    assert_eq!(actual, requested);
+}

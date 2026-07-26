@@ -37,14 +37,29 @@ impl CandidateMempoolView for Mempool {
 
 /// Canonical candidate facts that are complete before contextual script execution.
 #[derive(Debug, Clone)]
-pub(super) struct PreparedCandidate {
-    pub(super) entry: MempoolEntry,
-    pub(super) fees: CandidateFees,
+pub(crate) struct PreparedCandidate {
+    pub(crate) entry: MempoolEntry,
+    pub(crate) fees: CandidateFees,
     input_contexts: Vec<TransactionInputContext>,
     spend_height: u32,
     block_time: i64,
     median_time_past: i64,
     consensus_params: ConsensusParams,
+}
+
+#[cfg(test)]
+impl PreparedCandidate {
+    pub(crate) fn for_policy_test(entry: MempoolEntry, fees: CandidateFees) -> Self {
+        Self {
+            entry,
+            fees,
+            input_contexts: Vec::new(),
+            spend_height: 0,
+            block_time: 0,
+            median_time_past: 0,
+            consensus_params: ConsensusParams::default(),
+        }
+    }
 }
 
 /// Performs every context-free and contextual non-script check for one candidate.

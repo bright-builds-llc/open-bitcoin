@@ -219,6 +219,10 @@ pub enum HardMemberFailure {
         requested: MempoolMemberIdentity,
         reason: String,
     },
+    PackageReplacement {
+        requested: MempoolMemberIdentity,
+        reason: String,
+    },
 }
 
 /// A member failure that a later package or input arrival may reconsider.
@@ -270,7 +274,10 @@ impl PackageMemberResult {
             Self::FinallyPresent(result) => result.requested,
             Self::AlreadyPresent(result) => result.requested,
             Self::SameTxidDifferentWitness(result) => result.requested,
-            Self::HardRejected(HardMemberFailure::Policy { requested, .. }) => *requested,
+            Self::HardRejected(
+                HardMemberFailure::Policy { requested, .. }
+                | HardMemberFailure::PackageReplacement { requested, .. },
+            ) => *requested,
             Self::Reconsiderable(ReconsiderableMemberFailure::MissingInputs { requested }) => {
                 *requested
             }
