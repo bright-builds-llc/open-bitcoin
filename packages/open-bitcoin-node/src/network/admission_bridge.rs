@@ -364,14 +364,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         outcome: &MempoolOutcome,
         maybe_transaction: Option<&Transaction>,
     ) -> Result<(), ManagedNetworkError> {
-        self.peer_manager
-            .note_recent_reject(TxRelayId::Txid(outcome.txid()));
         let maybe_wtxid = outcome.maybe_wtxid().or_else(|| {
             maybe_transaction.and_then(|transaction| transaction_wtxid(transaction).ok())
         });
         if let Some(wtxid) = maybe_wtxid {
-            self.peer_manager
-                .note_recent_reject(TxRelayId::Wtxid(wtxid));
+            self.peer_manager.record_hard_reject(wtxid);
         }
         Ok(())
     }

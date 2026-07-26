@@ -7,8 +7,6 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
-use std::collections::BTreeSet;
-
 use open_bitcoin_consensus::{block_hash, transaction_txid, transaction_wtxid};
 use open_bitcoin_primitives::{
     Block, BlockHash, BlockLocator, InventoryType, InventoryVector, Transaction, Txid, Wtxid,
@@ -102,8 +100,6 @@ impl PeerManager {
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
         let peer_mode = TxRelayPeerMode::from_remote_wtxidrelay(peer.remote_wtxidrelay);
         let relay_eligibility = relay_download_eligibility(peer, self.relay_download_policy);
-        let local_facts = self.transaction_download_local_facts();
-
         for item in &inventory.inventory {
             match item.inventory_type {
                 InventoryType::Block | InventoryType::WitnessBlock => {
@@ -114,12 +110,15 @@ impl PeerManager {
                 }
                 InventoryType::Transaction | InventoryType::WitnessTransaction => {
                     transaction_candidate_count += 1;
+                    let local_facts = TxRelayId::from_inventory_vector_for_peer(item, peer_mode)
+                        .map(|relay_id| self.transaction_download_local_facts(relay_id))
+                        .unwrap_or_default();
                     transaction_inputs.push(TxAnnouncementInput {
                         peer_id,
                         inventory: item.clone(),
                         peer_mode,
                         now_unix_seconds: timestamp,
-                        local_facts: local_facts.clone(),
+                        local_facts,
                         relay_eligibility: relay_eligibility.clone(),
                         preferred_peer: true,
                         peer_overloaded: false,
@@ -369,21 +368,29 @@ impl PeerManager {
                 peer_id,
                 relay_id,
                 now_unix_seconds,
-                local_facts: self.transaction_download_local_facts(),
+                local_facts: self.transaction_download_local_facts(relay_id),
                 relay_eligibility,
             }),
         ))
     }
 
-    pub(super) fn transaction_download_local_facts(&self) -> TxDownloadLocalFacts {
-        let mut already_have = BTreeSet::new();
-        already_have.extend(self.known_txids.iter().copied().map(TxRelayId::Txid));
-        already_have.extend(self.known_wtxids.iter().copied().map(TxRelayId::Wtxid));
-
+    pub(super) fn transaction_download_local_facts(
+        &self,
+        relay_id: TxRelayId,
+    ) -> TxDownloadLocalFacts {
+        let maybe_wtxid = match relay_id {
+            TxRelayId::Txid(txid) => self.known_wtxids_by_txid.get(&txid).copied(),
+            TxRelayId::Wtxid(wtxid) => Some(wtxid),
+        };
         TxDownloadLocalFacts {
-            already_have,
-            recent_rejects: self.recent_rejects.clone(),
-            mempool_known: self.mempool_known.clone(),
+            already_have: match relay_id {
+                TxRelayId::Txid(txid) => self.known_txids.contains(&txid),
+                TxRelayId::Wtxid(wtxid) => self.known_wtxids.contains(&wtxid),
+            },
+            hard_rejected: maybe_wtxid.is_some_and(|wtxid| self.hard_reject_contains(wtxid)),
+            reconsiderable: maybe_wtxid
+                .is_some_and(|wtxid| self.reconsiderable_transaction_contains(wtxid)),
+            mempool_known: self.mempool_known.contains(&relay_id),
         }
     }
 }

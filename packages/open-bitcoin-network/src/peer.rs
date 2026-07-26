@@ -171,8 +171,10 @@ pub struct PeerManager {
     known_blocks: BTreeSet<BlockHash>,
     known_txids: BTreeSet<Txid>,
     known_wtxids: BTreeSet<Wtxid>,
+    known_wtxids_by_txid: BTreeMap<Txid, Wtxid>,
     tx_download: TxDownloadScheduler,
-    recent_rejects: BTreeSet<TxRelayId>,
+    hard_reject_evidence: HardRejectEvidence,
+    reconsiderable_reject_evidence: ReconsiderableRejectEvidence,
     mempool_known: BTreeSet<TxRelayId>,
     relay_download_policy: RelayDownloadPolicy,
     max_blocks_in_flight_per_peer: usize,
@@ -213,8 +215,12 @@ impl PeerManager {
             known_blocks: BTreeSet::new(),
             known_txids: BTreeSet::new(),
             known_wtxids: BTreeSet::new(),
+            known_wtxids_by_txid: BTreeMap::new(),
             tx_download: TxDownloadScheduler::new(TxDownloadPolicy::default()),
-            recent_rejects: BTreeSet::new(),
+            hard_reject_evidence: HardRejectEvidence::new(RejectEvidenceTweak::new(0)),
+            reconsiderable_reject_evidence: ReconsiderableRejectEvidence::new(
+                RejectEvidenceTweak::new(0),
+            ),
             mempool_known: BTreeSet::new(),
             relay_download_policy: RelayDownloadPolicy::default(),
             max_blocks_in_flight_per_peer,
@@ -256,13 +262,40 @@ impl PeerManager {
         &mut self,
         transaction: &Transaction,
     ) -> Result<(), NetworkError> {
-        self.known_txids.insert(transaction_txid(transaction)?);
-        self.known_wtxids.insert(transaction_wtxid(transaction)?);
+        let txid = transaction_txid(transaction)?;
+        let wtxid = transaction_wtxid(transaction)?;
+        self.known_txids.insert(txid);
+        self.known_wtxids.insert(wtxid);
+        self.known_wtxids_by_txid.insert(txid, wtxid);
         Ok(())
     }
 
-    pub fn note_recent_reject(&mut self, relay_id: TxRelayId) {
-        self.recent_rejects.insert(relay_id);
+    pub fn record_hard_reject(&mut self, wtxid: Wtxid) {
+        self.hard_reject_evidence.record(wtxid);
+    }
+
+    pub fn hard_reject_contains(&self, wtxid: Wtxid) -> bool {
+        self.hard_reject_evidence.contains(wtxid)
+    }
+
+    pub fn record_reconsiderable_transaction(&mut self, wtxid: Wtxid) {
+        self.reconsiderable_reject_evidence
+            .record(ReconsiderableEvidenceKey::Transaction(wtxid));
+    }
+
+    pub fn reconsiderable_transaction_contains(&self, wtxid: Wtxid) -> bool {
+        self.reconsiderable_reject_evidence
+            .contains(ReconsiderableEvidenceKey::Transaction(wtxid))
+    }
+
+    pub fn record_reconsiderable_package(&mut self, fingerprint: [u8; 32]) {
+        self.reconsiderable_reject_evidence
+            .record(ReconsiderableEvidenceKey::Package(fingerprint));
+    }
+
+    pub fn reconsiderable_package_contains(&self, fingerprint: [u8; 32]) -> bool {
+        self.reconsiderable_reject_evidence
+            .contains(ReconsiderableEvidenceKey::Package(fingerprint))
     }
 
     pub fn header_store(&self) -> &HeaderStore {

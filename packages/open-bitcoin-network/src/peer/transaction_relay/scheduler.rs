@@ -25,9 +25,10 @@ use super::{
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct TxDownloadLocalFacts {
-    pub already_have: BTreeSet<TxRelayId>,
-    pub recent_rejects: BTreeSet<TxRelayId>,
-    pub mempool_known: BTreeSet<TxRelayId>,
+    pub already_have: bool,
+    pub hard_rejected: bool,
+    pub reconsiderable: bool,
+    pub mempool_known: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -115,7 +116,7 @@ impl TxDownloadScheduler {
             };
 
         if let Some(action) =
-            self.local_fact_suppression(input.peer_id, relay_id, &input.local_facts)
+            self.local_fact_suppression(input.peer_id, relay_id, &input.local_facts, true)
         {
             return vec![action];
         }
@@ -161,7 +162,7 @@ impl TxDownloadScheduler {
 
     pub fn request_parent(&mut self, input: TxParentRequestInput) -> Vec<TxDownloadAction> {
         if let Some(action) =
-            self.local_fact_suppression(input.peer_id, input.relay_id, &input.local_facts)
+            self.local_fact_suppression(input.peer_id, input.relay_id, &input.local_facts, false)
         {
             return vec![action];
         }
@@ -362,17 +363,18 @@ impl TxDownloadScheduler {
         peer_id: PeerId,
         relay_id: TxRelayId,
         local_facts: &TxDownloadLocalFacts,
+        include_reconsiderable: bool,
     ) -> Option<TxDownloadAction> {
-        if self.already_have.contains(&relay_id) || local_facts.already_have.contains(&relay_id) {
+        if self.already_have.contains(&relay_id) || local_facts.already_have {
             self.mark_already_have(relay_id);
             return Some(TxDownloadAction::SuppressAlreadyHave { peer_id, relay_id });
         }
 
-        if local_facts.recent_rejects.contains(&relay_id) {
+        if local_facts.hard_rejected || (include_reconsiderable && local_facts.reconsiderable) {
             return Some(TxDownloadAction::SuppressRecentReject { peer_id, relay_id });
         }
 
-        if local_facts.mempool_known.contains(&relay_id) {
+        if local_facts.mempool_known {
             return Some(TxDownloadAction::Suppress {
                 peer_id,
                 relay_id,
