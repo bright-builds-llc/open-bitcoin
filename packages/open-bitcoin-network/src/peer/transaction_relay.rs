@@ -8,12 +8,14 @@
 // - packages/bitcoin-knots/src/txrequest.h
 // - packages/bitcoin-knots/src/txrequest.cpp
 // - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
 use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxid};
 
 use crate::error::PeerId;
+use crate::{RelayEligibilityDecision, RelayEligibilityReason};
 
 mod fanout;
 mod reject_evidence;
@@ -30,10 +32,11 @@ pub use fanout::{
     TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason, defer_local_rebroadcast,
 };
 pub use orphanage::{
-    OrphanAction, OrphanEvidenceLabel, OrphanPolicy, OrphanReconsiderationCandidate,
-    OrphanReconsiderationStatus, OrphanStageInput, PHASE102_MAX_ORPHAN_TRANSACTIONS,
-    PHASE102_MAX_ORPHANS_PER_PEER, PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
-    PHASE102_ORPHAN_TTL_SECONDS, TxOrphanage,
+    BoundedOrphanAnnouncers, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
+    OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
+    PHASE102_MAX_ORPHAN_TRANSACTIONS, PHASE102_MAX_ORPHANS_PER_PEER,
+    PHASE102_MAX_RECONSIDERATIONS_PER_PARENT, PHASE102_ORPHAN_TTL_SECONDS,
+    PHASE133_MAX_ANNOUNCERS_PER_ORPHAN, SamePeerOneParentOneChildCandidate, TxOrphanage,
 };
 pub use reject_evidence::{
     HardRejectEvidence, PHASE133_REJECT_FILTER_CAPACITY,
@@ -166,6 +169,37 @@ pub enum TxDownloadSuppressionReason {
     InboundServingRequired,
     PermissionRequired,
     ProtectedNotRelay,
+}
+
+fn relay_eligibility_suppression(
+    peer_id: PeerId,
+    relay_id: TxRelayId,
+    relay_eligibility: &RelayEligibilityDecision,
+) -> Option<TxDownloadAction> {
+    if relay_eligibility.eligible {
+        return None;
+    }
+
+    Some(TxDownloadAction::Suppress {
+        peer_id,
+        relay_id,
+        reason: match relay_eligibility.reason {
+            RelayEligibilityReason::Disabled | RelayEligibilityReason::ActivationRequired => {
+                TxDownloadSuppressionReason::RelayDisabled
+            }
+            RelayEligibilityReason::InboundServingRequired => {
+                TxDownloadSuppressionReason::InboundServingRequired
+            }
+            RelayEligibilityReason::PermissionRequired
+            | RelayEligibilityReason::PermissionEffectInactive => {
+                TxDownloadSuppressionReason::PermissionRequired
+            }
+            RelayEligibilityReason::ProtectedNotRelay => {
+                TxDownloadSuppressionReason::ProtectedNotRelay
+            }
+            RelayEligibilityReason::Eligible => TxDownloadSuppressionReason::NotRelayEligible,
+        },
+    })
 }
 
 impl TxDownloadSuppressionReason {

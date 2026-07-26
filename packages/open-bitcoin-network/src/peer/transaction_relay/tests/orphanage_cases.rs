@@ -8,6 +8,7 @@
 // - packages/bitcoin-knots/src/txrequest.h
 // - packages/bitcoin-knots/src/txrequest.cpp
 // - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
@@ -24,6 +25,7 @@ fn policy(
     OrphanPolicy {
         max_total_orphans,
         max_orphans_per_peer,
+        max_announcers_per_orphan: 4,
         orphan_ttl_seconds,
         max_reconsiderations_per_parent,
     }
@@ -43,6 +45,23 @@ fn orphan_input(
         wtxid: wtxid(wtx_byte),
         missing_parents: missing_parent_bytes.into_iter().map(txid).collect(),
         now_unix_seconds,
+    }
+}
+
+fn provenance(
+    delivered_by: PeerId,
+    announcers: impl IntoIterator<Item = PeerId>,
+) -> ReceivedTransactionProvenance {
+    ReceivedTransactionProvenance {
+        delivered_by,
+        announcers: announcers.into_iter().collect(),
+    }
+}
+
+fn transaction(version: i32) -> Transaction {
+    Transaction {
+        version,
+        ..Transaction::default()
     }
 }
 
@@ -123,6 +142,10 @@ fn default_policy_matches_phase102_orphan_bounds() {
     // Assert
     assert_eq!(policy.max_total_orphans, PHASE102_MAX_ORPHAN_TRANSACTIONS);
     assert_eq!(policy.max_orphans_per_peer, PHASE102_MAX_ORPHANS_PER_PEER);
+    assert_eq!(
+        policy.max_announcers_per_orphan,
+        PHASE133_MAX_ANNOUNCERS_PER_ORPHAN,
+    );
     assert_eq!(policy.orphan_ttl_seconds, PHASE102_ORPHAN_TTL_SECONDS);
     assert_eq!(
         policy.max_reconsiderations_per_parent,
@@ -250,10 +273,12 @@ fn wtxid_parent_acceptance_does_not_reconsider_children() {
     let _ = orphanage.stage_missing_parent(orphan_input(1, 55, 56, [7], 0));
 
     // Act
-    let actions = orphanage.reconsider_after_parent(TxRelayId::Wtxid(wtxid(7)), 1);
+    let wtxid_actions = orphanage.reconsider_after_parent(TxRelayId::Wtxid(wtxid(7)), 1);
+    let unrelated_txid_actions = orphanage.reconsider_after_parent(TxRelayId::Txid(txid(99)), 1);
 
     // Assert
-    assert!(actions.is_empty());
+    assert!(wtxid_actions.is_empty());
+    assert!(unrelated_txid_actions.is_empty());
     assert_eq!(orphanage.len(), 1);
 }
 
@@ -379,4 +404,252 @@ fn peer_cleanup_without_owned_orphans_is_noop() {
     assert!(actions.is_empty());
     assert_eq!(orphanage.len(), 1);
     assert_eq!(orphanage.peer_len(2), 1);
+}
+
+#[test]
+fn different_deliverer_provenance_is_bounded_deduplicated_and_retains_delivered_by() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(OrphanPolicy {
+        max_announcers_per_orphan: 3,
+        ..policy(10, 10, 120, 10)
+    });
+    let input = orphan_input(9, 100, 101, [7], 0);
+
+    // Act
+    let _ = orphanage.stage_missing_parent_with_provenance(input, provenance(9, [5, 3, 5, 1, 7]));
+
+    // Assert
+    assert_eq!(orphanage.peer_len(9), 1);
+    assert_eq!(orphanage.peer_len(1), 1);
+    assert_eq!(orphanage.peer_len(3), 1);
+    assert_eq!(orphanage.peer_len(5), 0);
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
+fn late_announcer_missing_body_is_noop_and_existing_body_does_not_refresh_ttl() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(OrphanPolicy {
+        max_announcers_per_orphan: 2,
+        ..policy(10, 10, 5, 10)
+    });
+    let _ = orphanage.stage_missing_parent(orphan_input(1, 102, 103, [7], 10));
+
+    // Act
+    let missing_body_added = orphanage.add_announcer(wtxid(200), 2);
+    let existing_body_added = orphanage.add_announcer(wtxid(103), 2);
+    let over_cap_added = orphanage.add_announcer(wtxid(103), 3);
+    let expired_actions = orphanage.expire(15);
+
+    // Assert
+    assert!(!missing_body_added);
+    assert!(existing_body_added);
+    assert!(!over_cap_added);
+    assert_eq!(expired_actions, [expired(1, 102, 103)]);
+    assert!(orphanage.is_empty());
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
+fn disconnect_removes_only_one_announcer_and_deletes_body_at_zero() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        orphan_input(1, 104, 105, [7], 0),
+        provenance(1, [1, 2]),
+    );
+
+    // Act
+    let first_cleanup = orphanage.cleanup_peer(1);
+    let second_cleanup = orphanage.cleanup_peer(2);
+
+    // Assert
+    assert!(matches!(
+        &first_cleanup[..],
+        [OrphanAction::PeerCleanup {
+            peer_id: 1,
+            removed: 0,
+            ..
+        }]
+    ));
+    assert_eq!(second_cleanup.len(), 1);
+    assert!(orphanage.is_empty());
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
+fn newest_same_peer_candidate_skips_wrong_peer_and_hard_rejected_child() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
+    let parent = transaction(50);
+    let parent_txid = txid(110);
+    let parent_wtxid = wtxid(111);
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction(1),
+            ..orphan_input(2, 112, 113, [110], 0)
+        },
+        provenance(2, [2]),
+    );
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction(2),
+            ..orphan_input(1, 114, 115, [110], 1)
+        },
+        provenance(1, [1]),
+    );
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction(3),
+            ..orphan_input(1, 116, 117, [110], 2)
+        },
+        provenance(1, [1]),
+    );
+    let mut reconsiderable = ReconsiderableRejectEvidence::new(RejectEvidenceTweak::new(1));
+    reconsiderable.record(ReconsiderableEvidenceKey::Transaction(parent_wtxid));
+    let mut hard = HardRejectEvidence::new(RejectEvidenceTweak::new(2));
+    hard.record(wtxid(117));
+
+    // Act
+    let candidate = orphanage
+        .begin_same_peer_candidate(
+            parent.clone(),
+            parent_txid,
+            parent_wtxid,
+            1,
+            &reconsiderable,
+            &hard,
+        )
+        .expect("older same-peer child remains eligible");
+    let (members, origins) = candidate.into_ordered_parts();
+
+    // Assert
+    assert_eq!(members, [parent, transaction(2)]);
+    assert_eq!(origins, [1, 1]);
+}
+
+#[test]
+fn candidate_requires_reconsiderable_parent_and_matching_announcer() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
+    let parent = transaction(60);
+    let parent_txid = txid(120);
+    let parent_wtxid = wtxid(121);
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction(4),
+            ..orphan_input(2, 122, 123, [120], 0)
+        },
+        provenance(2, [2]),
+    );
+    let mut reconsiderable = ReconsiderableRejectEvidence::new(RejectEvidenceTweak::new(3));
+    let hard = HardRejectEvidence::new(RejectEvidenceTweak::new(4));
+
+    // Act
+    let without_evidence = orphanage.begin_same_peer_candidate(
+        parent.clone(),
+        parent_txid,
+        parent_wtxid,
+        2,
+        &reconsiderable,
+        &hard,
+    );
+    reconsiderable.record(ReconsiderableEvidenceKey::Transaction(parent_wtxid));
+    let wrong_peer = orphanage.begin_same_peer_candidate(
+        parent,
+        parent_txid,
+        parent_wtxid,
+        1,
+        &reconsiderable,
+        &hard,
+    );
+
+    // Assert
+    assert!(without_evidence.is_none());
+    assert!(wrong_peer.is_none());
+}
+
+#[test]
+fn max_reconsiderations_cursor_advances_newest_first_without_graph_aggregation() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 2));
+    let parent = transaction(70);
+    let parent_txid = txid(130);
+    let parent_wtxid = wtxid(131);
+    for (sequence, child_version) in [(0, 5), (1, 6), (2, 7)] {
+        let _ = orphanage.stage_missing_parent_with_provenance(
+            OrphanStageInput {
+                transaction: transaction(child_version),
+                ..orphan_input(
+                    1,
+                    132 + child_version as u8,
+                    142 + child_version as u8,
+                    [130],
+                    sequence,
+                )
+            },
+            provenance(1, [1]),
+        );
+    }
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction(8),
+            ..orphan_input(1, 150, 151, [130, 200], 3)
+        },
+        provenance(1, [1]),
+    );
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction(9),
+            ..orphan_input(1, 152, 153, [150], 4)
+        },
+        provenance(1, [1]),
+    );
+    let mut reconsiderable = ReconsiderableRejectEvidence::new(RejectEvidenceTweak::new(5));
+    reconsiderable.record(ReconsiderableEvidenceKey::Transaction(parent_wtxid));
+    let hard = HardRejectEvidence::new(RejectEvidenceTweak::new(6));
+
+    // Act
+    let first = orphanage
+        .begin_same_peer_candidate(
+            parent.clone(),
+            parent_txid,
+            parent_wtxid,
+            1,
+            &reconsiderable,
+            &hard,
+        )
+        .expect("newest sibling");
+    let _ =
+        orphanage.record_reconsideration_outcome(wtxid(148), OrphanReconsiderationStatus::Rejected);
+    let second = orphanage
+        .advance_same_peer_candidate(parent_wtxid, 1, &hard)
+        .expect("next sibling");
+    let capped = orphanage.advance_same_peer_candidate(parent_wtxid, 1, &hard);
+    let (first_members, _) = first.into_ordered_parts();
+    let (second_members, _) = second.into_ordered_parts();
+
+    // Assert
+    assert_eq!(first_members, [parent.clone(), transaction(7)]);
+    assert_eq!(second_members, [parent, transaction(5)]);
+    assert!(capped.is_none());
+}
+
+#[test]
+fn index_oracle_survives_restage_terminal_feedback_expiry_and_disconnect() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(10, 10, 2, 10));
+    let _ = orphanage.stage_missing_parent(orphan_input(1, 160, 161, [7], 0));
+    let _ = orphanage.stage_missing_parent(orphan_input(2, 160, 161, [8], 1));
+    let _ = orphanage.stage_missing_parent(orphan_input(3, 162, 163, [8], 1));
+
+    // Act / Assert
+    assert!(orphanage.debug_indexes_match_oracle());
+    let _ =
+        orphanage.record_reconsideration_outcome(wtxid(161), OrphanReconsiderationStatus::Rejected);
+    assert!(orphanage.debug_indexes_match_oracle());
+    let _ = orphanage.expire(3);
+    assert!(orphanage.debug_indexes_match_oracle());
+    let _ = orphanage.cleanup_peer(3);
+    assert!(orphanage.debug_indexes_match_oracle());
 }

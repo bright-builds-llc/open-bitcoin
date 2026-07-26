@@ -54,7 +54,7 @@ pub use compact_relay::{
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 pub use relay_download::RelayDownloadPolicy;
 pub use transaction_relay::{
-    HardRejectEvidence, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
+    BoundedOrphanAnnouncers, HardRejectEvidence, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
     OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
     PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,
@@ -62,17 +62,18 @@ pub use transaction_relay::{
     PHASE102_MAX_ORPHAN_TRANSACTIONS, PHASE102_MAX_ORPHANS_PER_PEER,
     PHASE102_MAX_RECONSIDERATIONS_PER_PARENT, PHASE102_ORPHAN_TTL_SECONDS,
     PHASE104_MAX_TX_FANOUT_DRAIN_PER_PEER, PHASE104_MAX_TX_FANOUT_QUEUE_PER_PEER,
-    PHASE104_TX_FANOUT_MIN_INTERVAL_SECONDS, PHASE133_REJECT_FILTER_CAPACITY,
-    PHASE133_REJECT_FILTER_FALSE_POSITIVE_RATE, ReceivedTransactionProvenance,
-    ReceivedTransactionResult, ReconsiderableEvidenceKey, ReconsiderableRejectEvidence,
-    RejectEvidenceConfigError, RejectEvidenceTweak, RetryDecisionContext, RetryJitterRangeError,
-    RetryJitterSeconds, TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts,
-    TxDownloadPolicy, TxDownloadScheduler, TxDownloadSnapshot, TxDownloadSuppressionReason,
-    TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason,
-    TxFanoutPeerInput, TxFanoutPolicy, TxFanoutQueue, TxFanoutSnapshot, TxFanoutSuppressionReason,
-    TxOrphanage, TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError,
-    TxRelayPeerMode, TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus,
-    classify_tx_serve_request, defer_local_rebroadcast,
+    PHASE104_TX_FANOUT_MIN_INTERVAL_SECONDS, PHASE133_MAX_ANNOUNCERS_PER_ORPHAN,
+    PHASE133_REJECT_FILTER_CAPACITY, PHASE133_REJECT_FILTER_FALSE_POSITIVE_RATE,
+    ReceivedTransactionProvenance, ReceivedTransactionResult, ReconsiderableEvidenceKey,
+    ReconsiderableRejectEvidence, RejectEvidenceConfigError, RejectEvidenceTweak,
+    RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds,
+    SamePeerOneParentOneChildCandidate, TxAnnouncementInput, TxDownloadAction,
+    TxDownloadLocalFacts, TxDownloadPolicy, TxDownloadScheduler, TxDownloadSnapshot,
+    TxDownloadSuppressionReason, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome,
+    TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutPolicy, TxFanoutQueue, TxFanoutSnapshot,
+    TxFanoutSuppressionReason, TxOrphanage, TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId,
+    TxRelayIdentityError, TxRelayPeerMode, TxServeDecision, TxServeOutcomeLabel,
+    TxServingRecordStatus, classify_tx_serve_request, defer_local_rebroadcast,
 };
 pub const DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER: usize = 128;
 

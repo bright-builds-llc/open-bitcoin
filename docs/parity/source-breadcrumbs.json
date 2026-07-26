@@ -914,6 +914,7 @@
         "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/serving.rs",
         "packages/open-bitcoin-network/src/peer/relay_download.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/fanout_cases.rs",
@@ -935,6 +936,7 @@
         "packages/bitcoin-knots/src/txrequest.h",
         "packages/bitcoin-knots/src/txrequest.cpp",
         "packages/bitcoin-knots/test/functional/p2p_orphan_handling.py",
+        "packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py",
         "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
         "packages/bitcoin-knots/test/functional/p2p_getdata.py"
       ]

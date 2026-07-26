@@ -150,6 +150,7 @@ fn test_orphan_policy_with_reconsideration_cap(
     OrphanPolicy {
         max_total_orphans,
         max_orphans_per_peer,
+        max_announcers_per_orphan: 8,
         orphan_ttl_seconds: 1,
         max_reconsiderations_per_parent,
     }

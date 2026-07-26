@@ -8,6 +8,7 @@
 // - packages/bitcoin-knots/src/txrequest.h
 // - packages/bitcoin-knots/src/txrequest.cpp
 // - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
@@ -15,12 +16,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_primitives::{Hash32, InventoryVector, Txid, Wtxid};
 
+use crate::RelayEligibilityDecision;
 use crate::error::PeerId;
-use crate::{RelayEligibilityDecision, RelayEligibilityReason};
 
 use super::{
     ReceivedTransactionProvenance, ReceivedTransactionResult, TxDownloadAction, TxDownloadPolicy,
     TxDownloadSuppressionReason, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
+    relay_eligibility_suppression,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -590,38 +592,5 @@ impl TxDownloadScheduler {
 
     fn peer_total_count(&self, peer_id: PeerId) -> usize {
         self.peer_candidate_count(peer_id) + self.peer_in_flight_count(peer_id)
-    }
-}
-
-fn relay_eligibility_suppression(
-    peer_id: PeerId,
-    relay_id: TxRelayId,
-    relay_eligibility: &RelayEligibilityDecision,
-) -> Option<TxDownloadAction> {
-    if relay_eligibility.eligible {
-        return None;
-    }
-
-    Some(TxDownloadAction::Suppress {
-        peer_id,
-        relay_id,
-        reason: relay_suppression_reason(relay_eligibility.reason),
-    })
-}
-
-fn relay_suppression_reason(reason: RelayEligibilityReason) -> TxDownloadSuppressionReason {
-    match reason {
-        RelayEligibilityReason::Disabled | RelayEligibilityReason::ActivationRequired => {
-            TxDownloadSuppressionReason::RelayDisabled
-        }
-        RelayEligibilityReason::InboundServingRequired => {
-            TxDownloadSuppressionReason::InboundServingRequired
-        }
-        RelayEligibilityReason::PermissionRequired
-        | RelayEligibilityReason::PermissionEffectInactive => {
-            TxDownloadSuppressionReason::PermissionRequired
-        }
-        RelayEligibilityReason::ProtectedNotRelay => TxDownloadSuppressionReason::ProtectedNotRelay,
-        RelayEligibilityReason::Eligible => TxDownloadSuppressionReason::NotRelayEligible,
     }
 }
