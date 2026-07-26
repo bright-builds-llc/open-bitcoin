@@ -36,6 +36,8 @@ use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::ChainstateStore;
 
 #[cfg(test)]
+pub(in crate::network) use package::singleton_transition_from_hard_failure_for_test;
+#[cfg(test)]
 use package::singleton_transition_from_package_member;
 pub(super) use package::{ManagedPeerAdmissionResult, ManagedPeerPackageAdmission};
 use package::{record_singleton_reject_evidence, singleton_transition_from_package};

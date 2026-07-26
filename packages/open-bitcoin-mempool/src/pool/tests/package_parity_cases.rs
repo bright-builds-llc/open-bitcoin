@@ -41,10 +41,11 @@ use crate::{
     EffectiveFeeGroupError, EffectiveFeeGroupId, EphemeralPolicy, FeeRate, HardMemberFailure,
     IncrementalRelayFeeRate, MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT, Mempool, MempoolCapacity,
     MempoolEntry, MempoolEntryMetadata, MempoolError, MempoolLifecycleDelta, MempoolMemberIdentity,
-    PackageMemberResult, PackageReport, PackageReportError, PackageShapeError, PackageStatus,
-    PolicyConfig, ReconsiderableMemberFailure, StaticRelayFeeRate, SubmissionPackage,
-    SubmissionPackageKind, SubmitPackageCommand, TransactionVirtualSize, TrucPolicy,
-    WellFormedPackage, recompute_resource_ledger, validate_standard_transaction,
+    MempoolRejectionCategory, PackageMemberResult, PackageReport, PackageReportError,
+    PackageShapeError, PackageStatus, PolicyConfig, ReconsiderableMemberFailure,
+    StaticRelayFeeRate, SubmissionPackage, SubmissionPackageKind, SubmitPackageCommand,
+    TransactionVirtualSize, TrucPolicy, WellFormedPackage, recompute_resource_ledger,
+    validate_standard_transaction,
 };
 
 fn verify_flags() -> ScriptVerifyFlags {
@@ -619,6 +620,7 @@ fn too_few_too_many_swapped_identity_and_mismatched_status_reports_reject() {
     let failure = |requested| {
         PackageMemberResult::HardRejected(HardMemberFailure::Policy {
             requested,
+            category: MempoolRejectionCategory::InternalInvariant,
             reason: "fixture".to_string(),
         })
     };

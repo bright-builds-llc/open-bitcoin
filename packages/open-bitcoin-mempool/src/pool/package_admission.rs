@@ -511,10 +511,7 @@ fn group_invariant(reason: &'static str) -> MempoolError {
 }
 
 fn hard_failure(identity: MempoolMemberIdentity, error: MempoolError) -> PackageMemberResult {
-    PackageMemberResult::HardRejected(HardMemberFailure::Policy {
-        requested: identity,
-        reason: error.to_string(),
-    })
+    PackageMemberResult::HardRejected(HardMemberFailure::from_policy_error(identity, error))
 }
 
 fn truc_failure(identity: MempoolMemberIdentity, error: TrucPolicyError) -> PackageMemberResult {

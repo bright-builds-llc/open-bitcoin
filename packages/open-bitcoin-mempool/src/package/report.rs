@@ -9,7 +9,9 @@ use std::fmt;
 use open_bitcoin_primitives::{Amount, Txid, Wtxid};
 
 use super::{PackageFingerprint, WellFormedPackage};
-use crate::{FeeRate, MempoolMemberIdentity, TransactionVirtualSize};
+use crate::{
+    FeeRate, MempoolError, MempoolMemberIdentity, MempoolRejectionCategory, TransactionVirtualSize,
+};
 
 /// Stable identity for one effective-fee calculation group.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -217,6 +219,7 @@ pub struct WitnessAlias {
 pub enum HardMemberFailure {
     Policy {
         requested: MempoolMemberIdentity,
+        category: MempoolRejectionCategory,
         reason: String,
     },
     TrucPolicy {
@@ -231,6 +234,17 @@ pub enum HardMemberFailure {
         requested: MempoolMemberIdentity,
         reason: String,
     },
+}
+
+impl HardMemberFailure {
+    pub(crate) fn from_policy_error(requested: MempoolMemberIdentity, error: MempoolError) -> Self {
+        Self::Policy {
+            requested,
+            category: MempoolRejectionCategory::from_error(&error)
+                .unwrap_or(MempoolRejectionCategory::InternalInvariant),
+            reason: error.to_string(),
+        }
+    }
 }
 
 /// A member failure that a later package or input arrival may reconsider.

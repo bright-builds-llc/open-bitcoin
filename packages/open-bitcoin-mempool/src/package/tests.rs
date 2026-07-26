@@ -22,7 +22,8 @@ use super::{
 };
 use super::{PackageMember, shape::transaction_encoding_error};
 use crate::{
-    FeeRate, MempoolMemberIdentity, TransactionVirtualSize, transaction_weight_and_virtual_size,
+    FeeRate, MempoolMemberIdentity, MempoolRejectionCategory, TransactionVirtualSize,
+    transaction_weight_and_virtual_size,
 };
 
 fn transaction_with_input(seed: u8) -> Transaction {
@@ -613,6 +614,7 @@ fn too_many_member_results_are_rejected() {
     let failure = || {
         PackageMemberResult::HardRejected(HardMemberFailure::Policy {
             requested,
+            category: MempoolRejectionCategory::InternalInvariant,
             reason: "fixture".to_string(),
         })
     };
@@ -638,10 +640,12 @@ fn swapped_identity_order_is_rejected() {
     let members = vec![
         PackageMemberResult::HardRejected(HardMemberFailure::Policy {
             requested: second,
+            category: MempoolRejectionCategory::InternalInvariant,
             reason: "second first".to_string(),
         }),
         PackageMemberResult::HardRejected(HardMemberFailure::Policy {
             requested: first,
+            category: MempoolRejectionCategory::InternalInvariant,
             reason: "first second".to_string(),
         }),
     ];
@@ -660,6 +664,7 @@ fn mismatched_status_is_rejected() {
     let members = vec![
         PackageMemberResult::HardRejected(HardMemberFailure::Policy {
             requested: report_identity(&package, 0),
+            category: MempoolRejectionCategory::InternalInvariant,
             reason: "first".to_string(),
         }),
         PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::MissingInputs {

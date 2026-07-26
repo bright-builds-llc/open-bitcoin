@@ -6,9 +6,10 @@
 // - packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py
 
 use open_bitcoin_mempool::{
-    EffectiveFeeGroupId, ExistingMember, HardMemberFailure, MempoolMemberIdentity, NewlyPresent,
-    PackageMemberResult, PackageStatus, PostTrimAbsence, PriorMemberSuccess,
-    ReconsiderableMemberFailure, RollingMempoolFeeRate, WellFormedPackage, WitnessAlias,
+    EffectiveFeeGroupId, ExistingMember, HardMemberFailure, MempoolMemberIdentity, MempoolOutcome,
+    MempoolRejectionCategory, NewlyPresent, PackageMemberResult, PackageStatus, PostTrimAbsence,
+    PriorMemberSuccess, ReconsiderableMemberFailure, RollingMempoolFeeRate, WellFormedPackage,
+    WitnessAlias,
 };
 use open_bitcoin_network::ReceivedTransactionProvenance;
 
@@ -61,6 +62,41 @@ fn package_network(
         network,
         transaction_txid(&genesis.transactions[0]).expect("coinbase txid"),
     )
+}
+
+#[test]
+fn singleton_policy_failures_preserve_exact_rejection_categories() {
+    // Arrange
+    let requested = identity(&spend_transaction(Txid::from_byte_array([0x40; 32]), 1_000));
+    let categories = [
+        MempoolRejectionCategory::Validation,
+        MempoolRejectionCategory::NonStandard,
+        MempoolRejectionCategory::ConflictNotAllowed,
+        MempoolRejectionCategory::LimitExceeded,
+        MempoolRejectionCategory::InternalInvariant,
+    ];
+
+    // Act / Assert
+    for category in categories {
+        let transition =
+            crate::network::admission_bridge::singleton_transition_from_hard_failure_for_test(
+                HardMemberFailure::Policy {
+                    requested,
+                    category,
+                    reason: "typed policy failure".to_string(),
+                },
+            )
+            .expect("singleton transition");
+
+        assert_eq!(
+            transition.outcome,
+            MempoolOutcome::Rejected {
+                txid: requested.txid,
+                wtxid: requested.wtxid,
+                category,
+            }
+        );
+    }
 }
 
 #[test]
@@ -270,6 +306,7 @@ fn every_feedback_variant_keeps_hard_reconsiderable_and_failed_fingerprint_domai
         |requested| {
             PackageMemberResult::HardRejected(HardMemberFailure::Policy {
                 requested,
+                category: MempoolRejectionCategory::InternalInvariant,
                 reason: "hard".to_string(),
             })
         },

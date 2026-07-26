@@ -298,6 +298,16 @@ pub(super) fn singleton_transition_from_package_member(
     singleton_transition_from_member(member, delta)
 }
 
+#[cfg(test)]
+pub(in crate::network) fn singleton_transition_from_hard_failure_for_test(
+    failure: HardMemberFailure,
+) -> Result<MempoolTransition, ManagedNetworkError> {
+    singleton_transition_from_member(
+        &PackageMemberResult::HardRejected(failure),
+        MempoolLifecycleDelta::empty(),
+    )
+}
+
 fn singleton_transition_from_member(
     member: &PackageMemberResult,
     delta: MempoolLifecycleDelta,
@@ -363,7 +373,7 @@ fn singleton_transition_from_member(
 
 fn hard_rejection_category(failure: &HardMemberFailure) -> MempoolRejectionCategory {
     match failure {
-        HardMemberFailure::Policy { .. } => MempoolRejectionCategory::InternalInvariant,
+        HardMemberFailure::Policy { category, .. } => *category,
         HardMemberFailure::TrucPolicy { .. } | HardMemberFailure::EphemeralPolicy { .. } => {
             MempoolRejectionCategory::NonStandard
         }
