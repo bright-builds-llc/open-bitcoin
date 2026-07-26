@@ -12,7 +12,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, hash_map::RandomState};
+use std::hash::{BuildHasher, Hasher};
 
 use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
@@ -21,10 +22,10 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, ConnectionRole, InboundAdmissionPolicy, LocalPeerConfig,
-    OrphanPolicy, PeerConnectionClass, PeerId, PeerManager, RelayActivationConfig,
-    RelayDownloadPolicy, RelayEligibilityDecision, RelayEligibilityInput, RelayEligibilityReason,
-    TxOrphanage, TxRelayId, TxRelayPeerMode, TxServeOutcomeLabel, TxServingRecordStatus,
-    classify_relay_eligibility, classify_tx_serve_request,
+    OrphanPolicy, PeerConnectionClass, PeerId, PeerManager, RejectEvidenceTweak,
+    RelayActivationConfig, RelayDownloadPolicy, RelayEligibilityDecision, RelayEligibilityInput,
+    RelayEligibilityReason, TxOrphanage, TxRelayId, TxRelayPeerMode, TxServeOutcomeLabel,
+    TxServingRecordStatus, classify_relay_eligibility, classify_tx_serve_request,
 };
 
 use super::{
@@ -273,7 +274,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             store,
             local_config.clone(),
             mempool_config,
-            PeerManager::new(local_config),
+            PeerManager::with_reject_evidence_tweak(local_config, fresh_reject_evidence_tweak()),
             relay_activation,
             block_relay_activation,
             inbound_serving_enabled,
@@ -324,9 +325,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         block_relay_activation: BlockRelayActivationPolicy,
         inbound_serving_enabled: bool,
     ) -> Self {
-        let peer_manager = PeerManager::with_max_blocks_in_flight(
+        let peer_manager = PeerManager::with_max_blocks_in_flight_and_reject_evidence_tweak(
             local_config.clone(),
             max_blocks_in_flight_per_peer,
+            fresh_reject_evidence_tweak(),
         );
         Self::from_peer_manager(
             store,
@@ -474,4 +476,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             transactions_by_wtxid: BTreeMap::new(),
         }
     }
+}
+
+pub(super) fn fresh_reject_evidence_tweak() -> RejectEvidenceTweak {
+    let mut hasher = RandomState::new().build_hasher();
+    hasher.write(b"open-bitcoin/reject-evidence");
+    RejectEvidenceTweak::new(hasher.finish())
 }

@@ -201,12 +201,35 @@ impl PeerManager {
     }
 
     pub fn new(local_config: LocalPeerConfig) -> Self {
-        Self::with_max_blocks_in_flight(local_config, DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER)
+        Self::with_reject_evidence_tweak(local_config, RejectEvidenceTweak::new(0))
+    }
+
+    pub fn with_reject_evidence_tweak(
+        local_config: LocalPeerConfig,
+        reject_evidence_tweak: RejectEvidenceTweak,
+    ) -> Self {
+        Self::with_max_blocks_in_flight_and_reject_evidence_tweak(
+            local_config,
+            DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER,
+            reject_evidence_tweak,
+        )
     }
 
     pub fn with_max_blocks_in_flight(
         local_config: LocalPeerConfig,
         max_blocks_in_flight_per_peer: usize,
+    ) -> Self {
+        Self::with_max_blocks_in_flight_and_reject_evidence_tweak(
+            local_config,
+            max_blocks_in_flight_per_peer,
+            RejectEvidenceTweak::new(0),
+        )
+    }
+
+    pub fn with_max_blocks_in_flight_and_reject_evidence_tweak(
+        local_config: LocalPeerConfig,
+        max_blocks_in_flight_per_peer: usize,
+        reject_evidence_tweak: RejectEvidenceTweak,
     ) -> Self {
         Self {
             local_config,
@@ -217,9 +240,9 @@ impl PeerManager {
             known_wtxids: BTreeSet::new(),
             known_wtxids_by_txid: BTreeMap::new(),
             tx_download: TxDownloadScheduler::new(TxDownloadPolicy::default()),
-            hard_reject_evidence: HardRejectEvidence::new(RejectEvidenceTweak::new(0)),
+            hard_reject_evidence: HardRejectEvidence::new(reject_evidence_tweak),
             reconsiderable_reject_evidence: ReconsiderableRejectEvidence::new(
-                RejectEvidenceTweak::new(0),
+                reject_evidence_tweak,
             ),
             mempool_known: BTreeSet::new(),
             relay_download_policy: RelayDownloadPolicy::default(),
@@ -296,6 +319,11 @@ impl PeerManager {
     pub fn reconsiderable_package_contains(&self, fingerprint: [u8; 32]) -> bool {
         self.reconsiderable_reject_evidence
             .contains(ReconsiderableEvidenceKey::Package(fingerprint))
+    }
+
+    pub fn on_active_tip_changed(&mut self, new_tweak: RejectEvidenceTweak) {
+        self.hard_reject_evidence.reset(new_tweak);
+        self.reconsiderable_reject_evidence.reset(new_tweak);
     }
 
     pub fn header_store(&self) -> &HeaderStore {

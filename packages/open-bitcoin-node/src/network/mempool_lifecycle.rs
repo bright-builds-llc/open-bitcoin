@@ -45,6 +45,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             verify_flags,
             consensus_params,
         )?;
+        self.peer_manager
+            .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         self.blocks_by_hash
             .insert(position.block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
@@ -101,6 +103,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             verify_flags,
             consensus_params,
         )?;
+        self.peer_manager
+            .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         self.blocks_by_hash.insert(block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
         let context = block_lifecycle_context(timestamp, position.height);
@@ -122,6 +126,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             verify_flags,
             consensus_params,
         )?;
+        self.peer_manager
+            .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         for anchored_block in replacement_branch {
             let block_hash = block_hash(&anchored_block.block.header);
             self.blocks_by_hash
