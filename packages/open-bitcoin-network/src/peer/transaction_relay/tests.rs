@@ -17,6 +17,7 @@ use super::*;
 
 mod fanout_cases;
 mod orphanage_cases;
+mod reject_evidence_cases;
 mod scheduler_cases;
 mod serving_cases;
 
