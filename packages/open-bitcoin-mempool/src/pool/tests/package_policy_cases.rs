@@ -142,6 +142,7 @@ fn output_policy_result(
         PolicyConfig {
             ephemeral_policy: permissions,
             permit_bare_datacarrier: true,
+            permit_bare_anchor: true,
             ..PolicyConfig::default()
         },
     )
@@ -334,6 +335,79 @@ fn transaction_output_facts_enforce_knots_data_dust_and_bare_limits() {
     );
     assert!(data_and_money.is_ok());
     assert!(permitted_bare_data.is_ok());
+}
+
+#[test]
+fn transaction_output_facts_enforce_bare_anchor_default_and_companions() {
+    // Arrange
+    let anchor = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: p2a_script(),
+    };
+    let dust = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::from_sats(1).expect("valid dust value"),
+        script_pubkey: p2sh_script(),
+    };
+    let null_data = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: script(&[0x6a, 0x01, 0x01]),
+    };
+    let monetary = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::from_sats(1_000).expect("valid monetary value"),
+        script_pubkey: p2sh_script(),
+    };
+    let permit_dust = PolicyConfig {
+        ephemeral_policy: EphemeralPolicy {
+            anchor: true,
+            send: true,
+            dust: true,
+        },
+        ..PolicyConfig::default()
+    };
+    let permit_bare_anchor = PolicyConfig {
+        permit_bare_anchor: true,
+        ..permit_dust.clone()
+    };
+
+    // Act
+    let bare_anchor =
+        transaction_output_policy_result(vec![anchor.clone()], PolicyConfig::default());
+    let bare_dust = transaction_output_policy_result(vec![dust.clone()], permit_dust.clone());
+    let permitted_anchor =
+        transaction_output_policy_result(vec![anchor.clone()], permit_bare_anchor.clone());
+    let permitted_dust =
+        transaction_output_policy_result(vec![dust.clone()], permit_bare_anchor.clone());
+    let anchor_with_monetary = transaction_output_policy_result(
+        vec![anchor.clone(), monetary.clone()],
+        PolicyConfig::default(),
+    );
+    let dust_with_monetary = transaction_output_policy_result(vec![dust, monetary], permit_dust);
+    let data_with_anchor = transaction_output_policy_result(
+        vec![null_data, anchor],
+        PolicyConfig {
+            permit_bare_datacarrier: true,
+            ..PolicyConfig::default()
+        },
+    );
+
+    // Assert
+    assert!(
+        bare_anchor
+            .expect_err("bare anchor")
+            .to_string()
+            .contains("bare-anchor")
+    );
+    assert!(
+        bare_dust
+            .expect_err("bare dust")
+            .to_string()
+            .contains("bare-anchor")
+    );
+    assert!(permitted_anchor.is_ok());
+    assert!(permitted_dust.is_ok());
+    assert!(anchor_with_monetary.is_ok());
+    assert!(dust_with_monetary.is_ok());
+    assert!(data_with_anchor.is_ok());
 }
 
 #[test]

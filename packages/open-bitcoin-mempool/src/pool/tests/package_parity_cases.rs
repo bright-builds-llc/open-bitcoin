@@ -219,6 +219,7 @@ fn output_policy_result(
         &[input_context],
         &PolicyConfig {
             ephemeral_policy: permissions,
+            permit_bare_anchor: true,
             ..PolicyConfig::default()
         },
         100,

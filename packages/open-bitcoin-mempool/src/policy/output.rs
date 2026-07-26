@@ -71,6 +71,11 @@ impl StandardTransactionOutputFacts {
                 reason: "bare data-carrier transactions are disabled".to_string(),
             });
         }
+        if self.monetary_outputs == 0 && self.null_data_outputs == 0 && !config.permit_bare_anchor {
+            return Err(MempoolError::NonStandard {
+                reason: "bare-anchor transactions are disabled".to_string(),
+            });
+        }
         Ok(())
     }
 }
