@@ -403,6 +403,16 @@ function checkPack07Policy(repoRoot: string, failures: string[]): void {
     repoRoot,
     "packages/open-bitcoin-mempool/src/types.rs",
   );
+  const ephemeralDefaults = sectionBetween(
+    types,
+    "impl Default for EphemeralPolicy",
+    "pub struct PolicyConfig",
+  );
+  const policyDefaults = sectionBetween(
+    types,
+    "impl Default for PolicyConfig",
+    "pub struct AggregateStats",
+  );
   const fee = readTarget(
     repoRoot,
     "packages/open-bitcoin-mempool/src/fee.rs",
@@ -477,9 +487,15 @@ function checkPack07Policy(repoRoot: string, failures: string[]): void {
     failures,
   );
   requireAll(
-    types,
+    ephemeralDefaults,
     ["anchor: true", "send: false", "dust: false"],
     "P132 PACK-07: ephemeral defaults must remain anchor=true send=false dust=false",
+    failures,
+  );
+  requireAll(
+    policyDefaults,
+    ["permit_bare_anchor: true"],
+    "P132 PACK-07: bare-anchor transaction default must remain permit_bare_anchor=true",
     failures,
   );
   requireAll(

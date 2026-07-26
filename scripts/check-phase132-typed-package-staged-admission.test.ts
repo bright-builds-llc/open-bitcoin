@@ -234,6 +234,15 @@ test.each([
     ),
   ],
   [
+    "bare anchor policy default",
+    "P132 PACK-07: bare-anchor transaction default must remain permit_bare_anchor=true",
+    replace(
+      "packages/open-bitcoin-mempool/src/types.rs",
+      "            permit_bare_anchor: true,",
+      "            permit_bare_anchor: false,",
+    ),
+  ],
+  [
     "one final trim",
     "P132 PACK-07: package execution must retain one trim and final-membership rewrite",
     replace(

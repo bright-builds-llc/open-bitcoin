@@ -338,7 +338,7 @@ fn transaction_output_facts_enforce_knots_data_dust_and_bare_limits() {
 }
 
 #[test]
-fn transaction_output_facts_enforce_bare_anchor_default_and_companions() {
+fn transaction_output_facts_enforce_bare_anchor_toggle_and_companions() {
     // Arrange
     let anchor = open_bitcoin_primitives::TransactionOutput {
         value: Amount::ZERO,
@@ -364,42 +364,58 @@ fn transaction_output_facts_enforce_bare_anchor_default_and_companions() {
         },
         ..PolicyConfig::default()
     };
+    let deny_bare_anchor = PolicyConfig {
+        permit_bare_anchor: false,
+        ..permit_dust.clone()
+    };
     let permit_bare_anchor = PolicyConfig {
         permit_bare_anchor: true,
         ..permit_dust.clone()
     };
 
     // Act
-    let bare_anchor =
+    let default_anchor =
         transaction_output_policy_result(vec![anchor.clone()], PolicyConfig::default());
-    let bare_dust = transaction_output_policy_result(vec![dust.clone()], permit_dust.clone());
+    let default_dust = transaction_output_policy_result(vec![dust.clone()], permit_dust.clone());
+    let denied_anchor =
+        transaction_output_policy_result(vec![anchor.clone()], deny_bare_anchor.clone());
+    let denied_dust =
+        transaction_output_policy_result(vec![dust.clone()], deny_bare_anchor.clone());
     let permitted_anchor =
         transaction_output_policy_result(vec![anchor.clone()], permit_bare_anchor.clone());
     let permitted_dust =
         transaction_output_policy_result(vec![dust.clone()], permit_bare_anchor.clone());
     let anchor_with_monetary = transaction_output_policy_result(
         vec![anchor.clone(), monetary.clone()],
-        PolicyConfig::default(),
+        PolicyConfig {
+            permit_bare_anchor: false,
+            ..PolicyConfig::default()
+        },
     );
-    let dust_with_monetary = transaction_output_policy_result(vec![dust, monetary], permit_dust);
+    let dust_with_monetary =
+        transaction_output_policy_result(vec![dust, monetary], deny_bare_anchor);
     let data_with_anchor = transaction_output_policy_result(
         vec![null_data, anchor],
         PolicyConfig {
             permit_bare_datacarrier: true,
+            permit_bare_anchor: false,
             ..PolicyConfig::default()
         },
     );
 
     // Assert
+    assert!(PolicyConfig::default().permit_bare_anchor);
+    assert!(default_anchor.is_ok());
+    assert!(default_dust.is_ok());
     assert!(
-        bare_anchor
-            .expect_err("bare anchor")
+        denied_anchor
+            .expect_err("disabled bare anchor")
             .to_string()
             .contains("bare-anchor")
     );
     assert!(
-        bare_dust
-            .expect_err("bare dust")
+        denied_dust
+            .expect_err("disabled bare dust")
             .to_string()
             .contains("bare-anchor")
     );

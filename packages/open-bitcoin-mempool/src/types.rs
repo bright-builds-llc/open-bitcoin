@@ -110,7 +110,7 @@ impl Default for PolicyConfig {
             max_datacarrier_bytes: DEFAULT_MAX_DATACARRIER_BYTES,
             accept_datacarrier: true,
             permit_bare_datacarrier: false,
-            permit_bare_anchor: false,
+            permit_bare_anchor: true,
             permit_bare_multisig: false,
             max_ancestor_count: DEFAULT_MAX_ANCESTOR_COUNT,
             max_ancestor_virtual_size: DEFAULT_MAX_ANCESTOR_VIRTUAL_SIZE,
