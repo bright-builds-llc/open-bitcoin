@@ -376,6 +376,83 @@ Phase 130 does not claim general package wire relay, whole-mempool rebroadcast,
 public or default relay, guaranteed propagation, public-network default CI,
 production readiness, or production-funds wallet use.
 
+## Typed Package Vocabulary and Staged Admission
+
+Phase 132 closes `PACK-01` through `PACK-07` as a bounded local pure-core
+surface. It does not add peer package assembly, a general package wire, an RPC
+package adapter, public or default relay, guaranteed propagation,
+public-network CI, or production readiness.
+
+- **PACK-01 — checked shape and identity.** `WellFormedPackage` rejects empty
+  requests, more than 25 transactions, more than 404,000 weight units,
+  duplicate txid or wtxid identities, non-topological request order, and
+  internal input conflicts before expensive work. Private request-aligned
+  storage preserves ordered responses, while the package fingerprint sorts
+  wtxids independently so identity does not redefine request order.
+- **PACK-02 — non-mutating dry run.** `DryRunPackageCommand` runs the complete
+  local policy pipeline and returns the same ordered result vocabulary as
+  submission. It has no commit capability and leaves entries, resource and
+  rolling-fee state, relay, persistence, and evidence unchanged.
+- **PACK-03 — checked submission and report.** `SubmissionPackage` is an opaque
+  refinement constructed only by `try_from_package`; it proves a singleton or
+  child-with-unconfirmed-parents capability. `PackageReport::try_new` enforces
+  one input-index-aligned result per member, identity order, derived
+  complete/partial/failed status, and checked effective-fee membership.
+- **PACK-04 — individual-first partial acceptance.** Members are tried in input
+  order. Successful singletons stay in the prospective view, and only eligible
+  reconsiderable members enter residual package evaluation. A valid parent may
+  therefore remain finally present when its child is rejected.
+- **PACK-05 — coherent staged commit.** A crate-private sparse overlay records
+  entry, spent-index, topology, resource, rolling-fee, and lifecycle changes.
+  Its `MempoolPatch` is bound to the exact base revision; stale apply rejects
+  before mutation. Validation, replacement, limits, script, trim, and patch
+  preparation failures discard the prospective state rather than partially
+  mutating the live mempool.
+- **PACK-06 — separated fee roles and groups.** Every ordinary member still
+  meets the static relay floor independently. A non-empty checked effective-fee
+  group may meet the active rolling floor; incremental relay fee remains only a
+  replacement or pressure input. Groups validate unique ordered wtxid
+  membership, aggregate size, and effective-rate consistency.
+- **PACK-07 — pinned package-policy exceptions and final truth.** Evaluation
+  keeps static-floor, TRUC, rolling-floor, ancestor/descendant limits, limited
+  replacement, ephemeral-dust, and late-script stages explicit. Limited RBF
+  conservatively sums pre-union descendant counts against the 100-candidate
+  bound and evaluates TRUC direct conflicts and sibling-eviction intent against
+  pre-replacement facts. P2A uses witness program bytes `0x4e 0x73`; the dust
+  rate is 3000 sat/kvB; permissions default to `anchor=true`, `send=false`,
+  `dust=false`; dusty parents require zero base and modified fee; and a child
+  must spend all permitted ephemeral outputs. Same-txid/different-witness
+  aliases, hard and reconsiderable failures, and effective groups remain typed.
+  Admission performs one final trim and then rewrites every initially
+  successful result from authoritative post-trim membership before producing
+  lifecycle facts.
+
+The intentional Rust differences are internal safety mechanisms rather than
+external policy divergence: opaque refinements replace caller booleans,
+request-aligned vectors own ordering, the prospective mempool is a sparse
+overlay instead of a full clone, and deterministic Rust-owned accounting
+replaces C++ allocator estimates.
+
+### Phase 132 pinned Knots anchors
+
+- [`packages/bitcoin-knots/doc/policy/packages.md`](../../../packages/bitcoin-knots/doc/policy/packages.md)
+- [`packages/bitcoin-knots/src/policy/packages.cpp`](../../../packages/bitcoin-knots/src/policy/packages.cpp)
+- [`packages/bitcoin-knots/src/validation.h`](../../../packages/bitcoin-knots/src/validation.h)
+- [`packages/bitcoin-knots/src/validation.cpp`](../../../packages/bitcoin-knots/src/validation.cpp)
+- [`packages/bitcoin-knots/src/test/txpackage_tests.cpp`](../../../packages/bitcoin-knots/src/test/txpackage_tests.cpp)
+- [`packages/bitcoin-knots/src/test/txvalidation_tests.cpp`](../../../packages/bitcoin-knots/src/test/txvalidation_tests.cpp)
+- [`packages/bitcoin-knots/test/functional/mempool_package_rbf.py`](../../../packages/bitcoin-knots/test/functional/mempool_package_rbf.py)
+- [`packages/bitcoin-knots/test/functional/mempool_truc.py`](../../../packages/bitcoin-knots/test/functional/mempool_truc.py)
+- [`packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py`](../../../packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py)
+
+The bounded local core emits only reports and `MempoolLifecycleDelta` facts.
+Phase 133 owns same-peer candidate assembly, Phase 134 owns authoritative
+cross-cache projection, Phase 135 owns durable recovery, Phase 136 owns relay
+fanout and retry, and Phase 137 owns RPC/operator adapters. General package wire
+protocols, arbitrary multi-parent peer assembly, public/default relay,
+guaranteed propagation, public-network gates, and production readiness remain
+deferred.
+
 ### Knots sources for this surface
 
 - [`packages/bitcoin-knots/src/txmempool.h`](../../../packages/bitcoin-knots/src/txmempool.h)

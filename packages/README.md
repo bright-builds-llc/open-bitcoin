@@ -9,7 +9,7 @@ Open Bitcoin crates.
 - `open-bitcoin-core/` re-exports the first-party pure-core surface for downstream package boundaries.
 - `open-bitcoin-consensus/` owns script execution, transaction checks, block checks, proof-of-work, merkle behavior, and typed validation errors.
 - `open-bitcoin-chainstate/` owns pure-core UTXO state, undo data, active-chain mutation, and reorg behavior.
-- `open-bitcoin-mempool/` owns policy admission, replacement, ancestor/descendant accounting, eviction behavior, and typed resource, fee, metadata, and lifecycle contracts.
+- `open-bitcoin-mempool/` owns policy admission, replacement, ancestor/descendant accounting, eviction behavior, typed resource, fee, metadata, and lifecycle contracts, and bounded local pure-core package admission with ordered dry-run and staged-submit results.
 - `open-bitcoin-network/` owns peer lifecycle, wire-message handling, sync planning, relay state, and injected retry-input contracts.
 - `open-bitcoin-wallet/` owns descriptor parsing, address derivation, balance tracking, coin selection, transaction building, and signing.
 - `open-bitcoin-node/` owns adapter-facing orchestration over chainstate, mempool, networking, and wallet state, including the authoritative admission and lifecycle shell.
@@ -22,3 +22,9 @@ First-party crates should depend on each other intentionally. Pure-core crates
 must not depend on shell/runtime crates. Adapter and executable crates may
 depend on pure-core crates, but I/O and runtime effects should stay outside the
 pure-core packages.
+
+The package surface is deliberately local and effect-free. Peer package
+assembly, a general package wire, an RPC package adapter, public or default
+relay, guaranteed propagation, public-network CI or release gates, and
+production readiness remain deferred; the mempool crate does not perform those
+adapter effects.

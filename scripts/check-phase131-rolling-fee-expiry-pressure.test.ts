@@ -121,8 +121,8 @@ test.each([
     "P131 verifier heredoc: Phase 131 pair must run between Phase 130 and the Phase 117 gate",
     replace(
       "scripts/verify.sh",
-      "bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts\nbun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
-      "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
+      "bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts\n",
+      "",
     ),
   ],
   [

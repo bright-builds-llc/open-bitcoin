@@ -85,8 +85,8 @@ test.each([
     "P132 opacity: PackageReport fields must remain private and read-only",
     replace(
       "packages/open-bitcoin-mempool/src/package/report.rs",
-      "    status: PackageStatus,",
-      "    pub status: PackageStatus,",
+      "pub struct PackageReport {\n    fingerprint: PackageFingerprint,\n    status: PackageStatus,",
+      "pub struct PackageReport {\n    fingerprint: PackageFingerprint,\n    pub status: PackageStatus,",
     ),
   ],
   [
@@ -94,8 +94,8 @@ test.each([
     "P132 opacity: EffectiveFeeGroup fields must remain private and read-only",
     replace(
       "packages/open-bitcoin-mempool/src/package/report.rs",
-      "    ordered_wtxids: Vec<Wtxid>,",
-      "    pub ordered_wtxids: Vec<Wtxid>,",
+      "pub struct EffectiveFeeGroup {\n    id: EffectiveFeeGroupId,\n    ordered_wtxids: Vec<Wtxid>,",
+      "pub struct EffectiveFeeGroup {\n    id: EffectiveFeeGroupId,\n    pub ordered_wtxids: Vec<Wtxid>,",
     ),
   ],
   [
@@ -184,8 +184,8 @@ test.each([
     "P132 PACK-07: policy order must keep ephemeral checks before late scripts",
     swap(
       "packages/open-bitcoin-mempool/src/pool/package_admission.rs",
-      "validate_ephemeral_spends",
-      "run_late_script_checks",
+      "if let Err(error) = validate_ephemeral_spends(",
+      "if let Err(error) = run_late_script_checks(",
     ),
   ],
   [
@@ -202,8 +202,8 @@ test.each([
     "P132 PACK-07: TRUC must evaluate direct conflicts and sibling intent against pre-replacement facts",
     replace(
       "packages/open-bitcoin-mempool/src/policy/truc.rs",
-      "direct_conflicts: &BTreeSet<Txid>,",
-      "_direct_conflicts: &BTreeSet<Txid>,",
+      "find_sibling_eviction(view, members, direct_conflicts)?",
+      "find_sibling_eviction(view, members, &BTreeSet::new())?",
     ),
   ],
   [
