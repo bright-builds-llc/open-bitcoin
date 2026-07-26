@@ -484,7 +484,8 @@ fn orphan_parent_request_suppresses_duplicate_pending_parent_with_fallback() {
 
 #[test]
 fn already_have_recent_reject_and_mempool_known_suppress_requests() {
-    scheduler_cases::already_have_recent_reject_and_mempool_known_suppress_requests();
+    scheduler_cases::semantic_reject_facts_suppress_inventory_while_parent_bypasses_reconsiderable(
+    );
 }
 
 #[test]

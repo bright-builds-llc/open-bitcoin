@@ -11,8 +11,6 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
-use std::collections::BTreeSet;
-
 use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector};
 
 use crate::error::PeerId;
@@ -514,43 +512,78 @@ pub(super) fn orphan_parent_request_suppresses_duplicate_pending_parent_with_fal
     );
 }
 
-pub(super) fn already_have_recent_reject_and_mempool_known_suppress_requests() {
+pub(super) fn semantic_reject_facts_suppress_inventory_while_parent_bypasses_reconsiderable() {
     // Arrange
     let mut scheduler = scheduler();
-    let facts = TxDownloadLocalFacts {
-        already_have: BTreeSet::from([txid_relay(6)]),
-        recent_rejects: BTreeSet::from([txid_relay(7)]),
-        mempool_known: BTreeSet::from([txid_relay(8)]),
-    };
 
     // Act
     let already_have = scheduler.record_announcement(TxAnnouncementInput {
-        local_facts: facts.clone(),
+        local_facts: TxDownloadLocalFacts {
+            already_have: true,
+            ..TxDownloadLocalFacts::default()
+        },
         ..announcement(6, txid_inventory(6), TxRelayPeerMode::TxidOnly, 0)
     });
-    let recent_reject = scheduler.record_announcement(TxAnnouncementInput {
-        local_facts: facts.clone(),
+    let hard_reject = scheduler.record_announcement(TxAnnouncementInput {
+        local_facts: TxDownloadLocalFacts {
+            hard_rejected: true,
+            ..TxDownloadLocalFacts::default()
+        },
         ..announcement(7, txid_inventory(7), TxRelayPeerMode::TxidOnly, 0)
     });
-    let mempool_known = scheduler.record_announcement(TxAnnouncementInput {
-        local_facts: facts,
+    let reconsiderable = scheduler.record_announcement(TxAnnouncementInput {
+        local_facts: TxDownloadLocalFacts {
+            reconsiderable: true,
+            ..TxDownloadLocalFacts::default()
+        },
         ..announcement(8, txid_inventory(8), TxRelayPeerMode::TxidOnly, 0)
+    });
+    let mempool_known = scheduler.record_announcement(TxAnnouncementInput {
+        local_facts: TxDownloadLocalFacts {
+            mempool_known: true,
+            ..TxDownloadLocalFacts::default()
+        },
+        ..announcement(9, txid_inventory(9), TxRelayPeerMode::TxidOnly, 0)
+    });
+    let reconsiderable_parent = scheduler.request_parent(TxParentRequestInput {
+        local_facts: TxDownloadLocalFacts {
+            reconsiderable: true,
+            ..TxDownloadLocalFacts::default()
+        },
+        ..parent_request(10, txid_relay(10), 0)
+    });
+    let hard_rejected_parent = scheduler.request_parent(TxParentRequestInput {
+        local_facts: TxDownloadLocalFacts {
+            hard_rejected: true,
+            ..TxDownloadLocalFacts::default()
+        },
+        ..parent_request(11, txid_relay(11), 0)
     });
 
     // Assert
     assert_eq!(already_have, [expect_already_have(6, txid_relay(6))]);
-    assert_eq!(recent_reject, [expect_recent_reject(7, txid_relay(7))]);
+    assert_eq!(hard_reject, [expect_recent_reject(7, txid_relay(7))]);
+    assert_eq!(reconsiderable, [expect_recent_reject(8, txid_relay(8))]);
     assert_eq!(
         mempool_known,
         [TxDownloadAction::Suppress {
-            peer_id: 8,
-            relay_id: txid_relay(8),
+            peer_id: 9,
+            relay_id: txid_relay(9),
             reason: TxDownloadSuppressionReason::MempoolKnown,
         }],
     );
     assert_eq!(
         mempool_known[0].suppression_reason(),
         Some(TxDownloadSuppressionReason::MempoolKnown),
+    );
+    assert_eq!(
+        reconsiderable_parent,
+        [request(10, txid_relay(10))],
+        "parent requests must set include_reconsiderable=false",
+    );
+    assert_eq!(
+        hard_rejected_parent,
+        [expect_recent_reject(11, txid_relay(11))],
     );
 }
 

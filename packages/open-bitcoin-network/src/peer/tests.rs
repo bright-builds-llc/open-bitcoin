@@ -2061,18 +2061,30 @@ fn peer_manager_transaction_relay_duplicate_inv_suppresses_second_getdata_but_ke
 }
 
 #[test]
-fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_requests() {
+fn peer_manager_transaction_relay_semantic_reject_evidence_suppresses_without_punishment() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(207).expect("already-have peer");
-    manager.add_inbound_peer(208).expect("recent-reject peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 207);
+    add_relay_outbound_peer(&mut manager, 208);
+    add_relay_outbound_peer(&mut manager, 209);
+    manager
+        .handle_message(208, WireNetworkMessage::WtxidRelay, 0)
+        .expect("hard-reject peer wtxidrelay");
+    manager
+        .handle_message(209, WireNetworkMessage::WtxidRelay, 0)
+        .expect("reconsiderable peer wtxidrelay");
     let local_transaction = open_bitcoin_primitives::Transaction::default();
     let local_txid = transaction_txid(&local_transaction).expect("txid");
-    let rejected_relay_id = TxRelayId::Txid(Txid::from(Hash32::from_byte_array([88_u8; 32])));
+    let rejected_wtxid = Wtxid::from(Hash32::from_byte_array([88_u8; 32]));
+    let reconsiderable_wtxid = Wtxid::from(Hash32::from_byte_array([89_u8; 32]));
+    let package_fingerprint = [90_u8; 32];
     manager
         .note_local_transaction(&local_transaction)
         .expect("local transaction");
-    manager.note_recent_reject(rejected_relay_id);
+    assert!(!manager.reconsiderable_package_contains(package_fingerprint));
+    manager.record_hard_reject(rejected_wtxid);
+    manager.record_reconsiderable_transaction(reconsiderable_wtxid);
+    manager.record_reconsiderable_package(package_fingerprint);
 
     // Act
     let already_have_actions = manager
@@ -2082,13 +2094,24 @@ fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_reques
             1,
         )
         .expect("already-have inventory");
-    let recent_reject_actions = manager
+    let hard_reject_actions = manager
         .handle_message(
             208,
-            WireNetworkMessage::Inv(transaction_relay_inventory(rejected_relay_id)),
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(
+                rejected_wtxid,
+            ))),
             2,
         )
-        .expect("recent-reject inventory");
+        .expect("hard-reject inventory");
+    let reconsiderable_actions = manager
+        .handle_message(
+            209,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Wtxid(
+                reconsiderable_wtxid,
+            ))),
+            3,
+        )
+        .expect("reconsiderable inventory");
 
     // Assert
     assert_eq!(
@@ -2101,14 +2124,24 @@ fn peer_manager_transaction_relay_already_have_and_recent_reject_suppress_reques
         )],
     );
     assert_eq!(
-        recent_reject_actions,
+        hard_reject_actions,
         vec![PeerAction::TransactionRelay(
             TxDownloadAction::SuppressRecentReject {
                 peer_id: 208,
-                relay_id: rejected_relay_id,
+                relay_id: TxRelayId::Wtxid(rejected_wtxid),
             },
         )],
     );
+    assert_eq!(
+        reconsiderable_actions,
+        vec![PeerAction::TransactionRelay(
+            TxDownloadAction::SuppressRecentReject {
+                peer_id: 209,
+                relay_id: TxRelayId::Wtxid(reconsiderable_wtxid),
+            },
+        )],
+    );
+    assert!(manager.reconsiderable_package_contains(package_fingerprint));
 }
 
 #[test]
@@ -2187,29 +2220,30 @@ fn peer_manager_orphan_parent_request_respects_inflight_cap() {
 }
 
 #[test]
-fn peer_manager_orphan_parent_request_suppresses_already_have_recent_reject_and_mempool_known() {
+fn peer_manager_parent_request_does_not_hash_txid_as_hard_reject_wtxid() {
     // Arrange
-    let mut manager = PeerManager::new(local_config());
-    manager.add_inbound_peer(221).expect("already-have peer");
-    manager.add_inbound_peer(222).expect("recent-reject peer");
-    manager.add_inbound_peer(223).expect("mempool-known peer");
+    let mut manager = relay_download_manager(true);
+    add_relay_outbound_peer(&mut manager, 221);
+    add_relay_outbound_peer(&mut manager, 222);
+    add_relay_outbound_peer(&mut manager, 223);
     let local_transaction = open_bitcoin_primitives::Transaction::default();
     let local_txid = transaction_txid(&local_transaction).expect("txid");
     let rejected_txid = txid_from_byte(102);
+    let rejected_wtxid = Wtxid::from(Hash32::from(rejected_txid));
     let mempool_txid = txid_from_byte(103);
     manager
         .note_local_transaction(&local_transaction)
         .expect("local transaction");
-    manager.note_recent_reject(TxRelayId::Txid(rejected_txid));
+    manager.record_hard_reject(rejected_wtxid);
     manager.note_mempool_known(TxRelayId::Txid(mempool_txid));
 
     // Act
     let already_have_actions = manager
         .request_orphan_parent(221, local_txid, 1)
         .expect("already-have parent request");
-    let recent_reject_actions = manager
+    let unresolved_reject_actions = manager
         .request_orphan_parent(222, rejected_txid, 2)
-        .expect("recent-reject parent request");
+        .expect("unresolved reject parent request");
     let mempool_known_actions = manager
         .request_orphan_parent(223, mempool_txid, 3)
         .expect("mempool-known parent request");
@@ -2225,9 +2259,9 @@ fn peer_manager_orphan_parent_request_suppresses_already_have_recent_reject_and_
         )],
     );
     assert_eq!(
-        recent_reject_actions,
+        unresolved_reject_actions,
         vec![PeerAction::TransactionRelay(
-            TxDownloadAction::SuppressRecentReject {
+            TxDownloadAction::RequestGetData {
                 peer_id: 222,
                 relay_id: TxRelayId::Txid(rejected_txid),
             },
