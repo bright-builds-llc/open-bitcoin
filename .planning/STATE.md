@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 133 context gathered
-last_updated: "2026-07-26T16:25:11.574Z"
-last_activity: "2026-07-26"
+stopped_at: Completed 133-01-PLAN.md
+last_updated: "2026-07-26T18:44:36.309Z"
+last_activity: "2026-07-26 -- Completed Plan 133-01 fixed-memory reject evidence and active-tip resets"
 progress:
   total_phases: 9
   completed_phases: 3
-  total_plans: 26
-  completed_plans: 26
-  percent: 100
+  total_plans: 30
+  completed_plans: 27
+  percent: 90
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 132 — Typed Package Vocabulary and Staged Admission
+**Current focus:** Phase 133 — Package-Aware Download and Orphan Bridge
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 133
-Plan: Not started
-Status: Executing Phase 132
-Last activity: 2026-07-26
+Phase: 133 (Package-Aware Download and Orphan Bridge) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-07-26 -- Completed Plan 133-01 fixed-memory reject evidence and active-tip resets
 
-Progress: [█░░░░░░░░░] 11%
+Progress: [███░░░░░░░] 25%
 
-Next action: `/gsd-discuss-phase 131` (or YOLO chain for Phase 131)
+Next action: Continue with `133-02-PLAN.md`.
 
 ## Performance Metrics
 
@@ -49,6 +49,12 @@ Next action: `/gsd-discuss-phase 131` (or YOLO chain for Phase 131)
 | 130 | 13 | - | - |
 | 131 | 5 | - | - |
 | 132 | 8 | - | - |
+
+### Plan Execution History
+
+| Plan | Duration | Tasks | Files |
+| --- | --- | --- | --- |
+| Phase 133 P01 | 1h 13m | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -97,6 +103,10 @@ Next action: `/gsd-discuss-phase 131` (or YOLO chain for Phase 131)
 - [Phase 130]: Reuse the Phase 129 string[] failure-list contract with no separate result alias.
 - [Phase 130]: Validate README freshness through three independent readTarget calls and dedicated stale-wording failures.
 - [Phase 130]: Keep FEEP requirements Pending until Phase 130 VERIFICATION.md exists for milestone traceability.
+- [Phase 133]: Reject evidence accepts only Wtxid or typed package fingerprints; txid-only inventory requires an authoritative txid-to-wtxid mapping.
+- [Phase 133]: Ordinary inventory consults hard and reconsiderable evidence, while orphan-parent requests bypass reconsiderable evidence and still honor hard rejects.
+- [Phase 133]: Both reject evidence domains reset together immediately after successful authoritative chainstate connect or reorg mutation.
+- [Phase 133]: Production tweak entropy is derived in the node shell with RandomState while network constructors retain fixed-tweak deterministic seams.
 
 ### Pending Todos
 
@@ -119,6 +129,6 @@ Next action: `/gsd-discuss-phase 131` (or YOLO chain for Phase 131)
 
 ## Session Continuity
 
-Last session: 2026-07-26T16:25:11.567Z
-Stopped at: Phase 133 context gathered
-Resume file: .planning/phases/133-package-aware-download-and-orphan-bridge/133-CONTEXT.md
+Last session: 2026-07-26T18:44:36.303Z
+Stopped at: Completed 133-01-PLAN.md
+Resume file: None
