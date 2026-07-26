@@ -22,13 +22,13 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{
     AdmissionContext, AdmissionResult, FinalMempoolMembership, MempoolError, MempoolLifecycleDelta,
-    MempoolOutcome, MempoolRemovalCause, MempoolTransition, PolicyTime, RelayIntent,
+    MempoolOutcome, MempoolRemovalCause, MempoolTransition, PackageMemberResult, PackageStatus,
+    PolicyTime, ReconsiderableMemberFailure, RelayIntent, SubmittedPackageResult,
 };
-#[cfg(test)]
-use open_bitcoin_network::ReceivedTransactionProvenance;
 use open_bitcoin_network::{
     OrphanAction, OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
-    PeerAction, PeerId, TxRelayId, TxServingRecordStatus, WireNetworkMessage,
+    PeerAction, PeerId, ReceivedTransactionProvenance, TxRelayId, TxServingRecordStatus,
+    WireNetworkMessage,
 };
 
 use super::action_translation::process_transaction_relay_action;
@@ -282,6 +282,118 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
         result.reconsidered.push(transition.outcome);
         Ok(())
+    }
+
+    fn apply_package_feedback(
+        &mut self,
+        members: &[Transaction; 2],
+        provenances: &[ReceivedTransactionProvenance; 2],
+        submitted: &SubmittedPackageResult,
+        timestamp: i64,
+    ) {
+        self.apply_package_status_feedback(
+            *submitted.report.status(),
+            *submitted.report.fingerprint().as_bytes(),
+        );
+
+        debug_assert_eq!(submitted.report.members().len(), members.len());
+        for ((member_result, transaction), provenance) in submitted
+            .report
+            .members()
+            .iter()
+            .zip(members)
+            .zip(provenances)
+        {
+            self.apply_package_member_feedback(member_result, transaction, provenance, timestamp);
+        }
+    }
+
+    fn apply_package_status_feedback(&mut self, status: PackageStatus, fingerprint: [u8; 32]) {
+        match status {
+            PackageStatus::Complete => {}
+            PackageStatus::Partial | PackageStatus::Failed => {
+                self.peer_manager.record_reconsiderable_package(fingerprint)
+            }
+        }
+    }
+
+    fn apply_package_member_feedback(
+        &mut self,
+        member_result: &PackageMemberResult,
+        transaction: &Transaction,
+        provenance: &ReceivedTransactionProvenance,
+        timestamp: i64,
+    ) {
+        let requested = member_result.requested_identity();
+        match member_result {
+            PackageMemberResult::FinallyPresent(_)
+            | PackageMemberResult::AlreadyPresent(_)
+            | PackageMemberResult::SameTxidDifferentWitness(_) => {
+                let _feedback = self.peer_manager.record_orphan_reconsideration_outcome(
+                    requested.wtxid,
+                    OrphanReconsiderationStatus::Accepted,
+                );
+            }
+            PackageMemberResult::HardRejected(_) => {
+                self.peer_manager.record_hard_reject(requested.wtxid);
+                let _feedback = self.peer_manager.record_orphan_reconsideration_outcome(
+                    requested.wtxid,
+                    OrphanReconsiderationStatus::Rejected,
+                );
+            }
+            PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::MissingInputs {
+                missing_parents,
+                ..
+            }) => {
+                let _feedback = self.peer_manager.stage_missing_parent_with_provenance(
+                    OrphanStageInput {
+                        transaction: transaction.clone(),
+                        txid: requested.txid,
+                        wtxid: requested.wtxid,
+                        missing_parents: missing_parents.clone(),
+                        now_unix_seconds: timestamp,
+                    },
+                    provenance.clone(),
+                );
+            }
+            PackageMemberResult::Reconsiderable(
+                ReconsiderableMemberFailure::PackageFee { .. }
+                | ReconsiderableMemberFailure::PackageReplacement { .. },
+            ) => {
+                self.peer_manager
+                    .record_reconsiderable_transaction(requested.wtxid);
+                let _feedback = self.peer_manager.record_orphan_reconsideration_outcome(
+                    requested.wtxid,
+                    OrphanReconsiderationStatus::Rejected,
+                );
+            }
+            PackageMemberResult::PostTrimAbsent(_) => {
+                let _feedback = self.peer_manager.record_orphan_reconsideration_outcome(
+                    requested.wtxid,
+                    OrphanReconsiderationStatus::Evicted,
+                );
+            }
+        }
+    }
+
+    #[cfg(test)]
+    pub(super) fn apply_package_member_feedback_for_test(
+        &mut self,
+        member_result: &PackageMemberResult,
+        transaction: &Transaction,
+        provenance: &ReceivedTransactionProvenance,
+        timestamp: i64,
+    ) {
+        self.apply_package_member_feedback(member_result, transaction, provenance, timestamp);
+    }
+
+    #[cfg(test)]
+    pub(super) fn apply_package_status_feedback_for_test(
+        &mut self,
+        status: PackageStatus,
+        fingerprint: [u8; 32],
+    ) {
+        self.apply_package_status_feedback(status, fingerprint);
     }
 
     pub(super) fn apply_admitted_transition(

@@ -17,7 +17,42 @@ use open_bitcoin_primitives::{Transaction, Txid, Wtxid};
 use crate::error::PeerId;
 
 use super::super::{HardRejectEvidence, ReconsiderableEvidenceKey, ReconsiderableRejectEvidence};
-use super::{SamePeerCandidateCursor, SamePeerOneParentOneChildCandidate, TxOrphanage};
+use super::{ReceivedTransactionProvenance, TxOrphanage};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SamePeerOneParentOneChildCandidate {
+    pub(super) members: [Transaction; 2],
+    pub(super) origins: [PeerId; 2],
+    pub(super) provenances: [ReceivedTransactionProvenance; 2],
+}
+
+impl SamePeerOneParentOneChildCandidate {
+    /// Consumes the proof into request-ordered bodies and qualifying origins.
+    pub fn into_ordered_parts(self) -> ([Transaction; 2], [PeerId; 2]) {
+        (self.members, self.origins)
+    }
+
+    /// Consumes the proof while preserving retained announcers for outcome feedback.
+    pub fn into_ordered_parts_with_provenance(
+        self,
+    ) -> (
+        [Transaction; 2],
+        [PeerId; 2],
+        [ReceivedTransactionProvenance; 2],
+    ) {
+        (self.members, self.origins, self.provenances)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct SamePeerCandidateCursor {
+    pub(super) parent: Transaction,
+    pub(super) parent_txid: Txid,
+    pub(super) parent_peer: PeerId,
+    pub(super) children: Vec<(Wtxid, Transaction, ReceivedTransactionProvenance)>,
+    pub(super) next_child: usize,
+    pub(super) visited: usize,
+}
 
 impl TxOrphanage {
     pub fn begin_same_peer_candidate(
@@ -35,16 +70,22 @@ impl TxOrphanage {
             return None;
         }
 
-        let children = self
-            .children_by_parent
-            .get(&parent_txid)?
-            .iter()
-            .filter_map(|(_, wtxid)| {
-                let entry = self.orphans.get(wtxid)?;
-                (entry.missing_parents.len() == 1 && entry.announcers.contains(parent_peer))
-                    .then(|| (*wtxid, entry.transaction.clone()))
-            })
-            .collect();
+        let children =
+            self.children_by_parent
+                .get(&parent_txid)?
+                .iter()
+                .filter_map(|(_, wtxid)| {
+                    let entry = self.orphans.get(wtxid)?;
+                    (entry.missing_parents.len() == 1 && entry.announcers.contains(parent_peer))
+                        .then(|| {
+                            (
+                                *wtxid,
+                                entry.transaction.clone(),
+                                entry.announcers.provenance(),
+                            )
+                        })
+                })
+                .collect();
         self.candidate_cursors.insert(
             cursor_key,
             SamePeerCandidateCursor {
@@ -71,7 +112,7 @@ impl TxOrphanage {
         while cursor.visited < self.policy.max_reconsiderations_per_parent
             && cursor.next_child < cursor.children.len()
         {
-            let (child_wtxid, child) = &cursor.children[cursor.next_child];
+            let (child_wtxid, child, child_provenance) = &cursor.children[cursor.next_child];
             cursor.next_child += 1;
             cursor.visited += 1;
             if hard_rejects.contains(*child_wtxid) {
@@ -81,6 +122,13 @@ impl TxOrphanage {
             let candidate = SamePeerOneParentOneChildCandidate {
                 members: [cursor.parent.clone(), child.clone()],
                 origins: [cursor.parent_peer; 2],
+                provenances: [
+                    super::ReceivedTransactionProvenance {
+                        delivered_by: cursor.parent_peer,
+                        announcers: vec![cursor.parent_peer],
+                    },
+                    child_provenance.clone(),
+                ],
             };
             if cursor.visited < self.policy.max_reconsiderations_per_parent
                 && cursor.next_child < cursor.children.len()

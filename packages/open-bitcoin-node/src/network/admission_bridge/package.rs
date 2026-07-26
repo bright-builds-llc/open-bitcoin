@@ -208,9 +208,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             parent_peer,
         );
         while let Some(candidate) = maybe_candidate {
-            let (members, origins) = candidate.into_ordered_parts();
+            let (members, origins, provenances) = candidate.into_ordered_parts_with_provenance();
             let chainstate = self.chainstate.chainstate().snapshot();
-            let checked = WellFormedPackage::try_from(Vec::from(members))?;
+            let checked = WellFormedPackage::try_from(Vec::from(members.clone()))?;
             let fingerprint = *checked.fingerprint().as_bytes();
             if self
                 .peer_manager
@@ -234,6 +234,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 options.consensus_params,
             )?;
             debug_assert_eq!(submitted.report.fingerprint().as_bytes(), &fingerprint);
+            self.apply_package_feedback(&members, &provenances, &submitted, options.timestamp);
             return Ok(Some(ManagedPeerPackageAdmission { origins, submitted }));
         }
         Ok(None)

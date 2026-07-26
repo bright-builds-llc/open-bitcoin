@@ -503,7 +503,7 @@ fn newest_same_peer_candidate_skips_wrong_peer_and_hard_rejected_child() {
             transaction: transaction(2),
             ..orphan_input(1, 114, 115, [110], 1)
         },
-        provenance(1, [1]),
+        provenance(2, [1, 2]),
     );
     let _ = orphanage.stage_missing_parent_with_provenance(
         OrphanStageInput {
@@ -528,11 +528,12 @@ fn newest_same_peer_candidate_skips_wrong_peer_and_hard_rejected_child() {
             &hard,
         )
         .expect("older same-peer child remains eligible");
-    let (members, origins) = candidate.into_ordered_parts();
+    let (members, origins, provenances) = candidate.into_ordered_parts_with_provenance();
 
     // Assert
     assert_eq!(members, [parent, transaction(2)]);
     assert_eq!(origins, [1, 1]);
+    assert_eq!(provenances[1], provenance(2, [1, 2]));
 }
 
 #[test]

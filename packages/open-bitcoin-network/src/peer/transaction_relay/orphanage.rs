@@ -22,6 +22,8 @@ use crate::error::PeerId;
 use super::{ReceivedTransactionProvenance, TxRelayId};
 
 mod candidate;
+use candidate::SamePeerCandidateCursor;
+pub use candidate::SamePeerOneParentOneChildCandidate;
 
 pub const PHASE102_MAX_ORPHAN_TRANSACTIONS: usize = 100;
 pub const PHASE102_MAX_ORPHANS_PER_PEER: usize = 25;
@@ -135,34 +137,19 @@ impl BoundedOrphanAnnouncers {
             .unwrap_or(self.delivered_by)
     }
 
+    fn provenance(&self) -> ReceivedTransactionProvenance {
+        ReceivedTransactionProvenance {
+            delivered_by: self.primary_peer(),
+            announcers: self.peers.iter().copied().collect(),
+        }
+    }
+
     fn add(&mut self, peer_id: PeerId, max_announcers: usize) -> bool {
         if self.peers.len() >= max_announcers.max(1) {
             return false;
         }
         self.peers.insert(peer_id)
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SamePeerOneParentOneChildCandidate {
-    members: [Transaction; 2],
-    origins: [PeerId; 2],
-}
-
-impl SamePeerOneParentOneChildCandidate {
-    pub fn into_ordered_parts(self) -> ([Transaction; 2], [PeerId; 2]) {
-        (self.members, self.origins)
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct SamePeerCandidateCursor {
-    parent: Transaction,
-    parent_txid: Txid,
-    parent_peer: PeerId,
-    children: Vec<(Wtxid, Transaction)>,
-    next_child: usize,
-    visited: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -579,7 +566,7 @@ impl TxOrphanage {
         for cursor in self.candidate_cursors.values_mut() {
             cursor
                 .children
-                .retain(|(child_wtxid, _)| *child_wtxid != wtxid);
+                .retain(|(child_wtxid, _, _)| *child_wtxid != wtxid);
         }
         Some(entry)
     }
