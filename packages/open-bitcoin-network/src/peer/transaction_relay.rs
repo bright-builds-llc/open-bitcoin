@@ -36,7 +36,8 @@ pub use orphanage::{
     OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
     PHASE102_MAX_ORPHAN_TRANSACTIONS, PHASE102_MAX_ORPHANS_PER_PEER,
     PHASE102_MAX_RECONSIDERATIONS_PER_PARENT, PHASE102_ORPHAN_TTL_SECONDS,
-    PHASE133_MAX_ANNOUNCERS_PER_ORPHAN, SamePeerOneParentOneChildCandidate, TxOrphanage,
+    PHASE133_MAX_ANNOUNCERS_PER_ORPHAN, PHASE133_MAX_ORPHAN_RETAINED_BYTES,
+    SamePeerOneParentOneChildCandidate, TxOrphanage,
 };
 pub use reject_evidence::{
     HardRejectEvidence, PHASE133_REJECT_FILTER_CAPACITY,

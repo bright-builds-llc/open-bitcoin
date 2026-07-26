@@ -2560,6 +2560,7 @@ fn peer_manager_orphan_owner_delegates_reconsideration_feedback_and_expiry() {
         max_total_orphans: 4,
         max_orphans_per_peer: 4,
         max_announcers_per_orphan: 2,
+        max_retained_bytes: crate::PHASE133_MAX_ORPHAN_RETAINED_BYTES,
         orphan_ttl_seconds: 2,
         max_reconsiderations_per_parent: 1,
     });
@@ -2609,6 +2610,7 @@ fn peer_manager_orphan_owner_constructs_and_advances_same_peer_candidates() {
         max_total_orphans: 4,
         max_orphans_per_peer: 4,
         max_announcers_per_orphan: 2,
+        max_retained_bytes: crate::PHASE133_MAX_ORPHAN_RETAINED_BYTES,
         orphan_ttl_seconds: 120,
         max_reconsiderations_per_parent: 2,
     });

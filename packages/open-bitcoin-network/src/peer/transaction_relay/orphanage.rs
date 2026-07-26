@@ -22,20 +22,22 @@ use crate::error::PeerId;
 use super::{ReceivedTransactionProvenance, TxRelayId};
 
 mod candidate;
-use candidate::SamePeerCandidateCursor;
 pub use candidate::SamePeerOneParentOneChildCandidate;
+use candidate::{SamePeerCandidateCursor, transaction_body_bytes};
 
 pub const PHASE102_MAX_ORPHAN_TRANSACTIONS: usize = 100;
 pub const PHASE102_MAX_ORPHANS_PER_PEER: usize = 25;
 pub const PHASE102_ORPHAN_TTL_SECONDS: i64 = 20 * 60;
 pub const PHASE102_MAX_RECONSIDERATIONS_PER_PARENT: usize = 32;
 pub const PHASE133_MAX_ANNOUNCERS_PER_ORPHAN: usize = 8;
+pub const PHASE133_MAX_ORPHAN_RETAINED_BYTES: usize = 40_000_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OrphanPolicy {
     pub max_total_orphans: usize,
     pub max_orphans_per_peer: usize,
     pub max_announcers_per_orphan: usize,
+    pub max_retained_bytes: usize,
     pub orphan_ttl_seconds: i64,
     pub max_reconsiderations_per_parent: usize,
 }
@@ -46,6 +48,7 @@ impl Default for OrphanPolicy {
             max_total_orphans: PHASE102_MAX_ORPHAN_TRANSACTIONS,
             max_orphans_per_peer: PHASE102_MAX_ORPHANS_PER_PEER,
             max_announcers_per_orphan: PHASE133_MAX_ANNOUNCERS_PER_ORPHAN,
+            max_retained_bytes: PHASE133_MAX_ORPHAN_RETAINED_BYTES,
             orphan_ttl_seconds: PHASE102_ORPHAN_TTL_SECONDS,
             max_reconsiderations_per_parent: PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
         }
@@ -218,6 +221,7 @@ struct OrphanEntry {
     missing_parents: BTreeSet<Txid>,
     expires_at_unix_seconds: i64,
     insertion_sequence: u64,
+    body_bytes: usize,
 }
 
 impl TxOrphanage {
@@ -248,6 +252,7 @@ impl TxOrphanage {
         let expires_at_unix_seconds = input
             .now_unix_seconds
             .saturating_add(self.policy.orphan_ttl_seconds);
+        let body_bytes = transaction_body_bytes(&input.transaction);
 
         if expires_at_unix_seconds <= input.now_unix_seconds {
             return vec![OrphanAction::Expired {
@@ -280,6 +285,7 @@ impl TxOrphanage {
                 missing_parents: missing_parent_set,
                 expires_at_unix_seconds,
                 insertion_sequence,
+                body_bytes,
             },
         );
 
@@ -297,6 +303,13 @@ impl TxOrphanage {
     }
 
     pub fn add_announcer(&mut self, wtxid: Wtxid, peer_id: PeerId) -> bool {
+        if self
+            .retained_bytes()
+            .saturating_add(std::mem::size_of::<PeerId>())
+            > self.policy.max_retained_bytes
+        {
+            return false;
+        }
         let Some(entry) = self.orphans.get_mut(&wtxid) else {
             return false;
         };
@@ -468,25 +481,17 @@ impl TxOrphanage {
         }]
     }
 
-    pub fn len(&self) -> usize {
-        self.orphans.len()
-    }
-
-    pub fn peer_len(&self, peer_id: PeerId) -> usize {
-        self.orphan_count_by_peer
-            .get(&peer_id)
-            .copied()
-            .unwrap_or_default()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.orphans.is_empty()
-    }
-
     fn enforce_caps(&mut self) -> Vec<OrphanAction> {
         let mut actions = Vec::new();
 
         while let Some(action) = (self.orphans.len() > self.policy.max_total_orphans)
+            .then(|| self.evict_next(None))
+            .flatten()
+        {
+            actions.push(action);
+        }
+
+        while let Some(action) = (self.retained_bytes() > self.policy.max_retained_bytes)
             .then(|| self.evict_next(None))
             .flatten()
         {
@@ -564,9 +569,18 @@ impl TxOrphanage {
             self.decrement_peer_count(*peer_id);
         }
         for cursor in self.candidate_cursors.values_mut() {
-            cursor
-                .children
-                .retain(|(child_wtxid, _, _)| *child_wtxid != wtxid);
+            let removed_before_next = cursor.child_wtxids[..cursor.next_child]
+                .iter()
+                .filter(|child_wtxid| **child_wtxid == wtxid)
+                .count();
+            cursor.child_wtxids = cursor
+                .child_wtxids
+                .iter()
+                .copied()
+                .filter(|child_wtxid| *child_wtxid != wtxid)
+                .collect::<Vec<_>>()
+                .into_boxed_slice();
+            cursor.next_child = cursor.next_child.saturating_sub(removed_before_next);
         }
         Some(entry)
     }
@@ -592,21 +606,5 @@ impl TxOrphanage {
                 .pending_reconsideration
                 .iter()
                 .all(|wtxid| self.orphans.contains_key(wtxid))
-    }
-}
-
-impl OrphanEntry {
-    fn candidate(&self) -> OrphanReconsiderationCandidate {
-        OrphanReconsiderationCandidate {
-            peer_id: self.announcers.primary_peer(),
-            provenance: ReceivedTransactionProvenance {
-                delivered_by: self.announcers.primary_peer(),
-                announcers: self.announcers.peers.iter().copied().collect(),
-            },
-            transaction: self.transaction.clone(),
-            txid: self.txid,
-            wtxid: self.wtxid,
-            missing_parents: self.missing_parents.iter().copied().collect(),
-        }
     }
 }

@@ -151,6 +151,7 @@ fn test_orphan_policy_with_reconsideration_cap(
         max_total_orphans,
         max_orphans_per_peer,
         max_announcers_per_orphan: 8,
+        max_retained_bytes: open_bitcoin_network::PHASE133_MAX_ORPHAN_RETAINED_BYTES,
         orphan_ttl_seconds: 1,
         max_reconsiderations_per_parent,
     }

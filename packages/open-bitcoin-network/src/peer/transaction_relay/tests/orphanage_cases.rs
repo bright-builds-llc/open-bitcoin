@@ -12,7 +12,9 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
-use open_bitcoin_primitives::Transaction;
+use open_bitcoin_primitives::{
+    Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
+};
 
 use super::*;
 
@@ -26,6 +28,7 @@ fn policy(
         max_total_orphans,
         max_orphans_per_peer,
         max_announcers_per_orphan: 4,
+        max_retained_bytes: PHASE133_MAX_ORPHAN_RETAINED_BYTES,
         orphan_ttl_seconds,
         max_reconsiderations_per_parent,
     }
@@ -68,6 +71,24 @@ fn provenance(
 fn transaction(version: i32) -> Transaction {
     Transaction {
         version,
+        ..Transaction::default()
+    }
+}
+
+fn transaction_with_body_bytes(version: i32, body_bytes: usize) -> Transaction {
+    Transaction {
+        version,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint::null(),
+            script_sig: ScriptBuf::from_bytes(vec![0x51]).expect("bounded test script"),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::new(vec![vec![0x51; 16]]),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::ZERO,
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51; body_bytes])
+                .expect("bounded test script"),
+        }],
         ..Transaction::default()
     }
 }
@@ -152,6 +173,10 @@ fn default_policy_matches_phase102_orphan_bounds() {
     assert_eq!(
         policy.max_announcers_per_orphan,
         PHASE133_MAX_ANNOUNCERS_PER_ORPHAN,
+    );
+    assert_eq!(
+        policy.max_retained_bytes,
+        PHASE133_MAX_ORPHAN_RETAINED_BYTES,
     );
     assert_eq!(policy.orphan_ttl_seconds, PHASE102_ORPHAN_TTL_SECONDS);
     assert_eq!(
@@ -459,6 +484,63 @@ fn announcer_cap_keeps_one_shared_body_under_adversarial_peer_churn() {
 }
 
 #[test]
+fn retained_byte_budget_evicts_large_orphan_bodies_before_count_cap() {
+    // Arrange
+    let body_bytes = 4_096;
+    let mut orphanage = TxOrphanage::new(OrphanPolicy {
+        max_retained_bytes: body_bytes * 2,
+        ..policy(10, 10, 120, 10)
+    });
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction_with_body_bytes(1, body_bytes),
+            ..orphan_input(1, 101, 102, [7], 0)
+        },
+        provenance(1, [1]),
+    );
+
+    // Act
+    let actions = orphanage.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction: transaction_with_body_bytes(2, body_bytes),
+            ..orphan_input(2, 103, 104, [7], 1)
+        },
+        provenance(2, [2]),
+    );
+
+    // Assert
+    assert_eq!(orphanage.len(), 1, "byte budget must precede count cap");
+    assert_eq!(actions, [evicted(1, 101, 102), parent_request(2, 7)]);
+    assert!(orphanage.debug_retained_bytes() <= body_bytes * 2);
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
+fn retained_byte_budget_rejects_late_announcer_state_growth() {
+    // Arrange
+    let input = OrphanStageInput {
+        transaction: transaction_with_body_bytes(1, 4_096),
+        ..orphan_input(1, 105, 106, [7], 0)
+    };
+    let mut probe = TxOrphanage::new(policy(10, 10, 120, 10));
+    let _ = probe.stage_missing_parent_with_provenance(input.clone(), provenance(1, [1]));
+    let retained_cap = probe.debug_retained_bytes();
+    let mut orphanage = TxOrphanage::new(OrphanPolicy {
+        max_retained_bytes: retained_cap,
+        ..policy(10, 10, 120, 10)
+    });
+    let _ = orphanage.stage_missing_parent_with_provenance(input, provenance(1, [1]));
+
+    // Act
+    let added = orphanage.add_announcer(wtxid(106), 2);
+
+    // Assert
+    assert!(!added);
+    assert_eq!(orphanage.peer_len(2), 0);
+    assert_eq!(orphanage.debug_retained_bytes(), retained_cap);
+}
+
+#[test]
 fn late_announcer_missing_body_is_noop_and_existing_body_does_not_refresh_ttl() {
     // Arrange
     let mut orphanage = TxOrphanage::new(OrphanPolicy {
@@ -666,6 +748,99 @@ fn max_reconsiderations_cursor_advances_newest_first_without_graph_aggregation()
     assert_eq!(first_members, [parent.clone(), transaction(7)]);
     assert_eq!(second_members, [parent, transaction(5)]);
     assert!(capped.is_none());
+}
+
+#[test]
+fn persistent_candidate_cursor_retains_child_identities_not_child_bodies() {
+    // Arrange
+    let body_bytes = 8 * 1_024;
+    let child_count = 3;
+    let retained_cap = body_bytes * (child_count + 1);
+    let mut orphanage = TxOrphanage::new(OrphanPolicy {
+        max_retained_bytes: retained_cap,
+        ..policy(10, 10, 120, child_count)
+    });
+    let parent = transaction(90);
+    let parent_txid = txid(210);
+    let parent_wtxid = wtxid(211);
+    for index in 0..child_count {
+        let child_byte = 212 + index as u8;
+        let _ = orphanage.stage_missing_parent_with_provenance(
+            OrphanStageInput {
+                transaction: transaction_with_body_bytes(index as i32, body_bytes),
+                ..orphan_input(1, child_byte, child_byte, [210], index as i64)
+            },
+            provenance(1, [1]),
+        );
+    }
+    let canonical_bytes = orphanage.debug_retained_bytes();
+    let mut reconsiderable = ReconsiderableRejectEvidence::new(RejectEvidenceTweak::new(9));
+    reconsiderable.record(ReconsiderableEvidenceKey::Transaction(parent_wtxid));
+    let hard = HardRejectEvidence::new(RejectEvidenceTweak::new(10));
+
+    // Act
+    let candidate = orphanage.begin_same_peer_candidate(
+        parent,
+        parent_txid,
+        parent_wtxid,
+        1,
+        &reconsiderable,
+        &hard,
+    );
+    let (cursor_count, retained_child_identities, cursor_bytes) =
+        orphanage.debug_candidate_cursor_retention();
+
+    // Assert
+    assert!(candidate.is_some());
+    assert_eq!(cursor_count, 1);
+    assert_eq!(retained_child_identities, child_count);
+    assert!(
+        cursor_bytes < body_bytes,
+        "cursor must retain one small parent and child identities, not large child bodies"
+    );
+    assert_eq!(
+        orphanage.debug_retained_bytes(),
+        canonical_bytes + cursor_bytes
+    );
+    assert!(orphanage.debug_retained_bytes() <= retained_cap);
+}
+
+#[test]
+fn candidate_cursor_creation_respects_aggregate_retained_byte_budget() {
+    // Arrange
+    let parent = transaction(91);
+    let parent_txid = txid(220);
+    let parent_wtxid = wtxid(221);
+    let child_input = OrphanStageInput {
+        transaction: transaction(1),
+        ..orphan_input(1, 222, 223, [220], 0)
+    };
+    let mut probe = TxOrphanage::new(policy(10, 10, 120, 10));
+    let _ = probe.stage_missing_parent_with_provenance(child_input.clone(), provenance(1, [1]));
+    let canonical_bytes = probe.debug_retained_bytes();
+    let mut orphanage = TxOrphanage::new(OrphanPolicy {
+        max_retained_bytes: canonical_bytes + 1,
+        ..policy(10, 10, 120, 10)
+    });
+    let _ = orphanage.stage_missing_parent_with_provenance(child_input, provenance(1, [1]));
+    let mut reconsiderable = ReconsiderableRejectEvidence::new(RejectEvidenceTweak::new(11));
+    reconsiderable.record(ReconsiderableEvidenceKey::Transaction(parent_wtxid));
+    let hard = HardRejectEvidence::new(RejectEvidenceTweak::new(12));
+
+    // Act
+    let candidate = orphanage.begin_same_peer_candidate(
+        parent,
+        parent_txid,
+        parent_wtxid,
+        1,
+        &reconsiderable,
+        &hard,
+    );
+
+    // Assert
+    assert!(candidate.is_none());
+    assert_eq!(orphanage.debug_candidate_cursor_retention(), (0, 0, 0));
+    assert_eq!(orphanage.debug_retained_bytes(), canonical_bytes);
 }
 
 #[test]
