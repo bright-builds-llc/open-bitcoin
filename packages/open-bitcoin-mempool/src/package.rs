@@ -20,7 +20,7 @@ pub use report::{
 };
 pub use shape::PackageShapeError;
 
-use crate::MempoolMemberIdentity;
+use crate::{AdmissionContext, MempoolLifecycleDelta, MempoolMemberIdentity};
 
 /// Maximum number of transactions admitted through one package boundary.
 pub const MAX_PACKAGE_COUNT: usize = 25;
@@ -90,6 +90,14 @@ impl WellFormedPackage {
     /// Iterates over transactions without exposing mutable package storage.
     pub fn members(&self) -> impl DoubleEndedIterator<Item = &Transaction> + ExactSizeIterator {
         self.members.iter().map(|member| &member.transaction)
+    }
+
+    pub(crate) fn members_with_identities(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (MempoolMemberIdentity, &Transaction)> {
+        self.members
+            .iter()
+            .map(|member| (member.identity, &member.transaction))
     }
 
     /// Returns the cached identity at an input index, if that index exists.
@@ -167,6 +175,33 @@ impl SubmissionPackage {
     pub fn kind(&self) -> SubmissionPackageKind {
         self.kind
     }
+}
+
+/// A non-mutating package evaluation request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DryRunPackageCommand {
+    pub package: WellFormedPackage,
+    pub context: AdmissionContext,
+}
+
+/// A checked child-with-unconfirmed-parents submission request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubmitPackageCommand {
+    pub package: SubmissionPackage,
+    pub context: AdmissionContext,
+}
+
+/// Prospective package facts with no committed-state capability.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DryRunPackageResult {
+    pub report: PackageReport,
+}
+
+/// Package facts paired with the lifecycle delta committed by submission.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubmittedPackageResult {
+    pub report: PackageReport,
+    pub delta: MempoolLifecycleDelta,
 }
 
 #[cfg(test)]

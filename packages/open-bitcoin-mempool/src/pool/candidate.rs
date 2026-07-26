@@ -20,6 +20,21 @@ use crate::{
 
 use super::{derive_input_contexts, serialization_validation_error};
 
+pub(super) trait CandidateMempoolView {
+    fn config(&self) -> &crate::PolicyConfig;
+    fn maybe_entry(&self, txid: &open_bitcoin_primitives::Txid) -> Option<&MempoolEntry>;
+}
+
+impl CandidateMempoolView for Mempool {
+    fn config(&self) -> &crate::PolicyConfig {
+        &self.config
+    }
+
+    fn maybe_entry(&self, txid: &open_bitcoin_primitives::Txid) -> Option<&MempoolEntry> {
+        self.entries.get(txid)
+    }
+}
+
 /// The base and policy-modified fee facts prepared for admission.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct CandidateFees {
@@ -44,7 +59,7 @@ pub(super) struct PreparedCandidate {
 /// This function intentionally accepts no [`ScriptVerifyFlags`]. Script execution is owned by
 /// [`check_candidate_scripts`], after legacy mempool policy has accepted the prepared facts.
 pub(super) fn prepare_candidate(
-    mempool: &Mempool,
+    mempool: &impl CandidateMempoolView,
     transaction: Transaction,
     chainstate: &ChainstateSnapshot,
     consensus_params: ConsensusParams,
@@ -52,21 +67,21 @@ pub(super) fn prepare_candidate(
 ) -> Result<PreparedCandidate, MempoolError> {
     let txid = transaction_txid(&transaction)
         .map_err(|source| serialization_validation_error("transaction txid", source))?;
-    if mempool.entries.contains_key(&txid) {
+    if mempool.maybe_entry(&txid).is_some() {
         return Err(MempoolError::DuplicateTransaction { txid });
     }
     let wtxid = transaction_wtxid(&transaction)
         .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
 
     check_transaction(&transaction).map_err(validation_error)?;
-    let input_contexts = derive_input_contexts(&transaction, chainstate, &mempool.entries)?;
+    let input_contexts = derive_input_contexts(&transaction, chainstate, mempool)?;
     let (weight, virtual_size_bytes) = transaction_weight_and_virtual_size(&transaction)?;
     let virtual_size = TransactionVirtualSize::new(virtual_size_bytes);
     let sigops_cost = transaction_sigops_cost(&transaction, &input_contexts)?;
     validate_standard_transaction(
         &transaction,
         &input_contexts,
-        &mempool.config,
+        mempool.config(),
         weight,
         sigops_cost,
     )?;

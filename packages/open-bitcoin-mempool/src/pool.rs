@@ -31,6 +31,7 @@ mod expiry;
 mod lifecycle;
 #[cfg(test)]
 mod oracle;
+mod package_admission;
 mod patch;
 #[allow(dead_code)] // Package orchestration consumes prospective pressure trim in Plan 132-04.
 mod pressure;
@@ -408,7 +409,7 @@ impl Mempool {
 fn derive_input_contexts(
     transaction: &Transaction,
     chainstate: &ChainstateSnapshot,
-    entries: &HashMap<Txid, MempoolEntry>,
+    view: &impl candidate::CandidateMempoolView,
 ) -> Result<Vec<TransactionInputContext>, MempoolError> {
     let maybe_tip = chainstate.tip();
     let mempool_median_time_past = maybe_tip.map_or(0, |tip| tip.median_time_past);
@@ -424,7 +425,7 @@ fn derive_input_contexts(
             continue;
         }
 
-        let Some(parent_entry) = entries.get(&input.previous_output.txid) else {
+        let Some(parent_entry) = view.maybe_entry(&input.previous_output.txid) else {
             return Err(MempoolError::MissingInput {
                 outpoint: input.previous_output.clone(),
             });

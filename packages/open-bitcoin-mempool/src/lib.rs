@@ -41,11 +41,12 @@ pub use fee::{
 };
 pub use outcome::{MempoolOutcome, MempoolOutcomeLabel, MempoolRejectionCategory};
 pub use package::{
-    EffectiveFeeGroup, EffectiveFeeGroupError, EffectiveFeeGroupId, ExistingMember,
-    HardMemberFailure, MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT, NewlyPresent, PackageFingerprint,
-    PackageMemberResult, PackageReport, PackageReportError, PackageShapeError, PackageStatus,
-    PostTrimAbsence, PriorMemberSuccess, ReconsiderableMemberFailure, SubmissionPackage,
-    SubmissionPackageKind, WellFormedPackage, WitnessAlias,
+    DryRunPackageCommand, DryRunPackageResult, EffectiveFeeGroup, EffectiveFeeGroupError,
+    EffectiveFeeGroupId, ExistingMember, HardMemberFailure, MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT,
+    NewlyPresent, PackageFingerprint, PackageMemberResult, PackageReport, PackageReportError,
+    PackageShapeError, PackageStatus, PostTrimAbsence, PriorMemberSuccess,
+    ReconsiderableMemberFailure, SubmissionPackage, SubmissionPackageKind, SubmitPackageCommand,
+    SubmittedPackageResult, WellFormedPackage, WitnessAlias,
 };
 pub use policy::{
     dust_threshold_sats, signals_opt_in_rbf, transaction_sigops_cost,

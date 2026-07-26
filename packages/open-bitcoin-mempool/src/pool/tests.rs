@@ -17,6 +17,7 @@ mod lifecycle_cases;
 mod lifecycle_delta_cases;
 #[allow(deprecated)] // Compatibility projection regressions remain until Plans 130-05/130-11.
 mod outcome_cases;
+mod package_admission_cases;
 mod pressure_cases;
 mod prospective_failure_cases;
 mod prospective_oracle_cases;
@@ -735,6 +736,10 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
             crate::MempoolEntryMetadata::legacy_unknown(),
         ),
     )]);
+    let mempool = Mempool {
+        entries,
+        ..Mempool::default()
+    };
     let missing_vout = super::derive_input_contexts(
         &spend_transaction(
             parent_txid,
@@ -743,7 +748,7 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
             TransactionInput::SEQUENCE_FINAL,
         ),
         &snapshot,
-        &entries,
+        &mempool,
     )
     .expect_err("missing vout should fail");
     assert!(matches!(missing_vout, MempoolError::MissingInput { .. }));

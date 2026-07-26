@@ -5,6 +5,8 @@
 
 //! Sparse overlay used to prepare one revision-bound mempool transition.
 
+mod limits;
+
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use open_bitcoin_primitives::{OutPoint, Txid, Wtxid};
