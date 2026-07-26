@@ -4,17 +4,21 @@
 // - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
 // - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/policy.cpp
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/test/txvalidation_tests.cpp
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/txmempool.h
+// - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 
 use std::collections::BTreeSet;
 
 use open_bitcoin_primitives::{Amount, Transaction, Txid, Wtxid};
 
 use crate::context::MempoolEntryMetadata;
-use crate::fee::{FeeRate, IncrementalRelayFeeRate, StaticRelayFeeRate};
+use crate::fee::{DustRelayFeeRate, FeeRate, IncrementalRelayFeeRate, StaticRelayFeeRate};
 use crate::resource::{MempoolCapacity, TransactionVirtualSize};
 
 const DEFAULT_STATIC_RELAY_FEE_RATE_SATS_PER_KVB: i64 = 1_000;
@@ -45,12 +49,31 @@ pub enum TrucPolicy {
     Enforce,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EphemeralPolicy {
+    pub anchor: bool,
+    pub send: bool,
+    pub dust: bool,
+}
+
+impl Default for EphemeralPolicy {
+    fn default() -> Self {
+        Self {
+            anchor: true,
+            send: false,
+            dust: false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyConfig {
     pub static_relay_fee_rate: StaticRelayFeeRate,
+    pub dust_relay_fee_rate: DustRelayFeeRate,
     pub incremental_relay_fee_rate: IncrementalRelayFeeRate,
     pub rbf_policy: RbfPolicy,
     pub truc_policy: TrucPolicy,
+    pub ephemeral_policy: EphemeralPolicy,
     pub max_standard_tx_weight: usize,
     pub max_standard_sigops_cost: usize,
     pub max_script_sig_size: usize,
@@ -72,11 +95,13 @@ impl Default for PolicyConfig {
             static_relay_fee_rate: StaticRelayFeeRate::new(FeeRate::from_sats_per_kvb(
                 DEFAULT_STATIC_RELAY_FEE_RATE_SATS_PER_KVB,
             )),
+            dust_relay_fee_rate: DustRelayFeeRate::default(),
             incremental_relay_fee_rate: IncrementalRelayFeeRate::new(FeeRate::from_sats_per_kvb(
                 DEFAULT_INCREMENTAL_RELAY_FEE_RATE_SATS_PER_KVB,
             )),
             rbf_policy: RbfPolicy::Always,
             truc_policy: TrucPolicy::Accept,
+            ephemeral_policy: EphemeralPolicy::default(),
             max_standard_tx_weight: DEFAULT_MAX_STANDARD_TX_WEIGHT,
             max_standard_sigops_cost: DEFAULT_MAX_STANDARD_SIGOPS_COST,
             max_script_sig_size: DEFAULT_MAX_SCRIPT_SIG_SIZE,

@@ -35,10 +35,10 @@ pub use fee::rolling::{
     ROLLING_FEE_HALFLIFE_SECONDS, ROLLING_FEE_UPDATE_INTERVAL_SECONDS, RollingFeeState,
 };
 pub use fee::{
-    CandidateFees, EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate, PackageFeeError,
-    PackageFeeFloorAssessment, PackageFeeGroupAssessment, PackageFeeMember, RollingMempoolFeeRate,
-    StaticRelayFeeRate, effective_admission_fee_rate, evaluate_package_fee_floors,
-    evaluate_package_fee_group,
+    CandidateFees, DustRelayFeeRate, EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate,
+    PackageFeeError, PackageFeeFloorAssessment, PackageFeeGroupAssessment, PackageFeeMember,
+    RollingMempoolFeeRate, StaticRelayFeeRate, effective_admission_fee_rate,
+    evaluate_package_fee_floors, evaluate_package_fee_group,
 };
 pub use outcome::{MempoolOutcome, MempoolOutcomeLabel, MempoolRejectionCategory};
 pub use package::{
@@ -50,7 +50,7 @@ pub use package::{
     SubmittedPackageResult, WellFormedPackage, WitnessAlias,
 };
 pub use policy::{
-    dust_threshold_sats, signals_opt_in_rbf, transaction_sigops_cost,
+    dust_threshold_sats, dust_threshold_sats_at_rate, signals_opt_in_rbf, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,
 };
 pub use pool::{
@@ -66,8 +66,8 @@ pub use resource::{
     accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
 };
 pub use types::{
-    AdmissionResult, AggregateStats, DEFAULT_MEMPOOL_EXPIRY_HOURS, MempoolEntry, PolicyConfig,
-    RbfPolicy, TrucPolicy,
+    AdmissionResult, AggregateStats, DEFAULT_MEMPOOL_EXPIRY_HOURS, EphemeralPolicy, MempoolEntry,
+    PolicyConfig, RbfPolicy, TrucPolicy,
 };
 
 /// Synthetic height used for in-mempool parents.

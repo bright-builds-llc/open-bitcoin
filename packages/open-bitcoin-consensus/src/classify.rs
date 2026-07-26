@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/script/solver.h
 // - packages/bitcoin-knots/src/script/solver.cpp
 // - packages/bitcoin-knots/src/script/script.h
+// - packages/bitcoin-knots/src/script/script.cpp
 
 use open_bitcoin_primitives::ScriptBuf;
 
@@ -32,6 +33,7 @@ const MIN_WITNESS_PROGRAM_LEN: usize = 2;
 const MAX_WITNESS_PROGRAM_LEN: usize = 40;
 const WITNESS_V0: u8 = 0;
 const TAPROOT_WITNESS_VERSION: u8 = 1;
+const PAY_TO_ANCHOR_PROGRAM: [u8; 2] = [0x4e, 0x73];
 const SCRIPTNUM_NEGATIVE_ONE: u8 = 0x81;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,6 +47,7 @@ pub enum ScriptPubKeyType {
     WitnessV0KeyHash([u8; 20]),
     WitnessV0ScriptHash([u8; 32]),
     WitnessV1Taproot([u8; 32]),
+    PayToAnchor,
     WitnessUnknown {
         version: u8,
         program: Vec<u8>,
@@ -262,6 +265,9 @@ fn classify_witness_program(bytes: &[u8]) -> Option<ScriptPubKeyType> {
         (TAPROOT_WITNESS_VERSION, len) if len == usize::from(WITNESS_PROGRAM_HASH_SIZE) => {
             ScriptPubKeyType::WitnessV1Taproot(program.try_into().ok()?)
         }
+        (TAPROOT_WITNESS_VERSION, 2) if program == PAY_TO_ANCHOR_PROGRAM => {
+            ScriptPubKeyType::PayToAnchor
+        }
         _ => ScriptPubKeyType::WitnessUnknown {
             version,
             program: program.to_vec(),
@@ -360,6 +366,33 @@ mod tests {
         assert!(matches!(
             classify_script_pubkey(&p2tr),
             ScriptPubKeyType::WitnessV1Taproot(_)
+        ));
+    }
+
+    #[test]
+    fn classify_pay_to_anchor_requires_the_exact_version_one_program() {
+        // Arrange
+        let pay_to_anchor = script(&[0x51, 0x02, 0x4e, 0x73]);
+        let wrong_version = script(&[0x52, 0x02, 0x4e, 0x73]);
+        let wrong_program = script(&[0x51, 0x02, 0x4e, 0x74]);
+        let wrong_length = script(&[0x51, 0x03, 0x4e, 0x73, 0x00]);
+
+        // Act / Assert
+        assert_eq!(
+            classify_script_pubkey(&pay_to_anchor),
+            ScriptPubKeyType::PayToAnchor
+        );
+        assert!(matches!(
+            classify_script_pubkey(&wrong_version),
+            ScriptPubKeyType::WitnessUnknown { version: 2, .. }
+        ));
+        assert!(matches!(
+            classify_script_pubkey(&wrong_program),
+            ScriptPubKeyType::WitnessUnknown { version: 1, .. }
+        ));
+        assert!(matches!(
+            classify_script_pubkey(&wrong_length),
+            ScriptPubKeyType::WitnessUnknown { version: 1, .. }
         ));
     }
 

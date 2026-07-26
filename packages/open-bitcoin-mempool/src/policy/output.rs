@@ -4,28 +4,43 @@
 // - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
 // - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/policy.cpp
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/test/txvalidation_tests.cpp
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/txmempool.h
+// - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 
 use open_bitcoin_consensus::{ScriptPubKeyType, classify_script_pubkey};
 use open_bitcoin_primitives::TransactionOutput;
 
-use crate::{MempoolError, PolicyConfig};
+use crate::{DustRelayFeeRate, MempoolError, PolicyConfig};
 
 pub fn dust_threshold_sats(output: &TransactionOutput) -> i64 {
+    dust_threshold_sats_at_rate(output, DustRelayFeeRate::default())
+}
+
+pub fn dust_threshold_sats_at_rate(
+    output: &TransactionOutput,
+    dust_relay_fee_rate: DustRelayFeeRate,
+) -> i64 {
     let script = output.script_pubkey.as_bytes();
     if script.first() == Some(&0x6a) {
         return 0;
     }
 
-    match classify_script_pubkey(&output.script_pubkey) {
+    let spend_virtual_size = match classify_script_pubkey(&output.script_pubkey) {
         ScriptPubKeyType::WitnessV0KeyHash(_)
         | ScriptPubKeyType::WitnessV0ScriptHash(_)
-        | ScriptPubKeyType::WitnessV1Taproot(_) => 330,
-        _ => 546,
-    }
+        | ScriptPubKeyType::WitnessV1Taproot(_)
+        | ScriptPubKeyType::PayToAnchor => 110,
+        _ => 182,
+    };
+    dust_relay_fee_rate
+        .fee_rate()
+        .fee_for_virtual_size(crate::TransactionVirtualSize::new(spend_virtual_size))
 }
 
 pub(super) fn validate_standard_output(
@@ -57,7 +72,8 @@ pub(super) fn validate_standard_output(
         return Ok(());
     }
 
-    match classify_script_pubkey(&output.script_pubkey) {
+    let script_type = classify_script_pubkey(&output.script_pubkey);
+    match script_type {
         ScriptPubKeyType::PayToPubKey { .. } => {
             return Err(MempoolError::NonStandard {
                 reason: format!("output {output_index} bare pubkey outputs are non-standard"),
@@ -76,14 +92,26 @@ pub(super) fn validate_standard_output(
         _ => {}
     }
 
-    let threshold = dust_threshold_sats(output);
-    if output.value.to_sats() < threshold {
+    if matches!(script_type, ScriptPubKeyType::PayToAnchor) && !config.ephemeral_policy.anchor {
         return Err(MempoolError::NonStandard {
-            reason: format!(
-                "output {output_index} value {} is dust below threshold {threshold}",
-                output.value.to_sats()
-            ),
+            reason: format!("output {output_index} pay-to-anchor outputs are disabled"),
         });
+    }
+
+    let threshold = dust_threshold_sats_at_rate(output, config.dust_relay_fee_rate);
+    if output.value.to_sats() < threshold {
+        if !matches!(script_type, ScriptPubKeyType::PayToAnchor) && !config.ephemeral_policy.send {
+            return Err(MempoolError::NonStandard {
+                reason: format!(
+                    "output {output_index} dusty non-anchor outputs require send permission"
+                ),
+            });
+        }
+        if output.value.to_sats() != 0 && !config.ephemeral_policy.dust {
+            return Err(MempoolError::NonStandard {
+                reason: format!("output {output_index} nonzero dust requires dust permission"),
+            });
+        }
     }
 
     Ok(())

@@ -1928,6 +1928,60 @@ fn witness_and_sigop_helpers_are_covered() {
             &spent_input,
             &validation_context,
             &precomputed,
+            ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            &mut execution_data,
+            &ScriptPubKeyType::PayToAnchor,
+            false,
+            &secp,
+        ),
+        Ok(())
+    );
+    assert_eq!(witness_stack, vec![vec![1_u8]]);
+    assert_eq!(
+        verify_witness_program(
+            &mut witness_stack,
+            &ScriptWitness::default(),
+            &transaction,
+            0,
+            &spent_input,
+            &validation_context,
+            &precomputed,
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::WITNESS
+                | ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM,
+            &mut execution_data,
+            &ScriptPubKeyType::PayToAnchor,
+            false,
+            &secp,
+        ),
+        Err(ScriptError::UnsupportedOpcode(0x92))
+    );
+    assert_eq!(
+        verify_witness_program(
+            &mut witness_stack,
+            &ScriptWitness::default(),
+            &transaction,
+            0,
+            &spent_input,
+            &validation_context,
+            &precomputed,
+            ScriptVerifyFlags::P2SH | ScriptVerifyFlags::WITNESS,
+            &mut execution_data,
+            &ScriptPubKeyType::PayToAnchor,
+            true,
+            &secp,
+        ),
+        Ok(())
+    );
+    assert_eq!(
+        verify_witness_program(
+            &mut witness_stack,
+            &ScriptWitness::default(),
+            &transaction,
+            0,
+            &spent_input,
+            &validation_context,
+            &precomputed,
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::WITNESS
                 | ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM,

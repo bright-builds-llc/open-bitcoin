@@ -4,22 +4,29 @@
 // - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
 // - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/policy.cpp
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/test/txvalidation_tests.cpp
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/txmempool.h
+// - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 
 mod output;
 pub(crate) mod replacement;
 
 use open_bitcoin_codec::{TransactionEncoding, encode_transaction};
 use open_bitcoin_consensus::script::{count_p2sh_sigops, count_witness_sigops};
-use open_bitcoin_consensus::{TransactionInputContext, count_legacy_sigops, is_push_only};
+use open_bitcoin_consensus::{
+    ScriptPubKeyType, TransactionInputContext, classify_script_pubkey, count_legacy_sigops,
+    is_push_only,
+};
 use open_bitcoin_primitives::{Transaction, TransactionInput};
 
 use crate::{MempoolError, PolicyConfig};
-pub use output::dust_threshold_sats;
 use output::validate_standard_output;
+pub use output::{dust_threshold_sats, dust_threshold_sats_at_rate};
 
 pub fn transaction_weight_and_virtual_size(
     transaction: &Transaction,
@@ -148,6 +155,20 @@ pub fn validate_standard_transaction(
         return Err(MempoolError::Validation {
             reason: "input context mismatch during standardness checks".to_string(),
         });
+    }
+
+    for (input_index, (input, input_context)) in
+        transaction.inputs.iter().zip(input_contexts).enumerate()
+    {
+        if matches!(
+            classify_script_pubkey(&input_context.spent_output.script_pubkey),
+            ScriptPubKeyType::PayToAnchor
+        ) && !input.witness.is_empty()
+        {
+            return Err(MempoolError::NonStandard {
+                reason: format!("input {input_index} pay-to-anchor witness must be empty"),
+            });
+        }
     }
 
     for (output_index, output) in transaction.outputs.iter().enumerate() {

@@ -1,8 +1,13 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/doc/policy/packages.md
 // - packages/bitcoin-knots/src/kernel/mempool_options.h
+// - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/policy.cpp
+// - packages/bitcoin-knots/src/script/script.cpp
 // - packages/bitcoin-knots/src/test/txpackage_tests.cpp
+// - packages/bitcoin-knots/src/test/txvalidation_tests.cpp
 // - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 // - packages/bitcoin-knots/test/functional/mempool_truc.py
 
 use open_bitcoin_consensus::{
@@ -11,12 +16,13 @@ use open_bitcoin_consensus::{
 use open_bitcoin_primitives::{Amount, ScriptWitness, TransactionInput, Txid, Wtxid};
 
 use crate::{
-    AdmissionContext, CandidateFees, DryRunPackageCommand, EffectiveFeeGroupId, FeeRate,
-    IncrementalRelayFeeRate, Mempool, MempoolCapacity, MempoolMemberIdentity, MempoolRemovalCause,
-    MempoolRemovalRole, PackageFeeError, PackageFeeMember, PackageMemberResult, PolicyConfig,
-    PriorMemberSuccess, ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate,
-    SubmissionPackage, SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
-    evaluate_package_fee_group,
+    AdmissionContext, CandidateFees, DryRunPackageCommand, DustRelayFeeRate, EffectiveFeeGroupId,
+    EphemeralPolicy, FeeRate, IncrementalRelayFeeRate, Mempool, MempoolCapacity,
+    MempoolMemberIdentity, MempoolRemovalCause, MempoolRemovalRole, PackageFeeError,
+    PackageFeeMember, PackageMemberResult, PolicyConfig, PriorMemberSuccess,
+    ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate, SubmissionPackage,
+    SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
+    dust_threshold_sats_at_rate, evaluate_package_fee_group, validate_standard_transaction,
 };
 
 use super::{sample_chainstate_snapshot, script, spend_transaction, submit};
@@ -46,6 +52,204 @@ fn static_floor(sats_per_kvb: i64) -> StaticRelayFeeRate {
 
 fn rolling_floor(sats_per_kvb: i64) -> RollingMempoolFeeRate {
     RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(sats_per_kvb))
+}
+
+fn p2a_script() -> open_bitcoin_primitives::ScriptBuf {
+    script(&[0x51, 0x02, 0x4e, 0x73])
+}
+
+fn p2sh_script() -> open_bitcoin_primitives::ScriptBuf {
+    script(&[
+        0xa9, 0x14, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0x87,
+    ])
+}
+
+fn output_policy_result(
+    script_pubkey: open_bitcoin_primitives::ScriptBuf,
+    value_sats: i64,
+    permissions: EphemeralPolicy,
+) -> Result<(), crate::MempoolError> {
+    let transaction = open_bitcoin_primitives::Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: open_bitcoin_primitives::OutPoint {
+                txid: Txid::from_byte_array([0x31; 32]),
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![open_bitcoin_primitives::TransactionOutput {
+            value: Amount::from_sats(value_sats).expect("valid output value"),
+            script_pubkey,
+        }],
+        lock_time: 0,
+    };
+    let input_context = open_bitcoin_consensus::TransactionInputContext {
+        spent_output: open_bitcoin_consensus::SpentOutput {
+            value: Amount::from_sats(10_000).expect("valid spent value"),
+            script_pubkey: p2sh_script(),
+            is_coinbase: false,
+        },
+        created_height: 1,
+        created_median_time_past: 1,
+    };
+    let config = PolicyConfig {
+        ephemeral_policy: permissions,
+        ..PolicyConfig::default()
+    };
+
+    validate_standard_transaction(&transaction, &[input_context], &config, 100, 0)
+}
+
+#[test]
+fn pay_to_anchor_defaults_and_dust_relay_thresholds_are_pinned() {
+    // Arrange / Act
+    let config = PolicyConfig::default();
+    let p2a_output = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: p2a_script(),
+    };
+    let witness_output = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: script(&[
+            0x00, 0x14, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        ]),
+    };
+    let legacy_output = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: p2sh_script(),
+    };
+
+    // Assert
+    assert_eq!(
+        config.ephemeral_policy,
+        EphemeralPolicy {
+            anchor: true,
+            send: false,
+            dust: false,
+        }
+    );
+    assert_eq!(
+        config.dust_relay_fee_rate,
+        DustRelayFeeRate::new(FeeRate::from_sats_per_kvb(3_000))
+    );
+    assert_eq!(
+        dust_threshold_sats_at_rate(&witness_output, config.dust_relay_fee_rate),
+        330
+    );
+    assert_eq!(
+        dust_threshold_sats_at_rate(&legacy_output, config.dust_relay_fee_rate),
+        546
+    );
+    assert!(output_policy_result(p2a_output.script_pubkey, 0, config.ephemeral_policy).is_ok());
+}
+
+#[test]
+fn pay_to_anchor_send_and_nonzero_dust_permissions_are_independent() {
+    // Arrange
+    let allow_all = EphemeralPolicy {
+        anchor: true,
+        send: true,
+        dust: true,
+    };
+
+    // Act / Assert
+    assert!(output_policy_result(p2a_script(), 0, allow_all).is_ok());
+    assert!(output_policy_result(p2sh_script(), 0, allow_all).is_ok());
+    assert!(output_policy_result(p2sh_script(), 1, allow_all).is_ok());
+
+    assert!(
+        output_policy_result(
+            p2a_script(),
+            0,
+            EphemeralPolicy {
+                anchor: false,
+                send: true,
+                dust: true,
+            },
+        )
+        .expect_err("anchor permission gates P2A")
+        .to_string()
+        .contains("anchor")
+    );
+    assert!(
+        output_policy_result(
+            p2sh_script(),
+            0,
+            EphemeralPolicy {
+                anchor: true,
+                send: false,
+                dust: true,
+            },
+        )
+        .expect_err("send permission gates dusty non-anchor output")
+        .to_string()
+        .contains("non-anchor")
+    );
+    assert!(
+        output_policy_result(
+            p2sh_script(),
+            1,
+            EphemeralPolicy {
+                anchor: true,
+                send: true,
+                dust: false,
+            },
+        )
+        .expect_err("dust permission gates nonzero dust")
+        .to_string()
+        .contains("nonzero")
+    );
+}
+
+#[test]
+fn pay_to_anchor_spend_rejects_nonempty_witness_stuffing() {
+    // Arrange
+    let transaction = open_bitcoin_primitives::Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: open_bitcoin_primitives::OutPoint {
+                txid: Txid::from_byte_array([0x32; 32]),
+                vout: 0,
+            },
+            script_sig: script(&[]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::new(vec![vec![0x01]]),
+        }],
+        outputs: vec![open_bitcoin_primitives::TransactionOutput {
+            value: Amount::from_sats(1_000).expect("valid output value"),
+            script_pubkey: p2sh_script(),
+        }],
+        lock_time: 0,
+    };
+    let input_context = open_bitcoin_consensus::TransactionInputContext {
+        spent_output: open_bitcoin_consensus::SpentOutput {
+            value: Amount::from_sats(1_000).expect("valid spent value"),
+            script_pubkey: p2a_script(),
+            is_coinbase: false,
+        },
+        created_height: 1,
+        created_median_time_past: 1,
+    };
+
+    // Act
+    let error = validate_standard_transaction(
+        &transaction,
+        &[input_context],
+        &PolicyConfig::default(),
+        100,
+        0,
+    )
+    .expect_err("witness stuffing is non-standard");
+
+    // Assert
+    assert!(
+        error
+            .to_string()
+            .contains("pay-to-anchor witness must be empty")
+    );
 }
 
 #[test]

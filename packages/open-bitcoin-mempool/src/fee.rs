@@ -4,10 +4,14 @@
 // - packages/bitcoin-knots/src/kernel/mempool_removal_reason.h
 // - packages/bitcoin-knots/src/policy/packages.cpp
 // - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/policy.cpp
 // - packages/bitcoin-knots/src/policy/rbf.cpp
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/test/txvalidation_tests.cpp
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/txmempool.h
+// - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
 
 //! Fee-rate arithmetic and compile-time-distinct mempool policy roles.
 
@@ -89,6 +93,32 @@ impl StaticRelayFeeRate {
     /// Returns the role-neutral arithmetic value.
     pub const fn fee_rate(self) -> FeeRate {
         self.0
+    }
+}
+
+/// The independent fee rate used to classify transaction outputs as dust.
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DustRelayFeeRate(FeeRate);
+
+impl DustRelayFeeRate {
+    /// The pinned Bitcoin Knots dust relay rate.
+    pub const DEFAULT: Self = Self(FeeRate::from_sats_per_kvb(3_000));
+
+    /// Creates a dust relay rate.
+    pub const fn new(fee_rate: FeeRate) -> Self {
+        Self(fee_rate)
+    }
+
+    /// Returns the role-neutral arithmetic value.
+    pub const fn fee_rate(self) -> FeeRate {
+        self.0
+    }
+}
+
+impl Default for DustRelayFeeRate {
+    fn default() -> Self {
+        Self::DEFAULT
     }
 }
 

@@ -168,6 +168,7 @@ pub(super) fn is_witness_program_type(script_type: &ScriptPubKeyType) -> bool {
         ScriptPubKeyType::WitnessV0KeyHash(_)
             | ScriptPubKeyType::WitnessV0ScriptHash(_)
             | ScriptPubKeyType::WitnessV1Taproot(_)
+            | ScriptPubKeyType::PayToAnchor
             | ScriptPubKeyType::WitnessUnknown { .. }
     )
 }
@@ -256,6 +257,15 @@ pub(super) fn verify_witness_program(
         ScriptPubKeyType::WitnessUnknown { version: 0, .. } => {
             Err(ScriptError::WitnessProgramWrongLength)
         }
+        ScriptPubKeyType::PayToAnchor if !is_p2sh => {
+            if verify_flags.contains(ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM) {
+                return Err(ScriptError::UnsupportedOpcode(OP_0NOTEQUAL));
+            }
+            stack.clear();
+            push_stack(stack, encode_bool(true))?;
+            Ok(())
+        }
+        ScriptPubKeyType::PayToAnchor => Ok(()),
         ScriptPubKeyType::WitnessUnknown { .. } if !is_p2sh => {
             if verify_flags.contains(ScriptVerifyFlags::DISCOURAGE_UPGRADABLE_WITNESS_PROGRAM) {
                 return Err(ScriptError::UnsupportedOpcode(OP_0NOTEQUAL));
