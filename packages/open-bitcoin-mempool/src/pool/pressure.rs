@@ -97,3 +97,7 @@ fn select_eviction_package(entries: &HashMap<Txid, MempoolEntry>) -> Option<(Txi
             )
         })
 }
+
+#[cfg(test)]
+#[path = "tests/pressure_internal_cases.rs"]
+mod tests;

@@ -9,7 +9,7 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/txmempool.h
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::TransactionInputContext;
@@ -19,10 +19,9 @@ use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
 use crate::fee::rolling::RollingFeeState;
 use crate::{
-    EffectiveAdmissionFeeRate, FeeRate, LimitDirection, LimitKind, MEMPOOL_HEIGHT, MempoolEntry,
-    MempoolError, MempoolResourceLedger, PolicyConfig, PolicyTime, RbfPolicy,
-    ResourceAccountingError, RollingMempoolFeeRate, TransactionVirtualSize, build_resource_ledger,
-    signals_opt_in_rbf,
+    EffectiveAdmissionFeeRate, FeeRate, MEMPOOL_HEIGHT, MempoolEntry, MempoolError,
+    MempoolResourceLedger, PolicyConfig, PolicyTime, RbfPolicy, ResourceAccountingError,
+    RollingMempoolFeeRate, TransactionVirtualSize, signals_opt_in_rbf,
 };
 
 mod admission;
@@ -30,10 +29,14 @@ mod admission_outcome;
 mod candidate;
 mod expiry;
 mod lifecycle;
+#[cfg(test)]
+mod oracle;
+mod patch;
+#[cfg(test)]
 mod pressure;
 mod topology;
 use self::admission_outcome::accept as accept_outcome;
-use self::topology::{collect_ancestors, collect_conflicts_and_descendants, collect_descendants};
+use self::topology::collect_conflicts_and_descendants;
 pub use lifecycle::{
     FinalMempoolMembership, MempoolCapacityEnforcement, MempoolCapacityStatus,
     MempoolLifecycleDelta, MempoolLifecycleDeltaBuilder, MempoolLifecycleInvariantError,
@@ -41,6 +44,10 @@ pub use lifecycle::{
     MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear,
     MempoolRetryClearCause, RollingFeeParityStatus,
 };
+#[cfg(test)]
+use oracle::{MempoolState, recompute_state, validate_limits};
+#[cfg(test)]
+use topology::{collect_ancestors, collect_descendants};
 
 /// Separates one admission attempt result from facts that were actually committed.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -49,11 +56,43 @@ pub struct MempoolTransition {
     pub delta: MempoolLifecycleDelta,
 }
 
-#[derive(Debug, Clone)]
-struct MempoolState {
-    entries: HashMap<Txid, MempoolEntry>,
-    spent_outpoints: HashMap<OutPoint, Txid>,
-    resource_ledger: MempoolResourceLedger,
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MempoolRevision(pub(super) u64);
+
+impl MempoolRevision {
+    const ZERO: Self = Self(0);
+
+    fn next(self) -> Result<Self, MempoolError> {
+        self.0
+            .checked_add(1)
+            .map(Self)
+            .ok_or(MempoolError::RevisionExhausted)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct TopologyUpdate {
+    parents: BTreeSet<Txid>,
+    children: BTreeSet<Txid>,
+    ancestor_stats: crate::AggregateStats,
+    descendant_stats: crate::AggregateStats,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct MempoolResourceDelta {
+    next_ledger: MempoolResourceLedger,
+}
+
+pub(super) struct MempoolPatch {
+    base_revision: MempoolRevision,
+    next_revision: MempoolRevision,
+    entry_upserts: BTreeMap<Txid, MempoolEntry>,
+    entry_removals: BTreeSet<Txid>,
+    spent_updates: BTreeMap<OutPoint, Option<Txid>>,
+    topology_updates: BTreeMap<Txid, TopologyUpdate>,
+    resource_delta: MempoolResourceDelta,
+    rolling_fee_state: RollingFeeState,
+    delta: MempoolLifecycleDelta,
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +102,17 @@ pub struct Mempool {
     entries: HashMap<Txid, MempoolEntry>,
     spent_outpoints: HashMap<OutPoint, Txid>,
     resource_ledger: MempoolResourceLedger,
+    revision: MempoolRevision,
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, PartialEq)]
+struct CompleteMempoolSnapshot {
+    entries: HashMap<Txid, MempoolEntry>,
+    spent_outpoints: HashMap<OutPoint, Txid>,
+    resource_ledger: MempoolResourceLedger,
+    rolling_fee_state: RollingFeeState,
+    revision: MempoolRevision,
 }
 
 impl Default for Mempool {
@@ -79,6 +129,7 @@ impl Mempool {
             entries: HashMap::new(),
             spent_outpoints: HashMap::new(),
             resource_ledger: MempoolResourceLedger::ZERO,
+            revision: MempoolRevision::ZERO,
         }
     }
 
@@ -110,25 +161,114 @@ impl Mempool {
         self.rolling_fee_state.rolling_fee_rate()
     }
 
+    #[cfg(test)]
+    fn complete_snapshot(&self) -> CompleteMempoolSnapshot {
+        CompleteMempoolSnapshot {
+            entries: self.entries.clone(),
+            spent_outpoints: self.spent_outpoints.clone(),
+            resource_ledger: self.resource_ledger,
+            rolling_fee_state: self.rolling_fee_state.clone(),
+            revision: self.revision,
+        }
+    }
+
     /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
-    pub fn set_rolling_mempool_fee_rate(&mut self, rate: RollingMempoolFeeRate) {
-        self.rolling_fee_state.set_rolling_fee_rate(rate);
+    pub fn set_rolling_mempool_fee_rate(
+        &mut self,
+        rate: RollingMempoolFeeRate,
+    ) -> Result<(), MempoolError> {
+        let mut next_state = self.rolling_fee_state.clone();
+        next_state.set_rolling_fee_rate(rate);
+        self.apply_rolling_state(next_state)
     }
 
     /// Knots `trackPackageRemoved` for pressure bumps and hermetic fixtures.
-    pub fn track_package_removed(&mut self, package_plus_incremental: FeeRate) {
-        self.rolling_fee_state
-            .track_package_removed(package_plus_incremental);
+    pub fn track_package_removed(
+        &mut self,
+        package_plus_incremental: FeeRate,
+    ) -> Result<(), MempoolError> {
+        let mut next_state = self.rolling_fee_state.clone();
+        next_state.track_package_removed(package_plus_incremental);
+        self.apply_rolling_state(next_state)
     }
 
     /// Applies block-gated rolling decay with an injected policy clock.
-    pub fn materialize_rolling_fee_rate(&mut self, now: PolicyTime) -> RollingMempoolFeeRate {
-        self.rolling_fee_state.decay_toward(
+    pub fn materialize_rolling_fee_rate(
+        &mut self,
+        now: PolicyTime,
+    ) -> Result<RollingMempoolFeeRate, MempoolError> {
+        let mut next_state = self.rolling_fee_state.clone();
+        let rate = next_state.decay_toward(
             now,
             self.accounted_memory(),
             self.config.mempool_capacity,
             self.config.incremental_relay_fee_rate,
-        )
+        );
+        self.apply_rolling_state(next_state)?;
+        Ok(rate)
+    }
+
+    fn apply_rolling_state(&mut self, next_state: RollingFeeState) -> Result<(), MempoolError> {
+        if next_state == self.rolling_fee_state {
+            return Ok(());
+        }
+        let next_revision = self.revision.next()?;
+        self.rolling_fee_state = next_state;
+        self.advance_revision(next_revision);
+        Ok(())
+    }
+
+    fn advance_revision(&mut self, next_revision: MempoolRevision) {
+        self.revision = next_revision;
+    }
+
+    pub(super) fn apply_prepared(
+        &mut self,
+        patch: MempoolPatch,
+    ) -> Result<MempoolLifecycleDelta, MempoolError> {
+        if self.revision != patch.base_revision {
+            return Err(MempoolError::StalePreparedTransition {
+                expected_revision: patch.base_revision.0,
+                actual_revision: self.revision.0,
+            });
+        }
+
+        let MempoolPatch {
+            base_revision: _,
+            next_revision,
+            entry_upserts,
+            entry_removals,
+            spent_updates,
+            topology_updates,
+            resource_delta,
+            rolling_fee_state,
+            delta,
+        } = patch;
+        for txid in entry_removals {
+            self.entries.remove(&txid);
+        }
+        for (txid, entry) in entry_upserts {
+            self.entries.insert(txid, entry);
+        }
+        for (outpoint, maybe_spender) in spent_updates {
+            if let Some(spender) = maybe_spender {
+                self.spent_outpoints.insert(outpoint, spender);
+            } else {
+                self.spent_outpoints.remove(&outpoint);
+            }
+        }
+        for (txid, update) in topology_updates {
+            if let Some(entry) = self.entries.get_mut(&txid) {
+                entry.parents = update.parents;
+                entry.children = update.children;
+                entry.ancestor_stats = update.ancestor_stats;
+                entry.descendant_stats = update.descendant_stats;
+            }
+        }
+        self.resource_ledger = resource_delta.next_ledger;
+        self.rolling_fee_state = rolling_fee_state;
+        self.advance_revision(next_revision);
+        Ok(delta)
     }
 
     fn replacement_set(
@@ -361,170 +501,6 @@ fn serialization_validation_error(
     MempoolError::Validation {
         reason: format!("{context} serialization failed: {source}"),
     }
-}
-
-fn validate_limits(
-    entries: &HashMap<Txid, MempoolEntry>,
-    config: &PolicyConfig,
-    candidate_txid: Txid,
-) -> Result<(), MempoolError> {
-    let Some(candidate_entry) = entries.get(&candidate_txid) else {
-        return Err(MempoolError::InternalInvariant {
-            reason: format!(
-                "candidate {:?} missing from prospective state",
-                candidate_txid
-            ),
-        });
-    };
-    if candidate_entry.ancestor_stats.count > config.max_ancestor_count {
-        return Err(MempoolError::LimitExceeded {
-            direction: LimitDirection::Ancestor,
-            kind: LimitKind::Count,
-            txid: None,
-            attempted: candidate_entry.ancestor_stats.count,
-            max: config.max_ancestor_count,
-        });
-    }
-    if candidate_entry.ancestor_stats.virtual_size.as_usize() > config.max_ancestor_virtual_size {
-        return Err(MempoolError::LimitExceeded {
-            direction: LimitDirection::Ancestor,
-            kind: LimitKind::VirtualSize,
-            txid: None,
-            attempted: candidate_entry.ancestor_stats.virtual_size.as_usize(),
-            max: config.max_ancestor_virtual_size,
-        });
-    }
-
-    let mut candidate_ancestors = collect_ancestors(entries, candidate_txid);
-    candidate_ancestors.insert(candidate_txid);
-    for ancestor_txid in candidate_ancestors {
-        let Some(entry) = entries.get(&ancestor_txid) else {
-            return Err(MempoolError::InternalInvariant {
-                reason: format!(
-                    "ancestor {:?} missing during descendant limit validation",
-                    ancestor_txid
-                ),
-            });
-        };
-        if entry.descendant_stats.count > config.max_descendant_count {
-            return Err(MempoolError::LimitExceeded {
-                direction: LimitDirection::Descendant,
-                kind: LimitKind::Count,
-                txid: Some(ancestor_txid),
-                attempted: entry.descendant_stats.count,
-                max: config.max_descendant_count,
-            });
-        }
-        if entry.descendant_stats.virtual_size.as_usize() > config.max_descendant_virtual_size {
-            return Err(MempoolError::LimitExceeded {
-                direction: LimitDirection::Descendant,
-                kind: LimitKind::VirtualSize,
-                txid: Some(ancestor_txid),
-                attempted: entry.descendant_stats.virtual_size.as_usize(),
-                max: config.max_descendant_virtual_size,
-            });
-        }
-    }
-
-    Ok(())
-}
-
-fn recompute_state(
-    mut entries: HashMap<Txid, MempoolEntry>,
-) -> Result<MempoolState, ResourceAccountingError> {
-    for entry in entries.values_mut() {
-        entry.parents.clear();
-        entry.children.clear();
-        let stats = crate::AggregateStats::new(1, entry.virtual_size, entry.fee_sats());
-        entry.ancestor_stats = stats;
-        entry.descendant_stats = stats;
-    }
-
-    let mut relations = Vec::new();
-    for (txid, entry) in &entries {
-        for input in &entry.transaction.inputs {
-            let Some(parent_entry) = entries.get(&input.previous_output.txid) else {
-                continue;
-            };
-            let output_index = input.previous_output.vout as usize;
-            if output_index < parent_entry.transaction.outputs.len() {
-                relations.push((input.previous_output.txid, *txid));
-            }
-        }
-    }
-    for (parent_txid, child_txid) in relations {
-        if let Some(parent_entry) = entries.get_mut(&parent_txid) {
-            parent_entry.children.insert(child_txid);
-        }
-        if let Some(child_entry) = entries.get_mut(&child_txid) {
-            child_entry.parents.insert(parent_txid);
-        }
-    }
-
-    let mut spent_outpoints = HashMap::new();
-    for (txid, entry) in &entries {
-        for input in &entry.transaction.inputs {
-            spent_outpoints.insert(input.previous_output.clone(), *txid);
-        }
-    }
-
-    let updates = entries
-        .iter()
-        .map(|(txid, existing_entry)| {
-            let ancestors = collect_ancestors(&entries, *txid);
-            let descendants = collect_descendants(&entries, *txid);
-            let ancestor_virtual_size = ancestors
-                .iter()
-                .filter_map(|ancestor_txid| entries.get(ancestor_txid))
-                .try_fold(existing_entry.virtual_size, |total, ancestor| {
-                    total.checked_add(ancestor.virtual_size, "ancestor aggregate virtual size")
-                })?;
-            let ancestor_fee_sats = existing_entry.fee_sats()
-                + ancestors
-                    .iter()
-                    .filter_map(|ancestor_txid| entries.get(ancestor_txid))
-                    .map(MempoolEntry::fee_sats)
-                    .sum::<i64>();
-            let descendant_virtual_size = descendants
-                .iter()
-                .filter_map(|descendant_txid| entries.get(descendant_txid))
-                .try_fold(existing_entry.virtual_size, |total, descendant| {
-                    total.checked_add(descendant.virtual_size, "descendant aggregate virtual size")
-                })?;
-            let descendant_fee_sats = existing_entry.fee_sats()
-                + descendants
-                    .iter()
-                    .filter_map(|descendant_txid| entries.get(descendant_txid))
-                    .map(MempoolEntry::fee_sats)
-                    .sum::<i64>();
-            Ok((
-                *txid,
-                crate::AggregateStats::new(
-                    ancestors.len().saturating_add(1),
-                    ancestor_virtual_size,
-                    ancestor_fee_sats,
-                ),
-                crate::AggregateStats::new(
-                    descendants.len().saturating_add(1),
-                    descendant_virtual_size,
-                    descendant_fee_sats,
-                ),
-            ))
-        })
-        .collect::<Result<Vec<_>, ResourceAccountingError>>()?;
-    for (txid, ancestor_stats, descendant_stats) in updates {
-        entries.entry(txid).and_modify(|entry| {
-            entry.ancestor_stats = ancestor_stats;
-            entry.descendant_stats = descendant_stats;
-        });
-    }
-
-    let resource_ledger = build_resource_ledger(&entries, &spent_outpoints)?;
-    Ok(MempoolState {
-        entries,
-        spent_outpoints,
-        resource_ledger,
-    })
 }
 
 pub(super) fn resource_invariant_error(source: ResourceAccountingError) -> MempoolError {

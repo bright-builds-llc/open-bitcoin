@@ -23,6 +23,7 @@ pub(super) fn collect_conflicts_and_descendants(
     txids
 }
 
+#[cfg(test)]
 pub(super) fn collect_ancestors(
     entries: &HashMap<Txid, MempoolEntry>,
     txid: Txid,

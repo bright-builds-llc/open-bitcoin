@@ -202,7 +202,9 @@ fn pressure_bump_skips_when_not_strictly_greater() {
     );
     let preset_rolling =
         RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(package_plus_incremental + 1));
-    mempool.set_rolling_mempool_fee_rate(preset_rolling);
+    mempool
+        .set_rolling_mempool_fee_rate(preset_rolling)
+        .expect("revision remains available");
 
     // Act
     let admission = submit(&mut mempool, &snapshot, high_fee).expect("high fee admission");

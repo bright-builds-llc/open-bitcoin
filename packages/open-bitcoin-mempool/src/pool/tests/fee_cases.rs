@@ -141,7 +141,9 @@ fn ordinary_admission_rejects_below_effective_floor() {
     transaction.outputs[0].value =
         Amount::from_sats(500_000_000 - required_fee + 1).expect("valid output value");
     let mut mempool = Mempool::new(PolicyConfig::default());
-    mempool.set_rolling_mempool_fee_rate(rolling_floor);
+    mempool
+        .set_rolling_mempool_fee_rate(rolling_floor)
+        .expect("revision remains available");
 
     // Act
     let error = submit(&mut mempool, &snapshot, transaction)
@@ -170,7 +172,9 @@ fn ordinary_admission_accepts_at_effective_floor() {
     transaction.outputs[0].value =
         Amount::from_sats(500_000_000 - required_fee).expect("valid output value");
     let mut mempool = Mempool::new(PolicyConfig::default());
-    mempool.set_rolling_mempool_fee_rate(rolling_floor);
+    mempool
+        .set_rolling_mempool_fee_rate(rolling_floor)
+        .expect("revision remains available");
 
     // Act
     let result = submit(&mut mempool, &snapshot, transaction);
@@ -225,7 +229,9 @@ fn pressure_summary_exposes_typed_fee_roles() {
         incremental_relay_fee_rate: incremental_rate,
         ..PolicyConfig::default()
     });
-    mempool.set_rolling_mempool_fee_rate(rolling_floor);
+    mempool
+        .set_rolling_mempool_fee_rate(rolling_floor)
+        .expect("revision remains available");
 
     // Act
     let summary = mempool.pressure_summary();

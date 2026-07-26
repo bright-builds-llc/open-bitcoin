@@ -5,7 +5,7 @@ use crate::amount::Amount;
 use crate::hash::{Hash32, Txid};
 use crate::script::{ScriptBuf, ScriptWitness};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct OutPoint {
     pub txid: Txid,
     pub vout: u32,

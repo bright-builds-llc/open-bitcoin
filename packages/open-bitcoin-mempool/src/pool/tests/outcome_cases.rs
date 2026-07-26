@@ -144,6 +144,17 @@ fn rejection_category_from_error_classifies_admission_errors() {
             },
             Some(MempoolRejectionCategory::InternalInvariant),
         ),
+        (
+            MempoolError::StalePreparedTransition {
+                expected_revision: 1,
+                actual_revision: 2,
+            },
+            Some(MempoolRejectionCategory::InternalInvariant),
+        ),
+        (
+            MempoolError::RevisionExhausted,
+            Some(MempoolRejectionCategory::InternalInvariant),
+        ),
     ];
 
     // Act

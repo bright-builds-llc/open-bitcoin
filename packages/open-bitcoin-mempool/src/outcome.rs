@@ -73,7 +73,9 @@ impl MempoolRejectionCategory {
             MempoolError::ConflictNotAllowed { .. } => Some(Self::ConflictNotAllowed),
             MempoolError::ReplacementRejected { .. } => Some(Self::ReplacementRejected),
             MempoolError::LimitExceeded { .. } => Some(Self::LimitExceeded),
-            MempoolError::InternalInvariant { .. } => Some(Self::InternalInvariant),
+            MempoolError::StalePreparedTransition { .. }
+            | MempoolError::RevisionExhausted
+            | MempoolError::InternalInvariant { .. } => Some(Self::InternalInvariant),
         }
     }
 }

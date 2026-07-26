@@ -41,8 +41,11 @@ impl ManagedMempool {
     }
 
     /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
-    pub fn set_rolling_mempool_fee_rate(&mut self, rate: RollingMempoolFeeRate) {
-        self.mempool.set_rolling_mempool_fee_rate(rate);
+    pub fn set_rolling_mempool_fee_rate(
+        &mut self,
+        rate: RollingMempoolFeeRate,
+    ) -> Result<(), MempoolError> {
+        self.mempool.set_rolling_mempool_fee_rate(rate)
     }
 
     /// Submits a transaction with canonical metadata supplied by the node shell.

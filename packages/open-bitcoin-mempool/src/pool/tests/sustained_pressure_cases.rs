@@ -196,7 +196,9 @@ fn sustained_pressure_oracle_agrees_across_fill_trim_block_decay_expiry_refill_r
     // 3) advance PolicyTime → decay
     let after_halflife =
         PolicyTime::new(connected_at.unix_seconds() + ROLLING_FEE_HALFLIFE_SECONDS);
-    let rolling_after_decay = mempool.materialize_rolling_fee_rate(after_halflife);
+    let rolling_after_decay = mempool
+        .materialize_rolling_fee_rate(after_halflife)
+        .expect("revision remains available");
     let expected_after_decay = FeeRate::from_sats_per_kvb(
         (rolling_after_trim.fee_rate().sats_per_kvb() as f64 / 2.0).round() as i64,
     );

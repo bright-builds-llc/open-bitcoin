@@ -642,11 +642,15 @@ fn rolling_fee_decay_requires_connected_block_after_bump() {
         .connect_local_block(&spendable, verify_flags(), consensus_params())
         .expect("connect spendable");
     let bumped = FeeRate::from_sats_per_kvb(10_000);
-    network.track_package_removed_rolling_fee(bumped);
+    network
+        .track_package_removed_rolling_fee(bumped)
+        .expect("revision remains available");
     let later = PolicyTime::new(ROLLING_FEE_HALFLIFE_SECONDS * 4);
 
     // Act — time advance alone must not decay after a pressure bump
-    let without_block = network.materialize_rolling_mempool_fee_rate(later);
+    let without_block = network
+        .materialize_rolling_mempool_fee_rate(later)
+        .expect("revision remains available");
 
     // Assert
     assert_eq!(without_block.fee_rate(), bumped);
@@ -659,7 +663,9 @@ fn rolling_fee_decay_requires_connected_block_after_bump() {
         .apply_connected_block_mempool_lifecycle(&empty_connect, context)
         .expect("open decay gate on connect");
     let after_halflife = PolicyTime::new(connect_time + ROLLING_FEE_HALFLIFE_SECONDS);
-    let with_block = network.materialize_rolling_mempool_fee_rate(after_halflife);
+    let with_block = network
+        .materialize_rolling_mempool_fee_rate(after_halflife)
+        .expect("revision remains available");
 
     // Assert
     assert_eq!(with_block.fee_rate().sats_per_kvb(), 5_000);

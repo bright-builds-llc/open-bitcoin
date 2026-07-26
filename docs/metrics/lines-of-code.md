@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 606 |
-| Total lines | 260,052 |
-| Code/content lines | 228,272 |
-| Comment-only lines | 9,912 |
-| Blank lines | 21,868 |
+| Included files | 612 |
+| Total lines | 261,587 |
+| Code/content lines | 229,592 |
+| Comment-only lines | 10,001 |
+| Blank lines | 21,994 |
 
 ## Per-Crate Modules
 
@@ -22,11 +22,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-codec | 15 | 1,811 | 779 | 28 | 2,621 | 43.0% |
 | open-bitcoin-consensus | 33 | 6,549 | 7,665 | 28 | 14,242 | 117.0% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
-| open-bitcoin-mempool | 37 | 5,474 | 6,879 | 30 | 12,383 | 125.7% |
+| open-bitcoin-mempool | 43 | 6,177 | 7,697 | 30 | 13,904 | 124.6% |
 | open-bitcoin-network | 55 | 12,204 | 17,963 | 30 | 30,197 | 147.2% |
-| open-bitcoin-node | 99 | 21,579 | 25,191 | 40 | 46,810 | 116.7% |
+| open-bitcoin-node | 99 | 21,583 | 25,199 | 40 | 46,822 | 116.8% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
-| open-bitcoin-rpc | 47 | 9,951 | 9,338 | 57 | 19,346 | 93.8% |
+| open-bitcoin-rpc | 47 | 9,951 | 9,340 | 57 | 19,348 | 93.9% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 16 | 3,529 | 2,467 | 34 | 6,030 | 69.9% |
 
@@ -34,8 +34,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 108 | 92,102 | 79,970 | 5,095 | 7,037 |
-| Rust production | 307 | 89,211 | 77,511 | 3,161 | 8,539 |
+| Rust tests | 111 | 92,930 | 80,651 | 5,170 | 7,109 |
+| Rust production | 310 | 89,918 | 78,150 | 3,175 | 8,593 |
 | TypeScript/Bun scripts | 132 | 62,047 | 55,023 | 1,588 | 5,436 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,361 | 3,893 | 57 | 411 |
@@ -193,9 +193,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 4 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 3,816 |
 | 5 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,258 |
 | 6 | packages/Cargo.lock | TOML/config | 3,204 |
-| 7 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 2,972 |
+| 7 | packages/open-bitcoin-node/src/network/tests.rs | Rust tests | 2,974 |
 | 8 | packages/open-bitcoin-cli/src/operator/support/tests.rs | Rust tests | 2,940 |
-| 9 | packages/open-bitcoin-rpc/src/dispatch/tests.rs | Rust tests | 2,779 |
+| 9 | packages/open-bitcoin-rpc/src/dispatch/tests.rs | Rust tests | 2,781 |
 | 10 | packages/open-bitcoin-cli/tests/operator_binary.rs | Rust tests | 2,691 |
 | 11 | packages/open-bitcoin-cli/src/operator/status/tests.rs | Rust tests | 2,589 |
 | 12 | scripts/test-run-live-mainnet-smoke.sh | Shell scripts | 2,081 |
@@ -213,7 +213,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 09f81fab6a1e0eaafe3f55530666b471d0f203d3ba72813ced99d0b1456140c0 |
+| Input fingerprint | 797a20edcc88b749797838fcdc5534126280de6815c0e511157cfde61988581e |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

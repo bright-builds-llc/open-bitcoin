@@ -15,11 +15,8 @@ use crate::{
 };
 
 use super::candidate::{check_candidate_scripts, prepare_candidate};
-use super::pressure::trim_to_size;
-use super::{
-    Mempool, accept_outcome, enforce_min_relay_fee, recompute_state, resource_invariant_error,
-    validate_limits,
-};
+use super::patch::prepare_admission_layout;
+use super::{Mempool, MempoolPatch, accept_outcome, enforce_min_relay_fee};
 
 pub(super) struct CommittedAdmission {
     pub result: AdmissionResult,
@@ -78,99 +75,11 @@ impl Mempool {
         context: AdmissionContext,
     ) -> Result<CommittedAdmission, MempoolError> {
         let prepared = prepare_candidate(self, transaction, chainstate, consensus_params, context)?;
-        let txid = prepared.entry.txid;
-        let wtxid = prepared.entry.wtxid;
-        let fee = prepared.fees.modified;
-        let virtual_size = prepared.entry.virtual_size;
-        let effective_fee_rate = effective_admission_fee_rate(
-            self.config.static_relay_fee_rate,
-            self.rolling_mempool_fee_rate(),
-        );
-        enforce_min_relay_fee(effective_fee_rate, fee.to_sats(), virtual_size)?;
-        let direct_conflicts = self.direct_conflicts(&prepared.entry.transaction);
-        let replace_set =
-            self.replacement_set(&prepared.entry.transaction, fee.to_sats(), virtual_size)?;
-        let replacement_members = replace_set
-            .iter()
-            .filter_map(|replaced_txid| {
-                self.entries.get(replaced_txid).map(|entry| {
-                    (
-                        MempoolMemberIdentity {
-                            txid: *replaced_txid,
-                            wtxid: entry.wtxid,
-                        },
-                        if direct_conflicts.contains(replaced_txid) {
-                            MempoolRemovalRole::Direct
-                        } else {
-                            MempoolRemovalRole::Descendant
-                        },
-                    )
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let mut prospective_entries = self.entries.clone();
-        for conflict_txid in &replace_set {
-            prospective_entries.remove(conflict_txid);
-        }
-        prospective_entries.insert(txid, prepared.entry.clone());
-
-        let prospective_state =
-            recompute_state(prospective_entries).map_err(resource_invariant_error)?;
-        validate_limits(&prospective_state.entries, &self.config, txid)?;
-        let mut prospective_rolling = self.rolling_fee_state.clone();
-        let (trimmed_state, evicted) =
-            trim_to_size(prospective_state, &self.config, &mut prospective_rolling)?;
-        if !trimmed_state.entries.contains_key(&txid) {
-            return Err(MempoolError::CandidateEvicted { txid });
-        }
-
-        let admitted = MempoolMemberIdentity { txid, wtxid };
-        let mut delta_builder = MempoolLifecycleDelta::builder();
-        delta_builder
-            .record_admitted(admitted)
-            .map_err(lifecycle_invariant_error)?;
-        delta_builder
-            .record_final_membership(MempoolMemberState {
-                member: admitted,
-                membership: FinalMempoolMembership::Present,
-            })
-            .map_err(lifecycle_invariant_error)?;
-        for (member, role) in replacement_members {
-            record_committed_removal(
-                &mut delta_builder,
-                member,
-                MempoolRemovalCause::Replacement,
-                role,
-            )
-            .map_err(lifecycle_invariant_error)?;
-        }
-        for (member, role) in &evicted {
-            record_committed_removal(
-                &mut delta_builder,
-                *member,
-                MempoolRemovalCause::Pressure,
-                *role,
-            )
-            .map_err(lifecycle_invariant_error)?;
-        }
-        let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
-
+        let (patch, result) = prepare_admission_patch(self, &prepared)?;
         check_candidate_scripts(&prepared, verify_flags)?;
+        let delta = self.apply_prepared(patch)?;
 
-        self.entries = trimmed_state.entries;
-        self.spent_outpoints = trimmed_state.spent_outpoints;
-        self.resource_ledger = trimmed_state.resource_ledger;
-        self.rolling_fee_state = prospective_rolling;
-
-        Ok(CommittedAdmission {
-            result: AdmissionResult {
-                accepted: txid,
-                replaced: replace_set.into_iter().collect(),
-                evicted: evicted.into_keys().map(|member| member.txid).collect(),
-            },
-            delta,
-        })
+        Ok(CommittedAdmission { result, delta })
     }
 
     /// Fail-closed outcome migration adapter that assigns legacy-unknown metadata.
@@ -240,6 +149,86 @@ impl Mempool {
             context,
         )
     }
+}
+
+pub(super) fn prepare_admission_patch(
+    mempool: &Mempool,
+    prepared: &super::candidate::PreparedCandidate,
+) -> Result<(MempoolPatch, AdmissionResult), MempoolError> {
+    let txid = prepared.entry.txid;
+    let wtxid = prepared.entry.wtxid;
+    let fee = prepared.fees.modified;
+    let virtual_size = prepared.entry.virtual_size;
+    let effective_fee_rate = effective_admission_fee_rate(
+        mempool.config.static_relay_fee_rate,
+        mempool.rolling_mempool_fee_rate(),
+    );
+    enforce_min_relay_fee(effective_fee_rate, fee.to_sats(), virtual_size)?;
+    let direct_conflicts = mempool.direct_conflicts(&prepared.entry.transaction);
+    let replace_set =
+        mempool.replacement_set(&prepared.entry.transaction, fee.to_sats(), virtual_size)?;
+    let replacement_members = replace_set
+        .iter()
+        .filter_map(|replaced_txid| {
+            mempool.entries.get(replaced_txid).map(|entry| {
+                (
+                    MempoolMemberIdentity {
+                        txid: *replaced_txid,
+                        wtxid: entry.wtxid,
+                    },
+                    if direct_conflicts.contains(replaced_txid) {
+                        MempoolRemovalRole::Direct
+                    } else {
+                        MempoolRemovalRole::Descendant
+                    },
+                )
+            })
+        })
+        .collect::<Vec<_>>();
+
+    let (layout, evicted, prospective_rolling) =
+        prepare_admission_layout(mempool, &prepared.entry, replace_set.clone())?;
+    if !layout.contains(txid) {
+        return Err(MempoolError::CandidateEvicted { txid });
+    }
+
+    let admitted = MempoolMemberIdentity { txid, wtxid };
+    let mut delta_builder = MempoolLifecycleDelta::builder();
+    delta_builder
+        .record_admitted(admitted)
+        .map_err(lifecycle_invariant_error)?;
+    delta_builder
+        .record_final_membership(MempoolMemberState {
+            member: admitted,
+            membership: FinalMempoolMembership::Present,
+        })
+        .map_err(lifecycle_invariant_error)?;
+    for (member, role) in replacement_members {
+        record_committed_removal(
+            &mut delta_builder,
+            member,
+            MempoolRemovalCause::Replacement,
+            role,
+        )
+        .map_err(lifecycle_invariant_error)?;
+    }
+    for (member, role) in &evicted {
+        record_committed_removal(
+            &mut delta_builder,
+            *member,
+            MempoolRemovalCause::Pressure,
+            *role,
+        )
+        .map_err(lifecycle_invariant_error)?;
+    }
+    let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
+    let result = AdmissionResult {
+        accepted: txid,
+        replaced: replace_set.into_iter().collect(),
+        evicted: evicted.into_keys().map(|member| member.txid).collect(),
+    };
+    let patch = layout.into_patch(mempool, prospective_rolling, delta)?;
+    Ok((patch, result))
 }
 
 fn record_committed_removal(

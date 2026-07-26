@@ -596,6 +596,7 @@
         "packages/open-bitcoin-mempool/src/pool/tests/fee_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/outcome_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/pressure_cases.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/pressure_internal_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/rolling_fee_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/sustained_pressure_cases.rs",
         "packages/open-bitcoin-mempool/src/types.rs",
@@ -643,6 +644,11 @@
       "label": "mempool-staged-admission",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/candidate.rs",
+        "packages/open-bitcoin-mempool/src/pool/oracle.rs",
+        "packages/open-bitcoin-mempool/src/pool/patch.rs",
+        "packages/open-bitcoin-mempool/src/pool/patch/graph.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/oracle_internal_cases.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/patch_internal_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/revision_cases.rs"
       ],
       "breadcrumbs": [

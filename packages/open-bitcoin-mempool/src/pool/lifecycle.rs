@@ -11,10 +11,8 @@ use open_bitcoin_codec::CodecError;
 use open_bitcoin_consensus::transaction_txid;
 use open_bitcoin_primitives::{Block, Transaction, Txid, Wtxid};
 
-use super::{
-    Mempool, MempoolError, collect_conflicts_and_descendants, recompute_state,
-    resource_invariant_error,
-};
+use super::patch::prepare_removal_patch;
+use super::{Mempool, MempoolError, collect_conflicts_and_descendants};
 use crate::{
     AccountedMempoolMemory, BlockLifecycleContext, EffectiveAdmissionFeeRate,
     IncrementalRelayFeeRate, MempoolCapacity, RollingMempoolFeeRate, StaticRelayFeeRate,
@@ -442,18 +440,42 @@ impl Mempool {
         block: &Block,
         context: BlockLifecycleContext,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {
-        let delta = self.remove_for_connected_transactions_transition(block.transactions.iter())?;
+        let removals = self.connected_transaction_removals(block.transactions.iter())?;
+        let mut delta_builder = MempoolLifecycleDelta::builder();
+        for (txid, entry, fact) in removals
+            .iter()
+            .filter_map(|(txid, fact)| self.entries.get(txid).map(|entry| (*txid, entry, *fact)))
+        {
+            record_delta_removal(
+                &mut delta_builder,
+                MempoolMemberIdentity {
+                    txid,
+                    wtxid: entry.wtxid,
+                },
+                fact,
+            )?;
+        }
+        let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
+
         // Knots `removeForBlock`: open decay gate even when the block removes nothing.
-        self.rolling_fee_state
-            .open_decay_gate_after_block(context.connected_at);
-        Ok(delta)
+        let mut rolling_fee_state = self.rolling_fee_state.clone();
+        rolling_fee_state.open_decay_gate_after_block(context.connected_at);
+        if removals.is_empty() && rolling_fee_state == self.rolling_fee_state {
+            return Ok(delta);
+        }
+        let patch = prepare_removal_patch(
+            self,
+            removals.into_keys().collect(),
+            rolling_fee_state,
+            delta,
+        )?;
+        self.apply_prepared(patch)
     }
 
-    /// Removes confirmed and conflicting transactions and returns committed semantic facts.
-    fn remove_for_connected_transactions_transition<'a>(
-        &mut self,
+    fn connected_transaction_removals<'a>(
+        &self,
         transactions: impl IntoIterator<Item = &'a Transaction>,
-    ) -> Result<MempoolLifecycleDelta, MempoolError> {
+    ) -> Result<BTreeMap<Txid, MempoolRemovalFact>, MempoolError> {
         let mut removals = BTreeMap::new();
 
         for transaction in transactions {
@@ -495,37 +517,7 @@ impl Mempool {
             }
         }
 
-        if removals.is_empty() {
-            return Ok(MempoolLifecycleDelta::empty());
-        }
-
-        let mut delta_builder = MempoolLifecycleDelta::builder();
-        let removal_members = removals.into_iter().filter_map(|(txid, fact)| {
-            self.entries.get(&txid).map(|entry| {
-                (
-                    MempoolMemberIdentity {
-                        txid,
-                        wtxid: entry.wtxid,
-                    },
-                    fact,
-                )
-            })
-        });
-        for (member, fact) in removal_members {
-            record_delta_removal(&mut delta_builder, member, fact)?;
-        }
-        let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
-        for removal in &delta.removed {
-            self.entries.remove(&removal.member.txid);
-        }
-
-        let state =
-            recompute_state(std::mem::take(&mut self.entries)).map_err(resource_invariant_error)?;
-        self.entries = state.entries;
-        self.spent_outpoints = state.spent_outpoints;
-        self.resource_ledger = state.resource_ledger;
-
-        Ok(delta)
+        Ok(removals)
     }
 }
 

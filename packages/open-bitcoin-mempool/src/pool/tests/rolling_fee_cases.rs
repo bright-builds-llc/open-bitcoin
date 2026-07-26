@@ -182,7 +182,9 @@ fn rolling_fee_decay_opens_gate_on_connected_block_lifecycle() {
         mempool_capacity: MempoolCapacity::new(0),
         ..PolicyConfig::default()
     });
-    mempool.track_package_removed(FeeRate::from_sats_per_kvb(10_000));
+    mempool
+        .track_package_removed(FeeRate::from_sats_per_kvb(10_000))
+        .expect("revision remains available");
     let connected_at = PolicyTime::new(1_700_000_000);
     let context = BlockLifecycleContext::new(connected_at, 3);
 
@@ -191,7 +193,9 @@ fn rolling_fee_decay_opens_gate_on_connected_block_lifecycle() {
         .remove_for_connected_block_transition(&empty_block(), context)
         .expect("empty connect opens decay gate");
     let after_halflife = PolicyTime::new(1_700_000_000 + ROLLING_FEE_HALFLIFE_SECONDS);
-    let materialized = mempool.materialize_rolling_fee_rate(after_halflife);
+    let materialized = mempool
+        .materialize_rolling_fee_rate(after_halflife)
+        .expect("revision remains available");
 
     // Assert
     assert_eq!(materialized.fee_rate().sats_per_kvb(), 5_000);

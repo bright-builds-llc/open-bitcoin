@@ -327,9 +327,11 @@ fn resource_fee_evidence_context() -> (ManagedRpcContext, usize) {
             RelayIntent::NotRequested,
         )
         .expect("submit");
-    network.set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
-        3_000,
-    )));
+    network
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            3_000,
+        )))
+        .expect("revision remains available");
     let wallet = ManagedWallet::from_store(
         MemoryWalletStore::default(),
         Wallet::new(AddressNetwork::Regtest),

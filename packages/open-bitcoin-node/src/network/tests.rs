@@ -2818,9 +2818,11 @@ fn mempool_info_exposes_truthful_resource_and_fee_roles() {
             RelayIntent::NotRequested,
         )
         .expect("submit");
-    network.set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
-        3_000,
-    )));
+    network
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            3_000,
+        )))
+        .expect("revision remains available");
 
     // Act
     let info = network.mempool_info();

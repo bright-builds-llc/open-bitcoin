@@ -55,6 +55,11 @@ pub enum MempoolError {
     CandidateEvicted {
         txid: Txid,
     },
+    StalePreparedTransition {
+        expected_revision: u64,
+        actual_revision: u64,
+    },
+    RevisionExhausted,
     InternalInvariant {
         reason: String,
     },
@@ -141,6 +146,14 @@ impl fmt::Display for MempoolError {
                     txid
                 )
             }
+            Self::StalePreparedTransition {
+                expected_revision,
+                actual_revision,
+            } => write!(
+                f,
+                "prepared mempool transition expected revision {expected_revision}, but live state is revision {actual_revision}"
+            ),
+            Self::RevisionExhausted => write!(f, "mempool revision counter exhausted"),
             Self::InternalInvariant { reason } => {
                 write!(f, "mempool internal invariant violation: {reason}")
             }
@@ -200,6 +213,11 @@ mod tests {
                 max: 2,
             },
             MempoolError::CandidateEvicted { txid },
+            MempoolError::StalePreparedTransition {
+                expected_revision: 4,
+                actual_revision: 5,
+            },
+            MempoolError::RevisionExhausted,
             MempoolError::InternalInvariant {
                 reason: "candidate disappeared".to_string(),
             },

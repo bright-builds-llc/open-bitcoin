@@ -11,19 +11,20 @@
 
 //! Pure PolicyTime-driven mempool expiry (Knots `Expire`).
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use open_bitcoin_primitives::Txid;
 
 use crate::{
     FinalMempoolMembership, MempoolAcceptanceTime, MempoolError, MempoolLifecycleDelta,
     MempoolLifecycleRemoval, MempoolMemberIdentity, MempoolMemberState, MempoolRemovalCause,
-    MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause, PolicyConfig, PolicyTime,
+    MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause, PolicyTime,
 };
 
+use super::Mempool;
 use super::admission::lifecycle_invariant_error;
+use super::patch::prepare_removal_patch;
 use super::topology::collect_descendants;
-use super::{Mempool, MempoolState, recompute_state, resource_invariant_error};
 
 const SECONDS_PER_HOUR: i64 = 3_600;
 
@@ -33,18 +34,45 @@ impl Mempool {
     /// Skips `MempoolAcceptanceTime::LegacyUnknown` without inventing times. Pure core never
     /// samples wall-clock time — callers inject `PolicyTime`.
     pub fn expire(&mut self, now: PolicyTime) -> Result<MempoolLifecycleDelta, MempoolError> {
-        let state = MempoolState {
-            entries: std::mem::take(&mut self.entries),
-            spent_outpoints: std::mem::take(&mut self.spent_outpoints),
-            resource_ledger: self.resource_ledger,
-        };
-        let (new_state, removed) = expire_entries(state, &self.config, now)?;
-        self.entries = new_state.entries;
-        self.spent_outpoints = new_state.spent_outpoints;
-        self.resource_ledger = new_state.resource_ledger;
+        let expiry_hours = i64::try_from(self.config.mempool_expiry_hours).unwrap_or(i64::MAX);
+        let expiry_seconds = expiry_hours.saturating_mul(SECONDS_PER_HOUR);
+        let cutoff = now.unix_seconds().saturating_sub(expiry_seconds);
+        let aged_roots = self
+            .entries
+            .iter()
+            .filter_map(|(txid, entry)| match entry.metadata.accepted_at {
+                MempoolAcceptanceTime::Known(accepted_at)
+                    if accepted_at.unix_seconds() < cutoff =>
+                {
+                    Some(*txid)
+                }
+                MempoolAcceptanceTime::Known(_) | MempoolAcceptanceTime::LegacyUnknown => None,
+            })
+            .collect::<BTreeSet<Txid>>();
+        if aged_roots.is_empty() {
+            return Ok(MempoolLifecycleDelta::empty());
+        }
+
+        let mut remove_set = aged_roots.clone();
+        for root_txid in &aged_roots {
+            remove_set.extend(collect_descendants(&self.entries, *root_txid));
+        }
 
         let mut delta_builder = MempoolLifecycleDelta::builder();
-        for (member, role) in removed {
+        for (txid, entry) in self
+            .entries
+            .iter()
+            .filter(|(txid, _entry)| remove_set.contains(txid))
+        {
+            let member = MempoolMemberIdentity {
+                txid: *txid,
+                wtxid: entry.wtxid,
+            };
+            let role = if aged_roots.contains(txid) {
+                MempoolRemovalRole::Direct
+            } else {
+                MempoolRemovalRole::Descendant
+            };
             delta_builder
                 .record_removal(MempoolLifecycleRemoval {
                     member,
@@ -65,68 +93,10 @@ impl Mempool {
                 })
                 .map_err(lifecycle_invariant_error)?;
         }
-        delta_builder.build().map_err(lifecycle_invariant_error)
+        let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
+        let patch = prepare_removal_patch(self, remove_set, self.rolling_fee_state.clone(), delta)?;
+        self.apply_prepared(patch)
     }
-}
-
-fn expire_entries(
-    mut state: MempoolState,
-    config: &PolicyConfig,
-    now: PolicyTime,
-) -> Result<
-    (
-        MempoolState,
-        BTreeMap<MempoolMemberIdentity, MempoolRemovalRole>,
-    ),
-    MempoolError,
-> {
-    // u64::MAX cannot convert to i64; clamp to i64::MAX so cutoff math stays defined.
-    let expiry_hours = i64::try_from(config.mempool_expiry_hours).unwrap_or(i64::MAX);
-    let expiry_seconds = expiry_hours.saturating_mul(SECONDS_PER_HOUR);
-    let cutoff = now.unix_seconds().saturating_sub(expiry_seconds);
-
-    let aged_roots = state
-        .entries
-        .iter()
-        .filter_map(|(txid, entry)| match entry.metadata.accepted_at {
-            MempoolAcceptanceTime::Known(accepted_at) if accepted_at.unix_seconds() < cutoff => {
-                Some(*txid)
-            }
-            MempoolAcceptanceTime::Known(_) | MempoolAcceptanceTime::LegacyUnknown => None,
-        })
-        .collect::<BTreeSet<Txid>>();
-
-    if aged_roots.is_empty() {
-        return Ok((state, BTreeMap::new()));
-    }
-
-    let mut remove_set = aged_roots.clone();
-    for root_txid in &aged_roots {
-        remove_set.extend(collect_descendants(&state.entries, *root_txid));
-    }
-
-    let mut removed = BTreeMap::new();
-    let removed_members = state
-        .entries
-        .iter()
-        .filter(|(txid, _entry)| remove_set.contains(txid))
-        .map(|(txid, entry)| MempoolMemberIdentity {
-            txid: *txid,
-            wtxid: entry.wtxid,
-        })
-        .collect::<Vec<_>>();
-    for member in removed_members {
-        state.entries.remove(&member.txid);
-        let role = if aged_roots.contains(&member.txid) {
-            MempoolRemovalRole::Direct
-        } else {
-            MempoolRemovalRole::Descendant
-        };
-        removed.insert(member, role);
-    }
-    state = recompute_state(state.entries).map_err(resource_invariant_error)?;
-
-    Ok((state, removed))
 }
 
 #[cfg(test)]
