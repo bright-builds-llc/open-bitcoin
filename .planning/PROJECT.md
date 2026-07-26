@@ -16,7 +16,7 @@ v2.1 Block Serving and Compact Block Relay Boundary shipped and was archived on 
 
 The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, first-party BIP152 codecs, compact negotiation/reconstruction/fallback, authoritative production network state, real compact-announcement transport, sanitized operator evidence, and deterministic guardrails that keep public-network and production claims scoped.
 
-Milestone v2.2 is active after initialization through `/gsd-new-milestone` and is defining requirements for package relay and long-lived mempool policy. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.2 is active after initialization through `/gsd-new-milestone`. Phase 132 completed 8/8 plans on 2026-07-26, delivering typed bounded package vocabulary, mutation-free dry-run, staged partial admission, coherent lifecycle deltas, and Knots-aligned package policy boundaries with PACK-01 through PACK-07 verified. Phase 133 is next for the package-aware download and orphan bridge. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Current Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 
@@ -218,4 +218,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-07-22 after starting milestone v2.2*
+*Last updated: 2026-07-26 after completing Phase 132*

@@ -30,7 +30,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 
 - [x] **Phase 130: Resource, Time, and Fee Primitives** — Establish unambiguous accounting, fee, time, metadata, and lifecycle outcome contracts for all later policy behavior. (completed 2026-07-24)
 - [x] **Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core** — Enforce sustained-pressure capacity, eviction, expiry, and block-gated rolling-fee decay deterministically. (completed 2026-07-25)
-- [ ] **Phase 132: Typed Package Vocabulary and Staged Admission** — Deliver dry-run and submission semantics with exact shape validation, partial acceptance, effective-fee grouping, and coherent commits.
+- [x] **Phase 132: Typed Package Vocabulary and Staged Admission** — Deliver dry-run and submission semantics with exact shape validation, partial acceptance, effective-fee grouping, and coherent commits. (completed 2026-07-26)
 - [ ] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission.
 - [ ] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state.
 - [ ] **Phase 135: Snapshot Schema, Checkpointing, and Recovery** — Persist source mempool records and local unbroadcast state, then recover them through policy-aware topological replay.
@@ -107,14 +107,14 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [ ] 132-01-PLAN.md — Define opaque package/refinement types, cached identities, fingerprints, and ordered reports.
-- [ ] 132-02-PLAN.md — Extract shared candidate preparation and revision-bound guarded apply.
-- [ ] 132-03-PLAN.md — Build the sparse prospective overlay, checked accounting oracle, and overlay trim.
-- [ ] 132-04-PLAN.md — Implement individual-first dry-run and child-with-unconfirmed-parents submission.
-- [ ] 132-05-PLAN.md — Enforce effective fee groups, one final trim, and final-membership lifecycle truth.
-- [ ] 132-06-PLAN.md — Implement bounded limited 1P1C package RBF.
-- [ ] 132-07-PLAN.md — Complete TRUC, pay-to-anchor, and ephemeral-dust policy.
-- [ ] 132-08-PLAN.md — Close parity evidence, mutation-tested guardrails, and whole-repo verification.
+- [x] 132-01-PLAN.md — Define opaque package/refinement types, cached identities, fingerprints, and ordered reports.
+- [x] 132-02-PLAN.md — Extract shared candidate preparation and revision-bound guarded apply.
+- [x] 132-03-PLAN.md — Build the sparse prospective overlay, checked accounting oracle, and overlay trim.
+- [x] 132-04-PLAN.md — Implement individual-first dry-run and child-with-unconfirmed-parents submission.
+- [x] 132-05-PLAN.md — Enforce effective fee groups, one final trim, and final-membership lifecycle truth.
+- [x] 132-06-PLAN.md — Implement bounded limited 1P1C package RBF.
+- [x] 132-07-PLAN.md — Complete TRUC, pay-to-anchor, and ephemeral-dust policy.
+- [x] 132-08-PLAN.md — Close parity evidence, mutation-tested guardrails, and whole-repo verification.
 
 ### Phase 133: Package-Aware Download and Orphan Bridge
 
@@ -208,7 +208,7 @@ Plans:
 | --- | ---: | --- | --- |
 | 130. Resource, Time, and Fee Primitives | 13/13 | Complete    | 2026-07-24 |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 5/5 | Complete    | 2026-07-25 |
-| 132. Typed Package Vocabulary and Staged Admission | 0/TBD | Not started | - |
+| 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 0/TBD | Not started | - |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 0/TBD | Not started | - |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
