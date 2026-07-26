@@ -22,6 +22,58 @@ const SERIALIZED_AMOUNT_SIZE: usize = 8;
 const WITNESS_SPEND_VIRTUAL_SIZE: usize = 67;
 const LEGACY_SPEND_VIRTUAL_SIZE: usize = 148;
 const OP_RETURN: u8 = 0x6a;
+const MAX_NULL_DATA_OUTPUTS_PER_TRANSACTION: usize = 1;
+const MAX_DUST_OUTPUTS_PER_TRANSACTION: usize = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct StandardOutputFacts {
+    is_null_data: bool,
+    is_dust: bool,
+    is_monetary: bool,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(super) struct StandardTransactionOutputFacts {
+    null_data_outputs: usize,
+    dust_outputs: usize,
+    monetary_outputs: usize,
+}
+
+impl StandardTransactionOutputFacts {
+    pub(super) fn record(&mut self, output: StandardOutputFacts) {
+        self.null_data_outputs += usize::from(output.is_null_data);
+        self.dust_outputs += usize::from(output.is_dust);
+        self.monetary_outputs += usize::from(output.is_monetary);
+    }
+
+    pub(super) fn enforce(self, config: &PolicyConfig) -> Result<(), MempoolError> {
+        if self.dust_outputs > MAX_DUST_OUTPUTS_PER_TRANSACTION {
+            return Err(MempoolError::NonStandard {
+                reason: format!(
+                    "transaction dust output count {} exceeds standard limit {}",
+                    self.dust_outputs, MAX_DUST_OUTPUTS_PER_TRANSACTION
+                ),
+            });
+        }
+        if self.null_data_outputs > MAX_NULL_DATA_OUTPUTS_PER_TRANSACTION {
+            return Err(MempoolError::NonStandard {
+                reason: format!(
+                    "transaction null-data output count {} exceeds standard limit {}",
+                    self.null_data_outputs, MAX_NULL_DATA_OUTPUTS_PER_TRANSACTION
+                ),
+            });
+        }
+        if self.monetary_outputs == 0
+            && self.null_data_outputs > 0
+            && !config.permit_bare_datacarrier
+        {
+            return Err(MempoolError::NonStandard {
+                reason: "bare data-carrier transactions are disabled".to_string(),
+            });
+        }
+        Ok(())
+    }
+}
 
 pub fn dust_threshold_sats(output: &TransactionOutput) -> i64 {
     dust_threshold_sats_at_rate(output, DustRelayFeeRate::default())
@@ -101,7 +153,7 @@ pub(super) fn validate_standard_output(
     output: &TransactionOutput,
     output_index: usize,
     config: &PolicyConfig,
-) -> Result<(), MempoolError> {
+) -> Result<StandardOutputFacts, MempoolError> {
     let script = output.script_pubkey.as_bytes();
     if is_null_data_script(&output.script_pubkey) {
         if !config.accept_datacarrier {
@@ -118,7 +170,11 @@ pub(super) fn validate_standard_output(
                 ),
             });
         }
-        return Ok(());
+        return Ok(StandardOutputFacts {
+            is_null_data: true,
+            is_dust: false,
+            is_monetary: false,
+        });
     }
 
     let script_type = classify_script_pubkey(&output.script_pubkey);
@@ -148,7 +204,8 @@ pub(super) fn validate_standard_output(
     }
 
     let threshold = dust_threshold_sats_at_rate(output, config.dust_relay_fee_rate);
-    if output.value.to_sats() < threshold {
+    let is_dust = output.value.to_sats() < threshold;
+    if is_dust {
         if !matches!(script_type, ScriptPubKeyType::PayToAnchor) && !config.ephemeral_policy.send {
             return Err(MempoolError::NonStandard {
                 reason: format!(
@@ -163,5 +220,9 @@ pub(super) fn validate_standard_output(
         }
     }
 
-    Ok(())
+    Ok(StandardOutputFacts {
+        is_null_data: false,
+        is_dust,
+        is_monetary: !is_dust,
+    })
 }

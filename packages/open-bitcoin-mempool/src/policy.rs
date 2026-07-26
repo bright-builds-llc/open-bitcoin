@@ -27,7 +27,7 @@ use open_bitcoin_consensus::{
 use open_bitcoin_primitives::{Transaction, TransactionInput};
 
 use crate::{MempoolError, PolicyConfig};
-use output::validate_standard_output;
+use output::{StandardTransactionOutputFacts, validate_standard_output};
 pub use output::{dust_threshold_sats, dust_threshold_sats_at_rate};
 
 pub fn transaction_weight_and_virtual_size(
@@ -173,9 +173,11 @@ pub fn validate_standard_transaction(
         }
     }
 
+    let mut output_facts = StandardTransactionOutputFacts::default();
     for (output_index, output) in transaction.outputs.iter().enumerate() {
-        validate_standard_output(output, output_index, config)?;
+        output_facts.record(validate_standard_output(output, output_index, config)?);
     }
+    output_facts.enforce(config)?;
 
     Ok(())
 }

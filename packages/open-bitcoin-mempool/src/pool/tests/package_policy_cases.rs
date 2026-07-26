@@ -134,6 +134,23 @@ fn output_policy_result(
     value_sats: i64,
     permissions: EphemeralPolicy,
 ) -> Result<(), crate::MempoolError> {
+    transaction_output_policy_result(
+        vec![open_bitcoin_primitives::TransactionOutput {
+            value: Amount::from_sats(value_sats).expect("valid output value"),
+            script_pubkey,
+        }],
+        PolicyConfig {
+            ephemeral_policy: permissions,
+            permit_bare_datacarrier: true,
+            ..PolicyConfig::default()
+        },
+    )
+}
+
+fn transaction_output_policy_result(
+    outputs: Vec<open_bitcoin_primitives::TransactionOutput>,
+    config: PolicyConfig,
+) -> Result<(), crate::MempoolError> {
     let transaction = open_bitcoin_primitives::Transaction {
         version: 2,
         inputs: vec![TransactionInput {
@@ -145,10 +162,7 @@ fn output_policy_result(
             sequence: TransactionInput::SEQUENCE_FINAL,
             witness: ScriptWitness::default(),
         }],
-        outputs: vec![open_bitcoin_primitives::TransactionOutput {
-            value: Amount::from_sats(value_sats).expect("valid output value"),
-            script_pubkey,
-        }],
+        outputs,
         lock_time: 0,
     };
     let input_context = open_bitcoin_consensus::TransactionInputContext {
@@ -159,10 +173,6 @@ fn output_policy_result(
         },
         created_height: 1,
         created_median_time_past: 1,
-    };
-    let config = PolicyConfig {
-        ephemeral_policy: permissions,
-        ..PolicyConfig::default()
     };
 
     validate_standard_transaction(&transaction, &[input_context], &config, 100, 0)
@@ -256,6 +266,74 @@ fn null_data_requires_push_only_suffix_and_may_carry_value() {
     assert!(truncated_push.is_err());
     assert!(pushed_payload.is_ok());
     assert!(valued_payload.is_ok());
+}
+
+#[test]
+fn transaction_output_facts_enforce_knots_data_dust_and_bare_limits() {
+    // Arrange
+    let null_data = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: script(&[0x6a, 0x01, 0x01]),
+    };
+    let monetary = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::from_sats(1_000).expect("valid monetary value"),
+        script_pubkey: p2sh_script(),
+    };
+    let dust = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::from_sats(1).expect("valid dust value"),
+        script_pubkey: p2sh_script(),
+    };
+    let permit_dust = PolicyConfig {
+        ephemeral_policy: EphemeralPolicy {
+            anchor: true,
+            send: true,
+            dust: true,
+        },
+        ..PolicyConfig::default()
+    };
+
+    // Act
+    let two_data = transaction_output_policy_result(
+        vec![null_data.clone(), null_data.clone(), monetary.clone()],
+        PolicyConfig::default(),
+    );
+    let two_dust =
+        transaction_output_policy_result(vec![dust.clone(), dust, monetary.clone()], permit_dust);
+    let bare_data =
+        transaction_output_policy_result(vec![null_data.clone()], PolicyConfig::default());
+    let data_and_money = transaction_output_policy_result(
+        vec![null_data.clone(), monetary],
+        PolicyConfig::default(),
+    );
+    let permitted_bare_data = transaction_output_policy_result(
+        vec![null_data],
+        PolicyConfig {
+            permit_bare_datacarrier: true,
+            ..PolicyConfig::default()
+        },
+    );
+
+    // Assert
+    assert!(
+        two_data
+            .expect_err("multiple data outputs")
+            .to_string()
+            .contains("null-data")
+    );
+    assert!(
+        two_dust
+            .expect_err("multiple dust outputs")
+            .to_string()
+            .contains("dust")
+    );
+    assert!(
+        bare_data
+            .expect_err("bare data carrier")
+            .to_string()
+            .contains("bare data-carrier")
+    );
+    assert!(data_and_money.is_ok());
+    assert!(permitted_bare_data.is_ok());
 }
 
 #[test]
