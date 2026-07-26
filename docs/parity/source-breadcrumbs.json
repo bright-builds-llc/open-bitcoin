@@ -940,6 +940,19 @@
       ]
     },
     {
+      "label": "network-transaction-reject-evidence",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/transaction_relay/reject_evidence.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/tests/reject_evidence_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/common/bloom.h",
+        "packages/bitcoin-knots/src/common/bloom.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.h",
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp"
+      ]
+    },
+    {
       "label": "network-initial-broadcast-retry-inputs",
       "files": [
         "packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs"

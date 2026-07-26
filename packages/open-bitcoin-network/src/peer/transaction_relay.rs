@@ -16,6 +16,7 @@ use open_bitcoin_primitives::{Hash32, InventoryType, InventoryVector, Txid, Wtxi
 use crate::error::PeerId;
 
 mod fanout;
+mod reject_evidence;
 mod retry;
 mod scheduler;
 mod serving;
@@ -33,6 +34,11 @@ pub use orphanage::{
     OrphanReconsiderationStatus, OrphanStageInput, PHASE102_MAX_ORPHAN_TRANSACTIONS,
     PHASE102_MAX_ORPHANS_PER_PEER, PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
     PHASE102_ORPHAN_TTL_SECONDS, TxOrphanage,
+};
+pub use reject_evidence::{
+    HardRejectEvidence, PHASE133_REJECT_FILTER_CAPACITY,
+    PHASE133_REJECT_FILTER_FALSE_POSITIVE_RATE, ReconsiderableEvidenceKey,
+    ReconsiderableRejectEvidence, RejectEvidenceConfigError, RejectEvidenceTweak,
 };
 pub use retry::{RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds};
 pub use scheduler::{
