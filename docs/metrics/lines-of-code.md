@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 640 |
-| Total lines | 278,297 |
-| Code/content lines | 244,293 |
+| Total lines | 278,415 |
+| Code/content lines | 244,410 |
 | Comment-only lines | 10,841 |
-| Blank lines | 23,163 |
+| Blank lines | 23,164 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 122 | 101,930 | 88,348 | 5,801 | 7,781 |
 | Rust production | 323 | 95,475 | 83,110 | 3,369 | 8,996 |
-| TypeScript/Bun scripts | 136 | 64,192 | 57,059 | 1,603 | 5,530 |
+| TypeScript/Bun scripts | 136 | 64,310 | 57,176 | 1,603 | 5,531 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,369 | 3,901 | 57 | 411 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -111,8 +111,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase131-rolling-fee-expiry-pressure.ts | 352 |
 | scripts/check-phase132-typed-package-staged-admission.test.ts | 399 |
 | scripts/check-phase132-typed-package-staged-admission.ts | 883 |
-| scripts/check-phase133-package-aware-download-orphan-bridge.test.ts | 305 |
-| scripts/check-phase133-package-aware-download-orphan-bridge.ts | 540 |
+| scripts/check-phase133-package-aware-download-orphan-bridge.test.ts | 377 |
+| scripts/check-phase133-package-aware-download-orphan-bridge.ts | 586 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -217,7 +217,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 5bd334ba65838b33b5afeac7692637243cab05554f5b5cdd64db3895710dbacf |
+| Input fingerprint | 4e1dd1f6c813510e5af7a3059eded7c563974662a3501a85c00e670541059032 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

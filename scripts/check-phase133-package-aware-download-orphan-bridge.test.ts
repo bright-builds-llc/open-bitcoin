@@ -91,8 +91,35 @@ test.each([
     ),
   ],
   [
+    "late-announcer peer-cap bypass",
+    "P133 PPKG-02: late announcers must respect per-peer and aggregate retained-byte bounds",
+    replace(
+      "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
+      "if self.peer_len(peer_id) >= self.policy.max_orphans_per_peer {",
+      "if false && self.peer_len(peer_id) >= self.policy.max_orphans_per_peer {",
+    ),
+  ],
+  [
+    "late-announcer peer-cap oracle",
+    "P133 PPKG-02: adversarial bounds and coherent cleanup regression tests must remain",
+    replace(
+      "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
+      "late_announcer_respects_per_peer_orphan_cap",
+      "removed_late_announcer_peer_cap_oracle",
+    ),
+  ],
+  [
+    "aggregate retained-byte oracle",
+    "P133 PPKG-02: adversarial bounds and coherent cleanup regression tests must remain",
+    replace(
+      "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
+      "candidate_cursor_creation_respects_aggregate_retained_byte_budget",
+      "removed_aggregate_retained_byte_oracle",
+    ),
+  ],
+  [
     "candidate privacy",
-    "P133 PPKG-02: candidate proof must stay private, consumable, same-peer, single-parent, and traversal-bounded",
+    "P133 PPKG-02: candidate proof must stay private, canonical, same-peer, single-parent, traversal-bounded, and byte-bounded",
     replace(
       "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
       "pub(super) members: [Transaction; 2]",
@@ -100,8 +127,35 @@ test.each([
     ),
   ],
   [
+    "cursor child-body retention",
+    "P133 PPKG-02: persistent candidate cursors must retain one parent body and child identities only",
+    replace(
+      "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
+      "pub(super) child_wtxids: Box<[Wtxid]>,",
+      "pub(super) child_wtxids: Box<[Wtxid]>,\n    pub(super) child_transactions: Box<[Transaction]>,",
+    ),
+  ],
+  [
+    "identity-only cursor oracle",
+    "P133 PPKG-02: adversarial bounds and coherent cleanup regression tests must remain",
+    replace(
+      "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
+      "persistent_candidate_cursor_retains_child_identities_not_child_bodies",
+      "removed_identity_only_cursor_oracle",
+    ),
+  ],
+  [
+    "canonical child lookup",
+    "P133 PPKG-02: candidate proof must stay private, canonical, same-peer, single-parent, traversal-bounded, and byte-bounded",
+    replace(
+      "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
+      "let entry = self.orphans.get(&child_wtxid)?;",
+      "let entry = self.orphans.values().next()?;",
+    ),
+  ],
+  [
     "single-parent predicate",
-    "P133 PPKG-02: candidate proof must stay private, consumable, same-peer, single-parent, and traversal-bounded",
+    "P133 PPKG-02: candidate proof must stay private, canonical, same-peer, single-parent, traversal-bounded, and byte-bounded",
     replace(
       "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
       "entry.missing_parents.len() == 1 && ",
@@ -110,7 +164,7 @@ test.each([
   ],
   [
     "same-peer aligned origins",
-    "P133 PPKG-02: candidate proof must stay private, consumable, same-peer, single-parent, and traversal-bounded",
+    "P133 PPKG-02: candidate proof must stay private, canonical, same-peer, single-parent, traversal-bounded, and byte-bounded",
     replace(
       "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
       "origins: [cursor.parent_peer; 2]",
@@ -160,6 +214,24 @@ test.each([
       "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
       "child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_with_no_projection",
       "removed_no_projection_oracle",
+    ),
+  ],
+  [
+    "typed singleton rejection category",
+    "P133 PPKG-03: singleton policy failures must preserve their typed rejection category",
+    replace(
+      "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
+      "HardMemberFailure::Policy { category, .. } => *category",
+      "HardMemberFailure::Policy { .. } => MempoolRejectionCategory::InternalInvariant",
+    ),
+  ],
+  [
+    "typed singleton rejection oracle",
+    "P133 PPKG-03: exact-call, no-projection, feedback, fallback, and multi-parent suppression tests must remain",
+    replace(
+      "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
+      "singleton_policy_failures_preserve_exact_rejection_categories",
+      "removed_singleton_rejection_category_oracle",
     ),
   ],
   [

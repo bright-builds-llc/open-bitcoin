@@ -168,7 +168,9 @@ function checkBoundedOrphanCandidate(
       "pub const PHASE102_MAX_ORPHAN_TRANSACTIONS: usize = 100;",
       "pub const PHASE102_MAX_ORPHANS_PER_PEER: usize = 25;",
       "pub const PHASE133_MAX_ANNOUNCERS_PER_ORPHAN: usize = 8;",
+      "pub const PHASE133_MAX_ORPHAN_RETAINED_BYTES: usize = 40_000_000;",
       "pub const PHASE102_MAX_RECONSIDERATIONS_PER_PARENT: usize = 32;",
+      "pub max_retained_bytes: usize",
       "struct BoundedOrphanAnnouncers",
       "orphans: BTreeMap<Wtxid, OrphanEntry>",
       "candidate_cursors: BTreeMap<(Wtxid, PeerId), SamePeerCandidateCursor>",
@@ -177,10 +179,39 @@ function checkBoundedOrphanCandidate(
     failures,
   );
 
+  const addAnnouncer = sectionBetween(
+    orphanage,
+    "pub fn add_announcer",
+    "pub fn contains",
+  );
+  requireAll(
+    addAnnouncer,
+    [
+      "if self.peer_len(peer_id) >= self.policy.max_orphans_per_peer {",
+      ".retained_bytes()",
+      "> self.policy.max_retained_bytes",
+    ],
+    "P133 PPKG-02: late announcers must respect per-peer and aggregate retained-byte bounds",
+    failures,
+  );
+
   const candidate = readTarget(
     repoRoot,
     "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
   );
+  const cursorStorage = sectionBetween(
+    candidate,
+    "pub(super) struct SamePeerCandidateCursor",
+    "impl SamePeerCandidateCursor",
+  );
+  if (
+    !cursorStorage.includes("pub(super) child_wtxids: Box<[Wtxid]>") ||
+    countMatches(cursorStorage, /\bTransaction\b/g) !== 1
+  ) {
+    failures.push(
+      "P133 PPKG-02: persistent candidate cursors must retain one parent body and child identities only",
+    );
+  }
   requireAll(
     candidate,
     [
@@ -192,8 +223,11 @@ function checkBoundedOrphanCandidate(
       "entry.missing_parents.len() == 1 && entry.announcers.contains(parent_peer)",
       "origins: [cursor.parent_peer; 2]",
       "while cursor.visited < self.policy.max_reconsiderations_per_parent",
+      "let entry = self.orphans.get(&child_wtxid)?;",
+      ".saturating_add(cursor.retained_bytes())",
+      "> self.policy.max_retained_bytes",
     ],
-    "P133 PPKG-02: candidate proof must stay private, consumable, same-peer, single-parent, and traversal-bounded",
+    "P133 PPKG-02: candidate proof must stay private, canonical, same-peer, single-parent, traversal-bounded, and byte-bounded",
     failures,
   );
 
@@ -205,6 +239,11 @@ function checkBoundedOrphanCandidate(
     tests,
     [
       "announcer_cap_keeps_one_shared_body_under_adversarial_peer_churn",
+      "retained_byte_budget_evicts_large_orphan_bodies_before_count_cap",
+      "retained_byte_budget_rejects_late_announcer_state_growth",
+      "late_announcer_respects_per_peer_orphan_cap",
+      "persistent_candidate_cursor_retains_child_identities_not_child_bodies",
+      "candidate_cursor_creation_respects_aggregate_retained_byte_budget",
       "bounded_parent_traversal_stops_before_an_older_eligible_child",
       "coherent_disconnect_expiry_eviction_cleanup_preserves_index_oracle",
     ],
@@ -243,6 +282,12 @@ function checkAuthoritativeNodeBridge(
     "P133 PPKG-03: the bridge must cache identity and return the exact authoritative report and delta",
     failures,
   );
+  requireAll(
+    packageBridge,
+    ["HardMemberFailure::Policy { category, .. } => *category"],
+    "P133 PPKG-03: singleton policy failures must preserve their typed rejection category",
+    failures,
+  );
 
   const admissionBridge = readTarget(
     repoRoot,
@@ -279,6 +324,7 @@ function checkAuthoritativeNodeBridge(
     tests,
     [
       "child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_with_no_projection",
+      "singleton_policy_failures_preserve_exact_rejection_categories",
       "two_reconsiderable_parents_suppress_multi_parent_package_submission",
       "every_feedback_variant_keeps_hard_reconsiderable_and_failed_fingerprint_domains_separate",
       "newest_failed_fingerprint_falls_back_once_to_older_eligible_child",
