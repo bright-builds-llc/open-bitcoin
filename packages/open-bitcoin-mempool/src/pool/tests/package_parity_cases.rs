@@ -27,7 +27,9 @@ use crate::policy::replacement::{
     MempoolView, PackageReplacementError, evaluate_limited_package_replacement,
 };
 use crate::policy::truc::{TrucPolicyError, evaluate_truc_package};
-use crate::pool::candidate::{PreparedCandidate, prepare_candidate};
+use crate::pool::candidate::{
+    PreparedCandidate, fail_missing_parent_report_on_call_for_test, prepare_candidate,
+};
 use crate::pool::package_admission::{
     PackagePolicyStage, evaluate_package_for_test, package_policy_probe_for_test,
     package_trim_count_for_test, reset_package_trim_count_for_test,
@@ -40,9 +42,9 @@ use crate::{
     IncrementalRelayFeeRate, MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT, Mempool, MempoolCapacity,
     MempoolEntry, MempoolEntryMetadata, MempoolError, MempoolLifecycleDelta, MempoolMemberIdentity,
     PackageMemberResult, PackageReport, PackageReportError, PackageShapeError, PackageStatus,
-    PolicyConfig, StaticRelayFeeRate, SubmissionPackage, SubmissionPackageKind,
-    SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
-    recompute_resource_ledger, validate_standard_transaction,
+    PolicyConfig, ReconsiderableMemberFailure, StaticRelayFeeRate, SubmissionPackage,
+    SubmissionPackageKind, SubmitPackageCommand, TransactionVirtualSize, TrucPolicy,
+    WellFormedPackage, recompute_resource_ledger, validate_standard_transaction,
 };
 
 fn verify_flags() -> ScriptVerifyFlags {
@@ -319,6 +321,278 @@ fn positive_child_with_unconfirmed_parents_try_from_package_refinement_is_checke
         submission.kind(),
         SubmissionPackageKind::ChildWithUnconfirmedParents
     );
+}
+
+#[test]
+fn missing_input_report_carries_one_exact_parent() {
+    // Arrange
+    let missing_parent = Txid::from_byte_array([0x81; 32]);
+    let transaction = spend_transaction(missing_parent, 0, 1_000, TransactionInput::SEQUENCE_FINAL);
+    let package = WellFormedPackage::try_from(vec![transaction]).expect("singleton package");
+
+    // Act
+    let result = Mempool::default()
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &empty_snapshot(),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("missing-input report");
+
+    // Assert
+    assert!(matches!(
+        result.report.members(),
+        [PackageMemberResult::Reconsiderable(
+            ReconsiderableMemberFailure::MissingInputs {
+                missing_parents,
+                ..
+            }
+        )] if missing_parents == &[missing_parent]
+    ));
+}
+
+#[test]
+fn multiple_missing_parents_are_sorted_and_deduplicated() {
+    // Arrange
+    let first_missing_parent = Txid::from_byte_array([0x21; 32]);
+    let second_missing_parent = Txid::from_byte_array([0x42; 32]);
+    let mut transaction = spend_transaction(
+        second_missing_parent,
+        0,
+        1_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    transaction.inputs.extend([
+        TransactionInput {
+            previous_output: OutPoint {
+                txid: first_missing_parent,
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        },
+        TransactionInput {
+            previous_output: OutPoint {
+                txid: second_missing_parent,
+                vout: 1,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        },
+    ]);
+    let package = WellFormedPackage::try_from(vec![transaction]).expect("singleton package");
+
+    // Act
+    let result = Mempool::default()
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &empty_snapshot(),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("missing-input report");
+
+    // Assert
+    assert!(matches!(
+        result.report.members(),
+        [PackageMemberResult::Reconsiderable(
+            ReconsiderableMemberFailure::MissingInputs {
+                missing_parents,
+                ..
+            }
+        )] if missing_parents == &[first_missing_parent, second_missing_parent]
+    ));
+}
+
+#[test]
+fn earlier_staged_parent_is_not_reported_missing() {
+    // Arrange
+    let (snapshot, confirmed_txids) = sample_chainstate_snapshot(2);
+    let parent = spend_transaction(
+        confirmed_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let external_missing_parent = Txid::from_byte_array([0x63; 32]);
+    let mut child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    child.inputs.push(TransactionInput {
+        previous_output: OutPoint {
+            txid: external_missing_parent,
+            vout: 0,
+        },
+        script_sig: script(&[0x01, 0x51]),
+        sequence: TransactionInput::SEQUENCE_FINAL,
+        witness: ScriptWitness::default(),
+    });
+    let package = WellFormedPackage::try_from(vec![parent, child]).expect("ordered package");
+
+    // Act
+    let result = Mempool::default()
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("partial package report");
+
+    // Assert
+    assert!(matches!(
+        result.report.members(),
+        [
+            PackageMemberResult::FinallyPresent(_),
+            PackageMemberResult::Reconsiderable(
+                ReconsiderableMemberFailure::MissingInputs {
+                    missing_parents,
+                    ..
+                }
+            )
+        ] if missing_parents == &[external_missing_parent]
+    ));
+}
+
+#[test]
+fn unrelated_confirmed_input_is_not_reported_missing() {
+    // Arrange
+    let (snapshot, confirmed_txids) = sample_chainstate_snapshot(2);
+    let external_missing_parent = Txid::from_byte_array([0x84; 32]);
+    let mut transaction = spend_transaction(
+        external_missing_parent,
+        0,
+        1_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    transaction.inputs.push(TransactionInput {
+        previous_output: OutPoint {
+            txid: confirmed_txids[0],
+            vout: 0,
+        },
+        script_sig: script(&[0x01, 0x51]),
+        sequence: TransactionInput::SEQUENCE_FINAL,
+        witness: ScriptWitness::default(),
+    });
+    let package = WellFormedPackage::try_from(vec![transaction]).expect("singleton package");
+
+    // Act
+    let result = Mempool::default()
+        .dry_run_package(
+            DryRunPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("missing-input report");
+
+    // Assert
+    assert!(matches!(
+        result.report.members(),
+        [PackageMemberResult::Reconsiderable(
+            ReconsiderableMemberFailure::MissingInputs {
+                missing_parents,
+                ..
+            }
+        )] if missing_parents == &[external_missing_parent]
+    ));
+}
+
+#[test]
+fn singleton_missing_parent_invariant_error_propagates() {
+    // Arrange
+    let missing_parent = Txid::from_byte_array([0xa5; 32]);
+    let transaction = spend_transaction(missing_parent, 0, 1_000, TransactionInput::SEQUENCE_FINAL);
+    let package = WellFormedPackage::try_from(vec![transaction]).expect("singleton package");
+    fail_missing_parent_report_on_call_for_test(1);
+
+    // Act
+    let result = Mempool::default().dry_run_package(
+        DryRunPackageCommand {
+            package,
+            context: AdmissionContext::legacy_unknown(),
+        },
+        &empty_snapshot(),
+        verify_flags(),
+        consensus_params(),
+    );
+    fail_missing_parent_report_on_call_for_test(0);
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(MempoolError::InternalInvariant { reason })
+            if reason == "missing-input evaluation produced no absent parent"
+    ));
+}
+
+#[test]
+fn residual_missing_parent_invariant_error_propagates() {
+    // Arrange
+    let (snapshot, confirmed_txids) = sample_chainstate_snapshot(2);
+    let parent = spend_transaction(
+        confirmed_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let external_missing_parent = Txid::from_byte_array([0xc6; 32]);
+    let mut child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    child.inputs.push(TransactionInput {
+        previous_output: OutPoint {
+            txid: external_missing_parent,
+            vout: 0,
+        },
+        script_sig: script(&[0x01, 0x51]),
+        sequence: TransactionInput::SEQUENCE_FINAL,
+        witness: ScriptWitness::default(),
+    });
+    let package = WellFormedPackage::try_from(vec![parent, child]).expect("ordered package");
+    fail_missing_parent_report_on_call_for_test(2);
+
+    // Act
+    let result = Mempool::default().dry_run_package(
+        DryRunPackageCommand {
+            package,
+            context: AdmissionContext::legacy_unknown(),
+        },
+        &snapshot,
+        verify_flags(),
+        consensus_params(),
+    );
+    fail_missing_parent_report_on_call_for_test(0);
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(MempoolError::InternalInvariant { reason })
+            if reason == "missing-input evaluation produced no absent parent"
+    ));
 }
 
 #[test]

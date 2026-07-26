@@ -4,17 +4,10 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 //! Individual-first package evaluation and the dry-run/submit capability boundary.
-
 mod finalization;
 mod residual;
 #[cfg(test)]
 mod test_support;
-
-use std::collections::BTreeMap;
-
-use open_bitcoin_chainstate::ChainstateSnapshot;
-use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
-use open_bitcoin_primitives::Transaction;
 
 use crate::policy::ephemeral::{EphemeralPolicyError, validate_ephemeral_spends};
 use crate::policy::truc::{TrucPolicyError, evaluate_truc_package};
@@ -26,8 +19,15 @@ use crate::{
     SubmitPackageCommand, SubmittedPackageResult, WellFormedPackage, WitnessAlias,
     evaluate_package_fee_group,
 };
+use open_bitcoin_chainstate::ChainstateSnapshot;
+use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
+use open_bitcoin_primitives::Transaction;
+use std::collections::BTreeMap;
 
-use super::candidate::{PreparedCandidate, check_candidate_scripts, prepare_candidate};
+use super::candidate::{
+    PreparedCandidate, check_candidate_scripts, missing_parent_txids as exact_missing_parents,
+    prepare_candidate,
+};
 use super::prospective::ProspectiveMempool;
 use super::{Mempool, MempoolPatch, pressure::trim_prospective_to_capacity};
 use finalization::lifecycle_delta;
@@ -250,6 +250,11 @@ fn evaluate_singleton<'base>(
                 result: PackageMemberResult::Reconsiderable(
                     ReconsiderableMemberFailure::MissingInputs {
                         requested: identity,
+                        missing_parents: exact_missing_parents(
+                            prospective,
+                            transaction,
+                            chainstate,
+                        )?,
                     },
                 ),
                 maybe_group: None,
@@ -576,12 +581,10 @@ fn run_late_script_checks(
 pub(super) fn reset_script_check_count_for_test() {
     SCRIPT_CHECK_COUNT.with(|count| count.set(0));
 }
-
 #[cfg(test)]
 pub(super) fn script_check_count_for_test() -> usize {
     SCRIPT_CHECK_COUNT.with(Cell::get)
 }
-
 #[cfg(test)]
 pub(super) fn classify_fee_group_for_test(
     assessment: Result<crate::PackageFeeGroupAssessment, PackageFeeError>,
@@ -593,7 +596,6 @@ pub(super) fn classify_fee_group_for_test(
 pub(super) fn empty_fee_group_error_for_test() -> MempoolError {
     group_invariant("empty group")
 }
-
 #[cfg(test)]
 pub(super) fn group_invariant_for_test() -> MempoolError {
     group_invariant("test invariant")

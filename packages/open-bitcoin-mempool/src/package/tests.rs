@@ -664,6 +664,7 @@ fn mismatched_status_is_rejected() {
         }),
         PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::MissingInputs {
             requested: report_identity(&package, 1),
+            missing_parents: vec![Txid::from_byte_array([9; 32])],
         }),
     ];
 

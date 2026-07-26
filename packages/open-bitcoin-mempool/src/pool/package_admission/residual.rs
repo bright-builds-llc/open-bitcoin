@@ -24,7 +24,9 @@ use super::{
     FeeGroupDecision, ProspectiveMempool, fee_group, group_id, hard_failure,
     remove_individual_groups, run_late_script_checks,
 };
-use crate::pool::candidate::{CandidateMempoolView, PreparedCandidate, prepare_candidate};
+use crate::pool::candidate::{
+    CandidateMempoolView, PreparedCandidate, missing_parent_txids, prepare_candidate,
+};
 use crate::pool::lifecycle::MempoolRemovalFact;
 use crate::pool::prospective::SubDelta;
 
@@ -64,6 +66,11 @@ pub(super) fn evaluate(
                 results[*index] = PackageMemberResult::Reconsiderable(
                     ReconsiderableMemberFailure::MissingInputs {
                         requested: identity,
+                        missing_parents: missing_parent_txids(
+                            &preparation_view,
+                            transaction,
+                            chainstate,
+                        )?,
                     },
                 );
                 return Ok(());

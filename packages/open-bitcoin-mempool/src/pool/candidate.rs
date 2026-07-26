@@ -11,7 +11,7 @@ use open_bitcoin_consensus::{
     TransactionInputContext, TransactionValidationContext, check_transaction, check_tx_inputs,
     is_final_transaction, sequence_locks, transaction_txid, transaction_wtxid, verify_input_script,
 };
-use open_bitcoin_primitives::Transaction;
+use open_bitcoin_primitives::{Transaction, Txid};
 
 use crate::{
     AdmissionContext, CandidateFees, Mempool, MempoolEntry, MempoolError, TransactionVirtualSize,
@@ -19,6 +19,16 @@ use crate::{
 };
 
 use super::{derive_input_contexts, serialization_validation_error};
+
+#[cfg(test)]
+thread_local! {
+    static MISSING_PARENT_REPORT_CALL: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+    static FAIL_MISSING_PARENT_REPORT_ON_CALL: std::cell::Cell<usize> = const {
+        std::cell::Cell::new(0)
+    };
+}
 
 pub(super) trait CandidateMempoolView {
     fn config(&self) -> &crate::PolicyConfig;
@@ -149,6 +159,56 @@ pub(super) fn prepare_candidate(
         median_time_past,
         consensus_params,
     })
+}
+
+pub(super) fn missing_parent_txids(
+    view: &impl CandidateMempoolView,
+    transaction: &Transaction,
+    chainstate: &ChainstateSnapshot,
+) -> Result<Vec<Txid>, MempoolError> {
+    let mut missing_parents = Vec::new();
+    for input in &transaction.inputs {
+        if chainstate.utxos.contains_key(&input.previous_output) {
+            continue;
+        }
+        let maybe_parent_output = view
+            .maybe_entry(&input.previous_output.txid)
+            .and_then(|entry| {
+                entry
+                    .transaction
+                    .outputs
+                    .get(input.previous_output.vout as usize)
+            });
+        if maybe_parent_output.is_some() {
+            continue;
+        }
+        missing_parents.push(input.previous_output.txid);
+    }
+    missing_parents.sort_unstable();
+    missing_parents.dedup();
+    #[cfg(test)]
+    {
+        let call = MISSING_PARENT_REPORT_CALL.with(|count| {
+            let call = count.get().saturating_add(1);
+            count.set(call);
+            call
+        });
+        if FAIL_MISSING_PARENT_REPORT_ON_CALL.with(std::cell::Cell::get) == call {
+            missing_parents.clear();
+        }
+    }
+    if missing_parents.is_empty() {
+        return Err(MempoolError::InternalInvariant {
+            reason: "missing-input evaluation produced no absent parent".to_string(),
+        });
+    }
+    Ok(missing_parents)
+}
+
+#[cfg(test)]
+pub(in crate::pool) fn fail_missing_parent_report_on_call_for_test(call: usize) {
+    MISSING_PARENT_REPORT_CALL.with(|count| count.set(0));
+    FAIL_MISSING_PARENT_REPORT_ON_CALL.with(|target| target.set(call));
 }
 
 /// Executes only contextual scripts against facts owned by a prepared candidate.

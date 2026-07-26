@@ -6,7 +6,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use open_bitcoin_primitives::{Amount, Wtxid};
+use open_bitcoin_primitives::{Amount, Txid, Wtxid};
 
 use super::{PackageFingerprint, WellFormedPackage};
 use crate::{FeeRate, MempoolMemberIdentity, TransactionVirtualSize};
@@ -238,6 +238,7 @@ pub enum HardMemberFailure {
 pub enum ReconsiderableMemberFailure {
     MissingInputs {
         requested: MempoolMemberIdentity,
+        missing_parents: Vec<Txid>,
     },
     PackageReplacement {
         requested: MempoolMemberIdentity,
@@ -292,7 +293,7 @@ impl PackageMemberResult {
                 | HardMemberFailure::PackageReplacement { requested, .. },
             ) => *requested,
             Self::Reconsiderable(
-                ReconsiderableMemberFailure::MissingInputs { requested }
+                ReconsiderableMemberFailure::MissingInputs { requested, .. }
                 | ReconsiderableMemberFailure::PackageReplacement { requested },
             ) => *requested,
             Self::Reconsiderable(ReconsiderableMemberFailure::PackageFee { requested, .. }) => {
