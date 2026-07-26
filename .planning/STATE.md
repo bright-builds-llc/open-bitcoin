@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 133-03-PLAN.md
-last_updated: "2026-07-26T21:15:58.516Z"
+status: verifying
+stopped_at: Completed 133-04-PLAN.md
+last_updated: "2026-07-26T22:02:07.813Z"
 last_activity: "2026-07-26"
 progress:
   total_phases: 9
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 30
-  completed_plans: 29
-  percent: 97
+  completed_plans: 30
+  percent: 100
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 133 — Package-Aware Download and Orphan Bridge
+**Current focus:** Phase 133 verification — Package-Aware Download and Orphan Bridge
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 133 (Package-Aware Download and Orphan Bridge) — EXECUTING
+Phase: 133 (Package-Aware Download and Orphan Bridge) — COMPLETE
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-26
 
-Progress: [█████░░░░░] 50%
+Progress: [██████████] 100%
 
-Next action: Continue with `133-03-PLAN.md`.
+Next action: Verify Phase 133 goal achievement.
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Next action: Continue with `133-03-PLAN.md`.
 | Phase 133 P01 | 1h 13m | 3 tasks | 16 files |
 | Phase 133 P02 | 1h 10m | 3 tasks | 28 files |
 | Phase 133 P03 | 1h 4m | 3 tasks | 20 files |
+| Phase 133 P04 | 38min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -115,6 +116,9 @@ Next action: Continue with `133-03-PLAN.md`.
 - [Phase 133]: Co-locate scheduler, orphanage, reject evidence, and disconnect mutation under PeerManager.
 - [Phase 133]: Classify peer singletons through typed package reports and preserve ordinary RBF only for the exact typed one-member package-replacement shape.
 - [Phase 133]: Apply only bounded orphan and reject-evidence feedback in Phase 133; defer package lifecycle projection to Phase 134.
+- [Phase 133]: Claim only bounded opportunistic same-peer 1P1C assembly over ordinary transaction messages; broader package relay surfaces remain deferred.
+- [Phase 133]: Guard the exact node-owned Phase 132 handoff and exhaustive feedback boundary with a filesystem-only checker and 22 independent mutations.
+- [Phase 133]: Treat probabilistic reject evidence as suppression-only, with active-tip reset and no peer punishment.
 
 ### Pending Todos
 
@@ -137,6 +141,6 @@ Next action: Continue with `133-03-PLAN.md`.
 
 ## Session Continuity
 
-Last session: 2026-07-26T21:15:58.514Z
-Stopped at: Completed 133-03-PLAN.md
+Last session: 2026-07-26T22:02:07.809Z
+Stopped at: Completed 133-04-PLAN.md
 Resume file: None

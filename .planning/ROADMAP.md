@@ -31,7 +31,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 - [x] **Phase 130: Resource, Time, and Fee Primitives** — Establish unambiguous accounting, fee, time, metadata, and lifecycle outcome contracts for all later policy behavior. (completed 2026-07-24)
 - [x] **Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core** — Enforce sustained-pressure capacity, eviction, expiry, and block-gated rolling-fee decay deterministically. (completed 2026-07-25)
 - [x] **Phase 132: Typed Package Vocabulary and Staged Admission** — Deliver dry-run and submission semantics with exact shape validation, partial acceptance, effective-fee grouping, and coherent commits. (completed 2026-07-26)
-- [ ] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission.
+- [x] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission. (completed 2026-07-26)
 - [ ] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state.
 - [ ] **Phase 135: Snapshot Schema, Checkpointing, and Recovery** — Persist source mempool records and local unbroadcast state, then recover them through policy-aware topological replay.
 - [ ] **Phase 136: Receive-Independent Maintenance and Transport Receipts** — Run bounded initial broadcast retry and topological package fanout through existing relay and achieved-effect transport paths.
@@ -133,7 +133,7 @@ Plans:
 - [x] 133-01-PLAN.md — Replace exact reject state with typed fixed-memory rolling evidence and active-tip resets.
 - [x] 133-02-PLAN.md — Retain bounded orphan announcers and construct opaque newest-first same-peer 1P1C candidates.
 - [x] 133-03-PLAN.md — Refine peer candidates once through authoritative package admission and apply bounded feedback.
-- [ ] 133-04-PLAN.md — Close deterministic parity, traceability, claim guardrails, and full repository verification.
+- [x] 133-04-PLAN.md — Close deterministic parity, traceability, claim guardrails, and full repository verification.
 
 ### Phase 134: Authoritative Cross-Cache Lifecycle Integration
 
@@ -215,7 +215,7 @@ Plans:
 | 130. Resource, Time, and Fee Primitives | 13/13 | Complete    | 2026-07-24 |
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 5/5 | Complete    | 2026-07-25 |
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
-| 133. Package-Aware Download and Orphan Bridge | 3/4 | In Progress|  |
+| 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete   | 2026-07-26 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 0/TBD | Not started | - |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
