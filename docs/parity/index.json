@@ -733,6 +733,10 @@
     {
       "name": "v2-2-resource-time-fee-primitives",
       "status": "in_progress"
+    },
+    {
+      "name": "v2-2-package-aware-download-orphan-bridge",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -3110,6 +3114,64 @@
         ],
         "suspected_unknowns": [
           "Phase 138 adversarial soak may still expose pressure edge cases beyond hermetic Phase 131 oracles."
+        ]
+      },
+      {
+        "id": "v2-2-package-aware-download-orphan-bridge",
+        "title": "v2.2 Package-Aware Download and Orphan Bridge",
+        "status": "done",
+        "requirements": [
+          "PPKG-01",
+          "PPKG-02",
+          "PPKG-03"
+        ],
+        "evidence": [
+          "README.md",
+          "packages/README.md",
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-network/Cargo.toml",
+          "packages/open-bitcoin-network/src/peer.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/reject_evidence.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/tests/reject_evidence_cases.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
+          "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/admission_bridge.rs",
+          "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
+          "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
+          "scripts/check-phase133-package-aware-download-orphan-bridge.ts",
+          "scripts/check-phase133-package-aware-download-orphan-bridge.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 133 closes PPKG-01 through PPKG-03 with independent fixed-memory hard and reconsiderable reject-evidence domains, bounded shared-body orphan provenance, a private newest-first same-peer one-parent/one-child candidate proof over ordinary transaction relay messages, and one node-owned Phase 132 package-admission call with exact ordered report, fingerprint, delta, and exhaustive typed feedback. The network crate remains admission-neutral and package outcomes are not projected into lifecycle consumers.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/txdownloadman.h",
+            "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+            "packages/bitcoin-knots/src/txorphanage.h",
+            "packages/bitcoin-knots/src/txorphanage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/p2p_orphan_handling.py",
+            "packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py",
+            "packages/bitcoin-knots/test/functional/p2p_tx_download.py"
+          ]
+        },
+        "known_gaps": [
+          "Open Bitcoin intentionally keys hard evidence by wtxid and reconsiderable evidence by wtxid or package fingerprint instead of also retaining selected Knots txid keys.",
+          "Phase 134 owns authoritative lifecycle projection across relay-serving and dependent caches.",
+          "Phase 136 owns fanout, retry receipts, and unbroadcast clearing.",
+          "Phase 137 owns RPC and operator package adapters.",
+          "General package wire protocols, arbitrary multi-parent peer assembly, public/default relay, guaranteed propagation, public-network gates, and production readiness remain deferred."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 adversarial soak may expose additional peer-churn or pressure interactions beyond the deterministic bounded oracles."
         ]
       }
     ]

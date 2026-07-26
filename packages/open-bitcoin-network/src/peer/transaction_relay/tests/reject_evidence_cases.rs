@@ -3,6 +3,7 @@
 // - packages/bitcoin-knots/src/common/bloom.cpp
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.h
 // - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py
 
 use open_bitcoin_primitives::Wtxid;
 

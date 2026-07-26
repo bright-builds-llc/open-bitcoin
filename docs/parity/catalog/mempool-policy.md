@@ -453,6 +453,53 @@ protocols, arbitrary multi-parent peer assembly, public/default relay,
 guaranteed propagation, public-network gates, and production readiness remain
 deferred.
 
+## Package-Aware Download and Orphan Bridge
+
+Phase 133 closes `PPKG-01` through `PPKG-03` with one narrow peer-download
+bridge over the existing ordinary `inv`/`getdata`/`tx` flow.
+
+- **PPKG-01 — bounded reject evidence.** Two independent node-global rolling
+  filters retain hard-rejected `Wtxid` evidence and reconsiderable `Wtxid` or
+  `PackageFingerprint` evidence. Each filter is locked to 120,000 recent
+  insertions at a target false-positive rate of 0.000001, uses fixed memory
+  under sustained unique input, and resets on an authoritative active-tip
+  change. Evidence suppresses redundant work only; it never causes peer
+  punishment or disconnection. The intentional scoped difference from Knots is
+  that Open Bitcoin keys these domains by wtxid and package fingerprint rather
+  than also retaining selected txid keys.
+- **PPKG-02 — bounded same-peer candidate proof.** Orphan transaction bodies
+  are stored once while announcer provenance is capped independently. A
+  reconsiderable parent can select the newest eligible child only when that
+  child has exactly one missing parent and retained provenance includes the
+  parent-delivering peer. Traversal, global orphan count, per-peer orphan count,
+  and announcer count remain bounded; disconnect, expiry, rejection, and
+  eviction clean every index coherently. The resulting candidate keeps its two
+  transaction bodies, origins, and provenances private and consumable, with
+  request order exactly `[parent, child]` and aligned same-peer origins.
+- **PPKG-03 — one authoritative admission bridge.** The network layer remains
+  admission-neutral and does not depend on mempool policy. The node shell
+  constructs the Phase 132 refinement, caches its package fingerprint, performs
+  exactly one authoritative package-admission call per eligible candidate, and
+  returns the exact ordered report and lifecycle delta. Exhaustive typed
+  feedback records hard member evidence, reconsiderable member evidence, or a
+  failed package fingerprint in the matching domain.
+
+Phase 133 intentionally does not project package results into relay-serving,
+fanout, receipts, persistence, or operator surfaces. Phase 134 owns
+authoritative lifecycle projection, Phase 136 owns fanout/receipts, and Phase
+137 owns RPC/operator adapters. General package wire protocols, arbitrary
+multi-parent peer assembly, public/default relay, guaranteed propagation,
+public-network gates, and production readiness remain deferred.
+
+### Phase 133 pinned Knots anchors
+
+- [`packages/bitcoin-knots/src/net_processing.cpp`](../../../packages/bitcoin-knots/src/net_processing.cpp)
+- [`packages/bitcoin-knots/src/node/txdownloadman_impl.cpp`](../../../packages/bitcoin-knots/src/node/txdownloadman_impl.cpp)
+- [`packages/bitcoin-knots/src/txorphanage.cpp`](../../../packages/bitcoin-knots/src/txorphanage.cpp)
+- [`packages/bitcoin-knots/test/functional/p2p_orphan_handling.py`](../../../packages/bitcoin-knots/test/functional/p2p_orphan_handling.py)
+- [`packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py`](../../../packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py)
+- [`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py)
+
 ### Knots sources for this surface
 
 - [`packages/bitcoin-knots/src/txmempool.h`](../../../packages/bitcoin-knots/src/txmempool.h)
@@ -489,6 +536,7 @@ deferred.
 - full snapshot/checkpoint/recovery schema beyond optional metadata fields
   (Phase 135)
 - retry scheduling, fanout, receipts, and unbroadcast clearing (Phase 136)
+- RPC and operator package adapters (Phase 137)
 - Knots `mempool.dat` binary compatibility
 - general package wire relay, whole-mempool rebroadcast, public/default relay,
   guaranteed propagation, public-network default CI, production readiness, and

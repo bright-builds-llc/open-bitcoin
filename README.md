@@ -19,10 +19,11 @@ configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
 > Status: Active milestone: v2.2 — Package Relay and Long-Lived Mempool Policy.
-> Phase 130 provides typed resource, time, and fee primitives; Phases 131–132
+> Phase 130 provides typed resource, time, and fee primitives; Phases 131–133
 > add accounted long-lived pressure and bounded local pure-core package
 > admission with ordered dry-run and submission results, staged commit, limited
-> replacement, TRUC, and ephemeral-dust policy.
+> replacement, TRUC, and ephemeral-dust policy, plus bounded same-peer
+> one-parent/one-child assembly from ordinary transaction relay messages.
 > Canonical evidence lives in the
 > [mempool parity catalog](./docs/parity/catalog/mempool-policy.md).
 > v2.1 remains the latest shipped release: bounded, explicit, default-off block
@@ -31,7 +32,8 @@ auditable, and modular.
 > integration links, and 11/11 end-to-end flows. v2.1 shipped and was archived
 > on 2026-07-22; see
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
-> Peer package assembly, a general package wire or RPC package adapter, BIP37
+> General package wire relay, arbitrary multi-parent peer assembly, an RPC
+> package adapter, BIP37
 > bloom-filter serving, compact-filter serving,
 > public serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,

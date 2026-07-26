@@ -421,6 +421,8 @@ bun test scripts/check-phase131-rolling-fee-expiry-pressure.test.ts
 bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts
 bun test scripts/check-phase132-typed-package-staged-admission.test.ts
 bun run scripts/check-phase132-typed-package-staged-admission.ts
+bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
+bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/check-current-documentation-reconciliation.test.ts
@@ -577,6 +579,8 @@ run_step "test Phase 131 rolling fee expiry pressure checker" bun test scripts/c
 run_step "check Phase 131 rolling fee expiry pressure" bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts
 run_step "test Phase 132 typed package staged admission checker" bun test scripts/check-phase132-typed-package-staged-admission.test.ts
 run_step "check Phase 132 typed package staged admission" bun run scripts/check-phase132-typed-package-staged-admission.ts
+run_step "test Phase 133 package-aware download/orphan bridge checker" bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
+run_step "check Phase 133 package-aware download/orphan bridge" bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts
