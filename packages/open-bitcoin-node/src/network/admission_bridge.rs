@@ -12,6 +12,10 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+// Keeps WellFormedPackage::try_from, SubmissionPackage::try_from_package,
+// submit_package, and ManagedPeerPackageAdmission in one narrow composition seam.
+mod package;
+
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid},
     primitives::{Hash32, Transaction, Txid, Wtxid},
@@ -20,15 +24,21 @@ use open_bitcoin_mempool::{
     AdmissionContext, AdmissionResult, FinalMempoolMembership, MempoolError, MempoolLifecycleDelta,
     MempoolOutcome, MempoolRemovalCause, MempoolTransition, PolicyTime, RelayIntent,
 };
+#[cfg(test)]
+use open_bitcoin_network::ReceivedTransactionProvenance;
 use open_bitcoin_network::{
     OrphanAction, OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
-    PeerAction, PeerId, ReceivedTransactionProvenance, TxRelayId, TxServingRecordStatus,
-    WireNetworkMessage,
+    PeerAction, PeerId, TxRelayId, TxServingRecordStatus, WireNetworkMessage,
 };
 
 use super::action_translation::process_transaction_relay_action;
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::ChainstateStore;
+
+#[cfg(test)]
+use package::singleton_transition_from_package_member;
+pub(super) use package::{ManagedPeerAdmissionResult, ManagedPeerPackageAdmission};
+use package::{record_singleton_reject_evidence, singleton_transition_from_package};
 
 pub(super) struct ManagedAdmissionBridgeResult {
     pub outcome: MempoolOutcome,
@@ -49,70 +59,6 @@ impl ManagedAdmissionBridgeResult {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
-    pub(super) fn process_peer_transaction_admission_with_provenance(
-        &mut self,
-        transaction: Transaction,
-        provenance: ReceivedTransactionProvenance,
-        timestamp: i64,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<ManagedAdmissionBridgeResult, ManagedNetworkError> {
-        let transition = self.mempool.submit_transaction_transition_with_context(
-            &self.chainstate,
-            transaction.clone(),
-            verify_flags,
-            consensus_params,
-            AdmissionContext::peer(PolicyTime::from_unix_seconds(timestamp)),
-        )?;
-        let mut result = ManagedAdmissionBridgeResult::new(transition.clone());
-
-        match &transition.outcome {
-            MempoolOutcome::Accepted { txid, .. } | MempoolOutcome::Replaced { txid, .. } => {
-                self.apply_admitted_transition(&transition, transaction)?;
-                let child_result = self.reconsider_orphans_after_acceptance(
-                    *txid,
-                    timestamp,
-                    verify_flags,
-                    consensus_params,
-                )?;
-                result
-                    .targeted_outbound
-                    .extend(child_result.targeted_outbound);
-                result.reconsidered.extend(child_result.reconsidered);
-            }
-            MempoolOutcome::Orphaned {
-                txid,
-                wtxid,
-                missing_parents,
-            } => {
-                self.compact_extra_txn.push(*wtxid, transaction.clone());
-                let actions = self.peer_manager.stage_missing_parent_with_provenance(
-                    OrphanStageInput {
-                        transaction,
-                        txid: *txid,
-                        wtxid: *wtxid,
-                        missing_parents: missing_parents.clone(),
-                        now_unix_seconds: timestamp,
-                    },
-                    provenance,
-                );
-                self.apply_orphan_actions(actions, timestamp, &mut result)?;
-            }
-            MempoolOutcome::Rejected { wtxid, .. } => {
-                let _ = self
-                    .compact_extra_txn
-                    .push_gated(*wtxid, transaction.clone());
-                self.note_recent_reject_for_outcome(&transition.outcome, Some(&transaction))?;
-            }
-            MempoolOutcome::Duplicate { .. } | MempoolOutcome::Evicted { .. } => {
-                self.note_recent_reject_for_outcome(&transition.outcome, Some(&transaction))?;
-            }
-            MempoolOutcome::Expired { .. } => {}
-        }
-
-        Ok(result)
-    }
-
     #[cfg(test)]
     pub(super) fn process_peer_transaction_admission(
         &mut self,
@@ -122,7 +68,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedAdmissionBridgeResult, ManagedNetworkError> {
-        self.process_peer_transaction_admission_with_provenance(
+        let txid = transaction_txid(&transaction)?;
+        match self.process_peer_transaction_admission_with_provenance(
             transaction,
             ReceivedTransactionProvenance {
                 delivered_by: peer_id,
@@ -131,7 +78,23 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             timestamp,
             verify_flags,
             consensus_params,
-        )
+        )? {
+            ManagedPeerAdmissionResult::Singleton(result) => Ok(result),
+            ManagedPeerAdmissionResult::Package(package) => {
+                let transition = singleton_transition_from_package_member(
+                    &package.submitted,
+                    0,
+                    package.submitted.delta.clone(),
+                )?;
+                Ok(ManagedAdmissionBridgeResult::new(transition))
+            }
+            ManagedPeerAdmissionResult::Suppressed => {
+                Ok(ManagedAdmissionBridgeResult::new(MempoolTransition {
+                    outcome: MempoolOutcome::Duplicate { txid },
+                    delta: MempoolLifecycleDelta::empty(),
+                }))
+            }
+        }
     }
 
     pub(super) fn reconsider_orphans_after_acceptance(
@@ -259,13 +222,22 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         consensus_params: ConsensusParams,
         result: &mut ManagedAdmissionBridgeResult,
     ) -> Result<(), ManagedNetworkError> {
-        let transition = self.mempool.submit_transaction_transition_with_context(
-            &self.chainstate,
+        let submitted = self.submit_peer_singleton(
             candidate.transaction.clone(),
+            timestamp,
             verify_flags,
             consensus_params,
-            AdmissionContext::peer(PolicyTime::from_unix_seconds(timestamp)),
         )?;
+        let member =
+            submitted
+                .report
+                .members()
+                .first()
+                .ok_or_else(|| MempoolError::InternalInvariant {
+                    reason: "singleton package report omitted its member".to_string(),
+                })?;
+        record_singleton_reject_evidence(&mut self.peer_manager, member);
+        let transition = singleton_transition_from_package(submitted)?;
         let status = reconsideration_status(&transition.outcome);
 
         match &transition.outcome {
@@ -297,17 +269,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 let _ = self
                     .compact_extra_txn
                     .push_gated(*wtxid, candidate.transaction.clone());
-                self.note_recent_reject_for_outcome(
-                    &transition.outcome,
-                    Some(&candidate.transaction),
-                )?;
             }
-            MempoolOutcome::Duplicate { .. } | MempoolOutcome::Evicted { .. } => {
-                self.note_recent_reject_for_outcome(
-                    &transition.outcome,
-                    Some(&candidate.transaction),
-                )?;
-            }
+            MempoolOutcome::Duplicate { .. } | MempoolOutcome::Evicted { .. } => {}
             MempoolOutcome::Expired { .. } => {}
         }
 
@@ -385,20 +348,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             };
             self.compact_extra_txn.push(wtxid, transaction);
         }
-    }
-
-    fn note_recent_reject_for_outcome(
-        &mut self,
-        outcome: &MempoolOutcome,
-        maybe_transaction: Option<&Transaction>,
-    ) -> Result<(), ManagedNetworkError> {
-        let maybe_wtxid = outcome.maybe_wtxid().or_else(|| {
-            maybe_transaction.and_then(|transaction| transaction_wtxid(transaction).ok())
-        });
-        if let Some(wtxid) = maybe_wtxid {
-            self.peer_manager.record_hard_reject(wtxid);
-        }
-        Ok(())
     }
 
     fn apply_orphan_actions(

@@ -18,7 +18,8 @@ use open_bitcoin_core::{
     primitives::{BlockHash, NetworkMagic},
 };
 use open_bitcoin_mempool::{
-    MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, RollingFeeParityStatus,
+    MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, PackageShapeError,
+    RollingFeeParityStatus,
 };
 use open_bitcoin_network::{NetworkError, PeerId, WireNetworkMessage};
 
@@ -55,6 +56,7 @@ pub enum ManagedNetworkError {
     Network(NetworkError),
     Chainstate(ChainstateError),
     Mempool(MempoolError),
+    PackageShape(PackageShapeError),
 }
 
 impl core::fmt::Display for ManagedNetworkError {
@@ -63,6 +65,7 @@ impl core::fmt::Display for ManagedNetworkError {
             Self::Network(error) => error.fmt(f),
             Self::Chainstate(error) => error.fmt(f),
             Self::Mempool(error) => error.fmt(f),
+            Self::PackageShape(error) => error.fmt(f),
         }
     }
 }
@@ -84,6 +87,12 @@ impl From<ChainstateError> for ManagedNetworkError {
 impl From<MempoolError> for ManagedNetworkError {
     fn from(value: MempoolError) -> Self {
         Self::Mempool(value)
+    }
+}
+
+impl From<PackageShapeError> for ManagedNetworkError {
+    fn from(value: PackageShapeError) -> Self {
+        Self::PackageShape(value)
     }
 }
 
@@ -201,4 +210,5 @@ pub struct ManagedSyncMessageResult {
     pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,
     pub maybe_block_disposition: Option<BlockConnectDisposition>,
     pub inbound_response_plan: Vec<ManagedInboundResponsePlanItem>,
+    pub(super) package_admissions: Vec<super::admission_bridge::ManagedPeerPackageAdmission>,
 }

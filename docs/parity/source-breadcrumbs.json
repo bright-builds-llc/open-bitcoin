@@ -1171,6 +1171,20 @@
       ]
     },
     {
+      "label": "node-package-admission-bridge",
+      "files": [
+        "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
+        "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+        "packages/bitcoin-knots/src/txorphanage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py"
+      ]
+    },
+    {
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",

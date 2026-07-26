@@ -23,6 +23,7 @@ use crate::ChainstateStore;
 
 use super::{
     ManagedNetworkError, ManagedPeerNetwork, ManagedResult, ManagedSyncMessageResult,
+    admission_bridge::ManagedPeerAdmissionResult,
     block_serving::{
         ManagedCompactBlockTxnServeDecision, serve_managed_compact_block_transactions,
     },
@@ -196,6 +197,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let mut targeted_outbound = Vec::new();
         let mut maybe_block_disposition = None;
         let mut inbound_response_plan = Vec::new();
+        let mut package_admissions = Vec::new();
 
         for action in actions {
             match action {
@@ -251,32 +253,40 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     transaction,
                     provenance,
                 } => {
-                    let bridge = self.process_peer_transaction_admission_with_provenance(
+                    let admission = self.process_peer_transaction_admission_with_provenance(
                         transaction,
                         provenance,
                         timestamp,
                         verify_flags,
                         consensus_params,
                     )?;
-                    for (target_peer_id, message) in self.record_relay_fanout_for_outcome(
-                        Some(peer_id),
-                        &bridge.outcome,
-                        timestamp,
-                    ) {
-                        if target_peer_id == peer_id {
-                            outbound.push(message);
-                        } else {
-                            targeted_outbound.push((target_peer_id, message));
+                    match admission {
+                        ManagedPeerAdmissionResult::Singleton(bridge) => {
+                            for (target_peer_id, message) in self.record_relay_fanout_for_outcome(
+                                Some(peer_id),
+                                &bridge.outcome,
+                                timestamp,
+                            ) {
+                                if target_peer_id == peer_id {
+                                    outbound.push(message);
+                                } else {
+                                    targeted_outbound.push((target_peer_id, message));
+                                }
+                            }
+                            let _admission_delta = bridge.delta;
+                            let _reconsidered = bridge.reconsidered;
+                            for (target_peer_id, message) in bridge.targeted_outbound {
+                                if target_peer_id == peer_id {
+                                    outbound.push(message);
+                                } else {
+                                    targeted_outbound.push((target_peer_id, message));
+                                }
+                            }
                         }
-                    }
-                    let _admission_delta = bridge.delta;
-                    let _reconsidered = bridge.reconsidered;
-                    for (target_peer_id, message) in bridge.targeted_outbound {
-                        if target_peer_id == peer_id {
-                            outbound.push(message);
-                        } else {
-                            targeted_outbound.push((target_peer_id, message));
+                        ManagedPeerAdmissionResult::Package(package_admission) => {
+                            package_admissions.push(package_admission);
                         }
+                        ManagedPeerAdmissionResult::Suppressed => {}
                     }
                 }
                 PeerAction::TransactionRelay(action) => {
@@ -332,6 +342,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             targeted_outbound,
             maybe_block_disposition,
             inbound_response_plan,
+            package_admissions,
         })
     }
 }

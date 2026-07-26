@@ -25,8 +25,8 @@ use open_bitcoin_network::{
     RelayPermissionEffectLabel, VersionMessage,
 };
 use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, ManagedPeerNetwork, ManagedWallet, MemoryChainstateStore,
-    MemoryWalletStore, PersistMode, RuntimeMetadata, WalletRegistry,
+    DurableSyncState, FjallNodeStore, ManagedNetworkError, ManagedPeerNetwork, ManagedWallet,
+    MemoryChainstateStore, MemoryWalletStore, PersistMode, RuntimeMetadata, WalletRegistry,
     core::{
         chainstate::{ChainPosition, ChainstateSnapshot, Coin},
         codec::{TransactionEncoding, encode_transaction, parse_transaction},
@@ -36,8 +36,8 @@ use open_bitcoin_node::{
         },
         mempool::{
             FeeRate, IncrementalRelayFeeRate, MempoolAcceptanceTime, MempoolCapacity,
-            MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
-            StaticRelayFeeRate,
+            MempoolOrigin, PackageShapeError, PolicyConfig, PolicyTime, RelayIntent,
+            RollingMempoolFeeRate, StaticRelayFeeRate,
         },
         network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage},
         primitives::{
@@ -75,6 +75,18 @@ use crate::{
 const EASY_BITS: u32 = 0x207f_ffff;
 const RANGED_TPRV: &str = "tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK";
 const RANGED_TPUB: &str = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B";
+
+#[test]
+fn package_shape_network_error_maps_to_internal_failure() {
+    // Arrange
+    let error = ManagedNetworkError::PackageShape(PackageShapeError::Empty);
+
+    // Act
+    let failure = super::network_error_to_failure(error);
+
+    // Assert
+    assert_eq!(failure.kind, RpcFailureKind::InternalError);
+}
 
 fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("script")

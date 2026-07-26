@@ -62,6 +62,7 @@ mod compact_misbehavior_cases;
 mod compact_receive_cases;
 mod compact_timeout_cases;
 mod mempool_lifecycle_cases;
+mod package_bridge_cases;
 mod recovery_cases;
 mod relay_fanout_cases;
 mod relay_local_submission_cases;

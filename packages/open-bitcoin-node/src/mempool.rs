@@ -4,15 +4,28 @@
 // - packages/bitcoin-knots/src/policy/policy.cpp
 
 use open_bitcoin_core::{
+    chainstate::ChainstateSnapshot,
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Transaction,
 };
 use open_bitcoin_mempool::{
     AdmissionContext, AdmissionResult, Mempool, MempoolError, MempoolOutcome, MempoolTransition,
-    PolicyConfig, RollingMempoolFeeRate,
+    PolicyConfig, RollingMempoolFeeRate, SubmitPackageCommand, SubmittedPackageResult,
 };
 
 use crate::{ChainstateStore, ManagedChainstate};
+
+#[cfg(test)]
+use open_bitcoin_mempool::SubmissionPackageKind;
+#[cfg(test)]
+use std::cell::{Cell, RefCell};
+
+#[cfg(test)]
+thread_local! {
+    static PACKAGE_SUBMIT_COUNT: Cell<usize> = const { Cell::new(0) };
+    static LAST_SUBMITTED_PACKAGE: RefCell<Option<SubmittedPackageResult>> =
+        const { RefCell::new(None) };
+}
 
 #[derive(Debug, Clone)]
 pub struct ManagedMempool {
@@ -46,6 +59,47 @@ impl ManagedMempool {
         rate: RollingMempoolFeeRate,
     ) -> Result<(), MempoolError> {
         self.mempool.set_rolling_mempool_fee_rate(rate)
+    }
+
+    /// Submits one checked package against the caller's immutable chain snapshot.
+    pub fn submit_package(
+        &mut self,
+        command: SubmitPackageCommand,
+        chainstate: &ChainstateSnapshot,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<SubmittedPackageResult, MempoolError> {
+        #[cfg(test)]
+        let probe_candidate =
+            command.package.kind() == SubmissionPackageKind::ChildWithUnconfirmedParents;
+        #[cfg(test)]
+        if probe_candidate {
+            PACKAGE_SUBMIT_COUNT.with(|count| count.set(count.get() + 1));
+        }
+        let submitted =
+            self.mempool
+                .submit_package(command, chainstate, verify_flags, consensus_params)?;
+        #[cfg(test)]
+        if probe_candidate {
+            LAST_SUBMITTED_PACKAGE.with(|last| last.replace(Some(submitted.clone())));
+        }
+        Ok(submitted)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn reset_package_submit_probe_for_test() {
+        PACKAGE_SUBMIT_COUNT.with(|count| count.set(0));
+        LAST_SUBMITTED_PACKAGE.with(|last| last.replace(None));
+    }
+
+    #[cfg(test)]
+    pub(crate) fn package_submit_count_for_test() -> usize {
+        PACKAGE_SUBMIT_COUNT.with(Cell::get)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn take_last_submitted_package_for_test() -> Option<SubmittedPackageResult> {
+        LAST_SUBMITTED_PACKAGE.with(|last| last.borrow_mut().take())
     }
 
     /// Submits a transaction with canonical metadata supplied by the node shell.
