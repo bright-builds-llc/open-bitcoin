@@ -94,7 +94,10 @@ pub enum PeerAction {
     Send(WireNetworkMessage),
     ServeInventory(Vec<InventoryVector>),
     TransactionRelay(TxDownloadAction),
-    ReceivedTransaction(Transaction),
+    ReceivedTransaction {
+        transaction: Transaction,
+        provenance: ReceivedTransactionProvenance,
+    },
     ReceivedBlock(Block),
     ServeCompactBlockTransactions(CompactBlockTransactionsRequest),
     Disconnect(DisconnectReason),
@@ -175,6 +178,7 @@ pub struct PeerManager {
     known_wtxids: BTreeSet<Wtxid>,
     known_wtxids_by_txid: BTreeMap<Txid, Wtxid>,
     tx_download: TxDownloadScheduler,
+    orphanage: TxOrphanage,
     hard_reject_evidence: HardRejectEvidence,
     reconsiderable_reject_evidence: ReconsiderableRejectEvidence,
     mempool_known: BTreeSet<TxRelayId>,
@@ -242,6 +246,7 @@ impl PeerManager {
             known_wtxids: BTreeSet::new(),
             known_wtxids_by_txid: BTreeMap::new(),
             tx_download: TxDownloadScheduler::new(TxDownloadPolicy::default()),
+            orphanage: TxOrphanage::new(OrphanPolicy::default()),
             hard_reject_evidence: HardRejectEvidence::new(reject_evidence_tweak),
             reconsiderable_reject_evidence: ReconsiderableRejectEvidence::new(
                 reject_evidence_tweak,

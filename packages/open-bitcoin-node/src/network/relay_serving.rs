@@ -22,10 +22,10 @@ use open_bitcoin_core::{
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, ConnectionRole, InboundAdmissionPolicy, LocalPeerConfig,
-    OrphanPolicy, PeerConnectionClass, PeerId, PeerManager, RejectEvidenceTweak,
-    RelayActivationConfig, RelayDownloadPolicy, RelayEligibilityDecision, RelayEligibilityInput,
-    RelayEligibilityReason, TxOrphanage, TxRelayId, TxRelayPeerMode, TxServeOutcomeLabel,
-    TxServingRecordStatus, classify_relay_eligibility, classify_tx_serve_request,
+    PeerConnectionClass, PeerId, PeerManager, RejectEvidenceTweak, RelayActivationConfig,
+    RelayDownloadPolicy, RelayEligibilityDecision, RelayEligibilityInput, RelayEligibilityReason,
+    TxRelayId, TxRelayPeerMode, TxServeOutcomeLabel, TxServingRecordStatus,
+    classify_relay_eligibility, classify_tx_serve_request,
 };
 
 use super::{
@@ -454,7 +454,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             chainstate,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
-            orphanage: TxOrphanage::new(OrphanPolicy::default()),
             known_peers: Default::default(),
             inbound_admission_policy: InboundAdmissionPolicy::new(usize::MAX, 0),
             inbound_admission_info: ManagedInboundAdmissionInfo::default(),

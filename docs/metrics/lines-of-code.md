@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 636 |
-| Total lines | 275,024 |
-| Code/content lines | 241,292 |
-| Comment-only lines | 10,744 |
-| Blank lines | 22,988 |
+| Total lines | 275,404 |
+| Code/content lines | 241,641 |
+| Comment-only lines | 10,753 |
+| Blank lines | 23,010 |
 
 ## Per-Crate Modules
 
@@ -23,8 +23,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-consensus | 33 | 6,592 | 7,719 | 28 | 14,339 | 117.1% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 62 | 10,009 | 14,233 | 30 | 24,272 | 142.2% |
-| open-bitcoin-network | 58 | 12,978 | 18,637 | 30 | 31,645 | 143.6% |
-| open-bitcoin-node | 99 | 21,594 | 25,426 | 40 | 47,060 | 117.7% |
+| open-bitcoin-network | 58 | 13,071 | 18,832 | 30 | 31,933 | 144.1% |
+| open-bitcoin-node | 99 | 21,622 | 25,472 | 40 | 47,134 | 117.8% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 47 | 9,951 | 9,340 | 57 | 19,348 | 93.9% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,9 +34,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 121 | 100,421 | 87,000 | 5,724 | 7,697 |
-| Rust production | 322 | 94,578 | 82,275 | 3,355 | 8,948 |
-| TypeScript/Bun scripts | 134 | 63,329 | 56,245 | 1,597 | 5,487 |
+| Rust tests | 121 | 100,662 | 87,221 | 5,733 | 7,708 |
+| Rust production | 322 | 94,699 | 82,385 | 3,355 | 8,959 |
+| TypeScript/Bun scripts | 134 | 63,347 | 56,263 | 1,597 | 5,487 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 13 | 4,365 | 3,897 | 57 | 411 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -61,8 +61,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase100-relay-activation-boundary.ts | 584 |
 | scripts/check-phase101-transaction-inventory-download-scheduling.test.ts | 509 |
 | scripts/check-phase101-transaction-inventory-download-scheduling.ts | 587 |
-| scripts/check-phase102-orphan-admission-bridge.test.ts | 607 |
-| scripts/check-phase102-orphan-admission-bridge.ts | 698 |
+| scripts/check-phase102-orphan-admission-bridge.test.ts | 613 |
+| scripts/check-phase102-orphan-admission-bridge.ts | 710 |
 | scripts/check-phase103-mempool-lifecycle.test.ts | 233 |
 | scripts/check-phase103-mempool-lifecycle.ts | 397 |
 | scripts/check-phase104-relay-serving-fanout.test.ts | 215 |
@@ -191,7 +191,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- |
 | 1 | MODULE.bazel.lock | Fixture/data | 8,217 |
 | 2 | packages/open-bitcoin-node/src/sync/tests.rs | Rust tests | 7,966 |
-| 3 | packages/open-bitcoin-network/src/peer/tests.rs | Rust tests | 6,576 |
+| 3 | packages/open-bitcoin-network/src/peer/tests.rs | Rust tests | 6,764 |
 | 4 | scripts/run-live-mainnet-smoke.ts | TypeScript/Bun scripts | 3,816 |
 | 5 | packages/open-bitcoin-consensus/src/script/tests.rs | Rust tests | 3,312 |
 | 6 | packages/Cargo.lock | TOML/config | 3,204 |
@@ -215,7 +215,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | fa9e47e8882752ba2e08eff44e25edd374b21671e1f1caf9e6df7ed8cb46b797 |
+| Input fingerprint | 139b3cd587c92141db92007a3e1d71a752d9b2827960bfc658af5745db492dfc |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

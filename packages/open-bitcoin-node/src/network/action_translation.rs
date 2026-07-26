@@ -116,7 +116,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .peer_manager
             .remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?;
         self.record_compact_cleanup(CompactDownloadCleanupCause::PeerDisconnect, removed_count);
-        self.orphanage.cleanup_peer(peer_id);
         self.relay_fanout.cleanup_peer(peer_id);
         self.known_peers.remove(&peer_id);
         Ok(transaction_relay_targeted_messages(actions))
@@ -248,10 +247,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         }
                     }
                 }
-                PeerAction::ReceivedTransaction(transaction) => {
-                    let bridge = self.process_peer_transaction_admission(
-                        peer_id,
+                PeerAction::ReceivedTransaction {
+                    transaction,
+                    provenance,
+                } => {
+                    let bridge = self.process_peer_transaction_admission_with_provenance(
                         transaction,
+                        provenance,
                         timestamp,
                         verify_flags,
                         consensus_params,

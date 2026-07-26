@@ -246,16 +246,6 @@ impl TxDownloadScheduler {
         actions
     }
 
-    pub fn record_received_transaction(
-        &mut self,
-        peer_id: PeerId,
-        txid: Txid,
-        wtxid: Wtxid,
-    ) -> Vec<TxDownloadAction> {
-        self.record_received_transaction_with_provenance(peer_id, txid, wtxid)
-            .actions
-    }
-
     pub fn record_received_transaction_with_provenance(
         &mut self,
         peer_id: PeerId,

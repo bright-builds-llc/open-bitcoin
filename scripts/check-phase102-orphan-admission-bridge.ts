@@ -433,12 +433,25 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
     [
       "pub fn disconnect_peer_at",
       "remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?",
-      "self.orphanage.cleanup_peer(peer_id);",
       "self.known_peers.remove(&peer_id);",
     ],
     "Phase 102 managed disconnect cleanup order",
     failures,
   );
+  verifyOrderedCommands(
+    peerInventoryState,
+    [
+      "pub fn remove_peer_with_transaction_cleanup",
+      "self.peers.remove(&peer_id)",
+      "self.orphanage.cleanup_peer(peer_id);",
+      "self.tx_download.cleanup_peer(peer_id, now_unix_seconds)",
+    ],
+    "Phase 102 PeerManager disconnect cleanup order",
+    failures,
+  );
+  if (actionTranslation.includes("self.orphanage")) {
+    failures.push("Phase 102 node action translation must delegate orphan cleanup to PeerManager");
+  }
   const maybeAdmissionCommand = [
     "submit_transaction_transition_with_context",
     "submit_transaction_outcome",
@@ -472,7 +485,6 @@ function verifyManagedBridgeEvidence(texts: TextCorpus, failures: string[]): voi
     "accept_transaction_outcome",
     "process_peer_transaction_admission",
     "stage_missing_parent(",
-    ".orphanage.cleanup_peer(",
   ]) {
     if (peerManagerBridge.includes(forbidden)) {
       failures.push(`Phase 102 peer/socket code mutates mempool or orphanage directly: ${forbidden}`);

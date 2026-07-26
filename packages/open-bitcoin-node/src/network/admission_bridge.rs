@@ -22,7 +22,8 @@ use open_bitcoin_mempool::{
 };
 use open_bitcoin_network::{
     OrphanAction, OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
-    PeerAction, PeerId, TxRelayId, TxServingRecordStatus, WireNetworkMessage,
+    PeerAction, PeerId, ReceivedTransactionProvenance, TxRelayId, TxServingRecordStatus,
+    WireNetworkMessage,
 };
 
 use super::action_translation::process_transaction_relay_action;
@@ -48,10 +49,10 @@ impl ManagedAdmissionBridgeResult {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
-    pub(super) fn process_peer_transaction_admission(
+    pub(super) fn process_peer_transaction_admission_with_provenance(
         &mut self,
-        peer_id: PeerId,
         transaction: Transaction,
+        provenance: ReceivedTransactionProvenance,
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -85,14 +86,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 missing_parents,
             } => {
                 self.compact_extra_txn.push(*wtxid, transaction.clone());
-                let actions = self.orphanage.stage_missing_parent(OrphanStageInput {
-                    peer_id,
-                    transaction,
-                    txid: *txid,
-                    wtxid: *wtxid,
-                    missing_parents: missing_parents.clone(),
-                    now_unix_seconds: timestamp,
-                });
+                let actions = self.peer_manager.stage_missing_parent_with_provenance(
+                    OrphanStageInput {
+                        transaction,
+                        txid: *txid,
+                        wtxid: *wtxid,
+                        missing_parents: missing_parents.clone(),
+                        now_unix_seconds: timestamp,
+                    },
+                    provenance,
+                );
                 self.apply_orphan_actions(actions, timestamp, &mut result)?;
             }
             MempoolOutcome::Rejected { wtxid, .. } => {
@@ -108,6 +111,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
 
         Ok(result)
+    }
+
+    #[cfg(test)]
+    pub(super) fn process_peer_transaction_admission(
+        &mut self,
+        peer_id: PeerId,
+        transaction: Transaction,
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<ManagedAdmissionBridgeResult, ManagedNetworkError> {
+        self.process_peer_transaction_admission_with_provenance(
+            transaction,
+            ReceivedTransactionProvenance {
+                delivered_by: peer_id,
+                announcers: vec![peer_id],
+            },
+            timestamp,
+            verify_flags,
+            consensus_params,
+        )
     }
 
     pub(super) fn reconsider_orphans_after_acceptance(
@@ -126,8 +150,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             delta: MempoolLifecycleDelta::empty(),
         });
         let mut actions = self
-            .orphanage
-            .reconsider_after_parent(TxRelayId::Txid(accepted_parent), timestamp);
+            .peer_manager
+            .reconsider_orphans_after_parent(accepted_parent, timestamp);
 
         while !actions.is_empty() {
             for action in actions {
@@ -144,27 +168,29 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     other => self.apply_orphan_action(other, timestamp, &mut result)?,
                 }
             }
-            actions = self.orphanage.drain_pending_reconsiderations(timestamp);
+            actions = self
+                .peer_manager
+                .drain_pending_orphan_reconsiderations(timestamp);
         }
 
         Ok(result)
     }
 
     pub fn expire_orphan_transactions(&mut self, now_unix_seconds: i64) -> Vec<MempoolOutcome> {
-        self.orphanage
-            .expire(now_unix_seconds)
+        self.peer_manager
+            .expire_orphans(now_unix_seconds)
             .into_iter()
             .filter_map(orphan_action_outcome)
             .collect()
     }
 
     pub fn orphan_count(&self) -> usize {
-        self.orphanage.len()
+        self.peer_manager.orphan_count()
     }
 
     #[cfg(test)]
     pub(super) fn with_orphan_policy(&mut self, policy: open_bitcoin_network::OrphanPolicy) {
-        self.orphanage = open_bitcoin_network::TxOrphanage::new(policy);
+        self.peer_manager.replace_orphan_policy_for_testing(policy);
     }
 
     /// Fail-closed no-time admission retained for wallet and other AdmissionResult callers.
@@ -253,16 +279,18 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             } => {
                 self.compact_extra_txn
                     .push(*wtxid, candidate.transaction.clone());
-                self.orphanage
-                    .record_reconsideration_outcome(candidate.wtxid, status);
-                let actions = self.orphanage.stage_missing_parent(OrphanStageInput {
-                    peer_id: candidate.peer_id,
-                    transaction: candidate.transaction.clone(),
-                    txid: *txid,
-                    wtxid: *wtxid,
-                    missing_parents: missing_parents.clone(),
-                    now_unix_seconds: timestamp,
-                });
+                self.peer_manager
+                    .record_orphan_reconsideration_outcome(candidate.wtxid, status);
+                let actions = self.peer_manager.stage_missing_parent_with_provenance(
+                    OrphanStageInput {
+                        transaction: candidate.transaction.clone(),
+                        txid: *txid,
+                        wtxid: *wtxid,
+                        missing_parents: missing_parents.clone(),
+                        now_unix_seconds: timestamp,
+                    },
+                    candidate.provenance.clone(),
+                );
                 self.apply_orphan_actions(actions, timestamp, result)?;
             }
             MempoolOutcome::Rejected { wtxid, .. } => {
@@ -285,8 +313,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
         if !matches!(transition.outcome, MempoolOutcome::Orphaned { .. }) {
             let actions = self
-                .orphanage
-                .record_reconsideration_outcome(candidate.wtxid, status);
+                .peer_manager
+                .record_orphan_reconsideration_outcome(candidate.wtxid, status);
             self.apply_orphan_actions(actions, timestamp, result)?;
         }
         result.reconsidered.push(transition.outcome);
@@ -492,7 +520,7 @@ fn transaction_relay_messages(actions: Vec<PeerAction>) -> Vec<(PeerId, WireNetw
             PeerAction::Send(_)
             | PeerAction::ServeInventory(_)
             | PeerAction::ServeCompactBlockTransactions(_)
-            | PeerAction::ReceivedTransaction(_)
+            | PeerAction::ReceivedTransaction { .. }
             | PeerAction::ReceivedBlock(_)
             | PeerAction::Disconnect(_)
             | PeerAction::ResourceGovernanceDisconnect(_) => None,

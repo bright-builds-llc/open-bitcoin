@@ -21,8 +21,10 @@ use crate::{
 
 use super::relay_download::relay_download_eligibility;
 use super::{
-    PeerAction, PeerManager, PeerState, TxAnnouncementInput, TxDownloadAction,
-    TxDownloadLocalFacts, TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId, TxRelayPeerMode,
+    OrphanAction, OrphanPolicy, OrphanReconsiderationStatus, OrphanStageInput, PeerAction,
+    PeerManager, PeerState, ReceivedTransactionProvenance, SamePeerOneParentOneChildCandidate,
+    TxAnnouncementInput, TxDownloadAction, TxDownloadLocalFacts, TxParentRequestInput,
+    TxPeerRequestSnapshot, TxRelayId, TxRelayPeerMode,
 };
 
 impl PeerManager {
@@ -109,8 +111,16 @@ impl PeerManager {
                     }
                 }
                 InventoryType::Transaction | InventoryType::WitnessTransaction => {
+                    let maybe_relay_id =
+                        TxRelayId::from_inventory_vector_for_peer(item, peer_mode).ok();
+                    if let Some(wtxid) =
+                        maybe_relay_id.and_then(|relay_id| self.orphanage.retained_wtxid(relay_id))
+                    {
+                        self.orphanage.add_announcer(wtxid, peer_id);
+                        continue;
+                    }
                     transaction_candidate_count += 1;
-                    let local_facts = TxRelayId::from_inventory_vector_for_peer(item, peer_mode)
+                    let local_facts = maybe_relay_id
                         .map(|relay_id| self.transaction_download_local_facts(relay_id))
                         .unwrap_or_default();
                     transaction_inputs.push(TxAnnouncementInput {
@@ -255,15 +265,15 @@ impl PeerManager {
         let txid = transaction_txid(&transaction)?;
         let wtxid = transaction_wtxid(&transaction)?;
 
-        let transaction_actions = self
+        let received = self
             .tx_download
-            .record_received_transaction(peer_id, txid, wtxid);
-        let should_suppress_received_transaction = transaction_actions
-            .iter()
-            .any(|action| matches!(action, TxDownloadAction::SuppressIdentityMismatch { .. }));
-        let mut actions = handle_transaction_relay_actions(transaction_actions);
-        if !should_suppress_received_transaction {
-            actions.push(PeerAction::ReceivedTransaction(transaction));
+            .record_received_transaction_with_provenance(peer_id, txid, wtxid);
+        let mut actions = handle_transaction_relay_actions(received.actions);
+        if let Some(provenance) = received.maybe_provenance {
+            actions.push(PeerAction::ReceivedTransaction {
+                transaction,
+                provenance,
+            });
         }
 
         Ok(actions)
@@ -333,6 +343,7 @@ impl PeerManager {
         let Some(_) = self.peers.remove(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));
         };
+        self.orphanage.cleanup_peer(peer_id);
         Ok(handle_transaction_relay_actions(
             self.tx_download.cleanup_peer(peer_id, now_unix_seconds),
         ))
@@ -349,6 +360,86 @@ impl PeerManager {
 
     pub fn note_mempool_known(&mut self, relay_id: TxRelayId) {
         self.mempool_known.insert(relay_id);
+    }
+
+    pub fn stage_missing_parent_with_provenance(
+        &mut self,
+        input: OrphanStageInput,
+        provenance: ReceivedTransactionProvenance,
+    ) -> Vec<OrphanAction> {
+        self.orphanage
+            .stage_missing_parent_with_provenance(input, provenance)
+    }
+
+    pub fn reconsider_orphans_after_parent(
+        &mut self,
+        parent_txid: Txid,
+        now_unix_seconds: i64,
+    ) -> Vec<OrphanAction> {
+        self.orphanage
+            .reconsider_after_parent(TxRelayId::Txid(parent_txid), now_unix_seconds)
+    }
+
+    pub fn drain_pending_orphan_reconsiderations(
+        &mut self,
+        now_unix_seconds: i64,
+    ) -> Vec<OrphanAction> {
+        self.orphanage
+            .drain_pending_reconsiderations(now_unix_seconds)
+    }
+
+    pub fn record_orphan_reconsideration_outcome(
+        &mut self,
+        wtxid: Wtxid,
+        status: OrphanReconsiderationStatus,
+    ) -> Vec<OrphanAction> {
+        self.orphanage.record_reconsideration_outcome(wtxid, status)
+    }
+
+    pub fn expire_orphans(&mut self, now_unix_seconds: i64) -> Vec<OrphanAction> {
+        self.orphanage.expire(now_unix_seconds)
+    }
+
+    pub fn orphan_count(&self) -> usize {
+        self.orphanage.len()
+    }
+
+    pub fn orphan_peer_len(&self, peer_id: PeerId) -> usize {
+        self.orphanage.peer_len(peer_id)
+    }
+
+    pub fn begin_same_peer_candidate(
+        &mut self,
+        parent: Transaction,
+        parent_txid: Txid,
+        parent_wtxid: Wtxid,
+        parent_peer: PeerId,
+    ) -> Option<SamePeerOneParentOneChildCandidate> {
+        self.orphanage.begin_same_peer_candidate(
+            parent,
+            parent_txid,
+            parent_wtxid,
+            parent_peer,
+            &self.reconsiderable_reject_evidence,
+            &self.hard_reject_evidence,
+        )
+    }
+
+    pub fn advance_same_peer_candidate(
+        &mut self,
+        parent_wtxid: Wtxid,
+        parent_peer: PeerId,
+    ) -> Option<SamePeerOneParentOneChildCandidate> {
+        self.orphanage.advance_same_peer_candidate(
+            parent_wtxid,
+            parent_peer,
+            &self.hard_reject_evidence,
+        )
+    }
+
+    #[doc(hidden)]
+    pub fn replace_orphan_policy_for_testing(&mut self, policy: OrphanPolicy) {
+        self.orphanage = super::TxOrphanage::new(policy);
     }
 
     pub(super) fn request_orphan_parent_relay(

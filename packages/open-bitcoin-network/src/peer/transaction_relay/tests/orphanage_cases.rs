@@ -32,20 +32,27 @@ fn policy(
 }
 
 fn orphan_input(
-    peer_id: PeerId,
+    _peer_id: PeerId,
     tx_byte: u8,
     wtx_byte: u8,
     missing_parent_bytes: impl IntoIterator<Item = u8>,
     now_unix_seconds: i64,
 ) -> OrphanStageInput {
     OrphanStageInput {
-        peer_id,
         transaction: Transaction::default(),
         txid: txid(tx_byte),
         wtxid: wtxid(wtx_byte),
         missing_parents: missing_parent_bytes.into_iter().map(txid).collect(),
         now_unix_seconds,
     }
+}
+
+fn stage_singleton(
+    orphanage: &mut TxOrphanage,
+    peer_id: PeerId,
+    input: OrphanStageInput,
+) -> Vec<OrphanAction> {
+    orphanage.stage_missing_parent_with_provenance(input, provenance(peer_id, [peer_id]))
 }
 
 fn provenance(
@@ -159,7 +166,7 @@ fn missing_parent_stage_requests_each_unique_parent_by_txid() {
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
 
     // Act
-    let actions = orphanage.stage_missing_parent(orphan_input(42, 8, 9, [3, 1, 3, 2], 10));
+    let actions = stage_singleton(&mut orphanage, 42, orphan_input(42, 8, 9, [3, 1, 3, 2], 10));
 
     // Assert
     assert_eq!(
@@ -178,11 +185,11 @@ fn missing_parent_stage_requests_each_unique_parent_by_txid() {
 fn total_cap_eviction_is_deterministic() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(2, 10, 120, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(2, 20, 2, [1], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 21, 3, [1], 0));
+    let _ = stage_singleton(&mut orphanage, 2, orphan_input(2, 20, 2, [1], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 21, 3, [1], 0));
 
     // Act
-    let actions = orphanage.stage_missing_parent(orphan_input(1, 22, 1, [1], 0));
+    let actions = stage_singleton(&mut orphanage, 1, orphan_input(1, 22, 1, [1], 0));
 
     // Assert
     assert!(actions.contains(&evicted(1, 22, 1)));
@@ -195,11 +202,11 @@ fn total_cap_eviction_is_deterministic() {
 fn per_peer_cap_eviction_is_deterministic() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 2, 120, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(7, 30, 3, [1], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(7, 31, 2, [1], 0));
+    let _ = stage_singleton(&mut orphanage, 7, orphan_input(7, 30, 3, [1], 0));
+    let _ = stage_singleton(&mut orphanage, 7, orphan_input(7, 31, 2, [1], 0));
 
     // Act
-    let actions = orphanage.stage_missing_parent(orphan_input(7, 32, 1, [1], 0));
+    let actions = stage_singleton(&mut orphanage, 7, orphan_input(7, 32, 1, [1], 0));
 
     // Assert
     assert!(actions.contains(&evicted(7, 32, 1)));
@@ -211,14 +218,14 @@ fn per_peer_cap_eviction_is_deterministic() {
 fn expiry_uses_injected_time_without_sleeping() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 5, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(8, 40, 41, [1], 10));
+    let _ = stage_singleton(&mut orphanage, 8, orphan_input(8, 40, 41, [1], 10));
 
     // Act
     let too_early = orphanage.expire(14);
     let expired_at_deadline = orphanage.expire(15);
     let mut zero_ttl_orphanage = TxOrphanage::new(policy(10, 10, 0, 10));
     let immediately_expired =
-        zero_ttl_orphanage.stage_missing_parent(orphan_input(9, 42, 43, [1], 20));
+        stage_singleton(&mut zero_ttl_orphanage, 9, orphan_input(9, 42, 43, [1], 20));
 
     // Assert
     assert!(too_early.is_empty());
@@ -232,9 +239,9 @@ fn expiry_uses_injected_time_without_sleeping() {
 fn parent_acceptance_reconsiders_ready_children_with_work_cap() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 2));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 50, 3, [7], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 51, 1, [7], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 52, 2, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 50, 3, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 51, 1, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 52, 2, [7], 0));
 
     // Act
     let first_batch = orphanage.reconsider_after_parent(TxRelayId::Txid(txid(7)), 1);
@@ -270,7 +277,7 @@ fn parent_acceptance_reconsiders_ready_children_with_work_cap() {
 fn wtxid_parent_acceptance_does_not_reconsider_children() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 55, 56, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 55, 56, [7], 0));
 
     // Act
     let wtxid_actions = orphanage.reconsider_after_parent(TxRelayId::Wtxid(wtxid(7)), 1);
@@ -286,7 +293,7 @@ fn wtxid_parent_acceptance_does_not_reconsider_children() {
 fn still_missing_parent_child_remains_staged() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 60, 61, [7, 8], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 60, 61, [7, 8], 0));
 
     // Act
     let first_parent = orphanage.reconsider_after_parent(TxRelayId::Txid(txid(7)), 1);
@@ -320,7 +327,7 @@ fn accepted_rejected_expired_and_evicted_reconsideration_outcomes_remove_childre
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
     for byte in 70..=73 {
-        let _ = orphanage.stage_missing_parent(orphan_input(1, byte, byte, [7], 0));
+        let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, byte, byte, [7], 0));
     }
     let _ = orphanage.reconsider_after_parent(TxRelayId::Txid(txid(7)), 1);
 
@@ -370,9 +377,9 @@ fn accepted_rejected_expired_and_evicted_reconsideration_outcomes_remove_childre
 fn peer_cleanup_removes_owned_orphans() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 80, 81, [7], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 82, 83, [7], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(2, 84, 85, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 80, 81, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 82, 83, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 2, orphan_input(2, 84, 85, [7], 0));
 
     // Act
     let actions = orphanage.cleanup_peer(1);
@@ -395,7 +402,7 @@ fn peer_cleanup_removes_owned_orphans() {
 fn peer_cleanup_without_owned_orphans_is_noop() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 120, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(2, 90, 91, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 2, orphan_input(2, 90, 91, [7], 0));
 
     // Act
     let actions = orphanage.cleanup_peer(1);
@@ -433,7 +440,7 @@ fn late_announcer_missing_body_is_noop_and_existing_body_does_not_refresh_ttl() 
         max_announcers_per_orphan: 2,
         ..policy(10, 10, 5, 10)
     });
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 102, 103, [7], 10));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 102, 103, [7], 10));
 
     // Act
     let missing_body_added = orphanage.add_announcer(wtxid(200), 2);
@@ -639,9 +646,9 @@ fn max_reconsiderations_cursor_advances_newest_first_without_graph_aggregation()
 fn index_oracle_survives_restage_terminal_feedback_expiry_and_disconnect() {
     // Arrange
     let mut orphanage = TxOrphanage::new(policy(10, 10, 2, 10));
-    let _ = orphanage.stage_missing_parent(orphan_input(1, 160, 161, [7], 0));
-    let _ = orphanage.stage_missing_parent(orphan_input(2, 160, 161, [8], 1));
-    let _ = orphanage.stage_missing_parent(orphan_input(3, 162, 163, [8], 1));
+    let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 160, 161, [7], 0));
+    let _ = stage_singleton(&mut orphanage, 2, orphan_input(2, 160, 161, [8], 1));
+    let _ = stage_singleton(&mut orphanage, 3, orphan_input(3, 162, 163, [8], 1));
 
     // Act / Assert
     assert!(orphanage.debug_indexes_match_oracle());

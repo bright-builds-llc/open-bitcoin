@@ -31,15 +31,15 @@ use crate::{
     CompactRelayPreference, ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy,
     HeadersMessage, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
     InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, InventoryList,
-    LocalPeerConfig, NetworkError, PHASE94_MAX_HEADER_LOCATOR_HASHES,
-    PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS,
-    PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
-    PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, ParsedPeerPermissionClass, PeerAction,
-    PeerBanEntry, PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry,
-    PermissionEffectLabel, RejectEvidenceTweak, RelayActivationConfig, RelayDownloadPolicy,
-    RequestPressureInput, ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags,
-    TxDownloadAction, TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage,
-    classify_block_inflight_cleanup,
+    LocalPeerConfig, NetworkError, OrphanPolicy, OrphanReconsiderationStatus, OrphanStageInput,
+    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
+    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
+    ParsedPeerPermissionClass, PeerAction, PeerBanEntry, PeerConnectionClass, PeerId, PeerManager,
+    PeerPermissionClassRegistry, PermissionEffectLabel, ReceivedTransactionProvenance,
+    RejectEvidenceTweak, RelayActivationConfig, RelayDownloadPolicy, RequestPressureInput,
+    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
+    TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage, classify_block_inflight_cleanup,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -1714,7 +1714,13 @@ fn scoped_relay_permission_effects_remain_policy_only_for_transaction_paths() {
                 txid,
                 wtxid,
             }),
-            PeerAction::ReceivedTransaction(transaction),
+            PeerAction::ReceivedTransaction {
+                transaction,
+                provenance: ReceivedTransactionProvenance {
+                    delivered_by: 91,
+                    announcers: vec![91],
+                },
+            },
         ],
     );
     assert_eq!(
@@ -2466,7 +2472,13 @@ fn peer_manager_transaction_relay_received_transaction_cleanup_waits_for_admissi
                 txid,
                 wtxid,
             }),
-            PeerAction::ReceivedTransaction(transaction),
+            PeerAction::ReceivedTransaction {
+                transaction,
+                provenance: ReceivedTransactionProvenance {
+                    delivered_by: 215,
+                    announcers: vec![215],
+                },
+            },
         ],
     );
     assert_eq!(
@@ -2487,6 +2499,178 @@ fn peer_manager_transaction_relay_received_transaction_cleanup_waits_for_admissi
             },
         )],
     );
+}
+
+#[test]
+fn peer_manager_orphan_owner_routes_late_inventory_and_disconnects_announcers_coherently() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    for peer_id in 230..=232 {
+        add_relay_outbound_peer(&mut manager, peer_id);
+    }
+    let transaction = open_bitcoin_primitives::Transaction::default();
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let _ = manager.stage_missing_parent_with_provenance(
+        OrphanStageInput {
+            transaction,
+            txid,
+            wtxid,
+            missing_parents: vec![txid_from_byte(99)],
+            now_unix_seconds: 2,
+        },
+        ReceivedTransactionProvenance {
+            delivered_by: 230,
+            announcers: vec![230, 231],
+        },
+    );
+
+    // Act
+    manager
+        .remove_peer_with_transaction_cleanup(230, 3)
+        .expect("first announcer disconnect");
+    let late_inventory = manager
+        .handle_message(
+            232,
+            WireNetworkMessage::Inv(transaction_relay_inventory(TxRelayId::Txid(txid))),
+            4,
+        )
+        .expect("late orphan inventory");
+    manager
+        .remove_peer_with_transaction_cleanup(231, 5)
+        .expect("second announcer disconnect");
+
+    // Assert
+    assert!(late_inventory.is_empty());
+    assert_eq!(manager.orphan_count(), 1);
+    assert_eq!(manager.orphan_peer_len(230), 0);
+    assert_eq!(manager.orphan_peer_len(231), 0);
+    assert_eq!(manager.orphan_peer_len(232), 1);
+    manager
+        .remove_peer_with_transaction_cleanup(232, 6)
+        .expect("late announcer disconnect");
+    assert_eq!(manager.orphan_count(), 0);
+}
+
+#[test]
+fn peer_manager_orphan_owner_delegates_reconsideration_feedback_and_expiry() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    manager.replace_orphan_policy_for_testing(OrphanPolicy {
+        max_total_orphans: 4,
+        max_orphans_per_peer: 4,
+        max_announcers_per_orphan: 2,
+        orphan_ttl_seconds: 2,
+        max_reconsiderations_per_parent: 1,
+    });
+    let parent_txid = txid_from_byte(180);
+    let child_wtxids = [wtxid_from_byte(181), wtxid_from_byte(182)];
+    for (index, child_wtxid) in child_wtxids.into_iter().enumerate() {
+        let _ = manager.stage_missing_parent_with_provenance(
+            OrphanStageInput {
+                transaction: Transaction {
+                    version: index as i32,
+                    ..Transaction::default()
+                },
+                txid: txid_from_byte(181 + index as u8),
+                wtxid: child_wtxid,
+                missing_parents: vec![parent_txid],
+                now_unix_seconds: 0,
+            },
+            ReceivedTransactionProvenance {
+                delivered_by: 240,
+                announcers: vec![240],
+            },
+        );
+    }
+
+    // Act
+    let first = manager.reconsider_orphans_after_parent(parent_txid, 1);
+    let second = manager.drain_pending_orphan_reconsiderations(1);
+    let terminal = manager.record_orphan_reconsideration_outcome(
+        child_wtxids[0],
+        OrphanReconsiderationStatus::Rejected,
+    );
+    let expired = manager.expire_orphans(2);
+
+    // Assert
+    assert_eq!(first.len(), 1);
+    assert_eq!(second.len(), 1);
+    assert_eq!(terminal.len(), 1);
+    assert_eq!(expired.len(), 1);
+    assert_eq!(manager.orphan_count(), 0);
+}
+
+#[test]
+fn peer_manager_orphan_owner_constructs_and_advances_same_peer_candidates() {
+    // Arrange
+    let mut manager = relay_download_manager(true);
+    manager.replace_orphan_policy_for_testing(OrphanPolicy {
+        max_total_orphans: 4,
+        max_orphans_per_peer: 4,
+        max_announcers_per_orphan: 2,
+        orphan_ttl_seconds: 120,
+        max_reconsiderations_per_parent: 2,
+    });
+    let parent = Transaction {
+        version: 10,
+        ..Transaction::default()
+    };
+    let parent_txid = txid_from_byte(190);
+    let parent_wtxid = wtxid_from_byte(191);
+    manager.record_reconsiderable_transaction(parent_wtxid);
+    for (index, child_version) in [20, 21].into_iter().enumerate() {
+        let _ = manager.stage_missing_parent_with_provenance(
+            OrphanStageInput {
+                transaction: Transaction {
+                    version: child_version,
+                    ..Transaction::default()
+                },
+                txid: txid_from_byte(192 + index as u8),
+                wtxid: wtxid_from_byte(194 + index as u8),
+                missing_parents: vec![parent_txid],
+                now_unix_seconds: index as i64,
+            },
+            ReceivedTransactionProvenance {
+                delivered_by: 241,
+                announcers: vec![241],
+            },
+        );
+    }
+
+    // Act
+    let first = manager
+        .begin_same_peer_candidate(parent.clone(), parent_txid, parent_wtxid, 241)
+        .expect("newest child candidate");
+    let second = manager
+        .advance_same_peer_candidate(parent_wtxid, 241)
+        .expect("older child candidate");
+    let (first_members, first_origins) = first.into_ordered_parts();
+    let (second_members, second_origins) = second.into_ordered_parts();
+
+    // Assert
+    assert_eq!(
+        first_members,
+        [
+            parent.clone(),
+            Transaction {
+                version: 21,
+                ..Transaction::default()
+            }
+        ]
+    );
+    assert_eq!(
+        second_members,
+        [
+            parent,
+            Transaction {
+                version: 20,
+                ..Transaction::default()
+            }
+        ]
+    );
+    assert_eq!(first_origins, [241, 241]);
+    assert_eq!(second_origins, [241, 241]);
 }
 
 #[test]
@@ -2515,7 +2699,7 @@ fn peer_manager_transaction_relay_received_transaction_mismatch_does_not_satisfy
     assert!(
         !actions
             .iter()
-            .any(|action| matches!(action, PeerAction::ReceivedTransaction(_)))
+            .any(|action| matches!(action, PeerAction::ReceivedTransaction { .. }))
     );
     assert_eq!(manager.transaction_request_snapshot(218).in_flight_count, 1);
 }
@@ -6270,7 +6454,7 @@ fn getheaders_headers_tx_and_block_paths_are_explicit() {
         tx_actions.as_slice(),
         [
             PeerAction::TransactionRelay(TxDownloadAction::ReceivedTxCleanup { .. }),
-            PeerAction::ReceivedTransaction(_),
+            PeerAction::ReceivedTransaction { .. },
         ]
     ));
     assert_eq!(
@@ -6477,6 +6661,10 @@ fn transaction_relay_inventory(relay_id: TxRelayId) -> InventoryList {
 
 fn txid_from_byte(byte: u8) -> Txid {
     Txid::from(Hash32::from_byte_array([byte; 32]))
+}
+
+fn wtxid_from_byte(byte: u8) -> Wtxid {
+    Wtxid::from(Hash32::from_byte_array([byte; 32]))
 }
 
 #[rustfmt::skip]

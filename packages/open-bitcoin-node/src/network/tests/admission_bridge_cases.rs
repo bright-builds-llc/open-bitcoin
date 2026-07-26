@@ -654,23 +654,69 @@ fn managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state() {
     // Arrange
     let (mut network, coinbase_txids) =
         relay_enabled_network_with_chain(619, 2, PolicyConfig::default());
-    network.connect_outbound_peer(619, 0).expect("peer");
+    for peer_id in 619..=621 {
+        network
+            .connect_outbound_peer(peer_id, 0)
+            .expect("relay peer");
+    }
     let (parent, child) = parent_and_child(coinbase_txids[0]);
+    let child_inventory = transaction_relay_inventory(&child);
     network
-        .process_peer_transaction_admission(619, child, 500, verify_flags(), consensus_params())
-        .expect("stage child");
+        .receive_message(
+            619,
+            WireNetworkMessage::Inv(child_inventory.clone()),
+            500,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("delivering peer inventory");
+    network
+        .receive_message(
+            620,
+            WireNetworkMessage::Inv(child_inventory.clone()),
+            501,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("second announcer inventory");
+    network
+        .receive_sync_message(
+            619,
+            WireNetworkMessage::Tx(child),
+            502,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("stage child through receipt provenance");
     let before_disconnect = network.peer_manager().transaction_request_snapshot(619);
 
     // Act
-    let outbound = network
-        .disconnect_peer_at(619, 501)
+    let first_disconnect = network
+        .disconnect_peer_at(619, 503)
         .expect("disconnect cleanup");
     let after_disconnect = network.peer_manager().transaction_request_snapshot(619);
+    let late_inventory = network
+        .receive_message(
+            621,
+            WireNetworkMessage::Inv(child_inventory),
+            504,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("late orphan announcer");
+    network
+        .disconnect_peer_at(620, 505)
+        .expect("second announcer disconnect");
 
     // Assert
     assert_eq!(before_disconnect.in_flight_count, 1);
-    assert!(outbound.is_empty());
+    assert!(first_disconnect.is_empty());
     assert_eq!(after_disconnect.in_flight_count, 0);
+    assert!(late_inventory.outbound.is_empty());
+    assert_eq!(network.orphan_count(), 1);
+    network
+        .disconnect_peer_at(621, 506)
+        .expect("late announcer disconnect");
     assert_eq!(network.orphan_count(), 0);
     assert_eq!(network.network_info().connected_peers, 0);
     assert_not_stored(&network, txid(&parent));

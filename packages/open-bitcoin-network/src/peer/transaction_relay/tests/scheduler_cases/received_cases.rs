@@ -33,7 +33,7 @@ pub(super) fn received_transaction_cleanup_waits_for_admission_before_already_ha
     ));
 
     // Act
-    let cleanup = scheduler.record_received_transaction(22, txid, wtxid);
+    let receipt = scheduler.record_received_transaction_with_provenance(22, txid, wtxid);
     let txid_again = scheduler.record_announcement(announcement(
         24,
         TxRelayId::Txid(txid).to_inventory_vector(),
@@ -49,7 +49,7 @@ pub(super) fn received_transaction_cleanup_waits_for_admission_before_already_ha
 
     // Assert
     assert_eq!(
-        cleanup,
+        receipt.actions,
         [TxDownloadAction::ReceivedTxCleanup {
             peer_id: 22,
             txid,

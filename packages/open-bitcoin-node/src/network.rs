@@ -47,7 +47,7 @@ use open_bitcoin_network::{
     ConnectionRole, HeaderEntry, HeaderStore, HeaderSyncPolicy, HeadersMessage,
     InboundAdmissionPolicy, InboundResourceEvent, LocalAdvertisementDecision, LocalPeerConfig,
     PROTOCOL_VERSION, ParsedNetworkMessage, PeerAction, PeerId, PeerManager, RelayActivationConfig,
-    TxOrphanage, WireNetworkMessage,
+    WireNetworkMessage,
 };
 
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
@@ -77,7 +77,6 @@ pub struct ManagedPeerNetwork<S> {
     chainstate: ManagedChainstate<S>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
-    orphanage: TxOrphanage,
     known_peers: BTreeSet<PeerId>,
     inbound_admission_policy: InboundAdmissionPolicy,
     inbound_admission_info: ManagedInboundAdmissionInfo,

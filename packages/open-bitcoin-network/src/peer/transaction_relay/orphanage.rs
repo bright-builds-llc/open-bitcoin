@@ -94,7 +94,6 @@ impl OrphanReconsiderationStatus {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OrphanStageInput {
-    pub peer_id: PeerId,
     pub transaction: Transaction,
     pub txid: Txid,
     pub wtxid: Wtxid,
@@ -169,6 +168,7 @@ struct SamePeerCandidateCursor {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OrphanReconsiderationCandidate {
     pub peer_id: PeerId,
+    pub provenance: ReceivedTransactionProvenance,
     pub transaction: Transaction,
     pub txid: Txid,
     pub wtxid: Wtxid,
@@ -246,17 +246,6 @@ impl TxOrphanage {
         }
     }
 
-    pub fn stage_missing_parent(&mut self, input: OrphanStageInput) -> Vec<OrphanAction> {
-        let peer_id = input.peer_id;
-        self.stage_missing_parent_with_provenance(
-            input,
-            ReceivedTransactionProvenance {
-                delivered_by: peer_id,
-                announcers: vec![peer_id],
-            },
-        )
-    }
-
     pub fn stage_missing_parent_with_provenance(
         &mut self,
         input: OrphanStageInput,
@@ -332,6 +321,20 @@ impl TxOrphanage {
         }
         *self.orphan_count_by_peer.entry(peer_id).or_default() += 1;
         true
+    }
+
+    pub fn contains(&self, wtxid: Wtxid) -> bool {
+        self.orphans.contains_key(&wtxid)
+    }
+
+    pub fn retained_wtxid(&self, relay_id: TxRelayId) -> Option<Wtxid> {
+        match relay_id {
+            TxRelayId::Wtxid(wtxid) => self.contains(wtxid).then_some(wtxid),
+            TxRelayId::Txid(txid) => self
+                .orphans
+                .iter()
+                .find_map(|(wtxid, entry)| (entry.txid == txid).then_some(*wtxid)),
+        }
     }
 
     pub fn reconsider_after_parent(
@@ -609,6 +612,10 @@ impl OrphanEntry {
     fn candidate(&self) -> OrphanReconsiderationCandidate {
         OrphanReconsiderationCandidate {
             peer_id: self.announcers.primary_peer(),
+            provenance: ReceivedTransactionProvenance {
+                delivered_by: self.announcers.primary_peer(),
+                announcers: self.announcers.peers.iter().copied().collect(),
+            },
             transaction: self.transaction.clone(),
             txid: self.txid,
             wtxid: self.wtxid,

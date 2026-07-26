@@ -207,7 +207,7 @@ test("fails_when_managed_disconnect_cleanup_evidence_is_missing", () => {
     maybeMutateFiles(files) {
       removeFromFile(
         files,
-        "packages/open-bitcoin-node/src/network/action_translation.rs",
+        "packages/open-bitcoin-network/src/peer/inventory_state.rs",
         "self.orphanage.cleanup_peer(peer_id);",
       );
     },
@@ -217,7 +217,7 @@ test("fails_when_managed_disconnect_cleanup_evidence_is_missing", () => {
   const failures = checkPhase102OrphanAdmissionBridge(root).join("\n");
 
   // Assert
-  expect(failures).toContain("managed disconnect cleanup order");
+  expect(failures).toContain("PeerManager disconnect cleanup order");
 });
 
 test("fails_when_source_breadcrumbs_or_knots_anchors_are_missing", () => {
@@ -550,7 +550,14 @@ function peerText(): string {
 }
 
 function peerInventoryStateText(): string {
-  return "pub fn request_orphan_parent(peer_id: PeerId, parent_txid: Txid, now_unix_seconds: i64) {}";
+  return [
+    "pub fn request_orphan_parent(peer_id: PeerId, parent_txid: Txid, now_unix_seconds: i64) {}",
+    "pub fn remove_peer_with_transaction_cleanup(peer_id: PeerId, now_unix_seconds: i64) {",
+    "  self.peers.remove(&peer_id);",
+    "  self.orphanage.cleanup_peer(peer_id);",
+    "  self.tx_download.cleanup_peer(peer_id, now_unix_seconds);",
+    "}",
+  ].join("\n");
 }
 
 function peerTestsText(): string {
@@ -561,7 +568,6 @@ function actionTranslationText(): string {
   return [
     "pub fn disconnect_peer_at(&mut self, peer_id: PeerId, now_unix_seconds: i64) {",
     "  let actions = self.peer_manager.remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?;",
-    "  self.orphanage.cleanup_peer(peer_id);",
     "  self.known_peers.remove(&peer_id);",
     "}",
   ].join("\n");
