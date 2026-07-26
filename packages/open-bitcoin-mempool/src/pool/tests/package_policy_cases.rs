@@ -18,8 +18,8 @@ use open_bitcoin_primitives::{Amount, ScriptWitness, TransactionInput, Txid, Wtx
 use crate::{
     AdmissionContext, CandidateFees, DryRunPackageCommand, DustRelayFeeRate, EffectiveFeeGroupId,
     EphemeralPolicy, FeeRate, IncrementalRelayFeeRate, Mempool, MempoolCapacity,
-    MempoolMemberIdentity, MempoolRemovalCause, MempoolRemovalRole, PackageFeeError,
-    PackageFeeMember, PackageMemberResult, PolicyConfig, PriorMemberSuccess,
+    MempoolMemberIdentity, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClearCause,
+    PackageFeeError, PackageFeeMember, PackageMemberResult, PolicyConfig, PriorMemberSuccess,
     ResourceAccountingError, RollingMempoolFeeRate, StaticRelayFeeRate, SubmissionPackage,
     SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
     dust_threshold_sats_at_rate, evaluate_package_fee_group, validate_standard_transaction,
@@ -1186,6 +1186,15 @@ fn exact_existing_and_alias_targets_use_actual_identity_after_trim() {
         ));
         assert_eq!(submitted.delta.removed.len(), 1);
         assert_eq!(submitted.delta.removed[0].member.wtxid, existing_wtxid);
+        assert_eq!(submitted.delta.retry_clears.len(), 1);
+        assert_eq!(
+            submitted.delta.retry_clears[0].member,
+            submitted.delta.removed[0].member
+        );
+        assert_eq!(
+            submitted.delta.retry_clears[0].cause,
+            MempoolRetryClearCause::LifecycleRemoval
+        );
         if request_alias {
             assert_ne!(requested_wtxid, existing_wtxid);
             assert_ne!(submitted.delta.removed[0].member.wtxid, requested_wtxid);
@@ -1311,6 +1320,16 @@ fn package_rbf_delta_is_atomic_and_dry_run_matches_submit() {
         removal.member.txid == original_child_txid
             && removal.cause == MempoolRemovalCause::Replacement
             && removal.role == MempoolRemovalRole::Descendant
+    }));
+    assert_eq!(
+        submitted.delta.retry_clears.len(),
+        submitted.delta.removed.len()
+    );
+    assert!(submitted.delta.removed.iter().all(|removal| {
+        submitted.delta.retry_clears.iter().any(|clear| {
+            clear.member == removal.member
+                && clear.cause == MempoolRetryClearCause::LifecycleRemoval
+        })
     }));
     assert!(!mempool.entries().contains_key(&original_parent_txid));
     assert!(!mempool.entries().contains_key(&original_child_txid));

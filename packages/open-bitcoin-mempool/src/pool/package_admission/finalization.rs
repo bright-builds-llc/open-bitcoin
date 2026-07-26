@@ -7,7 +7,8 @@
 
 use crate::{
     FinalMempoolMembership, MempoolError, MempoolLifecycleDelta, MempoolLifecycleRemoval,
-    MempoolMemberState, PackageMemberResult, PackageReport, PostTrimAbsence, PriorMemberSuccess,
+    MempoolMemberState, MempoolRetryClear, MempoolRetryClearCause, PackageMemberResult,
+    PackageReport, PostTrimAbsence, PriorMemberSuccess,
 };
 
 use super::super::admission::lifecycle_invariant_error;
@@ -90,6 +91,12 @@ pub(super) fn lifecycle_delta(
                 member,
                 cause: fact.cause,
                 role: fact.role,
+            })
+            .map_err(lifecycle_invariant_error)?;
+        builder
+            .record_retry_clear(MempoolRetryClear {
+                member,
+                cause: MempoolRetryClearCause::LifecycleRemoval,
             })
             .map_err(lifecycle_invariant_error)?;
         builder
