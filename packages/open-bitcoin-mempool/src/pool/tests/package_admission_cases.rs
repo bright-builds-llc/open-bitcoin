@@ -13,7 +13,7 @@ use crate::{
     AdmissionContext, DryRunPackageCommand, FeeRate, HardMemberFailure, Mempool, MempoolEntry,
     MempoolError, PackageMemberResult, PackageReportError, PackageStatus, PolicyConfig,
     ReconsiderableMemberFailure, RollingMempoolFeeRate, StaticRelayFeeRate, SubmissionPackage,
-    SubmitPackageCommand, TransactionVirtualSize, WellFormedPackage,
+    SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
 };
 
 fn verify_flags() -> ScriptVerifyFlags {
@@ -47,6 +47,253 @@ fn rolling_only_mempool(mut config: PolicyConfig) -> Mempool {
         )))
         .expect("rolling fixture");
     mempool
+}
+
+#[test]
+fn singleton_and_residual_truc_failures_are_typed_and_atomic() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let mut rejected = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    rejected.version = 3;
+    let reject_mempool = Mempool::new(PolicyConfig {
+        truc_policy: TrucPolicy::Reject,
+        ..PolicyConfig::default()
+    });
+
+    let mut parent = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    parent.version = 3;
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut enforce_mempool = Mempool::new(PolicyConfig {
+        truc_policy: TrucPolicy::Enforce,
+        ..PolicyConfig::default()
+    });
+    enforce_mempool
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            1_000_000,
+        )))
+        .expect("rolling floor");
+
+    // Act
+    let singleton = reject_mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package: package(vec![rejected]),
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("typed singleton rejection");
+    let residual = enforce_mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package: package(vec![parent, child]),
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("typed residual rejection");
+
+    // Assert
+    assert!(singleton.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(HardMemberFailure::TrucPolicy { .. })
+    )));
+    assert!(residual.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(HardMemberFailure::TrucPolicy { .. })
+    )));
+    assert!(reject_mempool.entries().is_empty());
+    assert!(enforce_mempool.entries().is_empty());
+}
+
+#[test]
+fn staged_fee_guard_branches_fail_closed() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let singleton = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let singleton_package = package(vec![singleton]);
+
+    // Act / Assert
+    super::super::package_admission::force_staged_fee_branches_for_test(true, false, false, false);
+    assert!(
+        Mempool::default()
+            .dry_run_package(
+                DryRunPackageCommand {
+                    package: singleton_package.clone(),
+                    context: AdmissionContext::legacy_unknown(),
+                },
+                &snapshot,
+                verify_flags(),
+                consensus_params(),
+            )
+            .is_err()
+    );
+    let below_static = spend_transaction(
+        coinbase_txids[0],
+        0,
+        500_000_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let below_static = Mempool::default()
+        .dry_run_package(
+            DryRunPackageCommand {
+                package: package(vec![below_static]),
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("static rejection remains typed");
+    assert!(matches!(
+        below_static.report.members(),
+        [PackageMemberResult::HardRejected(
+            HardMemberFailure::Policy { .. }
+        )]
+    ));
+    super::super::package_admission::force_staged_fee_branches_for_test(false, false, false, false);
+    super::super::package_admission::force_staged_fee_errors_for_test(true, false, false);
+    assert!(
+        Mempool::default()
+            .dry_run_package(
+                DryRunPackageCommand {
+                    package: singleton_package.clone(),
+                    context: AdmissionContext::legacy_unknown(),
+                },
+                &snapshot,
+                verify_flags(),
+                consensus_params(),
+            )
+            .is_err()
+    );
+    super::super::package_admission::force_staged_fee_errors_for_test(false, true, false);
+    assert!(
+        rolling_only_mempool(PolicyConfig::default())
+            .dry_run_package(
+                DryRunPackageCommand {
+                    package: singleton_package.clone(),
+                    context: AdmissionContext::legacy_unknown(),
+                },
+                &snapshot,
+                verify_flags(),
+                consensus_params(),
+            )
+            .is_err()
+    );
+    super::super::package_admission::force_staged_fee_errors_for_test(false, false, false);
+    super::super::package_admission::force_staged_fee_branches_for_test(false, false, true, false);
+    let singleton_hard = rolling_only_mempool(PolicyConfig::default())
+        .dry_run_package(
+            DryRunPackageCommand {
+                package: singleton_package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("forced rolling hard rejection");
+    assert!(matches!(
+        singleton_hard.report.members(),
+        [PackageMemberResult::HardRejected(
+            HardMemberFailure::Policy { .. }
+        )]
+    ));
+
+    let parent = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let residual_package = package(vec![parent, child]);
+    let mut mempool = rolling_only_mempool(PolicyConfig::default());
+    mempool
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            1_000_000,
+        )))
+        .expect("high rolling floor");
+
+    super::super::package_admission::force_staged_fee_branches_for_test(false, true, false, false);
+    assert!(
+        mempool
+            .dry_run_package(
+                DryRunPackageCommand {
+                    package: residual_package.clone(),
+                    context: AdmissionContext::legacy_unknown(),
+                },
+                &snapshot,
+                verify_flags(),
+                consensus_params(),
+            )
+            .is_err()
+    );
+    super::super::package_admission::force_staged_fee_branches_for_test(false, false, false, false);
+    super::super::package_admission::force_staged_fee_errors_for_test(false, false, true);
+    assert!(
+        mempool
+            .dry_run_package(
+                DryRunPackageCommand {
+                    package: residual_package.clone(),
+                    context: AdmissionContext::legacy_unknown(),
+                },
+                &snapshot,
+                verify_flags(),
+                consensus_params(),
+            )
+            .is_err()
+    );
+    super::super::package_admission::force_staged_fee_errors_for_test(false, false, false);
+    super::super::package_admission::force_staged_fee_branches_for_test(false, false, false, true);
+    let residual_hard = mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package: residual_package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("forced residual rolling hard rejection");
+    super::super::package_admission::force_staged_fee_branches_for_test(false, false, false, false);
+
+    assert!(residual_hard.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(HardMemberFailure::Policy { .. })
+    )));
 }
 
 #[test]

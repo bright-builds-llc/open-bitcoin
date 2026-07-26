@@ -1052,3 +1052,19 @@ fn package_replacement_failure_preserves_requested_identity() {
     // Assert
     assert_eq!(actual, [requested, requested]);
 }
+
+#[test]
+fn truc_policy_failure_preserves_requested_identity() {
+    // Arrange
+    let requested = MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x97; 32]),
+        wtxid: Wtxid::from_byte_array([0x98; 32]),
+    };
+    let result = PackageMemberResult::HardRejected(HardMemberFailure::TrucPolicy {
+        requested,
+        reason: "TRUC topology".to_string(),
+    });
+
+    // Act / Assert
+    assert_eq!(result.requested_identity(), requested);
+}

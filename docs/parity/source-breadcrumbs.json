@@ -700,6 +700,19 @@
       ]
     },
     {
+      "label": "mempool-truc-policy",
+      "files": [
+        "packages/open-bitcoin-mempool/src/policy/truc.rs",
+        "packages/open-bitcoin-mempool/src/policy/truc/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/mempool_options.h",
+        "packages/bitcoin-knots/src/policy/truc_policy.h",
+        "packages/bitcoin-knots/src/policy/truc_policy.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_truc.py"
+      ]
+    },
+    {
       "label": "mempool-staged-admission",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/candidate.rs",

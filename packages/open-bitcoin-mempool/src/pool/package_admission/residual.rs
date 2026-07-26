@@ -5,17 +5,18 @@
 
 //! Residual package preparation and coherent replacement composition.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
-use crate::policy::replacement::{MempoolView, evaluate_limited_package_replacement};
+use crate::policy::replacement::{MempoolView, evaluate_limited_package_replacement_with_intent};
+use crate::policy::truc::evaluate_truc_package;
 use crate::{
     AdmissionContext, EffectiveFeeGroup, EffectiveFeeGroupId, HardMemberFailure, MempoolEntry,
     MempoolError, MempoolMemberIdentity, MempoolRemovalCause, NewlyPresent, PackageMemberResult,
-    ReconsiderableMemberFailure,
+    ReconsiderableMemberFailure, RollingMempoolFeeRate,
 };
 
 use super::{
@@ -74,17 +75,65 @@ pub(super) fn evaluate(
         preparation_view.insert(prepared.entry.clone());
         prepared_members.push((*index, identity, prepared));
     }
-    for (_index, _identity, prepared) in &prepared_members {
-        let _has_conflict = has_direct_conflict(prospective, prepared)?;
+    let residual_group_id = group_id(indices[0]);
+    match fee_group(
+        prospective,
+        residual_group_id,
+        prepared_members
+            .iter()
+            .map(|(_index, identity, prepared)| (prepared, *identity)),
+        RollingMempoolFeeRate::ZERO,
+    )? {
+        FeeGroupDecision::Accepted(_group) => {}
+        FeeGroupDecision::Reconsiderable(_group) => {
+            return Err(MempoolError::InternalInvariant {
+                reason: "zero rolling floor produced a reconsiderable fee group".to_string(),
+            });
+        }
+        FeeGroupDecision::Hard(error) => {
+            set_hard_failures(results, &prepared_members, error);
+            remove_individual_groups(groups, indices, individual_group_ids);
+            return Ok(());
+        }
     }
 
-    let residual_group_id = group_id(indices[0]);
+    let prepared_candidates = prepared_members
+        .iter()
+        .map(|(_index, _identity, prepared)| prepared.clone())
+        .collect::<Vec<_>>();
+    let direct_conflicts =
+        prepared_candidates
+            .iter()
+            .try_fold(BTreeSet::new(), |mut conflicts, prepared| {
+                conflicts.extend(direct_conflicts(prospective, prepared)?);
+                Ok::<_, MempoolError>(conflicts)
+            })?;
+    let maybe_sibling_eviction = match evaluate_truc_package(
+        prospective,
+        &prepared_candidates,
+        prospective.policy_config().truc_policy,
+        &direct_conflicts,
+    ) {
+        Ok(intent) => intent,
+        Err(error) => {
+            for (index, identity, _prepared) in &prepared_members {
+                results[*index] =
+                    PackageMemberResult::HardRejected(HardMemberFailure::TrucPolicy {
+                        requested: *identity,
+                        reason: error.to_string(),
+                    });
+            }
+            remove_individual_groups(groups, indices, individual_group_ids);
+            return Ok(());
+        }
+    };
     let group = match fee_group(
         prospective,
         residual_group_id,
         prepared_members
             .iter()
             .map(|(_index, identity, prepared)| (prepared, *identity)),
+        prospective.rolling_mempool_fee_rate(),
     )? {
         FeeGroupDecision::Accepted(group) => group,
         FeeGroupDecision::Reconsiderable(group) => {
@@ -105,21 +154,16 @@ pub(super) fn evaluate(
             return Ok(());
         }
     };
-
-    let prepared_candidates = prepared_members
-        .iter()
-        .map(|(_index, _identity, prepared)| prepared.clone())
-        .collect::<Vec<_>>();
-    let has_conflict = prepared_candidates
-        .iter()
-        .try_fold(false, |found, prepared| {
-            has_direct_conflict(prospective, prepared).map(|conflict| found || conflict)
-        })?;
+    let sibling_conflicts = maybe_sibling_eviction
+        .map(|intent| BTreeSet::from([intent.sibling]))
+        .unwrap_or_default();
+    let has_conflict = !direct_conflicts.is_empty() || !sibling_conflicts.is_empty();
     let replacement = if has_conflict {
-        match evaluate_limited_package_replacement(
+        match evaluate_limited_package_replacement_with_intent(
             prospective,
             &prepared_candidates,
             prospective.policy_config().incremental_relay_fee_rate,
+            &sibling_conflicts,
         ) {
             Ok(replacement) => Some(replacement),
             Err(error) => {
@@ -193,11 +237,11 @@ pub(super) fn evaluate(
     Ok(())
 }
 
-pub(super) fn has_direct_conflict(
+pub(super) fn direct_conflicts(
     view: &ProspectiveMempool<'_>,
     candidate: &PreparedCandidate,
-) -> Result<bool, MempoolError> {
-    let mut found = false;
+) -> Result<BTreeSet<Txid>, MempoolError> {
+    let mut conflicts = BTreeSet::new();
     for input in &candidate.entry.transaction.inputs {
         let Some(spender) = view.maybe_spender(&input.previous_output) else {
             continue;
@@ -207,9 +251,9 @@ pub(super) fn has_direct_conflict(
                 reason: "prospective spent-outpoint index references a missing entry".to_string(),
             });
         }
-        found = true;
+        conflicts.insert(spender);
     }
-    Ok(found)
+    Ok(conflicts)
 }
 
 fn set_hard_failures(

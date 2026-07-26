@@ -156,28 +156,48 @@ impl fmt::Display for PackageReplacementError {
 
 impl std::error::Error for PackageReplacementError {}
 
+#[cfg(test)]
 pub(crate) fn evaluate_limited_package_replacement<V: MempoolView>(
     view: &V,
     package: &[PreparedCandidate],
     incremental_relay_fee_rate: IncrementalRelayFeeRate,
 ) -> Result<LimitedPackageReplacement, PackageReplacementError> {
-    let [parent, child] = package else {
+    evaluate_limited_package_replacement_with_intent(
+        view,
+        package,
+        incremental_relay_fee_rate,
+        &BTreeSet::new(),
+    )
+}
+
+pub(crate) fn evaluate_limited_package_replacement_with_intent<V: MempoolView>(
+    view: &V,
+    package: &[PreparedCandidate],
+    incremental_relay_fee_rate: IncrementalRelayFeeRate,
+    additional_direct_conflicts: &BTreeSet<Txid>,
+) -> Result<LimitedPackageReplacement, PackageReplacementError> {
+    let is_sibling_replacement = package.len() == 1 && !additional_direct_conflicts.is_empty();
+    if !is_sibling_replacement && package.len() != 2 {
         return Err(PackageReplacementError::WrongPackageSize {
             actual: package.len(),
         });
-    };
-    if !child
-        .entry
-        .transaction
-        .inputs
-        .iter()
-        .any(|input| input.previous_output.txid == parent.entry.txid)
+    }
+    if !is_sibling_replacement
+        && !package[1]
+            .entry
+            .transaction
+            .inputs
+            .iter()
+            .any(|input| input.previous_output.txid == package[0].entry.txid)
     {
         return Err(PackageReplacementError::WrongTopology);
     }
-    reject_in_mempool_ancestors(view, package)?;
+    if !is_sibling_replacement {
+        reject_in_mempool_ancestors(view, package)?;
+    }
 
-    let direct_conflicts = direct_conflicts(view, package);
+    let mut direct_conflicts = direct_conflicts(view, package);
+    direct_conflicts.extend(additional_direct_conflicts);
     if direct_conflicts.is_empty() {
         return Err(PackageReplacementError::NoDirectConflicts);
     }
@@ -186,7 +206,9 @@ pub(crate) fn evaluate_limited_package_replacement<V: MempoolView>(
     let removed_txids = collect_removal_union(view, &direct_conflicts);
     let removals = removal_facts(view, &direct_conflicts, &removed_txids)?;
     enforce_replacement_fees(view, package, &removed_txids, incremental_relay_fee_rate)?;
-    enforce_parent_package_feerate(package)?;
+    if !is_sibling_replacement {
+        enforce_parent_package_feerate(package)?;
+    }
     diagram::enforce_diagram_improvement(view, package, &direct_conflicts, &removed_txids)?;
 
     Ok(LimitedPackageReplacement { removals })

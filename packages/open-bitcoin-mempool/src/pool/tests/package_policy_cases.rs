@@ -396,6 +396,43 @@ fn truc_policy_defaults_to_accept_and_applies_ordinary_static_floor() {
 }
 
 #[test]
+fn truc_enforce_uses_pinned_10_000_and_1_000_vbyte_topology_limits() {
+    // Arrange / Act
+    use crate::policy::truc::{
+        MAX_TRUC_ANCESTOR_COUNT, MAX_TRUC_CHILD_VIRTUAL_SIZE, MAX_TRUC_DESCENDANT_COUNT,
+        MAX_TRUC_VIRTUAL_SIZE,
+    };
+
+    // Assert
+    assert_eq!(MAX_TRUC_VIRTUAL_SIZE, 10_000);
+    assert_eq!(MAX_TRUC_CHILD_VIRTUAL_SIZE, 1_000);
+    assert_eq!(MAX_TRUC_ANCESTOR_COUNT, 2);
+    assert_eq!(MAX_TRUC_DESCENDANT_COUNT, 2);
+}
+
+#[test]
+fn truc_child_replacement_and_sibling_eviction_precede_replacement_staging() {
+    // Arrange
+    use super::super::package_admission::PackagePolicyStage;
+
+    // Act
+    let (trace, scripts, trims) =
+        super::super::package_admission::package_policy_probe_for_test(None);
+    let truc = trace
+        .iter()
+        .position(|stage| *stage == PackagePolicyStage::Truc)
+        .expect("TRUC stage");
+    let replacement = trace
+        .iter()
+        .position(|stage| *stage == PackagePolicyStage::Replacement)
+        .expect("replacement stage");
+
+    // Assert
+    assert!(truc < replacement);
+    assert_eq!((scripts, trims), (1, 1));
+}
+
+#[test]
 fn enforced_version_three_bypasses_only_the_static_floor() {
     // Arrange
     let members = [member(17, 3, 99, 99, 100)];

@@ -15,6 +15,7 @@
 
 mod output;
 pub(crate) mod replacement;
+pub(crate) mod truc;
 
 use open_bitcoin_codec::{TransactionEncoding, encode_transaction};
 use open_bitcoin_consensus::script::{count_p2sh_sigops, count_witness_sigops};

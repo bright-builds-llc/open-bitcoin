@@ -219,6 +219,10 @@ pub enum HardMemberFailure {
         requested: MempoolMemberIdentity,
         reason: String,
     },
+    TrucPolicy {
+        requested: MempoolMemberIdentity,
+        reason: String,
+    },
     PackageReplacement {
         requested: MempoolMemberIdentity,
         reason: String,
@@ -279,6 +283,7 @@ impl PackageMemberResult {
             Self::SameTxidDifferentWitness(result) => result.requested,
             Self::HardRejected(
                 HardMemberFailure::Policy { requested, .. }
+                | HardMemberFailure::TrucPolicy { requested, .. }
                 | HardMemberFailure::PackageReplacement { requested, .. },
             ) => *requested,
             Self::Reconsiderable(

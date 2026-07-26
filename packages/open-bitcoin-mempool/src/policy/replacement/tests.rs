@@ -19,7 +19,8 @@ use open_bitcoin_primitives::{
 use super::{
     MAX_REPLACEMENT_CANDIDATES, MempoolView, PackageReplacementError, checked_fee_for_virtual_size,
     enforce_conservative_candidate_bound, enforce_replacement_fees,
-    evaluate_limited_package_replacement, package_virtual_size, removal_facts,
+    evaluate_limited_package_replacement, evaluate_limited_package_replacement_with_intent,
+    package_virtual_size, removal_facts,
 };
 use crate::pool::candidate::PreparedCandidate;
 use crate::{
@@ -179,6 +180,33 @@ fn valid_bounded_parent_child_replacement_returns_typed_direct_removal() {
         vec![MempoolRemovalRole::Direct]
     );
     assert_eq!(view.descendant_calls.get(), 1);
+}
+
+#[test]
+fn eligible_truc_sibling_intent_uses_singleton_replacement_rules() {
+    // Arrange
+    let spent = outpoint(1);
+    let conflict = entry(20, vec![spent.clone()], 100, 100, 1);
+    let conflict_txid = conflict.txid;
+    let mut view = FixtureView::default();
+    view.entries.insert(conflict_txid, conflict);
+    let package = [candidate(10, vec![spent], 400)];
+
+    // Act
+    let replacement = evaluate_limited_package_replacement_with_intent(
+        &view,
+        &package,
+        incremental_relay_fee(),
+        &BTreeSet::from([conflict_txid]),
+    )
+    .expect("eligible sibling replacement");
+
+    // Assert
+    assert_eq!(replacement.removals.len(), 1);
+    assert_eq!(
+        replacement.removals.values().next(),
+        Some(&MempoolRemovalRole::Direct)
+    );
 }
 
 #[test]

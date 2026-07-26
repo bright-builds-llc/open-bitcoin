@@ -16,12 +16,14 @@ use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_primitives::Transaction;
 
+use crate::policy::truc::{TrucPolicyError, evaluate_truc_package};
 use crate::{
     AdmissionContext, DryRunPackageCommand, DryRunPackageResult, EffectiveFeeGroup,
     EffectiveFeeGroupId, HardMemberFailure, MempoolError, MempoolLifecycleDelta,
     MempoolMemberIdentity, NewlyPresent, PackageFeeError, PackageFeeMember, PackageMemberResult,
-    PackageReport, PackageStatus, ReconsiderableMemberFailure, SubmitPackageCommand,
-    SubmittedPackageResult, WellFormedPackage, WitnessAlias, evaluate_package_fee_group,
+    PackageReport, PackageStatus, ReconsiderableMemberFailure, RollingMempoolFeeRate,
+    SubmitPackageCommand, SubmittedPackageResult, WellFormedPackage, WitnessAlias,
+    evaluate_package_fee_group,
 };
 
 use super::candidate::{PreparedCandidate, check_candidate_scripts, prepare_candidate};
@@ -32,7 +34,9 @@ use finalization::lifecycle_delta;
 pub(super) use residual::force_duplicate_transition_entry_for_test;
 #[cfg(test)]
 pub(super) use test_support::{
-    PackagePolicyStage, package_policy_probe_for_test, package_trim_count_for_test,
+    PackagePolicyStage, force_residual_fee_group_error_for_test,
+    force_residual_fee_group_hard_for_test, force_staged_fee_branches_for_test,
+    force_staged_fee_errors_for_test, package_policy_probe_for_test, package_trim_count_for_test,
     reset_package_trim_count_for_test, set_mempool_capacity_for_test,
 };
 
@@ -45,6 +49,13 @@ thread_local! {
     static PACKAGE_TRIM_COUNT: Cell<usize> = const { Cell::new(0) };
     static FORCE_RESIDUAL_FEE_GROUP_ERROR: Cell<bool> = const { Cell::new(false) };
     static FORCE_RESIDUAL_FEE_GROUP_HARD: Cell<bool> = const { Cell::new(false) };
+    static FORCE_SINGLETON_ZERO_ROLLING: Cell<bool> = const { Cell::new(false) };
+    static FORCE_RESIDUAL_ZERO_ROLLING: Cell<bool> = const { Cell::new(false) };
+    static FORCE_SINGLETON_ROLLING_HARD: Cell<bool> = const { Cell::new(false) };
+    static FORCE_RESIDUAL_ROLLING_HARD: Cell<bool> = const { Cell::new(false) };
+    static FORCE_SINGLETON_STATIC_ERROR: Cell<bool> = const { Cell::new(false) };
+    static FORCE_SINGLETON_ROLLING_ERROR: Cell<bool> = const { Cell::new(false) };
+    static FORCE_RESIDUAL_ROLLING_ERROR: Cell<bool> = const { Cell::new(false) };
 }
 
 pub(super) struct PreparedPackageEvaluation {
@@ -245,7 +256,40 @@ fn evaluate_singleton<'base>(
         }
         Err(error) => return Ok(SingletonEvaluation::Hard(hard_failure(identity, error))),
     };
-    let group = match fee_group(prospective, group_id(index), [(&prepared, identity)])? {
+    match fee_group(
+        prospective,
+        group_id(index),
+        [(&prepared, identity)],
+        RollingMempoolFeeRate::ZERO,
+    )? {
+        FeeGroupDecision::Accepted(_group) => {}
+        FeeGroupDecision::Reconsiderable(_group) => {
+            return Err(MempoolError::InternalInvariant {
+                reason: "zero rolling floor produced a reconsiderable fee group".to_string(),
+            });
+        }
+        FeeGroupDecision::Hard(error) => {
+            return Ok(SingletonEvaluation::Hard(hard_failure(identity, error)));
+        }
+    }
+
+    let direct_conflicts = residual::direct_conflicts(prospective, &prepared)?;
+    let maybe_sibling_eviction = match evaluate_truc_package(
+        prospective,
+        std::slice::from_ref(&prepared),
+        prospective.policy_config().truc_policy,
+        &direct_conflicts,
+    ) {
+        Ok(intent) => intent,
+        Err(error) => return Ok(SingletonEvaluation::Hard(truc_failure(identity, error))),
+    };
+
+    let group = match fee_group(
+        prospective,
+        group_id(index),
+        [(&prepared, identity)],
+        prospective.rolling_mempool_fee_rate(),
+    )? {
         FeeGroupDecision::Accepted(group) => group,
         FeeGroupDecision::Reconsiderable(group) => {
             return Ok(SingletonEvaluation::Reconsiderable {
@@ -263,7 +307,7 @@ fn evaluate_singleton<'base>(
         }
     };
 
-    if residual::has_direct_conflict(prospective, &prepared)? {
+    if !direct_conflicts.is_empty() || maybe_sibling_eviction.is_some() {
         return Ok(SingletonEvaluation::Reconsiderable {
             result: PackageMemberResult::Reconsiderable(
                 ReconsiderableMemberFailure::PackageReplacement {
@@ -331,6 +375,7 @@ fn fee_group<'candidate>(
     prospective: &ProspectiveMempool<'_>,
     id: EffectiveFeeGroupId,
     members: impl IntoIterator<Item = (&'candidate PreparedCandidate, MempoolMemberIdentity)>,
+    rolling_floor: RollingMempoolFeeRate,
 ) -> Result<FeeGroupDecision, MempoolError> {
     let mut fee_members = Vec::new();
     for (prepared, identity) in members {
@@ -341,12 +386,43 @@ fn fee_group<'candidate>(
             virtual_size: prepared.entry.virtual_size,
         });
     }
+    let fee_truc_policy = match prospective.policy_config().truc_policy {
+        crate::TrucPolicy::Reject => crate::TrucPolicy::Accept,
+        policy => policy,
+    };
     let assessment = evaluate_package_fee_group(
         &fee_members,
         prospective.policy_config().static_relay_fee_rate,
-        prospective.rolling_mempool_fee_rate(),
-        prospective.policy_config().truc_policy,
+        rolling_floor,
+        fee_truc_policy,
     );
+    #[cfg(test)]
+    if (fee_members.len() == 1
+        && rolling_floor == RollingMempoolFeeRate::ZERO
+        && FORCE_SINGLETON_STATIC_ERROR.with(Cell::get))
+        || (fee_members.len() == 1
+            && rolling_floor != RollingMempoolFeeRate::ZERO
+            && FORCE_SINGLETON_ROLLING_ERROR.with(Cell::get))
+        || (fee_members.len() > 1
+            && rolling_floor != RollingMempoolFeeRate::ZERO
+            && FORCE_RESIDUAL_ROLLING_ERROR.with(Cell::get))
+    {
+        return Err(MempoolError::InternalInvariant {
+            reason: "forced staged fee-group error".to_string(),
+        });
+    }
+    #[cfg(test)]
+    if rolling_floor == RollingMempoolFeeRate::ZERO
+        && ((fee_members.len() == 1 && FORCE_SINGLETON_ZERO_ROLLING.with(Cell::get))
+            || (fee_members.len() > 1 && FORCE_RESIDUAL_ZERO_ROLLING.with(Cell::get)))
+    {
+        return match assessment {
+            Ok(assessment) => {
+                checked_effective_group(&assessment, id).map(FeeGroupDecision::Reconsiderable)
+            }
+            Err(error) => classify_fee_group(Err(error), id),
+        };
+    }
     #[cfg(test)]
     let assessment = if fee_members.len() > 1 && FORCE_RESIDUAL_FEE_GROUP_ERROR.with(Cell::get) {
         Err(PackageFeeError::BaseFeeOverflow)
@@ -355,6 +431,17 @@ fn fee_group<'candidate>(
     };
     #[cfg(test)]
     let assessment = if fee_members.len() > 1 && FORCE_RESIDUAL_FEE_GROUP_HARD.with(Cell::get) {
+        Err(PackageFeeError::TrucRejected {
+            member: fee_members[0].identity,
+        })
+    } else {
+        assessment
+    };
+    #[cfg(test)]
+    let assessment = if rolling_floor != RollingMempoolFeeRate::ZERO
+        && ((fee_members.len() == 1 && FORCE_SINGLETON_ROLLING_HARD.with(Cell::get))
+            || (fee_members.len() > 1 && FORCE_RESIDUAL_ROLLING_HARD.with(Cell::get)))
+    {
         Err(PackageFeeError::TrucRejected {
             member: fee_members[0].identity,
         })
@@ -413,6 +500,13 @@ fn hard_failure(identity: MempoolMemberIdentity, error: MempoolError) -> Package
     })
 }
 
+fn truc_failure(identity: MempoolMemberIdentity, error: TrucPolicyError) -> PackageMemberResult {
+    PackageMemberResult::HardRejected(HardMemberFailure::TrucPolicy {
+        requested: identity,
+        reason: error.to_string(),
+    })
+}
+
 fn package_status(members: &[PackageMemberResult]) -> PackageStatus {
     let present = members
         .iter()
@@ -464,16 +558,6 @@ pub(super) fn reset_script_check_count_for_test() {
 #[cfg(test)]
 pub(super) fn script_check_count_for_test() -> usize {
     SCRIPT_CHECK_COUNT.with(Cell::get)
-}
-
-#[cfg(test)]
-pub(super) fn force_residual_fee_group_error_for_test(force: bool) {
-    FORCE_RESIDUAL_FEE_GROUP_ERROR.with(|value| value.set(force));
-}
-
-#[cfg(test)]
-pub(super) fn force_residual_fee_group_hard_for_test(force: bool) {
-    FORCE_RESIDUAL_FEE_GROUP_HARD.with(|value| value.set(force));
 }
 
 #[cfg(test)]
