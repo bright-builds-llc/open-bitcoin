@@ -251,6 +251,14 @@ test.each([
     ),
   ],
   [
+    "narrow claim with unrelated sentence negation",
+    "P132 claims: bounded local admission must not become a general package-wire or production claim",
+    append(
+      "README.md",
+      "\nOpen Bitcoin supports a general package wire. Guaranteed propagation is not supported.\n",
+    ),
+  ],
+  [
     "verifier run step",
     "P132 verifier: checker test/run must follow Phase 131 and precede Phase 117 in both surfaces",
     replace(

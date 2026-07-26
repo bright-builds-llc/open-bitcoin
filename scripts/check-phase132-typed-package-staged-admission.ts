@@ -649,14 +649,18 @@ function checkNarrowClaims(repoRoot: string, failures: string[]): void {
   for (const relativePath of claimFiles) {
     const text = readTarget(repoRoot, relativePath);
     for (const paragraph of text.split(/\r?\n\s*\r?\n/)) {
-      const lower = paragraph.toLowerCase();
-      for (const claim of forbiddenClaims) {
-        if (!lower.includes(claim)) continue;
-        if (NO_CLAIM_MARKERS.some((marker) => lower.includes(marker))) continue;
-        failures.push(
-          "P132 claims: bounded local admission must not become a general package-wire or production claim",
-        );
-        return;
+      for (const clause of claimClauses(paragraph)) {
+        const lower = clause.toLowerCase();
+        for (const claim of forbiddenClaims) {
+          if (!lower.includes(claim)) continue;
+          if (NO_CLAIM_MARKERS.some((marker) => lower.includes(marker))) {
+            continue;
+          }
+          failures.push(
+            "P132 claims: bounded local admission must not become a general package-wire or production claim",
+          );
+          return;
+        }
       }
     }
   }
@@ -672,6 +676,18 @@ function checkNarrowClaims(repoRoot: string, failures: string[]): void {
       );
     }
   }
+}
+
+function claimClauses(paragraph: string): string[] {
+  const sentences = paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [];
+  return sentences.flatMap((sentence) => {
+    const clauses = sentence.split(
+      /\s*(?:;|—|\||\b(?:but|however|whereas|while|although|though|yet)\b)\s*/i,
+    );
+    return clauses.flatMap((clause) =>
+      clause.split(/\r?\n(?=\s*(?:[-*+]|\d+\.)\s)/)
+    );
+  });
 }
 
 function checkVerifierWiring(repoRoot: string, failures: string[]): void {

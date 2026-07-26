@@ -494,7 +494,7 @@ deferred.
 - Knots `mempool.dat` binary compatibility
 - general package wire relay, whole-mempool rebroadcast, public/default relay,
   guaranteed propagation, public-network default CI, production readiness, and
-  production-funds wallet use
+  production-funds wallet use remain deferred
 
 ## Follow-up triggers
 
