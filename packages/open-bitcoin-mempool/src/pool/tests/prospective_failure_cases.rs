@@ -448,3 +448,25 @@ fn resource_underflow_display_names_the_component() {
         "mempool resource accounting underflow: fixture bytes"
     );
 }
+
+#[test]
+fn empty_subdelta_composition_is_a_noop() {
+    // Arrange
+    let mempool = Mempool::default();
+    let mut prospective = ProspectiveMempool::new(&mempool);
+    let before = prospective
+        .materialize_for_test()
+        .expect("before materialization");
+
+    // Act
+    prospective
+        .compose(SubDelta::from_entries(Vec::new()).expect("empty subdelta"))
+        .expect("empty composition");
+    let after = prospective
+        .materialize_for_test()
+        .expect("after materialization");
+
+    // Assert
+    assert_eq!(before.entries, after.entries);
+    assert_eq!(before.spent_outpoints, HashMap::new());
+}

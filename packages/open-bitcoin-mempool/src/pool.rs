@@ -32,7 +32,7 @@ mod lifecycle;
 #[cfg(test)]
 mod oracle;
 mod patch;
-#[cfg(test)]
+#[allow(dead_code)] // Package orchestration consumes prospective pressure trim in Plan 132-04.
 mod pressure;
 #[allow(dead_code)] // Package orchestration consumes this staged infrastructure in Plan 132-04.
 mod prospective;
@@ -47,7 +47,7 @@ pub use lifecycle::{
     MempoolRetryClearCause, RollingFeeParityStatus,
 };
 #[cfg(test)]
-use oracle::{MempoolState, recompute_state, validate_limits};
+use oracle::{recompute_state, validate_limits};
 #[cfg(test)]
 use topology::{collect_ancestors, collect_descendants};
 

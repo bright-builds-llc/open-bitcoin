@@ -71,6 +71,8 @@ pub(super) struct ProspectiveMempool<'base> {
     resource_delta: MempoolResourceDelta,
     prospective_resource_usage: MempoolResourceLedger,
     rolling_fee_state: RollingFeeState,
+    #[cfg(test)]
+    trim_invocations: usize,
 }
 
 impl<'base> ProspectiveMempool<'base> {
@@ -86,6 +88,8 @@ impl<'base> ProspectiveMempool<'base> {
             },
             prospective_resource_usage: base.resource_ledger,
             rolling_fee_state: base.rolling_fee_state.clone(),
+            #[cfg(test)]
+            trim_invocations: 0,
         }
     }
 
@@ -197,7 +201,6 @@ impl<'base> ProspectiveMempool<'base> {
         })
     }
 
-    #[allow(dead_code)] // The final package pressure caller lands after this infrastructure plan.
     pub(super) fn accounted_memory(&self) -> crate::AccountedMempoolMemory {
         self.prospective_resource_usage.accounted_memory()
     }
@@ -212,9 +215,20 @@ impl<'base> ProspectiveMempool<'base> {
             .collect()
     }
 
-    #[allow(dead_code)] // The final package pressure caller lands after this infrastructure plan.
     pub(super) fn rolling_fee_state_mut(&mut self) -> &mut RollingFeeState {
         &mut self.rolling_fee_state
+    }
+
+    #[cfg(test)]
+    pub(super) const fn rolling_fee_state(&self) -> &RollingFeeState {
+        &self.rolling_fee_state
+    }
+
+    pub(super) fn record_trim_invocation(&mut self) {
+        #[cfg(test)]
+        {
+            self.trim_invocations += 1;
+        }
     }
 
     fn apply_sub_delta(&mut self, sub_delta: SubDelta) -> Result<(), MempoolError> {
@@ -571,6 +585,11 @@ impl<'base> ProspectiveMempool<'base> {
     #[cfg(test)]
     pub(super) const fn full_recompute_count_for_test(&self) -> usize {
         0
+    }
+
+    #[cfg(test)]
+    pub(super) const fn trim_invocations_for_test(&self) -> usize {
+        self.trim_invocations
     }
 }
 

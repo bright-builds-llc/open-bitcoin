@@ -10,10 +10,11 @@ use open_bitcoin_primitives::{Amount, Transaction, TransactionInput, Txid};
 
 use super::{sample_chainstate_snapshot, spend_transaction, submit};
 use crate::pool::candidate::prepare_candidate;
-use crate::pool::prospective::{ProspectiveMempool, SubDelta};
+use crate::pool::pressure::trim_prospective_to_capacity;
+use crate::pool::prospective::ProspectiveMempool;
 use crate::{
-    AdmissionContext, FeeRate, Mempool, MempoolEntry, MempoolError, MempoolLifecycleDelta,
-    MempoolRemovalCause, TransactionVirtualSize, recompute_resource_ledger,
+    AdmissionContext, Mempool, MempoolCapacity, MempoolEntry, MempoolError, MempoolLifecycleDelta,
+    MempoolRemovalCause, PolicyConfig, TransactionVirtualSize, recompute_resource_ledger,
 };
 
 fn prepared_spend(
@@ -388,6 +389,14 @@ fn generated_graph_recomputation_oracle_covers_twenty_five_sparse_additions() {
             ))
             .expect("bounded generated insertion");
     }
+    let config = PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(
+            prospective.accounted_memory().as_usize().saturating_sub(1),
+        ),
+        ..PolicyConfig::default()
+    };
+    let evicted =
+        trim_prospective_to_capacity(&mut prospective, &config).expect("one final trim succeeds");
     let materialized = prospective
         .materialize_for_test()
         .expect("test-only recompute_state oracle");
@@ -396,45 +405,76 @@ fn generated_graph_recomputation_oracle_covers_twenty_five_sparse_additions() {
             .expect("recompute_resource_ledger oracle");
 
     // Assert
-    assert_eq!(materialized.entries.len(), 25);
+    assert_eq!(evicted.len(), 1);
+    assert_eq!(materialized.entries.len(), 24);
     assert_eq!(materialized.resource_ledger, resource_oracle);
     assert_eq!(
         prospective.accounted_memory(),
         materialized.resource_ledger.accounted_memory()
     );
-    prospective
-        .rolling_fee_state_mut()
-        .track_package_removed(FeeRate::from_sats_per_kvb(1_000));
-    assert_eq!(
+    assert!(
         prospective
-            .rolling_fee_state_mut()
+            .rolling_fee_state()
             .rolling_fee_rate()
             .fee_rate()
-            .sats_per_kvb(),
-        1_000
+            .sats_per_kvb()
+            > 0
     );
-    assert_eq!(prospective.full_recompute_count_for_test(), 0);
-    assert_eq!(prospective.full_clone_count_for_test(), 0);
+    assert_eq!(
+        prospective.full_clone_count_for_test(),
+        0,
+        "zero production full-state clone"
+    );
+    assert_eq!(
+        prospective.full_recompute_count_for_test(),
+        0,
+        "zero production full-state recompute"
+    );
+    assert_eq!(
+        prospective.trim_invocations_for_test(),
+        1,
+        "one caller-triggered final trim"
+    );
 }
 
 #[test]
-fn empty_subdelta_composition_is_a_noop() {
+fn failed_pressure_trim_leaves_base_and_prospective_unchanged() {
     // Arrange
-    let mempool = Mempool::default();
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let mut mempool = Mempool::default();
+    let transaction = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let txid = transaction_txid(&transaction).expect("txid");
+    submit(&mut mempool, &snapshot, transaction).expect("admission");
+    mempool
+        .entries
+        .get_mut(&txid)
+        .expect("entry")
+        .children
+        .insert(Txid::from_byte_array([99; 32]));
+    let base_before = mempool.complete_snapshot();
     let mut prospective = ProspectiveMempool::new(&mempool);
-    let before = prospective
-        .materialize_for_test()
-        .expect("before materialization");
+    let config = PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(0),
+        ..PolicyConfig::default()
+    };
 
     // Act
-    prospective
-        .compose(SubDelta::from_entries(Vec::new()).expect("empty subdelta"))
-        .expect("empty composition");
-    let after = prospective
-        .materialize_for_test()
-        .expect("after materialization");
+    let error = trim_prospective_to_capacity(&mut prospective, &config)
+        .expect_err("missing descendant must fail");
 
     // Assert
-    assert_eq!(before.entries, after.entries);
-    assert_eq!(before.spent_outpoints, HashMap::new());
+    assert!(matches!(error, MempoolError::InternalInvariant { .. }));
+    assert_eq!(mempool.complete_snapshot(), base_before);
+    assert!(prospective.maybe_entry(&txid).is_some());
+    assert_eq!(prospective.accounted_memory(), mempool.accounted_memory());
+    assert_eq!(
+        prospective.rolling_fee_state().rolling_fee_rate(),
+        mempool.rolling_mempool_fee_rate()
+    );
+    assert_eq!(prospective.trim_invocations_for_test(), 0);
 }

@@ -39,8 +39,8 @@ use open_bitcoin_primitives::{
 
 use super::Mempool;
 use crate::{
-    AccountedMempoolMemory, LimitDirection, LimitKind, MempoolCapacity, MempoolEntry, MempoolError,
-    MempoolResourceLedger, PolicyConfig, RbfPolicy, TransactionVirtualSize,
+    LimitDirection, LimitKind, MempoolCapacity, MempoolEntry, MempoolError, PolicyConfig,
+    RbfPolicy, TransactionVirtualSize,
 };
 
 const EASY_BITS: u32 = 0x207f_ffff;
@@ -821,23 +821,16 @@ fn helper_functions_cover_missing_vout_and_limit_branches() {
 
 #[test]
 fn trim_and_graph_helpers_cover_remaining_internal_branches() {
-    let mut rolling = crate::RollingFeeState::new();
-    let empty_trimmed = super::pressure::trim_to_size(
-        super::MempoolState {
-            entries: HashMap::new(),
-            spent_outpoints: HashMap::new(),
-            resource_ledger: MempoolResourceLedger::new(
-                TransactionVirtualSize::new(1),
-                AccountedMempoolMemory::new(1),
-            ),
-        },
+    let empty_mempool = Mempool::default();
+    let mut prospective = super::prospective::ProspectiveMempool::new(&empty_mempool);
+    let empty_trimmed = super::pressure::trim_prospective_to_capacity(
+        &mut prospective,
         &PolicyConfig {
             mempool_capacity: crate::MempoolCapacity::new(0),
             ..PolicyConfig::default()
         },
-        &mut rolling,
     );
-    assert!(empty_trimmed.expect("empty trim").1.is_empty());
+    assert!(empty_trimmed.expect("empty trim").is_empty());
 
     let base = spend_transaction(
         Txid::from_byte_array([1_u8; 32]),
