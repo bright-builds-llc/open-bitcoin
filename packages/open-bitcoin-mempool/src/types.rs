@@ -38,11 +38,19 @@ pub enum RbfPolicy {
     Always,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TrucPolicy {
+    Reject,
+    Accept,
+    Enforce,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PolicyConfig {
     pub static_relay_fee_rate: StaticRelayFeeRate,
     pub incremental_relay_fee_rate: IncrementalRelayFeeRate,
     pub rbf_policy: RbfPolicy,
+    pub truc_policy: TrucPolicy,
     pub max_standard_tx_weight: usize,
     pub max_standard_sigops_cost: usize,
     pub max_script_sig_size: usize,
@@ -68,6 +76,7 @@ impl Default for PolicyConfig {
                 DEFAULT_INCREMENTAL_RELAY_FEE_RATE_SATS_PER_KVB,
             )),
             rbf_policy: RbfPolicy::Always,
+            truc_policy: TrucPolicy::Accept,
             max_standard_tx_weight: DEFAULT_MAX_STANDARD_TX_WEIGHT,
             max_standard_sigops_cost: DEFAULT_MAX_STANDARD_SIGOPS_COST,
             max_script_sig_size: DEFAULT_MAX_SCRIPT_SIG_SIZE,

@@ -18,6 +18,7 @@ mod lifecycle_delta_cases;
 #[allow(deprecated)] // Compatibility projection regressions remain until Plans 130-05/130-11.
 mod outcome_cases;
 mod package_admission_cases;
+mod package_policy_cases;
 mod pressure_cases;
 mod prospective_failure_cases;
 mod prospective_oracle_cases;

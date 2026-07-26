@@ -10,10 +10,10 @@ use open_bitcoin_primitives::{Amount, Transaction, TransactionInput, Txid};
 
 use super::{non_standard_spend, sample_chainstate_snapshot, script, spend_transaction, submit};
 use crate::{
-    AdmissionContext, DryRunPackageCommand, HardMemberFailure, Mempool, MempoolEntry, MempoolError,
-    PackageMemberResult, PackageReportError, PackageStatus, PolicyConfig,
-    ReconsiderableMemberFailure, RollingMempoolFeeRate, SubmissionPackage, SubmitPackageCommand,
-    TransactionVirtualSize, WellFormedPackage,
+    AdmissionContext, DryRunPackageCommand, FeeRate, HardMemberFailure, Mempool, MempoolEntry,
+    MempoolError, PackageMemberResult, PackageReportError, PackageStatus, PolicyConfig,
+    ReconsiderableMemberFailure, RollingMempoolFeeRate, StaticRelayFeeRate, SubmissionPackage,
+    SubmitPackageCommand, TransactionVirtualSize, WellFormedPackage,
 };
 
 fn verify_flags() -> ScriptVerifyFlags {
@@ -36,6 +36,17 @@ fn package(transactions: Vec<Transaction>) -> WellFormedPackage {
 fn invalid_script_transaction(mut transaction: Transaction) -> Transaction {
     transaction.inputs[0].script_sig = script(&[0x01, 0x52]);
     transaction
+}
+
+fn rolling_only_mempool(mut config: PolicyConfig) -> Mempool {
+    config.static_relay_fee_rate = StaticRelayFeeRate::new(FeeRate::ZERO);
+    let mut mempool = Mempool::new(config);
+    mempool
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(
+            1_000,
+        )))
+        .expect("rolling fixture");
+    mempool
 }
 
 #[test]
@@ -187,9 +198,7 @@ fn singleton_pre_script_policy_failure_executes_zero_scripts() {
     // Assert
     assert!(matches!(
         result.report.members(),
-        [PackageMemberResult::Reconsiderable(
-            ReconsiderableMemberFailure::PackageFee { .. }
-        )]
+        [PackageMemberResult::HardRejected(_)]
     ));
     assert_eq!(
         super::super::package_admission::script_check_count_for_test(),
@@ -301,7 +310,7 @@ fn reconsiderable_parent_and_child_succeed_as_residual_group() {
     let child_txid = transaction_txid(&child).expect("child txid");
     let submission = SubmissionPackage::try_from_package(package(vec![parent, child]), &snapshot)
         .expect("submission refinement");
-    let mut mempool = Mempool::default();
+    let mut mempool = rolling_only_mempool(PolicyConfig::default());
 
     // Act
     let result = mempool
@@ -348,7 +357,7 @@ fn residual_failure_preserves_live_state() {
         499_999_900,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let mempool = Mempool::default();
+    let mempool = rolling_only_mempool(PolicyConfig::default());
     let before = mempool.complete_snapshot();
 
     // Act
@@ -366,6 +375,10 @@ fn residual_failure_preserves_live_state() {
 
     // Assert
     assert_eq!(result.report.status(), &PackageStatus::Failed);
+    assert!(result.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::PackageFee { .. })
+    )));
     assert_eq!(mempool.complete_snapshot(), before);
 }
 
@@ -647,7 +660,7 @@ fn residual_overlay_composition_failure_is_returned_without_mutation() {
         499_999_999,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let mut mempool = Mempool::default();
+    let mut mempool = rolling_only_mempool(PolicyConfig::default());
     mempool.spent_outpoints.insert(
         transaction.inputs[0].previous_output.clone(),
         Txid::from_byte_array([93; 32]),
@@ -689,7 +702,7 @@ fn residual_fee_group_failure_is_returned_without_mutation() {
         499_994_000,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let mempool = Mempool::default();
+    let mempool = rolling_only_mempool(PolicyConfig::default());
     let before = mempool.complete_snapshot();
     super::super::package_admission::force_residual_fee_group_error_for_test(true);
 
@@ -710,6 +723,49 @@ fn residual_fee_group_failure_is_returned_without_mutation() {
         result,
         Err(MempoolError::InternalInvariant { .. })
     ));
+    assert_eq!(mempool.complete_snapshot(), before);
+}
+
+#[test]
+fn residual_hard_fee_failure_is_reported_without_mutation() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let parent = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_999,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = spend_transaction(
+        parent_txid,
+        0,
+        499_994_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mempool = rolling_only_mempool(PolicyConfig::default());
+    let before = mempool.complete_snapshot();
+    super::super::package_admission::force_residual_fee_group_hard_for_test(true);
+
+    // Act
+    let result = mempool
+        .dry_run_package(
+            DryRunPackageCommand {
+                package: package(vec![parent, child]),
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("typed hard failure");
+    super::super::package_admission::force_residual_fee_group_hard_for_test(false);
+
+    // Assert
+    assert!(result.report.members().iter().all(|member| matches!(
+        member,
+        PackageMemberResult::HardRejected(HardMemberFailure::Policy { .. })
+    )));
     assert_eq!(mempool.complete_snapshot(), before);
 }
 
@@ -759,7 +815,7 @@ fn residual_pre_script_policy_failure_discards_working_overlay() {
     );
     let parent_txid = transaction_txid(&parent).expect("parent txid");
     let child = non_standard_spend(parent_txid);
-    let mempool = Mempool::default();
+    let mempool = rolling_only_mempool(PolicyConfig::default());
     let before = mempool.complete_snapshot();
 
     // Act
@@ -800,7 +856,7 @@ fn residual_limit_failure_discards_working_overlay() {
         499_994_000,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let mempool = Mempool::new(PolicyConfig {
+    let mempool = rolling_only_mempool(PolicyConfig {
         max_ancestor_count: 1,
         ..PolicyConfig::default()
     });
@@ -844,7 +900,7 @@ fn residual_script_failure_discards_working_overlay() {
         499_994_000,
         TransactionInput::SEQUENCE_FINAL,
     ));
-    let mempool = Mempool::default();
+    let mempool = rolling_only_mempool(PolicyConfig::default());
     let before = mempool.complete_snapshot();
 
     // Act

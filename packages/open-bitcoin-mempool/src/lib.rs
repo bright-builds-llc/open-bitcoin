@@ -35,9 +35,10 @@ pub use fee::rolling::{
     ROLLING_FEE_HALFLIFE_SECONDS, ROLLING_FEE_UPDATE_INTERVAL_SECONDS, RollingFeeState,
 };
 pub use fee::{
-    EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate, PackageFeeFloorAssessment,
-    RollingMempoolFeeRate, StaticRelayFeeRate, effective_admission_fee_rate,
-    evaluate_package_fee_floors,
+    CandidateFees, EffectiveAdmissionFeeRate, FeeRate, IncrementalRelayFeeRate, PackageFeeError,
+    PackageFeeFloorAssessment, PackageFeeGroupAssessment, PackageFeeMember, RollingMempoolFeeRate,
+    StaticRelayFeeRate, effective_admission_fee_rate, evaluate_package_fee_floors,
+    evaluate_package_fee_group,
 };
 pub use outcome::{MempoolOutcome, MempoolOutcomeLabel, MempoolRejectionCategory};
 pub use package::{
@@ -66,7 +67,7 @@ pub use resource::{
 };
 pub use types::{
     AdmissionResult, AggregateStats, DEFAULT_MEMPOOL_EXPIRY_HOURS, MempoolEntry, PolicyConfig,
-    RbfPolicy,
+    RbfPolicy, TrucPolicy,
 };
 
 /// Synthetic height used for in-mempool parents.

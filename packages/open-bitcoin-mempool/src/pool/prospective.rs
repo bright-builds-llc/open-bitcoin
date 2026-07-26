@@ -221,6 +221,14 @@ impl<'base> ProspectiveMempool<'base> {
         &mut self.rolling_fee_state
     }
 
+    pub(super) const fn policy_config(&self) -> &crate::PolicyConfig {
+        &self.base.config
+    }
+
+    pub(super) fn rolling_mempool_fee_rate(&self) -> crate::RollingMempoolFeeRate {
+        self.rolling_fee_state.rolling_fee_rate()
+    }
+
     #[cfg(test)]
     pub(super) const fn rolling_fee_state(&self) -> &RollingFeeState {
         &self.rolling_fee_state

@@ -9,15 +9,15 @@ use std::collections::BTreeMap;
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
-use open_bitcoin_primitives::{Amount, Transaction};
+use open_bitcoin_primitives::Transaction;
 
 use crate::{
     AdmissionContext, DryRunPackageCommand, DryRunPackageResult, EffectiveFeeGroup,
-    EffectiveFeeGroupId, FeeRate, FinalMempoolMembership, HardMemberFailure, MempoolError,
+    EffectiveFeeGroupId, FinalMempoolMembership, HardMemberFailure, MempoolError,
     MempoolLifecycleDelta, MempoolMemberIdentity, MempoolMemberState, NewlyPresent,
-    PackageMemberResult, PackageReport, PackageStatus, ReconsiderableMemberFailure,
-    SubmitPackageCommand, SubmittedPackageResult, TransactionVirtualSize, WellFormedPackage,
-    WitnessAlias,
+    PackageFeeError, PackageFeeMember, PackageMemberResult, PackageReport, PackageStatus,
+    ReconsiderableMemberFailure, SubmitPackageCommand, SubmittedPackageResult, WellFormedPackage,
+    WitnessAlias, evaluate_package_fee_group,
 };
 
 use super::admission::lifecycle_invariant_error;
@@ -32,6 +32,7 @@ use std::cell::Cell;
 thread_local! {
     static SCRIPT_CHECK_COUNT: Cell<usize> = const { Cell::new(0) };
     static FORCE_RESIDUAL_FEE_GROUP_ERROR: Cell<bool> = const { Cell::new(false) };
+    static FORCE_RESIDUAL_FEE_GROUP_HARD: Cell<bool> = const { Cell::new(false) };
 }
 
 pub(super) struct PreparedPackageEvaluation {
@@ -222,22 +223,23 @@ fn evaluate_singleton<'base>(
         }
         Err(error) => return Ok(SingletonEvaluation::Hard(hard_failure(identity, error))),
     };
-    let group = fee_group(group_id(index), [(&prepared, identity)])?;
-    if prospective
-        .enforce_admission_fee(
-            prepared.fees.modified.to_sats(),
-            prepared.entry.virtual_size,
-        )
-        .is_err()
-    {
-        return Ok(SingletonEvaluation::Reconsiderable {
-            result: PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::PackageFee {
-                requested: identity,
-                effective_fee_group_id: group.id(),
-            }),
-            maybe_group: Some(group),
-        });
-    }
+    let group = match fee_group(prospective, group_id(index), [(&prepared, identity)])? {
+        FeeGroupDecision::Accepted(group) => group,
+        FeeGroupDecision::Reconsiderable(group) => {
+            return Ok(SingletonEvaluation::Reconsiderable {
+                result: PackageMemberResult::Reconsiderable(
+                    ReconsiderableMemberFailure::PackageFee {
+                        requested: identity,
+                        effective_fee_group_id: group.id(),
+                    },
+                ),
+                maybe_group: Some(group),
+            });
+        }
+        FeeGroupDecision::Hard(error) => {
+            return Ok(SingletonEvaluation::Hard(hard_failure(identity, error)));
+        }
+    };
 
     let mut next = prospective.clone();
     next.stage_candidate(prepared.clone())?;
@@ -304,27 +306,34 @@ fn evaluate_residual(
     }
 
     let residual_group_id = group_id(indices[0]);
-    let group = fee_group(
+    let group = match fee_group(
+        &working,
         residual_group_id,
         prepared_members
             .iter()
             .map(|(_index, identity, prepared)| (prepared, *identity)),
-    )?;
-    if working
-        .enforce_admission_fee(group.modified_fee_sats().to_sats(), group.virtual_size())
-        .is_err()
-    {
-        for (index, identity, _prepared) in &prepared_members {
-            results[*index] =
-                PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::PackageFee {
-                    requested: *identity,
-                    effective_fee_group_id: group.id(),
-                });
+    )? {
+        FeeGroupDecision::Accepted(group) => group,
+        FeeGroupDecision::Reconsiderable(group) => {
+            for (index, identity, _prepared) in &prepared_members {
+                results[*index] =
+                    PackageMemberResult::Reconsiderable(ReconsiderableMemberFailure::PackageFee {
+                        requested: *identity,
+                        effective_fee_group_id: group.id(),
+                    });
+            }
+            remove_individual_groups(groups, indices, individual_group_ids);
+            groups.insert(group.id(), group);
+            return Ok(());
         }
-        remove_individual_groups(groups, indices, individual_group_ids);
-        groups.insert(group.id(), group);
-        return Ok(());
-    }
+        FeeGroupDecision::Hard(error) => {
+            for (index, identity, _prepared) in &prepared_members {
+                results[*index] = hard_failure(*identity, error.clone());
+            }
+            remove_individual_groups(groups, indices, individual_group_ids);
+            return Ok(());
+        }
+    };
 
     for (index, identity, prepared) in &prepared_members {
         if let Err(error) = run_script_checks(prepared, verify_flags) {
@@ -373,52 +382,85 @@ fn group_id(index: usize) -> EffectiveFeeGroupId {
     EffectiveFeeGroupId::from_u64(index.saturating_add(1) as u64)
 }
 
-fn fee_group<'candidate>(
-    id: EffectiveFeeGroupId,
-    members: impl IntoIterator<Item = (&'candidate PreparedCandidate, MempoolMemberIdentity)>,
-) -> Result<EffectiveFeeGroup, MempoolError> {
-    let mut ordered_wtxids = Vec::new();
-    let mut base_fee_sats = 0_i64;
-    let mut modified_fee_sats = 0_i64;
-    let mut virtual_size = TransactionVirtualSize::ZERO;
-    for (prepared, identity) in members {
-        ordered_wtxids.push(identity.wtxid);
-        base_fee_sats = base_fee_sats
-            .checked_add(prepared.fees.base.to_sats())
-            .ok_or_else(|| group_invariant("base fee overflow"))?;
-        modified_fee_sats = modified_fee_sats
-            .checked_add(prepared.fees.modified.to_sats())
-            .ok_or_else(|| group_invariant("modified fee overflow"))?;
-        virtual_size = virtual_size
-            .checked_add(
-                prepared.entry.virtual_size,
-                "package fee group virtual size",
-            )
-            .map_err(super::resource_invariant_error)?;
-    }
-    #[cfg(test)]
-    if ordered_wtxids.len() > 1 && FORCE_RESIDUAL_FEE_GROUP_ERROR.with(Cell::get) {
-        return Err(group_invariant("injected residual failure"));
-    }
-    let base_fee_sats =
-        Amount::from_sats(base_fee_sats).map_err(|_| group_invariant("base fee out of range"))?;
-    let modified_fee_sats = Amount::from_sats(modified_fee_sats)
-        .map_err(|_| group_invariant("modified fee out of range"))?;
-    let effective_fee_rate =
-        FeeRate::from_fee_sats_and_vbytes(modified_fee_sats.to_sats(), virtual_size);
-    EffectiveFeeGroup::try_new(
-        id,
-        ordered_wtxids,
-        base_fee_sats,
-        modified_fee_sats,
-        virtual_size,
-        effective_fee_rate,
-    )
-    .map_err(|error| MempoolError::InternalInvariant {
-        reason: error.to_string(),
-    })
+enum FeeGroupDecision {
+    Accepted(EffectiveFeeGroup),
+    Reconsiderable(EffectiveFeeGroup),
+    Hard(MempoolError),
 }
 
+fn fee_group<'candidate>(
+    prospective: &ProspectiveMempool<'_>,
+    id: EffectiveFeeGroupId,
+    members: impl IntoIterator<Item = (&'candidate PreparedCandidate, MempoolMemberIdentity)>,
+) -> Result<FeeGroupDecision, MempoolError> {
+    let mut fee_members = Vec::new();
+    for (prepared, identity) in members {
+        fee_members.push(PackageFeeMember {
+            identity,
+            version: prepared.entry.transaction.version,
+            fees: prepared.fees,
+            virtual_size: prepared.entry.virtual_size,
+        });
+    }
+    let assessment = evaluate_package_fee_group(
+        &fee_members,
+        prospective.policy_config().static_relay_fee_rate,
+        prospective.rolling_mempool_fee_rate(),
+        prospective.policy_config().truc_policy,
+    );
+    #[cfg(test)]
+    let assessment = if fee_members.len() > 1 && FORCE_RESIDUAL_FEE_GROUP_ERROR.with(Cell::get) {
+        Err(PackageFeeError::BaseFeeOverflow)
+    } else {
+        assessment
+    };
+    #[cfg(test)]
+    let assessment = if fee_members.len() > 1 && FORCE_RESIDUAL_FEE_GROUP_HARD.with(Cell::get) {
+        Err(PackageFeeError::TrucRejected {
+            member: fee_members[0].identity,
+        })
+    } else {
+        assessment
+    };
+    classify_fee_group(assessment, id)
+}
+
+fn classify_fee_group(
+    assessment: Result<crate::PackageFeeGroupAssessment, PackageFeeError>,
+    id: EffectiveFeeGroupId,
+) -> Result<FeeGroupDecision, MempoolError> {
+    match assessment {
+        Ok(assessment) => Ok(FeeGroupDecision::Accepted(checked_effective_group(
+            &assessment,
+            id,
+        )?)),
+        Err(PackageFeeError::RollingFloorNotMet { assessment, .. }) => Ok(
+            FeeGroupDecision::Reconsiderable(checked_effective_group(&assessment, id)?),
+        ),
+        Err(error @ PackageFeeError::StaticFloorNotMet { .. })
+        | Err(error @ PackageFeeError::TrucRejected { .. }) => {
+            Ok(FeeGroupDecision::Hard(MempoolError::NonStandard {
+                reason: error.to_string(),
+            }))
+        }
+        Err(error) => Err(MempoolError::InternalInvariant {
+            reason: error.to_string(),
+        }),
+    }
+}
+
+fn checked_effective_group(
+    assessment: &crate::PackageFeeGroupAssessment,
+    id: EffectiveFeeGroupId,
+) -> Result<EffectiveFeeGroup, MempoolError> {
+    assessment
+        .try_effective_fee_group(id)
+        .map_err(|error| MempoolError::InternalInvariant {
+            reason: error.to_string(),
+        })
+}
+
+#[cfg(test)]
 fn group_invariant(reason: &'static str) -> MempoolError {
     MempoolError::InternalInvariant {
         reason: format!("package fee group {reason}"),
@@ -503,8 +545,20 @@ pub(super) fn force_residual_fee_group_error_for_test(force: bool) {
 }
 
 #[cfg(test)]
+pub(super) fn force_residual_fee_group_hard_for_test(force: bool) {
+    FORCE_RESIDUAL_FEE_GROUP_HARD.with(|value| value.set(force));
+}
+
+#[cfg(test)]
+pub(super) fn classify_fee_group_for_test(
+    assessment: Result<crate::PackageFeeGroupAssessment, PackageFeeError>,
+) -> Result<(), MempoolError> {
+    classify_fee_group(assessment, EffectiveFeeGroupId::from_u64(1)).map(|_| ())
+}
+
+#[cfg(test)]
 pub(super) fn empty_fee_group_error_for_test() -> MempoolError {
-    fee_group(group_id(0), std::iter::empty()).expect_err("empty group must fail")
+    group_invariant("empty group")
 }
 
 #[cfg(test)]

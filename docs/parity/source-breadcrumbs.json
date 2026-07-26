@@ -641,6 +641,19 @@
       ]
     },
     {
+      "label": "mempool-package-fee-policy",
+      "files": [
+        "packages/open-bitcoin-mempool/src/pool/tests/package_policy_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/doc/policy/packages.md",
+        "packages/bitcoin-knots/src/kernel/mempool_options.h",
+        "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_truc.py"
+      ]
+    },
+    {
       "label": "mempool-staged-admission",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/candidate.rs",

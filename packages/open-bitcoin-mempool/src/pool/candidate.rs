@@ -11,10 +11,10 @@ use open_bitcoin_consensus::{
     TransactionInputContext, TransactionValidationContext, check_transaction, check_tx_inputs,
     is_final_transaction, sequence_locks, transaction_txid, transaction_wtxid, verify_input_script,
 };
-use open_bitcoin_primitives::{Amount, Transaction};
+use open_bitcoin_primitives::Transaction;
 
 use crate::{
-    AdmissionContext, Mempool, MempoolEntry, MempoolError, TransactionVirtualSize,
+    AdmissionContext, CandidateFees, Mempool, MempoolEntry, MempoolError, TransactionVirtualSize,
     transaction_sigops_cost, transaction_weight_and_virtual_size, validate_standard_transaction,
 };
 
@@ -33,13 +33,6 @@ impl CandidateMempoolView for Mempool {
     fn maybe_entry(&self, txid: &open_bitcoin_primitives::Txid) -> Option<&MempoolEntry> {
         self.entries.get(txid)
     }
-}
-
-/// The base and policy-modified fee facts prepared for admission.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct CandidateFees {
-    pub(super) base: Amount,
-    pub(super) modified: Amount,
 }
 
 /// Canonical candidate facts that are complete before contextual script execution.
