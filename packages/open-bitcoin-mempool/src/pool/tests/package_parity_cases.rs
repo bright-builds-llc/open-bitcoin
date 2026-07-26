@@ -11,12 +11,11 @@
 //! Integrated Phase 132 package-policy closure against pinned Knots behavior.
 
 use std::cell::Cell;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{
     ConsensusParams, ScriptVerifyFlags, TransactionInputContext, transaction_txid,
-    transaction_wtxid,
 };
 use open_bitcoin_primitives::{
     Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
@@ -38,11 +37,11 @@ use crate::pool::prospective::ProspectiveMempool;
 use crate::{
     AdmissionContext, CandidateFees, DryRunPackageCommand, EffectiveFeeGroup,
     EffectiveFeeGroupError, EffectiveFeeGroupId, EphemeralPolicy, FeeRate, HardMemberFailure,
-    IncrementalRelayFeeRate, Mempool, MempoolCapacity, MempoolEntry, MempoolEntryMetadata,
-    MempoolError, MempoolLifecycleDelta, MempoolMemberIdentity, PackageMemberResult, PackageReport,
-    PackageReportError, PackageShapeError, PackageStatus, PolicyConfig, StaticRelayFeeRate,
-    SubmissionPackage, SubmissionPackageKind, SubmitPackageCommand, TransactionVirtualSize,
-    TrucPolicy, WellFormedPackage, MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT,
+    IncrementalRelayFeeRate, MAX_PACKAGE_COUNT, MAX_PACKAGE_WEIGHT, Mempool, MempoolCapacity,
+    MempoolEntry, MempoolEntryMetadata, MempoolError, MempoolLifecycleDelta, MempoolMemberIdentity,
+    PackageMemberResult, PackageReport, PackageReportError, PackageShapeError, PackageStatus,
+    PolicyConfig, StaticRelayFeeRate, SubmissionPackage, SubmissionPackageKind,
+    SubmitPackageCommand, TransactionVirtualSize, TrucPolicy, WellFormedPackage,
     recompute_resource_ledger, validate_standard_transaction,
 };
 
@@ -60,7 +59,7 @@ fn consensus_params() -> ConsensusParams {
 }
 
 fn empty_snapshot() -> ChainstateSnapshot {
-    ChainstateSnapshot::new(Vec::new(), BTreeMap::new().into_iter().collect(), BTreeMap::new().into_iter().collect())
+    ChainstateSnapshot::new(Vec::new(), HashMap::new(), HashMap::new())
 }
 
 fn identity(byte: u8) -> MempoolMemberIdentity {
@@ -81,7 +80,7 @@ fn policy_transaction(id: u8, version: i32, inputs: Vec<OutPoint>) -> Transactio
                 sequence: TransactionInput::MAX_SEQUENCE_NONFINAL,
                 witness: ScriptWitness::default(),
             })
-            .collect(),
+            .collect::<Vec<_>>(),
         outputs: vec![TransactionOutput {
             value: Amount::from_sats(i64::from(id) + 1).expect("valid output"),
             script_pubkey: ScriptBuf::default(),
@@ -208,8 +207,7 @@ fn output_policy_result(
         spent_output: open_bitcoin_consensus::SpentOutput {
             value: Amount::from_sats(10_000).expect("valid spent value"),
             script_pubkey: script(&[
-                0xa9, 0x14, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-                0x87,
+                0xa9, 0x14, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0x87,
             ]),
             is_coinbase: false,
         },
@@ -262,7 +260,7 @@ fn max_bound_shape_fingerprint_order_and_try_from_package_refinement_are_pinned(
                     TransactionInput::SEQUENCE_FINAL,
                 )
             })
-            .collect(),
+            .collect::<Vec<_>>(),
     );
     let first = WellFormedPackage::try_from(vec![members[0].clone(), members[1].clone()])
         .expect("first permutation");
@@ -410,7 +408,10 @@ fn empty_duplicate_and_inconsistent_rate_fee_group_validation_is_checked() {
     );
 
     // Assert
-    assert_eq!(empty_fee_group, Err(EffectiveFeeGroupError::EmptyMembership));
+    assert_eq!(
+        empty_fee_group,
+        Err(EffectiveFeeGroupError::EmptyMembership)
+    );
     assert!(matches!(
         duplicate_fee_group,
         Err(EffectiveFeeGroupError::DuplicateMembership { .. })
@@ -499,8 +500,7 @@ fn stale_revision_sparse_patch_rejects_before_apply_without_mutation() {
         499_999_000,
         TransactionInput::SEQUENCE_FINAL,
     );
-    let package =
-        WellFormedPackage::try_from(vec![package_transaction.clone()]).expect("package");
+    let package = WellFormedPackage::try_from(vec![package_transaction.clone()]).expect("package");
     let mut mempool = Mempool::default();
     let evaluation = evaluate_package_for_test(
         &mempool,
@@ -529,9 +529,16 @@ fn stale_revision_sparse_patch_rejects_before_apply_without_mutation() {
     let stale = mempool.apply_prepared(patch);
 
     // Assert
-    assert!(matches!(stale, Err(MempoolError::StalePreparedTransition { .. })));
+    assert!(matches!(
+        stale,
+        Err(MempoolError::StalePreparedTransition { .. })
+    ));
     assert_eq!(mempool.complete_snapshot(), before_apply);
-    assert!(mempool.entry(&transaction_txid(&package_transaction).expect("txid")).is_none());
+    assert!(
+        mempool
+            .entry(&transaction_txid(&package_transaction).expect("txid"))
+            .is_none()
+    );
 }
 
 #[test]
@@ -754,13 +761,15 @@ fn max_bound_generated_sparse_overlay_recompute_has_zero_clone_and_one_trim() {
         ),
         ..PolicyConfig::default()
     };
-    let removed =
-        trim_prospective_to_capacity(&mut prospective, &config).expect("one final trim");
+    let removed = trim_prospective_to_capacity(&mut prospective, &config).expect("one final trim");
     let recomputed = prospective
         .materialize_for_test()
         .expect("test-only full recompute");
     let ledger = recompute_resource_ledger(&recomputed.entries, &recomputed.spent_outpoints)
         .expect("resource recompute");
+    let full_clone_count = prospective.full_clone_count_for_test();
+    let full_recompute_count = prospective.full_recompute_count_for_test();
+    let trim_invocations = prospective.trim_invocations_for_test();
     let patch = prospective
         .prepare_patch(MempoolLifecycleDelta::empty())
         .expect("revision-bound patch");
@@ -769,13 +778,9 @@ fn max_bound_generated_sparse_overlay_recompute_has_zero_clone_and_one_trim() {
     assert_eq!(removed.len(), 1);
     assert_eq!(recomputed.entries.len(), MAX_PACKAGE_COUNT - 1);
     assert_eq!(recomputed.resource_ledger, ledger);
-    assert_eq!(prospective.full_clone_count_for_test(), 0, "zero clone");
-    assert_eq!(
-        prospective.full_recompute_count_for_test(),
-        0,
-        "zero recompute"
-    );
-    assert_eq!(prospective.trim_invocations_for_test(), 1, "one trim");
+    assert_eq!(full_clone_count, 0, "zero clone");
+    assert_eq!(full_recompute_count, 0, "zero recompute");
+    assert_eq!(trim_invocations, 1, "one trim");
     let mut applied = mempool.clone();
     applied.apply_prepared(patch).expect("sparse patch apply");
     assert_eq!(applied.entries(), &recomputed.entries);
@@ -823,10 +828,12 @@ fn max_bound_package_path_runs_one_final_trim_and_keeps_ordered_report() {
     // Assert
     assert_eq!(result.report.members().len(), MAX_PACKAGE_COUNT);
     assert_eq!(package_trim_count_for_test(), 1);
-    assert!(result
-        .report
-        .members()
-        .iter()
-        .all(|member| matches!(member, PackageMemberResult::FinallyPresent(_))));
+    assert!(
+        result
+            .report
+            .members()
+            .iter()
+            .all(|member| matches!(member, PackageMemberResult::FinallyPresent(_)))
+    );
     assert!(mempool.entries().is_empty());
 }
