@@ -4,26 +4,21 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
-use open_bitcoin_consensus::{
-    ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid,
-    validate_transaction_with_context,
-};
+use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_primitives::Transaction;
 
 use crate::{
-    AdmissionContext, AdmissionResult, FinalMempoolMembership, MempoolEntry, MempoolError,
-    MempoolLifecycleDelta, MempoolLifecycleRemoval, MempoolMemberIdentity, MempoolMemberState,
-    MempoolOutcome, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear,
-    MempoolRetryClearCause, MempoolTransition, TransactionVirtualSize,
-    effective_admission_fee_rate, transaction_sigops_cost, transaction_weight_and_virtual_size,
-    validate_standard_transaction,
+    AdmissionContext, AdmissionResult, FinalMempoolMembership, MempoolError, MempoolLifecycleDelta,
+    MempoolLifecycleRemoval, MempoolMemberIdentity, MempoolMemberState, MempoolOutcome,
+    MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause,
+    MempoolTransition, effective_admission_fee_rate,
 };
 
+use super::candidate::{check_candidate_scripts, prepare_candidate};
 use super::pressure::trim_to_size;
 use super::{
-    Mempool, accept_outcome, build_validation_context, derive_input_contexts,
-    enforce_min_relay_fee, recompute_state, resource_invariant_error,
-    serialization_validation_error, validate_limits,
+    Mempool, accept_outcome, enforce_min_relay_fee, recompute_state, resource_invariant_error,
+    validate_limits,
 };
 
 pub(super) struct CommittedAdmission {
@@ -82,38 +77,19 @@ impl Mempool {
         consensus_params: ConsensusParams,
         context: AdmissionContext,
     ) -> Result<CommittedAdmission, MempoolError> {
-        let txid = transaction_txid(&transaction)
-            .map_err(|source| serialization_validation_error("transaction txid", source))?;
-        if self.entries.contains_key(&txid) {
-            return Err(MempoolError::DuplicateTransaction { txid });
-        }
-
-        let input_contexts = derive_input_contexts(&transaction, chainstate, &self.entries)?;
-        let (weight, virtual_size_bytes) = transaction_weight_and_virtual_size(&transaction)?;
-        let virtual_size = TransactionVirtualSize::new(virtual_size_bytes);
-        let sigops_cost = transaction_sigops_cost(&transaction, &input_contexts)?;
-        validate_standard_transaction(
-            &transaction,
-            &input_contexts,
-            &self.config,
-            weight,
-            sigops_cost,
-        )?;
-
-        let validation_context =
-            build_validation_context(chainstate, input_contexts, verify_flags, consensus_params);
-        let fee = validate_transaction_with_context(&transaction, &validation_context).map_err(
-            |source| MempoolError::Validation {
-                reason: source.to_string(),
-            },
-        )?;
+        let prepared = prepare_candidate(self, transaction, chainstate, consensus_params, context)?;
+        let txid = prepared.entry.txid;
+        let wtxid = prepared.entry.wtxid;
+        let fee = prepared.fees.modified;
+        let virtual_size = prepared.entry.virtual_size;
         let effective_fee_rate = effective_admission_fee_rate(
             self.config.static_relay_fee_rate,
             self.rolling_mempool_fee_rate(),
         );
         enforce_min_relay_fee(effective_fee_rate, fee.to_sats(), virtual_size)?;
-        let direct_conflicts = self.direct_conflicts(&transaction);
-        let replace_set = self.replacement_set(&transaction, fee.to_sats(), virtual_size)?;
+        let direct_conflicts = self.direct_conflicts(&prepared.entry.transaction);
+        let replace_set =
+            self.replacement_set(&prepared.entry.transaction, fee.to_sats(), virtual_size)?;
         let replacement_members = replace_set
             .iter()
             .filter_map(|replaced_txid| {
@@ -133,25 +109,11 @@ impl Mempool {
             })
             .collect::<Vec<_>>();
 
-        let wtxid = transaction_wtxid(&transaction)
-            .map_err(|source| serialization_validation_error("transaction wtxid", source))?;
         let mut prospective_entries = self.entries.clone();
         for conflict_txid in &replace_set {
             prospective_entries.remove(conflict_txid);
         }
-        prospective_entries.insert(
-            txid,
-            MempoolEntry::new(
-                transaction,
-                txid,
-                wtxid,
-                fee,
-                virtual_size,
-                weight,
-                sigops_cost,
-                context.metadata,
-            ),
-        );
+        prospective_entries.insert(txid, prepared.entry.clone());
 
         let prospective_state =
             recompute_state(prospective_entries).map_err(resource_invariant_error)?;
@@ -193,6 +155,8 @@ impl Mempool {
             .map_err(lifecycle_invariant_error)?;
         }
         let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
+
+        check_candidate_scripts(&prepared, verify_flags)?;
 
         self.entries = trimmed_state.entries;
         self.spent_outpoints = trimmed_state.spent_outpoints;

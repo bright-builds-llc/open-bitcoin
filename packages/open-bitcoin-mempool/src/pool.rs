@@ -12,9 +12,9 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
-use open_bitcoin_consensus::{
-    ConsensusParams, ScriptVerifyFlags, TransactionInputContext, TransactionValidationContext,
-};
+use open_bitcoin_consensus::TransactionInputContext;
+#[cfg(test)]
+use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags, TransactionValidationContext};
 use open_bitcoin_primitives::{OutPoint, Transaction, Txid};
 
 use crate::fee::rolling::RollingFeeState;
@@ -27,6 +27,7 @@ use crate::{
 
 mod admission;
 mod admission_outcome;
+mod candidate;
 mod expiry;
 mod lifecycle;
 mod pressure;
@@ -307,6 +308,7 @@ fn derive_input_contexts(
     Ok(input_contexts)
 }
 
+#[cfg(test)]
 fn build_validation_context(
     chainstate: &ChainstateSnapshot,
     input_contexts: Vec<TransactionInputContext>,

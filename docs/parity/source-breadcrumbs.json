@@ -640,6 +640,18 @@
       ]
     },
     {
+      "label": "mempool-staged-admission",
+      "files": [
+        "packages/open-bitcoin-mempool/src/pool/candidate.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/revision_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+        "packages/bitcoin-knots/src/txmempool.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "mempool-entry-context",
       "files": [
         "packages/open-bitcoin-mempool/src/context.rs",

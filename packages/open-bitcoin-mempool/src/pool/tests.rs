@@ -19,6 +19,7 @@ mod lifecycle_delta_cases;
 mod outcome_cases;
 mod pressure_cases;
 mod resource_cases;
+mod revision_cases;
 mod rolling_fee_cases;
 mod sustained_pressure_cases;
 
