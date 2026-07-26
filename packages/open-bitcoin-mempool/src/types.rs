@@ -301,6 +301,45 @@ mod tests {
     }
 
     #[test]
+    fn fee_rate_arithmetic_clamps_extremes_without_panicking_or_wrapping() {
+        // Arrange
+        let maximum_size = TransactionVirtualSize::new(usize::MAX);
+        let maximum_rate = FeeRate::from_sats_per_kvb(i64::MAX);
+        let minimum_rate = FeeRate::from_sats_per_kvb(i64::MIN);
+
+        // Act
+        let maximum_fee = maximum_rate.fee_for_virtual_size(maximum_size);
+        let minimum_fee = minimum_rate.fee_for_virtual_size(maximum_size);
+        let maximum_derived =
+            FeeRate::from_fee_sats_and_vbytes(i64::MAX, TransactionVirtualSize::new(1));
+        let minimum_derived =
+            FeeRate::from_fee_sats_and_vbytes(i64::MIN, TransactionVirtualSize::new(1));
+
+        // Assert
+        assert_eq!(maximum_fee, i64::MAX);
+        assert_eq!(minimum_fee, i64::MIN);
+        assert_eq!(maximum_derived.sats_per_kvb(), i64::MAX);
+        assert_eq!(minimum_derived.sats_per_kvb(), i64::MIN);
+    }
+
+    #[test]
+    fn fee_rate_arithmetic_preserves_signed_minimum_and_zero_size_rules() {
+        // Arrange
+        let negative_rate = FeeRate::from_sats_per_kvb(-1);
+        let zero_rate = FeeRate::ZERO;
+        let one_vbyte = TransactionVirtualSize::new(1);
+        let maximum_size = TransactionVirtualSize::new(usize::MAX);
+
+        // Act / Assert
+        assert_eq!(negative_rate.fee_for_virtual_size(one_vbyte), -1);
+        assert_eq!(zero_rate.fee_for_virtual_size(maximum_size), 0);
+        assert_eq!(
+            FeeRate::from_sats_per_kvb(i64::MAX).fee_for_virtual_size(TransactionVirtualSize::ZERO),
+            0
+        );
+    }
+
+    #[test]
     fn descendant_score_prefers_the_descendant_package_rate_when_higher() {
         let fee = Amount::from_sats(100).expect("valid amount");
         let mut entry = MempoolEntry::new(

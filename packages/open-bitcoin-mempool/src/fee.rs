@@ -26,8 +26,7 @@ use crate::pool::MempoolMemberIdentity;
 use crate::resource::{ResourceAccountingError, TransactionVirtualSize};
 use crate::types::TrucPolicy;
 
-const SATOSHIS_PER_KILOVBYTE: i64 = 1_000;
-const FEE_RATE_ROUNDING_ADJUSTMENT: i64 = SATOSHIS_PER_KILOVBYTE - 1;
+const SATOSHIS_PER_KILOVBYTE: i128 = 1_000;
 
 /// A role-neutral fee rate expressed in satoshis per 1,000 virtual bytes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -50,9 +49,12 @@ impl FeeRate {
             return Self::ZERO;
         }
 
-        let virtual_size = i64::try_from(virtual_size.as_usize()).unwrap_or(i64::MAX);
-        let sats_per_kvb =
-            (fee_sats.saturating_mul(SATOSHIS_PER_KILOVBYTE) + virtual_size - 1) / virtual_size;
+        let virtual_size = virtual_size.as_usize() as i128;
+        let sats_per_kvb = clamp_i128_to_i64(checked_ceil_product_ratio(
+            i128::from(fee_sats),
+            SATOSHIS_PER_KILOVBYTE,
+            virtual_size,
+        ));
         Self { sats_per_kvb }
     }
 
@@ -67,10 +69,37 @@ impl FeeRate {
             return 0;
         }
 
-        let virtual_size = i64::try_from(virtual_size.as_usize()).unwrap_or(i64::MAX);
-        (self.sats_per_kvb.saturating_mul(virtual_size) + FEE_RATE_ROUNDING_ADJUSTMENT)
-            / SATOSHIS_PER_KILOVBYTE
+        let virtual_size = virtual_size.as_usize() as i128;
+        let fee = clamp_i128_to_i64(checked_ceil_product_ratio(
+            i128::from(self.sats_per_kvb),
+            virtual_size,
+            SATOSHIS_PER_KILOVBYTE,
+        ));
+        if fee == 0 {
+            return self.sats_per_kvb.signum();
+        }
+        fee
     }
+}
+
+fn checked_ceil_product_ratio(left: i128, right: i128, divisor: i128) -> i128 {
+    let Some(product) = left.checked_mul(right) else {
+        return if left.is_negative() ^ right.is_negative() {
+            i128::MIN
+        } else {
+            i128::MAX
+        };
+    };
+    let rounding_adjustment = if product > 0 { divisor - 1 } else { 0 };
+    product
+        .checked_add(rounding_adjustment)
+        .unwrap_or(i128::MAX)
+        / divisor
+}
+
+/// Clamps an unrepresentable policy fee or rate to the conservative signed bound.
+fn clamp_i128_to_i64(value: i128) -> i64 {
+    value.clamp(i128::from(i64::MIN), i128::from(i64::MAX)) as i64
 }
 
 impl core::fmt::Display for FeeRate {
@@ -423,4 +452,37 @@ pub fn evaluate_package_fee_group(
         });
     }
     Ok(assessment)
+}
+
+#[cfg(test)]
+mod arithmetic_tests {
+    use super::{checked_ceil_product_ratio, clamp_i128_to_i64};
+
+    #[test]
+    fn checked_ratio_clamps_both_multiplication_overflow_signs() {
+        // Arrange / Act
+        let positive = checked_ceil_product_ratio(i128::MAX, 2, 1_000);
+        let negative = checked_ceil_product_ratio(i128::MIN, 2, 1_000);
+
+        // Assert
+        assert_eq!(positive, i128::MAX);
+        assert_eq!(negative, i128::MIN);
+    }
+
+    #[test]
+    fn checked_ratio_clamps_rounding_adjustment_overflow() {
+        // Arrange / Act
+        let rounded = checked_ceil_product_ratio(i128::MAX, 1, 1_000);
+
+        // Assert
+        assert_eq!(rounded, i128::MAX / 1_000);
+    }
+
+    #[test]
+    fn signed_bound_clamp_preserves_and_limits_values() {
+        // Arrange / Act / Assert
+        assert_eq!(clamp_i128_to_i64(7), 7);
+        assert_eq!(clamp_i128_to_i64(i128::MAX), i64::MAX);
+        assert_eq!(clamp_i128_to_i64(i128::MIN), i64::MIN);
+    }
 }
