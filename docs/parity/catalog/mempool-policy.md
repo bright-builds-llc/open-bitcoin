@@ -485,8 +485,6 @@ deferred.
 
 - Phase 138 adversarial soak and broader public-network pressure validation remain
   outside Phase 131's hermetic PRESS oracle/perf coverage
-- package execution beyond fee-role vocabulary, including pinned TRUC exceptions
-  (Phase 132)
 - complete lifecycle-delta projection across every dependent cache (Phase 134)
 - full snapshot/checkpoint/recovery schema beyond optional metadata fields
   (Phase 135)
@@ -498,8 +496,8 @@ deferred.
 
 ## Follow-up triggers
 
-Update this entry when later phases add accounted-capacity enforcement, dynamic
-rolling-min-fee behavior, package execution, complete cross-cache projection,
+Revisit this entry when the currently deferred general package wire relay
+boundary changes, or when later phases add complete cross-cache projection,
 checkpoint/recovery schema changes, retry scheduling, broad operator-facing
 mempool interfaces, or Knots-compatible mempool file import/export that
 materially changes the externally visible policy surface.
