@@ -592,6 +592,52 @@ fn submit_overlay_composition_failure_is_returned_without_mutation() {
 }
 
 #[test]
+fn later_submit_failure_does_not_commit_an_earlier_accepted_parent() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let parent = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let child = spend_transaction(
+        parent_txid,
+        0,
+        499_997_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let submission =
+        SubmissionPackage::try_from_package(package(vec![parent, child.clone()]), &snapshot)
+            .expect("submission refinement");
+    let mut mempool = Mempool::default();
+    mempool.spent_outpoints.insert(
+        child.inputs[0].previous_output.clone(),
+        Txid::from_byte_array([98; 32]),
+    );
+    let before = mempool.complete_snapshot();
+
+    // Act
+    let error = mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect_err("later overlay conflict");
+
+    // Assert
+    assert!(matches!(error, MempoolError::InternalInvariant { .. }));
+    assert_eq!(mempool.complete_snapshot(), before);
+    assert!(!mempool.entries().contains_key(&parent_txid));
+}
+
+#[test]
 fn residual_overlay_composition_failure_is_returned_without_mutation() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
