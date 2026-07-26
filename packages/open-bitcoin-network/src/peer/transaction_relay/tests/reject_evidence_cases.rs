@@ -207,7 +207,7 @@ fn fixed_tweak_membership_vectors_are_deterministic() {
 }
 
 #[test]
-fn one_million_unique_insertions_do_not_grow_allocation() {
+fn fixed_memory_allocation_survives_one_million_unique_insertions() {
     // Arrange
     let mut evidence = HardRejectEvidence::new(RejectEvidenceTweak::new(31));
     let initial_len = evidence.debug_storage_len();

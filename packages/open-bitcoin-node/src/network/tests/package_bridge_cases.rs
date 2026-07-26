@@ -584,3 +584,80 @@ fn multiple_parent_and_grandchild_candidates_are_excluded_without_fanout_or_serv
     assert_eq!(grandchild_network.relay_serving_info(), serving_before);
     assert_eq!(grandchild_network.relay_fanout_info(), fanout_before);
 }
+
+#[test]
+fn two_reconsiderable_parents_suppress_multi_parent_package_submission() {
+    // Arrange
+    let peer_id = 133_042;
+    let (mut network, coinbase_txid) = package_network(peer_id);
+    let first_parent = spend_transaction(coinbase_txid, 499_999_900);
+    let first_parent_txid = transaction_txid(&first_parent).expect("first parent txid");
+    network
+        .process_peer_transaction_admission_with_provenance(
+            first_parent.clone(),
+            provenance(peer_id, &[peer_id]),
+            80,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("first reconsiderable parent");
+    let second_parent = spend_transaction(Txid::from_byte_array([0x81; 32]), 499_999_800);
+    let second_parent_identity = identity(&second_parent);
+    network
+        .peer_manager
+        .record_reconsiderable_transaction(second_parent_identity.wtxid);
+    let child = Transaction {
+        version: 2,
+        inputs: vec![
+            TransactionInput {
+                previous_output: OutPoint {
+                    txid: first_parent_txid,
+                    vout: 0,
+                },
+                script_sig: script(&[0x01, 0x51]),
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: ScriptWitness::default(),
+            },
+            TransactionInput {
+                previous_output: OutPoint {
+                    txid: second_parent_identity.txid,
+                    vout: 0,
+                },
+                script_sig: script(&[0x01, 0x51]),
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: ScriptWitness::default(),
+            },
+        ],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(499_998_700).expect("amount"),
+            script_pubkey: p2sh_script(),
+        }],
+        lock_time: 0,
+    };
+    network
+        .process_peer_transaction_admission_with_provenance(
+            child,
+            provenance(peer_id, &[peer_id]),
+            81,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("stage two-parent child");
+    crate::ManagedMempool::reset_package_submit_probe_for_test();
+
+    // Act
+    let admission = network
+        .process_peer_transaction_admission_with_provenance(
+            first_parent,
+            provenance(peer_id, &[peer_id]),
+            82,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("two-parent suppression");
+
+    // Assert
+    assert!(matches!(admission, ManagedPeerAdmissionResult::Suppressed));
+    assert_eq!(crate::ManagedMempool::package_submit_count_for_test(), 0);
+    assert_eq!(network.orphan_count(), 1);
+}

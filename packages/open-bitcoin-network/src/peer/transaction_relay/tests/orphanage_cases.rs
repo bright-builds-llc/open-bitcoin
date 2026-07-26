@@ -434,6 +434,31 @@ fn different_deliverer_provenance_is_bounded_deduplicated_and_retains_delivered_
 }
 
 #[test]
+fn announcer_cap_keeps_one_shared_body_under_adversarial_peer_churn() {
+    // Arrange
+    let configured_cap = PHASE133_MAX_ANNOUNCERS_PER_ORPHAN;
+    let mut orphanage = TxOrphanage::new(OrphanPolicy::default());
+    let retained_wtxid = wtxid(102);
+    let announced_peers = 1..=(configured_cap as u64 + 4);
+
+    // Act
+    let _ = orphanage.stage_missing_parent_with_provenance(
+        orphan_input(99, 101, 102, [7], 0),
+        provenance(99, announced_peers.clone()),
+    );
+    for peer_id in announced_peers {
+        let _ = orphanage.add_announcer(retained_wtxid, peer_id);
+    }
+
+    // Assert
+    let retained_associations: usize = (1..=99).map(|peer_id| orphanage.peer_len(peer_id)).sum();
+    assert_eq!(orphanage.len(), 1, "announcers must share one body");
+    assert_eq!(retained_associations, configured_cap);
+    assert!(orphanage.contains(retained_wtxid));
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
 fn late_announcer_missing_body_is_noop_and_existing_body_does_not_refresh_ttl() {
     // Arrange
     let mut orphanage = TxOrphanage::new(OrphanPolicy {
@@ -644,14 +669,60 @@ fn max_reconsiderations_cursor_advances_newest_first_without_graph_aggregation()
 }
 
 #[test]
-fn index_oracle_survives_restage_terminal_feedback_expiry_and_disconnect() {
+fn bounded_parent_traversal_stops_before_an_older_eligible_child() {
     // Arrange
-    let mut orphanage = TxOrphanage::new(policy(10, 10, 2, 10));
+    let traversal_cap = PHASE102_MAX_RECONSIDERATIONS_PER_PARENT;
+    let mut orphanage = TxOrphanage::new(policy(100, 100, 120, traversal_cap));
+    let parent = transaction(80);
+    let parent_txid = txid(170);
+    let parent_wtxid = wtxid(171);
+    for index in 0..=traversal_cap {
+        let child_byte = 180 + index as u8;
+        let _ = orphanage.stage_missing_parent_with_provenance(
+            OrphanStageInput {
+                transaction: transaction(index as i32),
+                ..orphan_input(1, child_byte, child_byte, [170], index as i64)
+            },
+            provenance(1, [1]),
+        );
+    }
+    let mut reconsiderable = ReconsiderableRejectEvidence::new(RejectEvidenceTweak::new(7));
+    reconsiderable.record(ReconsiderableEvidenceKey::Transaction(parent_wtxid));
+    let mut hard = HardRejectEvidence::new(RejectEvidenceTweak::new(8));
+    for index in 1..=traversal_cap {
+        hard.record(wtxid(180 + index as u8));
+    }
+
+    // Act
+    let candidate = orphanage.begin_same_peer_candidate(
+        parent,
+        parent_txid,
+        parent_wtxid,
+        1,
+        &reconsiderable,
+        &hard,
+    );
+
+    // Assert
+    assert!(
+        candidate.is_none(),
+        "the eligible oldest child is beyond the configured traversal cap"
+    );
+    assert_eq!(orphanage.len(), traversal_cap + 1);
+    assert!(orphanage.debug_indexes_match_oracle());
+}
+
+#[test]
+fn coherent_disconnect_expiry_eviction_cleanup_preserves_index_oracle() {
+    // Arrange
+    let mut orphanage = TxOrphanage::new(policy(2, 10, 2, 10));
     let _ = stage_singleton(&mut orphanage, 1, orphan_input(1, 160, 161, [7], 0));
     let _ = stage_singleton(&mut orphanage, 2, orphan_input(2, 160, 161, [8], 1));
     let _ = stage_singleton(&mut orphanage, 3, orphan_input(3, 162, 163, [8], 1));
+    let _ = stage_singleton(&mut orphanage, 4, orphan_input(4, 164, 165, [9], 1));
 
     // Act / Assert
+    assert_eq!(orphanage.len(), 2, "the total cap must evict one body");
     assert!(orphanage.debug_indexes_match_oracle());
     let _ =
         orphanage.record_reconsideration_outcome(wtxid(161), OrphanReconsiderationStatus::Rejected);
