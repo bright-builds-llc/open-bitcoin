@@ -19,8 +19,8 @@ use crate::error::PeerId;
 use crate::{RelayEligibilityDecision, RelayEligibilityReason};
 
 use super::{
-    TxDownloadAction, TxDownloadPolicy, TxDownloadSuppressionReason, TxRelayId,
-    TxRelayIdentityError, TxRelayPeerMode,
+    ReceivedTransactionProvenance, ReceivedTransactionResult, TxDownloadAction, TxDownloadPolicy,
+    TxDownloadSuppressionReason, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -250,6 +250,16 @@ impl TxDownloadScheduler {
         txid: Txid,
         wtxid: Wtxid,
     ) -> Vec<TxDownloadAction> {
+        self.record_received_transaction_with_provenance(peer_id, txid, wtxid)
+            .actions
+    }
+
+    pub fn record_received_transaction_with_provenance(
+        &mut self,
+        peer_id: PeerId,
+        txid: Txid,
+        wtxid: Wtxid,
+    ) -> ReceivedTransactionResult {
         let txid_relay_id = TxRelayId::Txid(txid);
         let wtxid_relay_id = TxRelayId::Wtxid(wtxid);
         let peer_has_in_flight = self
@@ -262,19 +272,36 @@ impl TxDownloadScheduler {
         });
 
         if peer_has_in_flight && !matches_peer_in_flight {
-            return vec![TxDownloadAction::SuppressIdentityMismatch {
-                peer_id,
-                reason: TxDownloadSuppressionReason::IdentityMismatch,
-            }];
+            return ReceivedTransactionResult {
+                actions: vec![TxDownloadAction::SuppressIdentityMismatch {
+                    peer_id,
+                    reason: TxDownloadSuppressionReason::IdentityMismatch,
+                }],
+                maybe_provenance: None,
+            };
         }
 
+        let mut announcers = BTreeSet::from([peer_id]);
+        for relay_id in [txid_relay_id, wtxid_relay_id] {
+            if let Some(relay_announcements) = self.announcements.get(&relay_id) {
+                announcers.extend(relay_announcements.keys().copied());
+            }
+            announcers.extend(self.in_flight.get(&relay_id).map(|request| request.peer_id));
+        }
+        let provenance = ReceivedTransactionProvenance {
+            delivered_by: peer_id,
+            announcers: announcers.into_iter().collect(),
+        };
         self.clear_pending_relay(txid_relay_id);
         self.clear_pending_relay(wtxid_relay_id);
-        vec![TxDownloadAction::ReceivedTxCleanup {
-            peer_id,
-            txid,
-            wtxid,
-        }]
+        ReceivedTransactionResult {
+            actions: vec![TxDownloadAction::ReceivedTxCleanup {
+                peer_id,
+                txid,
+                wtxid,
+            }],
+            maybe_provenance: Some(provenance),
+        }
     }
 
     pub fn cleanup_peer(

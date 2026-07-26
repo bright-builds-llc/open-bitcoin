@@ -534,6 +534,16 @@ fn received_transaction_cleanup_waits_for_admission_before_already_have() {
 }
 
 #[test]
+fn received_cases_different_deliverer_receipt_unions_and_orders_announcers() {
+    scheduler_cases::different_deliverer_receipt_unions_and_orders_announcers();
+}
+
+#[test]
+fn received_cases_receipt_provenance_deduplicates_delivered_by_announcer() {
+    scheduler_cases::receipt_provenance_deduplicates_delivered_by_announcer();
+}
+
+#[test]
 fn tx_serving_policy_reports_low_cardinality_outcomes() {
     serving_cases::tx_serving_policy_reports_low_cardinality_outcomes();
 }

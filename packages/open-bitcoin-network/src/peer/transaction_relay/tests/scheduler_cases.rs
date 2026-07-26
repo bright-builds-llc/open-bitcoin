@@ -758,3 +758,11 @@ pub(super) fn disconnect_cleanup_removes_peer_state_and_falls_back() {
 pub(super) fn received_transaction_cleanup_waits_for_admission_before_already_have() {
     received_cases::received_transaction_cleanup_waits_for_admission_before_already_have();
 }
+
+pub(super) fn different_deliverer_receipt_unions_and_orders_announcers() {
+    received_cases::different_deliverer_receipt_unions_and_orders_announcers();
+}
+
+pub(super) fn receipt_provenance_deduplicates_delivered_by_announcer() {
+    received_cases::receipt_provenance_deduplicates_delivered_by_announcer();
+}

@@ -56,6 +56,18 @@ pub const PHASE101_NONPREF_PEER_TX_DELAY_SECONDS: i64 = 2;
 pub const PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS: i64 = 2;
 pub const PHASE101_GETDATA_TX_INTERVAL_SECONDS: i64 = 60;
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReceivedTransactionProvenance {
+    pub delivered_by: PeerId,
+    pub announcers: Vec<PeerId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReceivedTransactionResult {
+    pub actions: Vec<TxDownloadAction>,
+    pub maybe_provenance: Option<ReceivedTransactionProvenance>,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TxRelayPeerMode {
     TxidOnly,
