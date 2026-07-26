@@ -36,9 +36,10 @@ use crate::{
     PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER, PHASE101_GETDATA_TX_INTERVAL_SECONDS,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, ParsedPeerPermissionClass, PeerAction,
     PeerBanEntry, PeerConnectionClass, PeerId, PeerManager, PeerPermissionClassRegistry,
-    PermissionEffectLabel, RelayActivationConfig, RelayDownloadPolicy, RequestPressureInput,
-    ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
-    TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage, classify_block_inflight_cleanup,
+    PermissionEffectLabel, RejectEvidenceTweak, RelayActivationConfig, RelayDownloadPolicy,
+    RequestPressureInput, ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags,
+    TxDownloadAction, TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage,
+    classify_block_inflight_cleanup,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
@@ -2142,6 +2143,24 @@ fn peer_manager_transaction_relay_semantic_reject_evidence_suppresses_without_pu
         )],
     );
     assert!(manager.reconsiderable_package_contains(package_fingerprint));
+}
+
+#[test]
+fn peer_manager_active_tip_change_resets_both_reject_evidence_domains() {
+    // Arrange
+    let mut manager =
+        PeerManager::with_reject_evidence_tweak(local_config(), RejectEvidenceTweak::new(11));
+    let hard_reject = Wtxid::from(Hash32::from_byte_array([91_u8; 32]));
+    let reconsiderable = Wtxid::from(Hash32::from_byte_array([92_u8; 32]));
+    manager.record_hard_reject(hard_reject);
+    manager.record_reconsiderable_transaction(reconsiderable);
+
+    // Act
+    manager.on_active_tip_changed(RejectEvidenceTweak::new(12));
+
+    // Assert
+    assert!(!manager.hard_reject_contains(hard_reject));
+    assert!(!manager.reconsiderable_transaction_contains(reconsiderable));
 }
 
 #[test]
