@@ -202,13 +202,40 @@ fn pay_to_anchor_defaults_and_dust_relay_thresholds_are_pinned() {
     );
     assert_eq!(
         dust_threshold_sats_at_rate(&witness_output, config.dust_relay_fee_rate),
-        330
+        294
     );
     assert_eq!(
         dust_threshold_sats_at_rate(&legacy_output, config.dust_relay_fee_rate),
-        546
+        540
+    );
+    assert_eq!(
+        dust_threshold_sats_at_rate(&p2a_output, config.dust_relay_fee_rate),
+        240
     );
     assert!(output_policy_result(p2a_output.script_pubkey, 0, config.ephemeral_policy).is_ok());
+}
+
+#[test]
+fn dust_threshold_counts_compact_size_script_length_boundaries() {
+    // Arrange
+    let script_252 = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: script(&vec![0x51; 252]),
+    };
+    let script_253 = open_bitcoin_primitives::TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: script(&vec![0x51; 253]),
+    };
+
+    // Act / Assert
+    assert_eq!(
+        dust_threshold_sats_at_rate(&script_252, DustRelayFeeRate::default()),
+        1_227
+    );
+    assert_eq!(
+        dust_threshold_sats_at_rate(&script_253, DustRelayFeeRate::default()),
+        1_236
+    );
 }
 
 #[test]

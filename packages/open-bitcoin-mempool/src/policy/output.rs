@@ -18,6 +18,10 @@ use open_bitcoin_primitives::TransactionOutput;
 
 use crate::{DustRelayFeeRate, EphemeralPolicy, MempoolError, PolicyConfig};
 
+const SERIALIZED_AMOUNT_SIZE: usize = 8;
+const WITNESS_SPEND_VIRTUAL_SIZE: usize = 67;
+const LEGACY_SPEND_VIRTUAL_SIZE: usize = 148;
+
 pub fn dust_threshold_sats(output: &TransactionOutput) -> i64 {
     dust_threshold_sats_at_rate(output, DustRelayFeeRate::default())
 }
@@ -35,12 +39,24 @@ pub fn dust_threshold_sats_at_rate(
         ScriptPubKeyType::WitnessV0KeyHash(_)
         | ScriptPubKeyType::WitnessV0ScriptHash(_)
         | ScriptPubKeyType::WitnessV1Taproot(_)
-        | ScriptPubKeyType::PayToAnchor => 110,
-        _ => 182,
+        | ScriptPubKeyType::PayToAnchor => WITNESS_SPEND_VIRTUAL_SIZE,
+        _ => LEGACY_SPEND_VIRTUAL_SIZE,
     };
+    let output_size = serialized_output_size(output);
     dust_relay_fee_rate
         .fee_rate()
-        .fee_for_virtual_size(crate::TransactionVirtualSize::new(spend_virtual_size))
+        .fee_for_virtual_size(crate::TransactionVirtualSize::new(
+            output_size + spend_virtual_size,
+        ))
+}
+
+fn serialized_output_size(output: &TransactionOutput) -> usize {
+    let script_size = output.script_pubkey.as_bytes().len();
+    SERIALIZED_AMOUNT_SIZE + compact_size_len(script_size) + script_size
+}
+
+fn compact_size_len(value: usize) -> usize {
+    if value <= 252 { 1 } else { 3 }
 }
 
 pub(crate) fn is_dust_output(

@@ -343,8 +343,8 @@ mod tests {
             script_pubkey: p2sh_script(),
         };
 
-        assert_eq!(dust_threshold_sats(&witness), 330);
-        assert_eq!(dust_threshold_sats(&legacy), 546);
+        assert_eq!(dust_threshold_sats(&witness), 294);
+        assert_eq!(dust_threshold_sats(&legacy), 540);
     }
 
     #[test]
