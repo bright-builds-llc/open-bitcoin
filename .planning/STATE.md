@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 133 verified; Phase 134 not started
-last_updated: "2026-07-27T17:20:36.540Z"
-last_activity: 2026-07-27 -- Phase 133.1 planning complete
+stopped_at: Completed 133.1-01-PLAN.md
+last_updated: "2026-07-27T17:33:25.506Z"
+last_activity: "2026-07-27"
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 36
-  completed_plans: 30
-  percent: 83
+  completed_plans: 31
+  percent: 86
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 134 — Authoritative Cross-Cache Lifecycle Integration
+**Current focus:** Phase 133.1 — Bright Builds Verification Baseline Cleanup
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 134
-Plan: Not started
+Phase: 133.1 (Bright Builds Verification Baseline Cleanup) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-07-27 -- Phase 133.1 planning complete
+Last activity: 2026-07-27
 
 Progress: [██████████] 100%
 
@@ -59,6 +59,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 133 P02 | 1h 10m | 3 tasks | 28 files |
 | Phase 133 P03 | 1h 4m | 3 tasks | 20 files |
 | Phase 133 P04 | 38min | 3 tasks | 14 files |
+| Phase 133.1 P01 | 10min | 2 tasks | 48 files |
 
 ## Accumulated Context
 
@@ -124,6 +125,8 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 133]: Claim only bounded opportunistic same-peer 1P1C assembly over ordinary transaction messages; broader package relay surfaces remain deferred.
 - [Phase 133]: Guard the exact node-owned Phase 132 handoff and exhaustive feedback boundary with a filesystem-only checker and 22 independent mutations.
 - [Phase 133]: Treat probabilistic reject evidence as suppression-only, with active-tip reset and no peer punishment.
+- [Phase 133.1]: Anchor all cleanup comparisons to phase-start commit 3e35678a9e3d623aad27893f9594a8ded152a722.
+- [Phase 133.1]: Compare Rust and Bun test behavior with sorted multisets plus independently parsed counts.
 
 ### Pending Todos
 
@@ -146,6 +149,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-27T00:10:46.794Z
-Stopped at: Phase 133 verified; Phase 134 not started
+Last session: 2026-07-27T17:33:25.503Z
+Stopped at: Completed 133.1-01-PLAN.md
 Resume file: None
