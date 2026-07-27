@@ -140,14 +140,14 @@ Plans:
 **Goal:** Restore the Bright Builds verification baseline to zero findings and zero exceptions without changing production behavior, public interfaces, test coverage, report schemas, or parity claims.
 **Requirements**: None (blocking maintenance phase)
 **Depends on:** Phase 133
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 - [x] 133.1-01-PLAN.md — Capture the 82-finding/stale-LOC baseline, Rust test inventories, and repair numbered lesson metadata.
 - [x] 133.1-02-PLAN.md — Split chainstate, consensus, mempool, and wallet Rust tests with exact leaf-name and breadcrumb preservation.
 - [x] 133.1-03-PLAN.md — Split CLI, network, node, and RPC Rust tests with exact leaf-name and breadcrumb preservation.
 - [x] 133.1-04-PLAN.md — Decompose all 20 oversized non-live TypeScript checker, fixture, and test files.
-- [ ] 133.1-05-PLAN.md — Decompose the live-smoke TypeScript entrypoint and hermetic shell harness without weakening opt-in or redaction boundaries.
+- [x] 133.1-05-PLAN.md — Decompose the live-smoke TypeScript entrypoint and hermetic shell harness without weakening opt-in or redaction boundaries.
 - [ ] 133.1-06-PLAN.md — Regenerate LOC evidence, require zero Bright findings/exceptions, run profile verification, and review the final diff.
 
 ### Phase 134: Authoritative Cross-Cache Lifecycle Integration
@@ -231,7 +231,7 @@ Plans:
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 5/5 | Complete    | 2026-07-25 |
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
-| 133.1. Bright Builds Verification Baseline Cleanup | 4/6 | In Progress|  |
+| 133.1. Bright Builds Verification Baseline Cleanup | 5/6 | In Progress|  |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 0/TBD | Not started | - |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
