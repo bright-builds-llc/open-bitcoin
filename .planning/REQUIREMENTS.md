@@ -36,9 +36,9 @@ Requirements for package admission and relay, rolling minimum-fee behavior, init
 
 ### Opportunistic Peer Package Relay
 
-- [ ] **PPKG-01**: Node distinguishes hard rejects from reconsiderable package candidates and retains only bounded, rotating candidate and reject evidence.
-- [ ] **PPKG-02**: Node assembles only sender-aware same-peer one-parent/one-child candidates over ordinary transaction messages, preserving member origin and exact pinned package identity.
-- [ ] **PPKG-03**: Peer-originated package candidates reuse the authoritative package admission engine rather than reimplementing package policy in the network or RPC layers.
+- [x] **PPKG-01**: Node distinguishes hard rejects from reconsiderable package candidates and retains only bounded, rotating candidate and reject evidence.
+- [x] **PPKG-02**: Node assembles only sender-aware same-peer one-parent/one-child candidates over ordinary transaction messages, preserving member origin and exact pinned package identity.
+- [x] **PPKG-03**: Peer-originated package candidates reuse the authoritative package admission engine rather than reimplementing package policy in the network or RPC layers.
 - [ ] **PPKG-04**: Accepted and still-present package members enter existing transaction serving and relay fanout in parent-before-child order under existing activation, peer-policy, queue, rate, and txid/wtxid controls.
 
 ### Authoritative Lifecycle Integration
@@ -127,9 +127,9 @@ Every v2.2 requirement maps to exactly one roadmap phase.
 | PACK-05 | Phase 132 | Pending |
 | PACK-06 | Phase 132 | Pending |
 | PACK-07 | Phase 132 | Pending |
-| PPKG-01 | Phase 133 | Pending |
-| PPKG-02 | Phase 133 | Pending |
-| PPKG-03 | Phase 133 | Pending |
+| PPKG-01 | Phase 133 | Complete |
+| PPKG-02 | Phase 133 | Complete |
+| PPKG-03 | Phase 133 | Complete |
 | PPKG-04 | Phase 136 | Pending |
 | MPLIFE-01 | Phase 134 | Pending |
 | MPLIFE-02 | Phase 134 | Pending |

@@ -24,10 +24,10 @@ tech-stack:
 
 key-files:
   created:
-    - packages/open-bitcoin-mempool/src/pool/candidate.rs
     - packages/open-bitcoin-node/src/network/admission_bridge/package.rs
     - packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs
   modified:
+    - packages/open-bitcoin-mempool/src/pool/candidate.rs
     - packages/open-bitcoin-mempool/src/package/report.rs
     - packages/open-bitcoin-mempool/src/pool/package_admission.rs
     - packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs

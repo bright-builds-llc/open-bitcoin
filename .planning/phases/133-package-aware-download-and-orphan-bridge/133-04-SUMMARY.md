@@ -49,7 +49,10 @@ key-decisions:
 patterns-established:
   - "Parity closure: bind behavior, tests, Knots anchors, machine index entries, human checklist claims, and forbidden claims in one fail-closed guard."
   - "Resource proof: test configured maxima for fixed allocation, shared bodies, bounded announcers, bounded traversal, and coherent cleanup."
-requirements-completed: []
+requirements-completed:
+  - PPKG-01
+  - PPKG-02
+  - PPKG-03
 requirements-addressed:
   - PPKG-01
   - PPKG-02
