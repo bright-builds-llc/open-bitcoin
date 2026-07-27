@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 133.1-05-PLAN.md
-last_updated: "2026-07-27T19:40:52.812Z"
+status: verifying
+stopped_at: Completed 133.1-06-PLAN.md
+last_updated: "2026-07-27T20:38:10.126Z"
 last_activity: "2026-07-27"
 progress:
   total_phases: 10
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 36
-  completed_plans: 35
-  percent: 97
+  completed_plans: 36
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 133.1 (Bright Builds Verification Baseline Cleanup) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-27
 
 Progress: [██████████] 100%
@@ -64,6 +64,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 133.1 P03 | 51min | 3 tasks | 263 files |
 | Phase 133.1 P04 | 27min | 3 tasks | 137 files |
 | Phase 133.1 P05 | 21min | 3 tasks | 21 files |
+| Phase 133.1 P06 | 53m | 2 tasks | 63 files |
 
 ## Accumulated Context
 
@@ -143,6 +144,8 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 133.1]: Preserve the live-smoke TypeScript and shell roots as stable entrypoints backed by same-named concern directories.
 - [Phase 133.1]: Keep extracted networking inert until parsed explicit CLI opt-in and successful local preflight.
 - [Phase 133.1]: Confine all hermetic live-smoke fixtures, reports, and cleanup to one guarded temporary root.
+- [Phase 133.1]: Structural checkers read the stable root plus its same-named extension-free child tree in bytewise order.
+- [Phase 133.1]: Formatter repair stayed limited to Phase 133.1-owned Rust test paths.
 
 ### Pending Todos
 
@@ -165,6 +168,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-27T19:40:52.809Z
-Stopped at: Completed 133.1-05-PLAN.md
+Last session: 2026-07-27T20:38:10.122Z
+Stopped at: Completed 133.1-06-PLAN.md
 Resume file: None
