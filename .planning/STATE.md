@@ -62,6 +62,10 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Accumulated Context
 
+### Roadmap Evolution
+
+- Phase 133.1 inserted after Phase 133: Bright Builds Verification Baseline Cleanup (URGENT)
+
 ### Decisions
 
 - [v2.2 milestone]: Initialized the new milestone through `/gsd-new-milestone` after the archived v2.1 closeout.

@@ -135,6 +135,16 @@ Plans:
 - [x] 133-03-PLAN.md — Refine peer candidates once through authoritative package admission and apply bounded feedback.
 - [x] 133-04-PLAN.md — Close deterministic parity, traceability, claim guardrails, and full repository verification.
 
+### Phase 133.1: Bright Builds Verification Baseline Cleanup (INSERTED)
+
+**Goal:** Restore the Bright Builds verification baseline to zero findings and zero exceptions without changing production behavior, public interfaces, test coverage, report schemas, or parity claims.
+**Requirements**: None (blocking maintenance phase)
+**Depends on:** Phase 133
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd-plan-phase 133.1 to break down)
+
 ### Phase 134: Authoritative Cross-Cache Lifecycle Integration
 
 **Goal**: Every package or mempool mutation has one authoritative, complete consequence across serving, relay, peer, compact, retry, persistence, and evidence state.
