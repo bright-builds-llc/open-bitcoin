@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 133.1-03-PLAN.md
-last_updated: "2026-07-27T18:45:37.357Z"
+stopped_at: Completed 133.1-04-PLAN.md
+last_updated: "2026-07-27T19:15:41.734Z"
 last_activity: "2026-07-27"
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 36
-  completed_plans: 33
-  percent: 92
+  completed_plans: 34
+  percent: 94
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 133.1 (Bright Builds Verification Baseline Cleanup) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-07-27
 
@@ -62,6 +62,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 133.1 P01 | 10min | 2 tasks | 48 files |
 | Phase 133.1 P02 | 13min | 3 tasks | 62 files |
 | Phase 133.1 P03 | 51min | 3 tasks | 263 files |
+| Phase 133.1 P04 | 27min | 3 tasks | 137 files |
 
 ## Accumulated Context
 
@@ -135,6 +136,9 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 133.1]: Use semantic behavior and phase families while retaining shared fixtures in thin test-only roots.
 - [Phase 133.1]: Expose moved shared helpers only with pub(super), using absolute crate paths where module depth changes super resolution.
 - [Phase 133.1]: Assign each new child to the parity group of its nearest original source offender.
+- [Phase 133.1]: Preserve each oversized TypeScript root as the stable entrypoint and move concerns into same-named directories.
+- [Phase 133.1]: Use explicit child-source maps when parity checkers follow Rust sources decomposed by earlier plans.
+- [Phase 133.1]: Compare exact XML-escaped JUnit title multisets plus independent test counts for TypeScript decomposition evidence.
 
 ### Pending Todos
 
@@ -157,6 +161,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-27T18:45:37.354Z
-Stopped at: Completed 133.1-03-PLAN.md
+Last session: 2026-07-27T19:15:41.731Z
+Stopped at: Completed 133.1-04-PLAN.md
 Resume file: None
