@@ -188,8 +188,8 @@ fn bounded_block_requests_respect_per_peer_and_total_caps() {
         block_reconcile::request_missing_blocks(&mut runtime, 2).expect("peer two request");
     let first_peer_retry =
         block_reconcile::request_missing_blocks(&mut runtime, 1).expect("peer one retry");
-    let third_peer_messages = block_reconcile::request_missing_blocks(&mut runtime, 3)
-        .expect("peer three request");
+    let third_peer_messages =
+        block_reconcile::request_missing_blocks(&mut runtime, 3).expect("peer three request");
 
     // Assert
     assert_eq!(getdata_block_hashes(&first_peer_messages).len(), 1);
@@ -306,15 +306,9 @@ fn phase110_block_serving_cleanup_releases_block_and_notfound_inflight() {
 
     // Act
     runtime.inflight_blocks.insert(block_hash);
-    block_reconcile::release_inflight_for_message(
-        &mut runtime,
-        &WireNetworkMessage::Block(block),
-    );
+    block_reconcile::release_inflight_for_message(&mut runtime, &WireNetworkMessage::Block(block));
     runtime.inflight_blocks.insert(notfound_hash);
-    block_reconcile::release_inflight_for_message(
-        &mut runtime,
-        &notfound_for_block(notfound_hash),
-    );
+    block_reconcile::release_inflight_for_message(&mut runtime, &notfound_for_block(notfound_hash));
 
     // Assert
     assert!(runtime.inflight_blocks.is_empty());

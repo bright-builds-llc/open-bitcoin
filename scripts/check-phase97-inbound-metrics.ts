@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE96_TEST_COMMAND =
@@ -99,12 +99,12 @@ export function checkPhase97InboundMetrics(
 }
 
 function readText(repoRoot: string, relativePath: TargetFile, failures: string[]): string {
-  const absolutePath = path.join(repoRoot, relativePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(repoRoot, relativePath);
+  } catch {
     failures.push(`P97 missing required corpus file: ${relativePath}`);
     return "";
   }
-  return readFileSync(absolutePath, "utf8");
 }
 
 function verifyInboundMetricVariants(

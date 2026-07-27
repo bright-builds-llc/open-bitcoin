@@ -74,10 +74,12 @@ fn phase110_block_response_clears_requested_block_before_received_action() {
 
     // Assert
     assert!(matches!(actions.as_slice(), [PeerAction::ReceivedBlock(_)]));
-    assert!(manager
-        .peer_requested_blocks(113)
-        .expect("requested blocks")
-        .is_empty());
+    assert!(
+        manager
+            .peer_requested_blocks(113)
+            .expect("requested blocks")
+            .is_empty()
+    );
 }
 
 #[test]
@@ -149,10 +151,12 @@ fn phase111_notfound_releases_block_and_witness_block_requested_state() {
 
     // Assert
     assert!(actions.is_empty());
-    assert!(manager
-        .peer_requested_blocks(111_104)
-        .expect("requested blocks")
-        .is_empty());
+    assert!(
+        manager
+            .peer_requested_blocks(111_104)
+            .expect("requested blocks")
+            .is_empty()
+    );
 }
 
 #[test]
@@ -178,10 +182,12 @@ fn phase111_received_block_releases_requested_block_state() {
 
     // Assert
     assert!(matches!(actions.as_slice(), [PeerAction::ReceivedBlock(_)]));
-    assert!(manager
-        .peer_requested_blocks(111_105)
-        .expect("requested blocks")
-        .is_empty());
+    assert!(
+        manager
+            .peer_requested_blocks(111_105)
+            .expect("requested blocks")
+            .is_empty()
+    );
 }
 
 #[test]
@@ -288,11 +294,13 @@ fn ping_block_announcement_and_duplicate_add_paths_are_exercised() {
     manager
         .handle_message(5, WireNetworkMessage::Pong { nonce: 123 }, 1)
         .expect("pong");
-    assert!(manager
-        .peer_state(5)
-        .expect("state")
-        .last_ping_nonce
-        .is_none());
+    assert!(
+        manager
+            .peer_state(5)
+            .expect("state")
+            .last_ping_nonce
+            .is_none()
+    );
 
     let block = Block {
         header: mined_header(BlockHash::from_byte_array([0_u8; 32]), 4),

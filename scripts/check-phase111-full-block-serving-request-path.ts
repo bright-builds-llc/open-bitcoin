@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-1-full-block-serving-request-path";
@@ -128,48 +129,17 @@ const FORBIDDEN_CLAIM_PHRASES = [
   "database migration",
 ] as const;
 const NO_CLAIM_MARKERS = [
-  "does not",
-  "do not",
-  "must not",
-  "not ",
-  "without",
-  "outside",
-  "out of scope",
-  "deferred",
-  "future",
-  "later",
-  "remain",
-  "remains",
-  "no claim",
-  "not claim",
-  "not supported",
+  "does not", "do not", "must not", "not ", "without", "outside", "out of scope",
+  "deferred", "future", "later", "remain", "remains", "no claim", "not claim", "not supported",
 ] as const;
 const POSITIVE_CLAIM_PATTERNS = [
-  /\bsupports?\b/,
-  /\bprovides?\b/,
-  /\benables?\b/,
-  /\badds?\b/,
-  /\bimplements?\b/,
-  /\bships?\b/,
-  /\bserves?\b/,
-  /\bresponds?\b/,
-  /\bis supported\b/,
-  /\bis enabled\b/,
-  /\bis available\b/,
-  /\bis complete\b/,
-  /\bis ready\b/,
+  /\bsupports?\b/, /\bprovides?\b/, /\benables?\b/, /\badds?\b/, /\bimplements?\b/,
+  /\bships?\b/, /\bserves?\b/, /\bresponds?\b/, /\bis supported\b/, /\bis enabled\b/,
+  /\bis available\b/, /\bis complete\b/, /\bis ready\b/,
 ] as const;
 const FORBIDDEN_VERIFIER_GATES = [
-  "run-live-mainnet-smoke",
-  "public-network",
-  "wall-clock",
-  "service-manager",
-  "systemctl",
-  "launchctl",
-  "sleep 86400",
-  "sleep 259200",
-  "production-deployment",
-  "schema-push",
+  "run-live-mainnet-smoke", "public-network", "wall-clock", "service-manager", "systemctl",
+  "launchctl", "sleep 86400", "sleep 259200", "production-deployment", "schema-push",
   "database migration",
 ] as const;
 
@@ -213,8 +183,7 @@ function readText(repoRoot: string, relativePath: TargetFile, failures: string[]
     failures.push(`BSRV-04 missing required Phase 111 corpus file: ${relativePath}`);
     return "";
   }
-
-  return readFileSync(absolutePath, "utf8");
+  return readSourceCorpus(repoRoot, relativePath);
 }
 
 function checkParityIndex(text: string, failures: string[]): void {

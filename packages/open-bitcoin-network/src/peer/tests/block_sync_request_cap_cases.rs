@@ -147,14 +147,18 @@ fn block_inventory_triggers_getheaders_then_getdata_for_missing_blocks() {
             14,
         )
         .expect("headers");
-    assert!(header_actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::GetData(_)))));
-    assert!(manager
-        .peer_state(2)
-        .expect("peer")
-        .requested_blocks
-        .contains(&open_bitcoin_consensus::block_hash(&next_header)));
+    assert!(
+        header_actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::GetData(_))))
+    );
+    assert!(
+        manager
+            .peer_state(2)
+            .expect("peer")
+            .requested_blocks
+            .contains(&open_bitcoin_consensus::block_hash(&next_header))
+    );
 }
 
 #[test]
@@ -190,9 +194,11 @@ fn inbound_getdata_over_inventory_cap_disconnects_without_serving_inventory() {
 
     // Assert
     assert_resource_limit_disconnect(&actions);
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::ServeInventory(_))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::ServeInventory(_)))
+    );
 }
 
 #[test]
@@ -267,9 +273,11 @@ fn phase111_over_cap_block_witness_compact_getdata_disconnects_before_serve_inve
 
     // Assert
     assert_resource_limit_disconnect(&actions);
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::ServeInventory(_))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::ServeInventory(_)))
+    );
 }
 
 #[test]
@@ -299,13 +307,17 @@ fn phase111_compact_block_getdata_does_not_enter_requested_blocks() {
             object_hash: compact_hash,
         }]
     );
-    assert!(manager
-        .peer_requested_blocks(111_003)
-        .expect("requested blocks")
-        .is_empty());
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::Block(_)))));
+    assert!(
+        manager
+            .peer_requested_blocks(111_003)
+            .expect("requested blocks")
+            .is_empty()
+    );
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::Block(_))))
+    );
 }
 
 #[test]
@@ -322,13 +334,17 @@ fn phase111_compact_block_burst_remains_bounded_without_partial_state() {
 
     // Assert
     assert_resource_limit_disconnect(&actions);
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::ServeInventory(_))));
-    assert!(manager
-        .peer_requested_blocks(111_009)
-        .expect("requested blocks")
-        .is_empty());
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::ServeInventory(_)))
+    );
+    assert!(
+        manager
+            .peer_requested_blocks(111_009)
+            .expect("requested blocks")
+            .is_empty()
+    );
 }
 
 #[test]
@@ -408,9 +424,11 @@ fn inbound_getheaders_over_locator_cap_disconnects_without_header_response() {
 
     // Assert
     assert_resource_limit_disconnect(&actions);
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::Headers(_)))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::Headers(_))))
+    );
 }
 
 #[test]
@@ -443,14 +461,18 @@ fn headers_response_caps_block_requests_to_in_flight_limit() {
     };
     assert_eq!(inventory.inventory.len(), 1);
     assert_eq!(manager.max_blocks_in_flight_per_peer(), 1);
-    assert!(manager
-        .peer_state(12)
-        .expect("peer")
-        .requested_blocks
-        .contains(&open_bitcoin_consensus::block_hash(&first_header)));
-    assert!(!manager
-        .peer_state(12)
-        .expect("peer")
-        .requested_blocks
-        .contains(&open_bitcoin_consensus::block_hash(&second_header)));
+    assert!(
+        manager
+            .peer_state(12)
+            .expect("peer")
+            .requested_blocks
+            .contains(&open_bitcoin_consensus::block_hash(&first_header))
+    );
+    assert!(
+        !manager
+            .peer_state(12)
+            .expect("peer")
+            .requested_blocks
+            .contains(&open_bitcoin_consensus::block_hash(&second_header))
+    );
 }

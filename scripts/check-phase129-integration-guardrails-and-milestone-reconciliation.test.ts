@@ -19,11 +19,19 @@ import {
   PHASE129_TARGET_FILES,
   checkPhase129IntegrationGuardrailsAndMilestoneReconciliation,
 } from "./check-phase129-integration-guardrails-and-milestone-reconciliation";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 type Mutator = (files: Map<string, string>) => void;
 const tempRoots: string[] = [];
+const SPLIT_CORPUS_FILES = new Set([
+  "packages/open-bitcoin-rpc/tests/black_box_parity.rs",
+  "packages/open-bitcoin-cli/tests/operator_binary.rs",
+  "packages/open-bitcoin-cli/tests/operator_flows.rs",
+  "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
+  "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+]);
 
 const FIXTURE_FILES = [
   ...new Set<string>([
@@ -197,7 +205,12 @@ function createFixture(maybeMutate?: Mutator): string {
   tempRoots.push(root);
   const files = new Map<string, string>();
   for (const file of FIXTURE_FILES) {
-    files.set(file, readFileSync(path.join(REPO_ROOT, file), "utf8"));
+    files.set(
+      file,
+      SPLIT_CORPUS_FILES.has(file)
+        ? readSourceCorpus(REPO_ROOT, file)
+        : readFileSync(path.join(REPO_ROOT, file), "utf8"),
+    );
   }
   maybeMutate?.(files);
   for (const [file, text] of files) {

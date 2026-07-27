@@ -1,9 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { checkPhase103MempoolLifecycle } from "./check-phase103-mempool-lifecycle";
+import { readSourceCorpus } from "./source-corpus";
 
 const TARGET_FILES = [
   "docs/parity/catalog/mempool-policy.md",
@@ -206,7 +207,7 @@ function createFixture(options: FixtureOptions = {}): string {
   tempRoots.push(root);
   const files = new Map<TargetFile, string>();
   for (const filePath of TARGET_FILES) {
-    files.set(filePath, readFileSync(filePath, "utf8"));
+    files.set(filePath, readSourceCorpus(process.cwd(), filePath));
   }
   options.maybeMutateFiles?.(files);
   for (const [filePath, content] of files.entries()) {

@@ -66,9 +66,11 @@ pub(super) fn local_advertisement_suppressed(
 }
 
 pub(super) fn assert_no_addr_actions(actions: &[PeerAction]) {
-    assert!(actions
-        .iter()
-        .all(|action| !matches!(action, PeerAction::Send(WireNetworkMessage::Addr(_)))),);
+    assert!(
+        actions
+            .iter()
+            .all(|action| !matches!(action, PeerAction::Send(WireNetworkMessage::Addr(_)))),
+    );
 }
 
 pub(super) fn ipv4_mapped_address_bytes(octets: [u8; 4]) -> [u8; 16] {

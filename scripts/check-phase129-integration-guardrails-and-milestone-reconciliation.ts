@@ -1,10 +1,11 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
 
 import { checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase127-authoritative-network-state-unification";
 import { checkPhase128ProductionCompactAnnouncementTransport } from "./check-phase128-production-compact-announcement-transport";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE128_CHECK =
@@ -193,7 +194,7 @@ function runStepLines(text: string): string {
 function readTarget(repoRoot: string, relativePath: string): string {
   const absolutePath = path.join(repoRoot, relativePath);
   if (!existsSync(absolutePath)) return "";
-  return readFileSync(absolutePath, "utf8");
+  return readSourceCorpus(repoRoot, relativePath);
 }
 
 function visibleCommandOrder(text: string): string {

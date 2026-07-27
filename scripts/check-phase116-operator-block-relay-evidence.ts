@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const TARGET_FILES = [
@@ -402,7 +403,7 @@ function readText(repoRoot: string, filePath: TargetFile, failures: string[]): s
     return "";
   }
 
-  return readFileSync(absolutePath, "utf8");
+  return readSourceCorpus(repoRoot, filePath);
 }
 
 function asStringArray(value: unknown): string[] {

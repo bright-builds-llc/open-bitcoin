@@ -12,8 +12,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use super::*;
 use super::resource_governance::assert_request_cap_resource_governance;
+use super::*;
 
 #[test]
 fn phase111_disabled_block_serving_suppresses_cached_active_block() {

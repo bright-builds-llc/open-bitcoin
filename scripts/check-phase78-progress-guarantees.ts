@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT_OVERRIDE_ENV = "OPEN_BITCOIN_PHASE78_REPO_ROOT";
 const maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV];
@@ -135,18 +135,13 @@ const PARITY_FILES = [
   "docs/parity/catalog/operator-runtime-release-hardening.md",
 ] as const;
 
-function repoPath(relativePath: string): string {
-  return path.join(REPO_ROOT, relativePath);
-}
-
 function readText(relativePath: string, failures: string[]): string {
-  const absolutePath = repoPath(relativePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(REPO_ROOT, relativePath);
+  } catch {
     failures.push(`missing required file: ${relativePath}`);
     return "";
   }
-
-  return readFileSync(absolutePath, "utf8");
 }
 
 function requireContains(

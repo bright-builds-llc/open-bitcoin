@@ -4,8 +4,9 @@
 // - packages/bitcoin-knots/src/netbase.h
 
 use open_bitcoin_codec::{
-    encode_send_compact_payload, BlockTransactions, BlockTransactionsRequest, CompactBlockPayload,
-    PrefilledTransaction, SendCompactMessage, ShortId, BIP152_COMPACT_BLOCKS_VERSION,
+    BIP152_COMPACT_BLOCKS_VERSION, BlockTransactions, BlockTransactionsRequest,
+    CompactBlockPayload, PrefilledTransaction, SendCompactMessage, ShortId,
+    encode_send_compact_payload,
 };
 use open_bitcoin_primitives::{
     Amount, Block, BlockHash, BlockHeader, Hash32, InventoryType, MerkleRoot, MessageCommand,
@@ -16,8 +17,8 @@ use open_bitcoin_primitives::{
 use crate::address::{AddressAnnouncement, AddressList, PHASE92_ADDR_BATCH_LIMIT};
 
 use super::{
-    zero_address, InventoryList, InventoryVector, LocalPeerConfig, ParsedNetworkMessage,
-    ServiceFlags, VersionMessage, WireNetworkMessage,
+    InventoryList, InventoryVector, LocalPeerConfig, ParsedNetworkMessage, ServiceFlags,
+    VersionMessage, WireNetworkMessage, zero_address,
 };
 
 fn sample_transaction() -> Transaction {

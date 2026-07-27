@@ -18,14 +18,13 @@ use open_bitcoin_primitives::NetworkAddress;
 use crate::{InboundListenerEndpoint, PermissionEffectLabel, ServiceFlags};
 
 use super::{
-    classify_network_address, maybe_version_sender_address,
-    privacy_network_deferred_classification, select_getaddr_response,
-    select_local_advertisement_candidates, unsupported_future_network_classification,
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressNetworkKind,
     AddressResponseCache, AddressResponseEntryEvidence, AddressSourceKind, GetAddrPeerEligibility,
     GetAddrRequestState, GetAddrResponseDecision, LearnedAddressBook, LocalAdvertisementInput,
-    RoutabilityClass, PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
-    PHASE92_MAX_ADDR_AGE_SECONDS, PHASE92_MAX_FUTURE_SKEW_SECONDS,
+    PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT, PHASE92_MAX_ADDR_AGE_SECONDS,
+    PHASE92_MAX_FUTURE_SKEW_SECONDS, RoutabilityClass, classify_network_address,
+    maybe_version_sender_address, privacy_network_deferred_classification, select_getaddr_response,
+    select_local_advertisement_candidates, unsupported_future_network_classification,
 };
 
 fn listener_endpoint(raw_endpoint: &str) -> InboundListenerEndpoint {

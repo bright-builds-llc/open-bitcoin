@@ -105,8 +105,10 @@ fn peer_manager_transaction_relay_received_transaction_mismatch_does_not_satisfy
 
     // Assert
     assert_transaction_relay_identity_mismatch(&actions, 218);
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::ReceivedTransaction { .. })));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::ReceivedTransaction { .. }))
+    );
     assert_eq!(manager.transaction_request_snapshot(218).in_flight_count, 1);
 }

@@ -259,11 +259,9 @@ fn phase70_missing_active_chain_block_body_is_storage_blocker() {
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
 
     // Act
-    let error = block_reconcile::reconcile_best_chain(
-        &mut runtime,
-        i64::from(branch_b_three.header.time),
-    )
-    .expect_err("missing active body should block reorg");
+    let error =
+        block_reconcile::reconcile_best_chain(&mut runtime, i64::from(branch_b_three.header.time))
+            .expect_err("missing active body should block reorg");
 
     // Assert
     assert!(matches!(
@@ -307,11 +305,9 @@ fn phase70_missing_undo_data_is_storage_blocker() {
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
 
     // Act
-    let error = block_reconcile::reconcile_best_chain(
-        &mut runtime,
-        i64::from(branch_b_three.header.time),
-    )
-    .expect_err("missing undo should block reorg");
+    let error =
+        block_reconcile::reconcile_best_chain(&mut runtime, i64::from(branch_b_three.header.time))
+            .expect_err("missing undo should block reorg");
 
     // Assert
     assert!(matches!(

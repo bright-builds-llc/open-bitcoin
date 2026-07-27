@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT_OVERRIDE_ENV = "OPEN_BITCOIN_PHASE77_REPO_ROOT";
 const maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV];
@@ -179,18 +179,13 @@ const PROBE_ONLY_STATUS_SUPPORT_FILES = [
   "packages/open-bitcoin-cli/src/operator/support.rs",
 ] as const;
 
-function repoPath(relativePath: string): string {
-  return path.join(REPO_ROOT, relativePath);
-}
-
 function readText(relativePath: string, failures: string[]): string {
-  const absolutePath = repoPath(relativePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(REPO_ROOT, relativePath);
+  } catch {
     failures.push(`missing required file: ${relativePath}`);
     return "";
   }
-
-  return readFileSync(absolutePath, "utf8");
 }
 
 function requireContains(

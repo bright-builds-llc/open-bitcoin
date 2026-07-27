@@ -194,9 +194,11 @@ fn phase113_sendcmpct_unsupported_version_records_evidence_without_disconnect() 
         .expect("unsupported sendcmpct should process without disconnecting");
 
     // Assert
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Disconnect(_))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
     let compact = &manager.peer_state(113_005).expect("peer").compact_relay;
     assert_eq!(
         compact.capability,
@@ -246,9 +248,11 @@ fn phase113_unsupported_sendcmpct_does_not_clear_existing_version2_capability() 
         .expect("unsupported sendcmpct should process");
 
     // Assert
-    assert!(!unsupported_actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Disconnect(_))));
+    assert!(
+        !unsupported_actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
     let compact = &manager.peer_state(113_006).expect("peer").compact_relay;
     assert_eq!(
         compact.capability,

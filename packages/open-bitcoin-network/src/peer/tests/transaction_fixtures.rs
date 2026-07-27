@@ -116,9 +116,11 @@ pub(super) fn assert_transaction_relay_identity_mismatch(
     actions: &[PeerAction],
     expected_peer_id: PeerId,
 ) {
-    let [PeerAction::TransactionRelay(TxDownloadAction::SuppressIdentityMismatch {
-        peer_id, ..
-    })] = actions
+    let [
+        PeerAction::TransactionRelay(TxDownloadAction::SuppressIdentityMismatch {
+            peer_id, ..
+        }),
+    ] = actions
     else {
         panic!("expected transaction relay identity mismatch, got {actions:?}");
     };
@@ -144,11 +146,13 @@ pub(super) fn assert_transaction_relay_suppression(
     expected_relay_id: TxRelayId,
     expected_reason: TxDownloadSuppressionReason,
 ) {
-    let [PeerAction::TransactionRelay(TxDownloadAction::Suppress {
-        peer_id,
-        relay_id,
-        reason,
-    })] = actions
+    let [
+        PeerAction::TransactionRelay(TxDownloadAction::Suppress {
+            peer_id,
+            relay_id,
+            reason,
+        }),
+    ] = actions
     else {
         panic!("expected transaction relay suppression, got {actions:?}");
     };

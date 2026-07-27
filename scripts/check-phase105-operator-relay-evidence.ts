@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-operator-rpc-metrics-logs-support-evidence";
@@ -72,18 +72,7 @@ const REQUIRED_EVIDENCE_ROOTS = [
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-02-SUMMARY.md",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-03-SUMMARY.md",
 ] as const;
-const REQUIRED_KNOTS_ANCHORS = [
-  "packages/bitcoin-knots/src/rpc/net.cpp",
-  "packages/bitcoin-knots/src/rpc/mempool.cpp",
-  "packages/bitcoin-knots/src/rpc/rawtransaction.cpp",
-  "packages/bitcoin-knots/src/net_processing.cpp",
-  "packages/bitcoin-knots/src/txmempool.cpp",
-  "packages/bitcoin-knots/test/functional/rpc_net.py",
-  "packages/bitcoin-knots/test/functional/rpc_mempool_info.py",
-  "packages/bitcoin-knots/test/functional/rpc_rawtransaction.py",
-  "packages/bitcoin-knots/test/functional/mempool_accept.py",
-  "packages/bitcoin-knots/test/functional/p2p_tx_download.py",
-] as const;
+const REQUIRED_KNOTS_ANCHORS = ["packages/bitcoin-knots/src/rpc/net.cpp", "packages/bitcoin-knots/src/rpc/mempool.cpp", "packages/bitcoin-knots/src/rpc/rawtransaction.cpp", "packages/bitcoin-knots/src/net_processing.cpp", "packages/bitcoin-knots/src/txmempool.cpp", "packages/bitcoin-knots/test/functional/rpc_net.py", "packages/bitcoin-knots/test/functional/rpc_mempool_info.py", "packages/bitcoin-knots/test/functional/rpc_rawtransaction.py", "packages/bitcoin-knots/test/functional/mempool_accept.py", "packages/bitcoin-knots/test/functional/p2p_tx_download.py"] as const;
 const REQUIRED_FIXED_COUNTERS = [
   "accepted_count",
   "rejected_count",
@@ -227,22 +216,7 @@ const REQUIRED_BREADCRUMB_FILES_BY_GROUP = [
     ],
   },
 ] as const;
-const REQUIRED_GAP_TERMS = [
-  "public propagation",
-  "compact block relay",
-  "package relay",
-  "bloom/filter serving",
-  "public relay defaults",
-  "public relay by default",
-  "public-network relay CI",
-  "production service operation",
-  "production-service proof",
-  "production full-node readiness",
-  "production full-node readiness proof",
-  "production-funds wallet use",
-  "production-funds wallet safety proof",
-  "release validator",
-] as const;
+const REQUIRED_GAP_TERMS = ["public propagation", "compact block relay", "package relay", "bloom/filter serving", "public relay defaults", "public relay by default", "public-network relay CI", "production service operation", "production-service proof", "production full-node readiness", "production full-node readiness proof", "production-funds wallet use", "production-funds wallet safety proof", "release validator"] as const;
 const FORBIDDEN_CLAIMS = [
   "public propagation",
   "compact block relay",
@@ -261,40 +235,8 @@ const FORBIDDEN_CLAIMS = [
   "production-funds wallet safety proof",
   "release validator",
 ] as const;
-const NO_CLAIM_MARKERS = [
-  "does not",
-  "do not",
-  "must not",
-  "not ",
-  "without",
-  "outside",
-  "out of scope",
-  "deferred",
-  "future",
-  "later",
-  "remain",
-  "remains",
-  "no claim",
-  "not claim",
-  "not supported",
-  "only",
-  "intentionally different",
-  "unavailable",
-] as const;
-const POSITIVE_CLAIM_PATTERNS = [
-  /\bsupports?\b/,
-  /\bprovides?\b/,
-  /\benables?\b/,
-  /\badds?\b/,
-  /\bimplements?\b/,
-  /\bships?\b/,
-  /\bproves?\b/,
-  /\bis supported\b/,
-  /\bis enabled\b/,
-  /\bis available\b/,
-  /\bis complete\b/,
-  /\bis ready\b/,
-] as const;
+const NO_CLAIM_MARKERS = ["does not", "do not", "must not", "not ", "without", "outside", "out of scope", "deferred", "future", "later", "remain", "remains", "no claim", "not claim", "not supported", "only", "intentionally different", "unavailable"] as const;
+const POSITIVE_CLAIM_PATTERNS = [/\bsupports?\b/, /\bprovides?\b/, /\benables?\b/, /\badds?\b/, /\bimplements?\b/, /\bships?\b/, /\bproves?\b/, /\bis supported\b/, /\bis enabled\b/, /\bis available\b/, /\bis complete\b/, /\bis ready\b/] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -532,13 +474,12 @@ function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
 }
 
 function readText(repoRoot: string, filePath: TargetFile, failures: string[]): string {
-  const absolutePath = path.join(repoRoot, filePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(repoRoot, filePath);
+  } catch {
     failures.push(`missing target file ${filePath}`);
     return "";
   }
-
-  return readFileSync(absolutePath, "utf8");
 }
 
 function asStringArray(value: unknown): string[] {

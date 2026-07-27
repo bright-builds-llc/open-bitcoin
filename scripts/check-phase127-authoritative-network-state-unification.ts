@@ -13,6 +13,7 @@ import {
   rustStructLiteralFieldInitializers,
   stripRustNonCode,
 } from "./rust-source-invariants";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE127_TEST =
@@ -78,7 +79,7 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
       texts.set(file, "");
       continue;
     }
-    texts.set(file, readFileSync(absolutePath, "utf8"));
+    texts.set(file, readSourceCorpus(repoRoot, file));
   }
   return texts;
 }

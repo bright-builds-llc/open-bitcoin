@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-transaction-inventory-download-scheduling";
@@ -127,49 +127,9 @@ const FORBIDDEN_CLAIMS = [
   "production full-node readiness",
   "production-funds wallet use",
 ] as const;
-const NO_CLAIM_MARKERS = [
-  "does not",
-  "do not",
-  "must not",
-  "not ",
-  "without",
-  "outside",
-  "out of scope",
-  "deferred",
-  "future",
-  "later",
-  "remain",
-  "remains",
-  "no claim",
-  "not claim",
-  "not supported",
-  "only;",
-] as const;
-const POSITIVE_CLAIM_PATTERNS = [
-  /\bsupports?\b/,
-  /\bprovides?\b/,
-  /\benables?\b/,
-  /\badds?\b/,
-  /\bimplements?\b/,
-  /\bships?\b/,
-  /\bproves?\b/,
-  /\bis supported\b/,
-  /\bis enabled\b/,
-  /\bis available\b/,
-  /\bis complete\b/,
-  /\bis ready\b/,
-] as const;
-const FORBIDDEN_VERIFIER_SCOPE = [
-  "public-network relay",
-  "public relay ci",
-  "sleep ",
-  "service-manager",
-  "systemctl",
-  "launchctl",
-  "wall-clock",
-  "production-deployment",
-  "production full-node readiness",
-] as const;
+const NO_CLAIM_MARKERS = ["does not", "do not", "must not", "not ", "without", "outside", "out of scope", "deferred", "future", "later", "remain", "remains", "no claim", "not claim", "not supported", "only;"] as const;
+const POSITIVE_CLAIM_PATTERNS = [/\bsupports?\b/, /\bprovides?\b/, /\benables?\b/, /\badds?\b/, /\bimplements?\b/, /\bships?\b/, /\bproves?\b/, /\bis supported\b/, /\bis enabled\b/, /\bis available\b/, /\bis complete\b/, /\bis ready\b/] as const;
+const FORBIDDEN_VERIFIER_SCOPE = ["public-network relay", "public relay ci", "sleep ", "service-manager", "systemctl", "launchctl", "wall-clock", "production-deployment", "production full-node readiness"] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -212,13 +172,12 @@ export function checkPhase101TransactionInventoryDownloadScheduling(
 }
 
 function readText(repoRoot: string, relativePath: TargetFile, failures: string[]): string {
-  const absolutePath = path.join(repoRoot, relativePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(repoRoot, relativePath);
+  } catch {
     failures.push(`Phase 101 missing required corpus file: ${relativePath}`);
     return "";
   }
-
-  return readFileSync(absolutePath, "utf8");
 }
 
 function verifyParityIndex(text: string, failures: string[]): void {

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -66,7 +66,7 @@ const FORBIDDEN_VERIFY_STRINGS = [
 ] as const;
 
 function readText(relativePath: string): string {
-  return readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
+  return readSourceCorpus(REPO_ROOT, relativePath);
 }
 
 function requireContains(text: string, needle: string, label: string): void {

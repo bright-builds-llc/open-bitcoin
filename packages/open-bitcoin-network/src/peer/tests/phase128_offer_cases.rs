@@ -218,9 +218,11 @@ fn phase128_disabled_handshake_does_not_emit_local_compact_offer() {
         .expect("verack");
 
     // Assert
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_)))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_))))
+    );
 }
 
 #[test]
@@ -246,9 +248,11 @@ fn phase128_unsupported_protocol_handshake_does_not_emit_local_compact_offer() {
         .expect("verack");
 
     // Assert
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_)))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_))))
+    );
 }
 
 #[test]
@@ -273,9 +277,11 @@ fn phase128_local_offer_preserves_remote_high_then_low_preference() {
     process_low_bandwidth_sendcmpct(&mut manager, 128_005);
 
     // Assert
-    assert!(actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_)))));
+    assert!(
+        actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_))))
+    );
     let state = manager.peer_state(128_005).expect("peer");
     assert_eq!(
         state.local_compact_relay_offer,
@@ -313,9 +319,11 @@ fn phase128_local_offer_preserves_remote_low_then_high_preference() {
     process_high_bandwidth_sendcmpct(&mut manager, 128_006);
 
     // Assert
-    assert!(actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_)))));
+    assert!(
+        actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_))))
+    );
     let state = manager.peer_state(128_006).expect("peer");
     assert_eq!(
         state.local_compact_relay_offer,
@@ -357,7 +365,9 @@ fn phase128_transaction_relay_activation_does_not_enable_local_compact_offer() {
             .compact_relay
             .enabled
     );
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_)))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::SendCompact(_))))
+    );
 }

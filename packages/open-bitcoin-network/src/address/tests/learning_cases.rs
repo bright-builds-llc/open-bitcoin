@@ -100,10 +100,12 @@ fn learned_addresses_reject_invalid_freshness_duplicate_and_unroutable_inputs() 
             AddressDecisionReason::NotPubliclyRoutable,
         ],
     );
-    assert!(rejected
-        .decisions
-        .iter()
-        .all(|decision| decision.maybe_entry.is_none()));
+    assert!(
+        rejected
+            .decisions
+            .iter()
+            .all(|decision| decision.maybe_entry.is_none())
+    );
     assert_eq!(book.entries().len(), 1);
 }
 

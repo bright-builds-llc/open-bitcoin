@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE132_CHECK =
@@ -14,14 +14,9 @@ const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 
 export const PHASE133_TARGET_FILES = [
-  "README.md",
-  "packages/README.md",
-  "docs/parity/catalog/mempool-policy.md",
-  "docs/parity/checklist.md",
-  "docs/parity/index.json",
-  "docs/parity/source-breadcrumbs.json",
-  "packages/open-bitcoin-network/Cargo.toml",
-  "packages/open-bitcoin-network/src/peer.rs",
+  "README.md", "packages/README.md", "docs/parity/catalog/mempool-policy.md",
+  "docs/parity/checklist.md", "docs/parity/index.json", "docs/parity/source-breadcrumbs.json",
+  "packages/open-bitcoin-network/Cargo.toml", "packages/open-bitcoin-network/src/peer.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/reject_evidence.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
@@ -33,8 +28,7 @@ export const PHASE133_TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
   "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",
   "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
-  "scripts/check-phase133-package-aware-download-orphan-bridge.ts",
-  "scripts/verify.sh",
+  "scripts/check-phase133-package-aware-download-orphan-bridge.ts", "scripts/verify.sh",
 ] as const;
 
 export function checkPhase133PackageAwareDownloadOrphanBridge(
@@ -69,12 +63,9 @@ function checkRejectEvidence(repoRoot: string, failures: string[]): void {
     [
       "pub const PHASE133_REJECT_FILTER_CAPACITY: usize = 120_000;",
       "pub const PHASE133_REJECT_FILTER_FALSE_POSITIVE_RATE: f64 = 0.000_001;",
-      "const GENERATION_COUNT: usize = 3;",
-      "const PHASE133_REJECT_FILTER_WORD_COUNT: usize = 161_750;",
-      "pub struct HardRejectEvidence",
-      "pub struct ReconsiderableRejectEvidence",
-      "Transaction(Wtxid)",
-      "Package([u8; 32])",
+      "const GENERATION_COUNT: usize = 3;", "const PHASE133_REJECT_FILTER_WORD_COUNT: usize = 161_750;",
+      "pub struct HardRejectEvidence", "pub struct ReconsiderableRejectEvidence",
+      "Transaction(Wtxid)", "Package([u8; 32])",
     ],
     "P133 PPKG-01: reject evidence must retain independent fixed-memory 120000/0.000001 domains",
     failures,
@@ -170,8 +161,7 @@ function checkBoundedOrphanCandidate(
       "pub const PHASE133_MAX_ANNOUNCERS_PER_ORPHAN: usize = 8;",
       "pub const PHASE133_MAX_ORPHAN_RETAINED_BYTES: usize = 40_000_000;",
       "pub const PHASE102_MAX_RECONSIDERATIONS_PER_PARENT: usize = 32;",
-      "pub max_retained_bytes: usize",
-      "struct BoundedOrphanAnnouncers",
+      "pub max_retained_bytes: usize", "struct BoundedOrphanAnnouncers",
       "orphans: BTreeMap<Wtxid, OrphanEntry>",
       "candidate_cursors: BTreeMap<(Wtxid, PeerId), SamePeerCandidateCursor>",
     ],
@@ -215,16 +205,12 @@ function checkBoundedOrphanCandidate(
   requireAll(
     candidate,
     [
-      "pub struct SamePeerOneParentOneChildCandidate",
-      "pub(super) members: [Transaction; 2]",
-      "pub(super) origins: [PeerId; 2]",
-      "pub(super) provenances: [ReceivedTransactionProvenance; 2]",
+      "pub struct SamePeerOneParentOneChildCandidate", "pub(super) members: [Transaction; 2]",
+      "pub(super) origins: [PeerId; 2]", "pub(super) provenances: [ReceivedTransactionProvenance; 2]",
       "pub fn into_ordered_parts_with_provenance(",
       "entry.missing_parents.len() == 1 && entry.announcers.contains(parent_peer)",
-      "origins: [cursor.parent_peer; 2]",
-      "while cursor.visited < self.policy.max_reconsiderations_per_parent",
-      "let entry = self.orphans.get(&child_wtxid)?;",
-      ".saturating_add(cursor.retained_bytes())",
+      "origins: [cursor.parent_peer; 2]", "while cursor.visited < self.policy.max_reconsiderations_per_parent",
+      "let entry = self.orphans.get(&child_wtxid)?;", ".saturating_add(cursor.retained_bytes())",
       "> self.policy.max_retained_bytes",
     ],
     "P133 PPKG-02: candidate proof must stay private, canonical, same-peer, single-parent, traversal-bounded, and byte-bounded",
@@ -240,11 +226,9 @@ function checkBoundedOrphanCandidate(
     [
       "announcer_cap_keeps_one_shared_body_under_adversarial_peer_churn",
       "retained_byte_budget_evicts_large_orphan_bodies_before_count_cap",
-      "retained_byte_budget_rejects_late_announcer_state_growth",
-      "late_announcer_respects_per_peer_orphan_cap",
+      "retained_byte_budget_rejects_late_announcer_state_growth", "late_announcer_respects_per_peer_orphan_cap",
       "persistent_candidate_cursor_retains_child_identities_not_child_bodies",
-      "candidate_cursor_creation_respects_aggregate_retained_byte_budget",
-      "bounded_parent_traversal_stops_before_an_older_eligible_child",
+      "candidate_cursor_creation_respects_aggregate_retained_byte_budget", "bounded_parent_traversal_stops_before_an_older_eligible_child",
       "coherent_disconnect_expiry_eviction_cleanup_preserves_index_oracle",
     ],
     "P133 PPKG-02: adversarial bounds and coherent cleanup regression tests must remain",
@@ -301,16 +285,11 @@ function checkAuthoritativeNodeBridge(
   requireAll(
     feedback,
     [
-      "PackageStatus::Complete",
-      "PackageStatus::Partial | PackageStatus::Failed",
-      "PackageMemberResult::FinallyPresent",
-      "PackageMemberResult::AlreadyPresent",
-      "PackageMemberResult::SameTxidDifferentWitness",
-      "PackageMemberResult::HardRejected",
-      "ReconsiderableMemberFailure::MissingInputs",
-      "ReconsiderableMemberFailure::PackageFee",
-      "ReconsiderableMemberFailure::PackageReplacement",
-      "PackageMemberResult::PostTrimAbsent",
+      "PackageStatus::Complete", "PackageStatus::Partial | PackageStatus::Failed",
+      "PackageMemberResult::FinallyPresent", "PackageMemberResult::AlreadyPresent",
+      "PackageMemberResult::SameTxidDifferentWitness", "PackageMemberResult::HardRejected",
+      "ReconsiderableMemberFailure::MissingInputs", "ReconsiderableMemberFailure::PackageFee",
+      "ReconsiderableMemberFailure::PackageReplacement", "PackageMemberResult::PostTrimAbsent",
     ],
     "P133 PPKG-03: package status and every member-result variant must receive typed feedback",
     failures,
@@ -324,8 +303,7 @@ function checkAuthoritativeNodeBridge(
     tests,
     [
       "child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_with_no_projection",
-      "singleton_policy_failures_preserve_exact_rejection_categories",
-      "two_reconsiderable_parents_suppress_multi_parent_package_submission",
+      "singleton_policy_failures_preserve_exact_rejection_categories", "two_reconsiderable_parents_suppress_multi_parent_package_submission",
       "every_feedback_variant_keeps_hard_reconsiderable_and_failed_fingerprint_domains_separate",
       "newest_failed_fingerprint_falls_back_once_to_older_eligible_child",
     ],
@@ -357,8 +335,7 @@ function checkParityEvidence(repoRoot: string, failures: string[]): void {
     [
       "network-transaction-relay-download",
       [
-        "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs",
-        "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs", "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
         "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
       ],
     ],
@@ -372,8 +349,7 @@ function checkParityEvidence(repoRoot: string, failures: string[]): void {
     [
       "node-package-admission-bridge",
       [
-        "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
-        "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
+        "packages/open-bitcoin-node/src/network/admission_bridge/package.rs", "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
       ],
     ],
   ]);
@@ -401,18 +377,10 @@ function checkDocumentation(repoRoot: string, failures: string[]): void {
   requireAll(
     catalog,
     [
-      "## Package-Aware Download and Orphan Bridge",
-      "PPKG-01",
-      "PPKG-02",
-      "PPKG-03",
-      "120,000",
-      "0.000001",
-      "active-tip",
-      "`[parent, child]`",
+      "## Package-Aware Download and Orphan Bridge", "PPKG-01", "PPKG-02", "PPKG-03",
+      "120,000", "0.000001", "active-tip", "`[parent, child]`",
       "exactly one authoritative package-admission call",
-      "Phase 134 owns",
-      "Phase 136 owns",
-      "Phase 137 owns",
+      "Phase 134 owns", "Phase 136 owns", "Phase 137 owns",
     ],
     "P133 docs: catalog must state the exact PPKG-01/02/03 bounds, bridge, and deferred ownership",
     failures,
@@ -489,7 +457,6 @@ function checkNarrowClaims(repoRoot: string, failures: string[]): void {
     );
   }
 }
-
 function checkVerifierWiring(repoRoot: string, failures: string[]): void {
   const verify = readTarget(repoRoot, "scripts/verify.sh");
   const expectedOrder = [
@@ -506,7 +473,6 @@ function checkVerifierWiring(repoRoot: string, failures: string[]): void {
     );
   }
 }
-
 function checkDeterministicScope(repoRoot: string, failures: string[]): void {
   const checker = readTarget(
     repoRoot,
@@ -525,11 +491,9 @@ function checkDeterministicScope(repoRoot: string, failures: string[]): void {
     );
   }
 }
-
 function readTarget(repoRoot: string, relativePath: string): string {
-  return readFileSync(path.join(repoRoot, relativePath), "utf8");
+  return readSourceCorpus(repoRoot, relativePath);
 }
-
 function sectionBetween(
   source: string,
   startMarker: string,

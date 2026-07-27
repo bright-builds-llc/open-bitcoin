@@ -68,8 +68,8 @@ fn phase113_high_low_high_toggle_refreshes_recorded_eligibility() {
 }
 
 #[test]
-fn phase113_unsupported_compact_version_without_supported_preference_uses_inventory_fallback_without_disconnect(
-) {
+fn phase113_unsupported_compact_version_without_supported_preference_uses_inventory_fallback_without_disconnect()
+ {
     // Arrange
     let mut manager = PeerManager::new(local_config());
     manager.add_outbound_peer(113_036, 0).expect("peer");
@@ -97,9 +97,11 @@ fn phase113_unsupported_compact_version_without_supported_preference_uses_invent
         .expect("compact announcement decision");
 
     // Assert
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Disconnect(_))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
     assert_eq!(
         decision.action,
         CompactAnnouncementAction::AnnounceInventory
@@ -137,9 +139,11 @@ fn phase113_unsupported_compact_version_after_supported_high_bandwidth_still_ann
         .expect("compact announcement decision");
 
     // Assert
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Disconnect(_))));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Disconnect(_)))
+    );
     assert_eq!(
         decision.action,
         CompactAnnouncementAction::AnnounceCompactBlock

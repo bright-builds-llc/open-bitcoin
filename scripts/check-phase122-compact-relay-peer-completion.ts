@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus, readSourceRoot } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE121_CHECK =
@@ -102,7 +103,9 @@ function readText(repoRoot: string, file: TargetFile, failures: string[]): strin
     failures.push(`P122 missing required corpus file: ${file}`);
     return "";
   }
-  return readFileSync(absolutePath, "utf8");
+  return file === "packages/open-bitcoin-node/src/network.rs"
+    ? readSourceRoot(repoRoot, file)
+    : readSourceCorpus(repoRoot, file);
 }
 
 function verifyBoundedProvenance(

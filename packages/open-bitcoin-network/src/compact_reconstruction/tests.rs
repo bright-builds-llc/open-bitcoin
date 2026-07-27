@@ -5,8 +5,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_codec::{
-    short_id_from_masked_u64, short_id_match_key, short_id_selector_from_header_and_nonce,
-    CompactBlockPayload, PrefilledTransaction, ShortId,
+    CompactBlockPayload, PrefilledTransaction, ShortId, short_id_from_masked_u64,
+    short_id_match_key, short_id_selector_from_header_and_nonce,
 };
 use open_bitcoin_consensus::{compact_short_id_for_wtxid, transaction_wtxid};
 use open_bitcoin_primitives::{
@@ -15,9 +15,10 @@ use open_bitcoin_primitives::{
 };
 
 use super::{
-    apply_block_transactions, fill_block, init_partial_compact_block, CompactBlockTxnMisbehavior,
-    CompactBlockTxnOutcome, CompactReconstructionFailureReason, CompactReconstructionInvalidReason,
-    CompactReconstructionOutcome, PartialCompactBlock, MAX_COMPACT_BLOCK_TRANSACTION_COUNT,
+    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionFailureReason,
+    CompactReconstructionInvalidReason, CompactReconstructionOutcome,
+    MAX_COMPACT_BLOCK_TRANSACTION_COUNT, PartialCompactBlock, apply_block_transactions, fill_block,
+    init_partial_compact_block,
 };
 
 fn sample_header() -> BlockHeader {

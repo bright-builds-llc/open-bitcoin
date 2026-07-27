@@ -29,9 +29,11 @@ fn generic_compact_block_dispatch_requires_adapter_receive_facts() {
 
     // Assert
     assert_eq!(error, NetworkError::CompactBlockReceiveFactsRequired);
-    assert!(manager
-        .compact_download_peer_state(peer_id)
-        .is_none_or(|state| state.in_flight.is_empty()));
+    assert!(
+        manager
+            .compact_download_peer_state(peer_id)
+            .is_none_or(|state| state.in_flight.is_empty())
+    );
 }
 
 #[test]
@@ -170,12 +172,16 @@ fn phase115_cleanup_all_compact_downloads() {
         1
     );
     manager.cleanup_all_compact_downloads(CompactDownloadCleanupCause::PeerDisconnect);
-    assert!(manager
-        .compact_download_peer_state(peer_a)
-        .is_none_or(|state| state.in_flight.is_empty()));
-    assert!(manager
-        .compact_download_peer_state(peer_b)
-        .is_none_or(|state| state.in_flight.is_empty()));
+    assert!(
+        manager
+            .compact_download_peer_state(peer_a)
+            .is_none_or(|state| state.in_flight.is_empty())
+    );
+    assert!(
+        manager
+            .compact_download_peer_state(peer_b)
+            .is_none_or(|state| state.in_flight.is_empty())
+    );
 }
 
 #[test]

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-mempool-chainstate-lifecycle-durable-recovery";
@@ -362,13 +362,12 @@ function isExplicitLaterPhaseLine(lowerLine: string): boolean {
 }
 
 function readText(repoRoot: string, filePath: TargetFile, failures: string[]): string {
-  const absolutePath = path.join(repoRoot, filePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(repoRoot, filePath);
+  } catch {
     failures.push(`missing target file ${filePath}`);
     return "";
   }
-
-  return readFileSync(absolutePath, "utf8");
 }
 
 function asStringArray(value: unknown): string[] {

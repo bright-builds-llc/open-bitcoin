@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE_DIR = ".planning/phases/72-operator-observability-and-support-evidence";
@@ -34,24 +35,8 @@ const TELEMETRY_FILES = [
   "scripts/run-live-mainnet-smoke.ts",
   "scripts/test-run-live-mainnet-smoke.sh",
 ] as const;
-const DOC_FILES = [
-  "docs/operator/runtime-guide.md",
-  "docs/architecture/status-snapshot.md",
-  "docs/architecture/operator-observability.md",
-  "docs/parity/catalog/p2p.md",
-  "docs/parity/catalog/chainstate.md",
-  "docs/parity/catalog/operator-runtime-release-hardening.md",
-] as const;
-const RAW_SUPPORT_FIELDS = [
-  "stdoutTail",
-  "stderrTail",
-  "rawPeerTable",
-  "rawLogTail",
-  "walletMaterial",
-  "rpcpassword",
-  "rpcauth",
-  "__cookie__",
-] as const;
+const DOC_FILES = ["docs/operator/runtime-guide.md", "docs/architecture/status-snapshot.md", "docs/architecture/operator-observability.md", "docs/parity/catalog/p2p.md", "docs/parity/catalog/chainstate.md", "docs/parity/catalog/operator-runtime-release-hardening.md"] as const;
+const RAW_SUPPORT_FIELDS = ["stdoutTail", "stderrTail", "rawPeerTable", "rawLogTail", "walletMaterial", "rpcpassword", "rpcauth", "__cookie__"] as const;
 
 type Phase72Fixture = {
   connectedHeight: string;
@@ -74,17 +59,13 @@ type SurfaceComparison = {
   unavailable: Record<string, readonly string[]>;
 };
 
-function repoPath(relativePath: string): string {
-  return path.join(REPO_ROOT, relativePath);
-}
-
 async function readText(relativePath: string, failures: string[]): Promise<string> {
-  const file = Bun.file(repoPath(relativePath));
-  if (!(await file.exists())) {
+  try {
+    return readSourceCorpus(REPO_ROOT, relativePath);
+  } catch {
     failures.push(`missing required file: ${relativePath}`);
     return "";
   }
-  return file.text();
 }
 
 async function readJoined(files: readonly string[], failures: string[]): Promise<string> {
@@ -282,9 +263,9 @@ function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
         validated_active_chain_height: ["validatedActiveChainHeight", `${available.validated_active_chain_height}`],
         maybe_validated_active_chain_hash: [available.maybe_validated_active_chain_hash],
         maybe_validated_active_chain_work: [available.maybe_validated_active_chain_work],
-        best_known_tip_freshness: [`freshness !== "${available.best_known_tip_freshness}"`],
-        peer_contribution_connected: [`connected !== ${available.peer_contribution_connected}`],
-        peer_contribution_failed: [`failed !== ${available.peer_contribution_failed}`],
+        best_known_tip_freshness: [`bestKnownTip?.freshness === "${available.best_known_tip_freshness}"`],
+        peer_contribution_connected: [`peerContribution?.connected === ${available.peer_contribution_connected}`],
+        peer_contribution_failed: [`peerContribution?.failed === ${available.peer_contribution_failed}`],
       },
       unavailable: {
         validated_active_chain_height: ["validated active-chain height unavailable"],

@@ -2,7 +2,6 @@ import { afterEach, expect, test } from "bun:test";
 import {
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -13,6 +12,7 @@ import {
   PHASE133_TARGET_FILES,
   checkPhase133PackageAwareDownloadOrphanBridge,
 } from "./check-phase133-package-aware-download-orphan-bridge";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 type Mutator = (files: Map<string, string>) => void;
@@ -313,7 +313,7 @@ function createFixture(maybeMutate?: Mutator): string {
   for (const relativePath of PHASE133_TARGET_FILES) {
     files.set(
       relativePath,
-      readFileSync(path.join(REPO_ROOT, relativePath), "utf8"),
+      readSourceCorpus(REPO_ROOT, relativePath),
     );
   }
   maybeMutate?.(files);

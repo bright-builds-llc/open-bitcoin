@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE_DIR = ".planning/phases/71-resource-bounds-and-durable-restart-resume";
@@ -67,17 +68,13 @@ const DOC_NEEDLES = [
   "broad production-node readiness",
 ] as const;
 
-function repoPath(relativePath: string): string {
-  return path.join(REPO_ROOT, relativePath);
-}
-
 async function readText(relativePath: string, failures: string[]): Promise<string> {
-  const file = Bun.file(repoPath(relativePath));
-  if (!(await file.exists())) {
+  try {
+    return readSourceCorpus(REPO_ROOT, relativePath);
+  } catch {
     failures.push(`missing required file: ${relativePath}`);
     return "";
   }
-  return file.text();
 }
 
 function requireContains(

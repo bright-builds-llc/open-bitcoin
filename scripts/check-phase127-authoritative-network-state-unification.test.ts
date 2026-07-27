@@ -1,15 +1,10 @@
 import { afterEach, expect, test } from "bun:test";
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase127-authoritative-network-state-unification";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const TARGET_FILES = [
@@ -34,18 +29,14 @@ const TARGET_FILES = [
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
-type FixtureOptions = {
-  maybeMutate?: (files: Map<TargetFile, string>) => void;
-};
+type FixtureOptions = { maybeMutate?: (files: Map<TargetFile, string>) => void };
 
 const tempRoots: string[] = [];
-
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
     rmSync(root, { force: true, recursive: true });
   }
 });
-
 test("passes_when_phase127_authoritative_composition_is_intact", () => {
   // Arrange
   const root = createFixture();
@@ -56,7 +47,6 @@ test("passes_when_phase127_authoritative_composition_is_intact", () => {
   // Assert
   expect(failures).toEqual([]);
 });
-
 test("fails_when_production_constructs_a_duplicate_network_authority", () => {
   // Arrange
   const root = createFixture({
@@ -535,7 +525,7 @@ function createFixture(options: FixtureOptions = {}): string {
   tempRoots.push(root);
   const files = new Map<TargetFile, string>();
   for (const file of TARGET_FILES) {
-    files.set(file, readFileSync(path.join(REPO_ROOT, file), "utf8"));
+    files.set(file, readSourceCorpus(REPO_ROOT, file));
   }
   options.maybeMutate?.(files);
   for (const [file, text] of files) {

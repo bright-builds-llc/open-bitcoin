@@ -1,7 +1,8 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE_DIR =
@@ -33,7 +34,7 @@ const FORBIDDEN_VERIFY_STRINGS = [
 ] as const;
 
 function readText(relativePath: string): string {
-  return readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
+  return readSourceCorpus(REPO_ROOT, relativePath);
 }
 
 function requireExists(relativePath: string): void {

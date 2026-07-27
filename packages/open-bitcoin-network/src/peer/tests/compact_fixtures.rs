@@ -141,8 +141,8 @@ pub(super) fn phase115_sample_transaction(previous_txid_byte: u8) -> Transaction
     }
 }
 
-pub(super) fn phase115_compact_payload_with_missing_short_id(
-) -> (CompactBlockPayload, Transaction, Wtxid) {
+pub(super) fn phase115_compact_payload_with_missing_short_id()
+-> (CompactBlockPayload, Transaction, Wtxid) {
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
     let tip = mined_header(block_hash(&genesis), 2);
     let header = mined_header(block_hash(&tip), 3);
@@ -188,8 +188,8 @@ pub(super) fn explicit_empty_compact_receive_facts() -> CompactBlockReceiveFacts
     }
 }
 
-pub(super) fn phase119_compact_payload_with_one_matched_and_one_missing(
-) -> (CompactBlockPayload, Transaction, Wtxid, Transaction, Wtxid) {
+pub(super) fn phase119_compact_payload_with_one_matched_and_one_missing()
+-> (CompactBlockPayload, Transaction, Wtxid, Transaction, Wtxid) {
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
     let tip = mined_header(block_hash(&genesis), 2);
     let header = mined_header(block_hash(&tip), 3);

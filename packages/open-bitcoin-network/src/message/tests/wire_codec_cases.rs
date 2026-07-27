@@ -17,9 +17,11 @@ fn empty_payload_messages_reject_non_empty_payload() {
     });
 
     // Assert
-    assert!(errors
-        .iter()
-        .all(|error| error.to_string() == "trailing data: 1 bytes"));
+    assert!(
+        errors
+            .iter()
+            .all(|error| error.to_string() == "trailing data: 1 bytes")
+    );
 }
 
 #[test]

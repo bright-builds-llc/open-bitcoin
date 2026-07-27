@@ -95,9 +95,11 @@ fn phase122_unannounced_getblocktxn_over_request_cap_disconnects_before_suppress
 
     // Assert
     assert_resource_limit_disconnect(&actions);
-    assert!(!actions
-        .iter()
-        .any(|action| { matches!(action, PeerAction::ServeCompactBlockTransactions(_)) }));
+    assert!(
+        !actions
+            .iter()
+            .any(|action| { matches!(action, PeerAction::ServeCompactBlockTransactions(_)) })
+    );
 }
 
 #[test]

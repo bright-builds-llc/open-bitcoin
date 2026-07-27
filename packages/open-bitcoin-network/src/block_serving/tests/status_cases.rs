@@ -81,8 +81,8 @@ fn block_serving_status_active_validated_available_block_allows_later_storage_re
 }
 
 #[test]
-fn block_serving_status_recent_valid_available_block_is_later_servable_but_stale_and_side_chain_are_not(
-) {
+fn block_serving_status_recent_valid_available_block_is_later_servable_but_stale_and_side_chain_are_not()
+ {
     // Arrange
     let recent_valid = status_facts(
         BlockServingChainPosition::RecentValid,

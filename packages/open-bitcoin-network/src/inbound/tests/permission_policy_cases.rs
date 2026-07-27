@@ -182,9 +182,11 @@ fn permission_class_accessors_preserve_sanitized_domain_values() {
     // Assert
     assert_eq!(class.name().as_str(), "trusted-download");
     assert_eq!(class.addresses(), &[test_ip("203.0.113.20")]);
-    assert!(class
-        .permissions()
-        .contains_token(PeerPermissionToken::Download));
+    assert!(
+        class
+            .permissions()
+            .contains_token(PeerPermissionToken::Download)
+    );
 }
 
 #[test]
@@ -261,10 +263,12 @@ fn protected_literal_ip_class_uses_reserved_admission_capacity() {
     );
     assert_eq!(decision.connection_class().as_str(), "protected_inbound");
     assert_eq!(decision.slot_class(), InboundAdmissionSlotClass::Reserved);
-    assert!(decision
-        .active_effects()
-        .iter()
-        .any(|effect| effect.as_str() == "admission_protected"));
+    assert!(
+        decision
+            .active_effects()
+            .iter()
+            .any(|effect| effect.as_str() == "admission_protected")
+    );
 }
 
 #[test]
@@ -429,11 +433,13 @@ fn protected_admission_record_preserves_reserved_slot_and_permission_evidence() 
     );
     assert_eq!(record.slot_class, InboundAdmissionSlotClass::Reserved);
     assert_eq!(record.observed_outbound_peers, 4);
-    assert!(record
-        .permission_decision
-        .active_effects()
-        .iter()
-        .any(|effect| effect.as_str() == "admission_protected"));
+    assert!(
+        record
+            .permission_decision
+            .active_effects()
+            .iter()
+            .any(|effect| effect.as_str() == "admission_protected")
+    );
 }
 
 #[test]

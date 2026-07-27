@@ -20,14 +20,16 @@ fn duplicate_fallback_candidate_respects_peer_candidate_cap() {
     let mut scheduler = scheduler();
     let _ = announce_txid(&mut scheduler, 40, 40, 0);
     for byte in 41..44 {
-        assert!(scheduler
-            .record_announcement(not_preferred(announcement(
-                41,
-                txid_inventory(byte),
-                TxRelayPeerMode::TxidOnly,
-                1,
-            )))
-            .is_empty());
+        assert!(
+            scheduler
+                .record_announcement(not_preferred(announcement(
+                    41,
+                    txid_inventory(byte),
+                    TxRelayPeerMode::TxidOnly,
+                    1,
+                )))
+                .is_empty()
+        );
     }
 
     // Act
@@ -45,14 +47,16 @@ fn duplicate_orphan_parent_fallback_candidate_respects_peer_candidate_cap() {
     let relay_id = txid_relay(45);
     let _ = scheduler.request_parent(parent_request(45, relay_id, 0));
     for byte in 46..49 {
-        assert!(scheduler
-            .record_announcement(not_preferred(announcement(
-                46,
-                txid_inventory(byte),
-                TxRelayPeerMode::TxidOnly,
-                1,
-            )))
-            .is_empty());
+        assert!(
+            scheduler
+                .record_announcement(not_preferred(announcement(
+                    46,
+                    txid_inventory(byte),
+                    TxRelayPeerMode::TxidOnly,
+                    1,
+                )))
+                .is_empty()
+        );
     }
 
     // Act
@@ -85,14 +89,16 @@ fn notfound_missing_or_wrong_peer_is_noop() {
 fn cleanup_peer_handles_empty_and_candidate_only_state() {
     // Arrange
     let mut scheduler = scheduler();
-    assert!(scheduler
-        .record_announcement(not_preferred(announcement(
-            30,
-            txid_inventory(30),
-            TxRelayPeerMode::TxidOnly,
-            0,
-        )))
-        .is_empty());
+    assert!(
+        scheduler
+            .record_announcement(not_preferred(announcement(
+                30,
+                txid_inventory(30),
+                TxRelayPeerMode::TxidOnly,
+                0,
+            )))
+            .is_empty()
+    );
 
     // Act
     let candidate_cleanup = scheduler.cleanup_peer(30, 1);

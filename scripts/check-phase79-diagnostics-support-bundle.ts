@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { readSourceCorpus, readSourceRoot } from "./source-corpus";
 
 const REPO_ROOT_OVERRIDE_ENV = "OPEN_BITCOIN_PHASE79_REPO_ROOT";
 const maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV];
@@ -219,18 +219,22 @@ const PRODUCTION_SUPPORT_OUTPUT_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/soak_evidence.rs",
 ] as const;
 
-function repoPath(relativePath: string): string {
-  return path.join(REPO_ROOT, relativePath);
-}
-
 function readText(relativePath: string, failures: string[]): string {
-  const absolutePath = repoPath(relativePath);
-  if (!existsSync(absolutePath)) {
+  try {
+    return readSourceCorpus(REPO_ROOT, relativePath);
+  } catch {
     failures.push(`missing required file: ${relativePath}`);
     return "";
   }
+}
 
-  return readFileSync(absolutePath, "utf8");
+function readRootText(relativePath: string, failures: string[]): string {
+  try {
+    return readSourceRoot(REPO_ROOT, relativePath);
+  } catch {
+    failures.push(`missing required file: ${relativePath}`);
+    return "";
+  }
 }
 
 function requireContains(
@@ -305,7 +309,7 @@ function verifyParityCoverage(failures: string[]): void {
 
 function verifySupportRedactionBoundaries(failures: string[]): void {
   for (const file of PRODUCTION_SUPPORT_OUTPUT_FILES) {
-    const text = readText(file, failures);
+    const text = readRootText(file, failures);
     for (const forbidden of FORBIDDEN_SUPPORT_OUTPUT_STRINGS) {
       requireNotContains(text, forbidden, file, failures);
     }

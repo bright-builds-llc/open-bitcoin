@@ -83,21 +83,31 @@ fn request_pressure_input_records_bounded_permission_effect_evidence() {
         .expect("permissioned over-cap inventory should disconnect");
 
     // Assert
-    assert!(input
-        .active_permission_effects
-        .contains(&PermissionEffectLabel::DownloadServingPolicyInput));
-    assert!(input
-        .active_permission_effects
-        .contains(&PermissionEffectLabel::AddressResponsePolicyInput));
-    assert!(input
-        .active_permission_effects
-        .contains(&PermissionEffectLabel::EvictionPolicyProtected));
-    assert!(input
-        .active_permission_effects
-        .contains(&PermissionEffectLabel::MisbehaviorPolicyProtected));
-    assert!(input
-        .active_permission_effects
-        .contains(&PermissionEffectLabel::AdmissionProtected));
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::DownloadServingPolicyInput)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::AddressResponsePolicyInput)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::EvictionPolicyProtected)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::MisbehaviorPolicyProtected)
+    );
+    assert!(
+        input
+            .active_permission_effects
+            .contains(&PermissionEffectLabel::AdmissionProtected)
+    );
     let ResourceGovernanceDecision::Disconnect(event) = policy_decision else {
         panic!("expected request-cap disconnect decision");
     };
@@ -140,14 +150,18 @@ fn headers_only_policy_continues_headers_without_requesting_blocks() {
         action,
         PeerAction::Send(WireNetworkMessage::GetHeaders { .. })
     )));
-    assert!(!actions
-        .iter()
-        .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::GetData(_)))));
-    assert!(manager
-        .peer_state(13)
-        .expect("peer")
-        .requested_blocks
-        .is_empty());
+    assert!(
+        !actions
+            .iter()
+            .any(|action| matches!(action, PeerAction::Send(WireNetworkMessage::GetData(_))))
+    );
+    assert!(
+        manager
+            .peer_state(13)
+            .expect("peer")
+            .requested_blocks
+            .is_empty()
+    );
 }
 
 #[test]

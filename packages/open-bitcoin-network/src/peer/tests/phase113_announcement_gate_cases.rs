@@ -15,11 +15,13 @@ fn phase122_compact_announcement_provenance_is_idempotent_and_bounded() {
     let mut manager = PeerManager::new(local_config());
     let peer_id = 122_001;
     manager.add_outbound_peer(peer_id, 0).expect("peer");
-    assert!(manager
-        .peer_state(peer_id)
-        .expect("peer")
-        .compact_announcements
-        .is_empty());
+    assert!(
+        manager
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_announcements
+            .is_empty()
+    );
     let hashes = (0..=super::super::MAX_COMPACT_ANNOUNCEMENT_PROVENANCE)
         .map(|index| BlockHash::from_byte_array([index as u8; 32]))
         .collect::<Vec<_>>();

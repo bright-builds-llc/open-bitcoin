@@ -38,11 +38,13 @@ fn phase120_compact_block_no_matching_in_flight_blocktxn_stays_silent() {
 
     // Assert
     assert!(actions.is_empty());
-    assert!(manager
-        .compact_download_peer_state(peer_id)
-        .expect("download state")
-        .in_flight
-        .contains_key(&expected_block_hash));
+    assert!(
+        manager
+            .compact_download_peer_state(peer_id)
+            .expect("download state")
+            .in_flight
+            .contains_key(&expected_block_hash)
+    );
 }
 
 #[test]

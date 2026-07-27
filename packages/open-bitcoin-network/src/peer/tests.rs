@@ -23,37 +23,37 @@ use open_bitcoin_primitives::{
 };
 
 use crate::{
-    classify_block_inflight_cleanup, BanDecision, BanReason, BanScope, BlockInFlightCleanupCause,
-    BlockInFlightCleanupInput, BlockRelayActivationPolicy, BlockServingActivationConfig,
-    BlockServingOutcomeLabel, BlockServingResourceGateDecision, BlockServingStatusDecision,
-    BlockServingStatusLabel, CompactAnnouncementEligibility, CompactAnnouncementEligibilityReason,
-    CompactBlockReceiveFacts, CompactDownloadCleanupCause, CompactRelayActivationConfig,
-    CompactRelayCapability, CompactRelayPreference, ConnectionRole, DisconnectReason, HeaderStore,
-    HeaderSyncPolicy, HeadersMessage, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
+    BanDecision, BanReason, BanScope, BlockInFlightCleanupCause, BlockInFlightCleanupInput,
+    BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingOutcomeLabel,
+    BlockServingResourceGateDecision, BlockServingStatusDecision, BlockServingStatusLabel,
+    CompactAnnouncementEligibility, CompactAnnouncementEligibilityReason, CompactBlockReceiveFacts,
+    CompactDownloadCleanupCause, CompactRelayActivationConfig, CompactRelayCapability,
+    CompactRelayPreference, ConnectionRole, DisconnectReason, HeaderStore, HeaderSyncPolicy,
+    HeadersMessage, InboundAdmissionRejectionReason, InboundAdmissionSlotClass,
     InboundHandshakeState, InboundPeerRecord, InboundPermissionDecision, InventoryList,
     LocalPeerConfig, NetworkError, OrphanPolicy, OrphanReconsiderationStatus, OrphanStageInput,
+    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
+    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
     ParsedPeerPermissionClass, PeerAction, PeerBanEntry, PeerConnectionClass, PeerId, PeerManager,
     PeerPermissionClassRegistry, PermissionEffectLabel, ReceivedTransactionProvenance,
     RejectEvidenceTweak, RelayActivationConfig, RelayDownloadPolicy, RequestPressureInput,
     ResourceGovernanceDecision, ResourceGovernancePolicy, ServiceFlags, TxDownloadAction,
-    TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage,
-    PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER,
-    PHASE94_MAX_HEADER_LOCATOR_HASHES, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
-    PHASE94_MAX_INBOUND_REQUEST_INVENTORY_ITEMS, PHASE94_MAX_INBOUND_TX_REQUESTS_PER_PEER,
+    TxDownloadSuppressionReason, TxRelayId, WireNetworkMessage, classify_block_inflight_cleanup,
 };
 use open_bitcoin_primitives::{InventoryType, InventoryVector};
 
 use crate::address::{
     AddressAnnouncement, AddressDecisionLabel, AddressDecisionReason, AddressList,
     AddressNetworkKind, AddressSourceKind, GetAddrResponseDecision, LocalAdvertisementDecision,
-    RoutabilityClass, PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT,
+    PHASE92_GETADDR_RESPONSE_LIMIT, PHASE92_LEARNED_ADDR_BATCH_LIMIT, RoutabilityClass,
 };
 
-use super::compact_relay::{
-    maybe_schedule_local_compact_offer, CompactAnnouncementAction, LocalCompactRelayOfferState,
-    PeerCompactAnnouncementInput, BIP152_MIN_PROTOCOL_VERSION,
-};
 use super::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
+use super::compact_relay::{
+    BIP152_MIN_PROTOCOL_VERSION, CompactAnnouncementAction, LocalCompactRelayOfferState,
+    PeerCompactAnnouncementInput, maybe_schedule_local_compact_offer,
+};
 
 mod peer_fixtures;
 use peer_fixtures::*;

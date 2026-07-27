@@ -6,8 +6,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_codec::{
-    expand_block_transaction_indexes, short_id_from_masked_u64, BlockTransactions,
-    CompactBlockPayload, PrefilledTransaction,
+    BlockTransactions, CompactBlockPayload, PrefilledTransaction, expand_block_transaction_indexes,
+    short_id_from_masked_u64,
 };
 use open_bitcoin_consensus::{block_hash, transaction_wtxid};
 use open_bitcoin_primitives::{
@@ -17,12 +17,17 @@ use open_bitcoin_primitives::{
 
 use crate::block_serving::{BlockRelayActivationPolicy, CompactRelayActivationConfig};
 use crate::compact_reconstruction::{
-    apply_block_transactions, fill_block, init_partial_compact_block, CompactBlockTxnMisbehavior,
-    CompactBlockTxnOutcome, CompactReconstructionInvalidReason, CompactReconstructionOutcome,
-    PartialCompactBlock,
+    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionInvalidReason,
+    CompactReconstructionOutcome, PartialCompactBlock, apply_block_transactions, fill_block,
+    init_partial_compact_block,
 };
 
 use super::{
+    COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS, CompactBlockDownloadEligibility,
+    CompactBlockDownloadEligibilityInput, CompactBlockInitOutcome, CompactBlockTxnHandleOutcome,
+    CompactDownloadAction, CompactDownloadCleanupCause, CompactDownloadCompletionOutcome,
+    CompactDownloadPeerState, CompactDownloadSuppressionReason, FullBlockFetch,
+    ScheduleMissingTransactionOutcome, ScheduleMissingTransactionSuppressionReason,
     build_get_block_transactions_request, cleanup_compact_download_on_block_connected,
     cleanup_compact_download_peer, compact_download_actions_to_peer_actions,
     complete_applied_download, completed_or_fallback_init, completion_actions_from_outcome,
@@ -30,12 +35,7 @@ use super::{
     finalize_ready_init, finish_applied_handle, handle_block_transactions,
     init_compact_block_download, peer_supports_compact_download,
     schedule_missing_transaction_request, scheduled_init_request, take_in_flight_download,
-    try_complete_compact_download, CompactBlockDownloadEligibility,
-    CompactBlockDownloadEligibilityInput, CompactBlockInitOutcome, CompactBlockTxnHandleOutcome,
-    CompactDownloadAction, CompactDownloadCleanupCause, CompactDownloadCompletionOutcome,
-    CompactDownloadPeerState, CompactDownloadSuppressionReason, FullBlockFetch,
-    ScheduleMissingTransactionOutcome, ScheduleMissingTransactionSuppressionReason,
-    COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS,
+    try_complete_compact_download,
 };
 
 fn eligible_input(header: &BlockHeader) -> CompactBlockDownloadEligibilityInput {

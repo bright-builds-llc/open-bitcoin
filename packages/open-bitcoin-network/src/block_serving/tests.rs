@@ -9,14 +9,14 @@
 use super::*;
 use crate::peer::DEFAULT_MAX_BLOCKS_IN_FLIGHT_PER_PEER;
 use crate::{
-    ConnectionChurnInput, InactivePermissionEffectLabel, InboundHandshakeState, LocalPeerConfig,
-    PeerConnectionClass, PeerPermissionSet, PermissionEffectLabel, QueuePressureInput,
-    ReconnectSuppressionInput, RepeatedFailureInput, RequestPressureInput,
-    ResourceGovernancePolicy, ResourceLifecycleLabel, ResourcePressureLabel, ResourceTimeoutInput,
-    ServiceFlags, INBOUND_PERMISSION_TOKENS_FIELD, PHASE94_CONNECTION_CHURN_WINDOW_SECONDS,
+    ConnectionChurnInput, INBOUND_PERMISSION_TOKENS_FIELD, InactivePermissionEffectLabel,
+    InboundHandshakeState, LocalPeerConfig, PHASE94_CONNECTION_CHURN_WINDOW_SECONDS,
     PHASE94_MAX_CONNECTIONS_PER_CHURN_WINDOW, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
     PHASE94_MAX_REPEATED_FAILURES_PER_WINDOW, PHASE94_REPEATED_FAILURE_WINDOW_SECONDS,
-    PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS,
+    PHASE94_SLOW_HANDSHAKE_TIMEOUT_SECONDS, PeerConnectionClass, PeerPermissionSet,
+    PermissionEffectLabel, QueuePressureInput, ReconnectSuppressionInput, RepeatedFailureInput,
+    RequestPressureInput, ResourceGovernancePolicy, ResourceLifecycleLabel, ResourcePressureLabel,
+    ResourceTimeoutInput, ServiceFlags,
 };
 
 fn activated_policy() -> BlockRelayActivationPolicy {
