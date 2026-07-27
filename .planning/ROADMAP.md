@@ -231,7 +231,7 @@ Plans:
 | 131. Rolling Fee, Expiry, and Descendant Eviction Core | 5/5 | Complete    | 2026-07-25 |
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
-| 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete   | 2026-07-27 |
+| 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 0/TBD | Not started | - |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
