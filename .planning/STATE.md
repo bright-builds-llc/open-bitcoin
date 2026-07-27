@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: ready
+status: executing
 stopped_at: Phase 133 verified; Phase 134 not started
-last_updated: "2026-07-27T00:10:46.794Z"
-last_activity: "2026-07-27"
+last_updated: "2026-07-27T17:20:36.540Z"
+last_activity: 2026-07-27 -- Phase 133.1 planning complete
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 4
-  total_plans: 30
+  total_plans: 36
   completed_plans: 30
-  percent: 100
+  percent: 83
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134
 Plan: Not started
-Status: Phase 133 verified — Phase 134 not started
-Last activity: 2026-07-27
+Status: Ready to execute
+Last activity: 2026-07-27 -- Phase 133.1 planning complete
 
 Progress: [██████████] 100%
 
