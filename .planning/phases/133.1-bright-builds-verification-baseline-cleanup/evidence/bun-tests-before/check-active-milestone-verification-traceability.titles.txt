@@ -1,0 +1,23 @@
+RCN-040 near-token collision does not cover RCN-04
+archived verification token collision remains excluded
+block-list requirements-completed has lifecycle-valid coverage
+checked requirement with pending traceability fails independently
+complete fixture succeeds
+completed milestone archive needs no active traceability corpus
+completed unsummarized requirement fails independently
+current milestone headings and sibling phases section succeed
+deferred FUT summary collision remains excluded
+duplicate active roadmap phase fails
+duplicate checklist ownership fails
+duplicate traceability ownership fails without activating an orphan
+invalid lifecycle verification cannot mask its only token
+malformed CONTEXT lifecycle metadata fails closed
+malformed VERIFICATION lifecycle metadata fails closed
+missing RCN-04 verification fails independently
+missing RCN-05 verification fails independently
+missing RCN-06 verification fails independently
+missing traceability ownership fails without activating an orphan
+owner phase missing from active roadmap fails
+pending unsummarized requirement remains excluded
+real repository reports only the documented staged orphans
+unchecked requirement with complete traceability fails independently

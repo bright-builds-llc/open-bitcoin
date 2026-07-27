@@ -1,0 +1,11 @@
+allows later non-v1.9 checklist surfaces to reuse requirement ids
+fails positive README network participation claims
+fails positive deferred network participation claims
+fails same-unit positive claims with unrelated allowance wording
+fails when Phase 95 verifier commands exist only in VERIFY_COMMAND_ORDER
+fails when any required Knots anchor is missing
+fails when gap-closure traceability maps requirements to stale phases
+fails when required Cargo or Bazel UAT command families are missing
+fails when resource-governance support redaction roots are missing
+fails when v1.9 requirement IDs are duplicated or omitted
+passes with complete Phase 95 release-boundary corpus

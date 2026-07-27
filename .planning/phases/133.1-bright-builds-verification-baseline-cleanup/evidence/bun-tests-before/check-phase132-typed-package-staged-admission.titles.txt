@@ -1,0 +1,36 @@
+accepts explicit local boundary wording: General package wire support is not supported.
+accepts explicit local boundary wording: General package wire support remains deferred.
+accepts explicit local boundary wording: General package wire support remains outside this phase&apos;s scope.
+accepts explicit local boundary wording: Phase 132 does not add general package wire support.
+accepts explicit local boundary wording: The currently deferred general package wire boundary remains unchanged.
+fails the EffectiveFeeGroup public field mutation
+fails the PACK-01 count bound mutation
+fails the PackageReport public field mutation
+fails the SubmissionPackage privacy proof error mutation
+fails the SubmissionPackage public field mutation
+fails the SubmissionPackage raw payload enum mutation
+fails the SubmissionPackage unchecked constructor mutation
+fails the TRUC direct conflicts mutation
+fails the bare anchor policy default mutation
+fails the conservative overlap count mutation
+fails the ephemeral complete spend mutation
+fails the ephemeral permission defaults mutation
+fails the ephemeral zero fee mutation
+fails the fee group duplicate mutation
+fails the fee group nonempty mutation
+fails the fee group rate consistency mutation
+fails the internal parity breadcrumb mutation
+fails the internal parity registry mutation
+fails the late scripts mutation
+fails the narrow claim mutation
+fails the narrow claim with not deferred double negation mutation
+fails the narrow claim with not unsupported double negation mutation
+fails the narrow claim with unrelated sentence negation mutation
+fails the narrow claim with without deferring double negation mutation
+fails the one final trim mutation
+fails the report member cardinality mutation
+fails the report mutable accessor mutation
+fails the report mutation privacy proof mutation
+fails the report status consistency mutation
+fails the verifier run step mutation
+passes with the complete Phase 132 corpus
