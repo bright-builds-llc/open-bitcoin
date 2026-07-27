@@ -1,0 +1,11 @@
+fails when Phase 73 roots claim default public-network UAT or production readiness
+fails when a Phase 73 parity root text is missing
+fails when a VER-02 coverage anchor loses a required test needle
+fails when breadcrumb infrastructure omits referenced Rust files
+fails when the Phase 73 UAT matrix title is missing
+fails when the Phase 73 plan set omits a required VER id
+fails when the parity checklist omits a Phase 73 VER id
+fails when the parity index omits a Phase 73 VER id
+fails when verify.sh does not clear the Phase 73 repo-root override
+fails when verify.sh omits the Phase 73 regression test
+passes when the Phase 73 fixture includes every required evidence anchor

@@ -1,0 +1,38 @@
+complete synthetic Phase 123 corpus passes
+fails the Idle collapsed into Closed mutation
+fails the acknowledgement moved before encoding mutation
+fails the bench restores old Option receive mutation
+fails the compact fallback active-tip classification removed mutation
+fails the compact fallback ordinary tracking removed mutation
+fails the compact fallback persistence assertion removed mutation
+fails the compact fallback response regression removed mutation
+fails the daemon live-session cancellation removed mutation
+fails the daemon sync activation removed mutation
+fails the eligible peer proxy restored mutation
+fails the encoded bytes are decoded at acknowledgement mutation
+fails the encoding bypassed with fabricated bytes before write mutation
+fails the exact encoding failure test removed mutation
+fails the five-second compact cadence regression removed mutation
+fails the idle clock removed mutation
+fails the idle target guard removed mutation
+fails the inbound Written acknowledgement removed mutation
+fails the inbound block-serving activation removed mutation
+fails the live checker command removed from verifier mutation
+fails the live-session reconciliation removed mutation
+fails the message receive clock removed mutation
+fails the mutation command removed from verifier mutation
+fails the obsolete provider restored mutation
+fails the one HARD requirement mutated mutation
+fails the ordinary response retention removed mutation
+fails the peer emission completion moved before write mutation
+fails the peer-targeted fallback send removed mutation
+fails the post-durable progress dispatch removed mutation
+fails the public receive re-export removed mutation
+fails the response-work session retention removed mutation
+fails the served_count added to public status mutation
+fails the session timestamp propagation removed mutation
+fails the slow-message timestamp regression removed mutation
+fails the structured log resamples mutation
+fails the sync acknowledgement moved before send mutation
+fails the unavailable omission test removed mutation
+phase123_real_repository_corpus_passes
