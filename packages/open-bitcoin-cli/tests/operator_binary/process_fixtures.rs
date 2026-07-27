@@ -1,3 +1,6 @@
+// Parity breadcrumbs:
+// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
+
 use super::*;
 
 pub(super) static NEXT_SANDBOX_ID: AtomicU64 = AtomicU64::new(0);
