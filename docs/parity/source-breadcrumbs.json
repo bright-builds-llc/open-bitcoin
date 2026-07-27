@@ -763,9 +763,9 @@
     {
       "label": "mempool-package-parity-closure",
       "files": [
-        "packages/open-bitcoin-mempool/src/pool/tests/package_parity_cases.rs",
         "packages/open-bitcoin-mempool/src/pool/tests/package_parity_cases/dry_run_submit_valid_parent_invalid_child_partial_acceptance_and_lifecyc.rs",
-        "packages/open-bitcoin-mempool/src/pool/tests/package_parity_cases/max_bound_shape_fingerprint_order_and_try_from_package_refinement_are_pi.rs"
+        "packages/open-bitcoin-mempool/src/pool/tests/package_parity_cases/max_bound_shape_fingerprint_order_and_try_from_package_refinement_are_pi.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/package_parity_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/policy/packages.cpp",
