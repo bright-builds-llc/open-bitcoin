@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,007 |
-| Total lines | 282,250 |
-| Code/content lines | 246,285 |
-| Comment-only lines | 12,349 |
-| Blank lines | 23,616 |
+| Included files | 1,008 |
+| Total lines | 282,304 |
+| Code/content lines | 246,327 |
+| Comment-only lines | 12,352 |
+| Blank lines | 23,625 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 380 | 104,476 | 89,073 | 7,288 | 8,115 |
 | Rust production | 323 | 95,475 | 83,110 | 3,369 | 8,996 |
-| TypeScript/Bun scripts | 235 | 65,444 | 58,193 | 1,612 | 5,639 |
+| TypeScript/Bun scripts | 236 | 65,498 | 58,235 | 1,615 | 5,648 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 22 | 4,496 | 4,014 | 66 | 416 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -283,7 +283,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/run-live-mainnet-smoke/status.ts | 549 |
 | scripts/run-live-mainnet-smoke/types.ts | 542 |
 | scripts/rust-source-invariants.ts | 398 |
-| scripts/source-corpus.ts | 59 |
+| scripts/source-corpus.test.ts | 33 |
+| scripts/source-corpus.ts | 80 |
 | scripts/test-run-live-mainnet-smoke/assert-report.ts | 163 |
 
 ## Largest Included Files
@@ -316,7 +317,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 72c6e666dcd1433a1a7bf976e2ce08a1f57e3237184963ed27f5f0ded5391241 |
+| Input fingerprint | cbde3b129d51d071bc38a1316df7f12dba6eb4b9486a607d9633d246e48dd2b6 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
