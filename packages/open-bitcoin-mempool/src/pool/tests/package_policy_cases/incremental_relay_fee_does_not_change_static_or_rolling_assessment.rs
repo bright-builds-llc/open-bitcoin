@@ -1,3 +1,15 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/doc/policy/packages.md
+// - packages/bitcoin-knots/src/kernel/mempool_options.h
+// - packages/bitcoin-knots/src/policy/policy.h
+// - packages/bitcoin-knots/src/policy/policy.cpp
+// - packages/bitcoin-knots/src/script/script.cpp
+// - packages/bitcoin-knots/src/test/txpackage_tests.cpp
+// - packages/bitcoin-knots/src/test/txvalidation_tests.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/mempool_ephemeral_dust.py
+// - packages/bitcoin-knots/test/functional/mempool_truc.py
+
 use super::*;
 
 #[test]

@@ -1,3 +1,8 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/test/txpackage_tests.cpp
+// - packages/bitcoin-knots/src/txmempool.h
+// - packages/bitcoin-knots/src/validation.cpp
+
 use super::*;
 
 #[test]

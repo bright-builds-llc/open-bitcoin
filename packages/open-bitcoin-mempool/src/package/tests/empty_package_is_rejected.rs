@@ -1,3 +1,10 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/policy/packages.h
+// - packages/bitcoin-knots/src/policy/packages.cpp
+// - packages/bitcoin-knots/src/validation.h
+// - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/src/test/txpackage_tests.cpp
+
 use super::*;
 
 #[test]
