@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 133.1-01-PLAN.md
-last_updated: "2026-07-27T17:33:25.506Z"
+stopped_at: Completed 133.1-02-PLAN.md
+last_updated: "2026-07-27T17:51:07.083Z"
 last_activity: "2026-07-27"
 progress:
   total_phases: 10
   completed_phases: 4
   total_plans: 36
-  completed_plans: 31
-  percent: 86
+  completed_plans: 32
+  percent: 89
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 133.1 (Bright Builds Verification Baseline Cleanup) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-27
 
@@ -60,6 +60,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 133 P03 | 1h 4m | 3 tasks | 20 files |
 | Phase 133 P04 | 38min | 3 tasks | 14 files |
 | Phase 133.1 P01 | 10min | 2 tasks | 48 files |
+| Phase 133.1 P02 | 13min | 3 tasks | 62 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,9 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 133]: Treat probabilistic reject evidence as suppression-only, with active-tip reset and no peer punishment.
 - [Phase 133.1]: Anchor all cleanup comparisons to phase-start commit 3e35678a9e3d623aad27893f9594a8ded152a722.
 - [Phase 133.1]: Compare Rust and Bun test behavior with sorted multisets plus independently parsed counts.
+- [Phase 133.1]: Group contiguous Rust test leaves by behavior while keeping shared fixtures in thin test roots.
+- [Phase 133.1]: Preserve moved tests original super:: resolution through private test-root imports rather than rewriting test bodies.
+- [Phase 133.1]: Assign every new Wave A Rust path explicitly to the parity breadcrumb group that owned its source offender.
 
 ### Pending Todos
 
@@ -149,6 +153,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-27T17:33:25.503Z
-Stopped at: Completed 133.1-01-PLAN.md
+Last session: 2026-07-27T17:51:07.081Z
+Stopped at: Completed 133.1-02-PLAN.md
 Resume file: None
