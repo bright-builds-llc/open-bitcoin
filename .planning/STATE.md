@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 134-12-PLAN.md
-last_updated: "2026-07-28T20:59:19.609Z"
+status: verifying
+stopped_at: Completed 134-13-PLAN.md
+last_updated: "2026-07-28T22:04:59.016Z"
 last_activity: "2026-07-28"
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 49
-  completed_plans: 48
-  percent: 98
+  completed_plans: 49
+  percent: 100
 ---
 
 # Project State
@@ -26,14 +26,14 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
+Phase: 134 (authoritative-cross-cache-lifecycle-integration) — READY FOR VERIFICATION
 Plan: 13 of 13
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28
 
 Progress: [██████████] 100%
 
-Next action: `/gsd-discuss-phase 134`
+Next action: Run independent Phase 134 verification.
 
 ## Performance Metrics
 
@@ -78,6 +78,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 134 P10 | 1h 10m | 2 tasks | 4 files |
 | Phase 134 P11 | 94m | 3 tasks | 12 files |
 | Phase 134 P12 | 1h 29m | 2 tasks | 5 files |
+| Phase 134 P13 | 41m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -194,6 +195,8 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 134]: Use stable contract-family diagnostics and fresh filesystem fixtures for fail-closed mutation coverage.
 - [Phase 134]: Keep Phase 134 verification deterministic and require identical Phase 133 to Phase 134 to Phase 117 order in both verifier surfaces.
 - [Phase 134]: Keep MPLIFE-01 through MPLIFE-04 pending until phase-level verification.
+- [Phase 134]: Published one ManagedNetworkHandle authority with a mandatory seven-target lifecycle projection and family-specific outside-lock effects.
+- [Phase 134]: Preserved D-18 and all Phase 135-138, broad relay, public-network CI, and production-readiness deferrals.
 
 ### Pending Todos
 
@@ -216,6 +219,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T20:59:19.603Z
-Stopped at: Completed 134-12-PLAN.md
+Last session: 2026-07-28T22:04:59.013Z
+Stopped at: Completed 134-13-PLAN.md
 Resume file: None
