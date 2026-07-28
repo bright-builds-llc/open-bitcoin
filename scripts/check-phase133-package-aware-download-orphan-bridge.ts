@@ -247,11 +247,16 @@ function checkAuthoritativeNodeBridge(
   const candidateSubmission = sectionBetween(
     packageBridge,
     "fn submit_same_peer_candidate",
-    "pub(super) fn record_singleton_reject_evidence",
+    "fn submit_package_through_lifecycle",
   );
-  if (countMatches(candidateSubmission, /\.submit_package\(/g) !== 1) {
+  if (
+    countMatches(
+      candidateSubmission,
+      /\.submit_package_through_lifecycle\(/g,
+    ) !== 1
+  ) {
     failures.push(
-      "P133 PPKG-03: each eligible peer candidate must have exactly one node-owned package admission call",
+      "P133 PPKG-03: each eligible peer candidate must have exactly one node-owned package lifecycle dispatch",
     );
   }
   requireAll(
@@ -259,6 +264,7 @@ function checkAuthoritativeNodeBridge(
     [
       "let fingerprint = *checked.fingerprint().as_bytes();",
       ".reconsiderable_package_contains(fingerprint)",
+      "self.submit_package_through_lifecycle(package, origins, options, &chainstate)?",
       "debug_assert_eq!(submitted.report.fingerprint().as_bytes(), &fingerprint);",
       "self.apply_package_feedback(&members, &provenances, &submitted, options.timestamp);",
       "ManagedPeerPackageAdmission { origins, submitted }",
@@ -302,12 +308,12 @@ function checkAuthoritativeNodeBridge(
   requireAll(
     tests,
     [
-      "child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_with_no_projection",
+      "child_first_neutral_candidate_has_one_dispatch_exact_report_and_authoritative_projection",
       "singleton_policy_failures_preserve_exact_rejection_categories", "two_reconsiderable_parents_suppress_multi_parent_package_submission",
       "every_feedback_variant_keeps_hard_reconsiderable_and_failed_fingerprint_domains_separate",
       "newest_failed_fingerprint_falls_back_once_to_older_eligible_child",
     ],
-    "P133 PPKG-03: exact-call, no-projection, feedback, fallback, and multi-parent suppression tests must remain",
+    "P133 PPKG-03: exact-dispatch, projection, feedback, fallback, and multi-parent suppression tests must remain",
     failures,
   );
 }

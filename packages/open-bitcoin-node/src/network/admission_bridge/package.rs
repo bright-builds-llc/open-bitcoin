@@ -261,22 +261,89 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 continue;
             }
             let package = SubmissionPackage::try_from_package(checked, &chainstate)?;
-            let submitted = self.mempool.submit_package(
-                SubmitPackageCommand {
-                    package,
-                    context: AdmissionContext::peer(PolicyTime::from_unix_seconds(
-                        options.timestamp,
-                    )),
-                },
-                &chainstate,
-                options.verify_flags,
-                options.consensus_params,
-            )?;
+            let submitted =
+                self.submit_package_through_lifecycle(package, origins, options, &chainstate)?;
             debug_assert_eq!(submitted.report.fingerprint().as_bytes(), &fingerprint);
             self.apply_package_feedback(&members, &provenances, &submitted, options.timestamp);
             return Ok(Some(ManagedPeerPackageAdmission { origins, submitted }));
         }
         Ok(None)
+    }
+
+    fn submit_package_through_lifecycle(
+        &mut self,
+        package: SubmissionPackage,
+        origins: [PeerId; 2],
+        options: PeerAdmissionOptions,
+        chainstate: &open_bitcoin_core::chainstate::ChainstateSnapshot,
+    ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
+        let prepared = self.mempool.prepare_package(
+            SubmitPackageCommand {
+                package,
+                context: AdmissionContext::peer(PolicyTime::from_unix_seconds(options.timestamp)),
+            },
+            chainstate,
+            options.verify_flags,
+            options.consensus_params,
+        )?;
+        let report = prepared
+            .facts()
+            .maybe_package_report()
+            .cloned()
+            .ok_or_else(|| MempoolError::InternalInvariant {
+                reason: "package preparation omitted its report".to_string(),
+            })?;
+        let source = AdmissionProjectionSource::peer(
+            report
+                .members()
+                .iter()
+                .zip(origins)
+                .map(|(member, origin)| (member.requested_identity(), origin)),
+        );
+        let plan = LifecycleProjectionPlan::prepare_admission(
+            self,
+            self.authority_epoch(),
+            prepared,
+            source,
+        )
+        .map_err(lifecycle_admission_error)?;
+        let LifecycleCommandResult::Lifecycle(delta) =
+            apply_lifecycle_command(self, LifecycleCommand::PackageAdmission(plan))
+                .map_err(lifecycle_admission_error)?
+        else {
+            return Err(MempoolError::InternalInvariant {
+                reason: "package dispatcher returned a non-lifecycle result".to_string(),
+            }
+            .into());
+        };
+        let submitted = SubmittedPackageResult { report, delta };
+        #[cfg(test)]
+        crate::ManagedMempool::record_package_dispatch_for_test(&submitted);
+        Ok(submitted)
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn submit_package_admission_for_test(
+        &mut self,
+        members: [Transaction; 2],
+        origins: [PeerId; 2],
+        timestamp: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
+        let chainstate = self.chainstate.chainstate().snapshot();
+        let checked = WellFormedPackage::try_from(Vec::from(members))?;
+        let package = SubmissionPackage::try_from_package(checked, &chainstate)?;
+        self.submit_package_through_lifecycle(
+            package,
+            origins,
+            PeerAdmissionOptions {
+                timestamp,
+                verify_flags,
+                consensus_params,
+            },
+            &chainstate,
+        )
     }
 }
 

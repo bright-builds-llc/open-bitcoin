@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,029 |
-| Total lines | 288,422 |
-| Code/content lines | 251,543 |
-| Comment-only lines | 12,733 |
-| Blank lines | 24,146 |
+| Included files | 1,030 |
+| Total lines | 288,961 |
+| Code/content lines | 252,029 |
+| Comment-only lines | 12,756 |
+| Blank lines | 24,176 |
 
 ## Per-Crate Modules
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,720 | 15,478 | 30 | 26,228 | 144.4% |
 | open-bitcoin-network | 122 | 14,042 | 20,695 | 30 | 34,767 | 147.4% |
-| open-bitcoin-node | 199 | 23,809 | 28,086 | 40 | 51,935 | 118.0% |
+| open-bitcoin-node | 200 | 23,882 | 28,546 | 40 | 52,468 | 119.5% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 78 | 9,952 | 9,754 | 57 | 19,763 | 98.0% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,9 +34,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 390 | 107,307 | 91,458 | 7,503 | 8,346 |
-| Rust production | 333 | 98,569 | 85,763 | 3,535 | 9,271 |
-| TypeScript/Bun scripts | 237 | 65,691 | 58,413 | 1,615 | 5,663 |
+| Rust tests | 391 | 107,767 | 91,868 | 7,526 | 8,373 |
+| Rust production | 333 | 98,642 | 85,833 | 3,535 | 9,274 |
+| TypeScript/Bun scripts | 237 | 65,697 | 58,419 | 1,615 | 5,663 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 22 | 4,496 | 4,014 | 66 | 416 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -177,7 +177,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase132-typed-package-staged-admission/parity.ts | 179 |
 | scripts/check-phase132-typed-package-staged-admission/policy.ts | 159 |
 | scripts/check-phase133-package-aware-download-orphan-bridge.test.ts | 377 |
-| scripts/check-phase133-package-aware-download-orphan-bridge.ts | 550 |
+| scripts/check-phase133-package-aware-download-orphan-bridge.ts | 556 |
 | scripts/check-phase134-apply-boundaries.ts | 193 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
@@ -318,7 +318,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | ba743389731b1952710f40c4b29f4455346d825f69724cb4250d50a68b63742c |
+| Input fingerprint | 28b189f487f38d460d89b9bb906812e9afeda1c544ac56095c197f582f51838d |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

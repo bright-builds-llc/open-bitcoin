@@ -1409,6 +1409,7 @@
         "packages/open-bitcoin-node/src/network/admission_bridge/singleton.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission.rs",
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission/partial_package.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/reconciliation.rs"
       ],
       "breadcrumbs": [

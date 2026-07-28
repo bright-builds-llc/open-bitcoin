@@ -182,11 +182,11 @@ test.each([
   ],
   [
     "duplicate authoritative admission",
-    "P133 PPKG-03: each eligible peer candidate must have exactly one node-owned package admission call",
+    "P133 PPKG-03: each eligible peer candidate must have exactly one node-owned package lifecycle dispatch",
     replace(
       "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
-      "let submitted = self.mempool.submit_package(",
-      "let _duplicate = self.mempool.submit_package(\n                SubmitPackageCommand { package: package.clone(), context: AdmissionContext::peer(PolicyTime::from_unix_seconds(options.timestamp)) },\n                &chainstate,\n                options.verify_flags,\n                options.consensus_params,\n            )?;\n            let submitted = self.mempool.submit_package(",
+      "self.submit_package_through_lifecycle(package, origins, options, &chainstate)?",
+      "self.submit_package_through_lifecycle(package.clone(), origins, options, &chainstate)?;\n            self.submit_package_through_lifecycle(package, origins, options, &chainstate)?",
     ),
   ],
   [
@@ -208,12 +208,12 @@ test.each([
     ),
   ],
   [
-    "no-projection oracle",
-    "P133 PPKG-03: exact-call, no-projection, feedback, fallback, and multi-parent suppression tests must remain",
+    "authoritative projection oracle",
+    "P133 PPKG-03: exact-dispatch, projection, feedback, fallback, and multi-parent suppression tests must remain",
     replace(
       "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
-      "child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_with_no_projection",
-      "removed_no_projection_oracle",
+      "child_first_neutral_candidate_has_one_dispatch_exact_report_and_authoritative_projection",
+      "removed_authoritative_projection_oracle",
     ),
   ],
   [
@@ -227,7 +227,7 @@ test.each([
   ],
   [
     "typed singleton rejection oracle",
-    "P133 PPKG-03: exact-call, no-projection, feedback, fallback, and multi-parent suppression tests must remain",
+    "P133 PPKG-03: exact-dispatch, projection, feedback, fallback, and multi-parent suppression tests must remain",
     replace(
       "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
       "singleton_policy_failures_preserve_exact_rejection_categories",

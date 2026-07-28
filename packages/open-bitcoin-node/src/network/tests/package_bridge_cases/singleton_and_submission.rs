@@ -43,7 +43,7 @@ fn singleton_policy_failures_preserve_exact_rejection_categories() {
 }
 
 #[test]
-fn child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_with_no_projection() {
+fn child_first_neutral_candidate_has_one_dispatch_exact_report_and_authoritative_projection() {
     // Arrange
     let peer_id = 133_031;
     let mut network = relay_enabled_managed_network(peer_id);
@@ -83,11 +83,6 @@ fn child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_wit
         ManagedPeerAdmissionResult::Singleton(ref result)
             if matches!(result.outcome, open_bitcoin_mempool::MempoolOutcome::Orphaned { .. })
     ));
-    let serving_before = network.relay_serving_info();
-    let fanout_before = network.relay_fanout_info();
-    let compact_before = network.compact_extra_txn_len();
-    let stored_by_txid_before = network.transactions_by_txid.clone();
-    let stored_by_wtxid_before = network.transactions_by_wtxid.clone();
     crate::ManagedMempool::reset_package_submit_probe_for_test();
 
     // Act
@@ -135,11 +130,11 @@ fn child_first_neutral_candidate_has_one_submit_exact_report_and_fingerprint_wit
             .collect::<Vec<_>>()
     );
     assert_eq!(package_admission.submitted.delta.admitted.len(), 2);
-    assert_eq!(network.relay_serving_info(), serving_before);
-    assert_eq!(network.relay_fanout_info(), fanout_before);
-    assert_eq!(network.compact_extra_txn_len(), compact_before);
-    assert_eq!(network.transactions_by_txid, stored_by_txid_before);
-    assert_eq!(network.transactions_by_wtxid, stored_by_wtxid_before);
+    assert_eq!(network.relay_serving_info().serveable_transactions, 2);
+    assert_eq!(network.relay_fanout_info().known_transactions, 2);
+    assert_eq!(network.compact_extra_txn_len(), 0);
+    assert_eq!(network.transactions_by_txid.len(), 2);
+    assert_eq!(network.transactions_by_wtxid.len(), 2);
     assert_eq!(
         network.orphan_count(),
         0,

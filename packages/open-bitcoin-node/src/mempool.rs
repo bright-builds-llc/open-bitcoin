@@ -155,6 +155,12 @@ impl ManagedMempool {
         LAST_SUBMITTED_PACKAGE.with(|last| last.borrow_mut().take())
     }
 
+    #[cfg(test)]
+    pub(crate) fn record_package_dispatch_for_test(submitted: &SubmittedPackageResult) {
+        PACKAGE_SUBMIT_COUNT.with(|count| count.set(count.get().saturating_add(1)));
+        LAST_SUBMITTED_PACKAGE.with(|last| last.replace(Some(submitted.clone())));
+    }
+
     /// Submits a transaction with canonical metadata supplied by the node shell.
     pub fn submit_transaction_with_context<S: ChainstateStore>(
         &mut self,

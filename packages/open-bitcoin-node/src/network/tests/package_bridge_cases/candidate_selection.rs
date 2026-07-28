@@ -101,8 +101,6 @@ fn multiple_parent_and_grandchild_candidates_are_excluded_without_fanout_or_serv
             consensus_params(),
         )
         .expect("stage direct child");
-    let serving_before = grandchild_network.relay_serving_info();
-    let fanout_before = grandchild_network.relay_fanout_info();
     let admission = grandchild_network
         .process_peer_transaction_admission_with_provenance(
             parent,
@@ -122,8 +120,13 @@ fn multiple_parent_and_grandchild_candidates_are_excluded_without_fanout_or_serv
         transaction_wtxid(&child).expect("child wtxid")
     );
     assert_eq!(grandchild_network.orphan_count(), 1);
-    assert_eq!(grandchild_network.relay_serving_info(), serving_before);
-    assert_eq!(grandchild_network.relay_fanout_info(), fanout_before);
+    assert_eq!(
+        grandchild_network
+            .relay_serving_info()
+            .serveable_transactions,
+        2
+    );
+    assert_eq!(grandchild_network.relay_fanout_info().known_transactions, 2);
 }
 
 #[test]
