@@ -166,7 +166,7 @@ Plans:
 
 Plans:
 - [x] 134-01-PLAN.md — Expose sealed prepared mempool transitions for every lifecycle family.
-- [ ] 134-02-PLAN.md — Define the exhaustive LifecycleCommand and closed authority-bound projection contract.
+- [x] 134-02-PLAN.md — Define the exhaustive LifecycleCommand and closed authority-bound projection contract.
 - [ ] 134-03-PLAN.md — Add bounded identity-complete peer lifecycle operations.
 - [ ] 134-04-PLAN.md — Make serving, inventory, fanout, compact, and peer target application infallible.
 - [ ] 134-05-PLAN.md — Implement sole aggregate authority dispatch and audit reconciliation.
@@ -247,7 +247,7 @@ Plans:
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
-| 134. Authoritative Cross-Cache Lifecycle Integration | 1/13 | In Progress|  |
+| 134. Authoritative Cross-Cache Lifecycle Integration | 2/13 | In Progress|  |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
