@@ -79,6 +79,7 @@ mod phase113_announcement_fallback_cases;
 mod phase113_announcement_gate_cases;
 mod phase113_negotiation_cases;
 mod phase128_offer_cases;
+mod transaction_lifecycle_cases;
 mod transaction_relay_download_cases;
 mod transaction_relay_orphan_candidate_cases;
 mod transaction_relay_orphan_lifecycle_cases;

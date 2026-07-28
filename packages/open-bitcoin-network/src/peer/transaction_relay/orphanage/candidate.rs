@@ -12,6 +12,8 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/p2p_getdata.py
 
+use std::collections::BTreeSet;
+
 use open_bitcoin_primitives::{Transaction, TransactionInput, TransactionOutput, Txid, Wtxid};
 
 use crate::error::PeerId;
@@ -156,6 +158,77 @@ impl TxOrphanage {
             return Some(candidate);
         }
         None
+    }
+
+    pub(crate) fn remove_orphan_without_candidate_scan(&mut self, wtxid: Wtxid) {
+        self.pending_reconsideration.remove(&wtxid);
+        let maybe_entry = self.orphans.remove(&wtxid);
+        for entry in maybe_entry.iter() {
+            for parent_txid in &entry.missing_parents {
+                self.remove_child_index(*parent_txid, wtxid);
+            }
+            for peer_id in &entry.announcers.peers {
+                self.decrement_peer_count(*peer_id);
+            }
+        }
+    }
+
+    pub(crate) fn orphan_identities(&self) -> impl Iterator<Item = (Txid, Wtxid)> + '_ {
+        self.orphans.values().map(|entry| (entry.txid, entry.wtxid))
+    }
+
+    pub(crate) fn orphan_count_by_peer_values(&self) -> impl Iterator<Item = usize> + '_ {
+        self.orphan_count_by_peer.values().copied()
+    }
+
+    pub(crate) fn candidate_cursors(
+        &self,
+    ) -> impl Iterator<Item = ((Wtxid, PeerId), Txid, &[Wtxid], usize)> + '_ {
+        self.candidate_cursors.iter().map(|(key, cursor)| {
+            (
+                *key,
+                cursor.parent_txid,
+                cursor.child_wtxids.as_ref(),
+                cursor.visited,
+            )
+        })
+    }
+
+    pub(crate) fn remove_candidate_cursor(&mut self, key: (Wtxid, PeerId)) {
+        self.candidate_cursors.remove(&key);
+    }
+
+    pub(crate) fn accepted_package_fingerprints(
+        &self,
+    ) -> impl Iterator<Item = (&[u8; 32], &BTreeSet<Wtxid>)> {
+        self.accepted_package_fingerprints.iter()
+    }
+
+    pub(crate) fn record_accepted_package_fingerprint(
+        &mut self,
+        fingerprint: [u8; 32],
+        members: BTreeSet<Wtxid>,
+    ) {
+        self.accepted_package_fingerprints
+            .insert(fingerprint, members);
+    }
+
+    pub(crate) fn retire_accepted_package_fingerprint(&mut self, fingerprint: [u8; 32]) {
+        self.accepted_package_fingerprints.remove(&fingerprint);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn debug_accepted_package_fingerprint_contains(
+        &self,
+        fingerprint: [u8; 32],
+    ) -> bool {
+        self.accepted_package_fingerprints
+            .contains_key(&fingerprint)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn debug_candidate_cursor_count(&self) -> usize {
+        self.candidate_cursors.len()
     }
 }
 

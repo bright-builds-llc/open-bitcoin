@@ -332,6 +332,12 @@ impl TxDownloadScheduler {
         self.in_flight.remove(&relay_id);
     }
 
+    pub(crate) fn forget_lifecycle_identity(&mut self, relay_id: TxRelayId) {
+        self.already_have.remove(&relay_id);
+        self.announcements.remove(&relay_id);
+        self.in_flight.remove(&relay_id);
+    }
+
     pub fn snapshot(&self) -> TxDownloadSnapshot {
         TxDownloadSnapshot {
             candidate_count: self.candidate_count(),

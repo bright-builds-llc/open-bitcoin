@@ -1075,6 +1075,17 @@
       ]
     },
     {
+      "label": "network-peer-transaction-lifecycle",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
+        "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+        "packages/bitcoin-knots/src/txorphanage.cpp"
+      ]
+    },
+    {
       "label": "network-transaction-reject-evidence",
       "files": [
         "packages/open-bitcoin-network/src/peer/transaction_relay/reject_evidence.rs",

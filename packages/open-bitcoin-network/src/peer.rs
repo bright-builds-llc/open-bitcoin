@@ -39,6 +39,7 @@ mod inventory_state;
 mod message_dispatch;
 mod policy_state;
 mod relay_download;
+mod transaction_lifecycle;
 mod transaction_relay;
 
 pub use address_boundary::{PeerAddressBoundaryDecision, PeerAddressBoundaryEvidence};
@@ -53,6 +54,10 @@ pub use compact_relay::{
 };
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 pub use relay_download::RelayDownloadPolicy;
+pub use transaction_lifecycle::{
+    AcceptedPeerPackageFingerprint, PeerTransactionIdentity, PeerTransactionLifecycleInput,
+    PeerTransactionLifecyclePreparationError, PreparedPeerTransactionLifecycle,
+};
 pub use transaction_relay::{
     BoundedOrphanAnnouncers, HardRejectEvidence, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
     OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,

@@ -209,6 +209,7 @@ pub struct TxOrphanage {
     children_by_parent: BTreeMap<Txid, BTreeSet<(Reverse<u64>, Wtxid)>>,
     orphan_count_by_peer: BTreeMap<PeerId, usize>,
     candidate_cursors: BTreeMap<(Wtxid, PeerId), SamePeerCandidateCursor>,
+    accepted_package_fingerprints: BTreeMap<[u8; 32], BTreeSet<Wtxid>>,
     insertion_sequence: u64,
 }
 
@@ -233,6 +234,7 @@ impl TxOrphanage {
             children_by_parent: BTreeMap::new(),
             orphan_count_by_peer: BTreeMap::new(),
             candidate_cursors: BTreeMap::new(),
+            accepted_package_fingerprints: BTreeMap::new(),
             insertion_sequence: 0,
         }
     }
