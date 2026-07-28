@@ -23,6 +23,9 @@ mod compact_receive_candidates;
 mod header_sync;
 mod inbound;
 mod inventory;
+#[allow(dead_code)]
+// Plan 08 Task 2 activates the prepared family contracts through the dispatcher.
+mod lifecycle_effects;
 #[allow(dead_code)] // Phase 134 builds this sealed contract before routing callers in later plans.
 pub(super) mod lifecycle_projection;
 mod mempool_lifecycle;
@@ -60,6 +63,10 @@ pub use inbound::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
     ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
+pub use lifecycle_effects::{
+    EffectCompletion, PeerEffectCapability, PeerEffectReceipt, PeerSessionGeneration,
+    PreparedSnapshotWrite, SnapshotWriteCapability, SnapshotWriteReceipt,
+};
 pub use recovery::ManagedMempoolRecoverySummary;
 pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
@@ -95,6 +102,12 @@ pub struct ManagedPeerNetwork<S> {
     dirty_generation: Option<lifecycle_projection::LifecycleGeneration>,
     unbroadcast_members: BTreeSet<open_bitcoin_mempool::MempoolMemberIdentity>,
     lifecycle_evidence: lifecycle_projection::LifecycleEvidenceSnapshot,
+    #[allow(dead_code)] // Plan 08 Task 2 validates this identity during peer completion.
+    peer_session_generation: lifecycle_effects::PeerSessionGeneration,
+    #[allow(dead_code)] // Plan 08 Task 2 owns peer preparation/completion through this ledger.
+    peer_effect_ledger: lifecycle_effects::PeerEffectLedger,
+    #[allow(dead_code)] // Plan 08 Task 2 owns snapshot preparation/completion through this ledger.
+    snapshot_effect_ledger: lifecycle_effects::SnapshotEffectLedger,
     latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
     latest_mempool_recovery_storage_error: Option<crate::status::SyncRecoveryCategory>,
     local_config: LocalPeerConfig,

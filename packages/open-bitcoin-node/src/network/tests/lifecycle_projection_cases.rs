@@ -21,6 +21,7 @@ use crate::network::lifecycle_projection::{
 };
 
 mod admission;
+mod effects;
 mod maintenance;
 mod reconciliation;
 

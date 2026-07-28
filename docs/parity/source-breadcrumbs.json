@@ -1401,6 +1401,7 @@
     {
       "label": "node-lifecycle-projection-contract",
       "files": [
+        "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs",
@@ -1410,6 +1411,7 @@
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission/partial_package.rs",
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/maintenance.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/reconciliation.rs"
       ],
