@@ -2,6 +2,19 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::*;
+use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_network::LocalPeerConfig;
+
+use crate::MemoryChainstateStore;
+use crate::network::{EffectCompletion, ManagedNetworkHandle, ManagedPeerNetwork};
+
+fn empty_network_handle() -> ManagedNetworkHandle {
+    ManagedNetworkHandle::from_network_fixture(ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        LocalPeerConfig::default(),
+        PolicyConfig::default(),
+    ))
+}
 
 #[test]
 fn fjall_store_reopens_saved_snapshots_and_metadata() {
@@ -185,4 +198,63 @@ fn fjall_mempool_snapshot_reports_corruption() {
     ));
 
     remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prepared_mempool_snapshot_executor_persists_before_receipt_completion() {
+    // Arrange
+    let path = temp_store_path("prepared-mempool-success");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open store");
+    let handle = empty_network_handle();
+    let prepared = handle
+        .prepare_mempool_snapshot_write()
+        .expect("snapshot should prepare");
+
+    // Act
+    let receipt = store
+        .execute_prepared_mempool_snapshot_write(prepared, PersistMode::Sync)
+        .expect("snapshot executor should persist");
+    let completion = handle
+        .complete_snapshot_write(receipt)
+        .expect("snapshot completion should dispatch");
+
+    // Assert
+    assert_eq!(completion, EffectCompletion::Applied);
+    assert_eq!(
+        store
+            .load_mempool_snapshot()
+            .expect("load persisted snapshot"),
+        Some(MempoolSnapshot::default())
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
+    // Arrange
+    let handle = empty_network_handle();
+    let prepared = handle
+        .prepare_mempool_snapshot_write()
+        .expect("snapshot should prepare");
+    let expected = StorageError::BackendFailure {
+        namespace: StorageNamespace::Mempool,
+        message: "injected mempool snapshot write failure".to_string(),
+        action: StorageRecoveryAction::Restart,
+    };
+
+    // Act
+    let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
+        prepared,
+        PersistMode::Sync,
+        |_, _| Err(expected.clone()),
+    );
+
+    // Assert
+    assert_eq!(result, Err(expected));
+    assert!(
+        handle.prepare_mempool_snapshot_write().is_err(),
+        "failed execution must not complete the pending snapshot"
+    );
 }

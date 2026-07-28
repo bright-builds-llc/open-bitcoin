@@ -4,9 +4,19 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use open_bitcoin_network::{PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
 
-use crate::MemoryChainstateStore;
+use open_bitcoin_mempool::{
+    AdmissionContext, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyConfig,
+    RelayIntent,
+};
+use open_bitcoin_network::{LocalPeerConfig, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId};
+
+use super::{apply_prepared, network_with_spendable_coinbase};
 use crate::network::lifecycle_effects::{
     MAX_COMPLETED_PEER_EFFECTS, MAX_COMPLETED_SNAPSHOT_EFFECTS, MAX_PENDING_PEER_EFFECTS,
     MAX_PENDING_SNAPSHOT_EFFECTS, PeerEffectCapability, PeerEffectId, PeerEffectLedger,
@@ -18,10 +28,29 @@ use crate::network::lifecycle_projection::{
     SnapshotPreparationRequest,
 };
 use crate::network::runtime_authority::{ManagedNetworkHandle, apply_lifecycle_command};
+use crate::network::tests::{consensus_params, spend_transaction, verify_flags};
 use crate::network::{EffectCompletion, ManagedPeerNetwork};
 use crate::storage::MempoolSnapshot;
-use open_bitcoin_mempool::PolicyConfig;
-use open_bitcoin_network::LocalPeerConfig;
+use crate::{FjallNodeStore, MemoryChainstateStore, PersistMode, StorageNamespace};
+
+fn temp_store_path(test_name: &str) -> PathBuf {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time after unix epoch")
+        .as_nanos();
+    std::env::temp_dir().join(format!(
+        "open-bitcoin-phase134-snapshot-{test_name}-{}-{timestamp}",
+        std::process::id()
+    ))
+}
+
+fn remove_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => panic!("failed to remove {}: {error}", path.display()),
+    }
+}
 
 fn network_fixture() -> ManagedPeerNetwork<MemoryChainstateStore> {
     ManagedPeerNetwork::new(
@@ -433,5 +462,59 @@ mod completion {
                 EffectCompletion::AlreadyApplied
             )
         ));
+    }
+
+    #[test]
+    fn snapshot_executor_encoding_failure_keeps_the_effect_pending() {
+        // Arrange
+        let path = temp_store_path("encode-failure");
+        remove_dir_if_exists(&path);
+        let store = FjallNodeStore::open(&path).expect("open store");
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let transaction = spend_transaction(coinbase_txid, 499_999_000);
+        let invalid_metadata = MempoolEntryMetadata::new(
+            MempoolAcceptanceTime::LegacyUnknown,
+            MempoolOrigin::Local,
+            RelayIntent::Requested,
+        );
+        let core = network
+            .mempool
+            .prepare_transaction_with_context(
+                &network.chainstate,
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                AdmissionContext::new(invalid_metadata),
+            )
+            .expect("invalid persistence metadata is still admissible in memory");
+        apply_prepared(&mut network, core);
+        let handle = ManagedNetworkHandle::from_network_fixture(network);
+        let prepared = handle
+            .prepare_mempool_snapshot_write()
+            .expect("snapshot should prepare");
+
+        // Act
+        let result = store.execute_prepared_mempool_snapshot_write(prepared, PersistMode::Sync);
+
+        // Assert
+        assert!(matches!(
+            result,
+            Err(crate::StorageError::Corruption {
+                namespace: StorageNamespace::Mempool,
+                ..
+            })
+        ));
+        assert!(
+            handle.prepare_mempool_snapshot_write().is_err(),
+            "encoding failure must not complete the pending snapshot"
+        );
+        assert_eq!(
+            store
+                .load_mempool_snapshot()
+                .expect("load after encode failure"),
+            None
+        );
+
+        remove_dir_if_exists(&path);
     }
 }
