@@ -131,6 +131,11 @@ fn expiry_removes_descendants_from_every_projection_and_advances_once() {
             RelayIntent::Requested,
         )
         .expect("child admission");
+    let prepared = network
+        .mempool()
+        .prepare_expiry(PolicyTime::new(3_601))
+        .expect("expiry should prepare");
+    assert_prepared_orders(&prepared, &[], &[child_identity, parent_identity]);
 
     // Act
     let delta = network
@@ -206,6 +211,11 @@ fn connected_block_conflict_removes_descendants_from_every_projection() {
         .clone();
     let block = block_with_transactions(tip.block_hash, tip.height + 1, vec![conflict]);
     let context = mempool_lifecycle::block_lifecycle_context(200, tip.height + 1);
+    let prepared = network
+        .mempool()
+        .prepare_connected_block_transition(&block, context)
+        .expect("connected-block transition should prepare");
+    assert_prepared_orders(&prepared, &[], &[child_identity, parent_identity]);
 
     // Act
     let lifecycle = network

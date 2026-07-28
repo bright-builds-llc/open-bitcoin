@@ -238,6 +238,10 @@ fn full_package_projects_parent_first_final_membership_across_every_target() {
     };
     assert_eq!(package.submitted.report.status(), &PackageStatus::Complete);
     assert_eq!(
+        package.submitted.delta.admitted,
+        vec![parent_identity, child_identity]
+    );
+    assert_eq!(
         package
             .submitted
             .report

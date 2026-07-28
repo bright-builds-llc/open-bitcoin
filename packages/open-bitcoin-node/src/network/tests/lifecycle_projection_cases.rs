@@ -10,7 +10,8 @@ use open_bitcoin_core::consensus::{block_hash, transaction_txid, transaction_wtx
 use open_bitcoin_core::primitives::{BlockHash, Txid};
 use open_bitcoin_mempool::{
     AdmissionContext, FeeRate, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity,
-    MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
+    MempoolOrigin, PolicyConfig, PolicyTime, PreparedMempoolTransition, RelayIntent,
+    RollingMempoolFeeRate,
 };
 use open_bitcoin_network::PeerMempoolLifecycleSnapshot;
 
@@ -135,6 +136,15 @@ fn assert_complete_projection(
         report.labels(),
         LifecycleReconciliationReport::FIXED_TARGET_LABELS
     );
+}
+
+fn assert_prepared_orders(
+    prepared: &PreparedMempoolTransition,
+    admitted: &[MempoolMemberIdentity],
+    teardowns: &[MempoolMemberIdentity],
+) {
+    assert_eq!(prepared.facts().admitted_order(), admitted);
+    assert_eq!(prepared.facts().teardown_order(), teardowns);
 }
 
 fn network_with_spendable_coinbase(

@@ -59,6 +59,28 @@ fn submit_package(
         .expect("package admission should return its exact report")
 }
 
+fn prepare_package(
+    network: &ManagedPeerNetwork<MemoryChainstateStore>,
+    members: [Transaction; 2],
+) -> PreparedMempoolTransition {
+    let checked = WellFormedPackage::try_from(Vec::from(members)).expect("checked package");
+    let package =
+        SubmissionPackage::try_from_package(checked, &network.chainstate.chainstate().snapshot())
+            .expect("submission package");
+    network
+        .mempool()
+        .prepare_package(
+            SubmitPackageCommand {
+                package,
+                context: AdmissionContext::peer(PolicyTime::from_unix_seconds(100)),
+            },
+            &network.chainstate.chainstate().snapshot(),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("package transition should prepare")
+}
+
 fn identity(transaction: &Transaction) -> MempoolMemberIdentity {
     MempoolMemberIdentity {
         txid: transaction_txid(transaction).expect("txid"),
@@ -195,6 +217,16 @@ fn replacement_package_tears_down_both_victim_aliases_and_fingerprint() {
     let replacement_child_identity = identity(&replacement_child);
 
     // Act
+    let prepared = prepare_package(
+        &network,
+        [replacement_parent.clone(), replacement_child.clone()],
+    );
+    assert_prepared_orders(
+        &prepared,
+        &[replacement_parent_identity, replacement_child_identity],
+        &[original_child_identity, original_parent_identity],
+    );
+
     let submitted = submit_package(
         &mut network,
         [replacement_parent, replacement_child],
@@ -261,7 +293,7 @@ fn package_memory(snapshot: &ChainstateSnapshot, members: [Transaction; 2]) -> u
 }
 
 #[test]
-fn pressure_package_removes_the_lower_fee_member_identity_completely() {
+fn pressure_eviction_tears_down_descendant_before_ancestor_across_every_projection() {
     // Arrange
     let peer_id = 134_067;
     let mut probe = ManagedPeerNetwork::new(
@@ -277,18 +309,21 @@ fn pressure_package_removes_the_lower_fee_member_identity_completely() {
             .connect_local_block(block, verify_flags(), consensus_params())
             .expect("probe chain block");
     }
-    let low = spend_transaction(
+    let low_parent = spend_transaction(
         transaction_txid(&genesis.transactions[0]).expect("genesis coinbase"),
         499_999_900,
     );
-    let package_parent = spend_transaction(
+    let low_parent_identity = identity(&low_parent);
+    let low_child = spend_transaction(low_parent_identity.txid, 499_998_000);
+    let low_child_identity = identity(&low_child);
+    let high = spend_transaction(
         transaction_txid(&second.transactions[0]).expect("second coinbase"),
-        499_996_000,
+        499_990_000,
     );
-    let package_child = spend_transaction(identity(&package_parent).txid, 499_990_000);
+    let high_identity = identity(&high);
     let capacity = package_memory(
         &probe.chainstate.chainstate().snapshot(),
-        [package_parent.clone(), package_child.clone()],
+        [low_parent.clone(), low_child.clone()],
     );
     let mut network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),
@@ -304,44 +339,69 @@ fn pressure_package_removes_the_lower_fee_member_identity_completely() {
             .expect("chain block");
     }
     network.add_inbound_peer(peer_id).expect("peer");
-    let low_identity = identity(&low);
-    network
-        .submit_local_transaction_outcome_at(
-            low,
+    let low_package = submit_package(
+        &mut network,
+        [low_parent.clone(), low_child.clone()],
+        peer_id,
+    );
+    assert_eq!(
+        low_package.delta.admitted,
+        vec![low_parent_identity, low_child_identity]
+    );
+    let prepared = network
+        .mempool
+        .prepare_transaction_with_context(
+            &network.chainstate,
+            high.clone(),
             verify_flags(),
             consensus_params(),
-            90,
-            RelayIntent::NotRequested,
+            AdmissionContext::local(PolicyTime::new(110), RelayIntent::NotRequested),
         )
-        .expect("low-fee admission");
-    let parent_identity = identity(&package_parent);
-    let child_identity = identity(&package_child);
+        .expect("high-fee pressure transition should prepare");
+    assert_prepared_orders(
+        &prepared,
+        &[high_identity],
+        &[low_child_identity, low_parent_identity],
+    );
 
     // Act
-    let submitted = submit_package(&mut network, [package_parent, package_child], peer_id);
+    let outcome = network
+        .submit_local_transaction_outcome_at(
+            high,
+            verify_flags(),
+            consensus_params(),
+            110,
+            RelayIntent::NotRequested,
+        )
+        .expect("high-fee pressure admission");
 
     // Assert
-    assert!(submitted.delta.removed.iter().any(|removal| {
-        removal.member == low_identity && removal.cause == MempoolRemovalCause::Pressure
-    }));
+    assert!(matches!(
+        outcome,
+        open_bitcoin_mempool::MempoolOutcome::Accepted { txid, evicted, .. }
+            if txid == high_identity.txid
+                && evicted == vec![low_parent_identity.txid, low_child_identity.txid]
+    ));
     assert_complete_projection(
         &network,
         &expected_projection(
             &network,
-            BTreeSet::from([parent_identity, child_identity]),
+            BTreeSet::from([high_identity]),
             BTreeSet::new(),
             2,
             LifecycleEvidenceSnapshot {
                 committed_transitions: 2,
                 admitted_members: 3,
-                removed_members: 1,
-                retry_clears: 1,
-                pressure_removals: 1,
+                removed_members: 2,
+                retry_clears: 2,
+                pressure_removals: 2,
                 ..LifecycleEvidenceSnapshot::default()
             },
         ),
     );
-    assert!(!network.peer_manager.mempool_identity_known(
-        open_bitcoin_network::PeerTransactionIdentity::new(low_identity.txid, low_identity.wtxid)
-    ));
+    for victim in [low_parent_identity, low_child_identity] {
+        assert!(!network.peer_manager.mempool_identity_known(
+            open_bitcoin_network::PeerTransactionIdentity::new(victim.txid, victim.wtxid)
+        ));
+    }
 }
