@@ -14,7 +14,7 @@ use open_bitcoin_mempool::{
     MempoolError, MempoolMemberIdentity, PreparedLifecycleFacts, PreparedMempoolTransition,
 };
 use open_bitcoin_network::{
-    AcceptedPeerPackageFingerprint, PeerTransactionIdentity, PeerTransactionLifecycleInput,
+    AcceptedPeerPackageFingerprint, PeerId, PeerTransactionIdentity, PeerTransactionLifecycleInput,
     PeerTransactionLifecyclePreparationError, PreparedPeerTransactionLifecycle,
 };
 
@@ -280,6 +280,26 @@ pub(super) struct PreparedLifecycleEvidence {
     replacement: LifecycleEvidenceSnapshot,
 }
 
+/// Exact admission provenance used only while preparing fanout consequences.
+pub(super) enum AdmissionProjectionSource {
+    None,
+    Local,
+    Peer(BTreeMap<MempoolMemberIdentity, PeerId>),
+}
+
+impl AdmissionProjectionSource {
+    pub(super) fn peer(origins: impl IntoIterator<Item = (MempoolMemberIdentity, PeerId)>) -> Self {
+        Self::Peer(origins.into_iter().collect())
+    }
+
+    pub(super) fn maybe_origin_peer(&self, member: MempoolMemberIdentity) -> Option<PeerId> {
+        let Self::Peer(origins) = self else {
+            return None;
+        };
+        origins.get(&member).copied()
+    }
+}
+
 /// Prepared in-memory consequences remain distinct from committed lifecycle facts.
 pub(super) struct LifecycleProjectionPlan {
     pub(super) authority_epoch: AuthorityEpoch,
@@ -299,13 +319,27 @@ impl LifecycleProjectionPlan {
         authority_epoch: AuthorityEpoch,
         core: PreparedMempoolTransition,
     ) -> Result<Self, LifecyclePreparationError> {
+        Self::prepare_admission(
+            network,
+            authority_epoch,
+            core,
+            AdmissionProjectionSource::None,
+        )
+    }
+
+    pub(super) fn prepare_admission<S: ChainstateStore>(
+        network: &ManagedPeerNetwork<S>,
+        authority_epoch: AuthorityEpoch,
+        core: PreparedMempoolTransition,
+        source: AdmissionProjectionSource,
+    ) -> Result<Self, LifecyclePreparationError> {
         let facts = core.facts();
         ProjectionShape::prepare(facts)?;
         let compact = network
             .prepare_compact_projection(facts)
             .map_err(LifecyclePreparationError::CompactTransactionBody)?;
         let serving = network.prepare_serving_projection(facts);
-        let fanout = network.prepare_fanout_projection(facts);
+        let fanout = network.prepare_fanout_projection(facts, &source);
         let peers = prepare_peer_projection(network, facts)?;
         let unbroadcast = network.prepare_unbroadcast_projection(facts)?;
         let persistence = network.prepare_persistence_projection(facts)?;

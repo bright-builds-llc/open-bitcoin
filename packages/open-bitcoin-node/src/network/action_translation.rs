@@ -262,17 +262,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     )?;
                     match admission {
                         ManagedPeerAdmissionResult::Singleton(bridge) => {
-                            for (target_peer_id, message) in self.record_relay_fanout_for_outcome(
-                                Some(peer_id),
-                                &bridge.outcome,
-                                timestamp,
-                            ) {
+                            for (target_peer_id, message) in self.drain_relay_fanout(timestamp) {
                                 if target_peer_id == peer_id {
                                     outbound.push(message);
                                 } else {
                                     targeted_outbound.push((target_peer_id, message));
                                 }
                             }
+                            let _outcome = bridge.outcome;
                             let _admission_delta = bridge.delta;
                             let _reconsidered = bridge.reconsidered;
                             for (target_peer_id, message) in bridge.targeted_outbound {

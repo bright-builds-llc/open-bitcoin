@@ -354,26 +354,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
-    pub(super) fn record_relay_fanout_for_outcome(
+    pub(super) fn drain_relay_fanout(
         &mut self,
-        origin_peer: Option<PeerId>,
-        outcome: &MempoolOutcome,
         now_unix_seconds: i64,
     ) -> Vec<(PeerId, WireNetworkMessage)> {
-        let maybe_admission = tx_fanout_admission_from_outcome(outcome);
-        let peer_inputs = self.relay_fanout_peer_inputs(origin_peer, maybe_admission);
         let peer_ids = self.peer_manager.peer_ids();
-        let mut actions =
-            self.relay_fanout
-                .record_admission_outcome(origin_peer, outcome, &peer_inputs);
-        for peer_id in peer_ids {
-            actions.extend(
-                self.relay_fanout
-                    .drain_peer_fanout(peer_id, now_unix_seconds),
-            );
-        }
-        actions
+        peer_ids
             .into_iter()
+            .flat_map(|peer_id| {
+                self.relay_fanout
+                    .drain_peer_fanout(peer_id, now_unix_seconds)
+            })
             .filter_map(translate_fanout_action)
             .collect()
     }

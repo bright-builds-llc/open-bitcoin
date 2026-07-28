@@ -15,6 +15,7 @@
 // Keeps WellFormedPackage::try_from, SubmissionPackage::try_from_package,
 // submit_package, and ManagedPeerPackageAdmission in one narrow composition seam.
 mod package;
+mod singleton;
 
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid},
@@ -32,6 +33,7 @@ use open_bitcoin_network::{
 };
 
 use super::action_translation::process_transaction_relay_action;
+use super::lifecycle_projection::AdmissionProjectionSource;
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::ChainstateStore;
 
@@ -153,6 +155,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.peer_manager.orphan_count()
     }
 
+    // The singleton child module retains the no-op
+    // `submit_transaction_transition_with_context` rejection adapter while successful
+    // singleton admission uses typed lifecycle facts.
     #[cfg(test)]
     pub(super) fn with_orphan_policy(&mut self, policy: open_bitcoin_network::OrphanPolicy) {
         self.peer_manager.replace_orphan_policy_for_testing(policy);
@@ -194,7 +199,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 relay_intent,
             ),
         )?;
-        self.record_local_submission_outcome(&transition.outcome, relay_intent);
+        if transition.delta.is_empty() {
+            self.record_local_submission_outcome(&transition.outcome, relay_intent);
+        }
         Ok(transition.outcome)
     }
 
@@ -205,15 +212,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         consensus_params: ConsensusParams,
         context: AdmissionContext,
     ) -> Result<MempoolTransition, ManagedNetworkError> {
-        let transition = self.mempool.submit_transaction_transition_with_context(
-            &self.chainstate,
-            transaction.clone(),
+        self.submit_singleton_transition(
+            transaction,
             verify_flags,
             consensus_params,
             context,
-        )?;
-        self.apply_admitted_transition(&transition, transaction)?;
-        Ok(transition)
+            AdmissionProjectionSource::Local,
+        )
     }
 
     fn reconsider_child(
@@ -226,6 +231,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Result<(), ManagedNetworkError> {
         let submitted = self.submit_peer_singleton(
             candidate.transaction.clone(),
+            candidate.provenance.delivered_by,
             timestamp,
             verify_flags,
             consensus_params,
@@ -243,9 +249,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let status = reconsideration_status(&transition.outcome);
 
         match &transition.outcome {
-            MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {
-                self.apply_admitted_transition(&transition, candidate.transaction.clone())?;
-            }
+            MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {}
             MempoolOutcome::Orphaned {
                 txid,
                 wtxid,
@@ -518,6 +522,13 @@ fn serving_status_for_removal(cause: MempoolRemovalCause) -> TxServingRecordStat
         }
         MempoolRemovalCause::Reorg => TxServingRecordStatus::Stale,
     }
+}
+
+pub(super) fn lifecycle_admission_error(error: impl core::fmt::Display) -> ManagedNetworkError {
+    MempoolError::InternalInvariant {
+        reason: format!("admission lifecycle projection failed: {error}"),
+    }
+    .into()
 }
 
 fn admission_result_from_transition(

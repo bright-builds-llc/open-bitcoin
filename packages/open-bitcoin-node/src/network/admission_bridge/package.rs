@@ -17,8 +17,15 @@ use open_bitcoin_mempool::{
 };
 use open_bitcoin_network::{OrphanStageInput, PeerId, PeerManager, ReceivedTransactionProvenance};
 
-use super::{ManagedAdmissionBridgeResult, ManagedNetworkError, ManagedPeerNetwork};
+use super::{
+    ManagedAdmissionBridgeResult, ManagedNetworkError, ManagedPeerNetwork,
+    lifecycle_admission_error,
+};
 use crate::ChainstateStore;
+use crate::network::lifecycle_projection::{
+    AdmissionProjectionSource, LifecycleCommand, LifecycleProjectionPlan,
+};
+use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(in crate::network) struct ManagedPeerPackageAdmission {
@@ -74,6 +81,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
         let submitted = self.submit_peer_singleton(
             transaction.clone(),
+            provenance.delivered_by,
             timestamp,
             verify_flags,
             consensus_params,
@@ -114,12 +122,15 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
 
         let transition = if singleton_package_replacement {
-            self.mempool.submit_transaction_transition_with_context(
-                &self.chainstate,
+            self.submit_singleton_transition(
                 transaction.clone(),
                 verify_flags,
                 consensus_params,
                 AdmissionContext::peer(PolicyTime::from_unix_seconds(timestamp)),
+                AdmissionProjectionSource::peer([(
+                    member.requested_identity(),
+                    provenance.delivered_by,
+                )]),
             )?
         } else {
             singleton_transition_from_package(submitted)?
@@ -128,7 +139,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
         match &transition.outcome {
             MempoolOutcome::Accepted { txid, .. } | MempoolOutcome::Replaced { txid, .. } => {
-                self.apply_admitted_transition(&transition, transaction)?;
                 let child_result = self.reconsider_orphans_after_acceptance(
                     *txid,
                     timestamp,
@@ -173,6 +183,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(super) fn submit_peer_singleton(
         &mut self,
         transaction: Transaction,
+        origin_peer: PeerId,
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -180,17 +191,45 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let chainstate = self.chainstate.chainstate().snapshot();
         let package = WellFormedPackage::try_from(vec![transaction])?;
         let submission = SubmissionPackage::try_from_package(package, &chainstate)?;
-        self.mempool
-            .submit_package(
-                SubmitPackageCommand {
-                    package: submission,
-                    context: AdmissionContext::peer(PolicyTime::from_unix_seconds(timestamp)),
-                },
-                &chainstate,
-                verify_flags,
-                consensus_params,
-            )
-            .map_err(ManagedNetworkError::from)
+        let prepared = self.mempool.prepare_package(
+            SubmitPackageCommand {
+                package: submission,
+                context: AdmissionContext::peer(PolicyTime::from_unix_seconds(timestamp)),
+            },
+            &chainstate,
+            verify_flags,
+            consensus_params,
+        )?;
+        let report = prepared
+            .facts()
+            .maybe_package_report()
+            .cloned()
+            .ok_or_else(|| MempoolError::InternalInvariant {
+                reason: "singleton package preparation omitted its report".to_string(),
+            })?;
+        let source = AdmissionProjectionSource::peer(
+            report
+                .members()
+                .iter()
+                .map(|member| (member.requested_identity(), origin_peer)),
+        );
+        let plan = LifecycleProjectionPlan::prepare_admission(
+            self,
+            self.authority_epoch(),
+            prepared,
+            source,
+        )
+        .map_err(lifecycle_admission_error)?;
+        let LifecycleCommandResult::Lifecycle(delta) =
+            apply_lifecycle_command(self, LifecycleCommand::SingletonAdmission(plan))
+                .map_err(lifecycle_admission_error)?
+        else {
+            return Err(MempoolError::InternalInvariant {
+                reason: "singleton package dispatcher returned a non-lifecycle result".to_string(),
+            }
+            .into());
+        };
+        Ok(SubmittedPackageResult { report, delta })
     }
 
     fn submit_same_peer_candidate(

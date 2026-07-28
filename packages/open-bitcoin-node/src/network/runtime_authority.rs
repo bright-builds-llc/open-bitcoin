@@ -41,6 +41,7 @@ use super::{
 };
 
 mod lifecycle;
+pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
 

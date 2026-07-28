@@ -20,6 +20,7 @@ use crate::network::lifecycle_projection::{
     LifecycleProjectionPlan, LifecycleReconciliationReport,
 };
 
+mod admission;
 mod reconciliation;
 
 #[derive(Debug)]

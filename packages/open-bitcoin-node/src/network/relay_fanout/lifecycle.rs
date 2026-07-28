@@ -13,14 +13,16 @@
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_core::primitives::{Txid, Wtxid};
-use open_bitcoin_mempool::{MempoolRemovalCause, PreparedLifecycleFacts};
+use open_bitcoin_mempool::{
+    MempoolOrigin, MempoolOutcome, MempoolRemovalCause, PreparedLifecycleFacts, RelayIntent,
+};
 use open_bitcoin_network::{
     TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason,
-    TxFanoutPeerInput, TxRelayId, TxServingRecordStatus,
+    TxFanoutPeerInput, TxRelayId, TxServingRecordStatus, defer_local_rebroadcast,
 };
 
-use super::ManagedRelayFanoutState;
-use crate::network::lifecycle_projection::PreparedFanoutProjection;
+use super::{ManagedRelayFanoutState, local_submission_evidence};
+use crate::network::lifecycle_projection::{AdmissionProjectionSource, PreparedFanoutProjection};
 use crate::{ChainstateStore, ManagedPeerNetwork};
 
 impl ManagedRelayFanoutState {
@@ -28,12 +30,13 @@ impl ManagedRelayFanoutState {
         &mut self,
         admission: TxFanoutAdmission,
         peers: &[TxFanoutPeerInput],
-    ) {
+    ) -> Vec<TxFanoutAction> {
         self.wtxids_by_txid.insert(admission.txid, admission.wtxid);
         let actions = self.queue.enqueue_admission(admission, peers);
         if !actions.is_empty() {
             self.replace_latest_actions(&actions);
         }
+        actions
     }
 
     fn cleanup_prepared_identity(
@@ -62,6 +65,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(in crate::network) fn prepare_fanout_projection(
         &self,
         facts: &PreparedLifecycleFacts,
+        source: &AdmissionProjectionSource,
     ) -> PreparedFanoutProjection {
         let mut replacement = self.relay_fanout.clone();
         for member in facts.teardown_order() {
@@ -83,14 +87,48 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         } else {
             TxFanoutAdmissionOutcome::Accepted
         };
+        let queued_before = replacement.queue.snapshot().queued_count;
+        let mut admission_actions = Vec::new();
         for member in facts.final_present() {
             let admission = TxFanoutAdmission {
                 txid: member.member.txid,
                 wtxid: member.member.wtxid,
                 outcome: admission_outcome,
             };
-            let peer_inputs = self.relay_fanout_peer_inputs(None, Some(admission));
-            replacement.record_prepared_admission(admission, &peer_inputs);
+            let origin_peer = source.maybe_origin_peer(member.member);
+            let local_not_requested = matches!(source, AdmissionProjectionSource::Local)
+                && member.metadata.origin == MempoolOrigin::Local
+                && member.metadata.relay_intent == RelayIntent::NotRequested;
+            let peer_inputs = if local_not_requested {
+                Vec::new()
+            } else {
+                self.relay_fanout_peer_inputs(origin_peer, Some(admission))
+            };
+            admission_actions
+                .extend(replacement.record_prepared_admission(admission, &peer_inputs));
+            if matches!(source, AdmissionProjectionSource::Local)
+                && member.metadata.relay_intent == RelayIntent::Requested
+                && let Some(action) = defer_local_rebroadcast(admission, true, true)
+            {
+                admission_actions.push(action);
+            }
+        }
+        if matches!(source, AdmissionProjectionSource::Local)
+            && let Some(member) = facts.final_present().first()
+        {
+            let queued_after = replacement.queue.snapshot().queued_count;
+            replacement.latest_local_submission = Some(local_submission_evidence(
+                &MempoolOutcome::Accepted {
+                    txid: member.member.txid,
+                    wtxid: member.member.wtxid,
+                    evicted: Vec::new(),
+                },
+                queued_after.saturating_sub(queued_before),
+                &admission_actions,
+            ));
+            if !admission_actions.is_empty() {
+                replacement.replace_latest_actions(&admission_actions);
+            }
         }
         PreparedFanoutProjection { replacement }
     }
