@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 134 context gathered
-last_updated: "2026-07-28T04:04:58.238Z"
-last_activity: 2026-07-28 -- Phase 134 planning complete
+stopped_at: Completed 134-01-PLAN.md
+last_updated: "2026-07-28T05:23:37.190Z"
+last_activity: "2026-07-28"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 49
-  completed_plans: 36
-  percent: 73
+  completed_plans: 37
+  percent: 76
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 134 — Authoritative Cross-Cache Lifecycle Integration
+**Current focus:** Phase 134 — authoritative-cross-cache-lifecycle-integration
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 134
-Plan: Not started
+Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
+Plan: 2 of 13
 Status: Ready to execute
-Last activity: 2026-07-28 -- Phase 134 planning complete
+Last activity: 2026-07-28
 
 Progress: [██████████] 100%
 
@@ -66,6 +66,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 133.1 P04 | 27min | 3 tasks | 137 files |
 | Phase 133.1 P05 | 21min | 3 tasks | 21 files |
 | Phase 133.1 P06 | 53m | 2 tasks | 63 files |
+| Phase 134 P01 | 1h 10m | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,9 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 133.1]: Confine all hermetic live-smoke fixtures, reports, and cleanup to one guarded temporary root.
 - [Phase 133.1]: Structural checkers read the stable root plus its same-named extension-free child tree in bytewise order.
 - [Phase 133.1]: Formatter repair stayed limited to Phase 133.1-owned Rust test paths.
+- [Phase 134]: Keep MempoolPatch private behind one opaque non-Clone capability and separate revision validation from infallible consumption.
+- [Phase 134]: Derive teardown order from canonical removed transaction inputs so descendants precede ancestors independently of removal cause or role.
+- [Phase 134]: Retain existing mutating APIs as compatibility facades that prepare, validate, and consume exactly once.
 
 ### Pending Todos
 
@@ -169,6 +173,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T01:56:33.869Z
-Stopped at: Phase 134 context gathered
-Resume file: .planning/phases/134-authoritative-cross-cache-lifecycle-integration/134-CONTEXT.md
+Last session: 2026-07-28T05:23:37.185Z
+Stopped at: Completed 134-01-PLAN.md
+Resume file: None
