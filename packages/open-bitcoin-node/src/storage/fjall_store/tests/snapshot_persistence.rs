@@ -241,6 +241,10 @@ fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
     let path = temp_store_path("prepared-mempool-write-failure");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("open store");
+    let persisted_before_failure = mempool_snapshot();
+    store
+        .save_mempool_snapshot(&persisted_before_failure, PersistMode::Sync)
+        .expect("save pre-existing mempool snapshot");
     let handle = empty_network_handle();
     let prepared = handle
         .prepare_mempool_snapshot_write()
@@ -268,7 +272,7 @@ fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
         store
             .load_mempool_snapshot()
             .expect("load after write failure"),
-        None
+        Some(persisted_before_failure)
     );
 
     remove_dir_if_exists(&path);

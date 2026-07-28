@@ -227,30 +227,52 @@ fn partial_successful_prefix_credits_only_completed_receipts() {
     let [first, second, unsent] = emissions;
     let (_, _, first_capability) = first.into_parts();
     let (_, _, second_capability) = second.into_parts();
+    let before = announcement_counts(&network);
 
     // Act
-    network
+    let first_completion = network
         .complete_peer_emission(first_capability.acknowledge_write())
         .expect("complete first write");
-    network
+    let second_completion = network
         .complete_peer_emission(second_capability.acknowledge_write())
         .expect("complete second write");
+    let after_successful_prefix = announcement_counts(&network);
+    let peer_after_successful_prefix = format!(
+        "{:?}",
+        network.peer_manager_snapshot().expect("peer manager")
+    );
     drop(unsent);
 
     // Assert
-    let encoded = announcement_counts(&network);
+    assert_eq!(first_completion, EffectCompletion::Applied);
+    assert_eq!(second_completion, EffectCompletion::Applied);
+    assert_ne!(after_successful_prefix, before);
     assert_eq!(
-        encoded["announcement"]["value"]["compact_announced_count"],
+        after_successful_prefix["announcement"]["value"]["compact_announced_count"],
         1
     );
     assert_eq!(
-        encoded["announcement"]["value"]["compact_headers_fallback_count"],
+        after_successful_prefix["announcement"]["value"]["compact_headers_fallback_count"],
         1
     );
     assert_eq!(
-        encoded["announcement"]["value"]["compact_inventory_fallback_count"],
+        after_successful_prefix["announcement"]["value"]["compact_inventory_fallback_count"],
         0
     );
+    assert_eq!(announcement_counts(&network), after_successful_prefix);
+    assert_eq!(
+        format!(
+            "{:?}",
+            network.peer_manager_snapshot().expect("peer manager")
+        ),
+        peer_after_successful_prefix
+    );
+    let peer_manager = network.peer_manager_snapshot().expect("peer manager");
+    let peer = peer_manager.peer_state(peer_id).expect("peer");
+    assert_eq!(peer.compact_announcements.len(), 2);
+    assert!(peer.compact_announcements.contains(&hashes[0]));
+    assert!(peer.compact_announcements.contains(&hashes[1]));
+    assert!(!peer.compact_announcements.contains(&hashes[2]));
 }
 
 #[test]
@@ -324,6 +346,11 @@ fn duplicate_completion_is_classified_and_credits_evidence_once() {
     let first = network
         .complete_peer_emission(receipt)
         .expect("complete emission");
+    let state_after_first = announcement_counts(&network);
+    let peer_after_first = format!(
+        "{:?}",
+        network.peer_manager_snapshot().expect("peer manager")
+    );
     let replay = network
         .complete_peer_emission(duplicate)
         .expect("classify duplicate");
@@ -331,6 +358,14 @@ fn duplicate_completion_is_classified_and_credits_evidence_once() {
     // Assert
     assert_eq!(first, EffectCompletion::Applied);
     assert_eq!(replay, EffectCompletion::AlreadyApplied);
+    assert_eq!(announcement_counts(&network), state_after_first);
+    assert_eq!(
+        format!(
+            "{:?}",
+            network.peer_manager_snapshot().expect("peer manager")
+        ),
+        peer_after_first
+    );
     assert_eq!(
         announcement_counts(&network)["announcement"]["value"]["compact_announced_count"],
         1
