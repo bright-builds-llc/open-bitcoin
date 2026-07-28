@@ -162,7 +162,22 @@ Plans:
 3. Replacement, pressure eviction, expiry, block connection, reorg, and failed admission leave no stale descendant or accepted-identity entries in dependent caches.
 4. Storage and network work occurs after runtime authority is released, and bounded typed receipts are applied through a short follow-up mutation.
 
-**Plans**: TBD
+**Plans**: 13 plans
+
+Plans:
+- [ ] 134-01-PLAN.md — Expose sealed prepared mempool transitions for every lifecycle family.
+- [ ] 134-02-PLAN.md — Define the exhaustive LifecycleCommand and closed authority-bound projection contract.
+- [ ] 134-03-PLAN.md — Add bounded identity-complete peer lifecycle operations.
+- [ ] 134-04-PLAN.md — Make serving, inventory, fanout, compact, and peer target application infallible.
+- [ ] 134-05-PLAN.md — Implement sole aggregate authority dispatch and audit reconciliation.
+- [ ] 134-06-PLAN.md — Route singleton and package admission through the authoritative projector.
+- [ ] 134-07-PLAN.md — Route maintenance and sequential reorg transitions through the projector.
+- [ ] 134-08-PLAN.md — Define bounded peer/snapshot effects and route completion through LifecycleCommand.
+- [ ] 134-09-PLAN.md — Execute peer effects outside authority with node and RPC successful-prefix proof.
+- [ ] 134-10-PLAN.md — Execute current-schema Fjall snapshots outside authority with generation-safe completion.
+- [ ] 134-11-PLAN.md — Complete the deterministic scenario matrix and independent reconciliation oracle.
+- [ ] 134-12-PLAN.md — Add mutation-tested structural enforcement to default verification.
+- [ ] 134-13-PLAN.md — Publish parity evidence and run the complete timed repository contract.
 
 ### Phase 135: Snapshot Schema, Checkpointing, and Recovery
 
