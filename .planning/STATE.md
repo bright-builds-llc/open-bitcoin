@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-10-PLAN.md
-last_updated: "2026-07-28T17:36:49.938Z"
+stopped_at: Completed 134-11-PLAN.md
+last_updated: "2026-07-28T19:29:12.212Z"
 last_activity: "2026-07-28"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 49
-  completed_plans: 46
-  percent: 94
+  completed_plans: 47
+  percent: 96
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
-Plan: 11 of 13
+Plan: 12 of 13
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -76,6 +76,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 134 P08 | 1h 17m | 2 tasks | 13 files |
 | Phase 134 P09 | 1h 17m | 3 tasks | 31 files |
 | Phase 134 P10 | 1h 10m | 2 tasks | 4 files |
+| Phase 134 P11 | 94m | 3 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -185,6 +186,9 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 134]: Keep current-schema snapshot execution beside Fjall save_mempool_snapshot and outside lifecycle authority.
 - [Phase 134]: Mint SnapshotWriteReceipt only after encoding and the requested persistence mode succeed.
 - [Phase 134]: Use public snapshot prepare and complete facades for end-to-end persistence coverage while retaining exact dispatcher-state generation assertions.
+- [Phase 134]: Use prepared admitted and teardown order as the exact consequence-order contract while canonical delta membership remains unordered.
+- [Phase 134]: Keep the independent model std-only and production-helper-free, then compare its target vectors with production reconciliation outside that module.
+- [Phase 134]: Compile failure injection only under cfg(test), scope it per thread, and invoke it only during preparation before mutation.
 
 ### Pending Todos
 
@@ -207,6 +211,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T17:36:49.935Z
-Stopped at: Completed 134-10-PLAN.md
+Last session: 2026-07-28T19:29:12.205Z
+Stopped at: Completed 134-11-PLAN.md
 Resume file: None
