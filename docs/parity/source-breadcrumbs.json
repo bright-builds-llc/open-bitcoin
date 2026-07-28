@@ -1382,6 +1382,18 @@
       ]
     },
     {
+      "label": "node-lifecycle-projection-contract",
+      "files": [
+        "packages/open-bitcoin-node/src/network/lifecycle_projection.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "node-mempool-lifecycle",
       "files": [
         "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",

@@ -23,6 +23,8 @@ mod compact_receive_candidates;
 mod header_sync;
 mod inbound;
 mod inventory;
+#[allow(dead_code)] // Phase 134 builds this sealed contract before routing callers in later plans.
+pub(super) mod lifecycle_projection;
 mod mempool_lifecycle;
 mod peer_policy;
 mod recovery;
