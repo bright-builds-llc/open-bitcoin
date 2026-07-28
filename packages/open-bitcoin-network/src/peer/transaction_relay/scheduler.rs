@@ -338,6 +338,22 @@ impl TxDownloadScheduler {
         self.in_flight.remove(&relay_id);
     }
 
+    pub(crate) fn lifecycle_mismatch_count(&self, canonical: &BTreeSet<TxRelayId>) -> usize {
+        canonical
+            .iter()
+            .filter(|relay_id| !self.already_have.contains(relay_id))
+            .count()
+            .saturating_add(
+                canonical
+                    .iter()
+                    .filter(|relay_id| {
+                        self.announcements.contains_key(relay_id)
+                            || self.in_flight.contains_key(relay_id)
+                    })
+                    .count(),
+            )
+    }
+
     pub fn snapshot(&self) -> TxDownloadSnapshot {
         TxDownloadSnapshot {
             candidate_count: self.candidate_count(),

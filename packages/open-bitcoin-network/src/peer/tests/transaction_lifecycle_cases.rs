@@ -8,6 +8,8 @@ use crate::{
     PeerTransactionLifecyclePreparationError,
 };
 
+mod reconciliation;
+
 fn identity(byte: u8) -> PeerTransactionIdentity {
     PeerTransactionIdentity::new(
         txid_from_byte(byte),

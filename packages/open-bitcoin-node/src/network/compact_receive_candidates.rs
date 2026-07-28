@@ -190,6 +190,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         for member in facts.teardown_order() {
             replacement.clear_wtxid_checked(member.wtxid)?;
         }
+        for member in facts.final_present() {
+            replacement.clear_wtxid_checked(member.member.wtxid)?;
+        }
         for removed in facts.removed() {
             if removed.removal.cause != MempoolRemovalCause::Replacement {
                 continue;

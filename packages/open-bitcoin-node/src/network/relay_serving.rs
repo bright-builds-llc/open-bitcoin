@@ -19,6 +19,7 @@ use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
     primitives::{InventoryVector, Transaction, Txid, Wtxid},
 };
+use open_bitcoin_mempool::MempoolMemberIdentity;
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, ConnectionRole, InboundAdmissionPolicy, LocalPeerConfig,
@@ -71,6 +72,40 @@ pub(super) struct RelayServingCache {
 }
 
 impl RelayServingCache {
+    pub(in crate::network) fn lifecycle_mismatch_count(
+        &self,
+        canonical: &BTreeSet<MempoolMemberIdentity>,
+    ) -> usize {
+        let accepted = self.lifecycle_members();
+        let accepted_status_mismatches = canonical
+            .iter()
+            .filter(|member| {
+                self.status_by_txid.get(&member.txid) != Some(&TxServingRecordStatus::Accepted)
+                    || self.status_by_wtxid.get(&member.wtxid)
+                        != Some(&TxServingRecordStatus::Accepted)
+            })
+            .count();
+        accepted
+            .symmetric_difference(canonical)
+            .count()
+            .saturating_add(accepted_status_mismatches)
+    }
+
+    fn lifecycle_members(&self) -> BTreeSet<MempoolMemberIdentity> {
+        self.records_by_txid
+            .values()
+            .map(|record| MempoolMemberIdentity {
+                txid: record.txid,
+                wtxid: record.wtxid,
+            })
+            .collect()
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn lifecycle_members_for_test(&self) -> BTreeSet<MempoolMemberIdentity> {
+        self.lifecycle_members()
+    }
+
     pub(super) fn record_accepted_prevalidated(
         &mut self,
         txid: Txid,

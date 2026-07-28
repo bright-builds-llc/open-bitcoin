@@ -4,17 +4,135 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
+use std::collections::BTreeSet;
+
 use open_bitcoin_core::consensus::{block_hash, transaction_txid, transaction_wtxid};
 use open_bitcoin_core::primitives::{BlockHash, Txid};
 use open_bitcoin_mempool::{
-    AdmissionContext, FeeRate, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin,
-    PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
+    AdmissionContext, FeeRate, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity,
+    MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
 };
+use open_bitcoin_network::PeerMempoolLifecycleSnapshot;
 
 use super::*;
 use crate::network::lifecycle_projection::{
-    AuthorityEpoch, LifecycleProjectionError, LifecycleProjectionPlan,
+    AuthorityEpoch, LifecycleEvidenceSnapshot, LifecycleGeneration, LifecycleProjectionError,
+    LifecycleProjectionPlan, LifecycleReconciliationReport,
 };
+
+mod reconciliation;
+
+#[derive(Debug)]
+struct ExpectedProjection {
+    canonical_members: BTreeSet<MempoolMemberIdentity>,
+    serving_members: BTreeSet<MempoolMemberIdentity>,
+    fanout_members: BTreeSet<MempoolMemberIdentity>,
+    peer_known_members: BTreeSet<MempoolMemberIdentity>,
+    peer: PeerMempoolLifecycleSnapshot,
+    compact_members: BTreeSet<MempoolMemberIdentity>,
+    unbroadcast_members: BTreeSet<MempoolMemberIdentity>,
+    authority_epoch: AuthorityEpoch,
+    lifecycle_generation: LifecycleGeneration,
+    dirty_generation: Option<LifecycleGeneration>,
+    evidence: LifecycleEvidenceSnapshot,
+    reconciliation_counts: [usize; 7],
+}
+
+fn canonical_members(
+    network: &ManagedPeerNetwork<MemoryChainstateStore>,
+) -> BTreeSet<MempoolMemberIdentity> {
+    network
+        .mempool()
+        .mempool()
+        .entries()
+        .iter()
+        .map(|(txid, entry)| MempoolMemberIdentity {
+            txid: *txid,
+            wtxid: entry.wtxid,
+        })
+        .collect()
+}
+
+fn compact_members(
+    network: &ManagedPeerNetwork<MemoryChainstateStore>,
+) -> BTreeSet<MempoolMemberIdentity> {
+    network
+        .compact_extra_txn
+        .iter_available()
+        .map(|(wtxid, transaction)| MempoolMemberIdentity {
+            txid: transaction_txid(transaction).expect("compact extra txid"),
+            wtxid: *wtxid,
+        })
+        .collect()
+}
+
+fn assert_complete_projection(
+    network: &ManagedPeerNetwork<MemoryChainstateStore>,
+    expected: &ExpectedProjection,
+) {
+    assert_eq!(canonical_members(network), expected.canonical_members);
+    assert_eq!(
+        network.relay_serving.lifecycle_members_for_test(),
+        expected.serving_members
+    );
+    assert_eq!(
+        network.relay_fanout.lifecycle_members_for_test(),
+        expected.fanout_members
+    );
+    assert_eq!(
+        network
+            .transactions_by_txid
+            .keys()
+            .copied()
+            .collect::<BTreeSet<_>>(),
+        expected
+            .serving_members
+            .iter()
+            .map(|member| member.txid)
+            .collect::<BTreeSet<_>>()
+    );
+    assert_eq!(
+        network
+            .transactions_by_wtxid
+            .keys()
+            .copied()
+            .collect::<BTreeSet<_>>(),
+        expected
+            .serving_members
+            .iter()
+            .map(|member| member.wtxid)
+            .collect::<BTreeSet<_>>()
+    );
+    assert_eq!(
+        network.peer_manager.mempool_lifecycle_snapshot(),
+        expected.peer
+    );
+    for member in &expected.peer_known_members {
+        assert!(network.peer_manager.mempool_identity_known(
+            open_bitcoin_network::PeerTransactionIdentity::new(member.txid, member.wtxid)
+        ));
+    }
+    assert_eq!(compact_members(network), expected.compact_members);
+    assert_eq!(network.unbroadcast_members(), &expected.unbroadcast_members);
+    assert_eq!(network.authority_epoch(), expected.authority_epoch);
+    assert_eq!(
+        network.lifecycle_generation(),
+        expected.lifecycle_generation
+    );
+    assert_eq!(network.dirty_generation(), expected.dirty_generation);
+    assert_eq!(network.lifecycle_evidence_snapshot(), expected.evidence);
+
+    let report = network.reconcile_lifecycle_projection();
+    assert_eq!(
+        report.counts(),
+        expected.reconciliation_counts,
+        "{report:?}"
+    );
+    assert_eq!(
+        report.labels(),
+        LifecycleReconciliationReport::FIXED_TARGET_LABELS
+    );
+}
 
 fn network_with_spendable_coinbase(
     config: PolicyConfig,

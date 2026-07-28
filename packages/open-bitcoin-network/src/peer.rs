@@ -55,8 +55,9 @@ pub use compact_relay::{
 use policy_state::{eviction_candidate_input, peer_policy_label, peer_policy_protected};
 pub use relay_download::RelayDownloadPolicy;
 pub use transaction_lifecycle::{
-    AcceptedPeerPackageFingerprint, PeerTransactionIdentity, PeerTransactionLifecycleInput,
-    PeerTransactionLifecyclePreparationError, PreparedPeerTransactionLifecycle,
+    AcceptedPeerPackageFingerprint, PeerMempoolLifecycleSnapshot, PeerTransactionIdentity,
+    PeerTransactionLifecycleInput, PeerTransactionLifecyclePreparationError,
+    PreparedPeerTransactionLifecycle,
 };
 pub use transaction_relay::{
     BoundedOrphanAnnouncers, HardRejectEvidence, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,

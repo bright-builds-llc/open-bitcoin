@@ -23,6 +23,8 @@ use open_bitcoin_network::{
 };
 
 use super::ManagedPeerNetwork;
+
+mod reconciliation;
 use super::lifecycle_projection::PreparedFanoutProjection;
 use super::relay_serving::ManagedRelayServingInfo;
 use crate::ChainstateStore;

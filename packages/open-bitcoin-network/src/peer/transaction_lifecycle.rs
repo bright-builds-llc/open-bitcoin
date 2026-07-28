@@ -17,6 +17,10 @@ use super::{
     PHASE102_MAX_RECONSIDERATIONS_PER_PARENT, PeerManager, TxRelayId,
 };
 
+mod reconciliation;
+
+pub use reconciliation::PeerMempoolLifecycleSnapshot;
+
 /// One canonical transaction identity supplied by authoritative lifecycle facts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PeerTransactionIdentity {
@@ -319,17 +323,6 @@ impl PeerManager {
                 self.mempool_known.insert(relay_id);
             }
         }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn debug_mempool_identity_known(&self, identity: PeerTransactionIdentity) -> bool {
-        self.known_txids.contains(&identity.txid)
-            && self.known_wtxids.contains(&identity.wtxid)
-            && self.known_wtxids_by_txid.get(&identity.txid) == Some(&identity.wtxid)
-            && identity
-                .relay_ids()
-                .into_iter()
-                .all(|relay_id| self.mempool_known.contains(&relay_id))
     }
 
     #[cfg(test)]

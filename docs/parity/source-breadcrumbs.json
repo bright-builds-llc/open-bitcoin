@@ -1078,7 +1078,9 @@
       "label": "network-peer-transaction-lifecycle",
       "files": [
         "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
+        "packages/open-bitcoin-network/src/peer/transaction_lifecycle/reconciliation.rs",
         "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases.rs",
+        "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases/reconciliation.rs",
         "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_independence_cases.rs"
       ],
       "breadcrumbs": [
@@ -1357,6 +1359,7 @@
         "packages/open-bitcoin-node/src/network/relay_fanout.rs",
         "packages/open-bitcoin-node/src/network/relay_fanout/action_info.rs",
         "packages/open-bitcoin-node/src/network/relay_fanout/lifecycle.rs",
+        "packages/open-bitcoin-node/src/network/relay_fanout/reconciliation.rs",
         "packages/open-bitcoin-node/src/network/relay_serving.rs",
         "packages/open-bitcoin-node/src/network/tests.rs",
         "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
@@ -1400,9 +1403,11 @@
       "files": [
         "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+        "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/tests.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
-        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs"
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs",
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/reconciliation.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

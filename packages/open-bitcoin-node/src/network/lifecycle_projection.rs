@@ -25,6 +25,10 @@ use super::relay_serving::RelayServingCache;
 use crate::ChainstateStore;
 
 mod authority;
+mod reconciliation;
+
+#[cfg(test)]
+pub(in crate::network) use reconciliation::LifecycleReconciliationReport;
 
 pub(super) const MAX_UNBROADCAST_MEMBERS: usize = 5_000;
 
