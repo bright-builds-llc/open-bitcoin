@@ -8,7 +8,7 @@
 
 use std::fmt;
 
-use open_bitcoin_mempool::PreparedMempoolTransition;
+use open_bitcoin_mempool::{PreparedLifecycleFacts, PreparedMempoolTransition};
 
 /// Identifies one incarnation of the sole managed-network authority.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -55,6 +55,14 @@ impl LifecycleGeneration {
 pub(super) enum LifecyclePreparationError {
     AuthorityEpochExhausted,
     LifecycleGenerationExhausted,
+    FinalPresentOrderMismatch {
+        final_present: usize,
+        admitted_order: usize,
+    },
+    TeardownOrderMismatch {
+        removed: usize,
+        teardown_order: usize,
+    },
 }
 
 impl fmt::Display for LifecyclePreparationError {
@@ -64,20 +72,122 @@ impl fmt::Display for LifecyclePreparationError {
             Self::LifecycleGenerationExhausted => {
                 formatter.write_str("lifecycle generation exhausted")
             }
+            Self::FinalPresentOrderMismatch {
+                final_present,
+                admitted_order,
+            } => write!(
+                formatter,
+                "final-present count {final_present} does not match admitted order {admitted_order}"
+            ),
+            Self::TeardownOrderMismatch {
+                removed,
+                teardown_order,
+            } => write!(
+                formatter,
+                "removed count {removed} does not match teardown order {teardown_order}"
+            ),
         }
     }
 }
 
 impl std::error::Error for LifecyclePreparationError {}
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct ProjectionShape {
+    admitted: usize,
+    removed: usize,
+    retry_clears: usize,
+}
+
+impl ProjectionShape {
+    fn prepare(facts: &PreparedLifecycleFacts) -> Result<Self, LifecyclePreparationError> {
+        Self::checked_from_counts(
+            facts.final_present().len(),
+            facts.admitted_order().len(),
+            facts.removed().len(),
+            facts.teardown_order().len(),
+            facts.delta().retry_clears.len(),
+        )
+    }
+
+    fn checked_from_counts(
+        final_present: usize,
+        admitted_order: usize,
+        removed: usize,
+        teardown_order: usize,
+        retry_clears: usize,
+    ) -> Result<Self, LifecyclePreparationError> {
+        if final_present != admitted_order {
+            return Err(LifecyclePreparationError::FinalPresentOrderMismatch {
+                final_present,
+                admitted_order,
+            });
+        }
+        if removed != teardown_order {
+            return Err(LifecyclePreparationError::TeardownOrderMismatch {
+                removed,
+                teardown_order,
+            });
+        }
+        Ok(Self {
+            admitted: admitted_order,
+            removed: teardown_order,
+            retry_clears,
+        })
+    }
+}
+
+/// Exact compact-reconstruction projection shape.
+pub(super) struct PreparedCompactProjection(ProjectionShape);
+
+/// Exact accepted-serving projection shape.
+pub(super) struct PreparedServingProjection(ProjectionShape);
+
+/// Exact announcement/fanout projection shape.
+pub(super) struct PreparedFanoutProjection(ProjectionShape);
+
+/// Exact peer request, known-set, orphan, candidate, and fingerprint projection shape.
+pub(super) struct PreparedPeerLifecycleProjection(ProjectionShape);
+
+/// Exact unbroadcast bookkeeping projection shape.
+pub(super) struct PreparedUnbroadcastProjection(ProjectionShape);
+
+/// Exact persistence-view projection shape.
+pub(super) struct PreparedPersistenceProjection(ProjectionShape);
+
+/// Exact lifecycle status, metrics, and log-evidence projection shape.
+pub(super) struct PreparedLifecycleEvidence(ProjectionShape);
+
 /// Prepared in-memory consequences remain distinct from committed lifecycle facts.
 pub(super) struct LifecycleProjectionPlan {
+    authority_epoch: AuthorityEpoch,
     core: PreparedMempoolTransition,
+    compact: PreparedCompactProjection,
+    serving: PreparedServingProjection,
+    fanout: PreparedFanoutProjection,
+    peers: PreparedPeerLifecycleProjection,
+    unbroadcast: PreparedUnbroadcastProjection,
+    persistence: PreparedPersistenceProjection,
+    evidence: PreparedLifecycleEvidence,
 }
 
 impl LifecycleProjectionPlan {
-    fn from_core(core: PreparedMempoolTransition) -> Self {
-        Self { core }
+    fn prepare(
+        authority_epoch: AuthorityEpoch,
+        core: PreparedMempoolTransition,
+    ) -> Result<Self, LifecyclePreparationError> {
+        let shape = ProjectionShape::prepare(core.facts())?;
+        Ok(Self {
+            authority_epoch,
+            core,
+            compact: PreparedCompactProjection(shape),
+            serving: PreparedServingProjection(shape),
+            fanout: PreparedFanoutProjection(shape),
+            peers: PreparedPeerLifecycleProjection(shape),
+            unbroadcast: PreparedUnbroadcastProjection(shape),
+            persistence: PreparedPersistenceProjection(shape),
+            evidence: PreparedLifecycleEvidence(shape),
+        })
     }
 }
 
@@ -217,7 +327,8 @@ mod command_contract {
         let core = Mempool::default()
             .prepare_expiry(PolicyTime::new(0))
             .expect("empty mempool expiry should prepare");
-        LifecycleProjectionPlan::from_core(core)
+        LifecycleProjectionPlan::prepare(AuthorityEpoch::INITIAL, core)
+            .expect("coherent lifecycle facts should prepare every projection")
     }
 
     #[test]
@@ -299,5 +410,103 @@ mod command_contract {
 
         // Assert
         assert_eq!(unique_count, type_ids.len());
+    }
+}
+
+#[cfg(test)]
+mod closed_plan {
+    use std::any::TypeId;
+
+    use open_bitcoin_mempool::PolicyTime;
+
+    use crate::ManagedMempool;
+
+    use super::{
+        AuthorityEpoch, LifecyclePreparationError, LifecycleProjectionPlan,
+        PreparedCompactProjection, PreparedFanoutProjection, PreparedLifecycleEvidence,
+        PreparedPeerLifecycleProjection, PreparedPersistenceProjection, PreparedServingProjection,
+        PreparedUnbroadcastProjection, ProjectionShape,
+    };
+
+    #[test]
+    fn construction_requires_authority_core_and_every_projection_target() {
+        // Arrange
+        let core = ManagedMempool::default()
+            .prepare_expiry(PolicyTime::new(0))
+            .expect("empty mempool expiry should prepare");
+
+        // Act
+        let plan = LifecycleProjectionPlan::prepare(AuthorityEpoch::INITIAL, core)
+            .expect("coherent lifecycle facts should prepare every projection");
+        let LifecycleProjectionPlan {
+            authority_epoch,
+            core,
+            compact,
+            serving,
+            fanout,
+            peers,
+            unbroadcast,
+            persistence,
+            evidence,
+        } = plan;
+
+        // Assert
+        assert_eq!(authority_epoch, AuthorityEpoch::INITIAL);
+        assert!(core.facts().delta().is_empty());
+        assert_eq!(compact.0, serving.0);
+        assert_eq!(fanout.0, peers.0);
+        assert_eq!(unbroadcast.0, persistence.0);
+        assert_eq!(evidence.0, compact.0);
+    }
+
+    #[test]
+    fn every_projection_target_has_a_distinct_concrete_type() {
+        // Arrange
+        let type_ids = [
+            TypeId::of::<PreparedCompactProjection>(),
+            TypeId::of::<PreparedServingProjection>(),
+            TypeId::of::<PreparedFanoutProjection>(),
+            TypeId::of::<PreparedPeerLifecycleProjection>(),
+            TypeId::of::<PreparedUnbroadcastProjection>(),
+            TypeId::of::<PreparedPersistenceProjection>(),
+            TypeId::of::<PreparedLifecycleEvidence>(),
+        ];
+
+        // Act
+        let unique_count = type_ids
+            .iter()
+            .enumerate()
+            .filter(|(index, type_id)| !type_ids[..*index].contains(type_id))
+            .count();
+
+        // Assert
+        assert_eq!(unique_count, type_ids.len());
+    }
+
+    #[test]
+    fn preparation_rejects_incoherent_lifecycle_orders() {
+        // Arrange
+        let final_present_mismatch = ProjectionShape::checked_from_counts(1, 0, 0, 0, 0);
+        let teardown_mismatch = ProjectionShape::checked_from_counts(0, 0, 1, 0, 0);
+
+        // Act
+        let maybe_final_present_error = final_present_mismatch.expect_err("order must match");
+        let maybe_teardown_error = teardown_mismatch.expect_err("order must match");
+
+        // Assert
+        assert_eq!(
+            maybe_final_present_error,
+            LifecyclePreparationError::FinalPresentOrderMismatch {
+                final_present: 1,
+                admitted_order: 0,
+            }
+        );
+        assert_eq!(
+            maybe_teardown_error,
+            LifecyclePreparationError::TeardownOrderMismatch {
+                removed: 1,
+                teardown_order: 0,
+            }
+        );
     }
 }

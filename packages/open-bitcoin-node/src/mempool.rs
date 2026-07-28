@@ -6,11 +6,12 @@
 use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
     consensus::{ConsensusParams, ScriptVerifyFlags},
-    primitives::Transaction,
+    primitives::{Block, Transaction},
 };
 use open_bitcoin_mempool::{
-    AdmissionContext, AdmissionResult, Mempool, MempoolError, MempoolOutcome, MempoolTransition,
-    PolicyConfig, RollingMempoolFeeRate, SubmitPackageCommand, SubmittedPackageResult,
+    AdmissionContext, AdmissionResult, BlockLifecycleContext, Mempool, MempoolError,
+    MempoolOutcome, MempoolTransition, PolicyConfig, PolicyTime, PreparedMempoolTransition,
+    RollingMempoolFeeRate, SubmitPackageCommand, SubmittedPackageResult,
 };
 
 use crate::{ChainstateStore, ManagedChainstate};
@@ -51,6 +52,58 @@ impl ManagedMempool {
 
     pub(crate) fn mempool_mut(&mut self) -> &mut Mempool {
         &mut self.mempool
+    }
+
+    /// Prepares singleton admission against the caller's immutable chain snapshot.
+    #[allow(dead_code)] // Phase 134 establishes the sealed preparation API before routing callers.
+    pub(crate) fn prepare_transaction_with_context<S: ChainstateStore>(
+        &self,
+        chainstate: &ManagedChainstate<S>,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        context: AdmissionContext,
+    ) -> Result<PreparedMempoolTransition, MempoolError> {
+        self.mempool.prepare_transaction_with_context(
+            transaction,
+            &chainstate.chainstate().snapshot(),
+            verify_flags,
+            consensus_params,
+            context,
+        )
+    }
+
+    /// Prepares package admission against the supplied immutable chain snapshot.
+    #[allow(dead_code)] // Phase 134 establishes the sealed preparation API before routing callers.
+    pub(crate) fn prepare_package(
+        &self,
+        command: SubmitPackageCommand,
+        chainstate: &ChainstateSnapshot,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<PreparedMempoolTransition, MempoolError> {
+        self.mempool
+            .prepare_package(command, chainstate, verify_flags, consensus_params)
+    }
+
+    /// Prepares deterministic expiry without changing managed mempool state.
+    #[allow(dead_code)] // Phase 134 establishes the sealed preparation API before routing callers.
+    pub(crate) fn prepare_expiry(
+        &self,
+        now: PolicyTime,
+    ) -> Result<PreparedMempoolTransition, MempoolError> {
+        self.mempool.prepare_expiry(now)
+    }
+
+    /// Prepares connected-block removal without changing managed mempool state.
+    #[allow(dead_code)] // Phase 134 establishes the sealed preparation API before routing callers.
+    pub(crate) fn prepare_connected_block_transition(
+        &self,
+        block: &Block,
+        context: BlockLifecycleContext,
+    ) -> Result<PreparedMempoolTransition, MempoolError> {
+        self.mempool
+            .prepare_connected_block_transition(block, context)
     }
 
     /// Installs a rolling floor for operator evidence and Phase-131 pressure seams.
