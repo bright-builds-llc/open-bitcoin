@@ -201,19 +201,19 @@ pub(super) struct PreparedLifecycleEvidence(ProjectionShape);
 
 /// Prepared in-memory consequences remain distinct from committed lifecycle facts.
 pub(super) struct LifecycleProjectionPlan {
-    authority_epoch: AuthorityEpoch,
-    core: PreparedMempoolTransition,
-    compact: PreparedCompactProjection,
-    serving: PreparedServingProjection,
-    fanout: PreparedFanoutProjection,
-    peers: PreparedPeerLifecycleProjection,
-    unbroadcast: PreparedUnbroadcastProjection,
-    persistence: PreparedPersistenceProjection,
-    evidence: PreparedLifecycleEvidence,
+    pub(super) authority_epoch: AuthorityEpoch,
+    pub(super) core: PreparedMempoolTransition,
+    pub(super) compact: PreparedCompactProjection,
+    pub(super) serving: PreparedServingProjection,
+    pub(super) fanout: PreparedFanoutProjection,
+    pub(super) peers: PreparedPeerLifecycleProjection,
+    pub(super) unbroadcast: PreparedUnbroadcastProjection,
+    pub(super) persistence: PreparedPersistenceProjection,
+    pub(super) evidence: PreparedLifecycleEvidence,
 }
 
 impl LifecycleProjectionPlan {
-    fn prepare<S: ChainstateStore>(
+    pub(super) fn prepare<S: ChainstateStore>(
         network: &ManagedPeerNetwork<S>,
         authority_epoch: AuthorityEpoch,
         core: PreparedMempoolTransition,

@@ -1375,6 +1375,7 @@
         "packages/open-bitcoin-node/src/network/tests/compact_announcement.rs",
         "packages/open-bitcoin-node/src/network/tests/inbound_capacity.rs",
         "packages/open-bitcoin-node/src/network/tests/inbound_observation.rs",
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_target_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/resource_governance.rs",
         "packages/open-bitcoin-node/src/network/tests/runtime_projection.rs",
         "packages/open-bitcoin-node/src/network/tests/transaction_relay.rs"
