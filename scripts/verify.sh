@@ -423,6 +423,9 @@ bun test scripts/check-phase132-typed-package-staged-admission.test.ts
 bun run scripts/check-phase132-typed-package-staged-admission.ts
 bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
 bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
+bun run scripts/check-phase134-apply-boundaries.ts
+bun test scripts/check-phase134-authoritative-lifecycle.test.ts
+bun run scripts/check-phase134-authoritative-lifecycle.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/check-current-documentation-reconciliation.test.ts
@@ -431,7 +434,6 @@ bun test scripts/command-timings.test.ts
 bun test scripts/diagnose-rust-test-stall.test.ts
 bash scripts/check-pure-core-deps.sh
 VERIFY_COMMAND_ORDER
-
 parse_args "$@"
 require_command cargo
 require_command git
@@ -581,6 +583,9 @@ run_step "test Phase 132 typed package staged admission checker" bun test script
 run_step "check Phase 132 typed package staged admission" bun run scripts/check-phase132-typed-package-staged-admission.ts
 run_step "test Phase 133 package-aware download/orphan bridge checker" bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
 run_step "check Phase 133 package-aware download/orphan bridge" bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
+run_step "check Phase 134 apply boundaries" bun run scripts/check-phase134-apply-boundaries.ts
+run_step "test Phase 134 authoritative lifecycle checker" bun test scripts/check-phase134-authoritative-lifecycle.test.ts
+run_step "check Phase 134 authoritative lifecycle" bun run scripts/check-phase134-authoritative-lifecycle.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts
@@ -606,7 +611,6 @@ if [[ "$verify_mode" == "full" ]]; then
   run_step "bazel build" bazel build //:core //:node //:rpc //:cli //:test_harness //:bench
   run_step "check Bazel build provenance" bun run scripts/check-bazel-build-provenance.ts
 fi
-
 pure_core_crates=()
 while IFS= read -r crate_name; do
   [[ -z "$crate_name" ]] && continue
@@ -618,7 +622,6 @@ if [[ "${#pure_core_crates[@]}" -gt 0 ]]; then
     llvm_cov_args+=(--package "$crate_name")
   done
 fi
-
 if [[ "$verify_mode" == "full" ]]; then
   run_step "cargo llvm-cov clean" cargo llvm-cov clean --manifest-path packages/Cargo.toml --workspace
   run_step "cargo llvm-cov pure core" run_coverage_report

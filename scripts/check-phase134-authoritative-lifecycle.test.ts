@@ -58,6 +58,8 @@ const DIAGNOSTICS = {
     "P134 scope: Phase 135-138 and broad relay/readiness claims must remain deferred",
   deterministic:
     "P134 checker: verification must remain deterministic and filesystem-only",
+  verifier:
+    "P134 verifier: apply, mutation, and live guards must immediately follow Phase 133",
 } as const;
 
 afterEach(() => {
@@ -411,6 +413,38 @@ function scopeMutations(): MutationCase[] {
         "scripts/check-phase134-authoritative-lifecycle.ts",
         '\nBun.spawn(["git", "status"]);\n',
       ),
+    ],
+    ...verifierMutations(),
+  ];
+}
+
+function verifierMutations(): MutationCase[] {
+  const verify = "scripts/verify.sh";
+  const apply = "bun run scripts/check-phase134-apply-boundaries.ts";
+  const test =
+    "bun test scripts/check-phase134-authoritative-lifecycle.test.ts";
+  const live =
+    "bun run scripts/check-phase134-authoritative-lifecycle.ts";
+  const phase117 =
+    "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
+  return [
+    ["remove apply guard", DIAGNOSTICS.verifier, replace(verify, apply, "")],
+    ["remove mutation guard", DIAGNOSTICS.verifier, replace(verify, test, "")],
+    ["remove live guard", DIAGNOSTICS.verifier, replace(verify, live, "")],
+    [
+      "reorder apply guard",
+      DIAGNOSTICS.verifier,
+      replace(verify, `${apply}\n${test}`, `${test}\n${apply}`),
+    ],
+    [
+      "reorder mutation guard",
+      DIAGNOSTICS.verifier,
+      replace(verify, `${test}\n${live}`, `${live}\n${test}`),
+    ],
+    [
+      "reorder live guard",
+      DIAGNOSTICS.verifier,
+      replace(verify, `${live}\n${phase117}`, `${phase117}\n${live}`),
     ],
   ];
 }
