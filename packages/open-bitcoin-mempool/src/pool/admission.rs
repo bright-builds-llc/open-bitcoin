@@ -14,7 +14,6 @@ use crate::{
     MempoolTransition, effective_admission_fee_rate,
 };
 
-use super::candidate::{check_candidate_scripts, prepare_candidate};
 use super::patch::prepare_admission_layout;
 use super::{Mempool, MempoolPatch, accept_outcome, enforce_min_relay_fee};
 
@@ -74,10 +73,16 @@ impl Mempool {
         consensus_params: ConsensusParams,
         context: AdmissionContext,
     ) -> Result<CommittedAdmission, MempoolError> {
-        let prepared = prepare_candidate(self, transaction, chainstate, consensus_params, context)?;
-        let (patch, result) = prepare_admission_patch(self, &prepared)?;
-        check_candidate_scripts(&prepared, verify_flags)?;
-        let delta = self.apply_prepared(patch)?;
+        let prepared = self.prepare_transaction_with_context(
+            transaction,
+            chainstate,
+            verify_flags,
+            consensus_params,
+            context,
+        )?;
+        let result = prepared.admission_result_for_facade()?;
+        let validated = self.validate_prepared_mempool_transition(prepared)?;
+        let delta = self.apply_validated_mempool_transition(validated);
 
         Ok(CommittedAdmission { result, delta })
     }

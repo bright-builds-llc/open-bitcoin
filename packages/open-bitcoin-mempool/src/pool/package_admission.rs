@@ -13,11 +13,10 @@ use crate::policy::ephemeral::{EphemeralPolicyError, validate_ephemeral_spends};
 use crate::policy::truc::{TrucPolicyError, evaluate_truc_package};
 use crate::{
     AdmissionContext, DryRunPackageCommand, DryRunPackageResult, EffectiveFeeGroup,
-    EffectiveFeeGroupId, HardMemberFailure, MempoolError, MempoolLifecycleDelta,
-    MempoolMemberIdentity, NewlyPresent, PackageFeeError, PackageFeeMember, PackageMemberResult,
-    PackageReport, PackageStatus, ReconsiderableMemberFailure, RollingMempoolFeeRate,
-    SubmitPackageCommand, SubmittedPackageResult, WellFormedPackage, WitnessAlias,
-    evaluate_package_fee_group,
+    EffectiveFeeGroupId, HardMemberFailure, MempoolError, MempoolMemberIdentity, NewlyPresent,
+    PackageFeeError, PackageFeeMember, PackageMemberResult, PackageReport, PackageStatus,
+    ReconsiderableMemberFailure, RollingMempoolFeeRate, SubmitPackageCommand,
+    SubmittedPackageResult, WellFormedPackage, WitnessAlias, evaluate_package_fee_group,
 };
 use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -98,24 +97,11 @@ impl Mempool {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<SubmittedPackageResult, MempoolError> {
-        let _submission_kind = command.package.kind();
-        let evaluation = evaluate_package(
-            self,
-            command.package.package(),
-            command.context,
-            chainstate,
-            verify_flags,
-            consensus_params,
-        )?;
-        let delta = if let Some(patch) = evaluation.patch {
-            self.apply_prepared(patch)?
-        } else {
-            MempoolLifecycleDelta::empty()
-        };
-        Ok(SubmittedPackageResult {
-            report: evaluation.report,
-            delta,
-        })
+        let prepared = self.prepare_package(command, chainstate, verify_flags, consensus_params)?;
+        let report = prepared.package_report_for_facade()?;
+        let validated = self.validate_prepared_mempool_transition(prepared)?;
+        let delta = self.apply_validated_mempool_transition(validated);
+        Ok(SubmittedPackageResult { report, delta })
     }
 }
 

@@ -6,10 +6,11 @@ use open_bitcoin_consensus::{
 };
 use open_bitcoin_primitives::{Transaction, TransactionInput};
 
-use super::{sample_chainstate_snapshot, spend_transaction};
+use super::{sample_chainstate_snapshot, script, spend_transaction};
 use crate::{
-    AdmissionContext, FinalMempoolMembership, Mempool, MempoolError, SubmissionPackage,
-    SubmitPackageCommand, WellFormedPackage,
+    AdmissionContext, FinalMempoolMembership, Mempool, MempoolCapacity, MempoolError,
+    PackageMemberResult, PackageStatus, PolicyConfig, SubmissionPackage, SubmitPackageCommand,
+    WellFormedPackage,
 };
 
 fn verify_flags() -> ScriptVerifyFlags {
@@ -32,6 +33,17 @@ fn admission_transaction(previous_txid: open_bitcoin_primitives::Txid) -> Transa
         499_999_000,
         TransactionInput::SEQUENCE_FINAL,
     )
+}
+
+fn submission(
+    transactions: Vec<Transaction>,
+    snapshot: &open_bitcoin_chainstate::ChainstateSnapshot,
+) -> SubmissionPackage {
+    SubmissionPackage::try_from_package(
+        WellFormedPackage::try_from(transactions).expect("well-formed package"),
+        snapshot,
+    )
+    .expect("submission refinement")
 }
 
 #[test]
@@ -75,6 +87,13 @@ fn singleton_preparation_preserves_state_and_exposes_canonical_facts() {
     assert!(prepared.facts().teardown_order().is_empty());
     assert!(prepared.facts().maybe_admission_result().is_some());
     assert!(prepared.facts().maybe_package_report().is_none());
+    assert!(
+        prepared
+            .package_report_for_facade()
+            .expect_err("singleton capability is not a package")
+            .to_string()
+            .contains("package facade received a singleton transition")
+    );
     assert!(format!("{prepared:?}").contains("PreparedMempoolTransition"));
 
     let validated = mempool
@@ -184,6 +203,13 @@ fn package_patch_preparation_exposes_package_result() {
     // Assert
     assert!(prepared.facts().maybe_admission_result().is_none());
     assert!(prepared.facts().maybe_package_report().is_some());
+    assert!(
+        prepared
+            .admission_result_for_facade()
+            .expect_err("package capability is not a singleton")
+            .to_string()
+            .contains("singleton facade received a package transition")
+    );
     assert_eq!(prepared.facts().final_present().len(), 1);
 }
 
@@ -305,5 +331,138 @@ fn package_noop_preparation_and_apply_advance_no_revision() {
 
     // Assert
     assert!(delta.is_empty());
+    assert_eq!(mempool.complete_snapshot(), before);
+}
+
+#[test]
+fn compatibility_facades_prepare_and_consume_exactly_once() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let singleton = admission_transaction(coinbase_txids[0]);
+    let package_member = admission_transaction(coinbase_txids[1]);
+    let package = submission(vec![package_member], &snapshot);
+    let mut mempool = Mempool::default();
+
+    // Act
+    super::super::prepared_lifecycle::reset_transition_counts_for_test();
+    mempool
+        .accept_transaction_with_context(
+            singleton,
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::legacy_unknown(),
+        )
+        .expect("singleton facade");
+    let singleton_counts = super::super::prepared_lifecycle::transition_counts_for_test();
+    super::super::prepared_lifecycle::reset_transition_counts_for_test();
+    mempool
+        .submit_package(
+            SubmitPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("package facade");
+    let package_counts = super::super::prepared_lifecycle::transition_counts_for_test();
+
+    // Assert
+    assert_eq!(singleton_counts, (1, 0, 1));
+    assert_eq!(package_counts, (0, 1, 1));
+}
+
+#[test]
+fn partial_package_preparation_exposes_only_topological_survivors() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let parent = admission_transaction(coinbase_txids[0]);
+    let parent_txid = transaction_txid(&parent).expect("parent txid");
+    let mut invalid_child = spend_transaction(
+        parent_txid,
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    invalid_child.inputs[0].script_sig = script(&[0x01, 0x52]);
+    let package = submission(vec![parent.clone(), invalid_child], &snapshot);
+    let mempool = Mempool::default();
+
+    // Act
+    let prepared = mempool
+        .prepare_package(
+            SubmitPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("partial package preparation");
+
+    // Assert
+    assert_eq!(
+        prepared
+            .facts()
+            .maybe_package_report()
+            .map(|report| report.status()),
+        Some(&PackageStatus::Partial)
+    );
+    assert!(matches!(
+        prepared
+            .facts()
+            .maybe_package_report()
+            .expect("package report")
+            .members(),
+        [
+            PackageMemberResult::FinallyPresent(_),
+            PackageMemberResult::HardRejected(_)
+        ]
+    ));
+    assert_eq!(prepared.facts().admitted_order().len(), 1);
+    assert_eq!(prepared.facts().admitted_order()[0].txid, parent_txid);
+    assert_eq!(prepared.facts().final_present()[0].transaction, parent);
+}
+
+#[test]
+fn post_trim_absence_never_enters_final_present_projection() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = admission_transaction(coinbase_txids[0]);
+    let package = submission(vec![transaction], &snapshot);
+    let mempool = Mempool::new(PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(0),
+        ..PolicyConfig::default()
+    });
+    let before = mempool.complete_snapshot();
+
+    // Act
+    let prepared = mempool
+        .prepare_package(
+            SubmitPackageCommand {
+                package,
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("post-trim preparation");
+
+    // Assert
+    assert!(matches!(
+        prepared
+            .facts()
+            .maybe_package_report()
+            .expect("package report")
+            .members(),
+        [PackageMemberResult::PostTrimAbsent(_)]
+    ));
+    assert!(prepared.facts().delta().admitted.is_empty());
+    assert!(prepared.facts().admitted_order().is_empty());
+    assert!(prepared.facts().final_present().is_empty());
     assert_eq!(mempool.complete_snapshot(), before);
 }

@@ -3,6 +3,8 @@
 
 //! Sealed, revision-bound mempool transition preparation.
 
+#[cfg(test)]
+use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fmt;
 
@@ -21,6 +23,13 @@ use super::admission::prepare_admission_patch;
 use super::candidate::{check_candidate_scripts, prepare_candidate};
 use super::package_admission::evaluate_package;
 use super::{Mempool, MempoolPatch, MempoolRevision};
+
+#[cfg(test)]
+thread_local! {
+    static SINGLETON_PREPARE_COUNT: Cell<usize> = const { Cell::new(0) };
+    static PACKAGE_PREPARE_COUNT: Cell<usize> = const { Cell::new(0) };
+    static APPLY_COUNT: Cell<usize> = const { Cell::new(0) };
+}
 
 /// A canonical identity paired with its fully validated transaction body.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,6 +120,17 @@ impl PreparedCoreTransition {
 }
 
 /// Opaque, non-`Clone` capability for one revision-bound transition.
+///
+/// A capability cannot be consumed twice because validation takes ownership:
+///
+/// ```compile_fail,E0382
+/// use open_bitcoin_mempool::{Mempool, PreparedMempoolTransition};
+///
+/// fn consume_twice(mempool: &Mempool, prepared: PreparedMempoolTransition) {
+///     let _first = mempool.validate_prepared_mempool_transition(prepared);
+///     let _second = mempool.validate_prepared_mempool_transition(prepared);
+/// }
+/// ```
 pub struct PreparedMempoolTransition {
     core: PreparedCoreTransition,
     facts: PreparedLifecycleFacts,
@@ -159,6 +179,8 @@ impl Mempool {
         consensus_params: ConsensusParams,
         context: AdmissionContext,
     ) -> Result<PreparedMempoolTransition, MempoolError> {
+        #[cfg(test)]
+        SINGLETON_PREPARE_COUNT.with(|count| count.set(count.get() + 1));
         let prepared = prepare_candidate(self, transaction, chainstate, consensus_params, context)?;
         let (patch, result) = prepare_admission_patch(self, &prepared)?;
         check_candidate_scripts(&prepared, verify_flags)?;
@@ -177,6 +199,8 @@ impl Mempool {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<PreparedMempoolTransition, MempoolError> {
+        #[cfg(test)]
+        PACKAGE_PREPARE_COUNT.with(|count| count.set(count.get() + 1));
         let _submission_kind = command.package.kind();
         let evaluation = evaluate_package(
             self,
@@ -220,6 +244,8 @@ impl Mempool {
         &mut self,
         validated: ValidatedMempoolTransition,
     ) -> MempoolLifecycleDelta {
+        #[cfg(test)]
+        APPLY_COUNT.with(|count| count.set(count.get() + 1));
         match validated.core {
             PreparedCoreTransition::Patch(patch) => self.apply_validated_patch(*patch),
             PreparedCoreTransition::Noop { .. } => validated.facts.delta,
@@ -228,6 +254,18 @@ impl Mempool {
 }
 
 impl PreparedMempoolTransition {
+    pub(super) fn admission_result_for_facade(&self) -> Result<AdmissionResult, MempoolError> {
+        self.facts.maybe_admission_result().cloned().ok_or_else(|| {
+            prepared_invariant_error("singleton facade received a package transition".to_string())
+        })
+    }
+
+    pub(super) fn package_report_for_facade(&self) -> Result<PackageReport, MempoolError> {
+        self.facts.maybe_package_report().cloned().ok_or_else(|| {
+            prepared_invariant_error("package facade received a singleton transition".to_string())
+        })
+    }
+
     fn from_patch(
         mempool: &Mempool,
         patch: MempoolPatch,
@@ -403,6 +441,22 @@ fn validate_body_identity(
 
 fn prepared_invariant_error(reason: String) -> MempoolError {
     MempoolError::InternalInvariant { reason }
+}
+
+#[cfg(test)]
+pub(super) fn reset_transition_counts_for_test() {
+    SINGLETON_PREPARE_COUNT.with(|count| count.set(0));
+    PACKAGE_PREPARE_COUNT.with(|count| count.set(0));
+    APPLY_COUNT.with(|count| count.set(0));
+}
+
+#[cfg(test)]
+pub(super) fn transition_counts_for_test() -> (usize, usize, usize) {
+    (
+        SINGLETON_PREPARE_COUNT.with(Cell::get),
+        PACKAGE_PREPARE_COUNT.with(Cell::get),
+        APPLY_COUNT.with(Cell::get),
+    )
 }
 
 #[cfg(test)]
