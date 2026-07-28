@@ -500,6 +500,59 @@ public-network gates, and production readiness remain deferred.
 - [`packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py`](../../../packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py)
 - [`packages/bitcoin-knots/test/functional/p2p_tx_download.py`](../../../packages/bitcoin-knots/test/functional/p2p_tx_download.py)
 
+## Authoritative Cross-Cache Lifecycle Integration
+
+Phase 134 implements one deterministic, I/O-free lifecycle projector behind
+`ManagedNetworkHandle`. A validated prepared transition commits canonical
+mempool state and then applies compact, serving, ordinary fanout, peer,
+unbroadcast, persistence, and bounded evidence projections in one fixed
+infallible order. `final_membership` decides which admitted members enter
+accepted projections; admission stays parent-before-child, teardown stays
+descendant-before-ancestor, and reorg transitions are prepared and committed
+sequentially.
+
+The normal mutation path is incremental. Seven-label bounded reconciliation is
+read-only audit, recovery, randomized-test, and failure-injection evidence; it
+is not a normal-path cache rebuild. Peer writes and current-schema Fjall
+snapshots use separate bounded, affine prepare → execute → complete families.
+Their I/O occurs after authority is released, and only an achieved effect can
+mint a receipt. Completion distinguishes `Applied`, `AchievedButStale`, and
+`AlreadyApplied` without clearing newer authoritative truth.
+
+### D-01 through D-17 traceability
+
+| Decisions | Exact Open Bitcoin source | Scenario, oracle, or checker evidence | Pinned Knots anchors |
+| --- | --- | --- | --- |
+| D-01, D-02, D-03, D-04 | `network/runtime_authority.rs::ManagedNetworkHandle`, `network/runtime_authority/lifecycle.rs::apply_lifecycle_command`, `network/lifecycle_projection.rs::LifecycleCommand`, `open-bitcoin-mempool/src/pool/prepared_lifecycle.rs::{PreparedMempoolTransition, PreparedLifecycleFacts}` | `network/tests/lifecycle_projection_cases.rs::assert_complete_projection`, `scripts/check-phase134-authoritative-lifecycle.ts` authority and dispatcher contracts | `validation.cpp::{AcceptToMemoryPool, ProcessNewPackage}`, `net_processing.cpp::{ProcessPackageResult, RelayTransaction}` |
+| D-05 | `network/lifecycle_projection.rs::LifecycleProjectionPlan`, `network/lifecycle_projection/authority.rs::{validate_prepared_lifecycle, apply_prepared_lifecycle}`, `open-bitcoin-network/src/peer/transaction_lifecycle.rs::{prepare_transaction_lifecycle, apply_prepared_transaction_lifecycle}` | `network/tests/lifecycle_projection_cases/oracle.rs::every_injected_preflight_failure_preserves_the_complete_aggregate`, `scripts/check-phase134-apply-boundaries.ts` | `validation.cpp::MemPoolAccept::FinalizeSubpackage`, `txmempool.cpp::RemoveStaged` |
+| D-06, D-07, D-08, D-09, D-10 | `network/lifecycle_projection/authority.rs`, `network/lifecycle_projection/reconciliation.rs::reconcile_lifecycle_projection`, `network/relay_serving.rs`, `network/relay_fanout/lifecycle.rs`, `network/compact_receive_candidates.rs`, `open-bitcoin-network/src/peer/transaction_lifecycle.rs` | `network/tests/lifecycle_projection_cases/admission.rs::full_package_projects_parent_first_final_membership_across_every_target`, `admission/partial_package.rs::{partial_package_projects_only_the_parent_survivor, replacement_package_tears_down_both_victim_aliases_and_fingerprint, pressure_eviction_tears_down_descendant_before_ancestor_across_every_projection}`, `maintenance.rs::{expiry_removes_descendants_from_every_projection_and_advances_once, connected_block_conflict_removes_descendants_from_every_projection, reorg_steps_apply_sequentially_and_reconcile_each_generation}`, `oracle.rs::fixed_seed_generated_oracle_detects_each_corrupted_target_exactly` | `txmempool.cpp::{removeRecursive, RemoveStaged, Expire, TrimToSize}`, `validation.cpp::{MemPoolAccept::SubmitPackage, ProcessNewPackage}`, `node/txdownloadman_impl.cpp::MempoolRejectedTx`, `txorphanage.cpp::{EraseTx, EraseForPeer, AddChildrenToWorkSet}` |
+| D-11, D-12, D-13, D-14, D-15 | `network/lifecycle_effects.rs::{PeerEffectCapability, PeerEffectReceipt, PreparedSnapshotWrite, SnapshotWriteReceipt, EffectCompletion}`, `network/announcement_transport.rs::PeerEmission::acknowledge_write`, `sync/session.rs`, `open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs`, `storage/fjall_store/mempool.rs::execute_prepared_mempool_snapshot_write` | `network/tests/lifecycle_projection_cases/effects.rs::{stale_snapshot_completion_records_truth_without_clearing_newer_dirty_state, duplicate_peer_completion_precedes_stale_session_detection}`, `effects/contracts.rs`, `open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs::phase134_rpc_successful_prefix_write_failure_stops_before_third_command`, `storage/fjall_store/tests/snapshot_persistence.rs` | `net_processing.cpp::RelayTransaction`, `node/mempool_persist.cpp::{DumpMempool, LoadMempool}` |
+| D-16 | `network/tests/lifecycle_projection_cases/{admission.rs,admission/partial_package.rs,maintenance.rs,effects.rs,oracle.rs}` and `open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs` | Eleven deterministic full/partial/replacement/pressure/expiry/block/reorg/failed/stale/duplicate/partial-I/O scenarios plus the fixed-seed independent oracle | `validation.cpp`, `txmempool.cpp`, `net_processing.cpp`, `node/txdownloadman_impl.cpp`, `txorphanage.cpp`, `node/mempool_persist.cpp` |
+| D-17 | `scripts/check-phase134-authoritative-lifecycle.ts`, `scripts/check-phase134-apply-boundaries.ts`, and their exported root-aware contracts | `scripts/check-phase134-authoritative-lifecycle.test.ts` independently mutates authority, targets, effects, scenarios, evidence, scope, and verifier ordering; the apply checker rejects fallibility, derivation, codec, async, and I/O work in all seven applies plus aggregate commit | The same six pinned source files above define the reviewed mutation and effect boundaries. |
+
+### MPLIFE requirement evidence
+
+| Requirement | Exact implementation and test evidence | Pinned Knots anchors |
+| --- | --- | --- |
+| `MPLIFE-01` | `ManagedNetworkHandle::apply_lifecycle_command`, every admission/maintenance/effect facade under `network/runtime_authority/`, and the authority/dispatcher/direct-mutation mutations in `check-phase134-authoritative-lifecycle.test.ts` | `validation.cpp`, `net_processing.cpp` |
+| `MPLIFE-02` | `LifecycleProjectionPlan`, `apply_prepared_lifecycle`, all seven target applies, `assert_complete_projection`, and full/partial package scenario coverage | `validation.cpp`, `txmempool.cpp`, `net_processing.cpp`, `node/txdownloadman_impl.cpp`, `txorphanage.cpp` |
+| `MPLIFE-03` | Prepared descendant-first teardown, exact txid/wtxid and package-fingerprint cleanup, replacement/pressure/expiry/block/reorg/failed-admission scenarios, and the independent seven-target reconciliation oracle | `txmempool.cpp`, `validation.cpp`, `node/txdownloadman_impl.cpp`, `txorphanage.cpp` |
+| `MPLIFE-04` | Family-specific affine peer/snapshot capabilities, outside-authority node/RPC/Fjall executors, successful-prefix tests, and current/stale/duplicate completion tests | `net_processing.cpp`, `node/mempool_persist.cpp` |
+
+The `MPLIFE-01` through `MPLIFE-04` requirement checkboxes remain pending until
+the phase-level verifier records its final result. This catalog records the
+implemented lineage without pre-approving that later verification gate.
+
+### Phase 134 scope boundary
+
+D-18 remains unchanged: default verification is deterministic and hermetic.
+Phase 134 does not implement the Phase 135 snapshot schema, checkpoint
+coordinator, crash-loss window, or recovery contract; Phase 136
+receive-independent retry scheduling or package fanout; Phase 137 broad
+RPC/operator surfaces; or Phase 138 release proof. It also does not add a
+general package wire, whole-mempool rebroadcast, public or default relay,
+guaranteed propagation, public-network CI, or a production-readiness claim.
+
 ### Knots sources for this surface
 
 - [`packages/bitcoin-knots/src/txmempool.h`](../../../packages/bitcoin-knots/src/txmempool.h)
@@ -532,7 +585,6 @@ public-network gates, and production readiness remain deferred.
 
 - Phase 138 adversarial soak and broader public-network pressure validation remain
   outside Phase 131's hermetic PRESS oracle/perf coverage
-- complete lifecycle-delta projection across every dependent cache (Phase 134)
 - full snapshot/checkpoint/recovery schema beyond optional metadata fields
   (Phase 135)
 - retry scheduling, fanout, receipts, and unbroadcast clearing (Phase 136)
@@ -545,7 +597,7 @@ public-network gates, and production readiness remain deferred.
 ## Follow-up triggers
 
 Revisit this entry when the currently deferred general package wire relay
-boundary changes, or when later phases add complete cross-cache projection,
-checkpoint/recovery schema changes, retry scheduling, broad operator-facing
-mempool interfaces, or Knots-compatible mempool file import/export that
-materially changes the externally visible policy surface.
+boundary changes, or when later phases add checkpoint/recovery schema changes,
+retry scheduling, broad operator-facing mempool interfaces, or Knots-compatible
+mempool file import/export that materially changes the externally visible
+policy surface.

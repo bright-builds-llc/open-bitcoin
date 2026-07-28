@@ -737,6 +737,10 @@
     {
       "name": "v2-2-package-aware-download-orphan-bridge",
       "status": "done"
+    },
+    {
+      "name": "v2-2-authoritative-cross-cache-lifecycle-integration",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -3172,6 +3176,83 @@
         ],
         "suspected_unknowns": [
           "Phase 138 adversarial soak may expose additional peer-churn or pressure interactions beyond the deterministic bounded oracles."
+        ]
+      },
+      {
+        "id": "v2-2-authoritative-cross-cache-lifecycle-integration",
+        "title": "v2.2 Authoritative Cross-Cache Lifecycle Integration",
+        "status": "done",
+        "requirements": [
+          "MPLIFE-01",
+          "MPLIFE-02",
+          "MPLIFE-03",
+          "MPLIFE-04"
+        ],
+        "evidence": [
+          "README.md",
+          "packages/README.md",
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
+          "packages/open-bitcoin-network/src/peer/transaction_lifecycle/reconciliation.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+          "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+          "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission/partial_package.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/maintenance.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/oracle.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence.rs",
+          "scripts/check-phase134-apply-boundaries.ts",
+          "scripts/check-phase134-authoritative-lifecycle.ts",
+          "scripts/check-phase134-authoritative-lifecycle.test.ts",
+          "scripts/check-parity-breadcrumbs.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 134 traces D-01 through D-17 and MPLIFE-01 through MPLIFE-04 to one ManagedNetworkHandle lifecycle dispatcher, one mandatory seven-target projection, authoritative final-membership and graph-order semantics, sequential reorg transitions, bounded reconciliation, complete deterministic scenarios, and family-specific affine peer/snapshot effects executed outside authority. The source checker and its independent mutations reject second authority, target omission, fallible apply, normal-path rebuild, replay or stale clearing, unbounded state, I/O under lock, and deferred-scope claims.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+            "packages/bitcoin-knots/src/txorphanage.cpp",
+            "packages/bitcoin-knots/src/node/mempool_persist.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+            "packages/bitcoin-knots/test/functional/mempool_limit.py",
+            "packages/bitcoin-knots/test/functional/mempool_reorg.py",
+            "packages/bitcoin-knots/test/functional/mempool_persist.py",
+            "packages/bitcoin-knots/test/functional/p2p_orphan_handling.py",
+            "packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py"
+          ]
+        },
+        "known_gaps": [
+          "D-18 remains in force: Phase 134 does not add a general package wire, whole-mempool rebroadcast, public/default relay, guaranteed propagation, public-network CI, or production readiness.",
+          "Phase 135 owns snapshot schema, checkpoint coordination, recovery, and crash-loss semantics.",
+          "Phase 136 owns receive-independent retry scheduling, package fanout, and retry clearing.",
+          "Phase 137 owns broad RPC and sanitized operator presentation.",
+          "Phase 138 owns final adversarial, parity, release, and claim proof.",
+          "MPLIFE-01 through MPLIFE-04 remain pending in the milestone requirement ledger until phase-level verification records its final result."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 adversarial pressure and restart coverage may expose interactions beyond Phase 134's deterministic scenario and failure-injection matrix."
         ]
       }
     ]

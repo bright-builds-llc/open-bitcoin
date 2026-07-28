@@ -12,7 +12,7 @@ Open Bitcoin crates.
 - `open-bitcoin-mempool/` owns policy admission, replacement, ancestor/descendant accounting, eviction behavior, typed resource, fee, metadata, and lifecycle contracts, and bounded local pure-core package admission with ordered dry-run and staged-submit results.
 - `open-bitcoin-network/` owns peer lifecycle, wire-message handling, sync planning, relay state, injected retry-input contracts, bounded reject evidence, and neutral same-peer one-parent/one-child candidate proofs.
 - `open-bitcoin-wallet/` owns descriptor parsing, address derivation, balance tracking, coin selection, transaction building, and signing.
-- `open-bitcoin-node/` owns adapter-facing orchestration over chainstate, mempool, networking, and wallet state, including the authoritative admission and lifecycle shell and the single package-admission call for an eligible peer candidate.
+- `open-bitcoin-node/` owns adapter-facing orchestration over chainstate, mempool, networking, and wallet state, including the sole `ManagedNetworkHandle` lifecycle authority, complete cross-cache projection, bounded reconciliation, typed peer/snapshot effects, and the single package-admission call for an eligible peer candidate.
 - `open-bitcoin-rpc/` owns JSON-RPC envelopes, config loading, method dispatch, HTTP serving, the `open-bitcoind` binary, and truthful resource and fee RPC projection.
 - `open-bitcoin-cli/` owns the `open-bitcoin-cli` command-line client and supported `bitcoin-cli`-style startup behavior.
 - `open-bitcoin-test-harness/` owns reusable black-box parity cases, target adapters, isolation helpers, and parity report generation.
@@ -23,11 +23,17 @@ must not depend on shell/runtime crates. Adapter and executable crates may
 depend on pure-core crates, but I/O and runtime effects should stay outside the
 pure-core packages.
 
-The mempool package surface remains local and effect-free. Phase 133 adds only a
+The mempool package surface remains local and effect-free. Phase 133 adds a
 bounded network-to-node bridge: ordinary `inv`/`getdata`/`tx` flow may yield a
 newest-first same-peer one-parent/one-child candidate, and the node owns one
-authoritative Phase 132 package-admission call plus typed feedback. General
-package wire relay, arbitrary multi-parent peer assembly, an RPC package
-adapter, lifecycle projection, fanout/receipts, public or default relay,
+authoritative Phase 132 package-admission call plus typed feedback. Phase 134
+projects committed lifecycle facts through the sole `ManagedNetworkHandle`
+authority into serving, ordinary fanout state, peer state, compact inputs,
+unbroadcast membership, persistence dirtiness, and bounded evidence. Peer and
+current-schema snapshot effects use typed prepare/execute/complete boundaries
+with I/O outside the authority lock. Phase 135 snapshot schema/recovery, Phase
+136 receive-independent scheduling and package fanout, Phase 137 operator
+surfaces, Phase 138 release proof, general package wire relay, whole-mempool
+rebroadcast, arbitrary multi-parent peer assembly, public or default relay,
 guaranteed propagation, public-network CI or release gates, and production
 readiness remain deferred.

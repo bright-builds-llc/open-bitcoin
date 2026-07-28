@@ -19,11 +19,13 @@ configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
 > Status: Active milestone: v2.2 — Package Relay and Long-Lived Mempool Policy.
-> Phase 130 provides typed resource, time, and fee primitives; Phases 131–133
+> Phase 130 provides typed resource, time, and fee primitives; Phases 131–134
 > add accounted long-lived pressure and bounded local pure-core package
 > admission with ordered dry-run and submission results, staged commit, limited
 > replacement, TRUC, and ephemeral-dust policy, plus bounded same-peer
-> one-parent/one-child assembly from ordinary transaction relay messages.
+> one-parent/one-child assembly from ordinary transaction relay messages and
+> one authoritative cross-cache lifecycle projector with bounded typed
+> outside-lock peer and current-schema snapshot effects.
 > Canonical evidence lives in the
 > [mempool parity catalog](./docs/parity/catalog/mempool-policy.md).
 > v2.1 remains the latest shipped release: bounded, explicit, default-off block
@@ -33,7 +35,10 @@ auditable, and modular.
 > on 2026-07-22; see
 > [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
 > Peer package assembly beyond that bounded 1P1C bridge, general package wire
-> relay, arbitrary multi-parent peer assembly, an RPC package adapter, BIP37
+> relay, arbitrary multi-parent peer assembly, Phase 135 snapshot schema and
+> recovery, Phase 136 receive-independent retry scheduling and package fanout,
+> Phase 137 RPC/operator surfaces, Phase 138 release proof, an RPC package
+> adapter, whole-mempool rebroadcast, BIP37
 > bloom-filter serving, compact-filter serving,
 > public serving or relay defaults, archive-node and production-scale historical
 > serving, public-network CI or release gates, production service/deployment,
@@ -72,7 +77,7 @@ guardrails.
 | Core domain and serialization | Amounts, hashes, scripts, transactions, blocks, and wire framing | ✓ done | [`catalog/core-domain-and-serialization.md`](./docs/parity/catalog/core-domain-and-serialization.md) | Rust types preserve Bitcoin encoding and identity boundaries. |
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
 | Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
-| Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Accounted long-lived pressure and bounded local package admission are implemented; peer/RPC/public relay remain deferred. |
+| Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Accounted long-lived pressure, bounded local package admission, and authoritative cross-cache lifecycle projection are implemented; durable recovery, scheduled package fanout, RPC/operator presentation, public/default relay, and release proof remain deferred. |
 | P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.1 adds bounded, explicit, default-off block serving and compact-block relay with aggregate local evidence; package relay, bloom/filter serving, public defaults, archive/production-scale serving, public-network gates, and production readiness remain deferred. |
 | Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
 | RPC, CLI, and config | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows | ✓ done | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md) | The supported slice is single-wallet and local-operator focused. |
