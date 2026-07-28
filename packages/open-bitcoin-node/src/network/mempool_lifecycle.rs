@@ -12,13 +12,14 @@ use open_bitcoin_core::{
     primitives::Block,
 };
 use open_bitcoin_mempool::{
-    AdmissionContext, BlockLifecycleContext, FinalMempoolMembership, MempoolLifecycleDelta,
-    MempoolOutcome, MempoolRemovalCause, PolicyTime, ReorgLifecycleContext,
+    AdmissionContext, BlockLifecycleContext, MempoolError, MempoolLifecycleDelta, MempoolOutcome,
+    PolicyTime, PreparedMempoolTransition, ReorgLifecycleContext,
 };
-use open_bitcoin_network::TxServingRecordStatus;
 
 use super::{BlockConnectDisposition, ManagedNetworkError, ManagedPeerNetwork, ManagedResult};
 use crate::ChainstateStore;
+use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionPlan};
+use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct ManagedMempoolBlockLifecycle {
@@ -153,24 +154,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         block: &Block,
         context: BlockLifecycleContext,
     ) -> Result<ManagedMempoolBlockLifecycle, ManagedNetworkError> {
-        let delta = self
+        let prepared = self
             .mempool
-            .mempool_mut()
-            .remove_for_connected_block_transition(block, context)?;
-        for removal in &delta.removed {
-            let is_absent = delta.final_membership.iter().any(|state| {
-                state.member == removal.member && state.membership == FinalMempoolMembership::Absent
-            });
-            if !is_absent {
-                continue;
-            }
-            self.peer_manager
-                .on_mempool_transaction_removed(&removal.member.wtxid);
-            self.remove_stored_transactions_with_status(
-                &[removal.member.txid],
-                serving_status_for_removal(removal.cause),
-            )?;
-        }
+            .mempool()
+            .prepare_connected_block_transition(block, context)?;
+        let delta =
+            self.apply_prepared_maintenance_step(prepared, LifecycleCommand::ConnectedBlock)?;
 
         Ok(ManagedMempoolBlockLifecycle { context, delta })
     }
@@ -180,21 +169,25 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &mut self,
         now: PolicyTime,
     ) -> Result<MempoolLifecycleDelta, ManagedNetworkError> {
-        let delta = self.mempool.mempool_mut().expire(now)?;
-        for removal in &delta.removed {
-            let is_absent = delta.final_membership.iter().any(|state| {
-                state.member == removal.member && state.membership == FinalMempoolMembership::Absent
-            });
-            if !is_absent {
-                continue;
+        let prepared = self.mempool.mempool().prepare_expiry(now)?;
+        self.apply_prepared_maintenance_step(prepared, LifecycleCommand::Expiry)
+    }
+
+    fn apply_prepared_maintenance_step(
+        &mut self,
+        prepared: PreparedMempoolTransition,
+        command: fn(LifecycleProjectionPlan) -> LifecycleCommand,
+    ) -> Result<MempoolLifecycleDelta, ManagedNetworkError> {
+        let plan = LifecycleProjectionPlan::prepare(self, self.authority_epoch(), prepared)
+            .map_err(maintenance_lifecycle_error)?;
+        let LifecycleCommandResult::Lifecycle(delta) =
+            apply_lifecycle_command(self, command(plan)).map_err(maintenance_lifecycle_error)?
+        else {
+            return Err(MempoolError::InternalInvariant {
+                reason: "maintenance dispatcher returned a non-lifecycle result".to_string(),
             }
-            self.peer_manager
-                .on_mempool_transaction_removed(&removal.member.wtxid);
-            self.remove_stored_transactions_with_status(
-                &[removal.member.txid],
-                serving_status_for_removal(removal.cause),
-            )?;
-        }
+            .into());
+        };
         Ok(delta)
     }
 
@@ -261,14 +254,9 @@ pub(super) const fn block_lifecycle_context_from_reorg(
     BlockLifecycleContext::new(context.occurred_at, height)
 }
 
-fn serving_status_for_removal(cause: MempoolRemovalCause) -> TxServingRecordStatus {
-    match cause {
-        MempoolRemovalCause::Replacement => TxServingRecordStatus::Replaced,
-        MempoolRemovalCause::Expiry => TxServingRecordStatus::Expired,
-        MempoolRemovalCause::Pressure => TxServingRecordStatus::Evicted,
-        MempoolRemovalCause::BlockConfirmation | MempoolRemovalCause::BlockConflict => {
-            TxServingRecordStatus::Confirmed
-        }
-        MempoolRemovalCause::Reorg => TxServingRecordStatus::Stale,
+fn maintenance_lifecycle_error(error: impl core::fmt::Display) -> ManagedNetworkError {
+    MempoolError::InternalInvariant {
+        reason: format!("maintenance lifecycle projection failed: {error}"),
     }
+    .into()
 }
