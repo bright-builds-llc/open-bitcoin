@@ -16,6 +16,7 @@ use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
     primitives::{BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
+use open_bitcoin_mempool::{MempoolRemovalCause, PreparedLifecycleFacts};
 use open_bitcoin_network::{
     BlockServingChainPosition, BlockServingDataAvailability, BlockServingValidationState,
     ConnectionRole, DisconnectReason, InactivePermissionEffectLabel, InboundResourceEvent,
@@ -27,6 +28,7 @@ use super::block_serving::{
     ManagedBlockServeGateDecision, ManagedBlockServeInput, gate_managed_block_request,
     serve_managed_block_request,
 };
+use super::lifecycle_projection::PreparedServingProjection;
 use super::{
     ManagedInboundResponsePlanItem, ManagedNetworkError, ManagedPeerNetwork,
     ManagedSyncMessageResult,
@@ -34,6 +36,49 @@ use super::{
 use crate::ChainstateStore;
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    pub(super) fn prepare_serving_projection(
+        &self,
+        facts: &PreparedLifecycleFacts,
+    ) -> PreparedServingProjection {
+        let mut transactions_by_txid = self.transactions_by_txid.clone();
+        let mut transactions_by_wtxid = self.transactions_by_wtxid.clone();
+        let mut relay_serving = self.relay_serving.clone();
+
+        for member in facts.teardown_order() {
+            transactions_by_txid.remove(&member.txid);
+            transactions_by_wtxid.remove(&member.wtxid);
+            let status = facts
+                .removed()
+                .iter()
+                .find(|removed| removed.removal.member == *member)
+                .map(|removed| serving_status_for_lifecycle_removal(removed.removal.cause))
+                .unwrap_or(TxServingRecordStatus::Stale);
+            relay_serving.record_status(member.txid, Some(member.wtxid), status);
+        }
+        for member in facts.final_present() {
+            transactions_by_txid.insert(member.member.txid, member.transaction.clone());
+            transactions_by_wtxid.insert(member.member.wtxid, member.transaction.clone());
+            relay_serving.record_accepted_prevalidated(
+                member.member.txid,
+                member.member.wtxid,
+                member.transaction.clone(),
+            );
+        }
+
+        PreparedServingProjection {
+            transactions_by_txid,
+            transactions_by_wtxid,
+            relay_serving,
+        }
+    }
+
+    #[allow(dead_code)] // Plan 134-05 invokes the closed aggregate apply.
+    pub(super) fn apply_prepared_serving(&mut self, prepared: PreparedServingProjection) {
+        self.transactions_by_txid = prepared.transactions_by_txid;
+        self.transactions_by_wtxid = prepared.transactions_by_wtxid;
+        self.relay_serving = prepared.relay_serving;
+    }
+
     pub(super) fn serve_inventory(
         &mut self,
         peer_id: PeerId,
@@ -319,6 +364,18 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Err(ManagedNetworkError::Network(NetworkError::ResourceLimit(
             peer_id,
         )))
+    }
+}
+
+const fn serving_status_for_lifecycle_removal(cause: MempoolRemovalCause) -> TxServingRecordStatus {
+    match cause {
+        MempoolRemovalCause::Replacement => TxServingRecordStatus::Replaced,
+        MempoolRemovalCause::Expiry => TxServingRecordStatus::Expired,
+        MempoolRemovalCause::Pressure => TxServingRecordStatus::Evicted,
+        MempoolRemovalCause::BlockConfirmation | MempoolRemovalCause::BlockConflict => {
+            TxServingRecordStatus::Confirmed
+        }
+        MempoolRemovalCause::Reorg => TxServingRecordStatus::Stale,
     }
 }
 

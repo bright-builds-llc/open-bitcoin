@@ -6,9 +6,13 @@
 
 use open_bitcoin_codec::CompactBlockPayload;
 use open_bitcoin_core::primitives::{Transaction, Wtxid};
-use open_bitcoin_mempool::{Mempool, transaction_weight_and_virtual_size};
+use open_bitcoin_mempool::{
+    Mempool, MempoolError, MempoolRemovalCause, PreparedLifecycleFacts,
+    transaction_weight_and_virtual_size,
+};
 use open_bitcoin_network::{CompactBlockReceiveFacts, PeerAction, PeerId};
 
+use super::lifecycle_projection::PreparedCompactProjection;
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::ChainstateStore;
 
@@ -55,24 +59,8 @@ impl CompactExtraTxnBuffer {
 
     /// Insert like Knots `AddToCompactExtraTransactions` (ring overwrite + byte-budget clear).
     pub fn push(&mut self, wtxid: Wtxid, transaction: Transaction) {
-        if self.max_slots == 0 {
-            return;
-        }
-
-        if self.slots.is_empty() {
-            self.slots.resize_with(self.max_slots, || None);
-        }
-
         let tx_bytes = approximate_tx_bytes(&transaction);
-        self.clear_slot_at(self.write_cursor);
-        self.slots[self.write_cursor] = Some((wtxid, transaction));
-        self.approximate_bytes = self.approximate_bytes.saturating_add(tx_bytes);
-        self.write_cursor = (self.write_cursor + 1) % self.max_slots;
-
-        while self.approximate_bytes > self.max_bytes {
-            self.clear_slot_at(self.write_cursor);
-            self.write_cursor = (self.write_cursor + 1) % self.max_slots;
-        }
+        self.push_with_size(wtxid, transaction, tx_bytes);
     }
 
     /// Reject bodies whose approximate size exceeds the per-tx limit without inserting.
@@ -123,6 +111,47 @@ impl CompactExtraTxnBuffer {
         let cleared_bytes = approximate_tx_bytes(&transaction);
         self.approximate_bytes = self.approximate_bytes.saturating_sub(cleared_bytes);
     }
+
+    fn clear_wtxid_checked(&mut self, wtxid: Wtxid) -> Result<(), MempoolError> {
+        for slot in &mut self.slots {
+            let Some((slot_wtxid, transaction)) = slot.as_ref() else {
+                continue;
+            };
+            if *slot_wtxid != wtxid {
+                continue;
+            }
+            let tx_bytes = checked_approximate_tx_bytes(transaction)?;
+            slot.take();
+            self.approximate_bytes = self.approximate_bytes.saturating_sub(tx_bytes);
+        }
+        Ok(())
+    }
+
+    fn push_checked(&mut self, wtxid: Wtxid, transaction: Transaction) -> Result<(), MempoolError> {
+        let tx_bytes = checked_approximate_tx_bytes(&transaction)?;
+        self.push_with_size(wtxid, transaction, tx_bytes);
+        Ok(())
+    }
+
+    fn push_with_size(&mut self, wtxid: Wtxid, transaction: Transaction, tx_bytes: usize) {
+        if self.max_slots == 0 {
+            return;
+        }
+
+        if self.slots.is_empty() {
+            self.slots.resize_with(self.max_slots, || None);
+        }
+
+        self.clear_slot_at(self.write_cursor);
+        self.slots[self.write_cursor] = Some((wtxid, transaction));
+        self.approximate_bytes = self.approximate_bytes.saturating_add(tx_bytes);
+        self.write_cursor = (self.write_cursor + 1) % self.max_slots;
+
+        while self.approximate_bytes > self.max_bytes {
+            self.clear_slot_at(self.write_cursor);
+            self.write_cursor = (self.write_cursor + 1) % self.max_slots;
+        }
+    }
 }
 
 /// Snapshot mempool entries as owned `(Wtxid, Transaction)` pairs for compact receive facts.
@@ -146,9 +175,35 @@ fn approximate_tx_bytes(transaction: &Transaction) -> usize {
     }
 }
 
+fn checked_approximate_tx_bytes(transaction: &Transaction) -> Result<usize, MempoolError> {
+    transaction_weight_and_virtual_size(transaction).map(|(_, virtual_size)| virtual_size)
+}
+
 type OwnedCompactTxnPairs = Vec<(Wtxid, Transaction)>;
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    pub(super) fn prepare_compact_projection(
+        &self,
+        facts: &PreparedLifecycleFacts,
+    ) -> Result<PreparedCompactProjection, MempoolError> {
+        let mut replacement = self.compact_extra_txn.clone();
+        for member in facts.teardown_order() {
+            replacement.clear_wtxid_checked(member.wtxid)?;
+        }
+        for removed in facts.removed() {
+            if removed.removal.cause != MempoolRemovalCause::Replacement {
+                continue;
+            }
+            replacement.push_checked(removed.removal.member.wtxid, removed.transaction.clone())?;
+        }
+        Ok(PreparedCompactProjection { replacement })
+    }
+
+    #[allow(dead_code)] // Plan 134-05 invokes the closed aggregate apply.
+    pub(super) fn apply_prepared_compact(&mut self, prepared: PreparedCompactProjection) {
+        self.compact_extra_txn = prepared.replacement;
+    }
+
     /// Snapshot mempool + extra buffer as owned pairs before borrowing PeerManager (D-02/D-04).
     pub(super) fn collect_compact_receive_owned(
         &self,

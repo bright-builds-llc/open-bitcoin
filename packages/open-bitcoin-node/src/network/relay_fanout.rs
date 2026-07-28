@@ -19,10 +19,11 @@ use open_bitcoin_mempool::{MempoolOutcome, RelayIntent};
 use open_bitcoin_network::{
     InventoryList, PeerId, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome,
     TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutQueue, TxFanoutSuppressionReason, TxRelayId,
-    TxServingRecordStatus, WireNetworkMessage, defer_local_rebroadcast,
+    WireNetworkMessage, defer_local_rebroadcast,
 };
 
 use super::ManagedPeerNetwork;
+use super::lifecycle_projection::PreparedFanoutProjection;
 use super::relay_serving::ManagedRelayServingInfo;
 use crate::ChainstateStore;
 use crate::status::relay_evidence::{
@@ -32,6 +33,9 @@ use crate::status::relay_evidence::{
 };
 
 mod action_info;
+mod lifecycle;
+
+pub(super) use lifecycle::cleanup_reason_for_serving_status;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRelayFanoutInfo {
@@ -290,6 +294,11 @@ impl ManagedRelayFanoutState {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    #[allow(dead_code)] // Plan 134-05 invokes the closed aggregate apply.
+    pub(super) fn apply_prepared_fanout(&mut self, prepared: PreparedFanoutProjection) {
+        self.relay_fanout = prepared.replacement;
+    }
+
     pub fn relay_fanout_info(&self) -> ManagedRelayFanoutInfo {
         self.relay_fanout.info()
     }
@@ -394,20 +403,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 })
             })
             .collect()
-    }
-}
-
-pub(super) fn cleanup_reason_for_serving_status(
-    status: TxServingRecordStatus,
-) -> Option<TxFanoutCleanupReason> {
-    match status {
-        TxServingRecordStatus::Confirmed => Some(TxFanoutCleanupReason::Confirmed),
-        TxServingRecordStatus::Replaced => Some(TxFanoutCleanupReason::Replaced),
-        TxServingRecordStatus::Evicted => Some(TxFanoutCleanupReason::Evicted),
-        TxServingRecordStatus::Expired => Some(TxFanoutCleanupReason::Expired),
-        TxServingRecordStatus::Accepted
-        | TxServingRecordStatus::Stale
-        | TxServingRecordStatus::Rejected => None,
     }
 }
 

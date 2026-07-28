@@ -1356,6 +1356,7 @@
         "packages/open-bitcoin-node/src/network/recovery.rs",
         "packages/open-bitcoin-node/src/network/relay_fanout.rs",
         "packages/open-bitcoin-node/src/network/relay_fanout/action_info.rs",
+        "packages/open-bitcoin-node/src/network/relay_fanout/lifecycle.rs",
         "packages/open-bitcoin-node/src/network/relay_serving.rs",
         "packages/open-bitcoin-node/src/network/tests.rs",
         "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
@@ -1396,7 +1397,8 @@
     {
       "label": "node-lifecycle-projection-contract",
       "files": [
-        "packages/open-bitcoin-node/src/network/lifecycle_projection.rs"
+        "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
+        "packages/open-bitcoin-node/src/network/lifecycle_projection/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

@@ -71,6 +71,28 @@ pub(super) struct RelayServingCache {
 }
 
 impl RelayServingCache {
+    pub(super) fn record_accepted_prevalidated(
+        &mut self,
+        txid: Txid,
+        wtxid: Wtxid,
+        transaction: Transaction,
+    ) {
+        self.txid_by_wtxid.insert(wtxid, txid);
+        self.status_by_txid
+            .insert(txid, TxServingRecordStatus::Accepted);
+        self.status_by_wtxid
+            .insert(wtxid, TxServingRecordStatus::Accepted);
+        self.records_by_txid.insert(
+            txid,
+            RelayServingRecord {
+                txid,
+                wtxid,
+                transaction,
+                status: TxServingRecordStatus::Accepted,
+            },
+        );
+    }
+
     pub(super) fn record_accepted(
         &mut self,
         transaction: Transaction,
