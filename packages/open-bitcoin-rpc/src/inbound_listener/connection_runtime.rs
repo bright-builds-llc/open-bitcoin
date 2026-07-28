@@ -12,8 +12,13 @@ use std::{
 use open_bitcoin_network::{
     INBOUND_MESSAGE_HEADER_LEN, InactivePermissionEffectLabel, InboundAdmissionDecision,
     InboundEnvelopePolicy, InboundHandshakeState, PermissionEffectLabel, ResourceGovernancePolicy,
+    WireNetworkMessage,
 };
-use open_bitcoin_node::{core::primitives::NetworkMagic, sync::AnnouncementOutboxNotification};
+use open_bitcoin_node::{
+    core::primitives::NetworkMagic,
+    network::{PeerEmission, PeerEmissionReceipt},
+    sync::AnnouncementOutboxNotification,
+};
 
 use crate::{
     ManagedRpcContext,
@@ -297,6 +302,144 @@ fn unregister_announcement_peer(
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum InboundEmissionWriteResult {
+    Written,
+    Rejected,
+    Disconnected,
+    Failed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum InboundEmissionExecutionOutcome {
+    Complete,
+    TargetMismatch,
+    EncodeFailed,
+    Rejected,
+    Disconnected,
+    WriteFailed,
+    CompletionFailed,
+}
+
+pub(super) trait InboundEmissionExecutor {
+    fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()>;
+
+    async fn write(&mut self, bytes: &[u8]) -> InboundEmissionWriteResult;
+
+    fn complete(&mut self, receipt: PeerEmissionReceipt) -> Result<(), ()>;
+}
+
+pub(super) async fn execute_inbound_emissions<E: InboundEmissionExecutor>(
+    emissions: Vec<PeerEmission>,
+    peer_id: u64,
+    executor: &mut E,
+) -> InboundEmissionExecutionOutcome {
+    for emission in emissions {
+        let (target_peer_id, message, capability) = emission.into_parts();
+        if target_peer_id != peer_id {
+            return InboundEmissionExecutionOutcome::TargetMismatch;
+        }
+        let Ok(bytes) = executor.encode(&message) else {
+            return InboundEmissionExecutionOutcome::EncodeFailed;
+        };
+        match executor.write(&bytes).await {
+            InboundEmissionWriteResult::Written => {
+                if executor.complete(capability.acknowledge_write()).is_err() {
+                    return InboundEmissionExecutionOutcome::CompletionFailed;
+                }
+            }
+            InboundEmissionWriteResult::Rejected => {
+                return InboundEmissionExecutionOutcome::Rejected;
+            }
+            InboundEmissionWriteResult::Disconnected => {
+                return InboundEmissionExecutionOutcome::Disconnected;
+            }
+            InboundEmissionWriteResult::Failed => {
+                return InboundEmissionExecutionOutcome::WriteFailed;
+            }
+        }
+    }
+    InboundEmissionExecutionOutcome::Complete
+}
+
+#[allow(clippy::too_many_arguments)]
+struct SocketInboundEmissionExecutor<'a> {
+    transport: &'a InboundAnnouncementTransport,
+    stream: &'a tokio::net::TcpStream,
+    network_magic: NetworkMagic,
+    resource_policy: &'a ResourceGovernancePolicy,
+    connected_at_unix_seconds: i64,
+    last_activity_unix_seconds: i64,
+    handshake_state: InboundHandshakeState,
+    queue_pressure: &'a mut RuntimeQueuePressureState,
+    active_permission_effects: Vec<PermissionEffectLabel>,
+    inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
+    context: &'a Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    evidence: &'a Arc<Mutex<InboundListenerEvidence>>,
+    runtime_counters: &'a Arc<Mutex<InboundRuntimeCounters>>,
+}
+
+impl InboundEmissionExecutor for SocketInboundEmissionExecutor<'_> {
+    fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()> {
+        message.encode_wire(self.network_magic).map_err(|_error| ())
+    }
+
+    async fn write(&mut self, bytes: &[u8]) -> InboundEmissionWriteResult {
+        self.queue_pressure.record_pending_write(bytes.len());
+        if let Some(event) = queue_pressure_event(
+            self.resource_policy,
+            self.queue_pressure,
+            self.active_permission_effects.clone(),
+            self.inactive_permission_effects.clone(),
+        ) {
+            self.queue_pressure.clear_pending_write();
+            record_shared_resource_event(self.context, self.evidence, event).await;
+            lock_runtime_counters(self.runtime_counters)
+                .record_failure(self.resource_policy, current_timestamp());
+            return InboundEmissionWriteResult::Rejected;
+        }
+        let write_result = write_all_for_state(
+            self.stream,
+            bytes,
+            self.resource_policy,
+            self.connected_at_unix_seconds,
+            self.last_activity_unix_seconds,
+            self.handshake_state,
+        )
+        .await;
+        self.queue_pressure.clear_pending_write();
+        match write_result {
+            Ok(WriteWireMessageOutcome::Written) => InboundEmissionWriteResult::Written,
+            Ok(WriteWireMessageOutcome::Rejected(event)) => {
+                record_shared_resource_event(self.context, self.evidence, event).await;
+                lock_runtime_counters(self.runtime_counters)
+                    .record_failure(self.resource_policy, current_timestamp());
+                InboundEmissionWriteResult::Rejected
+            }
+            Err(error) => {
+                lock_runtime_counters(self.runtime_counters)
+                    .record_failure(self.resource_policy, current_timestamp());
+                match error.kind() {
+                    io::ErrorKind::BrokenPipe
+                    | io::ErrorKind::ConnectionAborted
+                    | io::ErrorKind::ConnectionReset
+                    | io::ErrorKind::NotConnected
+                    | io::ErrorKind::UnexpectedEof => InboundEmissionWriteResult::Disconnected,
+                    _ => InboundEmissionWriteResult::Failed,
+                }
+            }
+        }
+    }
+
+    fn complete(&mut self, receipt: PeerEmissionReceipt) -> Result<(), ()> {
+        self.transport
+            .network
+            .complete_peer_emission(receipt)
+            .map(|_outcome| ())
+            .map_err(|_error| ())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn drain_inbound_announcements(
     maybe_transport: Option<&InboundAnnouncementTransport>,
@@ -320,57 +463,23 @@ async fn drain_inbound_announcements(
     let Ok(emissions) = transport.outboxes.take_peer_emissions(peer_id) else {
         return false;
     };
-    for emission in emissions {
-        let (target_peer_id, message, receipt) = emission.into_parts();
-        if target_peer_id != peer_id {
-            return false;
-        }
-        let Ok(bytes) = message.encode_wire(network_magic) else {
-            return false;
-        };
-        queue_pressure.record_pending_write(bytes.len());
-        if let Some(event) = queue_pressure_event(
-            resource_policy,
-            queue_pressure,
-            active_permission_effects.clone(),
-            inactive_permission_effects.clone(),
-        ) {
-            queue_pressure.clear_pending_write();
-            record_shared_resource_event(context, evidence, event).await;
-            lock_runtime_counters(runtime_counters)
-                .record_failure(resource_policy, current_timestamp());
-            return false;
-        }
-        let write_result = write_all_for_state(
-            stream,
-            &bytes,
-            resource_policy,
-            connected_at_unix_seconds,
-            last_activity_unix_seconds,
-            handshake_state,
-        )
-        .await;
-        queue_pressure.clear_pending_write();
-        match write_result {
-            Ok(WriteWireMessageOutcome::Written) => {
-                if transport.network.complete_peer_emission(receipt).is_err() {
-                    return false;
-                }
-            }
-            Ok(WriteWireMessageOutcome::Rejected(event)) => {
-                record_shared_resource_event(context, evidence, event).await;
-                lock_runtime_counters(runtime_counters)
-                    .record_failure(resource_policy, current_timestamp());
-                return false;
-            }
-            Err(_error) => {
-                lock_runtime_counters(runtime_counters)
-                    .record_failure(resource_policy, current_timestamp());
-                return false;
-            }
-        }
-    }
-    true
+    let mut executor = SocketInboundEmissionExecutor {
+        transport,
+        stream,
+        network_magic,
+        resource_policy,
+        connected_at_unix_seconds,
+        last_activity_unix_seconds,
+        handshake_state,
+        queue_pressure,
+        active_permission_effects,
+        inactive_permission_effects,
+        context,
+        evidence,
+        runtime_counters,
+    };
+    execute_inbound_emissions(emissions, peer_id, &mut executor).await
+        == InboundEmissionExecutionOutcome::Complete
 }
 
 pub(super) async fn acknowledge_inbound_response_write(
@@ -389,74 +498,4 @@ pub(super) async fn acknowledge_inbound_response_write(
         .await
         .acknowledge_wire_message_written(&response.message)
         .is_ok()
-}
-
-#[cfg(test)]
-mod tests {
-    use std::{
-        sync::{Arc, Barrier},
-        thread,
-    };
-
-    use open_bitcoin_node::{
-        PeerIdentityAuthority, SyncRuntimeError, sync::AnnouncementOutboxRegistry,
-    };
-
-    #[test]
-    fn concurrent_inbound_and_outbound_sessions_have_distinct_scoped_outboxes() {
-        // Arrange
-        let authority = PeerIdentityAuthority::default();
-        let outboxes = AnnouncementOutboxRegistry::default();
-        let barrier = Arc::new(Barrier::new(3));
-        let inbound_thread = {
-            let authority = authority.clone();
-            let outboxes = outboxes.clone();
-            let barrier = Arc::clone(&barrier);
-            thread::spawn(move || {
-                barrier.wait();
-                let peer_id = authority.allocate().expect("allocate inbound peer");
-                outboxes
-                    .register_peer(peer_id)
-                    .expect("register inbound peer");
-                peer_id
-            })
-        };
-        let outbound_thread = {
-            let authority = authority.clone();
-            let outboxes = outboxes.clone();
-            let barrier = Arc::clone(&barrier);
-            thread::spawn(move || {
-                barrier.wait();
-                let peer_id = authority.allocate().expect("allocate outbound peer");
-                outboxes
-                    .register_peer(peer_id)
-                    .expect("register outbound peer");
-                peer_id
-            })
-        };
-
-        // Act
-        barrier.wait();
-        let inbound_peer_id = inbound_thread.join().expect("join inbound allocation");
-        let outbound_peer_id = outbound_thread.join().expect("join outbound allocation");
-        let duplicate_error = match outboxes.register_peer(outbound_peer_id) {
-            Ok(_notification) => panic!("duplicate live peer registration must fail"),
-            Err(error) => error,
-        };
-        outboxes
-            .unregister_peer(inbound_peer_id)
-            .expect("unregister inbound peer");
-        let snapshots = outboxes.snapshots().expect("outbox snapshots");
-
-        // Assert
-        assert_ne!(inbound_peer_id, outbound_peer_id);
-        assert!(matches!(
-            duplicate_error,
-            SyncRuntimeError::Network { message }
-                if message.contains("already registered")
-        ));
-        assert_eq!(snapshots.len(), 1);
-        assert_eq!(snapshots[0].peer_id(), outbound_peer_id);
-        assert_eq!(snapshots[0].queued_messages(), 0);
-    }
 }

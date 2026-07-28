@@ -316,11 +316,26 @@ function checkProductionWriteBoundaries(
     "async fn drain_inbound_announcements(",
     "\nasync fn acknowledge_inbound_response_write(",
   );
+  const executor = section(
+    inbound,
+    "pub(super) async fn execute_inbound_emissions",
+    "\n#[allow(clippy::too_many_arguments)]\nstruct SocketInboundEmissionExecutor",
+  );
+  const socketExecutor = section(
+    inbound,
+    "impl InboundEmissionExecutor for SocketInboundEmissionExecutor",
+    "\n#[allow(clippy::too_many_arguments)]\nasync fn drain_inbound_announcements",
+  );
   if (
-    !orderedFragments(drain, [
-      "let write_result = write_all_for_state(",
-      "Ok(WriteWireMessageOutcome::Written) => {",
+    !drain.includes("execute_inbound_emissions(emissions, peer_id, &mut executor).await") ||
+    !orderedFragments(executor, [
+      "match executor.write(&bytes).await",
+      "InboundEmissionWriteResult::Written => {",
       "capability.acknowledge_write()",
+    ]) ||
+    !orderedFragments(socketExecutor, [
+      "fn complete(&mut self, receipt: PeerEmissionReceipt)",
+      ".complete_peer_emission(receipt)",
     ])
   ) {
     failures.push(

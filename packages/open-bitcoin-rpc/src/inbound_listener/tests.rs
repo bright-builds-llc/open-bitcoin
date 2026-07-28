@@ -45,6 +45,10 @@ use crate::{
     context::{DurableBlockSource, EncodedWireResponse},
 };
 
+use super::connection_runtime::{
+    InboundEmissionExecutionOutcome, InboundEmissionExecutor, InboundEmissionWriteResult,
+    execute_inbound_emissions,
+};
 use super::{
     InboundListenerEvidence, InboundListenerState, InboundListenerWorker, InboundRuntimeCounters,
     ReadWireMessageOutcome, RuntimeQueuePressureState, WriteWireMessageOutcome,
@@ -341,6 +345,7 @@ async fn acknowledged_block_count(
 }
 
 mod admission_and_handshake;
+mod announcement_successful_prefix;
 mod block_serving;
 mod envelope_and_resource;
 mod listener_fixtures;

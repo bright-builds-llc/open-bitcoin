@@ -1848,6 +1848,7 @@
         "packages/open-bitcoin-rpc/src/inbound_listener/resource_runtime.rs",
         "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
         "packages/open-bitcoin-rpc/src/inbound_listener/tests/admission_and_handshake.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs",
         "packages/open-bitcoin-rpc/src/inbound_listener/tests/block_serving.rs",
         "packages/open-bitcoin-rpc/src/inbound_listener/tests/envelope_and_resource.rs",
         "packages/open-bitcoin-rpc/src/inbound_listener/tests/listener_fixtures.rs",
