@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-03-PLAN.md
-last_updated: "2026-07-28T07:28:09.815Z"
+stopped_at: Completed 134-04-PLAN.md
+last_updated: "2026-07-28T08:37:17.482Z"
 last_activity: "2026-07-28"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 49
-  completed_plans: 39
-  percent: 80
+  completed_plans: 40
+  percent: 82
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
-Plan: 4 of 13
+Plan: 5 of 13
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -69,6 +69,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 134 P01 | 1h 10m | 3 tasks | 13 files |
 | Phase 134 P02 | 32min | 2 tasks | 5 files |
 | Phase 134 P03 | 71min | 2 tasks | 11 files |
+| Phase 134 P04 | 58min | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,8 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 134]: Prepare exact peer-local operations before mutation and consume them through one unit-returning no-scan apply path.
 - [Phase 134]: Use only a bounded fingerprint-to-members forward map and retire aliases through a capped preparation-time reverse scan.
 - [Phase 134]: Validate candidate cursor cardinality before inspection while preserving resumable sibling traversal semantics.
+- [Phase 134]: Prepare compact, serving, fanout, and peer target work completely from authoritative final membership before mutation.
+- [Phase 134]: Restrict structural enforcement to exact brace-balanced target apply bodies while excluding fallible validation and aggregate dispatch.
 
 ### Pending Todos
 
@@ -181,6 +184,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T07:28:09.812Z
-Stopped at: Completed 134-03-PLAN.md
+Last session: 2026-07-28T08:37:17.479Z
+Stopped at: Completed 134-04-PLAN.md
 Resume file: None
