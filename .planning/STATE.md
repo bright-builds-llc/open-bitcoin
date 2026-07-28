@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-11-PLAN.md
-last_updated: "2026-07-28T19:29:12.212Z"
+stopped_at: Completed 134-12-PLAN.md
+last_updated: "2026-07-28T20:59:19.609Z"
 last_activity: "2026-07-28"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 49
-  completed_plans: 47
-  percent: 96
+  completed_plans: 48
+  percent: 98
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
-Plan: 12 of 13
+Plan: 13 of 13
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -77,6 +77,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 134 P09 | 1h 17m | 3 tasks | 31 files |
 | Phase 134 P10 | 1h 10m | 2 tasks | 4 files |
 | Phase 134 P11 | 94m | 3 tasks | 12 files |
+| Phase 134 P12 | 1h 29m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -189,6 +190,10 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 134]: Use prepared admitted and teardown order as the exact consequence-order contract while canonical delta membership remains unordered.
 - [Phase 134]: Keep the independent model std-only and production-helper-free, then compare its target vectors with production reconciliation outside that module.
 - [Phase 134]: Compile failure injection only under cfg(test), scope it per thread, and invoke it only during preparation before mutation.
+- [Phase 134]: Guard exact seven projection applies plus aggregate commit while leaving validation fallible.
+- [Phase 134]: Use stable contract-family diagnostics and fresh filesystem fixtures for fail-closed mutation coverage.
+- [Phase 134]: Keep Phase 134 verification deterministic and require identical Phase 133 to Phase 134 to Phase 117 order in both verifier surfaces.
+- [Phase 134]: Keep MPLIFE-01 through MPLIFE-04 pending until phase-level verification.
 
 ### Pending Todos
 
@@ -211,6 +216,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T19:29:12.205Z
-Stopped at: Completed 134-11-PLAN.md
+Last session: 2026-07-28T20:59:19.603Z
+Stopped at: Completed 134-12-PLAN.md
 Resume file: None
