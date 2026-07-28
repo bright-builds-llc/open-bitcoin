@@ -119,7 +119,7 @@ impl Mempool {
     }
 }
 
-fn evaluate_package(
+pub(super) fn evaluate_package(
     base: &Mempool,
     package: &WellFormedPackage,
     context: AdmissionContext,

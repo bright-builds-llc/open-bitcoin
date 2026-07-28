@@ -58,7 +58,9 @@ pub use pool::{
     MempoolLifecycleDelta, MempoolLifecycleDeltaBuilder, MempoolLifecycleInvariantError,
     MempoolLifecycleRemoval, MempoolLifecycleSummary, MempoolMemberIdentity, MempoolMemberState,
     MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear,
-    MempoolRetryClearCause, MempoolTransition, RollingFeeParityStatus,
+    MempoolRetryClearCause, MempoolTransition, PreparedLifecycleFacts, PreparedMempoolMember,
+    PreparedMempoolRemoval, PreparedMempoolTransition, RollingFeeParityStatus,
+    ValidatedMempoolTransition,
 };
 pub use resource::{
     AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, MempoolCapacity,

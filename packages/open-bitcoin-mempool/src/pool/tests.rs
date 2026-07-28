@@ -20,6 +20,7 @@ mod outcome_cases;
 mod package_admission_cases;
 mod package_parity_cases;
 mod package_policy_cases;
+mod prepared_lifecycle_cases;
 mod pressure_cases;
 mod prospective_failure_cases;
 mod prospective_oracle_cases;

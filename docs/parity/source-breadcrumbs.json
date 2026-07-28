@@ -854,6 +854,16 @@
       ]
     },
     {
+      "label": "mempool-prepared-lifecycle",
+      "files": [
+        "packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/prepared_lifecycle_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "mempool-resource-accounting",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/tests/resource_cases.rs",

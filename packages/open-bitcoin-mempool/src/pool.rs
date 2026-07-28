@@ -33,6 +33,7 @@ mod lifecycle;
 mod oracle;
 mod package_admission;
 mod patch;
+mod prepared_lifecycle;
 #[allow(dead_code)] // Package orchestration consumes prospective pressure trim in Plan 132-04.
 mod pressure;
 #[allow(dead_code)] // Package orchestration consumes this staged infrastructure in Plan 132-04.
@@ -49,6 +50,10 @@ pub use lifecycle::{
 };
 #[cfg(test)]
 use oracle::{recompute_state, validate_limits};
+pub use prepared_lifecycle::{
+    PreparedLifecycleFacts, PreparedMempoolMember, PreparedMempoolRemoval,
+    PreparedMempoolTransition, ValidatedMempoolTransition,
+};
 #[cfg(test)]
 use topology::{collect_ancestors, collect_descendants};
 
@@ -236,6 +241,10 @@ impl Mempool {
             });
         }
 
+        Ok(self.apply_validated_patch(patch))
+    }
+
+    fn apply_validated_patch(&mut self, patch: MempoolPatch) -> MempoolLifecycleDelta {
         let MempoolPatch {
             base_revision: _,
             next_revision,
@@ -271,7 +280,7 @@ impl Mempool {
         self.resource_ledger = resource_delta.next_ledger;
         self.rolling_fee_state = rolling_fee_state;
         self.advance_revision(next_revision);
-        Ok(delta)
+        delta
     }
 
     fn replacement_set(
