@@ -10,6 +10,7 @@ const targetFiles = [
   "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/relay_fanout.rs",
   "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
+  "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
 ] as const;
 
 const plan04Targets = [

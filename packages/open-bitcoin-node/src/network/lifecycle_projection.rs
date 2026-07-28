@@ -6,11 +6,13 @@
 
 //! Sealed command vocabulary for authoritative mempool lifecycle projection.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use open_bitcoin_core::primitives::{Transaction, Txid, Wtxid};
-use open_bitcoin_mempool::{MempoolError, PreparedLifecycleFacts, PreparedMempoolTransition};
+use open_bitcoin_mempool::{
+    MempoolError, MempoolMemberIdentity, PreparedLifecycleFacts, PreparedMempoolTransition,
+};
 use open_bitcoin_network::{
     AcceptedPeerPackageFingerprint, PeerTransactionIdentity, PeerTransactionLifecycleInput,
     PeerTransactionLifecyclePreparationError, PreparedPeerTransactionLifecycle,
@@ -21,6 +23,10 @@ use super::compact_receive_candidates::CompactExtraTxnBuffer;
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
 use crate::ChainstateStore;
+
+mod authority;
+
+pub(super) const MAX_UNBROADCAST_MEMBERS: usize = 5_000;
 
 /// Identifies one incarnation of the sole managed-network authority.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -77,6 +83,10 @@ pub(super) enum LifecyclePreparationError {
     },
     CompactTransactionBody(MempoolError),
     PeerLifecycle(PeerTransactionLifecyclePreparationError),
+    UnbroadcastCapacity {
+        attempted: usize,
+        capacity: usize,
+    },
 }
 
 impl fmt::Display for LifecyclePreparationError {
@@ -106,6 +116,13 @@ impl fmt::Display for LifecyclePreparationError {
             Self::PeerLifecycle(error) => {
                 write!(formatter, "peer lifecycle preparation failed: {error}")
             }
+            Self::UnbroadcastCapacity {
+                attempted,
+                capacity,
+            } => write!(
+                formatter,
+                "unbroadcast membership count {attempted} exceeds capacity {capacity}"
+            ),
         }
     }
 }
@@ -118,7 +135,45 @@ impl std::error::Error for LifecyclePreparationError {
             Self::AuthorityEpochExhausted
             | Self::LifecycleGenerationExhausted
             | Self::FinalPresentOrderMismatch { .. }
-            | Self::TeardownOrderMismatch { .. } => None,
+            | Self::TeardownOrderMismatch { .. }
+            | Self::UnbroadcastCapacity { .. } => None,
+        }
+    }
+}
+
+/// Failures detected by the sole authority validation boundary.
+#[derive(Debug)]
+pub(super) enum LifecycleProjectionError {
+    AuthorityUnavailable,
+    StaleAuthorityEpoch {
+        expected: AuthorityEpoch,
+        actual: AuthorityEpoch,
+    },
+    Mempool(MempoolError),
+}
+
+impl fmt::Display for LifecycleProjectionError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::AuthorityUnavailable => {
+                formatter.write_str("authoritative lifecycle state is unavailable")
+            }
+            Self::StaleAuthorityEpoch { expected, actual } => write!(
+                formatter,
+                "stale lifecycle authority epoch: expected {}, actual {}",
+                expected.raw(),
+                actual.raw()
+            ),
+            Self::Mempool(error) => error.fmt(formatter),
+        }
+    }
+}
+
+impl std::error::Error for LifecycleProjectionError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Mempool(error) => Some(error),
+            Self::AuthorityUnavailable | Self::StaleAuthorityEpoch { .. } => None,
         }
     }
 }
@@ -190,14 +245,36 @@ pub(super) struct PreparedPeerLifecycleProjection {
     prepared: PreparedPeerTransactionLifecycle,
 }
 
-/// Exact unbroadcast bookkeeping projection shape.
-pub(super) struct PreparedUnbroadcastProjection(ProjectionShape);
+/// Fixed low-cardinality lifecycle evidence.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(super) struct LifecycleEvidenceSnapshot {
+    pub(super) committed_transitions: u64,
+    pub(super) admitted_members: u64,
+    pub(super) removed_members: u64,
+    pub(super) retry_clears: u64,
+    pub(super) replacement_removals: u64,
+    pub(super) expiry_removals: u64,
+    pub(super) pressure_removals: u64,
+    pub(super) block_confirmation_removals: u64,
+    pub(super) block_conflict_removals: u64,
+    pub(super) reorg_removals: u64,
+}
 
-/// Exact persistence-view projection shape.
-pub(super) struct PreparedPersistenceProjection(ProjectionShape);
+/// Exact unbroadcast bookkeeping projection.
+pub(super) struct PreparedUnbroadcastProjection {
+    replacement: BTreeSet<MempoolMemberIdentity>,
+}
 
-/// Exact lifecycle status, metrics, and log-evidence projection shape.
-pub(super) struct PreparedLifecycleEvidence(ProjectionShape);
+/// Exact persistence-view projection.
+pub(super) struct PreparedPersistenceProjection {
+    lifecycle_generation: LifecycleGeneration,
+    dirty_generation: Option<LifecycleGeneration>,
+}
+
+/// Exact lifecycle status, metrics, and log-evidence projection.
+pub(super) struct PreparedLifecycleEvidence {
+    replacement: LifecycleEvidenceSnapshot,
+}
 
 /// Prepared in-memory consequences remain distinct from committed lifecycle facts.
 pub(super) struct LifecycleProjectionPlan {
@@ -219,13 +296,16 @@ impl LifecycleProjectionPlan {
         core: PreparedMempoolTransition,
     ) -> Result<Self, LifecyclePreparationError> {
         let facts = core.facts();
-        let shape = ProjectionShape::prepare(facts)?;
+        ProjectionShape::prepare(facts)?;
         let compact = network
             .prepare_compact_projection(facts)
             .map_err(LifecyclePreparationError::CompactTransactionBody)?;
         let serving = network.prepare_serving_projection(facts);
         let fanout = network.prepare_fanout_projection(facts);
         let peers = prepare_peer_projection(network, facts)?;
+        let unbroadcast = network.prepare_unbroadcast_projection(facts)?;
+        let persistence = network.prepare_persistence_projection(facts)?;
+        let evidence = network.prepare_lifecycle_evidence(facts);
         Ok(Self {
             authority_epoch,
             core,
@@ -233,9 +313,9 @@ impl LifecycleProjectionPlan {
             serving,
             fanout,
             peers,
-            unbroadcast: PreparedUnbroadcastProjection(shape),
-            persistence: PreparedPersistenceProjection(shape),
-            evidence: PreparedLifecycleEvidence(shape),
+            unbroadcast,
+            persistence,
+            evidence,
         })
     }
 }
@@ -279,16 +359,6 @@ const fn peer_identity(
     PeerTransactionIdentity::new(member.txid, member.wtxid)
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
-    pub(super) fn apply_prepared_peer_lifecycle(
-        &mut self,
-        prepared: PreparedPeerLifecycleProjection,
-    ) {
-        self.peer_manager
-            .apply_prepared_transaction_lifecycle(prepared.prepared);
-    }
-}
-
 /// Owned snapshot work that may leave the authority lock in a later plan.
 pub(super) struct OwnedSnapshotEffect {
     authority_epoch: AuthorityEpoch,
@@ -313,6 +383,13 @@ impl SnapshotPreparationRequest {
             generation,
         }
     }
+
+    pub(super) fn into_owned(self) -> OwnedSnapshotEffect {
+        OwnedSnapshotEffect {
+            authority_epoch: self.authority_epoch,
+            generation: self.generation,
+        }
+    }
 }
 
 pub(super) struct PeerRelayPreparationRequest {
@@ -325,6 +402,13 @@ impl PeerRelayPreparationRequest {
         Self {
             authority_epoch,
             generation,
+        }
+    }
+
+    pub(super) fn into_owned(self) -> OwnedPeerRelayEffects {
+        OwnedPeerRelayEffects {
+            authority_epoch: self.authority_epoch,
+            generation: self.generation,
         }
     }
 }
@@ -411,161 +495,3 @@ impl LifecycleCommand {
 
 #[cfg(test)]
 mod tests;
-
-#[cfg(test)]
-mod closed_plan {
-    use std::any::TypeId;
-
-    use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
-    use open_bitcoin_network::LocalPeerConfig;
-
-    use crate::{ManagedPeerNetwork, MemoryChainstateStore};
-
-    use super::{
-        AuthorityEpoch, LifecyclePreparationError, LifecycleProjectionPlan,
-        PreparedCompactProjection, PreparedFanoutProjection, PreparedLifecycleEvidence,
-        PreparedPeerLifecycleProjection, PreparedPersistenceProjection, PreparedServingProjection,
-        PreparedUnbroadcastProjection, ProjectionShape,
-    };
-
-    #[test]
-    fn construction_requires_authority_core_and_every_projection_target() {
-        // Arrange
-        let network = ManagedPeerNetwork::new(
-            MemoryChainstateStore::default(),
-            LocalPeerConfig::default(),
-            PolicyConfig::default(),
-        );
-        let core = network
-            .mempool()
-            .prepare_expiry(PolicyTime::new(0))
-            .expect("empty mempool expiry should prepare");
-
-        // Act
-        let plan = LifecycleProjectionPlan::prepare(&network, AuthorityEpoch::INITIAL, core)
-            .expect("coherent lifecycle facts should prepare every projection");
-        let LifecycleProjectionPlan {
-            authority_epoch,
-            core,
-            compact,
-            serving,
-            fanout,
-            peers,
-            unbroadcast,
-            persistence,
-            evidence,
-        } = plan;
-
-        // Assert
-        assert_eq!(authority_epoch, AuthorityEpoch::INITIAL);
-        assert!(core.facts().delta().is_empty());
-        assert_eq!(compact.replacement.iter_available().count(), 0);
-        assert!(serving.transactions_by_txid.is_empty());
-        assert!(serving.transactions_by_wtxid.is_empty());
-        assert_eq!(serving.relay_serving.info().serveable_transactions, 0);
-        assert_eq!(fanout.replacement.info().known_transactions, 0);
-        assert!(peers.prepared.admission_order().is_empty());
-        assert!(peers.prepared.teardown_order().is_empty());
-        assert_eq!(unbroadcast.0, persistence.0);
-        assert_eq!(evidence.0, unbroadcast.0);
-    }
-
-    #[test]
-    fn every_projection_target_has_a_distinct_concrete_type() {
-        // Arrange
-        let type_ids = [
-            TypeId::of::<PreparedCompactProjection>(),
-            TypeId::of::<PreparedServingProjection>(),
-            TypeId::of::<PreparedFanoutProjection>(),
-            TypeId::of::<PreparedPeerLifecycleProjection>(),
-            TypeId::of::<PreparedUnbroadcastProjection>(),
-            TypeId::of::<PreparedPersistenceProjection>(),
-            TypeId::of::<PreparedLifecycleEvidence>(),
-        ];
-
-        // Act
-        let unique_count = type_ids
-            .iter()
-            .enumerate()
-            .filter(|(index, type_id)| !type_ids[..*index].contains(type_id))
-            .count();
-
-        // Assert
-        assert_eq!(unique_count, type_ids.len());
-    }
-
-    #[test]
-    fn preparation_rejects_incoherent_lifecycle_orders() {
-        // Arrange
-        let final_present_mismatch = ProjectionShape::checked_from_counts(1, 0, 0, 0, 0);
-        let teardown_mismatch = ProjectionShape::checked_from_counts(0, 0, 1, 0, 0);
-
-        // Act
-        let maybe_final_present_error = final_present_mismatch.expect_err("order must match");
-        let maybe_teardown_error = teardown_mismatch.expect_err("order must match");
-
-        // Assert
-        assert_eq!(
-            maybe_final_present_error,
-            LifecyclePreparationError::FinalPresentOrderMismatch {
-                final_present: 1,
-                admitted_order: 0,
-            }
-        );
-        assert_eq!(
-            maybe_teardown_error,
-            LifecyclePreparationError::TeardownOrderMismatch {
-                removed: 1,
-                teardown_order: 0,
-            }
-        );
-    }
-}
-
-#[cfg(test)]
-mod target_operations {
-    use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
-    use open_bitcoin_network::LocalPeerConfig;
-
-    use crate::{ManagedPeerNetwork, MemoryChainstateStore};
-
-    use super::{AuthorityEpoch, LifecycleProjectionPlan};
-
-    #[test]
-    fn empty_projection_applies_every_prepared_target_without_failure() {
-        // Arrange
-        let mut network = ManagedPeerNetwork::new(
-            MemoryChainstateStore::default(),
-            LocalPeerConfig::default(),
-            PolicyConfig::default(),
-        );
-        let core = network
-            .mempool()
-            .prepare_expiry(PolicyTime::new(0))
-            .expect("empty mempool expiry should prepare");
-        let prepared = LifecycleProjectionPlan::prepare(&network, AuthorityEpoch::INITIAL, core)
-            .expect("empty target work should prepare");
-        let LifecycleProjectionPlan {
-            authority_epoch: _,
-            core: _,
-            compact,
-            serving,
-            fanout,
-            peers,
-            unbroadcast: _,
-            persistence: _,
-            evidence: _,
-        } = prepared;
-
-        // Act
-        network.apply_prepared_compact(compact);
-        network.apply_prepared_serving(serving);
-        network.apply_prepared_fanout(fanout);
-        network.apply_prepared_peer_lifecycle(peers);
-
-        // Assert
-        assert_eq!(network.compact_extra_txn.iter_available().count(), 0);
-        assert_eq!(network.relay_serving.info().serveable_transactions, 0);
-        assert_eq!(network.relay_fanout.info().known_transactions, 0);
-    }
-}

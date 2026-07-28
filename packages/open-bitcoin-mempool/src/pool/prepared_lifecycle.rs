@@ -37,6 +37,7 @@ thread_local! {
 pub struct PreparedMempoolMember {
     pub member: MempoolMemberIdentity,
     pub transaction: Transaction,
+    pub metadata: crate::MempoolEntryMetadata,
 }
 
 /// A semantic removal paired with the body present before the transition.
@@ -458,6 +459,7 @@ fn prepared_member(
     Ok(PreparedMempoolMember {
         member,
         transaction: entry.transaction.clone(),
+        metadata: entry.metadata,
     })
 }
 

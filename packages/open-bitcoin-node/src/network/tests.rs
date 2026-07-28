@@ -61,6 +61,7 @@ mod compact_cleanup_cases;
 mod compact_misbehavior_cases;
 mod compact_receive_cases;
 mod compact_timeout_cases;
+mod lifecycle_projection_cases;
 mod lifecycle_projection_target_cases;
 mod mempool_lifecycle_cases;
 mod package_bridge_cases;

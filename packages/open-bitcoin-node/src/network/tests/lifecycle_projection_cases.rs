@@ -1,0 +1,245 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/mempool_persist.cpp
+// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+
+use open_bitcoin_core::consensus::{block_hash, transaction_txid, transaction_wtxid};
+use open_bitcoin_core::primitives::{BlockHash, Txid};
+use open_bitcoin_mempool::{
+    AdmissionContext, FeeRate, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin,
+    PolicyConfig, PolicyTime, RelayIntent, RollingMempoolFeeRate,
+};
+
+use super::*;
+use crate::network::lifecycle_projection::{
+    AuthorityEpoch, LifecycleProjectionError, LifecycleProjectionPlan,
+};
+
+fn network_with_spendable_coinbase(
+    config: PolicyConfig,
+) -> (ManagedPeerNetwork<MemoryChainstateStore>, Txid) {
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(134_051),
+        config,
+    );
+    let genesis = build_block(BlockHash::from_byte_array([0; 32]), 0, 500_000_000);
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    network
+        .connect_local_block(&spendable, verify_flags(), consensus_params())
+        .expect("connect spendable block");
+    (
+        network,
+        transaction_txid(&spendable.transactions[0]).expect("coinbase txid"),
+    )
+}
+
+fn apply_prepared(
+    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+    core: open_bitcoin_mempool::PreparedMempoolTransition,
+) {
+    let plan = LifecycleProjectionPlan::prepare(network, network.authority_epoch(), core)
+        .expect("projection should prepare");
+    let validated = network
+        .validate_prepared_lifecycle(plan)
+        .expect("current projection should validate");
+    network.apply_prepared_lifecycle(validated);
+}
+
+mod authority {
+    use super::*;
+
+    #[test]
+    fn stale_authority_epoch_preserves_the_complete_aggregate() {
+        // Arrange
+        let network = ManagedPeerNetwork::new(
+            MemoryChainstateStore::default(),
+            local_config(134_052),
+            PolicyConfig::default(),
+        );
+        let core = network
+            .mempool()
+            .prepare_expiry(PolicyTime::new(0))
+            .expect("empty expiry should prepare");
+        let stale_epoch = AuthorityEpoch::INITIAL
+            .checked_next()
+            .expect("test epoch should advance");
+        let plan = LifecycleProjectionPlan::prepare(&network, stale_epoch, core)
+            .expect("projection should prepare");
+        let baseline = format!("{network:?}");
+
+        // Act
+        let Err(error) = network.validate_prepared_lifecycle(plan) else {
+            panic!("stale epoch must fail");
+        };
+
+        // Assert
+        assert!(matches!(
+            error,
+            LifecycleProjectionError::StaleAuthorityEpoch { .. }
+        ));
+        assert_eq!(format!("{network:?}"), baseline);
+    }
+
+    #[test]
+    fn stale_core_revision_preserves_every_dependent_target() {
+        // Arrange
+        let mut network = ManagedPeerNetwork::new(
+            MemoryChainstateStore::default(),
+            local_config(134_053),
+            PolicyConfig::default(),
+        );
+        let core = network
+            .mempool()
+            .prepare_expiry(PolicyTime::new(0))
+            .expect("empty expiry should prepare");
+        let plan = LifecycleProjectionPlan::prepare(&network, AuthorityEpoch::INITIAL, core)
+            .expect("projection should prepare");
+        network
+            .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(1)))
+            .expect("revision mutation should succeed");
+        let baseline = format!("{network:?}");
+
+        // Act
+        let Err(error) = network.validate_prepared_lifecycle(plan) else {
+            panic!("stale core revision must fail");
+        };
+
+        // Assert
+        assert!(matches!(error, LifecycleProjectionError::Mempool(_)));
+        assert_eq!(format!("{network:?}"), baseline);
+    }
+
+    #[test]
+    fn local_requested_admission_advances_once_and_enters_unbroadcast() {
+        // Arrange
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let transaction = spend_transaction(coinbase_txid, 499_999_000);
+        let txid = transaction_txid(&transaction).expect("txid");
+        let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+        let core = network
+            .mempool
+            .prepare_transaction_with_context(
+                &network.chainstate,
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                AdmissionContext::local(PolicyTime::new(100), RelayIntent::Requested),
+            )
+            .expect("admission should prepare");
+
+        // Act
+        apply_prepared(&mut network, core);
+
+        // Assert
+        assert_eq!(network.lifecycle_generation().raw(), 1);
+        assert_eq!(
+            network.dirty_generation(),
+            Some(network.lifecycle_generation())
+        );
+        assert!(
+            network
+                .unbroadcast_members()
+                .contains(&open_bitcoin_mempool::MempoolMemberIdentity { txid, wtxid })
+        );
+    }
+
+    #[test]
+    fn empty_delta_advances_no_generation_or_evidence() {
+        // Arrange
+        let mut network = ManagedPeerNetwork::new(
+            MemoryChainstateStore::default(),
+            local_config(134_054),
+            PolicyConfig::default(),
+        );
+        let core = network
+            .mempool()
+            .prepare_expiry(PolicyTime::new(0))
+            .expect("empty expiry should prepare");
+        let baseline_evidence = network.lifecycle_evidence_snapshot();
+
+        // Act
+        apply_prepared(&mut network, core);
+
+        // Assert
+        assert_eq!(network.lifecycle_generation().raw(), 0);
+        assert_eq!(network.dirty_generation(), None);
+        assert_eq!(network.lifecycle_evidence_snapshot(), baseline_evidence);
+    }
+
+    #[test]
+    fn only_local_requested_members_enter_unbroadcast() {
+        // Arrange
+        let contexts = [
+            AdmissionContext::local(PolicyTime::new(100), RelayIntent::NotRequested),
+            AdmissionContext::new(MempoolEntryMetadata::new(
+                MempoolAcceptanceTime::Known(PolicyTime::new(100)),
+                MempoolOrigin::Peer,
+                RelayIntent::Requested,
+            )),
+        ];
+
+        // Act
+        let unbroadcast_counts = contexts.map(|context| {
+            let (mut network, coinbase_txid) =
+                network_with_spendable_coinbase(PolicyConfig::default());
+            let core = network
+                .mempool
+                .prepare_transaction_with_context(
+                    &network.chainstate,
+                    spend_transaction(coinbase_txid, 499_999_000),
+                    verify_flags(),
+                    consensus_params(),
+                    context,
+                )
+                .expect("admission should prepare");
+            apply_prepared(&mut network, core);
+            network.unbroadcast_members().len()
+        });
+
+        // Assert
+        assert_eq!(unbroadcast_counts, [0, 0]);
+    }
+
+    #[test]
+    fn lifecycle_removal_clears_the_exact_unbroadcast_identity() {
+        // Arrange
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig {
+            mempool_expiry_hours: 1,
+            ..PolicyConfig::default()
+        });
+        let transaction = spend_transaction(coinbase_txid, 499_999_000);
+        let txid = transaction_txid(&transaction).expect("txid");
+        let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+        let admission = network
+            .mempool
+            .prepare_transaction_with_context(
+                &network.chainstate,
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                AdmissionContext::local(PolicyTime::new(100), RelayIntent::Requested),
+            )
+            .expect("admission should prepare");
+        apply_prepared(&mut network, admission);
+        let removal = network
+            .mempool
+            .prepare_expiry(PolicyTime::new(3_701))
+            .expect("expiry should prepare");
+
+        // Act
+        apply_prepared(&mut network, removal);
+
+        // Assert
+        assert!(
+            !network
+                .unbroadcast_members()
+                .contains(&open_bitcoin_mempool::MempoolMemberIdentity { txid, wtxid })
+        );
+        assert_eq!(network.lifecycle_generation().raw(), 2);
+    }
+}

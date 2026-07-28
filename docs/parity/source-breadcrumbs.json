@@ -1399,7 +1399,10 @@
       "label": "node-lifecycle-projection-contract",
       "files": [
         "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
-        "packages/open-bitcoin-node/src/network/lifecycle_projection/tests.rs"
+        "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+        "packages/open-bitcoin-node/src/network/lifecycle_projection/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",

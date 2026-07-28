@@ -40,6 +40,8 @@ use super::{
     PeerOutboxSnapshot,
 };
 
+mod lifecycle;
+
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
 
 #[derive(Debug)]

@@ -12,7 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use std::collections::{BTreeMap, hash_map::RandomState};
+use std::collections::{BTreeMap, BTreeSet, hash_map::RandomState};
 use std::hash::{BuildHasher, Hasher};
 
 use open_bitcoin_core::{
@@ -489,6 +489,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             relay_serving: RelayServingCache::default(),
             compact_extra_txn:
                 super::compact_receive_candidates::CompactExtraTxnBuffer::with_defaults(),
+            authority_epoch: super::lifecycle_projection::AuthorityEpoch::INITIAL,
+            lifecycle_generation: super::lifecycle_projection::LifecycleGeneration::INITIAL,
+            dirty_generation: None,
+            unbroadcast_members: BTreeSet::new(),
+            lifecycle_evidence: super::lifecycle_projection::LifecycleEvidenceSnapshot::default(),
             latest_mempool_recovery: None,
             latest_mempool_recovery_storage_error: None,
             local_config,

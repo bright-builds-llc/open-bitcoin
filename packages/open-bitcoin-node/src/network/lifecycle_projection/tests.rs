@@ -10,9 +10,12 @@ use open_bitcoin_mempool::{PolicyConfig, PolicyTime, PreparedLifecycleFacts};
 use open_bitcoin_network::LocalPeerConfig;
 
 use super::{
-    AuthorityEpoch, LifecycleCommand, LifecycleCommandKind, LifecycleGeneration,
-    LifecycleProjectionPlan, OwnedPeerRelayEffects, OwnedSnapshotEffect, PeerEffectReceipt,
-    PeerRelayPreparationRequest, SnapshotEffectReceipt, SnapshotPreparationRequest,
+    AuthorityEpoch, LifecycleCommand, LifecycleCommandKind, LifecycleEvidenceSnapshot,
+    LifecycleGeneration, LifecyclePreparationError, LifecycleProjectionPlan, OwnedPeerRelayEffects,
+    OwnedSnapshotEffect, PeerEffectReceipt, PeerRelayPreparationRequest, PreparedCompactProjection,
+    PreparedFanoutProjection, PreparedLifecycleEvidence, PreparedPeerLifecycleProjection,
+    PreparedPersistenceProjection, PreparedServingProjection, PreparedUnbroadcastProjection,
+    ProjectionShape, SnapshotEffectReceipt, SnapshotPreparationRequest,
 };
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -109,4 +112,125 @@ fn facts_plans_owned_effects_and_receipts_are_distinct_types() {
 
     // Assert
     assert_eq!(unique_count, type_ids.len());
+}
+
+#[test]
+fn construction_requires_authority_core_and_every_projection_target() {
+    // Arrange
+    let plan = projection_plan();
+
+    // Act
+    let LifecycleProjectionPlan {
+        authority_epoch,
+        core,
+        compact,
+        serving,
+        fanout,
+        peers,
+        unbroadcast,
+        persistence,
+        evidence,
+    } = plan;
+
+    // Assert
+    assert_eq!(authority_epoch, AuthorityEpoch::INITIAL);
+    assert!(core.facts().delta().is_empty());
+    assert_eq!(compact.replacement.iter_available().count(), 0);
+    assert!(serving.transactions_by_txid.is_empty());
+    assert!(serving.transactions_by_wtxid.is_empty());
+    assert_eq!(serving.relay_serving.info().serveable_transactions, 0);
+    assert_eq!(fanout.replacement.info().known_transactions, 0);
+    assert!(peers.prepared.admission_order().is_empty());
+    assert!(peers.prepared.teardown_order().is_empty());
+    assert!(unbroadcast.replacement.is_empty());
+    assert_eq!(
+        persistence.lifecycle_generation,
+        LifecycleGeneration::INITIAL
+    );
+    assert_eq!(persistence.dirty_generation, None);
+    assert_eq!(evidence.replacement, LifecycleEvidenceSnapshot::default());
+}
+
+#[test]
+fn every_projection_target_has_a_distinct_concrete_type() {
+    // Arrange
+    let type_ids = [
+        TypeId::of::<PreparedCompactProjection>(),
+        TypeId::of::<PreparedServingProjection>(),
+        TypeId::of::<PreparedFanoutProjection>(),
+        TypeId::of::<PreparedPeerLifecycleProjection>(),
+        TypeId::of::<PreparedUnbroadcastProjection>(),
+        TypeId::of::<PreparedPersistenceProjection>(),
+        TypeId::of::<PreparedLifecycleEvidence>(),
+    ];
+
+    // Act
+    let unique_count = type_ids
+        .iter()
+        .enumerate()
+        .filter(|(index, type_id)| !type_ids[..*index].contains(type_id))
+        .count();
+
+    // Assert
+    assert_eq!(unique_count, type_ids.len());
+}
+
+#[test]
+fn preparation_rejects_incoherent_lifecycle_orders() {
+    // Arrange
+    let final_present_mismatch = ProjectionShape::checked_from_counts(1, 0, 0, 0, 0);
+    let teardown_mismatch = ProjectionShape::checked_from_counts(0, 0, 1, 0, 0);
+
+    // Act
+    let maybe_final_present_error = final_present_mismatch.expect_err("order must match");
+    let maybe_teardown_error = teardown_mismatch.expect_err("order must match");
+
+    // Assert
+    assert_eq!(
+        maybe_final_present_error,
+        LifecyclePreparationError::FinalPresentOrderMismatch {
+            final_present: 1,
+            admitted_order: 0,
+        }
+    );
+    assert_eq!(
+        maybe_teardown_error,
+        LifecyclePreparationError::TeardownOrderMismatch {
+            removed: 1,
+            teardown_order: 0,
+        }
+    );
+}
+
+#[test]
+fn empty_projection_applies_every_prepared_target_without_failure() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        LocalPeerConfig::default(),
+        PolicyConfig::default(),
+    );
+    let prepared = projection_plan();
+    let LifecycleProjectionPlan {
+        authority_epoch: _,
+        core: _,
+        compact,
+        serving,
+        fanout,
+        peers,
+        unbroadcast: _,
+        persistence: _,
+        evidence: _,
+    } = prepared;
+
+    // Act
+    network.apply_prepared_compact(compact);
+    network.apply_prepared_serving(serving);
+    network.apply_prepared_fanout(fanout);
+    network.apply_prepared_peer_lifecycle(peers);
+
+    // Assert
+    assert_eq!(network.compact_extra_txn.iter_available().count(), 0);
+    assert_eq!(network.relay_serving.info().serveable_transactions, 0);
+    assert_eq!(network.relay_fanout.info().known_transactions, 0);
 }
