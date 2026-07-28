@@ -62,7 +62,6 @@ impl PeerSessionGeneration {
         Self(raw)
     }
 
-    #[cfg(test)]
     pub(in crate::network) fn checked_next(self) -> Result<Self, EffectPreparationError> {
         self.0
             .checked_add(1)
@@ -126,6 +125,10 @@ impl PeerEffectCapability {
             peer_id: self.peer_id,
             peer_session_generation: self.peer_session_generation,
         }
+    }
+
+    pub const fn peer_id(&self) -> PeerId {
+        self.peer_id
     }
 }
 

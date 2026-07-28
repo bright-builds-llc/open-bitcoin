@@ -109,6 +109,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         peer_id: PeerId,
         now_unix_seconds: i64,
     ) -> ManagedResult<Vec<(PeerId, WireNetworkMessage)>> {
+        let next_session_generation =
+            self.peer_session_generation.checked_next().map_err(|_| {
+                ManagedNetworkError::LifecycleEffect("peer session generation exhausted")
+            })?;
         let removed_count = self
             .peer_manager
             .compact_download_peer_state(peer_id)
@@ -116,6 +120,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let actions = self
             .peer_manager
             .remove_peer_with_transaction_cleanup(peer_id, now_unix_seconds)?;
+        self.peer_session_generation = next_session_generation;
         self.record_compact_cleanup(CompactDownloadCleanupCause::PeerDisconnect, removed_count);
         self.relay_fanout.cleanup_peer(peer_id);
         self.known_peers.remove(&peer_id);

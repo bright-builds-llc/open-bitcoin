@@ -12,6 +12,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/announcement_transport.rs",
   "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+  "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
@@ -195,8 +196,8 @@ test("fails_when_compact_provenance_is_not_bound_to_the_actual_emission", () => 
       replace(
         files,
         "packages/open-bitcoin-node/src/network/announcement_transport.rs",
-        "PeerEmission::new(peer_id, message, block_hash)",
-        "PeerEmission::new(peer_id, WireNetworkMessage::Inv(Default::default()), block_hash)",
+        "self.prepare_peer_emission(peer_id, message, block_hash)",
+        "self.prepare_peer_emission(peer_id, WireNetworkMessage::Inv(Default::default()), block_hash)",
       );
     },
   });
@@ -217,7 +218,7 @@ test("fails_when_achieved_effect_evidence_ignores_the_written_receipt", () => {
       replace(
         files,
         "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
-        ".record_announcement(receipt.evidence_reason());",
+        ".record_announcement(evidence.evidence_reason());",
         ".record_announcement(CompactAnnouncementReason::CompactAnnounced);",
       );
     },

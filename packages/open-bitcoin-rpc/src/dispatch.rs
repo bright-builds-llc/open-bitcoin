@@ -168,6 +168,7 @@ pub(super) fn network_error_to_failure(error: ManagedNetworkError) -> RpcFailure
         ),
         ManagedNetworkError::Network(error) => RpcFailure::internal_error(error.to_string()),
         ManagedNetworkError::PackageShape(error) => RpcFailure::internal_error(error.to_string()),
+        ManagedNetworkError::LifecycleEffect(message) => RpcFailure::internal_error(message),
     }
 }
 

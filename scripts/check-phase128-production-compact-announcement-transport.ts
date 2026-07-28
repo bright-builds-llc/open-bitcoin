@@ -21,6 +21,7 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/announcement_transport.rs",
   "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+  "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
   "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
   "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs",
   "packages/open-bitcoin-node/src/sync.rs",
@@ -235,6 +236,11 @@ function checkLiveFactsAndBoundedEmissions(
     "pub struct PeerEmissionReceipt {",
     "\n}\n\nimpl PeerEmissionReceipt",
   );
+  const capability = section(
+    transport,
+    "pub struct PeerEmissionWriteCapability {",
+    "\n}\n\nimpl PeerEmissionWriteCapability",
+  );
   if (
     !transport.includes(
       "#[derive(Debug, PartialEq, Eq)]\npub struct PeerEmission {",
@@ -242,13 +248,18 @@ function checkLiveFactsAndBoundedEmissions(
     ![
       "peer_id: PeerId,",
       "message: WireNetworkMessage,",
+      "capability: PeerEmissionWriteCapability,",
+    ].every((anchor) => emission.includes(anchor)) ||
+    ![
+      "effect_capability: PeerEffectCapability,",
       "block_hash: BlockHash,",
       "evidence_reason: CompactAnnouncementReason,",
       "write_kind: PeerEmissionWriteKind,",
-    ].every((anchor) => emission.includes(anchor)) ||
+    ].every((anchor) => capability.includes(anchor)) ||
     !transport.includes(
-      "pub fn into_parts(self) -> (PeerId, WireNetworkMessage, PeerEmissionReceipt)",
+      "pub fn into_parts(self) -> (PeerId, WireNetworkMessage, PeerEmissionWriteCapability)",
     ) ||
+    !transport.includes("pub fn acknowledge_write(self) -> PeerEmissionReceipt") ||
     receipt.includes("Clone")
   ) {
     failures.push(
@@ -286,9 +297,9 @@ function checkProductionWriteBoundaries(
   );
   if (
     !orderedFragments(outbound, [
-      "let (target_peer_id, message, receipt) = emission.into_parts();",
+      "let (target_peer_id, message, capability) = emission.into_parts();",
       "session.send(&message, self.config.network.magic())?;",
-      "self.network.complete_peer_emission(receipt)?;",
+      "capability.acknowledge_write()",
     ])
   ) {
     failures.push(
@@ -309,7 +320,7 @@ function checkProductionWriteBoundaries(
     !orderedFragments(drain, [
       "let write_result = write_all_for_state(",
       "Ok(WriteWireMessageOutcome::Written) => {",
-      "transport.network.complete_peer_emission(receipt).is_err()",
+      "capability.acknowledge_write()",
     ])
   ) {
     failures.push(
@@ -337,16 +348,21 @@ function checkPostWriteEvidence(
     texts.get(
       "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
     ) ?? "";
-  const completion = section(
-    evidence,
-    "pub fn complete_peer_emission(",
-    "\n    pub(super) fn record_compact_download_evidence",
-  );
+  const completion =
+    texts.get(
+      "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+    ) ?? "";
   if (
     !orderedFragments(completion, [
-      "receipt.records_header_provenance()",
-      ".record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
-      ".record_announcement(receipt.evidence_reason());",
+      "pub fn complete_peer_emission(",
+      "self.complete_peer_effect(effect_receipt)?",
+      "network.record_peer_emission(peer_id, evidence)",
+    ]) ||
+    !orderedFragments(evidence, [
+      "fn record_peer_emission(",
+      "evidence.records_header_provenance()",
+      ".record_compact_block_announcement(peer_id, evidence.block_hash())?;",
+      ".record_announcement(evidence.evidence_reason());",
     ])
   ) {
     failures.push(

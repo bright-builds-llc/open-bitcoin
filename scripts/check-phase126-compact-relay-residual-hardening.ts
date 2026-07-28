@@ -18,6 +18,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/announcement_transport.rs",
   "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+  "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/Cargo.toml",
   "packages/open-bitcoin-node/BUILD.bazel",
@@ -172,8 +173,8 @@ function checkNonceAndEvidence(texts: TextCorpus, failures: string[]): void {
   if (
     !orderedFragments(transport, [
       "let Ok(Some(message)) = maybe_message else {",
-      "PeerEmission::new(peer_id, message, block_hash)",
-      "AnnouncementPreparationOutcome::Ready(emission)",
+      "self.prepare_peer_emission(peer_id, message, block_hash)",
+      "AnnouncementPreparationOutcome::Ready(Box::new(emission))",
     ]) ||
     network.includes(".record_compact_block_announcement(") ||
     transport.includes(".record_compact_block_announcement(")
@@ -185,11 +186,18 @@ function checkNonceAndEvidence(texts: TextCorpus, failures: string[]): void {
 
   const evidence =
     texts.get("packages/open-bitcoin-node/src/network/block_relay_evidence.rs") ?? "";
+  const completion =
+    texts.get("packages/open-bitcoin-node/src/network/runtime_authority/effects.rs") ?? "";
   if (
     !orderedFragments(evidence, [
+      "fn record_peer_emission(",
+      ".record_compact_block_announcement(peer_id, evidence.block_hash())?;",
+      ".record_announcement(evidence.evidence_reason());",
+    ]) ||
+    !orderedFragments(completion, [
       "pub fn complete_peer_emission(",
-      ".record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
-      ".record_announcement(receipt.evidence_reason());",
+      "self.complete_peer_effect(effect_receipt)?",
+      "network.record_peer_emission(peer_id, evidence)",
     ])
   ) {
     failures.push(

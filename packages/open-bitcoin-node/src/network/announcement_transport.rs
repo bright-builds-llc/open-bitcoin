@@ -21,7 +21,12 @@ use open_bitcoin_network::{
 
 use crate::ChainstateStore;
 
-use super::{ManagedPeerNetwork, block_relay_evidence};
+use super::{
+    ManagedPeerNetwork, block_relay_evidence,
+    lifecycle_effects::{PeerEffectCapability, PeerEffectReceipt},
+    lifecycle_projection::{LifecycleCommand, PeerRelayPreparationRequest},
+    runtime_authority::{LifecycleCommandResult, apply_lifecycle_command},
+};
 
 /// A live snapshot of one session's bounded announcement outbox.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -70,9 +75,7 @@ impl PeerOutboxSnapshot {
 pub struct PeerEmission {
     peer_id: PeerId,
     message: WireNetworkMessage,
-    block_hash: BlockHash,
-    evidence_reason: CompactAnnouncementReason,
-    write_kind: PeerEmissionWriteKind,
+    capability: PeerEmissionWriteCapability,
 }
 
 impl PeerEmission {
@@ -80,15 +83,22 @@ impl PeerEmission {
         peer_id: PeerId,
         message: WireNetworkMessage,
         block_hash: BlockHash,
+        effect_capability: PeerEffectCapability,
     ) -> Option<Self> {
+        if effect_capability.peer_id() != peer_id {
+            return None;
+        }
         let write_kind = PeerEmissionWriteKind::for_message(&message)?;
         let evidence_reason = block_relay_evidence::compact_announce_evidence_reason(&message)?;
         Some(Self {
             peer_id,
             message,
-            block_hash,
-            evidence_reason,
-            write_kind,
+            capability: PeerEmissionWriteCapability {
+                effect_capability,
+                block_hash,
+                evidence_reason,
+                write_kind,
+            },
         })
     }
 
@@ -100,28 +110,45 @@ impl PeerEmission {
         &self.message
     }
 
-    pub fn into_parts(self) -> (PeerId, WireNetworkMessage, PeerEmissionReceipt) {
+    pub fn into_parts(self) -> (PeerId, WireNetworkMessage, PeerEmissionWriteCapability) {
         let Self {
             peer_id,
             message,
-            block_hash,
-            evidence_reason,
-            write_kind,
+            capability,
         } = self;
-        (
-            peer_id,
-            message,
-            PeerEmissionReceipt {
-                peer_id,
-                block_hash,
-                evidence_reason,
-                write_kind,
-            },
-        )
+        (peer_id, message, capability)
     }
 }
 
-/// A non-replayable acknowledgement capability bound to one prepared emission.
+/// A consuming capability bound to one exact prepared peer write.
+///
+/// ```compile_fail
+/// fn replay(capability: open_bitcoin_node::network::PeerEmissionWriteCapability) {
+///     let _duplicate = capability.clone();
+/// }
+/// ```
+#[derive(Debug, PartialEq, Eq)]
+pub struct PeerEmissionWriteCapability {
+    effect_capability: PeerEffectCapability,
+    block_hash: BlockHash,
+    evidence_reason: CompactAnnouncementReason,
+    write_kind: PeerEmissionWriteKind,
+}
+
+impl PeerEmissionWriteCapability {
+    pub fn acknowledge_write(self) -> PeerEmissionReceipt {
+        PeerEmissionReceipt {
+            effect_receipt: self.effect_capability.acknowledge_write(),
+            evidence: PeerEmissionEvidence {
+                block_hash: self.block_hash,
+                evidence_reason: self.evidence_reason,
+                write_kind: self.write_kind,
+            },
+        }
+    }
+}
+
+/// Non-replayable proof that one exact prepared peer write succeeded.
 ///
 /// ```compile_fail
 /// fn replay(receipt: open_bitcoin_node::network::PeerEmissionReceipt) {
@@ -130,26 +157,53 @@ impl PeerEmission {
 /// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct PeerEmissionReceipt {
-    peer_id: PeerId,
+    effect_receipt: PeerEffectReceipt,
+    evidence: PeerEmissionEvidence,
+}
+
+impl PeerEmissionReceipt {
+    pub const fn peer_id(&self) -> PeerId {
+        self.effect_receipt.peer_id()
+    }
+
+    pub const fn block_hash(&self) -> BlockHash {
+        self.evidence.block_hash
+    }
+
+    pub const fn evidence_reason(&self) -> CompactAnnouncementReason {
+        self.evidence.evidence_reason
+    }
+
+    pub(in crate::network) fn into_parts(self) -> (PeerEffectReceipt, PeerEmissionEvidence) {
+        (self.effect_receipt, self.evidence)
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn duplicate_for_test(&self) -> Self {
+        Self {
+            effect_receipt: self.effect_receipt.duplicate_for_test(),
+            evidence: self.evidence,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::network) struct PeerEmissionEvidence {
     block_hash: BlockHash,
     evidence_reason: CompactAnnouncementReason,
     write_kind: PeerEmissionWriteKind,
 }
 
-impl PeerEmissionReceipt {
-    pub const fn peer_id(&self) -> PeerId {
-        self.peer_id
-    }
-
-    pub const fn block_hash(&self) -> BlockHash {
+impl PeerEmissionEvidence {
+    pub(in crate::network) const fn block_hash(self) -> BlockHash {
         self.block_hash
     }
 
-    pub const fn evidence_reason(&self) -> CompactAnnouncementReason {
+    pub(in crate::network) const fn evidence_reason(self) -> CompactAnnouncementReason {
         self.evidence_reason
     }
 
-    pub(crate) const fn records_header_provenance(&self) -> bool {
+    pub(in crate::network) const fn records_header_provenance(self) -> bool {
         matches!(
             self.write_kind,
             PeerEmissionWriteKind::CompactBlock | PeerEmissionWriteKind::Headers
@@ -178,7 +232,7 @@ impl PeerEmissionWriteKind {
 /// Stable preparation outcomes for every active or requested peer session.
 #[derive(Debug, PartialEq, Eq)]
 pub enum AnnouncementPreparationOutcome {
-    Ready(PeerEmission),
+    Ready(Box<PeerEmission>),
     QueueFull {
         peer_id: PeerId,
     },
@@ -228,6 +282,24 @@ pub(super) fn compact_nonces(outboxes: &[PeerOutboxSnapshot]) -> BTreeMap<PeerId
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    pub(crate) fn prepare_peer_emission(
+        &mut self,
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        block_hash: BlockHash,
+    ) -> Option<PeerEmission> {
+        let capability = match apply_lifecycle_command(
+            self,
+            LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(peer_id)),
+        )
+        .ok()?
+        {
+            LifecycleCommandResult::RelayPrepared(capability) => capability,
+            _ => return None,
+        };
+        PeerEmission::new(peer_id, message, block_hash, capability)
+    }
+
     pub(crate) fn prepare_block_announcements(
         &mut self,
         block: &Block,
@@ -333,10 +405,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let Ok(Some(message)) = maybe_message else {
             return AnnouncementPreparationOutcome::ConstructionFailed { peer_id };
         };
-        let Some(emission) = PeerEmission::new(peer_id, message, block_hash) else {
+        let Some(emission) = self.prepare_peer_emission(peer_id, message, block_hash) else {
             return AnnouncementPreparationOutcome::ConstructionFailed { peer_id };
         };
-        AnnouncementPreparationOutcome::Ready(emission)
+        AnnouncementPreparationOutcome::Ready(Box::new(emission))
     }
 
     fn announcement_status_and_gate(
@@ -406,6 +478,11 @@ mod tests {
         InventoryList, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId, WireNetworkMessage,
     };
 
+    use crate::network::{
+        lifecycle_effects::{PeerEffectCapability, PeerEffectId, PeerSessionGeneration},
+        lifecycle_projection::{AuthorityEpoch, LifecycleGeneration},
+    };
+
     use super::{PeerEmission, PeerOutboxSnapshot};
 
     #[test]
@@ -417,11 +494,19 @@ mod tests {
             peer_id,
             WireNetworkMessage::Inv(InventoryList::new(Vec::new())),
             block_hash,
+            PeerEffectCapability::new(
+                AuthorityEpoch::INITIAL,
+                LifecycleGeneration::INITIAL,
+                PeerEffectId::new(1),
+                peer_id,
+                PeerSessionGeneration::INITIAL,
+            ),
         )
         .expect("inventory emission");
 
         // Act
-        let (actual_peer_id, message, receipt) = emission.into_parts();
+        let (actual_peer_id, message, capability) = emission.into_parts();
+        let receipt = capability.acknowledge_write();
 
         // Assert
         assert_eq!(actual_peer_id, peer_id);

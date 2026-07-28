@@ -9,13 +9,16 @@
 use open_bitcoin_network::PeerId;
 
 use super::{LifecycleCommandResult, ManagedNetworkAuthorityError, ManagedNetworkHandle};
-use crate::network::lifecycle_effects::{
-    EffectCompletion, PeerEffectCapability, PeerEffectReceipt, PreparedSnapshotWrite,
-    SnapshotWriteReceipt,
-};
 use crate::network::lifecycle_projection::{
     LifecycleCommand, LifecycleProjectionError, PeerRelayPreparationRequest,
     SnapshotPreparationRequest,
+};
+use crate::network::{
+    PeerEmissionReceipt,
+    lifecycle_effects::{
+        EffectCompletion, PeerEffectCapability, PeerEffectReceipt, PreparedSnapshotWrite,
+        SnapshotWriteReceipt,
+    },
 };
 
 impl From<LifecycleProjectionError> for ManagedNetworkAuthorityError {
@@ -81,6 +84,20 @@ impl ManagedNetworkHandle {
             LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),
             _ => Err(unexpected_result("peer effect completion")),
         }
+    }
+
+    /// Classifies one achieved emission and records relay evidence only when current.
+    pub fn complete_peer_emission(
+        &self,
+        receipt: PeerEmissionReceipt,
+    ) -> Result<EffectCompletion, ManagedNetworkAuthorityError> {
+        let peer_id = receipt.peer_id();
+        let (effect_receipt, evidence) = receipt.into_parts();
+        let completion = self.complete_peer_effect(effect_receipt)?;
+        if completion == EffectCompletion::Applied {
+            self.try_mutate(|network| network.record_peer_emission(peer_id, evidence))?;
+        }
+        Ok(completion)
     }
 
     /// Classifies one achieved snapshot write through the lifecycle dispatcher.

@@ -280,15 +280,16 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
         ),
         "HB-eligible announce must emit CompactBlock, got {maybe_announce:?}"
     );
-    let emission = crate::network::PeerEmission::new(
-        peer_id,
-        maybe_announce.expect("compact announcement"),
-        block_hash(&genesis.header),
-    )
-    .expect("supported compact emission");
-    let (_, _, receipt) = emission.into_parts();
+    let emission = network
+        .prepare_peer_emission(
+            peer_id,
+            maybe_announce.expect("compact announcement"),
+            block_hash(&genesis.header),
+        )
+        .expect("supported compact emission");
+    let (_, _, capability) = emission.into_parts();
     network
-        .complete_peer_emission(receipt)
+        .record_peer_emission(peer_id, capability.acknowledge_write().into_parts().1)
         .expect("complete compact write");
 
     let served = network

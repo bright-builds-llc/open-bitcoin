@@ -36,8 +36,7 @@ use super::{
     ManagedAddressBoundaryInfo, ManagedBlockServeCompletion, ManagedInboundAdmissionInfo,
     ManagedMempoolInfo, ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
     ManagedNetworkOperatorSnapshot, ManagedPeerNetwork, ManagedPeerPolicyInfo,
-    ManagedResourceGovernanceInfo, ManagedSyncMessageResult, PeerEmissionReceipt,
-    PeerOutboxSnapshot,
+    ManagedResourceGovernanceInfo, ManagedSyncMessageResult, PeerOutboxSnapshot,
 };
 
 mod effects;
@@ -602,9 +601,6 @@ impl ManagedNetworkHandle {
 
     #[rustfmt::skip]
     pub fn prepare_block_announcements(&self, block: &Block, outboxes: &[PeerOutboxSnapshot]) -> Result<Vec<AnnouncementPreparationOutcome>, ManagedNetworkAuthorityError> { let compact_nonces = super::announcement_transport::compact_nonces(outboxes); self.mutate(|network| network.prepare_block_announcements(block, outboxes, &compact_nonces)) }
-
-    #[rustfmt::skip]
-    pub fn complete_peer_emission(&self, receipt: PeerEmissionReceipt) -> Result<(), ManagedNetworkAuthorityError> { self.try_mutate(|network| network.complete_peer_emission(receipt)) }
 
     #[cfg(test)]
     fn poison_for_test(&self) {

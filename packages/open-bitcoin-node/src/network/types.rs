@@ -57,6 +57,7 @@ pub enum ManagedNetworkError {
     Chainstate(ChainstateError),
     Mempool(MempoolError),
     PackageShape(PackageShapeError),
+    LifecycleEffect(&'static str),
 }
 
 impl core::fmt::Display for ManagedNetworkError {
@@ -66,6 +67,7 @@ impl core::fmt::Display for ManagedNetworkError {
             Self::Chainstate(error) => error.fmt(f),
             Self::Mempool(error) => error.fmt(f),
             Self::PackageShape(error) => error.fmt(f),
+            Self::LifecycleEffect(message) => f.write_str(message),
         }
     }
 }

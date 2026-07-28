@@ -28,7 +28,6 @@ use open_bitcoin_network::{
 use super::{
     build_block, consensus_params, local_config, mine_header, spend_transaction, verify_flags,
 };
-use crate::network::PeerEmission;
 use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -363,11 +362,12 @@ fn phase122_compact_announcement_then_getblocktxn_serves_ordered_witness_transac
         .expect("announce block")
         .expect("compact message");
     assert!(matches!(announcement, WireNetworkMessage::CompactBlock(_)));
-    let (_, _, receipt) = PeerEmission::new(peer_id, announcement, announced_hash)
+    let (_, _, capability) = network
+        .prepare_peer_emission(peer_id, announcement, announced_hash)
         .expect("compact emission")
         .into_parts();
     network
-        .complete_peer_emission(receipt)
+        .record_peer_emission(peer_id, capability.acknowledge_write().into_parts().1)
         .expect("complete compact write");
 
     // Act

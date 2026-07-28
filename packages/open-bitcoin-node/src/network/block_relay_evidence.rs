@@ -8,7 +8,7 @@
 use open_bitcoin_core::primitives::InventoryType;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingEligibilityReason, BlockServingStatusLabel,
-    CompactAnnouncementReason, CompactDownloadCleanupCause, PeerAction, PeerManager,
+    CompactAnnouncementReason, CompactDownloadCleanupCause, PeerAction, PeerId, PeerManager,
     WireNetworkMessage,
 };
 
@@ -24,7 +24,8 @@ use crate::{
 };
 
 use super::{
-    ManagedNetworkError, ManagedPeerNetwork, PeerEmissionReceipt,
+    ManagedNetworkError, ManagedPeerNetwork,
+    announcement_transport::PeerEmissionEvidence,
     block_serving::{
         CompactBlockTxnServeOutcome, ManagedBlockServeCompletion, ManagedBlockServeDecision,
     },
@@ -392,18 +393,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .record_block_serving(inventory_type, decision);
     }
 
-    pub fn complete_peer_emission(
+    pub(in crate::network) fn record_peer_emission(
         &mut self,
-        receipt: PeerEmissionReceipt,
+        peer_id: PeerId,
+        evidence: PeerEmissionEvidence,
     ) -> Result<(), ManagedNetworkError> {
-        if receipt.records_header_provenance()
-            && self.peer_manager.peer_state(receipt.peer_id()).is_some()
-        {
+        if evidence.records_header_provenance() && self.peer_manager.peer_state(peer_id).is_some() {
             self.peer_manager
-                .record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;
+                .record_compact_block_announcement(peer_id, evidence.block_hash())?;
         }
         self.block_relay_evidence
-            .record_announcement(receipt.evidence_reason());
+            .record_announcement(evidence.evidence_reason());
         Ok(())
     }
 

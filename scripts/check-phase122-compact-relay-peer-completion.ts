@@ -23,6 +23,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/announcement_transport.rs",
   "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+  "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/block_serving.rs",
   "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
@@ -138,24 +139,39 @@ function verifyPostWriteRecording(
     texts.get("packages/open-bitcoin-node/src/network/announcement_transport.rs") ?? "";
   const evidence =
     texts.get("packages/open-bitcoin-node/src/network/block_relay_evidence.rs") ?? "";
+  const effects =
+    texts.get("packages/open-bitcoin-node/src/network/runtime_authority/effects.rs") ?? "";
   requireOrdered(
     transport,
     [
       "announce_block_with_action",
-      "PeerEmission::new(peer_id, message, block_hash)",
-      "AnnouncementPreparationOutcome::Ready(emission)",
+      "self.prepare_peer_emission(peer_id, message, block_hash)",
+      "AnnouncementPreparationOutcome::Ready(Box::new(emission))",
     ],
     "P122 bound announcement emission",
     failures,
   );
+  for (const needle of ["effect_capability: PeerEffectCapability", "acknowledge_write(self)"]) {
+    requireContains(transport, needle, "P122 achieved-write capability", failures);
+  }
   requireOrdered(
     evidence,
     [
-      "pub fn complete_peer_emission(",
-      ".record_compact_block_announcement(receipt.peer_id(), receipt.block_hash())?;",
-      ".record_announcement(receipt.evidence_reason());",
+      "fn record_peer_emission(",
+      ".record_compact_block_announcement(peer_id, evidence.block_hash())?;",
+      ".record_announcement(evidence.evidence_reason());",
     ],
     "P122 consuming post-write announcement record",
+    failures,
+  );
+  requireOrdered(
+    effects,
+    [
+      "pub fn complete_peer_emission(",
+      "self.complete_peer_effect(effect_receipt)?",
+      "network.record_peer_emission(peer_id, evidence)",
+    ],
+    "P122 shared completion facade",
     failures,
   );
   requireAbsent(

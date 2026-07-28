@@ -35,7 +35,8 @@ mod runtime_authority;
 mod types;
 
 pub use announcement_transport::{
-    AnnouncementPreparationOutcome, PeerEmission, PeerEmissionReceipt, PeerOutboxSnapshot,
+    AnnouncementPreparationOutcome, PeerEmission, PeerEmissionReceipt, PeerEmissionWriteCapability,
+    PeerOutboxSnapshot,
 };
 pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
 pub use block_serving::{ManagedBlockServeCompletion, ManagedBlockServeIntent};
@@ -297,7 +298,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         peer_id: PeerId,
         timestamp: i64,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
+        let next_session_generation =
+            self.peer_session_generation.checked_next().map_err(|_| {
+                ManagedNetworkError::LifecycleEffect("peer session generation exhausted")
+            })?;
         let actions = self.peer_manager.add_outbound_peer(peer_id, timestamp)?;
+        self.peer_session_generation = next_session_generation;
         self.known_peers.insert(peer_id);
         self.collect_outbound(actions)
     }

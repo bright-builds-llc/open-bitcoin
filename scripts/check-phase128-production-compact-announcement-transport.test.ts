@@ -134,8 +134,8 @@ test.each([
     "P128 outbound write boundary: receipt completion must follow the session send",
     replace(
       "packages/open-bitcoin-node/src/sync/session.rs",
-      "self.network.complete_peer_emission(receipt)?;",
-      "drop(receipt);",
+      "capability.acknowledge_write()",
+      "drop(capability)",
     ),
   ],
   [
@@ -143,7 +143,7 @@ test.each([
     "P128 inbound write boundary: receipt completion must occur only after Written",
     replace(
       "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
-      "transport.network.complete_peer_emission(receipt).is_err()",
+      "capability.acknowledge_write()",
       "false",
     ),
   ],

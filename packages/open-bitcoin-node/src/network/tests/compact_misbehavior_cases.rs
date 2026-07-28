@@ -24,7 +24,6 @@ use super::{
     build_block, compact_relay_enabled_managed_network, consensus_params, mine_header,
     spend_transaction, verify_flags,
 };
-use crate::network::PeerEmission;
 use crate::{ManagedNetworkError, ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
@@ -396,11 +395,12 @@ fn phase122_live_compact_getblocktxn_out_of_bounds_index_disconnects() {
         .expect("announce block")
         .expect("compact message");
     assert!(matches!(message, WireNetworkMessage::CompactBlock(_)));
-    let (_, _, receipt) = PeerEmission::new(peer_id, message, announced_hash)
+    let (_, _, capability) = network
+        .prepare_peer_emission(peer_id, message, announced_hash)
         .expect("compact emission")
         .into_parts();
     network
-        .complete_peer_emission(receipt)
+        .record_peer_emission(peer_id, capability.acknowledge_write().into_parts().1)
         .expect("complete compact write");
 
     // Act

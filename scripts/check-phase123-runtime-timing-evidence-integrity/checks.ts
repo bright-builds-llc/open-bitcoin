@@ -225,7 +225,7 @@ export function verifyIdleMaintenance(
       "self.send_all(session, messages)?;",
       "let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;",
       "session.send(&message, self.config.network.magic())?;",
-      "self.network.complete_peer_emission(receipt)?;",
+      "capability.acknowledge_write()",
     ],
     "P123 sync peer emission post-write completion",
     failures,
