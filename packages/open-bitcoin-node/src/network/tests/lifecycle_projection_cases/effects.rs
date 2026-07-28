@@ -12,7 +12,7 @@ use std::{
 
 use open_bitcoin_mempool::{
     AdmissionContext, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyConfig,
-    RelayIntent,
+    PolicyTime, RelayIntent,
 };
 use open_bitcoin_network::{LocalPeerConfig, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId};
 
@@ -58,6 +58,41 @@ fn network_fixture() -> ManagedPeerNetwork<MemoryChainstateStore> {
         LocalPeerConfig::default(),
         PolicyConfig::default(),
     )
+}
+
+fn apply_local_spend(
+    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+    coinbase_txid: open_bitcoin_core::primitives::Txid,
+    accepted_at: i64,
+) {
+    let transaction = spend_transaction(coinbase_txid, 499_999_000);
+    let core = network
+        .mempool
+        .prepare_transaction_with_context(
+            &network.chainstate,
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::local(PolicyTime::new(accepted_at), RelayIntent::Requested),
+        )
+        .expect("transaction should prepare");
+    apply_prepared(network, core);
+}
+
+fn prepare_snapshot(
+    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+) -> PreparedSnapshotWrite {
+    match apply_lifecycle_command(
+        network,
+        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+    )
+    .expect("snapshot should prepare")
+    {
+        crate::network::runtime_authority::LifecycleCommandResult::SnapshotPrepared(prepared) => {
+            prepared
+        }
+        _ => panic!("snapshot preparation returned the wrong command result"),
+    }
 }
 
 mod contracts {
@@ -203,6 +238,33 @@ mod contracts {
 
 mod completion {
     use super::*;
+
+    #[test]
+    fn exact_snapshot_completion_clears_matching_dirty_and_pending_state() {
+        // Arrange
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        apply_local_spend(&mut network, coinbase_txid, 134_100);
+        let dirty_generation = network.lifecycle_generation;
+        let prepared = prepare_snapshot(&mut network);
+        let receipt = prepared.into_parts().1.acknowledge_write();
+        // Act
+        let completion = apply_lifecycle_command(
+            &mut network,
+            LifecycleCommand::CompleteSnapshotEffect(receipt),
+        )
+        .expect("snapshot completion should apply");
+        // Assert
+        assert_eq!(network.dirty_generation, None);
+        assert_eq!(dirty_generation, network.lifecycle_generation);
+        assert_eq!(network.snapshot_effect_ledger.pending_len(), 0);
+        assert_eq!(network.snapshot_effect_ledger.completed_len(), 1);
+        assert!(matches!(
+            completion,
+            crate::network::runtime_authority::LifecycleCommandResult::SnapshotEffectCompleted(
+                EffectCompletion::Applied
+            )
+        ));
+    }
 
     #[test]
     fn public_facades_prepare_and_complete_both_families() {
@@ -352,33 +414,17 @@ mod completion {
     #[test]
     fn stale_snapshot_completion_records_truth_without_clearing_newer_dirty_state() {
         // Arrange
-        let mut network = network_fixture();
-        let prepared = match apply_lifecycle_command(
-            &mut network,
-            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
-        )
-        .expect("snapshot should prepare")
-        {
-            crate::network::runtime_authority::LifecycleCommandResult::SnapshotPrepared(
-                prepared,
-            ) => prepared,
-            _ => panic!("snapshot preparation returned the wrong command result"),
-        };
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let prepared = prepare_snapshot(&mut network);
         let receipt = prepared.into_parts().1.acknowledge_write();
-        let newer_generation = network
-            .lifecycle_generation
-            .checked_next()
-            .expect("test lifecycle generation should advance");
-        network.lifecycle_generation = newer_generation;
-        network.dirty_generation = Some(newer_generation);
-
+        apply_local_spend(&mut network, coinbase_txid, 134_101);
+        let newer_generation = network.lifecycle_generation;
         // Act
         let completion = apply_lifecycle_command(
             &mut network,
             LifecycleCommand::CompleteSnapshotEffect(receipt),
         )
         .expect("stale snapshot completion should be classified");
-
         // Assert
         assert!(matches!(
             completion,
@@ -387,6 +433,8 @@ mod completion {
             )
         ));
         assert_eq!(network.dirty_generation, Some(newer_generation));
+        assert_eq!(network.snapshot_effect_ledger.pending_len(), 0);
+        assert_eq!(network.snapshot_effect_ledger.completed_len(), 1);
     }
 
     #[test]
@@ -405,6 +453,7 @@ mod completion {
             LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
         )
         .expect("one snapshot should prepare");
+        let snapshot_state_before_overflow = format!("{:?}", network.snapshot_effect_ledger);
 
         // Act
         let peer_overflow = apply_lifecycle_command(
@@ -419,23 +468,17 @@ mod completion {
         // Assert
         assert!(peer_overflow.is_err());
         assert!(snapshot_overflow.is_err());
+        assert_eq!(
+            format!("{:?}", network.snapshot_effect_ledger),
+            snapshot_state_before_overflow
+        );
     }
 
     #[test]
     fn duplicate_snapshot_completion_precedes_stale_generation_detection() {
         // Arrange
-        let mut network = network_fixture();
-        let prepared = match apply_lifecycle_command(
-            &mut network,
-            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
-        )
-        .expect("snapshot should prepare")
-        {
-            crate::network::runtime_authority::LifecycleCommandResult::SnapshotPrepared(
-                prepared,
-            ) => prepared,
-            _ => panic!("snapshot preparation returned the wrong command result"),
-        };
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let prepared = prepare_snapshot(&mut network);
         let receipt = prepared.into_parts().1.acknowledge_write();
         let duplicate = receipt.duplicate_for_test();
         apply_lifecycle_command(
@@ -443,18 +486,14 @@ mod completion {
             LifecycleCommand::CompleteSnapshotEffect(receipt),
         )
         .expect("first snapshot completion should apply");
-        network.lifecycle_generation = network
-            .lifecycle_generation
-            .checked_next()
-            .expect("test lifecycle generation should advance");
-
+        apply_local_spend(&mut network, coinbase_txid, 134_102);
+        let state_before_replay = format!("{network:?}");
         // Act
         let replay = apply_lifecycle_command(
             &mut network,
             LifecycleCommand::CompleteSnapshotEffect(duplicate),
         )
         .expect("duplicate snapshot completion should be classified");
-
         // Assert
         assert!(matches!(
             replay,
@@ -462,6 +501,75 @@ mod completion {
                 EffectCompletion::AlreadyApplied
             )
         ));
+        assert_eq!(format!("{network:?}"), state_before_replay);
+    }
+
+    #[test]
+    fn public_snapshot_facades_preserve_newer_authority_after_stale_persistence() {
+        // Arrange
+        let path = temp_store_path("stale-public-facades");
+        remove_dir_if_exists(&path);
+        let store = FjallNodeStore::open(&path).expect("open store");
+        let (network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let handle = ManagedNetworkHandle::from_network_fixture(network);
+        let prepared_old = handle
+            .prepare_mempool_snapshot_write()
+            .expect("old snapshot should prepare");
+        let old_receipt = store
+            .execute_prepared_mempool_snapshot_write(prepared_old, PersistMode::Sync)
+            .expect("old snapshot should persist");
+        let old_duplicate = old_receipt.duplicate_for_test();
+        let transaction = spend_transaction(coinbase_txid, 499_999_000);
+        handle
+            .submit_local_transaction_outcome_at(
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                134_103,
+                RelayIntent::Requested,
+            )
+            .expect("newer transaction should apply");
+        // Act
+        let stale_completion = handle
+            .complete_snapshot_write(old_receipt)
+            .expect("stale completion should dispatch");
+        let prepared_current = handle
+            .prepare_mempool_snapshot_write()
+            .expect("current snapshot should prepare");
+        let current_receipt = store
+            .execute_prepared_mempool_snapshot_write(prepared_current, PersistMode::Sync)
+            .expect("current snapshot should persist");
+        let current_completion = handle
+            .complete_snapshot_write(current_receipt)
+            .expect("current completion should dispatch");
+        let state_before_duplicate = handle.mempool_info().expect("mempool info");
+        let duplicate_completion = handle
+            .complete_snapshot_write(old_duplicate)
+            .expect("duplicate completion should dispatch");
+        // Assert
+        assert_eq!(stale_completion, EffectCompletion::AchievedButStale);
+        assert_eq!(current_completion, EffectCompletion::Applied);
+        assert_eq!(duplicate_completion, EffectCompletion::AlreadyApplied);
+        assert_eq!(
+            handle.mempool_info().expect("mempool info after duplicate"),
+            state_before_duplicate
+        );
+        assert_eq!(state_before_duplicate.transaction_count, 1);
+        assert_eq!(
+            store
+                .load_mempool_snapshot()
+                .expect("load current persisted snapshot")
+                .expect("current snapshot should exist")
+                .records
+                .len(),
+            1
+        );
+        assert!(
+            handle.prepare_mempool_snapshot_write().is_ok(),
+            "successful current completion should release the pending slot"
+        );
+
+        remove_dir_if_exists(&path);
     }
 
     #[test]

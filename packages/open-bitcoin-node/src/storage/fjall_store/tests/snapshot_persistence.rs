@@ -227,6 +227,10 @@ fn prepared_mempool_snapshot_executor_persists_before_receipt_completion() {
             .expect("load persisted snapshot"),
         Some(MempoolSnapshot::default())
     );
+    assert!(
+        handle.prepare_mempool_snapshot_write().is_ok(),
+        "successful completion should release the pending slot"
+    );
 
     remove_dir_if_exists(&path);
 }
@@ -234,6 +238,9 @@ fn prepared_mempool_snapshot_executor_persists_before_receipt_completion() {
 #[test]
 fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
     // Arrange
+    let path = temp_store_path("prepared-mempool-write-failure");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open store");
     let handle = empty_network_handle();
     let prepared = handle
         .prepare_mempool_snapshot_write()
@@ -257,4 +264,12 @@ fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
         handle.prepare_mempool_snapshot_write().is_err(),
         "failed execution must not complete the pending snapshot"
     );
+    assert_eq!(
+        store
+            .load_mempool_snapshot()
+            .expect("load after write failure"),
+        None
+    );
+
+    remove_dir_if_exists(&path);
 }
