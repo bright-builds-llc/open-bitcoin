@@ -857,9 +857,11 @@
       "label": "mempool-prepared-lifecycle",
       "files": [
         "packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs",
-        "packages/open-bitcoin-mempool/src/pool/tests/prepared_lifecycle_cases.rs"
+        "packages/open-bitcoin-mempool/src/pool/tests/prepared_lifecycle_cases.rs",
+        "packages/open-bitcoin-mempool/src/pool/tests/prepared_maintenance_cases.rs"
       ],
       "breadcrumbs": [
+        "packages/bitcoin-knots/src/txmempool.cpp",
         "packages/bitcoin-knots/src/validation.cpp"
       ]
     },

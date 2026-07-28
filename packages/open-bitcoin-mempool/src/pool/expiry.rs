@@ -21,19 +21,22 @@ use crate::{
     MempoolRemovalRole, MempoolRetryClear, MempoolRetryClearCause, PolicyTime,
 };
 
-use super::Mempool;
 use super::admission::lifecycle_invariant_error;
 use super::patch::prepare_removal_patch;
 use super::topology::collect_descendants;
+use super::{Mempool, PreparedMempoolTransition};
 
 const SECONDS_PER_HOUR: i64 = 3_600;
 
 impl Mempool {
-    /// Removes entries with `Known(accepted_at) < now - expiry` and their descendants.
+    /// Prepares removal of entries with `Known(accepted_at) < now - expiry`.
     ///
     /// Skips `MempoolAcceptanceTime::LegacyUnknown` without inventing times. Pure core never
     /// samples wall-clock time — callers inject `PolicyTime`.
-    pub fn expire(&mut self, now: PolicyTime) -> Result<MempoolLifecycleDelta, MempoolError> {
+    pub fn prepare_expiry(
+        &self,
+        now: PolicyTime,
+    ) -> Result<PreparedMempoolTransition, MempoolError> {
         let expiry_hours = i64::try_from(self.config.mempool_expiry_hours).unwrap_or(i64::MAX);
         let expiry_seconds = expiry_hours.saturating_mul(SECONDS_PER_HOUR);
         let cutoff = now.unix_seconds().saturating_sub(expiry_seconds);
@@ -50,7 +53,7 @@ impl Mempool {
             })
             .collect::<BTreeSet<Txid>>();
         if aged_roots.is_empty() {
-            return Ok(MempoolLifecycleDelta::empty());
+            return Ok(PreparedMempoolTransition::maintenance_noop(self));
         }
 
         let mut remove_set = aged_roots.clone();
@@ -95,7 +98,14 @@ impl Mempool {
         }
         let delta = delta_builder.build().map_err(lifecycle_invariant_error)?;
         let patch = prepare_removal_patch(self, remove_set, self.rolling_fee_state.clone(), delta)?;
-        self.apply_prepared(patch)
+        PreparedMempoolTransition::maintenance_from_patch(self, patch)
+    }
+
+    /// Removes expired entries through the prepared transition compatibility facade.
+    pub fn expire(&mut self, now: PolicyTime) -> Result<MempoolLifecycleDelta, MempoolError> {
+        let prepared = self.prepare_expiry(now)?;
+        let validated = self.validate_prepared_mempool_transition(prepared)?;
+        Ok(self.apply_validated_mempool_transition(validated))
     }
 }
 

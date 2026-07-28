@@ -230,6 +230,7 @@ impl Mempool {
         self.revision = next_revision;
     }
 
+    #[cfg(test)]
     pub(super) fn apply_prepared(
         &mut self,
         patch: MempoolPatch,

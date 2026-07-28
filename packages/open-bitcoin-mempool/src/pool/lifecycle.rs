@@ -12,7 +12,7 @@ use open_bitcoin_consensus::transaction_txid;
 use open_bitcoin_primitives::{Block, Transaction, Txid, Wtxid};
 
 use super::patch::prepare_removal_patch;
-use super::{Mempool, MempoolError, collect_conflicts_and_descendants};
+use super::{Mempool, MempoolError, PreparedMempoolTransition, collect_conflicts_and_descendants};
 use crate::{
     AccountedMempoolMemory, BlockLifecycleContext, EffectiveAdmissionFeeRate,
     IncrementalRelayFeeRate, MempoolCapacity, RollingMempoolFeeRate, StaticRelayFeeRate,
@@ -434,12 +434,12 @@ impl Mempool {
         }
     }
 
-    /// Removes block-confirmed and conflicting members and returns committed semantic facts.
-    pub fn remove_for_connected_block_transition(
-        &mut self,
+    /// Prepares block-confirmed and conflicting member removal without mutation.
+    pub fn prepare_connected_block_transition(
+        &self,
         block: &Block,
         context: BlockLifecycleContext,
-    ) -> Result<MempoolLifecycleDelta, MempoolError> {
+    ) -> Result<PreparedMempoolTransition, MempoolError> {
         let removals = self.connected_transaction_removals(block.transactions.iter())?;
         let mut delta_builder = MempoolLifecycleDelta::builder();
         for (txid, entry, fact) in removals
@@ -461,7 +461,7 @@ impl Mempool {
         let mut rolling_fee_state = self.rolling_fee_state.clone();
         rolling_fee_state.open_decay_gate_after_block(context.connected_at);
         if removals.is_empty() && rolling_fee_state == self.rolling_fee_state {
-            return Ok(delta);
+            return Ok(PreparedMempoolTransition::maintenance_noop(self));
         }
         let patch = prepare_removal_patch(
             self,
@@ -469,7 +469,18 @@ impl Mempool {
             rolling_fee_state,
             delta,
         )?;
-        self.apply_prepared(patch)
+        PreparedMempoolTransition::maintenance_from_patch(self, patch)
+    }
+
+    /// Removes block-confirmed and conflicting members through the prepared facade.
+    pub fn remove_for_connected_block_transition(
+        &mut self,
+        block: &Block,
+        context: BlockLifecycleContext,
+    ) -> Result<MempoolLifecycleDelta, MempoolError> {
+        let prepared = self.prepare_connected_block_transition(block, context)?;
+        let validated = self.validate_prepared_mempool_transition(prepared)?;
+        Ok(self.apply_validated_mempool_transition(validated))
     }
 
     fn connected_transaction_removals<'a>(

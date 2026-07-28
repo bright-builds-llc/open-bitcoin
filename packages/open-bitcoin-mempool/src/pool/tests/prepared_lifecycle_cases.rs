@@ -1,4 +1,5 @@
 // Parity breadcrumbs:
+// - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
 use open_bitcoin_consensus::{
@@ -164,13 +165,13 @@ fn replacement_preparation_exposes_every_removed_body() {
     assert_eq!(removed_bodies.get(&original_txid), Some(&original));
     assert_eq!(removed_bodies.get(&descendant_txid), Some(&descendant));
     assert_eq!(
-        prepared.facts().teardown_order(),
         prepared
             .facts()
-            .removed()
+            .teardown_order()
             .iter()
-            .map(|removed| removed.removal.member)
-            .collect::<Vec<_>>()
+            .map(|member| member.txid)
+            .collect::<Vec<_>>(),
+        [descendant_txid, original_txid]
     );
     assert_eq!(mempool.complete_snapshot(), before);
 }

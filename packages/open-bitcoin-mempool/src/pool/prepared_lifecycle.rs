@@ -1,11 +1,12 @@
 // Parity breadcrumbs:
+// - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
 //! Sealed, revision-bound mempool transition preparation.
 
 #[cfg(test)]
 use std::cell::Cell;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
@@ -49,6 +50,7 @@ pub struct PreparedMempoolRemoval {
 enum PreparedTransitionResult {
     Admission(AdmissionResult),
     Package(PackageReport),
+    Maintenance,
 }
 
 /// Immutable, fully preflighted facts for one mempool transition.
@@ -266,6 +268,17 @@ impl PreparedMempoolTransition {
         })
     }
 
+    pub(super) fn maintenance_from_patch(
+        mempool: &Mempool,
+        patch: MempoolPatch,
+    ) -> Result<Self, MempoolError> {
+        Self::from_patch(mempool, patch, PreparedTransitionResult::Maintenance)
+    }
+
+    pub(super) fn maintenance_noop(mempool: &Mempool) -> Self {
+        Self::noop(mempool, PreparedTransitionResult::Maintenance)
+    }
+
     fn from_patch(
         mempool: &Mempool,
         patch: MempoolPatch,
@@ -321,10 +334,7 @@ impl PreparedLifecycleFacts {
             .cloned()
             .map(|removal| prepared_removal(mempool, patch, removal))
             .collect::<Result<Vec<_>, _>>()?;
-        let teardown_order = removed
-            .iter()
-            .map(|removed| removed.removal.member)
-            .collect();
+        let teardown_order = graph_teardown_order(&removed);
 
         Ok(Self {
             delta: patch.delta.clone(),
@@ -335,6 +345,52 @@ impl PreparedLifecycleFacts {
             result,
         })
     }
+}
+
+fn graph_teardown_order(removals: &[PreparedMempoolRemoval]) -> Vec<MempoolMemberIdentity> {
+    let removal_members = removals
+        .iter()
+        .map(|removed| (removed.removal.member.txid, removed.removal.member))
+        .collect::<BTreeMap<_, _>>();
+    let mut children = BTreeMap::<Txid, BTreeSet<Txid>>::new();
+    for removed in removals {
+        let child_txid = removed.removal.member.txid;
+        for input in &removed.transaction.inputs {
+            let parent_txid = input.previous_output.txid;
+            if removal_members.contains_key(&parent_txid) {
+                children.entry(parent_txid).or_default().insert(child_txid);
+            }
+        }
+    }
+    let mut visited = BTreeSet::new();
+    let mut ordered = Vec::with_capacity(removal_members.len());
+
+    for txid in removal_members.keys().copied() {
+        visit_removed_descendants(
+            &removal_members,
+            &children,
+            txid,
+            &mut visited,
+            &mut ordered,
+        );
+    }
+    ordered
+}
+
+fn visit_removed_descendants(
+    removal_members: &BTreeMap<Txid, MempoolMemberIdentity>,
+    children: &BTreeMap<Txid, BTreeSet<Txid>>,
+    txid: Txid,
+    visited: &mut BTreeSet<Txid>,
+    ordered: &mut Vec<MempoolMemberIdentity>,
+) {
+    if !visited.insert(txid) {
+        return;
+    }
+    for child_txid in children.get(&txid).into_iter().flatten().copied() {
+        visit_removed_descendants(removal_members, children, child_txid, visited, ordered);
+    }
+    ordered.push(removal_members[&txid]);
 }
 
 fn final_membership_by_identity(
