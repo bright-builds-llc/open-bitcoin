@@ -24,6 +24,7 @@ use crate::network::lifecycle_projection::{
 mod admission;
 mod effects;
 mod maintenance;
+mod oracle;
 mod reconciliation;
 
 #[derive(Debug)]

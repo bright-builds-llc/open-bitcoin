@@ -6,6 +6,8 @@
 
 //! Sealed command vocabulary for authoritative mempool lifecycle projection.
 
+#[cfg(test)]
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -92,6 +94,8 @@ pub(super) enum LifecyclePreparationError {
         attempted: usize,
         capacity: usize,
     },
+    #[cfg(test)]
+    InjectedFailure(LifecyclePreparationFailurePoint),
 }
 
 impl fmt::Display for LifecyclePreparationError {
@@ -128,6 +132,13 @@ impl fmt::Display for LifecyclePreparationError {
                 formatter,
                 "unbroadcast membership count {attempted} exceeds capacity {capacity}"
             ),
+            #[cfg(test)]
+            Self::InjectedFailure(point) => {
+                write!(
+                    formatter,
+                    "injected lifecycle preparation failure at {point:?}"
+                )
+            }
         }
     }
 }
@@ -142,8 +153,79 @@ impl std::error::Error for LifecyclePreparationError {
             | Self::FinalPresentOrderMismatch { .. }
             | Self::TeardownOrderMismatch { .. }
             | Self::UnbroadcastCapacity { .. } => None,
+            #[cfg(test)]
+            Self::InjectedFailure(_) => None,
         }
     }
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::network) enum LifecyclePreparationFailurePoint {
+    Identity,
+    Body,
+    Fingerprint,
+    FinalMembership,
+    Serving,
+    Fanout,
+    Peer,
+    Compact,
+    Unbroadcast,
+    Generation,
+    Evidence,
+}
+
+#[cfg(test)]
+impl LifecyclePreparationFailurePoint {
+    pub(in crate::network) const ALL: [Self; 11] = [
+        Self::Identity,
+        Self::Body,
+        Self::Fingerprint,
+        Self::FinalMembership,
+        Self::Serving,
+        Self::Fanout,
+        Self::Peer,
+        Self::Compact,
+        Self::Unbroadcast,
+        Self::Generation,
+        Self::Evidence,
+    ];
+}
+
+#[cfg(test)]
+thread_local! {
+    static INJECTED_PREPARATION_FAILURE: Cell<Option<LifecyclePreparationFailurePoint>> =
+        const { Cell::new(None) };
+}
+
+#[cfg(test)]
+pub(in crate::network) struct LifecyclePreparationFailureGuard {
+    previous: Option<LifecyclePreparationFailurePoint>,
+}
+
+#[cfg(test)]
+impl LifecyclePreparationFailureGuard {
+    pub(in crate::network) fn inject(point: LifecyclePreparationFailurePoint) -> Self {
+        let previous = INJECTED_PREPARATION_FAILURE.replace(Some(point));
+        Self { previous }
+    }
+}
+
+#[cfg(test)]
+impl Drop for LifecyclePreparationFailureGuard {
+    fn drop(&mut self) {
+        INJECTED_PREPARATION_FAILURE.set(self.previous);
+    }
+}
+
+#[cfg(test)]
+fn fail_preparation_at(
+    point: LifecyclePreparationFailurePoint,
+) -> Result<(), LifecyclePreparationError> {
+    if INJECTED_PREPARATION_FAILURE.get() == Some(point) {
+        return Err(LifecyclePreparationError::InjectedFailure(point));
+    }
+    Ok(())
 }
 
 /// Failures detected by the sole authority validation boundary.
@@ -358,15 +440,37 @@ impl LifecycleProjectionPlan {
         source: AdmissionProjectionSource,
     ) -> Result<Self, LifecyclePreparationError> {
         let facts = core.facts();
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Identity)?;
         ProjectionShape::prepare(facts)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Body)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Fingerprint)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::FinalMembership)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Compact)?;
         let compact = network
             .prepare_compact_projection(facts)
             .map_err(LifecyclePreparationError::CompactTransactionBody)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Serving)?;
         let serving = network.prepare_serving_projection(facts);
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Fanout)?;
         let fanout = network.prepare_fanout_projection(facts, &source);
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Peer)?;
         let peers = prepare_peer_projection(network, facts)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Unbroadcast)?;
         let unbroadcast = network.prepare_unbroadcast_projection(facts)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Generation)?;
         let persistence = network.prepare_persistence_projection(facts)?;
+        #[cfg(test)]
+        fail_preparation_at(LifecyclePreparationFailurePoint::Evidence)?;
         let evidence = network.prepare_lifecycle_evidence(facts);
         Ok(Self {
             authority_epoch,
