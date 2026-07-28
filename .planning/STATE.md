@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-07-PLAN.md
-last_updated: "2026-07-28T13:10:00.087Z"
+stopped_at: Completed 134-08-PLAN.md
+last_updated: "2026-07-28T14:41:40.486Z"
 last_activity: "2026-07-28"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 49
-  completed_plans: 43
-  percent: 88
+  completed_plans: 44
+  percent: 90
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
-Plan: 8 of 13
+Plan: 9 of 13
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -73,6 +73,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 134 P05 | 1h 41m | 2 tasks | 25 files |
 | Phase 134 P06 | 1h 7m | 2 tasks | 19 files |
 | Phase 134-authoritative-cross-cache-lifecycle-integration P07 | 1h 5m | 3 tasks | 10 files |
+| Phase 134 P08 | 1h 17m | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -173,6 +174,9 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 134]: Production and exact package scenario coverage share one lifecycle dispatcher helper.
 - [Phase 134]: Maintenance commands retain exact typed identity while sharing one complete prepared lifecycle projection path.
 - [Phase 134]: Reorg replacement blocks and reconsidered transactions commit sequential ReorgStep commands so each preparation observes prior membership.
+- [Phase 134]: Allocate effect IDs only after bounded reservation succeeds so pressure does not consume identity space.
+- [Phase 134]: Check and record achieved completion identity before freshness while preserving newer authoritative state.
+- [Phase 134]: Keep effect-facing methods as LifecycleCommand facades over the sole dispatcher.
 
 ### Pending Todos
 
@@ -195,6 +199,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T13:10:00.084Z
-Stopped at: Completed 134-07-PLAN.md
+Last session: 2026-07-28T14:41:40.483Z
+Stopped at: Completed 134-08-PLAN.md
 Resume file: None
