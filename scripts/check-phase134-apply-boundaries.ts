@@ -1,11 +1,12 @@
 #!/usr/bin/env bun
 
 import path from "node:path";
-import { readFileSync } from "node:fs";
 
-const repoRoot = path.resolve(import.meta.dir, "..");
+import { readSourceRoot } from "./source-corpus";
 
-const targetFiles = [
+const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
+
+export const PHASE134_APPLY_TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
   "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/relay_fanout.rs",
@@ -13,23 +14,18 @@ const targetFiles = [
   "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
 ] as const;
 
-const plan04Targets = [
+const REQUIRED_TARGETS = [
   "apply_prepared_compact",
   "apply_prepared_serving",
   "apply_prepared_fanout",
   "apply_prepared_peer_lifecycle",
-] as const;
-
-const plan05Targets = [
   "apply_prepared_unbroadcast",
   "apply_prepared_persistence",
   "apply_prepared_evidence",
+  "apply_prepared_lifecycle",
 ] as const;
 
-const aggregateExclusions = new Set([
-  "apply_prepared_lifecycle",
-  "validate_prepared_lifecycle",
-]);
+const DISCOVERY_EXCLUSIONS = new Set(["validate_prepared_lifecycle"]);
 
 type ExtractedFunction = {
   name: string;
@@ -99,11 +95,11 @@ function maskCommentsAndStrings(source: string): string {
 
 function extractFunction(source: string, name: string): ExtractedFunction | null {
   const masked = maskCommentsAndStrings(source);
-  const match = new RegExp(`\\bfn\\s+${name}\\b`).exec(masked);
-  if (!match) {
+  const maybeMatch = new RegExp(`\\bfn\\s+${name}\\b`).exec(masked);
+  if (!maybeMatch) {
     return null;
   }
-  const brace = masked.indexOf("{", match.index);
+  const brace = masked.indexOf("{", maybeMatch.index);
   if (brace < 0) {
     throw new Error(`${name}: missing function body`);
   }
@@ -114,7 +110,10 @@ function extractFunction(source: string, name: string): ExtractedFunction | null
     } else if (masked[index] === "}") {
       depth -= 1;
       if (depth === 0) {
-        return { name, source: source.slice(match.index, index + 1) };
+        return {
+          name,
+          source: source.slice(maybeMatch.index, index + 1),
+        };
       }
     }
   }
@@ -128,66 +127,80 @@ function checkFunction(target: ExtractedFunction): string[] {
     [/\?/, "? propagation"],
     [/\b(?:transaction_|compute_)?(?:txid|wtxid)\s*\(/, "identifier derivation"],
     [/\b(?:encode|decode)[A-Za-z0-9_]*\s*\(/, "encode/decode"],
-    [/\b(?:std::fs|File::|OpenOptions::|TcpStream|UdpSocket|tokio::fs)\b/, "I/O type"],
-    [/\.(?:read|read_to_end|read_to_string|write|write_all|flush)\s*\(/, "I/O call"],
+    [
+      /\b(?:std::fs|File::|OpenOptions::|TcpStream|UdpSocket|tokio::fs)\b/,
+      "I/O type",
+    ],
+    [
+      /\.(?:read|read_to_end|read_to_string|write|write_all|flush)\s*\(/,
+      "I/O call",
+    ],
     [/\bawait\b/, "async I/O await"],
   ];
   return forbidden
     .filter(([pattern]) => pattern.test(source))
-    .map(([, label]) => `${target.name}: forbidden ${label} inside exact target apply`);
+    .map(
+      ([, label]) =>
+        `${target.name}: forbidden ${label} inside exact target apply`,
+    );
 }
 
-const sources = new Map(
-  targetFiles.map((file) => [
-    file,
-    readFileSync(path.join(repoRoot, file), "utf8"),
-  ]),
-);
-const allowlist = [...plan04Targets, ...plan05Targets];
-const extracted: ExtractedFunction[] = [];
-const failures: string[] = [];
+export function checkPhase134ApplyBoundaries(
+  maybeRepoRoot: string = DEFAULT_REPO_ROOT,
+): string[] {
+  const sources = new Map(
+    PHASE134_APPLY_TARGET_FILES.map((file) => [
+      file,
+      readSourceRoot(maybeRepoRoot, file),
+    ]),
+  );
+  const extracted: ExtractedFunction[] = [];
+  const failures: string[] = [];
 
-for (const name of allowlist) {
-  let maybeTarget: ExtractedFunction | null = null;
-  for (const source of sources.values()) {
-    const candidate = extractFunction(source, name);
-    if (!candidate) {
+  for (const name of REQUIRED_TARGETS) {
+    const matches = [...sources.values()]
+      .map((source) => extractFunction(source, name))
+      .filter((target): target is ExtractedFunction => target !== null);
+    if (matches.length === 0) {
+      failures.push(`${name}: required Phase 134 target apply not found`);
       continue;
     }
-    if (maybeTarget) {
+    if (matches.length > 1) {
       failures.push(`${name}: duplicate exact target apply`);
-      break;
+      continue;
     }
-    maybeTarget = candidate;
+    extracted.push(matches[0]);
   }
-  if (maybeTarget) {
-    extracted.push(maybeTarget);
-  } else if ((plan04Targets as readonly string[]).includes(name)) {
-    failures.push(`${name}: required Plan 04 target apply not found`);
-  }
-}
 
-for (const [file, source] of sources) {
-  const discovered = [...source.matchAll(/\bfn\s+(apply_prepared_[A-Za-z0-9_]+)\b/g)]
-    .map((match) => match[1] ?? "")
-    .filter((name) => !aggregateExclusions.has(name));
-  for (const name of discovered) {
-    if (!allowlist.includes(name as (typeof allowlist)[number])) {
-      failures.push(`${file}: unexpected target-like apply ${name}`);
+  for (const [file, source] of sources) {
+    const discovered = [
+      ...source.matchAll(/\bfn\s+(apply_prepared_[A-Za-z0-9_]+)\b/g),
+    ]
+      .map((match) => match[1] ?? "")
+      .filter((name) => !DISCOVERY_EXCLUSIONS.has(name));
+    for (const name of discovered) {
+      if (!REQUIRED_TARGETS.includes(name as (typeof REQUIRED_TARGETS)[number])) {
+        failures.push(`${file}: unexpected target-like apply ${name}`);
+      }
     }
   }
-}
 
-for (const target of extracted) {
-  failures.push(...checkFunction(target));
-}
-
-const names = extracted.map((target) => target.name);
-console.log(`Phase 134 target apply discovery: ${names.join(", ")}`);
-if (failures.length > 0) {
-  for (const failure of failures) {
-    console.error(`- ${failure}`);
+  for (const target of extracted) {
+    failures.push(...checkFunction(target));
   }
-  process.exit(1);
+  return failures;
 }
-console.log("Phase 134 target apply boundaries are structurally infallible.");
+
+if (import.meta.main) {
+  const failures = checkPhase134ApplyBoundaries();
+  if (failures.length > 0) {
+    for (const failure of failures) {
+      console.error(`- ${failure}`);
+    }
+    process.exit(1);
+  }
+  console.log(
+    `Phase 134 target apply discovery: ${REQUIRED_TARGETS.join(", ")}`,
+  );
+  console.log("Phase 134 target apply boundaries are structurally infallible.");
+}

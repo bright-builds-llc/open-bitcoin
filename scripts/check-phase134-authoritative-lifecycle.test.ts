@@ -17,7 +17,7 @@ import {
   PHASE134_APPLY_TARGET_FILES,
   checkPhase134ApplyBoundaries,
 } from "./check-phase134-apply-boundaries";
-import { readSourceCorpus } from "./source-corpus";
+import { readSourceRoot } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const tempRoots: string[] = [];
@@ -256,13 +256,13 @@ function targetMutations(): MutationCase[] {
 
 function effectMutations(): MutationCase[] {
   const identityFields = [
-    ["peer epoch", "    authority_epoch: AuthorityEpoch,"],
-    ["peer generation", "    lifecycle_generation: LifecycleGeneration,"],
-    ["peer effect", "    effect_id: PeerEffectId,"],
-    ["peer session", "    peer_session_generation: PeerSessionGeneration,"],
-    ["snapshot generation", "    persistence_generation: LifecycleGeneration,"],
-    ["snapshot effect", "    effect_id: SnapshotEffectId,"],
-    ["snapshot identity", "    snapshot_identity: SnapshotIdentity,"],
+    ["peer epoch", "    authority_epoch: AuthorityEpoch,", 1],
+    ["peer generation", "    lifecycle_generation: LifecycleGeneration,", 1],
+    ["peer effect", "    effect_id: PeerEffectId,", 1],
+    ["peer session", "    peer_session_generation: PeerSessionGeneration,", 1],
+    ["snapshot generation", "    persistence_generation: LifecycleGeneration,", 2],
+    ["snapshot effect", "    effect_id: SnapshotEffectId,", 2],
+    ["snapshot identity", "    snapshot_identity: SnapshotIdentity,", 2],
   ] as const;
   return [
     [
@@ -284,14 +284,14 @@ function effectMutations(): MutationCase[] {
       ),
     ],
     ...identityFields.map(
-      ([name, field]): MutationCase => [
+      ([name, field, occurrence]): MutationCase => [
         `missing ${name}`,
         DIAGNOSTICS.identity,
         replaceNth(
           "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
           field,
           `    // removed ${name}`,
-          field.includes("authority_epoch") ? 2 : 1,
+          occurrence,
         ),
       ],
     ),
@@ -434,7 +434,7 @@ function createFixture(
   tempRoots.push(root);
   const files = new Map<string, string>();
   for (const relativePath of relativePaths) {
-    files.set(relativePath, readSourceCorpus(REPO_ROOT, relativePath));
+    files.set(relativePath, readSourceRoot(REPO_ROOT, relativePath));
   }
   maybeMutate?.(files);
   for (const [relativePath, contents] of files) {
