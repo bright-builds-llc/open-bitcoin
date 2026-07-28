@@ -169,7 +169,7 @@ impl AnnouncementOutboxRegistry {
             if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES {
                 continue;
             }
-            outbox.emissions.push_back(emission);
+            outbox.emissions.push_back(*emission);
             readiness_notifications.push(Arc::clone(&outbox.readiness));
             aggregate_queued = aggregate_queued.saturating_add(1);
         }
@@ -544,7 +544,7 @@ impl DurableSyncRuntime {
         self.send_all(session, messages)?;
         let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;
         for emission in emissions {
-            let (target_peer_id, message, receipt) = emission.into_parts();
+            let (target_peer_id, message, capability) = emission.into_parts();
             if target_peer_id != peer_id {
                 return Err(SyncRuntimeError::Network {
                     message: "announcement outbox target does not match connected session"
@@ -552,7 +552,8 @@ impl DurableSyncRuntime {
                 });
             }
             session.send(&message, self.config.network.magic())?;
-            self.network.complete_peer_emission(receipt)?;
+            self.network
+                .complete_peer_emission(capability.acknowledge_write())?;
         }
         Ok(())
     }

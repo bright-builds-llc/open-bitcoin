@@ -86,12 +86,21 @@ fn record_compact_activity_and_nine_block_writes(runtime: &mut DurableSyncRuntim
         .expect("announce compact block")
         .expect("compact message");
     assert!(matches!(announcement, WireNetworkMessage::CompactBlock(_)));
-    let (_, _, receipt) = PeerEmission::new(peer_id, announcement, block_hash(&block.header))
-        .expect("compact emission")
-        .into_parts();
+    let effect_capability = runtime
+        .network
+        .prepare_peer_relay_effect(peer_id)
+        .expect("prepare compact emission capability");
+    let (_, _, capability) = PeerEmission::new(
+        peer_id,
+        announcement,
+        block_hash(&block.header),
+        effect_capability,
+    )
+    .expect("compact emission")
+    .into_parts();
     runtime
         .network
-        .complete_peer_emission(receipt)
+        .complete_peer_emission(capability.acknowledge_write())
         .expect("complete compact write");
 
     let inventory = InventoryList::new(vec![InventoryVector {

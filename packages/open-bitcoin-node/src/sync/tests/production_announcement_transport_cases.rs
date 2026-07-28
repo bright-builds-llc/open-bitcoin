@@ -23,13 +23,25 @@ const TRANSPORT_TIMESTAMP: i64 = 1_784_523_200;
 struct RecordingAnnouncementSession {
     sent: Vec<WireNetworkMessage>,
     maybe_fail_on_call: Option<usize>,
+    maybe_failure: Option<SyncRuntimeError>,
     send_calls: usize,
 }
 
 impl RecordingAnnouncementSession {
     fn failing_on_call(call: usize) -> Self {
+        Self::failing_on_call_with(
+            call,
+            SyncRuntimeError::Io {
+                peer: "redacted-test-peer".to_string(),
+                message: "scripted announcement write failure".to_string(),
+            },
+        )
+    }
+
+    fn failing_on_call_with(call: usize, failure: SyncRuntimeError) -> Self {
         Self {
             maybe_fail_on_call: Some(call),
+            maybe_failure: Some(failure),
             ..Self::default()
         }
     }
@@ -43,10 +55,10 @@ impl SyncPeerSession for RecordingAnnouncementSession {
     ) -> Result<(), SyncRuntimeError> {
         self.send_calls = self.send_calls.saturating_add(1);
         if self.maybe_fail_on_call == Some(self.send_calls) {
-            return Err(SyncRuntimeError::Io {
-                peer: "redacted-test-peer".to_string(),
-                message: "scripted announcement write failure".to_string(),
-            });
+            return Err(self
+                .maybe_failure
+                .clone()
+                .expect("scripted failure must accompany a failing call"));
         }
         self.sent.push(message.clone());
         Ok(())
@@ -105,12 +117,17 @@ fn seed_live_previous_header_fact(
     let message = WireNetworkMessage::Headers(HeadersMessage {
         headers: vec![build_block(BlockHash::from_byte_array([0x91; 32]), 91).header],
     });
-    let (_, _, receipt) = PeerEmission::new(peer_id, message, previous_block_hash)
-        .expect("header provenance emission")
-        .into_parts();
+    let effect_capability = runtime
+        .network
+        .prepare_peer_relay_effect(peer_id)
+        .expect("prepare header provenance capability");
+    let (_, _, capability) =
+        PeerEmission::new(peer_id, message, previous_block_hash, effect_capability)
+            .expect("header provenance emission")
+            .into_parts();
     runtime
         .network
-        .complete_peer_emission(receipt)
+        .complete_peer_emission(capability.acknowledge_write())
         .expect("seed live peer header fact");
 }
 
@@ -236,6 +253,8 @@ fn production_announcement_transport_cases_partial_failure_credits_only_prefix_a
     make_durable_and_prepare(&mut runtime, &first);
     let second = build_block(block_hash(&first.header), 1);
     make_durable_and_prepare(&mut runtime, &second);
+    let third = build_block(block_hash(&second.header), 2);
+    make_durable_and_prepare(&mut runtime, &third);
     let mut session = RecordingAnnouncementSession::failing_on_call(2);
 
     // Act
@@ -254,6 +273,7 @@ fn production_announcement_transport_cases_partial_failure_credits_only_prefix_a
         session.sent.as_slice(),
         [WireNetworkMessage::CompactBlock(_)]
     ));
+    assert_eq!(session.send_calls, 2);
     let evidence = announcement_evidence(&runtime);
     assert_eq!(
         evidence["announcement"]["value"]["compact_announced_count"],
@@ -279,5 +299,57 @@ fn production_announcement_transport_cases_partial_failure_credits_only_prefix_a
     ] {
         assert!(!projected.contains(&sensitive));
     }
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn production_announcement_transport_cases_encode_failure_preserves_only_achieved_prefix() {
+    // Arrange
+    let (mut runtime, path) = open_production_announcement_runtime("production-encode-failure");
+    let peer_id = 128_312;
+    complete_remote_handshake(&mut runtime, peer_id);
+    runtime
+        .announcement_outboxes
+        .register_peer(peer_id)
+        .expect("register peer outbox");
+    receive_peer_preference(
+        &mut runtime,
+        peer_id,
+        WireNetworkMessage::SendCompact(SendCompactMessage {
+            announce: true,
+            version: BIP152_COMPACT_BLOCKS_VERSION,
+        }),
+    );
+    let first = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    seed_live_previous_header_fact(&runtime, peer_id, first.header.previous_block_hash);
+    make_durable_and_prepare(&mut runtime, &first);
+    let second = build_block(block_hash(&first.header), 1);
+    make_durable_and_prepare(&mut runtime, &second);
+    let third = build_block(block_hash(&second.header), 2);
+    make_durable_and_prepare(&mut runtime, &third);
+    let expected = SyncRuntimeError::Network {
+        message: "scripted announcement encode failure".to_string(),
+    };
+    let mut session = RecordingAnnouncementSession::failing_on_call_with(2, expected.clone());
+
+    // Act
+    let result = runtime.send_all_for_peer(&mut session, peer_id, &[]);
+
+    // Assert
+    assert_eq!(result, Err(expected));
+    assert_eq!(session.send_calls, 2);
+    assert!(matches!(
+        session.sent.as_slice(),
+        [WireNetworkMessage::CompactBlock(_)]
+    ));
+    let evidence = announcement_evidence(&runtime);
+    assert_eq!(
+        evidence["announcement"]["value"]["compact_announced_count"],
+        1
+    );
+    assert_eq!(
+        evidence["announcement"]["value"]["compact_headers_fallback_count"],
+        1
+    );
     remove_dir_if_exists(&path);
 }
