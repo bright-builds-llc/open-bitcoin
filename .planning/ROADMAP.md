@@ -170,7 +170,7 @@ Plans:
 - [x] 134-03-PLAN.md — Add bounded identity-complete peer lifecycle operations.
 - [x] 134-04-PLAN.md — Make serving, inventory, fanout, compact, and peer target application infallible.
 - [x] 134-05-PLAN.md — Implement sole aggregate authority dispatch and audit reconciliation.
-- [ ] 134-06-PLAN.md — Route singleton and package admission through the authoritative projector.
+- [x] 134-06-PLAN.md — Route singleton and package admission through the authoritative projector.
 - [ ] 134-07-PLAN.md — Route maintenance and sequential reorg transitions through the projector.
 - [ ] 134-08-PLAN.md — Define bounded peer/snapshot effects and route completion through LifecycleCommand.
 - [ ] 134-09-PLAN.md — Execute peer effects outside authority with node and RPC successful-prefix proof.
@@ -247,7 +247,7 @@ Plans:
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
-| 134. Authoritative Cross-Cache Lifecycle Integration | 5/13 | In Progress|  |
+| 134. Authoritative Cross-Cache Lifecycle Integration | 6/13 | In Progress|  |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |

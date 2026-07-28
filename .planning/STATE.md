@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-05-PLAN.md
-last_updated: "2026-07-28T10:34:06.298Z"
+stopped_at: Completed 134-06-PLAN.md
+last_updated: "2026-07-28T11:52:04.811Z"
 last_activity: "2026-07-28"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 49
-  completed_plans: 41
-  percent: 84
+  completed_plans: 42
+  percent: 86
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — EXECUTING
-Plan: 6 of 13
+Plan: 7 of 13
 Status: Ready to execute
 Last activity: 2026-07-28
 
@@ -71,6 +71,7 @@ Next action: `/gsd-discuss-phase 134`
 | Phase 134 P03 | 71min | 2 tasks | 11 files |
 | Phase 134 P04 | 58min | 2 tasks | 12 files |
 | Phase 134 P05 | 1h 41m | 2 tasks | 25 files |
+| Phase 134 P06 | 1h 7m | 2 tasks | 19 files |
 
 ## Accumulated Context
 
@@ -166,6 +167,9 @@ Next action: `/gsd-discuss-phase 134`
 - [Phase 134]: Make the validated lifecycle capability private and consumable so stale authority epoch or canonical revision fails before any target mutation.
 - [Phase 134]: Apply canonical core, compact, serving, fanout, peer, unbroadcast, persistence, and evidence projections in one exact order under the sole authority lock.
 - [Phase 134]: Keep reconciliation read-only and bounded: production exposes only seven fixed labels and capped counts, while exact identities remain test-only.
+- [Phase 134]: Admission reports and Phase 133 feedback remain outward compatibility data; only prepared lifecycle facts drive projection.
+- [Phase 134]: Exact package member-to-peer provenance is supplied only to preparation and cannot become a second projection authority.
+- [Phase 134]: Production and exact package scenario coverage share one lifecycle dispatcher helper.
 
 ### Pending Todos
 
@@ -188,6 +192,6 @@ Next action: `/gsd-discuss-phase 134`
 
 ## Session Continuity
 
-Last session: 2026-07-28T10:34:06.295Z
-Stopped at: Completed 134-05-PLAN.md
+Last session: 2026-07-28T11:52:04.809Z
+Stopped at: Completed 134-06-PLAN.md
 Resume file: None
