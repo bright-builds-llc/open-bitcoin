@@ -72,6 +72,7 @@ fn expire_mempool_removes_aged_entry_and_updates_serving() {
             && removal.cause == MempoolRemovalCause::Expiry
             && removal.role == MempoolRemovalRole::Direct
     }));
+    assert_lifecycle_authority(&network, 2);
 }
 
 #[test]

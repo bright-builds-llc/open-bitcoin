@@ -64,6 +64,21 @@ fn assert_reject_evidence(
     );
 }
 
+fn assert_lifecycle_authority(
+    network: &ManagedPeerNetwork<MemoryChainstateStore>,
+    expected_generation: u64,
+) {
+    assert_eq!(network.lifecycle_generation().raw(), expected_generation);
+    assert_eq!(
+        network
+            .dirty_generation()
+            .map(|generation| generation.raw()),
+        (expected_generation != 0).then_some(expected_generation)
+    );
+    let report = network.reconcile_lifecycle_projection();
+    assert_eq!(report.counts(), [0; 7], "{report:?}");
+}
+
 fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot {
     MempoolSnapshot {
         records: transactions

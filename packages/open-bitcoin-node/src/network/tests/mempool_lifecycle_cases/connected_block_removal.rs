@@ -51,6 +51,7 @@ fn managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_cache
     assert_eq!(info.transaction_count, 0);
     assert_eq!(info.capacity_status, MempoolCapacityStatus::Empty);
     assert_eq!(info.rolling_fee_parity, RollingFeeParityStatus::Active);
+    assert_lifecycle_authority(&network, 2);
 }
 
 #[test]
@@ -118,6 +119,7 @@ fn managed_block_connect_uses_explicit_context_and_typed_delta() {
     assert!(!network.transactions_by_txid.contains_key(&confirmed_txid));
     assert!(!network.transactions_by_txid.contains_key(&conflict_txid));
     assert!(!network.transactions_by_txid.contains_key(&descendant_txid));
+    assert_lifecycle_authority(&network, 5);
 }
 
 #[test]
@@ -157,6 +159,7 @@ fn recovered_confirmed_transaction_is_removed_from_serving_and_fanout_after_bloc
     );
     assert_eq!(network.relay_serving_info().serveable_transactions, 0);
     assert_eq!(network.relay_fanout_info().known_transactions, 0);
+    assert_lifecycle_authority(&network, 1);
 }
 
 #[test]
@@ -206,6 +209,7 @@ fn managed_block_connect_removes_conflict_and_descendant_caches() {
     assert!(!network.transactions_by_txid.contains_key(&original_txid));
     assert!(!network.transactions_by_txid.contains_key(&descendant_txid));
     assert_eq!(network.mempool_info().transaction_count, 0);
+    assert_lifecycle_authority(&network, 3);
 }
 
 #[test]
@@ -255,6 +259,7 @@ fn recovered_conflicting_transaction_removes_descendant_serving_and_fanout_state
     );
     assert_eq!(network.relay_serving_info().serveable_transactions, 0);
     assert_eq!(network.relay_fanout_info().known_transactions, 0);
+    assert_lifecycle_authority(&network, 1);
 }
 
 #[test]
@@ -305,4 +310,5 @@ fn recovered_replacement_cleans_old_txid_and_preserves_new_accepted_identity() {
     );
     assert_eq!(network.relay_serving_info().serveable_transactions, 1);
     assert_eq!(network.relay_fanout_info().known_transactions, 1);
+    assert_lifecycle_authority(&network, 1);
 }

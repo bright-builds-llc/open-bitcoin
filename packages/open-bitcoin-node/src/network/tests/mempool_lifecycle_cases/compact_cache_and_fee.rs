@@ -97,6 +97,7 @@ fn connected_block_mempool_removal_clears_matched_compact_partial_slot() {
         "matched slot for wtxid {matched_wtxid:?} must clear after connected-block removal"
     );
     assert_eq!(in_flight.partial.missing_transaction_indexes(), vec![1, 2]);
+    assert_lifecycle_authority(&network, 2);
 }
 
 #[test]
@@ -146,4 +147,5 @@ fn rolling_fee_decay_requires_connected_block_after_bump() {
 
     // Assert
     assert_eq!(with_block.fee_rate().sats_per_kvb(), 5_000);
+    assert_lifecycle_authority(&network, 0);
 }
