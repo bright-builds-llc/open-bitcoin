@@ -8,12 +8,15 @@
 
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition},
-    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
-    primitives::Block,
+    consensus::{
+        ConsensusParams, ScriptVerifyFlags, block_hash, transaction_txid, transaction_wtxid,
+    },
+    primitives::{Block, Transaction},
 };
 use open_bitcoin_mempool::{
     AdmissionContext, BlockLifecycleContext, MempoolError, MempoolLifecycleDelta, MempoolOutcome,
-    PolicyTime, PreparedMempoolTransition, ReorgLifecycleContext,
+    MempoolRejectionCategory, MempoolTransition, PolicyTime, PreparedMempoolTransition,
+    ReorgLifecycleContext,
 };
 
 use super::{BlockConnectDisposition, ManagedNetworkError, ManagedPeerNetwork, ManagedResult};
@@ -164,6 +167,20 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(ManagedMempoolBlockLifecycle { context, delta })
     }
 
+    pub(super) fn apply_reorg_connected_block_mempool_lifecycle(
+        &mut self,
+        block: &Block,
+        context: BlockLifecycleContext,
+    ) -> Result<ManagedMempoolBlockLifecycle, ManagedNetworkError> {
+        let prepared = self
+            .mempool
+            .mempool()
+            .prepare_connected_block_transition(block, context)?;
+        let delta = self.apply_prepared_maintenance_step(prepared, LifecycleCommand::ReorgStep)?;
+
+        Ok(ManagedMempoolBlockLifecycle { context, delta })
+    }
+
     /// Expires aged mempool entries using shell-injected `PolicyTime` (PRESS-04 / D-12).
     pub fn expire_mempool(
         &mut self,
@@ -210,22 +227,21 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let mut connected = Vec::with_capacity(replacement_branch.len());
         for (anchored_block, position) in replacement_branch.iter().zip(connected_positions) {
             let block_context = block_lifecycle_context_from_reorg(context, position.height);
-            connected.push(
-                self.apply_connected_block_mempool_lifecycle(&anchored_block.block, block_context)?,
-            );
+            connected.push(self.apply_reorg_connected_block_mempool_lifecycle(
+                &anchored_block.block,
+                block_context,
+            )?);
         }
 
         let mut reconsidered = Vec::new();
         for block in disconnect_blocks.iter().rev() {
             for transaction in block.transactions.iter().skip(1) {
-                let transition = self.mempool.submit_transaction_transition_with_context(
-                    &self.chainstate,
+                let transition = self.apply_reorg_transaction_mempool_lifecycle(
                     transaction.clone(),
                     verify_flags,
                     consensus_params,
-                    AdmissionContext::reorg(context.occurred_at),
+                    context,
                 )?;
-                self.apply_admitted_transition(&transition, transaction.clone())?;
                 reconsidered.push(transition.outcome);
             }
         }
@@ -233,6 +249,85 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Ok(ManagedMempoolReorgLifecycle {
             connected,
             reconsidered,
+        })
+    }
+
+    pub(super) fn apply_reorg_transaction_mempool_lifecycle(
+        &mut self,
+        transaction: Transaction,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        context: ReorgLifecycleContext,
+    ) -> Result<MempoolTransition, ManagedNetworkError> {
+        let prepared = match self.mempool.prepare_transaction_with_context(
+            &self.chainstate,
+            transaction.clone(),
+            verify_flags,
+            consensus_params,
+            AdmissionContext::reorg(context.occurred_at),
+        ) {
+            Ok(prepared) => prepared,
+            Err(error) => return self.reorg_noop_transition(&transaction, &error),
+        };
+        let outcome = prepared_reorg_outcome(&prepared, &transaction)?;
+        let delta = self.apply_prepared_maintenance_step(prepared, LifecycleCommand::ReorgStep)?;
+        Ok(MempoolTransition { outcome, delta })
+    }
+
+    fn reorg_noop_transition(
+        &self,
+        transaction: &Transaction,
+        error: &MempoolError,
+    ) -> Result<MempoolTransition, ManagedNetworkError> {
+        let txid = transaction_txid(transaction)?;
+        let wtxid = transaction_wtxid(transaction)?;
+        let outcome = match error {
+            MempoolError::DuplicateTransaction { txid } => {
+                MempoolOutcome::Duplicate { txid: *txid }
+            }
+            MempoolError::MissingInput { .. } => MempoolOutcome::Orphaned {
+                txid,
+                wtxid,
+                missing_parents: transaction
+                    .inputs
+                    .iter()
+                    .filter_map(|input| {
+                        let parent_txid = input.previous_output.txid;
+                        let parent_in_mempool = self
+                            .mempool
+                            .mempool()
+                            .entry(&parent_txid)
+                            .is_some_and(|entry| {
+                                (input.previous_output.vout as usize)
+                                    < entry.transaction.outputs.len()
+                            });
+                        let parent_in_chainstate = self
+                            .chainstate
+                            .chainstate()
+                            .utxos()
+                            .contains_key(&input.previous_output);
+                        (!parent_in_mempool && !parent_in_chainstate).then_some(parent_txid)
+                    })
+                    .fold(Vec::new(), |mut parents, parent| {
+                        if !parents.contains(&parent) {
+                            parents.push(parent);
+                        }
+                        parents
+                    }),
+            },
+            MempoolError::CandidateEvicted { txid } => {
+                MempoolOutcome::Evicted { txid: *txid, wtxid }
+            }
+            _ => MempoolOutcome::Rejected {
+                txid,
+                wtxid,
+                category: MempoolRejectionCategory::from_error(error)
+                    .unwrap_or(MempoolRejectionCategory::InternalInvariant),
+            },
+        };
+        Ok(MempoolTransition {
+            outcome,
+            delta: MempoolLifecycleDelta::empty(),
         })
     }
 }
@@ -259,4 +354,31 @@ fn maintenance_lifecycle_error(error: impl core::fmt::Display) -> ManagedNetwork
         reason: format!("maintenance lifecycle projection failed: {error}"),
     }
     .into()
+}
+
+fn prepared_reorg_outcome(
+    prepared: &PreparedMempoolTransition,
+    transaction: &Transaction,
+) -> Result<MempoolOutcome, ManagedNetworkError> {
+    let admission = prepared
+        .facts()
+        .maybe_admission_result()
+        .cloned()
+        .ok_or_else(|| MempoolError::InternalInvariant {
+            reason: "reorg preparation omitted its admission result".to_string(),
+        })?;
+    let wtxid = transaction_wtxid(transaction)?;
+    if admission.replaced.is_empty() {
+        return Ok(MempoolOutcome::Accepted {
+            txid: admission.accepted,
+            wtxid,
+            evicted: admission.evicted,
+        });
+    }
+    Ok(MempoolOutcome::Replaced {
+        txid: admission.accepted,
+        wtxid,
+        replaced: admission.replaced,
+        evicted: admission.evicted,
+    })
 }

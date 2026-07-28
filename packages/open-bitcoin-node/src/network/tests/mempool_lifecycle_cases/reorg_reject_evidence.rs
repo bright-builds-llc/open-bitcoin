@@ -72,6 +72,7 @@ fn managed_reorg_reacceptance_uses_explicit_event_time() {
     );
     assert_eq!(metadata.origin, MempoolOrigin::Reorg);
     assert_eq!(metadata.relay_intent, RelayIntent::NotRequested);
+    assert_lifecycle_authority(&network, 1);
     assert_eq!(
         mempool_lifecycle::block_lifecycle_context_from_reorg(reorg_context, 2),
         open_bitcoin_mempool::BlockLifecycleContext::new(PolicyTime::new(80), 2)
