@@ -20,6 +20,7 @@ use open_bitcoin_network::{
 
 use super::ManagedPeerNetwork;
 use super::compact_receive_candidates::CompactExtraTxnBuffer;
+use super::lifecycle_effects::{EffectPreparationError, PeerEffectReceipt, SnapshotWriteReceipt};
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
 use crate::ChainstateStore;
@@ -153,6 +154,7 @@ pub(super) enum LifecycleProjectionError {
         expected: AuthorityEpoch,
         actual: AuthorityEpoch,
     },
+    EffectPreparation(EffectPreparationError),
     Mempool(MempoolError),
 }
 
@@ -168,6 +170,20 @@ impl fmt::Display for LifecycleProjectionError {
                 expected.raw(),
                 actual.raw()
             ),
+            Self::EffectPreparation(error) => match error {
+                EffectPreparationError::PeerEffectsAtCapacity => {
+                    formatter.write_str("pending peer lifecycle effects are at capacity")
+                }
+                EffectPreparationError::SnapshotEffectPending => {
+                    formatter.write_str("a mempool snapshot write is already pending")
+                }
+                EffectPreparationError::EffectIdentityCollision => {
+                    formatter.write_str("lifecycle effect identity collision")
+                }
+                EffectPreparationError::EffectIdentityExhausted => {
+                    formatter.write_str("lifecycle effect identity exhausted")
+                }
+            },
             Self::Mempool(error) => error.fmt(formatter),
         }
     }
@@ -177,8 +193,16 @@ impl std::error::Error for LifecycleProjectionError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Mempool(error) => Some(error),
-            Self::AuthorityUnavailable | Self::StaleAuthorityEpoch { .. } => None,
+            Self::AuthorityUnavailable
+            | Self::StaleAuthorityEpoch { .. }
+            | Self::EffectPreparation(_) => None,
         }
+    }
+}
+
+impl From<EffectPreparationError> for LifecycleProjectionError {
+    fn from(value: EffectPreparationError) -> Self {
+        Self::EffectPreparation(value)
     }
 }
 
@@ -397,87 +421,21 @@ const fn peer_identity(
     PeerTransactionIdentity::new(member.txid, member.wtxid)
 }
 
-/// Owned snapshot work that may leave the authority lock in a later plan.
-pub(super) struct OwnedSnapshotEffect {
-    authority_epoch: AuthorityEpoch,
-    generation: LifecycleGeneration,
-}
-
-/// Owned peer-relay work that may leave the authority lock in a later plan.
-pub(super) struct OwnedPeerRelayEffects {
-    authority_epoch: AuthorityEpoch,
-    generation: LifecycleGeneration,
-}
-
-pub(super) struct SnapshotPreparationRequest {
-    authority_epoch: AuthorityEpoch,
-    generation: LifecycleGeneration,
-}
+pub(in crate::network) struct SnapshotPreparationRequest;
 
 impl SnapshotPreparationRequest {
-    fn new(authority_epoch: AuthorityEpoch, generation: LifecycleGeneration) -> Self {
-        Self {
-            authority_epoch,
-            generation,
-        }
-    }
-
-    pub(super) fn into_owned(self) -> OwnedSnapshotEffect {
-        OwnedSnapshotEffect {
-            authority_epoch: self.authority_epoch,
-            generation: self.generation,
-        }
+    pub(in crate::network) const fn new() -> Self {
+        Self
     }
 }
 
-pub(super) struct PeerRelayPreparationRequest {
-    authority_epoch: AuthorityEpoch,
-    generation: LifecycleGeneration,
+pub(in crate::network) struct PeerRelayPreparationRequest {
+    pub(in crate::network) peer_id: PeerId,
 }
 
 impl PeerRelayPreparationRequest {
-    fn new(authority_epoch: AuthorityEpoch, generation: LifecycleGeneration) -> Self {
-        Self {
-            authority_epoch,
-            generation,
-        }
-    }
-
-    pub(super) fn into_owned(self) -> OwnedPeerRelayEffects {
-        OwnedPeerRelayEffects {
-            authority_epoch: self.authority_epoch,
-            generation: self.generation,
-        }
-    }
-}
-
-/// Proof that one owned peer effect achieved its external write.
-pub(super) struct PeerEffectReceipt {
-    authority_epoch: AuthorityEpoch,
-    generation: LifecycleGeneration,
-}
-
-impl PeerEffectReceipt {
-    fn new(authority_epoch: AuthorityEpoch, generation: LifecycleGeneration) -> Self {
-        Self {
-            authority_epoch,
-            generation,
-        }
-    }
-}
-
-/// Proof that one owned snapshot effect achieved its durable write.
-pub(super) struct SnapshotEffectReceipt {
-    authority_epoch: AuthorityEpoch,
-    generation: LifecycleGeneration,
-}
-
-impl SnapshotEffectReceipt {
-    fn new(authority_epoch: AuthorityEpoch, generation: LifecycleGeneration) -> Self {
-        Self {
-            authority_epoch,
-            generation,
-        }
+    pub(in crate::network) const fn new(peer_id: PeerId) -> Self {
+        Self { peer_id }
     }
 }
 
@@ -493,7 +451,7 @@ pub(super) enum LifecycleCommand {
     PrepareSnapshot(SnapshotPreparationRequest),
     PrepareRelay(PeerRelayPreparationRequest),
     CompletePeerEffect(PeerEffectReceipt),
-    CompleteSnapshotEffect(SnapshotEffectReceipt),
+    CompleteSnapshotEffect(SnapshotWriteReceipt),
 }
 
 #[cfg(test)]

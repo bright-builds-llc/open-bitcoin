@@ -57,10 +57,12 @@ pub struct PeerSessionGeneration(u64);
 impl PeerSessionGeneration {
     pub const INITIAL: Self = Self(0);
 
+    #[cfg(test)]
     pub(in crate::network) const fn new(raw: u64) -> Self {
         Self(raw)
     }
 
+    #[cfg(test)]
     pub(in crate::network) fn checked_next(self) -> Result<Self, EffectPreparationError> {
         self.0
             .checked_add(1)
@@ -73,8 +75,13 @@ impl PeerSessionGeneration {
 pub struct SnapshotIdentity(u64);
 
 impl SnapshotIdentity {
+    #[cfg(test)]
     pub(in crate::network) const fn new(raw: u64) -> Self {
         Self(raw)
+    }
+
+    pub(in crate::network) const fn from_effect_id(effect_id: SnapshotEffectId) -> Self {
+        Self(effect_id.0)
     }
 }
 
@@ -157,6 +164,17 @@ impl PeerEffectReceipt {
 
     pub(in crate::network) const fn peer_session_generation(&self) -> PeerSessionGeneration {
         self.peer_session_generation
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) const fn duplicate_for_test(&self) -> Self {
+        Self {
+            authority_epoch: self.authority_epoch,
+            lifecycle_generation: self.lifecycle_generation,
+            effect_id: self.effect_id,
+            peer_id: self.peer_id,
+            peer_session_generation: self.peer_session_generation,
+        }
     }
 }
 
@@ -255,6 +273,16 @@ impl SnapshotWriteReceipt {
     pub(in crate::network) const fn snapshot_identity(&self) -> SnapshotIdentity {
         self.snapshot_identity
     }
+
+    #[cfg(test)]
+    pub(in crate::network) const fn duplicate_for_test(&self) -> Self {
+        Self {
+            authority_epoch: self.authority_epoch,
+            persistence_generation: self.persistence_generation,
+            effect_id: self.effect_id,
+            snapshot_identity: self.snapshot_identity,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -270,11 +298,12 @@ impl PeerEffectLedger {
         &mut self,
     ) -> Result<PeerEffectId, EffectPreparationError> {
         let effect_id = PeerEffectId::new(self.next_id);
-        self.next_id = self
+        let next_id = self
             .next_id
             .checked_add(1)
             .ok_or(EffectPreparationError::EffectIdentityExhausted)?;
         self.try_reserve(effect_id)?;
+        self.next_id = next_id;
         Ok(effect_id)
     }
 
@@ -315,10 +344,12 @@ impl PeerEffectLedger {
         self.completed.contains(&effect_id)
     }
 
+    #[cfg(test)]
     pub(in crate::network) fn pending_len(&self) -> usize {
         self.pending.len()
     }
 
+    #[cfg(test)]
     pub(in crate::network) fn completed_len(&self) -> usize {
         self.completed.len()
     }
@@ -337,11 +368,12 @@ impl SnapshotEffectLedger {
         &mut self,
     ) -> Result<SnapshotEffectId, EffectPreparationError> {
         let effect_id = SnapshotEffectId::new(self.next_id);
-        self.next_id = self
+        let next_id = self
             .next_id
             .checked_add(1)
             .ok_or(EffectPreparationError::EffectIdentityExhausted)?;
         self.try_reserve(effect_id)?;
+        self.next_id = next_id;
         Ok(effect_id)
     }
 
@@ -382,10 +414,12 @@ impl SnapshotEffectLedger {
         self.completed.contains(&effect_id)
     }
 
+    #[cfg(test)]
     pub(in crate::network) fn pending_len(&self) -> usize {
         self.pending.len()
     }
 
+    #[cfg(test)]
     pub(in crate::network) fn completed_len(&self) -> usize {
         self.completed.len()
     }

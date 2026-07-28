@@ -11,11 +11,15 @@ use open_bitcoin_network::LocalPeerConfig;
 
 use super::{
     AuthorityEpoch, LifecycleCommand, LifecycleCommandKind, LifecycleEvidenceSnapshot,
-    LifecycleGeneration, LifecyclePreparationError, LifecycleProjectionPlan, OwnedPeerRelayEffects,
-    OwnedSnapshotEffect, PeerEffectReceipt, PeerRelayPreparationRequest, PreparedCompactProjection,
-    PreparedFanoutProjection, PreparedLifecycleEvidence, PreparedPeerLifecycleProjection,
-    PreparedPersistenceProjection, PreparedServingProjection, PreparedUnbroadcastProjection,
-    ProjectionShape, SnapshotEffectReceipt, SnapshotPreparationRequest,
+    LifecycleGeneration, LifecyclePreparationError, LifecycleProjectionPlan,
+    PeerRelayPreparationRequest, PreparedCompactProjection, PreparedFanoutProjection,
+    PreparedLifecycleEvidence, PreparedPeerLifecycleProjection, PreparedPersistenceProjection,
+    PreparedServingProjection, PreparedUnbroadcastProjection, ProjectionShape,
+    SnapshotPreparationRequest,
+};
+use crate::network::lifecycle_effects::{
+    PeerEffectCapability, PeerEffectId, PeerEffectReceipt, PeerSessionGeneration,
+    PreparedSnapshotWrite, SnapshotEffectId, SnapshotIdentity, SnapshotWriteReceipt,
 };
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -51,6 +55,24 @@ fn command_family_names_every_lifecycle_and_effect_path() {
     ];
     let epoch = AuthorityEpoch::INITIAL;
     let generation = LifecycleGeneration::INITIAL;
+    let peer_receipt = PeerEffectCapability::new(
+        epoch,
+        generation,
+        PeerEffectId::new(0),
+        134_080,
+        PeerSessionGeneration::INITIAL,
+    )
+    .acknowledge_write();
+    let snapshot_receipt = PreparedSnapshotWrite::new(
+        epoch,
+        generation,
+        SnapshotEffectId::new(0),
+        SnapshotIdentity::new(0),
+        crate::storage::MempoolSnapshot::default(),
+    )
+    .into_parts()
+    .1
+    .acknowledge_write();
     let commands = [
         LifecycleCommand::SingletonAdmission(projection_plan()),
         LifecycleCommand::PackageAdmission(projection_plan()),
@@ -59,10 +81,10 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         LifecycleCommand::ConnectedBlock(projection_plan()),
         LifecycleCommand::ReorgStep(projection_plan()),
         LifecycleCommand::Maintenance(projection_plan()),
-        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new(epoch, generation)),
-        LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(epoch, generation)),
-        LifecycleCommand::CompletePeerEffect(PeerEffectReceipt::new(epoch, generation)),
-        LifecycleCommand::CompleteSnapshotEffect(SnapshotEffectReceipt::new(epoch, generation)),
+        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+        LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_080)),
+        LifecycleCommand::CompletePeerEffect(peer_receipt),
+        LifecycleCommand::CompleteSnapshotEffect(snapshot_receipt),
     ];
 
     // Act
@@ -97,10 +119,10 @@ fn facts_plans_owned_effects_and_receipts_are_distinct_types() {
     let type_ids = [
         TypeId::of::<PreparedLifecycleFacts>(),
         TypeId::of::<LifecycleProjectionPlan>(),
-        TypeId::of::<OwnedPeerRelayEffects>(),
-        TypeId::of::<OwnedSnapshotEffect>(),
+        TypeId::of::<PeerEffectCapability>(),
+        TypeId::of::<PreparedSnapshotWrite>(),
         TypeId::of::<PeerEffectReceipt>(),
-        TypeId::of::<SnapshotEffectReceipt>(),
+        TypeId::of::<SnapshotWriteReceipt>(),
     ];
 
     // Act

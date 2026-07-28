@@ -40,6 +40,7 @@ use super::{
     PeerOutboxSnapshot,
 };
 
+mod effects;
 mod lifecycle;
 pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
 
@@ -48,6 +49,7 @@ type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
 #[derive(Debug)]
 pub enum ManagedNetworkAuthorityError {
     Poisoned,
+    LifecycleEffect(String),
     Operation(ManagedNetworkError),
 }
 
@@ -55,6 +57,7 @@ impl fmt::Display for ManagedNetworkAuthorityError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Poisoned => formatter.write_str("authoritative network state is unavailable"),
+            Self::LifecycleEffect(message) => formatter.write_str(message),
             Self::Operation(error) => error.fmt(formatter),
         }
     }
@@ -63,7 +66,7 @@ impl fmt::Display for ManagedNetworkAuthorityError {
 impl std::error::Error for ManagedNetworkAuthorityError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Poisoned => None,
+            Self::Poisoned | Self::LifecycleEffect(_) => None,
             Self::Operation(error) => Some(error),
         }
     }
@@ -81,6 +84,7 @@ impl From<ManagedNetworkAuthorityError> for SyncRuntimeError {
             ManagedNetworkAuthorityError::Poisoned => Self::Network {
                 message: "authoritative network state is unavailable".to_string(),
             },
+            ManagedNetworkAuthorityError::LifecycleEffect(message) => Self::Network { message },
             ManagedNetworkAuthorityError::Operation(error) => Self::from(error),
         }
     }

@@ -182,6 +182,9 @@ pub(super) fn network_authority_error_to_failure(
                 "authoritative network state is unavailable",
             )),
         ),
+        ManagedNetworkAuthorityError::LifecycleEffect(message) => {
+            RpcFailure::internal_error(message)
+        }
         ManagedNetworkAuthorityError::Operation(error) => network_error_to_failure(error),
     }
 }

@@ -1406,6 +1406,7 @@
         "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
         "packages/open-bitcoin-node/src/network/admission_bridge/singleton.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs",
