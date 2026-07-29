@@ -168,10 +168,21 @@ function verifyPostWriteRecording(
     effects,
     [
       "pub fn complete_peer_emission(",
-      "self.complete_peer_effect(effect_receipt)?",
-      "network.record_peer_emission(peer_id, evidence)",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
     ],
     "P122 shared completion facade",
+    failures,
+  );
+  requireContains(
+    effects,
+    "LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),",
+    "P122 shared completion result",
+    failures,
+  );
+  requireAbsent(
+    effects,
+    "try_mutate",
+    "P122 second completion mutation interval",
     failures,
   );
   requireAbsent(

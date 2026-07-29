@@ -91,13 +91,13 @@ impl ManagedNetworkHandle {
         &self,
         receipt: PeerEmissionReceipt,
     ) -> Result<EffectCompletion, ManagedNetworkAuthorityError> {
-        let peer_id = receipt.peer_id();
-        let (effect_receipt, evidence) = receipt.into_parts();
-        let completion = self.complete_peer_effect(effect_receipt)?;
-        if completion == EffectCompletion::Applied {
-            self.try_mutate(|network| network.record_peer_emission(peer_id, evidence))?;
+        match self
+            .apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))
+            .map_err(ManagedNetworkAuthorityError::from)?
+        {
+            LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),
+            _ => Err(unexpected_result("peer emission completion")),
         }
-        Ok(completion)
     }
 
     /// Classifies one achieved snapshot write through the lifecycle dispatcher.

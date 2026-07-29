@@ -219,18 +219,34 @@ export function checkPhase134AuthoritativeLifecycle(
     "LifecycleCommand::PrepareSnapshot(_request)",
     "LifecycleCommand::PrepareRelay(request)",
     "LifecycleCommand::CompletePeerEffect(receipt)",
+    "LifecycleCommand::CompletePeerEmission(receipt)",
     "LifecycleCommand::CompleteSnapshotEffect(receipt)",
   ];
   const effectFacadeCalls = [
     ".apply_lifecycle_command(LifecycleCommand::PrepareRelay(",
     ".apply_lifecycle_command(LifecycleCommand::PrepareSnapshot(",
     ".apply_lifecycle_command(LifecycleCommand::CompletePeerEffect(receipt))",
+    ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
     ".apply_lifecycle_command(LifecycleCommand::CompleteSnapshotEffect(receipt))",
   ];
   addFailure(
     failures,
     !hasAll(dispatcher, lifecycleCommands) ||
       !hasAll(effectFacade, effectFacadeCalls),
+    DIAGNOSTICS.dispatcher,
+  );
+  const maybePeerEmissionFacade = effectFacade.match(
+    /pub fn complete_peer_emission\([\s\S]*?\n    }\n\n    \/\/\/ Classifies one achieved snapshot/,
+  )?.[0];
+  addFailure(
+    failures,
+    maybePeerEmissionFacade === undefined ||
+      maybePeerEmissionFacade.includes("try_mutate") ||
+      (
+        maybePeerEmissionFacade.match(
+          /apply_lifecycle_command\(LifecycleCommand::CompletePeerEmission\(receipt\)\)/g,
+        ) ?? []
+      ).length !== 1,
     DIAGNOSTICS.dispatcher,
   );
 

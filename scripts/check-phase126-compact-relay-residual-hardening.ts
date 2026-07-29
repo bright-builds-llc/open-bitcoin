@@ -196,9 +196,12 @@ function checkNonceAndEvidence(texts: TextCorpus, failures: string[]): void {
     ]) ||
     !orderedFragments(completion, [
       "pub fn complete_peer_emission(",
-      "self.complete_peer_effect(effect_receipt)?",
-      "network.record_peer_emission(peer_id, evidence)",
-    ])
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+    ]) ||
+    !completion.includes(
+      "LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),",
+    ) ||
+    completion.includes("try_mutate")
   ) {
     failures.push(
       "P126 achieved effect evidence: consuming completion must derive from the written emission",

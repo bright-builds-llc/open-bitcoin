@@ -6,8 +6,9 @@
 
 use std::any::TypeId;
 
+use open_bitcoin_core::primitives::BlockHash;
 use open_bitcoin_mempool::{PolicyConfig, PolicyTime, PreparedLifecycleFacts};
-use open_bitcoin_network::LocalPeerConfig;
+use open_bitcoin_network::{HeadersMessage, LocalPeerConfig, WireNetworkMessage};
 
 use super::{
     AuthorityEpoch, LifecycleCommand, LifecycleCommandKind, LifecycleEvidenceSnapshot,
@@ -51,6 +52,7 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         LifecycleCommandKind::PrepareSnapshot,
         LifecycleCommandKind::PrepareRelay,
         LifecycleCommandKind::CompletePeerEffect,
+        LifecycleCommandKind::CompletePeerEmission,
         LifecycleCommandKind::CompleteSnapshotEffect,
     ];
     let epoch = AuthorityEpoch::INITIAL;
@@ -73,6 +75,24 @@ fn command_family_names_every_lifecycle_and_effect_path() {
     .into_parts()
     .1
     .acknowledge_write();
+    let emission_receipt = crate::network::PeerEmission::new(
+        134_080,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: Vec::new(),
+        }),
+        BlockHash::from_byte_array([0x15; 32]),
+        PeerEffectCapability::new(
+            epoch,
+            generation,
+            PeerEffectId::new(1),
+            134_080,
+            PeerSessionGeneration::INITIAL,
+        ),
+    )
+    .expect("headers emission should prepare")
+    .into_parts()
+    .2
+    .acknowledge_write();
     let commands = [
         LifecycleCommand::SingletonAdmission(projection_plan()),
         LifecycleCommand::PackageAdmission(projection_plan()),
@@ -84,6 +104,7 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
         LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_080)),
         LifecycleCommand::CompletePeerEffect(peer_receipt),
+        LifecycleCommand::CompletePeerEmission(emission_receipt),
         LifecycleCommand::CompleteSnapshotEffect(snapshot_receipt),
     ];
 

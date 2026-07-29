@@ -9,8 +9,10 @@
 use open_bitcoin_mempool::MempoolLifecycleDelta;
 
 use super::ManagedNetworkHandle;
+use crate::network::announcement_transport::PeerEmissionEvidence;
 use crate::network::lifecycle_effects::{
-    EffectCompletion, ExactEffectLedgerCompletion, PeerEffectCapability, PreparedSnapshotWrite,
+    EffectCompletion, ExactEffectLedgerCompletion, PeerEffectCapability, PeerEffectReceipt,
+    PreparedSnapshotWrite,
 };
 use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionError};
 use crate::storage::MempoolSnapshot;
@@ -74,27 +76,13 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             )?,
         )),
         LifecycleCommand::CompletePeerEffect(receipt) => {
-            let peer_id = receipt.peer_id();
-            let effect_id = receipt.exact_key();
-            if network.peer_effect_ledger.is_completed(effect_id) {
-                return Ok(LifecycleCommandResult::PeerEffectCompleted(
-                    EffectCompletion::AlreadyApplied,
-                ));
-            }
-            let exact_completion = network.peer_effect_ledger.complete_exact(&receipt);
-            if exact_completion == ExactEffectLedgerCompletion::NotPending {
-                return Err(LifecycleProjectionError::InvalidEffectReceipt("peer"));
-            }
-            let is_fresh = receipt.authority_epoch() == network.authority_epoch
-                && receipt.lifecycle_generation() == network.lifecycle_generation
-                && receipt.peer_session_generation() == network.peer_session_generation(peer_id);
-            let completion = if is_fresh {
-                EffectCompletion::Applied
-            } else {
-                EffectCompletion::AchievedButStale
-            };
-            network.maybe_forget_peer_session_generation(peer_id);
-            Ok(LifecycleCommandResult::PeerEffectCompleted(completion))
+            complete_peer_effect(network, receipt, None)
+                .map(LifecycleCommandResult::PeerEffectCompleted)
+        }
+        LifecycleCommand::CompletePeerEmission(receipt) => {
+            let (effect_receipt, evidence) = receipt.into_parts();
+            complete_peer_effect(network, effect_receipt, Some(evidence))
+                .map(LifecycleCommandResult::PeerEffectCompleted)
         }
         LifecycleCommand::CompleteSnapshotEffect(receipt) => {
             let effect_id = receipt.exact_key();
@@ -120,4 +108,39 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             Ok(LifecycleCommandResult::SnapshotEffectCompleted(completion))
         }
     }
+}
+
+fn complete_peer_effect<S: ChainstateStore>(
+    network: &mut ManagedPeerNetwork<S>,
+    receipt: PeerEffectReceipt,
+    maybe_evidence: Option<PeerEmissionEvidence>,
+) -> Result<EffectCompletion, LifecycleProjectionError> {
+    let effect_id = receipt.exact_key();
+    if network.peer_effect_ledger.is_completed(effect_id) {
+        return Ok(EffectCompletion::AlreadyApplied);
+    }
+    if !network.peer_effect_ledger.is_pending(&receipt) {
+        return Err(LifecycleProjectionError::InvalidEffectReceipt("peer"));
+    }
+
+    let peer_id = receipt.peer_id();
+    let is_fresh = receipt.authority_epoch() == network.authority_epoch
+        && receipt.lifecycle_generation() == network.lifecycle_generation
+        && receipt.peer_session_generation() == network.peer_session_generation(peer_id);
+    if is_fresh && let Some(evidence) = maybe_evidence {
+        network
+            .record_peer_emission(peer_id, evidence)
+            .map_err(LifecycleProjectionError::PeerEvidence)?;
+    }
+
+    let exact_completion = network.peer_effect_ledger.complete_exact(&receipt);
+    if exact_completion != ExactEffectLedgerCompletion::Recorded {
+        return Err(LifecycleProjectionError::InvalidEffectReceipt("peer"));
+    }
+    network.maybe_forget_peer_session_generation(peer_id);
+    Ok(if is_fresh {
+        EffectCompletion::Applied
+    } else {
+        EffectCompletion::AchievedButStale
+    })
 }

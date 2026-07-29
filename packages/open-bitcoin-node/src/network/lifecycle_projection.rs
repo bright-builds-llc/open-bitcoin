@@ -21,6 +21,7 @@ use open_bitcoin_network::{
 };
 
 use super::ManagedPeerNetwork;
+use super::announcement_transport::PeerEmissionReceipt;
 use super::compact_receive_candidates::CompactExtraTxnBuffer;
 use super::lifecycle_effects::{EffectPreparationError, PeerEffectReceipt, SnapshotWriteReceipt};
 use super::relay_fanout::ManagedRelayFanoutState;
@@ -238,6 +239,7 @@ pub(super) enum LifecycleProjectionError {
     },
     EffectPreparation(EffectPreparationError),
     InvalidEffectReceipt(&'static str),
+    PeerEvidence(super::types::ManagedNetworkError),
     Mempool(MempoolError),
 }
 
@@ -270,6 +272,7 @@ impl fmt::Display for LifecycleProjectionError {
             Self::InvalidEffectReceipt(family) => {
                 write!(formatter, "foreign or mismatched {family} effect receipt")
             }
+            Self::PeerEvidence(error) => error.fmt(formatter),
             Self::Mempool(error) => error.fmt(formatter),
         }
     }
@@ -279,6 +282,7 @@ impl std::error::Error for LifecycleProjectionError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Mempool(error) => Some(error),
+            Self::PeerEvidence(error) => Some(error),
             Self::AuthorityUnavailable
             | Self::StaleAuthorityEpoch { .. }
             | Self::InvalidEffectReceipt(_)
@@ -560,6 +564,7 @@ pub(super) enum LifecycleCommand {
     PrepareSnapshot(SnapshotPreparationRequest),
     PrepareRelay(PeerRelayPreparationRequest),
     CompletePeerEffect(PeerEffectReceipt),
+    CompletePeerEmission(PeerEmissionReceipt),
     CompleteSnapshotEffect(SnapshotWriteReceipt),
 }
 
@@ -576,6 +581,7 @@ enum LifecycleCommandKind {
     PrepareSnapshot,
     PrepareRelay,
     CompletePeerEffect,
+    CompletePeerEmission,
     CompleteSnapshotEffect,
 }
 
@@ -593,6 +599,7 @@ impl LifecycleCommand {
             Self::PrepareSnapshot(_) => LifecycleCommandKind::PrepareSnapshot,
             Self::PrepareRelay(_) => LifecycleCommandKind::PrepareRelay,
             Self::CompletePeerEffect(_) => LifecycleCommandKind::CompletePeerEffect,
+            Self::CompletePeerEmission(_) => LifecycleCommandKind::CompletePeerEmission,
             Self::CompleteSnapshotEffect(_) => LifecycleCommandKind::CompleteSnapshotEffect,
         }
     }

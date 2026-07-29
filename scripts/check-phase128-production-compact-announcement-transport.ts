@@ -370,9 +370,12 @@ function checkPostWriteEvidence(
   if (
     !orderedFragments(completion, [
       "pub fn complete_peer_emission(",
-      "self.complete_peer_effect(effect_receipt)?",
-      "network.record_peer_emission(peer_id, evidence)",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
     ]) ||
+    !completion.includes(
+      "LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),",
+    ) ||
+    completion.includes("try_mutate") ||
     !orderedFragments(evidence, [
       "fn record_peer_emission(",
       "evidence.records_header_provenance()",

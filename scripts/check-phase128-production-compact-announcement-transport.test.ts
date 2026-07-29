@@ -156,6 +156,15 @@ test.each([
     ),
   ],
   [
+    "atomic post-write achieved-effect credit",
+    "P128 receipt evidence: consuming completion must bind provenance and fixed achieved outcome",
+    replace(
+      "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEffect(receipt))",
+    ),
+  ],
+  [
     "authoritative fixed metric and log projection",
     "P128 observability: end-to-end tests must project fixed metrics and logs from post-write status",
     replace(

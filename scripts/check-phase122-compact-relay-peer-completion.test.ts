@@ -69,6 +69,15 @@ test.each([
     },
   ],
   [
+    "shared completion facade",
+    "P122 shared completion facade missing .apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+    mutate(
+      "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEffect(receipt))",
+    ),
+  ],
+  [
     "typed live response",
     "P122 live action translation missing WireNetworkMessage::BlockTxn(response)",
     mutate("packages/open-bitcoin-node/src/network/action_translation.rs", "WireNetworkMessage::BlockTxn(response)", "WireNetworkMessage::NotFound(response)"),
@@ -210,7 +219,7 @@ function completeFiles(): Map<TargetFile, string> {
     ],
     [
       "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
-      "pub fn complete_peer_emission( self.complete_peer_effect(effect_receipt)? network.record_peer_emission(peer_id, evidence)",
+      "pub fn complete_peer_emission( .apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt)) LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),",
     ],
     [
       "packages/open-bitcoin-node/src/network/action_translation.rs",

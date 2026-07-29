@@ -428,6 +428,10 @@ impl PeerEffectLedger {
         ExactEffectLedgerCompletion::Recorded
     }
 
+    pub(in crate::network) fn is_pending(&self, receipt: &PeerEffectReceipt) -> bool {
+        self.pending.contains(&PeerEffectKey::from(receipt))
+    }
+
     fn record_completed_key(&mut self, key: PeerEffectKey) {
         if !self.completed.insert(key) {
             return;

@@ -182,6 +182,15 @@ function authorityMutations(): MutationCase[] {
         ".bypass_lifecycle_dispatcher(LifecycleCommand::PrepareRelay(",
       ),
     ],
+    [
+      "second peer-emission mutation interval",
+      DIAGNOSTICS.dispatcher,
+      insertAfter(
+        "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+        "    pub fn complete_peer_emission(",
+        "\n        self.try_mutate(|network| network.record_peer_emission_for_test());",
+      ),
+    ],
     ...secondOwners.map(
       ([name, marker, addition]): MutationCase => [
         `second ${name} owner`,

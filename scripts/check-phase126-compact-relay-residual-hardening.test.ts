@@ -233,6 +233,28 @@ test("fails_when_achieved_effect_evidence_ignores_the_written_receipt", () => {
   );
 });
 
+test("fails_when_achieved_effect_completion_reopens_the_authority", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+        ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+        ".apply_lifecycle_command(LifecycleCommand::CompletePeerEffect(receipt))",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase126CompactRelayResidualHardening(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P126 achieved effect evidence: consuming completion must derive from the written emission",
+  );
+});
+
 test("fails_when_cargo_and_bazel_entropy_dependencies_diverge", () => {
   // Arrange
   const cargoRoot = createFixture({
