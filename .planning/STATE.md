@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-18-PLAN.md
-last_updated: "2026-07-29T11:12:10.302Z"
+stopped_at: Completed 134-19-PLAN.md
+last_updated: "2026-07-29T13:16:56.758Z"
 last_activity: "2026-07-29"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 54
-  percent: 90
+  completed_plans: 55
+  percent: 92
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 19 of 24
+Plan: 20 of 24
 Status: Ready to execute
 Last activity: 2026-07-29
 
-Progress: [███████░░░] 71%
+Progress: [█████████░] 92%
 
-Next action: Execute 134-19-PLAN.md.
+Next action: Execute 134-20-PLAN.md.
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Next action: Execute 134-19-PLAN.md.
 | Phase 134 P16 | 2h 51m | 2 tasks | 23 files |
 | Phase 134 P17 | 116m | 2 tasks | 12 files |
 | Phase 134 P18 | 1h 52m | 2 tasks | 12 files |
+| Phase 134 P19 | 125m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -217,6 +218,9 @@ Next action: Execute 134-19-PLAN.md.
 - [Phase 134]: Candidate cursors retain complete child txid+wtxid identities without retaining child transaction bodies.
 - [Phase 134]: Expected unbroadcast membership is the retry-eligible subset of canonical mempool identities and is audited by symmetric difference.
 - [Phase 134]: MPLIFE-01 through MPLIFE-04 remain pending until phase re-verification.
+- [Phase 134]: Raw accepted-package command capacity is enforced before deduplication because duplicate inputs still consume bounded preprocessing work.
+- [Phase 134]: Accepted-package fingerprint identities remain immutable across same-command retirement; conflicting members fail closed while identical duplicates are idempotent.
+- [Phase 134]: Accepted-package retained capacity is evaluated on the deduplicated final map after bounded same-transition retirements.
 
 ### Pending Todos
 
@@ -239,6 +243,6 @@ Next action: Execute 134-19-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T11:12:10.299Z
-Stopped at: Completed 134-18-PLAN.md
+Last session: 2026-07-29T13:16:56.755Z
+Stopped at: Completed 134-19-PLAN.md
 Resume file: None
