@@ -423,8 +423,8 @@ bun test scripts/check-phase132-typed-package-staged-admission.test.ts
 bun run scripts/check-phase132-typed-package-staged-admission.ts
 bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
 bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
-bun run scripts/check-phase134-apply-boundaries.ts
 bun test scripts/check-phase134-authoritative-lifecycle.test.ts
+bun run scripts/check-phase134-apply-boundaries.ts
 bun run scripts/check-phase134-authoritative-lifecycle.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
@@ -583,8 +583,8 @@ run_step "test Phase 132 typed package staged admission checker" bun test script
 run_step "check Phase 132 typed package staged admission" bun run scripts/check-phase132-typed-package-staged-admission.ts
 run_step "test Phase 133 package-aware download/orphan bridge checker" bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
 run_step "check Phase 133 package-aware download/orphan bridge" bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
-run_step "check Phase 134 apply boundaries" bun run scripts/check-phase134-apply-boundaries.ts
 run_step "test Phase 134 authoritative lifecycle checker" bun test scripts/check-phase134-authoritative-lifecycle.test.ts
+run_step "check Phase 134 apply boundaries" bun run scripts/check-phase134-apply-boundaries.ts
 run_step "check Phase 134 authoritative lifecycle" bun run scripts/check-phase134-authoritative-lifecycle.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts

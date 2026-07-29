@@ -3,6 +3,7 @@
 import path from "node:path";
 
 import { readSourceRoot } from "./source-corpus";
+import { phase134ScopeFailures } from "./check-phase134-authoritative-lifecycle/scope";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -42,6 +43,15 @@ const FILES = {
   announcement:
     "packages/open-bitcoin-node/src/network/announcement_transport.rs",
   readme: "README.md",
+  packageReadme: "packages/README.md",
+  mempoolCatalog: "docs/parity/catalog/mempool-policy.md",
+  parityChecklist: "docs/parity/checklist.md",
+  parityIndex: "docs/parity/index.json",
+  requirements: ".planning/REQUIREMENTS.md",
+  gaps:
+    ".planning/phases/134-authoritative-cross-cache-lifecycle-integration/134-GAPS.md",
+  scopeChecker:
+    "scripts/check-phase134-authoritative-lifecycle/scope.ts",
   checker: "scripts/check-phase134-authoritative-lifecycle.ts",
   verify: "scripts/verify.sh",
 } as const;
@@ -131,8 +141,6 @@ const DIAGNOSTICS = {
     "P134 reconciliation: full reconciliation must not enter normal mutation paths",
   evidence:
     "P134 evidence: production lifecycle evidence must stay bounded and identifier-free",
-  claims:
-    "P134 scope: Phase 135-138 and broad relay/readiness claims must remain deferred",
   deterministic:
     "P134 checker: verification must remain deterministic and filesystem-only",
   verifier:
@@ -431,35 +439,37 @@ export function checkPhase134AuthoritativeLifecycle(
     DIAGNOSTICS.evidence,
   );
 
-  const broadClaims = [
-    "Phase 135 is implemented.",
-    "Phase 136 is implemented.",
-    "Phase 137 is implemented.",
-    "Phase 138 is implemented.",
-    "Open Bitcoin supports a general package wire.",
-    "Open Bitcoin ships whole-mempool rebroadcast.",
-    "Open Bitcoin supports public/default relay.",
-    "Open Bitcoin guarantees transaction propagation.",
-    "Open Bitcoin runs public-network CI.",
-    "Open Bitcoin is production ready.",
-  ];
-  addFailure(
-    failures,
-    broadClaims.some((claim) => get(FILES.readme).includes(claim)),
-    DIAGNOSTICS.claims,
+  failures.push(
+    ...phase134ScopeFailures({
+      claimSurfaces: [
+        FILES.readme,
+        FILES.packageReadme,
+        FILES.mempoolCatalog,
+        FILES.parityChecklist,
+        FILES.parityIndex,
+      ].map(get),
+      parityChecklist: get(FILES.parityChecklist),
+      parityIndex: get(FILES.parityIndex),
+      requirements: get(FILES.requirements),
+      gaps: get(FILES.gaps),
+    }),
   );
+
   addFailure(
     failures,
-    /Bun\s*\.\s*spawn|\bfetch\s*\(|https?:\/\//.test(get(FILES.checker)) ||
-      get(FILES.checker).includes(["node", "child_process"].join(":")),
+    [FILES.checker, FILES.scopeChecker].map(get).some(
+      (checker) =>
+        /Bun\s*\.\s*spawn|\bfetch\s*\(|https?:\/\//.test(checker) ||
+        checker.includes(["node", "child_process"].join(":")),
+    ),
     DIAGNOSTICS.deterministic,
   );
 
   const verifierNeedles = [
     ["bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts", "phase133-test"],
     ["bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts", "phase133-live"],
-    ["bun run scripts/check-phase134-apply-boundaries.ts", "phase134-apply"],
     ["bun test scripts/check-phase134-authoritative-lifecycle.test.ts", "phase134-test"],
+    ["bun run scripts/check-phase134-apply-boundaries.ts", "phase134-apply"],
     ["bun run scripts/check-phase134-authoritative-lifecycle.ts", "phase134-live"],
     ["bun test scripts/check-phase117-parity-uat-release-boundary.test.ts", "phase117-test"],
     ["bun run scripts/check-phase117-parity-uat-release-boundary.ts", "phase117-live"],

@@ -21,6 +21,11 @@ import {
   APPLY_HELPER_SOURCE_FILES,
   applyHelperMutations,
 } from "./check-phase134-authoritative-lifecycle.test/apply-helpers";
+import {
+  SCOPE_CLAIM_SOURCE_FILES,
+  parityStatusMutations,
+  scopeClaimMutations,
+} from "./check-phase134-authoritative-lifecycle.test/scope-claims";
 import { readSourceRoot } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
@@ -114,6 +119,20 @@ test.each(scenarioMutations())(
 test.each(scopeMutations())(
   "rejects scope mutation: %s",
   (_name, expectedFailure, mutate) => {
+    assertExactFailure(expectedFailure, mutate);
+  },
+);
+
+test.each(scopeClaimMutations())(
+  "rejects canonical scope claim: $name",
+  ({ expectedFailure, mutate }) => {
+    assertExactFailure(expectedFailure, mutate);
+  },
+);
+
+test.each(parityStatusMutations())(
+  "rejects premature Phase 134 parity status: $name",
+  ({ expectedFailure, mutate }) => {
     assertExactFailure(expectedFailure, mutate);
   },
 );
@@ -418,18 +437,6 @@ function scenarioMutations(): MutationCase[] {
 }
 
 function scopeMutations(): MutationCase[] {
-  const claims = [
-    "Phase 135 is implemented.",
-    "Phase 136 is implemented.",
-    "Phase 137 is implemented.",
-    "Phase 138 is implemented.",
-    "Open Bitcoin supports a general package wire.",
-    "Open Bitcoin ships whole-mempool rebroadcast.",
-    "Open Bitcoin supports public/default relay.",
-    "Open Bitcoin guarantees transaction propagation.",
-    "Open Bitcoin runs public-network CI.",
-    "Open Bitcoin is production ready.",
-  ];
   return [
     [
       "high-cardinality evidence",
@@ -440,13 +447,6 @@ function scopeMutations(): MutationCase[] {
         "\n    pub(super) txids: Vec<Txid>,",
       ),
     ],
-    ...claims.map(
-      (claim): MutationCase => [
-        claim,
-        DIAGNOSTICS.claims,
-        append("README.md", `\n${claim}\n`),
-      ],
-    ),
     [
       "networked checker",
       DIAGNOSTICS.deterministic,
@@ -473,14 +473,14 @@ function verifierMutations(): MutationCase[] {
     ["remove mutation guard", DIAGNOSTICS.verifier, replace(verify, test, "")],
     ["remove live guard", DIAGNOSTICS.verifier, replace(verify, live, "")],
     [
-      "reorder apply guard",
-      DIAGNOSTICS.verifier,
-      replace(verify, `${apply}\n${test}`, `${test}\n${apply}`),
-    ],
-    [
       "reorder mutation guard",
       DIAGNOSTICS.verifier,
-      replace(verify, `${test}\n${live}`, `${live}\n${test}`),
+      replace(verify, `${test}\n${apply}`, `${apply}\n${test}`),
+    ],
+    [
+      "reorder apply guard",
+      DIAGNOSTICS.verifier,
+      replace(verify, `${apply}\n${live}`, `${live}\n${apply}`),
     ],
     [
       "reorder live guard",
@@ -492,7 +492,10 @@ function verifierMutations(): MutationCase[] {
 
 function assertExactFailure(expectedFailure: string, mutate: Mutator): void {
   // Arrange
-  const root = createFixture(PHASE134_TARGET_FILES, mutate);
+  const root = createFixture(
+    [...new Set([...PHASE134_TARGET_FILES, ...SCOPE_CLAIM_SOURCE_FILES])],
+    mutate,
+  );
 
   // Act
   const failures = checkPhase134AuthoritativeLifecycle(root);

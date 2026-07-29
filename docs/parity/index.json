@@ -740,7 +740,7 @@
     },
     {
       "name": "v2-2-authoritative-cross-cache-lifecycle-integration",
-      "status": "done"
+      "status": "in_progress"
     }
   ],
   "checklist": {
@@ -3181,7 +3181,7 @@
       {
         "id": "v2-2-authoritative-cross-cache-lifecycle-integration",
         "title": "v2.2 Authoritative Cross-Cache Lifecycle Integration",
-        "status": "done",
+        "status": "in_progress",
         "requirements": [
           "MPLIFE-01",
           "MPLIFE-02",

@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,046 |
-| Total lines | 297,152 |
-| Code/content lines | 259,242 |
+| Included files | 1,048 |
+| Total lines | 297,488 |
+| Code/content lines | 259,547 |
 | Comment-only lines | 13,143 |
-| Blank lines | 24,767 |
+| Blank lines | 24,798 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 401 | 112,377 | 95,834 | 7,823 | 8,720 |
 | Rust production | 336 | 100,335 | 87,309 | 3,605 | 9,421 |
-| TypeScript/Bun scripts | 240 | 67,582 | 60,184 | 1,635 | 5,763 |
+| TypeScript/Bun scripts | 242 | 67,918 | 60,489 | 1,635 | 5,794 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 22 | 4,499 | 4,020 | 66 | 413 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -179,9 +179,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase133-package-aware-download-orphan-bridge.test.ts | 377 |
 | scripts/check-phase133-package-aware-download-orphan-bridge.ts | 564 |
 | scripts/check-phase134-apply-boundaries.ts | 614 |
-| scripts/check-phase134-authoritative-lifecycle.test.ts | 603 |
+| scripts/check-phase134-authoritative-lifecycle.test.ts | 606 |
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers.ts | 233 |
-| scripts/check-phase134-authoritative-lifecycle.ts | 497 |
+| scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts | 150 |
+| scripts/check-phase134-authoritative-lifecycle.ts | 507 |
+| scripts/check-phase134-authoritative-lifecycle/scope.ts | 173 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -321,7 +323,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 62d80d7aab316ad175ba8f6e1dce1e502878e602fd0efc491a0625b2386291e1 |
+| Input fingerprint | b867663fae3e55f875bd1c43882482871a1ed3da49b269d9152152b8582f968b |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
