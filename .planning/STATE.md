@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-21-PLAN.md
-last_updated: "2026-07-29T19:20:03.899Z"
+stopped_at: Completed 134-22-PLAN.md
+last_updated: "2026-07-29T20:13:32.128Z"
 last_activity: "2026-07-29"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 57
-  percent: 95
+  completed_plans: 58
+  percent: 97
 ---
 
 # Project State
@@ -27,19 +27,19 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 22 of 24
+Plan: 23 of 24
 Status: Ready to execute
 Last activity: 2026-07-29
 
-Progress: [██████████] 95%
+Progress: [██████████] 97%
 
-Next action: Execute 134-22-PLAN.md.
+Next action: Execute 134-23-PLAN.md.
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 57
+- Total plans completed: 58
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
@@ -87,6 +87,7 @@ Next action: Execute 134-22-PLAN.md.
 | Phase 134 P19 | 125m | 2 tasks | 5 files |
 | Phase 134 P20 | 2h 35m | 2 tasks | 7 files |
 | Phase 134 P21 | 2h 39m | 2 tasks | 9 files |
+| Phase 134 P22 | 27m | 1 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,10 @@ Next action: Execute 134-22-PLAN.md.
 - [Phase 134]: Core commit is the sole fallible aggregate mutation and executes before dependent target application.
 - [Phase 134]: The old validated transition surface was removed in the same commit that migrated the live node.
 - [Phase 134]: Stale atomicity is proved through the production dispatcher with a complete eight-domain snapshot.
+- [Phase 134]: Treat commit_sealed_lifecycle and apply_prepared_lifecycle as one explicit aggregate root because Plan 21 separated atomic commit from infallible dependent applies.
+- [Phase 134]: Classify apply-call behavior only by exact fully qualified symbol; unresolved or unknown repo-owned helpers fail closed.
+- [Phase 134]: Use visited fully qualified symbols to terminate recursive helper cycles without suppressing reachable violations.
+- [Phase 134]: Keep MPLIFE-01 through MPLIFE-04 pending until phase re-verification.
 
 ### Pending Todos
 
@@ -250,6 +255,6 @@ Next action: Execute 134-22-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T19:20:03.897Z
-Stopped at: Completed 134-21-PLAN.md
+Last session: 2026-07-29T20:13:32.124Z
+Stopped at: Completed 134-22-PLAN.md
 Resume file: None
