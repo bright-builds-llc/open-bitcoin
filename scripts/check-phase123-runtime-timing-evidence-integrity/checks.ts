@@ -140,6 +140,8 @@ export function verifyIdleMaintenance(
 ): void {
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
   const session = texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const emissionTerminal =
+    texts.get("packages/open-bitcoin-node/src/sync/session/emission_terminal.rs") ?? "";
   const blockReconcile = texts.get("packages/open-bitcoin-node/src/sync/block_reconcile.rs") ?? "";
   const blockResponse = texts.get("packages/open-bitcoin-node/src/sync/block_response.rs") ?? "";
   const syncSession = `${sync}\n${session}`;
@@ -219,12 +221,10 @@ export function verifyIdleMaintenance(
     failures,
   );
   requireOrdered(
-    session,
+    emissionTerminal,
     [
-      "pub(super) fn send_all_for_peer",
-      "self.send_all(session, messages)?;",
-      "let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;",
-      "session.send(&message, self.config.network.magic())?;",
+      "pub(super) fn send_peer_emissions",
+      "session.send(&message, network_magic)",
       "capability.acknowledge_write()",
     ],
     "P123 sync peer emission post-write completion",

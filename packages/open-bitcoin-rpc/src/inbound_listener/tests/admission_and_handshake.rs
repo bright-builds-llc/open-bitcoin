@@ -246,7 +246,7 @@ async fn idle_inbound_peer_wakes_for_queued_announcement_and_credits_once() {
 
     // Act
     outboxes
-        .enqueue_prepared(outcomes)
+        .enqueue_prepared(&network, outcomes)
         .expect("enqueue idle inbound announcement");
     let announcement = tokio::time::timeout(Duration::from_secs(1), receive_any_message(&stream))
         .await

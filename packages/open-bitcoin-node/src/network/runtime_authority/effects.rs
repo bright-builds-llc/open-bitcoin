@@ -14,7 +14,7 @@ use crate::network::lifecycle_projection::{
     SnapshotPreparationRequest,
 };
 use crate::network::{
-    PeerEmissionReceipt,
+    PeerEmissionReceipt, PeerEmissionWriteCapability,
     lifecycle_effects::{
         EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
         PreparedSnapshotWrite, SnapshotWriteReceipt,
@@ -74,6 +74,14 @@ impl ManagedNetworkHandle {
             LifecycleCommandResult::PeerEffectAborted(abort) => Ok(abort),
             _ => Err(unexpected_result("peer effect abort")),
         }
+    }
+
+    /// Releases one exact prepared peer emission before any write was achieved.
+    pub fn abort_peer_emission(
+        &self,
+        capability: PeerEmissionWriteCapability,
+    ) -> Result<EffectAbort, ManagedNetworkAuthorityError> {
+        self.abort_peer_effect(capability.into_effect_capability())
     }
 
     /// Classifies one achieved peer write through the lifecycle dispatcher.

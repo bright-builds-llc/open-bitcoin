@@ -133,7 +133,7 @@ test.each([
     "outbound post-write receipt",
     "P128 outbound write boundary: receipt completion must follow the session send",
     replace(
-      "packages/open-bitcoin-node/src/sync/session.rs",
+      "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
       "capability.acknowledge_write()",
       "drop(capability)",
     ),

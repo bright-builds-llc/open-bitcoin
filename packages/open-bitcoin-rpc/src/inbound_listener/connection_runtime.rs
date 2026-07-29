@@ -3,6 +3,7 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 
 use std::{
+    collections::VecDeque,
     future::pending,
     io,
     net::SocketAddr,
@@ -16,8 +17,8 @@ use open_bitcoin_network::{
 };
 use open_bitcoin_node::{
     core::primitives::NetworkMagic,
-    network::{PeerEmission, PeerEmissionReceipt},
-    sync::AnnouncementOutboxNotification,
+    network::{EffectAbort, PeerEmission, PeerEmissionReceipt, PeerEmissionWriteCapability},
+    sync::{AnnouncementOutboxNotification, SyncRuntimeError},
 };
 
 use crate::{
@@ -90,7 +91,10 @@ pub(super) async fn handle_inbound_stream(
     };
 
     let Ok(network_info) = context.lock().await.network_info() else {
-        unregister_announcement_peer(&maybe_announcement_transport, peer_id);
+        if unregister_announcement_peer(&maybe_announcement_transport, peer_id).is_err() {
+            lock_runtime_counters(&runtime_counters)
+                .record_failure(&resource_policy, current_timestamp());
+        }
         return;
     };
     let envelope_policy = InboundEnvelopePolicy::new(network_info.network_magic);
@@ -279,7 +283,10 @@ pub(super) async fn handle_inbound_stream(
             break;
         }
     }
-    unregister_announcement_peer(&maybe_announcement_transport, peer_id);
+    if unregister_announcement_peer(&maybe_announcement_transport, peer_id).is_err() {
+        lock_runtime_counters(&runtime_counters)
+            .record_failure(&resource_policy, current_timestamp());
+    }
     disconnect_admitted_peer(&context, peer_id).await;
 }
 
@@ -296,10 +303,13 @@ async fn wait_for_outbox_notification(
 fn unregister_announcement_peer(
     maybe_transport: &Option<InboundAnnouncementTransport>,
     peer_id: u64,
-) {
+) -> Result<(), SyncRuntimeError> {
     if let Some(transport) = maybe_transport {
-        let _ = transport.outboxes.unregister_peer(peer_id);
+        return transport
+            .outboxes
+            .unregister_peer(&transport.network, peer_id);
     }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -319,6 +329,7 @@ pub(super) enum InboundEmissionExecutionOutcome {
     Disconnected,
     WriteFailed,
     CompletionFailed,
+    AbortFailed,
 }
 
 pub(super) trait InboundEmissionExecutor {
@@ -327,6 +338,8 @@ pub(super) trait InboundEmissionExecutor {
     async fn write(&mut self, bytes: &[u8]) -> InboundEmissionWriteResult;
 
     fn complete(&mut self, receipt: PeerEmissionReceipt) -> Result<(), ()>;
+
+    fn abort(&mut self, capability: PeerEmissionWriteCapability) -> Result<EffectAbort, ()>;
 }
 
 pub(super) async fn execute_inbound_emissions<E: InboundEmissionExecutor>(
@@ -334,32 +347,81 @@ pub(super) async fn execute_inbound_emissions<E: InboundEmissionExecutor>(
     peer_id: u64,
     executor: &mut E,
 ) -> InboundEmissionExecutionOutcome {
-    for emission in emissions {
+    let mut emissions = VecDeque::from(emissions);
+    while let Some(emission) = emissions.pop_front() {
         let (target_peer_id, message, capability) = emission.into_parts();
         if target_peer_id != peer_id {
-            return InboundEmissionExecutionOutcome::TargetMismatch;
+            return abort_current_and_suffix(executor, capability, emissions)
+                .map(|()| InboundEmissionExecutionOutcome::TargetMismatch)
+                .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
         }
         let Ok(bytes) = executor.encode(&message) else {
-            return InboundEmissionExecutionOutcome::EncodeFailed;
+            return abort_current_and_suffix(executor, capability, emissions)
+                .map(|()| InboundEmissionExecutionOutcome::EncodeFailed)
+                .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
         };
         match executor.write(&bytes).await {
             InboundEmissionWriteResult::Written => {
                 if executor.complete(capability.acknowledge_write()).is_err() {
+                    if abort_suffix(executor, emissions).is_err() {
+                        return InboundEmissionExecutionOutcome::AbortFailed;
+                    }
                     return InboundEmissionExecutionOutcome::CompletionFailed;
                 }
             }
             InboundEmissionWriteResult::Rejected => {
-                return InboundEmissionExecutionOutcome::Rejected;
+                return abort_current_and_suffix(executor, capability, emissions)
+                    .map(|()| InboundEmissionExecutionOutcome::Rejected)
+                    .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
             }
             InboundEmissionWriteResult::Disconnected => {
-                return InboundEmissionExecutionOutcome::Disconnected;
+                return abort_current_and_suffix(executor, capability, emissions)
+                    .map(|()| InboundEmissionExecutionOutcome::Disconnected)
+                    .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
             }
             InboundEmissionWriteResult::Failed => {
-                return InboundEmissionExecutionOutcome::WriteFailed;
+                return abort_current_and_suffix(executor, capability, emissions)
+                    .map(|()| InboundEmissionExecutionOutcome::WriteFailed)
+                    .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
             }
         }
     }
     InboundEmissionExecutionOutcome::Complete
+}
+
+fn abort_current_and_suffix<E: InboundEmissionExecutor>(
+    executor: &mut E,
+    current: PeerEmissionWriteCapability,
+    suffix: VecDeque<PeerEmission>,
+) -> Result<(), ()> {
+    abort_capabilities(
+        executor,
+        std::iter::once(current).chain(suffix.into_iter().map(|emission| emission.into_parts().2)),
+    )
+}
+
+fn abort_suffix<E: InboundEmissionExecutor>(
+    executor: &mut E,
+    suffix: VecDeque<PeerEmission>,
+) -> Result<(), ()> {
+    abort_capabilities(
+        executor,
+        suffix.into_iter().map(|emission| emission.into_parts().2),
+    )
+}
+
+fn abort_capabilities<E: InboundEmissionExecutor>(
+    executor: &mut E,
+    capabilities: impl IntoIterator<Item = PeerEmissionWriteCapability>,
+) -> Result<(), ()> {
+    let mut abort_failed = false;
+    for capability in capabilities {
+        abort_failed |= !matches!(executor.abort(capability), Ok(EffectAbort::Aborted));
+    }
+    if abort_failed {
+        return Err(());
+    }
+    Ok(())
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -436,6 +498,13 @@ impl InboundEmissionExecutor for SocketInboundEmissionExecutor<'_> {
             .network
             .complete_peer_emission(receipt)
             .map(|_outcome| ())
+            .map_err(|_error| ())
+    }
+
+    fn abort(&mut self, capability: PeerEmissionWriteCapability) -> Result<EffectAbort, ()> {
+        self.transport
+            .network
+            .abort_peer_emission(capability)
             .map_err(|_error| ())
     }
 }

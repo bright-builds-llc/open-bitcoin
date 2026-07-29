@@ -33,6 +33,8 @@ use super::{
 };
 use crate::network::{AnnouncementPreparationOutcome, PeerEmission, PeerOutboxSnapshot};
 
+mod emission_terminal;
+
 struct AnnouncementOutbox {
     emissions: VecDeque<PeerEmission>,
     readiness: Arc<AnnouncementOutboxReadiness>,
@@ -124,10 +126,17 @@ impl AnnouncementOutboxRegistry {
         })
     }
 
-    /// Removes one peer and discards only its bounded volatile announcement queue.
-    pub fn unregister_peer(&self, peer_id: PeerId) -> Result<(), SyncRuntimeError> {
-        self.lock_outboxes()?.remove(&peer_id);
-        Ok(())
+    /// Removes one peer and aborts its bounded volatile announcement queue.
+    pub fn unregister_peer(
+        &self,
+        network: &crate::ManagedNetworkHandle,
+        peer_id: PeerId,
+    ) -> Result<(), SyncRuntimeError> {
+        let maybe_outbox = self.lock_outboxes()?.remove(&peer_id);
+        let emissions = maybe_outbox
+            .map(|outbox| outbox.emissions)
+            .unwrap_or_default();
+        emission_terminal::abort_emissions(network, emissions)
     }
 
     /// Captures queue pressure without retaining the registry lock during preparation.
@@ -148,25 +157,35 @@ impl AnnouncementOutboxRegistry {
     /// Enqueues prepared emissions while preserving per-peer and aggregate bounds.
     pub fn enqueue_prepared(
         &self,
+        network: &crate::ManagedNetworkHandle,
         outcomes: Vec<AnnouncementPreparationOutcome>,
     ) -> Result<(), SyncRuntimeError> {
-        let mut outboxes = self.lock_outboxes()?;
+        let mut outboxes = match self.lock_outboxes() {
+            Ok(outboxes) => outboxes,
+            Err(error) => {
+                return emission_terminal::abort_outcomes(network, outcomes).and(Err(error));
+            }
+        };
         let mut aggregate_queued = outboxes
             .values()
             .map(|outbox| outbox.emissions.len())
             .sum::<usize>();
         let mut readiness_notifications = Vec::new();
+        let mut aborted_emissions = Vec::new();
         for outcome in outcomes {
             let AnnouncementPreparationOutcome::Ready(emission) = outcome else {
                 continue;
             };
             if aggregate_queued >= PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES {
-                break;
+                aborted_emissions.push(*emission);
+                continue;
             }
             let Some(outbox) = outboxes.get_mut(&emission.peer_id()) else {
+                aborted_emissions.push(*emission);
                 continue;
             };
             if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES {
+                aborted_emissions.push(*emission);
                 continue;
             }
             outbox.emissions.push_back(*emission);
@@ -177,7 +196,7 @@ impl AnnouncementOutboxRegistry {
         for readiness in readiness_notifications {
             readiness.notify();
         }
-        Ok(())
+        emission_terminal::abort_emissions(network, aborted_emissions)
     }
 
     /// Takes the current FIFO batch for exactly one peer.
@@ -438,10 +457,13 @@ impl DurableSyncRuntime {
             self.inflight_blocks.remove(&block_hash);
         }
         let outbox_cleanup_result = if outbox_registered {
-            self.announcement_outboxes.unregister_peer(peer_id)
+            self.announcement_outboxes
+                .unregister_peer(&self.network, peer_id)
         } else {
             Ok(())
         };
+        let (result, outbox_cleanup_result) =
+            emission_terminal::surface_abort_cleanup_error(result, outbox_cleanup_result);
         let disconnect_result = if network_connected {
             self.network.disconnect_peer(peer_id)
         } else {
@@ -543,19 +565,13 @@ impl DurableSyncRuntime {
     ) -> Result<(), SyncRuntimeError> {
         self.send_all(session, messages)?;
         let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;
-        for emission in emissions {
-            let (target_peer_id, message, capability) = emission.into_parts();
-            if target_peer_id != peer_id {
-                return Err(SyncRuntimeError::Network {
-                    message: "announcement outbox target does not match connected session"
-                        .to_string(),
-                });
-            }
-            session.send(&message, self.config.network.magic())?;
-            self.network
-                .complete_peer_emission(capability.acknowledge_write())?;
-        }
-        Ok(())
+        emission_terminal::send_peer_emissions(
+            &self.network,
+            session,
+            peer_id,
+            self.config.network.magic(),
+            emissions,
+        )
     }
 
     pub(super) fn peer_handshake_complete(&self, peer_id: open_bitcoin_network::PeerId) -> bool {

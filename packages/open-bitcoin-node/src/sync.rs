@@ -153,7 +153,7 @@ impl DurableSyncRuntime {
             let outboxes = announcement_outboxes_for_sink.snapshots()?;
             let outcomes =
                 announcement_network.prepare_block_announcements(event.block(), &outboxes)?;
-            announcement_outboxes_for_sink.enqueue_prepared(outcomes)
+            announcement_outboxes_for_sink.enqueue_prepared(&announcement_network, outcomes)
         });
 
         let consensus_params = config.network.consensus_params();

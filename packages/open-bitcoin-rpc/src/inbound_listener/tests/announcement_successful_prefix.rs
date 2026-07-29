@@ -15,8 +15,8 @@ use open_bitcoin_node::{
     ManagedNetworkHandle, PeerIdentityAuthority, SyncRuntimeError,
     core::primitives::{Block, NetworkMagic},
     network::{
-        AnnouncementPreparationOutcome, EffectCompletion, PeerEmission, PeerEmissionReceipt,
-        PeerOutboxSnapshot,
+        AnnouncementPreparationOutcome, EffectAbort, EffectCompletion, PeerEmission,
+        PeerEmissionReceipt, PeerEmissionWriteCapability, PeerOutboxSnapshot,
     },
     sync::AnnouncementOutboxRegistry,
 };
@@ -24,6 +24,7 @@ use open_bitcoin_node::{
 use super::*;
 
 const PEER_ID: u64 = 134_091;
+const OTHER_PEER_ID: u64 = 134_092;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum ScriptedFailure {
@@ -36,15 +37,19 @@ enum ScriptedFailure {
 struct ScriptedInboundExecutor {
     network: ManagedNetworkHandle,
     failure: ScriptedFailure,
+    failure_on_call: usize,
     encode_calls: usize,
     write_calls: usize,
     completion_calls: Vec<EffectCompletion>,
+    abort_calls: Vec<EffectAbort>,
+    abort_attempts: usize,
+    abort_should_fail: bool,
 }
 
 impl InboundEmissionExecutor for ScriptedInboundExecutor {
     fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()> {
         self.encode_calls = self.encode_calls.saturating_add(1);
-        if self.failure == ScriptedFailure::Encode && self.encode_calls == 2 {
+        if self.failure == ScriptedFailure::Encode && self.encode_calls == self.failure_on_call {
             return Err(());
         }
         message
@@ -54,7 +59,7 @@ impl InboundEmissionExecutor for ScriptedInboundExecutor {
 
     async fn write(&mut self, _bytes: &[u8]) -> InboundEmissionWriteResult {
         self.write_calls = self.write_calls.saturating_add(1);
-        if self.write_calls != 2 {
+        if self.write_calls != self.failure_on_call {
             return InboundEmissionWriteResult::Written;
         }
         match self.failure {
@@ -73,6 +78,19 @@ impl InboundEmissionExecutor for ScriptedInboundExecutor {
         self.completion_calls.push(completion);
         Ok(())
     }
+
+    fn abort(&mut self, capability: PeerEmissionWriteCapability) -> Result<EffectAbort, ()> {
+        self.abort_attempts = self.abort_attempts.saturating_add(1);
+        if self.abort_should_fail {
+            return Err(());
+        }
+        let abort = self
+            .network
+            .abort_peer_emission(capability)
+            .map_err(|_error| ())?;
+        self.abort_calls.push(abort);
+        Ok(abort)
+    }
 }
 
 fn network_fixture() -> ManagedNetworkHandle {
@@ -89,23 +107,25 @@ fn network_fixture() -> ManagedNetworkHandle {
         None,
     )
     .expect("compose scripted RPC network");
-    context
-        .connect_outbound_peer(PEER_ID, 1)
-        .expect("connect scripted peer");
-    for message in [
-        WireNetworkMessage::Version(VersionMessage::default()),
-        WireNetworkMessage::Verack,
-    ] {
+    for peer_id in [PEER_ID, OTHER_PEER_ID] {
         context
-            .receive_network_message(PEER_ID, message, 1)
-            .expect("complete scripted handshake");
+            .connect_outbound_peer(peer_id, 1)
+            .expect("connect scripted peer");
+        for message in [
+            WireNetworkMessage::Version(VersionMessage::default()),
+            WireNetworkMessage::Verack,
+        ] {
+            context
+                .receive_network_message(peer_id, message, 1)
+                .expect("complete scripted handshake");
+        }
     }
     network
 }
 
-fn scripted_emissions(network: &ManagedNetworkHandle) -> Vec<PeerEmission> {
+fn scripted_emissions(network: &ManagedNetworkHandle, peer_id: u64) -> Vec<PeerEmission> {
     let snapshots = [PeerOutboxSnapshot::new(
-        PEER_ID,
+        peer_id,
         0,
         PHASE94_MAX_PEER_QUEUED_MESSAGES,
     )];
@@ -114,11 +134,10 @@ fn scripted_emissions(network: &ManagedNetworkHandle) -> Vec<PeerEmission> {
             let outcomes = network
                 .prepare_block_announcements(&Block::default(), &snapshots)
                 .expect("prepare scripted block announcement");
-            assert_eq!(outcomes.len(), 1);
             match outcomes
                 .into_iter()
-                .next()
-                .expect("one scripted peer outcome")
+                .find(|outcome| outcome.peer_id() == peer_id)
+                .expect("one scripted target-peer outcome")
             {
                 AnnouncementPreparationOutcome::Ready(emission) => *emission,
                 other => panic!("scripted peer should produce a ready emission: {other:?}"),
@@ -129,18 +148,31 @@ fn scripted_emissions(network: &ManagedNetworkHandle) -> Vec<PeerEmission> {
 
 async fn run_script(
     failure: ScriptedFailure,
+    failure_on_call: usize,
 ) -> (InboundEmissionExecutionOutcome, ScriptedInboundExecutor) {
     let network = network_fixture();
-    let emissions = scripted_emissions(&network);
+    let emissions = scripted_emissions(&network, PEER_ID);
     let mut executor = ScriptedInboundExecutor {
         network,
         failure,
+        failure_on_call,
         encode_calls: 0,
         write_calls: 0,
         completion_calls: Vec::new(),
+        abort_calls: Vec::new(),
+        abort_attempts: 0,
+        abort_should_fail: false,
     };
     let outcome = execute_inbound_emissions(emissions, PEER_ID, &mut executor).await;
     (outcome, executor)
+}
+
+fn assert_pending_capacity_recovered(network: &ManagedNetworkHandle, peer_id: u64) {
+    for _ in 0..PHASE94_MAX_PEER_QUEUED_MESSAGES {
+        network
+            .prepare_peer_relay_effect(peer_id)
+            .expect("all pending peer slots should be reusable after fanout failure");
+    }
 }
 
 fn assert_one_achieved_prefix(executor: &ScriptedInboundExecutor) {
@@ -164,13 +196,15 @@ async fn phase134_rpc_successful_prefix_encode_failure_stops_before_second_write
     let failure = ScriptedFailure::Encode;
 
     // Act
-    let (outcome, executor) = run_script(failure).await;
+    let (outcome, executor) = run_script(failure, 2).await;
 
     // Assert
     assert_eq!(outcome, InboundEmissionExecutionOutcome::EncodeFailed);
     assert_eq!(executor.encode_calls, 2);
     assert_eq!(executor.write_calls, 1);
     assert_one_achieved_prefix(&executor);
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted; 2]);
+    assert_pending_capacity_recovered(&executor.network, PEER_ID);
 }
 
 #[tokio::test]
@@ -179,13 +213,15 @@ async fn phase134_rpc_successful_prefix_rejection_stops_before_third_command() {
     let failure = ScriptedFailure::Rejected;
 
     // Act
-    let (outcome, executor) = run_script(failure).await;
+    let (outcome, executor) = run_script(failure, 2).await;
 
     // Assert
     assert_eq!(outcome, InboundEmissionExecutionOutcome::Rejected);
     assert_eq!(executor.encode_calls, 2);
     assert_eq!(executor.write_calls, 2);
     assert_one_achieved_prefix(&executor);
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted; 2]);
+    assert_pending_capacity_recovered(&executor.network, PEER_ID);
 }
 
 #[tokio::test]
@@ -194,13 +230,15 @@ async fn phase134_rpc_successful_prefix_disconnect_stops_before_third_command() 
     let failure = ScriptedFailure::Disconnected;
 
     // Act
-    let (outcome, executor) = run_script(failure).await;
+    let (outcome, executor) = run_script(failure, 2).await;
 
     // Assert
     assert_eq!(outcome, InboundEmissionExecutionOutcome::Disconnected);
     assert_eq!(executor.encode_calls, 2);
     assert_eq!(executor.write_calls, 2);
     assert_one_achieved_prefix(&executor);
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted; 2]);
+    assert_pending_capacity_recovered(&executor.network, PEER_ID);
 }
 
 #[tokio::test]
@@ -209,19 +247,108 @@ async fn phase134_rpc_successful_prefix_write_failure_stops_before_third_command
     let failure = ScriptedFailure::Write;
 
     // Act
-    let (outcome, executor) = run_script(failure).await;
+    let (outcome, executor) = run_script(failure, 2).await;
 
     // Assert
     assert_eq!(outcome, InboundEmissionExecutionOutcome::WriteFailed);
     assert_eq!(executor.encode_calls, 2);
     assert_eq!(executor.write_calls, 2);
     assert_one_achieved_prefix(&executor);
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted; 2]);
+    assert_pending_capacity_recovered(&executor.network, PEER_ID);
+}
+
+#[tokio::test]
+async fn phase134_rpc_first_write_failure_aborts_the_entire_batch() {
+    // Arrange
+    let failure = ScriptedFailure::Write;
+
+    // Act
+    let (outcome, executor) = run_script(failure, 1).await;
+
+    // Assert
+    assert_eq!(outcome, InboundEmissionExecutionOutcome::WriteFailed);
+    assert!(executor.completion_calls.is_empty());
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted; 3]);
+    assert_pending_capacity_recovered(&executor.network, PEER_ID);
+}
+
+#[tokio::test]
+async fn phase134_rpc_last_write_failure_keeps_two_completed_prefix_items() {
+    // Arrange
+    let failure = ScriptedFailure::Write;
+
+    // Act
+    let (outcome, executor) = run_script(failure, 3).await;
+
+    // Assert
+    assert_eq!(outcome, InboundEmissionExecutionOutcome::WriteFailed);
+    assert_eq!(
+        executor.completion_calls,
+        [EffectCompletion::Applied, EffectCompletion::Applied]
+    );
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted]);
+    assert_pending_capacity_recovered(&executor.network, PEER_ID);
+}
+
+#[tokio::test]
+async fn phase134_rpc_target_mismatch_aborts_current_and_unsent_suffix() {
+    // Arrange
+    let network = network_fixture();
+    let emissions = scripted_emissions(&network, OTHER_PEER_ID);
+    let mut executor = ScriptedInboundExecutor {
+        network,
+        failure: ScriptedFailure::Write,
+        failure_on_call: 1,
+        encode_calls: 0,
+        write_calls: 0,
+        completion_calls: Vec::new(),
+        abort_calls: Vec::new(),
+        abort_attempts: 0,
+        abort_should_fail: false,
+    };
+
+    // Act
+    let outcome = execute_inbound_emissions(emissions, PEER_ID, &mut executor).await;
+
+    // Assert
+    assert_eq!(outcome, InboundEmissionExecutionOutcome::TargetMismatch);
+    assert_eq!(executor.encode_calls, 0);
+    assert_eq!(executor.write_calls, 0);
+    assert_eq!(executor.abort_calls, [EffectAbort::Aborted; 3]);
+    assert_pending_capacity_recovered(&executor.network, OTHER_PEER_ID);
+}
+
+#[tokio::test]
+async fn phase134_rpc_abort_failure_is_visible_and_attempts_every_suffix_item() {
+    // Arrange
+    let network = network_fixture();
+    let emissions = scripted_emissions(&network, OTHER_PEER_ID);
+    let mut executor = ScriptedInboundExecutor {
+        network,
+        failure: ScriptedFailure::Write,
+        failure_on_call: 1,
+        encode_calls: 0,
+        write_calls: 0,
+        completion_calls: Vec::new(),
+        abort_calls: Vec::new(),
+        abort_attempts: 0,
+        abort_should_fail: true,
+    };
+
+    // Act
+    let outcome = execute_inbound_emissions(emissions, PEER_ID, &mut executor).await;
+
+    // Assert
+    assert_eq!(outcome, InboundEmissionExecutionOutcome::AbortFailed);
+    assert_eq!(executor.abort_attempts, 3);
 }
 
 #[test]
 fn concurrent_inbound_and_outbound_sessions_have_distinct_scoped_outboxes() {
     // Arrange
     let authority = PeerIdentityAuthority::default();
+    let network = network_fixture();
     let outboxes = AnnouncementOutboxRegistry::default();
     let barrier = Arc::new(Barrier::new(3));
     let inbound = spawn_registered_peer(&authority, &outboxes, &barrier);
@@ -236,7 +363,7 @@ fn concurrent_inbound_and_outbound_sessions_have_distinct_scoped_outboxes() {
         Err(error) => error,
     };
     outboxes
-        .unregister_peer(inbound_peer_id)
+        .unregister_peer(&network, inbound_peer_id)
         .expect("unregister inbound peer");
     let snapshots = outboxes.snapshots().expect("outbox snapshots");
 

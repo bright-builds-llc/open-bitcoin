@@ -11,11 +11,15 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
-    HeadersMessage, WireNetworkMessage,
+    HeadersMessage, PHASE94_MAX_PEER_QUEUED_MESSAGES, WireNetworkMessage,
 };
 
 use super::*;
-use crate::{block_relay_metric_samples, logging::block_relay_log_record, network::PeerEmission};
+use crate::{
+    block_relay_metric_samples,
+    logging::block_relay_log_record,
+    network::{PeerEmission, PeerOutboxSnapshot},
+};
 
 const TRANSPORT_TIMESTAMP: i64 = 1_784_523_200;
 
@@ -154,6 +158,59 @@ fn announcement_evidence(runtime: &DurableSyncRuntime) -> serde_json::Value {
             .expect("block relay evidence"),
     )
     .expect("serialize announcement evidence")
+}
+
+fn achieved_announcement_count(evidence: &serde_json::Value) -> u64 {
+    [
+        "compact_announced_count",
+        "compact_headers_fallback_count",
+        "compact_inventory_fallback_count",
+    ]
+    .into_iter()
+    .map(|field| {
+        evidence["announcement"]["value"][field]
+            .as_u64()
+            .unwrap_or(0)
+    })
+    .sum()
+}
+
+fn assert_peer_pending_capacity_recovered(runtime: &DurableSyncRuntime, peer_id: PeerId) {
+    for _ in 0..PHASE94_MAX_PEER_QUEUED_MESSAGES {
+        runtime
+            .network
+            .prepare_peer_relay_effect(peer_id)
+            .expect("all pending peer slots should be reusable after fanout failure");
+    }
+}
+
+fn assert_node_write_failure_terminal_contract(failure_call: usize, test_name: &str) {
+    let (mut runtime, path) = open_production_announcement_runtime(test_name);
+    let peer_id = 128_320_u64.saturating_add(failure_call as u64);
+    complete_remote_handshake(&mut runtime, peer_id);
+    runtime
+        .announcement_outboxes
+        .register_peer(peer_id)
+        .expect("register peer outbox");
+    let first = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    make_durable_and_prepare(&mut runtime, &first);
+    let second = build_block(block_hash(&first.header), 1);
+    make_durable_and_prepare(&mut runtime, &second);
+    let third = build_block(block_hash(&second.header), 2);
+    make_durable_and_prepare(&mut runtime, &third);
+    let achieved_before = achieved_announcement_count(&announcement_evidence(&runtime));
+    let mut session = RecordingAnnouncementSession::failing_on_call(failure_call);
+
+    let result = runtime.send_all_for_peer(&mut session, peer_id, &[]);
+
+    assert!(matches!(result, Err(SyncRuntimeError::Io { .. })));
+    assert_eq!(session.sent.len(), failure_call.saturating_sub(1));
+    assert_eq!(
+        achieved_announcement_count(&announcement_evidence(&runtime)) - achieved_before,
+        failure_call.saturating_sub(1) as u64
+    );
+    assert_peer_pending_capacity_recovered(&runtime, peer_id);
+    remove_dir_if_exists(&path);
 }
 
 #[test]
@@ -299,6 +356,65 @@ fn production_announcement_transport_cases_partial_failure_credits_only_prefix_a
     ] {
         assert!(!projected.contains(&sensitive));
     }
+    assert_peer_pending_capacity_recovered(&runtime, peer_id);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn production_announcement_transport_cases_first_and_last_failures_restore_capacity() {
+    // Arrange / Act / Assert
+    assert_node_write_failure_terminal_contract(1, "production-first-failure");
+    assert_node_write_failure_terminal_contract(3, "production-last-failure");
+}
+
+#[test]
+fn production_announcement_transport_cases_enqueue_race_aborts_unqueued_emission() {
+    // Arrange
+    let (mut runtime, path) = open_production_announcement_runtime("production-enqueue-race");
+    let peer_id = 128_331;
+    complete_remote_handshake(&mut runtime, peer_id);
+    let snapshots = [PeerOutboxSnapshot::new(
+        peer_id,
+        0,
+        PHASE94_MAX_PEER_QUEUED_MESSAGES,
+    )];
+    let outcomes = runtime
+        .network
+        .prepare_block_announcements(&Block::default(), &snapshots)
+        .expect("prepare raced announcement");
+
+    // Act
+    runtime
+        .announcement_outboxes
+        .enqueue_prepared(&runtime.network, outcomes)
+        .expect("abort emission whose outbox disappeared");
+
+    // Assert
+    assert_peer_pending_capacity_recovered(&runtime, peer_id);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn production_announcement_transport_cases_unregister_aborts_queued_emission() {
+    // Arrange
+    let (mut runtime, path) = open_production_announcement_runtime("production-unregister");
+    let peer_id = 128_332;
+    complete_remote_handshake(&mut runtime, peer_id);
+    runtime
+        .announcement_outboxes
+        .register_peer(peer_id)
+        .expect("register peer outbox");
+    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    make_durable_and_prepare(&mut runtime, &block);
+
+    // Act
+    runtime
+        .announcement_outboxes
+        .unregister_peer(&runtime.network, peer_id)
+        .expect("abort queued peer emission");
+
+    // Assert
+    assert_peer_pending_capacity_recovered(&runtime, peer_id);
     remove_dir_if_exists(&path);
 }
 
@@ -351,5 +467,6 @@ fn production_announcement_transport_cases_encode_failure_preserves_only_achieve
         evidence["announcement"]["value"]["compact_headers_fallback_count"],
         1
     );
+    assert_peer_pending_capacity_recovered(&runtime, peer_id);
     remove_dir_if_exists(&path);
 }

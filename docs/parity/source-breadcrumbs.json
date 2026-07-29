@@ -1494,6 +1494,7 @@
         "packages/open-bitcoin-node/src/sync/runtime_state/helpers.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state/recovery.rs",
         "packages/open-bitcoin-node/src/sync/session.rs",
+        "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
         "packages/open-bitcoin-node/src/sync/waiting.rs",
         "packages/open-bitcoin-node/src/sync/wallet_rescan.rs"
       ],

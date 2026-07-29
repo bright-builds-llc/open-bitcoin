@@ -146,6 +146,10 @@ impl PeerEmissionWriteCapability {
             },
         }
     }
+
+    pub(in crate::network) fn into_effect_capability(self) -> PeerEffectCapability {
+        self.effect_capability
+    }
 }
 
 /// Non-replayable proof that one exact prepared peer write succeeded.

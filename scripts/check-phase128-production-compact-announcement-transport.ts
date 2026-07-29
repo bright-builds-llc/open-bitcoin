@@ -28,6 +28,7 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/block_response.rs",
   "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
   "packages/open-bitcoin-node/src/sync/session.rs",
+  "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
   "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
@@ -168,7 +169,7 @@ function checkPostDurableTrigger(
     !orderedFragments(sync, [
       "let outboxes = announcement_outboxes_for_sink.snapshots()?;",
       "announcement_network.prepare_block_announcements(event.block(), &outboxes)?;",
-      "announcement_outboxes_for_sink.enqueue_prepared(outcomes)",
+      "announcement_outboxes_for_sink.enqueue_prepared(&announcement_network, outcomes)",
     ]) ||
     !orderedFragments(persistAndDispatch, [
       "self.persist_progress()",
@@ -288,17 +289,18 @@ function checkProductionWriteBoundaries(
   texts: TextCorpus,
   failures: string[],
 ): void {
-  const session =
-    texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const emissionTerminal =
+    texts.get("packages/open-bitcoin-node/src/sync/session/emission_terminal.rs") ??
+    "";
   const outbound = section(
-    session,
-    "pub(super) fn send_all_for_peer",
-    "\n    pub(super) fn peer_handshake_complete",
+    emissionTerminal,
+    "pub(super) fn send_peer_emissions",
+    "\npub(super) fn abort_emissions",
   );
   if (
     !orderedFragments(outbound, [
       "let (target_peer_id, message, capability) = emission.into_parts();",
-      "session.send(&message, self.config.network.magic())?;",
+      "session.send(&message, network_magic)",
       "capability.acknowledge_write()",
     ])
   ) {
