@@ -574,15 +574,15 @@ impl TxOrphanage {
             self.decrement_peer_count(*peer_id);
         }
         for cursor in self.candidate_cursors.values_mut() {
-            let removed_before_next = cursor.child_wtxids[..cursor.next_child]
+            let removed_before_next = cursor.child_identities[..cursor.next_child]
                 .iter()
-                .filter(|child_wtxid| **child_wtxid == wtxid)
+                .filter(|identity| identity.wtxid() == wtxid)
                 .count();
-            cursor.child_wtxids = cursor
-                .child_wtxids
+            cursor.child_identities = cursor
+                .child_identities
                 .iter()
+                .filter(|identity| identity.wtxid() != wtxid)
                 .copied()
-                .filter(|child_wtxid| *child_wtxid != wtxid)
                 .collect::<Vec<_>>()
                 .into_boxed_slice();
             cursor.next_child = cursor.next_child.saturating_sub(removed_before_next);

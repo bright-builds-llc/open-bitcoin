@@ -8,6 +8,7 @@ use crate::{
     PeerTransactionLifecyclePreparationError,
 };
 
+mod identity_aliases;
 mod reconciliation;
 
 fn identity(byte: u8) -> PeerTransactionIdentity {

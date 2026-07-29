@@ -131,8 +131,8 @@ test.each([
     "P133 PPKG-02: persistent candidate cursors must retain one parent body and child identities only",
     replace(
       "packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs",
-      "pub(super) child_wtxids: Box<[Wtxid]>,",
-      "pub(super) child_wtxids: Box<[Wtxid]>,\n    pub(super) child_transactions: Box<[Transaction]>,",
+      "pub(super) child_identities: Box<[CandidateChildIdentity]>,",
+      "pub(super) child_identities: Box<[CandidateChildIdentity]>,\n    pub(super) child_transactions: Box<[Transaction]>,",
     ),
   ],
   [

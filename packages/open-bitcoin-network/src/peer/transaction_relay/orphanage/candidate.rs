@@ -48,12 +48,28 @@ impl SamePeerOneParentOneChildCandidate {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct CandidateChildIdentity {
+    txid: Txid,
+    wtxid: Wtxid,
+}
+
+impl CandidateChildIdentity {
+    pub(crate) const fn txid(&self) -> Txid {
+        self.txid
+    }
+
+    pub(crate) const fn wtxid(&self) -> Wtxid {
+        self.wtxid
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct SamePeerCandidateCursor {
     pub(super) parent: Transaction,
     pub(super) parent_txid: Txid,
     pub(super) parent_peer: PeerId,
-    pub(super) child_wtxids: Box<[Wtxid]>,
+    pub(super) child_identities: Box<[CandidateChildIdentity]>,
     pub(super) next_child: usize,
     pub(super) visited: usize,
     parent_body_bytes: usize,
@@ -64,9 +80,9 @@ impl SamePeerCandidateCursor {
         std::mem::size_of::<Self>()
             .saturating_add(self.parent_body_bytes)
             .saturating_add(
-                self.child_wtxids
+                self.child_identities
                     .len()
-                    .saturating_mul(std::mem::size_of::<Wtxid>()),
+                    .saturating_mul(std::mem::size_of::<CandidateChildIdentity>()),
             )
     }
 }
@@ -87,14 +103,17 @@ impl TxOrphanage {
             return None;
         }
 
-        let child_wtxids = self
+        let child_identities = self
             .children_by_parent
             .get(&parent_txid)?
             .iter()
             .filter_map(|(_, wtxid)| {
                 let entry = self.orphans.get(wtxid)?;
                 (entry.missing_parents.len() == 1 && entry.announcers.contains(parent_peer))
-                    .then_some(*wtxid)
+                    .then_some(CandidateChildIdentity {
+                        txid: entry.txid,
+                        wtxid: *wtxid,
+                    })
             })
             .collect::<Vec<_>>()
             .into_boxed_slice();
@@ -103,7 +122,7 @@ impl TxOrphanage {
             parent,
             parent_txid,
             parent_peer,
-            child_wtxids,
+            child_identities,
             next_child: 0,
             visited: 0,
             parent_body_bytes,
@@ -129,9 +148,9 @@ impl TxOrphanage {
         let mut cursor = self.candidate_cursors.remove(&cursor_key)?;
 
         while cursor.visited < self.policy.max_reconsiderations_per_parent
-            && cursor.next_child < cursor.child_wtxids.len()
+            && cursor.next_child < cursor.child_identities.len()
         {
-            let child_wtxid = cursor.child_wtxids[cursor.next_child];
+            let child_wtxid = cursor.child_identities[cursor.next_child].wtxid;
             cursor.next_child += 1;
             cursor.visited += 1;
             if hard_rejects.contains(child_wtxid) {
@@ -151,7 +170,7 @@ impl TxOrphanage {
                 ],
             };
             if cursor.visited < self.policy.max_reconsiderations_per_parent
-                && cursor.next_child < cursor.child_wtxids.len()
+                && cursor.next_child < cursor.child_identities.len()
             {
                 self.candidate_cursors.insert(cursor_key, cursor);
             }
@@ -183,12 +202,12 @@ impl TxOrphanage {
 
     pub(crate) fn candidate_cursors(
         &self,
-    ) -> impl Iterator<Item = ((Wtxid, PeerId), Txid, &[Wtxid], usize)> + '_ {
+    ) -> impl Iterator<Item = ((Wtxid, PeerId), Txid, &[CandidateChildIdentity], usize)> + '_ {
         self.candidate_cursors.iter().map(|(key, cursor)| {
             (
                 *key,
                 cursor.parent_txid,
-                cursor.child_wtxids.as_ref(),
+                cursor.child_identities.as_ref(),
                 cursor.visited,
             )
         })
@@ -270,7 +289,7 @@ impl TxOrphanage {
             self.candidate_cursors.len(),
             self.candidate_cursors
                 .values()
-                .map(|cursor| cursor.child_wtxids.len())
+                .map(|cursor| cursor.child_identities.len())
                 .sum(),
             self.candidate_cursors
                 .values()

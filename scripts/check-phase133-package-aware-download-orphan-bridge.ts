@@ -194,9 +194,17 @@ function checkBoundedOrphanCandidate(
     "pub(super) struct SamePeerCandidateCursor",
     "impl SamePeerCandidateCursor",
   );
+  const childIdentityStorage = sectionBetween(
+    candidate,
+    "pub(crate) struct CandidateChildIdentity",
+    "impl CandidateChildIdentity",
+  );
   if (
-    !cursorStorage.includes("pub(super) child_wtxids: Box<[Wtxid]>") ||
-    countMatches(cursorStorage, /\bTransaction\b/g) !== 1
+    !cursorStorage.includes(
+      "pub(super) child_identities: Box<[CandidateChildIdentity]>",
+    ) ||
+    countMatches(cursorStorage, /\bTransaction\b/g) !== 1 ||
+    countMatches(childIdentityStorage, /\bTransaction\b/g) !== 0
   ) {
     failures.push(
       "P133 PPKG-02: persistent candidate cursors must retain one parent body and child identities only",

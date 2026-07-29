@@ -186,7 +186,7 @@ impl fmt::Display for PeerTransactionLifecyclePreparationError {
 impl std::error::Error for PeerTransactionLifecyclePreparationError {}
 
 struct PreparedOrphanLifecycle {
-    orphan_removals: Box<[Wtxid]>,
+    orphan_removals: Box<[PeerTransactionIdentity]>,
     candidate_removals: Box<[(Wtxid, PeerId)]>,
     fingerprint_retirements: Box<[[u8; 32]]>,
     fingerprint_admissions: Box<[([u8; 32], BTreeSet<Wtxid>)]>,
@@ -248,18 +248,27 @@ impl PeerManager {
             .map(PeerTransactionIdentity::relay_ids)
             .collect::<Vec<_>>()
             .into_boxed_slice();
-        let request_teardowns = input
-            .teardowns
-            .iter()
-            .copied()
-            .map(PeerTransactionIdentity::relay_ids)
-            .collect::<Vec<_>>()
-            .into_boxed_slice();
         let affected_orphan_identities = admission_set
             .union(&teardown_set)
             .copied()
             .collect::<BTreeSet<_>>();
         let orphan = prepare_orphan_lifecycle(self, &input, &affected_orphan_identities)?;
+        let mut teardown_identities = input.teardowns.clone();
+        let mut teardown_identity_set =
+            teardown_identities.iter().copied().collect::<BTreeSet<_>>();
+        teardown_identities.extend(
+            orphan
+                .orphan_removals
+                .iter()
+                .copied()
+                .filter(|identity| teardown_identity_set.insert(*identity)),
+        );
+        let request_teardowns = teardown_identities
+            .iter()
+            .copied()
+            .map(PeerTransactionIdentity::relay_ids)
+            .collect::<Vec<_>>()
+            .into_boxed_slice();
         let compact = prepare_compact_lifecycle(self, &teardown_set);
 
         Ok(PreparedPeerTransactionLifecycle {
@@ -268,7 +277,7 @@ impl PeerManager {
             request_admissions,
             request_teardowns,
             known_admissions: input.admissions.into_boxed_slice(),
-            known_teardowns: input.teardowns.into_boxed_slice(),
+            known_teardowns: teardown_identities.into_boxed_slice(),
             orphan,
             compact,
         })
@@ -421,7 +430,7 @@ fn validate_orphan_bounds(
     if let Some(count) = manager
         .orphanage
         .candidate_cursors()
-        .map(|(_, _, child_wtxids, visited)| child_wtxids.len().max(visited))
+        .map(|(_, _, child_identities, visited)| child_identities.len().max(visited))
         .find(|count| *count > PHASE102_MAX_RECONSIDERATIONS_PER_PARENT)
     {
         return Err(PeerTransactionLifecyclePreparationError::CandidateLimit {
@@ -465,18 +474,20 @@ fn prepare_orphan_lifecycle(
         .orphanage
         .orphan_identities()
         .filter_map(|(txid, wtxid)| {
-            (affected_txids.contains(&txid) || affected_wtxids.contains(&wtxid)).then_some(wtxid)
+            (affected_txids.contains(&txid) || affected_wtxids.contains(&wtxid))
+                .then_some(PeerTransactionIdentity::new(txid, wtxid))
         })
         .collect::<Vec<_>>();
     let candidate_removals = manager
         .orphanage
         .candidate_cursors()
-        .filter_map(|(key, parent_txid, child_wtxids, _)| {
+        .filter_map(|(key, parent_txid, child_identities, _)| {
             (affected_txids.contains(&parent_txid)
                 || affected_wtxids.contains(&key.0)
-                || child_wtxids
-                    .iter()
-                    .any(|wtxid| affected_wtxids.contains(wtxid)))
+                || child_identities.iter().any(|identity| {
+                    affected_txids.contains(&identity.txid())
+                        || affected_wtxids.contains(&identity.wtxid())
+                }))
             .then_some(key)
         })
         .collect::<Vec<_>>();
@@ -568,8 +579,8 @@ fn apply_prepared_orphan_lifecycle(
     for key in prepared.candidate_removals {
         orphanage.remove_candidate_cursor(key);
     }
-    for wtxid in prepared.orphan_removals {
-        orphanage.remove_orphan_without_candidate_scan(wtxid);
+    for identity in prepared.orphan_removals {
+        orphanage.remove_orphan_without_candidate_scan(identity.wtxid);
     }
     for fingerprint in prepared.fingerprint_retirements {
         orphanage.retire_accepted_package_fingerprint(fingerprint);

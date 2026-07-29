@@ -1080,6 +1080,7 @@
         "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
         "packages/open-bitcoin-network/src/peer/transaction_lifecycle/reconciliation.rs",
         "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases.rs",
+        "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases/identity_aliases.rs",
         "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases/reconciliation.rs",
         "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_independence_cases.rs"
       ],

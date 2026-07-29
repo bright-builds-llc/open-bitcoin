@@ -80,12 +80,13 @@ impl PeerManager {
         let candidate_overlap = self
             .orphanage
             .candidate_cursors()
-            .filter(|(key, parent_txid, child_wtxids, _)| {
+            .filter(|(key, parent_txid, child_identities, _)| {
                 canonical_txids.contains(parent_txid)
                     || canonical_wtxids.contains(&key.0)
-                    || child_wtxids
-                        .iter()
-                        .any(|wtxid| canonical_wtxids.contains(wtxid))
+                    || child_identities.iter().any(|identity| {
+                        canonical_txids.contains(&identity.txid())
+                            || canonical_wtxids.contains(&identity.wtxid())
+                    })
             })
             .count();
         let package_mismatch = self
