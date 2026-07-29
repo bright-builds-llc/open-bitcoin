@@ -179,7 +179,7 @@ Plans:
 - [x] 134-12-PLAN.md — Add mutation-tested structural enforcement to default verification.
 - [x] 134-13-PLAN.md — Publish parity evidence and run the complete timed repository contract.
 - [x] 134-14-PLAN.md — Bind effect receipts to unique authority incarnations and consume exact receipts safely.
-- [ ] 134-15-PLAN.md — Make peer-effect completion atomic and peer-session-local.
+- [x] 134-15-PLAN.md — Make peer-effect completion atomic and peer-session-local.
 - [ ] 134-16-PLAN.md — Add complete-or-abort terminal handling for peer effects and successful prefixes.
 - [ ] 134-17-PLAN.md — Add complete-or-abort terminal handling for snapshot effects.
 - [ ] 134-18-PLAN.md — Make txid/wtxid cleanup and reconciliation identity-complete and symmetric.
@@ -258,7 +258,7 @@ Plans:
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
-| 134. Authoritative Cross-Cache Lifecycle Integration | 14/24 | In Progress|  |
+| 134. Authoritative Cross-Cache Lifecycle Integration | 15/24 | In Progress|  |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |

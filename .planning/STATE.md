@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-14-PLAN.md
-last_updated: "2026-07-29T01:28:07.143Z"
-last_activity: 2026-07-29 -- Completed Plan 14 exact effect receipt authority
+stopped_at: Completed 134-15-PLAN.md
+last_updated: "2026-07-29T03:47:37.413Z"
+last_activity: 2026-07-29 -- Completed Plan 15 peer-local atomic effect completion
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 50
-  percent: 83
+  completed_plans: 51
+  percent: 85
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 14 of 24
+Plan: 15 of 24
 Status: Executing gap-closure plans
-Last activity: 2026-07-29 -- Completed Plan 14 exact effect receipt authority
+Last activity: 2026-07-29 -- Completed Plan 15 peer-local atomic effect completion
 
-Progress: [██████░░░░] 58%
+Progress: [██████░░░░] 62%
 
-Next action: Execute 134-15-PLAN.md.
+Next action: Execute 134-16-PLAN.md.
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Next action: Execute 134-15-PLAN.md.
 | Phase 134 P12 | 1h 29m | 2 tasks | 5 files |
 | Phase 134 P13 | 41m | 2 tasks | 5 files |
 | Phase 134 P14 | 58m | 2 tasks | 9 files |
+| Phase 134 P15 | 2h 7m | 2 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -201,6 +202,8 @@ Next action: Execute 134-15-PLAN.md.
 - [Phase 134]: Install a unique non-initial authority epoch at the ManagedNetworkHandle construction boundary while retaining fixture-friendly initial epochs before handle installation.
 - [Phase 134]: Store pending and completed truth as complete family-specific keys; use the monotonic family ID only as bounded eviction-order metadata.
 - [Phase 134]: Reject foreign or immutable-mismatched receipts with a typed lifecycle error; reserve AchievedButStale for exact pending work whose current targets advanced.
+- [Phase 134]: Bound peer session-generation history by connected or pending-effect ownership.
+- [Phase 134]: Route emission receipts through one evidence-bearing lifecycle command and one authority guard.
 
 ### Pending Todos
 
@@ -223,6 +226,6 @@ Next action: Execute 134-15-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T01:28:07.140Z
-Stopped at: Completed 134-14-PLAN.md
+Last session: 2026-07-29T03:47:37.411Z
+Stopped at: Completed 134-15-PLAN.md
 Resume file: None
