@@ -32,7 +32,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 - [x] **Phase 131: Rolling Fee, Expiry, and Descendant Eviction Core** — Enforce sustained-pressure capacity, eviction, expiry, and block-gated rolling-fee decay deterministically. (completed 2026-07-25)
 - [x] **Phase 132: Typed Package Vocabulary and Staged Admission** — Deliver dry-run and submission semantics with exact shape validation, partial acceptance, effective-fee grouping, and coherent commits. (completed 2026-07-26)
 - [x] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission. (completed 2026-07-26)
-- [x] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state. (completed 2026-07-28)
+- [ ] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state.
 - [ ] **Phase 135: Snapshot Schema, Checkpointing, and Recovery** — Persist source mempool records and local unbroadcast state, then recover them through policy-aware topological replay.
 - [ ] **Phase 136: Receive-Independent Maintenance and Transport Receipts** — Run bounded initial broadcast retry and topological package fanout through existing relay and achieved-effect transport paths.
 - [ ] **Phase 137: RPC and Sanitized Operator Evidence** — Expose package, pressure, recovery, checkpoint, and retry truth through stable redacted operator surfaces.
@@ -162,7 +162,7 @@ Plans:
 3. Replacement, pressure eviction, expiry, block connection, reorg, and failed admission leave no stale descendant or accepted-identity entries in dependent caches.
 4. Storage and network work occurs after runtime authority is released, and bounded typed receipts are applied through a short follow-up mutation.
 
-**Plans**: 13 plans
+**Plans**: 24 plans
 
 Plans:
 - [x] 134-01-PLAN.md — Expose sealed prepared mempool transitions for every lifecycle family.
@@ -178,7 +178,7 @@ Plans:
 - [x] 134-11-PLAN.md — Complete the deterministic scenario matrix and independent reconciliation oracle.
 - [x] 134-12-PLAN.md — Add mutation-tested structural enforcement to default verification.
 - [x] 134-13-PLAN.md — Publish parity evidence and run the complete timed repository contract.
-- [ ] 134-14-PLAN.md — Bind effect receipts to unique authority incarnations and consume exact receipts safely.
+- [x] 134-14-PLAN.md — Bind effect receipts to unique authority incarnations and consume exact receipts safely.
 - [ ] 134-15-PLAN.md — Make peer-effect completion atomic and peer-session-local.
 - [ ] 134-16-PLAN.md — Add complete-or-abort terminal handling for peer effects and successful prefixes.
 - [ ] 134-17-PLAN.md — Add complete-or-abort terminal handling for snapshot effects.
@@ -258,7 +258,7 @@ Plans:
 | 132. Typed Package Vocabulary and Staged Admission | 8/8 | Complete    | 2026-07-26 |
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
-| 134. Authoritative Cross-Cache Lifecycle Integration | 13/13 | Complete   | 2026-07-28 |
+| 134. Authoritative Cross-Cache Lifecycle Integration | 14/24 | In Progress|  |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |

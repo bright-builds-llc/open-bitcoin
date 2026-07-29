@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-13-PLAN.md
-last_updated: "2026-07-29T00:04:50.868Z"
-last_activity: 2026-07-29 -- Phase 134 planning complete
+stopped_at: Completed 134-14-PLAN.md
+last_updated: "2026-07-29T01:28:07.143Z"
+last_activity: 2026-07-29 -- Completed Plan 14 exact effect receipt authority
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 49
-  percent: 82
+  completed_plans: 50
+  percent: 83
 ---
 
 # Project State
@@ -26,14 +26,14 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 134 (authoritative-cross-cache-lifecycle-integration) — READY FOR VERIFICATION
-Plan: 13 of 13
-Status: Ready to execute
-Last activity: 2026-07-29 -- Phase 134 planning complete
+Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
+Plan: 14 of 24
+Status: Executing gap-closure plans
+Last activity: 2026-07-29 -- Completed Plan 14 exact effect receipt authority
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 58%
 
-Next action: Run independent Phase 134 verification.
+Next action: Execute 134-15-PLAN.md.
 
 ## Performance Metrics
 
@@ -79,6 +79,7 @@ Next action: Run independent Phase 134 verification.
 | Phase 134 P11 | 94m | 3 tasks | 12 files |
 | Phase 134 P12 | 1h 29m | 2 tasks | 5 files |
 | Phase 134 P13 | 41m | 2 tasks | 5 files |
+| Phase 134 P14 | 58m | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -197,6 +198,9 @@ Next action: Run independent Phase 134 verification.
 - [Phase 134]: Keep MPLIFE-01 through MPLIFE-04 pending until phase-level verification.
 - [Phase 134]: Published one ManagedNetworkHandle authority with a mandatory seven-target lifecycle projection and family-specific outside-lock effects.
 - [Phase 134]: Preserved D-18 and all Phase 135-138, broad relay, public-network CI, and production-readiness deferrals.
+- [Phase 134]: Install a unique non-initial authority epoch at the ManagedNetworkHandle construction boundary while retaining fixture-friendly initial epochs before handle installation.
+- [Phase 134]: Store pending and completed truth as complete family-specific keys; use the monotonic family ID only as bounded eviction-order metadata.
+- [Phase 134]: Reject foreign or immutable-mismatched receipts with a typed lifecycle error; reserve AchievedButStale for exact pending work whose current targets advanced.
 
 ### Pending Todos
 
@@ -219,6 +223,6 @@ Next action: Run independent Phase 134 verification.
 
 ## Session Continuity
 
-Last session: 2026-07-28T22:04:59.013Z
-Stopped at: Completed 134-13-PLAN.md
+Last session: 2026-07-29T01:28:07.140Z
+Stopped at: Completed 134-14-PLAN.md
 Resume file: None
