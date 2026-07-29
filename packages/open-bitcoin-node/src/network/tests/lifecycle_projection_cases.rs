@@ -4,10 +4,10 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_core::consensus::{block_hash, transaction_txid, transaction_wtxid};
-use open_bitcoin_core::primitives::{BlockHash, Txid};
+use open_bitcoin_core::primitives::{BlockHash, Transaction, Txid, Wtxid};
 use open_bitcoin_mempool::{
     AdmissionContext, FeeRate, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity,
     MempoolOrigin, PolicyConfig, PolicyTime, PreparedMempoolTransition, RelayIntent,
@@ -17,9 +17,10 @@ use open_bitcoin_network::PeerMempoolLifecycleSnapshot;
 
 use super::*;
 use crate::network::lifecycle_projection::{
-    AuthorityEpoch, LifecycleEvidenceSnapshot, LifecycleGeneration, LifecycleProjectionError,
-    LifecycleProjectionPlan, LifecycleReconciliationReport,
+    AuthorityEpoch, LifecycleCommand, LifecycleEvidenceSnapshot, LifecycleGeneration,
+    LifecycleProjectionError, LifecycleProjectionPlan, LifecycleReconciliationReport,
 };
+use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 
 mod admission;
 mod effects;
@@ -43,6 +44,23 @@ struct ExpectedProjection {
     reconciliation_counts: [usize; 7],
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CompleteAggregateSnapshot {
+    canonical_members: BTreeSet<MempoolMemberIdentity>,
+    rolling_mempool_fee_rate: RollingMempoolFeeRate,
+    serving_members: BTreeSet<MempoolMemberIdentity>,
+    transactions_by_txid: BTreeMap<Txid, Transaction>,
+    transactions_by_wtxid: BTreeMap<Wtxid, Transaction>,
+    fanout_members: BTreeSet<MempoolMemberIdentity>,
+    peer: PeerMempoolLifecycleSnapshot,
+    compact_members: BTreeSet<MempoolMemberIdentity>,
+    unbroadcast_members: BTreeSet<MempoolMemberIdentity>,
+    authority_epoch: AuthorityEpoch,
+    lifecycle_generation: LifecycleGeneration,
+    dirty_generation: Option<LifecycleGeneration>,
+    evidence: LifecycleEvidenceSnapshot,
+}
+
 fn canonical_members(
     network: &ManagedPeerNetwork<MemoryChainstateStore>,
 ) -> BTreeSet<MempoolMemberIdentity> {
@@ -56,6 +74,45 @@ fn canonical_members(
             wtxid: entry.wtxid,
         })
         .collect()
+}
+
+fn complete_aggregate_snapshot(
+    network: &ManagedPeerNetwork<MemoryChainstateStore>,
+) -> CompleteAggregateSnapshot {
+    CompleteAggregateSnapshot {
+        canonical_members: canonical_members(network),
+        rolling_mempool_fee_rate: network.mempool().mempool().rolling_mempool_fee_rate(),
+        serving_members:
+            crate::network::relay_serving::RelayServingCache::lifecycle_members_for_test(
+                &network.relay_serving,
+            ),
+        transactions_by_txid: network.transactions_by_txid.clone(),
+        transactions_by_wtxid: network.transactions_by_wtxid.clone(),
+        fanout_members:
+            crate::network::relay_fanout::ManagedRelayFanoutState::lifecycle_members_for_test(
+                &network.relay_fanout,
+            ),
+        peer: open_bitcoin_network::PeerManager::mempool_lifecycle_snapshot(&network.peer_manager),
+        compact_members: network
+            .compact_extra_txn
+            .iter_available()
+            .map(|(wtxid, transaction)| MempoolMemberIdentity {
+                txid: transaction_txid(transaction).expect("compact extra txid"),
+                wtxid: *wtxid,
+            })
+            .collect(),
+        unbroadcast_members: ManagedPeerNetwork::unbroadcast_members(network).clone(),
+        authority_epoch: network.authority_epoch(),
+        lifecycle_generation: network.lifecycle_generation(),
+        dirty_generation: ManagedPeerNetwork::dirty_generation(network),
+        evidence: ManagedPeerNetwork::lifecycle_evidence_snapshot(network),
+    }
+}
+
+fn advance_only_core_revision_for_test(network: &mut ManagedPeerNetwork<MemoryChainstateStore>) {
+    network
+        .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(1)))
+        .expect("core-only revision advance should succeed");
 }
 
 fn compact_members(
@@ -220,35 +277,103 @@ mod authority {
     }
 
     #[test]
-    fn stale_core_revision_preserves_every_dependent_target() {
+    fn stale_aggregate_failure_preserves_all_eight_domains_then_fresh_plan_succeeds() {
         // Arrange
-        let mut network = ManagedPeerNetwork::new(
-            MemoryChainstateStore::default(),
-            local_config(134_053),
-            PolicyConfig::default(),
-        );
-        let core = network
-            .mempool()
-            .prepare_expiry(PolicyTime::new(0))
-            .expect("empty expiry should prepare");
-        let plan = LifecycleProjectionPlan::prepare(&network, AuthorityEpoch::INITIAL, core)
-            .expect("projection should prepare");
-        network
-            .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(1)))
-            .expect("revision mutation should succeed");
-        let sealed = network
-            .validate_prepared_lifecycle(plan)
-            .expect("authority should validate");
-        let baseline = format!("{network:?}");
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let transaction = spend_transaction(coinbase_txid, 499_999_000);
+        let member = MempoolMemberIdentity {
+            txid: transaction_txid(&transaction).expect("txid"),
+            wtxid: transaction_wtxid(&transaction).expect("wtxid"),
+        };
+        let stale_core = network
+            .mempool
+            .prepare_transaction_with_context(
+                &network.chainstate,
+                transaction.clone(),
+                verify_flags(),
+                consensus_params(),
+                AdmissionContext::local(PolicyTime::new(100), RelayIntent::Requested),
+            )
+            .expect("stale admission should prepare");
+        let stale_plan =
+            LifecycleProjectionPlan::prepare(&network, AuthorityEpoch::INITIAL, stale_core)
+                .expect("projection should prepare");
+        advance_only_core_revision_for_test(&mut network);
+        let after_newer_core_revision = complete_aggregate_snapshot(&network);
 
         // Act
-        let error = network
-            .commit_sealed_lifecycle(sealed)
-            .expect_err("stale core revision must fail");
+        let error = match apply_lifecycle_command(
+            &mut network,
+            LifecycleCommand::SingletonAdmission(stale_plan),
+        ) {
+            Ok(_) => panic!("stale core revision must fail"),
+            Err(error) => error,
+        };
 
         // Assert
         assert!(matches!(error, LifecycleProjectionError::Mempool(_)));
-        assert_eq!(format!("{network:?}"), baseline);
+        assert_eq!(
+            complete_aggregate_snapshot(&network),
+            after_newer_core_revision
+        );
+
+        // Arrange
+        let fresh_core = network
+            .mempool
+            .prepare_transaction_with_context(
+                &network.chainstate,
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                AdmissionContext::local(PolicyTime::new(100), RelayIntent::Requested),
+            )
+            .expect("fresh admission should prepare");
+        let fresh_plan =
+            LifecycleProjectionPlan::prepare(&network, AuthorityEpoch::INITIAL, fresh_core)
+                .expect("fresh projection should prepare");
+
+        // Act
+        let LifecycleCommandResult::Lifecycle(delta) = apply_lifecycle_command(
+            &mut network,
+            LifecycleCommand::SingletonAdmission(fresh_plan),
+        )
+        .expect("fresh aggregate commit should succeed") else {
+            panic!("fresh admission must return a lifecycle delta");
+        };
+
+        // Assert
+        assert_eq!(delta.admitted, [member]);
+        assert_complete_projection(
+            &network,
+            &ExpectedProjection {
+                canonical_members: BTreeSet::from([member]),
+                serving_members: BTreeSet::from([member]),
+                fanout_members: BTreeSet::from([member]),
+                peer_known_members: BTreeSet::from([member]),
+                peer: network.peer_manager.mempool_lifecycle_snapshot(),
+                compact_members: BTreeSet::new(),
+                unbroadcast_members: BTreeSet::from([member]),
+                authority_epoch: AuthorityEpoch::INITIAL,
+                lifecycle_generation: LifecycleGeneration::INITIAL
+                    .checked_next()
+                    .expect("test generation should advance"),
+                dirty_generation: Some(
+                    LifecycleGeneration::INITIAL
+                        .checked_next()
+                        .expect("test generation should advance"),
+                ),
+                evidence: LifecycleEvidenceSnapshot {
+                    committed_transitions: 1,
+                    admitted_members: 1,
+                    ..LifecycleEvidenceSnapshot::default()
+                },
+                reconciliation_counts: [0; 7],
+            },
+        );
+        assert_eq!(
+            network.mempool().mempool().rolling_mempool_fee_rate(),
+            RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(1))
+        );
     }
 
     #[test]
