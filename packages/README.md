@@ -30,10 +30,13 @@ authoritative Phase 132 package-admission call plus typed feedback. Phase 134
 projects committed lifecycle facts through the sole `ManagedNetworkHandle`
 authority into serving, ordinary fanout state, peer state, compact inputs,
 unbroadcast membership, persistence dirtiness, and bounded evidence. Peer and
-current-schema snapshot effects use typed prepare/execute/complete boundaries
-with I/O outside the authority lock. Phase 135 snapshot schema/recovery, Phase
-136 receive-independent scheduling and package fanout, Phase 137 operator
-surfaces, Phase 138 release proof, general package wire relay, whole-mempool
-rebroadcast, arbitrary multi-parent peer assembly, public or default relay,
-guaranteed propagation, public-network CI or release gates, and production
-readiness remain deferred.
+current-schema snapshot effects use unique authority-incarnation bindings,
+peer-local freshness, exact complete-or-abort terminal paths, and I/O outside
+the authority lock. Canonical state commits before seven infallible dependent
+applies; exact txid/wtxid teardown and symmetric audits expose stale dependent
+state without making reconciliation a second mutation authority. Phase 135
+snapshot schema/recovery, Phase 136 receive-independent scheduling and package
+fanout, Phase 137 operator surfaces, Phase 138 release proof, general package
+wire relay, whole-mempool rebroadcast, arbitrary multi-parent peer assembly,
+public or default relay, guaranteed propagation, public-network CI or release
+gates, and production readiness remain deferred.

@@ -3198,6 +3198,8 @@
           "packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs",
           "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
           "packages/open-bitcoin-network/src/peer/transaction_lifecycle/reconciliation.rs",
+          "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases/bounded_packages.rs",
+          "packages/open-bitcoin-network/src/peer/tests/transaction_lifecycle_cases/identity_aliases.rs",
           "packages/open-bitcoin-node/src/network/runtime_authority.rs",
           "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
           "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
@@ -3213,6 +3215,9 @@
           "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/maintenance.rs",
           "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects.rs",
           "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts/peer_abort.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts/peer_sessions.rs",
+          "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts/snapshot_abort.rs",
           "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/oracle.rs",
           "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
           "packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs",
@@ -3221,10 +3226,109 @@
           "scripts/check-phase134-apply-boundaries.ts",
           "scripts/check-phase134-authoritative-lifecycle.ts",
           "scripts/check-phase134-authoritative-lifecycle.test.ts",
+          "scripts/check-phase134-authoritative-lifecycle.test/apply-helpers.ts",
+          "scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts",
+          "scripts/check-phase134-authoritative-lifecycle/scope.ts",
           "scripts/check-parity-breadcrumbs.ts",
           "scripts/verify.sh"
         ],
-        "rationale": "Phase 134 traces D-01 through D-17 and MPLIFE-01 through MPLIFE-04 to one ManagedNetworkHandle lifecycle dispatcher, one mandatory seven-target projection, authoritative final-membership and graph-order semantics, sequential reorg transitions, bounded reconciliation, complete deterministic scenarios, and family-specific affine peer/snapshot effects executed outside authority. The source checker and its independent mutations reject second authority, target omission, fallible apply, normal-path rebuild, replay or stale clearing, unbounded state, I/O under lock, and deferred-scope claims.",
+        "rationale": "Phase 134 traces D-01 through D-17 and MPLIFE-01 through MPLIFE-04 to one ManagedNetworkHandle lifecycle dispatcher, one atomic core-first seven-target projection, exact identity teardown, authoritative final-membership and graph-order semantics, sequential reorg transitions, symmetric bounded reconciliation, complete deterministic scenarios, and authority-incarnation-bound complete-or-abort affine peer/snapshot effects executed outside authority. The source checker and its independent mutations reject second authority, target omission, fallible or transitively effectful apply, normal-path rebuild, replay or stale clearing, unbounded state, I/O under lock, premature completion, and deferred-scope claims.",
+        "review_finding_repairs": [
+          {
+            "id": "CR-01",
+            "source": [
+              "packages/open-bitcoin-node/src/network.rs",
+              "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+              "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases::effects"
+          },
+          {
+            "id": "WR-01",
+            "source": [
+              "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-network transaction_lifecycle_cases::bounded_packages"
+          },
+          {
+            "id": "WR-02",
+            "source": [
+              "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
+              "packages/open-bitcoin-network/src/peer/transaction_lifecycle/reconciliation.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-network transaction_lifecycle_cases::identity_aliases"
+          },
+          {
+            "id": "WR-03",
+            "source": [
+              "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-network transaction_lifecycle_cases::bounded_packages"
+          },
+          {
+            "id": "WR-04",
+            "source": [
+              "packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs",
+              "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-mempool prepared_lifecycle_cases && cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases"
+          },
+          {
+            "id": "WR-05",
+            "source": [
+              "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
+              "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases::effects::contracts::peer_sessions"
+          },
+          {
+            "id": "WR-06",
+            "source": [
+              "packages/open-bitcoin-node/src/network.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases::effects::contracts::peer_sessions"
+          },
+          {
+            "id": "WR-07",
+            "source": [
+              "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+              "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
+              "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
+              "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases::effects && cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc announcement_successful_prefix && cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node snapshot_persistence"
+          },
+          {
+            "id": "WR-08",
+            "source": [
+              "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs"
+            ],
+            "regression": "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases::reconciliation"
+          },
+          {
+            "id": "WR-09",
+            "source": [
+              "scripts/check-phase134-apply-boundaries.ts"
+            ],
+            "regression": "bun test scripts/check-phase134-authoritative-lifecycle.test.ts scripts/check-phase134-authoritative-lifecycle.test/apply-helpers.ts && bun scripts/check-phase134-apply-boundaries.ts"
+          },
+          {
+            "id": "WR-10",
+            "source": [
+              "docs/parity/checklist.md",
+              "docs/parity/index.json",
+              "scripts/check-phase134-authoritative-lifecycle/scope.ts"
+            ],
+            "regression": "bun test scripts/check-phase134-authoritative-lifecycle.test.ts scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts && bun scripts/check-phase134-authoritative-lifecycle.ts"
+          },
+          {
+            "id": "WR-11",
+            "source": [
+              "scripts/check-phase134-authoritative-lifecycle/scope.ts"
+            ],
+            "regression": "bun test scripts/check-phase134-authoritative-lifecycle.test.ts scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts && bun scripts/check-phase134-authoritative-lifecycle.ts"
+          }
+        ],
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/validation.cpp",
