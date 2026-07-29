@@ -16,8 +16,8 @@ use crate::network::lifecycle_projection::{
 use crate::network::{
     PeerEmissionReceipt,
     lifecycle_effects::{
-        EffectCompletion, PeerEffectCapability, PeerEffectReceipt, PreparedSnapshotWrite,
-        SnapshotWriteReceipt,
+        EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
+        PreparedSnapshotWrite, SnapshotWriteReceipt,
     },
 };
 
@@ -59,6 +59,20 @@ impl ManagedNetworkHandle {
         {
             LifecycleCommandResult::SnapshotPrepared(prepared) => Ok(prepared),
             _ => Err(unexpected_result("mempool snapshot preparation")),
+        }
+    }
+
+    /// Releases one exact peer reservation when no external effect was achieved.
+    pub fn abort_peer_effect(
+        &self,
+        capability: PeerEffectCapability,
+    ) -> Result<EffectAbort, ManagedNetworkAuthorityError> {
+        match self
+            .apply_lifecycle_command(LifecycleCommand::AbortPeerEffect(capability))
+            .map_err(ManagedNetworkAuthorityError::from)?
+        {
+            LifecycleCommandResult::PeerEffectAborted(abort) => Ok(abort),
+            _ => Err(unexpected_result("peer effect abort")),
         }
     }
 

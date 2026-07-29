@@ -23,7 +23,9 @@ use open_bitcoin_network::{
 use super::ManagedPeerNetwork;
 use super::announcement_transport::PeerEmissionReceipt;
 use super::compact_receive_candidates::CompactExtraTxnBuffer;
-use super::lifecycle_effects::{EffectPreparationError, PeerEffectReceipt, SnapshotWriteReceipt};
+use super::lifecycle_effects::{
+    EffectPreparationError, PeerEffectCapability, PeerEffectReceipt, SnapshotWriteReceipt,
+};
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
 use crate::ChainstateStore;
@@ -563,6 +565,7 @@ pub(super) enum LifecycleCommand {
     Maintenance(LifecycleProjectionPlan),
     PrepareSnapshot(SnapshotPreparationRequest),
     PrepareRelay(PeerRelayPreparationRequest),
+    AbortPeerEffect(PeerEffectCapability),
     CompletePeerEffect(PeerEffectReceipt),
     CompletePeerEmission(PeerEmissionReceipt),
     CompleteSnapshotEffect(SnapshotWriteReceipt),
@@ -580,6 +583,7 @@ enum LifecycleCommandKind {
     Maintenance,
     PrepareSnapshot,
     PrepareRelay,
+    AbortPeerEffect,
     CompletePeerEffect,
     CompletePeerEmission,
     CompleteSnapshotEffect,
@@ -598,6 +602,7 @@ impl LifecycleCommand {
             Self::Maintenance(_) => LifecycleCommandKind::Maintenance,
             Self::PrepareSnapshot(_) => LifecycleCommandKind::PrepareSnapshot,
             Self::PrepareRelay(_) => LifecycleCommandKind::PrepareRelay,
+            Self::AbortPeerEffect(_) => LifecycleCommandKind::AbortPeerEffect,
             Self::CompletePeerEffect(_) => LifecycleCommandKind::CompletePeerEffect,
             Self::CompletePeerEmission(_) => LifecycleCommandKind::CompletePeerEmission,
             Self::CompleteSnapshotEffect(_) => LifecycleCommandKind::CompleteSnapshotEffect,

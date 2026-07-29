@@ -11,8 +11,8 @@ use open_bitcoin_mempool::MempoolLifecycleDelta;
 use super::ManagedNetworkHandle;
 use crate::network::announcement_transport::PeerEmissionEvidence;
 use crate::network::lifecycle_effects::{
-    EffectCompletion, ExactEffectLedgerCompletion, PeerEffectCapability, PeerEffectReceipt,
-    PreparedSnapshotWrite,
+    EffectAbort, EffectCompletion, ExactEffectLedgerCompletion, PeerEffectCapability,
+    PeerEffectReceipt, PreparedSnapshotWrite,
 };
 use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionError};
 use crate::storage::MempoolSnapshot;
@@ -22,6 +22,7 @@ pub(in crate::network) enum LifecycleCommandResult {
     Lifecycle(MempoolLifecycleDelta),
     SnapshotPrepared(PreparedSnapshotWrite),
     RelayPrepared(PeerEffectCapability),
+    PeerEffectAborted(EffectAbort),
     PeerEffectCompleted(EffectCompletion),
     SnapshotEffectCompleted(EffectCompletion),
 }
@@ -75,6 +76,19 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 network.peer_session_generation(request.peer_id),
             )?,
         )),
+        LifecycleCommand::AbortPeerEffect(capability) => {
+            if capability.authority_epoch() != network.authority_epoch {
+                return Ok(LifecycleCommandResult::PeerEffectAborted(
+                    EffectAbort::NotPending,
+                ));
+            }
+            let peer_id = capability.peer_id();
+            let abort = network.peer_effect_ledger.abort_exact(&capability);
+            if abort == EffectAbort::Aborted {
+                network.maybe_forget_peer_session_generation(peer_id);
+            }
+            Ok(LifecycleCommandResult::PeerEffectAborted(abort))
+        }
         LifecycleCommand::CompletePeerEffect(receipt) => {
             complete_peer_effect(network, receipt, None)
                 .map(LifecycleCommandResult::PeerEffectCompleted)

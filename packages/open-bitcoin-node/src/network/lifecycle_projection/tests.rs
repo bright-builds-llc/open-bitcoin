@@ -51,6 +51,7 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         LifecycleCommandKind::Maintenance,
         LifecycleCommandKind::PrepareSnapshot,
         LifecycleCommandKind::PrepareRelay,
+        LifecycleCommandKind::AbortPeerEffect,
         LifecycleCommandKind::CompletePeerEffect,
         LifecycleCommandKind::CompletePeerEmission,
         LifecycleCommandKind::CompleteSnapshotEffect,
@@ -65,6 +66,13 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         PeerSessionGeneration::INITIAL,
     )
     .acknowledge_write();
+    let peer_abort = PeerEffectCapability::new(
+        epoch,
+        generation,
+        PeerEffectId::new(2),
+        134_080,
+        PeerSessionGeneration::INITIAL,
+    );
     let snapshot_receipt = PreparedSnapshotWrite::new(
         epoch,
         generation,
@@ -103,6 +111,7 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         LifecycleCommand::Maintenance(projection_plan()),
         LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
         LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_080)),
+        LifecycleCommand::AbortPeerEffect(peer_abort),
         LifecycleCommand::CompletePeerEffect(peer_receipt),
         LifecycleCommand::CompletePeerEmission(emission_receipt),
         LifecycleCommand::CompleteSnapshotEffect(snapshot_receipt),

@@ -24,7 +24,16 @@ pub enum EffectCompletion {
     AchievedButStale,
     AlreadyApplied,
 }
-
+/// Classification for a known pre-achievement effect termination.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EffectAbort {
+    /// The exact pending reservation was released.
+    Aborted,
+    /// The exact effect was already recorded as achieved.
+    AlreadyCompleted,
+    /// No pending reservation matched the complete immutable binding.
+    NotPending,
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::network) enum EffectPreparationError {
     PeerEffectsAtCapacity,
@@ -137,6 +146,9 @@ impl PeerEffectCapability {
     pub const fn peer_id(&self) -> PeerId {
         self.peer_id
     }
+    pub(in crate::network) const fn authority_epoch(&self) -> AuthorityEpoch {
+        self.authority_epoch
+    }
 }
 
 /// Proof that one exact peer write succeeded outside the authority lock.
@@ -172,7 +184,6 @@ impl PeerEffectReceipt {
     pub const fn peer_id(&self) -> PeerId {
         self.peer_id
     }
-
     pub(in crate::network) const fn peer_session_generation(&self) -> PeerSessionGeneration {
         self.peer_session_generation
     }
@@ -428,6 +439,19 @@ impl PeerEffectLedger {
         ExactEffectLedgerCompletion::Recorded
     }
 
+    pub(in crate::network) fn abort_exact(
+        &mut self,
+        capability: &PeerEffectCapability,
+    ) -> EffectAbort {
+        let key = PeerEffectKey::from(capability);
+        if self.completed.contains(&key) {
+            return EffectAbort::AlreadyCompleted;
+        }
+        if self.pending.remove(&key) {
+            return EffectAbort::Aborted;
+        }
+        EffectAbort::NotPending
+    }
     pub(in crate::network) fn is_pending(&self, receipt: &PeerEffectReceipt) -> bool {
         self.pending.contains(&PeerEffectKey::from(receipt))
     }

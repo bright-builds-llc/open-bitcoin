@@ -6,6 +6,7 @@
 
 use super::*;
 
+mod peer_abort;
 mod peer_sessions;
 
 #[test]

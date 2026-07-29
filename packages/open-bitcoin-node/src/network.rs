@@ -66,7 +66,7 @@ pub use inbound::{
     ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
 pub use lifecycle_effects::{
-    EffectCompletion, PeerEffectCapability, PeerEffectReceipt, PeerSessionGeneration,
+    EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt, PeerSessionGeneration,
     PreparedSnapshotWrite, SnapshotWriteCapability, SnapshotWriteReceipt,
 };
 pub use recovery::ManagedMempoolRecoverySummary;
