@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-16-PLAN.md
-last_updated: "2026-07-29T06:54:05.454Z"
-last_activity: 2026-07-29 -- Completed Plan 16 exact peer abort and fanout terminal handling
+stopped_at: Completed 134-17-PLAN.md
+last_updated: "2026-07-29T09:19:28.672Z"
+last_activity: 2026-07-29 -- Completed Plan 17 exact snapshot abort and complete-or-abort Fjall execution
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 52
-  percent: 87
+  completed_plans: 53
+  percent: 88
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 16 of 24
+Plan: 17 of 24
 Status: Ready to execute
-Last activity: 2026-07-29 -- Completed Plan 16 exact peer abort and fanout terminal handling
+Last activity: 2026-07-29 -- Completed Plan 17 exact snapshot abort and complete-or-abort Fjall execution
 
-Progress: [███████░░░] 67%
+Progress: [███████░░░] 71%
 
-Next action: Execute 134-17-PLAN.md.
+Next action: Execute 134-18-PLAN.md.
 
 ## Performance Metrics
 
@@ -82,6 +82,7 @@ Next action: Execute 134-17-PLAN.md.
 | Phase 134 P14 | 58m | 2 tasks | 9 files |
 | Phase 134 P15 | 2h 7m | 2 tasks | 22 files |
 | Phase 134 P16 | 2h 51m | 2 tasks | 23 files |
+| Phase 134 P17 | 116m | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -209,6 +210,9 @@ Next action: Execute 134-17-PLAN.md.
 - [Phase 134]: Every audited node and RPC peer emission terminates through achieved completion or explicit current-and-suffix abort.
 - [Phase 134]: Fanout cleanup attempts every suffix abort and surfaces cleanup failure without rolling back successful-prefix evidence.
 - [Phase 134]: Keep MPLIFE-01 and MPLIFE-04 pending until independent phase re-verification.
+- [Phase 134]: Snapshot abort validates immutable ownership while ignoring later lifecycle and dirty freshness.
+- [Phase 134]: Fjall snapshot execution owns encode, save, and exactly one complete-or-abort terminal dispatch.
+- [Phase 134]: MPLIFE-01 through MPLIFE-04 remain pending until phase re-verification.
 
 ### Pending Todos
 
@@ -231,6 +235,6 @@ Next action: Execute 134-17-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T06:54:05.452Z
-Stopped at: Completed 134-16-PLAN.md
+Last session: 2026-07-29T09:19:28.670Z
+Stopped at: Completed 134-17-PLAN.md
 Resume file: None
