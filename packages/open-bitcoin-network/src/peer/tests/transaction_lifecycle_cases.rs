@@ -8,6 +8,7 @@ use crate::{
     PeerTransactionLifecyclePreparationError,
 };
 
+mod bounded_packages;
 mod identity_aliases;
 mod reconciliation;
 
@@ -137,6 +138,10 @@ fn lifecycle_getters_preserve_descendant_first_teardown_and_package_members() {
 fn lifecycle_preparation_error_messages_cover_every_bounded_failure() {
     // Arrange
     let errors = [
+        PeerTransactionLifecyclePreparationError::AcceptedPackageCountLimit {
+            count: 101,
+            maximum: 100,
+        },
         PeerTransactionLifecyclePreparationError::IdentityWorkLimit {
             count: 101,
             maximum: 100,

@@ -17,6 +17,9 @@ use super::{
     PHASE102_MAX_RECONSIDERATIONS_PER_PARENT, PeerManager, TxRelayId,
 };
 
+const MAX_ACCEPTED_PACKAGES_PER_LIFECYCLE_COMMAND: usize = PHASE102_MAX_ORPHAN_TRANSACTIONS;
+const MAX_STORED_ACCEPTED_PACKAGE_FINGERPRINTS: usize = PHASE102_MAX_ORPHAN_TRANSACTIONS;
+
 mod reconciliation;
 
 pub use reconciliation::PeerMempoolLifecycleSnapshot;
@@ -117,6 +120,7 @@ impl PeerTransactionLifecycleInput {
 /// A peer-local lifecycle preparation failure detected before mutation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PeerTransactionLifecyclePreparationError {
+    AcceptedPackageCountLimit { count: usize, maximum: usize },
     IdentityWorkLimit { count: usize, maximum: usize },
     PackageMemberLimit { count: usize, maximum: usize },
     FingerprintLimit { count: usize, maximum: usize },
@@ -132,6 +136,10 @@ pub enum PeerTransactionLifecyclePreparationError {
 impl fmt::Display for PeerTransactionLifecyclePreparationError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::AcceptedPackageCountLimit { count, maximum } => write!(
+                formatter,
+                "accepted packages {count} exceeds lifecycle command limit {maximum}"
+            ),
             Self::IdentityWorkLimit { count, maximum } => {
                 write!(
                     formatter,
@@ -217,6 +225,11 @@ impl PreparedPeerTransactionLifecycle {
     /// Returns the preserved descendant-first teardown order.
     pub fn teardown_order(&self) -> &[PeerTransactionIdentity] {
         &self.teardown_order
+    }
+
+    #[cfg(test)]
+    pub(crate) fn debug_fingerprint_admission_count(&self) -> usize {
+        self.orphan.fingerprint_admissions.len()
     }
 }
 
@@ -344,6 +357,11 @@ impl PeerManager {
     }
 
     #[cfg(test)]
+    pub(crate) fn debug_accepted_package_fingerprint_count(&self) -> usize {
+        self.orphanage.accepted_package_fingerprints().count()
+    }
+
+    #[cfg(test)]
     pub(crate) fn debug_candidate_cursor_count(&self) -> usize {
         self.orphanage.debug_candidate_cursor_count()
     }
@@ -352,6 +370,14 @@ impl PeerManager {
 fn validate_identity_work_bounds(
     input: &PeerTransactionLifecycleInput,
 ) -> Result<(), PeerTransactionLifecyclePreparationError> {
+    if input.accepted_packages.len() > MAX_ACCEPTED_PACKAGES_PER_LIFECYCLE_COMMAND {
+        return Err(
+            PeerTransactionLifecyclePreparationError::AcceptedPackageCountLimit {
+                count: input.accepted_packages.len(),
+                maximum: MAX_ACCEPTED_PACKAGES_PER_LIFECYCLE_COMMAND,
+            },
+        );
+    }
     for count in [input.admissions.len(), input.teardowns.len()] {
         if count > PHASE102_MAX_ORPHAN_TRANSACTIONS {
             return Err(
@@ -505,25 +531,25 @@ fn prepare_orphan_lifecycle(
             .iter()
             .map(|identity| identity.wtxid)
             .collect();
-        if prospective_fingerprints
-            .get(&package.fingerprint)
-            .is_some_and(|current| current != &members)
-        {
-            return Err(
-                PeerTransactionLifecyclePreparationError::FingerprintMembersConflict {
-                    fingerprint: package.fingerprint,
-                },
-            );
+        if let Some(current) = prospective_fingerprints.get(&package.fingerprint) {
+            if current != &members {
+                return Err(
+                    PeerTransactionLifecyclePreparationError::FingerprintMembersConflict {
+                        fingerprint: package.fingerprint,
+                    },
+                );
+            }
+            continue;
         }
         if members.is_disjoint(&teardown_wtxids) {
             prospective_fingerprints.insert(package.fingerprint, members.clone());
             fingerprint_admissions.push((package.fingerprint, members));
         }
     }
-    if prospective_fingerprints.len() > PHASE102_MAX_ORPHAN_TRANSACTIONS {
+    if prospective_fingerprints.len() > MAX_STORED_ACCEPTED_PACKAGE_FINGERPRINTS {
         return Err(PeerTransactionLifecyclePreparationError::FingerprintLimit {
             count: prospective_fingerprints.len(),
-            maximum: PHASE102_MAX_ORPHAN_TRANSACTIONS,
+            maximum: MAX_STORED_ACCEPTED_PACKAGE_FINGERPRINTS,
         });
     }
     let fingerprint_retirements = current_fingerprints
