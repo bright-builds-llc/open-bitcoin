@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-19-PLAN.md
-last_updated: "2026-07-29T13:16:56.758Z"
+stopped_at: Completed 134-20-PLAN.md
+last_updated: "2026-07-29T16:38:01.469Z"
 last_activity: "2026-07-29"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 55
-  percent: 92
+  completed_plans: 56
+  percent: 93
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 20 of 24
+Plan: 21 of 24
 Status: Ready to execute
 Last activity: 2026-07-29
 
-Progress: [█████████░] 92%
+Progress: [█████████░] 93%
 
-Next action: Execute 134-20-PLAN.md.
+Next action: Execute 134-21-PLAN.md.
 
 ## Performance Metrics
 
@@ -85,6 +85,7 @@ Next action: Execute 134-20-PLAN.md.
 | Phase 134 P17 | 116m | 2 tasks | 12 files |
 | Phase 134 P18 | 1h 52m | 2 tasks | 12 files |
 | Phase 134 P19 | 125m | 2 tasks | 5 files |
+| Phase 134 P20 | 2h 35m | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,8 @@ Next action: Execute 134-20-PLAN.md.
 - [Phase 134]: Raw accepted-package command capacity is enforced before deduplication because duplicate inputs still consume bounded preprocessing work.
 - [Phase 134]: Accepted-package fingerprint identities remain immutable across same-command retirement; conflicting members fail closed while identical duplicates are idempotent.
 - [Phase 134]: Accepted-package retained capacity is evaluated on the deduplicated final map after bounded same-transition retirements.
+- [Phase 134]: Revision validation and patch application execute inside one mutable consuming boundary.
+- [Phase 134]: Legacy validated transition APIs remain covered through Plan 20 for Plan 21 node migration.
 
 ### Pending Todos
 
@@ -243,6 +246,6 @@ Next action: Execute 134-20-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T13:16:56.755Z
-Stopped at: Completed 134-19-PLAN.md
+Last session: 2026-07-29T16:38:01.466Z
+Stopped at: Completed 134-20-PLAN.md
 Resume file: None
