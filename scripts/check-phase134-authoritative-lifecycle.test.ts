@@ -14,9 +14,13 @@ import {
   checkPhase134AuthoritativeLifecycle,
 } from "./check-phase134-authoritative-lifecycle";
 import {
-  PHASE134_APPLY_TARGET_FILES,
   checkPhase134ApplyBoundaries,
 } from "./check-phase134-apply-boundaries";
+import {
+  APPLY_BOUNDARY_DIAGNOSTIC,
+  APPLY_HELPER_SOURCE_FILES,
+  applyHelperMutations,
+} from "./check-phase134-authoritative-lifecycle.test/apply-helpers";
 import { readSourceRoot } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
@@ -125,7 +129,7 @@ test.each([
   "rejects exact apply-body mutation: %s",
   (_name, functionMarker, addition) => {
     // Arrange
-    const root = createFixture(PHASE134_APPLY_TARGET_FILES, (files) => {
+    const root = createFixture(APPLY_HELPER_SOURCE_FILES, (files) => {
       insertInFunction(
         files,
         "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs",
@@ -142,6 +146,34 @@ test.each([
     expect(failures[0]).toContain("apply_prepared_compact");
   },
 );
+
+test.each(applyHelperMutations())(
+  "rejects transitive apply-helper mutation: $name",
+  ({ mutate }) => {
+    // Arrange
+    const root = createFixture(APPLY_HELPER_SOURCE_FILES, mutate);
+
+    // Act
+    const failures = checkPhase134ApplyBoundaries(root);
+
+    // Assert
+    expect(failures).toEqual([APPLY_BOUNDARY_DIAGNOSTIC]);
+  },
+);
+
+test.each([
+  "accepts the exact pure peer identity helper",
+  "accepts the legitimate aggregate core-first apply sequence",
+])("%s", () => {
+  // Arrange
+  const root = createFixture(APPLY_HELPER_SOURCE_FILES);
+
+  // Act
+  const failures = checkPhase134ApplyBoundaries(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
 
 function authorityMutations(): MutationCase[] {
   const secondOwners = [
