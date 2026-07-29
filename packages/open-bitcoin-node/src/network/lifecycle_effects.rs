@@ -33,6 +33,13 @@ pub(in crate::network) enum EffectPreparationError {
     EffectIdentityExhausted,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::network) enum ExactEffectLedgerCompletion {
+    Recorded,
+    AlreadyRecorded,
+    NotPending,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PeerEffectId(u64);
 
@@ -51,7 +58,7 @@ impl SnapshotEffectId {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PeerSessionGeneration(u64);
 
 impl PeerSessionGeneration {
@@ -70,7 +77,7 @@ impl PeerSessionGeneration {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct SnapshotIdentity(u64);
 
 impl SnapshotIdentity {
@@ -157,6 +164,7 @@ impl PeerEffectReceipt {
         self.lifecycle_generation
     }
 
+    #[cfg(test)]
     pub(in crate::network) const fn effect_id(&self) -> PeerEffectId {
         self.effect_id
     }
@@ -178,6 +186,43 @@ impl PeerEffectReceipt {
             peer_id: self.peer_id,
             peer_session_generation: self.peer_session_generation,
         }
+    }
+
+    pub(in crate::network) const fn exact_key(&self) -> PeerEffectKey {
+        PeerEffectKey {
+            authority_incarnation: self.authority_epoch,
+            reserved_generation: self.lifecycle_generation,
+            reserved_effect: self.effect_id,
+            target_peer: self.peer_id,
+            target_session: self.peer_session_generation,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(in crate::network) struct PeerEffectKey {
+    authority_incarnation: AuthorityEpoch,
+    reserved_generation: LifecycleGeneration,
+    reserved_effect: PeerEffectId,
+    target_peer: PeerId,
+    target_session: PeerSessionGeneration,
+}
+
+impl From<&PeerEffectCapability> for PeerEffectKey {
+    fn from(capability: &PeerEffectCapability) -> Self {
+        Self {
+            authority_incarnation: capability.authority_epoch,
+            reserved_generation: capability.lifecycle_generation,
+            reserved_effect: capability.effect_id,
+            target_peer: capability.peer_id,
+            target_session: capability.peer_session_generation,
+        }
+    }
+}
+
+impl From<&PeerEffectReceipt> for PeerEffectKey {
+    fn from(receipt: &PeerEffectReceipt) -> Self {
+        receipt.exact_key()
     }
 }
 
@@ -286,65 +331,142 @@ impl SnapshotWriteReceipt {
             snapshot_identity: self.snapshot_identity,
         }
     }
+
+    pub(in crate::network) const fn exact_key(&self) -> SnapshotEffectKey {
+        SnapshotEffectKey {
+            authority_incarnation: self.authority_epoch,
+            reserved_generation: self.persistence_generation,
+            reserved_effect: self.effect_id,
+            reserved_snapshot: self.snapshot_identity,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(in crate::network) struct SnapshotEffectKey {
+    authority_incarnation: AuthorityEpoch,
+    reserved_generation: LifecycleGeneration,
+    reserved_effect: SnapshotEffectId,
+    reserved_snapshot: SnapshotIdentity,
+}
+
+impl From<&SnapshotWriteCapability> for SnapshotEffectKey {
+    fn from(capability: &SnapshotWriteCapability) -> Self {
+        Self {
+            authority_incarnation: capability.authority_epoch,
+            reserved_generation: capability.persistence_generation,
+            reserved_effect: capability.effect_id,
+            reserved_snapshot: capability.snapshot_identity,
+        }
+    }
+}
+
+impl From<&SnapshotWriteReceipt> for SnapshotEffectKey {
+    fn from(receipt: &SnapshotWriteReceipt) -> Self {
+        receipt.exact_key()
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub(in crate::network) struct PeerEffectLedger {
-    pending: BTreeSet<PeerEffectId>,
+    pending: BTreeSet<PeerEffectKey>,
     completed_order: VecDeque<PeerEffectId>,
-    completed: BTreeSet<PeerEffectId>,
+    completed: BTreeSet<PeerEffectKey>,
     next_id: u64,
 }
 
 impl PeerEffectLedger {
     pub(in crate::network) fn reserve_next(
         &mut self,
-    ) -> Result<PeerEffectId, EffectPreparationError> {
+        authority_epoch: AuthorityEpoch,
+        lifecycle_generation: LifecycleGeneration,
+        peer_id: PeerId,
+        peer_session_generation: PeerSessionGeneration,
+    ) -> Result<PeerEffectCapability, EffectPreparationError> {
         let effect_id = PeerEffectId::new(self.next_id);
         let next_id = self
             .next_id
             .checked_add(1)
             .ok_or(EffectPreparationError::EffectIdentityExhausted)?;
-        self.try_reserve(effect_id)?;
+        let capability = PeerEffectCapability::new(
+            authority_epoch,
+            lifecycle_generation,
+            effect_id,
+            peer_id,
+            peer_session_generation,
+        );
+        self.try_reserve_key(PeerEffectKey::from(&capability))?;
         self.next_id = next_id;
-        Ok(effect_id)
+        Ok(capability)
     }
 
-    pub(in crate::network) fn try_reserve(
-        &mut self,
-        effect_id: PeerEffectId,
-    ) -> Result<(), EffectPreparationError> {
+    fn try_reserve_key(&mut self, key: PeerEffectKey) -> Result<(), EffectPreparationError> {
         if self.pending.len() >= MAX_PENDING_PEER_EFFECTS {
             return Err(EffectPreparationError::PeerEffectsAtCapacity);
         }
-        if self.pending.contains(&effect_id) || self.completed.contains(&effect_id) {
+        if self.pending.contains(&key) || self.completed.contains(&key) {
             return Err(EffectPreparationError::EffectIdentityCollision);
         }
-        self.pending.insert(effect_id);
+        self.pending.insert(key);
         Ok(())
     }
 
-    pub(in crate::network) fn is_pending(&self, effect_id: PeerEffectId) -> bool {
-        self.pending.contains(&effect_id)
+    pub(in crate::network) fn complete_exact(
+        &mut self,
+        receipt: &PeerEffectReceipt,
+    ) -> ExactEffectLedgerCompletion {
+        let key = PeerEffectKey::from(receipt);
+        if self.completed.contains(&key) {
+            return ExactEffectLedgerCompletion::AlreadyRecorded;
+        }
+        if !self.pending.remove(&key) {
+            return ExactEffectLedgerCompletion::NotPending;
+        }
+        self.record_completed_key(key);
+        ExactEffectLedgerCompletion::Recorded
     }
 
-    pub(in crate::network) fn record_completed(&mut self, effect_id: PeerEffectId) {
-        self.pending.remove(&effect_id);
-        if !self.completed.insert(effect_id) {
+    fn record_completed_key(&mut self, key: PeerEffectKey) {
+        if !self.completed.insert(key) {
             return;
         }
-        self.completed_order.push_back(effect_id);
+        self.completed_order.push_back(key.reserved_effect);
         if self.completed_order.len() <= MAX_COMPLETED_PEER_EFFECTS {
             return;
         }
         let Some(evicted) = self.completed_order.pop_front() else {
             return;
         };
-        self.completed.remove(&evicted);
+        let maybe_evicted_key = self
+            .completed
+            .iter()
+            .find(|key| key.reserved_effect == evicted)
+            .copied();
+        if let Some(evicted_key) = maybe_evicted_key {
+            self.completed.remove(&evicted_key);
+        }
     }
 
-    pub(in crate::network) fn is_completed(&self, effect_id: PeerEffectId) -> bool {
-        self.completed.contains(&effect_id)
+    pub(in crate::network) fn is_completed(&self, key: PeerEffectKey) -> bool {
+        self.completed.contains(&key)
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn try_reserve_for_test(
+        &mut self,
+        capability: PeerEffectCapability,
+    ) -> Result<(), EffectPreparationError> {
+        self.try_reserve_key(PeerEffectKey::from(&capability))
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn record_completed_for_test(&mut self, receipt: &PeerEffectReceipt) {
+        self.record_completed_key(PeerEffectKey::from(receipt));
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn is_completed_exact(&self, receipt: &PeerEffectReceipt) -> bool {
+        self.completed.contains(&PeerEffectKey::from(receipt))
     }
 
     #[cfg(test)]
@@ -360,61 +482,103 @@ impl PeerEffectLedger {
 
 #[derive(Debug, Clone, Default)]
 pub(in crate::network) struct SnapshotEffectLedger {
-    pending: BTreeSet<SnapshotEffectId>,
+    pending: BTreeSet<SnapshotEffectKey>,
     completed_order: VecDeque<SnapshotEffectId>,
-    completed: BTreeSet<SnapshotEffectId>,
+    completed: BTreeSet<SnapshotEffectKey>,
     next_id: u64,
 }
 
 impl SnapshotEffectLedger {
     pub(in crate::network) fn reserve_next(
         &mut self,
-    ) -> Result<SnapshotEffectId, EffectPreparationError> {
+        authority_epoch: AuthorityEpoch,
+        persistence_generation: LifecycleGeneration,
+        snapshot: MempoolSnapshot,
+    ) -> Result<PreparedSnapshotWrite, EffectPreparationError> {
         let effect_id = SnapshotEffectId::new(self.next_id);
         let next_id = self
             .next_id
             .checked_add(1)
             .ok_or(EffectPreparationError::EffectIdentityExhausted)?;
-        self.try_reserve(effect_id)?;
+        let prepared = PreparedSnapshotWrite::new(
+            authority_epoch,
+            persistence_generation,
+            effect_id,
+            SnapshotIdentity::from_effect_id(effect_id),
+            snapshot,
+        );
+        self.try_reserve_key(SnapshotEffectKey::from(&prepared.capability))?;
         self.next_id = next_id;
-        Ok(effect_id)
+        Ok(prepared)
     }
 
-    pub(in crate::network) fn try_reserve(
-        &mut self,
-        effect_id: SnapshotEffectId,
-    ) -> Result<(), EffectPreparationError> {
+    fn try_reserve_key(&mut self, key: SnapshotEffectKey) -> Result<(), EffectPreparationError> {
         if self.pending.len() >= MAX_PENDING_SNAPSHOT_EFFECTS {
             return Err(EffectPreparationError::SnapshotEffectPending);
         }
-        if self.pending.contains(&effect_id) || self.completed.contains(&effect_id) {
+        if self.pending.contains(&key) || self.completed.contains(&key) {
             return Err(EffectPreparationError::EffectIdentityCollision);
         }
-        self.pending.insert(effect_id);
+        self.pending.insert(key);
         Ok(())
     }
 
-    pub(in crate::network) fn is_pending(&self, effect_id: SnapshotEffectId) -> bool {
-        self.pending.contains(&effect_id)
+    pub(in crate::network) fn complete_exact(
+        &mut self,
+        receipt: &SnapshotWriteReceipt,
+    ) -> ExactEffectLedgerCompletion {
+        let key = SnapshotEffectKey::from(receipt);
+        if self.completed.contains(&key) {
+            return ExactEffectLedgerCompletion::AlreadyRecorded;
+        }
+        if !self.pending.remove(&key) {
+            return ExactEffectLedgerCompletion::NotPending;
+        }
+        self.record_completed_key(key);
+        ExactEffectLedgerCompletion::Recorded
     }
 
-    pub(in crate::network) fn record_completed(&mut self, effect_id: SnapshotEffectId) {
-        self.pending.remove(&effect_id);
-        if !self.completed.insert(effect_id) {
+    fn record_completed_key(&mut self, key: SnapshotEffectKey) {
+        if !self.completed.insert(key) {
             return;
         }
-        self.completed_order.push_back(effect_id);
+        self.completed_order.push_back(key.reserved_effect);
         if self.completed_order.len() <= MAX_COMPLETED_SNAPSHOT_EFFECTS {
             return;
         }
         let Some(evicted) = self.completed_order.pop_front() else {
             return;
         };
-        self.completed.remove(&evicted);
+        let maybe_evicted_key = self
+            .completed
+            .iter()
+            .find(|key| key.reserved_effect == evicted)
+            .copied();
+        if let Some(evicted_key) = maybe_evicted_key {
+            self.completed.remove(&evicted_key);
+        }
     }
 
-    pub(in crate::network) fn is_completed(&self, effect_id: SnapshotEffectId) -> bool {
-        self.completed.contains(&effect_id)
+    pub(in crate::network) fn is_completed(&self, key: SnapshotEffectKey) -> bool {
+        self.completed.contains(&key)
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn try_reserve_for_test(
+        &mut self,
+        prepared: PreparedSnapshotWrite,
+    ) -> Result<(), EffectPreparationError> {
+        self.try_reserve_key(SnapshotEffectKey::from(&prepared.capability))
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn record_completed_for_test(&mut self, receipt: &SnapshotWriteReceipt) {
+        self.record_completed_key(SnapshotEffectKey::from(receipt));
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn is_completed_exact(&self, receipt: &SnapshotWriteReceipt) -> bool {
+        self.completed.contains(&SnapshotEffectKey::from(receipt))
     }
 
     #[cfg(test)]

@@ -78,62 +78,277 @@ fn snapshot_capability_and_receipt_bind_every_snapshot_identity_dimension() {
 }
 
 #[test]
-fn peer_completed_ledger_evicts_the_oldest_id_at_cap_plus_one() {
+fn independently_constructed_handles_use_distinct_non_initial_incarnations() {
     // Arrange
-    let mut ledger = PeerEffectLedger::default();
-    for raw_id in 0..MAX_COMPLETED_PEER_EFFECTS {
-        ledger.record_completed(PeerEffectId::new(raw_id as u64));
-    }
-    let oldest = PeerEffectId::new(0);
-    let newest = PeerEffectId::new(MAX_COMPLETED_PEER_EFFECTS as u64);
+    let first = ManagedNetworkHandle::from_network_fixture(network_fixture());
+    let second = ManagedNetworkHandle::from_network_fixture(network_fixture());
 
     // Act
-    ledger.record_completed(newest);
+    let first_peer = first
+        .prepare_peer_relay_effect(134_140)
+        .expect("first peer effect should prepare")
+        .acknowledge_write();
+    let second_peer = second
+        .prepare_peer_relay_effect(134_140)
+        .expect("second peer effect should prepare")
+        .acknowledge_write();
+    let first_snapshot = first
+        .prepare_mempool_snapshot_write()
+        .expect("first snapshot should prepare")
+        .into_parts()
+        .1
+        .acknowledge_write();
+    let second_snapshot = second
+        .prepare_mempool_snapshot_write()
+        .expect("second snapshot should prepare")
+        .into_parts()
+        .1
+        .acknowledge_write();
 
     // Assert
-    assert_eq!(ledger.completed_len(), MAX_COMPLETED_PEER_EFFECTS);
-    assert!(!ledger.is_completed(oldest));
-    assert!(ledger.is_completed(newest));
+    assert_eq!(first_peer.effect_id(), second_peer.effect_id());
+    assert_eq!(first_snapshot.effect_id(), second_snapshot.effect_id());
+    assert_ne!(first_peer.authority_epoch(), AuthorityEpoch::INITIAL);
+    assert_ne!(second_peer.authority_epoch(), AuthorityEpoch::INITIAL);
+    assert_ne!(first_peer.authority_epoch(), second_peer.authority_epoch());
+    assert_eq!(
+        first_peer.authority_epoch(),
+        first_snapshot.authority_epoch()
+    );
+    assert_eq!(
+        second_peer.authority_epoch(),
+        second_snapshot.authority_epoch()
+    );
 }
 
 #[test]
-fn snapshot_completed_ledger_evicts_the_oldest_id_at_cap_plus_one() {
+fn peer_ledger_consumes_only_the_complete_pending_binding() {
     // Arrange
-    let mut ledger = SnapshotEffectLedger::default();
-    for raw_id in 0..MAX_COMPLETED_SNAPSHOT_EFFECTS {
-        ledger.record_completed(SnapshotEffectId::new(raw_id as u64));
-    }
-    let oldest = SnapshotEffectId::new(0);
-    let newest = SnapshotEffectId::new(MAX_COMPLETED_SNAPSHOT_EFFECTS as u64);
+    let mut ledger = PeerEffectLedger::default();
+    let authority_epoch = AuthorityEpoch::INITIAL
+        .checked_next()
+        .expect("test authority epoch should advance");
+    let capability = ledger
+        .reserve_next(
+            authority_epoch,
+            LifecycleGeneration::INITIAL,
+            134_141,
+            PeerSessionGeneration::new(3),
+        )
+        .expect("peer binding should reserve");
+    let exact = capability.acknowledge_write();
+    let replay = exact.duplicate_for_test();
+    let mismatch = PeerEffectCapability::new(
+        authority_epoch,
+        LifecycleGeneration::INITIAL,
+        exact.effect_id(),
+        134_142,
+        PeerSessionGeneration::new(3),
+    )
+    .acknowledge_write();
 
     // Act
-    ledger.record_completed(newest);
+    let mismatch_completion = ledger.complete_exact(&mismatch);
+    let exact_completion = ledger.complete_exact(&exact);
+    let replay_completion = ledger.complete_exact(&replay);
+
+    // Assert
+    assert_eq!(mismatch_completion, ExactEffectLedgerCompletion::NotPending);
+    assert_eq!(exact_completion, ExactEffectLedgerCompletion::Recorded);
+    assert_eq!(
+        replay_completion,
+        ExactEffectLedgerCompletion::AlreadyRecorded
+    );
+    assert_eq!(ledger.pending_len(), 0);
+    assert_eq!(ledger.completed_len(), 1);
+}
+
+#[test]
+fn snapshot_ledger_consumes_only_the_complete_pending_binding() {
+    // Arrange
+    let mut ledger = SnapshotEffectLedger::default();
+    let authority_epoch = AuthorityEpoch::INITIAL
+        .checked_next()
+        .expect("test authority epoch should advance");
+    let prepared = ledger
+        .reserve_next(
+            authority_epoch,
+            LifecycleGeneration::INITIAL,
+            MempoolSnapshot::default(),
+        )
+        .expect("snapshot binding should reserve");
+    let exact = prepared.into_parts().1.acknowledge_write();
+    let replay = exact.duplicate_for_test();
+    let mismatch = PreparedSnapshotWrite::new(
+        authority_epoch,
+        LifecycleGeneration::INITIAL,
+        exact.effect_id(),
+        SnapshotIdentity::new(99),
+        MempoolSnapshot::default(),
+    )
+    .into_parts()
+    .1
+    .acknowledge_write();
+
+    // Act
+    let mismatch_completion = ledger.complete_exact(&mismatch);
+    let exact_completion = ledger.complete_exact(&exact);
+    let replay_completion = ledger.complete_exact(&replay);
+
+    // Assert
+    assert_eq!(mismatch_completion, ExactEffectLedgerCompletion::NotPending);
+    assert_eq!(exact_completion, ExactEffectLedgerCompletion::Recorded);
+    assert_eq!(
+        replay_completion,
+        ExactEffectLedgerCompletion::AlreadyRecorded
+    );
+    assert_eq!(ledger.pending_len(), 0);
+    assert_eq!(ledger.completed_len(), 1);
+}
+
+#[test]
+fn peer_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
+    // Arrange
+    let mut ledger = PeerEffectLedger::default();
+    let authority_epoch = AuthorityEpoch::INITIAL
+        .checked_next()
+        .expect("test authority epoch should advance");
+    let generation = LifecycleGeneration::INITIAL;
+    let session_generation = PeerSessionGeneration::new(1);
+    for raw_id in 0..MAX_COMPLETED_PEER_EFFECTS {
+        let receipt = PeerEffectCapability::new(
+            authority_epoch,
+            generation,
+            PeerEffectId::new(raw_id as u64),
+            raw_id as PeerId,
+            session_generation,
+        )
+        .acknowledge_write();
+        ledger.record_completed_for_test(&receipt);
+    }
+    let oldest = PeerEffectCapability::new(
+        authority_epoch,
+        generation,
+        PeerEffectId::new(0),
+        0,
+        session_generation,
+    )
+    .acknowledge_write();
+    let newest = PeerEffectCapability::new(
+        authority_epoch,
+        generation,
+        PeerEffectId::new(MAX_COMPLETED_PEER_EFFECTS as u64),
+        MAX_COMPLETED_PEER_EFFECTS as PeerId,
+        session_generation,
+    )
+    .acknowledge_write();
+
+    // Act
+    ledger.record_completed_for_test(&newest);
+
+    // Assert
+    assert_eq!(ledger.completed_len(), MAX_COMPLETED_PEER_EFFECTS);
+    assert!(!ledger.is_completed_exact(&oldest));
+    assert!(ledger.is_completed_exact(&newest));
+}
+
+#[test]
+fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
+    // Arrange
+    let mut ledger = SnapshotEffectLedger::default();
+    let authority_epoch = AuthorityEpoch::INITIAL
+        .checked_next()
+        .expect("test authority epoch should advance");
+    let generation = LifecycleGeneration::INITIAL;
+    for raw_id in 0..MAX_COMPLETED_SNAPSHOT_EFFECTS {
+        let receipt = PreparedSnapshotWrite::new(
+            authority_epoch,
+            generation,
+            SnapshotEffectId::new(raw_id as u64),
+            SnapshotIdentity::new(raw_id as u64),
+            MempoolSnapshot::default(),
+        )
+        .into_parts()
+        .1
+        .acknowledge_write();
+        ledger.record_completed_for_test(&receipt);
+    }
+    let oldest = PreparedSnapshotWrite::new(
+        authority_epoch,
+        generation,
+        SnapshotEffectId::new(0),
+        SnapshotIdentity::new(0),
+        MempoolSnapshot::default(),
+    )
+    .into_parts()
+    .1
+    .acknowledge_write();
+    let newest = PreparedSnapshotWrite::new(
+        authority_epoch,
+        generation,
+        SnapshotEffectId::new(MAX_COMPLETED_SNAPSHOT_EFFECTS as u64),
+        SnapshotIdentity::new(MAX_COMPLETED_SNAPSHOT_EFFECTS as u64),
+        MempoolSnapshot::default(),
+    )
+    .into_parts()
+    .1
+    .acknowledge_write();
+
+    // Act
+    ledger.record_completed_for_test(&newest);
 
     // Assert
     assert_eq!(ledger.completed_len(), MAX_COMPLETED_SNAPSHOT_EFFECTS);
-    assert!(!ledger.is_completed(oldest));
-    assert!(ledger.is_completed(newest));
+    assert!(!ledger.is_completed_exact(&oldest));
+    assert!(ledger.is_completed_exact(&newest));
 }
 
 #[test]
 fn pending_ledgers_fail_closed_at_exact_family_caps() {
     // Arrange
     let mut peer_ledger = PeerEffectLedger::default();
+    let authority_epoch = AuthorityEpoch::INITIAL
+        .checked_next()
+        .expect("test authority epoch should advance");
     for raw_id in 0..MAX_PENDING_PEER_EFFECTS {
         assert!(
             peer_ledger
-                .try_reserve(PeerEffectId::new(raw_id as u64))
+                .try_reserve_for_test(PeerEffectCapability::new(
+                    authority_epoch,
+                    LifecycleGeneration::INITIAL,
+                    PeerEffectId::new(raw_id as u64),
+                    raw_id as PeerId,
+                    PeerSessionGeneration::new(1),
+                ))
                 .is_ok()
         );
     }
     let mut snapshot_ledger = SnapshotEffectLedger::default();
     snapshot_ledger
-        .try_reserve(SnapshotEffectId::new(0))
+        .try_reserve_for_test(PreparedSnapshotWrite::new(
+            authority_epoch,
+            LifecycleGeneration::INITIAL,
+            SnapshotEffectId::new(0),
+            SnapshotIdentity::new(0),
+            MempoolSnapshot::default(),
+        ))
         .expect("one snapshot may be pending");
 
     // Act
-    let peer_overflow = peer_ledger.try_reserve(PeerEffectId::new(MAX_PENDING_PEER_EFFECTS as u64));
-    let snapshot_overflow = snapshot_ledger.try_reserve(SnapshotEffectId::new(1));
+    let peer_overflow = peer_ledger.try_reserve_for_test(PeerEffectCapability::new(
+        authority_epoch,
+        LifecycleGeneration::INITIAL,
+        PeerEffectId::new(MAX_PENDING_PEER_EFFECTS as u64),
+        MAX_PENDING_PEER_EFFECTS as PeerId,
+        PeerSessionGeneration::new(1),
+    ));
+    let snapshot_overflow = snapshot_ledger.try_reserve_for_test(PreparedSnapshotWrite::new(
+        authority_epoch,
+        LifecycleGeneration::INITIAL,
+        SnapshotEffectId::new(1),
+        SnapshotIdentity::new(1),
+        MempoolSnapshot::default(),
+    ));
 
     // Assert
     assert!(peer_overflow.is_err());

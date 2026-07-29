@@ -292,6 +292,10 @@ impl RelayServingCache {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    pub(super) fn install_authority_incarnation(&mut self) {
+        self.authority_epoch = super::allocate_authority_epoch();
+    }
+
     pub fn new(store: S, local_config: LocalPeerConfig, mempool_config: PolicyConfig) -> Self {
         Self::new_with_relay_activation(
             store,

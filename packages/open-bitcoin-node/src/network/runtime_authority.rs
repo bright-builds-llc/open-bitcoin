@@ -95,7 +95,8 @@ pub struct ManagedNetworkHandle {
 }
 
 impl ManagedNetworkHandle {
-    pub(crate) fn new(network: AuthoritativeNetwork) -> Self {
+    pub(crate) fn new(mut network: AuthoritativeNetwork) -> Self {
+        network.install_authority_incarnation();
         Self {
             authority: Arc::new(Mutex::new(network)),
         }

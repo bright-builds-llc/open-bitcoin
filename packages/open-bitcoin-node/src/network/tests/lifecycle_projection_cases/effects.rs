@@ -18,10 +18,10 @@ use open_bitcoin_network::{LocalPeerConfig, PHASE94_MAX_PEER_QUEUED_MESSAGES, Pe
 
 use super::{apply_prepared, network_with_spendable_coinbase};
 use crate::network::lifecycle_effects::{
-    MAX_COMPLETED_PEER_EFFECTS, MAX_COMPLETED_SNAPSHOT_EFFECTS, MAX_PENDING_PEER_EFFECTS,
-    MAX_PENDING_SNAPSHOT_EFFECTS, PeerEffectCapability, PeerEffectId, PeerEffectLedger,
-    PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId, SnapshotEffectLedger,
-    SnapshotIdentity,
+    ExactEffectLedgerCompletion, MAX_COMPLETED_PEER_EFFECTS, MAX_COMPLETED_SNAPSHOT_EFFECTS,
+    MAX_PENDING_PEER_EFFECTS, MAX_PENDING_SNAPSHOT_EFFECTS, PeerEffectCapability, PeerEffectId,
+    PeerEffectLedger, PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId,
+    SnapshotEffectLedger, SnapshotIdentity,
 };
 use crate::network::lifecycle_projection::{
     AuthorityEpoch, LifecycleCommand, LifecycleGeneration, PeerRelayPreparationRequest,

@@ -12,7 +12,10 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Mutex,
+};
 
 mod action_translation;
 mod admission_bridge;
@@ -79,6 +82,20 @@ pub use types::{
 };
 
 type ManagedResult<T> = Result<T, ManagedNetworkError>;
+
+static LAST_AUTHORITY_EPOCH: Mutex<lifecycle_projection::AuthorityEpoch> =
+    Mutex::new(lifecycle_projection::AuthorityEpoch::INITIAL);
+
+fn allocate_authority_epoch() -> lifecycle_projection::AuthorityEpoch {
+    let Ok(mut last_epoch) = LAST_AUTHORITY_EPOCH.lock() else {
+        std::process::abort();
+    };
+    let Ok(next_epoch) = last_epoch.checked_next() else {
+        std::process::abort();
+    };
+    *last_epoch = next_epoch;
+    next_epoch
+}
 
 #[derive(Debug, Clone)]
 pub struct ManagedPeerNetwork<S> {
