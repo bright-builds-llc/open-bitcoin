@@ -129,9 +129,9 @@ impl PreparedCoreTransition {
 /// ```compile_fail,E0382
 /// use open_bitcoin_mempool::{Mempool, PreparedMempoolTransition};
 ///
-/// fn consume_twice(mempool: &Mempool, prepared: PreparedMempoolTransition) {
-///     let _first = mempool.validate_prepared_mempool_transition(prepared);
-///     let _second = mempool.validate_prepared_mempool_transition(prepared);
+/// fn consume_twice(mempool: &mut Mempool, prepared: PreparedMempoolTransition) {
+///     let _first = mempool.commit_prepared_mempool_transition(prepared);
+///     let _second = mempool.commit_prepared_mempool_transition(prepared);
 /// }
 /// ```
 pub struct PreparedMempoolTransition {
@@ -236,6 +236,27 @@ impl Mempool {
         Ok(ValidatedMempoolTransition {
             core: prepared.core,
             facts: prepared.facts,
+        })
+    }
+
+    /// Atomically checks and commits one prepared transition.
+    pub fn commit_prepared_mempool_transition(
+        &mut self,
+        prepared: PreparedMempoolTransition,
+    ) -> Result<MempoolLifecycleDelta, MempoolError> {
+        let expected_revision = prepared.core.base_revision();
+        if self.revision != expected_revision {
+            return Err(MempoolError::StalePreparedTransition {
+                expected_revision: expected_revision.0,
+                actual_revision: self.revision.0,
+            });
+        }
+
+        #[cfg(test)]
+        APPLY_COUNT.with(|count| count.set(count.get() + 1));
+        Ok(match prepared.core {
+            PreparedCoreTransition::Patch(patch) => self.apply_validated_patch(*patch),
+            PreparedCoreTransition::Noop { .. } => prepared.facts.delta,
         })
     }
 

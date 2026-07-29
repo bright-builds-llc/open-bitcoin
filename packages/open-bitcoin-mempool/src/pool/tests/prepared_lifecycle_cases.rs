@@ -247,7 +247,7 @@ fn package_preparation_propagates_revision_exhaustion() {
 }
 
 #[test]
-fn stale_preparation_is_rejected_before_mutation() {
+fn atomic_commit_rejects_stale_preparation_without_mutation() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
     let first = admission_transaction(coinbase_txids[0]);
@@ -262,16 +262,66 @@ fn stale_preparation_is_rejected_before_mutation() {
             AdmissionContext::legacy_unknown(),
         )
         .expect("singleton preparation");
-    mempool
-        .accept_transaction_with_context(
+    let newer = mempool
+        .prepare_transaction_with_context(
             intervening,
             &snapshot,
             verify_flags(),
             consensus_params(),
             AdmissionContext::legacy_unknown(),
         )
-        .expect("intervening admission");
-    let before_validation = mempool.complete_snapshot();
+        .expect("intervening preparation");
+    let newer_delta = mempool
+        .commit_prepared_mempool_transition(newer)
+        .expect("intervening commit");
+    let before_stale_commit = mempool.complete_snapshot();
+
+    // Act
+    let error = mempool
+        .commit_prepared_mempool_transition(prepared)
+        .expect_err("intervening mutation must stale the capability");
+
+    // Assert
+    assert_eq!(
+        error,
+        MempoolError::StalePreparedTransition {
+            expected_revision: 0,
+            actual_revision: 1,
+        }
+    );
+    assert_eq!(newer_delta.admitted.len(), 1);
+    assert_eq!(mempool.complete_snapshot(), before_stale_commit);
+}
+
+#[test]
+fn legacy_validation_rejects_stale_preparation_without_mutation() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let first = admission_transaction(coinbase_txids[0]);
+    let intervening = admission_transaction(coinbase_txids[1]);
+    let mut mempool = Mempool::default();
+    let prepared = mempool
+        .prepare_transaction_with_context(
+            first,
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::legacy_unknown(),
+        )
+        .expect("singleton preparation");
+    let newer = mempool
+        .prepare_transaction_with_context(
+            intervening,
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::legacy_unknown(),
+        )
+        .expect("intervening preparation");
+    mempool
+        .commit_prepared_mempool_transition(newer)
+        .expect("intervening commit");
+    let before_stale_validation = mempool.complete_snapshot();
 
     // Act
     let error = mempool
@@ -286,11 +336,39 @@ fn stale_preparation_is_rejected_before_mutation() {
             actual_revision: 1,
         }
     );
-    assert_eq!(mempool.complete_snapshot(), before_validation);
+    assert_eq!(mempool.complete_snapshot(), before_stale_validation);
 }
 
 #[test]
-fn package_noop_preparation_and_apply_advance_no_revision() {
+fn atomic_commit_returns_exact_current_delta() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = admission_transaction(coinbase_txids[0]);
+    let expected_txid = transaction_txid(&transaction).expect("transaction txid");
+    let mut mempool = Mempool::default();
+    let prepared = mempool
+        .prepare_transaction_with_context(
+            transaction,
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::legacy_unknown(),
+        )
+        .expect("singleton preparation");
+    let expected_delta = prepared.facts().delta().clone();
+
+    // Act
+    let delta = mempool
+        .commit_prepared_mempool_transition(prepared)
+        .expect("current commit");
+
+    // Assert
+    assert_eq!(delta, expected_delta);
+    assert!(mempool.entry(&expected_txid).is_some());
+}
+
+#[test]
+fn package_noop_atomic_commit_advances_no_revision() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
     let transaction = admission_transaction(coinbase_txids[0]);
@@ -325,12 +403,13 @@ fn package_noop_preparation_and_apply_advance_no_revision() {
         .expect("package preparation");
     assert!(prepared.facts().maybe_admission_result().is_none());
     assert!(prepared.facts().maybe_package_report().is_some());
-    let validated = mempool
-        .validate_prepared_mempool_transition(prepared)
-        .expect("no-op validation");
-    let delta = mempool.apply_validated_mempool_transition(validated);
+    let expected_delta = prepared.facts().delta().clone();
+    let delta = mempool
+        .commit_prepared_mempool_transition(prepared)
+        .expect("no-op commit");
 
     // Assert
+    assert_eq!(delta, expected_delta);
     assert!(delta.is_empty());
     assert_eq!(mempool.complete_snapshot(), before);
 }
