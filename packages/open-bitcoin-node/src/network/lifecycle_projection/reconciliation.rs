@@ -149,20 +149,28 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     }
 
     fn unbroadcast_mismatch_count(&self, canonical: &BTreeSet<MempoolMemberIdentity>) -> usize {
+        let expected = self.expected_unbroadcast_members(canonical);
         self.unbroadcast_members
+            .symmetric_difference(&expected)
+            .count()
+    }
+
+    fn expected_unbroadcast_members(
+        &self,
+        canonical: &BTreeSet<MempoolMemberIdentity>,
+    ) -> BTreeSet<MempoolMemberIdentity> {
+        canonical
             .iter()
             .filter(|member| {
-                if !canonical.contains(member) {
-                    return true;
-                }
                 self.mempool
                     .mempool()
                     .entry(&member.txid)
-                    .is_none_or(|entry| {
-                        entry.wtxid != member.wtxid || !entry.metadata.is_retry_eligible(true)
+                    .is_some_and(|entry| {
+                        entry.wtxid == member.wtxid && entry.metadata.is_retry_eligible(true)
                     })
             })
-            .count()
+            .copied()
+            .collect()
     }
 
     fn persistence_mismatch_count(&self) -> usize {
@@ -212,18 +220,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             compact: self.compact_exact_mismatches(&canonical),
             unbroadcast: self
                 .unbroadcast_members
-                .iter()
-                .filter(|member| {
-                    !canonical.contains(member)
-                        || self
-                            .mempool
-                            .mempool()
-                            .entry(&member.txid)
-                            .is_none_or(|entry| {
-                                entry.wtxid != member.wtxid
-                                    || !entry.metadata.is_retry_eligible(true)
-                            })
-                })
+                .symmetric_difference(&self.expected_unbroadcast_members(&canonical))
                 .copied()
                 .collect(),
         }

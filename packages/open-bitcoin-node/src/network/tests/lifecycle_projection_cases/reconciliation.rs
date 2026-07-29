@@ -247,3 +247,71 @@ fn exact_mismatch_identities_exist_only_in_the_test_contract() {
     assert!(network.reconcile_lifecycle_projection().counts()[3] > 0);
     assert!(network.reconcile_lifecycle_projection().counts()[4] > 0);
 }
+
+#[test]
+fn unbroadcast_reconciliation_counts_an_extra_member_once() {
+    // Arrange
+    let (mut network, _, _) = admitted_network();
+    let extra = MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x75; 32]),
+        wtxid: open_bitcoin_core::primitives::Wtxid::from_byte_array([0x76; 32]),
+    };
+    network.unbroadcast_members.insert(extra);
+
+    // Act
+    let report = network.reconcile_lifecycle_projection();
+    let exact = network.reconcile_lifecycle_projection_exact_for_test();
+
+    // Assert
+    assert_eq!(report.counts()[4], 1);
+    assert_eq!(exact.unbroadcast, BTreeSet::from([extra]));
+}
+
+#[test]
+fn unbroadcast_reconciliation_counts_a_missing_member_once() {
+    // Arrange
+    let (mut network, member, _) = admitted_network();
+    assert!(network.unbroadcast_members.remove(&member));
+
+    // Act
+    let report = network.reconcile_lifecycle_projection();
+    let exact = network.reconcile_lifecycle_projection_exact_for_test();
+
+    // Assert
+    assert_eq!(report.counts()[4], 1);
+    assert_eq!(exact.unbroadcast, BTreeSet::from([member]));
+}
+
+#[test]
+fn unbroadcast_reconciliation_counts_equal_cardinality_swap_twice() {
+    // Arrange
+    let (mut network, member, _) = admitted_network();
+    let extra = MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x85; 32]),
+        wtxid: open_bitcoin_core::primitives::Wtxid::from_byte_array([0x86; 32]),
+    };
+    assert!(network.unbroadcast_members.remove(&member));
+    network.unbroadcast_members.insert(extra);
+
+    // Act
+    let report = network.reconcile_lifecycle_projection();
+    let exact = network.reconcile_lifecycle_projection_exact_for_test();
+
+    // Assert
+    assert_eq!(report.counts()[4], 2);
+    assert_eq!(exact.unbroadcast, BTreeSet::from([member, extra]));
+}
+
+#[test]
+fn unbroadcast_reconciliation_reports_clean_membership() {
+    // Arrange
+    let (network, _, _) = admitted_network();
+
+    // Act
+    let report = network.reconcile_lifecycle_projection();
+    let exact = network.reconcile_lifecycle_projection_exact_for_test();
+
+    // Assert
+    assert_eq!(report.counts()[4], 0);
+    assert!(exact.unbroadcast.is_empty());
+}
