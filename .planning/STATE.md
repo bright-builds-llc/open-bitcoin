@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-15-PLAN.md
-last_updated: "2026-07-29T03:47:37.413Z"
-last_activity: 2026-07-29 -- Completed Plan 15 peer-local atomic effect completion
+stopped_at: Completed 134-16-PLAN.md
+last_updated: "2026-07-29T06:54:05.454Z"
+last_activity: 2026-07-29 -- Completed Plan 16 exact peer abort and fanout terminal handling
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 51
-  percent: 85
+  completed_plans: 52
+  percent: 87
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 15 of 24
-Status: Executing gap-closure plans
-Last activity: 2026-07-29 -- Completed Plan 15 peer-local atomic effect completion
+Plan: 16 of 24
+Status: Ready to execute
+Last activity: 2026-07-29 -- Completed Plan 16 exact peer abort and fanout terminal handling
 
-Progress: [██████░░░░] 62%
+Progress: [███████░░░] 67%
 
-Next action: Execute 134-16-PLAN.md.
+Next action: Execute 134-17-PLAN.md.
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Next action: Execute 134-16-PLAN.md.
 | Phase 134 P13 | 41m | 2 tasks | 5 files |
 | Phase 134 P14 | 58m | 2 tasks | 9 files |
 | Phase 134 P15 | 2h 7m | 2 tasks | 22 files |
+| Phase 134 P16 | 2h 51m | 2 tasks | 23 files |
 
 ## Accumulated Context
 
@@ -204,6 +205,10 @@ Next action: Execute 134-16-PLAN.md.
 - [Phase 134]: Reject foreign or immutable-mismatched receipts with a typed lifecycle error; reserve AchievedButStale for exact pending work whose current targets advanced.
 - [Phase 134]: Bound peer session-generation history by connected or pending-effect ownership.
 - [Phase 134]: Route emission receipts through one evidence-bearing lifecycle command and one authority guard.
+- [Phase 134]: Exact pre-achievement peer abort validates immutable ownership while allowing capacity release after lifecycle or target-peer freshness advances.
+- [Phase 134]: Every audited node and RPC peer emission terminates through achieved completion or explicit current-and-suffix abort.
+- [Phase 134]: Fanout cleanup attempts every suffix abort and surfaces cleanup failure without rolling back successful-prefix evidence.
+- [Phase 134]: Keep MPLIFE-01 and MPLIFE-04 pending until independent phase re-verification.
 
 ### Pending Todos
 
@@ -226,6 +231,6 @@ Next action: Execute 134-16-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T03:47:37.411Z
-Stopped at: Completed 134-15-PLAN.md
+Last session: 2026-07-29T06:54:05.452Z
+Stopped at: Completed 134-16-PLAN.md
 Resume file: None
