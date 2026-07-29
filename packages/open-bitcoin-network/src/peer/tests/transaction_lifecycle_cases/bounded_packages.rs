@@ -189,3 +189,107 @@ fn package_member_cap_is_independent_of_fingerprint_count() {
     );
     assert_eq!(format!("{manager:?}"), baseline);
 }
+
+#[test]
+fn full_cache_can_retire_and_replace_at_exact_capacity() {
+    // Arrange
+    let teardown = identity(220);
+    let retired = package(0, vec![teardown]);
+    let replacement = empty_package(100);
+    let mut initial = vec![retired.clone()];
+    initial.extend((1..ACCEPTED_PACKAGE_CAP).map(empty_package));
+    let mut manager = PeerManager::new(local_config());
+    apply_packages(&mut manager, initial);
+
+    // Act
+    let prepared = manager
+        .prepare_transaction_lifecycle(PeerTransactionLifecycleInput::new(
+            Vec::new(),
+            vec![teardown],
+            vec![replacement.clone()],
+        ))
+        .expect("same-transition retirement should free replacement capacity");
+    manager.apply_prepared_transaction_lifecycle(prepared);
+
+    // Assert
+    assert_eq!(
+        manager.debug_accepted_package_fingerprint_count(),
+        ACCEPTED_PACKAGE_CAP
+    );
+    assert!(
+        !manager
+            .orphanage
+            .accepted_package_fingerprints()
+            .any(|(fingerprint, _)| *fingerprint == retired.fingerprint())
+    );
+    assert!(
+        manager
+            .orphanage
+            .accepted_package_fingerprints()
+            .any(|(fingerprint, _)| *fingerprint == replacement.fingerprint())
+    );
+}
+
+#[test]
+fn partial_retirement_still_over_cap_fails_without_mutation() {
+    // Arrange
+    let teardown = identity(221);
+    let mut initial = vec![package(0, vec![teardown])];
+    initial.extend((1..ACCEPTED_PACKAGE_CAP).map(empty_package));
+    let manager = {
+        let mut manager = PeerManager::new(local_config());
+        apply_packages(&mut manager, initial);
+        manager
+    };
+    let baseline = format!("{manager:?}");
+
+    // Act
+    let result = manager.prepare_transaction_lifecycle(PeerTransactionLifecycleInput::new(
+        Vec::new(),
+        vec![teardown],
+        vec![
+            empty_package(ACCEPTED_PACKAGE_CAP),
+            empty_package(ACCEPTED_PACKAGE_CAP + 1),
+        ],
+    ));
+
+    // Assert
+    assert_eq!(
+        result.err(),
+        Some(PeerTransactionLifecyclePreparationError::FingerprintLimit {
+            count: ACCEPTED_PACKAGE_CAP + 1,
+            maximum: ACCEPTED_PACKAGE_CAP,
+        })
+    );
+    assert_eq!(format!("{manager:?}"), baseline);
+}
+
+#[test]
+fn duplicate_replacement_does_not_consume_final_capacity() {
+    // Arrange
+    let teardown = identity(222);
+    let existing = empty_package(1);
+    let replacement = empty_package(100);
+    let mut initial = vec![package(0, vec![teardown])];
+    initial.extend((1..ACCEPTED_PACKAGE_CAP).map(empty_package));
+    let mut manager = PeerManager::new(local_config());
+    apply_packages(&mut manager, initial);
+
+    // Act
+    let prepared = manager
+        .prepare_transaction_lifecycle(PeerTransactionLifecycleInput::new(
+            Vec::new(),
+            vec![teardown],
+            vec![existing, replacement.clone(), replacement],
+        ))
+        .expect("identical duplicates should not consume replacement capacity");
+    let prepared_admission_count = prepared.debug_fingerprint_admission_count();
+    manager.apply_prepared_transaction_lifecycle(prepared);
+
+    // Assert
+    assert_eq!(prepared_admission_count, 1);
+    assert_eq!(
+        manager.debug_accepted_package_fingerprint_count(),
+        ACCEPTED_PACKAGE_CAP
+    );
+}

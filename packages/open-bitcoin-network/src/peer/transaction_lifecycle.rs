@@ -523,7 +523,25 @@ fn prepare_orphan_lifecycle(
         .accepted_package_fingerprints()
         .map(|(fingerprint, members)| (*fingerprint, members.clone()))
         .collect();
+    let fingerprint_retirements = current_fingerprints
+        .iter()
+        .filter_map(|(fingerprint, members)| {
+            (!members.is_disjoint(&teardown_wtxids)).then_some(*fingerprint)
+        })
+        .collect::<Vec<_>>();
+    if fingerprint_retirements.len() > PHASE102_MAX_RECONSIDERATIONS_PER_PARENT {
+        return Err(
+            PeerTransactionLifecyclePreparationError::FingerprintRetirementLimit {
+                count: fingerprint_retirements.len(),
+                maximum: PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
+            },
+        );
+    }
+
     let mut prospective_fingerprints = current_fingerprints.clone();
+    for fingerprint in &fingerprint_retirements {
+        prospective_fingerprints.remove(fingerprint);
+    }
     let mut fingerprint_admissions = Vec::new();
     for package in &input.accepted_packages {
         let members: BTreeSet<_> = package
@@ -531,7 +549,10 @@ fn prepare_orphan_lifecycle(
             .iter()
             .map(|identity| identity.wtxid)
             .collect();
-        if let Some(current) = prospective_fingerprints.get(&package.fingerprint) {
+        if let Some(current) = current_fingerprints
+            .get(&package.fingerprint)
+            .or_else(|| prospective_fingerprints.get(&package.fingerprint))
+        {
             if current != &members {
                 return Err(
                     PeerTransactionLifecyclePreparationError::FingerprintMembersConflict {
@@ -551,20 +572,6 @@ fn prepare_orphan_lifecycle(
             count: prospective_fingerprints.len(),
             maximum: MAX_STORED_ACCEPTED_PACKAGE_FINGERPRINTS,
         });
-    }
-    let fingerprint_retirements = current_fingerprints
-        .iter()
-        .filter_map(|(fingerprint, members)| {
-            (!members.is_disjoint(&teardown_wtxids)).then_some(*fingerprint)
-        })
-        .collect::<Vec<_>>();
-    if fingerprint_retirements.len() > PHASE102_MAX_RECONSIDERATIONS_PER_PARENT {
-        return Err(
-            PeerTransactionLifecyclePreparationError::FingerprintRetirementLimit {
-                count: fingerprint_retirements.len(),
-                maximum: PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
-            },
-        );
     }
 
     Ok(PreparedOrphanLifecycle {
