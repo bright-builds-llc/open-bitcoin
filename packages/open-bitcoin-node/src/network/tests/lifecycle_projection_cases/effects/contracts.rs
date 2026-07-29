@@ -8,6 +8,7 @@ use super::*;
 
 mod peer_abort;
 mod peer_sessions;
+mod snapshot_abort;
 
 #[test]
 fn family_caps_match_the_resolved_peer_and_snapshot_bounds() {

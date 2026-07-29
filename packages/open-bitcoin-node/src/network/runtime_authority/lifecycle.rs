@@ -23,6 +23,7 @@ pub(in crate::network) enum LifecycleCommandResult {
     SnapshotPrepared(PreparedSnapshotWrite),
     RelayPrepared(PeerEffectCapability),
     PeerEffectAborted(EffectAbort),
+    SnapshotEffectAborted(EffectAbort),
     PeerEffectCompleted(EffectCompletion),
     SnapshotEffectCompleted(EffectCompletion),
 }
@@ -88,6 +89,10 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 network.maybe_forget_peer_session_generation(peer_id);
             }
             Ok(LifecycleCommandResult::PeerEffectAborted(abort))
+        }
+        LifecycleCommand::AbortSnapshotEffect(capability) => {
+            let abort = network.snapshot_effect_ledger.abort_exact(&capability);
+            Ok(LifecycleCommandResult::SnapshotEffectAborted(abort))
         }
         LifecycleCommand::CompletePeerEffect(receipt) => {
             complete_peer_effect(network, receipt, None)

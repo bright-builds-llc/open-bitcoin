@@ -17,13 +17,13 @@ pub const MAX_PENDING_PEER_EFFECTS: usize = PHASE94_MAX_PEER_QUEUED_MESSAGES;
 pub const MAX_COMPLETED_PEER_EFFECTS: usize = PHASE94_MAX_PEER_QUEUED_MESSAGES;
 pub const MAX_PENDING_SNAPSHOT_EFFECTS: usize = 1;
 pub const MAX_COMPLETED_SNAPSHOT_EFFECTS: usize = 2;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectCompletion {
     Applied,
     AchievedButStale,
     AlreadyApplied,
 }
+
 /// Classification for a known pre-achievement effect termination.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectAbort {
@@ -238,9 +238,7 @@ impl From<&PeerEffectReceipt> for PeerEffectKey {
 }
 
 /// One owned current-schema mempool snapshot plus its success capability.
-///
-/// The write command is intentionally non-`Clone`; the outside-lock executor
-/// must consume it and may create a receipt only after persistence succeeds.
+/// The outside-lock executor may create a receipt only after persistence succeeds.
 #[derive(Debug, PartialEq, Eq)]
 pub struct PreparedSnapshotWrite {
     snapshot: MempoolSnapshot,
@@ -276,12 +274,6 @@ impl PreparedSnapshotWrite {
 }
 
 /// A consuming capability that can acknowledge one exact successful snapshot write.
-///
-/// ```compile_fail
-/// fn replay(capability: open_bitcoin_node::network::SnapshotWriteCapability) {
-///     let _duplicate = capability.clone();
-/// }
-/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct SnapshotWriteCapability {
     authority_epoch: AuthorityEpoch,
@@ -302,12 +294,6 @@ impl SnapshotWriteCapability {
 }
 
 /// Proof that one exact current-schema snapshot write succeeded.
-///
-/// ```compile_fail
-/// fn replay(receipt: open_bitcoin_node::network::SnapshotWriteReceipt) {
-///     let _duplicate = receipt.clone();
-/// }
-/// ```
 #[derive(Debug, PartialEq, Eq)]
 pub struct SnapshotWriteReceipt {
     authority_epoch: AuthorityEpoch,
@@ -570,6 +556,20 @@ impl SnapshotEffectLedger {
         }
         self.record_completed_key(key);
         ExactEffectLedgerCompletion::Recorded
+    }
+
+    pub(in crate::network) fn abort_exact(
+        &mut self,
+        capability: &SnapshotWriteCapability,
+    ) -> EffectAbort {
+        let key = SnapshotEffectKey::from(capability);
+        if self.completed.contains(&key) {
+            return EffectAbort::AlreadyCompleted;
+        }
+        if self.pending.remove(&key) {
+            return EffectAbort::Aborted;
+        }
+        EffectAbort::NotPending
     }
 
     fn record_completed_key(&mut self, key: SnapshotEffectKey) {

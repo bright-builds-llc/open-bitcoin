@@ -1416,6 +1416,7 @@
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts/peer_abort.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts/peer_sessions.rs",
+        "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects/contracts/snapshot_abort.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/maintenance.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/oracle.rs",
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/reconciliation.rs"

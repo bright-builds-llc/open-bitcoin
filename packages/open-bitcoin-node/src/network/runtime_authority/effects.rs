@@ -17,7 +17,7 @@ use crate::network::{
     PeerEmissionReceipt, PeerEmissionWriteCapability,
     lifecycle_effects::{
         EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
-        PreparedSnapshotWrite, SnapshotWriteReceipt,
+        PreparedSnapshotWrite, SnapshotWriteCapability, SnapshotWriteReceipt,
     },
 };
 
@@ -82,6 +82,20 @@ impl ManagedNetworkHandle {
         capability: PeerEmissionWriteCapability,
     ) -> Result<EffectAbort, ManagedNetworkAuthorityError> {
         self.abort_peer_effect(capability.into_effect_capability())
+    }
+
+    /// Releases one exact snapshot reservation before persistence was achieved.
+    pub fn abort_snapshot_write(
+        &self,
+        capability: SnapshotWriteCapability,
+    ) -> Result<EffectAbort, ManagedNetworkAuthorityError> {
+        match self
+            .apply_lifecycle_command(LifecycleCommand::AbortSnapshotEffect(capability))
+            .map_err(ManagedNetworkAuthorityError::from)?
+        {
+            LifecycleCommandResult::SnapshotEffectAborted(abort) => Ok(abort),
+            _ => Err(unexpected_result("snapshot effect abort")),
+        }
     }
 
     /// Classifies one achieved peer write through the lifecycle dispatcher.

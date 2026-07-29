@@ -24,7 +24,8 @@ use super::ManagedPeerNetwork;
 use super::announcement_transport::PeerEmissionReceipt;
 use super::compact_receive_candidates::CompactExtraTxnBuffer;
 use super::lifecycle_effects::{
-    EffectPreparationError, PeerEffectCapability, PeerEffectReceipt, SnapshotWriteReceipt,
+    EffectPreparationError, PeerEffectCapability, PeerEffectReceipt, SnapshotWriteCapability,
+    SnapshotWriteReceipt,
 };
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
@@ -566,6 +567,7 @@ pub(super) enum LifecycleCommand {
     PrepareSnapshot(SnapshotPreparationRequest),
     PrepareRelay(PeerRelayPreparationRequest),
     AbortPeerEffect(PeerEffectCapability),
+    AbortSnapshotEffect(SnapshotWriteCapability),
     CompletePeerEffect(PeerEffectReceipt),
     CompletePeerEmission(PeerEmissionReceipt),
     CompleteSnapshotEffect(SnapshotWriteReceipt),
@@ -584,6 +586,7 @@ enum LifecycleCommandKind {
     PrepareSnapshot,
     PrepareRelay,
     AbortPeerEffect,
+    AbortSnapshotEffect,
     CompletePeerEffect,
     CompletePeerEmission,
     CompleteSnapshotEffect,
@@ -603,6 +606,7 @@ impl LifecycleCommand {
             Self::PrepareSnapshot(_) => LifecycleCommandKind::PrepareSnapshot,
             Self::PrepareRelay(_) => LifecycleCommandKind::PrepareRelay,
             Self::AbortPeerEffect(_) => LifecycleCommandKind::AbortPeerEffect,
+            Self::AbortSnapshotEffect(_) => LifecycleCommandKind::AbortSnapshotEffect,
             Self::CompletePeerEffect(_) => LifecycleCommandKind::CompletePeerEffect,
             Self::CompletePeerEmission(_) => LifecycleCommandKind::CompletePeerEmission,
             Self::CompleteSnapshotEffect(_) => LifecycleCommandKind::CompleteSnapshotEffect,
