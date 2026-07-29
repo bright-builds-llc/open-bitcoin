@@ -122,6 +122,51 @@ fn independently_constructed_handles_use_distinct_non_initial_incarnations() {
 }
 
 #[test]
+fn independently_constructed_handles_reject_each_others_same_id_receipts() {
+    // Arrange
+    let first = ManagedNetworkHandle::from_network_fixture(network_fixture());
+    let second = ManagedNetworkHandle::from_network_fixture(network_fixture());
+    let foreign_peer = first
+        .prepare_peer_relay_effect(134_146)
+        .expect("first peer effect should prepare")
+        .acknowledge_write();
+    let local_peer = second
+        .prepare_peer_relay_effect(134_146)
+        .expect("second peer effect should prepare")
+        .acknowledge_write();
+    let foreign_snapshot = first
+        .prepare_mempool_snapshot_write()
+        .expect("first snapshot should prepare")
+        .into_parts()
+        .1
+        .acknowledge_write();
+    let local_snapshot = second
+        .prepare_mempool_snapshot_write()
+        .expect("second snapshot should prepare")
+        .into_parts()
+        .1
+        .acknowledge_write();
+
+    // Act
+    let foreign_peer_result = second.complete_peer_effect(foreign_peer);
+    let foreign_snapshot_result = second.complete_snapshot_write(foreign_snapshot);
+    let local_peer_result = second.complete_peer_effect(local_peer);
+    let local_snapshot_result = second.complete_snapshot_write(local_snapshot);
+
+    // Assert
+    assert!(foreign_peer_result.is_err());
+    assert!(foreign_snapshot_result.is_err());
+    assert_eq!(
+        local_peer_result.expect("local peer receipt should remain pending"),
+        EffectCompletion::Applied
+    );
+    assert_eq!(
+        local_snapshot_result.expect("local snapshot receipt should remain pending"),
+        EffectCompletion::Applied
+    );
+}
+
+#[test]
 fn peer_ledger_consumes_only_the_complete_pending_binding() {
     // Arrange
     let mut ledger = PeerEffectLedger::default();
@@ -355,4 +400,182 @@ fn pending_ledgers_fail_closed_at_exact_family_caps() {
     assert!(snapshot_overflow.is_err());
     assert_eq!(peer_ledger.pending_len(), MAX_PENDING_PEER_EFFECTS);
     assert_eq!(snapshot_ledger.pending_len(), MAX_PENDING_SNAPSHOT_EFFECTS);
+}
+
+#[test]
+fn dispatcher_rejects_every_foreign_peer_binding_without_mutation() {
+    // Arrange
+    let mut network = network_fixture();
+    let capability = match apply_lifecycle_command(
+        &mut network,
+        LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_143)),
+    )
+    .expect("peer effect should prepare")
+    {
+        crate::network::runtime_authority::LifecycleCommandResult::RelayPrepared(capability) => {
+            capability
+        }
+        _ => panic!("relay preparation returned the wrong command result"),
+    };
+    let exact = capability.acknowledge_write();
+    let exact_completion = exact.duplicate_for_test();
+    let next_authority = exact
+        .authority_epoch()
+        .checked_next()
+        .expect("test authority epoch should advance");
+    let next_lifecycle = exact
+        .lifecycle_generation()
+        .checked_next()
+        .expect("test lifecycle generation should advance");
+    let next_session = exact
+        .peer_session_generation()
+        .checked_next()
+        .expect("test session generation should advance");
+    let mismatches = [
+        PeerEffectCapability::new(
+            next_authority,
+            exact.lifecycle_generation(),
+            exact.effect_id(),
+            exact.peer_id(),
+            exact.peer_session_generation(),
+        )
+        .acknowledge_write(),
+        PeerEffectCapability::new(
+            exact.authority_epoch(),
+            next_lifecycle,
+            exact.effect_id(),
+            exact.peer_id(),
+            exact.peer_session_generation(),
+        )
+        .acknowledge_write(),
+        PeerEffectCapability::new(
+            exact.authority_epoch(),
+            exact.lifecycle_generation(),
+            PeerEffectId::new(134_143),
+            exact.peer_id(),
+            exact.peer_session_generation(),
+        )
+        .acknowledge_write(),
+        PeerEffectCapability::new(
+            exact.authority_epoch(),
+            exact.lifecycle_generation(),
+            exact.effect_id(),
+            134_144,
+            exact.peer_session_generation(),
+        )
+        .acknowledge_write(),
+        PeerEffectCapability::new(
+            exact.authority_epoch(),
+            exact.lifecycle_generation(),
+            exact.effect_id(),
+            exact.peer_id(),
+            next_session,
+        )
+        .acknowledge_write(),
+    ];
+    let state_before = format!("{network:?}");
+
+    // Act
+    for mismatch in mismatches {
+        let result =
+            apply_lifecycle_command(&mut network, LifecycleCommand::CompletePeerEffect(mismatch));
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(format!("{network:?}"), state_before);
+    }
+    let completion = apply_lifecycle_command(
+        &mut network,
+        LifecycleCommand::CompletePeerEffect(exact_completion),
+    )
+    .expect("the exact pending peer receipt should remain valid");
+    assert!(matches!(
+        completion,
+        crate::network::runtime_authority::LifecycleCommandResult::PeerEffectCompleted(
+            EffectCompletion::Applied
+        )
+    ));
+}
+
+#[test]
+fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
+    // Arrange
+    let mut network = network_fixture();
+    let prepared = prepare_snapshot(&mut network);
+    let exact = prepared.into_parts().1.acknowledge_write();
+    let exact_completion = exact.duplicate_for_test();
+    let next_authority = exact
+        .authority_epoch()
+        .checked_next()
+        .expect("test authority epoch should advance");
+    let next_persistence = exact
+        .persistence_generation()
+        .checked_next()
+        .expect("test persistence generation should advance");
+    let mismatches = [
+        PreparedSnapshotWrite::new(
+            next_authority,
+            exact.persistence_generation(),
+            exact.effect_id(),
+            exact.snapshot_identity(),
+            MempoolSnapshot::default(),
+        )
+        .into_parts()
+        .1
+        .acknowledge_write(),
+        PreparedSnapshotWrite::new(
+            exact.authority_epoch(),
+            next_persistence,
+            exact.effect_id(),
+            exact.snapshot_identity(),
+            MempoolSnapshot::default(),
+        )
+        .into_parts()
+        .1
+        .acknowledge_write(),
+        PreparedSnapshotWrite::new(
+            exact.authority_epoch(),
+            exact.persistence_generation(),
+            SnapshotEffectId::new(134_144),
+            exact.snapshot_identity(),
+            MempoolSnapshot::default(),
+        )
+        .into_parts()
+        .1
+        .acknowledge_write(),
+        PreparedSnapshotWrite::new(
+            exact.authority_epoch(),
+            exact.persistence_generation(),
+            exact.effect_id(),
+            SnapshotIdentity::new(134_145),
+            MempoolSnapshot::default(),
+        )
+        .into_parts()
+        .1
+        .acknowledge_write(),
+    ];
+    let state_before = format!("{network:?}");
+
+    // Act
+    for mismatch in mismatches {
+        let result = apply_lifecycle_command(
+            &mut network,
+            LifecycleCommand::CompleteSnapshotEffect(mismatch),
+        );
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(format!("{network:?}"), state_before);
+    }
+    let completion = apply_lifecycle_command(
+        &mut network,
+        LifecycleCommand::CompleteSnapshotEffect(exact_completion),
+    )
+    .expect("the exact pending snapshot receipt should remain valid");
+    assert!(matches!(
+        completion,
+        crate::network::runtime_authority::LifecycleCommandResult::SnapshotEffectCompleted(
+            EffectCompletion::Applied
+        )
+    ));
 }

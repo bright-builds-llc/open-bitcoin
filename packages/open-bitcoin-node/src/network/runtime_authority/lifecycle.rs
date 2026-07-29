@@ -81,8 +81,10 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 ));
             }
             let exact_completion = network.peer_effect_ledger.complete_exact(&receipt);
-            let is_fresh = exact_completion == ExactEffectLedgerCompletion::Recorded
-                && receipt.authority_epoch() == network.authority_epoch
+            if exact_completion == ExactEffectLedgerCompletion::NotPending {
+                return Err(LifecycleProjectionError::InvalidEffectReceipt("peer"));
+            }
+            let is_fresh = receipt.authority_epoch() == network.authority_epoch
                 && receipt.lifecycle_generation() == network.lifecycle_generation
                 && receipt.peer_session_generation() == network.peer_session_generation;
             let completion = if is_fresh {
@@ -100,13 +102,11 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 ));
             }
             let exact_completion = network.snapshot_effect_ledger.complete_exact(&receipt);
-            let is_fresh = exact_completion == ExactEffectLedgerCompletion::Recorded
-                && receipt.authority_epoch() == network.authority_epoch
-                && receipt.persistence_generation() == network.lifecycle_generation
-                && receipt.snapshot_identity()
-                    == crate::network::lifecycle_effects::SnapshotIdentity::from_effect_id(
-                        receipt.effect_id(),
-                    );
+            if exact_completion == ExactEffectLedgerCompletion::NotPending {
+                return Err(LifecycleProjectionError::InvalidEffectReceipt("snapshot"));
+            }
+            let is_fresh = receipt.authority_epoch() == network.authority_epoch
+                && receipt.persistence_generation() == network.lifecycle_generation;
             let completion = if is_fresh {
                 if network.dirty_generation == Some(receipt.persistence_generation()) {
                     network.dirty_generation = None;

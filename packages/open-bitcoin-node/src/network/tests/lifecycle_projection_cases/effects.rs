@@ -257,6 +257,10 @@ mod completion {
             .peer_session_generation
             .checked_next()
             .expect("test peer session should advance");
+        let session_before = network.peer_session_generation;
+        let peer_provenance_before = format!("{:?}", network.peer_manager);
+        let relay_evidence_before =
+            serde_json::to_value(network.relay_evidence_status()).expect("relay evidence");
 
         // Act
         let completion =
@@ -270,6 +274,72 @@ mod completion {
                 EffectCompletion::AchievedButStale
             )
         ));
+        assert_eq!(network.peer_session_generation, session_before);
+        assert_eq!(
+            format!("{:?}", network.peer_manager),
+            peer_provenance_before
+        );
+        assert_eq!(
+            serde_json::to_value(network.relay_evidence_status()).expect("relay evidence"),
+            relay_evidence_before
+        );
+        assert_eq!(network.peer_effect_ledger.pending_len(), 0);
+        assert_eq!(network.peer_effect_ledger.completed_len(), 1);
+    }
+
+    #[test]
+    fn stale_peer_lifecycle_completion_records_truth_without_overwriting_newer_targets() {
+        // Arrange
+        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+        let capability = match apply_lifecycle_command(
+            &mut network,
+            LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_147)),
+        )
+        .expect("peer effect should prepare")
+        {
+            crate::network::runtime_authority::LifecycleCommandResult::RelayPrepared(
+                capability,
+            ) => capability,
+            _ => panic!("relay preparation returned the wrong command result"),
+        };
+        let receipt = capability.acknowledge_write();
+        apply_local_spend(&mut network, coinbase_txid, 134_104);
+        let authority_epoch_before = network.authority_epoch;
+        let lifecycle_generation_before = network.lifecycle_generation;
+        let dirty_generation_before = network.dirty_generation;
+        let unbroadcast_before = network.unbroadcast_members().clone();
+        let peer_session_before = network.peer_session_generation;
+        let peer_provenance_before = format!("{:?}", network.peer_manager);
+        let relay_evidence_before =
+            serde_json::to_value(network.relay_evidence_status()).expect("relay evidence");
+
+        // Act
+        let completion =
+            apply_lifecycle_command(&mut network, LifecycleCommand::CompletePeerEffect(receipt))
+                .expect("stale peer completion should be classified");
+
+        // Assert
+        assert!(matches!(
+            completion,
+            crate::network::runtime_authority::LifecycleCommandResult::PeerEffectCompleted(
+                EffectCompletion::AchievedButStale
+            )
+        ));
+        assert_eq!(network.authority_epoch, authority_epoch_before);
+        assert_eq!(network.lifecycle_generation, lifecycle_generation_before);
+        assert_eq!(network.dirty_generation, dirty_generation_before);
+        assert_eq!(network.unbroadcast_members(), &unbroadcast_before);
+        assert_eq!(network.peer_session_generation, peer_session_before);
+        assert_eq!(
+            format!("{:?}", network.peer_manager),
+            peer_provenance_before
+        );
+        assert_eq!(
+            serde_json::to_value(network.relay_evidence_status()).expect("relay evidence"),
+            relay_evidence_before
+        );
+        assert_eq!(network.peer_effect_ledger.pending_len(), 0);
+        assert_eq!(network.peer_effect_ledger.completed_len(), 1);
     }
 
     #[test]

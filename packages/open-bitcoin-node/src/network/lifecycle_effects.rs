@@ -314,10 +314,12 @@ impl SnapshotWriteReceipt {
         self.persistence_generation
     }
 
+    #[cfg(test)]
     pub(in crate::network) const fn effect_id(&self) -> SnapshotEffectId {
         self.effect_id
     }
 
+    #[cfg(test)]
     pub(in crate::network) const fn snapshot_identity(&self) -> SnapshotIdentity {
         self.snapshot_identity
     }

@@ -237,6 +237,7 @@ pub(super) enum LifecycleProjectionError {
         actual: AuthorityEpoch,
     },
     EffectPreparation(EffectPreparationError),
+    InvalidEffectReceipt(&'static str),
     Mempool(MempoolError),
 }
 
@@ -266,6 +267,9 @@ impl fmt::Display for LifecycleProjectionError {
                     formatter.write_str("lifecycle effect identity exhausted")
                 }
             },
+            Self::InvalidEffectReceipt(family) => {
+                write!(formatter, "foreign or mismatched {family} effect receipt")
+            }
             Self::Mempool(error) => error.fmt(formatter),
         }
     }
@@ -277,6 +281,7 @@ impl std::error::Error for LifecycleProjectionError {
             Self::Mempool(error) => Some(error),
             Self::AuthorityUnavailable
             | Self::StaleAuthorityEpoch { .. }
+            | Self::InvalidEffectReceipt(_)
             | Self::EffectPreparation(_) => None,
         }
     }
