@@ -3,15 +3,15 @@ gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 134-17-PLAN.md
-last_updated: "2026-07-29T09:19:28.672Z"
-last_activity: 2026-07-29 -- Completed Plan 17 exact snapshot abort and complete-or-abort Fjall execution
+stopped_at: Completed 134-18-PLAN.md
+last_updated: "2026-07-29T11:12:10.302Z"
+last_activity: "2026-07-29"
 progress:
   total_phases: 10
   completed_phases: 5
   total_plans: 60
-  completed_plans: 53
-  percent: 88
+  completed_plans: 54
+  percent: 90
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 17 of 24
+Plan: 19 of 24
 Status: Ready to execute
-Last activity: 2026-07-29 -- Completed Plan 17 exact snapshot abort and complete-or-abort Fjall execution
+Last activity: 2026-07-29
 
 Progress: [███████░░░] 71%
 
-Next action: Execute 134-18-PLAN.md.
+Next action: Execute 134-19-PLAN.md.
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Next action: Execute 134-18-PLAN.md.
 | Phase 134 P15 | 2h 7m | 2 tasks | 22 files |
 | Phase 134 P16 | 2h 51m | 2 tasks | 23 files |
 | Phase 134 P17 | 116m | 2 tasks | 12 files |
+| Phase 134 P18 | 1h 52m | 2 tasks | 12 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,9 @@ Next action: Execute 134-18-PLAN.md.
 - [Phase 134]: Snapshot abort validates immutable ownership while ignoring later lifecycle and dirty freshness.
 - [Phase 134]: Fjall snapshot execution owns encode, save, and exactly one complete-or-abort terminal dispatch.
 - [Phase 134]: MPLIFE-01 through MPLIFE-04 remain pending until phase re-verification.
+- [Phase 134]: Candidate cursors retain complete child txid+wtxid identities without retaining child transaction bodies.
+- [Phase 134]: Expected unbroadcast membership is the retry-eligible subset of canonical mempool identities and is audited by symmetric difference.
+- [Phase 134]: MPLIFE-01 through MPLIFE-04 remain pending until phase re-verification.
 
 ### Pending Todos
 
@@ -235,6 +239,6 @@ Next action: Execute 134-18-PLAN.md.
 
 ## Session Continuity
 
-Last session: 2026-07-29T09:19:28.670Z
-Stopped at: Completed 134-17-PLAN.md
+Last session: 2026-07-29T11:12:10.299Z
+Stopped at: Completed 134-18-PLAN.md
 Resume file: None
