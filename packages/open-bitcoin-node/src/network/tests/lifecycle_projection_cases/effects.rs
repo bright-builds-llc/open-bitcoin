@@ -10,10 +10,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use open_bitcoin_mempool::{
-    AdmissionContext, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyConfig,
-    PolicyTime, RelayIntent,
-};
+use open_bitcoin_mempool::{AdmissionContext, PolicyConfig, PolicyTime, RelayIntent};
 use open_bitcoin_network::{LocalPeerConfig, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId};
 
 use super::{apply_prepared, network_with_spendable_coinbase};
@@ -30,8 +27,11 @@ use crate::network::lifecycle_projection::{
 use crate::network::runtime_authority::{ManagedNetworkHandle, apply_lifecycle_command};
 use crate::network::tests::{consensus_params, spend_transaction, verify_flags};
 use crate::network::{EffectCompletion, ManagedPeerNetwork};
-use crate::storage::MempoolSnapshot;
-use crate::{FjallNodeStore, MemoryChainstateStore, PersistMode, StorageNamespace};
+use crate::storage::{MempoolSnapshot, fjall_store::SnapshotWriteExecutionError};
+use crate::{
+    FjallNodeStore, MemoryChainstateStore, PersistMode, StorageError, StorageNamespace,
+    StorageRecoveryAction,
+};
 
 fn temp_store_path(test_name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
@@ -474,9 +474,10 @@ mod completion {
         let prepared_old = handle
             .prepare_mempool_snapshot_write()
             .expect("old snapshot should prepare");
-        let old_receipt = store
-            .execute_prepared_mempool_snapshot_write(prepared_old, PersistMode::Sync)
+        store
+            .save_mempool_snapshot(prepared_old.snapshot(), PersistMode::Sync)
             .expect("old snapshot should persist");
+        let old_receipt = prepared_old.into_parts().1.acknowledge_write();
         let old_duplicate = old_receipt.duplicate_for_test();
         let transaction = spend_transaction(coinbase_txid, 499_999_000);
         handle
@@ -495,12 +496,9 @@ mod completion {
         let prepared_current = handle
             .prepare_mempool_snapshot_write()
             .expect("current snapshot should prepare");
-        let current_receipt = store
-            .execute_prepared_mempool_snapshot_write(prepared_current, PersistMode::Sync)
-            .expect("current snapshot should persist");
-        let current_completion = handle
-            .complete_snapshot_write(current_receipt)
-            .expect("current completion should dispatch");
+        let current_completion = store
+            .execute_prepared_mempool_snapshot_write(&handle, prepared_current, PersistMode::Sync)
+            .expect("current snapshot should persist and complete");
         let state_before_duplicate = handle.mempool_info().expect("mempool info");
         let duplicate_completion = handle
             .complete_snapshot_write(old_duplicate)
@@ -532,54 +530,72 @@ mod completion {
     }
 
     #[test]
-    fn snapshot_executor_encoding_failure_keeps_the_effect_pending() {
+    fn snapshot_executor_encoding_failure_preserves_newer_dirty_state_and_allows_retry() {
         // Arrange
         let path = temp_store_path("encode-failure");
         remove_dir_if_exists(&path);
         let store = FjallNodeStore::open(&path).expect("open store");
-        let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
-        let transaction = spend_transaction(coinbase_txid, 499_999_000);
-        let invalid_metadata = MempoolEntryMetadata::new(
-            MempoolAcceptanceTime::LegacyUnknown,
-            MempoolOrigin::Local,
-            RelayIntent::Requested,
-        );
-        let core = network
-            .mempool
-            .prepare_transaction_with_context(
-                &network.chainstate,
-                transaction,
-                verify_flags(),
-                consensus_params(),
-                AdmissionContext::new(invalid_metadata),
-            )
-            .expect("invalid persistence metadata is still admissible in memory");
-        apply_prepared(&mut network, core);
+        let (network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
         let handle = ManagedNetworkHandle::from_network_fixture(network);
         let prepared = handle
             .prepare_mempool_snapshot_write()
             .expect("snapshot should prepare");
+        let transaction = spend_transaction(coinbase_txid, 499_999_000);
+        handle
+            .submit_local_transaction_outcome_at(
+                transaction,
+                verify_flags(),
+                consensus_params(),
+                134_104,
+                RelayIntent::Requested,
+            )
+            .expect("newer transaction should make the snapshot dirty");
+        let expected = StorageError::Corruption {
+            namespace: StorageNamespace::Mempool,
+            detail: "injected snapshot encoding failure".to_string(),
+            action: StorageRecoveryAction::Repair,
+        };
 
         // Act
-        let result = store.execute_prepared_mempool_snapshot_write(prepared, PersistMode::Sync);
+        let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
+            &handle,
+            prepared,
+            PersistMode::Sync,
+            |_| Err(expected.clone()),
+            |_, _| panic!("save must not run after encoding fails"),
+        );
 
         // Assert
         assert!(matches!(
             result,
-            Err(crate::StorageError::Corruption {
-                namespace: StorageNamespace::Mempool,
-                ..
-            })
+            Err(SnapshotWriteExecutionError::Storage(error)) if error == expected
         ));
-        assert!(
-            handle.prepare_mempool_snapshot_write().is_err(),
-            "encoding failure must not complete the pending snapshot"
-        );
         assert_eq!(
             store
                 .load_mempool_snapshot()
                 .expect("load after encode failure"),
             None
+        );
+        let retry = handle
+            .prepare_mempool_snapshot_write()
+            .expect("encoding failure abort should restore pending capacity");
+        assert_eq!(
+            retry.snapshot().records.len(),
+            1,
+            "abort must retain the newer dirty mempool state"
+        );
+        let retry_completion = store
+            .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
+            .expect("retry should persist and complete");
+        assert_eq!(retry_completion, EffectCompletion::Applied);
+        assert_eq!(
+            store
+                .load_mempool_snapshot()
+                .expect("load after retry")
+                .expect("retry should persist a snapshot")
+                .records
+                .len(),
+            1
         );
 
         remove_dir_if_exists(&path);

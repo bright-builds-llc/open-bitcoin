@@ -35,6 +35,7 @@ use super::{
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
 mod mempool;
+pub use mempool::SnapshotWriteExecutionError;
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";

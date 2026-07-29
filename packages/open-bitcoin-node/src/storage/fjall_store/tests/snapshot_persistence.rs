@@ -7,6 +7,7 @@ use open_bitcoin_network::LocalPeerConfig;
 
 use crate::MemoryChainstateStore;
 use crate::network::{EffectCompletion, ManagedNetworkHandle, ManagedPeerNetwork};
+use crate::storage::fjall_store::SnapshotWriteExecutionError;
 
 fn empty_network_handle() -> ManagedNetworkHandle {
     ManagedNetworkHandle::from_network_fixture(ManagedPeerNetwork::new(
@@ -201,7 +202,7 @@ fn fjall_mempool_snapshot_reports_corruption() {
 }
 
 #[test]
-fn prepared_mempool_snapshot_executor_persists_before_receipt_completion() {
+fn prepared_mempool_snapshot_executor_persists_and_completes_exactly_once() {
     // Arrange
     let path = temp_store_path("prepared-mempool-success");
     remove_dir_if_exists(&path);
@@ -212,12 +213,9 @@ fn prepared_mempool_snapshot_executor_persists_before_receipt_completion() {
         .expect("snapshot should prepare");
 
     // Act
-    let receipt = store
-        .execute_prepared_mempool_snapshot_write(prepared, PersistMode::Sync)
+    let completion = store
+        .execute_prepared_mempool_snapshot_write(&handle, prepared, PersistMode::Sync)
         .expect("snapshot executor should persist");
-    let completion = handle
-        .complete_snapshot_write(receipt)
-        .expect("snapshot completion should dispatch");
 
     // Assert
     assert_eq!(completion, EffectCompletion::Applied);
@@ -236,7 +234,7 @@ fn prepared_mempool_snapshot_executor_persists_before_receipt_completion() {
 }
 
 #[test]
-fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
+fn prepared_mempool_snapshot_executor_aborts_save_failure_and_allows_retry() {
     // Arrange
     let path = temp_store_path("prepared-mempool-write-failure");
     remove_dir_if_exists(&path);
@@ -257,22 +255,93 @@ fn prepared_mempool_snapshot_executor_returns_no_receipt_after_write_failure() {
 
     // Act
     let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
+        &handle,
         prepared,
         PersistMode::Sync,
+        crate::storage::snapshot_codec::encode_mempool_snapshot,
         |_, _| Err(expected.clone()),
     );
 
     // Assert
-    assert_eq!(result, Err(expected));
-    assert!(
-        handle.prepare_mempool_snapshot_write().is_err(),
-        "failed execution must not complete the pending snapshot"
-    );
+    assert!(matches!(
+        result,
+        Err(SnapshotWriteExecutionError::Storage(error)) if error == expected
+    ));
     assert_eq!(
         store
             .load_mempool_snapshot()
             .expect("load after write failure"),
         Some(persisted_before_failure)
+    );
+    let retry = handle
+        .prepare_mempool_snapshot_write()
+        .expect("save failure abort should restore pending capacity");
+    let retry_completion = store
+        .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
+        .expect("retry should persist and complete");
+    assert_eq!(retry_completion, EffectCompletion::Applied);
+    assert_eq!(
+        store
+            .load_mempool_snapshot()
+            .expect("load after successful retry"),
+        Some(MempoolSnapshot::default())
+    );
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prepared_mempool_snapshot_executor_aborts_encode_failure_and_allows_retry() {
+    // Arrange
+    let path = temp_store_path("prepared-mempool-encode-failure");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open store");
+    let persisted_before_failure = mempool_snapshot();
+    store
+        .save_mempool_snapshot(&persisted_before_failure, PersistMode::Sync)
+        .expect("save pre-existing mempool snapshot");
+    let handle = empty_network_handle();
+    let prepared = handle
+        .prepare_mempool_snapshot_write()
+        .expect("snapshot should prepare");
+    let expected = StorageError::Corruption {
+        namespace: StorageNamespace::Mempool,
+        detail: "injected mempool snapshot encoding failure".to_string(),
+        action: StorageRecoveryAction::Repair,
+    };
+
+    // Act
+    let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
+        &handle,
+        prepared,
+        PersistMode::Sync,
+        |_| Err(expected.clone()),
+        |_, _| panic!("save must not run after encoding fails"),
+    );
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(SnapshotWriteExecutionError::Storage(error)) if error == expected
+    ));
+    assert_eq!(
+        store
+            .load_mempool_snapshot()
+            .expect("load after encoding failure"),
+        Some(persisted_before_failure)
+    );
+    let retry = handle
+        .prepare_mempool_snapshot_write()
+        .expect("encoding failure abort should restore pending capacity");
+    let retry_completion = store
+        .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
+        .expect("retry should persist and complete");
+    assert_eq!(retry_completion, EffectCompletion::Applied);
+    assert_eq!(
+        store
+            .load_mempool_snapshot()
+            .expect("load after successful retry"),
+        Some(MempoolSnapshot::default())
     );
 
     remove_dir_if_exists(&path);
