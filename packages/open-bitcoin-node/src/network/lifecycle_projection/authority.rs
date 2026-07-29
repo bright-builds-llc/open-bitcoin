@@ -9,7 +9,8 @@
 use std::collections::BTreeSet;
 
 use open_bitcoin_mempool::{
-    MempoolMemberIdentity, MempoolRemovalCause, PreparedLifecycleFacts, ValidatedMempoolTransition,
+    MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PreparedLifecycleFacts,
+    PreparedMempoolTransition,
 };
 
 use super::{
@@ -142,9 +143,19 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     }
 }
 
-/// Non-forgeable proof that both authority and core-revision guards passed.
-pub(in crate::network) struct ValidatedLifecycleProjection {
-    core: ValidatedMempoolTransition,
+/// Non-forgeable proof that the authority guard passed for a complete projection.
+pub(in crate::network) struct SealedLifecycleProjection {
+    core: PreparedMempoolTransition,
+    compact: PreparedCompactProjection,
+    serving: PreparedServingProjection,
+    fanout: PreparedFanoutProjection,
+    peers: PreparedPeerLifecycleProjection,
+    unbroadcast: PreparedUnbroadcastProjection,
+    persistence: PreparedPersistenceProjection,
+    evidence: PreparedLifecycleEvidence,
+}
+
+struct PreparedDependentLifecycleProjection {
     compact: PreparedCompactProjection,
     serving: PreparedServingProjection,
     fanout: PreparedFanoutProjection,
@@ -158,7 +169,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(in crate::network) fn validate_prepared_lifecycle(
         &self,
         plan: LifecycleProjectionPlan,
-    ) -> Result<ValidatedLifecycleProjection, LifecycleProjectionError> {
+    ) -> Result<SealedLifecycleProjection, LifecycleProjectionError> {
         if self.authority_epoch != plan.authority_epoch {
             return Err(LifecycleProjectionError::StaleAuthorityEpoch {
                 expected: plan.authority_epoch,
@@ -176,12 +187,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             persistence,
             evidence,
         } = plan;
-        let core = self
-            .mempool
-            .mempool()
-            .validate_prepared_mempool_transition(core)
-            .map_err(LifecycleProjectionError::Mempool)?;
-        Ok(ValidatedLifecycleProjection {
+        Ok(SealedLifecycleProjection {
             core,
             compact,
             serving,
@@ -193,11 +199,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         })
     }
 
-    pub(in crate::network) fn apply_prepared_lifecycle(
+    pub(in crate::network) fn commit_sealed_lifecycle(
         &mut self,
-        validated: ValidatedLifecycleProjection,
-    ) {
-        let ValidatedLifecycleProjection {
+        sealed: SealedLifecycleProjection,
+    ) -> Result<MempoolLifecycleDelta, LifecycleProjectionError> {
+        let SealedLifecycleProjection {
             core,
             compact,
             serving,
@@ -206,11 +212,34 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             unbroadcast,
             persistence,
             evidence,
-        } = validated;
-        let _committed_delta = self
+        } = sealed;
+        let committed_delta = self
             .mempool
             .mempool_mut()
-            .apply_validated_mempool_transition(core);
+            .commit_prepared_mempool_transition(core)
+            .map_err(LifecycleProjectionError::Mempool)?;
+        self.apply_prepared_lifecycle(PreparedDependentLifecycleProjection {
+            compact,
+            serving,
+            fanout,
+            peers,
+            unbroadcast,
+            persistence,
+            evidence,
+        });
+        Ok(committed_delta)
+    }
+
+    fn apply_prepared_lifecycle(&mut self, prepared: PreparedDependentLifecycleProjection) {
+        let PreparedDependentLifecycleProjection {
+            compact,
+            serving,
+            fanout,
+            peers,
+            unbroadcast,
+            persistence,
+            evidence,
+        } = prepared;
         self.apply_prepared_compact(compact);
         self.apply_prepared_serving(serving);
         self.apply_prepared_fanout(fanout);

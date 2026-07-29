@@ -54,9 +54,8 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
         | LifecycleCommand::ConnectedBlock(plan)
         | LifecycleCommand::ReorgStep(plan)
         | LifecycleCommand::Maintenance(plan) => {
-            let delta = plan.core.facts().delta().clone();
-            let validated = network.validate_prepared_lifecycle(plan)?;
-            network.apply_prepared_lifecycle(validated);
+            let sealed = network.validate_prepared_lifecycle(plan)?;
+            let delta = network.commit_sealed_lifecycle(sealed)?;
             Ok(LifecycleCommandResult::Lifecycle(delta))
         }
         LifecycleCommand::PrepareSnapshot(_request) => {

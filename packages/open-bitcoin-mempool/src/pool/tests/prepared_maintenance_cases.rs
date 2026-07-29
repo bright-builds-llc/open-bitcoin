@@ -280,10 +280,9 @@ fn reorg_steps_require_consuming_block_removal_before_reconsideration() {
             AdmissionContext::reorg(PolicyTime::new(71)),
         )
         .expect_err("reconsideration before removal must fail");
-    let validated = mempool
-        .validate_prepared_mempool_transition(removal)
-        .expect("removal validation");
-    mempool.apply_validated_mempool_transition(validated);
+    mempool
+        .commit_prepared_mempool_transition(removal)
+        .expect("removal commit");
     let reconsideration = mempool
         .prepare_transaction_with_context(
             transaction,

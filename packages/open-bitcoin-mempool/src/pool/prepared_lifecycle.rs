@@ -156,22 +156,6 @@ impl PreparedMempoolTransition {
     }
 }
 
-/// Opaque, non-`Clone` capability whose revision guard already passed.
-pub struct ValidatedMempoolTransition {
-    core: PreparedCoreTransition,
-    facts: PreparedLifecycleFacts,
-}
-
-impl fmt::Debug for ValidatedMempoolTransition {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("ValidatedMempoolTransition")
-            .field("base_revision", &self.core.base_revision())
-            .field("facts", &self.facts)
-            .finish_non_exhaustive()
-    }
-}
-
 impl Mempool {
     /// Fully prepares singleton admission without mutating the mempool.
     pub fn prepare_transaction_with_context(
@@ -220,25 +204,6 @@ impl Mempool {
         PreparedMempoolTransition::from_patch(self, patch, result)
     }
 
-    /// Consumes a prepared transition after checking its exact base revision.
-    pub fn validate_prepared_mempool_transition(
-        &self,
-        prepared: PreparedMempoolTransition,
-    ) -> Result<ValidatedMempoolTransition, MempoolError> {
-        let expected_revision = prepared.core.base_revision();
-        if self.revision != expected_revision {
-            return Err(MempoolError::StalePreparedTransition {
-                expected_revision: expected_revision.0,
-                actual_revision: self.revision.0,
-            });
-        }
-
-        Ok(ValidatedMempoolTransition {
-            core: prepared.core,
-            facts: prepared.facts,
-        })
-    }
-
     /// Atomically checks and commits one prepared transition.
     pub fn commit_prepared_mempool_transition(
         &mut self,
@@ -258,22 +223,6 @@ impl Mempool {
             PreparedCoreTransition::Patch(patch) => self.apply_validated_patch(*patch),
             PreparedCoreTransition::Noop { .. } => prepared.facts.delta,
         })
-    }
-
-    /// Applies one already revision-validated capability without further failure.
-    ///
-    /// Callers must not mutate this mempool between validation and this consuming
-    /// apply. The node authority lock enforces that sequencing across crates.
-    pub fn apply_validated_mempool_transition(
-        &mut self,
-        validated: ValidatedMempoolTransition,
-    ) -> MempoolLifecycleDelta {
-        #[cfg(test)]
-        APPLY_COUNT.with(|count| count.set(count.get() + 1));
-        match validated.core {
-            PreparedCoreTransition::Patch(patch) => self.apply_validated_patch(*patch),
-            PreparedCoreTransition::Noop { .. } => validated.facts.delta,
-        }
     }
 }
 

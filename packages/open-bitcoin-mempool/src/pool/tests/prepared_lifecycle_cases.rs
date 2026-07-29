@@ -97,11 +97,9 @@ fn singleton_preparation_preserves_state_and_exposes_canonical_facts() {
     );
     assert!(format!("{prepared:?}").contains("PreparedMempoolTransition"));
 
-    let validated = mempool
-        .validate_prepared_mempool_transition(prepared)
-        .expect("singleton validation");
-    assert!(format!("{validated:?}").contains("ValidatedMempoolTransition"));
-    let delta = mempool.apply_validated_mempool_transition(validated);
+    let delta = mempool
+        .commit_prepared_mempool_transition(prepared)
+        .expect("singleton commit");
     assert_eq!(delta.admitted.len(), 1);
     assert!(mempool.entry(&expected_txid).is_some());
 }
@@ -294,52 +292,6 @@ fn atomic_commit_rejects_stale_preparation_without_mutation() {
 }
 
 #[test]
-fn legacy_validation_rejects_stale_preparation_without_mutation() {
-    // Arrange
-    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
-    let first = admission_transaction(coinbase_txids[0]);
-    let intervening = admission_transaction(coinbase_txids[1]);
-    let mut mempool = Mempool::default();
-    let prepared = mempool
-        .prepare_transaction_with_context(
-            first,
-            &snapshot,
-            verify_flags(),
-            consensus_params(),
-            AdmissionContext::legacy_unknown(),
-        )
-        .expect("singleton preparation");
-    let newer = mempool
-        .prepare_transaction_with_context(
-            intervening,
-            &snapshot,
-            verify_flags(),
-            consensus_params(),
-            AdmissionContext::legacy_unknown(),
-        )
-        .expect("intervening preparation");
-    mempool
-        .commit_prepared_mempool_transition(newer)
-        .expect("intervening commit");
-    let before_stale_validation = mempool.complete_snapshot();
-
-    // Act
-    let error = mempool
-        .validate_prepared_mempool_transition(prepared)
-        .expect_err("intervening mutation must stale the capability");
-
-    // Assert
-    assert_eq!(
-        error,
-        MempoolError::StalePreparedTransition {
-            expected_revision: 0,
-            actual_revision: 1,
-        }
-    );
-    assert_eq!(mempool.complete_snapshot(), before_stale_validation);
-}
-
-#[test]
 fn atomic_commit_returns_exact_current_delta() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
@@ -407,47 +359,6 @@ fn package_noop_atomic_commit_advances_no_revision() {
     let delta = mempool
         .commit_prepared_mempool_transition(prepared)
         .expect("no-op commit");
-
-    // Assert
-    assert_eq!(delta, expected_delta);
-    assert!(delta.is_empty());
-    assert_eq!(mempool.complete_snapshot(), before);
-}
-
-#[test]
-fn legacy_noop_validation_and_apply_return_exact_delta() {
-    // Arrange
-    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
-    let transaction = admission_transaction(coinbase_txids[0]);
-    let mut mempool = Mempool::default();
-    mempool
-        .accept_transaction_with_context(
-            transaction.clone(),
-            &snapshot,
-            verify_flags(),
-            consensus_params(),
-            AdmissionContext::legacy_unknown(),
-        )
-        .expect("fixture admission");
-    let before = mempool.complete_snapshot();
-    let prepared = mempool
-        .prepare_package(
-            SubmitPackageCommand {
-                package: submission(vec![transaction], &snapshot),
-                context: AdmissionContext::legacy_unknown(),
-            },
-            &snapshot,
-            verify_flags(),
-            consensus_params(),
-        )
-        .expect("package preparation");
-    let expected_delta = prepared.facts().delta().clone();
-    let validated = mempool
-        .validate_prepared_mempool_transition(prepared)
-        .expect("no-op validation");
-
-    // Act
-    let delta = mempool.apply_validated_mempool_transition(validated);
 
     // Assert
     assert_eq!(delta, expected_delta);

@@ -176,10 +176,12 @@ fn apply_prepared(
 ) {
     let plan = LifecycleProjectionPlan::prepare(network, network.authority_epoch(), core)
         .expect("projection should prepare");
-    let validated = network
+    let sealed = network
         .validate_prepared_lifecycle(plan)
         .expect("current projection should validate");
-    network.apply_prepared_lifecycle(validated);
+    network
+        .commit_sealed_lifecycle(sealed)
+        .expect("current projection should apply");
 }
 
 mod authority {
@@ -234,12 +236,15 @@ mod authority {
         network
             .set_rolling_mempool_fee_rate(RollingMempoolFeeRate::new(FeeRate::from_sats_per_kvb(1)))
             .expect("revision mutation should succeed");
+        let sealed = network
+            .validate_prepared_lifecycle(plan)
+            .expect("authority should validate");
         let baseline = format!("{network:?}");
 
         // Act
-        let Err(error) = network.validate_prepared_lifecycle(plan) else {
-            panic!("stale core revision must fail");
-        };
+        let error = network
+            .commit_sealed_lifecycle(sealed)
+            .expect_err("stale core revision must fail");
 
         // Assert
         assert!(matches!(error, LifecycleProjectionError::Mempool(_)));

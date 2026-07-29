@@ -52,7 +52,7 @@ pub use lifecycle::{
 use oracle::{recompute_state, validate_limits};
 pub use prepared_lifecycle::{
     PreparedLifecycleFacts, PreparedMempoolMember, PreparedMempoolRemoval,
-    PreparedMempoolTransition, ValidatedMempoolTransition,
+    PreparedMempoolTransition,
 };
 #[cfg(test)]
 use topology::{collect_ancestors, collect_descendants};
