@@ -52,7 +52,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 3. Expiry, recovery, and retry outcomes consistently use explicit acceptance time plus typed local-origin and relay-request metadata.
 4. Contributors can reproduce admission, replacement, expiry, pressure, block, reorg, and retry decisions from explicit time, block, occupancy, and jitter inputs with stable typed outcomes.
 
-**Plans**: 13 plans
+**Plans**: 24 plans
 
 Plans:
 - [x] 130-01-PLAN.md — Define distinct resource values, a versioned accounted-memory formula, cached ledger, and recomputation oracle.
@@ -178,6 +178,17 @@ Plans:
 - [x] 134-11-PLAN.md — Complete the deterministic scenario matrix and independent reconciliation oracle.
 - [x] 134-12-PLAN.md — Add mutation-tested structural enforcement to default verification.
 - [x] 134-13-PLAN.md — Publish parity evidence and run the complete timed repository contract.
+- [ ] 134-14-PLAN.md — Bind effect receipts to unique authority incarnations and consume exact receipts safely.
+- [ ] 134-15-PLAN.md — Make peer-effect completion atomic and peer-session-local.
+- [ ] 134-16-PLAN.md — Add complete-or-abort terminal handling for peer effects and successful prefixes.
+- [ ] 134-17-PLAN.md — Add complete-or-abort terminal handling for snapshot effects.
+- [ ] 134-18-PLAN.md — Make txid/wtxid cleanup and reconciliation identity-complete and symmetric.
+- [ ] 134-19-PLAN.md — Bound raw accepted-package work and make fingerprint replacement retirement-aware.
+- [ ] 134-20-PLAN.md — Add an atomic mempool revision-check-and-commit API without breaking consumers.
+- [ ] 134-21-PLAN.md — Migrate the authoritative projector to atomic mempool commit and remove compatibility APIs.
+- [ ] 134-22-PLAN.md — Enforce transitive pure-helper boundaries for protected apply functions.
+- [ ] 134-23-PLAN.md — Guard all canonical claim surfaces and keep parity status truthful until verification.
+- [ ] 134-24-PLAN.md — Reconcile review evidence and run the complete repository verification contract.
 
 ### Phase 135: Snapshot Schema, Checkpointing, and Recovery
 
