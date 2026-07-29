@@ -81,8 +81,7 @@ impl Mempool {
             context,
         )?;
         let result = prepared.admission_result_for_facade()?;
-        let validated = self.validate_prepared_mempool_transition(prepared)?;
-        let delta = self.apply_validated_mempool_transition(validated);
+        let delta = self.commit_prepared_mempool_transition(prepared)?;
 
         Ok(CommittedAdmission { result, delta })
     }

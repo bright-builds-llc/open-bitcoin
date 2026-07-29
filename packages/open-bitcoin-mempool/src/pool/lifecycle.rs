@@ -479,8 +479,7 @@ impl Mempool {
         context: BlockLifecycleContext,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {
         let prepared = self.prepare_connected_block_transition(block, context)?;
-        let validated = self.validate_prepared_mempool_transition(prepared)?;
-        Ok(self.apply_validated_mempool_transition(validated))
+        self.commit_prepared_mempool_transition(prepared)
     }
 
     fn connected_transaction_removals<'a>(

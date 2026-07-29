@@ -99,8 +99,7 @@ impl Mempool {
     ) -> Result<SubmittedPackageResult, MempoolError> {
         let prepared = self.prepare_package(command, chainstate, verify_flags, consensus_params)?;
         let report = prepared.package_report_for_facade()?;
-        let validated = self.validate_prepared_mempool_transition(prepared)?;
-        let delta = self.apply_validated_mempool_transition(validated);
+        let delta = self.commit_prepared_mempool_transition(prepared)?;
         Ok(SubmittedPackageResult { report, delta })
     }
 }

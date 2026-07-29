@@ -104,8 +104,7 @@ impl Mempool {
     /// Removes expired entries through the prepared transition compatibility facade.
     pub fn expire(&mut self, now: PolicyTime) -> Result<MempoolLifecycleDelta, MempoolError> {
         let prepared = self.prepare_expiry(now)?;
-        let validated = self.validate_prepared_mempool_transition(prepared)?;
-        Ok(self.apply_validated_mempool_transition(validated))
+        self.commit_prepared_mempool_transition(prepared)
     }
 }
 

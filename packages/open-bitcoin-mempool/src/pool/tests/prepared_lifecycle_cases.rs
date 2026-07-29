@@ -415,6 +415,47 @@ fn package_noop_atomic_commit_advances_no_revision() {
 }
 
 #[test]
+fn legacy_noop_validation_and_apply_return_exact_delta() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = admission_transaction(coinbase_txids[0]);
+    let mut mempool = Mempool::default();
+    mempool
+        .accept_transaction_with_context(
+            transaction.clone(),
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::legacy_unknown(),
+        )
+        .expect("fixture admission");
+    let before = mempool.complete_snapshot();
+    let prepared = mempool
+        .prepare_package(
+            SubmitPackageCommand {
+                package: submission(vec![transaction], &snapshot),
+                context: AdmissionContext::legacy_unknown(),
+            },
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("package preparation");
+    let expected_delta = prepared.facts().delta().clone();
+    let validated = mempool
+        .validate_prepared_mempool_transition(prepared)
+        .expect("no-op validation");
+
+    // Act
+    let delta = mempool.apply_validated_mempool_transition(validated);
+
+    // Assert
+    assert_eq!(delta, expected_delta);
+    assert!(delta.is_empty());
+    assert_eq!(mempool.complete_snapshot(), before);
+}
+
+#[test]
 fn compatibility_facades_prepare_and_consume_exactly_once() {
     // Arrange
     let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
