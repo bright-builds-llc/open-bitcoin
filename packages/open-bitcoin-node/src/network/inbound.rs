@@ -524,12 +524,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn set_inbound_admission_policy(&mut self, policy: InboundAdmissionPolicy) { self.inbound_admission_policy = policy; }
 
     pub fn add_inbound_peer(&mut self, identity: PeerId) -> Result<(), ManagedNetworkError> {
-        let next_session_generation =
-            self.peer_session_generation.checked_next().map_err(|_| {
-                ManagedNetworkError::LifecycleEffect("peer session generation exhausted")
-            })?;
+        let next_session_generation = self.next_peer_session_generation(identity)?;
         self.peer_manager.add_inbound_peer(identity)?;
-        self.peer_session_generation = next_session_generation;
+        self.peer_session_generations
+            .insert(identity, next_session_generation);
         self.known_peers.insert(identity);
         let maybe_record = self
             .peer_manager

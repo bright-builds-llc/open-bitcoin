@@ -6,6 +6,8 @@
 
 use super::*;
 
+mod peer_sessions;
+
 #[test]
 fn family_caps_match_the_resolved_peer_and_snapshot_bounds() {
     // Arrange

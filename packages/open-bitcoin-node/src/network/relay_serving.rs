@@ -533,7 +533,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             dirty_generation: None,
             unbroadcast_members: BTreeSet::new(),
             lifecycle_evidence: super::lifecycle_projection::LifecycleEvidenceSnapshot::default(),
-            peer_session_generation: super::lifecycle_effects::PeerSessionGeneration::INITIAL,
+            peer_session_generations: BTreeMap::new(),
             peer_effect_ledger: super::lifecycle_effects::PeerEffectLedger::default(),
             snapshot_effect_ledger: super::lifecycle_effects::SnapshotEffectLedger::default(),
             latest_mempool_recovery: None,

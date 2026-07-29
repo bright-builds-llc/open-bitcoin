@@ -118,7 +118,7 @@ pub struct ManagedPeerNetwork<S> {
     dirty_generation: Option<lifecycle_projection::LifecycleGeneration>,
     unbroadcast_members: BTreeSet<open_bitcoin_mempool::MempoolMemberIdentity>,
     lifecycle_evidence: lifecycle_projection::LifecycleEvidenceSnapshot,
-    peer_session_generation: lifecycle_effects::PeerSessionGeneration,
+    peer_session_generations: BTreeMap<PeerId, lifecycle_effects::PeerSessionGeneration>,
     peer_effect_ledger: lifecycle_effects::PeerEffectLedger,
     snapshot_effect_ledger: lifecycle_effects::SnapshotEffectLedger,
     latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
@@ -315,14 +315,37 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         peer_id: PeerId,
         timestamp: i64,
     ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
-        let next_session_generation =
-            self.peer_session_generation.checked_next().map_err(|_| {
-                ManagedNetworkError::LifecycleEffect("peer session generation exhausted")
-            })?;
+        let next_session_generation = self.next_peer_session_generation(peer_id)?;
         let actions = self.peer_manager.add_outbound_peer(peer_id, timestamp)?;
-        self.peer_session_generation = next_session_generation;
+        self.peer_session_generations
+            .insert(peer_id, next_session_generation);
         self.known_peers.insert(peer_id);
         self.collect_outbound(actions)
+    }
+
+    fn peer_session_generation(&self, peer_id: PeerId) -> lifecycle_effects::PeerSessionGeneration {
+        self.peer_session_generations
+            .get(&peer_id)
+            .copied()
+            .unwrap_or(lifecycle_effects::PeerSessionGeneration::INITIAL)
+    }
+
+    fn next_peer_session_generation(
+        &self,
+        peer_id: PeerId,
+    ) -> Result<lifecycle_effects::PeerSessionGeneration, ManagedNetworkError> {
+        self.peer_session_generation(peer_id)
+            .checked_next()
+            .map_err(|_| ManagedNetworkError::LifecycleEffect("peer session generation exhausted"))
+    }
+
+    fn maybe_forget_peer_session_generation(&mut self, peer_id: PeerId) {
+        if self.known_peers.contains(&peer_id)
+            || self.peer_effect_ledger.has_pending_for_peer(peer_id)
+        {
+            return;
+        }
+        self.peer_session_generations.remove(&peer_id);
     }
 
     pub fn receive_message(

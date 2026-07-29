@@ -70,10 +70,11 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 network.authority_epoch,
                 network.lifecycle_generation,
                 request.peer_id,
-                network.peer_session_generation,
+                network.peer_session_generation(request.peer_id),
             )?,
         )),
         LifecycleCommand::CompletePeerEffect(receipt) => {
+            let peer_id = receipt.peer_id();
             let effect_id = receipt.exact_key();
             if network.peer_effect_ledger.is_completed(effect_id) {
                 return Ok(LifecycleCommandResult::PeerEffectCompleted(
@@ -86,12 +87,13 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             }
             let is_fresh = receipt.authority_epoch() == network.authority_epoch
                 && receipt.lifecycle_generation() == network.lifecycle_generation
-                && receipt.peer_session_generation() == network.peer_session_generation;
+                && receipt.peer_session_generation() == network.peer_session_generation(peer_id);
             let completion = if is_fresh {
                 EffectCompletion::Applied
             } else {
                 EffectCompletion::AchievedButStale
             };
+            network.maybe_forget_peer_session_generation(peer_id);
             Ok(LifecycleCommandResult::PeerEffectCompleted(completion))
         }
         LifecycleCommand::CompleteSnapshotEffect(receipt) => {

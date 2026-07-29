@@ -453,6 +453,10 @@ impl PeerEffectLedger {
         self.completed.contains(&key)
     }
 
+    pub(in crate::network) fn has_pending_for_peer(&self, peer_id: PeerId) -> bool {
+        self.pending.iter().any(|key| key.target_peer == peer_id)
+    }
+
     #[cfg(test)]
     pub(in crate::network) fn try_reserve_for_test(
         &mut self,

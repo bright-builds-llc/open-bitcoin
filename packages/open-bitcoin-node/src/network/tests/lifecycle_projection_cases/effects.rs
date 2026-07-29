@@ -175,10 +175,13 @@ mod completion {
         let first =
             apply_lifecycle_command(&mut network, LifecycleCommand::CompletePeerEffect(receipt))
                 .expect("first peer completion should apply");
-        network.peer_session_generation = network
-            .peer_session_generation
+        let next_session_generation = network
+            .peer_session_generation(134_083)
             .checked_next()
             .expect("test session generation should advance");
+        network
+            .peer_session_generations
+            .insert(134_083, next_session_generation);
 
         // Act
         let replay = apply_lifecycle_command(
@@ -241,6 +244,9 @@ mod completion {
     fn stale_peer_session_completion_records_achieved_truth() {
         // Arrange
         let mut network = network_fixture();
+        network
+            .connect_outbound_peer(134_086, 1)
+            .expect("test peer should connect");
         let capability = match apply_lifecycle_command(
             &mut network,
             LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_086)),
@@ -253,11 +259,14 @@ mod completion {
             _ => panic!("relay preparation returned the wrong command result"),
         };
         let receipt = capability.acknowledge_write();
-        network.peer_session_generation = network
-            .peer_session_generation
+        let next_session_generation = network
+            .peer_session_generation(134_086)
             .checked_next()
             .expect("test peer session should advance");
-        let session_before = network.peer_session_generation;
+        network
+            .peer_session_generations
+            .insert(134_086, next_session_generation);
+        let sessions_before = network.peer_session_generations.clone();
         let peer_provenance_before = format!("{:?}", network.peer_manager);
         let relay_evidence_before =
             serde_json::to_value(network.relay_evidence_status()).expect("relay evidence");
@@ -274,7 +283,7 @@ mod completion {
                 EffectCompletion::AchievedButStale
             )
         ));
-        assert_eq!(network.peer_session_generation, session_before);
+        assert_eq!(network.peer_session_generations, sessions_before);
         assert_eq!(
             format!("{:?}", network.peer_manager),
             peer_provenance_before
@@ -308,7 +317,7 @@ mod completion {
         let lifecycle_generation_before = network.lifecycle_generation;
         let dirty_generation_before = network.dirty_generation;
         let unbroadcast_before = network.unbroadcast_members().clone();
-        let peer_session_before = network.peer_session_generation;
+        let peer_sessions_before = network.peer_session_generations.clone();
         let peer_provenance_before = format!("{:?}", network.peer_manager);
         let relay_evidence_before =
             serde_json::to_value(network.relay_evidence_status()).expect("relay evidence");
@@ -329,7 +338,7 @@ mod completion {
         assert_eq!(network.lifecycle_generation, lifecycle_generation_before);
         assert_eq!(network.dirty_generation, dirty_generation_before);
         assert_eq!(network.unbroadcast_members(), &unbroadcast_before);
-        assert_eq!(network.peer_session_generation, peer_session_before);
+        assert_eq!(network.peer_session_generations, peer_sessions_before);
         assert_eq!(
             format!("{:?}", network.peer_manager),
             peer_provenance_before
