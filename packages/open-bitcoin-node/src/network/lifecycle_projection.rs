@@ -34,6 +34,7 @@ use crate::ChainstateStore;
 mod authority;
 mod reconciliation;
 
+pub(in crate::network) use authority::SealedLifecycleProjection;
 #[cfg(test)]
 pub(in crate::network) use reconciliation::LifecycleReconciliationReport;
 

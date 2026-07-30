@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_mempool::{
     MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PreparedLifecycleFacts,
-    PreparedMempoolTransition,
+    SealedMempoolTransition,
 };
 
 use super::{
@@ -145,7 +145,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
 /// Non-forgeable proof that the authority guard passed for a complete projection.
 pub(in crate::network) struct SealedLifecycleProjection {
-    core: PreparedMempoolTransition,
+    core: SealedMempoolTransition,
     compact: PreparedCompactProjection,
     serving: PreparedServingProjection,
     fanout: PreparedFanoutProjection,
@@ -187,6 +187,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             persistence,
             evidence,
         } = plan;
+        let core = self
+            .mempool
+            .mempool()
+            .seal_prepared_mempool_transition(core)
+            .map_err(LifecycleProjectionError::Mempool)?;
         Ok(SealedLifecycleProjection {
             core,
             compact,
@@ -202,7 +207,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(in crate::network) fn commit_sealed_lifecycle(
         &mut self,
         sealed: SealedLifecycleProjection,
-    ) -> Result<MempoolLifecycleDelta, LifecycleProjectionError> {
+    ) -> MempoolLifecycleDelta {
         let SealedLifecycleProjection {
             core,
             compact,
@@ -216,8 +221,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         let committed_delta = self
             .mempool
             .mempool_mut()
-            .commit_prepared_mempool_transition(core)
-            .map_err(LifecycleProjectionError::Mempool)?;
+            .commit_sealed_mempool_transition(core);
         self.apply_prepared_lifecycle(PreparedDependentLifecycleProjection {
             compact,
             serving,
@@ -227,7 +231,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             persistence,
             evidence,
         });
-        Ok(committed_delta)
+        committed_delta
     }
 
     fn apply_prepared_lifecycle(&mut self, prepared: PreparedDependentLifecycleProjection) {

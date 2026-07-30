@@ -41,6 +41,34 @@ pub struct ManagedChainstate<S> {
     chainstate: Chainstate,
 }
 
+/// Opaque, fully validated replacement for one connected block.
+pub(crate) struct PreparedChainstateConnect {
+    chainstate: Chainstate,
+    position: ChainPosition,
+}
+
+impl PreparedChainstateConnect {
+    pub(crate) const fn position(&self) -> &ChainPosition {
+        &self.position
+    }
+}
+
+/// Opaque, fully validated replacement for one complete reorg.
+pub(crate) struct PreparedChainstateReorg {
+    chainstate: Chainstate,
+    transition: ChainTransition,
+}
+
+impl PreparedChainstateReorg {
+    pub(crate) const fn transition(&self) -> &ChainTransition {
+        &self.transition
+    }
+
+    pub(crate) const fn preview(&self) -> &Chainstate {
+        &self.chainstate
+    }
+}
+
 impl<S: ChainstateStore> ManagedChainstate<S> {
     pub fn from_store(store: S) -> Self {
         let chainstate = store
@@ -91,8 +119,54 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
             consensus_params,
         )?;
         self.persist();
-
         Ok(position)
+    }
+
+    pub(crate) fn prepare_connect_block(
+        &self,
+        block: &Block,
+        chain_work: u128,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<PreparedChainstateConnect, open_bitcoin_core::chainstate::ChainstateError> {
+        self.prepare_connect_block_with_current_time(
+            block,
+            chain_work,
+            i64::from(block.header.time),
+            verify_flags,
+            consensus_params,
+        )
+    }
+
+    pub(crate) fn prepare_connect_block_with_current_time(
+        &self,
+        block: &Block,
+        chain_work: u128,
+        current_time: i64,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<PreparedChainstateConnect, open_bitcoin_core::chainstate::ChainstateError> {
+        let mut chainstate = self.chainstate.clone();
+        let position = chainstate.connect_block_with_current_time(
+            block,
+            chain_work,
+            current_time,
+            verify_flags,
+            consensus_params,
+        )?;
+        Ok(PreparedChainstateConnect {
+            chainstate,
+            position,
+        })
+    }
+
+    pub(crate) fn commit_prepared_connect(
+        &mut self,
+        prepared: PreparedChainstateConnect,
+    ) -> ChainPosition {
+        self.chainstate = prepared.chainstate;
+        self.persist();
+        prepared.position
     }
 
     pub fn disconnect_tip(
@@ -119,8 +193,40 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
             consensus_params,
         )?;
         self.persist();
-
         Ok(transition)
+    }
+
+    pub(crate) fn prepare_reorg(
+        &self,
+        disconnect_blocks: &[Block],
+        replacement_branch: &[AnchoredBlock],
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<PreparedChainstateReorg, open_bitcoin_core::chainstate::ChainstateError> {
+        let mut chainstate = self.chainstate.clone();
+        let transition = chainstate.reorg(
+            disconnect_blocks,
+            replacement_branch,
+            verify_flags,
+            consensus_params,
+        )?;
+        Ok(PreparedChainstateReorg {
+            chainstate,
+            transition,
+        })
+    }
+
+    pub(crate) fn install_prepared_reorg_preview(&mut self, prepared: &PreparedChainstateReorg) {
+        self.chainstate = prepared.preview().clone();
+    }
+
+    pub(crate) fn commit_prepared_reorg(
+        &mut self,
+        prepared: PreparedChainstateReorg,
+    ) -> ChainTransition {
+        self.chainstate = prepared.chainstate;
+        self.persist();
+        prepared.transition
     }
 
     pub fn into_parts(self) -> (S, Chainstate) {

@@ -101,7 +101,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
             "        let _ = self",
             "            .mempool",
             "            .mempool_mut()",
-            "            .commit_prepared_mempool_transition(core);",
+            "            .commit_sealed_mempool_transition(core);",
           ].join("\n"),
         );
       },

@@ -21,7 +21,9 @@ use open_bitcoin_mempool::{
 
 use super::{BlockConnectDisposition, ManagedNetworkError, ManagedPeerNetwork, ManagedResult};
 use crate::ChainstateStore;
-use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionPlan};
+use crate::network::lifecycle_projection::{
+    LifecycleCommand, LifecycleProjectionPlan, SealedLifecycleProjection,
+};
 use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,19 +45,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, ManagedNetworkError> {
-        let position = self.chainstate.connect_block(
+        let prepared_chainstate = self.chainstate.prepare_connect_block(
             block,
             self.next_chain_work(),
             verify_flags,
             consensus_params,
         )?;
+        let position = prepared_chainstate.position().clone();
+        let context = block_lifecycle_context(i64::from(block.header.time), position.height);
+        let prepared_lifecycle = self
+            .mempool
+            .mempool()
+            .prepare_connected_block_transition(block, context)?;
+        let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;
+
+        self.chainstate.commit_prepared_connect(prepared_chainstate);
         self.peer_manager
             .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         self.blocks_by_hash
             .insert(position.block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
-        let context = block_lifecycle_context(i64::from(block.header.time), position.height);
-        self.apply_connected_block_mempool_lifecycle(block, context)?;
+        self.commit_maintenance_step(sealed_lifecycle);
         Ok(position)
     }
 
@@ -100,19 +110,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             return Ok(BlockConnectDisposition::Disconnected { block_hash });
         }
 
-        let position = self.chainstate.connect_block_with_current_time(
+        let prepared_chainstate = self.chainstate.prepare_connect_block_with_current_time(
             block,
             chain_work,
             timestamp,
             verify_flags,
             consensus_params,
         )?;
+        let position = prepared_chainstate.position().clone();
+        let context = block_lifecycle_context(timestamp, position.height);
+        let prepared_lifecycle = self
+            .mempool
+            .mempool()
+            .prepare_connected_block_transition(block, context)?;
+        let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;
+
+        self.chainstate.commit_prepared_connect(prepared_chainstate);
         self.peer_manager
             .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         self.blocks_by_hash.insert(block_hash, block.clone());
         self.peer_manager.note_local_position(&position);
-        let context = block_lifecycle_context(timestamp, position.height);
-        self.apply_connected_block_mempool_lifecycle(block, context)?;
+        self.commit_maintenance_step(sealed_lifecycle);
         Ok(BlockConnectDisposition::Connected(position))
     }
 
@@ -123,25 +141,35 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         context: ReorgLifecycleContext,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> ManagedResult<ChainTransition> {
-        let transition = self.chainstate.reorg(
+    ) -> ManagedResult<ChainTransition>
+    where
+        S: Clone,
+    {
+        let prepared_chainstate = self.chainstate.prepare_reorg(
             disconnect_blocks,
             replacement_branch,
             verify_flags,
             consensus_params,
         )?;
-        self.peer_manager
+        let transition = prepared_chainstate.transition().clone();
+        let mut staged = self.clone();
+        staged
+            .chainstate
+            .install_prepared_reorg_preview(&prepared_chainstate);
+        staged
+            .peer_manager
             .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         for anchored_block in replacement_branch {
             let block_hash = block_hash(&anchored_block.block.header);
-            self.blocks_by_hash
+            staged
+                .blocks_by_hash
                 .insert(block_hash, anchored_block.block.clone());
-            self.peer_manager.note_local_block_hash(block_hash);
+            staged.peer_manager.note_local_block_hash(block_hash);
         }
         for position in &transition.connected {
-            self.peer_manager.note_local_position(position);
+            staged.peer_manager.note_local_position(position);
         }
-        self.apply_reorg_mempool_lifecycle(
+        staged.apply_reorg_mempool_lifecycle(
             disconnect_blocks,
             replacement_branch,
             &transition.connected,
@@ -149,9 +177,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             verify_flags,
             consensus_params,
         )?;
+
+        self.chainstate.commit_prepared_reorg(prepared_chainstate);
+        std::mem::swap(&mut self.chainstate, &mut staged.chainstate);
+        *self = staged;
         Ok(transition)
     }
 
+    #[cfg(test)]
     pub(super) fn apply_connected_block_mempool_lifecycle(
         &mut self,
         block: &Block,
@@ -206,6 +239,23 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .into());
         };
         Ok(delta)
+    }
+
+    fn prepare_maintenance_step(
+        &self,
+        prepared: PreparedMempoolTransition,
+    ) -> Result<SealedLifecycleProjection, ManagedNetworkError> {
+        let plan = LifecycleProjectionPlan::prepare(self, self.authority_epoch(), prepared)
+            .map_err(maintenance_lifecycle_error)?;
+        self.validate_prepared_lifecycle(plan)
+            .map_err(maintenance_lifecycle_error)
+    }
+
+    fn commit_maintenance_step(
+        &mut self,
+        sealed: SealedLifecycleProjection,
+    ) -> MempoolLifecycleDelta {
+        self.commit_sealed_lifecycle(sealed)
     }
 
     pub(super) fn apply_reorg_mempool_lifecycle(

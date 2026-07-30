@@ -60,6 +60,7 @@ pub use pool::{
     MempoolPressureSummary, MempoolRemovalCause, MempoolRemovalRole, MempoolRetryClear,
     MempoolRetryClearCause, MempoolTransition, PreparedLifecycleFacts, PreparedMempoolMember,
     PreparedMempoolRemoval, PreparedMempoolTransition, RollingFeeParityStatus,
+    SealedMempoolTransition,
 };
 pub use resource::{
     AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, MempoolCapacity,

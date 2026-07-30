@@ -7,7 +7,145 @@
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use super::*;
+use crate::network::lifecycle_projection::{
+    LifecyclePreparationFailureGuard, LifecyclePreparationFailurePoint,
+};
 use crate::network::mempool_lifecycle;
+
+#[test]
+fn local_block_lifecycle_failure_is_atomic_and_retry_converges() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let confirmed = spend_transaction(coinbase_txids[0], 499_999_000);
+    let confirmed_txid = txid(&confirmed);
+    network
+        .submit_local_transaction_outcome_at(
+            confirmed.clone(),
+            verify_flags(),
+            consensus_params(),
+            70,
+            RelayIntent::NotRequested,
+        )
+        .expect("submit transaction");
+    let block = build_block_with_transactions(block_hash(&spendable.header), 2, vec![confirmed]);
+    let baseline = format!("{network:?}");
+    let failure = LifecyclePreparationFailureGuard::inject(LifecyclePreparationFailurePoint::Peer);
+
+    // Act
+    let failed = network.connect_local_block(&block, verify_flags(), consensus_params());
+
+    // Assert
+    assert!(failed.is_err());
+    assert_eq!(format!("{network:?}"), baseline);
+    drop(failure);
+
+    // Act
+    let position = network
+        .connect_local_block(&block, verify_flags(), consensus_params())
+        .expect("retry should connect and reconcile");
+
+    // Assert
+    assert_eq!(position.block_hash, block_hash(&block.header));
+    assert!(network.mempool().mempool().entry(&confirmed_txid).is_none());
+    assert_lifecycle_authority(&network, 2);
+}
+
+#[test]
+fn stored_block_lifecycle_failure_does_not_turn_retry_into_duplicate() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let confirmed = spend_transaction(coinbase_txids[0], 499_999_000);
+    let confirmed_txid = txid(&confirmed);
+    network
+        .submit_local_transaction_outcome_at(
+            confirmed.clone(),
+            verify_flags(),
+            consensus_params(),
+            71,
+            RelayIntent::NotRequested,
+        )
+        .expect("submit transaction");
+    let block = build_block_with_transactions(block_hash(&spendable.header), 2, vec![confirmed]);
+    let baseline = format!("{network:?}");
+    let failure = LifecyclePreparationFailureGuard::inject(LifecyclePreparationFailurePoint::Peer);
+
+    // Act
+    let failed = network.connect_stored_block(
+        &block,
+        3,
+        i64::from(block.header.time),
+        verify_flags(),
+        consensus_params(),
+    );
+
+    // Assert
+    assert!(failed.is_err());
+    assert_eq!(format!("{network:?}"), baseline);
+    drop(failure);
+
+    // Act
+    let retried = network
+        .connect_stored_block(
+            &block,
+            3,
+            i64::from(block.header.time),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("retry should perform the original lifecycle");
+
+    // Assert
+    assert!(matches!(retried, BlockConnectDisposition::Connected(_)));
+    assert!(network.mempool().mempool().entry(&confirmed_txid).is_none());
+    assert_lifecycle_authority(&network, 2);
+}
+
+#[test]
+fn reorg_lifecycle_failure_is_atomic_and_retry_converges() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let disconnected = spend_transaction(coinbase_txids[0], 499_999_000);
+    let disconnected_txid = txid(&disconnected);
+    let old_tip =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![disconnected]);
+    network
+        .connect_local_block(&old_tip, verify_flags(), consensus_params())
+        .expect("connect old tip");
+    let baseline = format!("{network:?}");
+    let context = ReorgLifecycleContext::new(PolicyTime::new(72));
+    let failure = LifecyclePreparationFailureGuard::inject(LifecyclePreparationFailurePoint::Peer);
+
+    // Act
+    let failed = network.reorg_to_branch(
+        std::slice::from_ref(&old_tip),
+        &[],
+        context,
+        verify_flags(),
+        consensus_params(),
+    );
+
+    // Assert
+    assert!(failed.is_err());
+    assert_eq!(format!("{network:?}"), baseline);
+    drop(failure);
+
+    // Act
+    let transition = network
+        .reorg_to_branch(&[old_tip], &[], context, verify_flags(), consensus_params())
+        .expect("retry should complete the staged reorg");
+
+    // Assert
+    assert_eq!(transition.disconnected.len(), 1);
+    assert!(transition.connected.is_empty());
+    assert!(
+        network
+            .mempool()
+            .mempool()
+            .entry(&disconnected_txid)
+            .is_some()
+    );
+    assert_lifecycle_authority(&network, 1);
+}
 
 #[test]
 fn managed_reorg_reacceptance_uses_explicit_event_time() {

@@ -139,6 +139,12 @@ pub struct PreparedMempoolTransition {
     facts: PreparedLifecycleFacts,
 }
 
+/// Opaque proof that a prepared transition still matches the current mempool revision.
+pub struct SealedMempoolTransition {
+    core: PreparedCoreTransition,
+    facts: PreparedLifecycleFacts,
+}
+
 impl fmt::Debug for PreparedMempoolTransition {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
@@ -209,6 +215,15 @@ impl Mempool {
         &mut self,
         prepared: PreparedMempoolTransition,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {
+        let sealed = self.seal_prepared_mempool_transition(prepared)?;
+        Ok(self.commit_sealed_mempool_transition(sealed))
+    }
+
+    /// Validates the revision guard without mutating the mempool.
+    pub fn seal_prepared_mempool_transition(
+        &self,
+        prepared: PreparedMempoolTransition,
+    ) -> Result<SealedMempoolTransition, MempoolError> {
         let expected_revision = prepared.core.base_revision();
         if self.revision != expected_revision {
             return Err(MempoolError::StalePreparedTransition {
@@ -216,13 +231,23 @@ impl Mempool {
                 actual_revision: self.revision.0,
             });
         }
+        Ok(SealedMempoolTransition {
+            core: prepared.core,
+            facts: prepared.facts,
+        })
+    }
 
+    /// Commits a revision-sealed transition without a remaining failure path.
+    pub fn commit_sealed_mempool_transition(
+        &mut self,
+        sealed: SealedMempoolTransition,
+    ) -> MempoolLifecycleDelta {
         #[cfg(test)]
         APPLY_COUNT.with(|count| count.set(count.get() + 1));
-        Ok(match prepared.core {
+        match sealed.core {
             PreparedCoreTransition::Patch(patch) => self.apply_validated_patch(*patch),
-            PreparedCoreTransition::Noop { .. } => prepared.facts.delta,
-        })
+            PreparedCoreTransition::Noop { .. } => sealed.facts.delta,
+        }
     }
 }
 
