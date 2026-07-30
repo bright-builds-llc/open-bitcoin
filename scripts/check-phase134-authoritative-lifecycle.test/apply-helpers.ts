@@ -10,6 +10,10 @@ import {
   strictReachabilityMutations,
   strictReachabilityPositiveMutations,
 } from "./apply-helpers/strict-reachability";
+import {
+  tokenScannerMutations,
+  tokenScannerPositiveMutations,
+} from "./apply-helpers/token-scanner-reachability";
 
 type ApplyFixtureFiles = Map<string, string>;
 
@@ -248,6 +252,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
     },
     ...aggregateReachabilityMutations(),
     ...strictReachabilityMutations(),
+    ...tokenScannerMutations(),
     {
       name: "local block seam cannot bypass the transaction root",
       mutate: (files) => {
@@ -383,6 +388,7 @@ export function applyHelperPositiveMutations(): ApplyHelperMutation[] {
   return [
     ...aggregateReachabilityPositiveMutations(),
     ...strictReachabilityPositiveMutations(),
+    ...tokenScannerPositiveMutations(),
   ];
 }
 

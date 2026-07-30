@@ -10,12 +10,13 @@ import {
   inspectOrdinaryAggregateRoot,
 } from "./check-phase134-apply-boundaries/aggregate-roots";
 import {
-  PURE_CALL_ALLOWLIST,
   type ExtractedFunction,
   functionCallNames,
   inspectCriticalReachability,
   methodCalls,
 } from "./check-phase134-apply-boundaries/reachability";
+import { PURE_CALL_ALLOWLIST } from "./check-phase134-apply-boundaries/call-resolution";
+import { maskRustCommentsAndLiterals } from "./check-phase134-apply-boundaries/strict-syntax";
 import { readSourceRoot } from "./source-corpus";
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -103,69 +104,7 @@ type ModuleRange = {
   close: number;
 };
 
-function maskCommentsAndStrings(source: string): string {
-  let result = "";
-  let state: "code" | "line" | "block" | "string" | "char" = "code";
-  let escaped = false;
-  for (let index = 0; index < source.length; index += 1) {
-    const current = source[index] ?? "";
-    const next = source[index + 1] ?? "";
-    if (state === "line") {
-      if (current === "\n") {
-        state = "code";
-        result += "\n";
-      } else {
-        result += " ";
-      }
-      continue;
-    }
-    if (state === "block") {
-      if (current === "*" && next === "/") {
-        result += "  ";
-        index += 1;
-        state = "code";
-      } else {
-        result += current === "\n" ? "\n" : " ";
-      }
-      continue;
-    }
-    if (state === "string" || state === "char") {
-      result += current === "\n" ? "\n" : " ";
-      if (escaped) {
-        escaped = false;
-      } else if (current === "\\") {
-        escaped = true;
-      } else if (
-        (state === "string" && current === '"') ||
-        (state === "char" && current === "'")
-      ) {
-        state = "code";
-      }
-      continue;
-    }
-    if (current === "/" && next === "/") {
-      result += "  ";
-      index += 1;
-      state = "line";
-    } else if (current === "/" && next === "*") {
-      result += "  ";
-      index += 1;
-      state = "block";
-    } else if (current === '"') {
-      result += " ";
-      state = "string";
-    } else if (
-      current === "'" &&
-      !(/[A-Za-z_]/.test(next) && source[index + 2] !== "'")
-    ) {
-      result += " ";
-      state = "char";
-    } else {
-      result += current;
-    }
-  }
-  return result;
-}
+const maskCommentsAndStrings = maskRustCommentsAndLiterals;
 
 function matchingBrace(masked: string, open: number): number {
   return matchingDelimiter(masked, open, "{", "}");
