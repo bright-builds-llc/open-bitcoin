@@ -1,3 +1,5 @@
+import { strictSyntaxViolations } from "./strict-syntax";
+
 export type ExtractedFunction = {
   file: string;
   symbol: string;
@@ -81,6 +83,10 @@ const RECEIVER_CALLS: ReadonlyMap<string, ClassifiedMethod> = new Map([
   ["children.is_empty", { symbol: "BTreeSet::is_empty", effect: "pure" }],
   ["maybe_entry.iter", { symbol: "Option::iter", effect: "pure" }],
   ["count.saturating_sub", { symbol: "usize::saturating_sub", effect: "pure" }],
+  [
+    "position.height.saturating_add",
+    { symbol: "usize::saturating_add", effect: "pure" },
+  ],
 ]);
 
 export const PURE_CALL_ALLOWLIST = new Set([
@@ -89,19 +95,8 @@ export const PURE_CALL_ALLOWLIST = new Set([
   "BTreeMap::get",
   "BTreeSet::is_empty",
   "Option::iter",
+  "usize::saturating_add",
   "usize::saturating_sub",
-]);
-
-const PURE_METHOD_NAMES = new Set([
-  "as_ref",
-  "contains",
-  "contains_key",
-  "get",
-  "is_empty",
-  "iter",
-  "len",
-  "saturating_add",
-  "saturating_sub",
 ]);
 
 const MUTATING_METHOD_NAMES = new Set([
@@ -184,13 +179,6 @@ export function inspectCriticalReachability(
     if (isFallibleOrEffectful(maskedSignatureAndBody)) {
       violations.add(`${symbol}: fallible or effectful body`);
     }
-    if (
-      strictMutationBoundary &&
-      hasDirectAssignmentMutation(maskedSignatureAndBody)
-    ) {
-      violations.add(`${symbol}: direct mutation outside aggregate transaction`);
-    }
-
     inspectSource(target, target.body, strictMutationBoundary);
   };
 
@@ -199,15 +187,19 @@ export function inspectCriticalReachability(
     source: string,
     strictMutationBoundary: boolean,
     allowedDirectMethods: ReadonlySet<string> = new Set(),
+    allowedMutableBorrowTargets: ReadonlySet<string> = new Set(),
   ): void => {
     const masked = tools.maskCommentsAndStrings(source);
     if (strictMutationBoundary && isFallibleOrEffectful(masked)) {
       violations.add(`${current.symbol}: fallible or effectful critical slice`);
     }
-    if (strictMutationBoundary && hasDirectAssignmentMutation(masked)) {
-      violations.add(
-        `${current.symbol}: direct mutation outside aggregate transaction`,
-      );
+    if (strictMutationBoundary) {
+      for (const violation of strictSyntaxViolations(
+        masked,
+        allowedMutableBorrowTargets,
+      )) {
+        violations.add(`${current.symbol}: ${violation}`);
+      }
     }
 
     const methods = methodCalls(masked);
@@ -251,6 +243,7 @@ export function inspectCriticalReachability(
         continue;
       }
       if (
+        !strictMutationBoundary &&
         !classifiedRepoMethods.has(resolved.symbol) &&
         resolved.symbol !== roots.dependent &&
         !PURE_CALL_ALLOWLIST.has(resolved.symbol)
@@ -299,7 +292,21 @@ export function inspectCriticalReachability(
       violations.add(`${symbol}: aggregate transaction statement is malformed`);
       return;
     }
-    inspectSource(target, target.body.slice(0, statementStart), true);
+    const allowedMutableBorrowTargets =
+      symbol === roots.connectedBlock
+        ? new Set([
+            "self.chainstate",
+            "self.peer_manager",
+            "self.blocks_by_hash",
+          ])
+        : new Set<string>();
+    inspectSource(
+      target,
+      target.body.slice(0, statementStart),
+      true,
+      new Set(),
+      allowedMutableBorrowTargets,
+    );
     inspectSource(
       target,
       target.body.slice(statementEnd + 1),
@@ -463,7 +470,11 @@ function resolveMethodCall(
 ): ClassifiedMethod | null | "unresolved" {
   if (call.receiver === "self" && current.owner) {
     const selfSymbol = `${current.owner}::${call.name}`;
-    if ((candidates.get(call.name) ?? []).some(({ symbol }) => symbol === selfSymbol)) {
+    if (
+      (candidates.get(call.name) ?? []).some(
+        ({ symbol }) => symbol === selfSymbol,
+      )
+    ) {
       return { symbol: selfSymbol, effect: "pure" };
     }
   }
@@ -473,18 +484,18 @@ function resolveMethodCall(
   if (maybeClassified) {
     return maybeClassified;
   }
-  if (MUTATING_METHOD_NAMES.has(call.name)) {
-    return { symbol: `collection::${call.name}`, effect: "mutation" };
-  }
-  if (PURE_METHOD_NAMES.has(call.name)) {
-    return { symbol: `pure::${call.name}`, effect: "pure" };
-  }
   const matches = candidates.get(call.name) ?? [];
   if (matches.length === 1) {
     const symbol = matches[0]?.symbol;
     return symbol ? { symbol, effect: "pure" } : null;
   }
-  return matches.length > 1 ? "unresolved" : null;
+  if (matches.length > 1) {
+    return "unresolved";
+  }
+  if (MUTATING_METHOD_NAMES.has(call.name)) {
+    return { symbol: `collection::${call.name}`, effect: "mutation" };
+  }
+  return null;
 }
 
 function canonicalFunctionPath(
@@ -564,13 +575,5 @@ function isFallibleOrEffectful(source: string): boolean {
     ) ||
     /\b(?:encode|decode)[A-Za-z0-9_]*\s*\(/.test(source) ||
     /\b(?:transaction_|compute_)?(?:txid|wtxid)\s*\(/.test(source)
-  );
-}
-
-function hasDirectAssignmentMutation(source: string): boolean {
-  return (
-    /\b(?:self|[a-z_][A-Za-z0-9_]*)\s*(?:\.\s*[A-Za-z_][A-Za-z0-9_]*)+\s*(?:=|\+=|-=|\*=|\/=)/.test(
-      source,
-    ) || /\*\s*[a-z_][A-Za-z0-9_]*\s*(?:=|\+=|-=|\*=|\/=)/.test(source)
   );
 }

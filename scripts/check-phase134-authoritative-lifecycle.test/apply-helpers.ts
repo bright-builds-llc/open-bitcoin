@@ -6,6 +6,10 @@ import {
   aggregateReachabilityMutations,
   aggregateReachabilityPositiveMutations,
 } from "./apply-helpers/aggregate-reachability";
+import {
+  strictReachabilityMutations,
+  strictReachabilityPositiveMutations,
+} from "./apply-helpers/strict-reachability";
 
 type ApplyFixtureFiles = Map<string, string>;
 
@@ -243,6 +247,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
       },
     },
     ...aggregateReachabilityMutations(),
+    ...strictReachabilityMutations(),
     {
       name: "local block seam cannot bypass the transaction root",
       mutate: (files) => {
@@ -375,7 +380,10 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
 }
 
 export function applyHelperPositiveMutations(): ApplyHelperMutation[] {
-  return aggregateReachabilityPositiveMutations();
+  return [
+    ...aggregateReachabilityPositiveMutations(),
+    ...strictReachabilityPositiveMutations(),
+  ];
 }
 
 function addCompactHelper(

@@ -433,7 +433,7 @@ export function aggregateReachabilityPositiveMutations(): ApplyHelperMutation[] 
   ];
 }
 
-function insertBeforeInFunction(
+export function insertBeforeInFunction(
   files: ApplyFixtureFiles,
   relativePath: string,
   functionName: string,
@@ -493,7 +493,7 @@ function functionBodyBounds(
   throw new Error(`unbalanced fixture body: ${functionName}`);
 }
 
-function append(
+export function append(
   files: ApplyFixtureFiles,
   relativePath: string,
   addition: string,
