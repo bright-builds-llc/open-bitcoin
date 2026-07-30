@@ -1,8 +1,8 @@
 ---
 phase: 134-authoritative-cross-cache-lifecycle-integration
-reviewed: 2026-07-30T00:05:11Z
+reviewed: 2026-07-30T10:50:28Z
 depth: standard
-files_reviewed: 83
+files_reviewed: 99
 files_reviewed_list:
   - README.md
   - docs/metrics/lines-of-code.md
@@ -11,13 +11,16 @@ files_reviewed_list:
   - docs/parity/index.json
   - docs/parity/source-breadcrumbs.json
   - packages/README.md
+  - packages/open-bitcoin-mempool/src/error.rs
   - packages/open-bitcoin-mempool/src/lib.rs
+  - packages/open-bitcoin-mempool/src/outcome.rs
   - packages/open-bitcoin-mempool/src/pool.rs
   - packages/open-bitcoin-mempool/src/pool/admission.rs
   - packages/open-bitcoin-mempool/src/pool/expiry.rs
   - packages/open-bitcoin-mempool/src/pool/lifecycle.rs
   - packages/open-bitcoin-mempool/src/pool/package_admission.rs
   - packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs
+  - packages/open-bitcoin-mempool/src/pool/tests/outcome_cases/outcome_labels_are_fixed_low_cardinality_values.rs
   - packages/open-bitcoin-mempool/src/pool/tests/prepared_lifecycle_cases.rs
   - packages/open-bitcoin-mempool/src/pool/tests/prepared_maintenance_cases.rs
   - packages/open-bitcoin-network/src/peer.rs
@@ -30,6 +33,7 @@ files_reviewed_list:
   - packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs
   - packages/open-bitcoin-network/src/peer/transaction_relay/orphanage/candidate.rs
   - packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs
+  - packages/open-bitcoin-node/src/chainstate.rs
   - packages/open-bitcoin-node/src/mempool.rs
   - packages/open-bitcoin-node/src/network.rs
   - packages/open-bitcoin-node/src/network/action_translation.rs
@@ -66,6 +70,7 @@ files_reviewed_list:
   - packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/reconciliation.rs
   - packages/open-bitcoin-node/src/network/tests/lifecycle_projection_target_cases.rs
   - packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs
+  - packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases/connected_block_removal.rs
   - packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases/reorg_reject_evidence.rs
   - packages/open-bitcoin-node/src/storage/fjall_store.rs
   - packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs
@@ -79,83 +84,66 @@ files_reviewed_list:
   - scripts/check-phase123-runtime-timing-evidence-integrity/checks.ts
   - scripts/check-phase126-compact-relay-residual-hardening.ts
   - scripts/check-phase128-production-compact-announcement-transport.ts
+  - scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
   - scripts/check-phase133-package-aware-download-orphan-bridge.ts
   - scripts/check-phase134-apply-boundaries.ts
+  - scripts/check-phase134-apply-boundaries/aggregate-roots.ts
+  - scripts/check-phase134-apply-boundaries/call-resolution.ts
+  - scripts/check-phase134-apply-boundaries/reachability.ts
+  - scripts/check-phase134-apply-boundaries/receiver-evidence.ts
+  - scripts/check-phase134-apply-boundaries/rust-calls.ts
+  - scripts/check-phase134-apply-boundaries/rust-lexer.ts
+  - scripts/check-phase134-apply-boundaries/strict-syntax.ts
   - scripts/check-phase134-authoritative-lifecycle.test.ts
   - scripts/check-phase134-authoritative-lifecycle.test/apply-helpers.ts
+  - scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/aggregate-reachability.ts
+  - scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/strict-reachability.ts
+  - scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/token-scanner-reachability.ts
   - scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts
   - scripts/check-phase134-authoritative-lifecycle.ts
   - scripts/check-phase134-authoritative-lifecycle/scope.ts
   - scripts/verify.sh
 findings:
-  critical: 1
-  warning: 1
+  critical: 0
+  warning: 0
   info: 0
-  total: 2
-status: issues_found
+  total: 0
+status: clean
 ---
 
 # Phase 134: Code Review Report
 
-**Reviewed:** 2026-07-30T00:05:11Z
+**Reviewed:** 2026-07-30T10:50:28Z
 **Depth:** standard
-**Files Reviewed:** 83
-**Status:** issues_found
+**Files Reviewed:** 99
+**Status:** clean
 
 ## Summary
 
-The review covered all 83 scoped source, test, checker, storage, RPC, and parity-document files against the current Phase 134 implementation. Repo guidance and the managed architecture, code-shape, testing, verification, Rust, and TypeScript standards materially informed the review, especially the requirements for preflight-before-mutation, one authoritative lifecycle owner, bounded retained state, exact external-effect accounting, and auditable parity claims.
+The final evidence-only review covered all 99 Phase 134 files and the exact four-file `459797ea..709a42cc` structural-checker delta, with focused inspection of bare function-pointer recognition, local function-item boundary detection, assignment classification, and their regression fixtures. Repo-local guidance and the managed architecture, code-shape, testing, verification, Rust, and TypeScript standards informed the verdict, especially fail-closed verification and mutation-tested guardrails.
 
-The repairs in Plans 14-24 resolve the twelve findings from the previous report: authority incarnations and effect bindings are now exact, peer sessions and completions are peer-local and atomic, failed peer/snapshot effects have terminal abort paths, identity cleanup and reconciliation are symmetric, accepted-package state is bounded and replacement-aware, mempool and aggregate lifecycle commits reject stale work atomically, the apply checker follows transitive calls, and parity remains explicitly `in_progress`. Those stale findings are not carried forward.
+The sole prior warning reproduces as fixed. The checker now recognizes `fn(u8)` as function-pointer type syntax and treats the balanced closing brace of a local function item as a statement boundary. Consequently, a real authoritative assignment after the item is rejected instead of inheriting the `fn` exemption. The production aggregate root, including its `let ((), delta) = ...` destructuring assignment, remains accepted.
 
-Two correctness issues remain. Most seriously, block connection and reorganization commit chainstate before executing a still-fallible mempool/cross-cache projection, so an error can be returned after authoritative state has already changed. Separately, the peer projection applies orphan-cache limits to whole canonical lifecycle deltas, rejecting valid block or maintenance removals above 100 members (or more than 32 fingerprint retirements).
+The runtime implementation remains unchanged and correct. The current production roots pass both live checkers. Canonical cleanup remains bounded, block and reorg paths prepare every fallible transition before mutation, stale and cross-instance commits are atomic no-ops, retries converge, and the public forgeable sealed capability remains removed.
+
+All reviewed files meet quality standards. No issues found.
 
 Targeted verification completed during this review:
 
-- `bun run scripts/check-phase134-apply-boundaries.ts`
-- `bun test scripts/check-phase134-authoritative-lifecycle.test.ts` — 172 passed, 0 failed
-- `bun run scripts/check-phase134-authoritative-lifecycle.ts`
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-network transaction_lifecycle_cases` — 28 passed, 0 failed
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node lifecycle_projection_cases` — 72 passed, 0 failed
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node mempool_lifecycle_cases` — 17 passed, 0 failed
-- `jq empty docs/parity/index.json docs/parity/source-breadcrumbs.json`
+- `bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts` — 31 passed, 0 failed
+- `bun test scripts/check-phase134-authoritative-lifecycle.test.ts` — 248 passed, 0 failed
+- `bun run scripts/check-phase134-apply-boundaries.ts` — passed
+- `bun run scripts/check-phase134-authoritative-lifecycle.ts` — passed
+- `bun scripts/bright-builds-check.ts all` — passed with zero findings
+- Local generic function item followed by `self.inbound_serving_enabled = false` before the connected-block transaction — rejected
+- Pure `type Callback = fn(u8);` fixture — accepted
+- Production `let ((), delta) = ...` destructuring control — accepted by the live apply checker
+- `git diff --check 459797ea..709a42cc` — passed
 
-The full `bash scripts/verify.sh` repository contract was not rerun during this read-only review. The passing targeted checks do not cover either remaining failure mode.
-
-## Critical Issues
-
-### CR-01: Block and reorg APIs can fail after chainstate has already committed
-
-**Files:**
-
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-node/src/network/mempool_lifecycle.rs:40-58`
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-node/src/network/mempool_lifecycle.rs:62-116`
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-node/src/network/mempool_lifecycle.rs:119-151`
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-node/src/network/mempool_lifecycle.rs:193-247`
-
-**Issue:** `connect_local_block`, `connect_stored_block`, and `reorg_to_branch` mutate chainstate first, then update tip-related peer/maps state, and only afterward call the fallible lifecycle projection. `LifecycleProjectionPlan::prepare` and `apply_lifecycle_command` can still return errors, including the reachable peer-work limits described in WR-01. A connected-block caller can therefore receive `Err` while the block is already on the active chain and its confirmed/conflicting transactions remain in the mempool and dependent caches. Retrying `connect_stored_block` takes the duplicate fast path at lines 70-81 and never repairs the skipped lifecycle. Reorg handling is worse: its connected-block and reconsideration steps are applied sequentially after the chainstate reorg, so a later failure can leave both a committed reorg and a partially projected mempool.
-
-This violates the phase's preflight-before-mutation contract and can persist a chainstate/mempool split through the dirty-snapshot path.
-
-**Fix:** Make chainstate and lifecycle projection one recoverable transaction boundary. For a normal block, prepare and seal every fallible mempool/cross-cache consequence before connecting chainstate; after a successful chainstate commit, run only an infallible sealed projection. For reorgs, stage the complete sequential mempool result against a temporary state (or add a durable rollback/recovery journal) before exposing the chainstate transition. No return path after chainstate mutation should report failure without either rolling chainstate back or deterministically completing/recovering the projection. Add public-path failure-injection tests for block connect and reorg that assert each operation is either a complete no-op or a complete aggregate commit, and that retry always converges.
-
-## Warnings
-
-### WR-01: Orphan-policy limits reject valid whole-mempool lifecycle deltas
-
-**Files:**
-
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-network/src/peer/transaction_relay/orphanage.rs:28-31`
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs:370-390`
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs:526-539`
-- `/Users/peterryszkiewicz/Repos/open-bitcoin/packages/open-bitcoin-node/src/network/lifecycle_projection.rs:501-530`
-
-**Issue:** `prepare_peer_projection` forwards every canonical admission and teardown to `PeerManager::prepare_transaction_lifecycle`, but that function caps the complete admission and teardown vectors at `PHASE102_MAX_ORPHAN_TRANSACTIONS` (100). It also rejects cleanup of more than `PHASE102_MAX_RECONSIDERATIONS_PER_PARENT` (32) accepted-package fingerprints even though the retained fingerprint cache itself can hold 100. These are orphan-cache policy limits, not protocol or mempool lifecycle limits. The default mempool capacity is 300 MB, and a valid block can confirm or conflict with far more than 100 mempool members. Expiry, pressure, or reorg maintenance can likewise produce a larger teardown. Such a legitimate transition fails peer preparation instead of updating the bounded peer caches.
-
-**Fix:** Bound retained peer-cache state, not the size of authoritative cleanup required to keep it consistent. Prepare an exact replacement/delta that can consume every canonical teardown, or chunk internal cleanup behind one sealed aggregate commit without exposing partial lifecycle state. Fingerprint retirement must be able to retire every entry in the bounded retained cache; the unrelated per-parent reconsideration cap should not limit it. Add integration cases for a connected block removing more than 100 mempool members and for cleanup of more than 32 independent retained fingerprints; both must commit with every projection reconciled.
+The full verifier and Rust lifecycle suites were not rerun because this final delta changes only TypeScript checker logic, its mutation fixtures, and generated LOC evidence. The focused checks above cover every changed mechanism and the unchanged production roots.
 
 ***
 
-_Reviewed: 2026-07-30T00:05:11Z_
+_Reviewed: 2026-07-30T10:50:28Z_
 _Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
