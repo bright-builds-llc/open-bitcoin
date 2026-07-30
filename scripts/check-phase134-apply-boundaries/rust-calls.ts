@@ -45,6 +45,9 @@ export function scanRust(source: string): RustScan {
     if (tokens[open]?.value !== "(") {
       continue;
     }
+    if (isFunctionParameterList(tokens, open)) {
+      continue;
+    }
     if (tokens[open - 1]?.value === ")") {
       const maybeCall = parenthesizedFunctionCall(
         tokens,
@@ -107,6 +110,31 @@ export function scanRust(source: string): RustScan {
     });
   }
   return { tokens, methodCalls, functionCalls, unknownCallLikes };
+}
+
+function isFunctionParameterList(tokens: RustToken[], open: number): boolean {
+  const end = open - 1;
+  if (tokens[end]?.kind === "identifier") {
+    return tokens[end - 1]?.value === "fn";
+  }
+  if (tokens[end]?.value !== ">") {
+    return false;
+  }
+  let depth = 0;
+  for (let index = end; index >= 0; index -= 1) {
+    if (tokens[index]?.value === ">") {
+      depth += 1;
+    } else if (tokens[index]?.value === "<") {
+      depth -= 1;
+      if (depth === 0) {
+        return (
+          tokens[index - 1]?.kind === "identifier" &&
+          tokens[index - 2]?.value === "fn"
+        );
+      }
+    }
+  }
+  return false;
 }
 
 function parenthesizedFunctionCall(

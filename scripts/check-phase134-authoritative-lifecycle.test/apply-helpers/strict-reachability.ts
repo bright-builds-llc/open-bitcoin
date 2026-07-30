@@ -143,22 +143,34 @@ export function strictReachabilityPositiveMutations(): ApplyHelperMutation[] {
       },
     },
     {
-      name: "accepts exact standard receiver methods before the transaction",
+      name: "accepts traversed pure standard-named receiver methods",
       mutate: (files) => {
         insertBeforeAuthorityTransaction(
           files,
           "        inspect_standard_receivers();\n",
         );
-        appendFreeHelper(
+        append(
           files,
           AUTHORITY_FILE,
-          "inspect_standard_receivers",
           [
-            "let maybe_entry = Some(1_u8);",
-            "let _ = maybe_entry.iter();",
-            "let count = 1_usize;",
-            "let _ = count.saturating_sub(1);",
-          ],
+            "",
+            "struct PureStandardReceivers;",
+            "",
+            "impl PureStandardReceivers {",
+            "    fn iter(&self) {}",
+            "",
+            "    fn saturating_sub(&self, value: usize) -> usize {",
+            "        value",
+            "    }",
+            "}",
+            "",
+            "fn inspect_standard_receivers() {",
+            "    let receiver = PureStandardReceivers;",
+            "    let _ = receiver.iter();",
+            "    let _ = receiver.saturating_sub(1);",
+            "}",
+            "",
+          ].join("\n"),
         );
       },
     },

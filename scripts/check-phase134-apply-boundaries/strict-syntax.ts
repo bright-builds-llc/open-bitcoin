@@ -134,7 +134,7 @@ function isBindingAssignment(
   }
   const statement = tokens.slice(start + 1, assignment);
   const first = statement[0]?.value;
-  if (first === "type") {
+  if (first === "type" || first === "fn") {
     return true;
   }
   if (!["let", "const", "static"].includes(first ?? "")) {

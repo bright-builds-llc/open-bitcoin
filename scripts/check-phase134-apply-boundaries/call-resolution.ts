@@ -41,10 +41,6 @@ const SELF_RECEIVER_CALLS: ReadonlyMap<string, ClassifiedMethod> = new Map([
       effect: "mutation" as const,
     },
   ]),
-  [
-    "self.known_wtxids_by_txid.get",
-    { symbol: "BTreeMap::get", effect: "pure" },
-  ],
 ]);
 
 export const PURE_CALL_ALLOWLIST = new Set([
@@ -183,7 +179,6 @@ export function resolveMethodCall(
   }
   const maybePureSymbol = provenPureReceiverSymbol(
     current.symbol,
-    current.signature,
     current.body,
     call,
   );

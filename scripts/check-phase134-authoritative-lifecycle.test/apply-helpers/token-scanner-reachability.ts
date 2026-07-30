@@ -139,6 +139,144 @@ export function tokenScannerMutations(): ApplyHelperMutation[] {
         );
       },
     },
+    {
+      name: "namespaced custom BTreeSet cannot spoof receiver purity",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        invoke_namespaced_btree_set_spoof();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "mod custom_set_spoof {",
+            "    pub struct BTreeSet<T>(pub std::marker::PhantomData<T>);",
+            "}",
+            "",
+            "impl<T> custom_set_spoof::BTreeSet<T> {",
+            "    fn is_empty(&self) {",
+            '        let _ = std::fs::write("state", b"namespaced-set");',
+            "    }",
+            "}",
+            "",
+            "fn invoke_namespaced_btree_set_spoof() {",
+            "    let children =",
+            "        custom_set_spoof::BTreeSet(std::marker::PhantomData::<u8>);",
+            "    inspect_namespaced_btree_set(&children);",
+            "}",
+            "",
+            "fn inspect_namespaced_btree_set(",
+            "    children: &custom_set_spoof::BTreeSet<u8>,",
+            ") {",
+            "    children.is_empty();",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "shadowed Some cannot spoof Option receiver purity",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        invoke_shadowed_some_spoof();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "struct Some;",
+            "",
+            "impl Some {",
+            "    fn iter(&self) {",
+            '        let _ = std::fs::write("state", b"shadowed-some");',
+            "    }",
+            "}",
+            "",
+            "fn invoke_shadowed_some_spoof() {",
+            "    let maybe_entry = Some;",
+            "    maybe_entry.iter();",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "numeric initializer cannot spoof usize receiver purity",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        invoke_numeric_initializer_spoof();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "struct NumberSpoof(usize);",
+            "",
+            "impl NumberSpoof {",
+            "    fn saturating_sub(&self, _rhs: usize) -> usize {",
+            '        let _ = std::fs::write("state", b"number-spoof");',
+            "        self.0",
+            "    }",
+            "}",
+            "",
+            "fn invoke_numeric_initializer_spoof() {",
+            "    let count = NumberSpoof(1usize);",
+            "    let _ = count.saturating_sub(1);",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "custom owner self field get cannot inherit collection purity",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        invoke_custom_owner_get_spoof();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "struct EffectfulGet;",
+            "",
+            "impl EffectfulGet {",
+            "    fn get(&self, _key: &u8) {",
+            '        let _ = std::fs::write("state", b"owner-get");',
+            "    }",
+            "}",
+            "",
+            "struct CustomGetOwner {",
+            "    known_wtxids_by_txid: EffectfulGet,",
+            "}",
+            "",
+            "impl CustomGetOwner {",
+            "    fn invoke(&self) {",
+            "        self.known_wtxids_by_txid.get(&1_u8);",
+            "    }",
+            "}",
+            "",
+            "fn invoke_custom_owner_get_spoof() {",
+            "    let owner = CustomGetOwner {",
+            "        known_wtxids_by_txid: EffectfulGet,",
+            "    };",
+            "    owner.invoke();",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
     ...receiverSpoofMutations(),
   ];
 }
@@ -259,6 +397,44 @@ export function tokenScannerPositiveMutations(): ApplyHelperMutation[] {
             "",
             "fn pure_const_signature() -> [u8; { 1 }] {",
             "    [1]",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "accepts associated-type equality in a local helper signature",
+      mutate: (files) => {
+        insertAtSeam(
+          files,
+          "        fn inspect<T: Iterator<Item = u8>>(_items: T) {}\n",
+        );
+      },
+    },
+    {
+      name: "accepts harmless nearby shadow declarations",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        pure_shadow_declarations();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "mod pure_shadow_names {",
+            "    pub struct BTreeSet;",
+            "    pub struct Some;",
+            "    pub struct NumberSpoof(pub usize);",
+            "}",
+            "",
+            "fn pure_shadow_declarations() {",
+            "    let _ = pure_shadow_names::BTreeSet;",
+            "    let _ = pure_shadow_names::Some;",
+            "    let value = pure_shadow_names::NumberSpoof(1usize);",
+            "    let _ = value.0;",
             "}",
             "",
           ].join("\n"),

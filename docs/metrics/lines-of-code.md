@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,058 |
-| Total lines | 301,012 |
-| Code/content lines | 262,897 |
+| Total lines | 301,130 |
+| Code/content lines | 263,016 |
 | Comment-only lines | 13,171 |
-| Blank lines | 24,944 |
+| Blank lines | 24,943 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 401 | 112,576 | 95,992 | 7,844 | 8,740 |
 | Rust production | 336 | 100,570 | 87,521 | 3,609 | 9,440 |
-| TypeScript/Bun scripts | 252 | 71,008 | 63,469 | 1,638 | 5,901 |
+| TypeScript/Bun scripts | 252 | 71,126 | 63,588 | 1,638 | 5,900 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 22 | 4,499 | 4,020 | 66 | 413 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -180,17 +180,17 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase133-package-aware-download-orphan-bridge.ts | 578 |
 | scripts/check-phase134-apply-boundaries.ts | 452 |
 | scripts/check-phase134-apply-boundaries/aggregate-roots.ts | 310 |
-| scripts/check-phase134-apply-boundaries/call-resolution.ts | 244 |
+| scripts/check-phase134-apply-boundaries/call-resolution.ts | 239 |
 | scripts/check-phase134-apply-boundaries/reachability.ts | 321 |
-| scripts/check-phase134-apply-boundaries/receiver-evidence.ts | 224 |
-| scripts/check-phase134-apply-boundaries/rust-calls.ts | 266 |
+| scripts/check-phase134-apply-boundaries/receiver-evidence.ts | 131 |
+| scripts/check-phase134-apply-boundaries/rust-calls.ts | 294 |
 | scripts/check-phase134-apply-boundaries/rust-lexer.ts | 223 |
 | scripts/check-phase134-apply-boundaries/strict-syntax.ts | 242 |
 | scripts/check-phase134-authoritative-lifecycle.test.ts | 618 |
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers.ts | 512 |
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/aggregate-reachability.ts | 513 |
-| scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/strict-reachability.ts | 244 |
-| scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/token-scanner-reachability.ts | 351 |
+| scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/strict-reachability.ts | 256 |
+| scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/token-scanner-reachability.ts | 527 |
 | scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts | 150 |
 | scripts/check-phase134-authoritative-lifecycle.ts | 507 |
 | scripts/check-phase134-authoritative-lifecycle/scope.ts | 173 |
@@ -333,7 +333,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | c6da551bc85bcf6b87948161ad11848c05edb6d595ba38fca3eca60700b49c6f |
+| Input fingerprint | d153f297dac82d4300c6979668ae679d83875011eb59c774e9f104fbfbfb25e6 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
