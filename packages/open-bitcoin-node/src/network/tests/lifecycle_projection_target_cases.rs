@@ -183,7 +183,9 @@ fn lifecycle_projection_target_cases_preparation_errors_preserve_complete_snapsh
     let body_a = identity(4);
     let body_b = identity(5);
     let fingerprint = [6; 32];
-    let over_bound = (0..=100).map(|index| identity(index as u8)).collect();
+    let over_bound = (0..=100)
+        .map(|index| AcceptedPeerPackageFingerprint::new([index as u8; 32], Vec::new()))
+        .collect();
     let inputs = [
         PeerTransactionLifecycleInput::new(vec![same_txid_a, same_txid_b], Vec::new(), Vec::new()),
         PeerTransactionLifecycleInput::new(vec![overlap], vec![overlap], Vec::new()),
@@ -195,7 +197,7 @@ fn lifecycle_projection_target_cases_preparation_errors_preserve_complete_snapsh
                 AcceptedPeerPackageFingerprint::new(fingerprint, vec![body_b]),
             ],
         ),
-        PeerTransactionLifecycleInput::new(over_bound, Vec::new(), Vec::new()),
+        PeerTransactionLifecycleInput::new(Vec::new(), Vec::new(), over_bound),
     ];
 
     // Act
@@ -221,7 +223,7 @@ fn lifecycle_projection_target_cases_preparation_errors_preserve_complete_snapsh
     ));
     assert!(matches!(
         errors[3],
-        PeerTransactionLifecyclePreparationError::IdentityWorkLimit { .. }
+        PeerTransactionLifecyclePreparationError::AcceptedPackageCountLimit { .. }
     ));
     assert_eq!(target_snapshot(&network), baseline);
 }

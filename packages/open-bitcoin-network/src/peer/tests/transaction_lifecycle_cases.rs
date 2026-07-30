@@ -228,7 +228,7 @@ fn lifecycle_rejects_alias_and_final_membership_conflicts_without_mutation() {
 }
 
 #[test]
-fn lifecycle_accepts_exact_identity_and_package_caps_then_rejects_cap_plus_one() {
+fn lifecycle_accepts_identity_work_above_orphan_cap_and_still_bounds_package_members() {
     // Arrange
     let manager = PeerManager::new(local_config());
     let identities = (0_u8..=100).map(identity).collect::<Vec<_>>();
@@ -238,9 +238,7 @@ fn lifecycle_accepts_exact_identity_and_package_caps_then_rejects_cap_plus_one()
     let baseline = format!("{manager:?}");
 
     // Act
-    let exact_identities =
-        manager.prepare_transaction_lifecycle(lifecycle_input(identities[..100].to_vec(), vec![]));
-    let too_many_identities =
+    let identity_work =
         manager.prepare_transaction_lifecycle(lifecycle_input(identities.clone(), vec![]));
     let exact_members = manager.prepare_transaction_lifecycle(PeerTransactionLifecycleInput::new(
         Vec::new(),
@@ -252,16 +250,7 @@ fn lifecycle_accepts_exact_identity_and_package_caps_then_rejects_cap_plus_one()
     );
 
     // Assert
-    assert!(exact_identities.is_ok());
-    assert!(matches!(
-        too_many_identities,
-        Err(
-            PeerTransactionLifecyclePreparationError::IdentityWorkLimit {
-                count: 101,
-                maximum: 100
-            }
-        )
-    ));
+    assert!(identity_work.is_ok());
     assert!(exact_members.is_ok());
     assert!(matches!(
         too_many_members,
@@ -325,53 +314,35 @@ fn lifecycle_bounds_active_fingerprints_and_rejects_conflicting_members() {
 }
 
 #[test]
-fn lifecycle_accepts_thirty_two_fingerprint_retirements_and_rejects_thirty_three() {
+fn lifecycle_retires_every_fingerprint_in_the_bounded_cache_in_one_batch() {
     // Arrange
-    let target = identity(60);
-    let packages = (0_u8..33)
-        .map(|byte| AcceptedPeerPackageFingerprint::new([byte; 32], vec![target]))
+    let identities = (0_u8..100).map(identity).collect::<Vec<_>>();
+    let packages = identities
+        .iter()
+        .enumerate()
+        .map(|(index, member)| {
+            AcceptedPeerPackageFingerprint::new([index as u8; 32], vec![*member])
+        })
         .collect::<Vec<_>>();
-    let mut exact_manager = PeerManager::new(local_config());
-    let exact = exact_manager
-        .prepare_transaction_lifecycle(PeerTransactionLifecycleInput::new(
-            Vec::new(),
-            Vec::new(),
-            packages[..32].to_vec(),
-        ))
-        .expect("fingerprints should prepare");
-    exact_manager.apply_prepared_transaction_lifecycle(exact);
-    let exact_teardown = exact_manager
-        .prepare_transaction_lifecycle(lifecycle_input(Vec::new(), vec![target]))
-        .expect("thirty-two retirements should prepare");
-
-    let mut overflow_manager = PeerManager::new(local_config());
-    let overflow_seed = overflow_manager
+    let mut manager = PeerManager::new(local_config());
+    let seeded = manager
         .prepare_transaction_lifecycle(PeerTransactionLifecycleInput::new(
             Vec::new(),
             Vec::new(),
             packages,
         ))
-        .expect("thirty-three active fingerprints remain below the active cap");
-    overflow_manager.apply_prepared_transaction_lifecycle(overflow_seed);
-    let baseline = format!("{overflow_manager:?}");
+        .expect("bounded fingerprint cache should prepare");
+    manager.apply_prepared_transaction_lifecycle(seeded);
+    assert_eq!(manager.debug_accepted_package_fingerprint_count(), 100);
 
     // Act
-    exact_manager.apply_prepared_transaction_lifecycle(exact_teardown);
-    let overflow =
-        overflow_manager.prepare_transaction_lifecycle(lifecycle_input(Vec::new(), vec![target]));
+    let teardown = manager
+        .prepare_transaction_lifecycle(lifecycle_input(Vec::new(), identities))
+        .expect("authoritative cleanup must retire the complete bounded cache");
+    manager.apply_prepared_transaction_lifecycle(teardown);
 
     // Assert
-    assert!(!exact_manager.debug_accepted_package_fingerprint_contains([0; 32]));
-    assert!(matches!(
-        overflow,
-        Err(
-            PeerTransactionLifecyclePreparationError::FingerprintRetirementLimit {
-                count: 33,
-                maximum: 32
-            }
-        )
-    ));
-    assert_eq!(format!("{overflow_manager:?}"), baseline);
+    assert_eq!(manager.debug_accepted_package_fingerprint_count(), 0);
 }
 
 #[test]

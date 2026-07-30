@@ -10,6 +10,55 @@ use super::*;
 use crate::network::mempool_lifecycle;
 
 #[test]
+fn connected_block_reconciles_more_than_the_orphan_policy_limit() {
+    // Arrange
+    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let mut funding = spend_transaction(coinbase_txids[0], 450_000_000);
+    let funding_output = funding.outputs[0].clone();
+    funding.outputs = vec![funding_output; 127];
+    for output in &mut funding.outputs {
+        output.value = open_bitcoin_core::primitives::Amount::from_sats(3_000_000)
+            .expect("bounded funding output");
+    }
+    let funding_block =
+        build_block_with_transactions(block_hash(&spendable.header), 2, vec![funding.clone()]);
+    network
+        .connect_local_block(&funding_block, verify_flags(), consensus_params())
+        .expect("connect funding block");
+    let funding_txid = txid(&funding);
+    let mut confirmed = Vec::with_capacity(127);
+    for output_index in 0_u32..127 {
+        let mut transaction = spend_transaction(funding_txid, 2_999_000);
+        transaction.inputs[0].previous_output.vout = output_index;
+        transaction.lock_time = output_index;
+        network
+            .submit_local_transaction_outcome_at(
+                transaction.clone(),
+                verify_flags(),
+                consensus_params(),
+                100 + i64::from(output_index),
+                RelayIntent::NotRequested,
+            )
+            .expect("submit independent lifecycle member");
+        confirmed.push(transaction);
+    }
+    let confirmation_block =
+        build_block_with_transactions(block_hash(&funding_block.header), 3, confirmed);
+
+    // Act
+    network
+        .connect_local_block(&confirmation_block, verify_flags(), consensus_params())
+        .expect("valid whole-mempool lifecycle delta should commit");
+
+    // Assert
+    assert_eq!(network.mempool_info().transaction_count, 0);
+    assert_eq!(network.relay_serving_info().serveable_transactions, 0);
+    assert_eq!(network.relay_fanout_info().known_transactions, 0);
+    assert_eq!(network.reconcile_lifecycle_projection().counts(), [0; 7]);
+    assert_lifecycle_authority(&network, 128);
+}
+
+#[test]
 fn managed_block_connect_removes_confirmed_mempool_transaction_and_runtime_caches() {
     // Arrange
     let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();

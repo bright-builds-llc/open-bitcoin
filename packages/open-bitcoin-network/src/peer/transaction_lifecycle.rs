@@ -239,7 +239,7 @@ impl PeerManager {
         &self,
         input: PeerTransactionLifecycleInput,
     ) -> Result<PreparedPeerTransactionLifecycle, PeerTransactionLifecyclePreparationError> {
-        validate_identity_work_bounds(&input)?;
+        validate_input_retained_state_bounds(&input)?;
         validate_identity_aliases(&input)?;
         validate_orphan_bounds(self)?;
 
@@ -367,7 +367,7 @@ impl PeerManager {
     }
 }
 
-fn validate_identity_work_bounds(
+fn validate_input_retained_state_bounds(
     input: &PeerTransactionLifecycleInput,
 ) -> Result<(), PeerTransactionLifecyclePreparationError> {
     if input.accepted_packages.len() > MAX_ACCEPTED_PACKAGES_PER_LIFECYCLE_COMMAND {
@@ -377,16 +377,6 @@ fn validate_identity_work_bounds(
                 maximum: MAX_ACCEPTED_PACKAGES_PER_LIFECYCLE_COMMAND,
             },
         );
-    }
-    for count in [input.admissions.len(), input.teardowns.len()] {
-        if count > PHASE102_MAX_ORPHAN_TRANSACTIONS {
-            return Err(
-                PeerTransactionLifecyclePreparationError::IdentityWorkLimit {
-                    count,
-                    maximum: PHASE102_MAX_ORPHAN_TRANSACTIONS,
-                },
-            );
-        }
     }
     for package in &input.accepted_packages {
         if package.members.len() > PHASE102_MAX_ORPHANS_PER_PEER {
@@ -529,15 +519,6 @@ fn prepare_orphan_lifecycle(
             (!members.is_disjoint(&teardown_wtxids)).then_some(*fingerprint)
         })
         .collect::<Vec<_>>();
-    if fingerprint_retirements.len() > PHASE102_MAX_RECONSIDERATIONS_PER_PARENT {
-        return Err(
-            PeerTransactionLifecyclePreparationError::FingerprintRetirementLimit {
-                count: fingerprint_retirements.len(),
-                maximum: PHASE102_MAX_RECONSIDERATIONS_PER_PARENT,
-            },
-        );
-    }
-
     let mut prospective_fingerprints = current_fingerprints.clone();
     for fingerprint in &fingerprint_retirements {
         prospective_fingerprints.remove(fingerprint);
