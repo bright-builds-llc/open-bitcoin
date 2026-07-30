@@ -2,8 +2,14 @@
 
 import path from "node:path";
 
+import {
+  CONNECTED_BLOCK_ROOT_SYMBOL,
+  CONNECTED_BLOCK_SEAMS,
+  inspectConnectedBlockRoot,
+  inspectConnectedBlockSeam,
+  inspectOrdinaryAggregateRoot,
+} from "./check-phase134-apply-boundaries/aggregate-roots";
 import { readSourceRoot } from "./source-corpus";
-
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
 export const PHASE134_APPLY_BOUNDARY_DIAGNOSTIC =
@@ -19,6 +25,7 @@ export const PHASE134_APPLY_TARGET_FILES = [
 
 export const PHASE134_APPLY_SOURCE_FILES = [
   ...PHASE134_APPLY_TARGET_FILES,
+  "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
   "packages/open-bitcoin-mempool/src/pool/prepared_lifecycle.rs",
   "packages/open-bitcoin-network/src/peer/transaction_lifecycle.rs",
   "packages/open-bitcoin-network/src/peer/transaction_relay/scheduler.rs",
@@ -206,11 +213,20 @@ function maskCommentsAndStrings(source: string): string {
 }
 
 function matchingBrace(masked: string, open: number): number {
+  return matchingDelimiter(masked, open, "{", "}");
+}
+
+function matchingDelimiter(
+  masked: string,
+  open: number,
+  openCharacter: string,
+  closeCharacter: string,
+): number {
   let depth = 0;
   for (let index = open; index < masked.length; index += 1) {
-    if (masked[index] === "{") {
+    if (masked[index] === openCharacter) {
       depth += 1;
-    } else if (masked[index] === "}") {
+    } else if (masked[index] === closeCharacter) {
       depth -= 1;
       if (depth === 0) {
         return index;
@@ -218,7 +234,7 @@ function matchingBrace(masked: string, open: number): number {
     }
   }
   throw new Error(
-    `unbalanced Rust source body near ${masked.slice(Math.max(0, open - 80), open + 40)}`,
+    `unbalanced Rust source delimiter near ${masked.slice(Math.max(0, open - 80), open + 40)}`,
   );
 }
 
@@ -371,50 +387,6 @@ function resolveMethodCall(
   return null;
 }
 
-function inspectAggregateRoot(root: ExtractedFunction): boolean {
-  const maskedBody = maskCommentsAndStrings(root.body);
-  const atomicMethod = "commit_prepared_mempool_transition_with";
-  const atomicIndexes = [...maskedBody.matchAll(new RegExp(`\\.${atomicMethod}\\s*\\(`, "g"))]
-    .map((match) => match.index ?? -1)
-    .filter((index) => index >= 0);
-  if (
-    !ATOMIC_CORE_COMMIT.has("Mempool::commit_prepared_mempool_transition_with") ||
-    atomicIndexes.length !== 1
-  ) {
-    return false;
-  }
-
-  const atomicIndex = atomicIndexes[0] ?? -1;
-  const statementStart = maskedBody.lastIndexOf("let ", atomicIndex);
-  const statementEnd = maskedBody.indexOf(";", atomicIndex);
-  if (statementStart < 0 || statementEnd < atomicIndex) {
-    return false;
-  }
-  const beforeAtomicStatement = maskedBody.slice(0, statementStart);
-  const earlierDependentMutation = [
-    ...maskedBody.matchAll(/\.apply_prepared_[A-Za-z0-9_]+\s*\(/g),
-  ].some((match) => (match.index ?? 0) < atomicIndex);
-  const dependentIndex = maskedBody.indexOf(".apply_prepared_lifecycle(", atomicIndex);
-  if (
-    /\bself\s*\./.test(beforeAtomicStatement) ||
-    earlierDependentMutation ||
-    dependentIndex < 0
-  ) {
-    return false;
-  }
-
-  const withoutAtomic =
-    maskedBody.slice(0, statementStart) +
-    " ".repeat(statementEnd + 1 - statementStart) +
-    maskedBody.slice(statementEnd + 1);
-  return (
-    !/\?/.test(withoutAtomic) &&
-    !/\b(?:std::fs|File::|OpenOptions::|TcpStream|UdpSocket|tokio::fs|await)\b/.test(
-      withoutAtomic,
-    )
-  );
-}
-
 function inspectReachableFunctions(
   functions: Map<string, ExtractedFunction>,
 ): string[] {
@@ -518,6 +490,8 @@ export function checkPhase134ApplyBoundaries(
       if (
         functions.has(target.symbol) &&
         (target.symbol === REQUIRED_ROOT_SYMBOL ||
+          target.symbol === CONNECTED_BLOCK_ROOT_SYMBOL ||
+          CONNECTED_BLOCK_SEAMS.some(({ symbol }) => symbol === target.symbol) ||
           target.symbol === DEPENDENT_ROOT_SYMBOL ||
           INFALLIBLE_APPLY_CALLEES.has(target.symbol) ||
           PURE_CALL_ALLOWLIST.has(target.symbol))
@@ -562,7 +536,38 @@ export function checkPhase134ApplyBoundaries(
   }
 
   const aggregate = functions.get(REQUIRED_ROOT_SYMBOL);
-  const aggregateValid = aggregate ? inspectAggregateRoot(aggregate) : false;
+  const structuralTools = {
+    maskCommentsAndStrings,
+    matchingDelimiter,
+    methodCalls,
+    functionCallNames,
+  };
+  const aggregateValid = aggregate
+    ? inspectOrdinaryAggregateRoot(
+        aggregate,
+        structuralTools,
+        ATOMIC_CORE_COMMIT.has(
+          "Mempool::commit_prepared_mempool_transition_with",
+        ),
+      )
+    : false;
+  const connectedBlockRoot = functions.get(CONNECTED_BLOCK_ROOT_SYMBOL);
+  const connectedBlockRootValid = connectedBlockRoot
+    ? inspectConnectedBlockRoot(connectedBlockRoot, structuralTools)
+    : false;
+  const connectedBlockSeamsValid = CONNECTED_BLOCK_SEAMS.every(
+    ({ symbol, chainstatePreparation }) => {
+      const seam = functions.get(symbol);
+      return (
+        seam !== undefined &&
+        inspectConnectedBlockSeam(
+          seam,
+          chainstatePreparation,
+          structuralTools,
+        )
+      );
+    },
+  );
   const reachableViolations = inspectReachableFunctions(functions);
   const removedApiPresent = REMOVED_VALIDATED_API.some((name) =>
     [...sources.values()].some((source) =>
@@ -572,8 +577,11 @@ export function checkPhase134ApplyBoundaries(
   if (
     duplicateSymbols.length > 0 ||
     !aggregate ||
+    !connectedBlockRoot ||
     removedApiPresent ||
     !aggregateValid ||
+    !connectedBlockRootValid ||
+    !connectedBlockSeamsValid ||
     reachableViolations.length > 0
   ) {
     if (process.env.PHASE134_APPLY_DEBUG === "1") {
@@ -583,6 +591,9 @@ export function checkPhase134ApplyBoundaries(
             duplicateSymbols,
             aggregateFound: aggregate !== undefined,
             aggregateValid,
+            connectedBlockRootFound: connectedBlockRoot !== undefined,
+            connectedBlockRootValid,
+            connectedBlockSeamsValid,
             removedApiPresent,
             reachableViolations,
           },
