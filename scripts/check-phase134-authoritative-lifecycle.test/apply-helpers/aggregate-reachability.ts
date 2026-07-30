@@ -6,8 +6,12 @@ const AUTHORITY_FILE =
   "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs";
 const COMPACT_FILE =
   "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs";
+const INVENTORY_FILE =
+  "packages/open-bitcoin-node/src/network/inventory.rs";
 const MEMPOOL_LIFECYCLE_FILE =
   "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs";
+const UNSCANNED_FILE =
+  "packages/open-bitcoin-node/src/network/unscanned_effects.rs";
 
 export function aggregateReachabilityMutations(): ApplyHelperMutation[] {
   return [
@@ -183,6 +187,108 @@ export function aggregateReachabilityMutations(): ApplyHelperMutation[] {
         );
       },
     },
+    {
+      name: "direct collection mutation appears between sealing and transaction",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "        self.commit_connected_block_lifecycle_transaction(",
+          "        self.unbroadcast_members.clear();\n",
+        );
+      },
+    },
+    {
+      name: "traversed helper retains collection entries outside the transaction",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "        self.commit_connected_block_lifecycle_transaction(",
+          "        retain_seam_entries(&mut self.unbroadcast_members);\n",
+        );
+        append(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          [
+            "",
+            "fn retain_seam_entries<T>(",
+            "    children: &mut std::collections::BTreeSet<T>,",
+            ") {",
+            "    children.retain(|_| true);",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "nested helper extends a collection outside the transaction",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        let ((), delta) = self",
+          "        outer_collection_mutator(&mut self.unbroadcast_members);\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "fn outer_collection_mutator<T>(",
+            "    values: &mut std::collections::BTreeSet<T>,",
+            ") {",
+            "    inner_collection_mutator(values);",
+            "}",
+            "",
+            "fn inner_collection_mutator<T>(",
+            "    values: &mut std::collections::BTreeSet<T>,",
+            ") {",
+            "    values.extend([]);",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "unscanned qualified helper cannot fall back to benign same-name helper",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        let ((), delta) = self",
+          "        super::super::unscanned_effects::collision_helper();\n",
+        );
+        appendFreeHelper(files, COMPACT_FILE, "collision_helper", "let _ = 1_u8;");
+        files.set(
+          UNSCANNED_FILE,
+          [
+            "pub(super) fn collision_helper() {",
+            '    let _ = std::fs::write("state", b"unscanned");',
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "unresolved qualified helper fails closed",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        let ((), delta) = self",
+          "        super::super::missing_module::missing_helper();\n",
+        );
+      },
+    },
   ];
 }
 
@@ -260,6 +366,67 @@ export function aggregateReachabilityPositiveMutations(): ApplyHelperMutation[] 
             "}",
             "",
           ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "accepts direct read-only method between sealing and transaction",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "        self.commit_connected_block_lifecycle_transaction(",
+          "        let _ = position.height.saturating_add(0);\n",
+        );
+      },
+    },
+    {
+      name: "accepts traversed helper with a read-only collection method",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "        self.commit_connected_block_lifecycle_transaction(",
+          "        inspect_seam_entries(&self.unbroadcast_members);\n",
+        );
+        append(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          [
+            "",
+            "fn inspect_seam_entries<T>(",
+            "    children: &std::collections::BTreeSet<T>,",
+            ") {",
+            "    let _ = children.is_empty();",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "accepts exact qualified helper despite benign same-name modules",
+      mutate: (files) => {
+        insertBeforeInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        let ((), delta) = self",
+          "        super::super::compact_receive_candidates::same_named_pure_helper();\n",
+        );
+        appendFreeHelper(
+          files,
+          COMPACT_FILE,
+          "same_named_pure_helper",
+          "let _ = 1_u8;",
+        );
+        appendFreeHelper(
+          files,
+          INVENTORY_FILE,
+          "same_named_pure_helper",
+          "let _ = 2_u8;",
         );
       },
     },

@@ -1,10 +1,9 @@
-import path from "node:path";
-
 export type ExtractedFunction = {
   file: string;
   symbol: string;
   name: string;
   owner: string | null;
+  modulePath: string;
   signature: string;
   body: string;
 };
@@ -19,6 +18,11 @@ type FunctionCall = {
   path: string;
   name: string;
   index: number;
+};
+
+type ClassifiedMethod = {
+  symbol: string;
+  effect: "pure" | "mutation";
 };
 
 type CallGraphTools = {
@@ -38,48 +42,96 @@ type ReachabilityRoots = {
   dependent: string;
 };
 
-const PURE_RECEIVER_CALLS: ReadonlyMap<string, string> = new Map([
-  ["self.known_txids.remove", "BTreeSet::remove"],
-  ["self.known_txids.insert", "BTreeSet::insert"],
-  ["self.known_wtxids.remove", "BTreeSet::remove"],
-  ["self.known_wtxids.insert", "BTreeSet::insert"],
-  ["self.mempool_known.remove", "BTreeSet::remove"],
-  ["self.mempool_known.insert", "BTreeSet::insert"],
-  ["self.already_have.remove", "BTreeSet::remove"],
-  ["self.already_have.insert", "BTreeSet::insert"],
-  ["self.announcements.remove", "BTreeMap::remove"],
-  ["self.in_flight.remove", "BTreeMap::remove"],
-  ["self.known_wtxids_by_txid.get", "BTreeMap::get"],
-  ["self.known_wtxids_by_txid.remove", "BTreeMap::remove"],
-  ["self.known_wtxids_by_txid.insert", "BTreeMap::insert"],
-  ["self.compact_download_states.insert", "BTreeMap::insert"],
-  ["self.pending_reconsideration.remove", "BTreeSet::remove"],
-  ["self.orphans.remove", "BTreeMap::remove"],
-  ["self.candidate_cursors.remove", "BTreeMap::remove"],
-  ["self.accepted_package_fingerprints.insert", "BTreeMap::insert"],
-  ["self.accepted_package_fingerprints.remove", "BTreeMap::remove"],
-  ["self.children_by_parent.get_mut", "BTreeMap::get_mut"],
-  ["self.children_by_parent.remove", "BTreeMap::remove"],
-  ["self.orphan_count_by_peer.get_mut", "BTreeMap::get_mut"],
-  ["self.orphan_count_by_peer.remove", "BTreeMap::remove"],
-  ["children.retain", "BTreeSet::retain"],
-  ["children.is_empty", "BTreeSet::is_empty"],
-  ["maybe_entry.iter", "Option::iter"],
-  ["count.saturating_sub", "usize::saturating_sub"],
+const RECEIVER_CALLS: ReadonlyMap<string, ClassifiedMethod> = new Map([
+  ...[
+    "self.known_txids.remove",
+    "self.known_txids.insert",
+    "self.known_wtxids.remove",
+    "self.known_wtxids.insert",
+    "self.mempool_known.remove",
+    "self.mempool_known.insert",
+    "self.already_have.remove",
+    "self.already_have.insert",
+    "self.announcements.remove",
+    "self.in_flight.remove",
+    "self.known_wtxids_by_txid.remove",
+    "self.known_wtxids_by_txid.insert",
+    "self.compact_download_states.insert",
+    "self.pending_reconsideration.remove",
+    "self.orphans.remove",
+    "self.candidate_cursors.remove",
+    "self.accepted_package_fingerprints.insert",
+    "self.accepted_package_fingerprints.remove",
+    "self.children_by_parent.get_mut",
+    "self.children_by_parent.remove",
+    "self.orphan_count_by_peer.get_mut",
+    "self.orphan_count_by_peer.remove",
+    "children.retain",
+  ].map((receiver) => [
+    receiver,
+    {
+      symbol: collectionSymbol(receiver.split(".").at(-1) ?? ""),
+      effect: "mutation" as const,
+    },
+  ]),
+  [
+    "self.known_wtxids_by_txid.get",
+    { symbol: "BTreeMap::get", effect: "pure" },
+  ],
+  ["children.is_empty", { symbol: "BTreeSet::is_empty", effect: "pure" }],
+  ["maybe_entry.iter", { symbol: "Option::iter", effect: "pure" }],
+  ["count.saturating_sub", { symbol: "usize::saturating_sub", effect: "pure" }],
 ]);
 
 export const PURE_CALL_ALLOWLIST = new Set([
   "PeerTransactionIdentity::relay_ids",
+  "SealedLifecycleProjection::into_parts",
   "BTreeMap::get",
-  "BTreeMap::get_mut",
-  "BTreeMap::insert",
-  "BTreeMap::remove",
-  "BTreeSet::insert",
   "BTreeSet::is_empty",
-  "BTreeSet::remove",
-  "BTreeSet::retain",
   "Option::iter",
   "usize::saturating_sub",
+]);
+
+const PURE_METHOD_NAMES = new Set([
+  "as_ref",
+  "contains",
+  "contains_key",
+  "get",
+  "is_empty",
+  "iter",
+  "len",
+  "saturating_add",
+  "saturating_sub",
+]);
+
+const MUTATING_METHOD_NAMES = new Set([
+  "append",
+  "as_mut",
+  "clear",
+  "dedup",
+  "drain",
+  "entry",
+  "extend",
+  "extend_from_slice",
+  "get_mut",
+  "insert",
+  "iter_mut",
+  "pop",
+  "pop_back",
+  "pop_front",
+  "push",
+  "push_back",
+  "push_front",
+  "remove",
+  "replace",
+  "retain",
+  "sort",
+  "sort_by",
+  "split_off",
+  "swap_remove",
+  "take",
+  "truncate",
+  "values_mut",
 ]);
 
 export function methodCalls(source: string): MethodCall[] {
@@ -115,28 +167,6 @@ export function inspectCriticalReachability(
   const visited = new Set<string>();
   const violations = new Set<string>();
 
-  const visitFunctionCalls = (
-    current: ExtractedFunction,
-    source: string,
-    strictMutationBoundary: boolean,
-  ): void => {
-    const masked = tools.maskCommentsAndStrings(source);
-    for (const call of functionCalls(masked, methodCalls(masked))) {
-      const resolved = resolveFunctionCall(current, call, candidates, aliases);
-      if (resolved === "unresolved") {
-        violations.add(
-          `${current.symbol}: unresolved function call ${call.path}`,
-        );
-        continue;
-      }
-      if (!resolved) {
-        violations.add(`${current.symbol}: unclassified call ${call.path}`);
-        continue;
-      }
-      visit(resolved, strictMutationBoundary);
-    }
-  };
-
   const visit = (symbol: string, strictMutationBoundary: boolean): void => {
     const visitKey = `${strictMutationBoundary ? "strict" : "dependent"}:${symbol}`;
     if (visited.has(visitKey)) {
@@ -161,34 +191,91 @@ export function inspectCriticalReachability(
       violations.add(`${symbol}: direct mutation outside aggregate transaction`);
     }
 
-    const maskedBody = tools.maskCommentsAndStrings(target.body);
-    const methods = methodCalls(maskedBody);
+    inspectSource(target, target.body, strictMutationBoundary);
+  };
+
+  const inspectSource = (
+    current: ExtractedFunction,
+    source: string,
+    strictMutationBoundary: boolean,
+    allowedDirectMethods: ReadonlySet<string> = new Set(),
+  ): void => {
+    const masked = tools.maskCommentsAndStrings(source);
+    if (strictMutationBoundary && isFallibleOrEffectful(masked)) {
+      violations.add(`${current.symbol}: fallible or effectful critical slice`);
+    }
+    if (strictMutationBoundary && hasDirectAssignmentMutation(masked)) {
+      violations.add(
+        `${current.symbol}: direct mutation outside aggregate transaction`,
+      );
+    }
+
+    const methods = methodCalls(masked);
     for (const call of methods) {
-      const resolved = resolveMethodCall(target, call, candidates);
-      if (resolved === "unresolved") {
-        violations.add(`${symbol}: unresolved method overload ${call.name}`);
+      const callPath = `${call.receiver}.${call.name}`;
+      if (allowedDirectMethods.has(callPath)) {
         continue;
       }
-      if (!resolved) {
+      const resolved = resolveMethodCall(current, call, candidates);
+      if (resolved === "unresolved") {
         violations.add(
-          `${symbol}: unclassified call ${call.receiver}.${call.name}`,
+          `${current.symbol}: unresolved method overload ${call.name}`,
         );
         continue;
       }
-      if (functions.has(resolved)) {
-        if (
-          !classifiedRepoMethods.has(resolved) &&
-          resolved !== roots.dependent &&
-          !PURE_CALL_ALLOWLIST.has(resolved)
-        ) {
-          violations.add(`${symbol}: unclassified method ${resolved}`);
-        }
-        visit(resolved, strictMutationBoundary);
-      } else if (!PURE_CALL_ALLOWLIST.has(resolved)) {
-        violations.add(`${symbol}: unclassified method ${resolved}`);
+      if (!resolved) {
+        violations.add(`${current.symbol}: unclassified call ${callPath}`);
+        continue;
       }
+      const repoMutation =
+        classifiedRepoMethods.has(resolved.symbol) ||
+        resolved.symbol === roots.dependent;
+      if (
+        strictMutationBoundary &&
+        (resolved.effect === "mutation" || repoMutation)
+      ) {
+        violations.add(
+          `${current.symbol}: mutating call ${callPath} outside aggregate transaction`,
+        );
+        continue;
+      }
+      if (!functions.has(resolved.symbol)) {
+        if (
+          resolved.effect === "mutation" &&
+          resolved.symbol.startsWith("collection::")
+        ) {
+          violations.add(
+            `${current.symbol}: unclassified method ${resolved.symbol}`,
+          );
+        }
+        continue;
+      }
+      if (
+        !classifiedRepoMethods.has(resolved.symbol) &&
+        resolved.symbol !== roots.dependent &&
+        !PURE_CALL_ALLOWLIST.has(resolved.symbol)
+      ) {
+        violations.add(
+          `${current.symbol}: unclassified method ${resolved.symbol}`,
+        );
+      }
+      visit(resolved.symbol, strictMutationBoundary);
     }
-    visitFunctionCalls(target, target.body, strictMutationBoundary);
+
+    for (const call of functionCalls(masked, methods)) {
+      const resolved = resolveFunctionCall(current, call, candidates, aliases);
+      if (resolved === "unresolved") {
+        violations.add(
+          `${current.symbol}: unresolved function call ${call.path}`,
+        );
+        continue;
+      }
+      if (!resolved) {
+        violations.add(`${current.symbol}: unclassified call ${call.path}`);
+        continue;
+      }
+      visit(resolved, strictMutationBoundary);
+    }
   };
 
   const seedOutsideTransaction = (symbol: string): void => {
@@ -212,8 +299,13 @@ export function inspectCriticalReachability(
       violations.add(`${symbol}: aggregate transaction statement is malformed`);
       return;
     }
-    visitFunctionCalls(target, target.body.slice(0, statementStart), true);
-    visitFunctionCalls(target, target.body.slice(statementEnd + 1), true);
+    inspectSource(target, target.body.slice(0, statementStart), true);
+    inspectSource(
+      target,
+      target.body.slice(statementEnd + 1),
+      true,
+      new Set(["self.apply_prepared_lifecycle"]),
+    );
   };
 
   const seedBetweenSealAndTransaction = (symbol: string): void => {
@@ -244,7 +336,7 @@ export function inspectCriticalReachability(
       violations.add(`${symbol}: sealed transaction seam is malformed`);
       return;
     }
-    visitFunctionCalls(
+    inspectSource(
       target,
       target.body.slice(sealingStatementEnd + 1, maybeTransaction.call),
       true,
@@ -340,53 +432,90 @@ function resolveFunctionCall(
   const name = resolvedSegments.at(-1) ?? call.name;
   let matches = candidates.get(name) ?? [];
   if (resolvedSegments.length === 1) {
-    const sameFile = matches.filter((candidate) => candidate.file === current.file);
-    if (sameFile.length > 0) {
-      matches = sameFile;
+    const sameModule = matches.filter(
+      (candidate) => candidate.modulePath === current.modulePath,
+    );
+    if (sameModule.length > 0) {
+      matches = sameModule;
     }
   } else {
-    const qualifier = [...resolvedSegments]
-      .slice(0, -1)
-      .filter((segment) => !["crate", "self", "super"].includes(segment))
-      .at(-1);
-    if (qualifier) {
-      const qualified = matches.filter(
-        (candidate) =>
-          candidate.owner === qualifier ||
-          path.basename(candidate.file, path.extname(candidate.file)) ===
-            qualifier,
-      );
-      if (qualified.length > 0) {
-        matches = qualified;
-      }
-    }
+    const canonicalPath = canonicalFunctionPath(
+      current.modulePath,
+      resolvedSegments,
+    );
+    matches = matches.filter(
+      (candidate) =>
+        `${candidate.modulePath}::${candidate.name}` === canonicalPath,
+    );
   }
   if (matches.length === 1) {
     return matches[0]?.symbol ?? null;
   }
-  return matches.length > 1 ? "unresolved" : null;
+  return matches.length > 1 || resolvedSegments.length > 1
+    ? "unresolved"
+    : null;
 }
 
 function resolveMethodCall(
   current: ExtractedFunction,
   call: MethodCall,
   candidates: Map<string, ExtractedFunction[]>,
-): string | null | "unresolved" {
+): ClassifiedMethod | null | "unresolved" {
   if (call.receiver === "self" && current.owner) {
     const selfSymbol = `${current.owner}::${call.name}`;
     if ((candidates.get(call.name) ?? []).some(({ symbol }) => symbol === selfSymbol)) {
-      return selfSymbol;
+      return { symbol: selfSymbol, effect: "pure" };
     }
   }
-  const maybePure = PURE_RECEIVER_CALLS.get(`${call.receiver}.${call.name}`);
-  if (maybePure) {
-    return maybePure;
+  const maybeClassified = RECEIVER_CALLS.get(
+    `${call.receiver}.${call.name}`,
+  );
+  if (maybeClassified) {
+    return maybeClassified;
+  }
+  if (MUTATING_METHOD_NAMES.has(call.name)) {
+    return { symbol: `collection::${call.name}`, effect: "mutation" };
+  }
+  if (PURE_METHOD_NAMES.has(call.name)) {
+    return { symbol: `pure::${call.name}`, effect: "pure" };
   }
   const matches = candidates.get(call.name) ?? [];
   if (matches.length === 1) {
-    return matches[0]?.symbol ?? null;
+    const symbol = matches[0]?.symbol;
+    return symbol ? { symbol, effect: "pure" } : null;
   }
   return matches.length > 1 ? "unresolved" : null;
+}
+
+function canonicalFunctionPath(
+  currentModulePath: string,
+  resolvedSegments: string[],
+): string {
+  const segments = [...resolvedSegments];
+  const current = currentModulePath.split("::").filter(Boolean);
+  if (segments[0] === "crate") {
+    segments.shift();
+    return segments.join("::");
+  }
+  if (segments[0] === "self") {
+    segments.shift();
+    return [...current, ...segments].join("::");
+  }
+  while (segments[0] === "super") {
+    segments.shift();
+    current.pop();
+  }
+  return [...current, ...segments].join("::");
+}
+
+function collectionSymbol(methodName: string): string {
+  if (methodName === "retain") {
+    return "BTreeSet::retain";
+  }
+  if (methodName === "get_mut") {
+    return "BTreeMap::get_mut";
+  }
+  return `Collection::${methodName}`;
 }
 
 function maybeFunction(

@@ -80,7 +80,7 @@ export const INFALLIBLE_APPLY_CALLEES = new Set([
   "ManagedPeerNetwork::apply_prepared_persistence",
   "ManagedPeerNetwork::apply_prepared_evidence",
   "PeerManager::apply_prepared_transaction_lifecycle",
-  "transaction_lifecycle::apply_prepared_orphan_lifecycle",
+  "peer::transaction_lifecycle::apply_prepared_orphan_lifecycle",
   "TxDownloadScheduler::forget_lifecycle_identity",
   "TxDownloadScheduler::mark_already_have",
   "TxOrphanage::remove_candidate_cursor",
@@ -93,6 +93,12 @@ export const INFALLIBLE_APPLY_CALLEES = new Set([
 
 type ImplRange = {
   owner: string;
+  open: number;
+  close: number;
+};
+
+type ModuleRange = {
+  name: string;
   open: number;
   close: number;
 };
@@ -202,8 +208,28 @@ function implRanges(masked: string): ImplRange[] {
   return ranges;
 }
 
-function moduleName(relativePath: string): string {
-  return path.basename(relativePath, path.extname(relativePath));
+function modulePath(relativePath: string): string {
+  const normalized = relativePath.replaceAll("\\", "/");
+  const sourceSegments = normalized.split("/src/").at(-1)?.split("/") ?? [];
+  const fileName = sourceSegments.pop()?.replace(/\.rs$/, "") ?? "";
+  if (fileName && !["lib", "main", "mod"].includes(fileName)) {
+    sourceSegments.push(fileName);
+  }
+  return sourceSegments.join("::");
+}
+
+function moduleRanges(masked: string): ModuleRange[] {
+  const ranges: ModuleRange[] = [];
+  for (const match of masked.matchAll(
+    /\bmod\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/g,
+  )) {
+    const name = match[1];
+    const open = (match.index ?? 0) + match[0].lastIndexOf("{");
+    if (name) {
+      ranges.push({ name, open, close: matchingBrace(masked, open) });
+    }
+  }
+  return ranges;
 }
 
 function extractFunctions(
@@ -212,6 +238,8 @@ function extractFunctions(
 ): ExtractedFunction[] {
   const masked = maskCommentsAndStrings(source);
   const ranges = implRanges(masked);
+  const modules = moduleRanges(masked);
+  const fileModulePath = modulePath(relativePath);
   const functions: ExtractedFunction[] = [];
   for (const match of masked.matchAll(/\bfn\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
     const name = match[1];
@@ -225,13 +253,21 @@ function extractFunctions(
       .filter((range) => range.open < start && start < range.close)
       .sort((left, right) => left.close - left.open - (right.close - right.open))[0];
     const owner = maybeImpl?.owner ?? null;
+    const inlineModules = modules
+      .filter((range) => range.open < start && start < range.close)
+      .sort((left, right) => left.open - right.open)
+      .map(({ name: module }) => module);
+    const targetModulePath = [fileModulePath, ...inlineModules]
+      .filter(Boolean)
+      .join("::");
     functions.push({
       file: relativePath,
       symbol: owner
         ? `${owner}::${name}`
-        : `${moduleName(relativePath)}::${name}`,
+        : `${targetModulePath}::${name}`,
       name,
       owner,
+      modulePath: targetModulePath,
       signature: source.slice(start, open),
       body: source.slice(open + 1, close),
     });
