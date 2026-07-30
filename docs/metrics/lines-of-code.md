@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,058 |
-| Total lines | 301,257 |
-| Code/content lines | 263,140 |
+| Total lines | 301,340 |
+| Code/content lines | 263,219 |
 | Comment-only lines | 13,171 |
-| Blank lines | 24,946 |
+| Blank lines | 24,950 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 401 | 112,576 | 95,992 | 7,844 | 8,740 |
 | Rust production | 336 | 100,570 | 87,521 | 3,609 | 9,440 |
-| TypeScript/Bun scripts | 252 | 71,253 | 63,712 | 1,638 | 5,903 |
+| TypeScript/Bun scripts | 252 | 71,336 | 63,791 | 1,638 | 5,907 |
 | Fixture/data | 6 | 8,233 | 8,228 | 5 | 0 |
 | Shell scripts | 22 | 4,499 | 4,020 | 66 | 413 |
 | TOML/config | 16 | 3,464 | 3,098 | 0 | 366 |
@@ -50,7 +50,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | File | Lines |
 | --- | --- |
-| scripts/bright-builds-check.ts | 488 |
+| scripts/bright-builds-check.ts | 571 |
 | scripts/check-active-milestone-verification-traceability.test.ts | 3 |
 | scripts/check-active-milestone-verification-traceability.ts | 16 |
 | scripts/check-active-milestone-verification-traceability/checks.ts | 137 |
@@ -333,7 +333,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 50a411a6f457beb3f5acafe54f977c27c256f6273dcfc0ce2cfebe26e9fee3f8 |
+| Input fingerprint | 3a190d8b99dbc805d5a1bbe941fb634fb204161ec8a0b38106b6ce28ab5d18b8 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
