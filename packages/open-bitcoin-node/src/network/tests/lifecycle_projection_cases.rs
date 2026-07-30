@@ -236,7 +236,9 @@ fn apply_prepared(
     let sealed = network
         .validate_prepared_lifecycle(plan)
         .expect("current projection should validate");
-    network.commit_sealed_lifecycle(sealed);
+    network
+        .commit_sealed_lifecycle(sealed)
+        .expect("current projection should apply");
 }
 
 mod authority {

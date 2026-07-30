@@ -273,10 +273,11 @@ fn atomic_commit_rejects_stale_preparation_without_mutation() {
         .commit_prepared_mempool_transition(newer)
         .expect("intervening commit");
     let before_stale_commit = mempool.complete_snapshot();
+    let mut callback_ran = false;
 
     // Act
     let error = mempool
-        .commit_prepared_mempool_transition(prepared)
+        .commit_prepared_mempool_transition_with(prepared, || callback_ran = true)
         .expect_err("intervening mutation must stale the capability");
 
     // Assert
@@ -288,7 +289,41 @@ fn atomic_commit_rejects_stale_preparation_without_mutation() {
         }
     );
     assert_eq!(newer_delta.admitted.len(), 1);
+    assert!(!callback_ran);
     assert_eq!(mempool.complete_snapshot(), before_stale_commit);
+}
+
+#[test]
+fn atomic_commit_rejects_cross_instance_preparation_before_callback() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(2);
+    let transaction = admission_transaction(coinbase_txids[0]);
+    let source = Mempool::default();
+    let prepared = source
+        .prepare_transaction_with_context(
+            transaction,
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::legacy_unknown(),
+        )
+        .expect("source preparation");
+    let mut target = Mempool::default();
+    let target_before = target.complete_snapshot();
+    let mut callback_ran = false;
+
+    // Act
+    let error = target
+        .commit_prepared_mempool_transition_with(prepared, || callback_ran = true)
+        .expect_err("cross-instance capability must fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        MempoolError::PreparedTransitionInstanceMismatch
+    ));
+    assert!(!callback_ran);
+    assert_eq!(target.complete_snapshot(), target_before);
 }
 
 #[test]

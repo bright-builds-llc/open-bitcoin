@@ -74,6 +74,7 @@ impl MempoolRejectionCategory {
             MempoolError::ReplacementRejected { .. } => Some(Self::ReplacementRejected),
             MempoolError::LimitExceeded { .. } => Some(Self::LimitExceeded),
             MempoolError::StalePreparedTransition { .. }
+            | MempoolError::PreparedTransitionInstanceMismatch
             | MempoolError::RevisionExhausted
             | MempoolError::InternalInvariant { .. } => Some(Self::InternalInvariant),
         }

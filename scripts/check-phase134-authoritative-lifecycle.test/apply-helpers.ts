@@ -79,6 +79,17 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
       },
     },
     {
+      name: "removed public sealed transition API remains forbidden",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          AUTHORITY_FILE,
+          "apply_prepared_lifecycle",
+          "\n        self.mempool.mempool_mut().commit_sealed_mempool_transition(core);",
+        );
+      },
+    },
+    {
       name: "atomic commit cannot follow a dependent mutation",
       mutate: (files) => {
         insertAtFunctionStart(
@@ -101,7 +112,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
             "        let _ = self",
             "            .mempool",
             "            .mempool_mut()",
-            "            .commit_sealed_mempool_transition(core);",
+            "            .commit_prepared_mempool_transition_with(core, || ());",
           ].join("\n"),
         );
       },

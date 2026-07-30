@@ -59,13 +59,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .prepare_connected_block_transition(block, context)?;
         let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;
 
-        self.chainstate.commit_prepared_connect(prepared_chainstate);
-        self.peer_manager
-            .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
-        self.blocks_by_hash
-            .insert(position.block_hash, block.clone());
-        self.peer_manager.note_local_position(&position);
-        self.commit_maintenance_step(sealed_lifecycle);
+        self.commit_connected_block_lifecycle_transaction(
+            block,
+            &position,
+            prepared_chainstate,
+            sealed_lifecycle,
+        )
+        .map_err(maintenance_lifecycle_error)?;
         Ok(position)
     }
 
@@ -125,12 +125,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .prepare_connected_block_transition(block, context)?;
         let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;
 
-        self.chainstate.commit_prepared_connect(prepared_chainstate);
-        self.peer_manager
-            .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
-        self.blocks_by_hash.insert(block_hash, block.clone());
-        self.peer_manager.note_local_position(&position);
-        self.commit_maintenance_step(sealed_lifecycle);
+        self.commit_connected_block_lifecycle_transaction(
+            block,
+            &position,
+            prepared_chainstate,
+            sealed_lifecycle,
+        )
+        .map_err(maintenance_lifecycle_error)?;
         Ok(BlockConnectDisposition::Connected(position))
     }
 
@@ -249,13 +250,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             .map_err(maintenance_lifecycle_error)?;
         self.validate_prepared_lifecycle(plan)
             .map_err(maintenance_lifecycle_error)
-    }
-
-    fn commit_maintenance_step(
-        &mut self,
-        sealed: SealedLifecycleProjection,
-    ) -> MempoolLifecycleDelta {
-        self.commit_sealed_lifecycle(sealed)
     }
 
     pub(super) fn apply_reorg_mempool_lifecycle(

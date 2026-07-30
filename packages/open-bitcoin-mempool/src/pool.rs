@@ -10,6 +10,7 @@
 // - packages/bitcoin-knots/src/txmempool.h
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::sync::Arc;
 
 use open_bitcoin_chainstate::ChainstateSnapshot;
 use open_bitcoin_consensus::TransactionInputContext;
@@ -52,7 +53,7 @@ pub use lifecycle::{
 use oracle::{recompute_state, validate_limits};
 pub use prepared_lifecycle::{
     PreparedLifecycleFacts, PreparedMempoolMember, PreparedMempoolRemoval,
-    PreparedMempoolTransition, SealedMempoolTransition,
+    PreparedMempoolTransition,
 };
 #[cfg(test)]
 use topology::{collect_ancestors, collect_descendants};
@@ -104,13 +105,43 @@ pub(super) struct MempoolPatch {
 }
 
 #[derive(Debug, Clone)]
+pub(super) struct MempoolInstanceId(Arc<()>);
+
+impl PartialEq for MempoolInstanceId {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl Eq for MempoolInstanceId {}
+
+fn allocate_mempool_instance_id() -> MempoolInstanceId {
+    MempoolInstanceId(Arc::new(()))
+}
+
+#[derive(Debug)]
 pub struct Mempool {
+    instance_id: MempoolInstanceId,
     config: PolicyConfig,
     rolling_fee_state: RollingFeeState,
     entries: HashMap<Txid, MempoolEntry>,
     spent_outpoints: HashMap<OutPoint, Txid>,
     resource_ledger: MempoolResourceLedger,
     revision: MempoolRevision,
+}
+
+impl Clone for Mempool {
+    fn clone(&self) -> Self {
+        Self {
+            instance_id: allocate_mempool_instance_id(),
+            config: self.config.clone(),
+            rolling_fee_state: self.rolling_fee_state.clone(),
+            entries: self.entries.clone(),
+            spent_outpoints: self.spent_outpoints.clone(),
+            resource_ledger: self.resource_ledger,
+            revision: self.revision,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -132,6 +163,7 @@ impl Default for Mempool {
 impl Mempool {
     pub fn new(config: PolicyConfig) -> Self {
         Self {
+            instance_id: allocate_mempool_instance_id(),
             config,
             rolling_fee_state: RollingFeeState::new(),
             entries: HashMap::new(),

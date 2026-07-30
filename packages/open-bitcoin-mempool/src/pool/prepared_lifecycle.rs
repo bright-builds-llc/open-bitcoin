@@ -23,7 +23,7 @@ use crate::{
 use super::admission::prepare_admission_patch;
 use super::candidate::{check_candidate_scripts, prepare_candidate};
 use super::package_admission::evaluate_package;
-use super::{Mempool, MempoolPatch, MempoolRevision};
+use super::{Mempool, MempoolInstanceId, MempoolPatch, MempoolRevision};
 
 #[cfg(test)]
 thread_local! {
@@ -135,12 +135,7 @@ impl PreparedCoreTransition {
 /// }
 /// ```
 pub struct PreparedMempoolTransition {
-    core: PreparedCoreTransition,
-    facts: PreparedLifecycleFacts,
-}
-
-/// Opaque proof that a prepared transition still matches the current mempool revision.
-pub struct SealedMempoolTransition {
+    instance_id: MempoolInstanceId,
     core: PreparedCoreTransition,
     facts: PreparedLifecycleFacts,
 }
@@ -215,15 +210,19 @@ impl Mempool {
         &mut self,
         prepared: PreparedMempoolTransition,
     ) -> Result<MempoolLifecycleDelta, MempoolError> {
-        let sealed = self.seal_prepared_mempool_transition(prepared)?;
-        Ok(self.commit_sealed_mempool_transition(sealed))
+        let ((), delta) = self.commit_prepared_mempool_transition_with(prepared, || ())?;
+        Ok(delta)
     }
 
-    /// Validates the revision guard without mutating the mempool.
-    pub fn seal_prepared_mempool_transition(
-        &self,
+    /// Validates, runs one exclusive pre-commit action, and immediately commits.
+    pub fn commit_prepared_mempool_transition_with<R>(
+        &mut self,
         prepared: PreparedMempoolTransition,
-    ) -> Result<SealedMempoolTransition, MempoolError> {
+        before_commit: impl FnOnce() -> R,
+    ) -> Result<(R, MempoolLifecycleDelta), MempoolError> {
+        if self.instance_id != prepared.instance_id {
+            return Err(MempoolError::PreparedTransitionInstanceMismatch);
+        }
         let expected_revision = prepared.core.base_revision();
         if self.revision != expected_revision {
             return Err(MempoolError::StalePreparedTransition {
@@ -231,23 +230,14 @@ impl Mempool {
                 actual_revision: self.revision.0,
             });
         }
-        Ok(SealedMempoolTransition {
-            core: prepared.core,
-            facts: prepared.facts,
-        })
-    }
-
-    /// Commits a revision-sealed transition without a remaining failure path.
-    pub fn commit_sealed_mempool_transition(
-        &mut self,
-        sealed: SealedMempoolTransition,
-    ) -> MempoolLifecycleDelta {
+        let result = before_commit();
         #[cfg(test)]
         APPLY_COUNT.with(|count| count.set(count.get() + 1));
-        match sealed.core {
+        let delta = match prepared.core {
             PreparedCoreTransition::Patch(patch) => self.apply_validated_patch(*patch),
-            PreparedCoreTransition::Noop { .. } => sealed.facts.delta,
-        }
+            PreparedCoreTransition::Noop { .. } => prepared.facts.delta,
+        };
+        Ok((result, delta))
     }
 }
 
@@ -282,6 +272,7 @@ impl PreparedMempoolTransition {
     ) -> Result<Self, MempoolError> {
         let facts = PreparedLifecycleFacts::from_patch(mempool, &patch, result)?;
         Ok(Self {
+            instance_id: mempool.instance_id.clone(),
             core: PreparedCoreTransition::Patch(Box::new(patch)),
             facts,
         })
@@ -289,6 +280,7 @@ impl PreparedMempoolTransition {
 
     fn noop(mempool: &Mempool, result: PreparedTransitionResult) -> Self {
         Self {
+            instance_id: mempool.instance_id.clone(),
             core: PreparedCoreTransition::Noop {
                 base_revision: mempool.revision,
             },

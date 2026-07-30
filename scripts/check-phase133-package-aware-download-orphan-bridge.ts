@@ -25,6 +25,7 @@ export const PHASE133_TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/transaction_relay/tests/orphanage_cases.rs",
   "packages/open-bitcoin-node/src/network/admission_bridge.rs",
   "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
+  "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
   "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
   "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",
   "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
@@ -111,11 +112,24 @@ function checkTipResetAndSuppression(
     repoRoot,
     "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
   );
+  const lifecycleAuthority = readTarget(
+    repoRoot,
+    "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+  );
   const lifecycleTests = readTarget(
     repoRoot,
     "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",
   );
-  if (countMatches(lifecycle, /\.on_active_tip_changed\(/g) < 2) {
+  if (
+    countMatches(
+      lifecycle,
+      /\.commit_connected_block_lifecycle_transaction\(/g,
+    ) < 2 ||
+    !lifecycleAuthority.includes(
+      ".commit_prepared_mempool_transition_with(core, || {",
+    ) ||
+    !lifecycleAuthority.includes(".on_active_tip_changed(")
+  ) {
     failures.push(
       "P133 PPKG-01: both local and stored active-tip seams must invoke the evidence reset",
     );

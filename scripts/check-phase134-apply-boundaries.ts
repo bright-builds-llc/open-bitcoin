@@ -39,8 +39,8 @@ const REQUIRED_TARGETS = [
 
 const REQUIRED_ROOT_SYMBOL =
   "ManagedPeerNetwork::commit_sealed_lifecycle" as const;
-// The sealed core commit and dependent target reducer are both infallible;
-// lifecycle validation must finish before either mutation root is entered.
+// The public transaction operation validates instance and revision before its
+// exclusive callback, then immediately performs the infallible core apply.
 const DEPENDENT_ROOT_SYMBOL =
   "ManagedPeerNetwork::apply_prepared_lifecycle" as const;
 const DISCOVERY_EXCLUSIONS = new Set(["validate_prepared_lifecycle"]);
@@ -48,10 +48,13 @@ const REMOVED_VALIDATED_API = [
   "ValidatedMempoolTransition",
   "validate_prepared_mempool_transition",
   "apply_validated_mempool_transition",
+  "SealedMempoolTransition",
+  "seal_prepared_mempool_transition",
+  "commit_sealed_mempool_transition",
 ] as const;
 
 export const ATOMIC_CORE_COMMIT = new Set([
-  "Mempool::commit_sealed_mempool_transition",
+  "Mempool::commit_prepared_mempool_transition_with",
 ]);
 
 export const INFALLIBLE_APPLY_CALLEES = new Set([
@@ -370,12 +373,12 @@ function resolveMethodCall(
 
 function inspectAggregateRoot(root: ExtractedFunction): boolean {
   const maskedBody = maskCommentsAndStrings(root.body);
-  const atomicMethod = "commit_sealed_mempool_transition";
+  const atomicMethod = "commit_prepared_mempool_transition_with";
   const atomicIndexes = [...maskedBody.matchAll(new RegExp(`\\.${atomicMethod}\\s*\\(`, "g"))]
     .map((match) => match.index ?? -1)
     .filter((index) => index >= 0);
   if (
-    !ATOMIC_CORE_COMMIT.has("Mempool::commit_sealed_mempool_transition") ||
+    !ATOMIC_CORE_COMMIT.has("Mempool::commit_prepared_mempool_transition_with") ||
     atomicIndexes.length !== 1
   ) {
     return false;

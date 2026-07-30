@@ -73,6 +73,15 @@ test.each([
     ),
   ],
   [
+    "active-tip authority transaction reset",
+    "P133 PPKG-01: both local and stored active-tip seams must invoke the evidence reset",
+    replace(
+      "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+      "peer_manager.on_active_tip_changed(",
+      "peer_manager.removed_active_tip_changed(",
+    ),
+  ],
+  [
     "suppression without punishment",
     "P133 PPKG-01: semantic reject evidence must suppress work without peer punishment",
     replace(

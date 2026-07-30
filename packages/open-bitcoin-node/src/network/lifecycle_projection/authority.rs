@@ -8,9 +8,10 @@
 
 use std::collections::BTreeSet;
 
+use open_bitcoin_core::{chainstate::ChainPosition, primitives::Block};
 use open_bitcoin_mempool::{
     MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PreparedLifecycleFacts,
-    SealedMempoolTransition,
+    PreparedMempoolTransition,
 };
 
 use super::{
@@ -20,6 +21,7 @@ use super::{
     PreparedPeerLifecycleProjection, PreparedPersistenceProjection, PreparedServingProjection,
     PreparedUnbroadcastProjection,
 };
+use crate::chainstate::PreparedChainstateConnect;
 use crate::{ChainstateStore, ManagedPeerNetwork};
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
@@ -145,7 +147,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
 /// Non-forgeable proof that the authority guard passed for a complete projection.
 pub(in crate::network) struct SealedLifecycleProjection {
-    core: SealedMempoolTransition,
+    core: PreparedMempoolTransition,
     compact: PreparedCompactProjection,
     serving: PreparedServingProjection,
     fanout: PreparedFanoutProjection,
@@ -155,7 +157,7 @@ pub(in crate::network) struct SealedLifecycleProjection {
     evidence: PreparedLifecycleEvidence,
 }
 
-struct PreparedDependentLifecycleProjection {
+pub(in crate::network) struct PreparedDependentLifecycleProjection {
     compact: PreparedCompactProjection,
     serving: PreparedServingProjection,
     fanout: PreparedFanoutProjection,
@@ -187,11 +189,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             persistence,
             evidence,
         } = plan;
-        let core = self
-            .mempool
-            .mempool()
-            .seal_prepared_mempool_transition(core)
-            .map_err(LifecycleProjectionError::Mempool)?;
         Ok(SealedLifecycleProjection {
             core,
             compact,
@@ -207,34 +204,48 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(in crate::network) fn commit_sealed_lifecycle(
         &mut self,
         sealed: SealedLifecycleProjection,
-    ) -> MempoolLifecycleDelta {
-        let SealedLifecycleProjection {
-            core,
-            compact,
-            serving,
-            fanout,
-            peers,
-            unbroadcast,
-            persistence,
-            evidence,
-        } = sealed;
-        let committed_delta = self
+    ) -> Result<MempoolLifecycleDelta, LifecycleProjectionError> {
+        let (core, prepared) = sealed.into_parts();
+        let ((), committed_delta) = self
             .mempool
             .mempool_mut()
-            .commit_sealed_mempool_transition(core);
-        self.apply_prepared_lifecycle(PreparedDependentLifecycleProjection {
-            compact,
-            serving,
-            fanout,
-            peers,
-            unbroadcast,
-            persistence,
-            evidence,
-        });
-        committed_delta
+            .commit_prepared_mempool_transition_with(core, || ())
+            .map_err(LifecycleProjectionError::Mempool)?;
+        self.apply_prepared_lifecycle(prepared);
+        Ok(committed_delta)
     }
 
-    fn apply_prepared_lifecycle(&mut self, prepared: PreparedDependentLifecycleProjection) {
+    pub(in crate::network) fn commit_connected_block_lifecycle_transaction(
+        &mut self,
+        block: &Block,
+        position: &ChainPosition,
+        prepared_chainstate: PreparedChainstateConnect,
+        sealed: SealedLifecycleProjection,
+    ) -> Result<MempoolLifecycleDelta, LifecycleProjectionError> {
+        let (core, dependent) = sealed.into_parts();
+        let chainstate = &mut self.chainstate;
+        let peer_manager = &mut self.peer_manager;
+        let blocks_by_hash = &mut self.blocks_by_hash;
+        let ((), delta) = self
+            .mempool
+            .mempool_mut()
+            .commit_prepared_mempool_transition_with(core, || {
+                chainstate.commit_prepared_connect(prepared_chainstate);
+                peer_manager.on_active_tip_changed(
+                    super::super::relay_serving::fresh_reject_evidence_tweak(),
+                );
+                blocks_by_hash.insert(position.block_hash, block.clone());
+                peer_manager.note_local_position(position);
+            })
+            .map_err(LifecycleProjectionError::Mempool)?;
+        self.apply_prepared_lifecycle(dependent);
+        Ok(delta)
+    }
+
+    pub(in crate::network) fn apply_prepared_lifecycle(
+        &mut self,
+        prepared: PreparedDependentLifecycleProjection,
+    ) {
         let PreparedDependentLifecycleProjection {
             compact,
             serving,
@@ -251,5 +262,37 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.apply_prepared_unbroadcast(unbroadcast);
         self.apply_prepared_persistence(persistence);
         self.apply_prepared_evidence(evidence);
+    }
+}
+
+impl SealedLifecycleProjection {
+    pub(in crate::network) fn into_parts(
+        self,
+    ) -> (
+        PreparedMempoolTransition,
+        PreparedDependentLifecycleProjection,
+    ) {
+        let Self {
+            core,
+            compact,
+            serving,
+            fanout,
+            peers,
+            unbroadcast,
+            persistence,
+            evidence,
+        } = self;
+        (
+            core,
+            PreparedDependentLifecycleProjection {
+                compact,
+                serving,
+                fanout,
+                peers,
+                unbroadcast,
+                persistence,
+                evidence,
+            },
+        )
     }
 }
