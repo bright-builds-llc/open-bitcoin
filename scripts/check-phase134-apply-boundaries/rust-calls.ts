@@ -114,6 +114,9 @@ export function scanRust(source: string): RustScan {
 
 function isFunctionParameterList(tokens: RustToken[], open: number): boolean {
   const end = open - 1;
+  if (tokens[end]?.value === "fn") {
+    return true;
+  }
   if (tokens[end]?.kind === "identifier") {
     return tokens[end - 1]?.value === "fn";
   }

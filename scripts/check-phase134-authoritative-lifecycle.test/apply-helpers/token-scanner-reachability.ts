@@ -104,6 +104,19 @@ export function tokenScannerMutations(): ApplyHelperMutation[] {
       },
     },
     {
+      name: "assignment after local generic function item remains mutation",
+      mutate: (files) => {
+        insertAtSeam(
+          files,
+          [
+            "        fn inspect<T: Iterator<Item = u8>>(_items: T) {}",
+            "        self.inbound_serving_enabled = false;",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
       name: "nested BTreeSet type cannot spoof outer receiver purity",
       mutate: (files) => {
         insertBeforeAuthorityTransaction(
@@ -408,7 +421,24 @@ export function tokenScannerPositiveMutations(): ApplyHelperMutation[] {
       mutate: (files) => {
         insertAtSeam(
           files,
-          "        fn inspect<T: Iterator<Item = u8>>(_items: T) {}\n",
+          [
+            "        fn inspect<T: Iterator<Item = u8>>(_items: T) {}",
+            "        let _nearby_pure_binding = 1;",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "accepts function-pointer type syntax",
+      mutate: (files) => {
+        insertAtSeam(
+          files,
+          [
+            "        type Callback = fn(u8);",
+            "        let _maybe_callback: Option<Callback> = None;",
+            "",
+          ].join("\n"),
         );
       },
     },

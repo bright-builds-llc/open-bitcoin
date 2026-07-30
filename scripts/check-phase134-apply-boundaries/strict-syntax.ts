@@ -112,22 +112,30 @@ function pathEndingAt(tokens: RustToken[], end: number): string | null {
 
 function hasDirectAssignmentMutation(tokens: RustToken[]): boolean {
   const depths = delimiterDepths(tokens);
+  const functionItemClosures = functionItemBodyClosures(tokens);
   return tokens.some(
     ({ value }, index) =>
       ASSIGNMENT_OPERATORS.has(value) &&
-      !(value === "=" && isBindingAssignment(tokens, depths, index)),
+      !(
+        value === "=" &&
+        isBindingAssignment(tokens, depths, functionItemClosures, index)
+      ),
   );
 }
 
 function isBindingAssignment(
   tokens: RustToken[],
   depths: number[],
+  functionItemClosures: ReadonlySet<number>,
   assignment: number,
 ): boolean {
   const depth = depths[assignment];
   let start = assignment - 1;
   while (start >= 0 && (depths[start] ?? 0) >= (depth ?? 0)) {
-    if (depths[start] === depth && tokens[start]?.value === ";") {
+    if (
+      depths[start] === depth &&
+      (tokens[start]?.value === ";" || functionItemClosures.has(start))
+    ) {
       break;
     }
     start -= 1;
@@ -144,6 +152,92 @@ function isBindingAssignment(
     return false;
   }
   return !statement.some(({ value }) => ASSIGNMENT_OPERATORS.has(value));
+}
+
+function functionItemBodyClosures(tokens: RustToken[]): Set<number> {
+  const closures = new Set<number>();
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (
+      tokens[index]?.value !== "fn" ||
+      tokens[index + 1]?.kind !== "identifier"
+    ) {
+      continue;
+    }
+    const maybeOpen = functionItemBodyOpen(tokens, index);
+    if (maybeOpen === null) {
+      continue;
+    }
+    const maybeClose = matchingClosingBrace(tokens, maybeOpen);
+    if (maybeClose !== null) {
+      closures.add(maybeClose);
+    }
+  }
+  return closures;
+}
+
+function functionItemBodyOpen(
+  tokens: RustToken[],
+  functionToken: number,
+): number | null {
+  let parentheses = 0;
+  let brackets = 0;
+  let angles = 0;
+  let signatureBraces = 0;
+  for (let index = functionToken + 1; index < tokens.length; index += 1) {
+    const value = tokens[index]?.value;
+    if (signatureBraces > 0) {
+      if (value === "{") {
+        signatureBraces += 1;
+      } else if (value === "}") {
+        signatureBraces -= 1;
+      }
+      continue;
+    }
+    if (value === "(") {
+      parentheses += 1;
+    } else if (value === ")") {
+      parentheses -= 1;
+    } else if (value === "[") {
+      brackets += 1;
+    } else if (value === "]") {
+      brackets -= 1;
+    } else if (value === "<") {
+      angles += 1;
+    } else if (value === ">" && angles > 0) {
+      angles -= 1;
+    } else if (value === "{") {
+      if (parentheses === 0 && brackets === 0 && angles === 0) {
+        return index;
+      }
+      signatureBraces = 1;
+    } else if (
+      value === ";" &&
+      parentheses === 0 &&
+      brackets === 0 &&
+      angles === 0
+    ) {
+      return null;
+    }
+  }
+  return null;
+}
+
+function matchingClosingBrace(
+  tokens: RustToken[],
+  open: number,
+): number | null {
+  let depth = 0;
+  for (let index = open; index < tokens.length; index += 1) {
+    if (tokens[index]?.value === "{") {
+      depth += 1;
+    } else if (tokens[index]?.value === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return index;
+      }
+    }
+  }
+  return null;
 }
 
 function delimiterDepths(tokens: RustToken[]): number[] {
