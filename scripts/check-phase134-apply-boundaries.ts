@@ -9,6 +9,13 @@ import {
   inspectConnectedBlockSeam,
   inspectOrdinaryAggregateRoot,
 } from "./check-phase134-apply-boundaries/aggregate-roots";
+import {
+  PURE_CALL_ALLOWLIST,
+  type ExtractedFunction,
+  functionCallNames,
+  inspectCriticalReachability,
+  methodCalls,
+} from "./check-phase134-apply-boundaries/reachability";
 import { readSourceRoot } from "./source-corpus";
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -84,68 +91,10 @@ export const INFALLIBLE_APPLY_CALLEES = new Set([
   "TxOrphanage::decrement_peer_count",
 ]);
 
-export const PURE_CALL_ALLOWLIST = new Set([
-  "PeerTransactionIdentity::relay_ids",
-  "BTreeMap::get",
-  "BTreeMap::get_mut",
-  "BTreeMap::insert",
-  "BTreeMap::remove",
-  "BTreeSet::insert",
-  "BTreeSet::is_empty",
-  "BTreeSet::remove",
-  "BTreeSet::retain",
-  "Option::iter",
-  "usize::saturating_sub",
-]);
-
-const PURE_RECEIVER_CALLS: ReadonlyMap<string, string> = new Map([
-  ["self.known_txids.remove", "BTreeSet::remove"],
-  ["self.known_txids.insert", "BTreeSet::insert"],
-  ["self.known_wtxids.remove", "BTreeSet::remove"],
-  ["self.known_wtxids.insert", "BTreeSet::insert"],
-  ["self.mempool_known.remove", "BTreeSet::remove"],
-  ["self.mempool_known.insert", "BTreeSet::insert"],
-  ["self.already_have.remove", "BTreeSet::remove"],
-  ["self.already_have.insert", "BTreeSet::insert"],
-  ["self.announcements.remove", "BTreeMap::remove"],
-  ["self.in_flight.remove", "BTreeMap::remove"],
-  ["self.known_wtxids_by_txid.get", "BTreeMap::get"],
-  ["self.known_wtxids_by_txid.remove", "BTreeMap::remove"],
-  ["self.known_wtxids_by_txid.insert", "BTreeMap::insert"],
-  ["self.compact_download_states.insert", "BTreeMap::insert"],
-  ["self.pending_reconsideration.remove", "BTreeSet::remove"],
-  ["self.orphans.remove", "BTreeMap::remove"],
-  ["self.candidate_cursors.remove", "BTreeMap::remove"],
-  ["self.accepted_package_fingerprints.insert", "BTreeMap::insert"],
-  ["self.accepted_package_fingerprints.remove", "BTreeMap::remove"],
-  ["self.children_by_parent.get_mut", "BTreeMap::get_mut"],
-  ["self.children_by_parent.remove", "BTreeMap::remove"],
-  ["self.orphan_count_by_peer.get_mut", "BTreeMap::get_mut"],
-  ["self.orphan_count_by_peer.remove", "BTreeMap::remove"],
-  ["children.retain", "BTreeSet::retain"],
-  ["children.is_empty", "BTreeSet::is_empty"],
-  ["maybe_entry.iter", "Option::iter"],
-  ["count.saturating_sub", "usize::saturating_sub"],
-] as const);
-
-type ExtractedFunction = {
-  symbol: string;
-  name: string;
-  owner: string | null;
-  signature: string;
-  body: string;
-};
-
 type ImplRange = {
   owner: string;
   open: number;
   close: number;
-};
-
-type MethodCall = {
-  receiver: string;
-  name: string;
-  index: number;
 };
 
 function maskCommentsAndStrings(source: string): string {
@@ -277,6 +226,7 @@ function extractFunctions(
       .sort((left, right) => left.close - left.open - (right.close - right.open))[0];
     const owner = maybeImpl?.owner ?? null;
     functions.push({
+      file: relativePath,
       symbol: owner
         ? `${owner}::${name}`
         : `${moduleName(relativePath)}::${name}`,
@@ -312,166 +262,6 @@ function directTargetFailures(target: ExtractedFunction): string[] {
       ([, label]) =>
         `${target.name}: forbidden ${label} inside exact target apply`,
     );
-}
-
-function methodCalls(source: string): MethodCall[] {
-  const calls: MethodCall[] = [];
-  const pattern =
-    /\b((?:self|[a-z_][A-Za-z0-9_]*)(?:\s*\.\s*[A-Za-z_][A-Za-z0-9_]*)*)\s*\.\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
-  for (const match of source.matchAll(pattern)) {
-    const receiver = (match[1] ?? "").replace(/\s+/g, "");
-    const name = match[2];
-    if (receiver && name) {
-      calls.push({ receiver, name, index: match.index ?? 0 });
-    }
-  }
-  return calls;
-}
-
-function functionCallNames(source: string, methods: MethodCall[]): string[] {
-  const methodNameIndexes = new Set(
-    methods.map((call) => call.index + source.slice(call.index).indexOf(call.name)),
-  );
-  const names: string[] = [];
-  for (const match of source.matchAll(/\b([A-Za-z_][A-Za-z0-9_:]*)\s*\(/g)) {
-    const name = match[1];
-    const index = match.index ?? 0;
-    if (
-      !name ||
-      methodNameIndexes.has(index) ||
-      source[index - 1] === "." ||
-      /^[A-Z]/.test(name) ||
-      ["if", "while", "for", "match", "return"].includes(name)
-    ) {
-      continue;
-    }
-    names.push(name.split("::").at(-1) ?? name);
-  }
-  return names;
-}
-
-function repoCandidatesByName(
-  functions: Map<string, ExtractedFunction>,
-): Map<string, string[]> {
-  const candidates = new Map<string, string[]>();
-  for (const target of functions.values()) {
-    const symbols = candidates.get(target.name) ?? [];
-    symbols.push(target.symbol);
-    candidates.set(target.name, symbols);
-  }
-  return candidates;
-}
-
-function resolveMethodCall(
-  current: ExtractedFunction,
-  call: MethodCall,
-  candidates: Map<string, string[]>,
-): string | null | "unresolved" {
-  if (call.receiver === "self" && current.owner) {
-    const selfSymbol = `${current.owner}::${call.name}`;
-    if ((candidates.get(call.name) ?? []).includes(selfSymbol)) {
-      return selfSymbol;
-    }
-  }
-  const maybePure = PURE_RECEIVER_CALLS.get(`${call.receiver}.${call.name}`);
-  if (maybePure) {
-    return maybePure;
-  }
-  const repoSymbols = candidates.get(call.name) ?? [];
-  if (repoSymbols.length === 1) {
-    return repoSymbols[0] ?? null;
-  }
-  if (repoSymbols.length > 1) {
-    return "unresolved";
-  }
-  return null;
-}
-
-function inspectReachableFunctions(
-  functions: Map<string, ExtractedFunction>,
-): string[] {
-  const candidates = repoCandidatesByName(functions);
-  const visited = new Set<string>();
-  const violations: string[] = [];
-
-  const visit = (symbol: string): void => {
-    if (visited.has(symbol)) {
-      return;
-    }
-    visited.add(symbol);
-    const target = functions.get(symbol);
-    if (!target) {
-      violations.push(`${symbol}: classified function not found`);
-      return;
-    }
-    const masked = maskCommentsAndStrings(`${target.signature}{${target.body}}`);
-    if (
-      /->\s*Result\b|\?|\bawait\b/.test(masked) ||
-      /\b(?:std::fs|File::|OpenOptions::|TcpStream|UdpSocket|tokio::fs)\b/.test(
-        masked,
-      ) ||
-      /\.(?:read|read_to_end|read_to_string|write|write_all|flush)\s*\(/.test(
-        masked,
-      ) ||
-      /\b(?:encode|decode)[A-Za-z0-9_]*\s*\(/.test(masked) ||
-      /\b(?:transaction_|compute_)?(?:txid|wtxid)\s*\(/.test(masked)
-    ) {
-      violations.push(`${symbol}: fallible or effectful body`);
-    }
-
-    const methods = methodCalls(maskCommentsAndStrings(target.body));
-    for (const call of methods) {
-      const resolved = resolveMethodCall(target, call, candidates);
-      if (resolved === "unresolved") {
-        violations.push(`${symbol}: unresolved method overload ${call.name}`);
-        continue;
-      }
-      if (!resolved) {
-        violations.push(
-          `${symbol}: unclassified call ${call.receiver}.${call.name}`,
-        );
-        continue;
-      }
-      if (PURE_CALL_ALLOWLIST.has(resolved)) {
-        if (functions.has(resolved)) {
-          visit(resolved);
-        }
-        continue;
-      }
-      if (
-        !INFALLIBLE_APPLY_CALLEES.has(resolved) &&
-        resolved !== DEPENDENT_ROOT_SYMBOL
-      ) {
-        violations.push(`${symbol}: unclassified method ${resolved}`);
-      }
-      if (functions.has(resolved)) {
-        visit(resolved);
-      }
-    }
-
-    for (const name of functionCallNames(maskCommentsAndStrings(target.body), methods)) {
-      const repoSymbols = candidates.get(name) ?? [];
-      if (repoSymbols.length === 0) {
-        violations.push(`${symbol}: unclassified call ${name}`);
-        continue;
-      }
-      if (repoSymbols.length !== 1) {
-        violations.push(`${symbol}: unresolved function overload ${name}`);
-        continue;
-      }
-      const resolved = repoSymbols[0] ?? "";
-      if (
-        !INFALLIBLE_APPLY_CALLEES.has(resolved) &&
-        !PURE_CALL_ALLOWLIST.has(resolved)
-      ) {
-        violations.push(`${symbol}: unclassified function ${resolved}`);
-      }
-      visit(resolved);
-    }
-  };
-
-  visit(DEPENDENT_ROOT_SYMBOL);
-  return violations;
 }
 
 export function checkPhase134ApplyBoundaries(
@@ -568,7 +358,18 @@ export function checkPhase134ApplyBoundaries(
       );
     },
   );
-  const reachableViolations = inspectReachableFunctions(functions);
+  const reachableViolations = inspectCriticalReachability(
+    functions,
+    sources,
+    {
+      ordinary: REQUIRED_ROOT_SYMBOL,
+      connectedBlock: CONNECTED_BLOCK_ROOT_SYMBOL,
+      connectedBlockSeams: CONNECTED_BLOCK_SEAMS.map(({ symbol }) => symbol),
+      dependent: DEPENDENT_ROOT_SYMBOL,
+    },
+    INFALLIBLE_APPLY_CALLEES,
+    structuralTools,
+  );
   const removedApiPresent = REMOVED_VALIDATED_API.some((name) =>
     [...sources.values()].some((source) =>
       maskCommentsAndStrings(source).includes(name),

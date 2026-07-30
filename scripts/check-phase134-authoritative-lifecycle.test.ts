@@ -20,6 +20,7 @@ import {
   APPLY_BOUNDARY_DIAGNOSTIC,
   APPLY_HELPER_SOURCE_FILES,
   applyHelperMutations,
+  applyHelperPositiveMutations,
 } from "./check-phase134-authoritative-lifecycle.test/apply-helpers";
 import {
   SCOPE_CLAIM_SOURCE_FILES,
@@ -186,6 +187,17 @@ test.each([
 ])("%s", () => {
   // Arrange
   const root = createFixture(APPLY_HELPER_SOURCE_FILES);
+
+  // Act
+  const failures = checkPhase134ApplyBoundaries(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test.each(applyHelperPositiveMutations())("$name", ({ mutate }) => {
+  // Arrange
+  const root = createFixture(APPLY_HELPER_SOURCE_FILES, mutate);
 
   // Act
   const failures = checkPhase134ApplyBoundaries(root);

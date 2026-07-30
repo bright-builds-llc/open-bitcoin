@@ -2,6 +2,10 @@ import {
   PHASE134_APPLY_BOUNDARY_DIAGNOSTIC,
   PHASE134_APPLY_SOURCE_FILES,
 } from "../check-phase134-apply-boundaries";
+import {
+  aggregateReachabilityMutations,
+  aggregateReachabilityPositiveMutations,
+} from "./apply-helpers/aggregate-reachability";
 
 type ApplyFixtureFiles = Map<string, string>;
 
@@ -66,8 +70,15 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
       },
     },
     {
-      name: "unknown repo-owned helper fails closed",
-      mutate: addCompactHelper("unclassified_projection_helper", "let _ = 1;"),
+      name: "unresolved helper fails closed",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          COMPACT_FILE,
+          "apply_prepared_compact",
+          "\n        unresolved_projection_helper();",
+        );
+      },
     },
     {
       name: "removed validated transition API remains forbidden",
@@ -231,6 +242,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
         );
       },
     },
+    ...aggregateReachabilityMutations(),
     {
       name: "local block seam cannot bypass the transaction root",
       mutate: (files) => {
@@ -360,6 +372,10 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
       },
     },
   ];
+}
+
+export function applyHelperPositiveMutations(): ApplyHelperMutation[] {
+  return aggregateReachabilityPositiveMutations();
 }
 
 function addCompactHelper(
