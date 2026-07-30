@@ -2,16 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: verifying
-stopped_at: Completed 134-24-PLAN.md; awaiting fresh Phase 134 verification
-last_updated: "2026-07-29T23:36:15.468Z"
-last_activity: "2026-07-29"
+status: ready
+stopped_at: "Phase 134 verified and closed"
+last_updated: "2026-07-30T11:35:35.184Z"
+last_activity: "2026-07-30"
 progress:
   total_phases: 10
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 60
   completed_plans: 60
-  percent: 100
+  percent: 60
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 134 — authoritative-cross-cache-lifecycle-integration
+**Current focus:** Phase 135 — Snapshot Schema, Checkpointing, and Recovery
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 134 (authoritative-cross-cache-lifecycle-integration) — IN PROGRESS
-Plan: 24 of 24
-Status: All 24 plans complete — fresh phase verification pending
-Last activity: 2026-07-29
+Phase: 135
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-07-30
 
-Progress: [██████████] 100%
+Progress: [██████░░░░] 60%
 
-Next action: Run fresh Phase 134 verification without promoting MPLIFE requirements beforehand.
+Next action: `/gsd-discuss-phase 135` (or YOLO chain for Phase 135)
 
 ## Performance Metrics
 
@@ -51,6 +51,7 @@ Next action: Run fresh Phase 134 verification without promoting MPLIFE requireme
 | 132 | 8 | - | - |
 | 133 | 4 | - | - |
 | 133.1 | 6 | - | - |
+| 134 | 24 | - | - |
 
 ### Plan Execution History
 

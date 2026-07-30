@@ -43,10 +43,10 @@ Requirements for package admission and relay, rolling minimum-fee behavior, init
 
 ### Authoritative Lifecycle Integration
 
-- [ ] **MPLIFE-01**: `ManagedNetworkHandle` remains the sole runtime mutation authority for package admission, pressure policy, maintenance, persistence snapshots, relay queues, and transport receipts.
-- [ ] **MPLIFE-02**: One lifecycle delta projects every package admission and removal into serving, fanout, peer request/known state, orphan/package candidates, compact reconstruction inputs, unbroadcast state, persistence dirtiness, and operator evidence.
-- [ ] **MPLIFE-03**: Replacement, pressure eviction, expiry, block connection, reorg, and failed admission cannot leave stale descendants or accepted identities in any dependent cache.
-- [ ] **MPLIFE-04**: Runtime adapters capture owned commands or snapshots under authority, release the lock before storage or network I/O, and apply bounded typed receipts in a short follow-up mutation.
+- [x] **MPLIFE-01**: `ManagedNetworkHandle` remains the sole runtime mutation authority for package admission, pressure policy, maintenance, persistence snapshots, relay queues, and transport receipts.
+- [x] **MPLIFE-02**: One lifecycle delta projects every package admission and removal into serving, fanout, peer request/known state, orphan/package candidates, compact reconstruction inputs, unbroadcast state, persistence dirtiness, and operator evidence.
+- [x] **MPLIFE-03**: Replacement, pressure eviction, expiry, block connection, reorg, and failed admission cannot leave stale descendants or accepted identities in any dependent cache.
+- [x] **MPLIFE-04**: Runtime adapters capture owned commands or snapshots under authority, release the lock before storage or network I/O, and apply bounded typed receipts in a short follow-up mutation.
 
 ### Durable Mempool Policy Recovery
 
@@ -131,10 +131,10 @@ Every v2.2 requirement maps to exactly one roadmap phase.
 | PPKG-02 | Phase 133 | Complete |
 | PPKG-03 | Phase 133 | Complete |
 | PPKG-04 | Phase 136 | Pending |
-| MPLIFE-01 | Phase 134 | Pending |
-| MPLIFE-02 | Phase 134 | Pending |
-| MPLIFE-03 | Phase 134 | Pending |
-| MPLIFE-04 | Phase 134 | Pending |
+| MPLIFE-01 | Phase 134 | Complete |
+| MPLIFE-02 | Phase 134 | Complete |
+| MPLIFE-03 | Phase 134 | Complete |
+| MPLIFE-04 | Phase 134 | Complete |
 | MPDUR-01 | Phase 135 | Pending |
 | MPDUR-02 | Phase 135 | Pending |
 | MPDUR-03 | Phase 135 | Pending |
