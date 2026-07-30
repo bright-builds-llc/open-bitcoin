@@ -12,7 +12,7 @@ export function provenPureReceiverSymbol(
 
   if (
     call.name === "is_empty" &&
-    parameterTypeContains(signatureTokens, call.receiver, "BTreeSet")
+    parameterOuterTypeIs(signatureTokens, call.receiver, "BTreeSet")
   ) {
     return "BTreeSet::is_empty";
   }
@@ -137,7 +137,7 @@ export function provenCollectionMutationSymbol(
     : null;
 }
 
-function parameterTypeContains(
+function parameterOuterTypeIs(
   tokens: RustToken[],
   receiver: string,
   typeName: string,
@@ -152,14 +152,33 @@ function parameterTypeContains(
     ) {
       continue;
     }
-    for (let cursor = index + 2; cursor < tokens.length; cursor += 1) {
-      const value = tokens[cursor]?.value;
-      if (value === typeName) {
-        return true;
-      }
-      if (value === ",") {
-        break;
-      }
+    let cursor = index + 2;
+    if (tokens[cursor]?.value === "&") {
+      cursor += 1;
+    }
+    if (tokens[cursor]?.value === "'") {
+      cursor += 2;
+    }
+    if (tokens[cursor]?.value === "mut") {
+      cursor += 1;
+    }
+    if (tokens[cursor]?.value === "::") {
+      cursor += 1;
+    }
+    let maybeOuterType = tokens[cursor];
+    if (maybeOuterType?.kind !== "identifier") {
+      continue;
+    }
+    cursor += 1;
+    while (
+      tokens[cursor]?.value === "::" &&
+      tokens[cursor + 1]?.kind === "identifier"
+    ) {
+      maybeOuterType = tokens[cursor + 1];
+      cursor += 2;
+    }
+    if (maybeOuterType.value === typeName) {
+      return true;
     }
   }
   return false;

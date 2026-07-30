@@ -16,7 +16,10 @@ import {
   methodCalls,
 } from "./check-phase134-apply-boundaries/reachability";
 import { PURE_CALL_ALLOWLIST } from "./check-phase134-apply-boundaries/call-resolution";
-import { maskRustCommentsAndLiterals } from "./check-phase134-apply-boundaries/strict-syntax";
+import {
+  maskRustCommentsAndLiterals,
+  tokenizeRust,
+} from "./check-phase134-apply-boundaries/strict-syntax";
 import { readSourceRoot } from "./source-corpus";
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -183,10 +186,11 @@ function extractFunctions(
   for (const match of masked.matchAll(/\bfn\s+([A-Za-z_][A-Za-z0-9_]*)\b/g)) {
     const name = match[1];
     const start = match.index ?? 0;
-    const open = masked.indexOf("{", start);
-    if (!name || open < 0) {
+    const maybeOpen = functionBodyOpen(masked, start);
+    if (!name || maybeOpen === null) {
       continue;
     }
+    const open = maybeOpen;
     const close = matchingBrace(masked, open);
     const maybeImpl = ranges
       .filter((range) => range.open < start && start < range.close)
@@ -212,6 +216,50 @@ function extractFunctions(
     });
   }
   return functions;
+}
+
+function functionBodyOpen(source: string, start: number): number | null {
+  let parentheses = 0;
+  let brackets = 0;
+  let angles = 0;
+  let signatureBraces = 0;
+  for (const token of tokenizeRust(source.slice(start))) {
+    const value = token.value;
+    if (signatureBraces > 0) {
+      if (value === "{") {
+        signatureBraces += 1;
+      } else if (value === "}") {
+        signatureBraces -= 1;
+      }
+      continue;
+    }
+    if (value === "(") {
+      parentheses += 1;
+    } else if (value === ")") {
+      parentheses -= 1;
+    } else if (value === "[") {
+      brackets += 1;
+    } else if (value === "]") {
+      brackets -= 1;
+    } else if (value === "<") {
+      angles += 1;
+    } else if (value === ">" && angles > 0) {
+      angles -= 1;
+    } else if (value === "{") {
+      if (parentheses === 0 && brackets === 0 && angles === 0) {
+        return start + token.start;
+      }
+      signatureBraces = 1;
+    } else if (
+      value === ";" &&
+      parentheses === 0 &&
+      brackets === 0 &&
+      angles === 0
+    ) {
+      return null;
+    }
+  }
+  return null;
 }
 
 function directTargetFailures(target: ExtractedFunction): string[] {

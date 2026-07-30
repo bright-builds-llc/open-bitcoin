@@ -98,7 +98,7 @@ function lexRust(source: string): LexedRust {
       continue;
     }
     if (/[0-9]/.test(current)) {
-      const end = consumeWhile(source, index + 1, /[A-Za-z0-9_.]/);
+      const end = numberEnd(source, index);
       tokens.push({
         kind: "number",
         value: source.slice(index, end),
@@ -121,6 +121,17 @@ function lexRust(source: string): LexedRust {
     index += value.length;
   }
   return { tokens, ignoredRanges };
+}
+
+function numberEnd(source: string, start: number): number {
+  let index = consumeWhile(source, start + 1, /[A-Za-z0-9_]/);
+  while (
+    source[index] === "." &&
+    /[0-9]/.test(source[index + 1] ?? "")
+  ) {
+    index = consumeWhile(source, index + 2, /[A-Za-z0-9_]/);
+  }
+  return index;
 }
 
 function lineCommentEnd(source: string, start: number): number {

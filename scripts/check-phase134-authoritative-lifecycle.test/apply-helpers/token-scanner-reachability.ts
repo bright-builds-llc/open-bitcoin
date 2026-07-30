@@ -54,6 +54,91 @@ export function tokenScannerMutations(): ApplyHelperMutation[] {
         );
       },
     },
+    {
+      name: "parenthesized effectful function call runs before the transaction",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        (hidden_parenthesized_effect)();\n",
+        );
+        appendFreeHelper(
+          files,
+          AUTHORITY_FILE,
+          "hidden_parenthesized_effect",
+          'let _ = std::fs::write("state", b"parenthesized");',
+        );
+      },
+    },
+    {
+      name: "tuple-projected collection mutation runs before the transaction",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          [
+            "        let mut hidden = (&mut *blocks_by_hash,);",
+            "        hidden.0.clear();",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "const-expression signature cannot hide a reached effect",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        hidden_const_signature();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "fn hidden_const_signature() -> [u8; { 1 }] {",
+            '    let _ = std::fs::write("state", b"const-signature");',
+            "    [1]",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "nested BTreeSet type cannot spoof outer receiver purity",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        invoke_nested_receiver_spoof();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "struct EffectfulSet<T>(std::marker::PhantomData<T>);",
+            "",
+            "impl<T> EffectfulSet<T> {",
+            "    fn is_empty(&self) {",
+            '        let _ = std::fs::write("state", b"nested-type");',
+            "    }",
+            "}",
+            "",
+            "fn invoke_nested_receiver_spoof() {",
+            "    let children: EffectfulSet<std::collections::BTreeSet<u8>> =",
+            "        EffectfulSet(std::marker::PhantomData);",
+            "    inspect_nested_receiver(&children);",
+            "}",
+            "",
+            "fn inspect_nested_receiver(",
+            "    children: &EffectfulSet<std::collections::BTreeSet<u8>>,",
+            ") {",
+            "    children.is_empty();",
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
     ...receiverSpoofMutations(),
   ];
 }
@@ -140,6 +225,41 @@ export function tokenScannerPositiveMutations(): ApplyHelperMutation[] {
             '        let _raw = r#"(children).retain(|_| false); unsafe {}"#;',
             "        let _character = '|';",
             "        let _byte = b'!';",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "accepts local type aliases",
+      mutate: (files) => {
+        insertAtSeam(
+          files,
+          [
+            "        type LocalByte = u8;",
+            "        let _value: LocalByte = 1;",
+            "        type LocalIterator = dyn Iterator<Item = u8>;",
+            "        let _maybe_values: Option<&LocalIterator> = None;",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "accepts parenthesized pure call with const-expression signature",
+      mutate: (files) => {
+        insertBeforeAuthorityTransaction(
+          files,
+          "        let _ = (pure_const_signature)();\n",
+        );
+        append(
+          files,
+          AUTHORITY_FILE,
+          [
+            "",
+            "fn pure_const_signature() -> [u8; { 1 }] {",
+            "    [1]",
+            "}",
             "",
           ].join("\n"),
         );

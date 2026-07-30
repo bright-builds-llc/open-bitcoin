@@ -45,6 +45,22 @@ export function scanRust(source: string): RustScan {
     if (tokens[open]?.value !== "(") {
       continue;
     }
+    if (tokens[open - 1]?.value === ")") {
+      const maybeCall = parenthesizedFunctionCall(
+        tokens,
+        open - 1,
+        openByClose,
+      );
+      if (!maybeCall) {
+        unknownCallLikes.push("unparsed parenthesized call");
+      } else if (
+        !CALL_SYNTAX_KEYWORDS.has(maybeCall.name) &&
+        !/^[A-Z]/.test(maybeCall.name)
+      ) {
+        functionCalls.push(maybeCall);
+      }
+      continue;
+    }
     const maybeCalleeEnd = calleeEndBeforeTurbofish(tokens, open);
     if (maybeCalleeEnd === null) {
       if (tokens[open - 1]?.value === ">") {
@@ -91,6 +107,31 @@ export function scanRust(source: string): RustScan {
     });
   }
   return { tokens, methodCalls, functionCalls, unknownCallLikes };
+}
+
+function parenthesizedFunctionCall(
+  tokens: RustToken[],
+  close: number,
+  openByClose: Map<number, number>,
+): ScannedFunctionCall | null {
+  const maybeOpen = openByClose.get(close);
+  if (maybeOpen === undefined || isCallDelimiter(tokens, maybeOpen)) {
+    return null;
+  }
+  const inner = tokens.slice(maybeOpen + 1, close);
+  const nameToken = inner.at(-1);
+  if (nameToken?.kind !== "identifier") {
+    return null;
+  }
+  const path = pathEndingAt(inner, inner.length - 1);
+  if (!path || path.split("::").length * 2 - 1 !== inner.length) {
+    return null;
+  }
+  return {
+    path,
+    name: nameToken.value,
+    index: nameToken.start,
+  };
 }
 
 function delimiterPairMaps(tokens: RustToken[]): {
@@ -158,14 +199,14 @@ function receiverBeforeDot(
     }
     return normalizeReceiver(tokens.slice(maybeOpen + 1, end));
   }
-  if (tokens[end]?.kind !== "identifier") {
+  if (!isReceiverSegment(tokens[end])) {
     return null;
   }
   let start = end;
   while (
     start >= 2 &&
     tokens[start - 1]?.value === "." &&
-    tokens[start - 2]?.kind === "identifier"
+    isReceiverSegment(tokens[start - 2])
   ) {
     start -= 2;
   }
@@ -190,15 +231,20 @@ function normalizeReceiver(tokens: RustToken[]): string | null {
   const remaining = tokens.slice(start);
   if (
     remaining.length === 0 ||
+    remaining[0]?.kind !== "identifier" ||
     remaining.some(
       (token, index) =>
-        (index % 2 === 0 && token.kind !== "identifier") ||
+        (index % 2 === 0 && !isReceiverSegment(token)) ||
         (index % 2 === 1 && token.value !== "."),
     )
   ) {
     return null;
   }
   return remaining.map(({ value }) => value).join("");
+}
+
+function isReceiverSegment(token: RustToken | undefined): boolean {
+  return token?.kind === "identifier" || token?.kind === "number";
 }
 
 function pathEndingAt(tokens: RustToken[], end: number): string | null {
