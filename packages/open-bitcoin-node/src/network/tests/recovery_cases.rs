@@ -33,7 +33,7 @@ use crate::network::recovery::topology::{RecoveryTopologyLimits, prepare_recover
 use crate::status::relay_evidence::RelayEvidenceField;
 use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
 use crate::storage::{MempoolRecoveryStatus, MempoolSnapshot, MempoolSnapshotRecord};
-use crate::{ManagedPeerNetwork, MemoryChainstateStore};
+use crate::{ManagedNetworkHandle, ManagedPeerNetwork, MemoryChainstateStore};
 
 fn txid(transaction: &Transaction) -> Txid {
     transaction_txid(transaction).expect("txid")
@@ -120,6 +120,21 @@ fn assert_recovery_status(
     summary.records.get(index).expect("recovery record").status
 }
 
+fn prepare_and_install_mempool_recovery(
+    network: ManagedPeerNetwork<MemoryChainstateStore>,
+    snapshot: &MempoolSnapshot,
+    startup_at: PolicyTime,
+) -> (ManagedNetworkHandle, ManagedMempoolRecoverySummary) {
+    let handle = ManagedNetworkHandle::from_network_fixture(network);
+    let prepared = handle
+        .prepare_mempool_recovery_at(snapshot, verify_flags(), consensus_params(), startup_at)
+        .expect("prepare recovery outside authority");
+    let summary = handle
+        .install_mempool_recovery(prepared)
+        .expect("install prepared recovery");
+    (handle, summary)
+}
+
 fn topology_identities(transactions: Vec<Transaction>) -> Vec<(Txid, Wtxid)> {
     let snapshot = snapshot_from_transactions(transactions);
     prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
@@ -128,6 +143,7 @@ fn topology_identities(transactions: Vec<Transaction>) -> Vec<(Txid, Wtxid)> {
         .collect()
 }
 
+mod metadata;
 mod staging;
 #[test]
 fn staged_recovery_classifies_later_capacity_trim_from_final_membership() {
@@ -307,16 +323,21 @@ fn recovery_topology_keeps_external_prevouts_and_contains_edge_limit_failure() {
 #[test]
 fn managed_recovery_rehydrates_serving_cache_and_fanout_identity_without_socket_io() {
     // Arrange
-    let (mut network, coinbase_txids, _latest_block) =
+    let (network, coinbase_txids, _latest_block) =
         relay_enabled_network_with_chain(1_080, 2, PolicyConfig::default());
     let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
     let transaction_txid = txid(&transaction);
     let snapshot = snapshot_from_transactions(vec![transaction]);
 
     // Act
-    let summary = network
-        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
-        .expect("recover snapshot");
+    let (handle, summary) = prepare_and_install_mempool_recovery(
+        network,
+        &snapshot,
+        PolicyTime::from_unix_seconds(8_000),
+    );
+    let network = handle
+        .authority_snapshot_for_test()
+        .expect("recovered authority");
 
     // Assert
     assert_eq!(summary.recovered_count, 1);
@@ -350,15 +371,25 @@ fn managed_recovery_rehydrates_serving_cache_and_fanout_identity_without_socket_
 #[test]
 fn managed_recovery_serves_recovered_txid_and_wtxid_for_eligible_peers() {
     // Arrange
-    let (mut network, coinbase_txids, _latest_block) =
+    let (network, coinbase_txids, _latest_block) =
         relay_enabled_network_with_chain(1_081, 2, PolicyConfig::default());
-    network
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let transaction_txid = txid(&transaction);
+    let transaction_wtxid = wtxid(&transaction);
+    let snapshot = snapshot_from_transactions(vec![transaction.clone()]);
+    let (handle, summary) = prepare_and_install_mempool_recovery(
+        network,
+        &snapshot,
+        PolicyTime::from_unix_seconds(8_100),
+    );
+    assert_eq!(summary.recovered_count, 1);
+    handle
         .connect_outbound_peer(1_081, 1)
         .expect("connect txid peer");
-    network
+    handle
         .connect_outbound_peer(1_082, 1)
         .expect("connect wtxid peer");
-    network
+    handle
         .receive_message(
             1_082,
             WireNetworkMessage::WtxidRelay,
@@ -367,16 +398,9 @@ fn managed_recovery_serves_recovered_txid_and_wtxid_for_eligible_peers() {
             consensus_params(),
         )
         .expect("negotiate wtxid relay");
-    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
-    let transaction_txid = txid(&transaction);
-    let transaction_wtxid = wtxid(&transaction);
-    let snapshot = snapshot_from_transactions(vec![transaction.clone()]);
-    network
-        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
-        .expect("recover snapshot");
 
     // Act
-    let txid_response = network
+    let txid_response = handle
         .receive_message(
             1_081,
             WireNetworkMessage::GetData(tx_inventory(transaction_txid)),
@@ -386,7 +410,7 @@ fn managed_recovery_serves_recovered_txid_and_wtxid_for_eligible_peers() {
         )
         .expect("txid getdata")
         .outbound;
-    let wtxid_response = network
+    let wtxid_response = handle
         .receive_message(
             1_082,
             WireNetworkMessage::GetData(wtx_inventory(transaction_wtxid)),
@@ -429,15 +453,15 @@ fn managed_recovery_drops_non_accepted_records_from_serving_and_fanout() {
     let missing_parent_txid = txid(&missing_parent);
     let policy_incompatible = spend_transaction(coinbase_txids[2], 499_999_999);
     let policy_incompatible_txid = txid(&policy_incompatible);
-    let summary = network
-        .recover_mempool_snapshot(
-            &snapshot_from_transactions(vec![confirmed, missing_parent, policy_incompatible]),
-            verify_flags(),
-            consensus_params(),
-        )
-        .expect("recover dropped records");
+    let dropped_snapshot =
+        snapshot_from_transactions(vec![confirmed, missing_parent, policy_incompatible]);
+    let (network_handle, summary) = prepare_and_install_mempool_recovery(
+        network,
+        &dropped_snapshot,
+        PolicyTime::from_unix_seconds(8_300),
+    );
 
-    let (mut evicting_network, evicting_coinbase_txids, _latest_block) =
+    let (evicting_network, evicting_coinbase_txids, _latest_block) =
         relay_enabled_network_with_chain(
             1_084,
             2,
@@ -448,25 +472,32 @@ fn managed_recovery_drops_non_accepted_records_from_serving_and_fanout() {
         );
     let evicted = spend_transaction(evicting_coinbase_txids[0], 499_999_000);
     let evicted_txid = txid(&evicted);
-    let evicted_summary = evicting_network
-        .recover_mempool_snapshot(
-            &snapshot_from_transactions(vec![evicted]),
-            verify_flags(),
-            consensus_params(),
-        )
-        .expect("recover evicted record");
+    let evicted_snapshot = snapshot_from_transactions(vec![evicted]);
+    let (evicting_handle, evicted_summary) = prepare_and_install_mempool_recovery(
+        evicting_network,
+        &evicted_snapshot,
+        PolicyTime::from_unix_seconds(8_400),
+    );
 
-    let (mut duplicate_network, duplicate_coinbase_txids, _latest_block) =
+    let (duplicate_network, duplicate_coinbase_txids, _latest_block) =
         relay_enabled_network_with_chain(1_085, 2, PolicyConfig::default());
     let duplicate = spend_transaction(duplicate_coinbase_txids[0], 499_999_000);
     let duplicate_txid = txid(&duplicate);
-    let duplicate_summary = duplicate_network
-        .recover_mempool_snapshot(
-            &snapshot_from_transactions(vec![duplicate.clone(), duplicate]),
-            verify_flags(),
-            consensus_params(),
-        )
-        .expect("recover duplicate record");
+    let duplicate_snapshot = snapshot_from_transactions(vec![duplicate.clone(), duplicate]);
+    let (duplicate_handle, duplicate_summary) = prepare_and_install_mempool_recovery(
+        duplicate_network,
+        &duplicate_snapshot,
+        PolicyTime::from_unix_seconds(8_500),
+    );
+    let network = network_handle
+        .authority_snapshot_for_test()
+        .expect("dropped-record authority");
+    let evicting_network = evicting_handle
+        .authority_snapshot_for_test()
+        .expect("evicted-record authority");
+    let duplicate_network = duplicate_handle
+        .authority_snapshot_for_test()
+        .expect("duplicate-record authority");
 
     // Assert
     assert_eq!(summary.dropped_confirmed_count, 1);
@@ -510,111 +541,4 @@ fn managed_recovery_drops_non_accepted_records_from_serving_and_fanout() {
         1
     );
     assert_eq!(duplicate_network.relay_fanout_info().known_transactions, 1);
-}
-
-#[test]
-fn recovery_metadata_managed_local_requested_preserves_facts_and_fanout() {
-    // Arrange
-    let (mut source, coinbase_txids, _latest_block) =
-        relay_enabled_network_with_chain(1_090, 2, PolicyConfig::default());
-    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
-    let transaction_txid = txid(&transaction);
-    source
-        .submit_local_transaction_outcome_at(
-            transaction.clone(),
-            verify_flags(),
-            consensus_params(),
-            90,
-            RelayIntent::Requested,
-        )
-        .expect("admit local requested");
-    let acceptance_time = MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90));
-    let snapshot = MempoolSnapshot::try_new_current(
-        CapturedMempoolGeneration::new(7),
-        PolicyTime::from_unix_seconds(100),
-        vec![
-            MempoolSnapshotRecord::try_from_canonical(transaction, acceptance_time)
-                .expect("canonical snapshot record"),
-        ],
-        BTreeSet::from([MempoolMemberIdentity {
-            txid: transaction_txid,
-            wtxid: source
-                .mempool()
-                .mempool()
-                .entry(&transaction_txid)
-                .expect("source entry")
-                .wtxid,
-        }]),
-    )
-    .expect("current snapshot");
-    let expected = MempoolEntryMetadata::new(
-        MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
-        MempoolOrigin::Local,
-        RelayIntent::Requested,
-    );
-    let (mut recovered, _coinbase_txids, _latest_block) =
-        relay_enabled_network_with_chain(1_091, 2, PolicyConfig::default());
-
-    // Act
-    let summary = recovered
-        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
-        .expect("recover known local");
-
-    // Assert
-    assert_eq!(summary.recovered_count, 1);
-    assert_eq!(snapshot.records[0].acceptance_time, acceptance_time);
-    let entry = recovered
-        .mempool()
-        .mempool()
-        .entry(&transaction_txid)
-        .expect("recovered entry");
-    assert_eq!(entry.metadata, expected);
-    assert!(entry.metadata.is_retry_eligible(true));
-    assert_eq!(recovered.relay_fanout_info().known_transactions, 1);
-    assert_eq!(recovered.relay_fanout_info().queued_transactions, 0);
-}
-
-#[test]
-fn recovery_metadata_managed_duplicate_uses_preserved_age_without_historical_origin() {
-    // Arrange
-    let (mut network, coinbase_txids, _latest_block) =
-        relay_enabled_network_with_chain(1_092, 2, PolicyConfig::default());
-    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
-    let transaction_txid = txid(&transaction);
-    let original = MempoolEntryMetadata::new(
-        MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
-        MempoolOrigin::Local,
-        RelayIntent::Requested,
-    );
-    let conflicting = MempoolEntryMetadata::new(
-        MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(999)),
-        MempoolOrigin::Peer,
-        RelayIntent::NotRequested,
-    );
-    let snapshot = MempoolSnapshot::from_legacy_v1(vec![
-        snapshot_record_with_metadata(transaction.clone(), original),
-        snapshot_record_with_metadata(transaction, conflicting),
-    ]);
-
-    // Act
-    let summary = network
-        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
-        .expect("recover duplicate metadata");
-
-    // Assert
-    assert_eq!(summary.recovered_count, 1);
-    assert_eq!(summary.dropped_duplicate_count, 1);
-    assert_eq!(
-        network
-            .mempool()
-            .mempool()
-            .entry(&transaction_txid)
-            .expect("original")
-            .metadata,
-        MempoolEntryMetadata::new(
-            original.accepted_at,
-            MempoolOrigin::RecoveryUnknown,
-            RelayIntent::NotRequested,
-        )
-    );
 }

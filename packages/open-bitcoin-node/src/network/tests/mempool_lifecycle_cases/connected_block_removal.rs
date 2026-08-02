@@ -174,23 +174,31 @@ fn managed_block_connect_uses_explicit_context_and_typed_delta() {
 #[test]
 fn recovered_confirmed_transaction_is_removed_from_serving_and_fanout_after_block_connect() {
     // Arrange
-    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let (network, _genesis, spendable, coinbase_txids) = network_with_chain();
     let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
     let transaction_txid = txid(&transaction);
     let transaction_wtxid = wtxid(&transaction);
     let snapshot = snapshot_from_transactions(vec![transaction.clone()]);
-    network
-        .recover_mempool_snapshot(&snapshot, verify_flags(), consensus_params())
-        .expect("recover transaction");
+    let handle = prepare_and_install_mempool_recovery(
+        network,
+        &snapshot,
+        PolicyTime::from_unix_seconds(18_300),
+    );
+    let network = handle
+        .authority_snapshot_for_test()
+        .expect("recovered authority");
     assert_eq!(network.relay_serving_info().serveable_transactions, 1);
     assert_eq!(network.relay_fanout_info().known_transactions, 1);
     let connected_block =
         build_block_with_transactions(block_hash(&spendable.header), 2, vec![transaction]);
 
     // Act
-    network
+    handle
         .connect_local_block(&connected_block, verify_flags(), consensus_params())
         .expect("connect recovered transaction block");
+    let network = handle
+        .authority_snapshot_for_test()
+        .expect("post-connect authority");
 
     // Assert
     assert!(
@@ -264,7 +272,7 @@ fn managed_block_connect_removes_conflict_and_descendant_caches() {
 #[test]
 fn recovered_conflicting_transaction_removes_descendant_serving_and_fanout_state() {
     // Arrange
-    let (mut network, _genesis, spendable, coinbase_txids) = network_with_chain();
+    let (network, _genesis, spendable, coinbase_txids) = network_with_chain();
     let original = spend_transaction(coinbase_txids[0], 499_999_000);
     let original_txid = txid(&original);
     let original_wtxid = wtxid(&original);
@@ -272,22 +280,27 @@ fn recovered_conflicting_transaction_removes_descendant_serving_and_fanout_state
     let descendant_txid = txid(&descendant);
     let descendant_wtxid = wtxid(&descendant);
     let replacement = spend_transaction(coinbase_txids[0], 499_997_000);
-    network
-        .recover_mempool_snapshot(
-            &snapshot_from_transactions(vec![original, descendant]),
-            verify_flags(),
-            consensus_params(),
-        )
-        .expect("recover parent and descendant");
+    let snapshot = snapshot_from_transactions(vec![original, descendant]);
+    let handle = prepare_and_install_mempool_recovery(
+        network,
+        &snapshot,
+        PolicyTime::from_unix_seconds(18_400),
+    );
+    let network = handle
+        .authority_snapshot_for_test()
+        .expect("recovered authority");
     assert_eq!(network.relay_serving_info().serveable_transactions, 2);
     assert_eq!(network.relay_fanout_info().known_transactions, 2);
     let connected_block =
         build_block_with_transactions(block_hash(&spendable.header), 2, vec![replacement]);
 
     // Act
-    network
+    handle
         .connect_local_block(&connected_block, verify_flags(), consensus_params())
         .expect("connect conflicting block");
+    let network = handle
+        .authority_snapshot_for_test()
+        .expect("post-conflict authority");
 
     // Assert
     assert!(network.mempool().mempool().entry(&original_txid).is_none());
@@ -314,23 +327,22 @@ fn recovered_conflicting_transaction_removes_descendant_serving_and_fanout_state
 #[test]
 fn recovered_replacement_cleans_old_txid_and_preserves_new_accepted_identity() {
     // Arrange
-    let (mut network, _genesis, _spendable, coinbase_txids) = network_with_chain();
+    let (network, _genesis, _spendable, coinbase_txids) = network_with_chain();
     let original = spend_transaction(coinbase_txids[0], 499_999_000);
     let original_txid = txid(&original);
     let original_wtxid = wtxid(&original);
     let replacement = spend_transaction(coinbase_txids[0], 499_997_000);
     let replacement_txid = txid(&replacement);
     let replacement_wtxid = wtxid(&replacement);
-    network
-        .recover_mempool_snapshot(
-            &snapshot_from_transactions(vec![original]),
-            verify_flags(),
-            consensus_params(),
-        )
-        .expect("recover original");
+    let snapshot = snapshot_from_transactions(vec![original]);
+    let handle = prepare_and_install_mempool_recovery(
+        network,
+        &snapshot,
+        PolicyTime::from_unix_seconds(18_500),
+    );
 
     // Act
-    network
+    handle
         .submit_local_transaction_outcome_at(
             replacement,
             verify_flags(),
@@ -339,6 +351,9 @@ fn recovered_replacement_cleans_old_txid_and_preserves_new_accepted_identity() {
             RelayIntent::NotRequested,
         )
         .expect("replace recovered transaction");
+    let network = handle
+        .authority_snapshot_for_test()
+        .expect("replacement authority");
 
     // Assert
     assert!(network.mempool().mempool().entry(&original_txid).is_none());

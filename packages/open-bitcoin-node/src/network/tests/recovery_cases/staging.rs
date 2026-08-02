@@ -81,6 +81,13 @@ fn installed_recovery_is_clean_then_the_next_mutation_opens_one_loss_generation(
     assert_eq!(installed.relay_fanout_info().known_transactions, 1);
     assert_eq!(installed.relay_fanout_info().queued_transactions, 0);
     assert!(installed.relay_fanout_info().latest_actions.is_empty());
+    assert_eq!(
+        installed.unbroadcast_members(),
+        &BTreeSet::from([MempoolMemberIdentity {
+            txid: recovered_txid,
+            wtxid: recovered_wtxid,
+        }])
+    );
     assert_eq!(installed.reconcile_lifecycle_projection().counts(), [0; 7]);
     let clean_evidence = handle
         .checkpoint_evidence(PolicyTime::from_unix_seconds(10_100), 300)
@@ -116,6 +123,10 @@ fn installed_recovery_is_clean_then_the_next_mutation_opens_one_loss_generation(
             .maybe_after_generation,
         Some(42)
     );
+    let mutated = handle
+        .authority_snapshot_for_test()
+        .expect("post-recovery mutation authority");
+    assert_eq!(mutated.reconcile_lifecycle_projection().counts(), [0; 7]);
 }
 
 #[test]

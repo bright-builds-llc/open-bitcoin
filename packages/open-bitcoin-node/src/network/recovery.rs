@@ -132,6 +132,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    /// Legacy live replay retained only for the two RPC startup composition calls.
+    #[deprecated(note = "RPC startup compatibility only; migrate and remove in Phase 135 Plan 06")]
     pub fn recover_mempool_snapshot(
         &mut self,
         snapshot: &MempoolSnapshot,

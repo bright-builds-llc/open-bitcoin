@@ -46,10 +46,13 @@ pub(super) fn recover_mempool_snapshot_from_store(
 
     match store.load_mempool_snapshot() {
         Ok(Some(snapshot)) => {
-            if network
-                .recover_mempool_snapshot(&snapshot, verify_flags, consensus_params)
-                .is_err()
-            {
+            #[allow(
+                deprecated,
+                reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
+            )]
+            let recovery_result =
+                network.recover_mempool_snapshot(&snapshot, verify_flags, consensus_params);
+            if recovery_result.is_err() {
                 network.record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData);
             }
         }
@@ -86,10 +89,13 @@ pub(super) fn recover_mempool_snapshot_from_store_handle(
 
     match store.load_mempool_snapshot() {
         Ok(Some(snapshot)) => {
-            if network
-                .recover_mempool_snapshot(&snapshot, verify_flags, consensus_params)
-                .is_err()
-            {
+            #[allow(
+                deprecated,
+                reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
+            )]
+            let recovery_result =
+                network.recover_mempool_snapshot(&snapshot, verify_flags, consensus_params);
+            if recovery_result.is_err() {
                 network
                     .record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData)?;
             }

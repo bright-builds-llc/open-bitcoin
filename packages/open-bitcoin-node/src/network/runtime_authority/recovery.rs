@@ -39,6 +39,9 @@ impl ManagedNetworkHandle {
         .map_err(ManagedNetworkAuthorityError::from)
     }
 
+    /// Legacy live replay retained only for the two RPC startup composition calls.
+    #[allow(deprecated)]
+    #[deprecated(note = "RPC startup compatibility only; migrate and remove in Phase 135 Plan 06")]
     pub fn recover_mempool_snapshot(
         &self,
         snapshot: &MempoolSnapshot,

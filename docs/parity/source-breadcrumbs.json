@@ -1353,6 +1353,7 @@
       "files": [
         "packages/open-bitcoin-node/src/network/recovery/staging.rs",
         "packages/open-bitcoin-node/src/network/recovery/topology.rs",
+        "packages/open-bitcoin-node/src/network/tests/recovery_cases/metadata.rs",
         "packages/open-bitcoin-node/src/network/tests/recovery_cases/staging.rs"
       ],
       "breadcrumbs": [

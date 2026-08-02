@@ -102,6 +102,21 @@ fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot
     )
 }
 
+fn prepare_and_install_mempool_recovery(
+    network: ManagedPeerNetwork<MemoryChainstateStore>,
+    snapshot: &MempoolSnapshot,
+    startup_at: PolicyTime,
+) -> ManagedNetworkHandle {
+    let handle = ManagedNetworkHandle::from_network_fixture(network);
+    let prepared = handle
+        .prepare_mempool_recovery_at(snapshot, verify_flags(), consensus_params(), startup_at)
+        .expect("prepare recovery outside authority");
+    handle
+        .install_mempool_recovery(prepared)
+        .expect("install prepared recovery");
+    handle
+}
+
 fn build_block_with_transactions(
     previous_block_hash: BlockHash,
     height: u32,
