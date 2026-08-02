@@ -12,7 +12,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{
     MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin, PolicyTime,
-    RelayIntent, transaction_weight_and_virtual_size,
+    RelayIntent,
 };
 use serde::{Deserialize, Serialize};
 
@@ -337,23 +337,21 @@ fn decode_v1_record(
         dto.maybe_origin,
         dto.maybe_relay_requested,
     )?;
-    let (_, virtual_size) = transaction_weight_and_virtual_size(&transaction)
-        .map_err(|_| snapshot_failure(MempoolSnapshotError::StructuralCorruption))?;
     let metadata = MempoolEntryMetadata::new(
         acceptance_time,
         MempoolOrigin::RecoveryUnknown,
         RelayIntent::NotRequested,
     );
 
-    Ok(MempoolSnapshotRecord {
+    MempoolSnapshotRecord::try_from_compatibility(
         transaction,
-        acceptance_time,
         txid,
         wtxid,
-        fee_sats: 0,
-        virtual_size,
+        dto.fee_sats,
+        dto.virtual_size,
         metadata,
-    })
+    )
+    .map_err(snapshot_failure)
 }
 
 fn encode_canonical_transaction(transaction: &Transaction) -> Result<Vec<u8>, StorageError> {

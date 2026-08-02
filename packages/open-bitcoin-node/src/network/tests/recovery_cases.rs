@@ -12,13 +12,15 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use std::collections::BTreeSet;
+
 use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolCapacity, MempoolEntryMetadata, MempoolOrigin, PolicyConfig,
-    PolicyTime, RelayIntent, transaction_weight_and_virtual_size,
+    MempoolAcceptanceTime, MempoolCapacity, MempoolEntryMetadata, MempoolMemberIdentity,
+    MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent, transaction_weight_and_virtual_size,
 };
 use open_bitcoin_network::{InventoryList, RelayActivationConfig, WireNetworkMessage};
 
@@ -26,7 +28,9 @@ use super::{
     build_block, consensus_params, local_config, mine_header, spend_transaction, verify_flags,
 };
 use crate::network::ManagedMempoolRecoverySummary;
+use crate::network::recovery::topology::{RecoveryTopologyLimits, prepare_recovery_topology};
 use crate::status::relay_evidence::RelayEvidenceField;
+use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
 use crate::storage::{MempoolRecoveryStatus, MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -113,6 +117,81 @@ fn assert_recovery_status(
     index: usize,
 ) -> MempoolRecoveryStatus {
     summary.records.get(index).expect("recovery record").status
+}
+
+fn topology_identities(transactions: Vec<Transaction>) -> Vec<(Txid, Wtxid)> {
+    let snapshot = snapshot_from_transactions(transactions);
+    prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
+        .expect("valid recovery topology")
+        .ordered_identities()
+        .collect()
+}
+
+#[test]
+fn recovery_topology_orders_parent_before_child_independent_of_stored_order() {
+    // Arrange
+    let parent = spend_transaction(Txid::from_byte_array([70_u8; 32]), 9_000);
+    let child = spend_transaction(txid(&parent), 8_000);
+    let independent = spend_transaction(Txid::from_byte_array([71_u8; 32]), 7_000);
+    let expected = topology_identities(vec![parent.clone(), child.clone(), independent.clone()]);
+
+    // Act
+    let reversed = topology_identities(vec![independent.clone(), child.clone(), parent.clone()]);
+    let shuffled = topology_identities(vec![child.clone(), independent, parent.clone()]);
+
+    // Assert
+    assert_eq!(reversed, expected);
+    assert_eq!(shuffled, expected);
+    let parent_position = expected
+        .iter()
+        .position(|(identity_txid, _)| *identity_txid == txid(&parent))
+        .expect("parent identity");
+    let child_position = expected
+        .iter()
+        .position(|(identity_txid, _)| *identity_txid == txid(&child))
+        .expect("child identity");
+    assert!(parent_position < child_position);
+}
+
+#[test]
+fn recovery_topology_keeps_external_prevouts_and_contains_edge_limit_failure() {
+    // Arrange
+    let first_parent = spend_transaction(Txid::from_byte_array([72_u8; 32]), 9_000);
+    let second_parent = spend_transaction(Txid::from_byte_array([73_u8; 32]), 9_000);
+    let mut over_limit = spend_transaction(txid(&first_parent), 8_000);
+    over_limit.inputs.push(second_parent.inputs[0].clone());
+    over_limit.inputs[1].previous_output.txid = txid(&second_parent);
+    let dependent = spend_transaction(txid(&over_limit), 7_000);
+    let external = spend_transaction(Txid::from_byte_array([74_u8; 32]), 6_000);
+    let snapshot = snapshot_from_transactions(vec![
+        dependent,
+        external.clone(),
+        over_limit.clone(),
+        second_parent,
+        first_parent,
+    ]);
+
+    // Act
+    let topology = prepare_recovery_topology(
+        &snapshot.records,
+        RecoveryTopologyLimits::new(snapshot.records.len(), 1),
+    )
+    .expect("bounded topology");
+
+    // Assert
+    assert!(
+        topology
+            .ordered_identities()
+            .any(|(identity_txid, _)| identity_txid == txid(&external))
+    );
+    assert_eq!(
+        topology.status_for(txid(&over_limit)),
+        Some(MempoolRecoveryStatus::DroppedMissingParent)
+    );
+    assert_eq!(
+        topology.status_for(txid(&snapshot.records[0].transaction)),
+        Some(MempoolRecoveryStatus::DroppedMissingParent)
+    );
 }
 
 #[test]
@@ -339,7 +418,25 @@ fn recovery_metadata_managed_local_requested_preserves_facts_and_fanout() {
             RelayIntent::Requested,
         )
         .expect("admit local requested");
-    let snapshot = MempoolSnapshot::from_mempool(source.mempool().mempool());
+    let acceptance_time = MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90));
+    let snapshot = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(7),
+        PolicyTime::from_unix_seconds(100),
+        vec![
+            MempoolSnapshotRecord::try_from_canonical(transaction, acceptance_time)
+                .expect("canonical snapshot record"),
+        ],
+        BTreeSet::from([MempoolMemberIdentity {
+            txid: transaction_txid,
+            wtxid: source
+                .mempool()
+                .mempool()
+                .entry(&transaction_txid)
+                .expect("source entry")
+                .wtxid,
+        }]),
+    )
+    .expect("current snapshot");
     let expected = MempoolEntryMetadata::new(
         MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
         MempoolOrigin::Local,
@@ -355,7 +452,7 @@ fn recovery_metadata_managed_local_requested_preserves_facts_and_fanout() {
 
     // Assert
     assert_eq!(summary.recovered_count, 1);
-    assert_eq!(snapshot.records[0].metadata, expected);
+    assert_eq!(snapshot.records[0].acceptance_time, acceptance_time);
     let entry = recovered
         .mempool()
         .mempool()
@@ -368,7 +465,7 @@ fn recovery_metadata_managed_local_requested_preserves_facts_and_fanout() {
 }
 
 #[test]
-fn recovery_metadata_managed_duplicate_preserves_original_canonical_metadata() {
+fn recovery_metadata_managed_duplicate_uses_preserved_age_without_historical_origin() {
     // Arrange
     let (mut network, coinbase_txids, _latest_block) =
         relay_enabled_network_with_chain(1_092, 2, PolicyConfig::default());
@@ -404,6 +501,10 @@ fn recovery_metadata_managed_duplicate_preserves_original_canonical_metadata() {
             .entry(&transaction_txid)
             .expect("original")
             .metadata,
-        original
+        MempoolEntryMetadata::new(
+            original.accepted_at,
+            MempoolOrigin::RecoveryUnknown,
+            RelayIntent::NotRequested,
+        )
     );
 }

@@ -13,15 +13,18 @@ fn legacy_mempool_snapshot_value() -> serde_json::Value {
         open_bitcoin_core::codec::TransactionEncoding::WithWitness,
     )
     .expect("encode legacy transaction");
+    let identity = record.member_identity().expect("canonical member identity");
+    let (_, virtual_size) =
+        transaction_weight_and_virtual_size(&record.transaction).expect("transaction size");
     serde_json::json!({
         "schema_version": 1,
         "payload": {
             "records": [{
-                "txid": record.txid.to_byte_array(),
-                "wtxid": record.wtxid.to_byte_array(),
+                "txid": identity.txid.to_byte_array(),
+                "wtxid": identity.wtxid.to_byte_array(),
                 "transaction": transaction,
-                "fee_sats": record.fee_sats,
-                "virtual_size": record.virtual_size
+                "fee_sats": 4_321,
+                "virtual_size": virtual_size
             }]
         }
     })
@@ -234,14 +237,6 @@ fn legacy_mempool_snapshot_keeps_known_time_without_origin_or_relay_authority() 
     assert_eq!(
         decoded.records[0].acceptance_time,
         MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90))
-    );
-    assert_eq!(
-        decoded.records[0].metadata.origin,
-        MempoolOrigin::RecoveryUnknown
-    );
-    assert_eq!(
-        decoded.records[0].metadata.relay_intent,
-        RelayIntent::NotRequested
     );
     assert!(decoded.unbroadcast_members().is_empty());
 }

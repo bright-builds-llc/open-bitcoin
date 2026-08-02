@@ -108,22 +108,19 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             Ok(LifecycleCommandResult::Lifecycle(delta))
         }
         LifecycleCommand::PrepareSnapshot(request) => {
-            let mut records = network
+            let records = network
                 .mempool()
                 .mempool()
                 .entries()
                 .values()
-                .map(|entry| MempoolSnapshotRecord {
-                    transaction: entry.transaction.clone(),
-                    acceptance_time: entry.metadata.accepted_at,
-                    txid: entry.txid,
-                    wtxid: entry.wtxid,
-                    fee_sats: entry.fee_sats(),
-                    virtual_size: entry.virtual_size.as_usize(),
-                    metadata: entry.metadata,
+                .map(|entry| {
+                    MempoolSnapshotRecord::try_from_canonical(
+                        entry.transaction.clone(),
+                        entry.metadata.accepted_at,
+                    )
                 })
-                .collect::<Vec<_>>();
-            records.sort_by_key(|record| record.txid);
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(LifecycleProjectionError::MempoolSnapshot)?;
             let snapshot = MempoolSnapshot::try_new_current(
                 CapturedMempoolGeneration::new(network.lifecycle_generation.raw()),
                 request.captured_at,

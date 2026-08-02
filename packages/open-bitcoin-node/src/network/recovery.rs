@@ -12,16 +12,22 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
-use open_bitcoin_mempool::AdmissionContext;
+use open_bitcoin_core::{
+    consensus::{ConsensusParams, ScriptVerifyFlags},
+    primitives::OutPoint,
+};
+use open_bitcoin_mempool::{AdmissionContext, MempoolEntryMetadata, MempoolOrigin, RelayIntent};
 use open_bitcoin_network::TxServingRecordStatus;
 
 use crate::ChainstateStore;
 use crate::status::{SyncRecoveryCategory, relay_evidence::RelayRecoveryCounters};
-use crate::storage::mempool_snapshot::{recovery_status_from_outcome, transaction_is_confirmed};
+use crate::storage::mempool_snapshot::recovery_status_from_outcome;
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshot, StorageError};
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
+use topology::{RecoveryTopologyLimits, prepare_recovery_topology};
+
+pub(crate) mod topology;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ManagedMempoolRecoverySummary {
@@ -84,12 +90,43 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkError> {
-        let records = snapshot.records.clone();
+        let topology =
+            prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
+                .map_err(|_| {
+                    ManagedNetworkError::LifecycleEffect(
+                        "mempool recovery topology preparation failed",
+                    )
+                })?;
+        let (records, mut recovery_records) = topology.into_parts();
         let chainstate = self.chainstate.chainstate().snapshot();
-        let mut recovery_records = Vec::with_capacity(records.len());
+        recovery_records.reserve(records.len());
 
-        for snapshot_record in &records {
-            let status = if transaction_is_confirmed(snapshot_record, &chainstate) {
+        for topology_record in records {
+            let snapshot_record = topology_record.record;
+            let member = topology_record.identity;
+            let txid = member.txid;
+            let wtxid = member.wtxid;
+            let restored_unbroadcast = snapshot.unbroadcast_members().contains(&member);
+            let metadata = MempoolEntryMetadata::new(
+                snapshot_record.acceptance_time,
+                if restored_unbroadcast {
+                    MempoolOrigin::Local
+                } else {
+                    MempoolOrigin::RecoveryUnknown
+                },
+                if restored_unbroadcast {
+                    RelayIntent::Requested
+                } else {
+                    RelayIntent::NotRequested
+                },
+            );
+            let confirmed = (0..snapshot_record.transaction.outputs.len()).any(|index| {
+                let Ok(vout) = u32::try_from(index) else {
+                    return false;
+                };
+                chainstate.utxos.contains_key(&OutPoint { txid, vout })
+            });
+            let status = if confirmed {
                 MempoolRecoveryStatus::DroppedConfirmed
             } else {
                 let transition_result = self
@@ -100,7 +137,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         &chainstate,
                         verify_flags,
                         consensus_params,
-                        AdmissionContext::recovery(snapshot_record.metadata),
+                        AdmissionContext::recovery(metadata),
                     );
                 match transition_result {
                     Ok(transition) => {
@@ -110,10 +147,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                             snapshot_record.transaction.clone(),
                         )?;
                         if status == MempoolRecoveryStatus::Recovered {
-                            self.relay_fanout.seed_recovered_transaction(
-                                snapshot_record.txid,
-                                snapshot_record.wtxid,
-                            );
+                            self.relay_fanout.seed_recovered_transaction(txid, wtxid);
                         }
                         status
                     }
@@ -125,32 +159,29 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 MempoolRecoveryStatus::Recovered | MempoolRecoveryStatus::DroppedDuplicate => {}
                 MempoolRecoveryStatus::DroppedConfirmed => {
                     self.relay_serving.record_status(
-                        snapshot_record.txid,
-                        Some(snapshot_record.wtxid),
+                        txid,
+                        Some(wtxid),
                         TxServingRecordStatus::Confirmed,
                     );
                 }
                 MempoolRecoveryStatus::DroppedMissingParent
                 | MempoolRecoveryStatus::DroppedPolicyIncompatible => {
                     self.relay_serving.record_status(
-                        snapshot_record.txid,
-                        Some(snapshot_record.wtxid),
+                        txid,
+                        Some(wtxid),
                         TxServingRecordStatus::Rejected,
                     );
                 }
                 MempoolRecoveryStatus::DroppedEvicted => {
                     self.relay_serving.record_status(
-                        snapshot_record.txid,
-                        Some(snapshot_record.wtxid),
+                        txid,
+                        Some(wtxid),
                         TxServingRecordStatus::Evicted,
                     );
                 }
             }
 
-            recovery_records.push(MempoolRecoveryRecord {
-                txid: snapshot_record.txid,
-                status,
-            });
+            recovery_records.push(MempoolRecoveryRecord { txid, status });
         }
 
         let summary = ManagedMempoolRecoverySummary::from_records(recovery_records);

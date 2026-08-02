@@ -24,8 +24,8 @@ use super::{
     encode_wallet_snapshot,
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyTime, RelayIntent,
-    transaction_weight_and_virtual_size,
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin, PolicyTime,
+    RelayIntent, transaction_weight_and_virtual_size,
 };
 
 use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
@@ -93,7 +93,7 @@ fn mempool_snapshot() -> MempoolSnapshot {
         ),
     )
     .expect("valid mempool record");
-    let member = record.member_identity();
+    let member = record.member_identity().expect("canonical member identity");
     MempoolSnapshot::try_new_current(
         CapturedMempoolGeneration::new(42),
         PolicyTime::from_unix_seconds(120),
@@ -405,7 +405,9 @@ fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
                 "wtxid": wtxid.to_byte_array(),
                 "transaction": encoded_tx,
                 "fee_sats": 1000,
-                "virtual_size": 100
+                "virtual_size": transaction_weight_and_virtual_size(&transaction)
+                    .expect("transaction size")
+                    .1
             }]
         }
     });
@@ -417,11 +419,15 @@ fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
     // Assert
     assert_eq!(decoded.records.len(), 1);
     assert_eq!(
-        decoded.records[0].metadata,
-        MempoolEntryMetadata::legacy_unknown()
+        decoded.records[0].acceptance_time,
+        MempoolAcceptanceTime::LegacyUnknown
     );
-    assert_eq!(decoded.records[0].fee_sats, 0);
-    assert_ne!(decoded.records[0].virtual_size, 100);
+    assert_eq!(
+        decoded.records[0]
+            .member_identity()
+            .expect("canonical member identity"),
+        MempoolMemberIdentity { txid, wtxid }
+    );
     assert!(decoded.unbroadcast_members().is_empty());
     assert_eq!(SchemaVersion::CURRENT.get(), 1);
 }

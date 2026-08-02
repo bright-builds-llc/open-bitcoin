@@ -7,13 +7,12 @@ use std::collections::BTreeSet;
 use std::fmt;
 
 use open_bitcoin_core::{
-    chainstate::ChainstateSnapshot,
-    consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid},
-    primitives::{OutPoint, Transaction, Txid, Wtxid},
+    consensus::{transaction_txid, transaction_wtxid},
+    primitives::{Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    AdmissionContext, Mempool, MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity,
-    MempoolOrigin, MempoolOutcome, PolicyTime, RelayIntent, transaction_weight_and_virtual_size,
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOutcome, PolicyTime,
+    transaction_weight_and_virtual_size,
 };
 
 pub(crate) const MAX_MEMPOOL_SNAPSHOT_RECORDS: usize = 50_000;
@@ -86,16 +85,6 @@ pub struct MempoolSnapshotRecord {
     pub transaction: Transaction,
     /// Trustworthy original acceptance time, or explicit legacy unknown.
     pub acceptance_time: MempoolAcceptanceTime,
-    /// Deprecated Wave 1 compatibility identity; removed by Plan 135-02.
-    pub txid: Txid,
-    /// Deprecated Wave 1 compatibility identity; removed by Plan 135-02.
-    pub wtxid: Wtxid,
-    /// Deprecated Wave 1 compatibility input; never encoded by v2.
-    pub fee_sats: i64,
-    /// Deprecated Wave 1 compatibility input; never encoded by v2.
-    pub virtual_size: usize,
-    /// Deprecated Wave 1 recovery input; never encoded by v2.
-    pub metadata: MempoolEntryMetadata,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -163,9 +152,7 @@ impl MempoolSnapshot {
             return Err(MempoolSnapshotError::ResourceBoundExceeded);
         }
         if records.iter().any(|record| match record.acceptance_time {
-            MempoolAcceptanceTime::Known(accepted_at) => {
-                accepted_at > captured_at || record.metadata.accepted_at != record.acceptance_time
-            }
+            MempoolAcceptanceTime::Known(accepted_at) => accepted_at > captured_at,
             MempoolAcceptanceTime::LegacyUnknown => true,
         }) {
             return Err(MempoolSnapshotError::StructuralCorruption);
@@ -174,7 +161,7 @@ impl MempoolSnapshot {
         let record_members = records
             .iter()
             .map(MempoolSnapshotRecord::member_identity)
-            .collect::<BTreeSet<_>>();
+            .collect::<Result<BTreeSet<_>, _>>()?;
         if record_members.len() != records.len() || !unbroadcast_members.is_subset(&record_members)
         {
             return Err(MempoolSnapshotError::IdentityMismatch);
@@ -226,58 +213,6 @@ impl MempoolSnapshot {
     pub fn unbroadcast_members(&self) -> &BTreeSet<MempoolMemberIdentity> {
         &self.unbroadcast_members
     }
-
-    pub fn from_mempool(mempool: &Mempool) -> Self {
-        let mut records = mempool
-            .entries()
-            .values()
-            .map(|entry| MempoolSnapshotRecord {
-                transaction: entry.transaction.clone(),
-                acceptance_time: entry.metadata.accepted_at,
-                txid: entry.txid,
-                wtxid: entry.wtxid,
-                fee_sats: entry.fee_sats(),
-                virtual_size: entry.virtual_size.as_usize(),
-                metadata: entry.metadata,
-            })
-            .collect::<Vec<_>>();
-        records.sort_by_key(|record| record.txid);
-
-        Self::from_legacy_v1(records)
-    }
-
-    pub fn replay_into_mempool(
-        &self,
-        mempool: &mut Mempool,
-        chainstate: &ChainstateSnapshot,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Vec<MempoolRecoveryRecord> {
-        self.records
-            .iter()
-            .map(|record| {
-                let status = if transaction_is_confirmed(record, chainstate) {
-                    MempoolRecoveryStatus::DroppedConfirmed
-                } else {
-                    recovery_status_from_outcome(
-                        mempool
-                            .accept_transaction_transition_with_context(
-                                record.transaction.clone(),
-                                chainstate,
-                                verify_flags,
-                                consensus_params,
-                                AdmissionContext::recovery(record.metadata),
-                            )
-                            .map(|transition| transition.outcome),
-                    )
-                };
-                MempoolRecoveryRecord {
-                    txid: record.txid,
-                    status,
-                }
-            })
-            .collect()
-    }
 }
 
 impl MempoolSnapshotRecord {
@@ -305,11 +240,6 @@ impl MempoolSnapshotRecord {
         Ok(Self {
             transaction,
             acceptance_time: metadata.accepted_at,
-            txid,
-            wtxid,
-            fee_sats,
-            virtual_size,
-            metadata,
         })
     }
 
@@ -320,50 +250,19 @@ impl MempoolSnapshotRecord {
         if !matches!(acceptance_time, MempoolAcceptanceTime::Known(_)) {
             return Err(MempoolSnapshotError::StructuralCorruption);
         }
-        let txid = transaction_txid(&transaction)
-            .map_err(|_| MempoolSnapshotError::StructuralCorruption)?;
-        let wtxid = transaction_wtxid(&transaction)
-            .map_err(|_| MempoolSnapshotError::StructuralCorruption)?;
-        let (_, virtual_size) = transaction_weight_and_virtual_size(&transaction)
-            .map_err(|_| MempoolSnapshotError::StructuralCorruption)?;
-        let metadata = MempoolEntryMetadata::new(
-            acceptance_time,
-            MempoolOrigin::RecoveryUnknown,
-            RelayIntent::NotRequested,
-        );
-
         Ok(Self {
             transaction,
             acceptance_time,
-            txid,
-            wtxid,
-            fee_sats: 0,
-            virtual_size,
-            metadata,
         })
     }
 
-    pub const fn member_identity(&self) -> MempoolMemberIdentity {
-        MempoolMemberIdentity {
-            txid: self.txid,
-            wtxid: self.wtxid,
-        }
+    pub fn member_identity(&self) -> Result<MempoolMemberIdentity, MempoolSnapshotError> {
+        let txid = transaction_txid(&self.transaction)
+            .map_err(|_| MempoolSnapshotError::StructuralCorruption)?;
+        let wtxid = transaction_wtxid(&self.transaction)
+            .map_err(|_| MempoolSnapshotError::StructuralCorruption)?;
+        Ok(MempoolMemberIdentity { txid, wtxid })
     }
-}
-
-pub(crate) fn transaction_is_confirmed(
-    record: &MempoolSnapshotRecord,
-    chainstate: &ChainstateSnapshot,
-) -> bool {
-    (0..record.transaction.outputs.len()).any(|index| {
-        let Ok(vout) = u32::try_from(index) else {
-            return false;
-        };
-        chainstate.utxos.contains_key(&OutPoint {
-            txid: record.txid,
-            vout,
-        })
-    })
 }
 
 pub(crate) fn recovery_status_from_outcome(

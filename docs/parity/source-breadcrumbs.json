@@ -1349,6 +1349,18 @@
       ]
     },
     {
+      "label": "node-mempool-recovery-topology",
+      "files": [
+        "packages/open-bitcoin-node/src/network/recovery/topology.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_persist.py"
+      ]
+    },
+    {
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
