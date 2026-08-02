@@ -30,7 +30,10 @@ use crate::recovery::{
 };
 use crate::status::{FieldAvailability, SyncRecoveryCategory};
 use crate::storage::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
-use open_bitcoin_mempool::MempoolEntryMetadata;
+use open_bitcoin_mempool::{
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyTime, RelayIntent,
+    transaction_weight_and_virtual_size,
+};
 
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
@@ -163,17 +166,25 @@ fn mempool_snapshot() -> MempoolSnapshot {
     let transaction = mempool_transaction(42);
     let txid = transaction_txid(&transaction).expect("txid");
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let (_, virtual_size) =
+        transaction_weight_and_virtual_size(&transaction).expect("transaction size");
+    let accepted_at = PolicyTime::from_unix_seconds(90);
+    let metadata = MempoolEntryMetadata::new(
+        MempoolAcceptanceTime::Known(accepted_at),
+        MempoolOrigin::RecoveryUnknown,
+        RelayIntent::NotRequested,
+    );
+    let record = MempoolSnapshotRecord::try_from_compatibility(
+        transaction,
+        txid,
+        wtxid,
+        1_000,
+        virtual_size,
+        metadata,
+    )
+    .expect("valid mempool record");
 
-    MempoolSnapshot {
-        records: vec![MempoolSnapshotRecord {
-            txid,
-            wtxid,
-            transaction,
-            fee_sats: 1_000,
-            virtual_size: 100,
-            metadata: MempoolEntryMetadata::legacy_unknown(),
-        }],
-    }
+    MempoolSnapshot::from_legacy_v1(vec![record])
 }
 
 fn chainstate_snapshot() -> ChainstateSnapshot {

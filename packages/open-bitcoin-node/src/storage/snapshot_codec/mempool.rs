@@ -90,7 +90,7 @@ impl TryFrom<MempoolSnapshotDto> for MempoolSnapshot {
             .map(MempoolSnapshotRecord::try_from)
             .collect::<Result<Vec<_>, _>>()?;
 
-        Ok(Self { records })
+        Ok(Self::from_legacy_v1(records))
     }
 }
 
@@ -145,6 +145,7 @@ impl TryFrom<MempoolSnapshotRecordDto> for MempoolSnapshotRecord {
         )?;
 
         Ok(Self {
+            acceptance_time: metadata.accepted_at,
             txid,
             wtxid,
             transaction,

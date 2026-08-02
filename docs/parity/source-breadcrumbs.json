@@ -1691,6 +1691,7 @@
       "files": [
         "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
         "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
+        "packages/open-bitcoin-node/src/storage/mempool_snapshot/tests.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs"
       ],
       "breadcrumbs": [

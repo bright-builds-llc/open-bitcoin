@@ -24,6 +24,7 @@ use super::{
 };
 use open_bitcoin_mempool::{
     MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyTime, RelayIntent,
+    transaction_weight_and_virtual_size,
 };
 
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
@@ -75,21 +76,22 @@ fn mempool_snapshot() -> MempoolSnapshot {
     let transaction = mempool_transaction(24);
     let txid = transaction_txid(&transaction).expect("txid");
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
-
-    MempoolSnapshot {
-        records: vec![MempoolSnapshotRecord {
-            txid,
-            wtxid,
-            transaction,
-            fee_sats: 1_000,
-            virtual_size: 100,
-            metadata: MempoolEntryMetadata::new(
-                MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
-                MempoolOrigin::Local,
-                RelayIntent::Requested,
-            ),
-        }],
-    }
+    let (_, virtual_size) =
+        transaction_weight_and_virtual_size(&transaction).expect("transaction size");
+    let record = MempoolSnapshotRecord::try_from_compatibility(
+        transaction,
+        txid,
+        wtxid,
+        1_000,
+        virtual_size,
+        MempoolEntryMetadata::new(
+            MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(90)),
+            MempoolOrigin::Local,
+            RelayIntent::Requested,
+        ),
+    )
+    .expect("valid mempool record");
+    MempoolSnapshot::from_legacy_v1(vec![record])
 }
 
 fn chainstate_snapshot() -> ChainstateSnapshot {

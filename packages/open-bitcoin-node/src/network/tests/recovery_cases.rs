@@ -18,7 +18,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{
     MempoolAcceptanceTime, MempoolCapacity, MempoolEntryMetadata, MempoolOrigin, PolicyConfig,
-    PolicyTime, RelayIntent,
+    PolicyTime, RelayIntent, transaction_weight_and_virtual_size,
 };
 use open_bitcoin_network::{InventoryList, RelayActivationConfig, WireNetworkMessage};
 
@@ -39,29 +39,30 @@ fn wtxid(transaction: &Transaction) -> Wtxid {
 }
 
 fn snapshot_record(transaction: Transaction) -> MempoolSnapshotRecord {
-    MempoolSnapshotRecord {
-        txid: txid(&transaction),
-        wtxid: wtxid(&transaction),
-        transaction,
-        fee_sats: 1_000,
-        virtual_size: 100,
-        metadata: MempoolEntryMetadata::legacy_unknown(),
-    }
+    snapshot_record_with_metadata(transaction, MempoolEntryMetadata::legacy_unknown())
 }
 
 fn snapshot_record_with_metadata(
     transaction: Transaction,
     metadata: MempoolEntryMetadata,
 ) -> MempoolSnapshotRecord {
-    let mut record = snapshot_record(transaction);
-    record.metadata = metadata;
-    record
+    let transaction_txid = txid(&transaction);
+    let transaction_wtxid = wtxid(&transaction);
+    let (_, virtual_size) =
+        transaction_weight_and_virtual_size(&transaction).expect("transaction size");
+    MempoolSnapshotRecord::try_from_compatibility(
+        transaction,
+        transaction_txid,
+        transaction_wtxid,
+        1_000,
+        virtual_size,
+        metadata,
+    )
+    .expect("valid compatibility record")
 }
 
 fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot {
-    MempoolSnapshot {
-        records: transactions.into_iter().map(snapshot_record).collect(),
-    }
+    MempoolSnapshot::from_legacy_v1(transactions.into_iter().map(snapshot_record).collect())
 }
 
 fn tx_inventory(transaction_txid: Txid) -> InventoryList {
@@ -383,12 +384,10 @@ fn recovery_metadata_managed_duplicate_preserves_original_canonical_metadata() {
         MempoolOrigin::Peer,
         RelayIntent::NotRequested,
     );
-    let snapshot = MempoolSnapshot {
-        records: vec![
-            snapshot_record_with_metadata(transaction.clone(), original),
-            snapshot_record_with_metadata(transaction, conflicting),
-        ],
-    };
+    let snapshot = MempoolSnapshot::from_legacy_v1(vec![
+        snapshot_record_with_metadata(transaction.clone(), original),
+        snapshot_record_with_metadata(transaction, conflicting),
+    ]);
 
     // Act
     let summary = network

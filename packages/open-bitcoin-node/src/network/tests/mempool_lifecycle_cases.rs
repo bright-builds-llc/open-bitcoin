@@ -16,7 +16,7 @@ use open_bitcoin_mempool::{
     FeeRate, FinalMempoolMembership, MempoolAcceptanceTime, MempoolCapacityStatus,
     MempoolEntryMetadata, MempoolOrigin, MempoolOutcome, MempoolRemovalCause, MempoolRemovalRole,
     PolicyConfig, PolicyTime, ROLLING_FEE_HALFLIFE_SECONDS, RelayIntent, ReorgLifecycleContext,
-    RollingFeeParityStatus,
+    RollingFeeParityStatus, transaction_weight_and_virtual_size,
 };
 use open_bitcoin_network::WireNetworkMessage;
 
@@ -80,19 +80,26 @@ fn assert_lifecycle_authority(
 }
 
 fn snapshot_from_transactions(transactions: Vec<Transaction>) -> MempoolSnapshot {
-    MempoolSnapshot {
-        records: transactions
+    MempoolSnapshot::from_legacy_v1(
+        transactions
             .into_iter()
-            .map(|transaction| MempoolSnapshotRecord {
-                txid: txid(&transaction),
-                wtxid: wtxid(&transaction),
-                transaction,
-                fee_sats: 1_000,
-                virtual_size: 100,
-                metadata: MempoolEntryMetadata::legacy_unknown(),
+            .map(|transaction| {
+                let transaction_txid = txid(&transaction);
+                let transaction_wtxid = wtxid(&transaction);
+                let (_, virtual_size) =
+                    transaction_weight_and_virtual_size(&transaction).expect("transaction size");
+                MempoolSnapshotRecord::try_from_compatibility(
+                    transaction,
+                    transaction_txid,
+                    transaction_wtxid,
+                    1_000,
+                    virtual_size,
+                    MempoolEntryMetadata::legacy_unknown(),
+                )
+                .expect("valid compatibility record")
             })
             .collect(),
-    }
+    )
 }
 
 fn build_block_with_transactions(
