@@ -25,24 +25,24 @@ use open_bitcoin_network::{
 };
 
 use crate::{
-    MemoryChainstateStore, StorageError,
-    status::{BlockRelayEvidenceStatus, SyncRecoveryCategory, relay_evidence::RelayEvidenceStatus},
-    storage::MempoolSnapshot,
+    MemoryChainstateStore,
+    status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus},
     sync::SyncRuntimeError,
 };
 
 use super::{
     AnnouncementPreparationOutcome, BlockConnectDisposition, LocalRelaySubmissionEvidence,
     ManagedAddressBoundaryInfo, ManagedBlockServeCompletion, ManagedInboundAdmissionInfo,
-    ManagedMempoolInfo, ManagedMempoolRecoverySummary, ManagedNetworkError, ManagedNetworkInfo,
-    ManagedNetworkOperatorSnapshot, ManagedPeerNetwork, ManagedPeerPolicyInfo,
-    ManagedResourceGovernanceInfo, ManagedSyncMessageResult, PeerOutboxSnapshot,
+    ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo, ManagedNetworkOperatorSnapshot,
+    ManagedPeerNetwork, ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
+    ManagedSyncMessageResult, PeerOutboxSnapshot,
 };
 
 mod effects;
 pub use effects::{CheckpointAbortDispatchError, CheckpointCompletionDispatchError};
 mod lifecycle;
 pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
+mod recovery;
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
 
@@ -556,43 +556,6 @@ impl ManagedNetworkHandle {
         self.read(ManagedPeerNetwork::latest_local_submission_evidence)
     }
 
-    pub fn recover_mempool_snapshot(
-        &self,
-        snapshot: &MempoolSnapshot,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
-            network.recover_mempool_snapshot(snapshot, verify_flags, consensus_params)
-        })
-    }
-
-    pub fn record_mempool_recovery_storage_error(
-        &self,
-        error: &StorageError,
-    ) -> Result<(), ManagedNetworkAuthorityError> {
-        self.mutate(|network| network.record_mempool_recovery_storage_error(error))
-    }
-
-    pub fn record_mempool_recovery_unavailable(
-        &self,
-        category: SyncRecoveryCategory,
-    ) -> Result<(), ManagedNetworkAuthorityError> {
-        self.mutate(|network| network.record_mempool_recovery_unavailable(category))
-    }
-
-    pub fn latest_mempool_recovery_summary(
-        &self,
-    ) -> Result<Option<ManagedMempoolRecoverySummary>, ManagedNetworkAuthorityError> {
-        self.read(ManagedPeerNetwork::latest_mempool_recovery_summary)
-    }
-
-    pub fn latest_mempool_recovery_storage_error(
-        &self,
-    ) -> Result<Option<SyncRecoveryCategory>, ManagedNetworkAuthorityError> {
-        self.read(ManagedPeerNetwork::latest_mempool_recovery_storage_error)
-    }
-
     pub fn announce_block(
         &self,
         peer_id: PeerId,
@@ -603,6 +566,20 @@ impl ManagedNetworkHandle {
 
     #[rustfmt::skip]
     pub fn prepare_block_announcements(&self, block: &Block, outboxes: &[PeerOutboxSnapshot]) -> Result<Vec<AnnouncementPreparationOutcome>, ManagedNetworkAuthorityError> { let compact_nonces = super::announcement_transport::compact_nonces(outboxes); self.mutate(|network| network.prepare_block_announcements(block, outboxes, &compact_nonces)) }
+
+    #[cfg(test)]
+    pub(in crate::network) fn authority_snapshot_for_test(
+        &self,
+    ) -> Result<AuthoritativeNetwork, ManagedNetworkAuthorityError> {
+        self.read(Clone::clone)
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn authority_debug_snapshot_for_test(
+        &self,
+    ) -> Result<String, ManagedNetworkAuthorityError> {
+        self.read(|network| format!("{network:?}"))
+    }
 
     #[cfg(test)]
     fn poison_for_test(&self) {

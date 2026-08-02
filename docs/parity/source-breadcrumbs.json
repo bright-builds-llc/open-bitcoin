@@ -1423,6 +1423,7 @@
         "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/checkpoint.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs",
+        "packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs",
         "packages/open-bitcoin-node/src/network/lifecycle_projection/tests.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
@@ -1494,6 +1495,7 @@
       "label": "node-network-runtime-authority",
       "files": [
         "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/recovery.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/tests.rs"
       ],
       "breadcrumbs": [

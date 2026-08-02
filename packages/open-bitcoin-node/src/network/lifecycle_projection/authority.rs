@@ -18,14 +18,62 @@ use super::{
     AuthorityEpoch, LifecycleEvidenceSnapshot, LifecycleGeneration, LifecyclePreparationError,
     LifecycleProjectionError, LifecycleProjectionPlan, MAX_UNBROADCAST_MEMBERS,
     PreparedCompactProjection, PreparedFanoutProjection, PreparedLifecycleEvidence,
-    PreparedPeerLifecycleProjection, PreparedPersistenceProjection, PreparedServingProjection,
-    PreparedUnbroadcastProjection,
+    PreparedPeerLifecycleProjection, PreparedPersistenceProjection, PreparedRecoveryProjection,
+    PreparedServingProjection, PreparedUnbroadcastProjection,
 };
 use crate::chainstate::PreparedChainstateConnect;
 use crate::network::lifecycle_effects::{
     CheckpointPersistenceStrength, CheckpointTrigger, SnapshotWriteFailure, SnapshotWriteReceipt,
 };
+use crate::network::recovery::{ManagedMempoolRecoverySummary, PreparedMempoolRecovery};
 use crate::{ChainstateStore, ManagedPeerNetwork};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::network) struct ProjectionShape {
+    admitted: usize,
+    removed: usize,
+    retry_clears: usize,
+}
+
+impl ProjectionShape {
+    pub(super) fn prepare(
+        facts: &PreparedLifecycleFacts,
+    ) -> Result<Self, LifecyclePreparationError> {
+        Self::checked_from_counts(
+            facts.final_present().len(),
+            facts.admitted_order().len(),
+            facts.removed().len(),
+            facts.teardown_order().len(),
+            facts.delta().retry_clears.len(),
+        )
+    }
+
+    pub(super) fn checked_from_counts(
+        final_present: usize,
+        admitted_order: usize,
+        removed: usize,
+        teardown_order: usize,
+        retry_clears: usize,
+    ) -> Result<Self, LifecyclePreparationError> {
+        if final_present != admitted_order {
+            return Err(LifecyclePreparationError::FinalPresentOrderMismatch {
+                final_present,
+                admitted_order,
+            });
+        }
+        if removed != teardown_order {
+            return Err(LifecyclePreparationError::TeardownOrderMismatch {
+                removed,
+                teardown_order,
+            });
+        }
+        Ok(Self {
+            admitted: admitted_order,
+            removed: teardown_order,
+            retry_clears,
+        })
+    }
+}
 
 /// Terminal truth for the latest authority-observed checkpoint attempt.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -71,19 +119,10 @@ struct CheckpointAttempt {
     trigger: CheckpointTrigger,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct DurableCheckpoint {
-    generation: LifecycleGeneration,
-    captured_at: PolicyTime,
-    completed_at: PolicyTime,
-    trigger: CheckpointTrigger,
-    strength: CheckpointPersistenceStrength,
-}
-
 #[derive(Debug, Clone, Default)]
 pub(in crate::network) struct CheckpointAuthorityState {
     maybe_in_flight: Option<CheckpointAttempt>,
-    maybe_last_durable: Option<DurableCheckpoint>,
+    maybe_last_durable_generation: Option<LifecycleGeneration>,
     maybe_captured_at: Option<PolicyTime>,
     maybe_completed_at: Option<PolicyTime>,
     maybe_failed_at: Option<PolicyTime>,
@@ -94,6 +133,31 @@ pub(in crate::network) struct CheckpointAuthorityState {
 }
 
 impl CheckpointAuthorityState {
+    pub(in crate::network) fn is_fresh_start(&self) -> bool {
+        self.maybe_in_flight.is_none()
+            && self.maybe_last_durable_generation.is_none()
+            && self.maybe_captured_at.is_none()
+            && self.maybe_completed_at.is_none()
+            && self.maybe_failed_at.is_none()
+            && self.maybe_trigger.is_none()
+            && self.maybe_strength.is_none()
+            && self.outcome == CheckpointOutcome::NeverAttempted
+            && self.maybe_failure.is_none()
+    }
+
+    pub(in crate::network) fn install_recovery(
+        &mut self,
+        generation: LifecycleGeneration,
+        maybe_captured_at: Option<PolicyTime>,
+    ) {
+        *self = Self {
+            maybe_last_durable_generation: Some(generation),
+            maybe_captured_at,
+            outcome: CheckpointOutcome::Succeeded,
+            ..Self::default()
+        };
+    }
+
     pub(in crate::network) fn note_prepared(
         &mut self,
         generation: LifecycleGeneration,
@@ -148,16 +212,10 @@ impl CheckpointAuthorityState {
             self.maybe_in_flight = None;
         }
         let advances_high_water = self
-            .maybe_last_durable
-            .is_none_or(|durable| generation >= durable.generation);
+            .maybe_last_durable_generation
+            .is_none_or(|durable| generation >= durable);
         if advances_high_water {
-            self.maybe_last_durable = Some(DurableCheckpoint {
-                generation,
-                captured_at: receipt.captured_at(),
-                completed_at,
-                trigger: receipt.checkpoint_trigger(),
-                strength,
-            });
+            self.maybe_last_durable_generation = Some(generation);
             self.maybe_captured_at = Some(receipt.captured_at());
             self.maybe_completed_at = Some(completed_at);
             self.maybe_trigger = Some(receipt.checkpoint_trigger());
@@ -179,15 +237,11 @@ impl CheckpointAuthorityState {
             return;
         }
         self.maybe_in_flight = None;
-        let Some(durable) = self.maybe_last_durable else {
+        if self.maybe_last_durable_generation.is_none() {
             *self = Self::default();
             return;
-        };
-        self.maybe_captured_at = Some(durable.captured_at);
-        self.maybe_completed_at = Some(durable.completed_at);
+        }
         self.maybe_failed_at = None;
-        self.maybe_trigger = Some(durable.trigger);
-        self.maybe_strength = Some(durable.strength);
         self.outcome = CheckpointOutcome::Succeeded;
         self.maybe_failure = None;
     }
@@ -206,8 +260,8 @@ impl CheckpointAuthorityState {
         });
         let overdue = checkpoint_age_seconds.is_some_and(|age| age > periodic_interval_seconds);
         let maybe_last_durable_generation = self
-            .maybe_last_durable
-            .map(|durable| durable.generation.raw());
+            .maybe_last_durable_generation
+            .map(LifecycleGeneration::raw);
         let maybe_generation_loss_range = match maybe_last_durable_generation {
             Some(last_durable) if last_durable >= current_generation.raw() => None,
             maybe_last_durable => Some(CheckpointGenerationLossRange {
@@ -215,7 +269,9 @@ impl CheckpointAuthorityState {
                 through_generation: current_generation.raw(),
             }),
         };
-        let maybe_loss_bound_seconds = (self.outcome == CheckpointOutcome::Succeeded && !overdue)
+        let maybe_loss_bound_seconds = (self.outcome == CheckpointOutcome::Succeeded
+            && self.maybe_strength == Some(CheckpointPersistenceStrength::Sync)
+            && !overdue)
             .then_some(periodic_interval_seconds);
 
         CheckpointEvidenceSnapshot {
@@ -384,6 +440,46 @@ pub(in crate::network) struct PreparedDependentLifecycleProjection {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    pub(in crate::network) fn install_prepared_recovery(
+        &mut self,
+        prepared: PreparedMempoolRecovery,
+    ) -> Result<ManagedMempoolRecoverySummary, LifecycleProjectionError> {
+        let prepared = PreparedRecoveryProjection::prepare(self, prepared)
+            .map_err(LifecycleProjectionError::RecoveryInstall)?;
+        let PreparedRecoveryProjection {
+            staged_mempool,
+            compact,
+            transactions_by_txid,
+            transactions_by_wtxid,
+            relay_serving,
+            relay_fanout,
+            peer,
+            unbroadcast_members,
+            generation,
+            maybe_captured_at,
+            lifecycle_evidence,
+            summary,
+        } = prepared;
+
+        *self.mempool.mempool_mut() = staged_mempool;
+        self.compact_extra_txn = compact;
+        self.transactions_by_txid = transactions_by_txid;
+        self.transactions_by_wtxid = transactions_by_wtxid;
+        self.relay_serving = relay_serving;
+        self.relay_fanout = relay_fanout;
+        self.peer_manager.apply_prepared_transaction_lifecycle(peer);
+        self.unbroadcast_members = unbroadcast_members;
+        self.lifecycle_generation = generation;
+        self.dirty_generation = None;
+        self.lifecycle_evidence = lifecycle_evidence;
+        self.snapshot_effect_ledger = Default::default();
+        self.checkpoint_evidence
+            .install_recovery(generation, maybe_captured_at);
+        self.latest_mempool_recovery = Some(summary.clone());
+        self.latest_mempool_recovery_storage_error = None;
+        Ok(summary)
+    }
+
     pub(in crate::network) fn validate_prepared_lifecycle(
         &self,
         plan: LifecycleProjectionPlan,

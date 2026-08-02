@@ -24,9 +24,11 @@ use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapsh
 
 use super::ManagedNetworkError;
 use super::topology::{RecoveryTopologyLimits, TopologyRecord, prepare_recovery_topology};
+use crate::network::lifecycle_projection::AuthorityEpoch;
 
 #[derive(Debug)]
-pub(crate) struct PreparedMempoolRecovery {
+pub struct PreparedMempoolRecovery {
+    pub(in crate::network) authority_epoch: AuthorityEpoch,
     pub(crate) staged_mempool: Mempool,
     pub(crate) recovery_records: Vec<MempoolRecoveryRecord>,
     pub(crate) unbroadcast_members: BTreeSet<MempoolMemberIdentity>,
@@ -75,6 +77,7 @@ pub(super) fn prepare_mempool_recovery(
     consensus_params: ConsensusParams,
     config: PolicyConfig,
     startup_at: PolicyTime,
+    authority_epoch: AuthorityEpoch,
 ) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
     let topology = prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
         .map_err(|_| {
@@ -199,6 +202,7 @@ pub(super) fn prepare_mempool_recovery(
     }
 
     Ok(PreparedMempoolRecovery {
+        authority_epoch,
         staged_mempool,
         recovery_records,
         unbroadcast_members: final_unbroadcast,

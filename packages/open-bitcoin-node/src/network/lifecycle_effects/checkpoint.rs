@@ -287,6 +287,10 @@ pub(in crate::network) struct SnapshotEffectLedger {
 }
 
 impl SnapshotEffectLedger {
+    pub(in crate::network) fn has_pending(&self) -> bool {
+        !self.pending.is_empty()
+    }
+
     pub(in crate::network) fn reserve_next(
         &mut self,
         authority_epoch: AuthorityEpoch,

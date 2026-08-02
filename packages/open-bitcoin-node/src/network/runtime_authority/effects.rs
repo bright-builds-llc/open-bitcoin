@@ -14,6 +14,7 @@ use crate::network::lifecycle_projection::{
     LifecycleCommand, LifecycleProjectionError, PeerRelayPreparationRequest,
     SnapshotPreparationRequest,
 };
+use crate::network::recovery::{ManagedMempoolRecoverySummary, PreparedMempoolRecovery};
 use crate::network::{
     CheckpointEvidenceSnapshot, PeerEmissionReceipt, PeerEmissionWriteCapability,
     lifecycle_effects::{
@@ -84,6 +85,20 @@ impl From<LifecycleProjectionError> for ManagedNetworkAuthorityError {
 }
 
 impl ManagedNetworkHandle {
+    /// Atomically consumes one authority-bound startup recovery candidate.
+    pub fn install_mempool_recovery(
+        &self,
+        prepared: PreparedMempoolRecovery,
+    ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkAuthorityError> {
+        match self
+            .apply_lifecycle_command(LifecycleCommand::InstallRecovery(prepared))
+            .map_err(ManagedNetworkAuthorityError::from)?
+        {
+            LifecycleCommandResult::RecoveryInstalled(summary) => Ok(summary),
+            _ => Err(unexpected_result("mempool recovery installation")),
+        }
+    }
+
     /// Reserves one peer-bound success capability through the lifecycle dispatcher.
     pub fn prepare_peer_relay_effect(
         &self,

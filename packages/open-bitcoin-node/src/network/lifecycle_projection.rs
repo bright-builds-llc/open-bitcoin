@@ -30,17 +30,24 @@ use super::lifecycle_effects::{
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
 use crate::ChainstateStore;
+use crate::network::recovery::PreparedMempoolRecovery;
 use crate::storage::mempool_snapshot::MempoolSnapshotError;
 
 mod authority;
 mod checkpoint;
 mod reconciliation;
+mod recovery;
 
-pub(in crate::network) use authority::{CheckpointAuthorityState, SealedLifecycleProjection};
+pub(in crate::network) use authority::{
+    CheckpointAuthorityState, ProjectionShape, SealedLifecycleProjection,
+};
 pub use authority::{CheckpointEvidenceSnapshot, CheckpointGenerationLossRange, CheckpointOutcome};
 pub(in crate::network) use checkpoint::SnapshotPreparationRequest;
 #[cfg(test)]
 pub(in crate::network) use reconciliation::LifecycleReconciliationReport;
+pub(super) use recovery::{PreparedRecoveryProjection, RecoveryInstallError};
+#[cfg(test)]
+pub(in crate::network) use recovery::{RecoveryInstallFailureGuard, RecoveryInstallFailurePoint};
 
 pub(super) const MAX_UNBROADCAST_MEMBERS: usize = 5_000;
 
@@ -74,6 +81,10 @@ impl LifecycleGeneration {
 
     pub(super) const fn raw(self) -> u64 {
         self.0
+    }
+
+    pub(super) const fn from_raw(value: u64) -> Self {
+        Self(value)
     }
 
     pub(super) fn checked_next(self) -> Result<Self, LifecyclePreparationError> {
@@ -249,6 +260,7 @@ pub(super) enum LifecycleProjectionError {
     InvalidEffectReceipt(&'static str),
     PeerEvidence(super::types::ManagedNetworkError),
     MempoolSnapshot(MempoolSnapshotError),
+    RecoveryInstall(RecoveryInstallError),
     Mempool(MempoolError),
 }
 
@@ -283,6 +295,7 @@ impl fmt::Display for LifecycleProjectionError {
             }
             Self::PeerEvidence(error) => error.fmt(formatter),
             Self::MempoolSnapshot(error) => error.fmt(formatter),
+            Self::RecoveryInstall(error) => error.fmt(formatter),
             Self::Mempool(error) => error.fmt(formatter),
         }
     }
@@ -293,6 +306,7 @@ impl std::error::Error for LifecycleProjectionError {
         match self {
             Self::Mempool(error) => Some(error),
             Self::MempoolSnapshot(error) => Some(error),
+            Self::RecoveryInstall(error) => Some(error),
             Self::PeerEvidence(error) => Some(error),
             Self::AuthorityUnavailable
             | Self::StaleAuthorityEpoch { .. }
@@ -305,51 +319,6 @@ impl std::error::Error for LifecycleProjectionError {
 impl From<EffectPreparationError> for LifecycleProjectionError {
     fn from(value: EffectPreparationError) -> Self {
         Self::EffectPreparation(value)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct ProjectionShape {
-    admitted: usize,
-    removed: usize,
-    retry_clears: usize,
-}
-
-impl ProjectionShape {
-    fn prepare(facts: &PreparedLifecycleFacts) -> Result<Self, LifecyclePreparationError> {
-        Self::checked_from_counts(
-            facts.final_present().len(),
-            facts.admitted_order().len(),
-            facts.removed().len(),
-            facts.teardown_order().len(),
-            facts.delta().retry_clears.len(),
-        )
-    }
-
-    fn checked_from_counts(
-        final_present: usize,
-        admitted_order: usize,
-        removed: usize,
-        teardown_order: usize,
-        retry_clears: usize,
-    ) -> Result<Self, LifecyclePreparationError> {
-        if final_present != admitted_order {
-            return Err(LifecyclePreparationError::FinalPresentOrderMismatch {
-                final_present,
-                admitted_order,
-            });
-        }
-        if removed != teardown_order {
-            return Err(LifecyclePreparationError::TeardownOrderMismatch {
-                removed,
-                teardown_order,
-            });
-        }
-        Ok(Self {
-            admitted: admitted_order,
-            removed: teardown_order,
-            retry_clears,
-        })
     }
 }
 
@@ -564,6 +533,7 @@ pub(super) enum LifecycleCommand {
     ConnectedBlock(LifecycleProjectionPlan),
     ReorgStep(LifecycleProjectionPlan),
     Maintenance(LifecycleProjectionPlan),
+    InstallRecovery(PreparedMempoolRecovery),
     PrepareSnapshot(SnapshotPreparationRequest),
     PrepareRelay(PeerRelayPreparationRequest),
     AbortPeerEffect(PeerEffectCapability),
@@ -585,6 +555,7 @@ enum LifecycleCommandKind {
     ConnectedBlock,
     ReorgStep,
     Maintenance,
+    InstallRecovery,
     PrepareSnapshot,
     PrepareRelay,
     AbortPeerEffect,
@@ -609,6 +580,7 @@ impl LifecycleCommand {
             Self::ConnectedBlock(_) => LifecycleCommandKind::ConnectedBlock,
             Self::ReorgStep(_) => LifecycleCommandKind::ReorgStep,
             Self::Maintenance(_) => LifecycleCommandKind::Maintenance,
+            Self::InstallRecovery(_) => LifecycleCommandKind::InstallRecovery,
             Self::PrepareSnapshot(_) => LifecycleCommandKind::PrepareSnapshot,
             Self::PrepareRelay(_) => LifecycleCommandKind::PrepareRelay,
             Self::AbortPeerEffect(_) => LifecycleCommandKind::AbortPeerEffect,

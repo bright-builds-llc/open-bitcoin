@@ -74,7 +74,7 @@ pub use lifecycle_effects::{
 pub use lifecycle_projection::{
     CheckpointEvidenceSnapshot, CheckpointGenerationLossRange, CheckpointOutcome,
 };
-pub use recovery::ManagedMempoolRecoverySummary;
+pub use recovery::{ManagedMempoolRecoverySummary, PreparedMempoolRecovery};
 pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
     RebroadcastEvidenceLabel,

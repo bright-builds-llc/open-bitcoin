@@ -13,10 +13,13 @@
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_core::{
+    chainstate::ChainstateSnapshot,
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::OutPoint,
 };
-use open_bitcoin_mempool::{AdmissionContext, MempoolEntryMetadata, MempoolOrigin, RelayIntent};
+use open_bitcoin_mempool::{
+    AdmissionContext, MempoolEntryMetadata, MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent,
+};
 use open_bitcoin_network::TxServingRecordStatus;
 
 use crate::ChainstateStore;
@@ -25,12 +28,33 @@ use crate::storage::mempool_snapshot::recovery_status_from_outcome;
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshot, StorageError};
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
+use crate::network::lifecycle_projection::AuthorityEpoch;
 use topology::{RecoveryTopologyLimits, prepare_recovery_topology};
 
 pub(crate) mod staging;
 pub(crate) mod topology;
 
-pub(crate) use staging::PreparedMempoolRecovery;
+pub use staging::PreparedMempoolRecovery;
+
+pub(in crate::network) fn prepare_mempool_recovery_from_inputs(
+    snapshot: &MempoolSnapshot,
+    chainstate: &ChainstateSnapshot,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+    config: PolicyConfig,
+    startup_at: PolicyTime,
+    authority_epoch: AuthorityEpoch,
+) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
+    staging::prepare_mempool_recovery(
+        snapshot,
+        chainstate,
+        verify_flags,
+        consensus_params,
+        config,
+        startup_at,
+        authority_epoch,
+    )
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ManagedMempoolRecoverySummary {
@@ -97,13 +121,14 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         consensus_params: ConsensusParams,
         startup_at: open_bitcoin_mempool::PolicyTime,
     ) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
-        staging::prepare_mempool_recovery(
+        prepare_mempool_recovery_from_inputs(
             snapshot,
             &self.chainstate.chainstate().snapshot(),
             verify_flags,
             consensus_params,
             self.mempool.mempool().config().clone(),
             startup_at,
+            self.authority_epoch(),
         )
     }
 

@@ -5,6 +5,231 @@
 // - packages/bitcoin-knots/test/functional/mempool_persist.py
 
 use super::*;
+use crate::network::ManagedNetworkHandle;
+use crate::network::lifecycle_projection::{
+    RecoveryInstallFailureGuard, RecoveryInstallFailurePoint,
+};
+
+fn current_snapshot(
+    transaction: Transaction,
+    generation: u64,
+    captured_at: PolicyTime,
+) -> MempoolSnapshot {
+    let member = MempoolMemberIdentity {
+        txid: txid(&transaction),
+        wtxid: wtxid(&transaction),
+    };
+    MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(generation),
+        captured_at,
+        vec![
+            MempoolSnapshotRecord::try_from_canonical(
+                transaction,
+                MempoolAcceptanceTime::Known(captured_at),
+            )
+            .expect("canonical recovery record"),
+        ],
+        BTreeSet::from([member]),
+    )
+    .expect("current recovery snapshot")
+}
+
+#[test]
+fn installed_recovery_is_clean_then_the_next_mutation_opens_one_loss_generation() {
+    // Arrange
+    let (network, coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_098, 3, PolicyConfig::default());
+    let recovered = spend_transaction(coinbase_txids[0], 499_999_000);
+    let recovered_txid = txid(&recovered);
+    let recovered_wtxid = wtxid(&recovered);
+    let next = spend_transaction(coinbase_txids[1], 499_998_000);
+    let captured_at = PolicyTime::from_unix_seconds(10_000);
+    let snapshot = current_snapshot(recovered, 42, captured_at);
+    let handle = ManagedNetworkHandle::from_network_fixture(network);
+    let prepared = handle
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(10_100),
+        )
+        .expect("prepare recovery outside authority");
+
+    // Act
+    let summary = handle
+        .install_mempool_recovery(prepared)
+        .expect("install recovery once");
+
+    // Assert
+    assert_eq!(summary.recovered_count, 1);
+    let installed = handle
+        .authority_snapshot_for_test()
+        .expect("installed authority snapshot");
+    assert!(
+        installed
+            .mempool()
+            .mempool()
+            .entry(&recovered_txid)
+            .is_some()
+    );
+    assert!(installed.transactions_by_txid.contains_key(&recovered_txid));
+    assert!(
+        installed
+            .transactions_by_wtxid
+            .contains_key(&recovered_wtxid)
+    );
+    assert_eq!(installed.relay_fanout_info().known_transactions, 1);
+    assert_eq!(installed.relay_fanout_info().queued_transactions, 0);
+    assert!(installed.relay_fanout_info().latest_actions.is_empty());
+    assert_eq!(installed.reconcile_lifecycle_projection().counts(), [0; 7]);
+    let clean_evidence = handle
+        .checkpoint_evidence(PolicyTime::from_unix_seconds(10_100), 300)
+        .expect("clean recovery evidence");
+    assert_eq!(clean_evidence.current_generation, 42);
+    assert_eq!(clean_evidence.maybe_last_durable_generation, Some(42));
+    assert_eq!(clean_evidence.maybe_dirty_generation, None);
+    assert_eq!(clean_evidence.maybe_in_flight_generation, None);
+    assert_eq!(clean_evidence.maybe_generation_loss_range, None);
+
+    // Act
+    handle
+        .submit_local_transaction_outcome_at(
+            next,
+            verify_flags(),
+            consensus_params(),
+            10_101,
+            RelayIntent::NotRequested,
+        )
+        .expect("first post-recovery mutation");
+
+    // Assert
+    let dirty_evidence = handle
+        .checkpoint_evidence(PolicyTime::from_unix_seconds(10_101), 300)
+        .expect("dirty recovery evidence");
+    assert_eq!(dirty_evidence.current_generation, 43);
+    assert_eq!(dirty_evidence.maybe_last_durable_generation, Some(42));
+    assert_eq!(dirty_evidence.maybe_dirty_generation, Some(43));
+    assert_eq!(
+        dirty_evidence
+            .maybe_generation_loss_range
+            .expect("post-recovery loss interval")
+            .maybe_after_generation,
+        Some(42)
+    );
+}
+
+#[test]
+fn stale_and_non_fresh_recovery_install_preserve_the_exact_authority_aggregate() {
+    // Arrange
+    let (first_network, coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_099, 3, PolicyConfig::default());
+    let snapshot = current_snapshot(
+        spend_transaction(coinbase_txids[0], 499_999_000),
+        9,
+        PolicyTime::from_unix_seconds(9_000),
+    );
+    let first = ManagedNetworkHandle::from_network_fixture(first_network);
+    let stale = first
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(9_100),
+        )
+        .expect("prepare stale recovery");
+    let (second_network, _coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_100, 3, PolicyConfig::default());
+    let second = ManagedNetworkHandle::from_network_fixture(second_network);
+    let stale_baseline = second
+        .authority_debug_snapshot_for_test()
+        .expect("stale baseline");
+
+    // Act
+    let stale_error = second.install_mempool_recovery(stale);
+
+    // Assert
+    assert!(stale_error.is_err());
+    assert_eq!(
+        second
+            .authority_debug_snapshot_for_test()
+            .expect("stale aggregate after failure"),
+        stale_baseline
+    );
+
+    // Arrange
+    let prepared = first
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(9_100),
+        )
+        .expect("prepare current recovery");
+    first
+        .submit_local_transaction_outcome_at(
+            spend_transaction(coinbase_txids[1], 499_998_000),
+            verify_flags(),
+            consensus_params(),
+            9_101,
+            RelayIntent::NotRequested,
+        )
+        .expect("make authority non-fresh");
+    let non_fresh_baseline = first
+        .authority_debug_snapshot_for_test()
+        .expect("non-fresh baseline");
+
+    // Act
+    let non_fresh_error = first.install_mempool_recovery(prepared);
+
+    // Assert
+    assert!(non_fresh_error.is_err());
+    assert_eq!(
+        first
+            .authority_debug_snapshot_for_test()
+            .expect("non-fresh aggregate after failure"),
+        non_fresh_baseline
+    );
+}
+
+#[test]
+fn every_injected_recovery_install_validation_failure_preserves_the_exact_aggregate() {
+    for point in RecoveryInstallFailurePoint::ALL {
+        // Arrange
+        let (network, coinbase_txids, _latest_block) =
+            relay_enabled_network_with_chain(1_101 + point as u64, 2, PolicyConfig::default());
+        let snapshot = current_snapshot(
+            spend_transaction(coinbase_txids[0], 499_999_000),
+            17,
+            PolicyTime::from_unix_seconds(17_000),
+        );
+        let handle = ManagedNetworkHandle::from_network_fixture(network);
+        let prepared = handle
+            .prepare_mempool_recovery_at(
+                &snapshot,
+                verify_flags(),
+                consensus_params(),
+                PolicyTime::from_unix_seconds(17_100),
+            )
+            .expect("prepare injected recovery");
+        let baseline = handle
+            .authority_debug_snapshot_for_test()
+            .expect("injected baseline");
+        let _guard = RecoveryInstallFailureGuard::inject(point);
+
+        // Act
+        let error = handle.install_mempool_recovery(prepared);
+
+        // Assert
+        assert!(error.is_err(), "{point:?}");
+        assert_eq!(
+            handle
+                .authority_debug_snapshot_for_test()
+                .expect("injected aggregate after failure"),
+            baseline,
+            "{point:?}"
+        );
+    }
+}
 
 #[test]
 fn staged_recovery_applies_exact_expiry_cutoff_and_preserves_restart_baseline() {

@@ -18,12 +18,14 @@ use crate::network::lifecycle_effects::{
     PeerEffectReceipt, PreparedSnapshotWrite, SnapshotWriteReceipt,
 };
 use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionError};
+use crate::network::recovery::ManagedMempoolRecoverySummary;
 use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{ChainstateStore, ManagedPeerNetwork};
 
 pub(in crate::network) enum LifecycleCommandResult {
     Lifecycle(MempoolLifecycleDelta),
+    RecoveryInstalled(ManagedMempoolRecoverySummary),
     SnapshotPrepared(PreparedSnapshotWrite),
     RelayPrepared(PeerEffectCapability),
     PeerEffectAborted(EffectAbort),
@@ -107,6 +109,9 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             let delta = network.commit_sealed_lifecycle(sealed)?;
             Ok(LifecycleCommandResult::Lifecycle(delta))
         }
+        LifecycleCommand::InstallRecovery(prepared) => network
+            .install_prepared_recovery(prepared)
+            .map(LifecycleCommandResult::RecoveryInstalled),
         LifecycleCommand::PrepareSnapshot(request) => {
             let records = network
                 .mempool()
