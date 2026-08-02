@@ -8,15 +8,27 @@
 
 use std::collections::{BTreeSet, VecDeque};
 
+use open_bitcoin_mempool::PolicyTime;
 use open_bitcoin_network::{PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId};
 
 use super::lifecycle_projection::{AuthorityEpoch, LifecycleGeneration};
 use crate::storage::MempoolSnapshot;
 
+mod checkpoint;
+
+pub(in crate::network) use checkpoint::SnapshotEffectLedger;
+
 pub const MAX_PENDING_PEER_EFFECTS: usize = PHASE94_MAX_PEER_QUEUED_MESSAGES;
 pub const MAX_COMPLETED_PEER_EFFECTS: usize = PHASE94_MAX_PEER_QUEUED_MESSAGES;
 pub const MAX_PENDING_SNAPSHOT_EFFECTS: usize = 1;
 pub const MAX_COMPLETED_SNAPSHOT_EFFECTS: usize = 2;
+
+/// The authority-owned reason one mempool checkpoint was captured.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CheckpointTrigger {
+    Periodic,
+    Shutdown,
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EffectCompletion {
     Applied,
@@ -249,6 +261,8 @@ impl PreparedSnapshotWrite {
     pub(in crate::network) const fn new(
         authority_epoch: AuthorityEpoch,
         persistence_generation: LifecycleGeneration,
+        captured_at: PolicyTime,
+        trigger: CheckpointTrigger,
         effect_id: SnapshotEffectId,
         snapshot_identity: SnapshotIdentity,
         snapshot: MempoolSnapshot,
@@ -258,6 +272,8 @@ impl PreparedSnapshotWrite {
             capability: SnapshotWriteCapability {
                 authority_epoch,
                 persistence_generation,
+                captured_at,
+                trigger,
                 effect_id,
                 snapshot_identity,
             },
@@ -271,6 +287,10 @@ impl PreparedSnapshotWrite {
     pub fn into_parts(self) -> (MempoolSnapshot, SnapshotWriteCapability) {
         (self.snapshot, self.capability)
     }
+
+    pub const fn checkpoint_trigger(&self) -> CheckpointTrigger {
+        self.capability.trigger
+    }
 }
 
 /// A consuming capability that can acknowledge one exact successful snapshot write.
@@ -278,6 +298,8 @@ impl PreparedSnapshotWrite {
 pub struct SnapshotWriteCapability {
     authority_epoch: AuthorityEpoch,
     persistence_generation: LifecycleGeneration,
+    captured_at: PolicyTime,
+    trigger: CheckpointTrigger,
     effect_id: SnapshotEffectId,
     snapshot_identity: SnapshotIdentity,
 }
@@ -287,6 +309,8 @@ impl SnapshotWriteCapability {
         SnapshotWriteReceipt {
             authority_epoch: self.authority_epoch,
             persistence_generation: self.persistence_generation,
+            captured_at: self.captured_at,
+            trigger: self.trigger,
             effect_id: self.effect_id,
             snapshot_identity: self.snapshot_identity,
         }
@@ -298,6 +322,8 @@ impl SnapshotWriteCapability {
 pub struct SnapshotWriteReceipt {
     authority_epoch: AuthorityEpoch,
     persistence_generation: LifecycleGeneration,
+    captured_at: PolicyTime,
+    trigger: CheckpointTrigger,
     effect_id: SnapshotEffectId,
     snapshot_identity: SnapshotIdentity,
 }
@@ -326,6 +352,8 @@ impl SnapshotWriteReceipt {
         Self {
             authority_epoch: self.authority_epoch,
             persistence_generation: self.persistence_generation,
+            captured_at: self.captured_at,
+            trigger: self.trigger,
             effect_id: self.effect_id,
             snapshot_identity: self.snapshot_identity,
         }
@@ -335,6 +363,8 @@ impl SnapshotWriteReceipt {
         SnapshotEffectKey {
             authority_incarnation: self.authority_epoch,
             reserved_generation: self.persistence_generation,
+            captured_at: self.captured_at,
+            trigger: self.trigger,
             reserved_effect: self.effect_id,
             reserved_snapshot: self.snapshot_identity,
         }
@@ -345,6 +375,8 @@ impl SnapshotWriteReceipt {
 pub(in crate::network) struct SnapshotEffectKey {
     authority_incarnation: AuthorityEpoch,
     reserved_generation: LifecycleGeneration,
+    captured_at: PolicyTime,
+    trigger: CheckpointTrigger,
     reserved_effect: SnapshotEffectId,
     reserved_snapshot: SnapshotIdentity,
 }
@@ -354,6 +386,8 @@ impl From<&SnapshotWriteCapability> for SnapshotEffectKey {
         Self {
             authority_incarnation: capability.authority_epoch,
             reserved_generation: capability.persistence_generation,
+            captured_at: capability.captured_at,
+            trigger: capability.trigger,
             reserved_effect: capability.effect_id,
             reserved_snapshot: capability.snapshot_identity,
         }
@@ -487,132 +521,6 @@ impl PeerEffectLedger {
     #[cfg(test)]
     pub(in crate::network) fn is_completed_exact(&self, receipt: &PeerEffectReceipt) -> bool {
         self.completed.contains(&PeerEffectKey::from(receipt))
-    }
-
-    #[cfg(test)]
-    pub(in crate::network) fn pending_len(&self) -> usize {
-        self.pending.len()
-    }
-
-    #[cfg(test)]
-    pub(in crate::network) fn completed_len(&self) -> usize {
-        self.completed.len()
-    }
-}
-
-#[derive(Debug, Clone, Default)]
-pub(in crate::network) struct SnapshotEffectLedger {
-    pending: BTreeSet<SnapshotEffectKey>,
-    completed_order: VecDeque<SnapshotEffectId>,
-    completed: BTreeSet<SnapshotEffectKey>,
-    next_id: u64,
-}
-
-impl SnapshotEffectLedger {
-    pub(in crate::network) fn reserve_next(
-        &mut self,
-        authority_epoch: AuthorityEpoch,
-        persistence_generation: LifecycleGeneration,
-        snapshot: MempoolSnapshot,
-    ) -> Result<PreparedSnapshotWrite, EffectPreparationError> {
-        let effect_id = SnapshotEffectId::new(self.next_id);
-        let next_id = self
-            .next_id
-            .checked_add(1)
-            .ok_or(EffectPreparationError::EffectIdentityExhausted)?;
-        let prepared = PreparedSnapshotWrite::new(
-            authority_epoch,
-            persistence_generation,
-            effect_id,
-            SnapshotIdentity::from_effect_id(effect_id),
-            snapshot,
-        );
-        self.try_reserve_key(SnapshotEffectKey::from(&prepared.capability))?;
-        self.next_id = next_id;
-        Ok(prepared)
-    }
-
-    fn try_reserve_key(&mut self, key: SnapshotEffectKey) -> Result<(), EffectPreparationError> {
-        if self.pending.len() >= MAX_PENDING_SNAPSHOT_EFFECTS {
-            return Err(EffectPreparationError::SnapshotEffectPending);
-        }
-        if self.pending.contains(&key) || self.completed.contains(&key) {
-            return Err(EffectPreparationError::EffectIdentityCollision);
-        }
-        self.pending.insert(key);
-        Ok(())
-    }
-
-    pub(in crate::network) fn complete_exact(
-        &mut self,
-        receipt: &SnapshotWriteReceipt,
-    ) -> ExactEffectLedgerCompletion {
-        let key = SnapshotEffectKey::from(receipt);
-        if self.completed.contains(&key) {
-            return ExactEffectLedgerCompletion::AlreadyRecorded;
-        }
-        if !self.pending.remove(&key) {
-            return ExactEffectLedgerCompletion::NotPending;
-        }
-        self.record_completed_key(key);
-        ExactEffectLedgerCompletion::Recorded
-    }
-
-    pub(in crate::network) fn abort_exact(
-        &mut self,
-        capability: &SnapshotWriteCapability,
-    ) -> EffectAbort {
-        let key = SnapshotEffectKey::from(capability);
-        if self.completed.contains(&key) {
-            return EffectAbort::AlreadyCompleted;
-        }
-        if self.pending.remove(&key) {
-            return EffectAbort::Aborted;
-        }
-        EffectAbort::NotPending
-    }
-
-    fn record_completed_key(&mut self, key: SnapshotEffectKey) {
-        if !self.completed.insert(key) {
-            return;
-        }
-        self.completed_order.push_back(key.reserved_effect);
-        if self.completed_order.len() <= MAX_COMPLETED_SNAPSHOT_EFFECTS {
-            return;
-        }
-        let Some(evicted) = self.completed_order.pop_front() else {
-            return;
-        };
-        let maybe_evicted_key = self
-            .completed
-            .iter()
-            .find(|key| key.reserved_effect == evicted)
-            .copied();
-        if let Some(evicted_key) = maybe_evicted_key {
-            self.completed.remove(&evicted_key);
-        }
-    }
-
-    pub(in crate::network) fn is_completed(&self, key: SnapshotEffectKey) -> bool {
-        self.completed.contains(&key)
-    }
-
-    #[cfg(test)]
-    pub(in crate::network) fn try_reserve_for_test(
-        &mut self,
-        prepared: PreparedSnapshotWrite,
-    ) -> Result<(), EffectPreparationError> {
-        self.try_reserve_key(SnapshotEffectKey::from(&prepared.capability))
-    }
-
-    #[cfg(test)]
-    pub(in crate::network) fn record_completed_for_test(&mut self, receipt: &SnapshotWriteReceipt) {
-        self.record_completed_key(SnapshotEffectKey::from(receipt));
-    }
-
-    #[cfg(test)]
-    pub(in crate::network) fn is_completed_exact(&self, receipt: &SnapshotWriteReceipt) -> bool {
-        self.completed.contains(&SnapshotEffectKey::from(receipt))
     }
 
     #[cfg(test)]

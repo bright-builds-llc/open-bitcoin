@@ -15,6 +15,8 @@ const FILES = {
   effectFacade:
     "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
   effects: "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+  snapshotEffects:
+    "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
   projection:
     "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
   apply:
@@ -224,7 +226,7 @@ export function checkPhase134AuthoritativeLifecycle(
     "LifecycleCommand::ConnectedBlock(plan)",
     "LifecycleCommand::ReorgStep(plan)",
     "LifecycleCommand::Maintenance(plan)",
-    "LifecycleCommand::PrepareSnapshot(_request)",
+    "LifecycleCommand::PrepareSnapshot(request)",
     "LifecycleCommand::PrepareRelay(request)",
     "LifecycleCommand::CompletePeerEffect(receipt)",
     "LifecycleCommand::CompletePeerEmission(receipt)",
@@ -318,7 +320,7 @@ export function checkPhase134AuthoritativeLifecycle(
     DIAGNOSTICS.assertion,
   );
 
-  const effects = get(FILES.effects);
+  const effects = [get(FILES.effects), get(FILES.snapshotEffects)].join("\n");
   const affineTypes = [
     "PeerEffectCapability",
     "PeerEffectReceipt",

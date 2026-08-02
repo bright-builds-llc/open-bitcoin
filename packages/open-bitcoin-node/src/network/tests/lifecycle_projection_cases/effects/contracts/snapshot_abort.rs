@@ -16,6 +16,8 @@ fn snapshot_capability(
     PreparedSnapshotWrite::new(
         authority_epoch,
         persistence_generation,
+        PolicyTime::new(200_000),
+        CheckpointTrigger::Periodic,
         effect_id,
         snapshot_identity,
         MempoolSnapshot::default(),
@@ -185,7 +187,10 @@ fn snapshot_abort_restores_the_single_pending_slot() {
     assert!(matches!(
         apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new(
+                PolicyTime::new(200_000),
+                CheckpointTrigger::Periodic,
+            )),
         ),
         Err(crate::network::lifecycle_projection::LifecycleProjectionError::EffectPreparation(_))
     ));
@@ -205,5 +210,16 @@ fn snapshot_abort_restores_the_single_pending_slot() {
             EffectAbort::Aborted
         )
     ));
-    assert_eq!(retry.snapshot(), &MempoolSnapshot::default());
+    assert!(retry.snapshot().records.is_empty());
+    assert_eq!(
+        retry.snapshot().captured_at(),
+        Some(PolicyTime::new(200_000))
+    );
+    assert_eq!(
+        retry
+            .snapshot()
+            .captured_generation()
+            .map(|generation| generation.raw()),
+        Some(0)
+    );
 }

@@ -9,6 +9,7 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
+use open_bitcoin_mempool::PolicyTime;
 use open_bitcoin_network::{
     BanReason, BanScope, InboundResourceEvent, MisbehaviorDecision, MisbehaviorKind,
     MisbehaviorResponse, PeerBanEntry, RelayActivationConfig,
@@ -20,7 +21,7 @@ use open_bitcoin_node::{
     core::wallet::AddressNetwork,
     logging::{INBOUND_PEER_POLICY_LOG_SOURCE, StructuredLogLevel, StructuredLogRecord},
     status::{FieldAvailability, InboundPeerPolicyEvent},
-    storage::MempoolSnapshot,
+    storage::{MempoolSnapshot, mempool_snapshot::CapturedMempoolGeneration},
 };
 use std::{
     fs,
@@ -132,8 +133,15 @@ fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
     // Arrange
     let data_dir = test_data_dir("mempool-recovery-load");
     let store = FjallNodeStore::open(&data_dir).expect("open store");
+    let snapshot = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(0),
+        PolicyTime::new(0),
+        Vec::new(),
+        Default::default(),
+    )
+    .expect("construct empty current mempool snapshot");
     store
-        .save_mempool_snapshot(&MempoolSnapshot::default(), PersistMode::Sync)
+        .save_mempool_snapshot(&snapshot, PersistMode::Sync)
         .expect("save empty mempool snapshot");
     let runtime = RuntimeConfig {
         chain: AddressNetwork::Regtest,

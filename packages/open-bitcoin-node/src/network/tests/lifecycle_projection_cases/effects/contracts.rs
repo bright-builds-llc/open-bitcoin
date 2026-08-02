@@ -10,6 +10,24 @@ mod peer_abort;
 mod peer_sessions;
 mod snapshot_abort;
 
+fn prepared_snapshot_write(
+    authority_epoch: AuthorityEpoch,
+    generation: LifecycleGeneration,
+    effect_id: SnapshotEffectId,
+    snapshot_identity: SnapshotIdentity,
+    snapshot: MempoolSnapshot,
+) -> PreparedSnapshotWrite {
+    PreparedSnapshotWrite::new(
+        authority_epoch,
+        generation,
+        PolicyTime::new(200_000),
+        CheckpointTrigger::Periodic,
+        effect_id,
+        snapshot_identity,
+        snapshot,
+    )
+}
+
 #[test]
 fn family_caps_match_the_resolved_peer_and_snapshot_bounds() {
     // Arrange
@@ -61,7 +79,7 @@ fn snapshot_capability_and_receipt_bind_every_snapshot_identity_dimension() {
     let generation = LifecycleGeneration::INITIAL;
     let effect_id = SnapshotEffectId::new(42);
     let snapshot_identity = SnapshotIdentity::new(9);
-    let prepared = PreparedSnapshotWrite::new(
+    let prepared = prepared_snapshot_write(
         authority_epoch,
         generation,
         effect_id,
@@ -97,13 +115,13 @@ fn independently_constructed_handles_use_distinct_non_initial_incarnations() {
         .expect("second peer effect should prepare")
         .acknowledge_write();
     let first_snapshot = first
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("first snapshot should prepare")
         .into_parts()
         .1
         .acknowledge_write();
     let second_snapshot = second
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("second snapshot should prepare")
         .into_parts()
         .1
@@ -139,13 +157,13 @@ fn independently_constructed_handles_reject_each_others_same_id_receipts() {
         .expect("second peer effect should prepare")
         .acknowledge_write();
     let foreign_snapshot = first
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("first snapshot should prepare")
         .into_parts()
         .1
         .acknowledge_write();
     let local_snapshot = second
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("second snapshot should prepare")
         .into_parts()
         .1
@@ -223,12 +241,14 @@ fn snapshot_ledger_consumes_only_the_complete_pending_binding() {
         .reserve_next(
             authority_epoch,
             LifecycleGeneration::INITIAL,
+            PolicyTime::new(200_000),
+            CheckpointTrigger::Periodic,
             MempoolSnapshot::default(),
         )
         .expect("snapshot binding should reserve");
     let exact = prepared.into_parts().1.acknowledge_write();
     let replay = exact.duplicate_for_test();
-    let mismatch = PreparedSnapshotWrite::new(
+    let mismatch = prepared_snapshot_write(
         authority_epoch,
         LifecycleGeneration::INITIAL,
         exact.effect_id(),
@@ -310,7 +330,7 @@ fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
         .expect("test authority epoch should advance");
     let generation = LifecycleGeneration::INITIAL;
     for raw_id in 0..MAX_COMPLETED_SNAPSHOT_EFFECTS {
-        let receipt = PreparedSnapshotWrite::new(
+        let receipt = prepared_snapshot_write(
             authority_epoch,
             generation,
             SnapshotEffectId::new(raw_id as u64),
@@ -322,7 +342,7 @@ fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
         .acknowledge_write();
         ledger.record_completed_for_test(&receipt);
     }
-    let oldest = PreparedSnapshotWrite::new(
+    let oldest = prepared_snapshot_write(
         authority_epoch,
         generation,
         SnapshotEffectId::new(0),
@@ -332,7 +352,7 @@ fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
     .into_parts()
     .1
     .acknowledge_write();
-    let newest = PreparedSnapshotWrite::new(
+    let newest = prepared_snapshot_write(
         authority_epoch,
         generation,
         SnapshotEffectId::new(MAX_COMPLETED_SNAPSHOT_EFFECTS as u64),
@@ -374,7 +394,7 @@ fn pending_ledgers_fail_closed_at_exact_family_caps() {
     }
     let mut snapshot_ledger = SnapshotEffectLedger::default();
     snapshot_ledger
-        .try_reserve_for_test(PreparedSnapshotWrite::new(
+        .try_reserve_for_test(prepared_snapshot_write(
             authority_epoch,
             LifecycleGeneration::INITIAL,
             SnapshotEffectId::new(0),
@@ -391,7 +411,7 @@ fn pending_ledgers_fail_closed_at_exact_family_caps() {
         MAX_PENDING_PEER_EFFECTS as PeerId,
         PeerSessionGeneration::new(1),
     ));
-    let snapshot_overflow = snapshot_ledger.try_reserve_for_test(PreparedSnapshotWrite::new(
+    let snapshot_overflow = snapshot_ledger.try_reserve_for_test(prepared_snapshot_write(
         authority_epoch,
         LifecycleGeneration::INITIAL,
         SnapshotEffectId::new(1),
@@ -517,7 +537,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
         .checked_next()
         .expect("test persistence generation should advance");
     let mismatches = [
-        PreparedSnapshotWrite::new(
+        prepared_snapshot_write(
             next_authority,
             exact.persistence_generation(),
             exact.effect_id(),
@@ -527,7 +547,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
         .into_parts()
         .1
         .acknowledge_write(),
-        PreparedSnapshotWrite::new(
+        prepared_snapshot_write(
             exact.authority_epoch(),
             next_persistence,
             exact.effect_id(),
@@ -537,7 +557,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
         .into_parts()
         .1
         .acknowledge_write(),
-        PreparedSnapshotWrite::new(
+        prepared_snapshot_write(
             exact.authority_epoch(),
             exact.persistence_generation(),
             SnapshotEffectId::new(134_144),
@@ -547,7 +567,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
         .into_parts()
         .1
         .acknowledge_write(),
-        PreparedSnapshotWrite::new(
+        prepared_snapshot_write(
             exact.authority_epoch(),
             exact.persistence_generation(),
             exact.effect_id(),

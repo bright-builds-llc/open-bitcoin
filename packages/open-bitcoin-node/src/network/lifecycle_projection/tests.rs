@@ -19,8 +19,9 @@ use super::{
     SnapshotPreparationRequest,
 };
 use crate::network::lifecycle_effects::{
-    PeerEffectCapability, PeerEffectId, PeerEffectReceipt, PeerSessionGeneration,
-    PreparedSnapshotWrite, SnapshotEffectId, SnapshotIdentity, SnapshotWriteReceipt,
+    CheckpointTrigger, PeerEffectCapability, PeerEffectId, PeerEffectReceipt,
+    PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId, SnapshotIdentity,
+    SnapshotWriteReceipt,
 };
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -76,6 +77,8 @@ fn command_family_names_every_lifecycle_and_effect_path() {
     let snapshot_receipt = PreparedSnapshotWrite::new(
         epoch,
         generation,
+        PolicyTime::new(135_040),
+        CheckpointTrigger::Periodic,
         SnapshotEffectId::new(0),
         SnapshotIdentity::new(0),
         crate::storage::MempoolSnapshot::default(),
@@ -109,7 +112,10 @@ fn command_family_names_every_lifecycle_and_effect_path() {
         LifecycleCommand::ConnectedBlock(projection_plan()),
         LifecycleCommand::ReorgStep(projection_plan()),
         LifecycleCommand::Maintenance(projection_plan()),
-        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new(
+            PolicyTime::new(135_040),
+            CheckpointTrigger::Periodic,
+        )),
         LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(134_080)),
         LifecycleCommand::AbortPeerEffect(peer_abort),
         LifecycleCommand::CompletePeerEffect(peer_receipt),

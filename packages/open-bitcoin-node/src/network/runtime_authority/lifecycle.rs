@@ -15,7 +15,8 @@ use crate::network::lifecycle_effects::{
     PeerEffectReceipt, PreparedSnapshotWrite,
 };
 use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionError};
-use crate::storage::MempoolSnapshot;
+use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
+use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{ChainstateStore, ManagedPeerNetwork};
 
 pub(in crate::network) enum LifecycleCommandResult {
@@ -58,12 +59,36 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             let delta = network.commit_sealed_lifecycle(sealed)?;
             Ok(LifecycleCommandResult::Lifecycle(delta))
         }
-        LifecycleCommand::PrepareSnapshot(_request) => {
-            let snapshot = MempoolSnapshot::from_mempool(network.mempool().mempool());
+        LifecycleCommand::PrepareSnapshot(request) => {
+            let mut records = network
+                .mempool()
+                .mempool()
+                .entries()
+                .values()
+                .map(|entry| MempoolSnapshotRecord {
+                    transaction: entry.transaction.clone(),
+                    acceptance_time: entry.metadata.accepted_at,
+                    txid: entry.txid,
+                    wtxid: entry.wtxid,
+                    fee_sats: entry.fee_sats(),
+                    virtual_size: entry.virtual_size.as_usize(),
+                    metadata: entry.metadata,
+                })
+                .collect::<Vec<_>>();
+            records.sort_by_key(|record| record.txid);
+            let snapshot = MempoolSnapshot::try_new_current(
+                CapturedMempoolGeneration::new(network.lifecycle_generation.raw()),
+                request.captured_at,
+                records,
+                network.unbroadcast_members().clone(),
+            )
+            .map_err(LifecycleProjectionError::MempoolSnapshot)?;
             Ok(LifecycleCommandResult::SnapshotPrepared(
                 network.snapshot_effect_ledger.reserve_next(
                     network.authority_epoch,
                     network.lifecycle_generation,
+                    request.captured_at,
+                    request.trigger,
                     snapshot,
                 )?,
             ))

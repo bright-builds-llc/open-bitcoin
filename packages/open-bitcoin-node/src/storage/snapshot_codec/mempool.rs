@@ -73,13 +73,13 @@ struct MempoolMemberIdentityDto {
     wtxid: [u8; 32],
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct MempoolSnapshotV1Dto {
     records: Vec<MempoolSnapshotV1RecordDto>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
 enum MempoolOriginV1Dto {
     Local,
@@ -88,7 +88,7 @@ enum MempoolOriginV1Dto {
     RecoveryUnknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct MempoolSnapshotV1RecordDto {
     txid: [u8; 32],
@@ -96,19 +96,11 @@ struct MempoolSnapshotV1RecordDto {
     transaction: Vec<u8>,
     fee_sats: i64,
     virtual_size: usize,
-    #[serde(
-        default,
-        rename = "accepted_at_unix_seconds",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "accepted_at_unix_seconds")]
     maybe_accepted_at_unix_seconds: Option<i64>,
-    #[serde(default, rename = "origin", skip_serializing_if = "Option::is_none")]
+    #[serde(default, rename = "origin")]
     maybe_origin: Option<MempoolOriginV1Dto>,
-    #[serde(
-        default,
-        rename = "relay_requested",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(default, rename = "relay_requested")]
     maybe_relay_requested: Option<bool>,
 }
 
@@ -120,18 +112,9 @@ enum MempoolSnapshotPayloadDto {
 }
 
 pub(crate) fn encode_mempool_snapshot(snapshot: &MempoolSnapshot) -> Result<Vec<u8>, StorageError> {
-    if snapshot.format_version().is_some() {
-        return encode_versioned(
-            StorageNamespace::Mempool,
-            &MempoolSnapshotV2Dto::try_from(snapshot)?,
-        );
-    }
-
-    // Temporary Wave 1 facade: the sole production capture cannot provide v2
-    // provenance until Plan 04. Keep this branch exact and remove it with that migration.
     encode_versioned(
         StorageNamespace::Mempool,
-        &MempoolSnapshotV1Dto::try_from(snapshot)?,
+        &MempoolSnapshotV2Dto::try_from(snapshot)?,
     )
 }
 
@@ -323,38 +306,6 @@ impl TryFrom<MempoolSnapshotV2Dto> for MempoolSnapshot {
     }
 }
 
-impl TryFrom<&MempoolSnapshot> for MempoolSnapshotV1Dto {
-    type Error = StorageError;
-
-    fn try_from(snapshot: &MempoolSnapshot) -> Result<Self, Self::Error> {
-        let records = snapshot
-            .records
-            .iter()
-            .map(MempoolSnapshotV1RecordDto::try_from)
-            .collect::<Result<Vec<_>, _>>()?;
-        Ok(Self { records })
-    }
-}
-
-impl TryFrom<&MempoolSnapshotRecord> for MempoolSnapshotV1RecordDto {
-    type Error = StorageError;
-
-    fn try_from(record: &MempoolSnapshotRecord) -> Result<Self, Self::Error> {
-        let (maybe_accepted_at_unix_seconds, maybe_origin, maybe_relay_requested) =
-            encode_v1_entry_metadata(record.metadata)?;
-        Ok(Self {
-            txid: record.txid.to_byte_array(),
-            wtxid: record.wtxid.to_byte_array(),
-            transaction: encode_canonical_transaction(&record.transaction)?,
-            fee_sats: record.fee_sats,
-            virtual_size: record.virtual_size,
-            maybe_accepted_at_unix_seconds,
-            maybe_origin,
-            maybe_relay_requested,
-        })
-    }
-}
-
 impl TryFrom<MempoolSnapshotV1Dto> for MempoolSnapshot {
     type Error = StorageError;
 
@@ -424,24 +375,6 @@ fn canonical_member_identity(
     Ok(MempoolMemberIdentity { txid, wtxid })
 }
 
-type EncodedV1Metadata = (Option<i64>, Option<MempoolOriginV1Dto>, Option<bool>);
-
-fn encode_v1_entry_metadata(
-    metadata: MempoolEntryMetadata,
-) -> Result<EncodedV1Metadata, StorageError> {
-    if metadata == MempoolEntryMetadata::legacy_unknown() {
-        return Ok((None, None, None));
-    }
-    let MempoolAcceptanceTime::Known(accepted_at) = metadata.accepted_at else {
-        return Err(snapshot_failure(MempoolSnapshotError::StructuralCorruption));
-    };
-    Ok((
-        Some(accepted_at.unix_seconds()),
-        Some(MempoolOriginV1Dto::from(metadata.origin)),
-        Some(matches!(metadata.relay_intent, RelayIntent::Requested)),
-    ))
-}
-
 fn decode_v1_acceptance_time(
     maybe_accepted_at_unix_seconds: Option<i64>,
     maybe_origin: Option<MempoolOriginV1Dto>,
@@ -486,17 +419,6 @@ impl From<MempoolMemberIdentityDto> for MempoolMemberIdentity {
         Self {
             txid: Txid::from_byte_array(dto.txid),
             wtxid: Wtxid::from_byte_array(dto.wtxid),
-        }
-    }
-}
-
-impl From<MempoolOrigin> for MempoolOriginV1Dto {
-    fn from(origin: MempoolOrigin) -> Self {
-        match origin {
-            MempoolOrigin::Local => Self::Local,
-            MempoolOrigin::Peer => Self::Peer,
-            MempoolOrigin::Reorg => Self::Reorg,
-            MempoolOrigin::RecoveryUnknown => Self::RecoveryUnknown,
         }
     }
 }

@@ -5,6 +5,28 @@
 
 use super::*;
 
+fn legacy_mempool_snapshot_value() -> serde_json::Value {
+    let snapshot = legacy_mempool_snapshot();
+    let record = &snapshot.records[0];
+    let transaction = open_bitcoin_core::codec::encode_transaction(
+        &record.transaction,
+        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+    )
+    .expect("encode legacy transaction");
+    serde_json::json!({
+        "schema_version": 1,
+        "payload": {
+            "records": [{
+                "txid": record.txid.to_byte_array(),
+                "wtxid": record.wtxid.to_byte_array(),
+                "transaction": transaction,
+                "fee_sats": record.fee_sats,
+                "virtual_size": record.virtual_size
+            }]
+        }
+    })
+}
+
 #[test]
 fn mempool_snapshot_codec_rejects_truncated_v2_json() {
     // Arrange
@@ -185,25 +207,21 @@ fn mempool_snapshot_codec_rejects_foreign_v2_unbroadcast_member() {
 }
 
 #[test]
-fn transitional_legacy_snapshot_encoder_preserves_exact_v1_shape() {
+fn legacy_snapshot_cannot_be_encoded_as_a_local_write() {
     // Arrange
     let snapshot = legacy_mempool_snapshot();
 
     // Act
-    let encoded = encode_mempool_snapshot(&snapshot).expect("encode legacy compatibility");
-    let value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+    let error = encode_mempool_snapshot(&snapshot).expect_err("legacy local write must fail");
 
     // Assert
-    assert!(value["payload"].get("format_version").is_none());
-    assert!(value["payload"]["records"][0].get("fee_sats").is_some());
-    assert!(value["payload"]["records"][0].get("virtual_size").is_some());
+    assert!(matches!(error, StorageError::Corruption { .. }));
 }
 
 #[test]
 fn legacy_mempool_snapshot_keeps_known_time_without_origin_or_relay_authority() {
     // Arrange
-    let encoded = encode_mempool_snapshot(&legacy_mempool_snapshot()).expect("encode legacy");
-    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+    let mut value = legacy_mempool_snapshot_value();
     value["payload"]["records"][0]["accepted_at_unix_seconds"] = serde_json::json!(90);
     value["payload"]["records"][0]["origin"] = serde_json::json!("local");
     value["payload"]["records"][0]["relay_requested"] = serde_json::json!(true);
@@ -231,8 +249,7 @@ fn legacy_mempool_snapshot_keeps_known_time_without_origin_or_relay_authority() 
 #[test]
 fn legacy_mempool_snapshot_rejects_identity_mismatch() {
     // Arrange
-    let encoded = encode_mempool_snapshot(&legacy_mempool_snapshot()).expect("encode legacy");
-    let original: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+    let original = legacy_mempool_snapshot_value();
 
     // Act / Assert
     for identity_field in ["txid", "wtxid"] {

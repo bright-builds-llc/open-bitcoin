@@ -127,11 +127,20 @@ test.each([
   ],
   [
     "legacy partial-metadata rejection",
-    "P130 legacy compatibility: partial mempool entry metadata must fail closed as corruption",
+    "P130 legacy compatibility: v1 must remain decode-only and partial metadata must fail closed as corruption",
     replace(
       "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
       "partial mempool entry metadata is corrupt",
       "partial mempool entry metadata is ignored",
+    ),
+  ],
+  [
+    "legacy write-side encoding route",
+    "P130 legacy compatibility: v1 must remain decode-only and partial metadata must fail closed as corruption",
+    replace(
+      "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
+      "&MempoolSnapshotV2Dto::try_from(snapshot)?",
+      "&MempoolSnapshotV1Dto::try_from(snapshot)?",
     ),
   ],
   [

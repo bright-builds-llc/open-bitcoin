@@ -15,10 +15,10 @@ use open_bitcoin_network::{LocalPeerConfig, PHASE94_MAX_PEER_QUEUED_MESSAGES, Pe
 
 use super::{apply_prepared, network_with_spendable_coinbase};
 use crate::network::lifecycle_effects::{
-    ExactEffectLedgerCompletion, MAX_COMPLETED_PEER_EFFECTS, MAX_COMPLETED_SNAPSHOT_EFFECTS,
-    MAX_PENDING_PEER_EFFECTS, MAX_PENDING_SNAPSHOT_EFFECTS, PeerEffectCapability, PeerEffectId,
-    PeerEffectLedger, PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId,
-    SnapshotEffectLedger, SnapshotIdentity,
+    CheckpointTrigger, ExactEffectLedgerCompletion, MAX_COMPLETED_PEER_EFFECTS,
+    MAX_COMPLETED_SNAPSHOT_EFFECTS, MAX_PENDING_PEER_EFFECTS, MAX_PENDING_SNAPSHOT_EFFECTS,
+    PeerEffectCapability, PeerEffectId, PeerEffectLedger, PeerSessionGeneration,
+    PreparedSnapshotWrite, SnapshotEffectId, SnapshotEffectLedger, SnapshotIdentity,
 };
 use crate::network::lifecycle_projection::{
     AuthorityEpoch, LifecycleCommand, LifecycleGeneration, PeerRelayPreparationRequest,
@@ -84,7 +84,10 @@ fn prepare_snapshot(
 ) -> PreparedSnapshotWrite {
     match apply_lifecycle_command(
         network,
-        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+        LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new(
+            PolicyTime::new(200_000),
+            CheckpointTrigger::Periodic,
+        )),
     )
     .expect("snapshot should prepare")
     {
@@ -95,6 +98,7 @@ fn prepare_snapshot(
     }
 }
 
+mod capture;
 mod contracts;
 
 mod completion {
@@ -125,34 +129,6 @@ mod completion {
                 EffectCompletion::Applied
             )
         ));
-    }
-
-    #[test]
-    fn public_facades_prepare_and_complete_both_families() {
-        // Arrange
-        let handle = ManagedNetworkHandle::from_network_fixture(network_fixture());
-
-        // Act
-        let peer_receipt = handle
-            .prepare_peer_relay_effect(134_082)
-            .expect("peer effect should prepare")
-            .acknowledge_write();
-        let snapshot_receipt = handle
-            .prepare_mempool_snapshot_write()
-            .expect("snapshot should prepare")
-            .into_parts()
-            .1
-            .acknowledge_write();
-        let peer_completion = handle
-            .complete_peer_effect(peer_receipt)
-            .expect("peer completion should dispatch");
-        let snapshot_completion = handle
-            .complete_snapshot_write(snapshot_receipt)
-            .expect("snapshot completion should dispatch");
-
-        // Assert
-        assert_eq!(peer_completion, EffectCompletion::Applied);
-        assert_eq!(snapshot_completion, EffectCompletion::Applied);
     }
 
     #[test]
@@ -409,7 +385,10 @@ mod completion {
         }
         apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new(
+                PolicyTime::new(200_000),
+                CheckpointTrigger::Periodic,
+            )),
         )
         .expect("one snapshot should prepare");
         let snapshot_state_before_overflow = format!("{:?}", network.snapshot_effect_ledger);
@@ -421,7 +400,10 @@ mod completion {
         );
         let snapshot_overflow = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new()),
+            LifecycleCommand::PrepareSnapshot(SnapshotPreparationRequest::new(
+                PolicyTime::new(200_000),
+                CheckpointTrigger::Periodic,
+            )),
         );
 
         // Assert
@@ -472,7 +454,7 @@ mod completion {
         let (network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
         let handle = ManagedNetworkHandle::from_network_fixture(network);
         let prepared_old = handle
-            .prepare_mempool_snapshot_write()
+            .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
             .expect("old snapshot should prepare");
         store
             .save_mempool_snapshot(prepared_old.snapshot(), PersistMode::Sync)
@@ -494,7 +476,7 @@ mod completion {
             .complete_snapshot_write(old_receipt)
             .expect("stale completion should dispatch");
         let prepared_current = handle
-            .prepare_mempool_snapshot_write()
+            .prepare_mempool_snapshot_write(PolicyTime::new(200_001), CheckpointTrigger::Periodic)
             .expect("current snapshot should prepare");
         let current_completion = store
             .execute_prepared_mempool_snapshot_write(&handle, prepared_current, PersistMode::Sync)
@@ -522,7 +504,12 @@ mod completion {
             1
         );
         assert!(
-            handle.prepare_mempool_snapshot_write().is_ok(),
+            handle
+                .prepare_mempool_snapshot_write(
+                    PolicyTime::new(200_002),
+                    CheckpointTrigger::Periodic,
+                )
+                .is_ok(),
             "successful current completion should release the pending slot"
         );
 
@@ -538,7 +525,7 @@ mod completion {
         let (network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
         let handle = ManagedNetworkHandle::from_network_fixture(network);
         let prepared = handle
-            .prepare_mempool_snapshot_write()
+            .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
             .expect("snapshot should prepare");
         let transaction = spend_transaction(coinbase_txid, 499_999_000);
         handle
@@ -577,7 +564,7 @@ mod completion {
             None
         );
         let retry = handle
-            .prepare_mempool_snapshot_write()
+            .prepare_mempool_snapshot_write(PolicyTime::new(200_001), CheckpointTrigger::Periodic)
             .expect("encoding failure abort should restore pending capacity");
         assert_eq!(
             retry.snapshot().records.len(),

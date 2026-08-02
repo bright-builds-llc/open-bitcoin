@@ -312,10 +312,15 @@ function checkLegacyPartialMetadata(repoRoot: string, failures: string[]): void 
   if (
     !codec.includes("partial mempool entry metadata is corrupt") ||
     !codec.includes("maybe_accepted_at_unix_seconds") ||
-    !codec.includes("MempoolEntryMetadata::legacy_unknown()")
+    !codec.includes("MempoolSnapshotPayloadDto::LegacyV1(dto) => dto.try_into()") ||
+    !codec.includes("impl TryFrom<MempoolSnapshotV1Dto> for MempoolSnapshot") ||
+    !codec.includes("Ok(Self::from_legacy_v1(records))") ||
+    !codec.includes("&MempoolSnapshotV2Dto::try_from(snapshot)?") ||
+    codec.includes("&MempoolSnapshotV1Dto::try_from(snapshot)?") ||
+    codec.includes("impl TryFrom<&MempoolSnapshot> for MempoolSnapshotV1Dto")
   ) {
     failures.push(
-      "P130 legacy compatibility: partial mempool entry metadata must fail closed as corruption",
+      "P130 legacy compatibility: v1 must remain decode-only and partial metadata must fail closed as corruption",
     );
   }
 }

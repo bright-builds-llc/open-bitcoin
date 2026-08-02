@@ -30,11 +30,14 @@ use super::lifecycle_effects::{
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
 use crate::ChainstateStore;
+use crate::storage::mempool_snapshot::MempoolSnapshotError;
 
 mod authority;
+mod checkpoint;
 mod reconciliation;
 
 pub(in crate::network) use authority::SealedLifecycleProjection;
+pub(in crate::network) use checkpoint::SnapshotPreparationRequest;
 #[cfg(test)]
 pub(in crate::network) use reconciliation::LifecycleReconciliationReport;
 
@@ -244,6 +247,7 @@ pub(super) enum LifecycleProjectionError {
     EffectPreparation(EffectPreparationError),
     InvalidEffectReceipt(&'static str),
     PeerEvidence(super::types::ManagedNetworkError),
+    MempoolSnapshot(MempoolSnapshotError),
     Mempool(MempoolError),
 }
 
@@ -277,6 +281,7 @@ impl fmt::Display for LifecycleProjectionError {
                 write!(formatter, "foreign or mismatched {family} effect receipt")
             }
             Self::PeerEvidence(error) => error.fmt(formatter),
+            Self::MempoolSnapshot(error) => error.fmt(formatter),
             Self::Mempool(error) => error.fmt(formatter),
         }
     }
@@ -286,6 +291,7 @@ impl std::error::Error for LifecycleProjectionError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Mempool(error) => Some(error),
+            Self::MempoolSnapshot(error) => Some(error),
             Self::PeerEvidence(error) => Some(error),
             Self::AuthorityUnavailable
             | Self::StaleAuthorityEpoch { .. }
@@ -536,14 +542,6 @@ const fn peer_identity(
     member: open_bitcoin_mempool::MempoolMemberIdentity,
 ) -> PeerTransactionIdentity {
     PeerTransactionIdentity::new(member.txid, member.wtxid)
-}
-
-pub(in crate::network) struct SnapshotPreparationRequest;
-
-impl SnapshotPreparationRequest {
-    pub(in crate::network) const fn new() -> Self {
-        Self
-    }
 }
 
 pub(in crate::network) struct PeerRelayPreparationRequest {

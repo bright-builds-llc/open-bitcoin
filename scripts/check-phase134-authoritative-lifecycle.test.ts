@@ -382,7 +382,7 @@ function effectMutations(): MutationCase[] {
       "unbounded snapshot ledger",
       DIAGNOSTICS.bounds,
       replace(
-        "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+        "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
         "if self.pending.len() >= MAX_PENDING_SNAPSHOT_EFFECTS {",
         "if false {",
       ),

@@ -6,6 +6,7 @@
 
 //! Thin authority facades for outside-lock lifecycle effects.
 
+use open_bitcoin_mempool::PolicyTime;
 use open_bitcoin_network::PeerId;
 
 use super::{LifecycleCommandResult, ManagedNetworkAuthorityError, ManagedNetworkHandle};
@@ -16,7 +17,7 @@ use crate::network::lifecycle_projection::{
 use crate::network::{
     PeerEmissionReceipt, PeerEmissionWriteCapability,
     lifecycle_effects::{
-        EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
+        CheckpointTrigger, EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
         PreparedSnapshotWrite, SnapshotWriteCapability, SnapshotWriteReceipt,
     },
 };
@@ -50,10 +51,12 @@ impl ManagedNetworkHandle {
     /// Captures one owned current-schema snapshot through the lifecycle dispatcher.
     pub fn prepare_mempool_snapshot_write(
         &self,
+        captured_at: PolicyTime,
+        trigger: CheckpointTrigger,
     ) -> Result<PreparedSnapshotWrite, ManagedNetworkAuthorityError> {
         match self
             .apply_lifecycle_command(LifecycleCommand::PrepareSnapshot(
-                SnapshotPreparationRequest::new(),
+                SnapshotPreparationRequest::new(captured_at, trigger),
             ))
             .map_err(ManagedNetworkAuthorityError::from)?
         {

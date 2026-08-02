@@ -2,12 +2,15 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::*;
-use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
 use open_bitcoin_network::LocalPeerConfig;
 
 use crate::MemoryChainstateStore;
-use crate::network::{EffectCompletion, ManagedNetworkHandle, ManagedPeerNetwork};
+use crate::network::{
+    CheckpointTrigger, EffectCompletion, ManagedNetworkHandle, ManagedPeerNetwork,
+};
 use crate::storage::fjall_store::SnapshotWriteExecutionError;
+use crate::storage::mempool_snapshot::{CapturedMempoolGeneration, MempoolSnapshotFormatVersion};
 
 fn empty_network_handle() -> ManagedNetworkHandle {
     ManagedNetworkHandle::from_network_fixture(ManagedPeerNetwork::new(
@@ -209,7 +212,7 @@ fn prepared_mempool_snapshot_executor_persists_and_completes_exactly_once() {
     let store = FjallNodeStore::open(&path).expect("open store");
     let handle = empty_network_handle();
     let prepared = handle
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(135_040), CheckpointTrigger::Periodic)
         .expect("snapshot should prepare");
 
     // Act
@@ -219,14 +222,23 @@ fn prepared_mempool_snapshot_executor_persists_and_completes_exactly_once() {
 
     // Assert
     assert_eq!(completion, EffectCompletion::Applied);
+    let persisted = store
+        .load_mempool_snapshot()
+        .expect("load persisted snapshot")
+        .expect("prepared snapshot should persist");
     assert_eq!(
-        store
-            .load_mempool_snapshot()
-            .expect("load persisted snapshot"),
-        Some(MempoolSnapshot::default())
+        persisted.format_version(),
+        Some(MempoolSnapshotFormatVersion::CURRENT)
     );
+    assert_eq!(
+        persisted.captured_generation(),
+        Some(CapturedMempoolGeneration::new(0))
+    );
+    assert_eq!(persisted.captured_at(), Some(PolicyTime::new(135_040)));
     assert!(
-        handle.prepare_mempool_snapshot_write().is_ok(),
+        handle
+            .prepare_mempool_snapshot_write(PolicyTime::new(135_041), CheckpointTrigger::Periodic,)
+            .is_ok(),
         "successful completion should release the pending slot"
     );
 
@@ -245,7 +257,7 @@ fn prepared_mempool_snapshot_executor_aborts_save_failure_and_allows_retry() {
         .expect("save pre-existing mempool snapshot");
     let handle = empty_network_handle();
     let prepared = handle
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(135_040), CheckpointTrigger::Periodic)
         .expect("snapshot should prepare");
     let expected = StorageError::BackendFailure {
         namespace: StorageNamespace::Mempool,
@@ -274,18 +286,25 @@ fn prepared_mempool_snapshot_executor_aborts_save_failure_and_allows_retry() {
         Some(persisted_before_failure)
     );
     let retry = handle
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(135_041), CheckpointTrigger::Periodic)
         .expect("save failure abort should restore pending capacity");
     let retry_completion = store
         .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
         .expect("retry should persist and complete");
     assert_eq!(retry_completion, EffectCompletion::Applied);
+    let persisted = store
+        .load_mempool_snapshot()
+        .expect("load after successful retry")
+        .expect("retry snapshot should persist");
     assert_eq!(
-        store
-            .load_mempool_snapshot()
-            .expect("load after successful retry"),
-        Some(MempoolSnapshot::default())
+        persisted.format_version(),
+        Some(MempoolSnapshotFormatVersion::CURRENT)
     );
+    assert_eq!(
+        persisted.captured_generation(),
+        Some(CapturedMempoolGeneration::new(0))
+    );
+    assert_eq!(persisted.captured_at(), Some(PolicyTime::new(135_041)));
 
     remove_dir_if_exists(&path);
 }
@@ -302,7 +321,7 @@ fn prepared_mempool_snapshot_executor_aborts_encode_failure_and_allows_retry() {
         .expect("save pre-existing mempool snapshot");
     let handle = empty_network_handle();
     let prepared = handle
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(135_040), CheckpointTrigger::Periodic)
         .expect("snapshot should prepare");
     let expected = StorageError::Corruption {
         namespace: StorageNamespace::Mempool,
@@ -331,18 +350,25 @@ fn prepared_mempool_snapshot_executor_aborts_encode_failure_and_allows_retry() {
         Some(persisted_before_failure)
     );
     let retry = handle
-        .prepare_mempool_snapshot_write()
+        .prepare_mempool_snapshot_write(PolicyTime::new(135_041), CheckpointTrigger::Periodic)
         .expect("encoding failure abort should restore pending capacity");
     let retry_completion = store
         .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
         .expect("retry should persist and complete");
     assert_eq!(retry_completion, EffectCompletion::Applied);
+    let persisted = store
+        .load_mempool_snapshot()
+        .expect("load after successful retry")
+        .expect("retry snapshot should persist");
     assert_eq!(
-        store
-            .load_mempool_snapshot()
-            .expect("load after successful retry"),
-        Some(MempoolSnapshot::default())
+        persisted.format_version(),
+        Some(MempoolSnapshotFormatVersion::CURRENT)
     );
+    assert_eq!(
+        persisted.captured_generation(),
+        Some(CapturedMempoolGeneration::new(0))
+    );
+    assert_eq!(persisted.captured_at(), Some(PolicyTime::new(135_041)));
 
     remove_dir_if_exists(&path);
 }
