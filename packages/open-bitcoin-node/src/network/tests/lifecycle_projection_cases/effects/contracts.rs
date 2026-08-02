@@ -28,6 +28,15 @@ fn prepared_snapshot_write(
     )
 }
 
+fn acknowledge_snapshot(
+    capability: crate::network::SnapshotWriteCapability,
+) -> SnapshotWriteReceipt {
+    capability.acknowledge_checkpoint_write(
+        PolicyTime::new(200_001),
+        CheckpointPersistenceStrength::Sync,
+    )
+}
+
 #[test]
 fn family_caps_match_the_resolved_peer_and_snapshot_bounds() {
     // Arrange
@@ -89,7 +98,7 @@ fn snapshot_capability_and_receipt_bind_every_snapshot_identity_dimension() {
 
     // Act
     let (snapshot, capability) = prepared.into_parts();
-    let receipt = capability.acknowledge_write();
+    let receipt = acknowledge_snapshot(capability);
 
     // Assert
     assert!(snapshot.records.is_empty());
@@ -118,14 +127,14 @@ fn independently_constructed_handles_use_distinct_non_initial_incarnations() {
         .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("first snapshot should prepare")
         .into_parts()
-        .1
-        .acknowledge_write();
+        .1;
+    let first_snapshot = acknowledge_snapshot(first_snapshot);
     let second_snapshot = second
         .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("second snapshot should prepare")
         .into_parts()
-        .1
-        .acknowledge_write();
+        .1;
+    let second_snapshot = acknowledge_snapshot(second_snapshot);
 
     // Assert
     assert_eq!(first_peer.effect_id(), second_peer.effect_id());
@@ -160,20 +169,20 @@ fn independently_constructed_handles_reject_each_others_same_id_receipts() {
         .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("first snapshot should prepare")
         .into_parts()
-        .1
-        .acknowledge_write();
+        .1;
+    let foreign_snapshot = acknowledge_snapshot(foreign_snapshot);
     let local_snapshot = second
         .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
         .expect("second snapshot should prepare")
         .into_parts()
-        .1
-        .acknowledge_write();
+        .1;
+    let local_snapshot = acknowledge_snapshot(local_snapshot);
 
     // Act
     let foreign_peer_result = second.complete_peer_effect(foreign_peer);
-    let foreign_snapshot_result = second.complete_snapshot_write(foreign_snapshot);
+    let foreign_snapshot_result = second.complete_checkpoint_snapshot_write(foreign_snapshot);
     let local_peer_result = second.complete_peer_effect(local_peer);
-    let local_snapshot_result = second.complete_snapshot_write(local_snapshot);
+    let local_snapshot_result = second.complete_checkpoint_snapshot_write(local_snapshot);
 
     // Assert
     assert!(foreign_peer_result.is_err());
@@ -246,7 +255,7 @@ fn snapshot_ledger_consumes_only_the_complete_pending_binding() {
             MempoolSnapshot::default(),
         )
         .expect("snapshot binding should reserve");
-    let exact = prepared.into_parts().1.acknowledge_write();
+    let exact = acknowledge_snapshot(prepared.into_parts().1);
     let replay = exact.duplicate_for_test();
     let mismatch = prepared_snapshot_write(
         authority_epoch,
@@ -256,8 +265,8 @@ fn snapshot_ledger_consumes_only_the_complete_pending_binding() {
         MempoolSnapshot::default(),
     )
     .into_parts()
-    .1
-    .acknowledge_write();
+    .1;
+    let mismatch = acknowledge_snapshot(mismatch);
 
     // Act
     let mismatch_completion = ledger.complete_exact(&mismatch);
@@ -338,8 +347,8 @@ fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
             MempoolSnapshot::default(),
         )
         .into_parts()
-        .1
-        .acknowledge_write();
+        .1;
+        let receipt = acknowledge_snapshot(receipt);
         ledger.record_completed_for_test(&receipt);
     }
     let oldest = prepared_snapshot_write(
@@ -350,8 +359,8 @@ fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
         MempoolSnapshot::default(),
     )
     .into_parts()
-    .1
-    .acknowledge_write();
+    .1;
+    let oldest = acknowledge_snapshot(oldest);
     let newest = prepared_snapshot_write(
         authority_epoch,
         generation,
@@ -360,8 +369,8 @@ fn snapshot_completed_ledger_evicts_the_oldest_exact_binding_at_cap_plus_one() {
         MempoolSnapshot::default(),
     )
     .into_parts()
-    .1
-    .acknowledge_write();
+    .1;
+    let newest = acknowledge_snapshot(newest);
 
     // Act
     ledger.record_completed_for_test(&newest);
@@ -526,7 +535,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
     // Arrange
     let mut network = network_fixture();
     let prepared = prepare_snapshot(&mut network);
-    let exact = prepared.into_parts().1.acknowledge_write();
+    let exact = acknowledge_snapshot(prepared.into_parts().1);
     let exact_completion = exact.duplicate_for_test();
     let next_authority = exact
         .authority_epoch()
@@ -545,8 +554,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
             MempoolSnapshot::default(),
         )
         .into_parts()
-        .1
-        .acknowledge_write(),
+        .1,
         prepared_snapshot_write(
             exact.authority_epoch(),
             next_persistence,
@@ -555,8 +563,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
             MempoolSnapshot::default(),
         )
         .into_parts()
-        .1
-        .acknowledge_write(),
+        .1,
         prepared_snapshot_write(
             exact.authority_epoch(),
             exact.persistence_generation(),
@@ -565,8 +572,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
             MempoolSnapshot::default(),
         )
         .into_parts()
-        .1
-        .acknowledge_write(),
+        .1,
         prepared_snapshot_write(
             exact.authority_epoch(),
             exact.persistence_generation(),
@@ -575,16 +581,16 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
             MempoolSnapshot::default(),
         )
         .into_parts()
-        .1
-        .acknowledge_write(),
+        .1,
     ];
+    let mismatches = mismatches.map(acknowledge_snapshot);
     let state_before = format!("{network:?}");
 
     // Act
     for mismatch in mismatches {
         let result = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteSnapshotEffect(mismatch),
+            LifecycleCommand::CompleteCheckpointSnapshotEffect(mismatch),
         );
 
         // Assert
@@ -593,7 +599,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
     }
     let completion = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::CompleteSnapshotEffect(exact_completion),
+        LifecycleCommand::CompleteCheckpointSnapshotEffect(exact_completion),
     )
     .expect("the exact pending snapshot receipt should remain valid");
     assert!(matches!(

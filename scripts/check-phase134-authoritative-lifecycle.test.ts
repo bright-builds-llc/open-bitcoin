@@ -330,13 +330,13 @@ function targetMutations(): MutationCase[] {
 
 function effectMutations(): MutationCase[] {
   const identityFields = [
-    ["peer epoch", "    authority_epoch: AuthorityEpoch,", 1],
-    ["peer generation", "    lifecycle_generation: LifecycleGeneration,", 1],
-    ["peer effect", "    effect_id: PeerEffectId,", 1],
-    ["peer session", "    peer_session_generation: PeerSessionGeneration,", 1],
-    ["snapshot generation", "    persistence_generation: LifecycleGeneration,", 2],
-    ["snapshot effect", "    effect_id: SnapshotEffectId,", 2],
-    ["snapshot identity", "    snapshot_identity: SnapshotIdentity,", 2],
+    ["peer epoch", "packages/open-bitcoin-node/src/network/lifecycle_effects.rs", "    authority_epoch: AuthorityEpoch,", 1],
+    ["peer generation", "packages/open-bitcoin-node/src/network/lifecycle_effects.rs", "    lifecycle_generation: LifecycleGeneration,", 1],
+    ["peer effect", "packages/open-bitcoin-node/src/network/lifecycle_effects.rs", "    effect_id: PeerEffectId,", 1],
+    ["peer session", "packages/open-bitcoin-node/src/network/lifecycle_effects.rs", "    peer_session_generation: PeerSessionGeneration,", 1],
+    ["snapshot generation", "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs", "    persistence_generation: LifecycleGeneration,", 2],
+    ["snapshot effect", "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs", "    effect_id: SnapshotEffectId,", 2],
+    ["snapshot identity", "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs", "    snapshot_identity: SnapshotIdentity,", 2],
   ] as const;
   return [
     [
@@ -352,17 +352,17 @@ function effectMutations(): MutationCase[] {
       "Clone snapshot receipt",
       DIAGNOSTICS.receipt,
       replace(
-        "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+        "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
         "#[derive(Debug, PartialEq, Eq)]\npub struct SnapshotWriteReceipt",
         "#[derive(Debug, Clone, PartialEq, Eq)]\npub struct SnapshotWriteReceipt",
       ),
     ],
     ...identityFields.map(
-      ([name, field, occurrence]): MutationCase => [
+      ([name, relativePath, field, occurrence]): MutationCase => [
         `missing ${name}`,
         DIAGNOSTICS.identity,
         replaceNth(
-          "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+          relativePath,
           field,
           `    // removed ${name}`,
           occurrence,

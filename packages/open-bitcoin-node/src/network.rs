@@ -66,15 +66,23 @@ pub use inbound::{
     ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
 };
 pub use lifecycle_effects::{
-    CheckpointTrigger, EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
-    PeerSessionGeneration, PreparedSnapshotWrite, SnapshotWriteCapability, SnapshotWriteReceipt,
+    CheckpointPersistenceStrength, CheckpointTrigger, EffectAbort, EffectCompletion,
+    PeerEffectCapability, PeerEffectReceipt, PeerSessionGeneration, PreparedSnapshotWrite,
+    SnapshotWriteAbort, SnapshotWriteAbortError, SnapshotWriteCapability, SnapshotWriteFailure,
+    SnapshotWriteReceipt,
+};
+pub use lifecycle_projection::{
+    CheckpointEvidenceSnapshot, CheckpointGenerationLossRange, CheckpointOutcome,
 };
 pub use recovery::ManagedMempoolRecoverySummary;
 pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
     RebroadcastEvidenceLabel,
 };
-pub use runtime_authority::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
+pub use runtime_authority::{
+    CheckpointAbortDispatchError, CheckpointCompletionDispatchError, ManagedNetworkAuthorityError,
+    ManagedNetworkHandle,
+};
 pub use types::{
     BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,
     ManagedInboundResponsePlanItem, ManagedMempoolInfo, ManagedNetworkError, ManagedNetworkInfo,
@@ -118,6 +126,7 @@ pub struct ManagedPeerNetwork<S> {
     dirty_generation: Option<lifecycle_projection::LifecycleGeneration>,
     unbroadcast_members: BTreeSet<open_bitcoin_mempool::MempoolMemberIdentity>,
     lifecycle_evidence: lifecycle_projection::LifecycleEvidenceSnapshot,
+    checkpoint_evidence: lifecycle_projection::CheckpointAuthorityState,
     peer_session_generations: BTreeMap<PeerId, lifecycle_effects::PeerSessionGeneration>,
     peer_effect_ledger: lifecycle_effects::PeerEffectLedger,
     snapshot_effect_ledger: lifecycle_effects::SnapshotEffectLedger,

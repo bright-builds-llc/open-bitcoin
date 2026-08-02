@@ -10,8 +10,8 @@ use std::collections::BTreeSet;
 
 use open_bitcoin_core::{chainstate::ChainPosition, primitives::Block};
 use open_bitcoin_mempool::{
-    MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PreparedLifecycleFacts,
-    PreparedMempoolTransition,
+    MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PolicyTime,
+    PreparedLifecycleFacts, PreparedMempoolTransition,
 };
 
 use super::{
@@ -22,7 +22,223 @@ use super::{
     PreparedUnbroadcastProjection,
 };
 use crate::chainstate::PreparedChainstateConnect;
+use crate::network::lifecycle_effects::{
+    CheckpointPersistenceStrength, CheckpointTrigger, SnapshotWriteFailure, SnapshotWriteReceipt,
+};
 use crate::{ChainstateStore, ManagedPeerNetwork};
+
+/// Terminal truth for the latest authority-observed checkpoint attempt.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum CheckpointOutcome {
+    #[default]
+    NeverAttempted,
+    Pending,
+    Succeeded,
+    Failed,
+}
+
+/// Exact generations that may be absent from the last durable checkpoint.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CheckpointGenerationLossRange {
+    pub maybe_after_generation: Option<u64>,
+    pub through_generation: u64,
+}
+
+/// Bounded, identifier-free checkpoint evidence owned by the lifecycle authority.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CheckpointEvidenceSnapshot {
+    pub current_generation: u64,
+    pub maybe_dirty_generation: Option<u64>,
+    pub maybe_in_flight_generation: Option<u64>,
+    pub maybe_last_durable_generation: Option<u64>,
+    pub maybe_captured_at: Option<PolicyTime>,
+    pub maybe_completed_at: Option<PolicyTime>,
+    pub maybe_failed_at: Option<PolicyTime>,
+    pub maybe_trigger: Option<CheckpointTrigger>,
+    pub maybe_persistence_strength: Option<CheckpointPersistenceStrength>,
+    pub outcome: CheckpointOutcome,
+    pub maybe_failure: Option<SnapshotWriteFailure>,
+    pub overdue: bool,
+    pub checkpoint_age_seconds: Option<u64>,
+    pub maybe_loss_bound_seconds: Option<u64>,
+    pub maybe_generation_loss_range: Option<CheckpointGenerationLossRange>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct CheckpointAttempt {
+    generation: LifecycleGeneration,
+    captured_at: PolicyTime,
+    trigger: CheckpointTrigger,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DurableCheckpoint {
+    generation: LifecycleGeneration,
+    captured_at: PolicyTime,
+    completed_at: PolicyTime,
+    trigger: CheckpointTrigger,
+    strength: CheckpointPersistenceStrength,
+}
+
+#[derive(Debug, Clone, Default)]
+pub(in crate::network) struct CheckpointAuthorityState {
+    maybe_in_flight: Option<CheckpointAttempt>,
+    maybe_last_durable: Option<DurableCheckpoint>,
+    maybe_captured_at: Option<PolicyTime>,
+    maybe_completed_at: Option<PolicyTime>,
+    maybe_failed_at: Option<PolicyTime>,
+    maybe_trigger: Option<CheckpointTrigger>,
+    maybe_strength: Option<CheckpointPersistenceStrength>,
+    outcome: CheckpointOutcome,
+    maybe_failure: Option<SnapshotWriteFailure>,
+}
+
+impl CheckpointAuthorityState {
+    pub(in crate::network) fn note_prepared(
+        &mut self,
+        generation: LifecycleGeneration,
+        captured_at: PolicyTime,
+        trigger: CheckpointTrigger,
+    ) {
+        self.maybe_in_flight = Some(CheckpointAttempt {
+            generation,
+            captured_at,
+            trigger,
+        });
+        self.maybe_captured_at = Some(captured_at);
+        self.maybe_completed_at = None;
+        self.maybe_failed_at = None;
+        self.maybe_trigger = Some(trigger);
+        self.maybe_strength = None;
+        self.outcome = CheckpointOutcome::Pending;
+        self.maybe_failure = None;
+    }
+
+    pub(in crate::network) fn note_aborted(
+        &mut self,
+        generation: LifecycleGeneration,
+        failed_at: PolicyTime,
+        failure: SnapshotWriteFailure,
+    ) {
+        if self
+            .maybe_in_flight
+            .is_some_and(|attempt| attempt.generation == generation)
+        {
+            self.maybe_in_flight = None;
+        }
+        self.maybe_completed_at = None;
+        self.maybe_failed_at = Some(failed_at);
+        self.maybe_strength = None;
+        self.outcome = CheckpointOutcome::Failed;
+        self.maybe_failure = Some(failure);
+    }
+
+    pub(in crate::network) fn note_completed(&mut self, receipt: &SnapshotWriteReceipt) {
+        let Some(completed_at) = receipt.completed_at() else {
+            return;
+        };
+        let Some(strength) = receipt.persistence_strength() else {
+            return;
+        };
+        let generation = receipt.persistence_generation();
+        if self
+            .maybe_in_flight
+            .is_some_and(|attempt| attempt.generation == generation)
+        {
+            self.maybe_in_flight = None;
+        }
+        let advances_high_water = self
+            .maybe_last_durable
+            .is_none_or(|durable| generation >= durable.generation);
+        if advances_high_water {
+            self.maybe_last_durable = Some(DurableCheckpoint {
+                generation,
+                captured_at: receipt.captured_at(),
+                completed_at,
+                trigger: receipt.checkpoint_trigger(),
+                strength,
+            });
+            self.maybe_captured_at = Some(receipt.captured_at());
+            self.maybe_completed_at = Some(completed_at);
+            self.maybe_trigger = Some(receipt.checkpoint_trigger());
+            self.maybe_strength = Some(strength);
+        }
+        self.maybe_failed_at = None;
+        self.outcome = CheckpointOutcome::Succeeded;
+        self.maybe_failure = None;
+    }
+
+    pub(in crate::network) fn clear_compatibility_binding(
+        &mut self,
+        generation: LifecycleGeneration,
+    ) {
+        if self
+            .maybe_in_flight
+            .is_none_or(|attempt| attempt.generation != generation)
+        {
+            return;
+        }
+        self.maybe_in_flight = None;
+        let Some(durable) = self.maybe_last_durable else {
+            *self = Self::default();
+            return;
+        };
+        self.maybe_captured_at = Some(durable.captured_at);
+        self.maybe_completed_at = Some(durable.completed_at);
+        self.maybe_failed_at = None;
+        self.maybe_trigger = Some(durable.trigger);
+        self.maybe_strength = Some(durable.strength);
+        self.outcome = CheckpointOutcome::Succeeded;
+        self.maybe_failure = None;
+    }
+
+    pub(in crate::network) fn snapshot(
+        &self,
+        current_generation: LifecycleGeneration,
+        maybe_dirty_generation: Option<LifecycleGeneration>,
+        now: PolicyTime,
+        periodic_interval_seconds: u64,
+    ) -> CheckpointEvidenceSnapshot {
+        let checkpoint_age_seconds = self.maybe_captured_at.map(|captured_at| {
+            now.unix_seconds()
+                .saturating_sub(captured_at.unix_seconds())
+                .max(0) as u64
+        });
+        let overdue = checkpoint_age_seconds.is_some_and(|age| age > periodic_interval_seconds);
+        let maybe_last_durable_generation = self
+            .maybe_last_durable
+            .map(|durable| durable.generation.raw());
+        let maybe_generation_loss_range = match maybe_last_durable_generation {
+            Some(last_durable) if last_durable >= current_generation.raw() => None,
+            maybe_last_durable => Some(CheckpointGenerationLossRange {
+                maybe_after_generation: maybe_last_durable,
+                through_generation: current_generation.raw(),
+            }),
+        };
+        let maybe_loss_bound_seconds = (self.outcome == CheckpointOutcome::Succeeded && !overdue)
+            .then_some(periodic_interval_seconds);
+
+        CheckpointEvidenceSnapshot {
+            current_generation: current_generation.raw(),
+            maybe_dirty_generation: maybe_dirty_generation.map(LifecycleGeneration::raw),
+            maybe_in_flight_generation: self
+                .maybe_in_flight
+                .map(|attempt| attempt.generation.raw()),
+            maybe_last_durable_generation,
+            maybe_captured_at: self.maybe_captured_at,
+            maybe_completed_at: self.maybe_completed_at,
+            maybe_failed_at: self.maybe_failed_at,
+            maybe_trigger: self.maybe_trigger,
+            maybe_persistence_strength: self.maybe_strength,
+            outcome: self.outcome,
+            maybe_failure: self.maybe_failure,
+            overdue,
+            checkpoint_age_seconds,
+            maybe_loss_bound_seconds,
+            maybe_generation_loss_range,
+        }
+    }
+}
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub(in crate::network) fn apply_prepared_peer_lifecycle(

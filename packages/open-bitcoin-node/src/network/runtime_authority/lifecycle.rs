@@ -6,13 +6,16 @@
 
 //! Sole mutex dispatcher for typed lifecycle commands.
 
+#[cfg(test)]
+use std::cell::Cell;
+
 use open_bitcoin_mempool::MempoolLifecycleDelta;
 
 use super::ManagedNetworkHandle;
 use crate::network::announcement_transport::PeerEmissionEvidence;
 use crate::network::lifecycle_effects::{
     EffectAbort, EffectCompletion, ExactEffectLedgerCompletion, PeerEffectCapability,
-    PeerEffectReceipt, PreparedSnapshotWrite,
+    PeerEffectReceipt, PreparedSnapshotWrite, SnapshotWriteReceipt,
 };
 use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionError};
 use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
@@ -40,6 +43,51 @@ impl ManagedNetworkHandle {
             .map_err(|_| LifecycleProjectionError::AuthorityUnavailable)?;
         apply_lifecycle_command(&mut network, command)
     }
+
+    pub(super) fn dispatch_checkpoint_completion(
+        &self,
+        receipt: SnapshotWriteReceipt,
+    ) -> Result<EffectCompletion, (LifecycleProjectionError, Box<SnapshotWriteReceipt>)> {
+        if take_injected_checkpoint_completion_dispatch_failure() {
+            return Err((
+                LifecycleProjectionError::AuthorityUnavailable,
+                Box::new(receipt),
+            ));
+        }
+        let mut network = match self.authority.lock() {
+            Ok(network) => network,
+            Err(_) => {
+                return Err((
+                    LifecycleProjectionError::AuthorityUnavailable,
+                    Box::new(receipt),
+                ));
+            }
+        };
+        match complete_checkpoint_snapshot_effect(&mut network, &receipt) {
+            Ok(completion) => Ok(completion),
+            Err(error) => Err((error, Box::new(receipt))),
+        }
+    }
+
+    #[cfg(test)]
+    pub(in crate::network) fn fail_next_checkpoint_completion_dispatch_for_test(&self) {
+        INJECT_CHECKPOINT_COMPLETION_DISPATCH_FAILURE.set(true);
+    }
+}
+
+#[cfg(test)]
+thread_local! {
+    static INJECT_CHECKPOINT_COMPLETION_DISPATCH_FAILURE: Cell<bool> = const { Cell::new(false) };
+}
+
+#[cfg(test)]
+fn take_injected_checkpoint_completion_dispatch_failure() -> bool {
+    INJECT_CHECKPOINT_COMPLETION_DISPATCH_FAILURE.replace(false)
+}
+
+#[cfg(not(test))]
+const fn take_injected_checkpoint_completion_dispatch_failure() -> bool {
+    false
 }
 
 /// Dispatches one typed lifecycle command while the caller holds the sole authority guard.
@@ -83,15 +131,19 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 network.unbroadcast_members().clone(),
             )
             .map_err(LifecycleProjectionError::MempoolSnapshot)?;
-            Ok(LifecycleCommandResult::SnapshotPrepared(
-                network.snapshot_effect_ledger.reserve_next(
-                    network.authority_epoch,
-                    network.lifecycle_generation,
-                    request.captured_at,
-                    request.trigger,
-                    snapshot,
-                )?,
-            ))
+            let prepared = network.snapshot_effect_ledger.reserve_next(
+                network.authority_epoch,
+                network.lifecycle_generation,
+                request.captured_at,
+                request.trigger,
+                snapshot,
+            )?;
+            network.checkpoint_evidence.note_prepared(
+                network.lifecycle_generation,
+                request.captured_at,
+                request.trigger,
+            );
+            Ok(LifecycleCommandResult::SnapshotPrepared(prepared))
         }
         LifecycleCommand::PrepareRelay(request) => Ok(LifecycleCommandResult::RelayPrepared(
             network.peer_effect_ledger.reserve_next(
@@ -115,7 +167,24 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             Ok(LifecycleCommandResult::PeerEffectAborted(abort))
         }
         LifecycleCommand::AbortSnapshotEffect(capability) => {
+            let generation = capability.persistence_generation();
             let abort = network.snapshot_effect_ledger.abort_exact(&capability);
+            if abort == EffectAbort::Aborted {
+                network
+                    .checkpoint_evidence
+                    .clear_compatibility_binding(generation);
+            }
+            Ok(LifecycleCommandResult::SnapshotEffectAborted(abort))
+        }
+        LifecycleCommand::AbortCheckpointSnapshotEffect(abort_request) => {
+            let generation = abort_request.capability().persistence_generation();
+            let (capability, failed_at, failure) = abort_request.into_parts();
+            let abort = network.snapshot_effect_ledger.abort_exact(&capability);
+            if abort == EffectAbort::Aborted {
+                network
+                    .checkpoint_evidence
+                    .note_aborted(generation, failed_at, failure);
+            }
             Ok(LifecycleCommandResult::SnapshotEffectAborted(abort))
         }
         LifecycleCommand::CompletePeerEffect(receipt) => {
@@ -140,6 +209,9 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             }
             let is_fresh = receipt.authority_epoch() == network.authority_epoch
                 && receipt.persistence_generation() == network.lifecycle_generation;
+            network
+                .checkpoint_evidence
+                .clear_compatibility_binding(receipt.persistence_generation());
             let completion = if is_fresh {
                 if network.dirty_generation == Some(receipt.persistence_generation()) {
                     network.dirty_generation = None;
@@ -150,7 +222,43 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             };
             Ok(LifecycleCommandResult::SnapshotEffectCompleted(completion))
         }
+        LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt) => {
+            complete_checkpoint_snapshot_effect(network, &receipt)
+                .map(LifecycleCommandResult::SnapshotEffectCompleted)
+        }
     }
+}
+
+fn complete_checkpoint_snapshot_effect<S: ChainstateStore>(
+    network: &mut ManagedPeerNetwork<S>,
+    receipt: &SnapshotWriteReceipt,
+) -> Result<EffectCompletion, LifecycleProjectionError> {
+    if receipt.completed_at().is_none() || receipt.persistence_strength().is_none() {
+        return Err(LifecycleProjectionError::InvalidEffectReceipt(
+            "typed snapshot",
+        ));
+    }
+    let effect_id = receipt.exact_key();
+    if network.snapshot_effect_ledger.is_completed(effect_id) {
+        return Ok(EffectCompletion::AlreadyApplied);
+    }
+    let exact_completion = network.snapshot_effect_ledger.complete_exact(receipt);
+    if exact_completion != ExactEffectLedgerCompletion::Recorded {
+        return Err(LifecycleProjectionError::InvalidEffectReceipt(
+            "typed snapshot",
+        ));
+    }
+    network.checkpoint_evidence.note_completed(receipt);
+    let is_fresh = receipt.authority_epoch() == network.authority_epoch
+        && receipt.persistence_generation() == network.lifecycle_generation;
+    if is_fresh && network.dirty_generation == Some(receipt.persistence_generation()) {
+        network.dirty_generation = None;
+    }
+    Ok(if is_fresh {
+        EffectCompletion::Applied
+    } else {
+        EffectCompletion::AchievedButStale
+    })
 }
 
 fn complete_peer_effect<S: ChainstateStore>(

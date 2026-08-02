@@ -40,6 +40,7 @@ use super::{
 };
 
 mod effects;
+pub use effects::{CheckpointAbortDispatchError, CheckpointCompletionDispatchError};
 mod lifecycle;
 pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
 

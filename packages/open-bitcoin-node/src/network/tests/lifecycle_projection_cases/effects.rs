@@ -4,53 +4,27 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-    time::{SystemTime, UNIX_EPOCH},
-};
-
 use open_bitcoin_mempool::{AdmissionContext, PolicyConfig, PolicyTime, RelayIntent};
 use open_bitcoin_network::{LocalPeerConfig, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId};
 
 use super::{apply_prepared, network_with_spendable_coinbase};
+use crate::MemoryChainstateStore;
 use crate::network::lifecycle_effects::{
-    CheckpointTrigger, ExactEffectLedgerCompletion, MAX_COMPLETED_PEER_EFFECTS,
-    MAX_COMPLETED_SNAPSHOT_EFFECTS, MAX_PENDING_PEER_EFFECTS, MAX_PENDING_SNAPSHOT_EFFECTS,
-    PeerEffectCapability, PeerEffectId, PeerEffectLedger, PeerSessionGeneration,
-    PreparedSnapshotWrite, SnapshotEffectId, SnapshotEffectLedger, SnapshotIdentity,
+    CheckpointPersistenceStrength, CheckpointTrigger, ExactEffectLedgerCompletion,
+    MAX_COMPLETED_PEER_EFFECTS, MAX_COMPLETED_SNAPSHOT_EFFECTS, MAX_PENDING_PEER_EFFECTS,
+    MAX_PENDING_SNAPSHOT_EFFECTS, PeerEffectCapability, PeerEffectId, PeerEffectLedger,
+    PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId, SnapshotEffectLedger,
+    SnapshotIdentity, SnapshotWriteAbort, SnapshotWriteAbortError, SnapshotWriteFailure,
+    SnapshotWriteReceipt,
 };
 use crate::network::lifecycle_projection::{
-    AuthorityEpoch, LifecycleCommand, LifecycleGeneration, PeerRelayPreparationRequest,
-    SnapshotPreparationRequest,
+    AuthorityEpoch, CheckpointGenerationLossRange, CheckpointOutcome, LifecycleCommand,
+    LifecycleGeneration, PeerRelayPreparationRequest, SnapshotPreparationRequest,
 };
 use crate::network::runtime_authority::{ManagedNetworkHandle, apply_lifecycle_command};
 use crate::network::tests::{consensus_params, spend_transaction, verify_flags};
-use crate::network::{EffectCompletion, ManagedPeerNetwork};
-use crate::storage::{MempoolSnapshot, fjall_store::SnapshotWriteExecutionError};
-use crate::{
-    FjallNodeStore, MemoryChainstateStore, PersistMode, StorageError, StorageNamespace,
-    StorageRecoveryAction,
-};
-
-fn temp_store_path(test_name: &str) -> PathBuf {
-    let timestamp = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .expect("system time after unix epoch")
-        .as_nanos();
-    std::env::temp_dir().join(format!(
-        "open-bitcoin-phase134-snapshot-{test_name}-{}-{timestamp}",
-        std::process::id()
-    ))
-}
-
-fn remove_dir_if_exists(path: &Path) {
-    match fs::remove_dir_all(path) {
-        Ok(()) => {}
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
-        Err(error) => panic!("failed to remove {}: {error}", path.display()),
-    }
-}
+use crate::network::{EffectAbort, EffectCompletion, ManagedPeerNetwork};
+use crate::storage::MempoolSnapshot;
 
 fn network_fixture() -> ManagedPeerNetwork<MemoryChainstateStore> {
     ManagedPeerNetwork::new(
@@ -98,8 +72,18 @@ fn prepare_snapshot(
     }
 }
 
+fn acknowledge_checkpoint(
+    capability: crate::network::SnapshotWriteCapability,
+) -> SnapshotWriteReceipt {
+    capability.acknowledge_checkpoint_write(
+        PolicyTime::new(200_001),
+        CheckpointPersistenceStrength::Sync,
+    )
+}
+
 mod capture;
 mod contracts;
+mod evidence;
 
 mod completion {
     use super::*;
@@ -111,11 +95,11 @@ mod completion {
         apply_local_spend(&mut network, coinbase_txid, 134_100);
         let dirty_generation = network.lifecycle_generation;
         let prepared = prepare_snapshot(&mut network);
-        let receipt = prepared.into_parts().1.acknowledge_write();
+        let receipt = acknowledge_checkpoint(prepared.into_parts().1);
         // Act
         let completion = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteSnapshotEffect(receipt),
+            LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt),
         )
         .expect("snapshot completion should apply");
         // Assert
@@ -332,7 +316,7 @@ mod completion {
         // Arrange
         let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
         let prepared = prepare_snapshot(&mut network);
-        let receipt = prepared.into_parts().1.acknowledge_write();
+        let receipt = acknowledge_checkpoint(prepared.into_parts().1);
         apply_local_spend(&mut network, coinbase_txid, 134_101);
         let authority_epoch_before = network.authority_epoch;
         let lifecycle_generation_before = network.lifecycle_generation;
@@ -345,7 +329,7 @@ mod completion {
         // Act
         let completion = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteSnapshotEffect(receipt),
+            LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt),
         )
         .expect("stale snapshot completion should be classified");
 
@@ -420,11 +404,11 @@ mod completion {
         // Arrange
         let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
         let prepared = prepare_snapshot(&mut network);
-        let receipt = prepared.into_parts().1.acknowledge_write();
+        let receipt = acknowledge_checkpoint(prepared.into_parts().1);
         let duplicate = receipt.duplicate_for_test();
         apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteSnapshotEffect(receipt),
+            LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt),
         )
         .expect("first snapshot completion should apply");
         apply_local_spend(&mut network, coinbase_txid, 134_102);
@@ -432,7 +416,7 @@ mod completion {
         // Act
         let replay = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteSnapshotEffect(duplicate),
+            LifecycleCommand::CompleteCheckpointSnapshotEffect(duplicate),
         )
         .expect("duplicate snapshot completion should be classified");
         // Assert
@@ -443,148 +427,5 @@ mod completion {
             )
         ));
         assert_eq!(format!("{network:?}"), state_before_replay);
-    }
-
-    #[test]
-    fn public_snapshot_facades_preserve_newer_authority_after_stale_persistence() {
-        // Arrange
-        let path = temp_store_path("stale-public-facades");
-        remove_dir_if_exists(&path);
-        let store = FjallNodeStore::open(&path).expect("open store");
-        let (network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
-        let handle = ManagedNetworkHandle::from_network_fixture(network);
-        let prepared_old = handle
-            .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
-            .expect("old snapshot should prepare");
-        store
-            .save_mempool_snapshot(prepared_old.snapshot(), PersistMode::Sync)
-            .expect("old snapshot should persist");
-        let old_receipt = prepared_old.into_parts().1.acknowledge_write();
-        let old_duplicate = old_receipt.duplicate_for_test();
-        let transaction = spend_transaction(coinbase_txid, 499_999_000);
-        handle
-            .submit_local_transaction_outcome_at(
-                transaction,
-                verify_flags(),
-                consensus_params(),
-                134_103,
-                RelayIntent::Requested,
-            )
-            .expect("newer transaction should apply");
-        // Act
-        let stale_completion = handle
-            .complete_snapshot_write(old_receipt)
-            .expect("stale completion should dispatch");
-        let prepared_current = handle
-            .prepare_mempool_snapshot_write(PolicyTime::new(200_001), CheckpointTrigger::Periodic)
-            .expect("current snapshot should prepare");
-        let current_completion = store
-            .execute_prepared_mempool_snapshot_write(&handle, prepared_current, PersistMode::Sync)
-            .expect("current snapshot should persist and complete");
-        let state_before_duplicate = handle.mempool_info().expect("mempool info");
-        let duplicate_completion = handle
-            .complete_snapshot_write(old_duplicate)
-            .expect("duplicate completion should dispatch");
-        // Assert
-        assert_eq!(stale_completion, EffectCompletion::AchievedButStale);
-        assert_eq!(current_completion, EffectCompletion::Applied);
-        assert_eq!(duplicate_completion, EffectCompletion::AlreadyApplied);
-        assert_eq!(
-            handle.mempool_info().expect("mempool info after duplicate"),
-            state_before_duplicate
-        );
-        assert_eq!(state_before_duplicate.transaction_count, 1);
-        assert_eq!(
-            store
-                .load_mempool_snapshot()
-                .expect("load current persisted snapshot")
-                .expect("current snapshot should exist")
-                .records
-                .len(),
-            1
-        );
-        assert!(
-            handle
-                .prepare_mempool_snapshot_write(
-                    PolicyTime::new(200_002),
-                    CheckpointTrigger::Periodic,
-                )
-                .is_ok(),
-            "successful current completion should release the pending slot"
-        );
-
-        remove_dir_if_exists(&path);
-    }
-
-    #[test]
-    fn snapshot_executor_encoding_failure_preserves_newer_dirty_state_and_allows_retry() {
-        // Arrange
-        let path = temp_store_path("encode-failure");
-        remove_dir_if_exists(&path);
-        let store = FjallNodeStore::open(&path).expect("open store");
-        let (network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
-        let handle = ManagedNetworkHandle::from_network_fixture(network);
-        let prepared = handle
-            .prepare_mempool_snapshot_write(PolicyTime::new(200_000), CheckpointTrigger::Periodic)
-            .expect("snapshot should prepare");
-        let transaction = spend_transaction(coinbase_txid, 499_999_000);
-        handle
-            .submit_local_transaction_outcome_at(
-                transaction,
-                verify_flags(),
-                consensus_params(),
-                134_104,
-                RelayIntent::Requested,
-            )
-            .expect("newer transaction should make the snapshot dirty");
-        let expected = StorageError::Corruption {
-            namespace: StorageNamespace::Mempool,
-            detail: "injected snapshot encoding failure".to_string(),
-            action: StorageRecoveryAction::Repair,
-        };
-
-        // Act
-        let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
-            &handle,
-            prepared,
-            PersistMode::Sync,
-            |_| Err(expected.clone()),
-            |_, _| panic!("save must not run after encoding fails"),
-        );
-
-        // Assert
-        assert!(matches!(
-            result,
-            Err(SnapshotWriteExecutionError::Storage(error)) if error == expected
-        ));
-        assert_eq!(
-            store
-                .load_mempool_snapshot()
-                .expect("load after encode failure"),
-            None
-        );
-        let retry = handle
-            .prepare_mempool_snapshot_write(PolicyTime::new(200_001), CheckpointTrigger::Periodic)
-            .expect("encoding failure abort should restore pending capacity");
-        assert_eq!(
-            retry.snapshot().records.len(),
-            1,
-            "abort must retain the newer dirty mempool state"
-        );
-        let retry_completion = store
-            .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
-            .expect("retry should persist and complete");
-        assert_eq!(retry_completion, EffectCompletion::Applied);
-        assert_eq!(
-            store
-                .load_mempool_snapshot()
-                .expect("load after retry")
-                .expect("retry should persist a snapshot")
-                .records
-                .len(),
-            1
-        );
-
-        remove_dir_if_exists(&path);
     }
 }

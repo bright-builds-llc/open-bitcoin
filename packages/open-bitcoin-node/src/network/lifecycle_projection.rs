@@ -24,8 +24,8 @@ use super::ManagedPeerNetwork;
 use super::announcement_transport::PeerEmissionReceipt;
 use super::compact_receive_candidates::CompactExtraTxnBuffer;
 use super::lifecycle_effects::{
-    EffectPreparationError, PeerEffectCapability, PeerEffectReceipt, SnapshotWriteCapability,
-    SnapshotWriteReceipt,
+    EffectPreparationError, PeerEffectCapability, PeerEffectReceipt, SnapshotWriteAbort,
+    SnapshotWriteCapability, SnapshotWriteReceipt,
 };
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
@@ -36,7 +36,8 @@ mod authority;
 mod checkpoint;
 mod reconciliation;
 
-pub(in crate::network) use authority::SealedLifecycleProjection;
+pub(in crate::network) use authority::{CheckpointAuthorityState, SealedLifecycleProjection};
+pub use authority::{CheckpointEvidenceSnapshot, CheckpointGenerationLossRange, CheckpointOutcome};
 pub(in crate::network) use checkpoint::SnapshotPreparationRequest;
 #[cfg(test)]
 pub(in crate::network) use reconciliation::LifecycleReconciliationReport;
@@ -567,9 +568,11 @@ pub(super) enum LifecycleCommand {
     PrepareRelay(PeerRelayPreparationRequest),
     AbortPeerEffect(PeerEffectCapability),
     AbortSnapshotEffect(SnapshotWriteCapability),
+    AbortCheckpointSnapshotEffect(SnapshotWriteAbort),
     CompletePeerEffect(PeerEffectReceipt),
     CompletePeerEmission(PeerEmissionReceipt),
     CompleteSnapshotEffect(SnapshotWriteReceipt),
+    CompleteCheckpointSnapshotEffect(SnapshotWriteReceipt),
 }
 
 #[cfg(test)]
@@ -586,14 +589,18 @@ enum LifecycleCommandKind {
     PrepareRelay,
     AbortPeerEffect,
     AbortSnapshotEffect,
+    AbortCheckpointSnapshotEffect,
     CompletePeerEffect,
     CompletePeerEmission,
     CompleteSnapshotEffect,
+    CompleteCheckpointSnapshotEffect,
 }
 
 #[cfg(test)]
 impl LifecycleCommand {
     const fn kind(&self) -> LifecycleCommandKind {
+        use LifecycleCommandKind as Kind;
+
         match self {
             Self::SingletonAdmission(_) => LifecycleCommandKind::SingletonAdmission,
             Self::PackageAdmission(_) => LifecycleCommandKind::PackageAdmission,
@@ -606,9 +613,11 @@ impl LifecycleCommand {
             Self::PrepareRelay(_) => LifecycleCommandKind::PrepareRelay,
             Self::AbortPeerEffect(_) => LifecycleCommandKind::AbortPeerEffect,
             Self::AbortSnapshotEffect(_) => LifecycleCommandKind::AbortSnapshotEffect,
+            Self::AbortCheckpointSnapshotEffect(_) => Kind::AbortCheckpointSnapshotEffect,
             Self::CompletePeerEffect(_) => LifecycleCommandKind::CompletePeerEffect,
             Self::CompletePeerEmission(_) => LifecycleCommandKind::CompletePeerEmission,
             Self::CompleteSnapshotEffect(_) => LifecycleCommandKind::CompleteSnapshotEffect,
+            Self::CompleteCheckpointSnapshotEffect(_) => Kind::CompleteCheckpointSnapshotEffect,
         }
     }
 }

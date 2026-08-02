@@ -26,6 +26,15 @@ fn snapshot_capability(
     .1
 }
 
+fn snapshot_abort(capability: crate::network::SnapshotWriteCapability) -> SnapshotWriteAbort {
+    SnapshotWriteAbort::new(
+        capability,
+        PolicyTime::new(200_001),
+        SnapshotWriteFailure::Storage,
+    )
+    .expect("storage failure is pre-achievement")
+}
+
 #[test]
 fn exact_snapshot_abort_releases_pending_without_recording_achievement() {
     // Arrange
@@ -37,7 +46,7 @@ fn exact_snapshot_abort_releases_pending_without_recording_achievement() {
     // Act
     let result = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortSnapshotEffect(capability),
+        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(capability)),
     )
     .expect("exact snapshot abort should dispatch");
 
@@ -66,7 +75,7 @@ fn exact_snapshot_abort_ignores_newer_lifecycle_and_dirty_freshness() {
     // Act
     let result = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortSnapshotEffect(capability),
+        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(capability)),
     )
     .expect("stale exact snapshot abort should dispatch");
 
@@ -126,7 +135,7 @@ fn snapshot_abort_rejects_every_immutable_binding_mismatch_without_mutation() {
     for mismatch in mismatches {
         let result = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::AbortSnapshotEffect(mismatch),
+            LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(mismatch)),
         )
         .expect("binding mismatch should classify");
         assert!(matches!(
@@ -138,9 +147,11 @@ fn snapshot_abort_rejects_every_immutable_binding_mismatch_without_mutation() {
         assert_eq!(format!("{network:?}"), state_before);
     }
 
-    let exact_result =
-        apply_lifecycle_command(&mut network, LifecycleCommand::AbortSnapshotEffect(exact))
-            .expect("exact snapshot reservation should remain pending");
+    let exact_result = apply_lifecycle_command(
+        &mut network,
+        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(exact)),
+    )
+    .expect("exact snapshot reservation should remain pending");
     assert!(matches!(
         exact_result,
         crate::network::runtime_authority::LifecycleCommandResult::SnapshotEffectAborted(
@@ -160,14 +171,19 @@ fn snapshot_abort_replay_is_a_typed_noop() {
         SnapshotEffectId::new(0),
         SnapshotIdentity::new(0),
     );
-    apply_lifecycle_command(&mut network, LifecycleCommand::AbortSnapshotEffect(exact))
-        .expect("first abort should dispatch");
+    apply_lifecycle_command(
+        &mut network,
+        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(exact)),
+    )
+    .expect("first abort should dispatch");
     let state_before = format!("{network:?}");
 
     // Act
-    let replay_result =
-        apply_lifecycle_command(&mut network, LifecycleCommand::AbortSnapshotEffect(replay))
-            .expect("replayed abort should classify");
+    let replay_result = apply_lifecycle_command(
+        &mut network,
+        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(replay)),
+    )
+    .expect("replayed abort should classify");
 
     // Assert
     assert!(matches!(
@@ -198,7 +214,7 @@ fn snapshot_abort_restores_the_single_pending_slot() {
     // Act
     let abort = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortSnapshotEffect(capability),
+        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(capability)),
     )
     .expect("snapshot abort should dispatch");
     let retry = prepare_snapshot(&mut network);

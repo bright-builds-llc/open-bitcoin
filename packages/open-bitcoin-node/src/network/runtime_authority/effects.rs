@@ -15,12 +15,64 @@ use crate::network::lifecycle_projection::{
     SnapshotPreparationRequest,
 };
 use crate::network::{
-    PeerEmissionReceipt, PeerEmissionWriteCapability,
+    CheckpointEvidenceSnapshot, PeerEmissionReceipt, PeerEmissionWriteCapability,
     lifecycle_effects::{
         CheckpointTrigger, EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
-        PreparedSnapshotWrite, SnapshotWriteCapability, SnapshotWriteReceipt,
+        PreparedSnapshotWrite, SnapshotWriteAbort, SnapshotWriteCapability, SnapshotWriteFailure,
+        SnapshotWriteReceipt,
     },
 };
+
+#[derive(Debug)]
+pub struct CheckpointAbortDispatchError {
+    source: ManagedNetworkAuthorityError,
+}
+
+impl CheckpointAbortDispatchError {
+    pub const fn failure(&self) -> SnapshotWriteFailure {
+        SnapshotWriteFailure::AbortDispatch
+    }
+}
+
+impl std::fmt::Display for CheckpointAbortDispatchError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.source.fmt(formatter)
+    }
+}
+
+impl std::error::Error for CheckpointAbortDispatchError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
+
+#[derive(Debug)]
+pub struct CheckpointCompletionDispatchError {
+    source: ManagedNetworkAuthorityError,
+    receipt: Box<SnapshotWriteReceipt>,
+}
+
+impl CheckpointCompletionDispatchError {
+    pub const fn failure(&self) -> SnapshotWriteFailure {
+        SnapshotWriteFailure::AbortDispatch
+    }
+
+    pub fn into_receipt(self) -> SnapshotWriteReceipt {
+        *self.receipt
+    }
+}
+
+impl std::fmt::Display for CheckpointCompletionDispatchError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.source.fmt(formatter)
+    }
+}
+
+impl std::error::Error for CheckpointCompletionDispatchError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.source)
+    }
+}
 
 impl From<LifecycleProjectionError> for ManagedNetworkAuthorityError {
     fn from(value: LifecycleProjectionError) -> Self {
@@ -101,6 +153,23 @@ impl ManagedNetworkHandle {
         }
     }
 
+    /// Releases one exact typed checkpoint attempt before persistence succeeds.
+    pub fn abort_checkpoint_snapshot_write(
+        &self,
+        abort: SnapshotWriteAbort,
+    ) -> Result<EffectAbort, CheckpointAbortDispatchError> {
+        match self
+            .apply_lifecycle_command(LifecycleCommand::AbortCheckpointSnapshotEffect(abort))
+            .map_err(|error| CheckpointAbortDispatchError {
+                source: ManagedNetworkAuthorityError::from(error),
+            })? {
+            LifecycleCommandResult::SnapshotEffectAborted(abort) => Ok(abort),
+            _ => Err(CheckpointAbortDispatchError {
+                source: unexpected_result("typed snapshot effect abort"),
+            }),
+        }
+    }
+
     /// Classifies one achieved peer write through the lifecycle dispatcher.
     ///
     /// ```compile_fail
@@ -158,6 +227,36 @@ impl ManagedNetworkHandle {
             LifecycleCommandResult::SnapshotEffectCompleted(completion) => Ok(completion),
             _ => Err(unexpected_result("snapshot effect completion")),
         }
+    }
+
+    /// Records one achieved typed checkpoint while retaining its receipt on dispatch failure.
+    pub fn complete_checkpoint_snapshot_write(
+        &self,
+        receipt: SnapshotWriteReceipt,
+    ) -> Result<EffectCompletion, CheckpointCompletionDispatchError> {
+        self.dispatch_checkpoint_completion(receipt)
+            .map_err(|(error, receipt)| CheckpointCompletionDispatchError {
+                source: ManagedNetworkAuthorityError::from(error),
+                receipt,
+            })
+    }
+
+    /// Returns bounded durability truth without exposing snapshot contents or member identities.
+    pub fn checkpoint_evidence(
+        &self,
+        now: PolicyTime,
+        periodic_interval_seconds: u64,
+    ) -> Result<CheckpointEvidenceSnapshot, ManagedNetworkAuthorityError> {
+        let network = self
+            .authority
+            .lock()
+            .map_err(|_| ManagedNetworkAuthorityError::Poisoned)?;
+        Ok(network.checkpoint_evidence.snapshot(
+            network.lifecycle_generation,
+            network.dirty_generation,
+            now,
+            periodic_interval_seconds,
+        ))
     }
 }
 
