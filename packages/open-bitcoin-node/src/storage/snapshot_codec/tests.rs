@@ -1,7 +1,7 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 
 use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
@@ -15,18 +15,20 @@ use open_bitcoin_core::{
 use open_bitcoin_network::HeaderEntry;
 
 use super::{
-    MetricsStorageSnapshot, decode_chainstate_snapshot, decode_header_entries,
-    decode_mempool_snapshot, decode_metrics_snapshot, decode_selected_wallet,
-    decode_wallet_registry_snapshot, decode_wallet_rescan_job, decode_wallet_snapshot,
-    encode_chainstate_snapshot, encode_header_entries, encode_mempool_snapshot,
-    encode_metrics_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
-    encode_wallet_rescan_job, encode_wallet_snapshot,
+    MempoolSnapshotDecodeLimits, MetricsStorageSnapshot, decode_chainstate_snapshot,
+    decode_header_entries, decode_mempool_snapshot, decode_mempool_snapshot_with_limits,
+    decode_metrics_snapshot, decode_selected_wallet, decode_wallet_registry_snapshot,
+    decode_wallet_rescan_job, decode_wallet_snapshot, encode_chainstate_snapshot,
+    encode_header_entries, encode_mempool_snapshot, encode_metrics_snapshot,
+    encode_selected_wallet, encode_wallet_registry_snapshot, encode_wallet_rescan_job,
+    encode_wallet_snapshot,
 };
 use open_bitcoin_mempool::{
     MempoolAcceptanceTime, MempoolEntryMetadata, MempoolOrigin, PolicyTime, RelayIntent,
     transaction_weight_and_virtual_size,
 };
 
+use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
     MetricKind, MetricSample, SchemaVersion, SelectedWalletRecord, StorageError, StorageNamespace,
@@ -91,6 +93,31 @@ fn mempool_snapshot() -> MempoolSnapshot {
         ),
     )
     .expect("valid mempool record");
+    let member = record.member_identity();
+    MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(42),
+        PolicyTime::from_unix_seconds(120),
+        vec![record],
+        BTreeSet::from([member]),
+    )
+    .expect("valid current mempool snapshot")
+}
+
+fn legacy_mempool_snapshot() -> MempoolSnapshot {
+    let transaction = mempool_transaction(23);
+    let txid = transaction_txid(&transaction).expect("txid");
+    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
+    let (_, virtual_size) =
+        transaction_weight_and_virtual_size(&transaction).expect("transaction size");
+    let record = MempoolSnapshotRecord::try_from_compatibility(
+        transaction,
+        txid,
+        wtxid,
+        4_321,
+        virtual_size,
+        MempoolEntryMetadata::legacy_unknown(),
+    )
+    .expect("valid legacy mempool record");
     MempoolSnapshot::from_legacy_v1(vec![record])
 }
 
@@ -267,7 +294,23 @@ fn mempool_snapshot_round_trips_transactions() {
     let decoded = decode_mempool_snapshot(&encoded).expect("decode mempool");
 
     // Assert
-    assert_eq!(decoded, snapshot);
+    assert_eq!(
+        decoded.records[0].transaction,
+        snapshot.records[0].transaction
+    );
+    assert_eq!(
+        decoded.records[0].acceptance_time,
+        snapshot.records[0].acceptance_time
+    );
+    assert_eq!(
+        decoded.captured_generation(),
+        snapshot.captured_generation()
+    );
+    assert_eq!(decoded.captured_at(), snapshot.captured_at());
+    assert_eq!(
+        decoded.unbroadcast_members(),
+        snapshot.unbroadcast_members()
+    );
 }
 
 #[test]
@@ -319,7 +362,7 @@ fn malformed_json_maps_to_corruption() {
 }
 
 #[test]
-fn mempool_snapshot_known_metadata_round_trips_all_three_fields() {
+fn mempool_snapshot_v2_encodes_only_source_authority() {
     // Arrange
     let snapshot = mempool_snapshot();
 
@@ -329,10 +372,18 @@ fn mempool_snapshot_known_metadata_round_trips_all_three_fields() {
     let encoded_text = String::from_utf8(encoded.clone()).expect("utf8");
 
     // Assert
-    assert_eq!(decoded, snapshot);
+    assert_eq!(
+        decoded.records[0].transaction,
+        snapshot.records[0].transaction
+    );
     assert!(encoded_text.contains("\"accepted_at_unix_seconds\": 90"));
-    assert!(encoded_text.contains("\"origin\": \"local\""));
-    assert!(encoded_text.contains("\"relay_requested\": true"));
+    assert!(encoded_text.contains("\"format_version\": 2"));
+    assert!(encoded_text.contains("\"captured_generation\": 42"));
+    assert!(encoded_text.contains("\"captured_at_unix_seconds\": 120"));
+    assert!(!encoded_text.contains("fee_sats"));
+    assert!(!encoded_text.contains("virtual_size"));
+    assert!(!encoded_text.contains("origin"));
+    assert!(!encoded_text.contains("relay_requested"));
 }
 
 #[test]
@@ -369,6 +420,9 @@ fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
         decoded.records[0].metadata,
         MempoolEntryMetadata::legacy_unknown()
     );
+    assert_eq!(decoded.records[0].fee_sats, 0);
+    assert_ne!(decoded.records[0].virtual_size, 100);
+    assert!(decoded.unbroadcast_members().is_empty());
     assert_eq!(SchemaVersion::CURRENT.get(), 1);
 }
 
@@ -484,3 +538,6 @@ fn mempool_snapshot_encoded_schema_version_remains_current() {
     );
     assert_eq!(SchemaVersion::CURRENT.get(), 1);
 }
+
+#[path = "tests/mempool_limits.rs"]
+mod mempool_limits;

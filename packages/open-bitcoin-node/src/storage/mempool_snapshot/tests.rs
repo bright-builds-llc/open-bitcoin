@@ -128,6 +128,30 @@ fn current_snapshot_rejects_unknown_acceptance_time() {
 }
 
 #[test]
+fn current_snapshot_rejects_acceptance_time_after_capture() {
+    // Arrange
+    let transaction = spend_transaction(
+        OutPoint {
+            txid: Txid::from_byte_array([36_u8; 32]),
+            vout: 0,
+        },
+        499_000,
+    );
+    let record = snapshot_record_with_metadata(transaction, known_local_requested(121));
+
+    // Act
+    let result = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(7),
+        PolicyTime::from_unix_seconds(120),
+        vec![record],
+        BTreeSet::new(),
+    );
+
+    // Assert
+    assert_eq!(result, Err(MempoolSnapshotError::StructuralCorruption));
+}
+
+#[test]
 fn current_snapshot_rejects_foreign_unbroadcast_member() {
     // Arrange
     let transaction = spend_transaction(

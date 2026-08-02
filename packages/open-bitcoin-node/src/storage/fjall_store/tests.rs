@@ -2,7 +2,7 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     fs, io,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -35,6 +35,7 @@ use open_bitcoin_mempool::{
     transaction_weight_and_virtual_size,
 };
 
+use crate::storage::mempool_snapshot::CapturedMempoolGeneration;
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsStorageSnapshot, PersistMode,
@@ -178,13 +179,19 @@ fn mempool_snapshot() -> MempoolSnapshot {
         transaction,
         txid,
         wtxid,
-        1_000,
+        0,
         virtual_size,
         metadata,
     )
     .expect("valid mempool record");
 
-    MempoolSnapshot::from_legacy_v1(vec![record])
+    MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(7),
+        PolicyTime::from_unix_seconds(120),
+        vec![record],
+        BTreeSet::new(),
+    )
+    .expect("valid current mempool snapshot")
 }
 
 fn chainstate_snapshot() -> ChainstateSnapshot {
