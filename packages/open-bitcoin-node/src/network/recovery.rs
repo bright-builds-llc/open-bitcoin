@@ -27,7 +27,10 @@ use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapsh
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use topology::{RecoveryTopologyLimits, prepare_recovery_topology};
 
+pub(crate) mod staging;
 pub(crate) mod topology;
+
+pub(crate) use staging::PreparedMempoolRecovery;
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ManagedMempoolRecoverySummary {
@@ -36,6 +39,7 @@ pub struct ManagedMempoolRecoverySummary {
     pub dropped_duplicate_count: u64,
     pub dropped_missing_parent_count: u64,
     pub dropped_policy_incompatible_count: u64,
+    pub dropped_expired_count: u64,
     pub dropped_evicted_count: u64,
     pub records: Vec<MempoolRecoveryRecord>,
 }
@@ -62,6 +66,7 @@ impl ManagedMempoolRecoverySummary {
                 MempoolRecoveryStatus::DroppedPolicyIncompatible => {
                     summary.dropped_policy_incompatible_count += 1;
                 }
+                MempoolRecoveryStatus::DroppedExpired => summary.dropped_expired_count += 1,
                 MempoolRecoveryStatus::DroppedEvicted => summary.dropped_evicted_count += 1,
             }
         }
@@ -84,6 +89,24 @@ impl From<&ManagedMempoolRecoverySummary> for RelayRecoveryCounters {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    #[allow(dead_code)] // Installed by the atomic startup cutover in Plan 135-03.
+    pub(crate) fn prepare_mempool_recovery_at(
+        &self,
+        snapshot: &MempoolSnapshot,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        startup_at: open_bitcoin_mempool::PolicyTime,
+    ) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
+        staging::prepare_mempool_recovery(
+            snapshot,
+            &self.chainstate.chainstate().snapshot(),
+            verify_flags,
+            consensus_params,
+            self.mempool.mempool().config().clone(),
+            startup_at,
+        )
+    }
+
     pub fn recover_mempool_snapshot(
         &mut self,
         snapshot: &MempoolSnapshot,
@@ -172,7 +195,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         TxServingRecordStatus::Rejected,
                     );
                 }
-                MempoolRecoveryStatus::DroppedEvicted => {
+                MempoolRecoveryStatus::DroppedExpired | MempoolRecoveryStatus::DroppedEvicted => {
                     self.relay_serving.record_status(
                         txid,
                         Some(wtxid),

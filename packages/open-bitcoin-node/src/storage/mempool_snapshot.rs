@@ -117,6 +117,7 @@ pub enum MempoolRecoveryStatus {
     DroppedDuplicate,
     DroppedMissingParent,
     DroppedPolicyIncompatible,
+    DroppedExpired,
     DroppedEvicted,
 }
 
@@ -128,6 +129,7 @@ impl MempoolRecoveryStatus {
             Self::DroppedDuplicate => "dropped_duplicate",
             Self::DroppedMissingParent => "dropped_missing_parent",
             Self::DroppedPolicyIncompatible => "dropped_policy_incompatible",
+            Self::DroppedExpired => "dropped_expired",
             Self::DroppedEvicted => "dropped_evicted",
         }
     }
@@ -277,9 +279,8 @@ pub(crate) fn recovery_status_from_outcome(
         Ok(MempoolOutcome::Rejected { .. }) | Err(_) => {
             MempoolRecoveryStatus::DroppedPolicyIncompatible
         }
-        Ok(MempoolOutcome::Evicted { .. }) | Ok(MempoolOutcome::Expired { .. }) => {
-            MempoolRecoveryStatus::DroppedEvicted
-        }
+        Ok(MempoolOutcome::Evicted { .. }) => MempoolRecoveryStatus::DroppedEvicted,
+        Ok(MempoolOutcome::Expired { .. }) => MempoolRecoveryStatus::DroppedExpired,
     }
 }
 

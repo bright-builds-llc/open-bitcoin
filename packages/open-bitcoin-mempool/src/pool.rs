@@ -201,6 +201,16 @@ impl Mempool {
         self.rolling_fee_state.rolling_fee_rate()
     }
 
+    /// Returns the restart/decay gate state for recovery verification and operator truth.
+    pub const fn rolling_fee_decay_gate_open(&self) -> bool {
+        self.rolling_fee_state.block_since_last_rolling_fee_bump()
+    }
+
+    /// Returns the last injected decay update time without sampling a clock.
+    pub const fn rolling_fee_last_update(&self) -> PolicyTime {
+        self.rolling_fee_state.last_rolling_fee_update()
+    }
+
     #[cfg(test)]
     fn complete_snapshot(&self) -> CompleteMempoolSnapshot {
         CompleteMempoolSnapshot {

@@ -1351,7 +1351,9 @@
     {
       "label": "node-mempool-recovery-topology",
       "files": [
-        "packages/open-bitcoin-node/src/network/recovery/topology.rs"
+        "packages/open-bitcoin-node/src/network/recovery/staging.rs",
+        "packages/open-bitcoin-node/src/network/recovery/topology.rs",
+        "packages/open-bitcoin-node/src/network/tests/recovery_cases/staging.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/node/mempool_persist.cpp",

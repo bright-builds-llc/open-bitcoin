@@ -19,8 +19,9 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolCapacity, MempoolEntryMetadata, MempoolMemberIdentity,
-    MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent, transaction_weight_and_virtual_size,
+    AdmissionContext, Mempool, MempoolAcceptanceTime, MempoolCapacity, MempoolEntryMetadata,
+    MempoolMemberIdentity, MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent,
+    transaction_weight_and_virtual_size,
 };
 use open_bitcoin_network::{InventoryList, RelayActivationConfig, WireNetworkMessage};
 
@@ -125,6 +126,115 @@ fn topology_identities(transactions: Vec<Transaction>) -> Vec<(Txid, Wtxid)> {
         .expect("valid recovery topology")
         .ordered_identities()
         .collect()
+}
+
+mod staging;
+#[test]
+fn staged_recovery_classifies_later_capacity_trim_from_final_membership() {
+    // Arrange
+    let (measurement_network, coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_095, 3, PolicyConfig::default());
+    let lower_fee = spend_transaction(coinbase_txids[0], 499_999_000);
+    let higher_fee = spend_transaction(coinbase_txids[1], 499_998_000);
+    let mut measuring_pool = Mempool::new(PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(usize::MAX),
+        ..PolicyConfig::default()
+    });
+    measuring_pool
+        .accept_transaction_transition_with_context(
+            lower_fee.clone(),
+            &measurement_network.chainstate_snapshot(),
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::recovery(MempoolEntryMetadata::legacy_unknown()),
+        )
+        .expect("measure one entry");
+    let one_entry_capacity = measuring_pool.accounted_memory().as_usize();
+    let (network, replay_coinbase_txids, _latest_block) = relay_enabled_network_with_chain(
+        1_096,
+        3,
+        PolicyConfig {
+            mempool_capacity: MempoolCapacity::new(one_entry_capacity),
+            ..PolicyConfig::default()
+        },
+    );
+    let replay_lower_fee = spend_transaction(replay_coinbase_txids[0], 499_999_000);
+    let replay_higher_fee = spend_transaction(replay_coinbase_txids[1], 499_998_000);
+    assert_eq!(txid(&replay_lower_fee), txid(&lower_fee));
+    assert_eq!(txid(&replay_higher_fee), txid(&higher_fee));
+    let snapshot = snapshot_from_transactions(vec![replay_lower_fee, replay_higher_fee]);
+
+    // Act
+    let prepared = network
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(6_000),
+        )
+        .expect("prepare capacity-trimmed recovery");
+    let summary = ManagedMempoolRecoverySummary::from_records(prepared.recovery_records().to_vec());
+
+    // Assert
+    assert_eq!(summary.recovered_count, 1);
+    assert_eq!(summary.dropped_evicted_count, 1);
+    assert!(prepared.staged_mempool().entry(&txid(&lower_fee)).is_none());
+    assert!(
+        prepared
+            .staged_mempool()
+            .entry(&txid(&higher_fee))
+            .is_some()
+    );
+    assert_eq!(
+        prepared.staged_mempool().rolling_mempool_fee_rate(),
+        open_bitcoin_mempool::RollingMempoolFeeRate::ZERO
+    );
+}
+
+#[test]
+fn staged_recovery_classifies_confirmed_duplicate_and_policy_records() {
+    // Arrange
+    let (mut network, coinbase_txids, latest_block) =
+        relay_enabled_network_with_chain(1_097, 5, PolicyConfig::default());
+    let confirmed = spend_transaction(coinbase_txids[0], 499_999_000);
+    let confirmed_block = {
+        let mut block = build_block(block_hash(&latest_block.header), 5, 500_000_000);
+        block.transactions.push(confirmed.clone());
+        let (merkle_root, maybe_mutated) =
+            block_merkle_root(&block.transactions).expect("merkle root");
+        assert!(!maybe_mutated);
+        block.header.merkle_root = merkle_root;
+        mine_header(&mut block);
+        block
+    };
+    network
+        .connect_local_block(&confirmed_block, verify_flags(), consensus_params())
+        .expect("connect confirmed transaction");
+    let duplicate = spend_transaction(coinbase_txids[1], 499_999_000);
+    let policy_incompatible = spend_transaction(coinbase_txids[2], 499_999_999);
+    let snapshot = snapshot_from_transactions(vec![
+        policy_incompatible,
+        duplicate.clone(),
+        confirmed,
+        duplicate,
+    ]);
+
+    // Act
+    let prepared = network
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(7_000),
+        )
+        .expect("prepare classified recovery");
+    let summary = ManagedMempoolRecoverySummary::from_records(prepared.recovery_records().to_vec());
+
+    // Assert
+    assert_eq!(summary.recovered_count, 1);
+    assert_eq!(summary.dropped_confirmed_count, 1);
+    assert_eq!(summary.dropped_duplicate_count, 1);
+    assert_eq!(summary.dropped_policy_incompatible_count, 1);
 }
 
 #[test]

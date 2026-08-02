@@ -48,6 +48,20 @@ fn incremental_1000() -> IncrementalRelayFeeRate {
 }
 
 #[test]
+fn fresh_mempool_exposes_restart_decay_gate_and_epoch_update_time() {
+    // Arrange
+    let mempool = Mempool::new(PolicyConfig::default());
+
+    // Act
+    let gate_open = mempool.rolling_fee_decay_gate_open();
+    let last_update = mempool.rolling_fee_last_update();
+
+    // Assert
+    assert!(gate_open);
+    assert_eq!(last_update, PolicyTime::new(0));
+}
+
+#[test]
 fn rolling_fee_decay_does_not_run_before_block_after_bump() {
     // Arrange
     let mut state = RollingFeeState::new();
