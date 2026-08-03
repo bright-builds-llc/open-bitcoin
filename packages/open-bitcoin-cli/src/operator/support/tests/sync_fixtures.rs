@@ -266,7 +266,8 @@ pub(super) fn phase105_status_with_relay_evidence() -> OpenBitcoinStatusSnapshot
             dropped_duplicate_count: 23,
             dropped_missing_parent_count: 24,
             dropped_policy_incompatible_count: 25,
-            dropped_evicted_count: 26,
+            dropped_expired_count: 26,
+            dropped_evicted_count: 27,
         }),
         mempool_admission: RelayEvidenceField::implemented(RelayCapabilityEvidence::new(
             RelayEvidenceCapability::MempoolAdmission,

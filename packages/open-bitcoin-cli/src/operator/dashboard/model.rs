@@ -534,6 +534,7 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount => {
             "Relay recovery dropped policy incompatible"
         }
+        MetricKind::RelayRecoveryDroppedExpiredCount => "Relay recovery dropped expired",
         MetricKind::RelayRecoveryDroppedEvictedCount => "Relay recovery dropped evicted",
         MetricKind::BlockServedCount => "Block served",
         MetricKind::BlockServingSuppressedCount => "Block serving suppressed",

@@ -25,7 +25,8 @@ fn relay_status_maps_to_each_fixed_relay_metric_kind() {
         dropped_duplicate_count: 13,
         dropped_missing_parent_count: 14,
         dropped_policy_incompatible_count: 15,
-        dropped_evicted_count: 16,
+        dropped_expired_count: 16,
+        dropped_evicted_count: 17,
     });
 
     // Act
@@ -67,8 +68,13 @@ fn relay_status_maps_to_each_fixed_relay_metric_kind() {
                 timestamp,
             ),
             MetricSample::new(
-                MetricKind::RelayRecoveryDroppedEvictedCount,
+                MetricKind::RelayRecoveryDroppedExpiredCount,
                 16.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedEvictedCount,
+                17.0,
                 timestamp,
             ),
         ]

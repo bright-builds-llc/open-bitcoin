@@ -62,6 +62,7 @@ const RECOVERY_FIELDS = [
   "dropped_duplicate_count",
   "dropped_missing_parent_count",
   "dropped_policy_incompatible_count",
+  "dropped_expired_count",
   "dropped_evicted_count",
 ] as const;
 

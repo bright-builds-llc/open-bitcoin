@@ -67,6 +67,7 @@ pub enum MetricKind {
     RelayRecoveryDroppedDuplicateCount,
     RelayRecoveryDroppedMissingParentCount,
     RelayRecoveryDroppedPolicyIncompatibleCount,
+    RelayRecoveryDroppedExpiredCount,
     RelayRecoveryDroppedEvictedCount,
     BlockServedCount,
     BlockServingSuppressedCount,
@@ -80,7 +81,7 @@ pub enum MetricKind {
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 59] = [
+    pub const ALL: [Self; 60] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -130,6 +131,7 @@ impl MetricKind {
         Self::RelayRecoveryDroppedDuplicateCount,
         Self::RelayRecoveryDroppedMissingParentCount,
         Self::RelayRecoveryDroppedPolicyIncompatibleCount,
+        Self::RelayRecoveryDroppedExpiredCount,
         Self::RelayRecoveryDroppedEvictedCount,
         Self::BlockServedCount,
         Self::BlockServingSuppressedCount,
@@ -201,6 +203,7 @@ impl MetricKind {
             Self::RelayRecoveryDroppedPolicyIncompatibleCount => {
                 "relay_recovery_dropped_policy_incompatible_count"
             }
+            Self::RelayRecoveryDroppedExpiredCount => "relay_recovery_dropped_expired_count",
             Self::RelayRecoveryDroppedEvictedCount => "relay_recovery_dropped_evicted_count",
             Self::BlockServedCount => "block_served_count",
             Self::BlockServingSuppressedCount => "block_serving_suppressed_count",
@@ -417,6 +420,11 @@ pub fn relay_metric_samples(
             MetricSample::new(
                 MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
                 counters.dropped_policy_incompatible_count as f64,
+                timestamp_unix_seconds,
+            ),
+            MetricSample::new(
+                MetricKind::RelayRecoveryDroppedExpiredCount,
+                counters.dropped_expired_count as f64,
                 timestamp_unix_seconds,
             ),
             MetricSample::new(

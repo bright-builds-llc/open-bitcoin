@@ -1149,8 +1149,8 @@ The P2P evidence roots are local and deterministic:
 `packages/open-bitcoin-node/src/network/relay_serving.rs`. The operator-facing
 label is `Relay recovery` with fixed counters `recovered_count`,
 `dropped_confirmed_count`, `dropped_duplicate_count`,
-`dropped_missing_parent_count`, `dropped_policy_incompatible_count`, and
-`dropped_evicted_count`.
+`dropped_missing_parent_count`, `dropped_policy_incompatible_count`,
+`dropped_expired_count`, and `dropped_evicted_count`.
 
 Phase 108 does not add public relay by default, guaranteed public propagation,
 compact block relay, package relay, bloom/filter serving, public-network relay

@@ -86,6 +86,8 @@ pub struct RelayRecoveryCounters {
     pub dropped_duplicate_count: u64,
     pub dropped_missing_parent_count: u64,
     pub dropped_policy_incompatible_count: u64,
+    #[serde(default)]
+    pub dropped_expired_count: u64,
     pub dropped_evicted_count: u64,
 }
 

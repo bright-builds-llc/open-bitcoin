@@ -213,8 +213,12 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
         11
     );
     assert_eq!(
-        decoded["mempool"]["relay"]["recovery_counters"]["value"]["dropped_evicted_count"],
+        decoded["mempool"]["relay"]["recovery_counters"]["value"]["dropped_expired_count"],
         16
+    );
+    assert_eq!(
+        decoded["mempool"]["relay"]["recovery_counters"]["value"]["dropped_evicted_count"],
+        17
     );
     assert_eq!(
         decoded["mempool"]["relay"]["activation"]["value"]["enabled"],
@@ -238,7 +242,7 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
     );
     assert!(human.contains("Relay evidence: accepted_count=1 rejected_count=2"));
     assert!(human.contains(
-        "Relay recovery: recovered_count=11 dropped_confirmed_count=12 dropped_duplicate_count=13 dropped_missing_parent_count=14 dropped_policy_incompatible_count=15 dropped_evicted_count=16"
+        "Relay recovery: recovered_count=11 dropped_confirmed_count=12 dropped_duplicate_count=13 dropped_missing_parent_count=14 dropped_policy_incompatible_count=15 dropped_expired_count=16 dropped_evicted_count=17"
     ));
     assert!(human.contains("Mempool evidence: Implemented: mempool_admission"));
     assert!(

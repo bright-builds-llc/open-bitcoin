@@ -134,7 +134,8 @@ fn relay_evidence_status_projects_recovery_counters() {
             dropped_duplicate_count: 3,
             dropped_missing_parent_count: 4,
             dropped_policy_incompatible_count: 5,
-            dropped_evicted_count: 6,
+            dropped_expired_count: 6,
+            dropped_evicted_count: 7,
         },
         RelayEvidenceCounters::default(),
     );
@@ -152,13 +153,14 @@ fn relay_evidence_status_projects_recovery_counters() {
     assert_eq!(counters["dropped_duplicate_count"], 3);
     assert_eq!(counters["dropped_missing_parent_count"], 4);
     assert_eq!(counters["dropped_policy_incompatible_count"], 5);
-    assert_eq!(counters["dropped_evicted_count"], 6);
+    assert_eq!(counters["dropped_expired_count"], 6);
+    assert_eq!(counters["dropped_evicted_count"], 7);
     assert_eq!(
         counters
             .keys()
             .filter(|key| key.ends_with("_count"))
             .count(),
-        6
+        7
     );
 }
 

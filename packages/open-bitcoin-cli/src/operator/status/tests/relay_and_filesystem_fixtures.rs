@@ -21,7 +21,8 @@ pub(super) fn relay_evidence_status_fixture() -> RelayEvidenceStatus {
             dropped_duplicate_count: 13,
             dropped_missing_parent_count: 14,
             dropped_policy_incompatible_count: 15,
-            dropped_evicted_count: 16,
+            dropped_expired_count: 16,
+            dropped_evicted_count: 17,
         },
         RelayEvidenceCounters {
             accepted_count: 1,

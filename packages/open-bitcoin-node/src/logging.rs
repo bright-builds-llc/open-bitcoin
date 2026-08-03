@@ -179,7 +179,7 @@ pub fn relay_mempool_log_record(
         | RelayEvidenceField::IntentionallyDifferent { .. } => RelayRecoveryCounters::default(),
     };
     let message = format!(
-        "accepted={} rejected={} orphaned={} requested={} served={} announced={} suppressed={} evicted={} expired={} rebroadcast_deferred={} recovered={} dropped_confirmed={} dropped_duplicate={} dropped_missing_parent={} dropped_policy_incompatible={} dropped_evicted={}",
+        "accepted={} rejected={} orphaned={} requested={} served={} announced={} suppressed={} evicted={} expired={} rebroadcast_deferred={} recovered={} dropped_confirmed={} dropped_duplicate={} dropped_missing_parent={} dropped_policy_incompatible={} dropped_expired={} dropped_evicted={}",
         counters.accepted_count,
         counters.rejected_count,
         counters.orphaned_count,
@@ -195,6 +195,7 @@ pub fn relay_mempool_log_record(
         recovery.dropped_duplicate_count,
         recovery.dropped_missing_parent_count,
         recovery.dropped_policy_incompatible_count,
+        recovery.dropped_expired_count,
         recovery.dropped_evicted_count
     );
 

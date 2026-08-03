@@ -617,11 +617,11 @@ outside default Phase 107 verification.
 Phase 108 verifies Open Bitcoin-owned durable mempool recovery as local status
 and troubleshooting evidence. Accepted recovered records rejoin managed mempool,
 relay-serving, and fanout identity state without startup socket I/O or public
-fanout. Confirmed, duplicate, missing-parent, policy-incompatible, and evicted
+fanout. Confirmed, duplicate, missing-parent, policy-incompatible, expired, and evicted
 records are represented through fixed `Relay recovery` counters only:
 `recovered_count`, `dropped_confirmed_count`, `dropped_duplicate_count`,
-`dropped_missing_parent_count`, `dropped_policy_incompatible_count`, and
-`dropped_evicted_count`.
+`dropped_missing_parent_count`, `dropped_policy_incompatible_count`,
+`dropped_expired_count`, and `dropped_evicted_count`.
 
 Repo-local UAT commands:
 

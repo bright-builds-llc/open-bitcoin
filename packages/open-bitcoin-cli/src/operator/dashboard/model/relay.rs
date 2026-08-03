@@ -84,12 +84,13 @@ fn relay_counters_text(value: &RelayEvidenceField<RelayEvidenceCounters>) -> Str
 fn relay_recovery_counters_text(value: &RelayEvidenceField<RelayRecoveryCounters>) -> String {
     match value {
         RelayEvidenceField::Implemented(counters) => format!(
-            "recovered_count={} dropped_confirmed_count={} dropped_duplicate_count={} dropped_missing_parent_count={} dropped_policy_incompatible_count={} dropped_evicted_count={}",
+            "recovered_count={} dropped_confirmed_count={} dropped_duplicate_count={} dropped_missing_parent_count={} dropped_policy_incompatible_count={} dropped_expired_count={} dropped_evicted_count={}",
             counters.recovered_count,
             counters.dropped_confirmed_count,
             counters.dropped_duplicate_count,
             counters.dropped_missing_parent_count,
             counters.dropped_policy_incompatible_count,
+            counters.dropped_expired_count,
             counters.dropped_evicted_count
         ),
         RelayEvidenceField::Unavailable { reason } => format!("Unavailable: {reason}"),

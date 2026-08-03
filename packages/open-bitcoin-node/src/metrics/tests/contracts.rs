@@ -165,6 +165,10 @@ fn metric_kind_names_are_stable() {
             "relay_recovery_dropped_policy_incompatible_count",
         ),
         (
+            MetricKind::RelayRecoveryDroppedExpiredCount,
+            "relay_recovery_dropped_expired_count",
+        ),
+        (
             MetricKind::RelayRecoveryDroppedEvictedCount,
             "relay_recovery_dropped_evicted_count",
         ),
@@ -230,7 +234,7 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(MetricKind::ALL.len(), 59);
+    assert_eq!(MetricKind::ALL.len(), 60);
     assert_eq!(
         labels,
         vec![
@@ -294,6 +298,7 @@ fn relay_metric_kinds_are_low_cardinality_counters() {
         MetricKind::RelayRecoveryDroppedDuplicateCount,
         MetricKind::RelayRecoveryDroppedMissingParentCount,
         MetricKind::RelayRecoveryDroppedPolicyIncompatibleCount,
+        MetricKind::RelayRecoveryDroppedExpiredCount,
         MetricKind::RelayRecoveryDroppedEvictedCount,
     ];
 
@@ -322,6 +327,7 @@ fn relay_metric_kinds_are_low_cardinality_counters() {
             "relay_recovery_dropped_duplicate_count",
             "relay_recovery_dropped_missing_parent_count",
             "relay_recovery_dropped_policy_incompatible_count",
+            "relay_recovery_dropped_expired_count",
             "relay_recovery_dropped_evicted_count",
         ]
     );

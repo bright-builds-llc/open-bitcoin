@@ -134,7 +134,8 @@ fn relay_mempool_log_record_uses_fixed_outcome_counts() {
         dropped_duplicate_count: 13,
         dropped_missing_parent_count: 14,
         dropped_policy_incompatible_count: 15,
-        dropped_evicted_count: 16,
+        dropped_expired_count: 16,
+        dropped_evicted_count: 17,
     });
 
     // Act
@@ -146,7 +147,7 @@ fn relay_mempool_log_record_uses_fixed_outcome_counts() {
     assert_eq!(record.timestamp_unix_seconds, 1_777_225_105);
     assert_eq!(
         record.message,
-        "accepted=1 rejected=2 orphaned=3 requested=4 served=5 announced=6 suppressed=7 evicted=8 expired=9 rebroadcast_deferred=10 recovered=11 dropped_confirmed=12 dropped_duplicate=13 dropped_missing_parent=14 dropped_policy_incompatible=15 dropped_evicted=16"
+        "accepted=1 rejected=2 orphaned=3 requested=4 served=5 announced=6 suppressed=7 evicted=8 expired=9 rebroadcast_deferred=10 recovered=11 dropped_confirmed=12 dropped_duplicate=13 dropped_missing_parent=14 dropped_policy_incompatible=15 dropped_expired=16 dropped_evicted=17"
     );
 }
 
@@ -185,7 +186,7 @@ fn relay_mempool_log_record_omits_sensitive_and_dynamic_material() {
     assert_eq!(record.source, RELAY_MEMPOOL_LOG_SOURCE);
     assert_eq!(
         record.message,
-        "accepted=1 rejected=0 orphaned=0 requested=0 served=0 announced=0 suppressed=0 evicted=0 expired=0 rebroadcast_deferred=0 recovered=0 dropped_confirmed=0 dropped_duplicate=0 dropped_missing_parent=0 dropped_policy_incompatible=0 dropped_evicted=0"
+        "accepted=1 rejected=0 orphaned=0 requested=0 served=0 announced=0 suppressed=0 evicted=0 expired=0 rebroadcast_deferred=0 recovered=0 dropped_confirmed=0 dropped_duplicate=0 dropped_missing_parent=0 dropped_policy_incompatible=0 dropped_expired=0 dropped_evicted=0"
     );
     for raw in [
         "0123456789abcdef",

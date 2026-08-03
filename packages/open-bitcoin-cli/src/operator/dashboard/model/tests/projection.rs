@@ -115,7 +115,8 @@ fn dashboard_sections_surface_relay_evidence_rows() {
                 dropped_duplicate_count: 3,
                 dropped_missing_parent_count: 4,
                 dropped_policy_incompatible_count: 5,
-                dropped_evicted_count: 6,
+                dropped_expired_count: 6,
+                dropped_evicted_count: 7,
             },
         );
 
@@ -136,7 +137,7 @@ fn dashboard_sections_surface_relay_evidence_rows() {
             .find(|row| row.label == "Relay recovery")
             .expect("relay recovery row")
             .value,
-        "recovered_count=1 dropped_confirmed_count=2 dropped_duplicate_count=3 dropped_missing_parent_count=4 dropped_policy_incompatible_count=5 dropped_evicted_count=6"
+        "recovered_count=1 dropped_confirmed_count=2 dropped_duplicate_count=3 dropped_missing_parent_count=4 dropped_policy_incompatible_count=5 dropped_expired_count=6 dropped_evicted_count=7"
     );
     assert_eq!(
         rows.iter()

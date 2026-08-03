@@ -350,6 +350,7 @@ Operator status exposes the recovery result only through the fixed
 - `dropped_duplicate_count`
 - `dropped_missing_parent_count`
 - `dropped_policy_incompatible_count`
+- `dropped_expired_count`
 - `dropped_evicted_count`
 
 Storage or schema failures use fixed unavailable recovery evidence; status,
