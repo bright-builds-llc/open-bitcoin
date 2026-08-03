@@ -118,6 +118,14 @@ export function checkPhase135SnapshotRecovery(
     get(FILES.codecKeyPreflight),
     get(FILES.codecTransactionDecode),
   ].join("\n");
+  const boundedDecode = body(
+    get(FILES.codecDecode),
+    "pub(super) fn decode_bounded_versioned(",
+  );
+  const rawKeyPreflight = "validate_raw_object_keys(bytes)?;";
+  const serdeConstruction = "serde_json::Deserializer::from_slice(bytes)";
+  const preflightIndex = boundedDecode.indexOf(rawKeyPreflight);
+  const serdeIndex = boundedDecode.indexOf(serdeConstruction);
   const storage = get(FILES.storage);
   const v2Record = body(codec, "struct MempoolSnapshotV2RecordDto");
   const v2Dto = body(codec, "struct MempoolSnapshotV2Dto");
@@ -183,6 +191,9 @@ export function checkPhase135SnapshotRecovery(
   addFailure(
     failures,
     !decode.includes("if bytes.len() > limits.max_encoded_bytes {") ||
+      preflightIndex < 0 ||
+      serdeIndex < 0 ||
+      preflightIndex >= serdeIndex ||
       !hasAll(codecDecode, [
         "limits.max_records",
         "limits.max_unbroadcast_members",

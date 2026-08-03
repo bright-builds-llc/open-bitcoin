@@ -13,7 +13,7 @@ import { readSourceRoot } from "./source-corpus";
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const tempRoots: string[] = [];
 type Mutator = (files: Map<string, string>) => void;
-type Mutation = readonly [string, string, Mutator];
+type Mutation = readonly [string, string, Mutator, exact?: boolean];
 
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
@@ -55,12 +55,13 @@ test("ignores braces and command tokens inside comments and string literals", ()
 
 test.each(contractMutations())(
   "rejects snapshot recovery mutation: %s",
-  (_name, expected, mutate) => assertExactFailure(expected, mutate),
+  (_name, expected, mutate, exact = false) =>
+    assertExpectedFailure(expected, mutate, exact),
 );
 
 test.each(claimMutations())(
   "rejects premature scope claim: %s",
-  (_name, expected, mutate) => assertExactFailure(expected, mutate),
+  (_name, expected, mutate) => assertExpectedFailure(expected, mutate, false),
 );
 
 function contractMutations(): Mutation[] {
@@ -164,13 +165,33 @@ function contractMutations(): Mutation[] {
       ),
     ],
     [
-      "raw object key preflight removed",
+      "raw object key bound is disabled",
       PHASE135_DIAGNOSTICS.bounds,
       replace(
         files.codecKeyPreflight,
         "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = 64;",
         "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = usize::MAX;",
       ),
+    ],
+    [
+      "raw object key preflight call removed",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(
+        files.codecDecode,
+        "    validate_raw_object_keys(bytes)?;\n",
+        "",
+      ),
+      true,
+    ],
+    [
+      "raw object key preflight moved after deserializer construction",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(
+        files.codecDecode,
+        "    validate_raw_object_keys(bytes)?;\n    let mut deserializer = serde_json::Deserializer::from_slice(bytes);",
+        "    let mut deserializer = serde_json::Deserializer::from_slice(bytes);\n    validate_raw_object_keys(bytes)?;",
+      ),
+      true,
     ],
     [
       "bounded loader reads before checking stored size",
@@ -464,7 +485,11 @@ function claimMutations(): Mutation[] {
   );
 }
 
-function assertExactFailure(expected: string, mutate: Mutator): void {
+function assertExpectedFailure(
+  expected: string,
+  mutate: Mutator,
+  exact: boolean,
+): void {
   // Arrange
   const root = createFixture(mutate);
 
@@ -472,6 +497,10 @@ function assertExactFailure(expected: string, mutate: Mutator): void {
   const failures = checkPhase135SnapshotRecovery(root);
 
   // Assert
+  if (exact) {
+    expect(failures).toEqual([expected]);
+    return;
+  }
   expect(failures).toContain(expected);
 }
 
