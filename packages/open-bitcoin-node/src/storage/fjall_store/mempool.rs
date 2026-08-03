@@ -4,7 +4,9 @@
 // - packages/bitcoin-knots/test/functional/mempool_persist.py
 
 use core::fmt;
+use std::collections::HashMap;
 
+use open_bitcoin_core::{chainstate::ChainstateSnapshot, consensus::transaction_txid};
 use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
 
 use super::{FjallNodeStore, SNAPSHOT_KEY};
@@ -185,6 +187,51 @@ impl std::error::Error for SnapshotWriteExecutionError {
 }
 
 impl FjallNodeStore {
+    /// Load chainstate and migrate legacy confirmation evidence from durable active-chain blocks.
+    pub fn load_chainstate_snapshot_with_confirmation_migration(
+        &self,
+    ) -> Result<Option<ChainstateSnapshot>, StorageError> {
+        let Some(mut snapshot) = self.load_chainstate_snapshot()? else {
+            return Ok(None);
+        };
+        if snapshot.maybe_confirmed_txid_counts.is_some() {
+            return Ok(Some(snapshot));
+        }
+
+        let mut confirmed_txid_counts = HashMap::new();
+        for position in &snapshot.active_chain {
+            let Some(block) = self.load_block(position.block_hash)? else {
+                return Err(super::corruption(
+                    StorageNamespace::Chainstate,
+                    format_args!(
+                        "missing active-chain block {:?} required for confirmation migration",
+                        position.block_hash
+                    ),
+                ));
+            };
+            for transaction in &block.transactions {
+                let txid = transaction_txid(transaction).map_err(|error| {
+                    super::corruption(
+                        StorageNamespace::Chainstate,
+                        format_args!(
+                            "failed to derive transaction identity during confirmation migration: {error}"
+                        ),
+                    )
+                })?;
+                let count = confirmed_txid_counts.entry(txid).or_insert(0_u32);
+                *count = count.checked_add(1).ok_or_else(|| {
+                    super::corruption(
+                        StorageNamespace::Chainstate,
+                        format_args!("active-chain occurrence count overflow for {txid:?}"),
+                    )
+                })?;
+            }
+        }
+        snapshot.maybe_confirmed_txid_counts = Some(confirmed_txid_counts);
+        self.save_chainstate_snapshot(&snapshot, PersistMode::Sync)?;
+        Ok(Some(snapshot))
+    }
+
     /// Persist one owned snapshot and terminate its capability through authority.
     ///
     /// Encoding or save failure aborts the exact pre-achievement reservation.

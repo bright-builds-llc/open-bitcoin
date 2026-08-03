@@ -192,6 +192,47 @@ fn chainstate_snapshot_round_trips_through_storage_dto() {
 }
 
 #[test]
+fn chainstate_confirmation_counts_encode_deterministically_and_round_trip() {
+    // Arrange
+    let first_txid = Txid::from_byte_array([1_u8; 32]);
+    let second_txid = Txid::from_byte_array([2_u8; 32]);
+    let mut first = chainstate_snapshot();
+    first.maybe_confirmed_txid_counts = Some(HashMap::from([(second_txid, 2), (first_txid, 1)]));
+    let mut second = chainstate_snapshot();
+    second.maybe_confirmed_txid_counts = Some(HashMap::from([(first_txid, 1), (second_txid, 2)]));
+
+    // Act
+    let first_encoded = encode_chainstate_snapshot(&first).expect("encode first chainstate");
+    let second_encoded = encode_chainstate_snapshot(&second).expect("encode second chainstate");
+    let decoded = decode_chainstate_snapshot(&first_encoded).expect("decode chainstate counts");
+
+    // Assert
+    assert_eq!(first_encoded, second_encoded);
+    assert_eq!(
+        decoded.maybe_confirmed_txid_counts,
+        first.maybe_confirmed_txid_counts
+    );
+}
+
+#[test]
+fn chainstate_snapshot_without_confirmation_evidence_decodes_as_unknown() {
+    // Arrange
+    let encoded = encode_chainstate_snapshot(&chainstate_snapshot()).expect("encode chainstate");
+    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("chainstate JSON");
+    value["payload"]
+        .as_object_mut()
+        .expect("chainstate payload")
+        .remove("maybe_confirmed_txid_counts");
+    let legacy = serde_json::to_vec(&value).expect("encode legacy chainstate");
+
+    // Act
+    let decoded = decode_chainstate_snapshot(&legacy).expect("decode legacy chainstate");
+
+    // Assert
+    assert!(decoded.maybe_confirmed_txid_counts.is_none());
+}
+
+#[test]
 fn wallet_registry_and_selected_wallet_round_trip() {
     // Arrange
     let registry = WalletRegistrySnapshot::new(["alpha".to_string(), "beta".to_string()]);

@@ -79,6 +79,11 @@ pub(super) fn prepare_mempool_recovery(
     startup_at: PolicyTime,
     authority_epoch: AuthorityEpoch,
 ) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
+    if chainstate.maybe_confirmed_txid_counts.is_none() {
+        return Err(ManagedNetworkError::LifecycleEffect(
+            "mempool recovery confirmation evidence is unavailable",
+        ));
+    }
     let topology = prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
         .map_err(|_| {
             ManagedNetworkError::LifecycleEffect("mempool recovery topology preparation failed")
@@ -226,9 +231,11 @@ pub(super) fn prepare_mempool_recovery(
 
 fn transaction_is_confirmed(record: &TopologyRecord, chainstate: &ChainstateSnapshot) -> bool {
     chainstate
-        .maybe_confirmed_txids
+        .maybe_confirmed_txid_counts
         .as_ref()
-        .is_some_and(|confirmed_txids| confirmed_txids.contains(&record.identity.txid))
+        .is_some_and(|confirmed_txid_counts| {
+            confirmed_txid_counts.contains_key(&record.identity.txid)
+        })
 }
 
 fn recovery_metadata(

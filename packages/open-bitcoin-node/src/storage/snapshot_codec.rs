@@ -103,12 +103,20 @@ struct BlockUndoRecordDto {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct ConfirmedTxidCountDto {
+    txid: [u8; 32],
+    active_chain_occurrences: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct ChainstateSnapshotDto {
     active_chain: Vec<ChainPositionDto>,
     utxos: Vec<UtxoRecordDto>,
     undo_by_block: Vec<BlockUndoRecordDto>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     maybe_confirmed_txids: Option<Vec<[u8; 32]>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    maybe_confirmed_txid_counts: Option<Vec<ConfirmedTxidCountDto>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -408,14 +416,20 @@ impl From<&ChainstateSnapshot> for ChainstateSnapshotDto {
                 .collect(),
             utxos,
             undo_by_block,
-            maybe_confirmed_txids: snapshot.maybe_confirmed_txids.as_ref().map(|txids| {
-                let mut encoded = txids
-                    .iter()
-                    .map(|txid| txid.to_byte_array())
-                    .collect::<Vec<_>>();
-                encoded.sort_unstable();
-                encoded
-            }),
+            maybe_confirmed_txids: None,
+            maybe_confirmed_txid_counts: snapshot.maybe_confirmed_txid_counts.as_ref().map(
+                |confirmed_txid_counts| {
+                    let mut encoded = confirmed_txid_counts
+                        .iter()
+                        .map(|(txid, active_chain_occurrences)| ConfirmedTxidCountDto {
+                            txid: txid.to_byte_array(),
+                            active_chain_occurrences: *active_chain_occurrences,
+                        })
+                        .collect::<Vec<_>>();
+                    encoded.sort_unstable_by_key(|entry| entry.txid);
+                    encoded
+                },
+            ),
         }
     }
 }
@@ -450,26 +464,50 @@ impl TryFrom<ChainstateSnapshotDto> for ChainstateSnapshot {
             })
             .collect::<Result<HashMap<_, _>, StorageError>>()?;
 
-        let maybe_confirmed_txids = dto
-            .maybe_confirmed_txids
+        if dto.maybe_confirmed_txids.is_some() && dto.maybe_confirmed_txid_counts.is_some() {
+            return Err(corruption(
+                StorageNamespace::Chainstate,
+                "chainstate contains both legacy identities and occurrence counts",
+            ));
+        }
+        if let Some(encoded) = dto.maybe_confirmed_txids {
+            let encoded_len = encoded.len();
+            let unique = encoded.into_iter().collect::<HashSet<_>>();
+            if unique.len() != encoded_len {
+                return Err(corruption(
+                    StorageNamespace::Chainstate,
+                    "duplicate confirmed transaction identity",
+                ));
+            }
+        }
+        let maybe_confirmed_txid_counts = dto
+            .maybe_confirmed_txid_counts
             .map(|encoded| {
-                let encoded_len = encoded.len();
-                let txids = encoded
-                    .into_iter()
-                    .map(Txid::from_byte_array)
-                    .collect::<HashSet<_>>();
-                if txids.len() != encoded_len {
-                    return Err(corruption(
-                        StorageNamespace::Chainstate,
-                        "duplicate confirmed transaction identity",
-                    ));
+                let mut counts = HashMap::with_capacity(encoded.len());
+                for entry in encoded {
+                    if entry.active_chain_occurrences == 0 {
+                        return Err(corruption(
+                            StorageNamespace::Chainstate,
+                            "confirmed transaction occurrence count must be non-zero",
+                        ));
+                    }
+                    let txid = Txid::from_byte_array(entry.txid);
+                    if counts
+                        .insert(txid, entry.active_chain_occurrences)
+                        .is_some()
+                    {
+                        return Err(corruption(
+                            StorageNamespace::Chainstate,
+                            "duplicate confirmed transaction count",
+                        ));
+                    }
                 }
-                Ok(txids)
+                Ok(counts)
             })
             .transpose()?;
 
         let mut snapshot = Self::new(active_chain, utxos, undo_by_block);
-        snapshot.maybe_confirmed_txids = maybe_confirmed_txids;
+        snapshot.maybe_confirmed_txid_counts = maybe_confirmed_txid_counts;
         Ok(snapshot)
     }
 }

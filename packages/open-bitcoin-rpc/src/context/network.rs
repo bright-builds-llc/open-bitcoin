@@ -108,9 +108,10 @@ impl ManagedRpcContext {
                 Some(store.clone())
             }
         };
-        let durable_chainstate = effective_store
-            .as_ref()
-            .map_or_else(|| Ok(None), FjallNodeStore::load_chainstate_snapshot);
+        let durable_chainstate = effective_store.as_ref().map_or_else(
+            || Ok(None),
+            |store| store.load_chainstate_snapshot_with_confirmation_migration(),
+        );
         let chainstate_store = durable_chainstate
             .as_ref()
             .ok()

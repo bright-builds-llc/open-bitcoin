@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use open_bitcoin_consensus::block::enforce_coinbase_reward_limit;
 use open_bitcoin_consensus::context::{MinDifficultyRecoveryTarget, RetargetAnchor};
@@ -31,7 +31,7 @@ pub struct Chainstate {
     active_chain: Vec<ChainPosition>,
     utxos: HashMap<OutPoint, Coin>,
     undo_by_block: HashMap<BlockHash, BlockUndo>,
-    maybe_confirmed_txids: Option<HashSet<open_bitcoin_primitives::Txid>>,
+    maybe_confirmed_txid_counts: Option<HashMap<open_bitcoin_primitives::Txid, u32>>,
 }
 
 impl Default for Chainstate {
@@ -40,7 +40,7 @@ impl Default for Chainstate {
             active_chain: Vec::new(),
             utxos: HashMap::new(),
             undo_by_block: HashMap::new(),
-            maybe_confirmed_txids: Some(HashSet::new()),
+            maybe_confirmed_txid_counts: Some(HashMap::new()),
         }
     }
 }
@@ -55,7 +55,7 @@ impl Chainstate {
             active_chain: snapshot.active_chain,
             utxos: snapshot.utxos,
             undo_by_block: snapshot.undo_by_block,
-            maybe_confirmed_txids: snapshot.maybe_confirmed_txids,
+            maybe_confirmed_txid_counts: snapshot.maybe_confirmed_txid_counts,
         }
     }
 
@@ -65,7 +65,7 @@ impl Chainstate {
             self.utxos.clone(),
             self.undo_by_block.clone(),
         );
-        snapshot.maybe_confirmed_txids = self.maybe_confirmed_txids.clone();
+        snapshot.maybe_confirmed_txid_counts = self.maybe_confirmed_txid_counts.clone();
         snapshot
     }
 
@@ -133,6 +133,28 @@ impl Chainstate {
         check_block_contextual(block, &block_context)
             .map_err(|source| ChainstateError::BlockValidation { source })?;
 
+        let maybe_next_confirmed_txid_counts = self
+            .maybe_confirmed_txid_counts
+            .as_ref()
+            .map(|confirmed_txid_counts| {
+                let mut next_counts = confirmed_txid_counts.clone();
+                for transaction in &block.transactions {
+                    let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
+                    let count = next_counts.entry(txid).or_default();
+                    *count =
+                        count
+                            .checked_add(1)
+                            .ok_or_else(|| ChainstateError::Serialization {
+                                context: "confirmed transaction count",
+                                reason: format!(
+                                    "active-chain occurrence count overflow for {txid:?}"
+                                ),
+                            })?;
+                }
+                Ok(next_counts)
+            })
+            .transpose()?;
+
         let mut next_utxos = self.utxos.clone();
         let mut block_undo = BlockUndo::default();
         let block_time = i64::from(block.header.time);
@@ -178,12 +200,7 @@ impl Chainstate {
         self.utxos = next_utxos;
         self.undo_by_block.insert(position.block_hash, block_undo);
         self.active_chain.push(position.clone());
-        if let Some(confirmed_txids) = &mut self.maybe_confirmed_txids {
-            for transaction in &block.transactions {
-                confirmed_txids
-                    .insert(transaction_txid(transaction).map_err(txid_serialization_error)?);
-            }
-        }
+        self.maybe_confirmed_txid_counts = maybe_next_confirmed_txid_counts;
 
         Ok(position)
     }
@@ -200,7 +217,7 @@ impl Chainstate {
             });
         }
 
-        let Some(block_undo) = self.undo_by_block.remove(&tip.block_hash) else {
+        let Some(block_undo) = self.undo_by_block.get(&tip.block_hash).cloned() else {
             return Err(ChainstateError::MissingUndo {
                 block_hash: tip.block_hash,
             });
@@ -212,6 +229,29 @@ impl Chainstate {
             });
         }
 
+        let maybe_next_confirmed_txid_counts = self
+            .maybe_confirmed_txid_counts
+            .as_ref()
+            .map(|confirmed_txid_counts| {
+                let mut next_counts = confirmed_txid_counts.clone();
+                for transaction in &block.transactions {
+                    let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
+                    let Some(count) = next_counts.get_mut(&txid) else {
+                        return Err(ChainstateError::Serialization {
+                            context: "confirmed transaction count",
+                            reason: format!("missing active-chain occurrence for {txid:?}"),
+                        });
+                    };
+                    if *count > 1 {
+                        *count -= 1;
+                    } else {
+                        next_counts.remove(&txid);
+                    }
+                }
+                Ok(next_counts)
+            })
+            .transpose()?;
+
         for transaction_index in (0..block.transactions.len()).rev() {
             let transaction = &block.transactions[transaction_index];
             remove_transaction_outputs(&mut self.utxos, transaction, tip.height)?;
@@ -222,13 +262,8 @@ impl Chainstate {
             }
         }
 
-        if let Some(confirmed_txids) = &mut self.maybe_confirmed_txids {
-            for transaction in &block.transactions {
-                confirmed_txids
-                    .remove(&transaction_txid(transaction).map_err(txid_serialization_error)?);
-            }
-        }
-
+        self.maybe_confirmed_txid_counts = maybe_next_confirmed_txid_counts;
+        self.undo_by_block.remove(&tip.block_hash);
         self.active_chain.pop();
         Ok(tip)
     }

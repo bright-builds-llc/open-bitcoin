@@ -2840,7 +2840,7 @@
           "@@//packages/open-bitcoin-core/Cargo.toml": "de982458207d2ada68e140d70dd5e98c410525e66f2c538ce0b8b7f4f626fe7a",
           "@@//packages/open-bitcoin-mempool/Cargo.toml": "7f146fa73e957691428a6f55869195614ede988fdc738e9275b7dcfa45d864a1",
           "@@//packages/open-bitcoin-network/Cargo.toml": "066dbfccded096b66ad166c949ac327b695053a69aea5552b1b80c4b5dc355e5",
-          "@@//packages/open-bitcoin-node/Cargo.toml": "fa57d132efd3c7e71ed90b0d77c97e23f5758ce3ab492ead53e006b0359d8f6b",
+          "@@//packages/open-bitcoin-node/Cargo.toml": "689872119488a208413667a319922788db9be61cbf83a0881529e24937156f35",
           "@@//packages/open-bitcoin-primitives/Cargo.toml": "90cdae988ae8133643b96d51205c64f66a5c895c472bae96d6623f352c26e920",
           "@@//packages/open-bitcoin-rpc/Cargo.toml": "124b99d467d9ed767ff3654c170757f84a6ca5496ba771266260c14302a6b7a6",
           "@@//packages/open-bitcoin-test-harness/Cargo.toml": "40e46162c0129c577fdae0b1c527102355542e40047b3150fc5fd50c9eb55118",

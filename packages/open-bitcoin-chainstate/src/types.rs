@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use open_bitcoin_consensus::{SpentOutput, block_hash};
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, OutPoint, TransactionOutput, Txid};
@@ -87,7 +87,7 @@ pub struct ChainstateSnapshot {
     pub active_chain: Vec<ChainPosition>,
     pub utxos: HashMap<OutPoint, Coin>,
     pub undo_by_block: HashMap<BlockHash, BlockUndo>,
-    pub maybe_confirmed_txids: Option<HashSet<Txid>>,
+    pub maybe_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
 }
 
 impl ChainstateSnapshot {
@@ -100,7 +100,7 @@ impl ChainstateSnapshot {
             active_chain,
             utxos,
             undo_by_block,
-            maybe_confirmed_txids: None,
+            maybe_confirmed_txid_counts: Some(HashMap::new()),
         }
     }
 
