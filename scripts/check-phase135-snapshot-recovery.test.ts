@@ -8,8 +8,11 @@ import {
   PHASE135_TARGET_FILES,
   checkPhase135SnapshotRecovery,
 } from "./check-phase135-snapshot-recovery";
+import {
+  body,
+  directStatementIndex,
+} from "./check-phase135-snapshot-recovery/source";
 import { readSourceRoot } from "./source-corpus";
-
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const tempRoots: string[] = [];
 type Mutator = (files: Map<string, string>) => void;
@@ -51,6 +54,36 @@ test("ignores braces and command tokens inside comments and string literals", ()
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test.each([
+  ["top level", "target();\n", 0],
+  ["closure", "let decoy = || { target(); };\n", -1],
+  ["local function", "fn decoy() { target(); }\n", -1],
+  ["async block", "let decoy = async { target(); };\n", -1],
+  ["nested block", "if guarded { target(); }\n", -1],
+  ["unclosed block", "if guarded { target();\n", -1],
+  ["unexpected closing block", "}\ntarget();\n", -1],
+] as const)(
+  "finds direct statements only at balanced top-level depth: %s",
+  (_name, source, expected) =>
+    expect(directStatementIndex(source, "target();")).toBe(expected),
+);
+
+test("masked comments, strings, and raw strings cannot spoof direct statements", () => {
+  // Arrange
+  const source = `fn guarded() {
+// target(); }
+let normal = "target(); }";
+let raw = r###"target(); } {"###;
+/* target(); { */
+target();
+}`;
+  const maskedBody = body(source, "fn guarded()");
+  // Act
+  const actual = directStatementIndex(maskedBody, "target();");
+  // Assert
+  expect(actual).toBe(maskedBody.lastIndexOf("target();"));
 });
 
 test.each(contractMutations())(
@@ -115,9 +148,19 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.schema,
       insertAfter(
         files.codec,
-        "accepted_at_unix_seconds: i64,",
+        "accepted_at_unix_seconds: Option<i64>,",
         "\n    source_note: String,",
       ),
+    ],
+    [
+      "v2 loses explicit nullable age",
+      PHASE135_DIAGNOSTICS.schema,
+      replace(files.codec, "Option<i64>", "i64"),
+    ],
+    [
+      "v2 null fabricates a known age",
+      PHASE135_DIAGNOSTICS.schema,
+      replace(files.codec, "None => MempoolAcceptanceTime::LegacyUnknown,", "None => MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(0)),"),
     ],
     [
       "global schema changes",
@@ -194,6 +237,33 @@ function contractMutations(): Mutation[] {
       true,
     ],
     [
+      "raw object key preflight hidden in a closure",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(files.codecDecode, "    validate_raw_object_keys(bytes)?;\n", "    let decoy = || { validate_raw_object_keys(bytes) };\n"),
+      true,
+    ],
+    [
+      "raw object key preflight hidden in a local function",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(files.codecDecode, "    validate_raw_object_keys(bytes)?;\n", "    fn decoy(bytes: &[u8]) { let _ = validate_raw_object_keys(bytes); }\n"),
+      true,
+    ],
+    [
+      "record decode restores the fixed 50,000 clamp",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(files.store, ".max_live_entries();", ".max_live_entries().min(50_000);"),
+    ],
+    [
+      "capture bypasses shared accounting bounds",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(files.dispatcher, "mempool.config().mempool_capacity", "MempoolCapacity::new(50_000)"),
+    ],
+    [
+      "topology bypasses recovery policy bounds",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(files.topology, "policy.mempool_capacity", "MempoolCapacity::new(50_000)"),
+    ],
+    [
       "bounded loader reads before checking stored size",
       PHASE135_DIAGNOSTICS.bounds,
       replace(
@@ -214,7 +284,11 @@ function contractMutations(): Mutation[] {
     [
       "topology edge bound removed",
       PHASE135_DIAGNOSTICS.topology,
-      replace(files.topology, "MAX_RECOVERY_TOPOLOGY_EDGES", "usize::MAX"),
+      replace(
+        files.topology,
+        "max_edges: bounds.max_live_input_edges(),",
+        "max_edges: usize::MAX,",
+      ),
     ],
     [
       "outcome variant removed",

@@ -114,6 +114,44 @@ export function body(source: string, marker: string): string {
   return "";
 }
 
+export function directStatementIndex(
+  maskedBody: string,
+  statement: string,
+): number {
+  if (statement.length === 0) return -1;
+  let depth = 0;
+  let firstIndex = -1;
+  for (let index = 0; index < maskedBody.length; index += 1) {
+    const current = maskedBody[index];
+    if (current === "{") {
+      depth += 1;
+      continue;
+    }
+    if (current === "}") {
+      if (depth === 0) return -1;
+      depth -= 1;
+      continue;
+    }
+    if (
+      depth === 0 &&
+      firstIndex < 0 &&
+      maskedBody.startsWith(statement, index) &&
+      beginsDirectStatement(maskedBody, index)
+    ) {
+      firstIndex = index;
+    }
+  }
+  return depth === 0 ? firstIndex : -1;
+}
+
+function beginsDirectStatement(source: string, index: number): boolean {
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    if (source[cursor] === "\n") return true;
+    if (!/\s/.test(source[cursor])) return false;
+  }
+  return true;
+}
+
 export function exactStructFields(source: string, marker: string): string[] {
   const fields = body(source, marker).matchAll(
     /^\s*(?:pub(?:\([^)]*\))?\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*:/gm,
