@@ -46,7 +46,7 @@ fn mempool_snapshot_codec_rejects_truncated_v2_json() {
             namespace: StorageNamespace::Mempool,
             ref detail,
             ..
-        } if detail == "mempool snapshot decode failed"
+        } if detail == "mempool snapshot structure is corrupt"
     ));
 }
 
@@ -224,6 +224,34 @@ fn escaped_oversized_unknown_key_is_rejected_before_serde_unescaping() {
         error,
         StorageError::Corruption { ref detail, .. }
             if detail == "mempool snapshot exceeds a resource bound"
+    ));
+}
+
+#[test]
+fn raw_key_preflight_rejects_oversized_unterminated_escaped_key_under_narrow_budget() {
+    // Arrange
+    let hostile_key = format!("{}\\", "x".repeat(65));
+    let hostile = format!("{{\"{hostile_key}");
+    let limits = MempoolSnapshotDecodeLimits {
+        max_encoded_bytes: hostile.len(),
+        max_records: 0,
+        max_unbroadcast_members: 0,
+        max_transaction_bytes: 0,
+        max_total_transaction_bytes: 0,
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(hostile.as_bytes(), limits)
+        .expect_err("oversized unterminated key must fail before Serde");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption {
+            namespace: StorageNamespace::Mempool,
+            ref detail,
+            ..
+        } if detail == "mempool snapshot exceeds a resource bound"
     ));
 }
 
