@@ -16,9 +16,9 @@ use open_bitcoin_primitives::{
 use crate::resource::{checked_product, checked_sum};
 use crate::{
     AccountedMempoolMemory, BlockLifecycleContext, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, Mempool,
-    MempoolCapacity, MempoolEntry, MempoolError, MempoolResourceLedger, PolicyConfig, PolicyTime,
-    ResourceAccountingError, TransactionVirtualSize, accounted_memory_for_entry,
-    build_resource_ledger, recompute_resource_ledger,
+    MempoolCapacity, MempoolCapacityBounds, MempoolEntry, MempoolError, MempoolResourceLedger,
+    PolicyConfig, PolicyTime, ResourceAccountingError, TransactionVirtualSize,
+    accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
 };
 
 use super::{build_block, sample_chainstate_snapshot, spend_transaction, submit};
@@ -270,6 +270,46 @@ fn component_product_overflow_fails_closed() {
 }
 
 #[test]
+fn policy_capacity_bounds_follow_the_versioned_accounting_lower_bounds() {
+    // Arrange
+    let entry = sample_entry(ScriptWitness::default(), 1);
+    let minimum_entry_bytes = MempoolCapacityBounds::minimum_entry_accounted_bytes();
+    let minimum_input_edge_bytes = MempoolCapacityBounds::minimum_input_edge_accounted_bytes();
+    let capacity = MempoolCapacity::new(
+        minimum_entry_bytes
+            .checked_mul(3)
+            .and_then(|bytes| bytes.checked_add(minimum_entry_bytes - 1))
+            .expect("bounded test capacity"),
+    );
+
+    // Act
+    let bounds = MempoolCapacityBounds::from_capacity(capacity);
+    let accounted = accounted_memory_for_entry(&entry).expect("entry accounts");
+
+    // Assert
+    assert_eq!(
+        bounds.accounting_version(),
+        MEMPOOL_RESOURCE_ACCOUNTING_VERSION
+    );
+    assert_eq!(bounds.max_live_entries(), 3);
+    assert_eq!(
+        bounds.max_live_input_edges(),
+        capacity.as_usize() / minimum_input_edge_bytes
+    );
+    assert!(minimum_entry_bytes > 0);
+    assert!(minimum_input_edge_bytes > 0);
+    assert!(accounted.as_usize() >= minimum_entry_bytes + minimum_input_edge_bytes);
+    assert_eq!(
+        MempoolCapacityBounds::from_capacity(MempoolCapacity::ZERO).max_live_entries(),
+        0
+    );
+    assert!(
+        MempoolCapacityBounds::from_capacity(MempoolCapacity::new(usize::MAX)).max_live_entries()
+            > 0
+    );
+}
+
+#[test]
 fn ledger_entry_overflow_fails_closed() {
     // Arrange
     let mut ledger = MempoolResourceLedger::new(
@@ -389,6 +429,52 @@ fn trim_does_not_evict_when_accounted_usage_is_within_capacity() {
     assert_eq!(
         PolicyConfig::default().mempool_capacity,
         MempoolCapacity::new(300_000_000)
+    );
+}
+
+#[test]
+fn exact_accounted_capacity_retains_only_policy_bounded_membership() {
+    // Arrange
+    let (snapshot, coinbase_txids) = sample_chainstate_snapshot(3);
+    let probe_transaction = spend_transaction(
+        coinbase_txids[2],
+        0,
+        499_999_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut probe = Mempool::default();
+    submit(&mut probe, &snapshot, probe_transaction).expect("probe admission");
+    let exact_capacity = probe.accounted_memory();
+    let low_fee = spend_transaction(
+        coinbase_txids[0],
+        0,
+        499_999_200,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let high_fee = spend_transaction(
+        coinbase_txids[1],
+        0,
+        499_998_000,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let mut mempool = Mempool::new(PolicyConfig {
+        mempool_capacity: MempoolCapacity::new(exact_capacity.as_usize()),
+        ..PolicyConfig::default()
+    });
+
+    // Act
+    let low_fee_result = submit(&mut mempool, &snapshot, low_fee).expect("exact-capacity member");
+    let high_fee_result = submit(&mut mempool, &snapshot, high_fee).expect("one-over member");
+
+    // Assert
+    assert_eq!(mempool.entries().len(), 1);
+    assert!(mempool.entry(&low_fee_result.accepted).is_none());
+    assert!(mempool.entry(&high_fee_result.accepted).is_some());
+    assert_eq!(high_fee_result.evicted, vec![low_fee_result.accepted]);
+    assert!(
+        mempool.entries().len()
+            <= MempoolCapacityBounds::from_capacity(mempool.config().mempool_capacity)
+                .max_live_entries()
     );
 }
 

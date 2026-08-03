@@ -11,15 +11,15 @@ use open_bitcoin_core::{
     primitives::{Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin, PolicyTime,
-    RelayIntent,
+    MempoolAcceptanceTime, MempoolCapacityBounds, MempoolEntryMetadata, MempoolMemberIdentity,
+    MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent,
 };
 use serde::{Deserialize, Serialize, Serializer};
 
 use super::{corruption, encode_versioned};
 use crate::storage::mempool_snapshot::{
-    CapturedMempoolGeneration, MAX_MEMPOOL_SNAPSHOT_RECORDS,
-    MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS, MempoolSnapshotError, MempoolSnapshotFormatVersion,
+    CapturedMempoolGeneration, MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS, MempoolSnapshotError,
+    MempoolSnapshotFormatVersion,
 };
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{StorageError, StorageNamespace};
@@ -45,9 +45,11 @@ pub(crate) struct MempoolSnapshotDecodeLimits {
 
 impl Default for MempoolSnapshotDecodeLimits {
     fn default() -> Self {
+        let policy = PolicyConfig::default();
         Self {
             max_encoded_bytes: MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES,
-            max_records: MAX_MEMPOOL_SNAPSHOT_RECORDS,
+            max_records: MempoolCapacityBounds::from_capacity(policy.mempool_capacity)
+                .max_live_entries(),
             max_unbroadcast_members: MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS,
             max_transaction_bytes: MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES,
             max_total_transaction_bytes: MAX_MEMPOOL_SNAPSHOT_TOTAL_TRANSACTION_BYTES,

@@ -63,7 +63,7 @@ pub use pool::{
 };
 pub use resource::{
     AccountedMempoolMemory, MEMPOOL_RESOURCE_ACCOUNTING_VERSION, MempoolCapacity,
-    MempoolResourceLedger, ResourceAccountingError, TransactionVirtualSize,
+    MempoolCapacityBounds, MempoolResourceLedger, ResourceAccountingError, TransactionVirtualSize,
     accounted_memory_for_entry, build_resource_ledger, recompute_resource_ledger,
 };
 pub use types::{

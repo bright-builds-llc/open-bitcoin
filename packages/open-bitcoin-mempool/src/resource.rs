@@ -154,6 +154,54 @@ impl MempoolCapacity {
     }
 }
 
+/// Conservative count ceilings implied by the versioned accounted-memory formula.
+///
+/// These bounds constrain snapshot and recovery allocation only. Live admission
+/// remains governed by the complete accounted-memory ledger.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MempoolCapacityBounds {
+    max_live_entries: usize,
+    max_live_input_edges: usize,
+}
+
+impl MempoolCapacityBounds {
+    const MINIMUM_ENTRY_ACCOUNTED_BYTES: usize = size_of::<Txid>() + size_of::<MempoolEntry>();
+    const MINIMUM_INPUT_EDGE_ACCOUNTED_BYTES: usize = size_of::<TransactionInput>();
+
+    /// Derives conservative live-count ceilings without multiplication or saturation.
+    pub const fn from_capacity(capacity: MempoolCapacity) -> Self {
+        Self {
+            max_live_entries: capacity.as_usize() / Self::MINIMUM_ENTRY_ACCOUNTED_BYTES,
+            max_live_input_edges: capacity.as_usize() / Self::MINIMUM_INPUT_EDGE_ACCOUNTED_BYTES,
+        }
+    }
+
+    /// Returns the accounting version that owns these lower-bound facts.
+    pub const fn accounting_version(self) -> u32 {
+        MEMPOOL_RESOURCE_ACCOUNTING_VERSION
+    }
+
+    /// Returns the nonzero fixed footprint charged for every live entry.
+    pub const fn minimum_entry_accounted_bytes() -> usize {
+        Self::MINIMUM_ENTRY_ACCOUNTED_BYTES
+    }
+
+    /// Returns the nonzero element footprint charged for every transaction input.
+    pub const fn minimum_input_edge_accounted_bytes() -> usize {
+        Self::MINIMUM_INPUT_EDGE_ACCOUNTED_BYTES
+    }
+
+    /// Returns the maximum number of live entries possible under this capacity.
+    pub const fn max_live_entries(self) -> usize {
+        self.max_live_entries
+    }
+
+    /// Returns the maximum total input edges possible under this capacity.
+    pub const fn max_live_input_edges(self) -> usize {
+        self.max_live_input_edges
+    }
+}
+
 /// Cached totals with checked entry and spent-outpoint mutation methods.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct MempoolResourceLedger {

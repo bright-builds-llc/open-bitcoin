@@ -10,7 +10,7 @@ use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
     consensus::{block_hash, block_merkle_root, transaction_txid},
 };
-use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
+use open_bitcoin_mempool::{MempoolCapacityBounds, PolicyConfig, PolicyTime};
 
 use super::{FjallNodeStore, SNAPSHOT_KEY};
 use crate::network::{
@@ -58,8 +58,8 @@ impl MempoolSnapshotDecodeLimits {
     /// Derive bounded startup decode limits from the policy used by the live mempool.
     pub fn from_policy(policy: &PolicyConfig) -> Result<Self, SyncRecoveryCategory> {
         let total_transaction_capacity = policy.mempool_capacity.as_usize();
-        let max_records = total_transaction_capacity
-            .min(crate::storage::mempool_snapshot::MAX_MEMPOOL_SNAPSHOT_RECORDS);
+        let max_records =
+            MempoolCapacityBounds::from_capacity(policy.mempool_capacity).max_live_entries();
         let max_unbroadcast_members = max_records.min(Self::MAX_UNBROADCAST_MEMBERS);
         let max_encoded_bytes = snapshot_codec::encoded_size_upper_bound(
             total_transaction_capacity,
@@ -484,7 +484,7 @@ mod bounded_load_tests {
     }
 
     #[test]
-    fn policy_limits_clamp_record_count_to_snapshot_schema_limit() {
+    fn policy_limits_derive_record_count_from_accounted_capacity() {
         // Arrange
         let policy = PolicyConfig::default();
 
@@ -494,7 +494,7 @@ mod bounded_load_tests {
         // Assert
         assert_eq!(
             limits.max_records,
-            crate::storage::mempool_snapshot::MAX_MEMPOOL_SNAPSHOT_RECORDS
+            MempoolCapacityBounds::from_capacity(policy.mempool_capacity).max_live_entries()
         );
     }
 }

@@ -15,7 +15,6 @@ use open_bitcoin_mempool::{
     transaction_weight_and_virtual_size,
 };
 
-pub(crate) const MAX_MEMPOOL_SNAPSHOT_RECORDS: usize = 50_000;
 pub(crate) const MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS: usize = 5_000;
 
 /// The current format version local to the mempool snapshot payload.
@@ -148,9 +147,7 @@ impl MempoolSnapshot {
         records: Vec<MempoolSnapshotRecord>,
         unbroadcast_members: BTreeSet<MempoolMemberIdentity>,
     ) -> Result<Self, MempoolSnapshotError> {
-        if records.len() > MAX_MEMPOOL_SNAPSHOT_RECORDS
-            || unbroadcast_members.len() > MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS
-        {
+        if unbroadcast_members.len() > MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS {
             return Err(MempoolSnapshotError::ResourceBoundExceeded);
         }
         if records.iter().any(|record| {

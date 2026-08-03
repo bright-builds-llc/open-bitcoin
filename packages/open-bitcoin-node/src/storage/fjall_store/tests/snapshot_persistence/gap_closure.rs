@@ -1,9 +1,34 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/node/mempool_persist.cpp
-// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/node/mempool_persist.h
 // - packages/bitcoin-knots/test/functional/mempool_persist.py
 
 use super::*;
+
+const FORMER_RECORD_LIMIT_PLUS_ONE: usize = 50_001;
+const FORMER_LIMIT_TEST_MAX_ENCODED_BYTES: usize = 64 * 1024 * 1024;
+
+fn bounded_unique_snapshot_transaction(index: usize) -> Transaction {
+    let mut previous_txid = [0_u8; 32];
+    previous_txid[..size_of::<usize>()].copy_from_slice(&index.to_le_bytes());
+    Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint {
+                txid: Txid::from_byte_array(previous_txid),
+                vout: 0,
+            },
+            script_sig: script(&[0x01, 0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(1_000).expect("bounded test amount"),
+            script_pubkey: script(&[0x51]),
+        }],
+        lock_time: 0,
+    }
+}
 
 fn legacy_unknown_snapshot(transaction: Transaction) -> MempoolSnapshot {
     let txid = transaction_txid(&transaction).expect("legacy txid");
@@ -122,5 +147,89 @@ fn legacy_unknown_recovery_survives_current_sync_checkpoint_and_reopen() {
         );
     }
 
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn former_50_000_record_limit_checkpoints_and_reopens_with_policy_bounds() {
+    // Arrange
+    let path = temp_store_path("former-50000-record-limit");
+    remove_dir_if_exists(&path);
+    let captured_at = PolicyTime::new(300_000);
+    let mut records = Vec::with_capacity(FORMER_RECORD_LIMIT_PLUS_ONE);
+    for index in 0..FORMER_RECORD_LIMIT_PLUS_ONE {
+        records.push(
+            MempoolSnapshotRecord::try_from_canonical(
+                bounded_unique_snapshot_transaction(index),
+                MempoolAcceptanceTime::Known(captured_at),
+            )
+            .expect("canonical bounded record"),
+        );
+    }
+    let first_identity = records
+        .first()
+        .expect("first record")
+        .member_identity()
+        .expect("first identity");
+    let last_identity = records
+        .last()
+        .expect("last record")
+        .member_identity()
+        .expect("last identity");
+    let snapshot = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(77),
+        captured_at,
+        records,
+        BTreeSet::new(),
+    )
+    .expect("snapshot above former fixed limit");
+    let encoded = crate::storage::snapshot_codec::encode_mempool_snapshot(&snapshot)
+        .expect("encode bounded snapshot corpus");
+    assert!(encoded.len() < FORMER_LIMIT_TEST_MAX_ENCODED_BYTES);
+    assert!(
+        snapshot
+            .records
+            .len()
+            .checked_mul(size_of::<MempoolSnapshotRecord>())
+            .expect("bounded record memory")
+            < FORMER_LIMIT_TEST_MAX_ENCODED_BYTES
+    );
+    let store = FjallNodeStore::open(&path).expect("open store");
+
+    // Act
+    store
+        .save_mempool_snapshot(&snapshot, PersistMode::Sync)
+        .expect("Sync-persist snapshot above former limit");
+    drop(encoded);
+    drop(snapshot);
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen store");
+    let limits = MempoolSnapshotDecodeLimits::from_policy(&PolicyConfig::default())
+        .expect("policy-derived decode limits");
+    let persisted = reopened
+        .load_mempool_snapshot_with_limits(limits)
+        .expect("load snapshot above former limit")
+        .expect("persisted snapshot");
+
+    // Assert
+    assert_eq!(persisted.records.len(), FORMER_RECORD_LIMIT_PLUS_ONE);
+    assert_eq!(
+        persisted
+            .records
+            .first()
+            .expect("first record")
+            .member_identity()
+            .expect("first identity"),
+        first_identity
+    );
+    assert_eq!(
+        persisted
+            .records
+            .last()
+            .expect("last record")
+            .member_identity()
+            .expect("last identity"),
+        last_identity
+    );
     remove_dir_if_exists(&path);
 }

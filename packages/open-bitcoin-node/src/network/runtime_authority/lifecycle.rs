@@ -9,7 +9,7 @@
 #[cfg(test)]
 use std::cell::Cell;
 
-use open_bitcoin_mempool::MempoolLifecycleDelta;
+use open_bitcoin_mempool::{MempoolCapacityBounds, MempoolLifecycleDelta};
 
 use super::ManagedNetworkHandle;
 use crate::network::announcement_transport::PeerEmissionEvidence;
@@ -134,9 +134,16 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             .install_prepared_recovery(prepared)
             .map(LifecycleCommandResult::RecoveryInstalled),
         LifecycleCommand::PrepareSnapshot(request) => {
-            let records = network
-                .mempool()
-                .mempool()
+            let mempool = network.mempool().mempool();
+            let max_records =
+                MempoolCapacityBounds::from_capacity(mempool.config().mempool_capacity)
+                    .max_live_entries();
+            if mempool.entries().len() > max_records {
+                return Err(LifecycleProjectionError::MempoolSnapshot(
+                    crate::storage::mempool_snapshot::MempoolSnapshotError::ResourceBoundExceeded,
+                ));
+            }
+            let records = mempool
                 .entries()
                 .values()
                 .map(|entry| {

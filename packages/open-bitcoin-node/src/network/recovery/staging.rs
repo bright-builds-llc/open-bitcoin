@@ -84,10 +84,13 @@ pub(super) fn prepare_mempool_recovery(
             "mempool recovery confirmation evidence is unavailable",
         ));
     }
-    let topology = prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
-        .map_err(|_| {
-            ManagedNetworkError::LifecycleEffect("mempool recovery topology preparation failed")
-        })?;
+    let topology = prepare_recovery_topology(
+        &snapshot.records,
+        RecoveryTopologyLimits::from_policy(&config),
+    )
+    .map_err(|_| {
+        ManagedNetworkError::LifecycleEffect("mempool recovery topology preparation failed")
+    })?;
     let (ordered, mut recovery_records) = topology.into_parts();
     let persisted_unbroadcast = snapshot.unbroadcast_members();
     let mut working = Mempool::new(config.clone());

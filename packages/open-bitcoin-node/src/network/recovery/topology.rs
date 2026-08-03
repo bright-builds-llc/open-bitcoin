@@ -10,12 +10,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use open_bitcoin_core::consensus::{transaction_txid, transaction_wtxid};
 use open_bitcoin_core::primitives::{Txid, Wtxid};
-use open_bitcoin_mempool::MempoolMemberIdentity;
+use open_bitcoin_mempool::{MempoolCapacityBounds, MempoolMemberIdentity, PolicyConfig};
 
-use crate::storage::mempool_snapshot::{MAX_MEMPOOL_SNAPSHOT_RECORDS, MempoolSnapshotError};
+use crate::storage::mempool_snapshot::MempoolSnapshotError;
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshotRecord};
-
-const MAX_RECOVERY_TOPOLOGY_EDGES: usize = 1_600_000;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct RecoveryTopologyLimits {
@@ -25,11 +23,17 @@ pub(crate) struct RecoveryTopologyLimits {
 }
 
 impl RecoveryTopologyLimits {
-    pub(crate) const fn standard() -> Self {
+    #[cfg(test)]
+    pub(crate) fn standard() -> Self {
+        Self::from_policy(&PolicyConfig::default())
+    }
+
+    pub(crate) fn from_policy(policy: &PolicyConfig) -> Self {
+        let bounds = MempoolCapacityBounds::from_capacity(policy.mempool_capacity);
         Self {
-            max_vertices: MAX_MEMPOOL_SNAPSHOT_RECORDS,
-            max_edges: MAX_RECOVERY_TOPOLOGY_EDGES,
-            max_parent_edges_per_record: MAX_MEMPOOL_SNAPSHOT_RECORDS,
+            max_vertices: bounds.max_live_entries(),
+            max_edges: bounds.max_live_input_edges(),
+            max_parent_edges_per_record: bounds.max_live_input_edges(),
         }
     }
 
