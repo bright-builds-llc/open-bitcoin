@@ -63,6 +63,12 @@ impl CheckpointCompletionDispatchError {
     pub fn into_receipt(self) -> SnapshotWriteReceipt {
         *self.receipt
     }
+
+    pub(in crate::network) fn into_parts(
+        self,
+    ) -> (ManagedNetworkAuthorityError, SnapshotWriteReceipt) {
+        (self.source, *self.receipt)
+    }
 }
 
 impl std::fmt::Display for CheckpointCompletionDispatchError {
@@ -87,6 +93,23 @@ impl From<LifecycleProjectionError> for ManagedNetworkAuthorityError {
 }
 
 impl ManagedNetworkHandle {
+    #[cfg(test)]
+    pub(crate) fn mark_checkpoint_dirty_for_test(
+        &self,
+    ) -> Result<u64, ManagedNetworkAuthorityError> {
+        self.mutate(|network| {
+            let next = network
+                .lifecycle_generation
+                .checked_next()
+                .map_err(|error| {
+                    ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())
+                })?;
+            network.lifecycle_generation = next;
+            network.dirty_generation = Some(next);
+            Ok(next.raw())
+        })?
+    }
+
     /// Atomically consumes one authority-bound startup recovery candidate.
     pub fn install_mempool_recovery(
         &self,

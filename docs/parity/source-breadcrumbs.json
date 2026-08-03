@@ -1258,6 +1258,18 @@
       ]
     },
     {
+      "label": "node-mempool-checkpoint-coordinator",
+      "files": [
+        "packages/open-bitcoin-node/src/network/checkpoint.rs",
+        "packages/open-bitcoin-node/src/network/checkpoint/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/node/mempool_persist.h",
+        "packages/bitcoin-knots/test/functional/mempool_persist.py"
+      ]
+    },
+    {
       "label": "node-network-block-relay-evidence-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network/block_relay_evidence.rs"

@@ -22,6 +22,7 @@ mod admission_bridge;
 mod announcement_transport;
 mod block_relay_evidence;
 mod block_serving;
+mod checkpoint;
 mod compact_receive_candidates;
 mod header_sync;
 mod inbound;
@@ -43,6 +44,9 @@ pub use announcement_transport::{
 };
 pub(crate) use block_relay_evidence::BlockRelayRuntimeEvidenceSnapshot;
 pub use block_serving::{ManagedBlockServeCompletion, ManagedBlockServeIntent};
+pub use checkpoint::{
+    MempoolCheckpointCoordinator, MempoolCheckpointError, MempoolCheckpointOutcome,
+};
 
 use open_bitcoin_core::{
     chainstate::{ChainPosition, ChainstateSnapshot},
