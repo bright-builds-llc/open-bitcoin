@@ -1,15 +1,41 @@
 ---
 phase: 135-snapshot-schema-checkpointing-and-recovery
-reviewed: 2026-08-03T03:32:25Z
+reviewed: 2026-08-03T09:28:57Z
 depth: standard
-files_reviewed: 45
+files_reviewed: 90
 files_reviewed_list:
+  - MODULE.bazel.lock
+  - docs/architecture/operator-observability.md
+  - docs/architecture/status-snapshot.md
   - docs/metrics/lines-of-code.md
+  - docs/operator/runtime-guide.md
   - docs/parity/catalog/mempool-policy.md
+  - docs/parity/catalog/p2p.md
   - docs/parity/checklist.md
   - docs/parity/index.json
   - docs/parity/source-breadcrumbs.json
+  - packages/open-bitcoin-chainstate/src/engine.rs
+  - packages/open-bitcoin-chainstate/src/engine/tests/derives_contexts_from_chainstate_metadata.rs
+  - packages/open-bitcoin-chainstate/src/engine/tests/derives_contexts_from_chainstate_metadata/difficulty.rs
+  - packages/open-bitcoin-chainstate/src/engine/tests/disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_out.rs
+  - packages/open-bitcoin-chainstate/src/types.rs
+  - packages/open-bitcoin-cli/src/operator/dashboard/model.rs
+  - packages/open-bitcoin-cli/src/operator/dashboard/model/relay.rs
+  - packages/open-bitcoin-cli/src/operator/dashboard/model/tests/projection.rs
+  - packages/open-bitcoin-cli/src/operator/status/render/relay.rs
+  - packages/open-bitcoin-cli/src/operator/status/tests/relay_and_filesystem_fixtures.rs
+  - packages/open-bitcoin-cli/src/operator/status/tests/snapshot.rs
+  - packages/open-bitcoin-cli/src/operator/support/render/relay.rs
+  - packages/open-bitcoin-cli/src/operator/support/tests/forensics_recovery_relay.rs
+  - packages/open-bitcoin-cli/src/operator/support/tests/sync_fixtures.rs
   - packages/open-bitcoin-mempool/src/pool.rs
+  - packages/open-bitcoin-node/Cargo.toml
+  - packages/open-bitcoin-node/src/chainstate.rs
+  - packages/open-bitcoin-node/src/logging.rs
+  - packages/open-bitcoin-node/src/logging/tests/redaction.rs
+  - packages/open-bitcoin-node/src/metrics.rs
+  - packages/open-bitcoin-node/src/metrics/tests/contracts.rs
+  - packages/open-bitcoin-node/src/metrics/tests/relay_projection.rs
   - packages/open-bitcoin-node/src/network.rs
   - packages/open-bitcoin-node/src/network/checkpoint.rs
   - packages/open-bitcoin-node/src/network/checkpoint/tests.rs
@@ -30,134 +56,129 @@ files_reviewed_list:
   - packages/open-bitcoin-node/src/network/tests/recovery_cases.rs
   - packages/open-bitcoin-node/src/network/tests/recovery_cases/metadata.rs
   - packages/open-bitcoin-node/src/network/tests/recovery_cases/staging.rs
+  - packages/open-bitcoin-node/src/status/relay_evidence.rs
+  - packages/open-bitcoin-node/src/status/tests/availability_and_relay.rs
   - packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs
   - packages/open-bitcoin-node/src/storage/fjall_store/tests.rs
   - packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence.rs
+  - packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/confirmation_migration.rs
   - packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/load_limits.rs
+  - packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/reopen.rs
   - packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/write_execution_failures.rs
   - packages/open-bitcoin-node/src/storage/mempool_snapshot.rs
   - packages/open-bitcoin-node/src/storage/mempool_snapshot/tests.rs
+  - packages/open-bitcoin-node/src/storage/snapshot_codec.rs
   - packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs
+  - packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode.rs
+  - packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/key_preflight.rs
+  - packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/transaction.rs
   - packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs
   - packages/open-bitcoin-node/src/storage/snapshot_codec/tests/mempool_limits.rs
+  - packages/open-bitcoin-node/src/sync.rs
+  - packages/open-bitcoin-node/src/sync/tests/block_requests.rs
+  - packages/open-bitcoin-node/src/sync/tests/reorg_reconciliation.rs
   - packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs
   - packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs
   - packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/checkpoint.rs
+  - packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs
+  - packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/inbound_runtime.rs
   - packages/open-bitcoin-rpc/src/context/mempool_recovery.rs
   - packages/open-bitcoin-rpc/src/context/network.rs
+  - packages/open-bitcoin-rpc/src/context/tests.rs
+  - packages/open-bitcoin-rpc/src/context/tests/construction.rs
+  - scripts/check-phase108-durable-mempool-relay-state-recovery.ts
+  - scripts/check-phase130-resource-time-fee-primitives.test.ts
+  - scripts/check-phase130-resource-time-fee-primitives.ts
   - scripts/check-phase134-authoritative-lifecycle.test.ts
   - scripts/check-phase135-snapshot-recovery.test.ts
   - scripts/check-phase135-snapshot-recovery.ts
+  - scripts/check-phase135-snapshot-recovery/source.ts
   - scripts/verify.sh
 findings:
   critical: 1
-  warning: 7
-  info: 2
-  total: 10
+  warning: 1
+  info: 1
+  total: 3
 status: issues_found
 ---
 
 # Phase 135: Code Review Report
 
-**Reviewed:** 2026-08-03T03:32:25Z  
-**Depth:** standard  
-**Files Reviewed:** 45  
+**Reviewed:** 2026-08-03T09:28:57Z
+**Depth:** standard
+**Files Reviewed:** 90
 **Status:** issues_found
 
 ## Summary
 
-Phase 135 establishes a strong affine checkpoint shape and broad recovery test coverage, but the implementation still has one startup resource-exhaustion path and seven correctness gaps across snapshot sizing, recovery freshness, exact unbroadcast identity, context bootstrap, classification evidence, operator counters, and abort retryability. Two additional traceability/checker weaknesses can let regressions escape the phase guard.
+This capped confirmation audit reviewed the exact union of the prior review scope and every existing non-planning path changed from `fa9b8b22..HEAD`. Commit `42fa3ea2` correctly places the raw-key preflight before Serde for well-formed keys, runs legacy confirmation migration before both authoritative runtime constructors publish a handle, checks decoded block-header identity against the active-chain key, keeps generic snapshots confirmation-unknown unless authoritative evidence is supplied, and preserves checker/parity coverage across the module splits.
 
-The review applied the repository's functional-core/imperative-shell boundary, fail-closed error handling, exact parity evidence, bounded-input, and behavioral-test requirements from `AGENTS.md`, `AGENTS.bright-builds.md`, and the relevant architecture, code-shape, testing, verification, Rust, and TypeScript standards.
+Three residual issues remain. The raw-key scanner accepts unterminated escaped strings and can still hand a large malformed token to Serde, confirmation migration authenticates the header but not the transaction body committed by that header, and the phase checker does not prove that the preflight function is actually called. Prior Phase 135 findings were rechecked across the full scope; no other regressions were found. No source fixes were applied during this read-only review.
 
-Focused verification passed:
+## Iteration 3 Confirmation
 
-- `bun test scripts/check-phase135-snapshot-recovery.test.ts`
-- `bun run scripts/check-phase135-snapshot-recovery.ts`
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --all-features recovery` (50 passed)
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --all-features snapshot_persistence` (13 passed)
-- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --all-features --bin open-bitcoind checkpoint` (10 passed)
-- `jq empty docs/parity/index.json docs/parity/source-breadcrumbs.json`
-- `git diff --check 78082343..HEAD`
+- Escaped, well-formed unknown keys are bounded before Serde allocation, but malformed unterminated escaped keys remain exposed as CR-01.
+- `DurableSyncRuntime::open_with_runtime_activation` and the alternate store-backed constructor migrate legacy confirmation evidence or fail before publishing network authority.
+- Loaded block headers must match their active-chain keys, but the migration still trusts an unverified block body as described in WR-01.
+- Generic chainstate snapshots keep `maybe_confirmed_txid_counts: None`; only authoritative evidence supplies `Some(...)`.
+- The chainstate, Fjall snapshot tests, RPC context tests, and phase checker splits preserve behavior and remain within the managed file-length policy. Breadcrumb validation and the Bright Builds checker pass.
 
 ## Critical Issues
 
-### CR-01: Snapshot resource limits are applied after large allocations
+### CR-01: Unterminated escaped object keys still reach Serde allocation
 
-**Files:** `packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs:52-66,207-214`; `packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs:126-143`  
-**Issue:** `load_mempool_snapshot_with_limits` first asks Fjall for the complete value, whose shared storage helper copies it into a `Vec<u8>`, and only then checks `max_encoded_bytes`. The codec then deserializes the complete JSON DTO before `preflight_payload` checks record counts, per-transaction bytes, or aggregate transaction bytes. `from_policy` compounds this by treating the byte-valued 300,000,000-byte mempool capacity as both a 300,000,000-record limit and an approximately 1.2 GB encoded-value limit, bypassing the codec's 50,000-record default until after DTO construction. A corrupt persisted snapshot can therefore exhaust process memory and abort startup before the typed `ResourceBoundExceeded` path runs.
+**File:** `packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/key_preflight.rs:14-33`
 
-**Fix:** Clamp policy-derived record limits to `MAX_MEMPOOL_SNAPSHOT_RECORDS`; inspect/reject the stored value length before cloning it; and decode records and transaction byte sequences with a bounded streaming/custom Serde visitor that stops as soon as any count or byte budget is crossed. Add a loader test that proves an over-limit Fjall value is rejected before full materialization and a codec test that proves sequence limits fire during deserialization rather than after DTO allocation.
+**Issue:** The raw-key scanner skips two bytes for every backslash, but treats reaching the end of an unterminated quoted token as success. A trailing backslash can also advance `cursor` past the input, bypassing the `cursor == encoded.len()` check. An attacker-controlled snapshot containing a very large malformed key with escapes therefore passes this preflight and reaches `serde_json`, which can allocate scratch storage proportional to the token before reporting the syntax error. This leaves the startup memory-exhaustion boundary open for malformed snapshots even though well-formed overlong keys are now rejected.
+
+**Fix:** Make the preflight scanner track JSON container state so it knows when an object is expecting a key. While scanning a key token, enforce the raw bound before its closing quote and reject an incomplete escape or missing closing quote before constructing the Serde deserializer. Keep value strings on their existing field-specific bounds. For example, the object-key branch should follow this shape:
+
+```rust
+if container.expects_object_key() {
+    cursor = scan_bounded_json_string(
+        encoded,
+        cursor,
+        MAX_MEMPOOL_FIELD_TOKEN_BYTES,
+    )?;
+    container.record_object_key()?;
+}
+```
+
+Add regressions for an oversized unterminated key containing escapes and for a key ending in a trailing backslash; both must fail before Serde is invoked.
 
 ## Warnings
 
-### WR-01: Policy-derived encoded limit can reject snapshots written by the same node
+### WR-01: Confirmation migration trusts the block body after checking only header identity
 
-**Files:** `packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs:52-66`; `packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs:114-119`  
-**Issue:** The load bound assumes encoded data needs at most `4 * mempool_capacity + 1 MiB`, while the shared encoder serializes `Vec<u8>` transaction bodies as pretty-printed JSON arrays. Decimal byte values plus indentation, commas, and newlines can require far more than four encoded bytes per transaction byte. Checkpoint writes do not enforce the derived load bound, so a valid near-capacity checkpoint can be persisted successfully and then rejected as resource exhaustion on the next startup.
+**File:** `packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs:204-241`
 
-**Fix:** Use a compact bounded transaction encoding such as hex/base64 or a binary snapshot format, or derive and enforce a proven upper bound for the exact serializer on both save and load. Add a near-policy-capacity save/reopen/load round-trip test using `MempoolSnapshotDecodeLimits::from_policy`.
+**Issue:** The migration recomputes the hash of the decoded header and compares it with `position.block_hash`, then counts transaction IDs from the decoded body. `load_block` only performs structural decoding, so a stored block with the expected header but a body that does not match the header's Merkle root passes this check and persists incorrect authoritative confirmation counts. Header identity alone does not authenticate the transactions used by the migration.
 
-### WR-02: Recovery installation is not anchored to the chainstate used for staging
-
-**Files:** `packages/open-bitcoin-node/src/network/runtime_authority/recovery.rs:16-38`; `packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs:93-119`  
-**Issue:** Staging captures a chainstate snapshot and the authority incarnation, but `PreparedMempoolRecovery` carries no chainstate revision or active-tip identity. The install guard checks only the authority incarnation and mempool freshness. A block connection with an empty mempool produces an empty lifecycle delta, so the freshness fields remain at their initial values even though chainstate changed. A candidate prepared before that block can then install transactions that the new tip confirmed or conflicted.
-
-**Fix:** Capture an active-tip identity or monotonic chainstate revision with the staging inputs and compare it under the install authority guard before any aggregate mutation. Reject and reprepare on mismatch. Add a test that stages a candidate, connects a block confirming it while the live mempool is empty, and verifies installation is rejected without mutation.
-
-### WR-03: Unbroadcast recovery intersects by txid instead of exact member identity
-
-**Files:** `packages/open-bitcoin-node/src/network/recovery/staging.rs:135-147`; `packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs:130-148`  
-**Issue:** Topology deterministically keeps one `(txid, wtxid)` identity when witness variants share a txid, but unbroadcast restoration retains every persisted identity whose txid survived. If the persisted unbroadcast entry names the dropped witness variant, installation sees an identity outside the canonical survivor set and rejects the entire otherwise salvageable recovery candidate.
-
-**Fix:** Build a `BTreeSet<MempoolMemberIdentity>` from `working.entries()` and intersect persisted unbroadcast membership with that exact set. Add a same-txid/different-wtxid duplicate fixture where only the losing variant is unbroadcast and verify that the primary transaction is recovered without a stale unbroadcast identity. Update the Phase 135 checker, which currently requires the incorrect txid-only filter.
-
-### WR-04: Store-backed RPC context replays against an empty chainstate
-
-**File:** `packages/open-bitcoin-rpc/src/context/network.rs:99-128`  
-**Issue:** `from_runtime_config_with_store` creates a default empty `MemoryChainstateStore` and immediately recovers the mempool from the supplied Fjall store without loading that store's chainstate snapshot. Transactions spending durable UTXOs are therefore misclassified and dropped during restart, even though the same store contains the chainstate needed to validate them. The recovered generation is then installed as clean, masking the loss.
-
-**Fix:** Seed the memory chainstate from the effective Fjall store before constructing/recovering the network, route the constructor through the durable runtime bootstrap, or remove/restrict the constructor if empty-chain semantics are intentional. Add a restart test containing persisted chainstate plus a mempool transaction that spends one of its UTXOs.
-
-### WR-05: Fully spent confirmed transactions receive the wrong recovery status
-
-**File:** `packages/open-bitcoin-node/src/network/recovery/staging.rs:216-225`  
-**Issue:** `transaction_is_confirmed` defines confirmation as having at least one output currently present in the UTXO set. Once every output of a confirmed transaction has been spent, the predicate becomes false and replay reports `DroppedMissingParent` or `DroppedPolicyIncompatible` instead of `DroppedConfirmed`. Membership remains safe, but the required typed recovery records and counters are factually incorrect for a common chainstate.
-
-**Fix:** Classify confirmation from active-chain transaction membership or another explicit chain index rather than current unspent outputs. If the required evidence is unavailable, avoid claiming the specific confirmed class. Add a fixture that confirms a transaction, spends all its outputs in a later block, and replays its snapshot record.
-
-### WR-06: Operator recovery evidence drops the expiry counter
-
-**File:** `packages/open-bitcoin-node/src/network/recovery.rs:96-105`  
-**Issue:** `ManagedMempoolRecoverySummary` counts `DroppedExpired`, but its conversion to `RelayRecoveryCounters` omits that field. Operator-visible totals therefore disagree with the detailed recovery records whenever restart expiry removes an entry.
-
-**Fix:** Add `dropped_expired_count` to `RelayRecoveryCounters`, populate it in this conversion, project/serialize it on all operator surfaces, and extend the expiry recovery test to assert the exposed counter.
-
-### WR-07: Abort-dispatch failure permanently strands the checkpoint reservation
-
-**Files:** `packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs:262-296`; `packages/open-bitcoin-node/src/network/runtime_authority/effects.rs:29-38`; `packages/open-bitcoin-node/src/network/checkpoint.rs:217-224,274-278`  
-**Issue:** On encode/storage failure, `abort_failed_write` consumes the affine capability into `SnapshotWriteAbort`. If dispatch fails, `CheckpointAbortDispatchError` retains only the source error, unlike completion dispatch which retains its achieved receipt. The coordinator then resets to `Idle`, while the authority ledger still has the pending snapshot effect. Every later preparation is rejected as already pending, so the documented retryable pre-achievement failure path is permanently wedged. The injected failure test confirms the in-flight generation remains set but never attempts a retry.
-
-**Fix:** Return the owned abort capability on dispatch failure and add an `UnachievedAwaitingAbort` coordinator state. Retry that exact abort before permitting a new capture, mirroring retained completion receipts. Add a regression test that injects one abort-dispatch failure and proves a subsequent coordinator call clears the reservation and can checkpoint again.
+**Fix:** Before counting transactions, compute the Merkle root for `block.transactions`, reject mutated trees, and compare it with `block.header.merkle_root` (or invoke an appropriate existing full block-integrity check). Return chainstate corruption on mismatch. Add a regression that stores the expected header/key with a different syntactically valid transaction body and confirms migration fails without publishing or persisting evidence.
 
 ## Info
 
-### IN-01: Structural checker can pass semantic regressions it claims to guard
+### IN-01: The phase checker does not prove the raw-key preflight is called
 
-**Files:** `scripts/check-phase135-snapshot-recovery.ts:61-73,103-110,228-250,304-322`; `scripts/check-phase135-snapshot-recovery.test.ts:68-97`  
-**Issue:** The checker extracts Rust bodies with raw brace counting that does not ignore comments or strings; its source-only schema guard rejects only four derived field names instead of allowlisting the two permitted record fields; its startup guard checks only that recovery call names occur somewhere, not their order or bounded-load/publication relationship; and verifier ordering counts tokens in any line, including comments. The mutation suite changes only exact known strings, so these bypasses are not exercised.
+**File:** `scripts/check-phase135-snapshot-recovery.ts:183-195`
 
-**Fix:** Prefer AST/token-aware inspection where practical. At minimum, strip comments/strings before brace and command checks, enforce an exact v2 field allowlist, compare call positions inside the startup function, match executable verifier commands rather than substrings, and add mutations for each bypass.
+**Issue:** The checker concatenates the decoder, preflight, and transaction sources and only requires the identifier `validate_raw_object_keys` to appear somewhere. Its mutation test changes the bound constant to `usize::MAX`; it does not remove the call. Deleting `validate_raw_object_keys(bytes)?` from `decode_bounded_versioned` would therefore leave the identifier in the helper/import and allow this contract check to pass.
 
-### IN-02: MPDUR-03 parity evidence is mapped to the checkpoint requirement
+**Fix:** Inspect the exact `decode_bounded_versioned` body and require `validate_raw_object_keys(bytes)?` before `serde_json::Deserializer::from_slice(bytes)`. Add a mutation that removes the call itself and assert the bounded-decode diagnostic.
 
-**File:** `docs/parity/catalog/mempool-policy.md:612-619`  
-**Issue:** `MPDUR-03` requires rolling-fee reset plus retained age and local-unbroadcast semantics, but its row cites affine checkpointing. Checkpointing belongs to `MPDUR-04`, which already has its own row, leaving MPDUR-03 without correctly labeled evidence and duplicating MPDUR-04 evidence.
+## Verification
 
-**Fix:** Point the MPDUR-03 row to fresh rolling-state initialization, restored acceptance-time/age behavior, and exact local-unbroadcast recovery tests. Keep coordinator, durability, freshness, and loss-range evidence under MPDUR-04, and cite the authority module that owns durable-generation evidence.
+- `bun test scripts/check-phase135-snapshot-recovery.test.ts` — 50 passed, 0 failed.
+- `bun scripts/check-phase135-snapshot-recovery.ts` — passed.
+- `bun scripts/check-parity-breadcrumbs.ts` — passed for 761 Rust files.
+- `bun scripts/bright-builds-check.ts all` — 1,041 files scanned, 0 findings.
+- `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-chainstate` — 40 unit tests and 3 parity tests passed.
+- Targeted `open-bitcoin-node` snapshot codec, confirmation migration, and sync reorganization suites — 44 tests passed.
+- Targeted `open-bitcoin-rpc` context and daemon sync suites — 35 tests passed.
+- `git diff --check fa9b8b22..HEAD` — passed.
 
 ***
 
-_Reviewed: 2026-08-03T03:32:25Z_  
-_Reviewer: the agent (gsd-code-reviewer)_  
+_Reviewed: 2026-08-03T09:28:57Z_
+_Reviewer: the agent (gsd-code-reviewer)_
 _Depth: standard_
