@@ -148,6 +148,8 @@ fn silent_peer_sync_runtime(label: &str) -> DurableSyncRuntime {
     .expect("silent-peer sync runtime")
 }
 
+#[path = "tests/checkpoint.rs"]
+mod checkpoint;
 #[path = "tests/daemon_sync.rs"]
 mod daemon_sync;
 #[path = "tests/inbound_runtime.rs"]

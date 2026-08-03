@@ -1944,6 +1944,19 @@
       ]
     },
     {
+      "label": "rpc-mempool-checkpoint-daemon",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/checkpoint.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/node/mempool_persist.h",
+        "packages/bitcoin-knots/test/functional/mempool_persist.py"
+      ]
+    },
+    {
       "label": "rpc-surface",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",

@@ -44,6 +44,8 @@ use open_bitcoin_rpc::{
     },
 };
 
+#[path = "open_bitcoind/checkpoint.rs"]
+mod checkpoint;
 #[path = "open_bitcoind/inbound_metrics.rs"]
 mod inbound_metrics;
 #[path = "open_bitcoind/runtime_control.rs"]
@@ -51,6 +53,7 @@ mod runtime_control;
 #[path = "open_bitcoind/sync_seed.rs"]
 mod sync_seed;
 
+use checkpoint::{DaemonCheckpointError, start_mempool_checkpoint_worker};
 use inbound_metrics::start_inbound_metrics_worker;
 use runtime_control::{
     current_timestamp_unix_seconds, daemon_sync_shutdown_requested, daemon_sync_wait_or_shutdown,
@@ -87,6 +90,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&shared_context),
         authoritative_runtime.maybe_sync_runtime.take(),
     )?;
+    let maybe_checkpoint_worker = start_mempool_checkpoint_worker(
+        authoritative_runtime.network.clone(),
+        maybe_runtime_store.clone(),
+    );
     if let Some(worker) = maybe_sync_worker.as_ref() {
         let mut context = shared_context.lock().await;
         context.set_daemon_sync_control(worker.control.clone());
@@ -102,8 +109,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         authoritative_runtime.network,
     )
     .await;
-    let maybe_inbound_metrics_worker =
-        start_inbound_metrics_worker(&runtime, Arc::clone(&shared_context), maybe_runtime_store)?;
+    let maybe_inbound_metrics_worker = start_inbound_metrics_worker(
+        &runtime,
+        Arc::clone(&shared_context),
+        maybe_runtime_store.clone(),
+    )?;
     if let Some(worker) = maybe_inbound_metrics_worker.as_ref() {
         shared_context
             .lock()
@@ -120,7 +130,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         worker.shutdown();
     }
     if let Some(worker) = maybe_sync_worker {
-        worker.shutdown();
+        worker.shutdown()?;
+    }
+    if let Some(worker) = maybe_checkpoint_worker {
+        worker.shutdown_and_mark_clean()?;
     }
     serve_result?;
     Ok(())
@@ -189,11 +202,11 @@ impl DaemonSyncLoopDecision {
 }
 
 impl DaemonSyncWorker {
-    fn shutdown(self) {
+    fn shutdown(self) -> Result<(), DaemonCheckpointError> {
         let _ = self.shutdown_sender.send(());
-        if let Err(error) = self.join_handle.join() {
-            eprintln!("open-bitcoind daemon sync worker shutdown join failed: {error:?}");
-        }
+        self.join_handle
+            .join()
+            .map_err(|_| DaemonCheckpointError::ProducerJoin)
     }
 }
 

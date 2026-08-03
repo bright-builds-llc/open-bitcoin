@@ -2842,7 +2842,7 @@
           "@@//packages/open-bitcoin-network/Cargo.toml": "066dbfccded096b66ad166c949ac327b695053a69aea5552b1b80c4b5dc355e5",
           "@@//packages/open-bitcoin-node/Cargo.toml": "fa57d132efd3c7e71ed90b0d77c97e23f5758ce3ab492ead53e006b0359d8f6b",
           "@@//packages/open-bitcoin-primitives/Cargo.toml": "90cdae988ae8133643b96d51205c64f66a5c895c472bae96d6623f352c26e920",
-          "@@//packages/open-bitcoin-rpc/Cargo.toml": "0613144be58077e9718f9123c99f2c7017a7b1f88f288f2f1536f8784ec1f8ee",
+          "@@//packages/open-bitcoin-rpc/Cargo.toml": "124b99d467d9ed767ff3654c170757f84a6ca5496ba771266260c14302a6b7a6",
           "@@//packages/open-bitcoin-test-harness/Cargo.toml": "40e46162c0129c577fdae0b1c527102355542e40047b3150fc5fd50c9eb55118",
           "@@//packages/open-bitcoin-wallet/Cargo.toml": "618744bc43f291a2c1a8a942d558053a0225e682f34dfa1ef6d83a793d832d30"
         },
