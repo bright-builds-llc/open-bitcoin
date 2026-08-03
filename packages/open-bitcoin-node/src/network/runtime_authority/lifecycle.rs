@@ -31,6 +31,7 @@ pub(in crate::network) enum LifecycleCommandResult {
     PeerEffectAborted(EffectAbort),
     SnapshotEffectAborted(EffectAbort),
     PeerEffectCompleted(EffectCompletion),
+    #[cfg(test)]
     SnapshotEffectCompleted(EffectCompletion),
 }
 
@@ -72,7 +73,7 @@ impl ManagedNetworkHandle {
     }
 
     #[cfg(test)]
-    pub(in crate::network) fn fail_next_checkpoint_completion_dispatch_for_test(&self) {
+    pub(crate) fn fail_next_checkpoint_completion_dispatch_for_test(&self) {
         INJECT_CHECKPOINT_COMPLETION_DISPATCH_FAILURE.set(true);
     }
 }
@@ -168,17 +169,7 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             }
             Ok(LifecycleCommandResult::PeerEffectAborted(abort))
         }
-        LifecycleCommand::AbortSnapshotEffect(capability) => {
-            let generation = capability.persistence_generation();
-            let abort = network.snapshot_effect_ledger.abort_exact(&capability);
-            if abort == EffectAbort::Aborted {
-                network
-                    .checkpoint_evidence
-                    .clear_compatibility_binding(generation);
-            }
-            Ok(LifecycleCommandResult::SnapshotEffectAborted(abort))
-        }
-        LifecycleCommand::AbortCheckpointSnapshotEffect(abort_request) => {
+        LifecycleCommand::AbortSnapshotEffect(abort_request) => {
             let generation = abort_request.capability().persistence_generation();
             let (capability, failed_at, failure) = abort_request.into_parts();
             let abort = network.snapshot_effect_ledger.abort_exact(&capability);
@@ -198,33 +189,8 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             complete_peer_effect(network, effect_receipt, Some(evidence))
                 .map(LifecycleCommandResult::PeerEffectCompleted)
         }
+        #[cfg(test)]
         LifecycleCommand::CompleteSnapshotEffect(receipt) => {
-            let effect_id = receipt.exact_key();
-            if network.snapshot_effect_ledger.is_completed(effect_id) {
-                return Ok(LifecycleCommandResult::SnapshotEffectCompleted(
-                    EffectCompletion::AlreadyApplied,
-                ));
-            }
-            let exact_completion = network.snapshot_effect_ledger.complete_exact(&receipt);
-            if exact_completion == ExactEffectLedgerCompletion::NotPending {
-                return Err(LifecycleProjectionError::InvalidEffectReceipt("snapshot"));
-            }
-            let is_fresh = receipt.authority_epoch() == network.authority_epoch
-                && receipt.persistence_generation() == network.lifecycle_generation;
-            network
-                .checkpoint_evidence
-                .clear_compatibility_binding(receipt.persistence_generation());
-            let completion = if is_fresh {
-                if network.dirty_generation == Some(receipt.persistence_generation()) {
-                    network.dirty_generation = None;
-                }
-                EffectCompletion::Applied
-            } else {
-                EffectCompletion::AchievedButStale
-            };
-            Ok(LifecycleCommandResult::SnapshotEffectCompleted(completion))
-        }
-        LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt) => {
             complete_checkpoint_snapshot_effect(network, &receipt)
                 .map(LifecycleCommandResult::SnapshotEffectCompleted)
         }

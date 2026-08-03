@@ -23,9 +23,10 @@ use open_bitcoin_network::{
 use super::ManagedPeerNetwork;
 use super::announcement_transport::PeerEmissionReceipt;
 use super::compact_receive_candidates::CompactExtraTxnBuffer;
+#[cfg(test)]
+use super::lifecycle_effects::SnapshotWriteReceipt;
 use super::lifecycle_effects::{
     EffectPreparationError, PeerEffectCapability, PeerEffectReceipt, SnapshotWriteAbort,
-    SnapshotWriteCapability, SnapshotWriteReceipt,
 };
 use super::relay_fanout::ManagedRelayFanoutState;
 use super::relay_serving::RelayServingCache;
@@ -537,12 +538,11 @@ pub(super) enum LifecycleCommand {
     PrepareSnapshot(SnapshotPreparationRequest),
     PrepareRelay(PeerRelayPreparationRequest),
     AbortPeerEffect(PeerEffectCapability),
-    AbortSnapshotEffect(SnapshotWriteCapability),
-    AbortCheckpointSnapshotEffect(SnapshotWriteAbort),
+    AbortSnapshotEffect(SnapshotWriteAbort),
     CompletePeerEffect(PeerEffectReceipt),
     CompletePeerEmission(PeerEmissionReceipt),
+    #[cfg(test)]
     CompleteSnapshotEffect(SnapshotWriteReceipt),
-    CompleteCheckpointSnapshotEffect(SnapshotWriteReceipt),
 }
 
 #[cfg(test)]
@@ -560,18 +560,14 @@ enum LifecycleCommandKind {
     PrepareRelay,
     AbortPeerEffect,
     AbortSnapshotEffect,
-    AbortCheckpointSnapshotEffect,
     CompletePeerEffect,
     CompletePeerEmission,
     CompleteSnapshotEffect,
-    CompleteCheckpointSnapshotEffect,
 }
 
 #[cfg(test)]
 impl LifecycleCommand {
     const fn kind(&self) -> LifecycleCommandKind {
-        use LifecycleCommandKind as Kind;
-
         match self {
             Self::SingletonAdmission(_) => LifecycleCommandKind::SingletonAdmission,
             Self::PackageAdmission(_) => LifecycleCommandKind::PackageAdmission,
@@ -585,11 +581,9 @@ impl LifecycleCommand {
             Self::PrepareRelay(_) => LifecycleCommandKind::PrepareRelay,
             Self::AbortPeerEffect(_) => LifecycleCommandKind::AbortPeerEffect,
             Self::AbortSnapshotEffect(_) => LifecycleCommandKind::AbortSnapshotEffect,
-            Self::AbortCheckpointSnapshotEffect(_) => Kind::AbortCheckpointSnapshotEffect,
             Self::CompletePeerEffect(_) => LifecycleCommandKind::CompletePeerEffect,
             Self::CompletePeerEmission(_) => LifecycleCommandKind::CompletePeerEmission,
             Self::CompleteSnapshotEffect(_) => LifecycleCommandKind::CompleteSnapshotEffect,
-            Self::CompleteCheckpointSnapshotEffect(_) => Kind::CompleteCheckpointSnapshotEffect,
         }
     }
 }

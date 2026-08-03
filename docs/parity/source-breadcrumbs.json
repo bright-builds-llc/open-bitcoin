@@ -1703,7 +1703,8 @@
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/metrics_persistence.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/recovery_classification.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence.rs",
-        "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/load_limits.rs",
+      "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/load_limits.rs",
+      "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/write_execution_failures.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/wallet_persistence.rs"
       ],
       "breadcrumbs": []

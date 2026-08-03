@@ -11,7 +11,8 @@ use open_bitcoin_network::LocalPeerConfig;
 
 use crate::MemoryChainstateStore;
 use crate::network::{
-    CheckpointTrigger, EffectCompletion, ManagedNetworkHandle, ManagedPeerNetwork,
+    CheckpointPersistenceStrength, CheckpointTrigger, EffectCompletion, ManagedNetworkHandle,
+    ManagedPeerNetwork, SnapshotWriteFailure,
 };
 use crate::storage::fjall_store::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
 use crate::storage::mempool_snapshot::{CapturedMempoolGeneration, MempoolSnapshotFormatVersion};
@@ -29,6 +30,7 @@ fn snapshot_decode_limits() -> MempoolSnapshotDecodeLimits {
 }
 
 mod load_limits;
+mod write_execution_failures;
 
 fn checkpoint_p2sh_script() -> ScriptBuf {
     let redeem_script = script(&[0x51]);
@@ -238,15 +240,30 @@ fn prepared_mempool_snapshot_executor_persists_and_completes_exactly_once() {
     let prepared = handle
         .prepare_mempool_snapshot_write(PolicyTime::new(135_040), CheckpointTrigger::Periodic)
         .expect("snapshot should prepare");
+    let mut samples = 0_u8;
 
     // Act
-    let completion = store
-        .execute_prepared_mempool_snapshot_write(&handle, prepared, PersistMode::Sync)
+    let receipt = store
+        .execute_prepared_mempool_snapshot_write(&handle, prepared, || {
+            samples += 1;
+            PolicyTime::new(135_050)
+        })
         .expect("snapshot executor should persist");
+    assert_eq!(receipt.completed_at(), Some(PolicyTime::new(135_050)));
+    assert_eq!(
+        receipt.persistence_strength(),
+        Some(CheckpointPersistenceStrength::Sync)
+    );
+    let completion = handle
+        .complete_snapshot_write(receipt)
+        .expect("snapshot completion should dispatch");
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen store after Sync write");
 
     // Assert
+    assert_eq!(samples, 1);
     assert_eq!(completion, EffectCompletion::Applied);
-    let persisted = store
+    let persisted = reopened
         .load_mempool_snapshot_with_limits(snapshot_decode_limits())
         .expect("load persisted snapshot")
         .expect("prepared snapshot should persist");
@@ -293,9 +310,12 @@ fn prepared_mempool_snapshot_executor_aborts_save_failure_and_allows_retry() {
     let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
         &handle,
         prepared,
-        PersistMode::Sync,
         crate::storage::snapshot_codec::encode_mempool_snapshot,
-        |_, _| Err(expected.clone()),
+        |_, mode| {
+            assert_eq!(mode, PersistMode::Sync);
+            Err(expected.clone())
+        },
+        || PolicyTime::new(135_050),
     );
 
     // Assert
@@ -313,8 +333,11 @@ fn prepared_mempool_snapshot_executor_aborts_save_failure_and_allows_retry() {
         .prepare_mempool_snapshot_write(PolicyTime::new(135_041), CheckpointTrigger::Periodic)
         .expect("save failure abort should restore pending capacity");
     let retry_completion = store
-        .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
-        .expect("retry should persist and complete");
+        .execute_prepared_mempool_snapshot_write(&handle, retry, || PolicyTime::new(135_051))
+        .expect("retry should persist");
+    let retry_completion = handle
+        .complete_snapshot_write(retry_completion)
+        .expect("retry completion should dispatch");
     assert_eq!(retry_completion, EffectCompletion::Applied);
     let persisted = store
         .load_mempool_snapshot_with_limits(snapshot_decode_limits())
@@ -357,15 +380,15 @@ fn prepared_mempool_snapshot_executor_aborts_encode_failure_and_allows_retry() {
     let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
         &handle,
         prepared,
-        PersistMode::Sync,
         |_| Err(expected.clone()),
         |_, _| panic!("save must not run after encoding fails"),
+        || PolicyTime::new(135_050),
     );
 
     // Assert
     assert!(matches!(
         result,
-        Err(SnapshotWriteExecutionError::Storage(error)) if error == expected
+        Err(SnapshotWriteExecutionError::Encode(error)) if error == expected
     ));
     assert_eq!(
         store
@@ -377,8 +400,11 @@ fn prepared_mempool_snapshot_executor_aborts_encode_failure_and_allows_retry() {
         .prepare_mempool_snapshot_write(PolicyTime::new(135_041), CheckpointTrigger::Periodic)
         .expect("encoding failure abort should restore pending capacity");
     let retry_completion = store
-        .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
-        .expect("retry should persist and complete");
+        .execute_prepared_mempool_snapshot_write(&handle, retry, || PolicyTime::new(135_051))
+        .expect("retry should persist");
+    let retry_completion = handle
+        .complete_snapshot_write(retry_completion)
+        .expect("retry completion should dispatch");
     assert_eq!(retry_completion, EffectCompletion::Applied);
     let persisted = store
         .load_mempool_snapshot_with_limits(snapshot_decode_limits())
@@ -410,7 +436,10 @@ fn prepared_mempool_snapshot_executor_preserves_newer_authority_after_stale_pers
     store
         .save_mempool_snapshot(prepared_old.snapshot(), PersistMode::Sync)
         .expect("old snapshot should persist");
-    let old_receipt = prepared_old.into_parts().1.acknowledge_write();
+    let old_receipt = prepared_old.into_parts().1.acknowledge_write(
+        PolicyTime::new(200_001),
+        CheckpointPersistenceStrength::Sync,
+    );
     let old_duplicate = old_receipt.duplicate_for_test();
     handle
         .submit_local_transaction_outcome_at(
@@ -435,8 +464,13 @@ fn prepared_mempool_snapshot_executor_preserves_newer_authority_after_stale_pers
         .prepare_mempool_snapshot_write(PolicyTime::new(200_003), CheckpointTrigger::Periodic)
         .expect("current snapshot should prepare");
     let current_completion = store
-        .execute_prepared_mempool_snapshot_write(&handle, prepared_current, PersistMode::Sync)
-        .expect("current snapshot should persist and complete");
+        .execute_prepared_mempool_snapshot_write(&handle, prepared_current, || {
+            PolicyTime::new(200_004)
+        })
+        .expect("current snapshot should persist");
+    let current_completion = handle
+        .complete_snapshot_write(current_completion)
+        .expect("current snapshot completion should dispatch");
     let state_before_duplicate = handle.mempool_info().expect("mempool info");
     let duplicate_completion = handle
         .complete_snapshot_write(old_duplicate)
@@ -498,23 +532,91 @@ fn prepared_mempool_snapshot_executor_encode_failure_preserves_newer_dirty_state
     let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
         &handle,
         prepared,
-        PersistMode::Sync,
         |_| Err(expected.clone()),
         |_, _| panic!("save must not run after encoding fails"),
+        || PolicyTime::new(200_003),
     );
 
     // Assert
     assert!(matches!(
         result,
-        Err(SnapshotWriteExecutionError::Storage(error)) if error == expected
+        Err(SnapshotWriteExecutionError::Encode(error)) if error == expected
     ));
     let retry = handle
         .prepare_mempool_snapshot_write(PolicyTime::new(200_003), CheckpointTrigger::Periodic)
         .expect("encoding failure abort should restore pending capacity");
     assert_eq!(retry.snapshot().records.len(), 1);
     store
-        .execute_prepared_mempool_snapshot_write(&handle, retry, PersistMode::Sync)
-        .expect("retry should persist and complete");
+        .execute_prepared_mempool_snapshot_write(&handle, retry, || PolicyTime::new(200_004))
+        .expect("retry should persist");
 
     remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prepared_mempool_snapshot_executor_retains_receipt_across_completion_dispatch_failure() {
+    // Arrange
+    let path = temp_store_path("prepared-mempool-completion-retry");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open store");
+    let handle = empty_network_handle();
+    let prepared = handle
+        .prepare_mempool_snapshot_write(PolicyTime::new(300_000), CheckpointTrigger::Periodic)
+        .expect("snapshot should prepare");
+    let receipt = store
+        .execute_prepared_mempool_snapshot_write(&handle, prepared, || PolicyTime::new(300_001))
+        .expect("Sync write should return an achieved receipt");
+    handle.fail_next_checkpoint_completion_dispatch_for_test();
+
+    // Act
+    let error = handle
+        .complete_snapshot_write(receipt)
+        .expect_err("injected completion dispatch should fail");
+    let retained = error.into_receipt();
+    let completion = handle
+        .complete_snapshot_write(retained)
+        .expect("retained receipt should complete on retry");
+
+    // Assert
+    assert_eq!(completion, EffectCompletion::Applied);
+    let evidence = handle
+        .checkpoint_evidence(PolicyTime::new(300_002), 60)
+        .expect("checkpoint evidence");
+    assert_eq!(evidence.maybe_last_durable_generation, Some(0));
+
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prepared_mempool_snapshot_executor_samples_time_once_on_storage_failure() {
+    // Arrange
+    let handle = empty_network_handle();
+    let prepared = handle
+        .prepare_mempool_snapshot_write(PolicyTime::new(400_000), CheckpointTrigger::Periodic)
+        .expect("snapshot should prepare");
+    let expected = StorageError::BackendFailure {
+        namespace: StorageNamespace::Mempool,
+        message: "injected failure".to_string(),
+        action: StorageRecoveryAction::Restart,
+    };
+    let mut samples = 0_u8;
+
+    // Act
+    let result = FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
+        &handle,
+        prepared,
+        crate::storage::snapshot_codec::encode_mempool_snapshot,
+        |_, _| Err(expected.clone()),
+        || {
+            samples += 1;
+            PolicyTime::new(400_001)
+        },
+    );
+
+    // Assert
+    assert!(matches!(
+        result,
+        Err(ref error) if error.failure() == SnapshotWriteFailure::Storage
+    ));
+    assert_eq!(samples, 1);
 }

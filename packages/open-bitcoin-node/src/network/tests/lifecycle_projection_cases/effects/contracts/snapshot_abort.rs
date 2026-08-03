@@ -46,7 +46,7 @@ fn exact_snapshot_abort_releases_pending_without_recording_achievement() {
     // Act
     let result = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(capability)),
+        LifecycleCommand::AbortSnapshotEffect(snapshot_abort(capability)),
     )
     .expect("exact snapshot abort should dispatch");
 
@@ -75,7 +75,7 @@ fn exact_snapshot_abort_ignores_newer_lifecycle_and_dirty_freshness() {
     // Act
     let result = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(capability)),
+        LifecycleCommand::AbortSnapshotEffect(snapshot_abort(capability)),
     )
     .expect("stale exact snapshot abort should dispatch");
 
@@ -135,7 +135,7 @@ fn snapshot_abort_rejects_every_immutable_binding_mismatch_without_mutation() {
     for mismatch in mismatches {
         let result = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(mismatch)),
+            LifecycleCommand::AbortSnapshotEffect(snapshot_abort(mismatch)),
         )
         .expect("binding mismatch should classify");
         assert!(matches!(
@@ -149,7 +149,7 @@ fn snapshot_abort_rejects_every_immutable_binding_mismatch_without_mutation() {
 
     let exact_result = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(exact)),
+        LifecycleCommand::AbortSnapshotEffect(snapshot_abort(exact)),
     )
     .expect("exact snapshot reservation should remain pending");
     assert!(matches!(
@@ -173,7 +173,7 @@ fn snapshot_abort_replay_is_a_typed_noop() {
     );
     apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(exact)),
+        LifecycleCommand::AbortSnapshotEffect(snapshot_abort(exact)),
     )
     .expect("first abort should dispatch");
     let state_before = format!("{network:?}");
@@ -181,7 +181,7 @@ fn snapshot_abort_replay_is_a_typed_noop() {
     // Act
     let replay_result = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(replay)),
+        LifecycleCommand::AbortSnapshotEffect(snapshot_abort(replay)),
     )
     .expect("replayed abort should classify");
 
@@ -214,7 +214,7 @@ fn snapshot_abort_restores_the_single_pending_slot() {
     // Act
     let abort = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::AbortCheckpointSnapshotEffect(snapshot_abort(capability)),
+        LifecycleCommand::AbortSnapshotEffect(snapshot_abort(capability)),
     )
     .expect("snapshot abort should dispatch");
     let retry = prepare_snapshot(&mut network);

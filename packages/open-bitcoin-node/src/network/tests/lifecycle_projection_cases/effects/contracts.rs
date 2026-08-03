@@ -31,7 +31,7 @@ fn prepared_snapshot_write(
 fn acknowledge_snapshot(
     capability: crate::network::SnapshotWriteCapability,
 ) -> SnapshotWriteReceipt {
-    capability.acknowledge_checkpoint_write(
+    capability.acknowledge_write(
         PolicyTime::new(200_001),
         CheckpointPersistenceStrength::Sync,
     )
@@ -180,9 +180,9 @@ fn independently_constructed_handles_reject_each_others_same_id_receipts() {
 
     // Act
     let foreign_peer_result = second.complete_peer_effect(foreign_peer);
-    let foreign_snapshot_result = second.complete_checkpoint_snapshot_write(foreign_snapshot);
+    let foreign_snapshot_result = second.complete_snapshot_write(foreign_snapshot);
     let local_peer_result = second.complete_peer_effect(local_peer);
-    let local_snapshot_result = second.complete_checkpoint_snapshot_write(local_snapshot);
+    let local_snapshot_result = second.complete_snapshot_write(local_snapshot);
 
     // Assert
     assert!(foreign_peer_result.is_err());
@@ -590,7 +590,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
     for mismatch in mismatches {
         let result = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteCheckpointSnapshotEffect(mismatch),
+            LifecycleCommand::CompleteSnapshotEffect(mismatch),
         );
 
         // Assert
@@ -599,7 +599,7 @@ fn dispatcher_rejects_every_foreign_snapshot_binding_without_mutation() {
     }
     let completion = apply_lifecycle_command(
         &mut network,
-        LifecycleCommand::CompleteCheckpointSnapshotEffect(exact_completion),
+        LifecycleCommand::CompleteSnapshotEffect(exact_completion),
     )
     .expect("the exact pending snapshot receipt should remain valid");
     assert!(matches!(

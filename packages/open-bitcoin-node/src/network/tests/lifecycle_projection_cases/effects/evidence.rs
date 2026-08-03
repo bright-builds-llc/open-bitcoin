@@ -18,7 +18,7 @@ fn prepare_typed_receipt(
         .expect("checkpoint should prepare")
         .into_parts()
         .1
-        .acknowledge_checkpoint_write(
+        .acknowledge_write(
             PolicyTime::new(completed_at),
             CheckpointPersistenceStrength::Sync,
         )
@@ -32,7 +32,7 @@ fn current_checkpoint_success_records_exact_durable_evidence() {
 
     // Act
     let completion = handle
-        .complete_checkpoint_snapshot_write(receipt)
+        .complete_snapshot_write(receipt)
         .expect("typed completion should dispatch");
     let evidence = handle
         .checkpoint_evidence(PolicyTime::new(200_010), PERIODIC_INTERVAL_SECONDS)
@@ -80,7 +80,7 @@ fn stale_success_advances_durable_high_water_without_clearing_newer_dirty() {
 
     // Act
     let completion = handle
-        .complete_checkpoint_snapshot_write(receipt)
+        .complete_snapshot_write(receipt)
         .expect("stale success should dispatch");
     let evidence = handle
         .checkpoint_evidence(PolicyTime::new(200_010), PERIODIC_INTERVAL_SECONDS)
@@ -107,7 +107,7 @@ fn duplicate_success_is_idempotent_and_cannot_regress_evidence() {
     let receipt = prepare_typed_receipt(&handle, 200_000, 200_004);
     let duplicate = receipt.duplicate_for_test();
     handle
-        .complete_checkpoint_snapshot_write(receipt)
+        .complete_snapshot_write(receipt)
         .expect("first completion should dispatch");
     let before = handle
         .checkpoint_evidence(PolicyTime::new(200_010), PERIODIC_INTERVAL_SECONDS)
@@ -115,7 +115,7 @@ fn duplicate_success_is_idempotent_and_cannot_regress_evidence() {
 
     // Act
     let completion = handle
-        .complete_checkpoint_snapshot_write(duplicate)
+        .complete_snapshot_write(duplicate)
         .expect("duplicate should dispatch");
     let after = handle
         .checkpoint_evidence(PolicyTime::new(200_010), PERIODIC_INTERVAL_SECONDS)
@@ -154,7 +154,7 @@ fn exact_preachievement_abort_records_failure_and_keeps_generation_loss_unbounde
 
     // Act
     let result = handle
-        .abort_checkpoint_snapshot_write(abort)
+        .abort_snapshot_write(abort)
         .expect("typed abort should dispatch");
     let evidence = handle
         .checkpoint_evidence(PolicyTime::new(200_400), PERIODIC_INTERVAL_SECONDS)
@@ -213,7 +213,7 @@ fn foreign_receipt_is_rejected_without_changing_local_checkpoint_evidence() {
 
     // Act
     let error = second
-        .complete_checkpoint_snapshot_write(foreign)
+        .complete_snapshot_write(foreign)
         .expect_err("foreign receipt must fail");
     let after = second
         .checkpoint_evidence(PolicyTime::new(200_010), PERIODIC_INTERVAL_SECONDS)
@@ -233,7 +233,7 @@ fn completion_dispatch_failure_returns_the_original_achieved_receipt() {
 
     // Act
     let error = handle
-        .complete_checkpoint_snapshot_write(receipt)
+        .complete_snapshot_write(receipt)
         .expect_err("injected dispatch failure should retain the receipt");
     let receipt = error.into_receipt();
 
@@ -248,7 +248,7 @@ fn completion_dispatch_failure_returns_the_original_achieved_receipt() {
     );
     assert_eq!(
         handle
-            .complete_checkpoint_snapshot_write(receipt)
+            .complete_snapshot_write(receipt)
             .expect("retained receipt should retry idempotently"),
         EffectCompletion::Applied
     );

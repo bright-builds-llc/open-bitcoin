@@ -45,6 +45,14 @@ pub enum SnapshotWriteAbortError {
     AchievedStateOnlyFailure,
 }
 
+impl std::fmt::Display for SnapshotWriteAbortError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("an achieved-state-only failure cannot abort an unachieved write")
+    }
+}
+
+impl std::error::Error for SnapshotWriteAbortError {}
+
 /// One owned current-schema mempool snapshot plus its success capability.
 /// The outside-lock executor may create a receipt only after persistence succeeds.
 #[derive(Debug, PartialEq, Eq)]
@@ -105,20 +113,7 @@ impl SnapshotWriteCapability {
         self.persistence_generation
     }
 
-    pub fn acknowledge_write(self) -> SnapshotWriteReceipt {
-        SnapshotWriteReceipt {
-            authority_epoch: self.authority_epoch,
-            persistence_generation: self.persistence_generation,
-            captured_at: self.captured_at,
-            trigger: self.trigger,
-            maybe_completed_at: None,
-            maybe_strength: None,
-            effect_id: self.effect_id,
-            snapshot_identity: self.snapshot_identity,
-        }
-    }
-
-    pub fn acknowledge_checkpoint_write(
+    pub fn acknowledge_write(
         self,
         completed_at: PolicyTime,
         strength: CheckpointPersistenceStrength,

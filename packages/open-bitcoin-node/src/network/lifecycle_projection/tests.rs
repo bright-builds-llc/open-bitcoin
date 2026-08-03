@@ -19,9 +19,9 @@ use super::{
     SnapshotPreparationRequest,
 };
 use crate::network::lifecycle_effects::{
-    CheckpointTrigger, PeerEffectCapability, PeerEffectId, PeerEffectReceipt,
-    PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId, SnapshotIdentity,
-    SnapshotWriteReceipt,
+    CheckpointPersistenceStrength, CheckpointTrigger, PeerEffectCapability, PeerEffectId,
+    PeerEffectReceipt, PeerSessionGeneration, PreparedSnapshotWrite, SnapshotEffectId,
+    SnapshotIdentity, SnapshotWriteReceipt,
 };
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -85,7 +85,10 @@ fn command_family_names_every_lifecycle_and_effect_path() {
     )
     .into_parts()
     .1
-    .acknowledge_write();
+    .acknowledge_write(
+        PolicyTime::new(135_041),
+        CheckpointPersistenceStrength::Sync,
+    );
     let emission_receipt = crate::network::PeerEmission::new(
         134_080,
         WireNetworkMessage::Headers(HeadersMessage {

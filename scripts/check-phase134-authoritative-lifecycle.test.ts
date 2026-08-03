@@ -392,7 +392,7 @@ function effectMutations(): MutationCase[] {
       DIAGNOSTICS.stale,
       replace(
         "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
-        "if network.dirty_generation == Some(receipt.persistence_generation()) {",
+        "if is_fresh && network.dirty_generation == Some(receipt.persistence_generation()) {",
         "if network.dirty_generation.is_some() {",
       ),
     ],

@@ -95,7 +95,10 @@ fn public_facades_prepare_and_complete_both_families() {
         .expect("snapshot should prepare")
         .into_parts()
         .1
-        .acknowledge_write();
+        .acknowledge_write(
+            PolicyTime::new(200_001),
+            CheckpointPersistenceStrength::Sync,
+        );
     let peer_completion = handle
         .complete_peer_effect(peer_receipt)
         .expect("peer completion should dispatch");

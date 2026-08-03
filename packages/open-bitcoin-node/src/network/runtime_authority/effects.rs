@@ -6,6 +6,9 @@
 
 //! Thin authority facades for outside-lock lifecycle effects.
 
+#[cfg(test)]
+use std::cell::Cell;
+
 use open_bitcoin_mempool::PolicyTime;
 use open_bitcoin_network::PeerId;
 
@@ -19,8 +22,7 @@ use crate::network::{
     CheckpointEvidenceSnapshot, PeerEmissionReceipt, PeerEmissionWriteCapability,
     lifecycle_effects::{
         CheckpointTrigger, EffectAbort, EffectCompletion, PeerEffectCapability, PeerEffectReceipt,
-        PreparedSnapshotWrite, SnapshotWriteAbort, SnapshotWriteCapability, SnapshotWriteFailure,
-        SnapshotWriteReceipt,
+        PreparedSnapshotWrite, SnapshotWriteAbort, SnapshotWriteFailure, SnapshotWriteReceipt,
     },
 };
 
@@ -154,27 +156,18 @@ impl ManagedNetworkHandle {
         self.abort_peer_effect(capability.into_effect_capability())
     }
 
-    /// Releases one exact snapshot reservation before persistence was achieved.
-    pub fn abort_snapshot_write(
-        &self,
-        capability: SnapshotWriteCapability,
-    ) -> Result<EffectAbort, ManagedNetworkAuthorityError> {
-        match self
-            .apply_lifecycle_command(LifecycleCommand::AbortSnapshotEffect(capability))
-            .map_err(ManagedNetworkAuthorityError::from)?
-        {
-            LifecycleCommandResult::SnapshotEffectAborted(abort) => Ok(abort),
-            _ => Err(unexpected_result("snapshot effect abort")),
-        }
-    }
-
     /// Releases one exact typed checkpoint attempt before persistence succeeds.
-    pub fn abort_checkpoint_snapshot_write(
+    pub fn abort_snapshot_write(
         &self,
         abort: SnapshotWriteAbort,
     ) -> Result<EffectAbort, CheckpointAbortDispatchError> {
+        if take_injected_checkpoint_abort_dispatch_failure() {
+            return Err(CheckpointAbortDispatchError {
+                source: ManagedNetworkAuthorityError::Poisoned,
+            });
+        }
         match self
-            .apply_lifecycle_command(LifecycleCommand::AbortCheckpointSnapshotEffect(abort))
+            .apply_lifecycle_command(LifecycleCommand::AbortSnapshotEffect(abort))
             .map_err(|error| CheckpointAbortDispatchError {
                 source: ManagedNetworkAuthorityError::from(error),
             })? {
@@ -183,6 +176,11 @@ impl ManagedNetworkHandle {
                 source: unexpected_result("typed snapshot effect abort"),
             }),
         }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn fail_next_checkpoint_abort_dispatch_for_test(&self) {
+        INJECT_CHECKPOINT_ABORT_DISPATCH_FAILURE.set(true);
     }
 
     /// Classifies one achieved peer write through the lifecycle dispatcher.
@@ -223,29 +221,8 @@ impl ManagedNetworkHandle {
         }
     }
 
-    /// Classifies one achieved snapshot write through the lifecycle dispatcher.
-    ///
-    /// ```compile_fail
-    /// # use open_bitcoin_node::network::{ManagedNetworkHandle, PeerEffectReceipt};
-    /// fn wrong_family(handle: &ManagedNetworkHandle, receipt: PeerEffectReceipt) {
-    ///     let _ = handle.complete_snapshot_write(receipt);
-    /// }
-    /// ```
-    pub fn complete_snapshot_write(
-        &self,
-        receipt: SnapshotWriteReceipt,
-    ) -> Result<EffectCompletion, ManagedNetworkAuthorityError> {
-        match self
-            .apply_lifecycle_command(LifecycleCommand::CompleteSnapshotEffect(receipt))
-            .map_err(ManagedNetworkAuthorityError::from)?
-        {
-            LifecycleCommandResult::SnapshotEffectCompleted(completion) => Ok(completion),
-            _ => Err(unexpected_result("snapshot effect completion")),
-        }
-    }
-
     /// Records one achieved typed checkpoint while retaining its receipt on dispatch failure.
-    pub fn complete_checkpoint_snapshot_write(
+    pub fn complete_snapshot_write(
         &self,
         receipt: SnapshotWriteReceipt,
     ) -> Result<EffectCompletion, CheckpointCompletionDispatchError> {
@@ -273,6 +250,21 @@ impl ManagedNetworkHandle {
             periodic_interval_seconds,
         ))
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    static INJECT_CHECKPOINT_ABORT_DISPATCH_FAILURE: Cell<bool> = const { Cell::new(false) };
+}
+
+#[cfg(test)]
+fn take_injected_checkpoint_abort_dispatch_failure() -> bool {
+    INJECT_CHECKPOINT_ABORT_DISPATCH_FAILURE.replace(false)
+}
+
+#[cfg(not(test))]
+const fn take_injected_checkpoint_abort_dispatch_failure() -> bool {
+    false
 }
 
 fn unexpected_result(operation: &str) -> ManagedNetworkAuthorityError {

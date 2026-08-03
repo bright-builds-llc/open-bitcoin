@@ -75,7 +75,7 @@ fn prepare_snapshot(
 fn acknowledge_checkpoint(
     capability: crate::network::SnapshotWriteCapability,
 ) -> SnapshotWriteReceipt {
-    capability.acknowledge_checkpoint_write(
+    capability.acknowledge_write(
         PolicyTime::new(200_001),
         CheckpointPersistenceStrength::Sync,
     )
@@ -99,7 +99,7 @@ mod completion {
         // Act
         let completion = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt),
+            LifecycleCommand::CompleteSnapshotEffect(receipt),
         )
         .expect("snapshot completion should apply");
         // Assert
@@ -329,7 +329,7 @@ mod completion {
         // Act
         let completion = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt),
+            LifecycleCommand::CompleteSnapshotEffect(receipt),
         )
         .expect("stale snapshot completion should be classified");
 
@@ -408,7 +408,7 @@ mod completion {
         let duplicate = receipt.duplicate_for_test();
         apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteCheckpointSnapshotEffect(receipt),
+            LifecycleCommand::CompleteSnapshotEffect(receipt),
         )
         .expect("first snapshot completion should apply");
         apply_local_spend(&mut network, coinbase_txid, 134_102);
@@ -416,7 +416,7 @@ mod completion {
         // Act
         let replay = apply_lifecycle_command(
             &mut network,
-            LifecycleCommand::CompleteCheckpointSnapshotEffect(duplicate),
+            LifecycleCommand::CompleteSnapshotEffect(duplicate),
         )
         .expect("duplicate snapshot completion should be classified");
         // Assert

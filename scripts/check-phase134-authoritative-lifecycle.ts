@@ -237,7 +237,7 @@ export function checkPhase134AuthoritativeLifecycle(
     ".apply_lifecycle_command(LifecycleCommand::PrepareSnapshot(",
     ".apply_lifecycle_command(LifecycleCommand::CompletePeerEffect(receipt))",
     ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
-    ".apply_lifecycle_command(LifecycleCommand::CompleteSnapshotEffect(receipt))",
+    "self.dispatch_checkpoint_completion(receipt)",
   ];
   addFailure(
     failures,
@@ -246,7 +246,7 @@ export function checkPhase134AuthoritativeLifecycle(
     DIAGNOSTICS.dispatcher,
   );
   const maybePeerEmissionFacade = effectFacade.match(
-    /pub fn complete_peer_emission\([\s\S]*?\n    }\n\n    \/\/\/ Classifies one achieved snapshot/,
+    /pub fn complete_peer_emission\([\s\S]*?\n    }\n\n    \/\/\/ Records one achieved typed checkpoint/,
   )?.[0];
   addFailure(
     failures,
@@ -372,7 +372,7 @@ export function checkPhase134AuthoritativeLifecycle(
     "if network.snapshot_effect_ledger.is_completed(effect_id)",
     "EffectCompletion::AlreadyApplied",
     "EffectCompletion::AchievedButStale",
-    "if network.dirty_generation == Some(receipt.persistence_generation()) {",
+    "if is_fresh && network.dirty_generation == Some(receipt.persistence_generation()) {",
   ];
   addFailure(
     failures,

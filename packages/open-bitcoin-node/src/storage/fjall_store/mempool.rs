@@ -5,10 +5,13 @@
 
 use core::fmt;
 
+use open_bitcoin_mempool::PolicyTime;
+
 use super::{FjallNodeStore, SNAPSHOT_KEY};
 use crate::network::{
-    EffectAbort, EffectCompletion, ManagedNetworkAuthorityError, ManagedNetworkHandle,
-    PreparedSnapshotWrite, SnapshotWriteCapability,
+    CheckpointAbortDispatchError, CheckpointPersistenceStrength, EffectAbort, ManagedNetworkHandle,
+    PreparedSnapshotWrite, SnapshotWriteAbort, SnapshotWriteAbortError, SnapshotWriteCapability,
+    SnapshotWriteFailure, SnapshotWriteReceipt,
 };
 use crate::storage::{
     MempoolSnapshot, PersistMode, StorageError, StorageNamespace, snapshot_codec,
@@ -56,42 +59,61 @@ impl MempoolSnapshotDecodeLimits {
 /// Failure while carrying one snapshot capability to a truthful terminal state.
 #[derive(Debug)]
 pub enum SnapshotWriteExecutionError {
-    /// Encoding or durable storage failed and the exact reservation was aborted.
+    /// Encoding failed and the exact reservation was aborted.
+    Encode(StorageError),
+    /// Durable storage failed and the exact reservation was aborted.
     Storage(StorageError),
-    /// Durable storage succeeded, but achieved-effect completion could not dispatch.
-    Completion(ManagedNetworkAuthorityError),
-    /// Storage failed and the exact pre-achievement abort could not dispatch.
-    AbortFailed {
+    /// Pre-achievement abort construction rejected an impossible failure class.
+    AbortConstruction {
         storage_error: StorageError,
-        abort_error: ManagedNetworkAuthorityError,
+        source: SnapshotWriteAbortError,
     },
-    /// Storage failed but authority rejected the owned capability's exact abort.
+    /// Encoding or storage failed and the exact abort could not dispatch.
+    AbortDispatch {
+        storage_error: StorageError,
+        source: CheckpointAbortDispatchError,
+    },
+    /// Encoding or storage failed but authority rejected the owned exact abort.
     AbortRejected {
+        failure: SnapshotWriteFailure,
         storage_error: StorageError,
         classification: EffectAbort,
     },
 }
 
+impl SnapshotWriteExecutionError {
+    pub const fn failure(&self) -> SnapshotWriteFailure {
+        match self {
+            Self::Encode(_) => SnapshotWriteFailure::Encode,
+            Self::Storage(_) => SnapshotWriteFailure::Storage,
+            Self::AbortConstruction { .. } | Self::AbortDispatch { .. } => {
+                SnapshotWriteFailure::AbortDispatch
+            }
+            Self::AbortRejected { failure, .. } => *failure,
+        }
+    }
+}
+
 impl fmt::Display for SnapshotWriteExecutionError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Encode(error) => error.fmt(formatter),
             Self::Storage(error) => error.fmt(formatter),
-            Self::Completion(error) => {
-                write!(
-                    formatter,
-                    "snapshot persisted but completion failed: {error}"
-                )
-            }
-            Self::AbortFailed {
+            Self::AbortConstruction {
                 storage_error,
-                abort_error,
+                source,
             } => write!(
                 formatter,
-                "snapshot persistence failed ({storage_error}); exact abort also failed: {abort_error}"
+                "snapshot persistence failed ({storage_error}); exact abort construction failed: {source}"
+            ),
+            Self::AbortDispatch { storage_error, .. } => write!(
+                formatter,
+                "snapshot persistence failed ({storage_error}); exact abort dispatch failed"
             ),
             Self::AbortRejected {
                 storage_error,
                 classification,
+                ..
             } => write!(
                 formatter,
                 "snapshot persistence failed ({storage_error}); exact abort returned {classification:?}"
@@ -103,9 +125,9 @@ impl fmt::Display for SnapshotWriteExecutionError {
 impl std::error::Error for SnapshotWriteExecutionError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Storage(error) => Some(error),
-            Self::Completion(error) => Some(error),
-            Self::AbortFailed { abort_error, .. } => Some(abort_error),
+            Self::Encode(error) | Self::Storage(error) => Some(error),
+            Self::AbortConstruction { source, .. } => Some(source),
+            Self::AbortDispatch { source, .. } => Some(source),
             Self::AbortRejected { storage_error, .. } => Some(storage_error),
         }
     }
@@ -116,34 +138,38 @@ impl FjallNodeStore {
     ///
     /// Encoding or save failure aborts the exact pre-achievement reservation.
     /// Only a successful save converts the capability into an achieved receipt.
-    pub fn execute_prepared_mempool_snapshot_write(
+    pub fn execute_prepared_mempool_snapshot_write<Now>(
         &self,
         handle: &ManagedNetworkHandle,
         prepared: PreparedSnapshotWrite,
-        mode: PersistMode,
-    ) -> Result<EffectCompletion, SnapshotWriteExecutionError> {
+        now: Now,
+    ) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>
+    where
+        Now: FnMut() -> PolicyTime,
+    {
         execute_prepared_mempool_snapshot_write_with(
             handle,
             prepared,
-            mode,
             snapshot_codec::encode_mempool_snapshot,
             |bytes, mode| self.put_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY, bytes, mode),
+            now,
         )
     }
 
     #[cfg(test)]
-    pub(crate) fn execute_prepared_mempool_snapshot_write_with<Encode, Save>(
+    pub(crate) fn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(
         handle: &ManagedNetworkHandle,
         prepared: PreparedSnapshotWrite,
-        mode: PersistMode,
         encode: Encode,
         save: Save,
-    ) -> Result<EffectCompletion, SnapshotWriteExecutionError>
+        now: Now,
+    ) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>
     where
         Encode: FnOnce(&MempoolSnapshot) -> Result<Vec<u8>, StorageError>,
         Save: FnOnce(Vec<u8>, PersistMode) -> Result<(), StorageError>,
+        Now: FnMut() -> PolicyTime,
     {
-        execute_prepared_mempool_snapshot_write_with(handle, prepared, mode, encode, save)
+        execute_prepared_mempool_snapshot_write_with(handle, prepared, encode, save, now)
     }
 
     /// Persist the accepted-mempool snapshot owned by Open Bitcoin.
@@ -185,45 +211,78 @@ impl FjallNodeStore {
     }
 }
 
-fn execute_prepared_mempool_snapshot_write_with<Encode, Save>(
+fn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(
     handle: &ManagedNetworkHandle,
     prepared: PreparedSnapshotWrite,
-    mode: PersistMode,
     encode: Encode,
     save: Save,
-) -> Result<EffectCompletion, SnapshotWriteExecutionError>
+    mut now: Now,
+) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>
 where
     Encode: FnOnce(&MempoolSnapshot) -> Result<Vec<u8>, StorageError>,
     Save: FnOnce(Vec<u8>, PersistMode) -> Result<(), StorageError>,
+    Now: FnMut() -> PolicyTime,
 {
     let (snapshot, capability) = prepared.into_parts();
     let bytes = match encode(&snapshot) {
         Ok(bytes) => bytes,
-        Err(error) => return Err(abort_failed_write(handle, capability, error)),
+        Err(error) => {
+            return Err(abort_failed_write(
+                handle,
+                capability,
+                error,
+                now(),
+                SnapshotWriteFailure::Encode,
+            ));
+        }
     };
-    if let Err(error) = save(bytes, mode) {
-        return Err(abort_failed_write(handle, capability, error));
+    if let Err(error) = save(bytes, PersistMode::Sync) {
+        return Err(abort_failed_write(
+            handle,
+            capability,
+            error,
+            now(),
+            SnapshotWriteFailure::Storage,
+        ));
     }
 
-    handle
-        .complete_snapshot_write(capability.acknowledge_write())
-        .map_err(SnapshotWriteExecutionError::Completion)
+    Ok(capability.acknowledge_write(now(), CheckpointPersistenceStrength::Sync))
 }
 
 fn abort_failed_write(
     handle: &ManagedNetworkHandle,
     capability: SnapshotWriteCapability,
     storage_error: StorageError,
+    failed_at: PolicyTime,
+    failure: SnapshotWriteFailure,
 ) -> SnapshotWriteExecutionError {
-    match handle.abort_snapshot_write(capability) {
-        Ok(EffectAbort::Aborted) => SnapshotWriteExecutionError::Storage(storage_error),
+    let abort = match SnapshotWriteAbort::new(capability, failed_at, failure) {
+        Ok(abort) => abort,
+        Err(source) => {
+            return SnapshotWriteExecutionError::AbortConstruction {
+                storage_error,
+                source,
+            };
+        }
+    };
+    match handle.abort_snapshot_write(abort) {
+        Ok(EffectAbort::Aborted) => match failure {
+            SnapshotWriteFailure::Encode => SnapshotWriteExecutionError::Encode(storage_error),
+            SnapshotWriteFailure::Storage => SnapshotWriteExecutionError::Storage(storage_error),
+            SnapshotWriteFailure::AbortDispatch => SnapshotWriteExecutionError::AbortRejected {
+                failure,
+                storage_error,
+                classification: EffectAbort::NotPending,
+            },
+        },
         Ok(classification) => SnapshotWriteExecutionError::AbortRejected {
+            failure,
             storage_error,
             classification,
         },
-        Err(abort_error) => SnapshotWriteExecutionError::AbortFailed {
+        Err(source) => SnapshotWriteExecutionError::AbortDispatch {
             storage_error,
-            abort_error,
+            source,
         },
     }
 }
