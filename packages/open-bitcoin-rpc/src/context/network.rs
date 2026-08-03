@@ -96,10 +96,11 @@ impl ManagedRpcContext {
             relay: true,
             user_agent: "/open-bitcoin:0.1.0/".to_string(),
         };
+        let policy = PolicyConfig::default();
         let mut managed_network = ManagedPeerNetwork::new_with_block_relay_activation(
             MemoryChainstateStore::default(),
             local_config,
-            PolicyConfig::default(),
+            policy.clone(),
             config.relay,
             config.block_serving,
             config.inbound.enabled,
@@ -110,69 +111,38 @@ impl ManagedRpcContext {
         ));
         let maybe_resource_governance_log_dir =
             config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
-        match build_wallet_state_with_store(config, maybe_store.clone()) {
-            super::wallet_state::WalletState::Local(wallet) => {
-                recover_mempool_snapshot_from_store(
-                    config,
-                    maybe_store.as_ref(),
-                    &mut managed_network,
-                    default_verify_flags(),
-                    consensus_params,
-                );
-                Self {
-                    chain: config.chain,
-                    consensus_params,
-                    verify_flags: default_verify_flags(),
-                    network: ManagedNetworkHandle::from_network_fixture(managed_network),
-                    permission_classes: config.inbound.permission_classes.clone(),
-                    inbound_permission_validation_failures: config
-                        .inbound_permission_validation_failures,
-                    inbound_listener_config: config.inbound.clone(),
-                    maybe_inbound_listener_evidence: None,
-                    maybe_resource_governance_log_dir: maybe_resource_governance_log_dir.clone(),
-                    resource_governance_log_retention: Default::default(),
-                    resource_governance_log_write_failures: 0,
-                    maybe_block_source: super::durable_block_source(maybe_store.clone()),
-                    maybe_metrics_store: maybe_store.clone(),
-                    maybe_runtime_metadata_source: maybe_store,
-                    maybe_daemon_sync_control: None,
-                    wallet_state: super::wallet_state::WalletState::Local(wallet),
-                }
+        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
+        let effective_store = match &wallet_state {
+            super::wallet_state::WalletState::Local(_) => maybe_store,
+            super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
+                Some(store.clone())
             }
-            super::wallet_state::WalletState::DurableNamedRegistry {
-                store,
-                maybe_request_wallet_name,
-            } => {
-                recover_mempool_snapshot_from_store(
-                    config,
-                    Some(&store),
-                    &mut managed_network,
-                    default_verify_flags(),
-                    consensus_params,
-                );
-                Self {
-                    chain: config.chain,
-                    consensus_params,
-                    verify_flags: default_verify_flags(),
-                    network: ManagedNetworkHandle::from_network_fixture(managed_network),
-                    permission_classes: config.inbound.permission_classes.clone(),
-                    inbound_permission_validation_failures: config
-                        .inbound_permission_validation_failures,
-                    inbound_listener_config: config.inbound.clone(),
-                    maybe_inbound_listener_evidence: None,
-                    maybe_resource_governance_log_dir,
-                    resource_governance_log_retention: Default::default(),
-                    resource_governance_log_write_failures: 0,
-                    maybe_block_source: super::durable_block_source(Some(store.clone())),
-                    maybe_metrics_store: Some(store.clone()),
-                    maybe_runtime_metadata_source: Some(store.clone()),
-                    maybe_daemon_sync_control: None,
-                    wallet_state: super::wallet_state::WalletState::DurableNamedRegistry {
-                        store,
-                        maybe_request_wallet_name,
-                    },
-                }
-            }
+        };
+        let network = recover_mempool_snapshot_from_store(
+            config,
+            effective_store.as_ref(),
+            managed_network,
+            &policy,
+            default_verify_flags(),
+            consensus_params,
+        );
+        Self {
+            chain: config.chain,
+            consensus_params,
+            verify_flags: default_verify_flags(),
+            network,
+            permission_classes: config.inbound.permission_classes.clone(),
+            inbound_permission_validation_failures: config.inbound_permission_validation_failures,
+            inbound_listener_config: config.inbound.clone(),
+            maybe_inbound_listener_evidence: None,
+            maybe_resource_governance_log_dir,
+            resource_governance_log_retention: Default::default(),
+            resource_governance_log_write_failures: 0,
+            maybe_block_source: super::durable_block_source(effective_store.clone()),
+            maybe_metrics_store: effective_store.clone(),
+            maybe_runtime_metadata_source: effective_store,
+            maybe_daemon_sync_control: None,
+            wallet_state,
         }
     }
 
@@ -189,6 +159,7 @@ impl ManagedRpcContext {
             coinbase_maturity: config.wallet.coinbase_maturity,
             ..ConsensusParams::default()
         };
+        let policy = PolicyConfig::default();
         let maybe_resource_governance_log_dir =
             config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
         let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
@@ -202,6 +173,7 @@ impl ManagedRpcContext {
             config,
             effective_store.as_ref(),
             &network,
+            &policy,
             default_verify_flags(),
             consensus_params,
         )?;

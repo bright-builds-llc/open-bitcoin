@@ -304,7 +304,7 @@ fn inbound_permission_validation_failure_count_is_config_validation_aggregate() 
     [
       "packages/open-bitcoin-rpc/src/context/network.rs",
       `
-pub fn from_runtime_config_with_store() { maybe_metrics_store: maybe_store.clone(); }
+pub fn from_runtime_config_with_store() { maybe_metrics_store: effective_store.clone(); }
 pub fn set_metrics_store() {}
 pub fn metrics_status() { load_metrics_status(MetricRetentionPolicy::default()); }
 `,

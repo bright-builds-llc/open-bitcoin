@@ -330,6 +330,10 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["packages/open-bitcoin-network/src/peer/tests.rs", peerTestsText()],
     ["packages/open-bitcoin-node/src/network/action_translation.rs", actionTranslationText()],
     ["packages/open-bitcoin-node/src/network/admission_bridge.rs", admissionBridgeText()],
+    [
+      "packages/open-bitcoin-node/src/network/inventory.rs",
+      "fn prepare_serving_projection() {}",
+    ],
     ["packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs", admissionBridgeTestsText()],
     ["scripts/verify.sh", verifyScriptText()],
     [
@@ -370,7 +374,7 @@ function p2pCatalogText(): string {
     "MempoolOutcome MempoolOutcomeLabel MempoolRejectionCategory accepted rejected duplicate replaced orphaned evicted expired",
     "TxOrphanage OrphanPolicy OrphanEvidenceLabel parent_requested orphan_evicted orphan_expired orphan_reconsidered",
     "PHASE102_MAX_ORPHAN_TRANSACTIONS PHASE102_MAX_ORPHANS_PER_PEER PHASE102_ORPHAN_TTL_SECONDS PHASE102_MAX_RECONSIDERATIONS_PER_PARENT",
-    "request_orphan_parent process_peer_transaction_admission submit_transaction_outcome accept_transaction_outcome reconsider_orphans_after_acceptance expire_orphan_transactions remove_stored_transactions disconnect_peer_at cleanup_peer",
+    "request_orphan_parent process_peer_transaction_admission submit_transaction_outcome accept_transaction_outcome reconsider_orphans_after_acceptance expire_orphan_transactions prepare_serving_projection disconnect_peer_at cleanup_peer",
     "Phase 102 does not claim durable mempool persistence, block connect/disconnect mempool lifecycle, long-lived mempool pressure/trimming evidence, relay serving, relay fanout, rebroadcast, RPC/operator/support evidence, support-bundle redaction for transaction material, release-boundary closeout, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet use.",
   ].join("\n");
 }
@@ -425,7 +429,7 @@ function parityIndexText(): string {
 function checklistText(): string {
   return [
     "# Parity Checklist",
-    `| \`${SURFACE_ID}\` | \`done\` | \`DL-03\`, \`DL-04\`, \`DL-05\`, \`MEM-01\`, \`MEM-02\` | ${REQUIRED_EVIDENCE_ROOTS.join(" ")} | MempoolOutcome MempoolOutcomeLabel MempoolRejectionCategory accepted rejected duplicate replaced orphaned evicted expired TxOrphanage OrphanPolicy OrphanEvidenceLabel parent_requested orphan_evicted orphan_expired orphan_reconsidered PHASE102_MAX_ORPHAN_TRANSACTIONS PHASE102_MAX_ORPHANS_PER_PEER PHASE102_ORPHAN_TTL_SECONDS PHASE102_MAX_RECONSIDERATIONS_PER_PARENT request_orphan_parent process_peer_transaction_admission submit_transaction_outcome accept_transaction_outcome reconsider_orphans_after_acceptance expire_orphan_transactions remove_stored_transactions disconnect_peer_at cleanup_peer. Phase 102 does not claim durable mempool persistence, block connect/disconnect mempool lifecycle, long-lived mempool pressure/trimming evidence, relay serving, relay fanout, rebroadcast, RPC/operator/support evidence, support-bundle redaction for transaction material, release-boundary closeout, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet use. | Future v2.0 phases own later surfaces. |`,
+    `| \`${SURFACE_ID}\` | \`done\` | \`DL-03\`, \`DL-04\`, \`DL-05\`, \`MEM-01\`, \`MEM-02\` | ${REQUIRED_EVIDENCE_ROOTS.join(" ")} | MempoolOutcome MempoolOutcomeLabel MempoolRejectionCategory accepted rejected duplicate replaced orphaned evicted expired TxOrphanage OrphanPolicy OrphanEvidenceLabel parent_requested orphan_evicted orphan_expired orphan_reconsidered PHASE102_MAX_ORPHAN_TRANSACTIONS PHASE102_MAX_ORPHANS_PER_PEER PHASE102_ORPHAN_TTL_SECONDS PHASE102_MAX_RECONSIDERATIONS_PER_PARENT request_orphan_parent process_peer_transaction_admission submit_transaction_outcome accept_transaction_outcome reconsider_orphans_after_acceptance expire_orphan_transactions prepare_serving_projection disconnect_peer_at cleanup_peer. Phase 102 does not claim durable mempool persistence, block connect/disconnect mempool lifecycle, long-lived mempool pressure/trimming evidence, relay serving, relay fanout, rebroadcast, RPC/operator/support evidence, support-bundle redaction for transaction material, release-boundary closeout, compact block relay, package relay, bloom/filter serving, public relay defaults, public-network relay CI, production full-node readiness, production service operation, or production-funds wallet use. | Future v2.0 phases own later surfaces. |`,
   ].join("\n");
 }
 
@@ -499,7 +503,7 @@ function outcomeText(): string {
 function poolText(): string {
   return [
     "pub fn accept_transaction_outcome() -> MempoolOutcome {}",
-    "fn remove_stored_transactions() {}",
+    "fn prepare_serving_projection() {}",
   ].join("\n");
 }
 
@@ -582,7 +586,7 @@ function admissionBridgeText(): string {
     "}",
     "fn reconsider_orphans_after_acceptance() {}",
     "fn expire_orphan_transactions() {}",
-    "fn remove_stored_transactions() {}",
+    "fn prepare_serving_projection() {}",
     "fn accept_transaction_outcome() {}",
   ].join("\n");
 }

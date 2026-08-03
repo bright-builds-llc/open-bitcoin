@@ -16,6 +16,7 @@ export function verifyOutcomeAndOrphanEvidence(texts: TextCorpus, failures: stri
     texts.get("packages/open-bitcoin-network/src/peer/inventory_state.rs") ?? "",
     texts.get("packages/open-bitcoin-network/src/peer/tests.rs") ?? "",
     texts.get("packages/open-bitcoin-node/src/network/admission_bridge.rs") ?? "",
+    texts.get("packages/open-bitcoin-node/src/network/inventory.rs") ?? "",
     texts.get("docs/parity/checklist.md") ?? "",
     texts.get("docs/parity/index.json") ?? "",
   ].join("\n");
@@ -37,7 +38,7 @@ export function verifyOutcomeAndOrphanEvidence(texts: TextCorpus, failures: stri
     "reconsider_after_parent",
     "OrphanReconsiderationStatus",
     "TxRelayId::Txid",
-    "remove_stored_transactions",
+    "prepare_serving_projection",
   ]) {
     requireContains(source, needle, `Phase 102 orphan/admission evidence missing: ${needle}`, failures);
   }

@@ -29,6 +29,7 @@ export const TARGET_FILES = [
   "packages/open-bitcoin-network/src/peer/tests.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/admission_bridge.rs",
+  "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
   "scripts/verify.sh",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md",
@@ -106,7 +107,7 @@ export const REQUIRED_BRIDGE_SYMBOLS = [
   "accept_transaction_outcome",
   "reconsider_orphans_after_acceptance",
   "expire_orphan_transactions",
-  "remove_stored_transactions",
+  "prepare_serving_projection",
   "disconnect_peer_at",
   "cleanup_peer",
 ] as const;

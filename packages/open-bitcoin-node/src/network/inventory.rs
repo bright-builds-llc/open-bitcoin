@@ -12,9 +12,11 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_core::primitives::{BlockHash, InventoryType, InventoryVector};
+#[cfg(test)]
 use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
-    primitives::{BlockHash, InventoryType, InventoryVector, Transaction, Txid, Wtxid},
+    primitives::{Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{MempoolRemovalCause, PreparedLifecycleFacts};
 use open_bitcoin_network::{
@@ -314,6 +316,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
     }
 
+    #[cfg(test)]
     pub(super) fn store_transaction(
         &mut self,
         transaction: Transaction,
@@ -326,25 +329,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.relay_serving.record_accepted(transaction.clone())?;
         self.peer_manager.note_local_transaction(&transaction)?;
         Ok((txid, wtxid))
-    }
-
-    pub(super) fn remove_stored_transactions_with_status(
-        &mut self,
-        txids: &[Txid],
-        status: TxServingRecordStatus,
-    ) -> Result<(), ManagedNetworkError> {
-        for txid in txids {
-            let Some(transaction) = self.transactions_by_txid.remove(txid) else {
-                continue;
-            };
-            let wtxid = transaction_wtxid(&transaction)?;
-            self.transactions_by_wtxid.remove(&wtxid);
-        }
-        if let Some(reason) = super::relay_fanout::cleanup_reason_for_serving_status(status) {
-            self.relay_fanout.cleanup_transactions(txids, reason);
-        }
-        self.relay_serving.remove_transactions(txids, status)?;
-        Ok(())
     }
 
     pub(super) fn next_chain_work(&self) -> u128 {

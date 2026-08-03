@@ -18,8 +18,7 @@ use open_bitcoin_mempool::{
 };
 
 use super::{
-    CapturedMempoolGeneration, MempoolRecoveryStatus, MempoolSnapshot, MempoolSnapshotError,
-    MempoolSnapshotRecord, recovery_status_from_outcome,
+    CapturedMempoolGeneration, MempoolSnapshot, MempoolSnapshotError, MempoolSnapshotRecord,
 };
 
 fn script(bytes: &[u8]) -> ScriptBuf {
@@ -181,18 +180,4 @@ fn legacy_snapshot_keeps_unknown_acceptance_time_unknown() {
     assert_eq!(snapshot.captured_generation(), None);
     assert_eq!(snapshot.captured_at(), None);
     assert!(snapshot.unbroadcast_members().is_empty());
-}
-
-#[test]
-fn recovery_status_from_outcome_classifies_unexpected_errors_as_policy_incompatible() {
-    // Arrange
-    let error = open_bitcoin_mempool::MempoolError::Validation {
-        reason: "bad-tx".to_string(),
-    };
-
-    // Act
-    let status = recovery_status_from_outcome(Err(error));
-
-    // Assert
-    assert_eq!(status, MempoolRecoveryStatus::DroppedPolicyIncompatible);
 }

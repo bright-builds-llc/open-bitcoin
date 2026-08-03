@@ -44,7 +44,7 @@ const TARGET_FILES = [
 const REQUIRED_REQUIREMENTS = ["MEM-04", "MEM-05", "MEM-06", "REL-01", "REL-02"] as const;
 const REQUIRED_NEEDLES = [
   "ManagedMempoolRecoverySummary",
-  "recover_mempool_snapshot",
+  "prepare_mempool_recovery_at",
   "record_mempool_recovery_storage_error",
   "seed_recovered_transaction",
   "RelayRecoveryCounters",
@@ -68,7 +68,11 @@ const RECOVERY_FIELDS = [
 const FILE_NEEDLES = [
   {
     file: "packages/open-bitcoin-node/src/network/recovery.rs",
-    needles: ["ManagedMempoolRecoverySummary", "recover_mempool_snapshot", "record_mempool_recovery_storage_error"],
+    needles: [
+      "ManagedMempoolRecoverySummary",
+      "prepare_mempool_recovery_at",
+      "record_mempool_recovery_storage_error",
+    ],
   },
   {
     file: "packages/open-bitcoin-node/src/network/relay_fanout.rs",

@@ -18,7 +18,7 @@ use open_bitcoin_mempool::{
 };
 use open_bitcoin_network::{
     TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason,
-    TxFanoutPeerInput, TxRelayId, TxServingRecordStatus, defer_local_rebroadcast,
+    TxFanoutPeerInput, TxRelayId, defer_local_rebroadcast,
 };
 
 use super::{ManagedRelayFanoutState, local_submission_evidence};
@@ -142,19 +142,5 @@ const fn fanout_reason_for_lifecycle_removal(cause: MempoolRemovalCause) -> TxFa
         MempoolRemovalCause::BlockConfirmation
         | MempoolRemovalCause::BlockConflict
         | MempoolRemovalCause::Reorg => TxFanoutCleanupReason::Confirmed,
-    }
-}
-
-pub(in crate::network) const fn cleanup_reason_for_serving_status(
-    status: TxServingRecordStatus,
-) -> Option<TxFanoutCleanupReason> {
-    match status {
-        TxServingRecordStatus::Confirmed => Some(TxFanoutCleanupReason::Confirmed),
-        TxServingRecordStatus::Replaced => Some(TxFanoutCleanupReason::Replaced),
-        TxServingRecordStatus::Evicted => Some(TxFanoutCleanupReason::Evicted),
-        TxServingRecordStatus::Expired => Some(TxFanoutCleanupReason::Expired),
-        TxServingRecordStatus::Accepted
-        | TxServingRecordStatus::Stale
-        | TxServingRecordStatus::Rejected => None,
     }
 }

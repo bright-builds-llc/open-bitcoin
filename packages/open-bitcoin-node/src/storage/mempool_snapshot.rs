@@ -11,7 +11,7 @@ use open_bitcoin_core::{
     primitives::{Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOutcome, PolicyTime,
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, PolicyTime,
     transaction_weight_and_virtual_size,
 };
 
@@ -264,23 +264,6 @@ impl MempoolSnapshotRecord {
         let wtxid = transaction_wtxid(&self.transaction)
             .map_err(|_| MempoolSnapshotError::StructuralCorruption)?;
         Ok(MempoolMemberIdentity { txid, wtxid })
-    }
-}
-
-pub(crate) fn recovery_status_from_outcome(
-    outcome: Result<MempoolOutcome, open_bitcoin_mempool::MempoolError>,
-) -> MempoolRecoveryStatus {
-    match outcome {
-        Ok(MempoolOutcome::Accepted { .. }) | Ok(MempoolOutcome::Replaced { .. }) => {
-            MempoolRecoveryStatus::Recovered
-        }
-        Ok(MempoolOutcome::Duplicate { .. }) => MempoolRecoveryStatus::DroppedDuplicate,
-        Ok(MempoolOutcome::Orphaned { .. }) => MempoolRecoveryStatus::DroppedMissingParent,
-        Ok(MempoolOutcome::Rejected { .. }) | Err(_) => {
-            MempoolRecoveryStatus::DroppedPolicyIncompatible
-        }
-        Ok(MempoolOutcome::Evicted { .. }) => MempoolRecoveryStatus::DroppedEvicted,
-        Ok(MempoolOutcome::Expired { .. }) => MempoolRecoveryStatus::DroppedExpired,
     }
 }
 

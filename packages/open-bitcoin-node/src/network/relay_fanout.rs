@@ -37,8 +37,6 @@ use crate::status::relay_evidence::{
 mod action_info;
 mod lifecycle;
 
-pub(super) use lifecycle::cleanup_reason_for_serving_status;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRelayFanoutInfo {
     pub known_transactions: usize,

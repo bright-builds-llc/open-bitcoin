@@ -9,8 +9,12 @@
 // - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
 // - packages/bitcoin-knots/test/functional/interface_rpc.py
 
+use std::time::{SystemTime, UNIX_EPOCH};
+
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
+use open_bitcoin_node::core::mempool::{PolicyConfig, PolicyTime};
 use open_bitcoin_node::status::SyncRecoveryCategory;
+use open_bitcoin_node::storage::fjall_store::MempoolSnapshotDecodeLimits;
 use open_bitcoin_node::{
     FjallNodeStore, ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork,
     MemoryChainstateStore,
@@ -18,56 +22,68 @@ use open_bitcoin_node::{
 
 use crate::config::RuntimeConfig;
 
+#[allow(
+    clippy::expect_used,
+    reason = "the fresh startup authority is unshared and cannot be poisoned or superseded"
+)]
 pub(super) fn recover_mempool_snapshot_from_store(
     config: &RuntimeConfig,
     maybe_store: Option<&FjallNodeStore>,
-    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+    network: ManagedPeerNetwork<MemoryChainstateStore>,
+    policy: &PolicyConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
-) {
-    let store;
-    let store = match maybe_store {
-        Some(store) => store,
-        None => {
-            let Some(data_dir) = config.maybe_data_dir.as_ref() else {
-                return;
-            };
-            let opened_store = match FjallNodeStore::open(data_dir) {
-                Ok(store) => store,
-                Err(error) => {
-                    network.record_mempool_recovery_storage_error(&error);
-                    return;
-                }
-            };
-            store = opened_store;
-            &store
-        }
-    };
-
-    #[allow(
-        deprecated,
-        reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
-    )]
-    match store.load_mempool_snapshot() {
-        Ok(Some(snapshot)) => {
-            let recovery_result =
-                network.recover_mempool_snapshot(&snapshot, verify_flags, consensus_params);
-            if recovery_result.is_err() {
-                network.record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData);
-            }
-        }
-        Ok(None) => {}
-        Err(error) => network.record_mempool_recovery_storage_error(&error),
-    }
+) -> ManagedNetworkHandle {
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    recover_mempool_snapshot_from_store_handle_at(
+        config,
+        maybe_store,
+        &network,
+        policy,
+        verify_flags,
+        consensus_params,
+        startup_policy_time(),
+    )
+    .expect("fresh startup authority remains available before publication");
+    network
 }
 
 pub(super) fn recover_mempool_snapshot_from_store_handle(
     config: &RuntimeConfig,
     maybe_store: Option<&FjallNodeStore>,
     network: &ManagedNetworkHandle,
+    policy: &PolicyConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
 ) -> Result<(), ManagedNetworkAuthorityError> {
+    recover_mempool_snapshot_from_store_handle_at(
+        config,
+        maybe_store,
+        network,
+        policy,
+        verify_flags,
+        consensus_params,
+        startup_policy_time(),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn recover_mempool_snapshot_from_store_handle_at(
+    config: &RuntimeConfig,
+    maybe_store: Option<&FjallNodeStore>,
+    network: &ManagedNetworkHandle,
+    policy: &PolicyConfig,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+    startup_at: Result<PolicyTime, SyncRecoveryCategory>,
+) -> Result<(), ManagedNetworkAuthorityError> {
+    let startup_at = match startup_at {
+        Ok(startup_at) => startup_at,
+        Err(category) => {
+            network.record_mempool_recovery_unavailable(category)?;
+            return Ok(());
+        }
+    };
     let store;
     let store = match maybe_store {
         Some(store) => store,
@@ -87,15 +103,57 @@ pub(super) fn recover_mempool_snapshot_from_store_handle(
         }
     };
 
-    #[allow(
-        deprecated,
-        reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
-    )]
-    match store.load_mempool_snapshot() {
+    recover_mempool_snapshot_with_loader(
+        network,
+        policy,
+        verify_flags,
+        consensus_params,
+        startup_at,
+        |decode_limits| store.load_mempool_snapshot_with_limits(decode_limits),
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn recover_mempool_snapshot_with_loader<Load>(
+    network: &ManagedNetworkHandle,
+    policy: &PolicyConfig,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+    startup_at: PolicyTime,
+    load: Load,
+) -> Result<(), ManagedNetworkAuthorityError>
+where
+    Load: FnOnce(
+        MempoolSnapshotDecodeLimits,
+    ) -> Result<
+        Option<open_bitcoin_node::storage::MempoolSnapshot>,
+        open_bitcoin_node::StorageError,
+    >,
+{
+    let decode_limits = match MempoolSnapshotDecodeLimits::from_policy(policy) {
+        Ok(decode_limits) => decode_limits,
+        Err(category) => {
+            network.record_mempool_recovery_unavailable(category)?;
+            return Ok(());
+        }
+    };
+    match load(decode_limits) {
         Ok(Some(snapshot)) => {
-            let recovery_result =
-                network.recover_mempool_snapshot(&snapshot, verify_flags, consensus_params);
-            if recovery_result.is_err() {
+            let prepared = match network.prepare_mempool_recovery_at(
+                &snapshot,
+                verify_flags,
+                consensus_params,
+                startup_at,
+            ) {
+                Ok(prepared) => prepared,
+                Err(_) => {
+                    network.record_mempool_recovery_unavailable(
+                        SyncRecoveryCategory::InvalidPeerData,
+                    )?;
+                    return Ok(());
+                }
+            };
+            if network.install_mempool_recovery(prepared).is_err() {
                 network
                     .record_mempool_recovery_unavailable(SyncRecoveryCategory::InvalidPeerData)?;
             }
@@ -104,4 +162,256 @@ pub(super) fn recover_mempool_snapshot_from_store_handle(
         Err(error) => network.record_mempool_recovery_storage_error(&error)?,
     }
     Ok(())
+}
+
+fn startup_policy_time() -> Result<PolicyTime, SyncRecoveryCategory> {
+    let elapsed = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|_| SyncRecoveryCategory::ResourceExhaustion)?;
+    let seconds =
+        i64::try_from(elapsed.as_secs()).map_err(|_| SyncRecoveryCategory::ResourceExhaustion)?;
+    Ok(PolicyTime::new(seconds))
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    use open_bitcoin_mempool::{MempoolCapacity, PolicyConfig, PolicyTime};
+    use open_bitcoin_network::{BlockRelayActivationPolicy, RelayActivationConfig};
+    use open_bitcoin_node::ManagedNetworkHandle;
+    use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
+    use open_bitcoin_node::core::primitives::NetworkMagic;
+    use open_bitcoin_node::status::SyncRecoveryCategory;
+    use open_bitcoin_node::storage::fjall_store::{FjallNodeStore, MempoolSnapshotDecodeLimits};
+    use open_bitcoin_node::storage::mempool_snapshot::CapturedMempoolGeneration;
+    use open_bitcoin_node::storage::{
+        MempoolSnapshot, PersistMode, SchemaVersion, StorageError, StorageNamespace,
+        StorageRecoveryAction,
+    };
+
+    use super::recover_mempool_snapshot_with_loader;
+
+    static NEXT_TEMP_DIR: AtomicU64 = AtomicU64::new(0);
+
+    #[test]
+    fn snapshot_decode_limits_are_derived_from_the_runtime_policy() {
+        // Arrange
+        let policy = PolicyConfig {
+            mempool_capacity: MempoolCapacity::new(10_000),
+            max_standard_tx_weight: 4_000,
+            ..PolicyConfig::default()
+        };
+
+        // Act
+        let limits = MempoolSnapshotDecodeLimits::from_policy(&policy)
+            .expect("bounded policy should derive decode limits");
+
+        // Assert
+        assert_eq!(
+            limits,
+            MempoolSnapshotDecodeLimits::new(1_088_576, 10_000, 5_000, 4_000, 10_000)
+        );
+    }
+
+    #[test]
+    fn snapshot_decode_limit_overflow_is_typed_resource_exhaustion() {
+        // Arrange
+        let policy = PolicyConfig {
+            mempool_capacity: MempoolCapacity::new(usize::MAX),
+            ..PolicyConfig::default()
+        };
+
+        // Act
+        let result = MempoolSnapshotDecodeLimits::from_policy(&policy);
+
+        // Assert
+        assert_eq!(result, Err(SyncRecoveryCategory::ResourceExhaustion));
+    }
+
+    #[test]
+    fn startup_installs_current_v2_and_legacy_v1_before_handle_publication() {
+        // Arrange
+        let current = MempoolSnapshot::try_new_current(
+            CapturedMempoolGeneration::new(7),
+            PolicyTime::new(10),
+            Vec::new(),
+            Default::default(),
+        )
+        .expect("current snapshot");
+        let legacy = MempoolSnapshot::default();
+
+        // Act
+        let current_handle = recover_snapshot(current, PolicyTime::new(20));
+        let legacy_handle = recover_snapshot(legacy, PolicyTime::new(20));
+
+        // Assert
+        let current_summary = current_handle
+            .latest_mempool_recovery_summary()
+            .expect("current recovery evidence")
+            .expect("current recovery summary");
+        let legacy_summary = legacy_handle
+            .latest_mempool_recovery_summary()
+            .expect("legacy recovery evidence")
+            .expect("legacy recovery summary");
+        assert!(current_summary.records.is_empty());
+        assert!(legacy_summary.records.is_empty());
+        let checkpoint = current_handle
+            .checkpoint_evidence(PolicyTime::new(20), 300)
+            .expect("checkpoint evidence");
+        assert_eq!(checkpoint.current_generation, 7);
+        assert_eq!(checkpoint.maybe_last_durable_generation, Some(7));
+        assert_eq!(
+            current_handle
+                .mempool_info()
+                .expect("current mempool info")
+                .rolling_mempool_fee_rate_sats_per_kvb,
+            0
+        );
+    }
+
+    #[test]
+    fn startup_records_schema_decode_and_identity_failures_without_installing() {
+        // Arrange
+        let cases = [
+            (
+                StorageError::SchemaMismatch {
+                    expected: SchemaVersion::CURRENT,
+                    actual: SchemaVersion::new(2).expect("schema version"),
+                },
+                SyncRecoveryCategory::IncompatibleSchema,
+            ),
+            (
+                corrupt_snapshot_error("decode_failure"),
+                SyncRecoveryCategory::StoreCorruption,
+            ),
+            (
+                corrupt_snapshot_error("identity_mismatch"),
+                SyncRecoveryCategory::StoreCorruption,
+            ),
+        ];
+
+        // Act / Assert
+        for (error, expected) in cases {
+            let handle = transient_handle();
+            recover_mempool_snapshot_with_loader(
+                &handle,
+                &PolicyConfig::default(),
+                ScriptVerifyFlags::NONE,
+                ConsensusParams::default(),
+                PolicyTime::new(20),
+                |_| Err(error),
+            )
+            .expect("record typed startup failure");
+            assert_eq!(
+                handle
+                    .latest_mempool_recovery_storage_error()
+                    .expect("startup failure evidence"),
+                Some(expected)
+            );
+            assert!(
+                handle
+                    .latest_mempool_recovery_summary()
+                    .expect("startup recovery evidence")
+                    .is_none()
+            );
+        }
+    }
+
+    #[test]
+    fn startup_limit_failure_preserves_the_stored_snapshot() {
+        // Arrange
+        let data_dir = test_data_dir("retained-snapshot");
+        let store = FjallNodeStore::open(&data_dir).expect("open store");
+        let snapshot = MempoolSnapshot::try_new_current(
+            CapturedMempoolGeneration::new(3),
+            PolicyTime::new(10),
+            Vec::new(),
+            Default::default(),
+        )
+        .expect("current snapshot");
+        store
+            .save_mempool_snapshot(&snapshot, PersistMode::Sync)
+            .expect("save snapshot");
+        let handle = transient_handle();
+        let overflowing_policy = PolicyConfig {
+            mempool_capacity: MempoolCapacity::new(usize::MAX),
+            ..PolicyConfig::default()
+        };
+
+        // Act
+        recover_mempool_snapshot_with_loader(
+            &handle,
+            &overflowing_policy,
+            ScriptVerifyFlags::NONE,
+            ConsensusParams::default(),
+            PolicyTime::new(20),
+            |limits| store.load_mempool_snapshot_with_limits(limits),
+        )
+        .expect("record limit failure");
+        let retained = store
+            .load_mempool_snapshot_with_limits(
+                MempoolSnapshotDecodeLimits::from_policy(&PolicyConfig::default())
+                    .expect("default limits"),
+            )
+            .expect("load retained snapshot");
+
+        // Assert
+        assert_eq!(retained, Some(snapshot));
+        assert_eq!(
+            handle
+                .latest_mempool_recovery_storage_error()
+                .expect("startup failure evidence"),
+            Some(SyncRecoveryCategory::ResourceExhaustion)
+        );
+        drop(store);
+        fs::remove_dir_all(data_dir).expect("remove store");
+    }
+
+    fn recover_snapshot(snapshot: MempoolSnapshot, startup_at: PolicyTime) -> ManagedNetworkHandle {
+        let handle = transient_handle();
+        recover_mempool_snapshot_with_loader(
+            &handle,
+            &PolicyConfig::default(),
+            ScriptVerifyFlags::NONE,
+            ConsensusParams::default(),
+            startup_at,
+            |_| Ok(Some(snapshot)),
+        )
+        .expect("recover snapshot before publication");
+        handle
+    }
+
+    fn transient_handle() -> ManagedNetworkHandle {
+        ManagedNetworkHandle::transient_runtime(
+            NetworkMagic::from_bytes([0xfa, 0xbf, 0xb5, 0xda]),
+            18_444,
+            RelayActivationConfig::default(),
+            BlockRelayActivationPolicy::default(),
+            false,
+        )
+    }
+
+    fn corrupt_snapshot_error(detail: &str) -> StorageError {
+        StorageError::Corruption {
+            namespace: StorageNamespace::Mempool,
+            detail: detail.to_string(),
+            action: StorageRecoveryAction::RestoreFromBackup,
+        }
+    }
+
+    fn test_data_dir(name: &str) -> PathBuf {
+        let mut path = std::env::temp_dir();
+        path.push(format!(
+            "open-bitcoin-startup-{name}-{}-{}",
+            process::id(),
+            NEXT_TEMP_DIR.fetch_add(1, Ordering::SeqCst)
+        ));
+        let _ = fs::remove_dir_all(&path);
+        fs::create_dir_all(&path).expect("create test data dir");
+        path
+    }
 }

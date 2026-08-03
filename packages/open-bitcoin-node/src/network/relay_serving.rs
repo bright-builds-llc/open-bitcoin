@@ -15,10 +15,9 @@
 use std::collections::{BTreeMap, BTreeSet, hash_map::RandomState};
 use std::hash::{BuildHasher, Hasher};
 
-use open_bitcoin_core::{
-    consensus::{transaction_txid, transaction_wtxid},
-    primitives::{InventoryVector, Transaction, Txid, Wtxid},
-};
+#[cfg(test)]
+use open_bitcoin_core::consensus::{transaction_txid, transaction_wtxid};
+use open_bitcoin_core::primitives::{InventoryVector, Transaction, Txid, Wtxid};
 use open_bitcoin_mempool::MempoolMemberIdentity;
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{
@@ -29,10 +28,9 @@ use open_bitcoin_network::{
     classify_relay_eligibility, classify_tx_serve_request,
 };
 
-use super::{
-    ManagedInboundAdmissionInfo, ManagedNetworkError, ManagedPeerNetwork,
-    ManagedResourceGovernanceInfo,
-};
+#[cfg(test)]
+use super::ManagedNetworkError;
+use super::{ManagedInboundAdmissionInfo, ManagedPeerNetwork, ManagedResourceGovernanceInfo};
 use crate::status::relay_evidence::RelayDownloadEligibilityCounters;
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
 
@@ -128,6 +126,7 @@ impl RelayServingCache {
         );
     }
 
+    #[cfg(test)]
     pub(super) fn record_accepted(
         &mut self,
         transaction: Transaction,
@@ -151,15 +150,6 @@ impl RelayServingCache {
         Ok((txid, wtxid))
     }
 
-    pub(super) fn record_replaced(
-        &mut self,
-        transaction: Transaction,
-        replaced: &[Txid],
-    ) -> Result<(Txid, Wtxid), ManagedNetworkError> {
-        self.remove_transactions(replaced, TxServingRecordStatus::Replaced)?;
-        self.record_accepted(transaction)
-    }
-
     pub(super) fn record_status(
         &mut self,
         txid: Txid,
@@ -177,30 +167,6 @@ impl RelayServingCache {
         if let Some(wtxid) = maybe_status_wtxid {
             self.status_by_wtxid.insert(wtxid, status);
         }
-    }
-
-    pub(super) fn remove_transactions(
-        &mut self,
-        txids: &[Txid],
-        status: TxServingRecordStatus,
-    ) -> Result<(), ManagedNetworkError> {
-        for txid in txids {
-            let maybe_wtxid = self
-                .records_by_txid
-                .get(txid)
-                .map(|record| record.wtxid)
-                .or_else(|| self.status_wtxid_for_txid(*txid));
-            self.record_status(*txid, maybe_wtxid, status);
-        }
-        Ok(())
-    }
-
-    pub(super) fn maybe_accepted_wtxid_and_transaction(
-        &self,
-        txid: Txid,
-    ) -> Option<(Wtxid, Transaction)> {
-        let record = self.records_by_txid.get(&txid)?;
-        Some((record.wtxid, record.transaction.clone()))
     }
 
     pub(super) fn clear_latest_outcomes(&mut self) {
@@ -282,12 +248,6 @@ impl RelayServingCache {
                 .filter(|record| record.status == TxServingRecordStatus::Accepted)
                 .map(|record| record.transaction.clone()),
         }
-    }
-
-    fn status_wtxid_for_txid(&self, txid: Txid) -> Option<Wtxid> {
-        self.txid_by_wtxid
-            .iter()
-            .find_map(|(wtxid, mapped_txid)| (*mapped_txid == txid).then_some(*wtxid))
     }
 }
 

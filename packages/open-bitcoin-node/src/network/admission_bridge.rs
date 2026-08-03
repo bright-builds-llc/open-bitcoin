@@ -17,19 +17,20 @@
 mod package;
 mod singleton;
 
+#[cfg(test)]
+use open_bitcoin_core::consensus::transaction_txid;
 use open_bitcoin_core::{
-    consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid},
+    consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::{Hash32, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    AdmissionContext, AdmissionResult, FinalMempoolMembership, MempoolError, MempoolLifecycleDelta,
-    MempoolOutcome, MempoolRemovalCause, MempoolTransition, PackageMemberResult, PackageStatus,
-    PolicyTime, ReconsiderableMemberFailure, RelayIntent, SubmittedPackageResult,
+    AdmissionContext, AdmissionResult, MempoolError, MempoolLifecycleDelta, MempoolOutcome,
+    MempoolTransition, PackageMemberResult, PackageStatus, PolicyTime, ReconsiderableMemberFailure,
+    RelayIntent, SubmittedPackageResult,
 };
 use open_bitcoin_network::{
     OrphanAction, OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
-    PeerAction, PeerId, ReceivedTransactionProvenance, TxRelayId, TxServingRecordStatus,
-    WireNetworkMessage,
+    PeerAction, PeerId, ReceivedTransactionProvenance, TxRelayId, WireNetworkMessage,
 };
 
 use super::action_translation::process_transaction_relay_action;
@@ -402,72 +403,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.apply_package_status_feedback(status, fingerprint);
     }
 
-    pub(super) fn apply_admitted_transition(
-        &mut self,
-        transition: &MempoolTransition,
-        transaction: Transaction,
-    ) -> Result<(), ManagedNetworkError> {
-        let replaced_txids = transition
-            .delta
-            .removed
-            .iter()
-            .filter(|removal| removal.cause == MempoolRemovalCause::Replacement)
-            .map(|removal| removal.member.txid)
-            .collect::<Vec<_>>();
-        self.feed_replaced_victims_to_compact_extra(&replaced_txids);
-
-        for removal in &transition.delta.removed {
-            self.peer_manager
-                .on_mempool_transaction_removed(&removal.member.wtxid);
-            self.remove_stored_transactions_with_status(
-                &[removal.member.txid],
-                serving_status_for_removal(removal.cause),
-            )?;
-        }
-
-        if !replaced_txids.is_empty() {
-            self.relay_serving
-                .record_replaced(transaction.clone(), &replaced_txids)?;
-        }
-
-        let admitted_txid = transaction_txid(&transaction)?;
-        let maybe_admitted = transition
-            .delta
-            .admitted
-            .iter()
-            .find(|member| member.txid == admitted_txid);
-        let should_store = maybe_admitted.is_some_and(|admitted| {
-            transition.delta.final_membership.iter().any(|state| {
-                state.member == *admitted && state.membership == FinalMempoolMembership::Present
-            })
-        });
-        if should_store {
-            self.store_transaction(transaction)?;
-        }
-
-        Ok(())
-    }
-
-    /// Push replaced-victim bodies into the compact extra ring before demotion (D-05).
-    ///
-    /// Does not push the admitted Replaced wtxid — only prior victim bodies.
-    fn feed_replaced_victims_to_compact_extra(&mut self, victim_txids: &[Txid]) {
-        for victim_txid in victim_txids {
-            let maybe_from_relay = self
-                .relay_serving
-                .maybe_accepted_wtxid_and_transaction(*victim_txid);
-            let maybe_pair = maybe_from_relay.or_else(|| {
-                let transaction = self.transactions_by_txid.get(victim_txid)?.clone();
-                let wtxid = transaction_wtxid(&transaction).ok()?;
-                Some((wtxid, transaction))
-            });
-            let Some((wtxid, transaction)) = maybe_pair else {
-                continue;
-            };
-            self.compact_extra_txn.push(wtxid, transaction);
-        }
-    }
-
     fn apply_orphan_actions(
         &mut self,
         actions: Vec<OrphanAction>,
@@ -509,18 +444,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             OrphanAction::Reconsider { .. } => {}
         }
         Ok(())
-    }
-}
-
-fn serving_status_for_removal(cause: MempoolRemovalCause) -> TxServingRecordStatus {
-    match cause {
-        MempoolRemovalCause::Replacement => TxServingRecordStatus::Replaced,
-        MempoolRemovalCause::Expiry => TxServingRecordStatus::Expired,
-        MempoolRemovalCause::Pressure => TxServingRecordStatus::Evicted,
-        MempoolRemovalCause::BlockConfirmation | MempoolRemovalCause::BlockConflict => {
-            TxServingRecordStatus::Confirmed
-        }
-        MempoolRemovalCause::Reorg => TxServingRecordStatus::Stale,
     }
 }
 

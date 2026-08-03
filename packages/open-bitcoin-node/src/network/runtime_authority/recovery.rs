@@ -39,20 +39,6 @@ impl ManagedNetworkHandle {
         .map_err(ManagedNetworkAuthorityError::from)
     }
 
-    /// Legacy live replay retained only for the two RPC startup composition calls.
-    #[allow(deprecated)]
-    #[deprecated(note = "RPC startup compatibility only; migrate and remove in Phase 135 Plan 06")]
-    pub fn recover_mempool_snapshot(
-        &self,
-        snapshot: &MempoolSnapshot,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
-            network.recover_mempool_snapshot(snapshot, verify_flags, consensus_params)
-        })
-    }
-
     pub fn record_mempool_recovery_storage_error(
         &self,
         error: &StorageError,

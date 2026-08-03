@@ -118,6 +118,7 @@ pub(crate) fn encode_mempool_snapshot(snapshot: &MempoolSnapshot) -> Result<Vec<
     )
 }
 
+#[cfg(test)]
 pub(crate) fn decode_mempool_snapshot(bytes: &[u8]) -> Result<MempoolSnapshot, StorageError> {
     decode_mempool_snapshot_with_limits(bytes, MempoolSnapshotDecodeLimits::default())
 }

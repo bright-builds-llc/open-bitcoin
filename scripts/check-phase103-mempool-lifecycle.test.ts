@@ -15,6 +15,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-mempool/src/pool/tests/lifecycle_cases.rs",
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+  "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/recovery.rs",
   "packages/open-bitcoin-node/src/network/recovery/topology.rs",
   "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",

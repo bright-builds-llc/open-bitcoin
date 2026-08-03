@@ -3,3 +3,4 @@
 #
 # This allowlist is intentionally empty after Phase 11 hardening. Add entries
 # only for narrow, locally proven invariants or accepted tooling boundaries.
+packages/open-bitcoin-rpc/src/context/mempool_recovery.rs|.expect("fresh startup authority remains available before publication")|The handle is created immediately above, has no other owner, and therefore cannot have a poisoned or superseded authority before startup recovery publishes it.

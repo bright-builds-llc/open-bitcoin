@@ -5,7 +5,7 @@
 
 use core::fmt;
 
-use open_bitcoin_mempool::PolicyTime;
+use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
 
 use super::{FjallNodeStore, SNAPSHOT_KEY};
 use crate::network::{
@@ -13,6 +13,7 @@ use crate::network::{
     PreparedSnapshotWrite, SnapshotWriteAbort, SnapshotWriteAbortError, SnapshotWriteCapability,
     SnapshotWriteFailure, SnapshotWriteReceipt,
 };
+use crate::status::SyncRecoveryCategory;
 use crate::storage::{
     MempoolSnapshot, PersistMode, StorageError, StorageNamespace, snapshot_codec,
 };
@@ -28,6 +29,9 @@ pub struct MempoolSnapshotDecodeLimits {
 }
 
 impl MempoolSnapshotDecodeLimits {
+    const MAX_UNBROADCAST_MEMBERS: usize = 5_000;
+    const ENVELOPE_OVERHEAD_BYTES: usize = 1_048_576;
+
     /// Build a caller-owned bounded decode contract without implicit defaults.
     pub const fn new(
         max_encoded_bytes: usize,
@@ -43,6 +47,23 @@ impl MempoolSnapshotDecodeLimits {
             max_transaction_bytes,
             max_total_transaction_bytes,
         }
+    }
+
+    /// Derive bounded startup decode limits from the policy used by the live mempool.
+    pub fn from_policy(policy: &PolicyConfig) -> Result<Self, SyncRecoveryCategory> {
+        let record_capacity = policy.mempool_capacity.as_usize();
+        let max_encoded_bytes = record_capacity
+            .checked_mul(4)
+            .and_then(|bytes| bytes.checked_add(Self::ENVELOPE_OVERHEAD_BYTES))
+            .ok_or(SyncRecoveryCategory::ResourceExhaustion)?;
+
+        Ok(Self::new(
+            max_encoded_bytes,
+            record_capacity,
+            record_capacity.min(Self::MAX_UNBROADCAST_MEMBERS),
+            policy.max_standard_tx_weight,
+            record_capacity,
+        ))
     }
 
     fn codec_limits(self) -> snapshot_codec::MempoolSnapshotDecodeLimits {
@@ -191,17 +212,6 @@ impl FjallNodeStore {
             .map(|bytes| {
                 snapshot_codec::decode_mempool_snapshot_with_limits(&bytes, limits.codec_limits())
             })
-            .transpose()
-    }
-
-    /// Load using the legacy decoder for RPC startup compile compatibility only.
-    ///
-    /// This adapter is not the bounded Phase 135 API and is not evidence of
-    /// bounded recovery.
-    #[deprecated(note = "RPC startup compatibility only; migrate and remove in Phase 135 Plan 06")]
-    pub fn load_mempool_snapshot(&self) -> Result<Option<MempoolSnapshot>, StorageError> {
-        self.get_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY)?
-            .map(|bytes| snapshot_codec::decode_mempool_snapshot(&bytes))
             .transpose()
     }
 

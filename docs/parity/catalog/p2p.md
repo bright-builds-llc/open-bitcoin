@@ -840,7 +840,7 @@ Open Bitcoin intentionally owns the Phase 102 orphan/admission bridge surface:
 - Managed runtime admission uses `process_peer_transaction_admission`,
   `submit_transaction_outcome`, `accept_transaction_outcome`,
   `reconsider_orphans_after_acceptance`, `expire_orphan_transactions`,
-  `remove_stored_transactions`, `disconnect_peer_at`, and `cleanup_peer`
+  `prepare_serving_projection`, `disconnect_peer_at`, and `cleanup_peer`
   evidence.
 - Evidence roots for this surface are
   `packages/open-bitcoin-mempool/src/outcome.rs`,
@@ -1135,8 +1135,9 @@ mempool recovery.
 
 Phase 108 reconnects Open Bitcoin-owned durable mempool recovery with the
 managed P2P relay-serving boundary. Recovered accepted records repopulate
-managed mempool, `RelayServingCache`, and fanout identity state through
-`ManagedPeerNetwork::recover_mempool_snapshot`; recovery seeding uses
+managed mempool, `RelayServingCache`, and fanout identity state through staged
+`ManagedNetworkHandle::prepare_mempool_recovery_at` and
+`install_mempool_recovery`; recovery seeding uses
 `seed_recovered_transaction` and does not drain fanout queues, emit `inv`, or
 perform socket I/O during startup replay.
 

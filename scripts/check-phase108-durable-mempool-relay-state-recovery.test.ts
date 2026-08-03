@@ -82,13 +82,17 @@ test("fails_when_a_required_requirement_is_missing", () => {
 test("fails_when_core_recovery_symbol_is_missing", () => {
   const root = createFixture({
     maybeMutateFiles(files) {
-      removeFromFile(files, "packages/open-bitcoin-node/src/network/recovery.rs", "recover_mempool_snapshot");
+      removeFromFile(
+        files,
+        "packages/open-bitcoin-node/src/network/recovery.rs",
+        "prepare_mempool_recovery_at",
+      );
     },
   });
 
   const failures = checkPhase108DurableMempoolRelayStateRecovery(root).join("\n");
 
-  expect(failures).toContain("recover_mempool_snapshot");
+  expect(failures).toContain("prepare_mempool_recovery_at");
 });
 
 test("fails_when_verifier_order_omits_phase108_checker", () => {

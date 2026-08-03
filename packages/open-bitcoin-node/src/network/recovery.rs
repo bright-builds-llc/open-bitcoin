@@ -15,21 +15,15 @@
 use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
     consensus::{ConsensusParams, ScriptVerifyFlags},
-    primitives::OutPoint,
 };
-use open_bitcoin_mempool::{
-    AdmissionContext, MempoolEntryMetadata, MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent,
-};
-use open_bitcoin_network::TxServingRecordStatus;
+use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
 
 use crate::ChainstateStore;
 use crate::status::{SyncRecoveryCategory, relay_evidence::RelayRecoveryCounters};
-use crate::storage::mempool_snapshot::recovery_status_from_outcome;
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshot, StorageError};
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 use crate::network::lifecycle_projection::AuthorityEpoch;
-use topology::{RecoveryTopologyLimits, prepare_recovery_topology};
 
 pub(crate) mod staging;
 pub(crate) mod topology;
@@ -130,114 +124,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             startup_at,
             self.authority_epoch(),
         )
-    }
-
-    /// Legacy live replay retained only for the two RPC startup composition calls.
-    #[deprecated(note = "RPC startup compatibility only; migrate and remove in Phase 135 Plan 06")]
-    pub fn recover_mempool_snapshot(
-        &mut self,
-        snapshot: &MempoolSnapshot,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<ManagedMempoolRecoverySummary, ManagedNetworkError> {
-        let topology =
-            prepare_recovery_topology(&snapshot.records, RecoveryTopologyLimits::standard())
-                .map_err(|_| {
-                    ManagedNetworkError::LifecycleEffect(
-                        "mempool recovery topology preparation failed",
-                    )
-                })?;
-        let (records, mut recovery_records) = topology.into_parts();
-        let chainstate = self.chainstate.chainstate().snapshot();
-        recovery_records.reserve(records.len());
-
-        for topology_record in records {
-            let snapshot_record = topology_record.record;
-            let member = topology_record.identity;
-            let txid = member.txid;
-            let wtxid = member.wtxid;
-            let restored_unbroadcast = snapshot.unbroadcast_members().contains(&member);
-            let metadata = MempoolEntryMetadata::new(
-                snapshot_record.acceptance_time,
-                if restored_unbroadcast {
-                    MempoolOrigin::Local
-                } else {
-                    MempoolOrigin::RecoveryUnknown
-                },
-                if restored_unbroadcast {
-                    RelayIntent::Requested
-                } else {
-                    RelayIntent::NotRequested
-                },
-            );
-            let confirmed = (0..snapshot_record.transaction.outputs.len()).any(|index| {
-                let Ok(vout) = u32::try_from(index) else {
-                    return false;
-                };
-                chainstate.utxos.contains_key(&OutPoint { txid, vout })
-            });
-            let status = if confirmed {
-                MempoolRecoveryStatus::DroppedConfirmed
-            } else {
-                let transition_result = self
-                    .mempool
-                    .mempool_mut()
-                    .accept_transaction_transition_with_context(
-                        snapshot_record.transaction.clone(),
-                        &chainstate,
-                        verify_flags,
-                        consensus_params,
-                        AdmissionContext::recovery(metadata),
-                    );
-                match transition_result {
-                    Ok(transition) => {
-                        let status = recovery_status_from_outcome(Ok(transition.outcome.clone()));
-                        self.apply_admitted_transition(
-                            &transition,
-                            snapshot_record.transaction.clone(),
-                        )?;
-                        if status == MempoolRecoveryStatus::Recovered {
-                            self.relay_fanout.seed_recovered_transaction(txid, wtxid);
-                        }
-                        status
-                    }
-                    Err(error) => recovery_status_from_outcome(Err(error)),
-                }
-            };
-
-            match status {
-                MempoolRecoveryStatus::Recovered | MempoolRecoveryStatus::DroppedDuplicate => {}
-                MempoolRecoveryStatus::DroppedConfirmed => {
-                    self.relay_serving.record_status(
-                        txid,
-                        Some(wtxid),
-                        TxServingRecordStatus::Confirmed,
-                    );
-                }
-                MempoolRecoveryStatus::DroppedMissingParent
-                | MempoolRecoveryStatus::DroppedPolicyIncompatible => {
-                    self.relay_serving.record_status(
-                        txid,
-                        Some(wtxid),
-                        TxServingRecordStatus::Rejected,
-                    );
-                }
-                MempoolRecoveryStatus::DroppedExpired | MempoolRecoveryStatus::DroppedEvicted => {
-                    self.relay_serving.record_status(
-                        txid,
-                        Some(wtxid),
-                        TxServingRecordStatus::Evicted,
-                    );
-                }
-            }
-
-            recovery_records.push(MempoolRecoveryRecord { txid, status });
-        }
-
-        let summary = ManagedMempoolRecoverySummary::from_records(recovery_records);
-        self.latest_mempool_recovery = Some(summary.clone());
-        self.latest_mempool_recovery_storage_error = None;
-        Ok(summary)
     }
 
     pub fn latest_mempool_recovery_summary(&self) -> Option<ManagedMempoolRecoverySummary> {
