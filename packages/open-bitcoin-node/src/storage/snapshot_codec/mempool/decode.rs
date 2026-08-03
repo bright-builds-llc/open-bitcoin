@@ -349,10 +349,7 @@ impl BoundedRecord {
         }
         Ok(MempoolSnapshotV2RecordDto {
             transaction: required(self.maybe_transaction, "transaction")?,
-            accepted_at_unix_seconds: required(
-                self.maybe_accepted_at.flatten(),
-                "accepted_at_unix_seconds",
-            )?,
+            accepted_at_unix_seconds: required(self.maybe_accepted_at, "accepted_at_unix_seconds")?,
         })
     }
 

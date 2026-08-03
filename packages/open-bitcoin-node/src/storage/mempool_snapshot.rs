@@ -153,9 +153,11 @@ impl MempoolSnapshot {
         {
             return Err(MempoolSnapshotError::ResourceBoundExceeded);
         }
-        if records.iter().any(|record| match record.acceptance_time {
-            MempoolAcceptanceTime::Known(accepted_at) => accepted_at > captured_at,
-            MempoolAcceptanceTime::LegacyUnknown => true,
+        if records.iter().any(|record| {
+            matches!(
+                record.acceptance_time,
+                MempoolAcceptanceTime::Known(accepted_at) if accepted_at > captured_at
+            )
         }) {
             return Err(MempoolSnapshotError::StructuralCorruption);
         }
@@ -249,9 +251,6 @@ impl MempoolSnapshotRecord {
         transaction: Transaction,
         acceptance_time: MempoolAcceptanceTime,
     ) -> Result<Self, MempoolSnapshotError> {
-        if !matches!(acceptance_time, MempoolAcceptanceTime::Known(_)) {
-            return Err(MempoolSnapshotError::StructuralCorruption);
-        }
         Ok(Self {
             transaction,
             acceptance_time,

@@ -428,6 +428,41 @@ fn mempool_snapshot_v2_encodes_only_source_authority() {
 }
 
 #[test]
+fn legacy_unknown_current_snapshot_round_trips_as_explicit_null() {
+    // Arrange
+    let record = legacy_mempool_snapshot()
+        .records
+        .into_iter()
+        .next()
+        .expect("legacy record");
+    let snapshot = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(43),
+        PolicyTime::from_unix_seconds(121),
+        vec![record],
+        BTreeSet::new(),
+    )
+    .expect("legacy-unknown age remains representable");
+
+    // Act
+    let encoded = encode_mempool_snapshot(&snapshot).expect("encode legacy-unknown current v2");
+    let decoded = decode_mempool_snapshot(&encoded).expect("decode legacy-unknown current v2");
+    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("snapshot JSON");
+
+    // Assert
+    assert!(value["payload"]["records"][0]["accepted_at_unix_seconds"].is_null());
+    assert_eq!(
+        decoded.records[0].acceptance_time,
+        MempoolAcceptanceTime::LegacyUnknown
+    );
+    value["payload"]["records"][0]
+        .as_object_mut()
+        .expect("record object")
+        .remove("accepted_at_unix_seconds");
+    let missing_key = serde_json::to_vec(&value).expect("encode missing key");
+    assert!(decode_mempool_snapshot(&missing_key).is_err());
+}
+
+#[test]
 fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
     // Arrange
     let transaction = mempool_transaction(24);

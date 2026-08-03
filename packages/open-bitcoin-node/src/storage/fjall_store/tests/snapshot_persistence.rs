@@ -31,6 +31,7 @@ fn snapshot_decode_limits() -> MempoolSnapshotDecodeLimits {
 }
 
 mod confirmation_migration;
+mod gap_closure;
 mod load_limits;
 mod reopen;
 mod write_execution_failures;

@@ -70,7 +70,7 @@ pub(super) struct MempoolSnapshotV2Dto {
 pub(super) struct MempoolSnapshotV2RecordDto {
     #[serde(serialize_with = "serialize_hex_transaction")]
     transaction: Vec<u8>,
-    accepted_at_unix_seconds: i64,
+    accepted_at_unix_seconds: Option<i64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -241,12 +241,13 @@ impl TryFrom<&MempoolSnapshotRecord> for MempoolSnapshotV2RecordDto {
     type Error = StorageError;
 
     fn try_from(record: &MempoolSnapshotRecord) -> Result<Self, Self::Error> {
-        let MempoolAcceptanceTime::Known(accepted_at) = record.acceptance_time else {
-            return Err(snapshot_failure(MempoolSnapshotError::StructuralCorruption));
+        let accepted_at_unix_seconds = match record.acceptance_time {
+            MempoolAcceptanceTime::Known(accepted_at) => Some(accepted_at.unix_seconds()),
+            MempoolAcceptanceTime::LegacyUnknown => None,
         };
         Ok(Self {
             transaction: encode_canonical_transaction(&record.transaction)?,
-            accepted_at_unix_seconds: accepted_at.unix_seconds(),
+            accepted_at_unix_seconds,
         })
     }
 }
@@ -263,9 +264,12 @@ impl TryFrom<MempoolSnapshotV2Dto> for MempoolSnapshot {
                 let transaction = decode_canonical_transaction(&record.transaction)?;
                 MempoolSnapshotRecord::try_from_canonical(
                     transaction,
-                    MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(
-                        record.accepted_at_unix_seconds,
-                    )),
+                    match record.accepted_at_unix_seconds {
+                        Some(accepted_at) => {
+                            MempoolAcceptanceTime::Known(PolicyTime::from_unix_seconds(accepted_at))
+                        }
+                        None => MempoolAcceptanceTime::LegacyUnknown,
+                    },
                 )
                 .map_err(snapshot_failure)
             })

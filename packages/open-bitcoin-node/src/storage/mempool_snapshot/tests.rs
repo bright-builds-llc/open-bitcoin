@@ -82,7 +82,7 @@ fn known_local_requested(accepted_at: i64) -> MempoolEntryMetadata {
 }
 
 #[test]
-fn current_snapshot_rejects_unknown_acceptance_time() {
+fn current_snapshot_preserves_legacy_unknown_acceptance_time() {
     // Arrange
     let transaction = spend_transaction(
         OutPoint {
@@ -94,15 +94,19 @@ fn current_snapshot_rejects_unknown_acceptance_time() {
     let record = snapshot_record(transaction);
 
     // Act
-    let result = MempoolSnapshot::try_new_current(
+    let snapshot = MempoolSnapshot::try_new_current(
         CapturedMempoolGeneration::new(7),
         PolicyTime::from_unix_seconds(120),
         vec![record],
         BTreeSet::new(),
-    );
+    )
+    .expect("legacy-unknown age remains representable");
 
     // Assert
-    assert_eq!(result, Err(MempoolSnapshotError::StructuralCorruption));
+    assert_eq!(
+        snapshot.records[0].acceptance_time,
+        MempoolAcceptanceTime::LegacyUnknown
+    );
 }
 
 #[test]
