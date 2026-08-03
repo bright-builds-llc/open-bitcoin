@@ -478,6 +478,10 @@ function verifierMutations(): MutationCase[] {
     "bun test scripts/check-phase134-authoritative-lifecycle.test.ts";
   const live =
     "bun run scripts/check-phase134-authoritative-lifecycle.ts";
+  const phase135Test =
+    "bun test scripts/check-phase135-snapshot-recovery.test.ts";
+  const phase135Live =
+    "bun run scripts/check-phase135-snapshot-recovery.ts";
   const phase117 =
     "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
   return [
@@ -497,7 +501,11 @@ function verifierMutations(): MutationCase[] {
     [
       "reorder live guard",
       DIAGNOSTICS.verifier,
-      replace(verify, `${live}\n${phase117}`, `${phase117}\n${live}`),
+      replace(
+        verify,
+        `${live}\n${phase135Test}\n${phase135Live}\n${phase117}`,
+        `${phase135Test}\n${phase135Live}\n${phase117}\n${live}`,
+      ),
     ],
   ];
 }

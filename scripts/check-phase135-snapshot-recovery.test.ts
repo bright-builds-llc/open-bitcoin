@@ -1,0 +1,168 @@
+import { afterEach, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+import {
+  PHASE135_DIAGNOSTICS,
+  PHASE135_TARGET_FILES,
+  checkPhase135SnapshotRecovery,
+} from "./check-phase135-snapshot-recovery";
+import { readSourceRoot } from "./source-corpus";
+
+const REPO_ROOT = path.resolve(import.meta.dir, "..");
+const tempRoots: string[] = [];
+type Mutator = (files: Map<string, string>) => void;
+type Mutation = readonly [string, string, Mutator];
+
+afterEach(() => {
+  for (const root of tempRoots.splice(0)) {
+    rmSync(root, { force: true, recursive: true });
+  }
+});
+
+test("passes with the complete Phase 135 corpus", () => {
+  // Arrange
+  const root = createFixture();
+
+  // Act
+  const failures = checkPhase135SnapshotRecovery(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test.each(contractMutations())(
+  "rejects snapshot recovery mutation: %s",
+  (_name, expected, mutate) => assertExactFailure(expected, mutate),
+);
+
+test.each(claimMutations())(
+  "rejects premature scope claim: %s",
+  (_name, expected, mutate) => assertExactFailure(expected, mutate),
+);
+
+function contractMutations(): Mutation[] {
+  const files = {
+    snapshot: "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
+    codec: "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
+    storage: "packages/open-bitcoin-node/src/storage.rs",
+    topology: "packages/open-bitcoin-node/src/network/recovery/topology.rs",
+    staging: "packages/open-bitcoin-node/src/network/recovery/staging.rs",
+    recovery: "packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs",
+    authority: "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+    dispatcher: "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
+    facade: "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+    effects: "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+    checkpointEffects: "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
+    coordinator: "packages/open-bitcoin-node/src/network/checkpoint.rs",
+    store: "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
+    fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
+    daemonCheckpoint: "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
+    daemon: "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+    verify: "scripts/verify.sh",
+    index: "docs/parity/index.json",
+    checklist: "docs/parity/checklist.md",
+  } as const;
+
+  return [
+    ["v2 stores a derived fee", PHASE135_DIAGNOSTICS.schema, insertAfter(files.codec, "struct MempoolSnapshotV2RecordDto {", "\n    fee: u64,")],
+    ["global schema changes", PHASE135_DIAGNOSTICS.schema, replace(files.storage, "pub const CURRENT: Self = Self(1);", "pub const CURRENT: Self = Self(2);")],
+    ["v1 becomes an encode path", PHASE135_DIAGNOSTICS.compatibility, replace(files.codec, "MempoolSnapshotV2Dto::try_from(snapshot)", "MempoolSnapshotV1Dto::try_from(snapshot)")],
+    ["legacy restores unbroadcast", PHASE135_DIAGNOSTICS.compatibility, replace(files.snapshot, "unbroadcast_members: BTreeSet::new(),", "unbroadcast_members: legacy_unbroadcast,")],
+    ["encoded byte bound removed", PHASE135_DIAGNOSTICS.bounds, replace(files.codec, "if bytes.len() > limits.max_encoded_bytes {", "if false {")],
+    ["identity validation removed", PHASE135_DIAGNOSTICS.bounds, replace(files.snapshot, "if txid != actual_txid || wtxid != actual_wtxid {", "if false {")],
+    ["topology edge bound removed", PHASE135_DIAGNOSTICS.topology, replace(files.topology, "MAX_RECOVERY_TOPOLOGY_EDGES", "usize::MAX")],
+    ["outcome variant removed", PHASE135_DIAGNOSTICS.topology, replace(files.snapshot, "DroppedPolicyIncompatible,", "")],
+    ["staging mutates live state", PHASE135_DIAGNOSTICS.staging, insertAfter(files.staging, "let persisted_unbroadcast = snapshot.unbroadcast_members();", "\n    network.mempool_mut().clear();")],
+    ["unbroadcast intersection removed", PHASE135_DIAGNOSTICS.staging, replace(files.staging, ".filter(|identity| final_txids.contains(&identity.txid))", ".filter(|_| true)")],
+    ["rolling state is reused", PHASE135_DIAGNOSTICS.staging, replace(files.staging, "let mut staged_mempool = Mempool::new(config);", "let mut staged_mempool = working;")],
+    ["install bypasses lifecycle command", PHASE135_DIAGNOSTICS.install, replace(files.facade, ".apply_lifecycle_command(LifecycleCommand::InstallRecovery(prepared))", ".install_prepared_recovery(prepared)")],
+    ["install leaves dirty generation", PHASE135_DIAGNOSTICS.install, replace(files.authority, "self.dirty_generation = None;", "self.dirty_generation = Some(generation);")],
+    ["capture stores a derived fee", PHASE135_DIAGNOSTICS.capture, insertAfter(files.dispatcher, "LifecycleCommand::PrepareSnapshot(request) => {", "\n            let fee = entry.fee();")],
+    ["snapshot capability becomes cloneable", PHASE135_DIAGNOSTICS.affine, insertAfter(files.checkpointEffects, "pub struct SnapshotWriteCapability {", "\n    // #[derive(Clone)]")],
+    ["more than one snapshot may be pending", PHASE135_DIAGNOSTICS.affine, replace(files.effects, "pub const MAX_PENDING_SNAPSHOT_EFFECTS: usize = 1;", "pub const MAX_PENDING_SNAPSHOT_EFFECTS: usize = 2;")],
+    ["encode happens in dispatcher", PHASE135_DIAGNOSTICS.execution, insertAfter(files.dispatcher, "LifecycleCommand::PrepareSnapshot(request) => {", "\n            encode_mempool_snapshot(snapshot);")],
+    ["snapshot write loses Sync", PHASE135_DIAGNOSTICS.execution, replace(files.store, "save(bytes, PersistMode::Sync)", "save(bytes, PersistMode::Flush)")],
+    ["Sync stops mapping to SyncAll", PHASE135_DIAGNOSTICS.execution, replace(files.fjall, "PersistMode::Sync => Some(FjallPersistMode::SyncAll),", "PersistMode::Sync => Some(FjallPersistMode::Buffer),")],
+    ["achieved receipt is aborted", PHASE135_DIAGNOSTICS.coordinator, insertAfter(files.coordinator, "CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt) => {", "\n                receipt.abort();")],
+    ["retained receipt state removed", PHASE135_DIAGNOSTICS.coordinator, replace(files.coordinator, "AchievedAwaitingCompletion(SnapshotWriteReceipt)", "Idle")],
+    ["loss range evidence removed", PHASE135_DIAGNOSTICS.evidence, replace(files.authority, "pub maybe_generation_loss_range: Option<CheckpointGenerationLossRange>,", "pub maybe_generation_loss_range: Option<()>,")],
+    ["checkpoint interval becomes public cadence", PHASE135_DIAGNOSTICS.startup, replace(files.daemonCheckpoint, "Duration::from_secs(300)", "Duration::from_secs(30)")],
+    ["clean marker precedes settle", PHASE135_DIAGNOSTICS.shutdown, replace(files.daemonCheckpoint, "settle()?;\n    mark_clean()", "mark_clean()?;\n    settle()\n        .and_then(|()| mark_clean())")],
+    ["producer shutdown follows checkpoint", PHASE135_DIAGNOSTICS.shutdown, replace(files.daemon, "if let Some(worker) = maybe_sync_worker {", "if let Some(worker) = maybe_checkpoint_worker {")],
+    ["parity index status completes", PHASE135_DIAGNOSTICS.parity, replace(files.index, '"name": "v2 snapshot schema, checkpointing, and recovery",\n      "status": "in_progress"', '"name": "v2 snapshot schema, checkpointing, and recovery",\n      "status": "complete"')],
+    ["checklist requirement completes", PHASE135_DIAGNOSTICS.parity, replace(files.checklist, "| MPDUR-01 | Pending |", "| MPDUR-01 | Complete |")],
+    ["verifier order drifts", PHASE135_DIAGNOSTICS.verifier, replace(files.verify, "bun test scripts/check-phase135-snapshot-recovery.test.ts", "bun test scripts/check-phase117-sync-foundations.test.ts")],
+  ];
+}
+
+function claimMutations(): Mutation[] {
+  const claims = [
+    "Runtime transaction import is enabled.",
+    "General package wire support is enabled.",
+    "Whole-mempool rebroadcast ships by default.",
+    "Public relay is enabled by default.",
+    "Production relay is enabled.",
+    "Transaction propagation is guaranteed.",
+    "Public-network CI is release-blocking.",
+    "Destructive repair is supported.",
+    "Open Bitcoin is production ready.",
+  ];
+  return claims.map((claim) => [
+    claim,
+    PHASE135_DIAGNOSTICS.claims,
+    append("docs/parity/catalog/mempool-policy.md", `\n${claim}\n`),
+  ] as const);
+}
+
+function assertExactFailure(expected: string, mutate: Mutator): void {
+  // Arrange
+  const root = createFixture(mutate);
+
+  // Act
+  const failures = checkPhase135SnapshotRecovery(root);
+
+  // Assert
+  expect(failures).toContain(expected);
+}
+
+function createFixture(maybeMutate?: Mutator): string {
+  const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase135-check-"));
+  tempRoots.push(root);
+  const files = new Map<string, string>();
+  for (const relativePath of PHASE135_TARGET_FILES) {
+    files.set(relativePath, readSourceRoot(REPO_ROOT, relativePath));
+  }
+  maybeMutate?.(files);
+  for (const [relativePath, contents] of files) {
+    const destination = path.join(root, relativePath);
+    mkdirSync(path.dirname(destination), { recursive: true });
+    writeFileSync(destination, contents);
+  }
+  return root;
+}
+
+function replace(relativePath: string, search: string, replacement: string): Mutator {
+  return (files) => {
+    const source = requireFile(files, relativePath);
+    expect(source).toContain(search);
+    files.set(relativePath, source.replace(search, replacement));
+  };
+}
+
+function insertAfter(relativePath: string, marker: string, addition: string): Mutator {
+  return replace(relativePath, marker, marker + addition);
+}
+
+function append(relativePath: string, addition: string): Mutator {
+  return (files) => files.set(relativePath, requireFile(files, relativePath) + addition);
+}
+
+function requireFile(files: Map<string, string>, relativePath: string): string {
+  const maybeSource = files.get(relativePath);
+  if (maybeSource === undefined) {
+    throw new Error(`missing fixture file: ${relativePath}`);
+  }
+  return maybeSource;
+}

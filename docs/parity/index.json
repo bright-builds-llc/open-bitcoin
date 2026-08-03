@@ -741,6 +741,10 @@
     {
       "name": "v2-2-authoritative-cross-cache-lifecycle-integration",
       "status": "in_progress"
+    },
+    {
+      "name": "v2 snapshot schema, checkpointing, and recovery",
+      "status": "in_progress"
     }
   ],
   "checklist": {
@@ -3357,6 +3361,67 @@
         ],
         "suspected_unknowns": [
           "Phase 138 adversarial pressure and restart coverage may expose interactions beyond Phase 134's deterministic scenario and failure-injection matrix."
+        ]
+      },
+      {
+        "id": "v2-2-snapshot-schema-checkpointing-recovery",
+        "title": "v2 Snapshot Schema, Checkpointing, and Recovery",
+        "name": "v2 snapshot schema, checkpointing, and recovery",
+        "status": "in_progress",
+        "requirements": [
+          "MPDUR-01",
+          "MPDUR-02",
+          "MPDUR-03",
+          "MPDUR-04"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
+          "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
+          "packages/open-bitcoin-node/src/network/recovery/topology.rs",
+          "packages/open-bitcoin-node/src/network/recovery/staging.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_projection/checkpoint.rs",
+          "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+          "packages/open-bitcoin-node/src/network/checkpoint.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
+          "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+          "scripts/check-phase135-snapshot-recovery.ts",
+          "scripts/check-phase135-snapshot-recovery.test.ts",
+          "scripts/check-parity-breadcrumbs.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Phase 135 traces D-01 through D-15 and MPDUR-01 through MPDUR-04 to a source-fact-only local v2 snapshot, exact decode-only v1 migration, bounded deterministic recovery, one staged atomic authority install, one affine single-flight checkpoint family, truthful durable-generation evidence, private daemon checkpointing, and producer-before-checkpoint-before-clean shutdown. Open Bitcoin intentionally strengthens Knots by rejecting malformed or over-limit snapshots before live mutation and by retaining achieved receipts until authority completion.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+            "packages/bitcoin-knots/src/node/mempool_persist.h",
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/txmempool.h",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/shutdown.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/mempool_persist.py",
+            "packages/bitcoin-knots/test/functional/feature_shutdown.py"
+          ]
+        },
+        "known_gaps": [
+          "MPDUR-01 through MPDUR-04 remain pending until independent phase verification records its result.",
+          "Phase 136 owns receive-independent retry scheduling, package fanout, receipt clearing, and any later checkpoint-cadence change.",
+          "Phase 137 owns broad RPC and sanitized operator presentation.",
+          "Phase 138 owns final adversarial, parity, release, and claim proof.",
+          "Knots mempool.dat binary compatibility, runtime import, general package wire relay, whole-mempool rebroadcast, public/default relay, guaranteed propagation, public-network CI, destructive repair, and production readiness remain deferred."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 restart and pressure campaigns may expose cadence or crash-window interactions beyond Phase 135's deterministic local recovery matrix."
         ]
       }
     ]

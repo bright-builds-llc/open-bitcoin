@@ -566,6 +566,62 @@ The `MPLIFE-01` through `MPLIFE-04` requirement checkboxes remain pending until
 the phase-level verifier records its final result. This catalog records the
 implemented lineage without pre-approving that later verification gate.
 
+## Snapshot Schema, Checkpointing, and Recovery
+
+Phase 135 keeps one Fjall mempool value with a source-fact-only local v2
+envelope: canonical transaction bytes, acceptance time, captured generation and
+time, and the exact unbroadcast identity subset. Fees, virtual size, rolling
+floor, graph edges, and policy outcomes are derived after decode rather than
+stored as competing truth. The global store schema remains version 1. The
+legacy v1 shape is decode-only and migrates conservatively: incomplete legacy
+age becomes unknown and legacy unbroadcast membership is empty.
+
+Decode enforces encoded-byte, record-count, transaction-byte, aggregate-byte,
+unbroadcast-count, duplicate, subset, and txid/wtxid/vsize identity bounds
+before recovery can reach live authority. Recovery is side-effect-free while it
+builds deterministic parent-first topology and seven explicit outcomes, then a
+single `InstallRecovery` lifecycle command swaps canonical mempool plus every
+dependent projection. The staged mempool is rebuilt after final membership so
+rolling fee state starts fresh; recovered unbroadcast is the exact persisted
+intersection with final survivors.
+
+Checkpointing uses one non-cloneable pending capability/receipt family and one
+single-flight coordinator. Encoding and Fjall `SyncAll` happen outside the
+authority lock. A successful write mints an achieved receipt that is retained
+across completion-dispatch failure; only exact authority completion advances
+durable generation and its bounded loss range. The daemon's private 300-second
+worker starts after recovery and before publication. Shutdown quiesces inbound,
+metrics, and sync producers before the final durable checkpoint, and writes the
+clean marker only after that checkpoint settles.
+
+### D-01 through D-15 traceability
+
+| Decisions | Exact Open Bitcoin source | Executable evidence | Pinned Knots anchors |
+| --- | --- | --- | --- |
+| D-01, D-02, D-03 | `storage/mempool_snapshot.rs`, `storage/snapshot_codec/mempool.rs`, `storage.rs::SchemaVersion` | Snapshot round-trip, v1 migration, malformed identity, count, and byte-limit tests; Phase 135 schema/compatibility/bounds mutations | `node/mempool_persist.cpp::{DumpMempool,LoadMempool}`, `node/mempool_persist.h` |
+| D-04, D-05, D-06, D-07 | `network/recovery/topology.rs`, `network/recovery/staging.rs`, `network/lifecycle_projection/recovery.rs`, `network/lifecycle_projection/authority.rs::install_prepared_recovery` | Recovery topology, policy, expiry, eviction, final-membership, fresh-rolling-state, and atomic-install tests; Phase 135 topology/staging/install mutations | `txmempool.cpp::{addUnchecked,removeRecursive,Expire,TrimToSize}`, `validation.cpp::LoadMempool` |
+| D-08, D-09, D-10, D-11 | `network/lifecycle_effects/checkpoint.rs`, `network/runtime_authority/{lifecycle.rs,effects.rs}`, `storage/fjall_store/mempool.rs`, `network/checkpoint.rs` | Snapshot capability, abort, Sync durability, stale/duplicate completion, coalescing, retained-receipt, and follow-up-write tests; Phase 135 affine/execution/coordinator mutations | `node/mempool_persist.cpp::DumpMempool`, `kernel/mempool_persist.cpp` |
+| D-12, D-13 | `network/lifecycle_projection/checkpoint.rs`, `network/checkpoint.rs` | Current/stale/duplicate evidence and generation-loss-range tests; Phase 135 evidence mutation | `node/mempool_persist.cpp`, `shutdown.cpp` |
+| D-14, D-15 | `open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs`, `open-bitcoin-rpc/src/bin/open-bitcoind.rs`, `scripts/check-phase135-snapshot-recovery.ts` | Worker cadence/startup/shutdown ordering tests plus independent structural and claim mutations | `init.cpp`, `shutdown.cpp`, `test/functional/{mempool_persist.py,feature_shutdown.py}` |
+
+Open Bitcoin's fail-closed preflight, staged installation, and retained achieved
+receipt are intentional safety strengthenings over the pinned Knots persistence
+shape; they preserve the in-scope restart result without claiming binary
+`mempool.dat` compatibility.
+
+### MPDUR requirement evidence
+
+| Requirement | Status | Concrete implementation evidence |
+| --- | --- | --- |
+| `MPDUR-01` | Pending | Source-only v2 DTO and bounded exact v1 decode-only migration in `storage/{mempool_snapshot.rs,snapshot_codec/mempool.rs}` |
+| `MPDUR-02` | Pending | Deterministic bounded topology, seven outcomes, exact final membership, fresh rolling state, and one staged install in `network/recovery/` and `network/lifecycle_projection/` |
+| `MPDUR-03` | Pending | Affine single-flight checkpointing with outside-authority SyncAll and retained achieved receipts in `network/{lifecycle_effects/checkpoint.rs,checkpoint.rs}` and `storage/fjall_store/mempool.rs` |
+| `MPDUR-04` | Pending | Durable-generation/loss-range evidence and producer-before-checkpoint-before-clean daemon shutdown in `network/lifecycle_projection/checkpoint.rs` and `open-bitcoin-rpc/src/bin/` |
+
+These requirements remain pending until independent phase verification records
+its final result. Phase 136 owns retry scheduling and package fanout, Phase 137
+owns broad operator surfaces, and Phase 138 owns adversarial release proof.
+
 ### Phase 134 scope boundary
 
 D-18 remains unchanged: default verification is deterministic and hermetic.

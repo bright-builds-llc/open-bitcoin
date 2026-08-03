@@ -82,7 +82,6 @@ finish_verify() {
   local verify_end_milliseconds=0
   local elapsed_milliseconds=0
   local elapsed_display=""
-
   if [[ -n "$current_step_label" && -n "$current_step_started_milliseconds" ]]; then
     verify_end_milliseconds="$(current_time_milliseconds)"
     record_step_timing \
@@ -93,13 +92,10 @@ finish_verify() {
     current_step_label=""
     current_step_started_milliseconds=""
   fi
-
   if [[ -n "$coverage_report" ]]; then
     rm -f "$coverage_report"
   fi
-
   verify_end_milliseconds="$(current_time_milliseconds)"
-
   if [[ -z "$verify_start_milliseconds" ]]; then
     verify_start_milliseconds="$verify_end_milliseconds"
   fi
@@ -426,6 +422,8 @@ bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
 bun test scripts/check-phase134-authoritative-lifecycle.test.ts
 bun run scripts/check-phase134-apply-boundaries.ts
 bun run scripts/check-phase134-authoritative-lifecycle.ts
+bun test scripts/check-phase135-snapshot-recovery.test.ts
+bun run scripts/check-phase135-snapshot-recovery.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
 bun test scripts/check-current-documentation-reconciliation.test.ts
@@ -586,6 +584,8 @@ run_step "check Phase 133 package-aware download/orphan bridge" bun run scripts/
 run_step "test Phase 134 authoritative lifecycle checker" bun test scripts/check-phase134-authoritative-lifecycle.test.ts
 run_step "check Phase 134 apply boundaries" bun run scripts/check-phase134-apply-boundaries.ts
 run_step "check Phase 134 authoritative lifecycle" bun run scripts/check-phase134-authoritative-lifecycle.ts
+run_step "test Phase 135 snapshot recovery checker" bun test scripts/check-phase135-snapshot-recovery.test.ts
+run_step "check Phase 135 snapshot recovery" bun run scripts/check-phase135-snapshot-recovery.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts
