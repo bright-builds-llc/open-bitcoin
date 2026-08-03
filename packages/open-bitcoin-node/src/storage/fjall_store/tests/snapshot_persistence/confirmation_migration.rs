@@ -197,3 +197,116 @@ fn legacy_confirmation_migration_rejects_block_stored_under_wrong_active_key() {
     ));
     remove_dir_if_exists(&path);
 }
+
+#[test]
+fn legacy_confirmation_migration_rejects_same_header_with_different_body() {
+    // Arrange
+    let path = temp_store_path("legacy-confirmation-merkle-mismatch");
+    remove_dir_if_exists(&path);
+    let expected = checkpoint_test_block(BlockHash::from_byte_array([0; 32]), 0, 500_000_000);
+    let different_body = checkpoint_test_block(BlockHash::from_byte_array([0; 32]), 0, 499_999_999);
+    let substituted = Block {
+        header: expected.header.clone(),
+        transactions: different_body.transactions,
+    };
+    let expected_hash = block_hash(&expected.header);
+    let legacy_chainstate = ChainstateSnapshot::new(
+        vec![ChainPosition::new(expected.header, 0, 1, 1_231_006_500)],
+        HashMap::new(),
+        HashMap::new(),
+    );
+    let store = FjallNodeStore::open(&path).expect("open store");
+    store
+        .save_chainstate_snapshot(&legacy_chainstate, PersistMode::Sync)
+        .expect("save legacy chainstate");
+    let substituted_bytes =
+        open_bitcoin_core::codec::encode_block(&substituted).expect("encode substituted block");
+    store
+        .put_bytes(
+            StorageNamespace::BlockIndex,
+            &super::super::super::block_key(expected_hash),
+            substituted_bytes,
+            PersistMode::Sync,
+        )
+        .expect("store substituted body under active key");
+
+    // Act
+    let error = store
+        .load_chainstate_snapshot_with_confirmation_migration()
+        .expect_err("uncommitted transaction body must fail closed");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption {
+            namespace: StorageNamespace::Chainstate,
+            ref detail,
+            ..
+        } if detail == "active-chain block Merkle commitment mismatch during confirmation migration"
+    ));
+    assert_eq!(
+        store
+            .load_chainstate_snapshot()
+            .expect("reload legacy chainstate"),
+        Some(legacy_chainstate)
+    );
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn legacy_confirmation_migration_rejects_matching_mutated_transaction_tree() {
+    // Arrange
+    let path = temp_store_path("legacy-confirmation-mutated-tree");
+    remove_dir_if_exists(&path);
+    let mut mutated = checkpoint_test_block(BlockHash::from_byte_array([0; 32]), 0, 500_000_000);
+    mutated.transactions.push(mutated.transactions[0].clone());
+    let (merkle_root, maybe_mutated) =
+        block_merkle_root(&mutated.transactions).expect("mutated Merkle root");
+    assert!(maybe_mutated);
+    mutated.header.merkle_root = merkle_root;
+    mutated.header.nonce = (0..=u32::MAX)
+        .find(|nonce| {
+            mutated.header.nonce = *nonce;
+            check_block_header(&mutated.header).is_ok()
+        })
+        .expect("easy target should have a valid nonce");
+    let legacy_chainstate = ChainstateSnapshot::new(
+        vec![ChainPosition::new(
+            mutated.header.clone(),
+            0,
+            1,
+            i64::from(mutated.header.time),
+        )],
+        HashMap::new(),
+        HashMap::new(),
+    );
+    let store = FjallNodeStore::open(&path).expect("open store");
+    store
+        .save_chainstate_snapshot(&legacy_chainstate, PersistMode::Sync)
+        .expect("save legacy chainstate");
+    store
+        .save_block(&mutated, PersistMode::Sync)
+        .expect("save mutated active-chain block");
+
+    // Act
+    let error = store
+        .load_chainstate_snapshot_with_confirmation_migration()
+        .expect_err("mutated transaction tree must fail closed");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption {
+            namespace: StorageNamespace::Chainstate,
+            ref detail,
+            ..
+        } if detail == "mutated active-chain transaction tree during confirmation migration"
+    ));
+    assert_eq!(
+        store
+            .load_chainstate_snapshot()
+            .expect("reload legacy chainstate"),
+        Some(legacy_chainstate)
+    );
+    remove_dir_if_exists(&path);
+}

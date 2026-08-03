@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
-    consensus::{block_hash, transaction_txid},
+    consensus::{block_hash, block_merkle_root, transaction_txid},
 };
 use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
 
@@ -220,6 +220,25 @@ impl FjallNodeStore {
                         "active-chain block identity mismatch: expected {:?}, loaded {actual_hash:?}",
                         position.block_hash
                     ),
+                ));
+            }
+            let (actual_merkle_root, maybe_mutated) = block_merkle_root(&block.transactions)
+                .map_err(|_| {
+                    super::corruption(
+                        StorageNamespace::Chainstate,
+                        "failed to derive active-chain Merkle commitment during confirmation migration",
+                    )
+                })?;
+            if maybe_mutated {
+                return Err(super::corruption(
+                    StorageNamespace::Chainstate,
+                    "mutated active-chain transaction tree during confirmation migration",
+                ));
+            }
+            if actual_merkle_root != block.header.merkle_root {
+                return Err(super::corruption(
+                    StorageNamespace::Chainstate,
+                    "active-chain block Merkle commitment mismatch during confirmation migration",
                 ));
             }
             for transaction in &block.transactions {
