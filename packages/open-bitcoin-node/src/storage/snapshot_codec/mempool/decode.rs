@@ -70,6 +70,15 @@ struct VersionedVisitor {
     limits: MempoolSnapshotDecodeLimits,
 }
 
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum VersionedField {
+    SchemaVersion,
+    Payload,
+    #[serde(other)]
+    Unknown,
+}
+
 impl<'de> Visitor<'de> for VersionedVisitor {
     type Value = DecodedVersioned;
 
@@ -83,20 +92,24 @@ impl<'de> Visitor<'de> for VersionedVisitor {
     {
         let mut maybe_schema_version = None;
         let mut maybe_payload = None;
-        while let Some(field) = map.next_key::<String>()? {
-            match field.as_str() {
-                "schema_version" => {
-                    set_once(&mut maybe_schema_version, map.next_value()?, &field)?;
+        while let Some(field) = map.next_key::<VersionedField>()? {
+            match field {
+                VersionedField::SchemaVersion => {
+                    set_once(
+                        &mut maybe_schema_version,
+                        map.next_value()?,
+                        "schema_version",
+                    )?;
                 }
-                "payload" => {
+                VersionedField::Payload => {
                     let payload = map.next_value_seed(PayloadSeed {
                         limits: self.limits,
                     })?;
-                    set_once(&mut maybe_payload, payload, &field)?;
+                    set_once(&mut maybe_payload, payload, "payload")?;
                 }
-                _ => {
+                VersionedField::Unknown => {
                     return Err(A::Error::unknown_field(
-                        &field,
+                        "unknown",
                         &["schema_version", "payload"],
                     ));
                 }
@@ -131,6 +144,18 @@ struct PayloadVisitor {
     limits: MempoolSnapshotDecodeLimits,
 }
 
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum PayloadField {
+    FormatVersion,
+    CapturedGeneration,
+    CapturedAtUnixSeconds,
+    Records,
+    UnbroadcastMembers,
+    #[serde(other)]
+    Unknown,
+}
+
 impl<'de> Visitor<'de> for PayloadVisitor {
     type Value = MempoolSnapshotPayloadDto;
 
@@ -149,34 +174,46 @@ impl<'de> Visitor<'de> for PayloadVisitor {
         let mut maybe_unbroadcast = None;
         let mut total_transaction_bytes = 0_usize;
 
-        while let Some(field) = map.next_key::<String>()? {
-            match field.as_str() {
-                "format_version" => {
-                    set_once(&mut maybe_format_version, map.next_value()?, &field)?;
+        while let Some(field) = map.next_key::<PayloadField>()? {
+            match field {
+                PayloadField::FormatVersion => {
+                    set_once(
+                        &mut maybe_format_version,
+                        map.next_value()?,
+                        "format_version",
+                    )?;
                 }
-                "captured_generation" => {
-                    set_once(&mut maybe_captured_generation, map.next_value()?, &field)?;
+                PayloadField::CapturedGeneration => {
+                    set_once(
+                        &mut maybe_captured_generation,
+                        map.next_value()?,
+                        "captured_generation",
+                    )?;
                 }
-                "captured_at_unix_seconds" => {
-                    set_once(&mut maybe_captured_at, map.next_value()?, &field)?;
+                PayloadField::CapturedAtUnixSeconds => {
+                    set_once(
+                        &mut maybe_captured_at,
+                        map.next_value()?,
+                        "captured_at_unix_seconds",
+                    )?;
                 }
-                "records" => {
+                PayloadField::Records => {
                     let records = map.next_value_seed(RecordsSeed {
                         limits: self.limits,
                         total_transaction_bytes: &mut total_transaction_bytes,
                     })?;
-                    set_once(&mut maybe_records, records, &field)?;
+                    set_once(&mut maybe_records, records, "records")?;
                 }
-                "unbroadcast_members" => {
+                PayloadField::UnbroadcastMembers => {
                     let members =
                         map.next_value_seed(BoundedSequenceSeed::<MempoolMemberIdentityDto>::new(
                             self.limits.max_unbroadcast_members,
                         ))?;
-                    set_once(&mut maybe_unbroadcast, members, &field)?;
+                    set_once(&mut maybe_unbroadcast, members, "unbroadcast_members")?;
                 }
-                _ => {
+                PayloadField::Unknown => {
                     return Err(A::Error::unknown_field(
-                        &field,
+                        "unknown",
                         &[
                             "format_version",
                             "captured_generation",
@@ -354,6 +391,21 @@ struct RecordVisitor<'a> {
     total_transaction_bytes: &'a mut usize,
 }
 
+#[derive(Deserialize)]
+#[serde(field_identifier, rename_all = "snake_case")]
+enum RecordField {
+    Txid,
+    Wtxid,
+    Transaction,
+    FeeSats,
+    VirtualSize,
+    AcceptedAtUnixSeconds,
+    Origin,
+    RelayRequested,
+    #[serde(other)]
+    Unknown,
+}
+
 impl<'de> Visitor<'de> for RecordVisitor<'_> {
     type Value = BoundedRecord;
 
@@ -366,36 +418,52 @@ impl<'de> Visitor<'de> for RecordVisitor<'_> {
         A: MapAccess<'de>,
     {
         let mut record = BoundedRecord::default();
-        while let Some(field) = map.next_key::<String>()? {
-            match field.as_str() {
-                "txid" => set_once(&mut record.maybe_txid, map.next_value()?, &field)?,
-                "wtxid" => set_once(&mut record.maybe_wtxid, map.next_value()?, &field)?,
-                "transaction" => {
+        while let Some(field) = map.next_key::<RecordField>()? {
+            match field {
+                RecordField::Txid => {
+                    set_once(&mut record.maybe_txid, map.next_value()?, "txid")?;
+                }
+                RecordField::Wtxid => {
+                    set_once(&mut record.maybe_wtxid, map.next_value()?, "wtxid")?;
+                }
+                RecordField::Transaction => {
                     let transaction = map.next_value_seed(TransactionSeed::new(
                         self.limits.max_transaction_bytes,
                         self.limits.max_total_transaction_bytes,
                         self.total_transaction_bytes,
                     ))?;
-                    set_once(&mut record.maybe_transaction, transaction, &field)?;
+                    set_once(&mut record.maybe_transaction, transaction, "transaction")?;
                 }
-                "fee_sats" => {
-                    set_once(&mut record.maybe_fee_sats, map.next_value()?, &field)?;
+                RecordField::FeeSats => {
+                    set_once(&mut record.maybe_fee_sats, map.next_value()?, "fee_sats")?;
                 }
-                "virtual_size" => {
-                    set_once(&mut record.maybe_virtual_size, map.next_value()?, &field)?;
+                RecordField::VirtualSize => {
+                    set_once(
+                        &mut record.maybe_virtual_size,
+                        map.next_value()?,
+                        "virtual_size",
+                    )?;
                 }
-                "accepted_at_unix_seconds" => {
-                    set_once(&mut record.maybe_accepted_at, map.next_value()?, &field)?;
+                RecordField::AcceptedAtUnixSeconds => {
+                    set_once(
+                        &mut record.maybe_accepted_at,
+                        map.next_value()?,
+                        "accepted_at_unix_seconds",
+                    )?;
                 }
-                "origin" => {
-                    set_once(&mut record.maybe_origin, map.next_value()?, &field)?;
+                RecordField::Origin => {
+                    set_once(&mut record.maybe_origin, map.next_value()?, "origin")?;
                 }
-                "relay_requested" => {
-                    set_once(&mut record.maybe_relay_requested, map.next_value()?, &field)?;
+                RecordField::RelayRequested => {
+                    set_once(
+                        &mut record.maybe_relay_requested,
+                        map.next_value()?,
+                        "relay_requested",
+                    )?;
                 }
-                _ => {
+                RecordField::Unknown => {
                     return Err(A::Error::unknown_field(
-                        &field,
+                        "unknown",
                         &[
                             "transaction",
                             "accepted_at_unix_seconds",

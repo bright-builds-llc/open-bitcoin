@@ -161,6 +161,69 @@ fn mempool_snapshot_codec_rejects_transaction_byte_limit() {
 }
 
 #[test]
+fn escaped_transaction_token_is_rejected_before_unescaping_under_narrow_budget() {
+    // Arrange
+    let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
+    let text = String::from_utf8(encoded).expect("snapshot JSON");
+    let field_end =
+        text.find("\"transaction\"").expect("transaction field") + "\"transaction\"".len();
+    let transaction_start = text[field_end..]
+        .find('"')
+        .map(|offset| field_end + offset + 1)
+        .expect("transaction value");
+    let transaction_end = text[transaction_start..]
+        .find('"')
+        .map(|offset| transaction_start + offset)
+        .expect("transaction terminator");
+    let escaped = "\\u0030".repeat(64);
+    let hostile = format!(
+        "{}{}{}",
+        &text[..transaction_start],
+        escaped,
+        &text[transaction_end..]
+    );
+    let limits = MempoolSnapshotDecodeLimits {
+        max_encoded_bytes: hostile.len(),
+        max_transaction_bytes: 1,
+        max_total_transaction_bytes: 1,
+        ..MempoolSnapshotDecodeLimits::default()
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(hostile.as_bytes(), limits)
+        .expect_err("escaped transaction must fail before unescaping");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption { ref detail, .. }
+            if detail == "mempool snapshot exceeds a resource bound"
+    ));
+}
+
+#[test]
+fn oversized_unknown_key_is_rejected_without_owned_key_materialization() {
+    // Arrange
+    let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
+    let text = String::from_utf8(encoded).expect("snapshot JSON");
+    let hostile_key = "x".repeat(16 * 1_024);
+    let hostile = text.replacen("\"schema_version\"", &format!("\"{hostile_key}\""), 1);
+    let limits = MempoolSnapshotDecodeLimits {
+        max_encoded_bytes: hostile.len(),
+        max_transaction_bytes: 1,
+        max_total_transaction_bytes: 1,
+        ..MempoolSnapshotDecodeLimits::default()
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(hostile.as_bytes(), limits)
+        .expect_err("unknown field must fail without an owned key");
+
+    // Assert
+    assert!(matches!(error, StorageError::Corruption { .. }));
+}
+
+#[test]
 fn legacy_transaction_sequence_limit_stops_before_parsing_the_extra_byte() {
     // Arrange
     let mut value = legacy_mempool_snapshot_value();

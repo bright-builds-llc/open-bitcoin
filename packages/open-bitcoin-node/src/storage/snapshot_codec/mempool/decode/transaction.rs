@@ -7,8 +7,9 @@
 
 use std::fmt;
 
-use serde::Deserializer;
 use serde::de::{DeserializeSeed, SeqAccess, Visitor};
+use serde::{Deserialize, Deserializer};
+use serde_json::value::RawValue;
 
 use super::{RESOURCE_BOUND_MARKER, reject_extra_element, reject_size_hint};
 
@@ -39,11 +40,27 @@ impl<'de> DeserializeSeed<'de> for TransactionSeed<'_> {
     where
         D: Deserializer<'de>,
     {
-        deserializer.deserialize_any(TransactionVisitor {
+        let raw = <&'de RawValue>::deserialize(deserializer)?;
+        let token = raw.get().as_bytes();
+        if token.first() == Some(&b'"') {
+            return TransactionVisitor {
+                max_transaction_bytes: self.max_transaction_bytes,
+                max_total_transaction_bytes: self.max_total_transaction_bytes,
+                total_transaction_bytes: self.total_transaction_bytes,
+            }
+            .decode_raw_hex(token);
+        }
+
+        let mut nested = serde_json::Deserializer::from_str(raw.get());
+        let bytes = LegacyTransactionSeed {
             max_transaction_bytes: self.max_transaction_bytes,
             max_total_transaction_bytes: self.max_total_transaction_bytes,
             total_transaction_bytes: self.total_transaction_bytes,
-        })
+        }
+        .deserialize(&mut nested)
+        .map_err(serde::de::Error::custom)?;
+        nested.end().map_err(serde::de::Error::custom)?;
+        Ok(bytes)
     }
 }
 
@@ -69,14 +86,33 @@ impl TransactionVisitor<'_> {
         Ok(())
     }
 
-    fn decode_hex<E: serde::de::Error>(&mut self, value: &str) -> Result<Vec<u8>, E> {
+    fn decode_raw_hex<E: serde::de::Error>(&mut self, token: &[u8]) -> Result<Vec<u8>, E> {
+        let Some(value) = token.get(1..token.len().saturating_sub(1)) else {
+            return Err(E::custom("transaction hex must be a JSON string"));
+        };
+        let max_hex_bytes = self
+            .max_transaction_bytes
+            .checked_mul(2)
+            .ok_or_else(|| E::custom(RESOURCE_BOUND_MARKER))?;
+        let remaining_total = self
+            .max_total_transaction_bytes
+            .saturating_sub(*self.total_transaction_bytes);
+        let max_remaining_hex_bytes = remaining_total
+            .checked_mul(2)
+            .ok_or_else(|| E::custom(RESOURCE_BOUND_MARKER))?;
+        if value.len() > max_hex_bytes
+            || value.len() > max_remaining_hex_bytes
+            || value.contains(&b'\\')
+        {
+            return Err(E::custom(RESOURCE_BOUND_MARKER));
+        }
         if !value.len().is_multiple_of(2) {
             return Err(E::custom("transaction hex has odd length"));
         }
         let decoded_len = value.len() / 2;
         self.reserve(decoded_len)?;
         let mut bytes = Vec::with_capacity(decoded_len);
-        for pair in value.as_bytes().chunks_exact(2) {
+        for pair in value.chunks_exact(2) {
             let high = hex_nibble(pair[0]).ok_or_else(|| E::custom("invalid transaction hex"))?;
             let low = hex_nibble(pair[1]).ok_or_else(|| E::custom("invalid transaction hex"))?;
             bytes.push((high << 4) | low);
@@ -85,32 +121,38 @@ impl TransactionVisitor<'_> {
     }
 }
 
-impl<'de> Visitor<'de> for TransactionVisitor<'_> {
+struct LegacyTransactionSeed<'a> {
+    max_transaction_bytes: usize,
+    max_total_transaction_bytes: usize,
+    total_transaction_bytes: &'a mut usize,
+}
+
+impl<'de> DeserializeSeed<'de> for LegacyTransactionSeed<'_> {
+    type Value = Vec<u8>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(LegacyTransactionVisitor {
+            max_transaction_bytes: self.max_transaction_bytes,
+            max_total_transaction_bytes: self.max_total_transaction_bytes,
+            total_transaction_bytes: self.total_transaction_bytes,
+        })
+    }
+}
+
+struct LegacyTransactionVisitor<'a> {
+    max_transaction_bytes: usize,
+    max_total_transaction_bytes: usize,
+    total_transaction_bytes: &'a mut usize,
+}
+
+impl<'de> Visitor<'de> for LegacyTransactionVisitor<'_> {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter.write_str("bounded hex or legacy byte-array transaction data")
-    }
-
-    fn visit_borrowed_str<E>(mut self, value: &'de str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.decode_hex(value)
-    }
-
-    fn visit_str<E>(mut self, value: &str) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.decode_hex(value)
-    }
-
-    fn visit_string<E>(mut self, value: String) -> Result<Self::Value, E>
-    where
-        E: serde::de::Error,
-    {
-        self.decode_hex(&value)
     }
 
     fn visit_seq<A>(self, mut sequence: A) -> Result<Self::Value, A::Error>
