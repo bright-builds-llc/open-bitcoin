@@ -38,7 +38,7 @@ test("ignores braces and command tokens inside comments and string literals", ()
     insertAfter(
       "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
       "struct MempoolSnapshotV2RecordDto {",
-      '\n    // } does not close the struct\n    const _: &str = "}";',
+      '\n    // } does not close the struct\n    const _: &str = "}";\n    const _: &str = r###"} {"###;',
     )(files);
     append(
       "scripts/verify.sh",
@@ -142,6 +142,15 @@ function contractMutations(): Mutation[] {
       ),
     ],
     [
+      "compatibility operation survives only in a comment",
+      PHASE135_DIAGNOSTICS.compatibility,
+      replace(
+        files.codec,
+        "let payload = decode::decode_bounded_versioned(bytes, limits)?;",
+        "// decode::decode_bounded_versioned(bytes, limits)\n    return Err(snapshot_failure(MempoolSnapshotError::StructuralCorruption));",
+      ),
+    ],
+    [
       "encoded byte bound removed",
       PHASE135_DIAGNOSTICS.bounds,
       replace(
@@ -220,6 +229,15 @@ function contractMutations(): Mutation[] {
       ),
     ],
     [
+      "install operation survives only in an ordinary string",
+      PHASE135_DIAGNOSTICS.install,
+      replace(
+        files.authority,
+        "self.dirty_generation = None;",
+        'let _guarded_operation = "self.dirty_generation = None;";',
+      ),
+    ],
+    [
       "capture stores a derived fee",
       PHASE135_DIAGNOSTICS.capture,
       insertAfter(
@@ -262,6 +280,15 @@ function contractMutations(): Mutation[] {
         files.store,
         "save(bytes, PersistMode::Sync)",
         "save(bytes, PersistMode::Flush)",
+      ),
+    ],
+    [
+      "persistence operation survives only in a raw string",
+      PHASE135_DIAGNOSTICS.execution,
+      replace(
+        files.store,
+        "if let Err(error) = save(bytes, PersistMode::Sync) {",
+        'let _guarded_operation = r###"save(bytes, PersistMode::Sync) } {"###;\n    if let Err(error) = save(bytes, PersistMode::Flush) {',
       ),
     ],
     [

@@ -88,8 +88,10 @@ export const PHASE135_DIAGNOSTICS = {
 
 function maskNonCode(source: string): string {
   const chars = [...source];
-  let state: "code" | "line" | "block" | "string" | "char" = "code";
+  let state: "code" | "line" | "block" | "string" | "char" | "raw" =
+    "code";
   let blockDepth = 0;
+  let rawHashCount = 0;
   let escaped = false;
   for (let index = 0; index < chars.length; index += 1) {
     const current = chars[index];
@@ -104,6 +106,17 @@ function maskNonCode(source: string): string {
         blockDepth = 1;
         chars[index] = chars[index + 1] = " ";
         index += 1;
+      } else if (current === "r") {
+        let delimiterEnd = index + 1;
+        while (chars[delimiterEnd] === "#") delimiterEnd += 1;
+        if (chars[delimiterEnd] === '"') {
+          state = "raw";
+          rawHashCount = delimiterEnd - index - 1;
+          for (let offset = index; offset <= delimiterEnd; offset += 1) {
+            chars[offset] = " ";
+          }
+          index = delimiterEnd;
+        }
       } else if (current === '"') {
         state = "string";
         chars[index] = " ";
@@ -139,6 +152,25 @@ function maskNonCode(source: string): string {
       chars[index] = " ";
       continue;
     }
+    if (state === "raw") {
+      const closingHashes = chars.slice(
+        index + 1,
+        index + 1 + rawHashCount,
+      );
+      const closes =
+        current === '"' &&
+        closingHashes.length === rawHashCount &&
+        closingHashes.every((character) => character === "#");
+      if (current !== "\n") chars[index] = " ";
+      if (closes) {
+        for (let offset = 1; offset <= rawHashCount; offset += 1) {
+          chars[index + offset] = " ";
+        }
+        index += rawHashCount;
+        state = "code";
+      }
+      continue;
+    }
     if (escaped) {
       escaped = false;
     } else if (current === "\\") {
@@ -165,13 +197,13 @@ function body(source: string, marker: string): string {
     if (masked[index] === "{") depth += 1;
     if (masked[index] !== "}") continue;
     depth -= 1;
-    if (depth === 0) return source.slice(brace + 1, index);
+    if (depth === 0) return masked.slice(brace + 1, index);
   }
   return "";
 }
 
 function exactStructFields(source: string, marker: string): string[] {
-  const fields = body(maskNonCode(source), marker).matchAll(
+  const fields = body(source, marker).matchAll(
     /^\s*(?:pub(?:\([^)]*\))?\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*:/gm,
   );
   return [...fields].map((match) => match[1]).sort();
