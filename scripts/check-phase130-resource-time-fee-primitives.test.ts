@@ -139,8 +139,8 @@ test.each([
     "P130 legacy compatibility: v1 must remain decode-only and partial metadata must fail closed as corruption",
     replace(
       "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
-      "&MempoolSnapshotV2Dto::try_from(snapshot)?",
-      "&MempoolSnapshotV1Dto::try_from(snapshot)?",
+      "let dto = MempoolSnapshotV2Dto::try_from(snapshot)?;",
+      "let dto = MempoolSnapshotV1Dto::try_from(snapshot)?;",
     ),
   ],
   [

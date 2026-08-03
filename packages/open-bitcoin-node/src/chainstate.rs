@@ -20,6 +20,12 @@ pub struct MemoryChainstateStore {
 }
 
 impl MemoryChainstateStore {
+    pub fn from_snapshot(snapshot: ChainstateSnapshot) -> Self {
+        Self {
+            maybe_snapshot: Some(snapshot),
+        }
+    }
+
     pub fn snapshot(&self) -> Option<&ChainstateSnapshot> {
         self.maybe_snapshot.as_ref()
     }

@@ -15,7 +15,7 @@ use super::ManagedNetworkHandle;
 use crate::network::announcement_transport::PeerEmissionEvidence;
 use crate::network::lifecycle_effects::{
     EffectAbort, EffectCompletion, ExactEffectLedgerCompletion, PeerEffectCapability,
-    PeerEffectReceipt, PreparedSnapshotWrite, SnapshotWriteReceipt,
+    PeerEffectReceipt, PreparedSnapshotWrite, SnapshotWriteAbort, SnapshotWriteReceipt,
 };
 use crate::network::lifecycle_projection::{LifecycleCommand, LifecycleProjectionError};
 use crate::network::recovery::ManagedMempoolRecoverySummary;
@@ -29,6 +29,7 @@ pub(in crate::network) enum LifecycleCommandResult {
     SnapshotPrepared(PreparedSnapshotWrite),
     RelayPrepared(PeerEffectCapability),
     PeerEffectAborted(EffectAbort),
+    #[cfg_attr(not(test), allow(dead_code))]
     SnapshotEffectAborted(EffectAbort),
     PeerEffectCompleted(EffectCompletion),
     #[cfg(test)]
@@ -69,6 +70,25 @@ impl ManagedNetworkHandle {
         match complete_checkpoint_snapshot_effect(&mut network, &receipt) {
             Ok(completion) => Ok(completion),
             Err(error) => Err((error, Box::new(receipt))),
+        }
+    }
+
+    pub(super) fn dispatch_checkpoint_abort(
+        &self,
+        abort: SnapshotWriteAbort,
+    ) -> Result<EffectAbort, (LifecycleProjectionError, Box<SnapshotWriteAbort>)> {
+        let mut network = match self.authority.lock() {
+            Ok(network) => network,
+            Err(_) => {
+                return Err((
+                    LifecycleProjectionError::AuthorityUnavailable,
+                    Box::new(abort),
+                ));
+            }
+        };
+        match abort_checkpoint_snapshot_effect(&mut network, &abort) {
+            Ok(classification) => Ok(classification),
+            Err(error) => Err((error, Box::new(abort))),
         }
     }
 
@@ -170,15 +190,8 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
             Ok(LifecycleCommandResult::PeerEffectAborted(abort))
         }
         LifecycleCommand::AbortSnapshotEffect(abort_request) => {
-            let generation = abort_request.capability().persistence_generation();
-            let (capability, failed_at, failure) = abort_request.into_parts();
-            let abort = network.snapshot_effect_ledger.abort_exact(&capability);
-            if abort == EffectAbort::Aborted {
-                network
-                    .checkpoint_evidence
-                    .note_aborted(generation, failed_at, failure);
-            }
-            Ok(LifecycleCommandResult::SnapshotEffectAborted(abort))
+            abort_checkpoint_snapshot_effect(network, &abort_request)
+                .map(LifecycleCommandResult::SnapshotEffectAborted)
         }
         LifecycleCommand::CompletePeerEffect(receipt) => {
             complete_peer_effect(network, receipt, None)
@@ -195,6 +208,23 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 .map(LifecycleCommandResult::SnapshotEffectCompleted)
         }
     }
+}
+
+fn abort_checkpoint_snapshot_effect<S: ChainstateStore>(
+    network: &mut ManagedPeerNetwork<S>,
+    abort_request: &SnapshotWriteAbort,
+) -> Result<EffectAbort, LifecycleProjectionError> {
+    let capability = abort_request.capability();
+    let generation = capability.persistence_generation();
+    let abort = network.snapshot_effect_ledger.abort_exact(capability);
+    if abort == EffectAbort::Aborted {
+        network.checkpoint_evidence.note_aborted(
+            generation,
+            abort_request.failed_at(),
+            abort_request.failure(),
+        );
+    }
+    Ok(abort)
 }
 
 fn complete_checkpoint_snapshot_effect<S: ChainstateStore>(

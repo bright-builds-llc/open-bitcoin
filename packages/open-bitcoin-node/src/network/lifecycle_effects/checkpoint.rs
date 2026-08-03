@@ -159,10 +159,12 @@ impl SnapshotWriteAbort {
         &self.capability
     }
 
-    pub(in crate::network) fn into_parts(
-        self,
-    ) -> (SnapshotWriteCapability, PolicyTime, SnapshotWriteFailure) {
-        (self.capability, self.failed_at, self.failure)
+    pub(in crate::network) const fn failed_at(&self) -> PolicyTime {
+        self.failed_at
+    }
+
+    pub(in crate::network) const fn failure(&self) -> SnapshotWriteFailure {
+        self.failure
     }
 }
 

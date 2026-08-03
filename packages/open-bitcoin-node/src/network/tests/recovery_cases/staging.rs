@@ -203,6 +203,100 @@ fn stale_and_non_fresh_recovery_install_preserve_the_exact_authority_aggregate()
 }
 
 #[test]
+fn recovery_install_rejects_a_chainstate_change_after_preparation() {
+    // Arrange
+    let (network, coinbase_txids, latest_block) =
+        relay_enabled_network_with_chain(1_107, 3, PolicyConfig::default());
+    let snapshot = current_snapshot(
+        spend_transaction(coinbase_txids[0], 499_999_000),
+        23,
+        PolicyTime::from_unix_seconds(23_000),
+    );
+    let handle = ManagedNetworkHandle::from_network_fixture(network);
+    let prepared = handle
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(23_100),
+        )
+        .expect("prepare recovery");
+    let next_block = build_block(block_hash(&latest_block.header), 3, 500_000_000);
+    handle
+        .connect_local_block(&next_block, verify_flags(), consensus_params())
+        .expect("advance chainstate after preparation");
+    let baseline = handle
+        .authority_debug_snapshot_for_test()
+        .expect("authority baseline");
+
+    // Act
+    let error = handle.install_mempool_recovery(prepared);
+
+    // Assert
+    assert!(error.is_err());
+    assert_eq!(
+        handle
+            .authority_debug_snapshot_for_test()
+            .expect("authority after stale install"),
+        baseline
+    );
+}
+
+#[test]
+fn recovery_keeps_unbroadcast_only_for_the_exact_surviving_member() {
+    // Arrange
+    let (network, coinbase_txids, _latest_block) =
+        relay_enabled_network_with_chain(1_108, 3, PolicyConfig::default());
+    let surviving = spend_transaction(coinbase_txids[0], 499_999_000);
+    let mut same_txid_with_witness = surviving.clone();
+    same_txid_with_witness.inputs[0].witness =
+        open_bitcoin_core::primitives::ScriptWitness::new(vec![vec![1]]);
+    assert_eq!(txid(&surviving), txid(&same_txid_with_witness));
+    assert_ne!(wtxid(&surviving), wtxid(&same_txid_with_witness));
+    let plain_identity = MempoolMemberIdentity {
+        txid: txid(&surviving),
+        wtxid: wtxid(&surviving),
+    };
+    let witnessed_identity = MempoolMemberIdentity {
+        txid: txid(&same_txid_with_witness),
+        wtxid: wtxid(&same_txid_with_witness),
+    };
+    let persisted_only = plain_identity.max(witnessed_identity);
+    let captured_at = PolicyTime::from_unix_seconds(24_000);
+    let snapshot = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(24),
+        captured_at,
+        vec![
+            MempoolSnapshotRecord::try_from_canonical(
+                surviving,
+                MempoolAcceptanceTime::Known(captured_at),
+            )
+            .expect("surviving record"),
+            MempoolSnapshotRecord::try_from_canonical(
+                same_txid_with_witness,
+                MempoolAcceptanceTime::Known(captured_at),
+            )
+            .expect("alternate witness record"),
+        ],
+        BTreeSet::from([persisted_only]),
+    )
+    .expect("same-txid recovery snapshot");
+
+    // Act
+    let prepared = network
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(24_100),
+        )
+        .expect("prepare recovery");
+
+    // Assert
+    assert!(prepared.unbroadcast_members().is_empty());
+}
+
+#[test]
 fn every_injected_recovery_install_validation_failure_preserves_the_exact_aggregate() {
     for point in RecoveryInstallFailurePoint::ALL {
         // Arrange

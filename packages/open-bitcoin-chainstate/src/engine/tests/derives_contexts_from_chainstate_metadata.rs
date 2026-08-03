@@ -73,7 +73,22 @@ fn connect_and_disconnect_round_trip_utxos_and_tip() {
         1_231_006_600,
         vec![coinbase_transaction(1, 50), spend],
     );
+    let block_txids = block
+        .transactions
+        .iter()
+        .map(|transaction| open_bitcoin_consensus::transaction_txid(transaction).expect("txid"))
+        .collect::<Vec<_>>();
     let connected_position = connect_block(&mut chainstate, &block, 2);
+    let connected_snapshot = chainstate.snapshot();
+    let confirmed_txids = connected_snapshot
+        .maybe_confirmed_txids
+        .as_ref()
+        .expect("fresh chainstate should retain exact confirmed transaction identity");
+    assert!(
+        block_txids
+            .iter()
+            .all(|txid| confirmed_txids.contains(txid))
+    );
 
     // Act
     let disconnected = chainstate
@@ -84,6 +99,45 @@ fn connect_and_disconnect_round_trip_utxos_and_tip() {
     assert_eq!(disconnected, connected_position);
     assert_active_tip(&chainstate, &genesis_position);
     assert_eq!(chainstate.utxos().len(), 1);
+    let disconnected_snapshot = chainstate.snapshot();
+    let confirmed_txids = disconnected_snapshot
+        .maybe_confirmed_txids
+        .as_ref()
+        .expect("fresh chainstate should retain exact confirmed transaction identity");
+    assert!(
+        block_txids
+            .iter()
+            .all(|txid| !confirmed_txids.contains(txid))
+    );
+}
+
+#[test]
+fn legacy_snapshot_connect_and_disconnect_preserve_unknown_confirmed_identity() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    let genesis_position = connect_block(&mut chainstate, &genesis_block, 1);
+    let mut legacy_snapshot = chainstate.snapshot();
+    legacy_snapshot.maybe_confirmed_txids = None;
+    let mut legacy_chainstate = Chainstate::from_snapshot(legacy_snapshot);
+    let block = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![coinbase_transaction(1, 50)],
+    );
+
+    // Act
+    connect_block(&mut legacy_chainstate, &block, 2);
+    legacy_chainstate
+        .disconnect_tip(&block)
+        .expect("block should disconnect cleanly");
+
+    // Assert
+    assert!(legacy_chainstate.snapshot().maybe_confirmed_txids.is_none());
 }
 
 #[test]

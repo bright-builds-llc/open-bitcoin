@@ -278,6 +278,67 @@ fn encode_failure_releases_the_flight_and_remains_retryable() {
 }
 
 #[test]
+fn abort_dispatch_failure_retains_and_retries_the_exact_abort_before_recapturing() {
+    // Arrange
+    let coordinator = MempoolCheckpointCoordinator::new();
+    let handle = empty_handle();
+    handle.mark_checkpoint_dirty_for_test().expect("dirty");
+    handle.fail_next_checkpoint_abort_dispatch_for_test();
+    let mut now = || PolicyTime::new(55);
+
+    // Act
+    let first = coordinator.run_with(
+        &handle,
+        CheckpointTrigger::Periodic,
+        &mut now,
+        &mut |prepared, now| {
+            FjallNodeStore::execute_prepared_mempool_snapshot_write_with(
+                &handle,
+                prepared,
+                |_| Err(injected_storage_error()),
+                |_, _| panic!("encode failure must not save"),
+                now,
+            )
+        },
+    );
+    let retained = matches!(
+        &*coordinator.state.lock().expect("coordinator state"),
+        CheckpointCoordinatorState::UnachievedAwaitingAbort(_)
+    );
+    let before_retry = handle
+        .checkpoint_evidence(PolicyTime::new(55), INTERNAL_EVIDENCE_INTERVAL_SECONDS)
+        .expect("checkpoint evidence before retry");
+    let retry = coordinator
+        .run_with(
+            &handle,
+            CheckpointTrigger::Periodic,
+            &mut now,
+            &mut fake_success,
+        )
+        .expect("abort retry then checkpoint");
+    let after_retry = handle
+        .checkpoint_evidence(PolicyTime::new(55), INTERNAL_EVIDENCE_INTERVAL_SECONDS)
+        .expect("checkpoint evidence after retry");
+
+    // Assert
+    assert!(matches!(
+        first,
+        Err(MempoolCheckpointError::AbortDispatch { .. })
+    ));
+    assert!(retained);
+    assert_eq!(before_retry.maybe_in_flight_generation, Some(1));
+    assert_eq!(
+        retry,
+        MempoolCheckpointOutcome::Completed {
+            writes_started: 1,
+            maybe_last_completion: Some(EffectCompletion::Applied),
+        }
+    );
+    assert_eq!(after_retry.maybe_in_flight_generation, None);
+    assert_eq!(after_retry.maybe_last_durable_generation, Some(1));
+}
+
+#[test]
 fn shutdown_settle_forces_exact_current_sync_durability() {
     // Arrange
     let coordinator = MempoolCheckpointCoordinator::new();

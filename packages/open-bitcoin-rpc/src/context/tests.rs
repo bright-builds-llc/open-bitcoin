@@ -170,6 +170,127 @@ fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
 }
 
 #[test]
+fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
+    use std::collections::HashMap;
+
+    use open_bitcoin_node::core::chainstate::{ChainPosition, ChainstateSnapshot, Coin};
+    use open_bitcoin_node::core::consensus::crypto::hash160;
+    use open_bitcoin_node::core::mempool::MempoolAcceptanceTime;
+    use open_bitcoin_node::core::primitives::{
+        Amount, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
+        TransactionInput, TransactionOutput, Txid,
+    };
+    use open_bitcoin_node::storage::MempoolSnapshotRecord;
+
+    // Arrange
+    let data_dir = test_data_dir("mempool-recovery-chainstate-load");
+    let store = FjallNodeStore::open(&data_dir).expect("open store");
+    let previous_output = OutPoint {
+        txid: Txid::from_byte_array([77; 32]),
+        vout: 0,
+    };
+    let captured_at = PolicyTime::new(
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system time after epoch")
+            .as_secs()
+            .try_into()
+            .expect("current timestamp fits policy time"),
+    );
+    let redeem_script = ScriptBuf::from_bytes(vec![0x51]).expect("redeem script");
+    let mut p2sh_bytes = vec![0xa9, 20];
+    p2sh_bytes.extend_from_slice(&hash160(redeem_script.as_bytes()));
+    p2sh_bytes.push(0x87);
+    let p2sh_script = ScriptBuf::from_bytes(p2sh_bytes).expect("p2sh script");
+    let chain_position = ChainPosition::new(
+        BlockHeader {
+            version: 1,
+            previous_block_hash: BlockHash::from_byte_array([0; 32]),
+            merkle_root: Default::default(),
+            time: u32::try_from(captured_at.unix_seconds()).expect("timestamp fits block time"),
+            bits: 1,
+            nonce: 1,
+        },
+        0,
+        1,
+        captured_at.unix_seconds(),
+    );
+    let chainstate = ChainstateSnapshot::new(
+        vec![chain_position],
+        HashMap::from([(
+            previous_output.clone(),
+            Coin {
+                output: TransactionOutput {
+                    value: Amount::from_sats(50_000).expect("valid amount"),
+                    script_pubkey: p2sh_script.clone(),
+                },
+                is_coinbase: false,
+                created_height: 0,
+                created_median_time_past: 0,
+            },
+        )]),
+        HashMap::new(),
+    );
+    let transaction = Transaction {
+        version: 2,
+        inputs: vec![TransactionInput {
+            previous_output,
+            script_sig: ScriptBuf::from_bytes(vec![0x01, 0x51]).expect("script sig"),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(49_000).expect("valid amount"),
+            script_pubkey: p2sh_script,
+        }],
+        lock_time: 0,
+    };
+    let snapshot = MempoolSnapshot::try_new_current(
+        CapturedMempoolGeneration::new(1),
+        captured_at,
+        vec![
+            MempoolSnapshotRecord::try_from_canonical(
+                transaction,
+                MempoolAcceptanceTime::Known(captured_at),
+            )
+            .expect("snapshot record"),
+        ],
+        Default::default(),
+    )
+    .expect("mempool snapshot");
+    store
+        .save_chainstate_snapshot(&chainstate, PersistMode::Sync)
+        .expect("save chainstate snapshot");
+    store
+        .save_mempool_snapshot(&snapshot, PersistMode::Sync)
+        .expect("save mempool snapshot");
+    let runtime = RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        maybe_data_dir: Some(data_dir.clone()),
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store));
+
+    // Assert
+    let summary = context
+        .network
+        .latest_mempool_recovery_summary()
+        .expect("recovery authority")
+        .expect("recovery summary");
+    assert_eq!(summary.recovered_count, 1, "{summary:?}");
+    assert_eq!(
+        context
+            .mempool_info()
+            .expect("mempool info")
+            .transaction_count,
+        1
+    );
+    fs::remove_dir_all(data_dir).expect("remove durable store");
+}
+
+#[test]
 fn record_inbound_resource_event_appends_inbound_resource_governance_log_record() {
     // Arrange
     let data_dir = test_data_dir("resource-governance-log");

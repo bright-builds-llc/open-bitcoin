@@ -27,6 +27,7 @@ use crate::{ChainstateStore, ManagedPeerNetwork};
 #[derive(Debug)]
 pub(in crate::network) enum RecoveryInstallError {
     StaleAuthorityEpoch,
+    StaleChainstate,
     NonFreshAuthority,
     PendingLifecycleEffects,
     InvalidPreparedRecovery,
@@ -40,6 +41,9 @@ impl fmt::Display for RecoveryInstallError {
         match self {
             Self::StaleAuthorityEpoch => {
                 formatter.write_str("prepared recovery belongs to another authority incarnation")
+            }
+            Self::StaleChainstate => {
+                formatter.write_str("chainstate changed after mempool recovery preparation")
             }
             Self::NonFreshAuthority => {
                 formatter.write_str("mempool recovery requires a fresh startup authority")
@@ -66,6 +70,7 @@ impl std::error::Error for RecoveryInstallError {
         match self {
             Self::PeerProjection(error) => Some(error),
             Self::StaleAuthorityEpoch
+            | Self::StaleChainstate
             | Self::NonFreshAuthority
             | Self::PendingLifecycleEffects
             | Self::InvalidPreparedRecovery => None,
@@ -99,6 +104,9 @@ impl PreparedRecoveryProjection {
         fail_install_at(RecoveryInstallFailurePoint::AuthorityEpoch)?;
         if prepared.authority_epoch != network.authority_epoch {
             return Err(RecoveryInstallError::StaleAuthorityEpoch);
+        }
+        if prepared.maybe_chainstate_tip != network.chainstate_snapshot().tip().cloned() {
+            return Err(RecoveryInstallError::StaleChainstate);
         }
 
         #[cfg(test)]

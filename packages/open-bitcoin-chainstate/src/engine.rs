@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use open_bitcoin_consensus::block::enforce_coinbase_reward_limit;
 use open_bitcoin_consensus::context::{MinDifficultyRecoveryTarget, RetargetAnchor};
@@ -26,11 +26,23 @@ use crate::{
 const MEDIAN_TIME_PAST_WINDOW: usize = 11;
 const OP_RETURN: u8 = 0x6a;
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chainstate {
     active_chain: Vec<ChainPosition>,
     utxos: HashMap<OutPoint, Coin>,
     undo_by_block: HashMap<BlockHash, BlockUndo>,
+    maybe_confirmed_txids: Option<HashSet<open_bitcoin_primitives::Txid>>,
+}
+
+impl Default for Chainstate {
+    fn default() -> Self {
+        Self {
+            active_chain: Vec::new(),
+            utxos: HashMap::new(),
+            undo_by_block: HashMap::new(),
+            maybe_confirmed_txids: Some(HashSet::new()),
+        }
+    }
 }
 
 impl Chainstate {
@@ -43,15 +55,18 @@ impl Chainstate {
             active_chain: snapshot.active_chain,
             utxos: snapshot.utxos,
             undo_by_block: snapshot.undo_by_block,
+            maybe_confirmed_txids: snapshot.maybe_confirmed_txids,
         }
     }
 
     pub fn snapshot(&self) -> ChainstateSnapshot {
-        ChainstateSnapshot::new(
+        let mut snapshot = ChainstateSnapshot::new(
             self.active_chain.clone(),
             self.utxos.clone(),
             self.undo_by_block.clone(),
-        )
+        );
+        snapshot.maybe_confirmed_txids = self.maybe_confirmed_txids.clone();
+        snapshot
     }
 
     pub fn tip(&self) -> Option<&ChainPosition> {
@@ -163,6 +178,12 @@ impl Chainstate {
         self.utxos = next_utxos;
         self.undo_by_block.insert(position.block_hash, block_undo);
         self.active_chain.push(position.clone());
+        if let Some(confirmed_txids) = &mut self.maybe_confirmed_txids {
+            for transaction in &block.transactions {
+                confirmed_txids
+                    .insert(transaction_txid(transaction).map_err(txid_serialization_error)?);
+            }
+        }
 
         Ok(position)
     }
@@ -198,6 +219,13 @@ impl Chainstate {
             if transaction_index > 0 {
                 let tx_undo = &block_undo.transactions[transaction_index - 1];
                 restore_non_coinbase_inputs(&mut self.utxos, transaction, tx_undo)?;
+            }
+        }
+
+        if let Some(confirmed_txids) = &mut self.maybe_confirmed_txids {
+            for transaction in &block.transactions {
+                confirmed_txids
+                    .remove(&transaction_txid(transaction).map_err(txid_serialization_error)?);
             }
         }
 

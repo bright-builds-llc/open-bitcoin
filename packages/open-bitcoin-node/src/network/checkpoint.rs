@@ -24,12 +24,19 @@ const MAX_WRITES_PER_CALL: u8 = 2;
 enum CheckpointCoordinatorState {
     Idle,
     Persisting,
+    UnachievedAwaitingAbort(super::SnapshotWriteAbort),
     AchievedAwaitingCompletion(SnapshotWriteReceipt),
 }
 
 enum FlightClaim {
     Coalesced,
-    Claimed(Option<SnapshotWriteReceipt>),
+    Claimed(RetainedTermination),
+}
+
+enum RetainedTermination {
+    None,
+    Abort(super::SnapshotWriteAbort),
+    Completion(SnapshotWriteReceipt),
 }
 
 /// One bounded result from driving the checkpoint state machine.
@@ -53,6 +60,10 @@ pub enum MempoolCheckpointError {
     Authority(ManagedNetworkAuthorityError),
     Execution(SnapshotWriteExecutionError),
     CompletionDispatch(ManagedNetworkAuthorityError),
+    AbortDispatch {
+        maybe_storage_error: Option<crate::storage::StorageError>,
+        source: ManagedNetworkAuthorityError,
+    },
     ShutdownNotCurrent {
         current_generation: u64,
         maybe_last_durable_generation: Option<u64>,
@@ -70,6 +81,19 @@ impl fmt::Display for MempoolCheckpointError {
             Self::CompletionDispatch(error) => {
                 write!(formatter, "checkpoint completion dispatch failed: {error}")
             }
+            Self::AbortDispatch {
+                maybe_storage_error,
+                source,
+            } => match maybe_storage_error {
+                Some(storage_error) => write!(
+                    formatter,
+                    "checkpoint persistence failed ({storage_error}); exact abort dispatch failed: {source}"
+                ),
+                None => write!(
+                    formatter,
+                    "retained checkpoint abort dispatch failed: {source}"
+                ),
+            },
             Self::ShutdownNotCurrent {
                 current_generation,
                 maybe_last_durable_generation,
@@ -85,6 +109,7 @@ impl std::error::Error for MempoolCheckpointError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Authority(error) | Self::CompletionDispatch(error) => Some(error),
+            Self::AbortDispatch { source, .. } => Some(source),
             Self::Execution(error) => Some(error),
             Self::CoordinatorPoisoned | Self::ShutdownNotCurrent { .. } => None,
         }
@@ -174,16 +199,23 @@ impl MempoolCheckpointCoordinator {
             &mut Now,
         ) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>,
     {
-        let FlightClaim::Claimed(maybe_retained_receipt) = self.claim_flight()? else {
+        let FlightClaim::Claimed(retained) = self.claim_flight()? else {
             return Ok(MempoolCheckpointOutcome::Coalesced);
         };
         let mut maybe_last_completion = None;
         let mut writes_started = 0;
         let mut made_progress = false;
 
-        if let Some(receipt) = maybe_retained_receipt {
-            maybe_last_completion = Some(self.complete_or_retain(handle, receipt)?);
-            made_progress = true;
+        match retained {
+            RetainedTermination::None => {}
+            RetainedTermination::Abort(abort) => {
+                self.abort_or_retain(handle, abort)?;
+                made_progress = true;
+            }
+            RetainedTermination::Completion(receipt) => {
+                maybe_last_completion = Some(self.complete_or_retain(handle, receipt)?);
+                made_progress = true;
+            }
         }
 
         loop {
@@ -219,9 +251,23 @@ impl MempoolCheckpointCoordinator {
                 .map_err(|error| {
                     self.release_with_error(MempoolCheckpointError::Authority(error))
                 })?;
-            let receipt = execute(prepared, now).map_err(|error| {
-                self.release_with_error(MempoolCheckpointError::Execution(error))
-            })?;
+            let receipt = match execute(prepared, now) {
+                Ok(receipt) => receipt,
+                Err(error) => match error.into_abort_dispatch_parts() {
+                    Ok((storage_error, source, abort)) => {
+                        self.retain_abort(abort)?;
+                        return Err(MempoolCheckpointError::AbortDispatch {
+                            maybe_storage_error: Some(storage_error),
+                            source,
+                        });
+                    }
+                    Err(error) => {
+                        return Err(
+                            self.release_with_error(MempoolCheckpointError::Execution(error))
+                        );
+                    }
+                },
+            };
             writes_started += 1;
             made_progress = true;
             maybe_last_completion = Some(self.complete_or_retain(handle, receipt)?);
@@ -235,12 +281,42 @@ impl MempoolCheckpointCoordinator {
             .map_err(|_| MempoolCheckpointError::CoordinatorPoisoned)?;
         let previous = std::mem::replace(&mut *state, CheckpointCoordinatorState::Persisting);
         match previous {
-            CheckpointCoordinatorState::Idle => Ok(FlightClaim::Claimed(None)),
+            CheckpointCoordinatorState::Idle => Ok(FlightClaim::Claimed(RetainedTermination::None)),
             CheckpointCoordinatorState::Persisting => Ok(FlightClaim::Coalesced),
-            CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt) => {
-                Ok(FlightClaim::Claimed(Some(receipt)))
+            CheckpointCoordinatorState::UnachievedAwaitingAbort(abort) => {
+                Ok(FlightClaim::Claimed(RetainedTermination::Abort(abort)))
+            }
+            CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt) => Ok(
+                FlightClaim::Claimed(RetainedTermination::Completion(receipt)),
+            ),
+        }
+    }
+
+    fn abort_or_retain(
+        &self,
+        handle: &ManagedNetworkHandle,
+        abort: super::SnapshotWriteAbort,
+    ) -> Result<(), MempoolCheckpointError> {
+        match handle.abort_snapshot_write(abort) {
+            Ok(_) => Ok(()),
+            Err(error) => {
+                let (source, abort) = error.into_parts();
+                self.retain_abort(abort)?;
+                Err(MempoolCheckpointError::AbortDispatch {
+                    maybe_storage_error: None,
+                    source,
+                })
             }
         }
+    }
+
+    fn retain_abort(&self, abort: super::SnapshotWriteAbort) -> Result<(), MempoolCheckpointError> {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| MempoolCheckpointError::CoordinatorPoisoned)?;
+        *state = CheckpointCoordinatorState::UnachievedAwaitingAbort(abort);
+        Ok(())
     }
 
     fn complete_or_retain(

@@ -11,9 +11,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use open_bitcoin_core::chainstate::ChainstateSnapshot;
+use open_bitcoin_core::chainstate::{ChainPosition, ChainstateSnapshot};
 use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
-use open_bitcoin_core::primitives::OutPoint;
 use open_bitcoin_mempool::{
     AdmissionContext, Mempool, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin,
     MempoolOutcome, MempoolRemovalCause, PolicyConfig, PolicyTime, RelayIntent,
@@ -29,6 +28,7 @@ use crate::network::lifecycle_projection::AuthorityEpoch;
 #[derive(Debug)]
 pub struct PreparedMempoolRecovery {
     pub(in crate::network) authority_epoch: AuthorityEpoch,
+    pub(in crate::network) maybe_chainstate_tip: Option<ChainPosition>,
     pub(crate) staged_mempool: Mempool,
     pub(crate) recovery_records: Vec<MempoolRecoveryRecord>,
     pub(crate) unbroadcast_members: BTreeSet<MempoolMemberIdentity>,
@@ -139,11 +139,21 @@ pub(super) fn prepare_mempool_recovery(
         .filter(|removal| removal.cause == MempoolRemovalCause::Expiry)
         .map(|removal| removal.member.txid)
         .collect::<BTreeSet<_>>();
-    let final_txids = working.entries().keys().copied().collect::<BTreeSet<_>>();
-    let final_unbroadcast = persisted_unbroadcast
+    let final_members = working
+        .entries()
         .iter()
+        .map(|(txid, entry)| MempoolMemberIdentity {
+            txid: *txid,
+            wtxid: entry.wtxid,
+        })
+        .collect::<BTreeSet<_>>();
+    let final_txids = final_members
+        .iter()
+        .map(|identity| identity.txid)
+        .collect::<BTreeSet<_>>();
+    let final_unbroadcast = persisted_unbroadcast
+        .intersection(&final_members)
         .copied()
-        .filter(|identity| final_txids.contains(&identity.txid))
         .collect::<BTreeSet<_>>();
 
     for topology_record in &ordered {
@@ -203,6 +213,7 @@ pub(super) fn prepare_mempool_recovery(
 
     Ok(PreparedMempoolRecovery {
         authority_epoch,
+        maybe_chainstate_tip: chainstate.tip().cloned(),
         staged_mempool,
         recovery_records,
         unbroadcast_members: final_unbroadcast,
@@ -214,15 +225,10 @@ pub(super) fn prepare_mempool_recovery(
 }
 
 fn transaction_is_confirmed(record: &TopologyRecord, chainstate: &ChainstateSnapshot) -> bool {
-    (0..record.record.transaction.outputs.len()).any(|index| {
-        let Ok(vout) = u32::try_from(index) else {
-            return false;
-        };
-        chainstate.utxos.contains_key(&OutPoint {
-            txid: record.identity.txid,
-            vout,
-        })
-    })
+    chainstate
+        .maybe_confirmed_txids
+        .as_ref()
+        .is_some_and(|confirmed_txids| confirmed_txids.contains(&record.identity.txid))
 }
 
 fn recovery_metadata(

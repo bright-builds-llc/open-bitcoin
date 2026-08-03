@@ -181,6 +181,7 @@ pub(super) fn checkpoint_failure_class(error: &MempoolCheckpointError) -> &'stat
         MempoolCheckpointError::Authority(_) => "authority",
         MempoolCheckpointError::Execution(_) => "execution",
         MempoolCheckpointError::CompletionDispatch(_) => "completion-dispatch",
+        MempoolCheckpointError::AbortDispatch { .. } => "abort-dispatch",
         MempoolCheckpointError::ShutdownNotCurrent { .. } => "not-current",
     }
 }

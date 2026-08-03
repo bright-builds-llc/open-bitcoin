@@ -114,6 +114,35 @@ fn mempool_snapshot_codec_rejects_record_count_limit() {
 }
 
 #[test]
+fn mempool_snapshot_record_limit_stops_before_deserializing_the_extra_record() {
+    // Arrange
+    let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
+    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+    let mut malformed_extra = value["payload"]["records"][0].clone();
+    malformed_extra["transaction"] = serde_json::json!({ "would_allocate": true });
+    value["payload"]["records"]
+        .as_array_mut()
+        .expect("records")
+        .push(malformed_extra);
+    let bytes = serde_json::to_vec(&value).expect("serialize");
+    let limits = MempoolSnapshotDecodeLimits {
+        max_records: 1,
+        ..MempoolSnapshotDecodeLimits::default()
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(&bytes, limits)
+        .expect_err("record count must fail before decoding the extra record");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption { ref detail, .. }
+            if detail == "mempool snapshot exceeds a resource bound"
+    ));
+}
+
+#[test]
 fn mempool_snapshot_codec_rejects_transaction_byte_limit() {
     // Arrange
     let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
@@ -129,6 +158,47 @@ fn mempool_snapshot_codec_rejects_transaction_byte_limit() {
 
     // Assert
     assert!(matches!(error, StorageError::Corruption { .. }));
+}
+
+#[test]
+fn legacy_transaction_sequence_limit_stops_before_parsing_the_extra_byte() {
+    // Arrange
+    let mut value = legacy_mempool_snapshot_value();
+    value["payload"]["records"][0]["transaction"] = serde_json::json!([1, "not-a-byte"]);
+    let bytes = serde_json::to_vec(&value).expect("serialize");
+    let limits = MempoolSnapshotDecodeLimits {
+        max_transaction_bytes: 1,
+        max_total_transaction_bytes: 1,
+        ..MempoolSnapshotDecodeLimits::default()
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(&bytes, limits)
+        .expect_err("transaction sequence limit must stop before the extra element");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption { ref detail, .. }
+            if detail == "mempool snapshot exceeds a resource bound"
+    ));
+}
+
+#[test]
+fn current_snapshot_encodes_transaction_bytes_as_compact_hex() {
+    // Arrange
+    let snapshot = mempool_snapshot();
+
+    // Act
+    let encoded = encode_mempool_snapshot(&snapshot).expect("encode mempool");
+    let value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+
+    // Assert
+    let transaction = value["payload"]["records"][0]["transaction"]
+        .as_str()
+        .expect("current transaction hex");
+    assert_eq!(transaction.len() % 2, 0);
+    assert!(transaction.bytes().all(|byte| byte.is_ascii_hexdigit()));
 }
 
 #[test]

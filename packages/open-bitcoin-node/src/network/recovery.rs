@@ -101,6 +101,7 @@ impl From<&ManagedMempoolRecoverySummary> for RelayRecoveryCounters {
             dropped_duplicate_count: summary.dropped_duplicate_count,
             dropped_missing_parent_count: summary.dropped_missing_parent_count,
             dropped_policy_incompatible_count: summary.dropped_policy_incompatible_count,
+            dropped_expired_count: summary.dropped_expired_count,
             dropped_evicted_count: summary.dropped_evicted_count,
         }
     }

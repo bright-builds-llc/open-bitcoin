@@ -254,6 +254,52 @@ fn staged_recovery_classifies_confirmed_duplicate_and_policy_records() {
 }
 
 #[test]
+fn staged_recovery_classifies_a_fully_spent_confirmed_transaction() {
+    // Arrange
+    let (mut network, coinbase_txids, latest_block) =
+        relay_enabled_network_with_chain(1_109, 5, PolicyConfig::default());
+    let confirmed = spend_transaction(coinbase_txids[0], 499_999_000);
+    let mut confirming_block = build_block(block_hash(&latest_block.header), 5, 500_000_000);
+    confirming_block.transactions.push(confirmed.clone());
+    let (merkle_root, maybe_mutated) =
+        block_merkle_root(&confirming_block.transactions).expect("confirming merkle root");
+    assert!(!maybe_mutated);
+    confirming_block.header.merkle_root = merkle_root;
+    mine_header(&mut confirming_block);
+    network
+        .connect_local_block(&confirming_block, verify_flags(), consensus_params())
+        .expect("connect confirming block");
+
+    let spending = spend_transaction(txid(&confirmed), 499_998_000);
+    let mut spending_block = build_block(block_hash(&confirming_block.header), 6, 500_000_000);
+    spending_block.transactions.push(spending);
+    let (merkle_root, maybe_mutated) =
+        block_merkle_root(&spending_block.transactions).expect("spending merkle root");
+    assert!(!maybe_mutated);
+    spending_block.header.merkle_root = merkle_root;
+    mine_header(&mut spending_block);
+    network
+        .connect_local_block(&spending_block, verify_flags(), consensus_params())
+        .expect("spend every confirmed output");
+    let snapshot = snapshot_from_transactions(vec![confirmed]);
+
+    // Act
+    let prepared = network
+        .prepare_mempool_recovery_at(
+            &snapshot,
+            verify_flags(),
+            consensus_params(),
+            PolicyTime::from_unix_seconds(7_100),
+        )
+        .expect("prepare classified recovery");
+    let summary = ManagedMempoolRecoverySummary::from_records(prepared.recovery_records().to_vec());
+
+    // Assert
+    assert_eq!(summary.dropped_confirmed_count, 1);
+    assert_eq!(summary.dropped_missing_parent_count, 0);
+}
+
+#[test]
 fn recovery_topology_orders_parent_before_child_independent_of_stored_order() {
     // Arrange
     let parent = spend_transaction(Txid::from_byte_array([70_u8; 32]), 9_000);

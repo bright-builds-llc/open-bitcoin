@@ -15,38 +15,9 @@ use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_node::core::mempool::{PolicyConfig, PolicyTime};
 use open_bitcoin_node::status::SyncRecoveryCategory;
 use open_bitcoin_node::storage::fjall_store::MempoolSnapshotDecodeLimits;
-use open_bitcoin_node::{
-    FjallNodeStore, ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork,
-    MemoryChainstateStore,
-};
+use open_bitcoin_node::{FjallNodeStore, ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
 use crate::config::RuntimeConfig;
-
-#[allow(
-    clippy::expect_used,
-    reason = "the fresh startup authority is unshared and cannot be poisoned or superseded"
-)]
-pub(super) fn recover_mempool_snapshot_from_store(
-    config: &RuntimeConfig,
-    maybe_store: Option<&FjallNodeStore>,
-    network: ManagedPeerNetwork<MemoryChainstateStore>,
-    policy: &PolicyConfig,
-    verify_flags: ScriptVerifyFlags,
-    consensus_params: ConsensusParams,
-) -> ManagedNetworkHandle {
-    let network = ManagedNetworkHandle::from_network_fixture(network);
-    recover_mempool_snapshot_from_store_handle_at(
-        config,
-        maybe_store,
-        &network,
-        policy,
-        verify_flags,
-        consensus_params,
-        startup_policy_time(),
-    )
-    .expect("fresh startup authority remains available before publication");
-    network
-}
 
 pub(super) fn recover_mempool_snapshot_from_store_handle(
     config: &RuntimeConfig,
@@ -213,7 +184,7 @@ mod tests {
         // Assert
         assert_eq!(
             limits,
-            MempoolSnapshotDecodeLimits::new(1_088_576, 10_000, 5_000, 4_000, 10_000)
+            MempoolSnapshotDecodeLimits::new(26_668_576, 10_000, 5_000, 4_000, 10_000)
         );
     }
 

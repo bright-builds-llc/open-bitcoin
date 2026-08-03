@@ -14,8 +14,10 @@ use crate::network::{
     SnapshotWriteFailure, SnapshotWriteReceipt,
 };
 use crate::status::SyncRecoveryCategory;
+use crate::storage::mempool_snapshot::MempoolSnapshotError;
 use crate::storage::{
-    MempoolSnapshot, PersistMode, StorageError, StorageNamespace, snapshot_codec,
+    MempoolSnapshot, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
+    snapshot_codec,
 };
 
 /// Explicit resource limits for one persisted mempool snapshot load.
@@ -30,7 +32,6 @@ pub struct MempoolSnapshotDecodeLimits {
 
 impl MempoolSnapshotDecodeLimits {
     const MAX_UNBROADCAST_MEMBERS: usize = 5_000;
-    const ENVELOPE_OVERHEAD_BYTES: usize = 1_048_576;
 
     /// Build a caller-owned bounded decode contract without implicit defaults.
     pub const fn new(
@@ -51,18 +52,25 @@ impl MempoolSnapshotDecodeLimits {
 
     /// Derive bounded startup decode limits from the policy used by the live mempool.
     pub fn from_policy(policy: &PolicyConfig) -> Result<Self, SyncRecoveryCategory> {
-        let record_capacity = policy.mempool_capacity.as_usize();
-        let max_encoded_bytes = record_capacity
-            .checked_mul(4)
-            .and_then(|bytes| bytes.checked_add(Self::ENVELOPE_OVERHEAD_BYTES))
-            .ok_or(SyncRecoveryCategory::ResourceExhaustion)?;
+        let total_transaction_capacity = policy.mempool_capacity.as_usize();
+        let max_records = total_transaction_capacity
+            .min(crate::storage::mempool_snapshot::MAX_MEMPOOL_SNAPSHOT_RECORDS);
+        let max_unbroadcast_members = max_records.min(Self::MAX_UNBROADCAST_MEMBERS);
+        let max_encoded_bytes = snapshot_codec::encoded_size_upper_bound(
+            total_transaction_capacity,
+            max_records,
+            max_unbroadcast_members,
+        )
+        .ok_or(SyncRecoveryCategory::ResourceExhaustion)?;
 
         Ok(Self::new(
             max_encoded_bytes,
-            record_capacity,
-            record_capacity.min(Self::MAX_UNBROADCAST_MEMBERS),
-            policy.max_standard_tx_weight,
-            record_capacity,
+            max_records,
+            max_unbroadcast_members,
+            policy
+                .max_standard_tx_weight
+                .min(total_transaction_capacity),
+            total_transaction_capacity,
         ))
     }
 
@@ -111,6 +119,28 @@ impl SnapshotWriteExecutionError {
                 SnapshotWriteFailure::AbortDispatch
             }
             Self::AbortRejected { failure, .. } => *failure,
+        }
+    }
+
+    pub(crate) fn into_abort_dispatch_parts(
+        self,
+    ) -> Result<
+        (
+            StorageError,
+            crate::network::ManagedNetworkAuthorityError,
+            SnapshotWriteAbort,
+        ),
+        Self,
+    > {
+        match self {
+            Self::AbortDispatch {
+                storage_error,
+                source,
+            } => {
+                let (source, abort) = source.into_parts();
+                Ok((storage_error, source, abort))
+            }
+            error => Err(error),
         }
     }
 }
@@ -208,16 +238,59 @@ impl FjallNodeStore {
         &self,
         limits: MempoolSnapshotDecodeLimits,
     ) -> Result<Option<MempoolSnapshot>, StorageError> {
-        self.get_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY)?
-            .map(|bytes| {
-                snapshot_codec::decode_mempool_snapshot_with_limits(&bytes, limits.codec_limits())
-            })
-            .transpose()
+        load_mempool_snapshot_with(
+            limits,
+            || {
+                self.keyspace(StorageNamespace::Mempool)
+                    .size_of(SNAPSHOT_KEY)
+                    .map(|maybe_size| maybe_size.map(|size| size as usize))
+                    .map_err(|error| super::backend_failure(StorageNamespace::Mempool, error))
+            },
+            || {
+                self.keyspace(StorageNamespace::Mempool)
+                    .get(SNAPSHOT_KEY)
+                    .map_err(|error| super::backend_failure(StorageNamespace::Mempool, error))
+            },
+        )
     }
 
     /// Remove the persisted accepted-mempool snapshot.
     pub fn clear_mempool_snapshot(&self, mode: PersistMode) -> Result<(), StorageError> {
         self.remove_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY, mode)
+    }
+}
+
+fn load_mempool_snapshot_with<Size, Load, Bytes>(
+    limits: MempoolSnapshotDecodeLimits,
+    size: Size,
+    load: Load,
+) -> Result<Option<MempoolSnapshot>, StorageError>
+where
+    Size: FnOnce() -> Result<Option<usize>, StorageError>,
+    Load: FnOnce() -> Result<Option<Bytes>, StorageError>,
+    Bytes: AsRef<[u8]>,
+{
+    let Some(encoded_size) = size()? else {
+        return Ok(None);
+    };
+    if encoded_size > limits.max_encoded_bytes {
+        return Err(resource_bound_failure());
+    }
+    load()?
+        .map(|bytes| {
+            snapshot_codec::decode_mempool_snapshot_with_limits(
+                bytes.as_ref(),
+                limits.codec_limits(),
+            )
+        })
+        .transpose()
+}
+
+fn resource_bound_failure() -> StorageError {
+    StorageError::Corruption {
+        namespace: StorageNamespace::Mempool,
+        detail: MempoolSnapshotError::ResourceBoundExceeded.to_string(),
+        action: StorageRecoveryAction::Repair,
     }
 }
 
@@ -294,5 +367,55 @@ fn abort_failed_write(
             storage_error,
             source,
         },
+    }
+}
+
+#[cfg(test)]
+mod bounded_load_tests {
+    use std::cell::Cell;
+
+    use super::*;
+
+    #[test]
+    fn oversized_value_is_rejected_before_value_loading() {
+        // Arrange
+        let limits = MempoolSnapshotDecodeLimits::new(8, 1, 1, 8, 8);
+        let load_called = Cell::new(false);
+
+        // Act
+        let error = load_mempool_snapshot_with(
+            limits,
+            || Ok(Some(9)),
+            || -> Result<Option<&'static [u8]>, StorageError> {
+                load_called.set(true);
+                Ok(Some(b"ignored"))
+            },
+        )
+        .expect_err("oversized value must fail before loading");
+
+        // Assert
+        assert!(!load_called.get());
+        assert!(matches!(
+            error,
+            StorageError::Corruption {
+                namespace: StorageNamespace::Mempool,
+                ..
+            }
+        ));
+    }
+
+    #[test]
+    fn policy_limits_clamp_record_count_to_snapshot_schema_limit() {
+        // Arrange
+        let policy = PolicyConfig::default();
+
+        // Act
+        let limits = MempoolSnapshotDecodeLimits::from_policy(&policy).expect("policy limits");
+
+        // Assert
+        assert_eq!(
+            limits.max_records,
+            crate::storage::mempool_snapshot::MAX_MEMPOOL_SNAPSHOT_RECORDS
+        );
     }
 }

@@ -31,6 +31,47 @@ fn fjall_mempool_snapshot_round_trips_after_reopen() {
 }
 
 #[test]
+fn fjall_mempool_snapshot_round_trips_at_policy_transaction_capacity() {
+    // Arrange
+    let path = temp_store_path("mempool-policy-capacity");
+    remove_dir_if_exists(&path);
+    let snapshot = mempool_snapshot();
+    let transaction_bytes = snapshot
+        .records
+        .iter()
+        .map(|record| {
+            open_bitcoin_core::codec::encode_transaction(
+                &record.transaction,
+                open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+            )
+            .expect("encode transaction")
+            .len()
+        })
+        .sum();
+    let policy = PolicyConfig {
+        mempool_capacity: open_bitcoin_mempool::MempoolCapacity::new(transaction_bytes),
+        ..PolicyConfig::default()
+    };
+    let limits = MempoolSnapshotDecodeLimits::from_policy(&policy).expect("policy limits");
+
+    // Act
+    {
+        let store = FjallNodeStore::open(&path).expect("open store");
+        store
+            .save_mempool_snapshot(&snapshot, PersistMode::Sync)
+            .expect("save near-capacity snapshot");
+    }
+    let reopened = FjallNodeStore::open(&path).expect("reopen store");
+    let recovered = reopened
+        .load_mempool_snapshot_with_limits(limits)
+        .expect("load near-capacity snapshot");
+
+    // Assert
+    assert_eq!(recovered, Some(snapshot));
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn fjall_mempool_snapshot_remove_clears_persisted_state() {
     // Arrange
     let path = temp_store_path("mempool-clear");

@@ -61,6 +61,7 @@ fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs(
                 }],
             },
         )]),
+        maybe_confirmed_txids: None,
     }
     .disconnect_tip(&spend_block)
     .expect_err("missing created spendable outputs should fail");
@@ -188,6 +189,7 @@ fn disconnect_tip_rejects_missing_tip_and_missing_undo() {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::new(),
+        maybe_confirmed_txids: None,
     };
     let missing_undo = chainstate
         .disconnect_tip(&genesis_block)
@@ -224,6 +226,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::new(),
+        maybe_confirmed_txids: None,
     }
     .disconnect_tip(&genesis_block)
     .expect_err("wrong block should fail");
@@ -236,6 +239,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::from([(tip.block_hash, BlockUndo::default())]),
+        maybe_confirmed_txids: None,
     }
     .disconnect_tip(&block)
     .expect_err("corrupt top-level undo shape should fail");
@@ -280,6 +284,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
                 transactions: vec![TxUndo::default()],
             },
         )]),
+        maybe_confirmed_txids: None,
     }
     .disconnect_tip(&block)
     .expect_err("corrupt inner undo shape should fail");
@@ -363,6 +368,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
                 }],
             },
         )]),
+        maybe_confirmed_txids: None,
     }
     .disconnect_tip(&block)
     .expect_err("restoring into an occupied outpoint should fail");
@@ -397,6 +403,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
             open_bitcoin_consensus::block_hash(&mismatch_block.header),
             BlockUndo::default(),
         )]),
+        maybe_confirmed_txids: None,
     }
     .disconnect_tip(&mismatch_block)
     .expect_err("mismatched created output metadata should fail");

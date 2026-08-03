@@ -14,9 +14,9 @@ use open_bitcoin_mempool::{
     MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin, PolicyTime,
     RelayIntent,
 };
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, Serializer};
 
-use super::{corruption, decode_versioned, encode_versioned};
+use super::{corruption, encode_versioned};
 use crate::storage::mempool_snapshot::{
     CapturedMempoolGeneration, MAX_MEMPOOL_SNAPSHOT_RECORDS,
     MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS, MempoolSnapshotError, MempoolSnapshotFormatVersion,
@@ -24,9 +24,15 @@ use crate::storage::mempool_snapshot::{
 use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{StorageError, StorageNamespace};
 
-const MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES: usize = 64 * 1024 * 1024;
+mod decode;
+
+const MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES: usize = 256 * 1024 * 1024;
 const MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES: usize = 4 * 1024 * 1024;
 const MAX_MEMPOOL_SNAPSHOT_TOTAL_TRANSACTION_BYTES: usize = 64 * 1024 * 1024;
+const ENCODED_ENVELOPE_OVERHEAD_BYTES: usize = 1_048_576;
+const ENCODED_RECORD_OVERHEAD_BYTES: usize = 512;
+const ENCODED_UNBROADCAST_MEMBER_OVERHEAD_BYTES: usize = 4_096;
+const HEX_CHARS_PER_TRANSACTION_BYTE: usize = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct MempoolSnapshotDecodeLimits {
@@ -49,9 +55,9 @@ impl Default for MempoolSnapshotDecodeLimits {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
-struct MempoolSnapshotV2Dto {
+pub(super) struct MempoolSnapshotV2Dto {
     format_version: u32,
     captured_generation: u64,
     captured_at_unix_seconds: i64,
@@ -59,63 +65,87 @@ struct MempoolSnapshotV2Dto {
     unbroadcast_members: Vec<MempoolMemberIdentityDto>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(deny_unknown_fields)]
-struct MempoolSnapshotV2RecordDto {
+pub(super) struct MempoolSnapshotV2RecordDto {
+    #[serde(serialize_with = "serialize_hex_transaction")]
     transaction: Vec<u8>,
     accepted_at_unix_seconds: i64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct MempoolMemberIdentityDto {
+pub(super) struct MempoolMemberIdentityDto {
     txid: [u8; 32],
     wtxid: [u8; 32],
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MempoolSnapshotV1Dto {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct MempoolSnapshotV1Dto {
     records: Vec<MempoolSnapshotV1RecordDto>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum MempoolOriginV1Dto {
+pub(super) enum MempoolOriginV1Dto {
     Local,
     Peer,
     Reorg,
     RecoveryUnknown,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(deny_unknown_fields)]
-struct MempoolSnapshotV1RecordDto {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) struct MempoolSnapshotV1RecordDto {
     txid: [u8; 32],
     wtxid: [u8; 32],
     transaction: Vec<u8>,
     fee_sats: i64,
     virtual_size: usize,
-    #[serde(default, rename = "accepted_at_unix_seconds")]
     maybe_accepted_at_unix_seconds: Option<i64>,
-    #[serde(default, rename = "origin")]
     maybe_origin: Option<MempoolOriginV1Dto>,
-    #[serde(default, rename = "relay_requested")]
     maybe_relay_requested: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-#[serde(untagged)]
-enum MempoolSnapshotPayloadDto {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(super) enum MempoolSnapshotPayloadDto {
     CurrentV2(MempoolSnapshotV2Dto),
     LegacyV1(MempoolSnapshotV1Dto),
 }
 
 pub(crate) fn encode_mempool_snapshot(snapshot: &MempoolSnapshot) -> Result<Vec<u8>, StorageError> {
-    encode_versioned(
-        StorageNamespace::Mempool,
-        &MempoolSnapshotV2Dto::try_from(snapshot)?,
+    let dto = MempoolSnapshotV2Dto::try_from(snapshot)?;
+    let total_transaction_bytes = dto.records.iter().try_fold(0_usize, |total, record| {
+        total
+            .checked_add(record.transaction.len())
+            .ok_or_else(|| snapshot_failure(MempoolSnapshotError::ResourceBoundExceeded))
+    })?;
+    let max_encoded_bytes = encoded_size_upper_bound(
+        total_transaction_bytes,
+        dto.records.len(),
+        dto.unbroadcast_members.len(),
     )
+    .ok_or_else(|| snapshot_failure(MempoolSnapshotError::ResourceBoundExceeded))?;
+    let bytes = encode_versioned(StorageNamespace::Mempool, &dto)?;
+    if bytes.len() > max_encoded_bytes {
+        return Err(snapshot_failure(
+            MempoolSnapshotError::ResourceBoundExceeded,
+        ));
+    }
+    Ok(bytes)
+}
+
+pub(crate) fn encoded_size_upper_bound(
+    max_total_transaction_bytes: usize,
+    max_records: usize,
+    max_unbroadcast_members: usize,
+) -> Option<usize> {
+    max_total_transaction_bytes
+        .checked_mul(HEX_CHARS_PER_TRANSACTION_BYTE)?
+        .checked_add(max_records.checked_mul(ENCODED_RECORD_OVERHEAD_BYTES)?)?
+        .checked_add(
+            max_unbroadcast_members.checked_mul(ENCODED_UNBROADCAST_MEMBER_OVERHEAD_BYTES)?,
+        )?
+        .checked_add(ENCODED_ENVELOPE_OVERHEAD_BYTES)
 }
 
 #[cfg(test)]
@@ -133,9 +163,7 @@ pub(crate) fn decode_mempool_snapshot_with_limits(
         ));
     }
 
-    let payload: MempoolSnapshotPayloadDto =
-        decode_versioned(StorageNamespace::Mempool, bytes).map_err(map_decode_failure)?;
-    preflight_payload(&payload, limits)?;
+    let payload = decode::decode_bounded_versioned(bytes, limits)?;
 
     match payload {
         MempoolSnapshotPayloadDto::CurrentV2(dto) => dto.try_into(),
@@ -143,62 +171,17 @@ pub(crate) fn decode_mempool_snapshot_with_limits(
     }
 }
 
-fn preflight_payload(
-    payload: &MempoolSnapshotPayloadDto,
-    limits: MempoolSnapshotDecodeLimits,
-) -> Result<(), StorageError> {
-    match payload {
-        MempoolSnapshotPayloadDto::CurrentV2(dto) => {
-            preflight_counts(dto.records.len(), dto.unbroadcast_members.len(), limits)?;
-            preflight_transactions(
-                dto.records.iter().map(|record| record.transaction.len()),
-                limits,
-            )
-        }
-        MempoolSnapshotPayloadDto::LegacyV1(dto) => {
-            preflight_counts(dto.records.len(), 0, limits)?;
-            preflight_transactions(
-                dto.records.iter().map(|record| record.transaction.len()),
-                limits,
-            )
-        }
+fn serialize_hex_transaction<S>(bytes: &[u8], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut encoded = String::with_capacity(bytes.len().saturating_mul(2));
+    for byte in bytes {
+        encoded.push(char::from(HEX[usize::from(byte >> 4)]));
+        encoded.push(char::from(HEX[usize::from(byte & 0x0f)]));
     }
-}
-
-fn preflight_counts(
-    record_count: usize,
-    unbroadcast_count: usize,
-    limits: MempoolSnapshotDecodeLimits,
-) -> Result<(), StorageError> {
-    if record_count > limits.max_records || unbroadcast_count > limits.max_unbroadcast_members {
-        return Err(snapshot_failure(
-            MempoolSnapshotError::ResourceBoundExceeded,
-        ));
-    }
-    Ok(())
-}
-
-fn preflight_transactions(
-    transaction_lengths: impl Iterator<Item = usize>,
-    limits: MempoolSnapshotDecodeLimits,
-) -> Result<(), StorageError> {
-    let mut total_transaction_bytes = 0_usize;
-    for transaction_bytes in transaction_lengths {
-        if transaction_bytes > limits.max_transaction_bytes {
-            return Err(snapshot_failure(
-                MempoolSnapshotError::ResourceBoundExceeded,
-            ));
-        }
-        total_transaction_bytes = total_transaction_bytes
-            .checked_add(transaction_bytes)
-            .ok_or_else(|| snapshot_failure(MempoolSnapshotError::ResourceBoundExceeded))?;
-    }
-    if total_transaction_bytes > limits.max_total_transaction_bytes {
-        return Err(snapshot_failure(
-            MempoolSnapshotError::ResourceBoundExceeded,
-        ));
-    }
-    Ok(())
+    serializer.serialize_str(&encoded)
 }
 
 impl TryFrom<&MempoolSnapshot> for MempoolSnapshotV2Dto {
@@ -390,13 +373,6 @@ fn decode_v1_acceptance_time(
         (None, None, None) => Ok(MempoolAcceptanceTime::LegacyUnknown),
         // Phase 130 compatibility anchor: partial mempool entry metadata is corrupt.
         _ => Err(snapshot_failure(MempoolSnapshotError::StructuralCorruption)),
-    }
-}
-
-fn map_decode_failure(error: StorageError) -> StorageError {
-    match error {
-        StorageError::InvalidSchemaVersion { .. } | StorageError::SchemaMismatch { .. } => error,
-        _ => snapshot_failure(MempoolSnapshotError::DecodeFailure),
     }
 }
 

@@ -37,9 +37,7 @@ use open_bitcoin_node::{
 
 #[cfg(test)]
 use super::EncodedWireResponse;
-use super::mempool_recovery::{
-    recover_mempool_snapshot_from_store, recover_mempool_snapshot_from_store_handle,
-};
+use super::mempool_recovery::recover_mempool_snapshot_from_store_handle;
 use super::wallet_state::build_wallet_state_with_store;
 use super::{ManagedRpcContext, address_boundary::local_advertisement_decisions};
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
@@ -76,6 +74,10 @@ impl ManagedRpcContext {
         Self::from_runtime_config_with_store(config, None)
     }
 
+    #[allow(
+        clippy::expect_used,
+        reason = "the fresh startup authority is unshared before context publication"
+    )]
     pub fn from_runtime_config_with_store(
         config: &RuntimeConfig,
         maybe_store: Option<FjallNodeStore>,
@@ -97,8 +99,28 @@ impl ManagedRpcContext {
             user_agent: "/open-bitcoin:0.1.0/".to_string(),
         };
         let policy = PolicyConfig::default();
+        let maybe_resource_governance_log_dir =
+            config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
+        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
+        let effective_store = match &wallet_state {
+            super::wallet_state::WalletState::Local(_) => maybe_store,
+            super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
+                Some(store.clone())
+            }
+        };
+        let durable_chainstate = effective_store
+            .as_ref()
+            .map_or_else(|| Ok(None), FjallNodeStore::load_chainstate_snapshot);
+        let chainstate_store = durable_chainstate
+            .as_ref()
+            .ok()
+            .and_then(Clone::clone)
+            .map_or_else(
+                MemoryChainstateStore::default,
+                MemoryChainstateStore::from_snapshot,
+            );
         let mut managed_network = ManagedPeerNetwork::new_with_block_relay_activation(
-            MemoryChainstateStore::default(),
+            chainstate_store,
             local_config,
             policy.clone(),
             config.relay,
@@ -109,23 +131,21 @@ impl ManagedRpcContext {
             config.inbound.max_peers,
             config.inbound.reserved_slots,
         ));
-        let maybe_resource_governance_log_dir =
-            config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
-        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
-        let effective_store = match &wallet_state {
-            super::wallet_state::WalletState::Local(_) => maybe_store,
-            super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
-                Some(store.clone())
-            }
-        };
-        let network = recover_mempool_snapshot_from_store(
-            config,
-            effective_store.as_ref(),
-            managed_network,
-            &policy,
-            default_verify_flags(),
-            consensus_params,
-        );
+        let network = ManagedNetworkHandle::from_network_fixture(managed_network);
+        match durable_chainstate {
+            Ok(_) => recover_mempool_snapshot_from_store_handle(
+                config,
+                effective_store.as_ref(),
+                &network,
+                &policy,
+                default_verify_flags(),
+                consensus_params,
+            )
+            .expect("fresh startup authority remains available before publication"),
+            Err(error) => network
+                .record_mempool_recovery_storage_error(&error)
+                .expect("fresh startup authority remains available before publication"),
+        }
         Self {
             chain: config.chain,
             consensus_params,

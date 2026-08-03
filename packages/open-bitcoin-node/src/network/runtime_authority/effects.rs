@@ -29,11 +29,16 @@ use crate::network::{
 #[derive(Debug)]
 pub struct CheckpointAbortDispatchError {
     source: ManagedNetworkAuthorityError,
+    abort: Box<SnapshotWriteAbort>,
 }
 
 impl CheckpointAbortDispatchError {
     pub const fn failure(&self) -> SnapshotWriteFailure {
         SnapshotWriteFailure::AbortDispatch
+    }
+
+    pub(crate) fn into_parts(self) -> (ManagedNetworkAuthorityError, SnapshotWriteAbort) {
+        (self.source, *self.abort)
     }
 }
 
@@ -187,18 +192,14 @@ impl ManagedNetworkHandle {
         if take_injected_checkpoint_abort_dispatch_failure() {
             return Err(CheckpointAbortDispatchError {
                 source: ManagedNetworkAuthorityError::Poisoned,
+                abort: Box::new(abort),
             });
         }
-        match self
-            .apply_lifecycle_command(LifecycleCommand::AbortSnapshotEffect(abort))
-            .map_err(|error| CheckpointAbortDispatchError {
+        self.dispatch_checkpoint_abort(abort)
+            .map_err(|(error, abort)| CheckpointAbortDispatchError {
                 source: ManagedNetworkAuthorityError::from(error),
-            })? {
-            LifecycleCommandResult::SnapshotEffectAborted(abort) => Ok(abort),
-            _ => Err(CheckpointAbortDispatchError {
-                source: unexpected_result("typed snapshot effect abort"),
-            }),
-        }
+                abort,
+            })
     }
 
     #[cfg(test)]

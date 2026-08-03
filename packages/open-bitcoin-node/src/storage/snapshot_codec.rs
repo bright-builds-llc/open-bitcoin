@@ -3,7 +3,7 @@
 
 //! Node-owned storage DTOs for durable snapshot persistence.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use open_bitcoin_core::{
     chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin, TxUndo},
@@ -27,6 +27,7 @@ mod wallet;
 pub(crate) use mempool::decode_mempool_snapshot;
 pub(crate) use mempool::{
     MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limits, encode_mempool_snapshot,
+    encoded_size_upper_bound,
 };
 pub(crate) use wallet::{
     decode_selected_wallet, decode_wallet_registry_snapshot, decode_wallet_rescan_job,
@@ -106,6 +107,8 @@ struct ChainstateSnapshotDto {
     active_chain: Vec<ChainPositionDto>,
     utxos: Vec<UtxoRecordDto>,
     undo_by_block: Vec<BlockUndoRecordDto>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    maybe_confirmed_txids: Option<Vec<[u8; 32]>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -405,6 +408,14 @@ impl From<&ChainstateSnapshot> for ChainstateSnapshotDto {
                 .collect(),
             utxos,
             undo_by_block,
+            maybe_confirmed_txids: snapshot.maybe_confirmed_txids.as_ref().map(|txids| {
+                let mut encoded = txids
+                    .iter()
+                    .map(|txid| txid.to_byte_array())
+                    .collect::<Vec<_>>();
+                encoded.sort_unstable();
+                encoded
+            }),
         }
     }
 }
@@ -439,7 +450,27 @@ impl TryFrom<ChainstateSnapshotDto> for ChainstateSnapshot {
             })
             .collect::<Result<HashMap<_, _>, StorageError>>()?;
 
-        Ok(Self::new(active_chain, utxos, undo_by_block))
+        let maybe_confirmed_txids = dto
+            .maybe_confirmed_txids
+            .map(|encoded| {
+                let encoded_len = encoded.len();
+                let txids = encoded
+                    .into_iter()
+                    .map(Txid::from_byte_array)
+                    .collect::<HashSet<_>>();
+                if txids.len() != encoded_len {
+                    return Err(corruption(
+                        StorageNamespace::Chainstate,
+                        "duplicate confirmed transaction identity",
+                    ));
+                }
+                Ok(txids)
+            })
+            .transpose()?;
+
+        let mut snapshot = Self::new(active_chain, utxos, undo_by_block);
+        snapshot.maybe_confirmed_txids = maybe_confirmed_txids;
+        Ok(snapshot)
     }
 }
 

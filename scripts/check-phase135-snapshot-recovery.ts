@@ -9,21 +9,32 @@ const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const FILES = {
   snapshot: "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
   codec: "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
+  codecDecode:
+    "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode.rs",
+  codecTransactionDecode:
+    "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/transaction.rs",
   storage: "packages/open-bitcoin-node/src/storage.rs",
   topology: "packages/open-bitcoin-node/src/network/recovery/topology.rs",
   staging: "packages/open-bitcoin-node/src/network/recovery/staging.rs",
-  recovery: "packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs",
-  authority: "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
-  dispatcher: "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
+  recovery:
+    "packages/open-bitcoin-node/src/network/lifecycle_projection/recovery.rs",
+  authority:
+    "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+  dispatcher:
+    "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
   facade: "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
   effects: "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
-  checkpointEffects: "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
-  evidence: "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+  checkpointEffects:
+    "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
+  evidence:
+    "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
   coordinator: "packages/open-bitcoin-node/src/network/checkpoint.rs",
   store: "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
   fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
   startup: "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
-  daemonCheckpoint: "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
+  startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
+  daemonCheckpoint:
+    "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
   daemon: "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   readme: "README.md",
   packageReadme: "packages/README.md",
@@ -39,45 +50,149 @@ const FILES = {
 export const PHASE135_TARGET_FILES = [...new Set(Object.values(FILES))];
 
 export const PHASE135_DIAGNOSTICS = {
-  schema: "P135 schema: v2 must persist source facts only without changing the global schema",
-  compatibility: "P135 compatibility: v1 must remain decode-only with conservative migration",
-  bounds: "P135 load: byte, count, aggregate, and identity bounds must fail closed",
-  topology: "P135 recovery: topology must be deterministic, bounded, and classify seven outcomes",
-  staging: "P135 recovery: preparation must be side-effect-free with exact final membership",
-  install: "P135 authority: recovery must install atomically through one lifecycle command",
-  capture: "P135 capture: live snapshots must contain only canonical source facts",
-  affine: "P135 effects: checkpoint capability and receipt ownership must remain affine and bounded",
-  execution: "P135 persistence: encode and SyncAll durability must stay outside the authority lock",
-  coordinator: "P135 coordinator: one flight must retain every achieved receipt until completion",
-  evidence: "P135 evidence: durable generations and loss ranges must remain truthful and bounded",
-  startup: "P135 daemon: recovery and private 300-second checkpointing must precede publication",
-  shutdown: "P135 shutdown: producers must quiesce before final checkpoint and clean marking",
-  parity: "P135 parity: evidence stays in progress and MPDUR requirements stay pending",
-  claims: "P135 scope: broad relay, public-network, repair, and readiness claims must remain deferred",
-  deterministic: "P135 checker: verification must remain deterministic and filesystem-only",
-  verifier: "P135 verifier: mutation and live guards must immediately follow Phase 134",
+  schema:
+    "P135 schema: v2 must persist source facts only without changing the global schema",
+  compatibility:
+    "P135 compatibility: v1 must remain decode-only with conservative migration",
+  bounds:
+    "P135 load: byte, count, aggregate, and identity bounds must fail closed",
+  topology:
+    "P135 recovery: topology must be deterministic, bounded, and classify seven outcomes",
+  staging:
+    "P135 recovery: preparation must be side-effect-free with exact final membership",
+  install:
+    "P135 authority: recovery must install atomically through one lifecycle command",
+  capture:
+    "P135 capture: live snapshots must contain only canonical source facts",
+  affine:
+    "P135 effects: checkpoint capability and receipt ownership must remain affine and bounded",
+  execution:
+    "P135 persistence: encode and SyncAll durability must stay outside the authority lock",
+  coordinator:
+    "P135 coordinator: one flight must retain every achieved receipt until completion",
+  evidence:
+    "P135 evidence: durable generations and loss ranges must remain truthful and bounded",
+  startup:
+    "P135 daemon: recovery and private 300-second checkpointing must precede publication",
+  shutdown:
+    "P135 shutdown: producers must quiesce before final checkpoint and clean marking",
+  parity:
+    "P135 parity: evidence stays in progress and MPDUR requirements stay pending",
+  claims:
+    "P135 scope: broad relay, public-network, repair, and readiness claims must remain deferred",
+  deterministic:
+    "P135 checker: verification must remain deterministic and filesystem-only",
+  verifier:
+    "P135 verifier: mutation and live guards must immediately follow Phase 134",
 } as const;
 
+function maskNonCode(source: string): string {
+  const chars = [...source];
+  let state: "code" | "line" | "block" | "string" | "char" = "code";
+  let blockDepth = 0;
+  let escaped = false;
+  for (let index = 0; index < chars.length; index += 1) {
+    const current = chars[index];
+    const next = chars[index + 1] ?? "";
+    if (state === "code") {
+      if (current === "/" && next === "/") {
+        state = "line";
+        chars[index] = chars[index + 1] = " ";
+        index += 1;
+      } else if (current === "/" && next === "*") {
+        state = "block";
+        blockDepth = 1;
+        chars[index] = chars[index + 1] = " ";
+        index += 1;
+      } else if (current === '"') {
+        state = "string";
+        chars[index] = " ";
+      } else if (
+        current === "'" &&
+        (chars[index + 2] === "'" ||
+          (next === "\\" && chars[index + 3] === "'"))
+      ) {
+        state = "char";
+        chars[index] = " ";
+      }
+      continue;
+    }
+    if (current === "\n" && state === "line") {
+      state = "code";
+      continue;
+    }
+    if (state === "block") {
+      if (current === "/" && next === "*") {
+        blockDepth += 1;
+        chars[index + 1] = " ";
+        index += 1;
+      } else if (current === "*" && next === "/") {
+        blockDepth -= 1;
+        chars[index + 1] = " ";
+        index += 1;
+        if (blockDepth === 0) state = "code";
+      }
+      if (current !== "\n") chars[index] = " ";
+      continue;
+    }
+    if (state === "line") {
+      chars[index] = " ";
+      continue;
+    }
+    if (escaped) {
+      escaped = false;
+    } else if (current === "\\") {
+      escaped = true;
+    } else if (
+      (state === "string" && current === '"') ||
+      (state === "char" && current === "'")
+    ) {
+      state = "code";
+    }
+    if (current !== "\n") chars[index] = " ";
+  }
+  return chars.join("");
+}
+
 function body(source: string, marker: string): string {
-  const start = source.indexOf(marker);
+  const masked = maskNonCode(source);
+  const start = masked.indexOf(marker);
   if (start < 0) return "";
-  const brace = source.indexOf("{", start);
+  const brace = masked.indexOf("{", start);
   if (brace < 0) return "";
   let depth = 0;
-  for (let index = brace; index < source.length; index += 1) {
-    if (source[index] === "{") depth += 1;
-    if (source[index] !== "}") continue;
+  for (let index = brace; index < masked.length; index += 1) {
+    if (masked[index] === "{") depth += 1;
+    if (masked[index] !== "}") continue;
     depth -= 1;
     if (depth === 0) return source.slice(brace + 1, index);
   }
   return "";
 }
 
+function exactStructFields(source: string, marker: string): string[] {
+  const fields = body(maskNonCode(source), marker).matchAll(
+    /^\s*(?:pub(?:\([^)]*\))?\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*:/gm,
+  );
+  return [...fields].map((match) => match[1]).sort();
+}
+
+function sameFields(actual: string[], expected: readonly string[]): boolean {
+  return (
+    actual.length === expected.length &&
+    actual.every((field, index) => field === [...expected].sort()[index])
+  );
+}
+
 function hasAll(source: string, markers: readonly string[]): boolean {
   return markers.every((marker) => source.includes(marker));
 }
 
-function addFailure(failures: string[], failed: boolean, diagnostic: string): void {
+function addFailure(
+  failures: string[],
+  failed: boolean,
+  diagnostic: string,
+): void {
   if (failed && !failures.includes(diagnostic)) failures.push(diagnostic);
 }
 
@@ -89,22 +204,47 @@ export function checkPhase135SnapshotRecovery(
   maybeRepoRoot: string = DEFAULT_REPO_ROOT,
 ): string[] {
   const sources = new Map(
-    PHASE135_TARGET_FILES.map((file) => [file, readSourceRoot(maybeRepoRoot, file)]),
+    PHASE135_TARGET_FILES.map((file) => [
+      file,
+      readSourceRoot(maybeRepoRoot, file),
+    ]),
   );
   const get = (file: string): string => sources.get(file) ?? "";
   const failures: string[] = [];
 
   const snapshot = get(FILES.snapshot);
   const codec = get(FILES.codec);
+  const codecDecode = [
+    get(FILES.codecDecode),
+    get(FILES.codecTransactionDecode),
+  ].join("\n");
   const storage = get(FILES.storage);
   const v2Record = body(codec, "struct MempoolSnapshotV2RecordDto");
   const v2Dto = body(codec, "struct MempoolSnapshotV2Dto");
   const encode = body(codec, "pub(crate) fn encode_mempool_snapshot(");
   addFailure(
     failures,
-    !hasAll(v2Record, ["transaction: Vec<u8>", "accepted_at_unix_seconds: i64"]) ||
-      /\b(?:fee|vsize|txid|wtxid)\s*:/.test(v2Record) ||
-      !hasAll(v2Dto, ["captured_generation: u64", "captured_at_unix_seconds: i64", "records: Vec<MempoolSnapshotV2RecordDto>", "unbroadcast_members: Vec<MempoolMemberIdentityDto>"]) ||
+    !sameFields(exactStructFields(codec, "struct MempoolSnapshotV2RecordDto"), [
+      "accepted_at_unix_seconds",
+      "transaction",
+    ]) ||
+      !sameFields(exactStructFields(codec, "struct MempoolSnapshotV2Dto"), [
+        "captured_at_unix_seconds",
+        "captured_generation",
+        "format_version",
+        "records",
+        "unbroadcast_members",
+      ]) ||
+      !hasAll(v2Record, [
+        "transaction: Vec<u8>",
+        "accepted_at_unix_seconds: i64",
+      ]) ||
+      !hasAll(v2Dto, [
+        "captured_generation: u64",
+        "captured_at_unix_seconds: i64",
+        "records: Vec<MempoolSnapshotV2RecordDto>",
+        "unbroadcast_members: Vec<MempoolMemberIdentityDto>",
+      ]) ||
       !snapshot.includes("pub const CURRENT: Self = Self(2);") ||
       !storage.includes("pub const CURRENT: Self = Self(1);") ||
       !encode.includes("MempoolSnapshotV2Dto::try_from(snapshot)"),
@@ -112,24 +252,57 @@ export function checkPhase135SnapshotRecovery(
   );
 
   const legacy = body(snapshot, "pub fn from_legacy_v1(");
-  const decode = body(codec, "pub(crate) fn decode_mempool_snapshot_with_limits(");
+  const decode = body(
+    codec,
+    "pub(crate) fn decode_mempool_snapshot_with_limits(",
+  );
   addFailure(
     failures,
-    !hasAll(decode, ["MempoolSnapshotPayloadDto::CurrentV2", "MempoolSnapshotPayloadDto::LegacyV1"]) ||
-      !hasAll(legacy, ["source: MempoolSnapshotSource::LegacyV1", "unbroadcast_members: BTreeSet::new()"]) ||
-      !codec.includes("(None, None, None) => Ok(MempoolAcceptanceTime::LegacyUnknown)") ||
+    !decode.includes("decode::decode_bounded_versioned(bytes, limits)") ||
+      !hasAll(codecDecode, [
+        "MempoolSnapshotPayloadDto::CurrentV2",
+        "MempoolSnapshotPayloadDto::LegacyV1",
+      ]) ||
+      !hasAll(legacy, [
+        "source: MempoolSnapshotSource::LegacyV1",
+        "unbroadcast_members: BTreeSet::new()",
+      ]) ||
+      !codec.includes(
+        "(None, None, None) => Ok(MempoolAcceptanceTime::LegacyUnknown)",
+      ) ||
       !codec.includes("MempoolOrigin::RecoveryUnknown") ||
       encode.includes("MempoolSnapshotV1Dto"),
     PHASE135_DIAGNOSTICS.compatibility,
   );
 
-  const preflight = [body(codec, "fn preflight_payload("), body(codec, "fn preflight_counts("), body(codec, "fn preflight_transactions(")].join("\n");
   const validate = body(snapshot, "pub fn try_from_compatibility(");
+  const boundedLoad = body(
+    get(FILES.store),
+    "fn load_mempool_snapshot_with<Size, Load, Bytes>(",
+  );
   addFailure(
     failures,
     !decode.includes("if bytes.len() > limits.max_encoded_bytes {") ||
-      !hasAll(preflight, ["limits.max_records", "limits.max_unbroadcast_members", "limits.max_transaction_bytes", "limits.max_total_transaction_bytes", "checked_add"]) ||
-      !hasAll(validate, ["txid != actual_txid", "wtxid != actual_wtxid", "virtual_size != actual_virtual_size"]) ||
+      !hasAll(codecDecode, [
+        "limits.max_records",
+        "limits.max_unbroadcast_members",
+        "limits.max_transaction_bytes",
+        "limits.max_total_transaction_bytes",
+        "checked_add",
+        "reject_extra_element",
+      ]) ||
+      !hasAll(boundedLoad, [
+        "let Some(encoded_size) = size()?",
+        "encoded_size > limits.max_encoded_bytes",
+        "load()?",
+      ]) ||
+      boundedLoad.indexOf("encoded_size > limits.max_encoded_bytes") >
+        boundedLoad.indexOf("load()?") ||
+      !hasAll(validate, [
+        "txid != actual_txid",
+        "wtxid != actual_wtxid",
+        "virtual_size != actual_virtual_size",
+      ]) ||
       !snapshot.includes("StructuralCorruption") ||
       !snapshot.includes("ResourceBoundExceeded") ||
       !snapshot.includes("IdentityMismatch"),
@@ -137,12 +310,29 @@ export function checkPhase135SnapshotRecovery(
   );
 
   const topology = get(FILES.topology);
-  const topologyPrepare = body(topology, "pub(crate) fn prepare_recovery_topology(");
+  const topologyPrepare = body(
+    topology,
+    "pub(crate) fn prepare_recovery_topology(",
+  );
   const recoveryStatus = body(snapshot, "pub enum MempoolRecoveryStatus");
-  const outcomes = ["Recovered", "DroppedConfirmed", "DroppedDuplicate", "DroppedMissingParent", "DroppedPolicyIncompatible", "DroppedExpired", "DroppedEvicted"];
+  const outcomes = [
+    "Recovered",
+    "DroppedConfirmed",
+    "DroppedDuplicate",
+    "DroppedMissingParent",
+    "DroppedPolicyIncompatible",
+    "DroppedExpired",
+    "DroppedEvicted",
+  ];
   addFailure(
     failures,
-    !hasAll(topology, ["MAX_RECOVERY_TOPOLOGY_EDGES: usize = 1_600_000", "BTreeMap", "BTreeSet", "pop_first()", "checked_add"]) ||
+    !hasAll(topology, [
+      "MAX_RECOVERY_TOPOLOGY_EDGES: usize = 1_600_000",
+      "BTreeMap",
+      "BTreeSet",
+      "pop_first()",
+      "checked_add",
+    ]) ||
       topologyPrepare.length === 0 ||
       outcomes.some((variant) => !recoveryStatus.includes(variant)),
     PHASE135_DIAGNOSTICS.topology,
@@ -153,8 +343,14 @@ export function checkPhase135SnapshotRecovery(
   addFailure(
     failures,
     stage.length === 0 ||
-      /mempool_mut\s*\(|apply_lifecycle_command|install_prepared_recovery/.test(stage) ||
-      !hasAll(stage, ["let mut working = Mempool::new(config.clone());", ".filter(|identity| final_txids.contains(&identity.txid))", "let mut staged_mempool = Mempool::new(config);"]) ||
+      /mempool_mut\s*\(|apply_lifecycle_command|install_prepared_recovery/.test(
+        stage,
+      ) ||
+      !hasAll(stage, [
+        "let mut working = Mempool::new(config.clone());",
+        ".intersection(&final_members)",
+        "let mut staged_mempool = Mempool::new(config);",
+      ]) ||
       !staging.includes("#[derive(Debug)]\npub struct PreparedMempoolRecovery"),
     PHASE135_DIAGNOSTICS.staging,
   );
@@ -162,21 +358,46 @@ export function checkPhase135SnapshotRecovery(
   const dispatcher = get(FILES.dispatcher);
   const facade = get(FILES.facade);
   const authority = get(FILES.authority);
-  const install = body(authority, "pub(in crate::network) fn install_prepared_recovery(");
+  const install = body(
+    authority,
+    "pub(in crate::network) fn install_prepared_recovery(",
+  );
   addFailure(
     failures,
-    !dispatcher.includes("LifecycleCommand::InstallRecovery(prepared) => network") ||
-      count(facade, ".apply_lifecycle_command(LifecycleCommand::InstallRecovery(prepared))") !== 1 ||
+    !dispatcher.includes(
+      "LifecycleCommand::InstallRecovery(prepared) => network",
+    ) ||
+      count(
+        facade,
+        ".apply_lifecycle_command(LifecycleCommand::InstallRecovery(prepared))",
+      ) !== 1 ||
       install.length === 0 ||
-      !hasAll(install, ["PreparedRecoveryProjection::prepare(self, prepared)", "*self.mempool.mempool_mut() = staged_mempool;", "self.unbroadcast_members = unbroadcast_members;", "self.lifecycle_generation = generation;", "self.dirty_generation = None;", ".install_recovery(generation, maybe_captured_at)"]),
+      !hasAll(install, [
+        "PreparedRecoveryProjection::prepare(self, prepared)",
+        "*self.mempool.mempool_mut() = staged_mempool;",
+        "self.unbroadcast_members = unbroadcast_members;",
+        "self.lifecycle_generation = generation;",
+        "self.dirty_generation = None;",
+        ".install_recovery(generation, maybe_captured_at)",
+      ]),
     PHASE135_DIAGNOSTICS.install,
   );
 
-  const capture = body(dispatcher, "LifecycleCommand::PrepareSnapshot(request) =>");
+  const capture = body(
+    dispatcher,
+    "LifecycleCommand::PrepareSnapshot(request) =>",
+  );
   addFailure(
     failures,
     capture.length === 0 ||
-      !hasAll(capture, ["MempoolSnapshotRecord::try_from_canonical", "entry.transaction.clone()", "entry.metadata.accepted_at", "MempoolSnapshot::try_new_current", "network.unbroadcast_members().clone()", "snapshot_effect_ledger.reserve_next"]) ||
+      !hasAll(capture, [
+        "MempoolSnapshotRecord::try_from_canonical",
+        "entry.transaction.clone()",
+        "entry.metadata.accepted_at",
+        "MempoolSnapshot::try_new_current",
+        "network.unbroadcast_members().clone()",
+        "snapshot_effect_ledger.reserve_next",
+      ]) ||
       /\b(?:fee|vsize)\b/.test(capture),
     PHASE135_DIAGNOSTICS.capture,
   );
@@ -186,22 +407,41 @@ export function checkPhase135SnapshotRecovery(
   addFailure(
     failures,
     !effects.includes("pub const MAX_PENDING_SNAPSHOT_EFFECTS: usize = 1;") ||
-      /#\[derive\([^\]]*Clone[^\]]*\)\]\s*pub struct (?:PreparedSnapshotWrite|SnapshotWriteCapability|SnapshotWriteReceipt)/.test(checkpointEffects) ||
-      !checkpointEffects.includes("if self.pending.len() >= MAX_PENDING_SNAPSHOT_EFFECTS {") ||
+      /#\[derive\([^\]]*Clone[^\]]*\)\]\s*pub struct (?:PreparedSnapshotWrite|SnapshotWriteCapability|SnapshotWriteReceipt)/.test(
+        checkpointEffects,
+      ) ||
+      !checkpointEffects.includes(
+        "if self.pending.len() >= MAX_PENDING_SNAPSHOT_EFFECTS {",
+      ) ||
       !checkpointEffects.includes("SnapshotWriteReceipt") ||
-      checkpointEffects.includes("pub struct SnapshotWriteCapability {\n    // #[derive(Clone)]"),
+      checkpointEffects.includes(
+        "pub struct SnapshotWriteCapability {\n    // #[derive(Clone)]",
+      ),
     PHASE135_DIAGNOSTICS.affine,
   );
 
   const store = get(FILES.store);
   const fjall = get(FILES.fjall);
-  const execute = body(store, "\nfn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(");
-  const dispatch = body(dispatcher, "pub(in crate::network) fn apply_lifecycle_command");
+  const execute = body(
+    store,
+    "\nfn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(",
+  );
+  const dispatch = body(
+    dispatcher,
+    "pub(in crate::network) fn apply_lifecycle_command",
+  );
   addFailure(
     failures,
     execute.length === 0 ||
-      !hasAll(execute, ["let (snapshot, capability) = prepared.into_parts();", "let bytes = match encode(&snapshot)", "save(bytes, PersistMode::Sync)", "capability.acknowledge_write(now(), CheckpointPersistenceStrength::Sync)"]) ||
-      !fjall.includes("PersistMode::Sync => Some(FjallPersistMode::SyncAll),") ||
+      !hasAll(execute, [
+        "let (snapshot, capability) = prepared.into_parts();",
+        "let bytes = match encode(&snapshot)",
+        "save(bytes, PersistMode::Sync)",
+        "capability.acknowledge_write(now(), CheckpointPersistenceStrength::Sync)",
+      ]) ||
+      !fjall.includes(
+        "PersistMode::Sync => Some(FjallPersistMode::SyncAll),",
+      ) ||
       /encode_mempool_snapshot|Fjall|SyncAll|put_bytes/.test(dispatch),
     PHASE135_DIAGNOSTICS.execution,
   );
@@ -211,26 +451,70 @@ export function checkPhase135SnapshotRecovery(
   const complete = body(coordinator, "fn complete_or_retain(");
   addFailure(
     failures,
-    !hasAll(coordinator, ["enum CheckpointCoordinatorState", "Idle", "Persisting", "AchievedAwaitingCompletion(SnapshotWriteReceipt)", "const MAX_WRITES_PER_CALL: u8 = 2;"]) ||
-      !claim.includes("CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt)") ||
-      !complete.includes("CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt)") ||
-      /\.abort\s*\(/.test(coordinator),
+    !hasAll(coordinator, [
+      "enum CheckpointCoordinatorState",
+      "Idle",
+      "Persisting",
+      "UnachievedAwaitingAbort(super::SnapshotWriteAbort)",
+      "AchievedAwaitingCompletion(SnapshotWriteReceipt)",
+      "const MAX_WRITES_PER_CALL: u8 = 2;",
+    ]) ||
+      !claim.includes(
+        "CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt)",
+      ) ||
+      !claim.includes(
+        "CheckpointCoordinatorState::UnachievedAwaitingAbort(abort)",
+      ) ||
+      !complete.includes(
+        "CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt)",
+      ) ||
+      !coordinator.includes("fn abort_or_retain(") ||
+      !coordinator.includes(
+        "CheckpointCoordinatorState::UnachievedAwaitingAbort(abort)",
+      ) ||
+      /\breceipt\.abort\s*\(/.test(coordinator),
     PHASE135_DIAGNOSTICS.coordinator,
   );
 
   const evidence = get(FILES.evidence);
   addFailure(
     failures,
-    !hasAll(evidence, ["maybe_last_durable_generation", "pub maybe_generation_loss_range: Option<CheckpointGenerationLossRange>", "CheckpointGenerationLossRange", "through_generation", "maybe_after_generation", "CheckpointPersistenceStrength::Sync"]),
+    !hasAll(evidence, [
+      "maybe_last_durable_generation",
+      "pub maybe_generation_loss_range: Option<CheckpointGenerationLossRange>",
+      "CheckpointGenerationLossRange",
+      "through_generation",
+      "maybe_after_generation",
+      "CheckpointPersistenceStrength::Sync",
+    ]),
     PHASE135_DIAGNOSTICS.evidence,
   );
 
   const startup = get(FILES.startup);
+  const startupContext = get(FILES.startupContext);
+  const startupConstruction = body(
+    startupContext,
+    "pub fn from_runtime_config_with_store(",
+  );
+  const chainstateLoad = startupConstruction.indexOf(
+    "load_chainstate_snapshot",
+  );
+  const handleConstruction = startupConstruction.indexOf(
+    "ManagedNetworkHandle::from_network_fixture",
+  );
+  const recoveryInstall = startupConstruction.indexOf(
+    "recover_mempool_snapshot_from_store_handle",
+  );
+  const publication = startupConstruction.indexOf("Self {");
   const daemonCheckpoint = get(FILES.daemonCheckpoint);
   addFailure(
     failures,
     !startup.includes("prepare_mempool_recovery_at") ||
       !startup.includes("install_mempool_recovery") ||
+      chainstateLoad < 0 ||
+      handleConstruction < chainstateLoad ||
+      recoveryInstall < handleConstruction ||
+      publication < recoveryInstall ||
       !daemonCheckpoint.includes("Duration::from_secs(300)") ||
       !daemonCheckpoint.includes("MempoolCheckpointCoordinator::new()"),
     PHASE135_DIAGNOSTICS.startup,
@@ -238,8 +522,12 @@ export function checkPhase135SnapshotRecovery(
 
   const daemon = get(FILES.daemon);
   const clean = body(daemonCheckpoint, "pub(super) fn settle_and_mark_clean<");
-  const producerStop = daemon.indexOf("if let Some(worker) = maybe_sync_worker {");
-  const finalCheckpoint = daemon.indexOf("if let Some(worker) = maybe_checkpoint_worker {");
+  const producerStop = daemon.indexOf(
+    "if let Some(worker) = maybe_sync_worker {",
+  );
+  const finalCheckpoint = daemon.indexOf(
+    "if let Some(worker) = maybe_checkpoint_worker {",
+  );
   addFailure(
     failures,
     clean.indexOf("settle()?;") < 0 ||
@@ -260,24 +548,41 @@ export function checkPhase135SnapshotRecovery(
       surfaces?: Array<{ name?: string; status?: string }>;
       checklist?: { surfaces?: Array<{ id?: string; status?: string }> };
     };
-    topLevelStatus = parsed.surfaces?.find(
-      (surface) => surface.name === "v2 snapshot schema, checkpointing, and recovery",
-    )?.status ?? "missing";
-    checklistStatus = parsed.checklist?.surfaces?.find(
-      (surface) => surface.id === "v2-2-snapshot-schema-checkpointing-recovery",
-    )?.status ?? "missing";
+    topLevelStatus =
+      parsed.surfaces?.find(
+        (surface) =>
+          surface.name === "v2 snapshot schema, checkpointing, and recovery",
+      )?.status ?? "missing";
+    checklistStatus =
+      parsed.checklist?.surfaces?.find(
+        (surface) =>
+          surface.id === "v2-2-snapshot-schema-checkpointing-recovery",
+      )?.status ?? "missing";
   } catch {
     topLevelStatus = "invalid";
   }
   addFailure(
     failures,
-    topLevelStatus !== "in_progress" || checklistStatus !== "in_progress" ||
-      !checklist.includes("| v2 snapshot schema, checkpointing, and recovery | In progress |") ||
-      ["MPDUR-01", "MPDUR-02", "MPDUR-03", "MPDUR-04"].some((id) => !requirements.includes(`- [ ] **${id}**`) || !checklist.includes(`| ${id} | Pending |`)),
+    topLevelStatus !== "in_progress" ||
+      checklistStatus !== "in_progress" ||
+      !checklist.includes(
+        "| v2 snapshot schema, checkpointing, and recovery | In progress |",
+      ) ||
+      ["MPDUR-01", "MPDUR-02", "MPDUR-03", "MPDUR-04"].some(
+        (id) =>
+          !requirements.includes(`- [ ] **${id}**`) ||
+          !checklist.includes(`| ${id} | Pending |`),
+      ),
     PHASE135_DIAGNOSTICS.parity,
   );
 
-  const claimCorpus = [FILES.readme, FILES.packageReadme, FILES.catalog, FILES.checklist, FILES.index]
+  const claimCorpus = [
+    FILES.readme,
+    FILES.packageReadme,
+    FILES.catalog,
+    FILES.checklist,
+    FILES.index,
+  ]
     .map(get)
     .join("\n")
     .toLowerCase();
@@ -292,12 +597,18 @@ export function checkPhase135SnapshotRecovery(
     /destructive repair is (?:supported|enabled)/,
     /(?:open bitcoin is production ready|ready for production)/,
   ];
-  addFailure(failures, prohibitedClaims.some((claim) => claim.test(claimCorpus)), PHASE135_DIAGNOSTICS.claims);
+  addFailure(
+    failures,
+    prohibitedClaims.some((claim) => claim.test(claimCorpus)),
+    PHASE135_DIAGNOSTICS.claims,
+  );
 
   const checker = get(FILES.checker);
   addFailure(
     failures,
-    /Bun\.(?:spawn|spawnSync)|fetch\s*\(|https?:\/\/|Date\.now|Math\.random/.test(checker),
+    /Bun\.(?:spawn|spawnSync)|fetch\s*\(|https?:\/\/|Date\.now|Math\.random/.test(
+      checker,
+    ),
     PHASE135_DIAGNOSTICS.deterministic,
   );
 
@@ -313,12 +624,21 @@ export function checkPhase135SnapshotRecovery(
   ];
   const observed = verify
     .split("\n")
-    .map((line) => expectedOrder.find((token) => line.includes(token)))
+    .map((line) => line.trim())
+    .filter((line) => !line.startsWith("#"))
+    .map((line) => {
+      const command = line.match(
+        /^(?:bun\s+(?:test|run)|run_step\s+"[^"]+"\s+bun\s+(?:test|run))\s+(\S+)/,
+      );
+      return expectedOrder.find((token) => command?.[1].endsWith(token));
+    })
     .filter((token): token is string => token !== undefined);
   addFailure(
     failures,
     observed.length !== expectedOrder.length * 2 ||
-      observed.some((token, index) => token !== expectedOrder[index % expectedOrder.length]),
+      observed.some(
+        (token, index) => token !== expectedOrder[index % expectedOrder.length],
+      ),
     PHASE135_DIAGNOSTICS.verifier,
   );
 

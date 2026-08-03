@@ -315,8 +315,8 @@ function checkLegacyPartialMetadata(repoRoot: string, failures: string[]): void 
     !codec.includes("MempoolSnapshotPayloadDto::LegacyV1(dto) => dto.try_into()") ||
     !codec.includes("impl TryFrom<MempoolSnapshotV1Dto> for MempoolSnapshot") ||
     !codec.includes("Ok(Self::from_legacy_v1(records))") ||
-    !codec.includes("&MempoolSnapshotV2Dto::try_from(snapshot)?") ||
-    codec.includes("&MempoolSnapshotV1Dto::try_from(snapshot)?") ||
+    !codec.includes("let dto = MempoolSnapshotV2Dto::try_from(snapshot)?;") ||
+    codec.includes("let dto = MempoolSnapshotV1Dto::try_from(snapshot)?;") ||
     codec.includes("impl TryFrom<&MempoolSnapshot> for MempoolSnapshotV1Dto")
   ) {
     failures.push(

@@ -1728,6 +1728,8 @@
         "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
         "packages/open-bitcoin-node/src/storage/mempool_snapshot/tests.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/transaction.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/mempool_limits.rs"
       ],
       "breadcrumbs": [
