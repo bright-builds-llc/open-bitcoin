@@ -14,6 +14,45 @@ use crate::storage::{
     MempoolSnapshot, PersistMode, StorageError, StorageNamespace, snapshot_codec,
 };
 
+/// Explicit resource limits for one persisted mempool snapshot load.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct MempoolSnapshotDecodeLimits {
+    max_encoded_bytes: usize,
+    max_records: usize,
+    max_unbroadcast_members: usize,
+    max_transaction_bytes: usize,
+    max_total_transaction_bytes: usize,
+}
+
+impl MempoolSnapshotDecodeLimits {
+    /// Build a caller-owned bounded decode contract without implicit defaults.
+    pub const fn new(
+        max_encoded_bytes: usize,
+        max_records: usize,
+        max_unbroadcast_members: usize,
+        max_transaction_bytes: usize,
+        max_total_transaction_bytes: usize,
+    ) -> Self {
+        Self {
+            max_encoded_bytes,
+            max_records,
+            max_unbroadcast_members,
+            max_transaction_bytes,
+            max_total_transaction_bytes,
+        }
+    }
+
+    fn codec_limits(self) -> snapshot_codec::MempoolSnapshotDecodeLimits {
+        snapshot_codec::MempoolSnapshotDecodeLimits {
+            max_encoded_bytes: self.max_encoded_bytes,
+            max_records: self.max_records,
+            max_unbroadcast_members: self.max_unbroadcast_members,
+            max_transaction_bytes: self.max_transaction_bytes,
+            max_total_transaction_bytes: self.max_total_transaction_bytes,
+        }
+    }
+}
+
 /// Failure while carrying one snapshot capability to a truthful terminal state.
 #[derive(Debug)]
 pub enum SnapshotWriteExecutionError {
@@ -117,7 +156,23 @@ impl FjallNodeStore {
         self.put_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY, bytes, mode)
     }
 
-    /// Load the accepted-mempool snapshot, if present.
+    /// Load the accepted-mempool snapshot within caller-supplied resource limits.
+    pub fn load_mempool_snapshot_with_limits(
+        &self,
+        limits: MempoolSnapshotDecodeLimits,
+    ) -> Result<Option<MempoolSnapshot>, StorageError> {
+        self.get_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY)?
+            .map(|bytes| {
+                snapshot_codec::decode_mempool_snapshot_with_limits(&bytes, limits.codec_limits())
+            })
+            .transpose()
+    }
+
+    /// Load using the legacy decoder for RPC startup compile compatibility only.
+    ///
+    /// This adapter is not the bounded Phase 135 API and is not evidence of
+    /// bounded recovery.
+    #[deprecated(note = "RPC startup compatibility only; migrate and remove in Phase 135 Plan 06")]
     pub fn load_mempool_snapshot(&self) -> Result<Option<MempoolSnapshot>, StorageError> {
         self.get_bytes(StorageNamespace::Mempool, SNAPSHOT_KEY)?
             .map(|bytes| snapshot_codec::decode_mempool_snapshot(&bytes))

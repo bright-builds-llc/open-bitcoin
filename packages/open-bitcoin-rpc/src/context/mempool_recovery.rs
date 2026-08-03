@@ -44,12 +44,12 @@ pub(super) fn recover_mempool_snapshot_from_store(
         }
     };
 
+    #[allow(
+        deprecated,
+        reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
+    )]
     match store.load_mempool_snapshot() {
         Ok(Some(snapshot)) => {
-            #[allow(
-                deprecated,
-                reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
-            )]
             let recovery_result =
                 network.recover_mempool_snapshot(&snapshot, verify_flags, consensus_params);
             if recovery_result.is_err() {
@@ -87,12 +87,12 @@ pub(super) fn recover_mempool_snapshot_from_store_handle(
         }
     };
 
+    #[allow(
+        deprecated,
+        reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
+    )]
     match store.load_mempool_snapshot() {
         Ok(Some(snapshot)) => {
-            #[allow(
-                deprecated,
-                reason = "Phase 135 Plan 06 migrates and removes this startup compatibility call"
-            )]
             let recovery_result =
                 network.recover_mempool_snapshot(&snapshot, verify_flags, consensus_params);
             if recovery_result.is_err() {
