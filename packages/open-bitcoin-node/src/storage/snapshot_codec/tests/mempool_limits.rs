@@ -202,11 +202,11 @@ fn escaped_transaction_token_is_rejected_before_unescaping_under_narrow_budget()
 }
 
 #[test]
-fn oversized_unknown_key_is_rejected_without_owned_key_materialization() {
+fn escaped_oversized_unknown_key_is_rejected_before_serde_unescaping() {
     // Arrange
     let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
     let text = String::from_utf8(encoded).expect("snapshot JSON");
-    let hostile_key = "x".repeat(16 * 1_024);
+    let hostile_key = "\\u0078".repeat(4 * 1_024);
     let hostile = text.replacen("\"schema_version\"", &format!("\"{hostile_key}\""), 1);
     let limits = MempoolSnapshotDecodeLimits {
         max_encoded_bytes: hostile.len(),
@@ -217,10 +217,14 @@ fn oversized_unknown_key_is_rejected_without_owned_key_materialization() {
 
     // Act
     let error = decode_mempool_snapshot_with_limits(hostile.as_bytes(), limits)
-        .expect_err("unknown field must fail without an owned key");
+        .expect_err("escaped unknown field must fail before unescaping");
 
     // Assert
-    assert!(matches!(error, StorageError::Corruption { .. }));
+    assert!(matches!(
+        error,
+        StorageError::Corruption { ref detail, .. }
+            if detail == "mempool snapshot exceeds a resource bound"
+    ));
 }
 
 #[test]

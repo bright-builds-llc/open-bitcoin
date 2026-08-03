@@ -29,7 +29,9 @@ use open_bitcoin_node::network::{
     ManagedNetworkInfo,
 };
 use open_bitcoin_node::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus};
-use open_bitcoin_node::{DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus};
+use open_bitcoin_node::{
+    DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus, StorageError,
+};
 use open_bitcoin_node::{
     ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork, ManagedWallet,
     MemoryChainstateStore, MemoryWalletStore,
@@ -70,8 +72,13 @@ impl ManagedRpcContext {
         }
     }
 
+    #[allow(
+        clippy::expect_used,
+        reason = "memory-only construction cannot cross a durable migration boundary"
+    )]
     pub fn from_runtime_config(config: &RuntimeConfig) -> Self {
         Self::from_runtime_config_with_store(config, None)
+            .expect("memory-only context has no durable migration boundary")
     }
 
     #[allow(
@@ -81,7 +88,7 @@ impl ManagedRpcContext {
     pub fn from_runtime_config_with_store(
         config: &RuntimeConfig,
         maybe_store: Option<FjallNodeStore>,
-    ) -> Self {
+    ) -> Result<Self, StorageError> {
         let consensus_params = ConsensusParams {
             coinbase_maturity: config.wallet.coinbase_maturity,
             ..ConsensusParams::default()
@@ -108,18 +115,14 @@ impl ManagedRpcContext {
                 Some(store.clone())
             }
         };
-        let durable_chainstate = effective_store.as_ref().map_or_else(
-            || Ok(None),
-            |store| store.load_chainstate_snapshot_with_confirmation_migration(),
+        let durable_chainstate = match effective_store.as_ref() {
+            Some(store) => store.load_chainstate_snapshot_with_confirmation_migration()?,
+            None => None,
+        };
+        let chainstate_store = durable_chainstate.map_or_else(
+            MemoryChainstateStore::default,
+            MemoryChainstateStore::from_snapshot,
         );
-        let chainstate_store = durable_chainstate
-            .as_ref()
-            .ok()
-            .and_then(Clone::clone)
-            .map_or_else(
-                MemoryChainstateStore::default,
-                MemoryChainstateStore::from_snapshot,
-            );
         let mut managed_network = ManagedPeerNetwork::new_with_block_relay_activation(
             chainstate_store,
             local_config,
@@ -133,21 +136,16 @@ impl ManagedRpcContext {
             config.inbound.reserved_slots,
         ));
         let network = ManagedNetworkHandle::from_network_fixture(managed_network);
-        match durable_chainstate {
-            Ok(_) => recover_mempool_snapshot_from_store_handle(
-                config,
-                effective_store.as_ref(),
-                &network,
-                &policy,
-                default_verify_flags(),
-                consensus_params,
-            )
-            .expect("fresh startup authority remains available before publication"),
-            Err(error) => network
-                .record_mempool_recovery_storage_error(&error)
-                .expect("fresh startup authority remains available before publication"),
-        }
-        Self {
+        recover_mempool_snapshot_from_store_handle(
+            config,
+            effective_store.as_ref(),
+            &network,
+            &policy,
+            default_verify_flags(),
+            consensus_params,
+        )
+        .expect("fresh startup authority remains available before publication");
+        Ok(Self {
             chain: config.chain,
             consensus_params,
             verify_flags: default_verify_flags(),
@@ -164,7 +162,7 @@ impl ManagedRpcContext {
             maybe_runtime_metadata_source: effective_store,
             maybe_daemon_sync_control: None,
             wallet_state,
-        }
+        })
     }
 
     pub fn from_runtime_config_with_network_handle(

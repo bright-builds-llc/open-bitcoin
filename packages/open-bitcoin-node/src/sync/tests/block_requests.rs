@@ -69,6 +69,9 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
             )
             .expect("save active chain snapshot");
         store
+            .save_block(&active_block, PersistMode::Sync)
+            .expect("save active-chain block for confirmation migration");
+        store
             .save_block(&durable_local_block, PersistMode::Sync)
             .expect("save durable local block");
     }

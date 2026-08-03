@@ -69,6 +69,8 @@ function contractMutations(): Mutation[] {
     codec: "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
     codecDecode:
       "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode.rs",
+    codecKeyPreflight:
+      "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/key_preflight.rs",
     storage: "packages/open-bitcoin-node/src/storage.rs",
     topology: "packages/open-bitcoin-node/src/network/recovery/topology.rs",
     staging: "packages/open-bitcoin-node/src/network/recovery/staging.rs",
@@ -86,6 +88,8 @@ function contractMutations(): Mutation[] {
     coordinator: "packages/open-bitcoin-node/src/network/checkpoint.rs",
     store: "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
     fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
+    chainstateTypes: "packages/open-bitcoin-chainstate/src/types.rs",
+    syncRuntime: "packages/open-bitcoin-node/src/sync.rs",
     startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
     daemonCheckpoint:
       "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
@@ -157,6 +161,15 @@ function contractMutations(): Mutation[] {
         files.codec,
         "if bytes.len() > limits.max_encoded_bytes {",
         "if false {",
+      ),
+    ],
+    [
+      "raw object key preflight removed",
+      PHASE135_DIAGNOSTICS.bounds,
+      replace(
+        files.codecKeyPreflight,
+        "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = 64;",
+        "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = usize::MAX;",
       ),
     ],
     [
@@ -341,8 +354,35 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.startup,
       replace(
         files.startupContext,
-        "let durable_chainstate = effective_store",
-        "recover_mempool_snapshot_from_store_handle;\n        let durable_chainstate = effective_store",
+        "let durable_chainstate = match effective_store.as_ref() {",
+        "recover_mempool_snapshot_from_store_handle;\n        let durable_chainstate = match effective_store.as_ref() {",
+      ),
+    ],
+    [
+      "authoritative runtime bypasses confirmation migration",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(
+        files.syncRuntime,
+        "load_chainstate_snapshot_with_confirmation_migration()?",
+        "load_chainstate_snapshot()?",
+      ),
+    ],
+    [
+      "confirmation migration trusts block key identity",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(
+        files.store,
+        "if actual_hash != position.block_hash {",
+        "if false {",
+      ),
+    ],
+    [
+      "generic snapshot fabricates confirmation evidence",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(
+        files.chainstateTypes,
+        "maybe_confirmed_txid_counts: None,",
+        "maybe_confirmed_txid_counts: Some(HashMap::new()),",
       ),
     ],
     [

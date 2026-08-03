@@ -128,7 +128,7 @@ impl DurableSyncRuntime {
         inbound_enabled: bool,
     ) -> Result<Self, SyncRuntimeError> {
         let mut memory_store = MemoryChainstateStore::default();
-        if let Some(snapshot) = store.load_chainstate_snapshot()? {
+        if let Some(snapshot) = store.load_chainstate_snapshot_with_confirmation_migration()? {
             memory_store.save_snapshot(snapshot);
         }
 

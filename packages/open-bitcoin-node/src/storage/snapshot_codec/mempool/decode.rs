@@ -18,8 +18,10 @@ use super::{
 use crate::storage::mempool_snapshot::MempoolSnapshotError;
 use crate::{SchemaVersion, StorageError};
 
+mod key_preflight;
 mod transaction;
 
+use key_preflight::validate_raw_object_keys;
 use transaction::TransactionSeed;
 
 const RESOURCE_BOUND_MARKER: &str = "mempool snapshot resource bound exceeded";
@@ -28,6 +30,7 @@ pub(super) fn decode_bounded_versioned(
     bytes: &[u8],
     limits: MempoolSnapshotDecodeLimits,
 ) -> Result<MempoolSnapshotPayloadDto, StorageError> {
+    validate_raw_object_keys(bytes)?;
     let mut deserializer = serde_json::Deserializer::from_slice(bytes);
     let decoded = VersionedSeed { limits }
         .deserialize(&mut deserializer)

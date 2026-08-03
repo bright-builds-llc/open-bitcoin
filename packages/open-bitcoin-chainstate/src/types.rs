@@ -100,7 +100,7 @@ impl ChainstateSnapshot {
             active_chain,
             utxos,
             undo_by_block,
-            maybe_confirmed_txid_counts: Some(HashMap::new()),
+            maybe_confirmed_txid_counts: None,
         }
     }
 
@@ -123,9 +123,20 @@ pub struct ChainTransition {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use open_bitcoin_primitives::{BlockHash, BlockHeader};
 
-    use super::ChainPosition;
+    use super::{ChainPosition, ChainstateSnapshot};
+
+    #[test]
+    fn generic_snapshot_constructor_keeps_confirmation_evidence_unknown() {
+        // Arrange / Act
+        let snapshot = ChainstateSnapshot::new(Vec::new(), HashMap::new(), HashMap::new());
+
+        // Assert
+        assert_eq!(snapshot.maybe_confirmed_txid_counts, None);
+    }
 
     #[test]
     fn previous_block_hash_returns_the_parent_hash() {

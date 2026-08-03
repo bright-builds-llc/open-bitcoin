@@ -232,7 +232,7 @@ fn phase70_equal_or_lower_work_side_branch_does_not_replace_active_tip() {
 }
 
 #[test]
-fn phase70_missing_active_chain_block_body_is_storage_blocker() {
+fn phase70_missing_active_chain_block_body_blocks_runtime_open() {
     // Arrange
     let path = temp_store_path("phase70-missing-active-body");
     remove_dir_if_exists(&path);
@@ -256,21 +256,21 @@ fn phase70_missing_active_chain_block_body_is_storage_blocker() {
         ],
     );
     let store = FjallNodeStore::open(&path).expect("store");
-    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
 
     // Act
-    let error =
-        block_reconcile::reconcile_best_chain(&mut runtime, i64::from(branch_b_three.header.time))
-            .expect_err("missing active body should block reorg");
+    let error = match DurableSyncRuntime::open(store, sync_config()) {
+        Ok(_) => panic!("missing active body should block runtime publication"),
+        Err(error) => error,
+    };
 
     // Assert
     assert!(matches!(
         error,
         SyncRuntimeError::Storage(StorageError::Corruption {
-            namespace: StorageNamespace::BlockIndex,
+            namespace: StorageNamespace::Chainstate,
             action: StorageRecoveryAction::Repair,
             ref detail,
-        }) if detail.contains("missing durable block body")
+        }) if detail.contains("missing active-chain block")
     ));
 
     remove_dir_if_exists(&path);

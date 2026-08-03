@@ -36,97 +36,7 @@ use super::ManagedRpcContext;
 
 static NEXT_TEMP_DIR: AtomicU64 = AtomicU64::new(0);
 
-#[test]
-fn authoritative_network_sync_mutation_is_visible_to_rpc() {
-    // Arrange
-    let data_dir = test_data_dir("authoritative-network");
-    let store = FjallNodeStore::open(&data_dir).expect("open authoritative store");
-    let sync_runtime = DurableSyncRuntime::open(
-        store.clone(),
-        SyncRuntimeConfig {
-            network: SyncNetwork::Regtest,
-            dns_seeds: Vec::new(),
-            ..SyncRuntimeConfig::default()
-        },
-    )
-    .expect("open authoritative sync runtime");
-    let sync_network = sync_runtime.network_handle();
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
-        &RuntimeConfig {
-            chain: AddressNetwork::Regtest,
-            ..RuntimeConfig::default()
-        },
-        sync_runtime.network_handle(),
-        Some(store),
-    )
-    .expect("construct RPC from authoritative handle");
-
-    // Act
-    sync_network
-        .connect_outbound_peer(42, 1_777_225_210)
-        .expect("sync mutation should succeed");
-    let network_info = context
-        .network_info()
-        .expect("RPC should snapshot the shared authority");
-
-    // Assert
-    assert_eq!(network_info.outbound_peers, 1);
-    fs::remove_dir_all(data_dir).expect("remove authoritative store");
-}
-
-#[test]
-fn managed_rpc_context_builds_from_runtime_config() {
-    // Arrange
-    let runtime = RuntimeConfig {
-        chain: AddressNetwork::Regtest,
-        ..RuntimeConfig::default()
-    };
-
-    // Act
-    let context = ManagedRpcContext::from_runtime_config(&runtime);
-    let network_info = context.network_info().expect("authoritative network info");
-    let wallet_info = context.wallet_info();
-    let snapshot = context
-        .blockchain_snapshot()
-        .expect("authoritative chainstate snapshot");
-
-    // Assert
-    assert_eq!(context.chain(), AddressNetwork::Regtest);
-    assert_eq!(network_info.connected_peers, 0);
-    assert!(
-        !context
-            .network_info()
-            .expect("authoritative network info")
-            .relay
-    );
-    assert_eq!(wallet_info.network, AddressNetwork::Regtest);
-    assert!(snapshot.active_chain.is_empty());
-}
-
-#[test]
-fn managed_rpc_context_builds_from_runtime_config_with_enabled_relay_activation() {
-    // Arrange
-    let runtime = RuntimeConfig {
-        chain: AddressNetwork::Regtest,
-        relay: RelayActivationConfig { enabled: true },
-        inbound: open_bitcoin_network::InboundListenerConfig {
-            enabled: true,
-            ..Default::default()
-        },
-        ..RuntimeConfig::default()
-    };
-
-    // Act
-    let context = ManagedRpcContext::from_runtime_config(&runtime);
-
-    // Assert
-    assert!(
-        context
-            .network_info()
-            .expect("authoritative network info")
-            .relay
-    );
-}
+mod construction;
 
 #[test]
 fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
@@ -150,7 +60,8 @@ fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store));
+    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store))
+        .expect("construct durable RPC context");
 
     // Assert
     let summary = context
@@ -215,7 +126,7 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
         1,
         captured_at.unix_seconds(),
     );
-    let chainstate = ChainstateSnapshot::new(
+    let mut chainstate = ChainstateSnapshot::new(
         vec![chain_position],
         HashMap::from([(
             previous_output.clone(),
@@ -231,6 +142,7 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
         )]),
         HashMap::new(),
     );
+    chainstate.maybe_confirmed_txid_counts = Some(HashMap::new());
     let transaction = Transaction {
         version: 2,
         inputs: vec![TransactionInput {
@@ -271,7 +183,8 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store));
+    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store))
+        .expect("construct durable RPC context");
 
     // Assert
     let summary = context
@@ -287,6 +200,50 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
             .transaction_count,
         1
     );
+    fs::remove_dir_all(data_dir).expect("remove durable store");
+}
+
+#[test]
+fn managed_rpc_context_propagates_confirmation_migration_failure() {
+    use std::collections::HashMap;
+
+    use open_bitcoin_node::core::chainstate::{ChainPosition, ChainstateSnapshot};
+    use open_bitcoin_node::core::primitives::{BlockHash, BlockHeader};
+
+    // Arrange
+    let data_dir = test_data_dir("confirmation-migration-failure");
+    let store = FjallNodeStore::open(&data_dir).expect("open store");
+    let snapshot = ChainstateSnapshot::new(
+        vec![ChainPosition::new(
+            BlockHeader {
+                previous_block_hash: BlockHash::from_byte_array([0; 32]),
+                time: 135,
+                ..BlockHeader::default()
+            },
+            0,
+            1,
+            135,
+        )],
+        HashMap::new(),
+        HashMap::new(),
+    );
+    store
+        .save_chainstate_snapshot(&snapshot, PersistMode::Sync)
+        .expect("save legacy chainstate");
+    let runtime = RuntimeConfig {
+        chain: AddressNetwork::Regtest,
+        maybe_data_dir: Some(data_dir.clone()),
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let error = match ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store)) {
+        Ok(_) => panic!("migration failure must not publish an empty context"),
+        Err(error) => error,
+    };
+
+    // Assert
+    assert!(error.to_string().contains("missing active-chain block"));
     fs::remove_dir_all(data_dir).expect("remove durable store");
 }
 

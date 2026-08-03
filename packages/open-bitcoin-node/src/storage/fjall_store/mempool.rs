@@ -6,7 +6,10 @@
 use core::fmt;
 use std::collections::HashMap;
 
-use open_bitcoin_core::{chainstate::ChainstateSnapshot, consensus::transaction_txid};
+use open_bitcoin_core::{
+    chainstate::ChainstateSnapshot,
+    consensus::{block_hash, transaction_txid},
+};
 use open_bitcoin_mempool::{PolicyConfig, PolicyTime};
 
 use super::{FjallNodeStore, SNAPSHOT_KEY};
@@ -209,6 +212,16 @@ impl FjallNodeStore {
                     ),
                 ));
             };
+            let actual_hash = block_hash(&block.header);
+            if actual_hash != position.block_hash {
+                return Err(super::corruption(
+                    StorageNamespace::Chainstate,
+                    format_args!(
+                        "active-chain block identity mismatch: expected {:?}, loaded {actual_hash:?}",
+                        position.block_hash
+                    ),
+                ));
+            }
             for transaction in &block.transactions {
                 let txid = transaction_txid(transaction).map_err(|error| {
                     super::corruption(

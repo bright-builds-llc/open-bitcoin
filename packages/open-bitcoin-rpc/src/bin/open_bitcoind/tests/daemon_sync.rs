@@ -11,6 +11,39 @@
 
 use super::*;
 
+use std::collections::HashMap;
+
+use open_bitcoin_node::PersistMode;
+use open_bitcoin_node::core::{
+    chainstate::{ChainPosition, ChainstateSnapshot},
+    primitives::{Block, BlockHash, BlockHeader},
+};
+
+fn legacy_daemon_chainstate(block: &Block) -> ChainstateSnapshot {
+    ChainstateSnapshot::new(
+        vec![ChainPosition::new(
+            block.header.clone(),
+            0,
+            1,
+            i64::from(block.header.time),
+        )],
+        HashMap::new(),
+        HashMap::new(),
+    )
+}
+
+fn daemon_migration_block() -> Block {
+    Block {
+        header: BlockHeader {
+            previous_block_hash: BlockHash::from_byte_array([0; 32]),
+            time: 1_777_225_210,
+            nonce: 135,
+            ..BlockHeader::default()
+        },
+        transactions: Vec::new(),
+    }
+}
+
 #[test]
 fn disabled_sync_skips_daemon_preflight() {
     // Arrange
@@ -48,6 +81,74 @@ fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
     assert_eq!(preflight.mode, runtime.sync.mode);
     assert_eq!(preflight.best_header_height, 0);
     assert_eq!(preflight.best_block_height, 0);
+}
+
+#[test]
+fn authoritative_daemon_runtime_migrates_legacy_confirmation_evidence_before_publication() {
+    // Arrange
+    let data_dir = temp_store_path("legacy-confirmation-migration");
+    remove_dir_if_exists(&data_dir);
+    let store = FjallNodeStore::open(&data_dir).expect("authoritative store");
+    let block = daemon_migration_block();
+    let legacy_chainstate = legacy_daemon_chainstate(&block);
+    store
+        .save_block(&block, PersistMode::Sync)
+        .expect("save active-chain block");
+    store
+        .save_chainstate_snapshot(&legacy_chainstate, PersistMode::Sync)
+        .expect("save legacy chainstate");
+    let runtime = RuntimeConfig {
+        maybe_data_dir: Some(data_dir.clone()),
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let authoritative = open_authoritative_network_runtime(&runtime, Some(store.clone()))
+        .expect("authoritative runtime");
+    let migrated = authoritative
+        .network
+        .chainstate_snapshot()
+        .expect("authoritative chainstate");
+
+    // Assert
+    assert_eq!(migrated.maybe_confirmed_txid_counts, Some(HashMap::new()));
+    assert_eq!(
+        store
+            .load_chainstate_snapshot()
+            .expect("load persisted migration")
+            .expect("persisted chainstate")
+            .maybe_confirmed_txid_counts,
+        Some(HashMap::new())
+    );
+    remove_dir_if_exists(&data_dir);
+}
+
+#[test]
+fn authoritative_daemon_runtime_rejects_legacy_chainstate_with_missing_block() {
+    // Arrange
+    let data_dir = temp_store_path("legacy-confirmation-missing-block");
+    remove_dir_if_exists(&data_dir);
+    let store = FjallNodeStore::open(&data_dir).expect("authoritative store");
+    store
+        .save_chainstate_snapshot(
+            &legacy_daemon_chainstate(&daemon_migration_block()),
+            PersistMode::Sync,
+        )
+        .expect("save legacy chainstate");
+    let runtime = RuntimeConfig {
+        maybe_data_dir: Some(data_dir.clone()),
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let error = match open_authoritative_network_runtime(&runtime, Some(store)) {
+        Ok(_) => panic!("missing active-chain block must prevent handle publication"),
+        Err(error) => error,
+    };
+
+    // Assert
+    assert!(error.to_string().contains("missing active-chain block"));
+    remove_dir_if_exists(&data_dir);
 }
 
 #[test]
