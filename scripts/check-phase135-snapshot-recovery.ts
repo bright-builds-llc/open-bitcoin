@@ -6,11 +6,11 @@ import {
   addFailure,
   body,
   count,
-  directStatementIndex,
   exactStructFields,
   hasAll,
   sameFields,
 } from "./check-phase135-snapshot-recovery/source";
+import { checkPersistedInputContract } from "./check-phase135-snapshot-recovery/persisted-input";
 import { readSourceRoot } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
@@ -57,6 +57,8 @@ const FILES = {
   requirements: ".planning/REQUIREMENTS.md",
   checker: "scripts/check-phase135-snapshot-recovery.ts",
   checkerSource: "scripts/check-phase135-snapshot-recovery/source.ts",
+  checkerPersistedInput:
+    "scripts/check-phase135-snapshot-recovery/persisted-input.ts",
   test: "scripts/check-phase135-snapshot-recovery.test.ts",
   verify: "scripts/verify.sh",
 } as const;
@@ -119,18 +121,6 @@ export function checkPhase135SnapshotRecovery(
     get(FILES.codecKeyPreflight),
     get(FILES.codecTransactionDecode),
   ].join("\n");
-  const boundedDecode = body(
-    get(FILES.codecDecode),
-    "pub(super) fn decode_bounded_versioned(",
-  );
-  const rawKeyPreflight = "validate_raw_object_keys(bytes)?;";
-  const serdeConstruction =
-    "let mut deserializer = serde_json::Deserializer::from_slice(bytes);";
-  const preflightIndex = directStatementIndex(
-    boundedDecode,
-    rawKeyPreflight,
-  );
-  const serdeIndex = directStatementIndex(boundedDecode, serdeConstruction);
   const storage = get(FILES.storage);
   const v2Record = body(codec, "struct MempoolSnapshotV2RecordDto");
   const v2Dto = body(codec, "struct MempoolSnapshotV2Dto");
@@ -194,74 +184,23 @@ export function checkPhase135SnapshotRecovery(
   );
 
   const validate = body(snapshot, "pub fn try_from_compatibility(");
-  const boundedLoad = body(
-    get(FILES.store),
-    "fn load_mempool_snapshot_with<Size, Load, Bytes>(",
+  addFailure(
+    failures,
+    !hasAll(validate, [
+      "txid != actual_txid",
+      "wtxid != actual_wtxid",
+      "virtual_size != actual_virtual_size",
+    ]) ||
+      !snapshot.includes("StructuralCorruption") ||
+      !snapshot.includes("ResourceBoundExceeded") ||
+      !snapshot.includes("IdentityMismatch"),
+    PHASE135_DIAGNOSTICS.bounds,
   );
+
   const dispatcher = get(FILES.dispatcher);
   const capture = body(
     dispatcher,
     "LifecycleCommand::PrepareSnapshot(request) =>",
-  );
-  const topology = get(FILES.topology);
-  addFailure(
-    failures,
-    !decode.includes("if bytes.len() > limits.max_encoded_bytes {") ||
-      preflightIndex < 0 ||
-      serdeIndex < 0 ||
-      preflightIndex >= serdeIndex ||
-      !hasAll(codecDecode, [
-        "limits.max_records",
-        "limits.max_unbroadcast_members",
-        "limits.max_transaction_bytes",
-        "limits.max_total_transaction_bytes",
-        "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = 64;",
-        "validate_raw_object_keys",
-        "checked_add",
-        "reject_extra_element",
-      ]) ||
-      !hasAll(boundedLoad, [
-        "let Some(encoded_size) = size()?",
-        "encoded_size > limits.max_encoded_bytes",
-        "load()?",
-      ]) ||
-      boundedLoad.indexOf("encoded_size > limits.max_encoded_bytes") >
-        boundedLoad.indexOf("load()?") ||
-      !hasAll(validate, [
-        "txid != actual_txid",
-        "wtxid != actual_wtxid",
-        "virtual_size != actual_virtual_size",
-      ]) ||
-      !snapshot.includes("StructuralCorruption") ||
-      !snapshot.includes("ResourceBoundExceeded") ||
-      !snapshot.includes("IdentityMismatch") ||
-      !hasAll(codec, [
-        "MempoolCapacityBounds::from_capacity(policy.mempool_capacity)",
-        ".max_live_entries()",
-      ]) ||
-      !hasAll(get(FILES.store), [
-        "MempoolCapacityBounds::from_capacity(policy.mempool_capacity)",
-        ".max_live_entries()",
-      ]) ||
-      get(FILES.store).includes(".min(50_000)") ||
-      !hasAll(capture, [
-        "MempoolCapacityBounds::from_capacity(mempool.config().mempool_capacity)",
-        "if mempool.entries().len() > max_records {",
-        "MempoolSnapshotError::ResourceBoundExceeded",
-      ]) ||
-      !hasAll(topology, [
-        "pub(crate) fn from_policy(policy: &PolicyConfig)",
-        "MempoolCapacityBounds::from_capacity(policy.mempool_capacity)",
-        "max_vertices: bounds.max_live_entries()",
-        "max_edges: bounds.max_live_input_edges()",
-        "max_parent_edges_per_record: bounds.max_live_input_edges()",
-      ]),
-    PHASE135_DIAGNOSTICS.bounds,
-  );
-
-  const topologyPrepare = body(
-    topology,
-    "pub(crate) fn prepare_recovery_topology(",
   );
   const recoveryStatus = body(snapshot, "pub enum MempoolRecoveryStatus");
   const outcomes = [
@@ -275,33 +214,30 @@ export function checkPhase135SnapshotRecovery(
   ];
   addFailure(
     failures,
-    !hasAll(topology, [
+    !hasAll(get(FILES.topology), [
       "BTreeMap",
       "BTreeSet",
       "pop_first()",
-      "checked_add",
-      "max_edges: bounds.max_live_input_edges()",
     ]) ||
-      topologyPrepare.length === 0 ||
+      body(
+        get(FILES.topology),
+        "pub(crate) fn prepare_recovery_topology(",
+      ).length === 0 ||
       outcomes.some((variant) => !recoveryStatus.includes(variant)),
     PHASE135_DIAGNOSTICS.topology,
   );
 
-  const staging = get(FILES.staging);
-  const stage = body(staging, "pub(super) fn prepare_mempool_recovery(");
-  addFailure(
+  checkPersistedInputContract(
+    {
+      codec,
+      codecDecode,
+      capture,
+      store: get(FILES.store),
+      topology: get(FILES.topology),
+      staging: get(FILES.staging),
+    },
     failures,
-    stage.length === 0 ||
-      /mempool_mut\s*\(|apply_lifecycle_command|install_prepared_recovery/.test(
-        stage,
-      ) ||
-      !hasAll(stage, [
-        "let mut working = Mempool::new(config.clone());",
-        ".intersection(&final_members)",
-        "let mut staged_mempool = Mempool::new(config);",
-      ]) ||
-      !staging.includes("#[derive(Debug)]\npub struct PreparedMempoolRecovery"),
-    PHASE135_DIAGNOSTICS.staging,
+    PHASE135_DIAGNOSTICS,
   );
 
   const facade = get(FILES.facade);
@@ -573,7 +509,11 @@ export function checkPhase135SnapshotRecovery(
     PHASE135_DIAGNOSTICS.claims,
   );
 
-  const checker = [get(FILES.checker), get(FILES.checkerSource)].join("\n");
+  const checker = [
+    get(FILES.checker),
+    get(FILES.checkerSource),
+    get(FILES.checkerPersistedInput),
+  ].join("\n");
   addFailure(
     failures,
     /Bun\.(?:spawn|spawnSync)|fetch\s*\(|https?:\/\/|Date\.now|Math\.random/.test(
