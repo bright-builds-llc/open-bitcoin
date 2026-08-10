@@ -576,14 +576,24 @@ stored as competing truth. The global store schema remains version 1. The
 legacy v1 shape is decode-only and migrates conservatively: incomplete legacy
 age becomes unknown and legacy unbroadcast membership is empty.
 
-Decode enforces encoded-byte, record-count, transaction-byte, aggregate-byte,
-unbroadcast-count, duplicate, subset, and txid/wtxid/vsize identity bounds
-before recovery can reach live authority. Recovery is side-effect-free while it
-builds deterministic parent-first topology and seven explicit outcomes, then a
-single `InstallRecovery` lifecycle command swaps canonical mempool plus every
-dependent projection. The staged mempool is rebuilt after final membership so
-rolling fee state starts fresh; recovered unbroadcast is the exact persisted
-intersection with final survivors.
+Format-owned candidate bounds govern persisted load and topology before current
+policy participates: the four globally coexisting encoded dimensions are
+268,435,456 encoded bytes, 220,096 records, 5,000 unbroadcast members, and
+67,108,864 aggregate transaction bytes. The separate 4,194,304-byte
+per-transaction ceiling and checked 1,636,801 aggregate / 102,300 per-record
+input-edge ceilings are individual allocations within those transaction-byte
+budgets, not three more simultaneously allocated maxima. Decode streams record
+and transaction-byte counters, then bounded topology is constructed without
+consulting live policy.
+
+Fresh current policy governs live capture, replay, capacity trimming, and final
+membership. Recovery is side-effect-free while it builds deterministic
+parent-first topology and seven explicit outcomes, then a single
+`InstallRecovery` lifecycle command swaps canonical mempool plus every dependent
+projection. The staged mempool is rebuilt after final membership so rolling fee
+state starts fresh; recovered unbroadcast is the exact persisted intersection
+with final survivors, and an admitted record absent from final membership is
+rewritten to `dropped_evicted`.
 
 Checkpointing uses one non-cloneable pending capability/receipt family and one
 single-flight coordinator. Encoding and Fjall `SyncAll` happen outside the
@@ -621,6 +631,9 @@ shape; they preserve the in-scope restart result without claiming binary
 These requirements remain pending until independent phase verification records
 its final result. Phase 136 owns retry scheduling and package fanout, Phase 137
 owns broad operator surfaces, and Phase 138 owns adversarial release proof.
+Phase 135 review warning WR-01 remains open and non-blocking: the live preflight
+is unconditional, while outer-`cfg` lexical-checker hardening is deferred and is
+not claimed by this evidence.
 
 ### Phase 134 scope boundary
 

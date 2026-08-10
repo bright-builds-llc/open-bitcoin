@@ -12,11 +12,16 @@ import {
   body,
   directStatementIndex,
 } from "./check-phase135-snapshot-recovery/source";
+import {
+  persistedInputMutations,
+  type Phase135Mutation,
+  type Phase135Mutator,
+} from "./check-phase135-snapshot-recovery/persisted-input-mutations";
 import { readSourceRoot } from "./source-corpus";
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const tempRoots: string[] = [];
-type Mutator = (files: Map<string, string>) => void;
-type Mutation = readonly [string, string, Mutator, exact?: boolean];
+type Mutator = Phase135Mutator;
+type Mutation = Phase135Mutation;
 
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {
@@ -105,6 +110,8 @@ function contractMutations(): Mutation[] {
       "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode.rs",
     codecKeyPreflight:
       "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/key_preflight.rs",
+    codecTransactionDecode:
+      "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/transaction.rs",
     storage: "packages/open-bitcoin-node/src/storage.rs",
     topology: "packages/open-bitcoin-node/src/network/recovery/topology.rs",
     staging: "packages/open-bitcoin-node/src/network/recovery/staging.rs",
@@ -134,6 +141,7 @@ function contractMutations(): Mutation[] {
   } as const;
 
   return [
+    ...persistedInputMutations(files, PHASE135_DIAGNOSTICS, replace),
     [
       "v2 stores a derived fee",
       PHASE135_DIAGNOSTICS.schema,
@@ -199,124 +207,9 @@ function contractMutations(): Mutation[] {
       ),
     ],
     [
-      "encoded byte bound removed",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(
-        files.codec,
-        "if bytes.len() > limits.max_encoded_bytes {",
-        "if false {",
-      ),
-    ],
-    [
-      "raw object key bound is disabled",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(
-        files.codecKeyPreflight,
-        "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = 64;",
-        "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = usize::MAX;",
-      ),
-    ],
-    [
-      "raw object key preflight call removed",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(
-        files.codecDecode,
-        "    validate_raw_object_keys(bytes)?;\n",
-        "",
-      ),
-      true,
-    ],
-    [
-      "raw object key preflight moved after deserializer construction",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(
-        files.codecDecode,
-        "    validate_raw_object_keys(bytes)?;\n    let mut deserializer = serde_json::Deserializer::from_slice(bytes);",
-        "    let mut deserializer = serde_json::Deserializer::from_slice(bytes);\n    validate_raw_object_keys(bytes)?;",
-      ),
-      true,
-    ],
-    [
-      "raw object key preflight hidden in a closure",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(files.codecDecode, "    validate_raw_object_keys(bytes)?;\n", "    let decoy = || { validate_raw_object_keys(bytes) };\n"),
-      true,
-    ],
-    [
-      "raw object key preflight hidden in a local function",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(files.codecDecode, "    validate_raw_object_keys(bytes)?;\n", "    fn decoy(bytes: &[u8]) { let _ = validate_raw_object_keys(bytes); }\n"),
-      true,
-    ],
-    [
-      "record decode restores the fixed 50,000 clamp",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(files.store, ".max_live_entries();", ".max_live_entries().min(50_000);"),
-    ],
-    [
-      "capture bypasses shared accounting bounds",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(files.dispatcher, "mempool.config().mempool_capacity", "MempoolCapacity::new(50_000)"),
-    ],
-    [
-      "topology bypasses recovery policy bounds",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(files.topology, "policy.mempool_capacity", "MempoolCapacity::new(50_000)"),
-    ],
-    [
-      "bounded loader reads before checking stored size",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(
-        files.store,
-        "let Some(encoded_size) = size()? else {",
-        "let loaded_early = load()?;\n    let Some(encoded_size) = size()? else {",
-      ),
-    ],
-    [
-      "identity validation removed",
-      PHASE135_DIAGNOSTICS.bounds,
-      replace(
-        files.snapshot,
-        "if txid != actual_txid || wtxid != actual_wtxid {",
-        "if false {",
-      ),
-    ],
-    [
-      "topology edge bound removed",
-      PHASE135_DIAGNOSTICS.topology,
-      replace(
-        files.topology,
-        "max_edges: bounds.max_live_input_edges(),",
-        "max_edges: usize::MAX,",
-      ),
-    ],
-    [
       "outcome variant removed",
       PHASE135_DIAGNOSTICS.topology,
       replace(files.snapshot, "DroppedPolicyIncompatible,", ""),
-    ],
-    [
-      "staging mutates live state",
-      PHASE135_DIAGNOSTICS.staging,
-      insertAfter(
-        files.staging,
-        "let persisted_unbroadcast = snapshot.unbroadcast_members();",
-        "\n    network.mempool_mut().clear();",
-      ),
-    ],
-    [
-      "unbroadcast intersection removed",
-      PHASE135_DIAGNOSTICS.staging,
-      replace(files.staging, ".intersection(&final_members)", ".iter()"),
-    ],
-    [
-      "rolling state is reused",
-      PHASE135_DIAGNOSTICS.staging,
-      replace(
-        files.staging,
-        "let mut staged_mempool = Mempool::new(config);",
-        "let mut staged_mempool = working;",
-      ),
     ],
     [
       "install bypasses lifecycle command",

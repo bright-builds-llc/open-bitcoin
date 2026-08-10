@@ -59,6 +59,8 @@ const FILES = {
   checkerSource: "scripts/check-phase135-snapshot-recovery/source.ts",
   checkerPersistedInput:
     "scripts/check-phase135-snapshot-recovery/persisted-input.ts",
+  checkerPersistedInputMutations:
+    "scripts/check-phase135-snapshot-recovery/persisted-input-mutations.ts",
   test: "scripts/check-phase135-snapshot-recovery.test.ts",
   verify: "scripts/verify.sh",
 } as const;
@@ -445,6 +447,7 @@ export function checkPhase135SnapshotRecovery(
   );
 
   const index = get(FILES.index);
+  const catalog = get(FILES.catalog);
   const checklist = get(FILES.checklist);
   const requirements = get(FILES.requirements);
   let topLevelStatus = "invalid";
@@ -474,6 +477,22 @@ export function checkPhase135SnapshotRecovery(
       !checklist.includes(
         "| v2 snapshot schema, checkpointing, and recovery | In progress |",
       ) ||
+      !catalog.includes(
+        "Format-owned candidate bounds govern persisted load and topology before current",
+      ) ||
+      !catalog.includes(
+        "Fresh current policy governs live capture, replay, capacity trimming, and final",
+      ) ||
+      !checklist.includes(
+        "Format-owned candidate bounds govern persisted load/topology; fresh current policy governs live capture, replay, and final membership",
+      ) ||
+      !index.includes(
+        "Format-owned candidate bounds govern persisted load and topology; fresh current policy governs live capture, replay, and final membership",
+      ) ||
+      !hasAll([catalog, checklist, index].join("\n"), [
+        "WR-01 remains open and non-blocking",
+        "MPDUR-01 through MPDUR-04 remain pending",
+      ]) ||
       ["MPDUR-01", "MPDUR-02", "MPDUR-03", "MPDUR-04"].some(
         (id) =>
           !requirements.includes(`- [ ] **${id}**`) ||
@@ -513,6 +532,7 @@ export function checkPhase135SnapshotRecovery(
     get(FILES.checker),
     get(FILES.checkerSource),
     get(FILES.checkerPersistedInput),
+    get(FILES.checkerPersistedInputMutations),
   ].join("\n");
   addFailure(
     failures,

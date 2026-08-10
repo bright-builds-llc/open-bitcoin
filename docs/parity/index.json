@@ -3398,7 +3398,7 @@
           "scripts/check-parity-breadcrumbs.ts",
           "scripts/verify.sh"
         ],
-        "rationale": "Phase 135 traces D-01 through D-15 and MPDUR-01 through MPDUR-04 to a source-fact-only local v2 snapshot, exact decode-only v1 migration, bounded deterministic recovery, one staged atomic authority install, one affine single-flight checkpoint family, truthful durable-generation evidence, private daemon checkpointing, and producer-before-checkpoint-before-clean shutdown. Open Bitcoin intentionally strengthens Knots by rejecting malformed or over-limit snapshots before live mutation and by retaining achieved receipts until authority completion.",
+        "rationale": "Phase 135 traces D-01 through D-15 and MPDUR-01 through MPDUR-04 to a source-fact-only local v2 snapshot and exact decode-only v1 migration. Format-owned candidate bounds govern persisted load and topology; fresh current policy governs live capture, replay, and final membership, including the final dropped-evicted rewrite. One staged atomic authority install, one affine single-flight checkpoint family, truthful durable-generation evidence, private daemon checkpointing, and producer-before-checkpoint-before-clean shutdown retain achieved receipts until authority completion.",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/node/mempool_persist.cpp",
@@ -3415,6 +3415,7 @@
         },
         "known_gaps": [
           "MPDUR-01 through MPDUR-04 remain pending until independent phase verification records its result.",
+          "Phase 135 review warning WR-01 remains open and non-blocking: the live preflight is unconditional, while outer-cfg lexical-checker hardening is deferred.",
           "Phase 136 owns receive-independent retry scheduling, package fanout, receipt clearing, and any later checkpoint-cadence change.",
           "Phase 137 owns broad RPC and sanitized operator presentation.",
           "Phase 138 owns final adversarial, parity, release, and claim proof.",

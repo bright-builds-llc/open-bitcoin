@@ -64,7 +64,7 @@ function checkPersistedDecodeBounds(
     boundedDecode,
     "let mut deserializer = serde_json::Deserializer::from_slice(bytes);",
   );
-  const forbidden = /from_policy|50_000|1_600_000|usize::MAX|saturating_(?:add|mul)|transaction\.len\(\).*max_(?:records|vertices|edges)/s;
+  const forbidden = /from_policy|PolicyConfig|MempoolCapacityBounds|max_live_entries|50_000|1_600_000|usize::MAX|saturating_(?:add|mul)|transaction\.len\(\).*max_(?:records|vertices|edges)/s;
 
   addFailure(
     failures,
@@ -107,8 +107,10 @@ function checkPersistedDecodeBounds(
         "limits.max_total_transaction_bytes",
         "total_transaction_bytes: &mut total_transaction_bytes",
         "self.total_transaction_bytes",
+        "if bytes > self.max_transaction_bytes {",
         "checked_add(bytes)",
         "next_total > self.max_total_transaction_bytes",
+        "*self.total_transaction_bytes = next_total;",
         "const MAX_MEMPOOL_FIELD_TOKEN_BYTES: usize = 64;",
         "validate_raw_object_keys",
         "reject_extra_element",
