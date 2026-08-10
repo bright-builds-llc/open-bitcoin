@@ -319,8 +319,7 @@ fn clean_skip_still_forces_current_generation_before_marking_clean() {
     assert_eq!(evidence.current_generation, 0);
     assert_eq!(evidence.maybe_last_durable_generation, Some(0));
     let limits =
-        MempoolSnapshotDecodeLimits::from_policy(&open_bitcoin_mempool::PolicyConfig::default())
-            .expect("snapshot decode limits");
+        MempoolSnapshotDecodeLimits::for_persisted_input().expect("snapshot decode limits");
     assert!(
         store
             .load_mempool_snapshot_with_limits(limits)

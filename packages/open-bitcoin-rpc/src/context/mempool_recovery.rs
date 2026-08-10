@@ -87,7 +87,7 @@ fn recover_mempool_snapshot_from_store_handle_at(
 #[allow(clippy::too_many_arguments)]
 fn recover_mempool_snapshot_with_loader<Load>(
     network: &ManagedNetworkHandle,
-    policy: &PolicyConfig,
+    _policy: &PolicyConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
     startup_at: PolicyTime,
@@ -101,7 +101,7 @@ where
         open_bitcoin_node::StorageError,
     >,
 {
-    let decode_limits = match MempoolSnapshotDecodeLimits::from_policy(policy) {
+    let decode_limits = match MempoolSnapshotDecodeLimits::for_persisted_input() {
         Ok(decode_limits) => decode_limits,
         Err(category) => {
             network.record_mempool_recovery_unavailable(category)?;
@@ -169,38 +169,47 @@ mod tests {
     static NEXT_TEMP_DIR: AtomicU64 = AtomicU64::new(0);
 
     #[test]
-    fn snapshot_decode_limits_are_derived_from_the_runtime_policy() {
+    fn snapshot_decode_limits_are_invariant_across_current_policy_capacities() {
         // Arrange
-        let policy = PolicyConfig {
-            mempool_capacity: MempoolCapacity::new(10_000),
-            max_standard_tx_weight: 4_000,
-            ..PolicyConfig::default()
-        };
+        let expected =
+            MempoolSnapshotDecodeLimits::new(268_435_456, 220_096, 5_000, 4_194_304, 67_108_864);
+        let policies = [
+            PolicyConfig::default(),
+            PolicyConfig {
+                mempool_capacity: MempoolCapacity::new(0),
+                ..PolicyConfig::default()
+            },
+            PolicyConfig {
+                mempool_capacity: MempoolCapacity::new(1),
+                ..PolicyConfig::default()
+            },
+            PolicyConfig {
+                mempool_capacity: MempoolCapacity::new(usize::MAX),
+                ..PolicyConfig::default()
+            },
+        ];
 
         // Act
-        let limits = MempoolSnapshotDecodeLimits::from_policy(&policy)
-            .expect("bounded policy should derive decode limits");
+        let limits = policies.map(|policy| {
+            let handle = transient_handle();
+            let mut maybe_observed = None;
+            recover_mempool_snapshot_with_loader(
+                &handle,
+                &policy,
+                ScriptVerifyFlags::NONE,
+                ConsensusParams::default(),
+                PolicyTime::new(20),
+                |limits| {
+                    maybe_observed = Some(limits);
+                    Ok(None)
+                },
+            )
+            .expect("bounded startup load");
+            maybe_observed.expect("persisted input limits supplied to loader")
+        });
 
         // Assert
-        assert_eq!(
-            limits,
-            MempoolSnapshotDecodeLimits::new(26_668_576, 10_000, 5_000, 4_000, 10_000)
-        );
-    }
-
-    #[test]
-    fn snapshot_decode_limit_overflow_is_typed_resource_exhaustion() {
-        // Arrange
-        let policy = PolicyConfig {
-            mempool_capacity: MempoolCapacity::new(usize::MAX),
-            ..PolicyConfig::default()
-        };
-
-        // Act
-        let result = MempoolSnapshotDecodeLimits::from_policy(&policy);
-
-        // Assert
-        assert_eq!(result, Err(SyncRecoveryCategory::ResourceExhaustion));
+        assert!(limits.into_iter().all(|limits| limits == expected));
     }
 
     #[test]
@@ -308,25 +317,27 @@ mod tests {
             .save_mempool_snapshot(&snapshot, PersistMode::Sync)
             .expect("save snapshot");
         let handle = transient_handle();
-        let overflowing_policy = PolicyConfig {
-            mempool_capacity: MempoolCapacity::new(usize::MAX),
-            ..PolicyConfig::default()
-        };
+        let expected_limits =
+            MempoolSnapshotDecodeLimits::for_persisted_input().expect("persisted input limits");
 
         // Act
         recover_mempool_snapshot_with_loader(
             &handle,
-            &overflowing_policy,
+            &PolicyConfig::default(),
             ScriptVerifyFlags::NONE,
             ConsensusParams::default(),
             PolicyTime::new(20),
-            |limits| store.load_mempool_snapshot_with_limits(limits),
+            |limits| {
+                assert_eq!(limits, expected_limits);
+                store.load_mempool_snapshot_with_limits(MempoolSnapshotDecodeLimits::new(
+                    0, 0, 0, 0, 0,
+                ))
+            },
         )
         .expect("record limit failure");
         let retained = store
             .load_mempool_snapshot_with_limits(
-                MempoolSnapshotDecodeLimits::from_policy(&PolicyConfig::default())
-                    .expect("default limits"),
+                MempoolSnapshotDecodeLimits::for_persisted_input().expect("persisted input limits"),
             )
             .expect("load retained snapshot");
 
@@ -336,7 +347,7 @@ mod tests {
             handle
                 .latest_mempool_recovery_storage_error()
                 .expect("startup failure evidence"),
-            Some(SyncRecoveryCategory::ResourceExhaustion)
+            Some(SyncRecoveryCategory::StoreCorruption)
         );
         drop(store);
         fs::remove_dir_all(data_dir).expect("remove store");
