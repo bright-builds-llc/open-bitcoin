@@ -10,9 +10,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use open_bitcoin_core::consensus::{transaction_txid, transaction_wtxid};
 use open_bitcoin_core::primitives::{Txid, Wtxid};
-use open_bitcoin_mempool::{MempoolCapacityBounds, MempoolMemberIdentity, PolicyConfig};
+use open_bitcoin_mempool::MempoolMemberIdentity;
 
 use crate::storage::mempool_snapshot::MempoolSnapshotError;
+use crate::storage::snapshot_codec::persisted_mempool_input_limits;
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshotRecord};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,25 +26,50 @@ pub(crate) struct RecoveryTopologyLimits {
 impl RecoveryTopologyLimits {
     #[cfg(test)]
     pub(crate) fn standard() -> Self {
-        Self::from_policy(&PolicyConfig::default())
+        Self::for_persisted_input()
+            .expect("fixed mempool persisted-input arithmetic must remain representable")
     }
 
-    pub(crate) fn from_policy(policy: &PolicyConfig) -> Self {
-        let bounds = MempoolCapacityBounds::from_capacity(policy.mempool_capacity);
-        Self {
-            max_vertices: bounds.max_live_entries(),
-            max_edges: bounds.max_live_input_edges(),
-            max_parent_edges_per_record: bounds.max_live_input_edges(),
-        }
+    pub(crate) fn for_persisted_input() -> Result<Self, MempoolSnapshotError> {
+        let limits =
+            persisted_mempool_input_limits().ok_or(MempoolSnapshotError::ResourceBoundExceeded)?;
+        Ok(Self {
+            max_vertices: limits.max_records,
+            max_edges: limits.max_input_edges,
+            max_parent_edges_per_record: limits.max_input_edges_per_record,
+        })
     }
 
     #[cfg(test)]
-    pub(crate) const fn new(max_vertices: usize, max_parent_edges_per_record: usize) -> Self {
+    pub(crate) fn new(max_vertices: usize, max_parent_edges_per_record: usize) -> Self {
         Self {
             max_vertices,
-            max_edges: max_vertices.saturating_mul(max_parent_edges_per_record),
+            max_edges: max_vertices
+                .checked_mul(max_parent_edges_per_record)
+                .expect("test topology edge budget must remain representable"),
             max_parent_edges_per_record,
         }
+    }
+
+    fn validate_parent_edges(self, parent_edges: usize) -> Result<(), MempoolSnapshotError> {
+        if parent_edges > self.max_parent_edges_per_record {
+            return Err(MempoolSnapshotError::ResourceBoundExceeded);
+        }
+        Ok(())
+    }
+
+    fn checked_add_edges(
+        self,
+        edge_count: usize,
+        parent_edges: usize,
+    ) -> Result<usize, MempoolSnapshotError> {
+        let next = edge_count
+            .checked_add(parent_edges)
+            .ok_or(MempoolSnapshotError::ResourceBoundExceeded)?;
+        if next > self.max_edges {
+            return Err(MempoolSnapshotError::ResourceBoundExceeded);
+        }
+        Ok(next)
     }
 }
 
@@ -134,14 +160,10 @@ pub(crate) fn prepare_recovery_topology(
         if failed.contains(&index) {
             continue;
         }
-        let parents = record
-            .record
-            .transaction
-            .inputs
-            .iter()
-            .filter_map(|input| primary_by_txid.get(&input.previous_output.txid).copied())
-            .collect::<BTreeSet<_>>();
-        if parents.len() > limits.max_parent_edges_per_record {
+        if limits
+            .validate_parent_edges(record.record.transaction.inputs.len())
+            .is_err()
+        {
             failed.insert(index);
             statuses.push(MempoolRecoveryRecord {
                 txid: record.identity.txid,
@@ -149,12 +171,14 @@ pub(crate) fn prepare_recovery_topology(
             });
             continue;
         }
-        edge_count = edge_count
-            .checked_add(parents.len())
-            .ok_or(MempoolSnapshotError::ResourceBoundExceeded)?;
-        if edge_count > limits.max_edges {
-            return Err(MempoolSnapshotError::ResourceBoundExceeded);
-        }
+        let parents = record
+            .record
+            .transaction
+            .inputs
+            .iter()
+            .filter_map(|input| primary_by_txid.get(&input.previous_output.txid).copied())
+            .collect::<BTreeSet<_>>();
+        edge_count = limits.checked_add_edges(edge_count, parents.len())?;
         indegree[index] = parents.len();
         for parent in parents {
             children.entry(parent).or_default().insert(index);

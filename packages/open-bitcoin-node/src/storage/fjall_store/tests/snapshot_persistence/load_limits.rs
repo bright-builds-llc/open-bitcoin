@@ -2,6 +2,10 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::*;
+use open_bitcoin_mempool::{
+    MempoolEntry, MempoolEntryMetadata, MempoolOrigin, RelayIntent, TransactionVirtualSize,
+    accounted_memory_for_entry,
+};
 
 #[test]
 fn fjall_mempool_snapshot_round_trips_after_reopen() {
@@ -31,28 +35,48 @@ fn fjall_mempool_snapshot_round_trips_after_reopen() {
 }
 
 #[test]
-fn fjall_mempool_snapshot_round_trips_at_policy_transaction_capacity() {
+fn fjall_mempool_snapshot_round_trips_at_accounted_policy_capacity() {
     // Arrange
     let path = temp_store_path("mempool-policy-capacity");
     remove_dir_if_exists(&path);
     let snapshot = mempool_snapshot();
-    let transaction_bytes = snapshot
-        .records
-        .iter()
-        .map(|record| {
-            open_bitcoin_core::codec::encode_transaction(
-                &record.transaction,
-                open_bitcoin_core::codec::TransactionEncoding::WithWitness,
-            )
-            .expect("encode transaction")
-            .len()
-        })
-        .sum();
+    let record = snapshot.records.first().expect("fixture record");
+    let transaction_bytes = open_bitcoin_core::codec::encode_transaction(
+        &record.transaction,
+        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+    )
+    .expect("encode canonical transaction")
+    .len();
+    let txid = transaction_txid(&record.transaction).expect("canonical txid");
+    let wtxid = transaction_wtxid(&record.transaction).expect("canonical wtxid");
+    let (weight, virtual_size) = transaction_weight_and_virtual_size(&record.transaction)
+        .expect("canonical transaction size");
+    let entry = MempoolEntry::new(
+        record.transaction.clone(),
+        txid,
+        wtxid,
+        Amount::from_sats(1_000).expect("fixture fee"),
+        TransactionVirtualSize::new(virtual_size),
+        weight,
+        0,
+        MempoolEntryMetadata::new(
+            record.acceptance_time,
+            MempoolOrigin::RecoveryUnknown,
+            RelayIntent::NotRequested,
+        ),
+    );
+    let accounted_entry_bytes = accounted_memory_for_entry(&entry)
+        .expect("accounted fixture entry")
+        .as_usize();
     let policy = PolicyConfig {
-        mempool_capacity: open_bitcoin_mempool::MempoolCapacity::new(transaction_bytes),
+        mempool_capacity: open_bitcoin_mempool::MempoolCapacity::new(accounted_entry_bytes),
         ..PolicyConfig::default()
     };
-    let limits = MempoolSnapshotDecodeLimits::from_policy(&policy).expect("policy limits");
+    let limits =
+        MempoolSnapshotDecodeLimits::for_persisted_input().expect("persisted input limits");
+
+    assert!(policy.mempool_capacity.as_usize() > transaction_bytes);
+    assert_ne!(policy.mempool_capacity.as_usize(), transaction_bytes);
 
     // Act
     {

@@ -4,15 +4,16 @@
 // - packages/bitcoin-knots/test/functional/mempool_persist.py
 
 use std::collections::BTreeSet;
+use std::mem::size_of;
 
 use open_bitcoin_core::{
     codec::{TransactionEncoding, encode_transaction, parse_transaction},
     consensus::{transaction_txid as canonical_txid, transaction_wtxid},
-    primitives::{Transaction, Txid, Wtxid},
+    primitives::{OutPoint, Transaction, Txid, Wtxid},
 };
 use open_bitcoin_mempool::{
-    MempoolAcceptanceTime, MempoolCapacityBounds, MempoolEntryMetadata, MempoolMemberIdentity,
-    MempoolOrigin, PolicyConfig, PolicyTime, RelayIntent,
+    MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin, PolicyTime,
+    RelayIntent,
 };
 use serde::{Deserialize, Serialize, Serializer};
 
@@ -35,6 +36,55 @@ const ENCODED_UNBROADCAST_MEMBER_OVERHEAD_BYTES: usize = 4_096;
 const HEX_CHARS_PER_TRANSACTION_BYTE: usize = 2;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct MempoolSnapshotPersistedInputLimits {
+    pub(crate) max_encoded_bytes: usize,
+    pub(crate) max_records: usize,
+    pub(crate) max_unbroadcast_members: usize,
+    pub(crate) max_transaction_bytes: usize,
+    pub(crate) max_total_transaction_bytes: usize,
+    pub(crate) max_input_edges: usize,
+    pub(crate) max_input_edges_per_record: usize,
+}
+
+pub(crate) fn persisted_mempool_input_limits() -> Option<MempoolSnapshotPersistedInputLimits> {
+    let max_unbroadcast_members = MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS;
+    let encoded_transaction_bytes =
+        MAX_MEMPOOL_SNAPSHOT_TOTAL_TRANSACTION_BYTES.checked_mul(HEX_CHARS_PER_TRANSACTION_BYTE)?;
+    let encoded_unbroadcast_bytes =
+        max_unbroadcast_members.checked_mul(ENCODED_UNBROADCAST_MEMBER_OVERHEAD_BYTES)?;
+    let encoded_record_budget = MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES
+        .checked_sub(encoded_transaction_bytes)?
+        .checked_sub(encoded_unbroadcast_bytes)?
+        .checked_sub(ENCODED_ENVELOPE_OVERHEAD_BYTES)?;
+    let max_records = encoded_record_budget.checked_div(ENCODED_RECORD_OVERHEAD_BYTES)?;
+    let minimum_input_bytes = OutPoint::SERIALIZED_LEN
+        .checked_add(1)?
+        .checked_add(size_of::<u32>())?;
+    let max_input_edges =
+        MAX_MEMPOOL_SNAPSHOT_TOTAL_TRANSACTION_BYTES.checked_div(minimum_input_bytes)?;
+    let max_input_edges_per_record =
+        MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES.checked_div(minimum_input_bytes)?;
+    let limits = MempoolSnapshotPersistedInputLimits {
+        max_encoded_bytes: MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES,
+        max_records,
+        max_unbroadcast_members,
+        max_transaction_bytes: MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES,
+        max_total_transaction_bytes: MAX_MEMPOOL_SNAPSHOT_TOTAL_TRANSACTION_BYTES,
+        max_input_edges,
+        max_input_edges_per_record,
+    };
+    if encoded_size_upper_bound(
+        limits.max_total_transaction_bytes,
+        limits.max_records,
+        limits.max_unbroadcast_members,
+    ) != Some(limits.max_encoded_bytes)
+    {
+        return None;
+    }
+    Some(limits)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct MempoolSnapshotDecodeLimits {
     pub(crate) max_encoded_bytes: usize,
     pub(crate) max_records: usize,
@@ -43,16 +93,17 @@ pub(crate) struct MempoolSnapshotDecodeLimits {
     pub(crate) max_total_transaction_bytes: usize,
 }
 
+#[cfg(test)]
 impl Default for MempoolSnapshotDecodeLimits {
     fn default() -> Self {
-        let policy = PolicyConfig::default();
+        let limits = persisted_mempool_input_limits()
+            .expect("fixed mempool persisted-input arithmetic must remain representable");
         Self {
-            max_encoded_bytes: MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES,
-            max_records: MempoolCapacityBounds::from_capacity(policy.mempool_capacity)
-                .max_live_entries(),
-            max_unbroadcast_members: MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS,
-            max_transaction_bytes: MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES,
-            max_total_transaction_bytes: MAX_MEMPOOL_SNAPSHOT_TOTAL_TRANSACTION_BYTES,
+            max_encoded_bytes: limits.max_encoded_bytes,
+            max_records: limits.max_records,
+            max_unbroadcast_members: limits.max_unbroadcast_members,
+            max_transaction_bytes: limits.max_transaction_bytes,
+            max_total_transaction_bytes: limits.max_total_transaction_bytes,
         }
     }
 }

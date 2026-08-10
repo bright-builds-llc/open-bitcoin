@@ -10,7 +10,7 @@ use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
     consensus::{block_hash, block_merkle_root, transaction_txid},
 };
-use open_bitcoin_mempool::{MempoolCapacityBounds, PolicyConfig, PolicyTime};
+use open_bitcoin_mempool::PolicyTime;
 
 use super::{FjallNodeStore, SNAPSHOT_KEY};
 use crate::network::{
@@ -36,8 +36,6 @@ pub struct MempoolSnapshotDecodeLimits {
 }
 
 impl MempoolSnapshotDecodeLimits {
-    const MAX_UNBROADCAST_MEMBERS: usize = 5_000;
-
     /// Build a caller-owned bounded decode contract without implicit defaults.
     pub const fn new(
         max_encoded_bytes: usize,
@@ -55,27 +53,17 @@ impl MempoolSnapshotDecodeLimits {
         }
     }
 
-    /// Derive bounded startup decode limits from the policy used by the live mempool.
-    pub fn from_policy(policy: &PolicyConfig) -> Result<Self, SyncRecoveryCategory> {
-        let total_transaction_capacity = policy.mempool_capacity.as_usize();
-        let max_records =
-            MempoolCapacityBounds::from_capacity(policy.mempool_capacity).max_live_entries();
-        let max_unbroadcast_members = max_records.min(Self::MAX_UNBROADCAST_MEMBERS);
-        let max_encoded_bytes = snapshot_codec::encoded_size_upper_bound(
-            total_transaction_capacity,
-            max_records,
-            max_unbroadcast_members,
-        )
-        .ok_or(SyncRecoveryCategory::ResourceExhaustion)?;
-
+    /// Build the stable finite decode contract owned by the persisted format.
+    pub fn for_persisted_input() -> Result<Self, SyncRecoveryCategory> {
+        let limits: snapshot_codec::MempoolSnapshotPersistedInputLimits =
+            snapshot_codec::persisted_mempool_input_limits()
+                .ok_or(SyncRecoveryCategory::ResourceExhaustion)?;
         Ok(Self::new(
-            max_encoded_bytes,
-            max_records,
-            max_unbroadcast_members,
-            policy
-                .max_standard_tx_weight
-                .min(total_transaction_capacity),
-            total_transaction_capacity,
+            limits.max_encoded_bytes,
+            limits.max_records,
+            limits.max_unbroadcast_members,
+            limits.max_transaction_bytes,
+            limits.max_total_transaction_bytes,
         ))
     }
 
@@ -484,17 +472,16 @@ mod bounded_load_tests {
     }
 
     #[test]
-    fn policy_limits_derive_record_count_from_accounted_capacity() {
+    fn persisted_input_limits_use_the_finite_format_contract() {
         // Arrange
-        let policy = PolicyConfig::default();
+        let expected =
+            MempoolSnapshotDecodeLimits::new(268_435_456, 220_096, 5_000, 4_194_304, 67_108_864);
 
         // Act
-        let limits = MempoolSnapshotDecodeLimits::from_policy(&policy).expect("policy limits");
+        let limits =
+            MempoolSnapshotDecodeLimits::for_persisted_input().expect("persisted input limits");
 
         // Assert
-        assert_eq!(
-            limits.max_records,
-            MempoolCapacityBounds::from_capacity(policy.mempool_capacity).max_live_entries()
-        );
+        assert_eq!(limits, expected);
     }
 }

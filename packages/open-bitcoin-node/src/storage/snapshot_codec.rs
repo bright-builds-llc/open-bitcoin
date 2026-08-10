@@ -23,12 +23,12 @@ use crate::{
 mod mempool;
 mod wallet;
 
-#[cfg(test)]
-pub(crate) use mempool::decode_mempool_snapshot;
 pub(crate) use mempool::{
-    MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limits, encode_mempool_snapshot,
-    encoded_size_upper_bound,
+    MempoolSnapshotDecodeLimits, MempoolSnapshotPersistedInputLimits,
+    decode_mempool_snapshot_with_limits, encode_mempool_snapshot, persisted_mempool_input_limits,
 };
+#[cfg(test)]
+pub(crate) use mempool::{decode_mempool_snapshot, encoded_size_upper_bound};
 pub(crate) use wallet::{
     decode_selected_wallet, decode_wallet_registry_snapshot, decode_wallet_rescan_job,
     decode_wallet_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,

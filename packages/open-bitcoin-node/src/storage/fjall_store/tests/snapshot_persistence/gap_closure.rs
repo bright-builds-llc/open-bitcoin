@@ -151,7 +151,7 @@ fn legacy_unknown_recovery_survives_current_sync_checkpoint_and_reopen() {
 }
 
 #[test]
-fn former_50_000_record_limit_checkpoints_and_reopens_with_policy_bounds() {
+fn former_50_000_record_limit_checkpoints_and_reopens_with_persisted_input_bounds() {
     // Arrange
     let path = temp_store_path("former-50000-record-limit");
     remove_dir_if_exists(&path);
@@ -185,6 +185,20 @@ fn former_50_000_record_limit_checkpoints_and_reopens_with_policy_bounds() {
     .expect("snapshot above former fixed limit");
     let encoded = crate::storage::snapshot_codec::encode_mempool_snapshot(&snapshot)
         .expect("encode bounded snapshot corpus");
+    let input_limits = crate::storage::snapshot_codec::persisted_mempool_input_limits()
+        .expect("persisted input limits");
+    let transaction_bytes = open_bitcoin_core::codec::encode_transaction(
+        &snapshot.records[0].transaction,
+        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
+    )
+    .expect("encode bounded fixture transaction")
+    .len();
+    let total_transaction_bytes = transaction_bytes
+        .checked_mul(snapshot.records.len())
+        .expect("bounded aggregate transaction bytes");
+    assert!(FORMER_RECORD_LIMIT_PLUS_ONE <= input_limits.max_records);
+    assert!(encoded.len() <= input_limits.max_encoded_bytes);
+    assert!(total_transaction_bytes <= input_limits.max_total_transaction_bytes);
     assert!(encoded.len() < FORMER_LIMIT_TEST_MAX_ENCODED_BYTES);
     assert!(
         snapshot
@@ -204,8 +218,8 @@ fn former_50_000_record_limit_checkpoints_and_reopens_with_policy_bounds() {
     drop(snapshot);
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("reopen store");
-    let limits = MempoolSnapshotDecodeLimits::from_policy(&PolicyConfig::default())
-        .expect("policy-derived decode limits");
+    let limits =
+        MempoolSnapshotDecodeLimits::for_persisted_input().expect("persisted input decode limits");
     let persisted = reopened
         .load_mempool_snapshot_with_limits(limits)
         .expect("load snapshot above former limit")
