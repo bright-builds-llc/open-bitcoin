@@ -243,3 +243,38 @@ fn propagate_failed_descendants(
         }
     }
 }
+
+#[cfg(test)]
+mod persisted_input_limit_tests {
+    use super::*;
+
+    #[test]
+    fn persisted_input_limits_reject_one_over_aggregate_topology_edges() {
+        // Arrange
+        let limits =
+            RecoveryTopologyLimits::for_persisted_input().expect("persisted topology limits");
+
+        // Act
+        let exact = limits.checked_add_edges(0, 1_636_801);
+        let one_over = limits.checked_add_edges(0, 1_636_802);
+
+        // Assert
+        assert_eq!(exact, Ok(1_636_801));
+        assert_eq!(one_over, Err(MempoolSnapshotError::ResourceBoundExceeded));
+    }
+
+    #[test]
+    fn persisted_input_limits_reject_one_over_per_record_topology_edges() {
+        // Arrange
+        let limits =
+            RecoveryTopologyLimits::for_persisted_input().expect("persisted topology limits");
+
+        // Act
+        let exact = limits.validate_parent_edges(102_300);
+        let one_over = limits.validate_parent_edges(102_301);
+
+        // Assert
+        assert_eq!(exact, Ok(()));
+        assert_eq!(one_over, Err(MempoolSnapshotError::ResourceBoundExceeded));
+    }
+}

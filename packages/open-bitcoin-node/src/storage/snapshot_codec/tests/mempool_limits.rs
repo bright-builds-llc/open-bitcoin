@@ -5,6 +5,148 @@
 
 use super::*;
 
+#[test]
+fn persisted_input_limits_fit_the_global_encoded_dimensions_exactly() {
+    // Arrange
+    let limits = crate::storage::snapshot_codec::persisted_mempool_input_limits()
+        .expect("persisted input limits");
+
+    // Act
+    let exact = crate::storage::snapshot_codec::encoded_size_upper_bound(
+        limits.max_total_transaction_bytes,
+        limits.max_records,
+        limits.max_unbroadcast_members,
+    );
+    let one_record_over = crate::storage::snapshot_codec::encoded_size_upper_bound(
+        limits.max_total_transaction_bytes,
+        limits.max_records + 1,
+        limits.max_unbroadcast_members,
+    );
+
+    // Assert
+    assert_eq!(limits.max_encoded_bytes, 268_435_456);
+    assert_eq!(limits.max_records, 220_096);
+    assert_eq!(limits.max_unbroadcast_members, 5_000);
+    assert_eq!(limits.max_total_transaction_bytes, 67_108_864);
+    assert_eq!(exact, Some(limits.max_encoded_bytes));
+    assert_eq!(one_record_over, Some(limits.max_encoded_bytes + 512));
+}
+
+#[test]
+fn persisted_input_limits_derive_aggregate_edges_from_transaction_bytes() {
+    // Arrange
+    let limits = crate::storage::snapshot_codec::persisted_mempool_input_limits()
+        .expect("persisted input limits");
+    let minimum_input_bytes = OutPoint::SERIALIZED_LEN + 1 + core::mem::size_of::<u32>();
+
+    // Act
+    let exact_bytes = limits
+        .max_input_edges
+        .checked_mul(minimum_input_bytes)
+        .expect("exact aggregate edge bytes");
+    let one_over_bytes = (limits.max_input_edges + 1)
+        .checked_mul(minimum_input_bytes)
+        .expect("one-over aggregate edge bytes");
+
+    // Assert
+    assert_eq!(minimum_input_bytes, 41);
+    assert_eq!(limits.max_input_edges, 1_636_801);
+    assert!(exact_bytes <= limits.max_total_transaction_bytes);
+    assert!(one_over_bytes > limits.max_total_transaction_bytes);
+}
+
+#[test]
+fn persisted_input_limits_derive_per_record_edges_from_transaction_bytes() {
+    // Arrange
+    let limits = crate::storage::snapshot_codec::persisted_mempool_input_limits()
+        .expect("persisted input limits");
+    let minimum_input_bytes = OutPoint::SERIALIZED_LEN + 1 + core::mem::size_of::<u32>();
+
+    // Act
+    let exact_bytes = limits
+        .max_input_edges_per_record
+        .checked_mul(minimum_input_bytes)
+        .expect("exact per-record edge bytes");
+    let one_over_bytes = (limits.max_input_edges_per_record + 1)
+        .checked_mul(minimum_input_bytes)
+        .expect("one-over per-record edge bytes");
+
+    // Assert
+    assert_eq!(limits.max_transaction_bytes, 4_194_304);
+    assert_eq!(limits.max_input_edges_per_record, 102_300);
+    assert!(exact_bytes <= limits.max_transaction_bytes);
+    assert!(one_over_bytes > limits.max_transaction_bytes);
+}
+
+#[test]
+fn persisted_input_limits_reject_one_record_over_its_transaction_budget() {
+    // Arrange
+    let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
+    let value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+    let transaction_bytes = value["payload"]["records"][0]["transaction"]
+        .as_str()
+        .expect("transaction hex")
+        .len()
+        / 2;
+    let limits = MempoolSnapshotDecodeLimits {
+        max_encoded_bytes: encoded.len(),
+        max_records: 220_096,
+        max_unbroadcast_members: 5_000,
+        max_transaction_bytes: transaction_bytes - 1,
+        max_total_transaction_bytes: transaction_bytes,
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(&encoded, limits)
+        .expect_err("per-record transaction budget must fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption { ref detail, .. }
+            if detail == "mempool snapshot exceeds a resource bound"
+    ));
+}
+
+#[test]
+fn persisted_input_limits_reject_aggregate_transaction_bytes_below_record_limit() {
+    // Arrange
+    let encoded = encode_mempool_snapshot(&mempool_snapshot()).expect("encode mempool");
+    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
+    let record = value["payload"]["records"][0].clone();
+    let transaction_bytes = record["transaction"]
+        .as_str()
+        .expect("transaction hex")
+        .len()
+        / 2;
+    value["payload"]["records"]
+        .as_array_mut()
+        .expect("records")
+        .push(record);
+    let bytes = serde_json::to_vec(&value).expect("serialize");
+    let limits = MempoolSnapshotDecodeLimits {
+        max_encoded_bytes: bytes.len(),
+        max_records: 220_096,
+        max_unbroadcast_members: 5_000,
+        max_transaction_bytes: transaction_bytes,
+        max_total_transaction_bytes: transaction_bytes
+            .checked_mul(2)
+            .and_then(|total| total.checked_sub(1))
+            .expect("aggregate one-under limit"),
+    };
+
+    // Act
+    let error = decode_mempool_snapshot_with_limits(&bytes, limits)
+        .expect_err("aggregate transaction budget must fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::Corruption { ref detail, .. }
+            if detail == "mempool snapshot exceeds a resource bound"
+    ));
+}
+
 fn legacy_mempool_snapshot_value() -> serde_json::Value {
     let snapshot = legacy_mempool_snapshot();
     let record = &snapshot.records[0];
