@@ -202,7 +202,23 @@ Plans:
 3. Restart resets the rolling floor to the pinned baseline while preserving supported entry age and surviving local-unbroadcast semantics.
 4. Operators can see checkpoint freshness, dirty generation, persistence strength, and the documented crash-loss window for periodic and clean-shutdown saves, with no runtime-authority lock held across I/O.
 
-**Plans**: TBD
+**Plans:** 14 plans
+
+Plans:
+- [x] 135-01-PLAN.md — Define the source-only durable mempool snapshot contract
+- [x] 135-02-PLAN.md — Build deterministic staged recovery
+- [x] 135-03-PLAN.md — Install staged recovery through the sole authority
+- [x] 135-04-PLAN.md — Bind capture and checkpoint evidence to the authority
+- [x] 135-05-PLAN.md — Execute Sync snapshots as one coalesced flight
+- [x] 135-06-PLAN.md — Wire periodic and clean-shutdown checkpoints
+- [x] 135-07-PLAN.md — Close mutation-tested guards and parity evidence
+- [x] 135-08-PLAN.md — Close raw-key preflight and confirmation-Merkle gaps
+- [x] 135-09-PLAN.md — Close unknown-age checkpoint totality and direct-statement proofs
+- [x] 135-10-PLAN.md — Separate persisted-input ceilings from current-policy membership
+- [x] 135-11-PLAN.md — Modularize the persisted-input checker and reserve full verify
+- [ ] 135-12-PLAN.md — Reject terminal captured generation before recovery install
+- [ ] 135-13-PLAN.md — Close writer/reader representability under persisted-input limits
+- [ ] 135-14-PLAN.md — Guard production-use checker bypasses and reserve phase135-14-full-verify
 
 ### Phase 136: Receive-Independent Maintenance and Transport Receipts
 
@@ -259,7 +275,7 @@ Plans:
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 24/24 | Complete    | 2026-07-30 |
-| 135. Snapshot Schema, Checkpointing, and Recovery | 0/TBD | Not started | - |
+| 135. Snapshot Schema, Checkpointing, and Recovery | 11/14 | In progress | - |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
 | 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
