@@ -35,7 +35,7 @@ key-decisions:
 patterns-established:
   - "Production checker split: stable root orchestration plus one persisted-input contract module."
   - "Mutation split: stable test root plus one typed persisted-input fixture collection."
-requirements-completed: [MPDUR-02]
+requirements-completed: []
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 135-2026-08-02T17-41-48

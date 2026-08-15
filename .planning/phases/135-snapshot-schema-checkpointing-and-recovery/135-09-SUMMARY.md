@@ -40,7 +40,7 @@ key-decisions:
 patterns-established:
   - "Durable allocation ceilings derive from the same conservative lower-bound facts that govern live accounted memory."
   - "Source-order checks reject nested dead-code decoys and malformed brace structure before comparing statement indices."
-requirements-completed: [MPDUR-01, MPDUR-04]
+requirements-completed: []
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 135-2026-08-02T17-41-48

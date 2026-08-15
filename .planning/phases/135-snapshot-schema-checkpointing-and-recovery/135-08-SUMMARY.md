@@ -38,7 +38,7 @@ key-decisions:
 patterns-established:
   - "Pre-Serde trust boundaries are guarded by executable-order mutation tests, not corpus-wide identifier presence."
   - "Migration evidence is authenticated against every commitment available in the persisted source artifact before it can change durable state."
-requirements-completed: [MPDUR-01, MPDUR-02]
+requirements-completed: []
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 135-2026-08-02T17-41-48

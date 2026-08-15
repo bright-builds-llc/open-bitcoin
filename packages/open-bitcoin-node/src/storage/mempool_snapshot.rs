@@ -49,6 +49,13 @@ impl CapturedMempoolGeneration {
         Self(value)
     }
 
+    pub fn try_new(value: u64) -> Result<Self, MempoolSnapshotError> {
+        if value == u64::MAX {
+            return Err(MempoolSnapshotError::StructuralCorruption);
+        }
+        Ok(Self(value))
+    }
+
     pub const fn raw(self) -> u64 {
         self.0
     }
@@ -147,6 +154,9 @@ impl MempoolSnapshot {
         records: Vec<MempoolSnapshotRecord>,
         unbroadcast_members: BTreeSet<MempoolMemberIdentity>,
     ) -> Result<Self, MempoolSnapshotError> {
+        if captured_generation.raw() == u64::MAX {
+            return Err(MempoolSnapshotError::StructuralCorruption);
+        }
         if unbroadcast_members.len() > MAX_MEMPOOL_SNAPSHOT_UNBROADCAST_MEMBERS {
             return Err(MempoolSnapshotError::ResourceBoundExceeded);
         }

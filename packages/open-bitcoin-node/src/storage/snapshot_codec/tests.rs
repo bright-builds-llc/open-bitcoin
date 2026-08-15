@@ -74,7 +74,7 @@ fn mempool_transaction(seed: u8) -> Transaction {
     }
 }
 
-fn mempool_snapshot() -> MempoolSnapshot {
+pub(super) fn mempool_snapshot() -> MempoolSnapshot {
     let transaction = mempool_transaction(24);
     let txid = transaction_txid(&transaction).expect("txid");
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
@@ -623,3 +623,6 @@ fn mempool_snapshot_encoded_schema_version_remains_current() {
 
 #[path = "tests/mempool_limits.rs"]
 mod mempool_limits;
+
+#[path = "tests/terminal_generation.rs"]
+mod terminal_generation;

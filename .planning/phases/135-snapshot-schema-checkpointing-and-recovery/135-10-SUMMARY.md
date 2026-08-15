@@ -37,7 +37,7 @@ key-decisions:
 patterns-established:
   - "Checked format arithmetic derives all persisted-input counters once and maps them into decode and topology adapters."
   - "Persisted candidates reach fresh current-policy replay before final survivor and DroppedEvicted classification."
-requirements-completed: [MPDUR-02]
+requirements-completed: []
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 135-2026-08-02T17-41-48

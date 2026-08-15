@@ -338,7 +338,8 @@ impl TryFrom<MempoolSnapshotV2Dto> for MempoolSnapshot {
         }
 
         MempoolSnapshot::try_new_current(
-            CapturedMempoolGeneration::new(dto.captured_generation),
+            CapturedMempoolGeneration::try_new(dto.captured_generation)
+                .map_err(snapshot_failure)?,
             PolicyTime::from_unix_seconds(dto.captured_at_unix_seconds),
             records,
             unbroadcast_members,

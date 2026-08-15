@@ -155,7 +155,8 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 .collect::<Result<Vec<_>, _>>()
                 .map_err(LifecycleProjectionError::MempoolSnapshot)?;
             let snapshot = MempoolSnapshot::try_new_current(
-                CapturedMempoolGeneration::new(network.lifecycle_generation.raw()),
+                CapturedMempoolGeneration::try_new(network.lifecycle_generation.raw())
+                    .map_err(LifecycleProjectionError::MempoolSnapshot)?,
                 request.captured_at,
                 records,
                 network.unbroadcast_members().clone(),

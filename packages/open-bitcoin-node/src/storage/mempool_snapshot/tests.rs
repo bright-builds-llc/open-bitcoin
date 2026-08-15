@@ -82,6 +82,44 @@ fn known_local_requested(accepted_at: i64) -> MempoolEntryMetadata {
 }
 
 #[test]
+fn captured_generation_try_new_rejects_u64_max() {
+    // Arrange
+    let terminal = u64::MAX;
+
+    // Act
+    let rejected = CapturedMempoolGeneration::try_new(terminal);
+    let zero = CapturedMempoolGeneration::try_new(0);
+    let one = CapturedMempoolGeneration::try_new(1);
+    let last_valid = CapturedMempoolGeneration::try_new(u64::MAX - 1);
+
+    // Assert
+    assert_eq!(rejected, Err(MempoolSnapshotError::StructuralCorruption));
+    assert_eq!(zero.map(CapturedMempoolGeneration::raw), Ok(0));
+    assert_eq!(one.map(CapturedMempoolGeneration::raw), Ok(1));
+    assert_eq!(
+        last_valid.map(CapturedMempoolGeneration::raw),
+        Ok(u64::MAX - 1)
+    );
+}
+
+#[test]
+fn current_snapshot_rejects_terminal_captured_generation() {
+    // Arrange
+    let captured_generation = CapturedMempoolGeneration::new(u64::MAX);
+
+    // Act
+    let result = MempoolSnapshot::try_new_current(
+        captured_generation,
+        PolicyTime::from_unix_seconds(120),
+        Vec::new(),
+        BTreeSet::new(),
+    );
+
+    // Assert
+    assert_eq!(result, Err(MempoolSnapshotError::StructuralCorruption));
+}
+
+#[test]
 fn current_snapshot_preserves_legacy_unknown_acceptance_time() {
     // Arrange
     let transaction = spend_transaction(
