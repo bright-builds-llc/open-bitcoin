@@ -26,6 +26,11 @@ use crate::storage::{MempoolSnapshot, MempoolSnapshotRecord};
 use crate::{StorageError, StorageNamespace};
 
 mod decode;
+mod representability;
+
+pub(crate) use representability::{
+    assert_mempool_snapshot_representable, persisted_record_count_is_representable,
+};
 
 const MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES: usize = 256 * 1024 * 1024;
 const MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES: usize = 4 * 1024 * 1024;
@@ -184,20 +189,10 @@ pub(super) enum MempoolSnapshotPayloadDto {
 }
 
 pub(crate) fn encode_mempool_snapshot(snapshot: &MempoolSnapshot) -> Result<Vec<u8>, StorageError> {
+    let limits = assert_mempool_snapshot_representable(snapshot).map_err(snapshot_failure)?;
     let dto = MempoolSnapshotV2Dto::try_from(snapshot)?;
-    let total_transaction_bytes = dto.records.iter().try_fold(0_usize, |total, record| {
-        total
-            .checked_add(record.transaction.len())
-            .ok_or_else(|| snapshot_failure(MempoolSnapshotError::ResourceBoundExceeded))
-    })?;
-    let max_encoded_bytes = encoded_size_upper_bound(
-        total_transaction_bytes,
-        dto.records.len(),
-        dto.unbroadcast_members.len(),
-    )
-    .ok_or_else(|| snapshot_failure(MempoolSnapshotError::ResourceBoundExceeded))?;
     let bytes = encode_versioned(StorageNamespace::Mempool, &dto)?;
-    if bytes.len() > max_encoded_bytes {
+    if bytes.len() > limits.max_encoded_bytes {
         return Err(snapshot_failure(
             MempoolSnapshotError::ResourceBoundExceeded,
         ));

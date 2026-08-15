@@ -27,6 +27,10 @@ pub use mempool::{MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limi
 pub(crate) use mempool::{
     MempoolSnapshotPersistedInputLimits, encode_mempool_snapshot, persisted_mempool_input_limits,
 };
+#[allow(unused_imports)] // Task 2 capture path and representability tests consume these.
+pub(crate) use mempool::{
+    assert_mempool_snapshot_representable, persisted_record_count_is_representable,
+};
 #[cfg(test)]
 pub(crate) use mempool::{decode_mempool_snapshot, encoded_size_upper_bound};
 pub(crate) use wallet::{

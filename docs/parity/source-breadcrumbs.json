@@ -1731,10 +1731,12 @@
         "packages/open-bitcoin-node/src/storage/mempool_snapshot.rs",
         "packages/open-bitcoin-node/src/storage/mempool_snapshot/tests.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/representability.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/key_preflight.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/decode/transaction.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/mempool_limits.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/representability.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/terminal_generation.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/gap_closure.rs"
       ],

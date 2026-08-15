@@ -38,6 +38,10 @@ function checkPersistedDecodeBounds(
     sources.codec,
     "pub(crate) fn encoded_size_upper_bound(",
   );
+  const encode = body(
+    sources.codec,
+    "pub(crate) fn encode_mempool_snapshot(",
+  );
   const decode = body(
     sources.codec,
     "pub fn decode_mempool_snapshot_with_limits(",
@@ -98,6 +102,10 @@ function checkPersistedDecodeBounds(
         "max_records.checked_mul(ENCODED_RECORD_OVERHEAD_BYTES)?",
         "max_unbroadcast_members.checked_mul(ENCODED_UNBROADCAST_MEMBER_OVERHEAD_BYTES)?",
         ".checked_add(ENCODED_ENVELOPE_OVERHEAD_BYTES)",
+      ]) ||
+      !hasAll(encode, [
+        "assert_mempool_snapshot_representable(snapshot)",
+        "if bytes.len() > limits.max_encoded_bytes {",
       ]) ||
       !decode.includes("if bytes.len() > limits.max_encoded_bytes {") ||
       !hasAll(sources.codecDecode, [

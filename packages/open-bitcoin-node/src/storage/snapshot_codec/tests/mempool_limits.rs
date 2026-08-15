@@ -569,3 +569,6 @@ fn legacy_mempool_snapshot_rejects_identity_mismatch() {
         ));
     }
 }
+
+#[path = "representability.rs"]
+mod representability;
