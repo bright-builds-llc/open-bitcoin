@@ -454,22 +454,25 @@ Copy this injectible `wait` / `now` shape. Sample jitter with `getrandom` in the
 
 Discretion items A1–A3 do not reopen locked decisions. They only fix numbers and module seams.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Exact inspect-N / prepare-M**
+1. **Exact inspect-N / prepare-M** — RESOLVED
    - What we know: Must be documented, fake-clock-assertable, `< 5000`, and not silently equal to PHASE104 drain/queue caps. [CITED: 136-CONTEXT discretion]
    - What's unclear: Product preference among valid pairs.
    - Recommendation: Ship `256` / `32` unless planning review picks another pair in the same commit that introduces the constants.
+   - Resolution: Plan 01 ships `MAINTENANCE_INSPECT_BUDGET = 256` and `MAINTENANCE_PREPARE_BUDGET = 32`.
 
-2. **Timer home**
+2. **Timer home** — RESOLVED
    - What we know: Must be shutdown-aware, not a second policy authority, not a public-default relay loop, not `DurableSyncRuntime`. [CITED: D-16..D-17, discretion]
    - What's unclear: `open-bitcoind` versus a node adapter module.
    - Recommendation: `packages/open-bitcoin-rpc/src/bin/open_bitcoind/retry.rs`, mirroring `checkpoint.rs`, started from `open-bitcoind.rs` next to `start_mempool_checkpoint_worker`.
+   - Resolution: Plan 06 implements that `open_bitcoind/retry.rs` worker and starts it from `open-bitcoind.rs` beside the checkpoint worker.
 
-3. **Hidden first-hop drain**
+3. **Hidden first-hop drain** — RESOLVED
    - What we know: Local submit enqueues; peer-receive drains; announcement outboxes today are block-oriented. [VERIFIED: admission_bridge.rs, action_translation.rs, sync.rs]
    - What's unclear: Whether an unreviewed inbound announcement path already drains TX INV after RPC submit.
    - Recommendation: Plan 01 should include a failing test: local accept, no inbound messages, fake clock unchanged → first INV is prepared/emitted without waiting 10 minutes. If that test already passes, reuse the existing drain; if not, add the outbox drain in the same phase.
+   - Resolution: Plan 06 adds `drain_tx_fanout_emissions` and the `local_accept_plus_drain_prepares_first_hop_inv_without_advancing_ten_minutes` test; first-hop INV is prepared without a 10-minute wait and without the inbound receive loop.
 
 ## Environment Availability
 
