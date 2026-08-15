@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: completed
-stopped_at: Phase 136 context gathered
-last_updated: "2026-08-15T21:40:14.277Z"
-last_activity: 2026-08-15 -- Phase 135 verification passed
+status: executing
+stopped_at: Completed 136-01-PLAN.md
+last_updated: "2026-08-15T23:23:38.367Z"
+last_activity: 2026-08-15
 progress:
   total_phases: 10
   completed_phases: 7
-  total_plans: 74
-  completed_plans: 74
-  percent: 100
+  total_plans: 80
+  completed_plans: 75
+  percent: 94
 ---
 
 # Project State
@@ -26,10 +26,10 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 136 (Receive-Independent Maintenance and Transport Receipts) — NOT STARTED
-Plan: Not started
-Status: Phase 135 complete — ready to discuss Phase 136
-Last activity: 2026-08-15 -- Phase 135 verification passed
+Phase: 136 (Receive-Independent Maintenance and Transport Receipts) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-08-15
 
 Progress: [██████████] 97%
 
@@ -95,6 +95,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 135 P12 | 33min | 2 tasks | 16 files |
 | Phase 135 P13 | 34 | 2 tasks | 11 files |
 | Phase 135 P14 | 23 | 3 tasks | 7 files |
+| Phase 136-receive-independent-maintenance-and-transport-receipts P01 | 33 | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -260,6 +261,11 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 135]: encode_mempool_snapshot must keep representability and limits.max_encoded_bytes; reject snapshot-derived encoded_size_upper_bound(total_transaction_bytes.
 - [Phase 135]: Keep MPDUR Pending and leave requirements-completed empty until lifecycle-valid phase verification.
 - [Phase 135]: Do not recreate canonical 135-VERIFICATION.md; the independent verifier owns phase135-14-full-verify.
+- [Phase 136]: Cycle length is 600 plus injected jitter; next due uses checked_add and returns None on overflow.
+- [Phase 136]: Production inspect/prepare are 256/32; new() accepts 1..=4999 and rejects 0 and >= 5000.
+- [Phase 136]: select_maintenance_identities walks only the supplied BTreeSet and marks unprepared members leftover_unattempted.
+- [Phase 136]: Keep cycle, budget, and cursor types in retry.rs under the repo 628-line production gate.
+- [Phase 136]: Keep IBR-01 and IBR-02 Pending until lifecycle-valid phase verification.
 
 ### Pending Todos
 
@@ -283,6 +289,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-15T21:40:14.268Z
-Stopped at: Phase 136 context gathered
-Resume file: .planning/phases/136-receive-independent-maintenance-and-transport-receipts/136-CONTEXT.md
+Last session: 2026-08-15T23:19:44.272Z
+Stopped at: Completed 136-01-PLAN.md
+Resume file: None
