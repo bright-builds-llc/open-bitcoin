@@ -332,8 +332,13 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         facts: &PreparedLifecycleFacts,
     ) -> Result<PreparedUnbroadcastProjection, LifecyclePreparationError> {
         let mut replacement = self.unbroadcast_members.clone();
+        // Insert only newly admitted retry-eligible members. Do not emit
+        // MempoolRetryClearCause::EligibleServe here; classify-time serve is
+        // not a membership mutation.
         for member in facts.final_present() {
-            if member.metadata.is_retry_eligible(true) {
+            if facts.delta().admitted.contains(&member.member)
+                && member.metadata.is_retry_eligible(true)
+            {
                 replacement.insert(member.member);
             }
         }

@@ -69,6 +69,7 @@ mod recovery_cases;
 mod relay_fanout_cases;
 mod relay_local_submission_cases;
 mod relay_serving_cases;
+mod unbroadcast_projection_cases;
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
