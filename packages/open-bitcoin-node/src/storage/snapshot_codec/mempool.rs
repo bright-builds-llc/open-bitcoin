@@ -85,12 +85,30 @@ pub(crate) fn persisted_mempool_input_limits() -> Option<MempoolSnapshotPersiste
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct MempoolSnapshotDecodeLimits {
+pub struct MempoolSnapshotDecodeLimits {
     pub(crate) max_encoded_bytes: usize,
     pub(crate) max_records: usize,
     pub(crate) max_unbroadcast_members: usize,
     pub(crate) max_transaction_bytes: usize,
     pub(crate) max_total_transaction_bytes: usize,
+}
+
+impl MempoolSnapshotDecodeLimits {
+    pub const fn new(
+        max_encoded_bytes: usize,
+        max_records: usize,
+        max_unbroadcast_members: usize,
+        max_transaction_bytes: usize,
+        max_total_transaction_bytes: usize,
+    ) -> Self {
+        Self {
+            max_encoded_bytes,
+            max_records,
+            max_unbroadcast_members,
+            max_transaction_bytes,
+            max_total_transaction_bytes,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -206,7 +224,7 @@ pub(crate) fn decode_mempool_snapshot(bytes: &[u8]) -> Result<MempoolSnapshot, S
     decode_mempool_snapshot_with_limits(bytes, MempoolSnapshotDecodeLimits::default())
 }
 
-pub(crate) fn decode_mempool_snapshot_with_limits(
+pub fn decode_mempool_snapshot_with_limits(
     bytes: &[u8],
     limits: MempoolSnapshotDecodeLimits,
 ) -> Result<MempoolSnapshot, StorageError> {

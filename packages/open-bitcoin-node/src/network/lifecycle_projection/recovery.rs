@@ -116,6 +116,9 @@ impl PreparedRecoveryProjection {
             .map_or(LifecycleGeneration::INITIAL, |captured| {
                 LifecycleGeneration::from_raw(captured.raw())
             });
+        if generation == LifecycleGeneration::MAX {
+            return Err(RecoveryInstallError::InvalidPreparedRecovery);
+        }
         if prepared.captured_generation.is_some() != prepared.captured_at.is_some() {
             return Err(RecoveryInstallError::InvalidPreparedRecovery);
         }

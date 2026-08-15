@@ -254,6 +254,71 @@ mod tests {
     }
 
     #[test]
+    fn startup_rejects_terminal_captured_generation_and_still_admits() {
+        // Arrange
+        let crafted = serde_json::to_vec(&serde_json::json!({
+            "schema_version": 1,
+            "payload": {
+                "format_version": 2,
+                "captured_generation": 18446744073709551615_u64,
+                "captured_at_unix_seconds": 10,
+                "records": [],
+                "unbroadcast_members": []
+            }
+        }))
+        .expect("crafted current-v2 bytes");
+        let handle = transient_handle();
+
+        // Act
+        recover_mempool_snapshot_with_loader(
+            &handle,
+            &PolicyConfig::default(),
+            ScriptVerifyFlags::NONE,
+            ConsensusParams::default(),
+            PolicyTime::new(20),
+            |decode_limits| {
+                open_bitcoin_node::storage::snapshot_codec::decode_mempool_snapshot_with_limits(
+                    &crafted,
+                    decode_limits.into_codec_limits(),
+                )
+                .map(Some)
+            },
+        )
+        .expect("record typed startup decode failure");
+
+        // Assert
+        assert!(
+            handle
+                .latest_mempool_recovery_summary()
+                .expect("startup recovery evidence")
+                .is_none()
+        );
+        assert_eq!(
+            handle
+                .latest_mempool_recovery_storage_error()
+                .expect("startup failure evidence"),
+            Some(SyncRecoveryCategory::StoreCorruption)
+        );
+        let checkpoint = handle
+            .checkpoint_evidence(PolicyTime::new(20), 300)
+            .expect("fresh checkpoint evidence");
+        assert_eq!(checkpoint.current_generation, 0);
+        assert_ne!(checkpoint.maybe_last_durable_generation, Some(u64::MAX));
+        let expire_result = handle.expire_mempool(PolicyTime::new(20));
+        assert!(
+            expire_result.is_ok(),
+            "follow-up mutation must remain possible: {expire_result:?}"
+        );
+        let rendered = format!("{expire_result:?}");
+        assert!(
+            !rendered
+                .to_ascii_lowercase()
+                .contains("lifecycle generation exhausted"),
+            "follow-up mutation must not exhaust generation: {rendered}"
+        );
+    }
+
+    #[test]
     fn startup_records_schema_decode_and_identity_failures_without_installing() {
         // Arrange
         let cases = [

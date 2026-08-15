@@ -23,9 +23,9 @@ use crate::{
 mod mempool;
 mod wallet;
 
+pub use mempool::{MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limits};
 pub(crate) use mempool::{
-    MempoolSnapshotDecodeLimits, MempoolSnapshotPersistedInputLimits,
-    decode_mempool_snapshot_with_limits, encode_mempool_snapshot, persisted_mempool_input_limits,
+    MempoolSnapshotPersistedInputLimits, encode_mempool_snapshot, persisted_mempool_input_limits,
 };
 #[cfg(test)]
 pub(crate) use mempool::{decode_mempool_snapshot, encoded_size_upper_bound};

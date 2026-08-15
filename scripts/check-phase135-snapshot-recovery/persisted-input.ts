@@ -40,7 +40,7 @@ function checkPersistedDecodeBounds(
   );
   const decode = body(
     sources.codec,
-    "pub(crate) fn decode_mempool_snapshot_with_limits(",
+    "pub fn decode_mempool_snapshot_with_limits(",
   );
   const storeLimits = body(
     sources.store,

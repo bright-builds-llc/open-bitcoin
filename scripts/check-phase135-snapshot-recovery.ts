@@ -164,7 +164,7 @@ export function checkPhase135SnapshotRecovery(
   const legacy = body(snapshot, "pub fn from_legacy_v1(");
   const decode = body(
     codec,
-    "pub(crate) fn decode_mempool_snapshot_with_limits(",
+    "pub fn decode_mempool_snapshot_with_limits(",
   );
   addFailure(
     failures,

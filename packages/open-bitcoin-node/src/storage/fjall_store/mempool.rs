@@ -67,7 +67,7 @@ impl MempoolSnapshotDecodeLimits {
         ))
     }
 
-    fn codec_limits(self) -> snapshot_codec::MempoolSnapshotDecodeLimits {
+    pub fn into_codec_limits(self) -> snapshot_codec::MempoolSnapshotDecodeLimits {
         snapshot_codec::MempoolSnapshotDecodeLimits {
             max_encoded_bytes: self.max_encoded_bytes,
             max_records: self.max_records,
@@ -347,7 +347,7 @@ where
         .map(|bytes| {
             snapshot_codec::decode_mempool_snapshot_with_limits(
                 bytes.as_ref(),
-                limits.codec_limits(),
+                limits.into_codec_limits(),
             )
         })
         .transpose()
