@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: verifying
-stopped_at: Completed 135-14-PLAN.md
-last_updated: "2026-08-15T20:40:00.023Z"
-last_activity: 2026-08-15
+status: ready_for_next
+stopped_at: Phase 135 complete; next is Phase 136 discuss
+last_updated: "2026-08-15T21:05:54.834Z"
+last_activity: 2026-08-15 -- Phase 135 verification passed
 progress:
   total_phases: 10
   completed_phases: 7
@@ -21,25 +21,25 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 135 — Snapshot Schema, Checkpointing, and Recovery
+**Current focus:** Phase 136 — Receive-Independent Maintenance and Transport Receipts
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 135 (Snapshot Schema, Checkpointing, and Recovery) — EXECUTING
-Plan: 14 of 14
-Status: Phase complete — ready for verification
-Last activity: 2026-08-15
+Phase: 136 (Receive-Independent Maintenance and Transport Receipts) — NOT STARTED
+Plan: Not started
+Status: Phase 135 complete — ready to discuss Phase 136
+Last activity: 2026-08-15 -- Phase 135 verification passed
 
 Progress: [██████████] 97%
 
-Next action: `/gsd-execute-phase 135`
+Next action: `/gsd-discuss-phase 136`
 
 ## Performance Metrics
 
 **Current milestone:**
 
-- Total plans completed: 60
+- Total plans completed: 74
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
@@ -52,6 +52,7 @@ Next action: `/gsd-execute-phase 135`
 | 133 | 4 | - | - |
 | 133.1 | 6 | - | - |
 | 134 | 24 | - | - |
+| 135 | 14 | - | - |
 
 ### Plan Execution History
 
@@ -272,7 +273,7 @@ Next action: `/gsd-execute-phase 135`
 - Phase 132 planning must confirm scoped package RBF, TRUC, and ephemeral-dust prerequisites or narrow unsupported outcomes explicitly.
 - Phase 135 planning must choose mempool-local snapshot compatibility, checkpoint cadence/strength, and the advertised crash-loss window.
 - Phase 136 planning must specify the exact eligible-serve or successful-write receipt that clears unbroadcast membership.
-- Phase 135 verification found writer/reader snapshot non-closure, terminal-generation recovery, and structural-checker coverage gaps; gap-closure plans 12-14 are ready in `135-VERIFICATION.md` follow-up.
+- Phase 135 verification passed 19/19 after gap-closure plans 12-14; historical 2026-08-10 gaps are closed. Broad operator presentation remains Phase 137.
 
 ## Latest Milestone Archive
 
@@ -283,5 +284,5 @@ Next action: `/gsd-execute-phase 135`
 ## Session Continuity
 
 Last session: 2026-08-15T20:40:00.019Z
-Stopped at: Completed 135-14-PLAN.md
+Stopped at: Phase 135 complete; next is Phase 136 discuss
 Resume file: None
