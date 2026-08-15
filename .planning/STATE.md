@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 135-13-PLAN.md
-last_updated: "2026-08-15T20:07:50.113Z"
+status: verifying
+stopped_at: Completed 135-14-PLAN.md
+last_updated: "2026-08-15T20:40:00.023Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 10
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 74
-  completed_plans: 73
-  percent: 99
+  completed_plans: 74
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 135 (Snapshot Schema, Checkpointing, and Recovery) — EXECUTING
 Plan: 14 of 14
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-15
 
 Progress: [██████████] 97%
@@ -93,6 +93,7 @@ Next action: `/gsd-execute-phase 135`
 | Phase 134 P24 | 1h 4m | 2 tasks | 5 files |
 | Phase 135 P12 | 33min | 2 tasks | 16 files |
 | Phase 135 P13 | 34 | 2 tasks | 11 files |
+| Phase 135 P14 | 23 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -252,6 +253,12 @@ Next action: `/gsd-execute-phase 135`
 - [Phase 135]: encode_mempool_snapshot compares bytes.len() to limits.max_encoded_bytes, not encoded_size_upper_bound of snapshot dimensions.
 - [Phase 135]: Keep MPDUR Pending and leave requirements-completed empty until lifecycle-valid phase verification.
 - [Phase 135]: Do not recreate canonical 135-VERIFICATION.md; Plan 14 owns fresh verification.
+- [Phase 135]: Require for_persisted_input inside recover_mempool_snapshot_with_loader; store-only tokens are insufficient.
+- [Phase 135]: Require vertex and per-record edge guards at prepare_recovery_topology use sites.
+- [Phase 135]: directStatementIndex ignores statements disabled by a same-line or preceding Rust attribute.
+- [Phase 135]: encode_mempool_snapshot must keep representability and limits.max_encoded_bytes; reject snapshot-derived encoded_size_upper_bound(total_transaction_bytes.
+- [Phase 135]: Keep MPDUR Pending and leave requirements-completed empty until lifecycle-valid phase verification.
+- [Phase 135]: Do not recreate canonical 135-VERIFICATION.md; the independent verifier owns phase135-14-full-verify.
 
 ### Pending Todos
 
@@ -275,6 +282,6 @@ Next action: `/gsd-execute-phase 135`
 
 ## Session Continuity
 
-Last session: 2026-08-15T20:07:50.110Z
-Stopped at: Completed 135-13-PLAN.md
+Last session: 2026-08-15T20:40:00.019Z
+Stopped at: Completed 135-14-PLAN.md
 Resume file: None
