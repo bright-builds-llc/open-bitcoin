@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 136-01-PLAN.md
-last_updated: "2026-08-15T23:23:38.367Z"
+stopped_at: Completed 136-02-PLAN.md
+last_updated: "2026-08-15T23:55:07.475Z"
 last_activity: 2026-08-15
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 80
-  completed_plans: 75
-  percent: 94
+  completed_plans: 76
+  percent: 95
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 136 (Receive-Independent Maintenance and Transport Receipts) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-08-15
 
@@ -96,6 +96,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 135 P13 | 34 | 2 tasks | 11 files |
 | Phase 135 P14 | 23 | 3 tasks | 7 files |
 | Phase 136-receive-independent-maintenance-and-transport-receipts P01 | 33 | 2 tasks | 5 files |
+| Phase 136 P02 | 21 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -266,6 +267,10 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 136]: select_maintenance_identities walks only the supplied BTreeSet and marks unprepared members leftover_unattempted.
 - [Phase 136]: Keep cycle, budget, and cursor types in retry.rs under the repo 628-line production gate.
 - [Phase 136]: Keep IBR-01 and IBR-02 Pending until lifecycle-valid phase verification.
+- [Phase 136]: Insert unbroadcast members only when delta().admitted contains the identity and metadata is retry-eligible.
+- [Phase 136]: expected_unbroadcast_members is the intersection of the live set with retry-eligible canonical members.
+- [Phase 136]: A still-present TransportWritten-cleared member is not a reconciliation mismatch.
+- [Phase 136]: Keep IBR-01 and IBR-04 Pending until lifecycle-valid phase verification.
 
 ### Pending Todos
 
@@ -289,6 +294,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-15T23:19:44.272Z
-Stopped at: Completed 136-01-PLAN.md
+Last session: 2026-08-15T23:55:07.471Z
+Stopped at: Completed 136-02-PLAN.md
 Resume file: None
