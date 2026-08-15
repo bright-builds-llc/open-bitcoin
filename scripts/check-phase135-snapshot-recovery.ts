@@ -237,6 +237,7 @@ export function checkPhase135SnapshotRecovery(
       store: get(FILES.store),
       topology: get(FILES.topology),
       staging: get(FILES.staging),
+      startup: get(FILES.startup),
     },
     failures,
     PHASE135_DIAGNOSTICS,

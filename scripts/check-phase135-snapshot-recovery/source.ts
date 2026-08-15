@@ -114,6 +114,36 @@ export function body(source: string, marker: string): string {
   return "";
 }
 
+export function statementHasDisablingAttribute(
+  maskedBody: string,
+  statementIndex: number,
+): boolean {
+  let cursor = statementIndex - 1;
+  while (
+    cursor >= 0 &&
+    (maskedBody[cursor] === " " || maskedBody[cursor] === "\t")
+  ) {
+    cursor -= 1;
+  }
+  if (cursor < 0) return false;
+  if (maskedBody[cursor] !== "\n") {
+    const lineStart = maskedBody.lastIndexOf("\n", cursor) + 1;
+    return maskedBody.slice(lineStart, statementIndex).includes("#[");
+  }
+
+  let lineEnd = cursor;
+  while (lineEnd > 0) {
+    const previousBreak = maskedBody.lastIndexOf("\n", lineEnd - 1);
+    const line = maskedBody.slice(previousBreak + 1, lineEnd);
+    if (line.trim().length === 0) {
+      lineEnd = previousBreak;
+      continue;
+    }
+    return /^\s*#\[/.test(line);
+  }
+  return false;
+}
+
 export function directStatementIndex(
   maskedBody: string,
   statement: string,
@@ -136,7 +166,8 @@ export function directStatementIndex(
       depth === 0 &&
       firstIndex < 0 &&
       maskedBody.startsWith(statement, index) &&
-      beginsDirectStatement(maskedBody, index)
+      beginsDirectStatement(maskedBody, index) &&
+      !statementHasDisablingAttribute(maskedBody, index)
     ) {
       firstIndex = index;
     }

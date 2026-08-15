@@ -7,6 +7,7 @@ export type PersistedInputSources = {
   store: string;
   topology: string;
   staging: string;
+  startup: string;
 };
 
 type PersistedInputDiagnostics = {
@@ -68,6 +69,10 @@ function checkPersistedDecodeBounds(
     boundedDecode,
     "let mut deserializer = serde_json::Deserializer::from_slice(bytes);",
   );
+  const startupRecovery = body(
+    sources.startup,
+    "fn recover_mempool_snapshot_with_loader",
+  );
   const forbidden = /from_policy|PolicyConfig|MempoolCapacityBounds|max_live_entries|50_000|1_600_000|usize::MAX|saturating_(?:add|mul)|transaction\.len\(\).*max_(?:records|vertices|edges)/s;
 
   addFailure(
@@ -107,6 +112,12 @@ function checkPersistedDecodeBounds(
         "assert_mempool_snapshot_representable(snapshot)",
         "if bytes.len() > limits.max_encoded_bytes {",
       ]) ||
+      encode.includes("encoded_size_upper_bound(total_transaction_bytes") ||
+      !startupRecovery.includes(
+        "MempoolSnapshotDecodeLimits::for_persisted_input()",
+      ) ||
+      startupRecovery.includes("usize::MAX") ||
+      startupRecovery.includes("MempoolSnapshotDecodeLimits::new(") ||
       !decode.includes("if bytes.len() > limits.max_encoded_bytes {") ||
       !hasAll(sources.codecDecode, [
         "limits.max_records",
@@ -147,6 +158,7 @@ function checkPersistedDecodeBounds(
         ".max_live_entries()",
         "if mempool.entries().len() > max_records {",
         "MempoolSnapshotError::ResourceBoundExceeded",
+        "assert_mempool_snapshot_representable",
       ]) ||
       forbidden.test(
         [persistedLimits, encodedUpperBound, storeLimits, boundedLoad].join("\n"),
@@ -190,6 +202,10 @@ function checkPersistedTopologyBounds(
         "limits.validate_parent_edges(102_301)",
       ]) ||
       topologyPrepare.length === 0 ||
+      !topologyPrepare.includes("if records.len() > limits.max_vertices") ||
+      !topologyPrepare.includes(
+        "validate_parent_edges(record.record.transaction.inputs.len())",
+      ) ||
       forbidden.test(topologyLimits),
     diagnostic,
   );

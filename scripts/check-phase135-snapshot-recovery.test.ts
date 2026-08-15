@@ -75,6 +75,16 @@ test.each([
     expect(directStatementIndex(source, "target();")).toBe(expected),
 );
 
+test.each([
+  ["preceding-line cfg(any())", "#[cfg(any())]\n    target();", -1],
+  ["same-line cfg(any())", "    #[cfg(any())] target();", -1],
+  ["blank line after cfg(any())", "#[cfg(any())]\n\n    target();", -1],
+] as const)(
+  "rejects attribute-disabled direct statements: %s",
+  (_name, source, expected) =>
+    expect(directStatementIndex(source, "target();")).toBe(expected),
+);
+
 test("masked comments, strings, and raw strings cannot spoof direct statements", () => {
   // Arrange
   const source = `fn guarded() {
