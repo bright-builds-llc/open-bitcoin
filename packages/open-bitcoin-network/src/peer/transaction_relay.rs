@@ -44,7 +44,12 @@ pub use reject_evidence::{
     PHASE133_REJECT_FILTER_FALSE_POSITIVE_RATE, ReconsiderableEvidenceKey,
     ReconsiderableRejectEvidence, RejectEvidenceConfigError, RejectEvidenceTweak,
 };
-pub use retry::{RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds};
+pub use retry::{
+    MAINTENANCE_INSPECT_BUDGET, MAINTENANCE_PREPARE_BUDGET, MaintenanceBudgetRangeError,
+    MaintenanceInspectBudget, MaintenancePrepareBudget, RETRY_CYCLE_BASE_SECONDS,
+    RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds, next_retry_due_unix_seconds,
+    retry_cycle_is_due, retry_cycle_length_seconds,
+};
 pub use scheduler::{
     TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,
     TxParentRequestInput, TxPeerRequestSnapshot,
