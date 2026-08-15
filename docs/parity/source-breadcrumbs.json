@@ -1738,7 +1738,8 @@
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/mempool_limits.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/representability.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/terminal_generation.rs",
-        "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/gap_closure.rs"
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/gap_closure.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/representability.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/node/mempool_persist.cpp",

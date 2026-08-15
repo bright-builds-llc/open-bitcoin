@@ -25,14 +25,13 @@ mod wallet;
 
 pub use mempool::{MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limits};
 pub(crate) use mempool::{
-    MempoolSnapshotPersistedInputLimits, encode_mempool_snapshot, persisted_mempool_input_limits,
-};
-#[allow(unused_imports)] // Task 2 capture path and representability tests consume these.
-pub(crate) use mempool::{
-    assert_mempool_snapshot_representable, persisted_record_count_is_representable,
+    MempoolSnapshotPersistedInputLimits, assert_mempool_snapshot_representable,
+    encode_mempool_snapshot, persisted_mempool_input_limits,
 };
 #[cfg(test)]
-pub(crate) use mempool::{decode_mempool_snapshot, encoded_size_upper_bound};
+pub(crate) use mempool::{
+    decode_mempool_snapshot, encoded_size_upper_bound, persisted_record_count_is_representable,
+};
 pub(crate) use wallet::{
     decode_selected_wallet, decode_wallet_registry_snapshot, decode_wallet_rescan_job,
     decode_wallet_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,

@@ -34,6 +34,7 @@ mod confirmation_migration;
 mod gap_closure;
 mod load_limits;
 mod reopen;
+mod representability;
 mod write_execution_failures;
 
 fn checkpoint_p2sh_script() -> ScriptBuf {

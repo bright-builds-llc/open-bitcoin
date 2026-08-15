@@ -162,6 +162,8 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
                 network.unbroadcast_members().clone(),
             )
             .map_err(LifecycleProjectionError::MempoolSnapshot)?;
+            crate::storage::snapshot_codec::assert_mempool_snapshot_representable(&snapshot)
+                .map_err(LifecycleProjectionError::MempoolSnapshot)?;
             let prepared = network.snapshot_effect_ledger.reserve_next(
                 network.authority_epoch,
                 network.lifecycle_generation,

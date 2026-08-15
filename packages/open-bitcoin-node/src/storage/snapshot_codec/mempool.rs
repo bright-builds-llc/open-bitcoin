@@ -28,9 +28,9 @@ use crate::{StorageError, StorageNamespace};
 mod decode;
 mod representability;
 
-pub(crate) use representability::{
-    assert_mempool_snapshot_representable, persisted_record_count_is_representable,
-};
+pub(crate) use representability::assert_mempool_snapshot_representable;
+#[cfg(test)]
+pub(crate) use representability::persisted_record_count_is_representable;
 
 const MAX_MEMPOOL_SNAPSHOT_ENCODED_BYTES: usize = 256 * 1024 * 1024;
 const MAX_MEMPOOL_SNAPSHOT_TRANSACTION_BYTES: usize = 4 * 1024 * 1024;
