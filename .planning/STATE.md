@@ -1,17 +1,17 @@
 ---
-gsd_state_version: "1.0"
+gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 135 context gathered
-last_updated: "2026-08-02T18:55:48.104Z"
-last_activity: 2026-08-02 -- Phase 135 planning complete
+stopped_at: Completed 135-12-PLAN.md
+last_updated: "2026-08-15T19:22:45.243Z"
+last_activity: 2026-08-15
 progress:
   total_phases: 10
   completed_phases: 6
-  total_plans: 67
-  completed_plans: 60
-  percent: 90
+  total_plans: 74
+  completed_plans: 72
+  percent: 97
 ---
 
 # Project State
@@ -26,14 +26,14 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 135
-Plan: Not started
+Phase: 135 (Snapshot Schema, Checkpointing, and Recovery) — EXECUTING
+Plan: 13 of 14
 Status: Ready to execute
-Last activity: 2026-08-02 -- Phase 135 planning complete
+Last activity: 2026-08-15
 
-Progress: [██████░░░░] 60%
+Progress: [██████████] 97%
 
-Next action: `/gsd-discuss-phase 135` (or YOLO chain for Phase 135)
+Next action: `/gsd-execute-phase 135`
 
 ## Performance Metrics
 
@@ -91,6 +91,7 @@ Next action: `/gsd-discuss-phase 135` (or YOLO chain for Phase 135)
 | Phase 134 P22 | 27m | 1 tasks | 4 files |
 | Phase 134 P23 | 69m | 1 tasks | 8 files |
 | Phase 134 P24 | 1h 4m | 2 tasks | 5 files |
+| Phase 135 P12 | 33min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -242,6 +243,10 @@ Next action: `/gsd-discuss-phase 135` (or YOLO chain for Phase 135)
 - [Phase 134]: Map every review finding to exact source and regression evidence without treating the audit as independent verification.
 - [Phase 134]: Keep Phase 134 in progress and MPLIFE-01 through MPLIFE-04 pending until separate fresh re-verification.
 - [Phase 134]: Preserve D-18 and Phase 135-138 deferrals while publishing only bounded repaired guarantees.
+- [Phase 135]: Classify captured_generation = u64::MAX as snapshot-level StructuralCorruption at try_new, try_new_current, and v2 decode.
+- [Phase 135]: Refuse LifecycleGeneration::MAX before recovery projection rebuild so a later ordinary mutation can still call checked_next.
+- [Phase 135]: Keep MPDUR Pending and leave requirements-completed empty until lifecycle-valid phase verification.
+- [Phase 135]: Do not recreate canonical 135-VERIFICATION.md; Plan 14 owns fresh verification.
 
 ### Pending Todos
 
@@ -255,6 +260,7 @@ Next action: `/gsd-discuss-phase 135` (or YOLO chain for Phase 135)
 - Phase 132 planning must confirm scoped package RBF, TRUC, and ephemeral-dust prerequisites or narrow unsupported outcomes explicitly.
 - Phase 135 planning must choose mempool-local snapshot compatibility, checkpoint cadence/strength, and the advertised crash-loss window.
 - Phase 136 planning must specify the exact eligible-serve or successful-write receipt that clears unbroadcast membership.
+- Phase 135 verification found writer/reader snapshot non-closure, terminal-generation recovery, and structural-checker coverage gaps; gap-closure plans 12-14 are ready in `135-VERIFICATION.md` follow-up.
 
 ## Latest Milestone Archive
 
@@ -264,6 +270,6 @@ Next action: `/gsd-discuss-phase 135` (or YOLO chain for Phase 135)
 
 ## Session Continuity
 
-Last session: 2026-08-02T18:04:44.491Z
-Stopped at: Phase 135 context gathered
-Resume file: .planning/phases/135-snapshot-schema-checkpointing-and-recovery/135-CONTEXT.md
+Last session: 2026-08-15T19:22:45.239Z
+Stopped at: Completed 135-12-PLAN.md
+Resume file: None

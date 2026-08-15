@@ -202,7 +202,7 @@ Plans:
 3. Restart resets the rolling floor to the pinned baseline while preserving supported entry age and surviving local-unbroadcast semantics.
 4. Operators can see checkpoint freshness, dirty generation, persistence strength, and the documented crash-loss window for periodic and clean-shutdown saves, with no runtime-authority lock held across I/O.
 
-**Plans:** 14 plans
+**Plans:** 12/14 plans executed
 
 Plans:
 - [x] 135-01-PLAN.md — Define the source-only durable mempool snapshot contract
@@ -216,7 +216,7 @@ Plans:
 - [x] 135-09-PLAN.md — Close unknown-age checkpoint totality and direct-statement proofs
 - [x] 135-10-PLAN.md — Separate persisted-input ceilings from current-policy membership
 - [x] 135-11-PLAN.md — Modularize the persisted-input checker and reserve full verify
-- [ ] 135-12-PLAN.md — Reject terminal captured generation before recovery install
+- [x] 135-12-PLAN.md — Reject terminal captured generation before recovery install
 - [ ] 135-13-PLAN.md — Close writer/reader representability under persisted-input limits
 - [ ] 135-14-PLAN.md — Guard production-use checker bypasses and reserve phase135-14-full-verify
 
@@ -275,7 +275,7 @@ Plans:
 | 133. Package-Aware Download and Orphan Bridge | 4/4 | Complete    | 2026-07-27 |
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 24/24 | Complete    | 2026-07-30 |
-| 135. Snapshot Schema, Checkpointing, and Recovery | 11/14 | In progress | - |
+| 135. Snapshot Schema, Checkpointing, and Recovery | 12/14 | In Progress|  |
 | 136. Receive-Independent Maintenance and Transport Receipts | 0/TBD | Not started | - |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
 | 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
