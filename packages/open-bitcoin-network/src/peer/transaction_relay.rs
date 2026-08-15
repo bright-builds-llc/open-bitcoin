@@ -46,9 +46,10 @@ pub use reject_evidence::{
 };
 pub use retry::{
     MAINTENANCE_INSPECT_BUDGET, MAINTENANCE_PREPARE_BUDGET, MaintenanceBudgetRangeError,
-    MaintenanceInspectBudget, MaintenancePrepareBudget, RETRY_CYCLE_BASE_SECONDS,
-    RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds, next_retry_due_unix_seconds,
-    retry_cycle_is_due, retry_cycle_length_seconds,
+    MaintenanceIdentitySelection, MaintenanceInspectBudget, MaintenancePrepareBudget,
+    RETRY_CYCLE_BASE_SECONDS, RetryDecisionContext, RetryJitterRangeError, RetryJitterSeconds,
+    next_retry_due_unix_seconds, retry_cycle_is_due, retry_cycle_length_seconds,
+    select_maintenance_identities,
 };
 pub use scheduler::{
     TxAnnouncementInput, TxDownloadLocalFacts, TxDownloadScheduler, TxDownloadSnapshot,

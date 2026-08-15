@@ -1,6 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/net_processing.cpp
 
+use std::collections::{BTreeSet, Bound};
 use std::{error::Error, fmt};
 
 const MAX_RETRY_JITTER_SECONDS: u64 = 300;
@@ -173,14 +174,90 @@ impl fmt::Display for MaintenanceBudgetRangeError {
 
 impl Error for MaintenanceBudgetRangeError {}
 
+/// One inspect/prepare walk over a caller-supplied unbroadcast set.
+///
+/// Callers must pass the authoritative unbroadcast set, never the whole mempool
+/// entry collection (IBR-01). This function does not record fanout attempts;
+/// leftover members are still-due and unattempted.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MaintenanceIdentitySelection<T> {
+    pub inspected: Vec<T>,
+    pub prepare: Vec<T>,
+    pub leftover_unattempted: Vec<T>,
+    pub maybe_next_after: Option<T>,
+}
+
+/// Walks `members` from a deterministic leftover cursor with inspect/prepare caps.
+///
+/// Callers must pass the authoritative unbroadcast set, never the whole mempool
+/// entry collection (IBR-01). This function does not record fanout attempts.
+pub fn select_maintenance_identities<T: Copy + Ord>(
+    members: &BTreeSet<T>,
+    maybe_after: Option<T>,
+    inspect: MaintenanceInspectBudget,
+    prepare: MaintenancePrepareBudget,
+) -> MaintenanceIdentitySelection<T> {
+    let Some(&first) = members.first() else {
+        return MaintenanceIdentitySelection {
+            inspected: Vec::new(),
+            prepare: Vec::new(),
+            leftover_unattempted: Vec::new(),
+            maybe_next_after: maybe_after,
+        };
+    };
+
+    let inspect_limit = inspect.get();
+    let start = match maybe_after {
+        Some(after) => members
+            .range((Bound::Excluded(after), Bound::Unbounded))
+            .next()
+            .copied()
+            .unwrap_or(first),
+        None => first,
+    };
+
+    let mut inspected = Vec::new();
+    for member in members.range(start..) {
+        if inspected.len() >= inspect_limit {
+            break;
+        }
+        inspected.push(*member);
+    }
+    if inspected.len() < inspect_limit {
+        for member in members.range(..start) {
+            if inspected.len() >= inspect_limit {
+                break;
+            }
+            inspected.push(*member);
+        }
+    }
+
+    let prepare_len = prepare.get().min(inspected.len());
+    let prepare = inspected[..prepare_len].to_vec();
+    let leftover_unattempted = members
+        .iter()
+        .copied()
+        .filter(|member| !prepare.contains(member))
+        .collect();
+    let maybe_next_after = inspected.last().copied();
+
+    MaintenanceIdentitySelection {
+        inspected,
+        prepare,
+        leftover_unattempted,
+        maybe_next_after,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
         MAINTENANCE_INSPECT_BUDGET, MAINTENANCE_PREPARE_BUDGET, MaintenanceBudgetRangeError,
         MaintenanceInspectBudget, MaintenancePrepareBudget, RetryDecisionContext,
         RetryJitterRangeError, RetryJitterSeconds, next_retry_due_unix_seconds, retry_cycle_is_due,
-        retry_cycle_length_seconds,
+        retry_cycle_length_seconds, select_maintenance_identities,
     };
+    use std::collections::BTreeSet;
 
     #[test]
     fn retry_jitter_accepts_inclusive_bounds() {
@@ -359,5 +436,116 @@ mod tests {
         assert_ne!(prepare_budget, phase104_queue_cap);
         assert!(inspect_budget < membership_cap);
         assert!(prepare_budget < inspect_budget);
+    }
+
+    fn cursor_members() -> BTreeSet<u32> {
+        BTreeSet::from([1, 2, 3, 4, 5])
+    }
+
+    fn cursor_budgets()
+    -> Result<(MaintenanceInspectBudget, MaintenancePrepareBudget), MaintenanceBudgetRangeError>
+    {
+        Ok((
+            MaintenanceInspectBudget::new(3)?,
+            MaintenancePrepareBudget::new(1)?,
+        ))
+    }
+
+    #[test]
+    fn select_maintenance_identities_returns_only_input_members()
+    -> Result<(), MaintenanceBudgetRangeError> {
+        // Arrange
+        let members = cursor_members();
+        let (inspect, prepare) = cursor_budgets()?;
+        let foreign_identity = 99;
+
+        // Act
+        let selection = select_maintenance_identities(&members, None, inspect, prepare);
+
+        // Assert
+        assert!(selection.inspected.iter().all(|id| members.contains(id)));
+        assert!(selection.prepare.iter().all(|id| members.contains(id)));
+        assert!(
+            selection
+                .leftover_unattempted
+                .iter()
+                .all(|id| members.contains(id))
+        );
+        assert!(!selection.inspected.contains(&foreign_identity));
+        assert!(!selection.prepare.contains(&foreign_identity));
+        assert!(!selection.leftover_unattempted.contains(&foreign_identity));
+        Ok(())
+    }
+
+    #[test]
+    fn select_maintenance_identities_respects_inspect_and_prepare_split()
+    -> Result<(), MaintenanceBudgetRangeError> {
+        // Arrange
+        let members = cursor_members();
+        let (inspect, prepare) = cursor_budgets()?;
+
+        // Act
+        let selection = select_maintenance_identities(&members, None, inspect, prepare);
+
+        // Assert
+        assert_eq!(selection.prepare, vec![1]);
+        assert_eq!(selection.inspected, vec![1, 2, 3]);
+        assert_eq!(selection.maybe_next_after, Some(3));
+        Ok(())
+    }
+
+    #[test]
+    fn select_maintenance_identities_wraps_without_starving_the_head()
+    -> Result<(), MaintenanceBudgetRangeError> {
+        // Arrange
+        let members = cursor_members();
+        let (inspect, prepare) = cursor_budgets()?;
+
+        // Act
+        let selection = select_maintenance_identities(&members, Some(3), inspect, prepare);
+
+        // Assert
+        assert_eq!(selection.prepare, vec![4]);
+        assert_eq!(selection.inspected, vec![4, 5, 1]);
+        assert_eq!(selection.maybe_next_after, Some(1));
+
+        let wrap_past_tail = select_maintenance_identities(&members, Some(99), inspect, prepare);
+        assert_eq!(wrap_past_tail.inspected, vec![1, 2, 3]);
+        Ok(())
+    }
+
+    #[test]
+    fn select_maintenance_identities_marks_unprepared_as_leftover_unattempted()
+    -> Result<(), MaintenanceBudgetRangeError> {
+        // Arrange
+        let members = cursor_members();
+        let (inspect, prepare) = cursor_budgets()?;
+
+        // Act
+        let selection = select_maintenance_identities(&members, None, inspect, prepare);
+
+        // Assert
+        assert_eq!(selection.leftover_unattempted, vec![2, 3, 4, 5]);
+        assert!(!selection.leftover_unattempted.contains(&1));
+        Ok(())
+    }
+
+    #[test]
+    fn select_maintenance_identities_empty_set_preserves_cursor()
+    -> Result<(), MaintenanceBudgetRangeError> {
+        // Arrange
+        let members = BTreeSet::new();
+        let (inspect, prepare) = cursor_budgets()?;
+        let maybe_after = Some(7);
+
+        // Act
+        let selection = select_maintenance_identities(&members, maybe_after, inspect, prepare);
+
+        // Assert
+        assert!(selection.inspected.is_empty());
+        assert!(selection.prepare.is_empty());
+        assert!(selection.leftover_unattempted.is_empty());
+        assert_eq!(selection.maybe_next_after, maybe_after);
+        Ok(())
     }
 }

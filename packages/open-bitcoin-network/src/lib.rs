@@ -103,9 +103,9 @@ pub use peer::{
     CompactRelayCapability, CompactRelayNegotiationOutcome, CompactRelayNegotiationReason,
     CompactRelayPeerState, CompactRelayPreference, ConnectionRole, HardRejectEvidence,
     HeaderSyncPolicy, MAINTENANCE_INSPECT_BUDGET, MAINTENANCE_PREPARE_BUDGET,
-    MAX_COMPACT_ANNOUNCEMENT_PROVENANCE, MaintenanceBudgetRangeError, MaintenanceInspectBudget,
-    MaintenancePrepareBudget, OrphanAction, OrphanEvidenceLabel, OrphanPolicy,
-    OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
+    MAX_COMPACT_ANNOUNCEMENT_PROVENANCE, MaintenanceBudgetRangeError, MaintenanceIdentitySelection,
+    MaintenanceInspectBudget, MaintenancePrepareBudget, OrphanAction, OrphanEvidenceLabel,
+    OrphanPolicy, OrphanReconsiderationCandidate, OrphanReconsiderationStatus, OrphanStageInput,
     PHASE101_GETDATA_TX_INTERVAL_SECONDS, PHASE101_MAX_TX_ANNOUNCEMENTS_PER_PEER,
     PHASE101_MAX_TX_REQUESTS_IN_FLIGHT_PER_PEER, PHASE101_NONPREF_PEER_TX_DELAY_SECONDS,
     PHASE101_OVERLOADED_PEER_TX_DELAY_SECONDS, PHASE101_TXID_RELAY_DELAY_SECONDS,
@@ -129,7 +129,7 @@ pub use peer::{
     TxParentRequestInput, TxPeerRequestSnapshot, TxRelayId, TxRelayIdentityError, TxRelayPeerMode,
     TxServeDecision, TxServeOutcomeLabel, TxServingRecordStatus, classify_tx_serve_request,
     decide_compact_announcement, defer_local_rebroadcast, next_retry_due_unix_seconds,
-    retry_cycle_is_due, retry_cycle_length_seconds,
+    retry_cycle_is_due, retry_cycle_length_seconds, select_maintenance_identities,
 };
 pub use peer_policy::{
     BanDecision, BanReason, BanScope, EvictionCandidate, EvictionCandidateInput, EvictionDecision,
