@@ -159,15 +159,17 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &self,
         canonical: &BTreeSet<MempoolMemberIdentity>,
     ) -> BTreeSet<MempoolMemberIdentity> {
-        canonical
+        self.unbroadcast_members
             .iter()
             .filter(|member| {
-                self.mempool
-                    .mempool()
-                    .entry(&member.txid)
-                    .is_some_and(|entry| {
-                        entry.wtxid == member.wtxid && entry.metadata.is_retry_eligible(true)
-                    })
+                canonical.contains(member)
+                    && self
+                        .mempool
+                        .mempool()
+                        .entry(&member.txid)
+                        .is_some_and(|entry| {
+                            entry.wtxid == member.wtxid && entry.metadata.is_retry_eligible(true)
+                        })
             })
             .copied()
             .collect()

@@ -268,7 +268,7 @@ fn unbroadcast_reconciliation_counts_an_extra_member_once() {
 }
 
 #[test]
-fn unbroadcast_reconciliation_counts_a_missing_member_once() {
+fn unbroadcast_reconciliation_cleared_still_present_member_is_not_a_mismatch() {
     // Arrange
     let (mut network, member, _) = admitted_network();
     assert!(network.unbroadcast_members.remove(&member));
@@ -278,12 +278,12 @@ fn unbroadcast_reconciliation_counts_a_missing_member_once() {
     let exact = network.reconcile_lifecycle_projection_exact_for_test();
 
     // Assert
-    assert_eq!(report.counts()[4], 1);
-    assert_eq!(exact.unbroadcast, BTreeSet::from([member]));
+    assert_eq!(report.counts()[4], 0);
+    assert!(exact.unbroadcast.is_empty());
 }
 
 #[test]
-fn unbroadcast_reconciliation_counts_equal_cardinality_swap_twice() {
+fn unbroadcast_reconciliation_counts_only_the_illegal_extra_after_clear_and_swap() {
     // Arrange
     let (mut network, member, _) = admitted_network();
     let extra = MempoolMemberIdentity {
@@ -298,8 +298,8 @@ fn unbroadcast_reconciliation_counts_equal_cardinality_swap_twice() {
     let exact = network.reconcile_lifecycle_projection_exact_for_test();
 
     // Assert
-    assert_eq!(report.counts()[4], 2);
-    assert_eq!(exact.unbroadcast, BTreeSet::from([member, extra]));
+    assert_eq!(report.counts()[4], 1);
+    assert_eq!(exact.unbroadcast, BTreeSet::from([extra]));
 }
 
 #[test]
@@ -314,4 +314,35 @@ fn unbroadcast_reconciliation_reports_clean_membership() {
     // Assert
     assert_eq!(report.counts()[4], 0);
     assert!(exact.unbroadcast.is_empty());
+}
+
+#[test]
+fn unbroadcast_reconciliation_ineligible_canonical_member_in_set_is_a_mismatch() {
+    // Arrange
+    let (mut network, coinbase_txid) = network_with_spendable_coinbase(PolicyConfig::default());
+    let transaction = spend_transaction(coinbase_txid, 499_999_000);
+    let member = MempoolMemberIdentity {
+        txid: transaction_txid(&transaction).expect("txid"),
+        wtxid: transaction_wtxid(&transaction).expect("wtxid"),
+    };
+    let core = network
+        .mempool
+        .prepare_transaction_with_context(
+            &network.chainstate,
+            transaction,
+            verify_flags(),
+            consensus_params(),
+            AdmissionContext::peer(PolicyTime::new(100)),
+        )
+        .expect("peer admission should prepare");
+    apply_prepared(&mut network, core);
+    assert!(network.unbroadcast_members.insert(member));
+
+    // Act
+    let report = network.reconcile_lifecycle_projection();
+    let exact = network.reconcile_lifecycle_projection_exact_for_test();
+
+    // Assert
+    assert_eq!(report.counts()[4], 1);
+    assert_eq!(exact.unbroadcast, BTreeSet::from([member]));
 }
