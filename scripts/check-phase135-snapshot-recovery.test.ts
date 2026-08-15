@@ -141,6 +141,7 @@ function contractMutations(): Mutation[] {
     fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
     chainstateTypes: "packages/open-bitcoin-chainstate/src/types.rs",
     syncRuntime: "packages/open-bitcoin-node/src/sync.rs",
+    startup: "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
     startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
     daemonCheckpoint:
       "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",

@@ -17,6 +17,7 @@ type PersistedInputMutationPaths = {
   dispatcher: string;
   topology: string;
   staging: string;
+  startup: string;
 };
 
 type PersistedInputMutationDiagnostics = {
@@ -252,6 +253,56 @@ export function persistedInputMutations(
         files.staging,
         "else if admitted.contains(&txid)",
         "else if false",
+      ),
+      true,
+    ],
+    [
+      "RPC persisted-input constructor replaced with five usize::MAX arguments",
+      diagnostics.bounds,
+      replace(
+        files.startup,
+        "MempoolSnapshotDecodeLimits::for_persisted_input()",
+        "MempoolSnapshotDecodeLimits::new(usize::MAX, usize::MAX, usize::MAX, usize::MAX, usize::MAX)",
+      ),
+      true,
+    ],
+    [
+      "topology vertex guard compiled out",
+      diagnostics.topology,
+      replace(
+        files.topology,
+        "if records.len() > limits.max_vertices",
+        "if false",
+      ),
+      true,
+    ],
+    [
+      "per-record edge validation bypassed",
+      diagnostics.topology,
+      replace(
+        files.topology,
+        "validate_parent_edges(record.record.transaction.inputs.len())",
+        "validate_parent_edges(0)",
+      ),
+      true,
+    ],
+    [
+      "raw-key preflight disabled by cfg(any())",
+      diagnostics.bounds,
+      replace(
+        files.codecDecode,
+        "    validate_raw_object_keys(bytes)?;",
+        "    #[cfg(any())]\n    validate_raw_object_keys(bytes)?;",
+      ),
+      true,
+    ],
+    [
+      "encoder restores snapshot-derived encoded ceiling",
+      diagnostics.bounds,
+      replace(
+        files.codec,
+        "    let limits = assert_mempool_snapshot_representable(snapshot).map_err(snapshot_failure)?;\n    let dto = MempoolSnapshotV2Dto::try_from(snapshot)?;\n    let bytes = encode_versioned(StorageNamespace::Mempool, &dto)?;\n    if bytes.len() > limits.max_encoded_bytes {",
+        "    let dto = MempoolSnapshotV2Dto::try_from(snapshot)?;\n    let bytes = encode_versioned(StorageNamespace::Mempool, &dto)?;\n    if bytes.len() > encoded_size_upper_bound(total_transaction_bytes, dto.records.len(), dto.unbroadcast_members.len()).unwrap_or(usize::MAX) {",
       ),
       true,
     ],
