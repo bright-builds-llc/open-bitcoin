@@ -7,10 +7,30 @@
 use crate::network::{
     AnnouncementPreparationOutcome, EffectCompletion, ManagedNetworkHandle, PeerEmission,
     PeerOutboxSnapshot,
+    lifecycle_effects::{PeerEffectCapability, PeerEffectId, PeerSessionGeneration},
+    lifecycle_projection::{AuthorityEpoch, LifecycleGeneration},
 };
-use open_bitcoin_network::{HeadersMessage, InventoryList};
+use open_bitcoin_mempool::MempoolMemberIdentity;
+use open_bitcoin_network::{HeadersMessage, InventoryList, PHASE94_MAX_PEER_QUEUED_MESSAGES};
 
 use super::*;
+
+fn sample_member() -> MempoolMemberIdentity {
+    MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x31; 32]),
+        wtxid: open_bitcoin_core::primitives::Wtxid::from_byte_array([0x32; 32]),
+    }
+}
+
+fn sample_effect_capability(peer_id: open_bitcoin_network::PeerId) -> PeerEffectCapability {
+    PeerEffectCapability::new(
+        AuthorityEpoch::INITIAL,
+        LifecycleGeneration::INITIAL,
+        PeerEffectId::new(1),
+        peer_id,
+        PeerSessionGeneration::INITIAL,
+    )
+}
 
 fn prepared_emission(
     network: &ManagedNetworkHandle,
@@ -370,4 +390,145 @@ fn duplicate_completion_is_classified_and_credits_evidence_once() {
         announcement_counts(&network)["announcement"]["value"]["compact_announced_count"],
         1
     );
+}
+
+#[test]
+fn announcement_transport_emission_binds_peer_message_block_and_evidence() {
+    // Arrange
+    let peer_id: open_bitcoin_network::PeerId = 128_201;
+    let block_hash = BlockHash::from_byte_array([0x21; 32]);
+    let emission = PeerEmission::new(
+        peer_id,
+        WireNetworkMessage::Inv(InventoryList::new(Vec::new())),
+        block_hash,
+        sample_effect_capability(peer_id),
+    )
+    .expect("inventory emission");
+
+    // Act
+    let (actual_peer_id, message, capability) = emission.into_parts();
+    let receipt = capability.acknowledge_write();
+
+    // Assert
+    assert_eq!(actual_peer_id, peer_id);
+    assert!(matches!(message, WireNetworkMessage::Inv(_)));
+    assert_eq!(receipt.maybe_block_hash(), Some(block_hash));
+    assert_eq!(receipt.maybe_member(), None);
+    assert_eq!(
+        receipt.maybe_evidence_reason(),
+        Some(CompactAnnouncementReason::CompactInventoryFallback)
+    );
+    assert!(!receipt.is_transaction_inventory());
+    assert!(!receipt.is_transaction_response());
+}
+
+#[test]
+fn announcement_transport_outbox_snapshot_fails_closed_at_the_cap() {
+    // Arrange
+    let snapshot = PeerOutboxSnapshot::new(
+        128_202,
+        PHASE94_MAX_PEER_QUEUED_MESSAGES,
+        PHASE94_MAX_PEER_QUEUED_MESSAGES,
+    );
+
+    // Act
+    let is_full = snapshot.is_full();
+
+    // Assert
+    assert!(is_full);
+}
+
+#[test]
+fn announcement_transport_emission_tx_inventory_sets_kind_without_compact_reason() {
+    // Arrange
+    let peer_id: open_bitcoin_network::PeerId = 136_301;
+    let member = sample_member();
+
+    // Act
+    let emission = PeerEmission::try_new_tx_inventory(
+        peer_id,
+        WireNetworkMessage::Inv(InventoryList::new(Vec::new())),
+        member,
+        sample_effect_capability(peer_id),
+    )
+    .expect("tx inventory emission");
+    let (_, message, capability) = emission.into_parts();
+    let receipt = capability.acknowledge_write();
+
+    // Assert
+    assert!(matches!(message, WireNetworkMessage::Inv(_)));
+    assert!(receipt.is_transaction_inventory());
+    assert!(!receipt.is_transaction_response());
+    assert_eq!(receipt.maybe_block_hash(), None);
+    assert_eq!(receipt.maybe_member(), Some(member));
+    assert_eq!(receipt.maybe_evidence_reason(), None);
+}
+
+#[test]
+fn announcement_transport_emission_tx_response_sets_kind_without_compact_reason() {
+    // Arrange
+    let peer_id: open_bitcoin_network::PeerId = 136_302;
+    let member = sample_member();
+
+    // Act
+    let emission = PeerEmission::try_new_tx_response(
+        peer_id,
+        WireNetworkMessage::Tx(Transaction::default()),
+        member,
+        sample_effect_capability(peer_id),
+    )
+    .expect("tx response emission");
+    let (_, message, capability) = emission.into_parts();
+    let receipt = capability.acknowledge_write();
+
+    // Assert
+    assert!(matches!(message, WireNetworkMessage::Tx(_)));
+    assert!(receipt.is_transaction_response());
+    assert!(!receipt.is_transaction_inventory());
+    assert_eq!(receipt.maybe_block_hash(), None);
+    assert_eq!(receipt.maybe_member(), Some(member));
+    assert_eq!(receipt.maybe_evidence_reason(), None);
+}
+
+#[test]
+fn announcement_transport_emission_tx_constructors_reject_wrong_variant_or_peer() {
+    // Arrange
+    let peer_id: open_bitcoin_network::PeerId = 136_303;
+    let other_peer: open_bitcoin_network::PeerId = 136_304;
+    let member = sample_member();
+    let inv = WireNetworkMessage::Inv(InventoryList::new(Vec::new()));
+    let tx = WireNetworkMessage::Tx(Transaction::default());
+    let compact_capability = sample_effect_capability(peer_id);
+
+    // Act
+    let inventory_from_tx = PeerEmission::try_new_tx_inventory(
+        peer_id,
+        tx.clone(),
+        member,
+        sample_effect_capability(peer_id),
+    );
+    let response_from_inv = PeerEmission::try_new_tx_response(
+        peer_id,
+        inv.clone(),
+        member,
+        sample_effect_capability(peer_id),
+    );
+    let inventory_peer_mismatch = PeerEmission::try_new_tx_inventory(
+        peer_id,
+        inv,
+        member,
+        sample_effect_capability(other_peer),
+    );
+    let compact_rejects_tx = PeerEmission::new(
+        peer_id,
+        tx,
+        BlockHash::from_byte_array([0x33; 32]),
+        compact_capability,
+    );
+
+    // Assert
+    assert!(inventory_from_tx.is_none());
+    assert!(response_from_inv.is_none());
+    assert!(inventory_peer_mismatch.is_none());
+    assert!(compact_rejects_tx.is_none());
 }

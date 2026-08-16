@@ -398,12 +398,16 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         peer_id: PeerId,
         evidence: PeerEmissionEvidence,
     ) -> Result<(), ManagedNetworkError> {
-        if evidence.records_header_provenance() && self.peer_manager.peer_state(peer_id).is_some() {
+        if evidence.records_header_provenance()
+            && self.peer_manager.peer_state(peer_id).is_some()
+            && let Some(block_hash) = evidence.maybe_block_hash()
+        {
             self.peer_manager
-                .record_compact_block_announcement(peer_id, evidence.block_hash())?;
+                .record_compact_block_announcement(peer_id, block_hash)?;
         }
-        self.block_relay_evidence
-            .record_announcement(evidence.evidence_reason());
+        if let Some(reason) = evidence.maybe_evidence_reason() {
+            self.block_relay_evidence.record_announcement(reason);
+        }
         Ok(())
     }
 

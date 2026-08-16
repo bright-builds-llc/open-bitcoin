@@ -55,15 +55,15 @@ test.each([
   ],
   [
     "consuming post-write recording",
-    "P122 consuming post-write announcement record missing .record_compact_block_announcement(peer_id, evidence.block_hash())?;",
+    "P122 consuming post-write announcement record missing evidence.maybe_block_hash()",
     (files: Map<TargetFile, string>) => {
       const file =
         "packages/open-bitcoin-node/src/network/block_relay_evidence.rs";
       files.set(
         file,
         (files.get(file) ?? "").replace(
-          ".record_compact_block_announcement(peer_id, evidence.block_hash())?;",
-          ".record_compact_block_announcement(peer_id, block_hash)?;",
+          "evidence.maybe_block_hash()",
+          "None",
         ),
       );
     },
@@ -215,7 +215,7 @@ function completeFiles(): Map<TargetFile, string> {
     ],
     [
       "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
-      "fn record_peer_emission( .record_compact_block_announcement(peer_id, evidence.block_hash())?; .record_announcement(evidence.evidence_reason());",
+      "fn record_peer_emission( evidence.maybe_block_hash() .record_compact_block_announcement(peer_id, block_hash)?; evidence.maybe_evidence_reason() .record_announcement(reason);",
     ],
     [
       "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",

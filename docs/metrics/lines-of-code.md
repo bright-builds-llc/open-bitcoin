@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,094 |
-| Total lines | 313,184 |
-| Code/content lines | 273,501 |
-| Comment-only lines | 13,788 |
-| Blank lines | 25,895 |
+| Total lines | 313,405 |
+| Code/content lines | 273,693 |
+| Comment-only lines | 13,799 |
+| Blank lines | 25,913 |
 
 ## Per-Crate Modules
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,799 | 15,647 | 30 | 26,476 | 144.9% |
 | open-bitcoin-network | 124 | 14,526 | 21,142 | 30 | 35,698 | 145.5% |
-| open-bitcoin-node | 237 | 29,090 | 36,714 | 40 | 65,844 | 126.2% |
+| open-bitcoin-node | 237 | 29,143 | 36,875 | 40 | 66,058 | 126.5% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 82 | 10,618 | 10,850 | 59 | 21,527 | 102.2% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,9 +34,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 420 | 117,881 | 100,463 | 8,254 | 9,164 |
-| Rust production | 348 | 105,159 | 91,465 | 3,802 | 9,892 |
-| TypeScript/Bun scripts | 257 | 73,282 | 65,650 | 1,652 | 5,980 |
+| Rust tests | 420 | 118,042 | 100,592 | 8,269 | 9,181 |
+| Rust production | 348 | 105,212 | 91,521 | 3,798 | 9,893 |
+| TypeScript/Bun scripts | 257 | 73,289 | 65,657 | 1,652 | 5,980 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,499 | 4,024 | 66 | 409 |
 | TOML/config | 16 | 3,466 | 3,100 | 0 | 366 |
@@ -114,7 +114,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase121-block-relay-metrics-log-runtime.test.ts | 440 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.ts | 345 |
 | scripts/check-phase122-compact-relay-peer-completion.test.ts | 263 |
-| scripts/check-phase122-compact-relay-peer-completion.ts | 432 |
+| scripts/check-phase122-compact-relay-peer-completion.ts | 434 |
 | scripts/check-phase123-runtime-timing-evidence-integrity.test.ts | 475 |
 | scripts/check-phase123-runtime-timing-evidence-integrity.ts | 14 |
 | scripts/check-phase123-runtime-timing-evidence-integrity/checks.ts | 264 |
@@ -156,11 +156,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase124-post-audit-gap-planning/projection.ts | 358 |
 | scripts/check-phase124-post-audit-gap-planning/routing.ts | 310 |
 | scripts/check-phase126-compact-relay-residual-hardening.test.ts | 478 |
-| scripts/check-phase126-compact-relay-residual-hardening.ts | 432 |
+| scripts/check-phase126-compact-relay-residual-hardening.ts | 434 |
 | scripts/check-phase127-authoritative-network-state-unification.test.ts | 550 |
 | scripts/check-phase127-authoritative-network-state-unification.ts | 542 |
 | scripts/check-phase128-production-compact-announcement-transport.test.ts | 264 |
-| scripts/check-phase128-production-compact-announcement-transport.ts | 568 |
+| scripts/check-phase128-production-compact-announcement-transport.ts | 571 |
 | scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts | 242 |
 | scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts | 233 |
 | scripts/check-phase130-resource-time-fee-primitives.test.ts | 295 |
@@ -338,7 +338,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 6775c629160ab9e33df585ea67d8ac19347fbaecd17788be610543bfb6cc5172 |
+| Input fingerprint | b6e95f5b5020bb9476ea3f5b562623454a4a74713758228baba499c9d93fece6 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -158,8 +158,10 @@ function verifyPostWriteRecording(
     evidence,
     [
       "fn record_peer_emission(",
-      ".record_compact_block_announcement(peer_id, evidence.block_hash())?;",
-      ".record_announcement(evidence.evidence_reason());",
+      "evidence.maybe_block_hash()",
+      ".record_compact_block_announcement(peer_id, block_hash)?;",
+      "evidence.maybe_evidence_reason()",
+      ".record_announcement(reason);",
     ],
     "P122 consuming post-write announcement record",
     failures,

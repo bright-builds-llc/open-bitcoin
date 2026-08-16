@@ -95,8 +95,80 @@ impl PeerEmission {
             message,
             capability: PeerEmissionWriteCapability {
                 effect_capability,
-                block_hash,
-                evidence_reason,
+                maybe_block_hash: Some(block_hash),
+                maybe_member: None,
+                maybe_evidence_reason: Some(evidence_reason),
+                write_kind,
+            },
+        })
+    }
+
+    /// Bind an INV write as transaction announcement, never as acknowledgement.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn try_new_tx_inventory(
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        member: open_bitcoin_mempool::MempoolMemberIdentity,
+        effect_capability: PeerEffectCapability,
+    ) -> Option<Self> {
+        Self::try_new_transaction_write(
+            peer_id,
+            message,
+            member,
+            effect_capability,
+            PeerEmissionWriteKind::TransactionInventory,
+        )
+    }
+
+    /// Bind a TX write as the transaction-response receipt kind.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn try_new_tx_response(
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        member: open_bitcoin_mempool::MempoolMemberIdentity,
+        effect_capability: PeerEffectCapability,
+    ) -> Option<Self> {
+        Self::try_new_transaction_write(
+            peer_id,
+            message,
+            member,
+            effect_capability,
+            PeerEmissionWriteKind::TransactionResponse,
+        )
+    }
+
+    fn try_new_transaction_write(
+        peer_id: PeerId,
+        message: WireNetworkMessage,
+        member: open_bitcoin_mempool::MempoolMemberIdentity,
+        effect_capability: PeerEffectCapability,
+        write_kind: PeerEmissionWriteKind,
+    ) -> Option<Self> {
+        if effect_capability.peer_id() != peer_id {
+            return None;
+        }
+        let accepted = match write_kind {
+            PeerEmissionWriteKind::TransactionInventory => {
+                matches!(message, WireNetworkMessage::Inv(_))
+            }
+            PeerEmissionWriteKind::TransactionResponse => {
+                matches!(message, WireNetworkMessage::Tx(_))
+            }
+            PeerEmissionWriteKind::CompactBlock
+            | PeerEmissionWriteKind::Headers
+            | PeerEmissionWriteKind::Inventory => false,
+        };
+        if !accepted {
+            return None;
+        }
+        Some(Self {
+            peer_id,
+            message,
+            capability: PeerEmissionWriteCapability {
+                effect_capability,
+                maybe_block_hash: None,
+                maybe_member: Some(member),
+                maybe_evidence_reason: None,
                 write_kind,
             },
         })
@@ -130,8 +202,9 @@ impl PeerEmission {
 #[derive(Debug, PartialEq, Eq)]
 pub struct PeerEmissionWriteCapability {
     effect_capability: PeerEffectCapability,
-    block_hash: BlockHash,
-    evidence_reason: CompactAnnouncementReason,
+    maybe_block_hash: Option<BlockHash>,
+    maybe_member: Option<open_bitcoin_mempool::MempoolMemberIdentity>,
+    maybe_evidence_reason: Option<CompactAnnouncementReason>,
     write_kind: PeerEmissionWriteKind,
 }
 
@@ -140,8 +213,9 @@ impl PeerEmissionWriteCapability {
         PeerEmissionReceipt {
             effect_receipt: self.effect_capability.acknowledge_write(),
             evidence: PeerEmissionEvidence {
-                block_hash: self.block_hash,
-                evidence_reason: self.evidence_reason,
+                maybe_block_hash: self.maybe_block_hash,
+                maybe_member: self.maybe_member,
+                maybe_evidence_reason: self.maybe_evidence_reason,
                 write_kind: self.write_kind,
             },
         }
@@ -170,12 +244,24 @@ impl PeerEmissionReceipt {
         self.effect_receipt.peer_id()
     }
 
-    pub const fn block_hash(&self) -> BlockHash {
-        self.evidence.block_hash
+    pub const fn maybe_block_hash(&self) -> Option<BlockHash> {
+        self.evidence.maybe_block_hash()
     }
 
-    pub const fn evidence_reason(&self) -> CompactAnnouncementReason {
-        self.evidence.evidence_reason
+    pub const fn maybe_member(&self) -> Option<open_bitcoin_mempool::MempoolMemberIdentity> {
+        self.evidence.maybe_member()
+    }
+
+    pub const fn maybe_evidence_reason(&self) -> Option<CompactAnnouncementReason> {
+        self.evidence.maybe_evidence_reason()
+    }
+
+    pub const fn is_transaction_inventory(&self) -> bool {
+        self.evidence.is_transaction_inventory()
+    }
+
+    pub const fn is_transaction_response(&self) -> bool {
+        self.evidence.is_transaction_response()
     }
 
     pub(in crate::network) fn into_parts(self) -> (PeerEffectReceipt, PeerEmissionEvidence) {
@@ -193,33 +279,56 @@ impl PeerEmissionReceipt {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::network) struct PeerEmissionEvidence {
-    block_hash: BlockHash,
-    evidence_reason: CompactAnnouncementReason,
+    maybe_block_hash: Option<BlockHash>,
+    maybe_member: Option<open_bitcoin_mempool::MempoolMemberIdentity>,
+    maybe_evidence_reason: Option<CompactAnnouncementReason>,
     write_kind: PeerEmissionWriteKind,
 }
 
 impl PeerEmissionEvidence {
-    pub(in crate::network) const fn block_hash(self) -> BlockHash {
-        self.block_hash
+    pub(in crate::network) const fn maybe_block_hash(self) -> Option<BlockHash> {
+        self.maybe_block_hash
     }
 
-    pub(in crate::network) const fn evidence_reason(self) -> CompactAnnouncementReason {
-        self.evidence_reason
+    pub(in crate::network) const fn maybe_member(
+        self,
+    ) -> Option<open_bitcoin_mempool::MempoolMemberIdentity> {
+        self.maybe_member
+    }
+
+    pub(in crate::network) const fn maybe_evidence_reason(
+        self,
+    ) -> Option<CompactAnnouncementReason> {
+        self.maybe_evidence_reason
+    }
+
+    pub(in crate::network) const fn write_kind(self) -> PeerEmissionWriteKind {
+        self.write_kind
+    }
+
+    pub(in crate::network) const fn is_transaction_inventory(self) -> bool {
+        matches!(self.write_kind, PeerEmissionWriteKind::TransactionInventory)
+    }
+
+    pub(in crate::network) const fn is_transaction_response(self) -> bool {
+        matches!(self.write_kind, PeerEmissionWriteKind::TransactionResponse)
     }
 
     pub(in crate::network) const fn records_header_provenance(self) -> bool {
         matches!(
-            self.write_kind,
+            self.write_kind(),
             PeerEmissionWriteKind::CompactBlock | PeerEmissionWriteKind::Headers
         )
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PeerEmissionWriteKind {
+pub(in crate::network) enum PeerEmissionWriteKind {
     CompactBlock,
     Headers,
     Inventory,
+    TransactionInventory,
+    TransactionResponse,
 }
 
 impl PeerEmissionWriteKind {
@@ -472,65 +581,5 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             },
         );
         (status, gate)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use open_bitcoin_core::primitives::BlockHash;
-    use open_bitcoin_network::{
-        InventoryList, PHASE94_MAX_PEER_QUEUED_MESSAGES, PeerId, WireNetworkMessage,
-    };
-
-    use crate::network::{
-        lifecycle_effects::{PeerEffectCapability, PeerEffectId, PeerSessionGeneration},
-        lifecycle_projection::{AuthorityEpoch, LifecycleGeneration},
-    };
-
-    use super::{PeerEmission, PeerOutboxSnapshot};
-
-    #[test]
-    fn announcement_transport_emission_binds_peer_message_block_and_evidence() {
-        // Arrange
-        let peer_id: PeerId = 128_201;
-        let block_hash = BlockHash::from_byte_array([0x21; 32]);
-        let emission = PeerEmission::new(
-            peer_id,
-            WireNetworkMessage::Inv(InventoryList::new(Vec::new())),
-            block_hash,
-            PeerEffectCapability::new(
-                AuthorityEpoch::INITIAL,
-                LifecycleGeneration::INITIAL,
-                PeerEffectId::new(1),
-                peer_id,
-                PeerSessionGeneration::INITIAL,
-            ),
-        )
-        .expect("inventory emission");
-
-        // Act
-        let (actual_peer_id, message, capability) = emission.into_parts();
-        let receipt = capability.acknowledge_write();
-
-        // Assert
-        assert_eq!(actual_peer_id, peer_id);
-        assert!(matches!(message, WireNetworkMessage::Inv(_)));
-        assert_eq!(receipt.block_hash(), block_hash);
-    }
-
-    #[test]
-    fn announcement_transport_outbox_snapshot_fails_closed_at_the_cap() {
-        // Arrange
-        let snapshot = PeerOutboxSnapshot::new(
-            128_202,
-            PHASE94_MAX_PEER_QUEUED_MESSAGES,
-            PHASE94_MAX_PEER_QUEUED_MESSAGES,
-        );
-
-        // Act
-        let is_full = snapshot.is_full();
-
-        // Assert
-        assert!(is_full);
     }
 }

@@ -253,8 +253,9 @@ function checkLiveFactsAndBoundedEmissions(
     ].every((anchor) => emission.includes(anchor)) ||
     ![
       "effect_capability: PeerEffectCapability,",
-      "block_hash: BlockHash,",
-      "evidence_reason: CompactAnnouncementReason,",
+      "maybe_block_hash: Option<BlockHash>,",
+      "maybe_member: Option<open_bitcoin_mempool::MempoolMemberIdentity>,",
+      "maybe_evidence_reason: Option<CompactAnnouncementReason>,",
       "write_kind: PeerEmissionWriteKind,",
     ].every((anchor) => capability.includes(anchor)) ||
     !transport.includes(
@@ -381,8 +382,10 @@ function checkPostWriteEvidence(
     !orderedFragments(evidence, [
       "fn record_peer_emission(",
       "evidence.records_header_provenance()",
-      ".record_compact_block_announcement(peer_id, evidence.block_hash())?;",
-      ".record_announcement(evidence.evidence_reason());",
+      "evidence.maybe_block_hash()",
+      ".record_compact_block_announcement(peer_id, block_hash)?;",
+      "evidence.maybe_evidence_reason()",
+      ".record_announcement(reason);",
     ])
   ) {
     failures.push(

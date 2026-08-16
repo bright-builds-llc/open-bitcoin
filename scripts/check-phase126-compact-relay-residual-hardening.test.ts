@@ -218,7 +218,7 @@ test("fails_when_achieved_effect_evidence_ignores_the_written_receipt", () => {
       replace(
         files,
         "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
-        ".record_announcement(evidence.evidence_reason());",
+        ".record_announcement(reason);",
         ".record_announcement(CompactAnnouncementReason::CompactAnnounced);",
       );
     },
