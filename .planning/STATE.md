@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 136-03-PLAN.md
-last_updated: "2026-08-16T01:18:10.534Z"
+stopped_at: Completed 136-04-PLAN.md
+last_updated: "2026-08-16T02:35:22.836Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 10
   completed_phases: 7
   total_plans: 80
-  completed_plans: 77
-  percent: 96
+  completed_plans: 78
+  percent: 98
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 136 (Receive-Independent Maintenance and Transport Receipts) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-08-16
 
@@ -98,6 +98,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 136-receive-independent-maintenance-and-transport-receipts P01 | 33 | 2 tasks | 5 files |
 | Phase 136 P02 | 21 | 2 tasks | 7 files |
 | Phase 136 P03 | 71 | 2 tasks | 9 files |
+| Phase 136 P04 | 55 | 2 tasks | 22 files |
 
 ## Accumulated Context
 
@@ -276,6 +277,9 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 136]: PeerEmission::new stays compact-only and still rejects WireNetworkMessage::Tx.
 - [Phase 136]: record_peer_emission increments compact counters only when maybe_evidence_reason is Some.
 - [Phase 136]: Keep IBR-03 Pending until lifecycle-valid phase verification.
+- [Phase 136]: Clear unbroadcast only on Applied current-epoch TX-response writes as TransportWritten, or LifecycleRemoval.
+- [Phase 136]: EligibleServe classify and TX INV writes must not clear membership.
+- [Phase 136]: Keep IBR-04 Pending until lifecycle-valid phase verification.
 
 ### Pending Todos
 
@@ -299,6 +303,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-16T01:18:10.531Z
-Stopped at: Completed 136-03-PLAN.md
+Last session: 2026-08-16T02:35:22.833Z
+Stopped at: Completed 136-04-PLAN.md
 Resume file: None
