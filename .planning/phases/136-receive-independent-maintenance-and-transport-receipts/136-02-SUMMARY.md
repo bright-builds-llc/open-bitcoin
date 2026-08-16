@@ -114,7 +114,7 @@ _Note: TDD RED commits were not created because `.githooks/pre-commit` runs `bas
 **2. [Rule 3 - Blocking] Left IBR-01 and IBR-04 Pending**
 - Marking them Complete fails `check-active-milestone-verification-traceability` because Phase 136 has no lifecycle-valid VERIFICATION.md yet. Same pattern as Phase 136 Plan 01 and Phase 135 MPDUR.
 
----
+***
 
 **Total deviations:** 2 process notes (RED commits, requirement traceability)
 **Impact on plan:** D-04 insert/clear projection and IBR-04 still-present-clear survival match the plan. No GETDATA, PeerEmission, timer, or EligibleServe emission was added.
@@ -135,7 +135,7 @@ None - no external service configuration required.
 - No timer, receipt, or fanout wiring was added; those remain later Phase 136 plans.
 - No blockers.
 
----
+***
 *Phase: 136-receive-independent-maintenance-and-transport-receipts*
 *Completed: 2026-08-15*
 

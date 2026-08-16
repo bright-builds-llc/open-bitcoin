@@ -152,7 +152,7 @@ _Note: TDD RED commits were not created because `.githooks/pre-commit` runs `bas
 **5. [Rule 3 - Blocking] Left IBR-01 through IBR-04 Pending**
 - Marking them Complete fails `check-active-milestone-verification-traceability` because Phase 136 has no lifecycle-valid VERIFICATION.md yet. Same pattern as Plans 01–05.
 
----
+***
 
 **Total deviations:** 3 auto-fixed (cursor, capability abort, clippy) plus 2 process notes
 **Impact on plan:** Wakeup, remint, first-hop drain, and shell ownership match D-05 through D-08 and D-16 through D-19. No public/default relay or guaranteed-propagation claims.
@@ -172,7 +172,7 @@ None - no external service configuration required.
 - Phase 137 can add RPC/dashboard retry counters. Phase 138 can close claim-guardrail wording.
 - Keep IBR requirements Pending until phase verification.
 
----
+***
 *Phase: 136-receive-independent-maintenance-and-transport-receipts*
 *Completed: 2026-08-16*
 

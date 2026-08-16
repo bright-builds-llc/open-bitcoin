@@ -155,7 +155,7 @@ _Note: TDD RED commits were not created because `.githooks/pre-commit` runs `bas
 **6. [Rule 3 - Blocking] Left IBR-04 Pending**
 - Marking it Complete fails `check-active-milestone-verification-traceability` because Phase 136 has no lifecycle-valid VERIFICATION.md yet. Same pattern as Plans 01–03.
 
----
+***
 
 **Total deviations:** 4 auto-fixed (file length, checkers, two breadcrumb mappings) plus 2 process notes
 **Impact on plan:** GETDATA receipt and TransportWritten behavior match the locked decisions. Plan 06 still owns `mod getdata_tx_receipt_cases` and may relocate the breadcrumb into `node-initial-broadcast-retry`.
@@ -176,7 +176,7 @@ None - no external service configuration required.
 - IBR-04 remains Pending until phase verification.
 - No blockers.
 
----
+***
 *Phase: 136-receive-independent-maintenance-and-transport-receipts*
 *Completed: 2026-08-16*
 

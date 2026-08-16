@@ -149,7 +149,7 @@ _Note: TDD RED commits were not created because `.githooks/pre-commit` runs `bas
 **6. [Rule 3 - Blocking] Left PPKG-04 and IBR-03 Pending**
 - Marking them Complete fails `check-active-milestone-verification-traceability` because Phase 136 has no lifecycle-valid VERIFICATION.md yet. Same pattern as Plans 01–04.
 
----
+***
 
 **Total deviations:** 4 auto-fixed (breadcrumb, coverage, dead_code, file length) plus 2 process notes
 **Impact on plan:** Package FIFO and retry enqueue match D-13, D-14, D-15, and D-19. No second announcer or package wire.
@@ -170,7 +170,7 @@ None - no external service configuration required.
 - PPKG-04 and IBR-03 remain Pending until phase verification.
 - No blockers.
 
----
+***
 *Phase: 136-receive-independent-maintenance-and-transport-receipts*
 *Completed: 2026-08-16*
 

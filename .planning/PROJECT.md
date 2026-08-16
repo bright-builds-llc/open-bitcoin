@@ -16,7 +16,7 @@ v2.1 Block Serving and Compact Block Relay Boundary shipped and was archived on 
 
 The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, first-party BIP152 codecs, compact negotiation/reconstruction/fallback, authoritative production network state, real compact-announcement transport, sanitized operator evidence, and deterministic guardrails that keep public-network and production claims scoped.
 
-Milestone v2.2 is active after initialization through `/gsd-new-milestone`. Phase 135 completed 14/14 plans on 2026-08-15, delivering source-only mempool snapshots, generation-aware checkpointing, policy-aware topological recovery, writer/reader representability, and terminal-generation safety. MPDUR-01 through MPDUR-04 stay Pending until Phase 138 closeout. Phase 136 is next for receive-independent maintenance and transport receipts. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.2 is active after initialization through `/gsd-new-milestone`. Phase 136 completed 6/6 plans on 2026-08-16, delivering receive-independent initial-broadcast retry, parent-before-child package fanout on the existing Phase 104 path, and TransportWritten TX-response receipts. PPKG-04 and IBR-01 through IBR-04 stay Pending until Phase 138 closeout. Phase 137 is next for RPC and sanitized operator evidence. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Current Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 

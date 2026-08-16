@@ -284,7 +284,7 @@ Plans:
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 24/24 | Complete    | 2026-07-30 |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
-| 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete   | 2026-08-16 |
+| 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete    | 2026-08-16 |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
 | 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
 
