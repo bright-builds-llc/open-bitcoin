@@ -26,7 +26,7 @@ use crate::network::lifecycle_projection::{AdmissionProjectionSource, PreparedFa
 use crate::{ChainstateStore, ManagedPeerNetwork};
 
 impl ManagedRelayFanoutState {
-    fn record_prepared_admission(
+    pub(in crate::network) fn record_prepared_admission(
         &mut self,
         admission: TxFanoutAdmission,
         peers: &[TxFanoutPeerInput],

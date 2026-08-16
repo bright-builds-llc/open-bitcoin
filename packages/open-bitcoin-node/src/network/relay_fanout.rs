@@ -17,9 +17,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_mempool::{MempoolOutcome, RelayIntent};
 use open_bitcoin_network::{
-    InventoryList, PeerId, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome,
-    TxFanoutCleanupReason, TxFanoutPeerInput, TxFanoutQueue, TxFanoutSuppressionReason, TxRelayId,
-    WireNetworkMessage, defer_local_rebroadcast,
+    PeerId, TxFanoutAction, TxFanoutAdmission, TxFanoutAdmissionOutcome, TxFanoutCleanupReason,
+    TxFanoutPeerInput, TxFanoutQueue, TxFanoutSuppressionReason, TxRelayId, WireNetworkMessage,
+    defer_local_rebroadcast,
 };
 
 use super::ManagedPeerNetwork;
@@ -29,13 +29,14 @@ use super::lifecycle_projection::PreparedFanoutProjection;
 use super::relay_serving::ManagedRelayServingInfo;
 use crate::ChainstateStore;
 use crate::status::relay_evidence::{
-    RELAY_RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RelayActivationEvidence, RelayCapabilityEvidence,
+    RELAY_RECOVERY_EVIDENCE_UNAVAILABLE_REASON, RelayActivationEvidence,
     RelayDownloadEligibilityCounters, RelayEvidenceCapability, RelayEvidenceCounters,
     RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
 };
 
 mod action_info;
 mod lifecycle;
+use action_info::{implemented_capability, translate_fanout_action};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedRelayFanoutInfo {
@@ -270,7 +271,6 @@ impl ManagedRelayFanoutState {
     }
 
     #[cfg(test)]
-    #[allow(dead_code)] // Consumed by package_fanout_cases after Plan 06 registration.
     pub(in crate::network) fn queued_relay_ids_for_peer(&self, peer_id: PeerId) -> Vec<TxRelayId> {
         self.queue.queued_relay_ids(peer_id)
     }
@@ -358,6 +358,27 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    #[allow(dead_code)] // Plan 06 starts the shell timer and calls this helper.
+    pub(in crate::network) fn enqueue_retry_admissions(
+        &mut self,
+        identities: &[open_bitcoin_mempool::MempoolMemberIdentity],
+    ) -> Vec<TxFanoutAction> {
+        let mut actions = Vec::new();
+        for identity in identities {
+            let admission = TxFanoutAdmission {
+                txid: identity.txid,
+                wtxid: identity.wtxid,
+                outcome: TxFanoutAdmissionOutcome::Accepted,
+            };
+            let peer_inputs = self.relay_fanout_peer_inputs(None, Some(admission));
+            actions.extend(
+                self.relay_fanout
+                    .record_prepared_admission(admission, &peer_inputs),
+            );
+        }
+        actions
+    }
+
     pub(super) fn drain_relay_fanout(
         &mut self,
         now_unix_seconds: i64,
@@ -423,16 +444,6 @@ fn tx_fanout_admission_from_outcome(outcome: &MempoolOutcome) -> Option<TxFanout
     }
 }
 
-fn translate_fanout_action(action: TxFanoutAction) -> Option<(PeerId, WireNetworkMessage)> {
-    let TxFanoutAction::Announce { peer_id, relay_id } = action else {
-        return None;
-    };
-    Some((
-        peer_id,
-        WireNetworkMessage::Inv(InventoryList::new(vec![relay_id.to_inventory_vector()])),
-    ))
-}
-
 fn relay_evidence_status_from_parts(
     activation: RelayActivationEvidence,
     download_eligibility: RelayDownloadEligibilityCounters,
@@ -466,12 +477,6 @@ fn relay_evidence_status_from_parts(
         status.rebroadcast = implemented_capability(RelayEvidenceCapability::Rebroadcast);
     }
     status
-}
-
-fn implemented_capability(
-    capability: RelayEvidenceCapability,
-) -> RelayEvidenceField<RelayCapabilityEvidence> {
-    RelayEvidenceField::implemented(RelayCapabilityEvidence::new(capability))
 }
 
 fn project_local_submission_counters(

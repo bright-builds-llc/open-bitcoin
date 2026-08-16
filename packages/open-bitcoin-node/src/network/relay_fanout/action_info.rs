@@ -12,9 +12,18 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use open_bitcoin_network::TxFanoutAction;
+use open_bitcoin_network::{InventoryList, PeerId, TxFanoutAction, WireNetworkMessage};
 
 use super::ManagedRelayFanoutActionInfo;
+use crate::status::relay_evidence::{
+    RelayCapabilityEvidence, RelayEvidenceCapability, RelayEvidenceField,
+};
+
+pub(super) fn implemented_capability(
+    capability: RelayEvidenceCapability,
+) -> RelayEvidenceField<RelayCapabilityEvidence> {
+    RelayEvidenceField::implemented(RelayCapabilityEvidence::new(capability))
+}
 
 impl From<&TxFanoutAction> for ManagedRelayFanoutActionInfo {
     fn from(action: &TxFanoutAction) -> Self {
@@ -23,6 +32,18 @@ impl From<&TxFanoutAction> for ManagedRelayFanoutActionInfo {
             reason: fanout_action_reason(action),
         }
     }
+}
+
+pub(super) fn translate_fanout_action(
+    action: TxFanoutAction,
+) -> Option<(PeerId, WireNetworkMessage)> {
+    let TxFanoutAction::Announce { peer_id, relay_id } = action else {
+        return None;
+    };
+    Some((
+        peer_id,
+        WireNetworkMessage::Inv(InventoryList::new(vec![relay_id.to_inventory_vector()])),
+    ))
 }
 
 fn fanout_action_reason(action: &TxFanoutAction) -> Option<&'static str> {

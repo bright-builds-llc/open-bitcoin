@@ -207,6 +207,9 @@ fn local_submission_duplicate_rejected_or_orphaned_does_not_enqueue_fanout() {
     assert_eq!(counters.accepted_count, 0);
 }
 
+/// `rebroadcast_deferred` means the first hop is recorded and the
+/// receive-independent retry cycle has not yet run. It does not mean Phase 104
+/// shipped a timer, and it does not mean retry was cancelled.
 #[test]
 fn local_submission_records_rebroadcast_deferred_without_timer() {
     // Arrange

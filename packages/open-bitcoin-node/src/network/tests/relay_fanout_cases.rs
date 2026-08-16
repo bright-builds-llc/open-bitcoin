@@ -16,10 +16,12 @@ use open_bitcoin_core::{
     consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{Block, BlockHash, InventoryType, Transaction, Txid, Wtxid},
 };
-use open_bitcoin_mempool::{MempoolOutcome, MempoolRejectionCategory, PolicyConfig};
+use open_bitcoin_mempool::{
+    MempoolMemberIdentity, MempoolOutcome, MempoolRejectionCategory, PolicyConfig,
+};
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InventoryList, RelayActivationConfig,
-    WireNetworkMessage,
+    TxFanoutAction, TxFanoutSuppressionReason, TxRelayId, WireNetworkMessage,
 };
 
 use super::{
@@ -325,4 +327,123 @@ fn managed_lifecycle_cleanup_removes_serving_and_fanout_state() {
             .iter()
             .any(|action| action.label == "cleanup" && action.reason == Some("confirmed"))
     );
+}
+
+fn member_identity(transaction: &Transaction) -> MempoolMemberIdentity {
+    MempoolMemberIdentity {
+        txid: txid(transaction),
+        wtxid: wtxid(transaction),
+    }
+}
+
+#[test]
+fn enqueue_retry_admissions_uses_existing_queue_and_preserves_order() {
+    // Arrange
+    let peer_id = 136_511;
+    let (mut network, coinbase_txids, _spendable) = relay_enabled_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("eligible peer");
+    let first = spend_transaction(coinbase_txids[0], 499_999_000);
+    let second = spend_transaction(coinbase_txids[1], 499_998_000);
+    let first_id = member_identity(&first);
+    let second_id = member_identity(&second);
+
+    // Act
+    let actions = network.enqueue_retry_admissions(&[first_id, second_id]);
+
+    // Assert
+    assert!(
+        actions
+            .iter()
+            .all(|action| !matches!(action, TxFanoutAction::Announce { .. }))
+    );
+    assert_eq!(
+        network.relay_fanout.queued_relay_ids_for_peer(peer_id),
+        vec![
+            TxRelayId::Txid(first_id.txid),
+            TxRelayId::Txid(second_id.txid)
+        ]
+    );
+    let drained = network.drain_relay_fanout(200);
+    assert_eq!(drained.len(), 2);
+    let WireNetworkMessage::Inv(InventoryList {
+        inventory: first_inv,
+    }) = &drained[0].1
+    else {
+        panic!("expected first inv");
+    };
+    let WireNetworkMessage::Inv(InventoryList {
+        inventory: second_inv,
+    }) = &drained[1].1
+    else {
+        panic!("expected second inv");
+    };
+    assert_eq!(drained[0].0, peer_id);
+    assert_eq!(drained[1].0, peer_id);
+    assert_eq!(first_inv[0].object_hash, first_id.txid.into());
+    assert_eq!(second_inv[0].object_hash, second_id.txid.into());
+}
+
+#[test]
+fn enqueue_retry_admissions_does_not_mark_unpassed_identities_as_attempted() {
+    // Arrange
+    let peer_id = 136_512;
+    let (mut network, coinbase_txids, _spendable) = relay_enabled_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("eligible peer");
+    let passed = spend_transaction(coinbase_txids[0], 499_999_000);
+    let leftover = spend_transaction(coinbase_txids[1], 499_998_000);
+    let passed_id = member_identity(&passed);
+    let leftover_id = member_identity(&leftover);
+
+    // Act
+    let _actions = network.enqueue_retry_admissions(&[passed_id]);
+
+    // Assert
+    let queued = network.relay_fanout.queued_relay_ids_for_peer(peer_id);
+    assert_eq!(queued, vec![TxRelayId::Txid(passed_id.txid)]);
+    assert!(!queued.contains(&TxRelayId::Txid(leftover_id.txid)));
+    assert!(!queued.contains(&TxRelayId::Wtxid(leftover_id.wtxid)));
+}
+
+#[test]
+fn enqueue_retry_admissions_honors_relay_disabled_suppression() {
+    // Arrange
+    let peer_id = 136_513;
+    let mut network = ManagedPeerNetwork::new_with_relay_activation(
+        MemoryChainstateStore::default(),
+        local_config(peer_id),
+        PolicyConfig::default(),
+        RelayActivationConfig { enabled: false },
+        true,
+    );
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connected peer");
+    let identity = MempoolMemberIdentity {
+        txid: Txid::from_byte_array([1; 32]),
+        wtxid: Wtxid::from_byte_array([2; 32]),
+    };
+
+    // Act
+    let actions = network.enqueue_retry_admissions(&[identity]);
+
+    // Assert
+    assert_eq!(network.relay_fanout_info().queued_transactions, 0);
+    assert!(
+        network
+            .relay_fanout
+            .queued_relay_ids_for_peer(peer_id)
+            .is_empty()
+    );
+    assert!(actions.iter().any(|action| matches!(
+        action,
+        TxFanoutAction::Suppress {
+            reason: TxFanoutSuppressionReason::RelayDisabled
+                | TxFanoutSuppressionReason::NotRelayEligible,
+            ..
+        }
+    )));
 }
