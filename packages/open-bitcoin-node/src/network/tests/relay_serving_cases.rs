@@ -14,12 +14,12 @@
 
 use open_bitcoin_codec::{BlockTransactionsRequest, SendCompactMessage};
 use open_bitcoin_core::{
-    consensus::{block_hash, block_merkle_root, transaction_txid},
+    consensus::{block_hash, block_merkle_root, transaction_txid, transaction_wtxid},
     primitives::{
         Block, BlockHash, InventoryType, InventoryVector, ScriptWitness, Transaction, Txid,
     },
 };
-use open_bitcoin_mempool::{PolicyConfig, RelayIntent};
+use open_bitcoin_mempool::{MempoolMemberIdentity, PolicyConfig, RelayIntent};
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, CompactRelayActivationConfig,
     InventoryList, RelayActivationConfig, TxServingRecordStatus, WireNetworkMessage,
@@ -28,6 +28,7 @@ use open_bitcoin_network::{
 use super::{
     build_block, consensus_params, local_config, mine_header, spend_transaction, verify_flags,
 };
+use crate::network::ManagedInboundResponsePlanItem;
 use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
@@ -167,6 +168,7 @@ fn managed_getdata_serves_only_accepted_relay_eligible_transaction() {
         .outbound;
 
     // Assert
+    // EligibleServe is semantic and does not clear membership (D-03).
     assert_eq!(outbound, vec![WireNetworkMessage::Tx(transaction)]);
     assert_eq!(
         network.relay_serving_info().latest_outcomes[0].label,
@@ -178,6 +180,50 @@ fn managed_getdata_serves_only_accepted_relay_eligible_transaction() {
     };
     assert_eq!(counters.requested_count, 1);
     assert_eq!(counters.served_count, 1);
+}
+
+#[test]
+fn durable_getdata_tx_prepares_receipt_bearing_serve_without_clearing_unbroadcast() {
+    // Arrange
+    let (mut network, coinbase_txids, _spendable) = relay_enabled_network(803);
+    network
+        .connect_outbound_peer(803, 1)
+        .expect("connect outbound");
+    let transaction = spend_transaction(coinbase_txids[0], 499_999_000);
+    let member = MempoolMemberIdentity {
+        txid: txid(&transaction),
+        wtxid: transaction_wtxid(&transaction).expect("wtxid"),
+    };
+    network
+        .submit_local_transaction_outcome_at(
+            transaction.clone(),
+            verify_flags(),
+            consensus_params(),
+            10,
+            RelayIntent::Requested,
+        )
+        .expect("accepted transaction");
+    assert!(network.unbroadcast_members().contains(&member));
+
+    // Act
+    let result = network
+        .receive_message_for_durable_serving(
+            803,
+            WireNetworkMessage::GetData(tx_inventory(member.txid)),
+            2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("durable getdata");
+
+    // Assert
+    // EligibleServe is semantic and does not clear membership (D-03).
+    assert!(result.outbound.is_empty());
+    assert!(matches!(
+        result.inbound_response_plan.as_slice(),
+        [ManagedInboundResponsePlanItem::PreparedTxServe(_)]
+    ));
+    assert!(network.unbroadcast_members().contains(&member));
 }
 
 #[test]

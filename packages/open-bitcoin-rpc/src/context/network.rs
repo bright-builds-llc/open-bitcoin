@@ -401,6 +401,7 @@ impl ManagedRpcContext {
                 message,
                 bytes,
                 maybe_block_serve_intent: None,
+                maybe_tx_write_capability: None,
             })
             // Phase 123 carrier-shape anchor: EncodedWireResponse { message, bytes }
             .collect())

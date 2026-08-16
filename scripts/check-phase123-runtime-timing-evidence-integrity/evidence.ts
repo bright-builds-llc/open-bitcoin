@@ -18,13 +18,16 @@ export function verifySuccessfulWriteEvidence(
     failures,
   );
 
-  const context = texts.get("packages/open-bitcoin-rpc/src/context.rs") ?? "";
+  const inboundCarrier = [
+    texts.get("packages/open-bitcoin-rpc/src/context.rs") ?? "",
+    texts.get("packages/open-bitcoin-rpc/src/context/inbound_wire.rs") ?? "",
+  ].join("\n");
   for (const needle of [
     "pub(crate) struct EncodedWireResponse",
     "pub(crate) message: WireNetworkMessage",
     "pub(crate) bytes: Vec<u8>",
   ]) {
-    requireContains(context, needle, "P123 typed inbound carrier", failures);
+    requireContains(inboundCarrier, needle, "P123 typed inbound carrier", failures);
   }
   const network = texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
   requireOrdered(
@@ -48,7 +51,7 @@ export function verifySuccessfulWriteEvidence(
   requireOrdered(
     listener,
     [
-      "let Ok(WriteWireMessageOutcome::Written) = write_result else",
+      "let was_written = matches!(write_result, Ok(WriteWireMessageOutcome::Written))",
       ".acknowledge_wire_message_written(&response.message)",
     ],
     "P123 inbound Written-only acknowledgement",

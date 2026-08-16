@@ -28,6 +28,7 @@ export const TARGET_FILES = [
   "packages/open-bitcoin-node/src/logging.rs",
   "packages/open-bitcoin-node/src/status/block_relay_evidence.rs",
   "packages/open-bitcoin-rpc/src/context.rs",
+  "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",

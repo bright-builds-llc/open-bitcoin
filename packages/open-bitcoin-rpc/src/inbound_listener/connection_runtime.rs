@@ -218,7 +218,7 @@ pub(super) async fn handle_inbound_stream(
                 .record_failure(&resource_policy, current_timestamp());
             break;
         };
-        for response in encoded_responses {
+        for mut response in encoded_responses {
             queue_pressure.record_pending_write(response.bytes.len());
             if let Some(event) = queue_pressure_event(
                 &resource_policy,
@@ -226,7 +226,7 @@ pub(super) async fn handle_inbound_stream(
                 permission_decision.active_effects().to_vec(),
                 permission_decision.inactive_effects().to_vec(),
             ) {
-                acknowledge_encoded_wire_response(false, &response, &context).await;
+                acknowledge_encoded_wire_response(false, &mut response, &context).await;
                 record_shared_resource_event(&context, &evidence, event).await;
                 lock_runtime_counters(&runtime_counters)
                     .record_failure(&resource_policy, current_timestamp());
@@ -242,7 +242,7 @@ pub(super) async fn handle_inbound_stream(
             )
             .await;
             queue_pressure.clear_pending_write();
-            if !acknowledge_inbound_response_write(&write_result, &response, &context).await {
+            if !acknowledge_inbound_response_write(&write_result, &mut response, &context).await {
                 lock_runtime_counters(&runtime_counters)
                     .record_failure(&resource_policy, current_timestamp());
                 break 'message_loop;
@@ -553,12 +553,23 @@ async fn drain_inbound_announcements(
 
 pub(super) async fn acknowledge_inbound_response_write(
     write_result: &io::Result<WriteWireMessageOutcome>,
-    response: &EncodedWireResponse,
+    response: &mut EncodedWireResponse,
     context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
 ) -> bool {
-    let Ok(WriteWireMessageOutcome::Written) = write_result else {
+    let was_written = matches!(write_result, Ok(WriteWireMessageOutcome::Written));
+    if let Some(capability) = response.maybe_tx_write_capability.take() {
+        let context = context.lock().await;
+        return if was_written {
+            context
+                .complete_peer_emission(capability.acknowledge_write())
+                .is_ok()
+        } else {
+            context.abort_peer_emission(capability).is_ok()
+        };
+    }
+    if !was_written {
         return acknowledge_encoded_wire_response(false, response, context).await;
-    };
+    }
     if response.maybe_block_serve_intent.is_some() {
         return acknowledge_encoded_wire_response(true, response, context).await;
     }

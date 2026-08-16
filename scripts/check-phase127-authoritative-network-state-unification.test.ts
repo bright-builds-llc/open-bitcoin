@@ -12,6 +12,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
   "packages/open-bitcoin-rpc/src/context.rs",
+  "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
   "packages/open-bitcoin-rpc/src/dispatch/node.rs",
@@ -256,7 +257,7 @@ test("fails_when_production_serving_uses_cache_while_retaining_the_durable_ancho
     maybeMutate(files) {
       replace(
         files,
-        "packages/open-bitcoin-rpc/src/context.rs",
+        "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
         "source.load_block(intent.block_hash())",
         [
           "self.network.lookup_block(intent.block_hash())",
@@ -281,7 +282,7 @@ test("fails_when_durable_serving_keeps_its_anchor_only_in_unreachable_code", () 
     maybeMutate(files) {
       replace(
         files,
-        "packages/open-bitcoin-rpc/src/context.rs",
+        "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
         ".map(|source| source.load_block(intent.block_hash()));",
         [
           ".map(|source| {",
@@ -310,7 +311,7 @@ test("fails_when_durable_read_is_unused_and_match_consumes_a_replacement", () =>
     maybeMutate(files) {
       replace(
         files,
-        "packages/open-bitcoin-rpc/src/context.rs",
+        "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
         "let block = match maybe_block {",
         [
           "let replacement_result = replacement_block_result(intent.block_hash());",

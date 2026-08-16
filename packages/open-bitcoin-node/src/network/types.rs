@@ -27,14 +27,18 @@ use crate::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatu
 
 use super::{
     ManagedAddressBoundaryInfo, ManagedBlockServeIntent, ManagedInboundAdmissionInfo,
-    ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo,
+    ManagedPeerPolicyInfo, ManagedResourceGovernanceInfo, PeerEmission,
 };
 
 /// One response step in the exact peer-request order chosen under the network authority.
-#[derive(Debug, Clone, PartialEq, Eq)]
+///
+/// `PreparedTxServe` owns a non-`Clone` affine write capability, so this plan
+/// item is moved rather than copied.
+#[derive(Debug, PartialEq, Eq)]
 pub enum ManagedInboundResponsePlanItem {
     Immediate(WireNetworkMessage),
     DurableBlock(ManagedBlockServeIntent),
+    PreparedTxServe(Box<PeerEmission>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,7 +210,7 @@ pub enum BlockConnectDisposition {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ManagedSyncMessageResult {
     pub outbound: Vec<WireNetworkMessage>,
     pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,

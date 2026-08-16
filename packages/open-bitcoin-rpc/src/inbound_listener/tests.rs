@@ -93,6 +93,7 @@ fn block_response() -> EncodedWireResponse {
         message: WireNetworkMessage::Block(Block::default()),
         bytes: Vec::new(),
         maybe_block_serve_intent: None,
+        maybe_tx_write_capability: None,
     }
 }
 
@@ -101,6 +102,7 @@ fn non_block_response() -> EncodedWireResponse {
         message: WireNetworkMessage::Verack,
         bytes: Vec::new(),
         maybe_block_serve_intent: None,
+        maybe_tx_write_capability: None,
     }
 }
 
@@ -328,13 +330,13 @@ fn rejected_write_result() -> io::Result<WriteWireMessageOutcome> {
 }
 
 async fn acknowledged_block_count(
-    responses: Vec<EncodedWireResponse>,
+    mut responses: Vec<EncodedWireResponse>,
     write_results: Vec<io::Result<WriteWireMessageOutcome>>,
 ) -> u64 {
     let context = Arc::new(tokio::sync::Mutex::new(
         ManagedRpcContext::for_local_operator(AddressNetwork::Regtest),
     ));
-    for (response, write_result) in responses.iter().zip(write_results.iter()) {
+    for (response, write_result) in responses.iter_mut().zip(write_results.iter()) {
         assert!(acknowledge_inbound_response_write(write_result, response, &context).await);
     }
     context

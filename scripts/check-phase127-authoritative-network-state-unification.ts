@@ -33,6 +33,7 @@ export const PHASE127_TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
   "packages/open-bitcoin-rpc/src/context.rs",
+  "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
   "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
   "packages/open-bitcoin-rpc/src/dispatch/node.rs",
@@ -174,7 +175,8 @@ function checkProductionAuthority(
 }
 
 function checkDurableServing(texts: TextCorpus, failures: string[]): void {
-  const context = texts.get("packages/open-bitcoin-rpc/src/context.rs") ?? "";
+  const context =
+    texts.get("packages/open-bitcoin-rpc/src/context/inbound_wire.rs") ?? "";
   const contextCode = stripRustNonCode(context);
   const store =
     texts.get("packages/open-bitcoin-node/src/storage/fjall_store.rs") ?? "";

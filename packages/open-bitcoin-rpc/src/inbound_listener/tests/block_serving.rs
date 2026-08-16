@@ -15,12 +15,12 @@ async fn phase123_inbound_written_block_increments_served_once() {
         .await
         .encode_wire_responses(vec![WireNetworkMessage::Block(Block::default())])
         .expect("block response should encode");
-    let response = responses.pop().expect("one encoded block response");
+    let mut response = responses.pop().expect("one encoded block response");
     assert!(matches!(response.message, WireNetworkMessage::Block(_)));
     let write_result = Ok(WriteWireMessageOutcome::Written);
 
     // Act
-    assert!(acknowledge_inbound_response_write(&write_result, &response, &context).await);
+    assert!(acknowledge_inbound_response_write(&write_result, &mut response, &context).await);
     let served_count = context
         .lock()
         .await
@@ -38,7 +38,7 @@ async fn phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block()
     let responses = context
         .receive_inbound_wire_message(123, phase123_block_request(&block), 2)
         .expect("serve enabled block request");
-    let response = responses
+    let mut response = responses
         .into_iter()
         .find(|response| matches!(response.message, WireNetworkMessage::Block(_)))
         .expect("enabled runtime should produce a typed Block response");
@@ -46,7 +46,7 @@ async fn phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block()
     let write_result = Ok(WriteWireMessageOutcome::Written);
 
     // Act
-    assert!(acknowledge_inbound_response_write(&write_result, &response, &context).await);
+    assert!(acknowledge_inbound_response_write(&write_result, &mut response, &context).await);
     let served_count = context
         .lock()
         .await
@@ -86,11 +86,11 @@ async fn durable_block_serving_survives_restart_without_cache_hydration() {
     let context = Arc::new(tokio::sync::Mutex::new(context));
 
     // Act
-    let responses =
+    let mut responses =
         resolve_inbound_wire_responses(&context, 123, durable_block_requests(&block), 2)
             .await
             .expect("resolve durable block responses");
-    for response in &responses {
+    for response in &mut responses {
         let written = Ok(WriteWireMessageOutcome::Written);
         assert!(acknowledge_inbound_response_write(&written, response, &context).await);
     }

@@ -121,7 +121,6 @@ impl PeerEmission {
     }
 
     /// Bind a TX write as the transaction-response receipt kind.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn try_new_tx_response(
         peer_id: PeerId,
         message: WireNetworkMessage,

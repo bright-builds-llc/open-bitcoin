@@ -12,13 +12,13 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use open_bitcoin_core::primitives::{BlockHash, InventoryType, InventoryVector};
 #[cfg(test)]
+use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_core::{
     consensus::{transaction_txid, transaction_wtxid},
-    primitives::{Transaction, Txid, Wtxid},
+    primitives::{BlockHash, InventoryType, InventoryVector, Transaction},
 };
-use open_bitcoin_mempool::{MempoolRemovalCause, PreparedLifecycleFacts};
+use open_bitcoin_mempool::{MempoolMemberIdentity, MempoolRemovalCause, PreparedLifecycleFacts};
 use open_bitcoin_network::{
     BlockServingChainPosition, BlockServingDataAvailability, BlockServingValidationState,
     ConnectionRole, DisconnectReason, InactivePermissionEffectLabel, InboundResourceEvent,
@@ -33,7 +33,9 @@ use super::block_serving::{
 use super::lifecycle_projection::PreparedServingProjection;
 use super::{
     ManagedInboundResponsePlanItem, ManagedNetworkError, ManagedPeerNetwork,
-    ManagedSyncMessageResult,
+    ManagedSyncMessageResult, PeerEmission,
+    lifecycle_projection::{LifecycleCommand, PeerRelayPreparationRequest},
+    runtime_authority::{LifecycleCommandResult, apply_lifecycle_command},
 };
 use crate::ChainstateStore;
 
@@ -176,9 +178,11 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                     missing_transactions.push(request);
                     continue;
                 }
-                response_plan.push(ManagedInboundResponsePlanItem::Immediate(
-                    WireNetworkMessage::Tx(transaction.clone()),
-                ));
+                let Some(item) = self.try_prepare_tx_response_item(peer_id, &transaction) else {
+                    missing_transactions.push(request);
+                    continue;
+                };
+                response_plan.push(item);
             }
 
             if let Some(request) = requests.next() {
@@ -226,6 +230,37 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         }
 
         response_plan
+    }
+
+    fn try_prepare_tx_response_item(
+        &mut self,
+        peer_id: PeerId,
+        transaction: &Transaction,
+    ) -> Option<ManagedInboundResponsePlanItem> {
+        let txid = transaction_txid(transaction).ok()?;
+        let wtxid = transaction_wtxid(transaction).ok()?;
+        let member = MempoolMemberIdentity { txid, wtxid };
+        let capability = match apply_lifecycle_command(
+            self,
+            LifecycleCommand::PrepareRelay(PeerRelayPreparationRequest::new(peer_id)),
+        ) {
+            Ok(LifecycleCommandResult::RelayPrepared(capability)) => capability,
+            Ok(_) | Err(_) => return None,
+        };
+        if capability.peer_id() != peer_id {
+            let _ignored =
+                apply_lifecycle_command(self, LifecycleCommand::AbortPeerEffect(capability));
+            return None;
+        }
+        let emission = PeerEmission::try_new_tx_response(
+            peer_id,
+            WireNetworkMessage::Tx(transaction.clone()),
+            member,
+            capability,
+        )?;
+        Some(ManagedInboundResponsePlanItem::PreparedTxServe(Box::new(
+            emission,
+        )))
     }
 
     pub(super) fn managed_block_serve_input(
