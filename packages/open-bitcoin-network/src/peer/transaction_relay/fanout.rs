@@ -338,6 +338,14 @@ impl TxFanoutQueue {
         }
     }
 
+    /// Returns queued relay identities in FIFO order for one peer.
+    pub fn queued_relay_ids(&self, peer_id: PeerId) -> Vec<TxRelayId> {
+        self.peers
+            .get(&peer_id)
+            .map(|peer_queue| peer_queue.queued.iter().copied().collect())
+            .unwrap_or_default()
+    }
+
     fn peer_queue(&self, peer_id: PeerId) -> PeerFanoutQueue {
         self.peers.get(&peer_id).cloned().unwrap_or_default()
     }

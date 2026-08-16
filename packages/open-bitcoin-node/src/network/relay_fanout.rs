@@ -269,6 +269,12 @@ impl ManagedRelayFanoutState {
         self.latest_local_submission.clone()
     }
 
+    #[cfg(test)]
+    #[allow(dead_code)] // Consumed by package_fanout_cases after Plan 06 registration.
+    pub(in crate::network) fn queued_relay_ids_for_peer(&self, peer_id: PeerId) -> Vec<TxRelayId> {
+        self.queue.queued_relay_ids(peer_id)
+    }
+
     pub(super) fn is_recent_reject(&self, peer_id: PeerId, relay_id: TxRelayId) -> bool {
         self.recent_rejects_by_peer
             .get(&peer_id)

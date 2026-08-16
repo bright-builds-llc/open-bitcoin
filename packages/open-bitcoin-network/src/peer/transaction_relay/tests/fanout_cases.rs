@@ -80,6 +80,12 @@ pub(super) fn tx_fanout_policy_honors_identity_and_limits() {
 
     // Act
     let first_actions = queue.enqueue_admission(first, &peers);
+    assert_eq!(queue.queued_relay_ids(1), vec![TxRelayId::Txid(first.txid)]);
+    assert_eq!(
+        queue.queued_relay_ids(2),
+        vec![TxRelayId::Wtxid(first.wtxid)]
+    );
+    assert!(queue.queued_relay_ids(99).is_empty());
     let second_actions = queue.enqueue_admission(second, &peers);
     let txid_actions = queue.drain_peer(1, 100);
     let wtxid_actions = queue.drain_peer(2, 100);

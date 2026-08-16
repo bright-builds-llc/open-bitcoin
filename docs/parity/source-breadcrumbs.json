@@ -1126,6 +1126,16 @@
       ]
     },
     {
+      "label": "node-initial-broadcast-retry",
+      "files": [
+        "packages/open-bitcoin-node/src/network/tests/package_fanout_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_unbroadcast.py"
+      ]
+    },
+    {
       "label": "network-peer-permissions",
       "files": [
         "packages/open-bitcoin-network/src/inbound/permissions.rs",

@@ -89,6 +89,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         };
         let queued_before = replacement.queue.snapshot().queued_count;
         let mut admission_actions = Vec::new();
+        // `final_present()` is admitted topological order. AlreadyPresent parents
+        // are not in that list, so they are not re-enqueued (D-13, D-14).
         for member in facts.final_present() {
             let admission = TxFanoutAdmission {
                 txid: member.member.txid,
