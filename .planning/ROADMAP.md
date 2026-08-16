@@ -34,7 +34,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 - [x] **Phase 133: Package-Aware Download and Orphan Bridge** — Assemble bounded same-peer 1P1C candidates over ordinary transaction messages and route them to shared package admission. (completed 2026-07-26)
 - [x] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state. (completed 2026-07-30)
 - [x] **Phase 135: Snapshot Schema, Checkpointing, and Recovery** — Persist source mempool records and local unbroadcast state, then recover them through policy-aware topological replay. (completed 2026-08-15)
-- [ ] **Phase 136: Receive-Independent Maintenance and Transport Receipts** — Run bounded initial broadcast retry and topological package fanout through existing relay and achieved-effect transport paths.
+- [x] **Phase 136: Receive-Independent Maintenance and Transport Receipts** — Run bounded initial broadcast retry and topological package fanout through existing relay and achieved-effect transport paths. (completed 2026-08-16)
 - [ ] **Phase 137: RPC and Sanitized Operator Evidence** — Expose package, pressure, recovery, checkpoint, and retry truth through stable redacted operator surfaces.
 - [ ] **Phase 138: Parity, Adversarial Pressure, Restart, and Release Guardrails** — Prove integrated Knots parity, bounded work, restart safety, and the deliberately narrow v2.2 claim.
 
@@ -232,7 +232,7 @@ Plans:
 3. Surviving package members fan out parent-before-child and retries use the existing relay activation, peer eligibility, txid/wtxid selection, rate, outbox, serving, and successful-receipt path.
 4. Unbroadcast membership clears only at the documented eligible serve or successful-write receipt, or on authoritative lifecycle removal, and supported restart behavior never claims guaranteed propagation.
 
-**Plans:** 5/6 plans executed
+**Plans:** 6/6 plans complete
 
 Plans:
 - [x] 136-01-PLAN.md — Pure retry cycle, inspect/prepare budgets, and leftover cursor
@@ -240,7 +240,7 @@ Plans:
 - [x] 136-03-PLAN.md — TX-specific PeerEmission write kinds
 - [x] 136-04-PLAN.md — GETDATA TX receipt applies TransportWritten
 - [x] 136-05-PLAN.md — Package FIFO and retry enqueue on the Phase 104 path
-- [ ] 136-06-PLAN.md — MaintenanceTick, first-hop drain, and open-bitcoind timer
+- [x] 136-06-PLAN.md — MaintenanceTick, first-hop drain, and open-bitcoind timer
 
 ### Phase 137: RPC and Sanitized Operator Evidence
 
@@ -284,7 +284,7 @@ Plans:
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 24/24 | Complete    | 2026-07-30 |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
-| 136. Receive-Independent Maintenance and Transport Receipts | 5/6 | In Progress|  |
+| 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete   | 2026-08-16 |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
 | 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
 

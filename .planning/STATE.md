@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 136-05-PLAN.md
-last_updated: "2026-08-16T04:10:55.713Z"
+status: verifying
+stopped_at: Completed 136-06-PLAN.md
+last_updated: "2026-08-16T05:35:01.848Z"
 last_activity: 2026-08-16
 progress:
   total_phases: 10
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 80
-  completed_plans: 79
-  percent: 99
+  completed_plans: 80
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 136 (Receive-Independent Maintenance and Transport Receipts) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-08-16
 
 Progress: [██████████] 97%
@@ -100,6 +100,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 136 P03 | 71 | 2 tasks | 9 files |
 | Phase 136 P04 | 55 | 2 tasks | 22 files |
 | Phase 136-receive-independent-maintenance-and-transport-receipts P05 | 74 | 2 tasks | 10 files |
+| Phase 136 P06 | 72min | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -285,6 +286,10 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 136-receive-independent-maintenance-and-transport-receipts]: enqueue_retry_admissions iterates the caller slice only and reuses record_prepared_admission.
 - [Phase 136-receive-independent-maintenance-and-transport-receipts]: rebroadcast_deferred means the first hop is recorded and the retry cycle has not yet run.
 - [Phase 136-receive-independent-maintenance-and-transport-receipts]: Keep PPKG-04 and IBR-03 Pending until lifecycle-valid phase verification.
+- [Phase 136]: Store last prepared identity as the walk cursor so leftovers progress when N < inspect 256.
+- [Phase 136]: Drain first-hop INV after accept; abort unused write capabilities until a later socket write path exists.
+- [Phase 136]: Always start the retry worker from open-bitcoind main beside the checkpoint worker, never from DurableSyncRuntime.
+- [Phase 136]: Keep IBR-01 through IBR-04 Pending until lifecycle-valid phase verification.
 
 ### Pending Todos
 
@@ -308,6 +313,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-16T04:10:55.709Z
-Stopped at: Completed 136-05-PLAN.md
+Last session: 2026-08-16T05:35:01.845Z
+Stopped at: Completed 136-06-PLAN.md
 Resume file: None
