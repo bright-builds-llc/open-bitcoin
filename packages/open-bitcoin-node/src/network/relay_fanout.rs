@@ -122,6 +122,16 @@ impl ManagedRelayFanoutState {
         self.wtxids_by_txid.insert(txid, wtxid);
     }
 
+    pub(super) fn wtxid_for_txid(&self, txid: Txid) -> Option<Wtxid> {
+        self.wtxids_by_txid.get(&txid).copied()
+    }
+
+    pub(super) fn txid_for_wtxid(&self, wtxid: Wtxid) -> Option<Txid> {
+        self.wtxids_by_txid
+            .iter()
+            .find_map(|(txid, mapped)| (*mapped == wtxid).then_some(*txid))
+    }
+
     pub(super) fn record_admission_outcome(
         &mut self,
         origin_peer: Option<PeerId>,
@@ -358,7 +368,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
-    #[allow(dead_code)] // Plan 06 starts the shell timer and calls this helper.
     pub(in crate::network) fn enqueue_retry_admissions(
         &mut self,
         identities: &[open_bitcoin_mempool::MempoolMemberIdentity],

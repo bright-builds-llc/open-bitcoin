@@ -480,6 +480,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.relay_fanout = relay_fanout;
         self.peer_manager.apply_prepared_transaction_lifecycle(peer);
         self.unbroadcast_members = unbroadcast_members;
+        self.maybe_retry_due_at_unix_seconds = None;
+        self.maybe_unbroadcast_walk_cursor = None;
         self.maybe_last_transport_written_clear = None;
         self.lifecycle_generation = generation;
         self.dirty_generation = None;

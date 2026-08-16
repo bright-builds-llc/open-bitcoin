@@ -181,6 +181,13 @@ impl PeerEmission {
         &self.message
     }
 
+    pub const fn is_transaction_inventory(&self) -> bool {
+        matches!(
+            self.capability.write_kind,
+            PeerEmissionWriteKind::TransactionInventory
+        )
+    }
+
     pub fn into_parts(self) -> (PeerId, WireNetworkMessage, PeerEmissionWriteCapability) {
         let Self {
             peer_id,

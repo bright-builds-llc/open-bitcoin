@@ -1,5 +1,6 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/bitcoind.cpp
 // - packages/bitcoin-knots/test/functional/mempool_unbroadcast.py
 
 //! Ordinary INV/TX package fanout keeps parent-before-child FIFO on the

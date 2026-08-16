@@ -187,6 +187,9 @@ pub(super) fn network_authority_error_to_failure(
             RpcFailure::internal_error(message)
         }
         ManagedNetworkAuthorityError::Operation(error) => network_error_to_failure(error),
+        ManagedNetworkAuthorityError::MaintenanceTick(error) => {
+            RpcFailure::internal_error(error.to_string())
+        }
     }
 }
 

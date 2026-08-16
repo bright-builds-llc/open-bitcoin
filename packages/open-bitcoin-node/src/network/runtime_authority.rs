@@ -42,6 +42,8 @@ mod effects;
 pub use effects::{CheckpointAbortDispatchError, CheckpointCompletionDispatchError};
 mod lifecycle;
 pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
+mod maintenance;
+pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
 mod recovery;
 
 type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
@@ -51,6 +53,7 @@ pub enum ManagedNetworkAuthorityError {
     Poisoned,
     LifecycleEffect(String),
     Operation(ManagedNetworkError),
+    MaintenanceTick(MaintenanceTickError),
 }
 
 impl fmt::Display for ManagedNetworkAuthorityError {
@@ -59,6 +62,7 @@ impl fmt::Display for ManagedNetworkAuthorityError {
             Self::Poisoned => formatter.write_str("authoritative network state is unavailable"),
             Self::LifecycleEffect(message) => formatter.write_str(message),
             Self::Operation(error) => error.fmt(formatter),
+            Self::MaintenanceTick(error) => error.fmt(formatter),
         }
     }
 }
@@ -66,7 +70,7 @@ impl fmt::Display for ManagedNetworkAuthorityError {
 impl std::error::Error for ManagedNetworkAuthorityError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Poisoned | Self::LifecycleEffect(_) => None,
+            Self::Poisoned | Self::LifecycleEffect(_) | Self::MaintenanceTick(_) => None,
             Self::Operation(error) => Some(error),
         }
     }
@@ -86,6 +90,9 @@ impl From<ManagedNetworkAuthorityError> for SyncRuntimeError {
             },
             ManagedNetworkAuthorityError::LifecycleEffect(message) => Self::Network { message },
             ManagedNetworkAuthorityError::Operation(error) => Self::from(error),
+            ManagedNetworkAuthorityError::MaintenanceTick(error) => Self::Network {
+                message: error.to_string(),
+            },
         }
     }
 }

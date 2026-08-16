@@ -482,13 +482,23 @@ impl ManagedRpcContext {
         } else {
             RelayIntent::NotRequested
         };
-        self.network.submit_local_transaction_outcome_at(
+        let outcome = self.network.submit_local_transaction_outcome_at(
             transaction,
             self.verify_flags,
             self.consensus_params,
             now_unix_seconds,
             relay_intent,
-        )
+        )?;
+        if matches!(
+            outcome,
+            MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. }
+        ) {
+            for emission in self.network.drain_tx_fanout_emissions(now_unix_seconds)? {
+                let capability = emission.into_parts().2;
+                let _ignored = self.network.abort_peer_emission(capability);
+            }
+        }
+        Ok(outcome)
     }
 
     pub fn mempool_entry_metadata(

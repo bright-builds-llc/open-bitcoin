@@ -84,8 +84,8 @@ pub use relay_fanout::{
     RebroadcastEvidenceLabel,
 };
 pub use runtime_authority::{
-    CheckpointAbortDispatchError, CheckpointCompletionDispatchError, ManagedNetworkAuthorityError,
-    ManagedNetworkHandle,
+    CheckpointAbortDispatchError, CheckpointCompletionDispatchError, MaintenanceTickError,
+    MaintenanceTickOutcome, ManagedNetworkAuthorityError, ManagedNetworkHandle,
 };
 pub use types::{
     BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,
@@ -129,6 +129,8 @@ pub struct ManagedPeerNetwork<S> {
     lifecycle_generation: lifecycle_projection::LifecycleGeneration,
     dirty_generation: Option<lifecycle_projection::LifecycleGeneration>,
     unbroadcast_members: BTreeSet<open_bitcoin_mempool::MempoolMemberIdentity>,
+    maybe_retry_due_at_unix_seconds: Option<i64>,
+    maybe_unbroadcast_walk_cursor: Option<open_bitcoin_mempool::MempoolMemberIdentity>,
     maybe_last_transport_written_clear: Option<open_bitcoin_mempool::MempoolRetryClear>,
     lifecycle_evidence: lifecycle_projection::LifecycleEvidenceSnapshot,
     checkpoint_evidence: lifecycle_projection::CheckpointAuthorityState,

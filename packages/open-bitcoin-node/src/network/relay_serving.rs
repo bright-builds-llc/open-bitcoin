@@ -492,6 +492,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             lifecycle_generation: super::lifecycle_projection::LifecycleGeneration::INITIAL,
             dirty_generation: None,
             unbroadcast_members: BTreeSet::new(),
+            maybe_retry_due_at_unix_seconds: None,
+            maybe_unbroadcast_walk_cursor: None,
             maybe_last_transport_written_clear: None,
             lifecycle_evidence: super::lifecycle_projection::LifecycleEvidenceSnapshot::default(),
             checkpoint_evidence: super::lifecycle_projection::CheckpointAuthorityState::default(),

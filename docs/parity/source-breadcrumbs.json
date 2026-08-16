@@ -1128,10 +1128,13 @@
     {
       "label": "node-initial-broadcast-retry",
       "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/maintenance.rs",
+        "packages/open-bitcoin-node/src/network/tests/maintenance_tick_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/package_fanout_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/bitcoind.cpp",
         "packages/bitcoin-knots/test/functional/mempool_unbroadcast.py"
       ]
     },
