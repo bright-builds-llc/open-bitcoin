@@ -232,14 +232,14 @@ Plans:
 3. Surviving package members fan out parent-before-child and retries use the existing relay activation, peer eligibility, txid/wtxid selection, rate, outbox, serving, and successful-receipt path.
 4. Unbroadcast membership clears only at the documented eligible serve or successful-write receipt, or on authoritative lifecycle removal, and supported restart behavior never claims guaranteed propagation.
 
-**Plans:** 4/6 plans executed
+**Plans:** 5/6 plans executed
 
 Plans:
 - [x] 136-01-PLAN.md — Pure retry cycle, inspect/prepare budgets, and leftover cursor
 - [x] 136-02-PLAN.md — Unbroadcast insert-on-admission and subset reconciliation
 - [x] 136-03-PLAN.md — TX-specific PeerEmission write kinds
 - [x] 136-04-PLAN.md — GETDATA TX receipt applies TransportWritten
-- [ ] 136-05-PLAN.md — Package FIFO and retry enqueue on the Phase 104 path
+- [x] 136-05-PLAN.md — Package FIFO and retry enqueue on the Phase 104 path
 - [ ] 136-06-PLAN.md — MaintenanceTick, first-hop drain, and open-bitcoind timer
 
 ### Phase 137: RPC and Sanitized Operator Evidence
@@ -284,7 +284,7 @@ Plans:
 | 133.1. Bright Builds Verification Baseline Cleanup | 6/6 | Complete    | 2026-07-27 |
 | 134. Authoritative Cross-Cache Lifecycle Integration | 24/24 | Complete    | 2026-07-30 |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
-| 136. Receive-Independent Maintenance and Transport Receipts | 4/6 | In Progress|  |
+| 136. Receive-Independent Maintenance and Transport Receipts | 5/6 | In Progress|  |
 | 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
 | 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
 
