@@ -154,3 +154,5 @@ mod checkpoint;
 mod daemon_sync;
 #[path = "tests/inbound_runtime.rs"]
 mod inbound_runtime;
+#[path = "tests/retry.rs"]
+mod retry;

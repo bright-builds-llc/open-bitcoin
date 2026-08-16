@@ -48,6 +48,8 @@ use open_bitcoin_rpc::{
 mod checkpoint;
 #[path = "open_bitcoind/inbound_metrics.rs"]
 mod inbound_metrics;
+#[path = "open_bitcoind/retry.rs"]
+mod retry;
 #[path = "open_bitcoind/runtime_control.rs"]
 mod runtime_control;
 #[path = "open_bitcoind/sync_seed.rs"]
@@ -55,6 +57,7 @@ mod sync_seed;
 
 use checkpoint::{DaemonCheckpointError, start_mempool_checkpoint_worker};
 use inbound_metrics::start_inbound_metrics_worker;
+use retry::start_initial_broadcast_retry_worker;
 use runtime_control::{
     current_timestamp_unix_seconds, daemon_sync_shutdown_requested, daemon_sync_wait_or_shutdown,
     persist_daemon_loop_failure, persist_daemon_loop_stop, shutdown_signal,
@@ -94,6 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         authoritative_runtime.network.clone(),
         maybe_runtime_store.clone(),
     );
+    let retry_worker = start_initial_broadcast_retry_worker(authoritative_runtime.network.clone());
     if let Some(worker) = maybe_sync_worker.as_ref() {
         let mut context = shared_context.lock().await;
         context.set_daemon_sync_control(worker.control.clone());
@@ -135,6 +139,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(worker) = maybe_checkpoint_worker {
         worker.shutdown_and_mark_clean()?;
     }
+    retry_worker.shutdown()?;
     serve_result?;
     Ok(())
 }

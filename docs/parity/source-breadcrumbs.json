@@ -1117,8 +1117,7 @@
     {
       "label": "node-unbroadcast-projection",
       "files": [
-        "packages/open-bitcoin-node/src/network/tests/unbroadcast_projection_cases.rs",
-        "packages/open-bitcoin-node/src/network/tests/getdata_tx_receipt_cases.rs"
+        "packages/open-bitcoin-node/src/network/tests/unbroadcast_projection_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/txmempool.cpp",
@@ -1129,7 +1128,10 @@
       "label": "node-initial-broadcast-retry",
       "files": [
         "packages/open-bitcoin-node/src/network/runtime_authority/maintenance.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/retry.rs",
         "packages/open-bitcoin-node/src/network/tests/maintenance_tick_cases.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/retry.rs",
+        "packages/open-bitcoin-node/src/network/tests/getdata_tx_receipt_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/package_fanout_cases.rs"
       ],
       "breadcrumbs": [

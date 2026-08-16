@@ -1,5 +1,6 @@
 // Parity breadcrumbs:
-// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/bitcoind.cpp
 // - packages/bitcoin-knots/test/functional/mempool_unbroadcast.py
 
 //! GETDATA TX-response receipts clear unbroadcast only after a successful write.
@@ -11,22 +12,19 @@ use open_bitcoin_core::consensus::{block_hash, transaction_txid, transaction_wtx
 use open_bitcoin_core::primitives::{BlockHash, InventoryType, InventoryVector, Transaction, Txid};
 use open_bitcoin_mempool::{
     AdmissionContext, MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRetryClear,
-    MempoolRetryClearCause, PackageMemberResult, PolicyConfig, PolicyTime, PreparedMempoolTransition,
-    RelayIntent, SubmissionPackage, SubmitPackageCommand, WellFormedPackage,
+    MempoolRetryClearCause, PackageMemberResult, PolicyConfig, PolicyTime,
+    PreparedMempoolTransition, RelayIntent, SubmissionPackage, SubmitPackageCommand,
+    WellFormedPackage,
 };
-use open_bitcoin_network::{
-    InventoryList, PeerId, RelayActivationConfig, WireNetworkMessage,
-};
+use open_bitcoin_network::{InventoryList, PeerId, RelayActivationConfig, WireNetworkMessage};
 
-use super::{
-    build_block, consensus_params, local_config, spend_transaction, verify_flags,
-};
+use super::{build_block, consensus_params, local_config, spend_transaction, verify_flags};
+use crate::MemoryChainstateStore;
 use crate::network::lifecycle_projection::{
     LifecycleCommand, LifecycleProjectionPlan, PeerRelayPreparationRequest,
 };
 use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 use crate::network::{EffectAbort, EffectCompletion, ManagedPeerNetwork, PeerEmission};
-use crate::MemoryChainstateStore;
 
 fn relay_enabled_network() -> (ManagedPeerNetwork<MemoryChainstateStore>, Txid) {
     let mut network = ManagedPeerNetwork::new_with_relay_activation(
@@ -177,7 +175,8 @@ fn fresh_tx_response_write_clears_unbroadcast_as_transport_written() {
     let child_member = member_identity(&child);
     admit_local(&mut network, parent.clone(), 100);
     assert!(network.unbroadcast_members().contains(&parent_member));
-    let write_capability = prepare_tx_response(&mut network, peer_id, parent.clone(), parent_member);
+    let write_capability =
+        prepare_tx_response(&mut network, peer_id, parent.clone(), parent_member);
 
     // Act
     let completion = complete_emission(&mut network, write_capability);
