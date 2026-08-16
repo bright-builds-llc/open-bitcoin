@@ -37,7 +37,7 @@ key-decisions:
 patterns-established:
   - "Production-use structural proofs inspect extracted function bodies, not whole-file identifier presence."
   - "Attribute-aware direct-statement indexing is a dependency-free structural proof, not a Rust compiler frontend."
-requirements-completed: [MPDUR-01, MPDUR-02, MPDUR-03, MPDUR-04]
+requirements-completed: []
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 135-2026-08-02T17-41-48
