@@ -129,6 +129,7 @@ pub struct ManagedPeerNetwork<S> {
     lifecycle_generation: lifecycle_projection::LifecycleGeneration,
     dirty_generation: Option<lifecycle_projection::LifecycleGeneration>,
     unbroadcast_members: BTreeSet<open_bitcoin_mempool::MempoolMemberIdentity>,
+    maybe_last_transport_written_clear: Option<open_bitcoin_mempool::MempoolRetryClear>,
     lifecycle_evidence: lifecycle_projection::LifecycleEvidenceSnapshot,
     checkpoint_evidence: lifecycle_projection::CheckpointAuthorityState,
     peer_session_generations: BTreeMap<PeerId, lifecycle_effects::PeerSessionGeneration>,

@@ -9,7 +9,9 @@
 #[cfg(test)]
 use std::cell::Cell;
 
-use open_bitcoin_mempool::{MempoolCapacityBounds, MempoolLifecycleDelta};
+use open_bitcoin_mempool::{
+    MempoolCapacityBounds, MempoolLifecycleDelta, MempoolRetryClear, MempoolRetryClearCause,
+};
 
 use super::ManagedNetworkHandle;
 use crate::network::announcement_transport::PeerEmissionEvidence;
@@ -297,9 +299,33 @@ fn complete_peer_effect<S: ChainstateStore>(
         return Err(LifecycleProjectionError::InvalidEffectReceipt("peer"));
     }
     network.maybe_forget_peer_session_generation(peer_id);
-    Ok(if is_fresh {
-        EffectCompletion::Applied
+    if is_fresh {
+        apply_fresh_tx_response_transport_written(network, maybe_evidence);
+        Ok(EffectCompletion::Applied)
     } else {
-        EffectCompletion::AchievedButStale
-    })
+        Ok(EffectCompletion::AchievedButStale)
+    }
+}
+
+fn apply_fresh_tx_response_transport_written<S: ChainstateStore>(
+    network: &mut ManagedPeerNetwork<S>,
+    maybe_evidence: Option<PeerEmissionEvidence>,
+) {
+    let Some(evidence) = maybe_evidence else {
+        return;
+    };
+    if !evidence.is_transaction_response() {
+        return;
+    }
+    let Some(member) = evidence.maybe_member() else {
+        return;
+    };
+    let clear = MempoolRetryClear {
+        member,
+        cause: MempoolRetryClearCause::TransportWritten,
+    };
+    network.unbroadcast_members.remove(&clear.member);
+    network.lifecycle_evidence.retry_clears =
+        network.lifecycle_evidence.retry_clears.saturating_add(1);
+    network.maybe_last_transport_written_clear = Some(clear);
 }

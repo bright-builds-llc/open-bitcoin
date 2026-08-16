@@ -321,6 +321,12 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         &self.unbroadcast_members
     }
 
+    pub(in crate::network) const fn last_transport_written_clear(
+        &self,
+    ) -> Option<open_bitcoin_mempool::MempoolRetryClear> {
+        self.maybe_last_transport_written_clear
+    }
+
     pub(in crate::network) const fn lifecycle_evidence_snapshot(
         &self,
     ) -> LifecycleEvidenceSnapshot {
@@ -474,6 +480,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         self.relay_fanout = relay_fanout;
         self.peer_manager.apply_prepared_transaction_lifecycle(peer);
         self.unbroadcast_members = unbroadcast_members;
+        self.maybe_last_transport_written_clear = None;
         self.lifecycle_generation = generation;
         self.dirty_generation = None;
         self.lifecycle_evidence = lifecycle_evidence;

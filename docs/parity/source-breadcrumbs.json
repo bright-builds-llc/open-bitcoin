@@ -1117,7 +1117,8 @@
     {
       "label": "node-unbroadcast-projection",
       "files": [
-        "packages/open-bitcoin-node/src/network/tests/unbroadcast_projection_cases.rs"
+        "packages/open-bitcoin-node/src/network/tests/unbroadcast_projection_cases.rs",
+        "packages/open-bitcoin-node/src/network/tests/getdata_tx_receipt_cases.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/txmempool.cpp",
