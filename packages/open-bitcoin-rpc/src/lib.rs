@@ -24,6 +24,7 @@ pub mod error;
 pub mod http;
 pub mod inbound_listener;
 pub mod method;
+mod package_projection;
 
 pub use config::{
     RpcAuthConfig, RpcClientConfig, RpcClientEndpoint, RpcServerConfig, RuntimeConfig,
