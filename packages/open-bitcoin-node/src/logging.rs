@@ -15,15 +15,19 @@ use crate::status::{
     },
 };
 
+mod mempool_policy;
 pub mod prune;
 pub mod writer;
 
 #[cfg(test)]
 mod tests;
 
+pub use mempool_policy::mempool_policy_log_record;
+
 pub const INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE: &str = "inbound_resource_governance";
 pub const INBOUND_PEER_POLICY_LOG_SOURCE: &str = "inbound_peer_policy";
 pub const RELAY_MEMPOOL_LOG_SOURCE: &str = "relay_mempool";
+pub const MEMPOOL_POLICY_LOG_SOURCE: &str = "mempool_policy";
 pub const BLOCK_RELAY_LOG_SOURCE: &str = "block_relay";
 const REDACTED_RESOURCE_FIELD: &str = "redacted_resource_field";
 const REDACTED_PEER_POLICY_FIELD: &str = "redacted_peer_policy_field";

@@ -1786,6 +1786,7 @@
         "packages/open-bitcoin-node/src/metrics/mempool_policy.rs",
         "packages/open-bitcoin-node/src/metrics/tests.rs",
         "packages/open-bitcoin-node/src/logging.rs",
+        "packages/open-bitcoin-node/src/logging/mempool_policy.rs",
         "packages/open-bitcoin-node/src/logging/prune.rs",
         "packages/open-bitcoin-node/src/logging/tests.rs",
         "packages/open-bitcoin-node/src/logging/writer.rs",
