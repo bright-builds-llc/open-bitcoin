@@ -14,7 +14,7 @@ use open_bitcoin_node::core::primitives::{
     Txid, Wtxid,
 };
 
-use super::{PackageMemberProjectionFacts, project_testmempoolaccept};
+use super::{PackageMemberProjectionFacts, project_submitpackage, project_testmempoolaccept};
 
 fn encode_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
@@ -70,7 +70,10 @@ fn parent_child_package() -> WellFormedPackage {
     WellFormedPackage::try_from(vec![parent, child]).expect("parent-child package")
 }
 
-fn identity_at(package: &WellFormedPackage, index: usize) -> open_bitcoin_mempool::MempoolMemberIdentity {
+fn identity_at(
+    package: &WellFormedPackage,
+    index: usize,
+) -> open_bitcoin_mempool::MempoolMemberIdentity {
     package
         .maybe_identity_at(index)
         .expect("fixture identity at index")
@@ -160,7 +163,10 @@ fn testmempoolaccept_finally_present_uses_knots_allowed_keys() {
     assert_eq!(element["vsize"], json!(141));
     assert!(element["fees"]["base"].is_number());
     assert!(element["fees"]["effective-feerate"].is_number());
-    assert_eq!(element["fees"]["effective-includes"], json!(expected_includes));
+    assert_eq!(
+        element["fees"]["effective-includes"],
+        json!(expected_includes)
+    );
     assert!(element.get("package-error").is_none());
     assert!(element.get("reject-reason").is_none());
 }
@@ -173,7 +179,9 @@ fn testmempoolaccept_already_present_is_reject_reason_not_mempool_entry() {
     let report = PackageReport::try_new(
         &package,
         PackageStatus::Complete,
-        vec![PackageMemberResult::AlreadyPresent(ExistingMember { requested })],
+        vec![PackageMemberResult::AlreadyPresent(ExistingMember {
+            requested,
+        })],
         vec![],
     )
     .expect("already-present report");
@@ -198,10 +206,12 @@ fn testmempoolaccept_same_txid_different_witness_is_allowed_false() {
     let report = PackageReport::try_new(
         &package,
         PackageStatus::Complete,
-        vec![PackageMemberResult::SameTxidDifferentWitness(WitnessAlias {
-            requested,
-            existing_wtxid,
-        })],
+        vec![PackageMemberResult::SameTxidDifferentWitness(
+            WitnessAlias {
+                requested,
+                existing_wtxid,
+            },
+        )],
         vec![],
     )
     .expect("witness-alias report");
@@ -226,11 +236,13 @@ fn testmempoolaccept_hard_rejected_stays_in_result_body() {
     let report = PackageReport::try_new(
         &package,
         PackageStatus::Failed,
-        vec![PackageMemberResult::HardRejected(HardMemberFailure::Policy {
-            requested,
-            category: MempoolRejectionCategory::RelayFeeTooLow,
-            reason: "min relay fee not met".to_string(),
-        })],
+        vec![PackageMemberResult::HardRejected(
+            HardMemberFailure::Policy {
+                requested,
+                category: MempoolRejectionCategory::RelayFeeTooLow,
+                reason: "min relay fee not met".to_string(),
+            },
+        )],
         vec![],
     )
     .expect("hard-rejected report");
@@ -345,4 +357,118 @@ fn testmempoolaccept_preserves_input_member_order() {
     assert_eq!(elements.len(), 2);
     assert_eq!(elements[0]["allowed"], json!(true));
     assert_eq!(elements[1]["allowed"], json!(false));
+}
+
+fn partial_parent_accepted_report() -> (PackageReport, Vec<PackageMemberProjectionFacts>, Wtxid) {
+    let package = parent_child_package();
+    let parent = identity_at(&package, 0);
+    let child = identity_at(&package, 1);
+    let group_id = EffectiveFeeGroupId::from_u64(2);
+    let report = PackageReport::try_new(
+        &package,
+        PackageStatus::Partial,
+        vec![
+            PackageMemberResult::FinallyPresent(NewlyPresent {
+                requested: parent,
+                effective_fee_group_id: group_id,
+            }),
+            PackageMemberResult::HardRejected(HardMemberFailure::Policy {
+                requested: child,
+                category: MempoolRejectionCategory::Validation,
+                reason: "bad-txns-inputs-missingorspent".to_string(),
+            }),
+        ],
+        vec![fee_group(group_id, vec![parent.wtxid])],
+    )
+    .expect("partial report");
+    (report, vec![facts_for(parent, 141, 200)], parent.wtxid)
+}
+
+#[test]
+fn one_report_projects_both_knots_trees() {
+    // Arrange
+    let (report, facts, parent_wtxid) = partial_parent_accepted_report();
+    let parent_wtxid_hex = encode_hex(parent_wtxid.as_bytes());
+    let replaced = [Txid::from_byte_array([0x51; 32])];
+
+    // Act
+    let accept = project_testmempoolaccept(&report, &facts).expect("accept");
+    let submit = project_submitpackage(&report, &facts, &replaced).expect("submit");
+
+    // Assert
+    let accept_elements = accept.as_array().expect("accept array");
+    assert_eq!(accept_elements.len(), 2);
+    let submit_object = submit.as_object().expect("submit object");
+    assert!(submit_object.contains_key("package_msg"));
+    assert!(submit_object.contains_key("tx-results"));
+    assert!(submit_object.contains_key("replaced-transactions"));
+    let tx_results = submit["tx-results"].as_object().expect("tx-results");
+    assert_eq!(
+        accept_elements[0]["wtxid"],
+        json!(parent_wtxid_hex.clone())
+    );
+    assert!(tx_results.contains_key(&parent_wtxid_hex));
+    let mut keys = Vec::new();
+    collect_object_keys(&accept, &mut keys);
+    collect_object_keys(&submit, &mut keys);
+    for forbidden in ["fingerprint", "admission", "relay"] {
+        assert!(
+            !keys.iter().any(|key| key == forbidden),
+            "unexpected key {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn submitpackage_already_present_is_mempool_entry_without_effective_feerate() {
+    // Arrange
+    let package = singleton_package(12);
+    let requested = identity_at(&package, 0);
+    let report = PackageReport::try_new(
+        &package,
+        PackageStatus::Complete,
+        vec![PackageMemberResult::AlreadyPresent(ExistingMember {
+            requested,
+        })],
+        vec![],
+    )
+    .expect("already-present report");
+    let facts = vec![facts_for(requested, 141, 200)];
+
+    // Act
+    let projected = project_submitpackage(&report, &facts, &[]).expect("project");
+
+    // Assert
+    let wtxid_hex = encode_hex(requested.wtxid.as_bytes());
+    let tx_result = &projected["tx-results"][wtxid_hex];
+    assert_eq!(tx_result["vsize"], json!(141));
+    assert!(tx_result["fees"]["base"].is_number());
+    assert!(tx_result["fees"].get("effective-feerate").is_none());
+    assert!(tx_result.get("error").is_none());
+}
+
+#[test]
+fn submitpackage_omits_broadcast_and_propagation_keys() {
+    // Arrange
+    let (report, facts, _) = partial_parent_accepted_report();
+
+    // Act
+    let projected = project_submitpackage(&report, &facts, &[]).expect("project");
+
+    // Assert
+    let mut keys = Vec::new();
+    collect_object_keys(&projected, &mut keys);
+    for forbidden in ["broadcast", "propagated", "public_relay"] {
+        assert!(
+            !keys.iter().any(|key| key == forbidden),
+            "unexpected key {forbidden}"
+        );
+    }
+    let rendered = projected.to_string();
+    for forbidden in ["broadcast", "propagated", "public_relay"] {
+        assert!(
+            !rendered.contains(forbidden),
+            "unexpected string {forbidden}"
+        );
+    }
 }

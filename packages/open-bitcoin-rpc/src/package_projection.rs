@@ -56,6 +56,15 @@ pub fn project_testmempoolaccept(
     Ok(Value::Array(elements))
 }
 
+/// Projects Knots `submitpackage` object JSON from the same package report.
+pub fn project_submitpackage(
+    _report: &PackageReport,
+    _member_facts: &[PackageMemberProjectionFacts],
+    _replaced_txids: &[Txid],
+) -> Result<Value, PackageProjectionError> {
+    Ok(json!({}))
+}
+
 fn project_testmempoolaccept_member(
     index: usize,
     member: &PackageMemberResult,
