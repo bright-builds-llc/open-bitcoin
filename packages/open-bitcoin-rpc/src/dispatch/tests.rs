@@ -68,7 +68,7 @@ use crate::{
         GetWalletInfoRequest, ImportDescriptorsRequest, ListUnspentRequest, MethodCall,
         OpenBitcoinNetworkStatusRequest, OpenBitcoinSyncPauseRequest, OpenBitcoinSyncResumeRequest,
         OpenBitcoinSyncStatusRequest, RescanBlockchainRequest, SendRawTransactionRequest,
-        SendToAddressRequest, TransactionRecipient,
+        SendToAddressRequest, SubmitPackageRequest, TestMempoolAcceptRequest, TransactionRecipient,
     },
 };
 
@@ -85,6 +85,7 @@ mod network_status;
 mod network_status_admission;
 mod network_status_schema;
 mod node_info;
+mod package_methods;
 mod permissions;
 mod storage_fixtures;
 mod sync_control;
