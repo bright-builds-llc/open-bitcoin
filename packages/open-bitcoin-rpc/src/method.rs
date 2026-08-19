@@ -16,11 +16,13 @@ use crate::error::RpcFailure;
 
 mod node;
 mod normalize;
+mod package;
 #[cfg(test)]
 mod tests;
 mod wallet;
 
 pub use node::*;
+pub use package::*;
 pub use wallet::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +55,10 @@ pub enum SupportedMethod {
     OpenBitcoinSyncResume,
     #[serde(rename = "sendrawtransaction")]
     SendRawTransaction,
+    #[serde(rename = "testmempoolaccept")]
+    TestMempoolAccept,
+    #[serde(rename = "submitpackage")]
+    SubmitPackage,
     #[serde(rename = "deriveaddresses")]
     DeriveAddresses,
     #[serde(rename = "sendtoaddress")]
@@ -90,6 +96,8 @@ impl SupportedMethod {
             Self::OpenBitcoinSyncPause,
             Self::OpenBitcoinSyncResume,
             Self::SendRawTransaction,
+            Self::TestMempoolAccept,
+            Self::SubmitPackage,
             Self::DeriveAddresses,
             Self::SendToAddress,
             Self::GetNewAddress,
@@ -115,6 +123,8 @@ impl SupportedMethod {
             Self::OpenBitcoinSyncPause => "openbitcoinsyncpause",
             Self::OpenBitcoinSyncResume => "openbitcoinsyncresume",
             Self::SendRawTransaction => "sendrawtransaction",
+            Self::TestMempoolAccept => "testmempoolaccept",
+            Self::SubmitPackage => "submitpackage",
             Self::DeriveAddresses => "deriveaddresses",
             Self::SendToAddress => "sendtoaddress",
             Self::GetNewAddress => "getnewaddress",
@@ -163,6 +173,8 @@ impl SupportedMethod {
             | Self::OpenBitcoinSyncPause
             | Self::OpenBitcoinSyncResume
             | Self::SendRawTransaction
+            | Self::TestMempoolAccept
+            | Self::SubmitPackage
             | Self::DeriveAddresses => MethodScope::Node,
         }
     }
@@ -207,6 +219,8 @@ pub enum MethodCall {
     OpenBitcoinSyncPause(OpenBitcoinSyncPauseRequest),
     OpenBitcoinSyncResume(OpenBitcoinSyncResumeRequest),
     SendRawTransaction(SendRawTransactionRequest),
+    TestMempoolAccept(TestMempoolAcceptRequest),
+    SubmitPackage(SubmitPackageRequest),
     DeriveAddresses(DeriveAddressesRequest),
     SendToAddress(SendToAddressRequest),
     GetNewAddress(GetNewAddressRequest),
@@ -243,6 +257,8 @@ impl MethodCall {
             | Self::OpenBitcoinSyncPause(_)
             | Self::OpenBitcoinSyncResume(_)
             | Self::SendRawTransaction(_)
+            | Self::TestMempoolAccept(_)
+            | Self::SubmitPackage(_)
             | Self::DeriveAddresses(_) => MethodScope::Node,
         }
     }
@@ -292,6 +308,18 @@ pub fn normalize_method_call(
             )
             .map(MethodCall::SendRawTransaction)
         }
+        SupportedMethod::TestMempoolAccept => {
+            normalize::normalize_request::<TestMempoolAcceptRequest>(
+                &["rawtxs", "maxfeerate", "maxburnamount", "ignore_rejects"],
+                params,
+            )
+            .map(MethodCall::TestMempoolAccept)
+        }
+        SupportedMethod::SubmitPackage => normalize::normalize_request::<SubmitPackageRequest>(
+            &["package", "maxfeerate", "maxburnamount", "ignore_rejects"],
+            params,
+        )
+        .map(MethodCall::SubmitPackage),
         SupportedMethod::DeriveAddresses => {
             let request = normalize::normalize_request::<DeriveAddressesRequest>(
                 &["descriptor", "range"],

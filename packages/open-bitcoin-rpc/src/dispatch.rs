@@ -63,6 +63,9 @@ pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Val
             serde_json::to_value(node::send_raw_transaction(context, request)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
+        MethodCall::TestMempoolAccept(_) | MethodCall::SubmitPackage(_) => Err(
+            RpcFailure::internal_error("package RPC dispatch is not implemented yet"),
+        ),
         MethodCall::DeriveAddresses(request) => {
             serde_json::to_value(node::derive_addresses(context, request)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))

@@ -416,8 +416,7 @@ fn package_requests_deny_unknown_fields() {
     // Act
     let accept = serde_json::from_value::<TestMempoolAcceptRequest>(accept_json);
     let submit = serde_json::from_value::<SubmitPackageRequest>(submit_json);
-    let unknown_accept =
-        serde_json::from_value::<TestMempoolAcceptRequest>(unknown_accept);
+    let unknown_accept = serde_json::from_value::<TestMempoolAcceptRequest>(unknown_accept);
     let unknown_submit = serde_json::from_value::<SubmitPackageRequest>(unknown_submit);
 
     // Assert

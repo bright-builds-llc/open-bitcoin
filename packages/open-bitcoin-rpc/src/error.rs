@@ -32,6 +32,9 @@ pub enum RpcErrorCode {
     ClientNotConnected,
     WalletNotFound,
     WalletNotSpecified,
+    InvalidParameter,
+    DeserializationError,
+    VerifyError,
     VerifyRejected,
 }
 
@@ -49,6 +52,9 @@ impl RpcErrorCode {
             Self::ClientNotConnected => -9,
             Self::WalletNotFound => -18,
             Self::WalletNotSpecified => -19,
+            Self::InvalidParameter => -8,
+            Self::DeserializationError => -22,
+            Self::VerifyError => -25,
             Self::VerifyRejected => -26,
         }
     }
@@ -71,7 +77,10 @@ impl TryFrom<i32> for RpcErrorCode {
             -32601 => Ok(Self::MethodNotFound),
             -32600 => Ok(Self::InvalidRequest),
             -26 => Ok(Self::VerifyRejected),
+            -25 => Ok(Self::VerifyError),
+            -22 => Ok(Self::DeserializationError),
             -19 => Ok(Self::WalletNotSpecified),
+            -8 => Ok(Self::InvalidParameter),
             -18 => Ok(Self::WalletNotFound),
             -9 => Ok(Self::ClientNotConnected),
             -4 => Ok(Self::WalletError),
@@ -185,6 +194,30 @@ impl RpcFailure {
 
     pub fn internal_error(message: impl Into<String>) -> Self {
         Self::from_kind(RpcFailureKind::InternalError, message)
+    }
+
+    pub fn invalid_parameter(message: impl Into<String>) -> Self {
+        Self::new(
+            RpcFailureKind::InvalidParams,
+            Some(RpcErrorDetail::new(RpcErrorCode::InvalidParameter, message)),
+        )
+    }
+
+    pub fn deserialization_error(message: impl Into<String>) -> Self {
+        Self::new(
+            RpcFailureKind::InvalidParams,
+            Some(RpcErrorDetail::new(
+                RpcErrorCode::DeserializationError,
+                message,
+            )),
+        )
+    }
+
+    pub fn verify_error(message: impl Into<String>) -> Self {
+        Self::new(
+            RpcFailureKind::InvalidParams,
+            Some(RpcErrorDetail::new(RpcErrorCode::VerifyError, message)),
+        )
     }
 
     pub fn verify_rejected(message: impl Into<String>) -> Self {
