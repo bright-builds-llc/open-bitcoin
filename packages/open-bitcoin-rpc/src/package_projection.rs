@@ -58,11 +58,129 @@ pub fn project_testmempoolaccept(
 
 /// Projects Knots `submitpackage` object JSON from the same package report.
 pub fn project_submitpackage(
-    _report: &PackageReport,
-    _member_facts: &[PackageMemberProjectionFacts],
-    _replaced_txids: &[Txid],
+    report: &PackageReport,
+    member_facts: &[PackageMemberProjectionFacts],
+    replaced_txids: &[Txid],
 ) -> Result<Value, PackageProjectionError> {
-    Ok(json!({}))
+    let mut tx_results = Map::new();
+    let mut earlier_member_failed = false;
+    for (index, member) in report.members().iter().enumerate() {
+        let (key, value) = project_submitpackage_member(
+            index,
+            member,
+            report,
+            member_facts,
+            earlier_member_failed,
+        )?;
+        tx_results.insert(key, value);
+        earlier_member_failed |= member_failed(member);
+    }
+
+    let replaced = replaced_txids
+        .iter()
+        .map(|txid| Value::String(encode_hex(txid.as_bytes())))
+        .collect();
+
+    let mut object = Map::new();
+    object.insert(
+        "package_msg".to_string(),
+        Value::String(package_msg(report)),
+    );
+    object.insert("tx-results".to_string(), Value::Object(tx_results));
+    object.insert("replaced-transactions".to_string(), Value::Array(replaced));
+    Ok(Value::Object(object))
+}
+
+fn project_submitpackage_member(
+    index: usize,
+    member: &PackageMemberResult,
+    report: &PackageReport,
+    member_facts: &[PackageMemberProjectionFacts],
+    earlier_member_failed: bool,
+) -> Result<(String, Value), PackageProjectionError> {
+    let identity = member.requested_identity();
+    let key = encode_hex(identity.wtxid.as_bytes());
+    let mut object = Map::new();
+    object.insert(
+        "txid".to_string(),
+        Value::String(encode_hex(identity.txid.as_bytes())),
+    );
+
+    match member {
+        PackageMemberResult::FinallyPresent(present) => {
+            let facts = require_facts(identity, member_facts, index)?;
+            let maybe_group = maybe_fee_group(report, present.effective_fee_group_id);
+            object.insert("vsize".to_string(), json!(facts.virtual_size));
+            object.insert("fees".to_string(), finally_present_fees(facts, maybe_group));
+        }
+        PackageMemberResult::AlreadyPresent(_) => {
+            let facts = require_facts(identity, member_facts, index)?;
+            object.insert("vsize".to_string(), json!(facts.virtual_size));
+            object.insert("fees".to_string(), already_present_fees(facts));
+        }
+        PackageMemberResult::SameTxidDifferentWitness(alias) => {
+            object.insert(
+                "other-wtxid".to_string(),
+                Value::String(encode_hex(alias.existing_wtxid.as_bytes())),
+            );
+        }
+        PackageMemberResult::HardRejected(failure) => {
+            insert_error(&mut object, hard_reject_reason(failure));
+        }
+        PackageMemberResult::Reconsiderable(failure) => {
+            if earlier_member_failed
+                && matches!(failure, ReconsiderableMemberFailure::MissingInputs { .. })
+            {
+                insert_error(&mut object, "unevaluated");
+            } else {
+                insert_error(&mut object, &reconsiderable_reject_reason(failure));
+            }
+        }
+        PackageMemberResult::PostTrimAbsent(_) => {
+            insert_error(&mut object, "mempool full");
+        }
+    }
+
+    Ok((key, Value::Object(object)))
+}
+
+fn package_msg(report: &PackageReport) -> String {
+    if *report.status() == PackageStatus::Complete {
+        return "success".to_string();
+    }
+
+    report
+        .members()
+        .iter()
+        .find_map(|member| match member {
+            PackageMemberResult::HardRejected(failure) => {
+                Some(hard_reject_reason(failure).to_string())
+            }
+            _ => None,
+        })
+        .unwrap_or_else(|| "transaction failed".to_string())
+}
+
+fn member_failed(member: &PackageMemberResult) -> bool {
+    matches!(
+        member,
+        PackageMemberResult::HardRejected(_)
+            | PackageMemberResult::Reconsiderable(_)
+            | PackageMemberResult::PostTrimAbsent(_)
+    )
+}
+
+fn already_present_fees(facts: &PackageMemberProjectionFacts) -> Value {
+    let mut fees = Map::new();
+    fees.insert(
+        "base".to_string(),
+        amount_sats_to_btc_json(facts.base_fee_sats),
+    );
+    Value::Object(fees)
+}
+
+fn insert_error(object: &mut Map<String, Value>, message: &str) {
+    object.insert("error".to_string(), Value::String(message.to_string()));
 }
 
 fn project_testmempoolaccept_member(
@@ -228,23 +346,6 @@ fn require_facts(
         return Err(PackageProjectionError::MemberFactsWtxidMismatch { index });
     }
     Ok(facts)
-}
-
-fn maybe_facts<'a>(
-    identity: MempoolMemberIdentity,
-    member_facts: &'a [PackageMemberProjectionFacts],
-    index: usize,
-) -> Result<Option<&'a PackageMemberProjectionFacts>, PackageProjectionError> {
-    let Some(facts) = member_facts
-        .iter()
-        .find(|facts| facts.wtxid == identity.wtxid)
-    else {
-        return Ok(None);
-    };
-    if facts.txid != identity.txid {
-        return Err(PackageProjectionError::MemberFactsWtxidMismatch { index });
-    }
-    Ok(Some(facts))
 }
 
 fn encode_hex(bytes: &[u8]) -> String {
