@@ -9,9 +9,10 @@ use open_bitcoin_core::{
     primitives::{Block, Transaction},
 };
 use open_bitcoin_mempool::{
-    AdmissionContext, AdmissionResult, BlockLifecycleContext, Mempool, MempoolError,
-    MempoolOutcome, MempoolTransition, PolicyConfig, PolicyTime, PreparedMempoolTransition,
-    RollingMempoolFeeRate, SubmitPackageCommand, SubmittedPackageResult,
+    AdmissionContext, AdmissionResult, BlockLifecycleContext, DryRunPackageCommand,
+    DryRunPackageResult, Mempool, MempoolError, MempoolOutcome, MempoolTransition, PolicyConfig,
+    PolicyTime, PreparedMempoolTransition, RollingMempoolFeeRate, SubmitPackageCommand,
+    SubmittedPackageResult,
 };
 
 use crate::{ChainstateStore, ManagedChainstate};
@@ -112,6 +113,18 @@ impl ManagedMempool {
         rate: RollingMempoolFeeRate,
     ) -> Result<(), MempoolError> {
         self.mempool.set_rolling_mempool_fee_rate(rate)
+    }
+
+    /// Evaluates a package without committing mempool or lifecycle state.
+    pub fn dry_run_package(
+        &self,
+        command: DryRunPackageCommand,
+        chainstate: &ChainstateSnapshot,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> Result<DryRunPackageResult, MempoolError> {
+        self.mempool
+            .dry_run_package(command, chainstate, verify_flags, consensus_params)
     }
 
     /// Submits one checked package against the caller's immutable chain snapshot.

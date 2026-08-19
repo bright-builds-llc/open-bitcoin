@@ -14,6 +14,7 @@
 
 // Keeps WellFormedPackage::try_from, SubmissionPackage::try_from_package,
 // submit_package, and ManagedPeerPackageAdmission in one narrow composition seam.
+mod local_package;
 mod package;
 mod singleton;
 
