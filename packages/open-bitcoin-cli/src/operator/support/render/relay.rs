@@ -10,6 +10,7 @@ use open_bitcoin_node::status::{
 };
 
 const RELAY_MEMPOOL_NEXT_ACTION: &str = "Treat recovered relay/mempool evidence as bounded local status and local troubleshooting/parity-review evidence only; do not treat it as public propagation, compact-block relay, production-readiness proof, a release validator, public-network proof, production-service proof, production full-node readiness proof, production-funds wallet safety proof, or authorization for destructive repair.";
+const MEMPOOL_POLICY_NEXT_ACTION: &str = "Treat package, pressure, checkpoint, recovery, and retry evidence as bounded local operator status. Successful local admission is not public or default relay and is not network-wide propagation.";
 
 pub(super) fn push_relay_mempool_evidence(output: &mut String, mempool: &MempoolStatus) {
     output.push_str("\n## Relay and Mempool Evidence\n\n");
@@ -17,6 +18,7 @@ pub(super) fn push_relay_mempool_evidence(output: &mut String, mempool: &Mempool
         "- Mempool: {}\n",
         mempool_transactions_text(&mempool.transactions)
     ));
+    mempool_policy_support_bullets(output, mempool);
     output.push_str(&format!(
         "- Relay evidence: {}\n",
         relay_counters_text(&mempool.relay.outcome_counters)
@@ -50,6 +52,14 @@ pub(super) fn push_relay_mempool_evidence(output: &mut String, mempool: &Mempool
         relay_capability_text(&mempool.relay.public_relay)
     ));
     output.push_str(&format!("- Next action: {RELAY_MEMPOOL_NEXT_ACTION}\n"));
+}
+
+fn mempool_policy_support_bullets(output: &mut String, mempool: &MempoolStatus) {
+    // Count-only Open Bitcoin labels from Virtual size through Relay states.
+    for (label, value) in crate::operator::status::mempool_policy_entries(mempool) {
+        output.push_str(&format!("- {label}: {value}\n"));
+    }
+    output.push_str(&format!("- Next action: {MEMPOOL_POLICY_NEXT_ACTION}\n"));
 }
 
 fn mempool_transactions_text(value: &FieldAvailability<u64>) -> String {

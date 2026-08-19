@@ -378,6 +378,8 @@ fn support_bundle_renders_relay_and_mempool_evidence_from_shared_projection() {
     for expected in [
         "## Relay and Mempool Evidence",
         "Mempool: transactions=7",
+        "Virtual size:",
+        "Next action: Treat package, pressure, checkpoint, recovery, and retry evidence",
         "Relay evidence: accepted_count=11 rejected_count=2 orphaned_count=3 requested_count=5 served_count=4 announced_count=13 suppressed_count=8 evicted_count=1 expired_count=6 rebroadcast_deferred_count=9",
         "Relay recovery: recovered_count=21 dropped_confirmed_count=22 dropped_duplicate_count=23 dropped_missing_parent_count=24 dropped_policy_incompatible_count=25 dropped_expired_count=26 dropped_evicted_count=27",
         "Mempool evidence: Implemented: mempool_admission",
