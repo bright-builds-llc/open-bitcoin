@@ -123,6 +123,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
 }
 
 mod availability_and_relay;
+mod mempool_groups;
 mod peer_metrics_projection;
 mod progress_guarantee_and_reorg;
 mod resource_recovery;
