@@ -403,10 +403,7 @@ fn one_report_projects_both_knots_trees() {
     assert!(submit_object.contains_key("tx-results"));
     assert!(submit_object.contains_key("replaced-transactions"));
     let tx_results = submit["tx-results"].as_object().expect("tx-results");
-    assert_eq!(
-        accept_elements[0]["wtxid"],
-        json!(parent_wtxid_hex.clone())
-    );
+    assert_eq!(accept_elements[0]["wtxid"], json!(parent_wtxid_hex.clone()));
     assert!(tx_results.contains_key(&parent_wtxid_hex));
     let mut keys = Vec::new();
     collect_object_keys(&accept, &mut keys);
