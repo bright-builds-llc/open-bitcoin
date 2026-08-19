@@ -545,6 +545,20 @@ fn metric_label(kind: MetricKind) -> &'static str {
         MetricKind::CompactMalformedCount => "Compact malformed",
         MetricKind::CompactTimeoutCount => "Compact timeout",
         MetricKind::CompactCleanupCount => "Compact cleanup",
+        MetricKind::MempoolVirtualSize => "Virtual size",
+        MetricKind::MempoolAccountedUsage => "Accounted usage",
+        MetricKind::MempoolAccountedCapacity => "Accounted capacity",
+        MetricKind::MempoolStaticRelayFloor => "Static relay floor",
+        MetricKind::MempoolRollingMempoolFloor => "Rolling mempool floor",
+        MetricKind::MempoolEffectiveAdmissionFloor => "Effective admission floor",
+        MetricKind::MempoolIncrementalRelayFee => "Incremental relay fee",
+        MetricKind::MempoolPressureRemovalCount => "Pressure removals",
+        MetricKind::MempoolCheckpointOverdue => "Checkpoint overdue",
+        MetricKind::MempoolRecoveryRecoveredCount => "Mempool recovery recovered",
+        MetricKind::MempoolRetryEligible => "Retry eligible",
+        MetricKind::MempoolRetryCleared => "Retry cleared",
+        MetricKind::MempoolAdmissionAccepted => "Admission accepted",
+        MetricKind::MempoolAdmissionStillPresent => "Admission still present",
     }
 }
 
