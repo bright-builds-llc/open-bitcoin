@@ -66,6 +66,97 @@ fn sendrawtransaction_returns_txid_and_maps_rejections() {
 }
 
 #[test]
+fn sendrawtransaction_success_keys_are_txid_replaced_and_evicted_only() {
+    // Arrange
+    let mut context = empty_context();
+    let genesis = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        0,
+        500_000_000,
+        p2sh_script(),
+    );
+    let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000, p2sh_script());
+    context.connect_local_block(&genesis).expect("genesis");
+    context.connect_local_block(&spendable).expect("spendable");
+    let transaction = spend_transaction(
+        transaction_txid(&genesis.transactions[0]).expect("txid"),
+        499_999_000,
+    );
+    let transaction_hex = encode_hex(
+        &encode_transaction(&transaction, TransactionEncoding::WithWitness).expect("encode"),
+    );
+
+    // Act
+    let success = dispatch(
+        &mut context,
+        MethodCall::SendRawTransaction(SendRawTransactionRequest {
+            transaction_hex,
+            maybe_max_fee_rate_sat_per_kvb: None,
+            maybe_max_burn_amount_sats: None,
+            ignore_rejects: Vec::new(),
+        }),
+    )
+    .expect("submit");
+
+    // Assert
+    let response = success.as_object().expect("response object");
+    let keys: std::collections::BTreeSet<&str> = response.keys().map(String::as_str).collect();
+    assert_eq!(
+        keys,
+        std::collections::BTreeSet::from(["txid_hex", "replaced_txids", "evicted_txids"])
+    );
+    for forbidden_key in [
+        "admission",
+        "relay",
+        "fingerprint",
+        "propagated",
+        "broadcast",
+        "public_relay",
+        "allowed",
+    ] {
+        assert!(
+            !response.contains_key(forbidden_key),
+            "sendrawtransaction success must not include {forbidden_key}"
+        );
+    }
+}
+
+#[test]
+fn sendrawtransaction_struct_has_no_dual_state_fields() {
+    // Arrange
+    let response = SendRawTransactionResponse {
+        txid_hex: "aa".to_string(),
+        replaced_txids: Vec::new(),
+        evicted_txids: Vec::new(),
+    };
+
+    // Act
+    let value = serde_json::to_value(response).expect("serialize");
+
+    // Assert
+    let object = value.as_object().expect("object");
+    let keys: std::collections::BTreeSet<&str> = object.keys().map(String::as_str).collect();
+    assert_eq!(
+        keys,
+        std::collections::BTreeSet::from(["txid_hex", "replaced_txids", "evicted_txids"])
+    );
+    for forbidden_key in [
+        "admission",
+        "relay",
+        "fingerprint",
+        "propagated",
+        "broadcast",
+        "public_relay",
+        "allowed",
+    ] {
+        assert!(
+            !object.contains_key(forbidden_key),
+            "SendRawTransactionResponse must not serialize {forbidden_key}"
+        );
+    }
+}
+
+#[test]
 fn sendrawtransaction_queues_internal_relay_evidence_without_propagation_claim() {
     // Arrange
     let mut context = relay_enabled_context(44);
