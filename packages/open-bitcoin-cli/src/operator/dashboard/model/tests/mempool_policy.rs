@@ -161,7 +161,7 @@ fn dashboard_row_labels_are_open_bitcoin_not_knots_aliases() {
     ] {
         assert!(labels.contains(&required), "missing {required}");
     }
-    for forbidden in ["bytes", "usage", "maxmempool", "mempoolminfee"] {
+    for forbidden in ["bytes", "usage", "maxmempool"] {
         assert!(
             !labels
                 .iter()
@@ -169,4 +169,11 @@ fn dashboard_row_labels_are_open_bitcoin_not_knots_aliases() {
             "used Knots alias {forbidden}"
         );
     }
+    let knots_rolling_floor_alias = ["mempool", "min", "fee"].concat();
+    assert!(
+        !labels
+            .iter()
+            .any(|label| label.eq_ignore_ascii_case(&knots_rolling_floor_alias)),
+        "used Knots rolling-floor alias"
+    );
 }

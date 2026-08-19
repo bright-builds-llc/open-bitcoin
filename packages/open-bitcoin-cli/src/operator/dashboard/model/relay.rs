@@ -9,14 +9,21 @@ use open_bitcoin_node::status::{
     },
 };
 
+use crate::operator::status::mempool_policy_entries;
+
 use super::{DashboardRow, row, u64_availability, wallet_freshness, wallet_scan_progress};
 
 pub(super) fn mempool_and_wallet_rows(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardRow> {
-    vec![
-        row(
-            "Mempool",
-            u64_availability(&snapshot.mempool.transactions, "transactions"),
-        ),
+    let mut rows = vec![row(
+        "Mempool",
+        u64_availability(&snapshot.mempool.transactions, "transactions"),
+    )];
+    rows.extend(
+        mempool_policy_entries(&snapshot.mempool)
+            .into_iter()
+            .map(|(label, value)| row(label, value)),
+    );
+    rows.extend([
         row(
             "Relay evidence",
             relay_counters_text(&snapshot.mempool.relay.outcome_counters),
@@ -55,7 +62,8 @@ pub(super) fn mempool_and_wallet_rows(snapshot: &OpenBitcoinStatusSnapshot) -> V
         ),
         row("Freshness", wallet_freshness(&snapshot.wallet.freshness)),
         row("Scan", wallet_scan_progress(&snapshot.wallet.scan_progress)),
-    ]
+    ]);
+    rows
 }
 
 fn relay_counters_text(value: &RelayEvidenceField<RelayEvidenceCounters>) -> String {
