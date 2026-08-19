@@ -5,8 +5,12 @@ use open_bitcoin_mempool::{
     MempoolCapacityEnforcement, MempoolCapacityStatus, RollingFeeParityStatus,
 };
 
-use super::*;
 use crate::network::ManagedMempoolInfo;
+use crate::status::relay_evidence::RelayEvidenceStatus;
+use crate::status::{
+    FieldAvailability, MempoolResourcesGroup, MempoolStatus, fee_floors_from_managed_info,
+    resources_from_managed_info,
+};
 
 fn managed_info_with_distinct_resource_and_fee_roles() -> ManagedMempoolInfo {
     ManagedMempoolInfo {
@@ -104,8 +108,7 @@ fn mempool_status_deserializes_missing_groups_as_unavailable() {
     });
 
     // Act
-    let status: MempoolStatus =
-        serde_json::from_value(legacy).expect("legacy mempool status json");
+    let status: MempoolStatus = serde_json::from_value(legacy).expect("legacy mempool status json");
 
     // Assert
     assert_eq!(

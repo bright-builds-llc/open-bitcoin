@@ -103,10 +103,10 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
             recent_peers: FieldAvailability::unavailable(unavailable),
             inbound: FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::unavailable(unavailable),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::unavailable(unavailable),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(unavailable),

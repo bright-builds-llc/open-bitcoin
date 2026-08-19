@@ -5,6 +5,7 @@
 mod block_relay_evidence;
 mod block_serving;
 mod inbound;
+mod mempool_groups;
 mod observability;
 mod progress_guarantee;
 mod recovery;
@@ -14,6 +15,10 @@ use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
 pub use block_relay_evidence::*;
 pub use block_serving::*;
 pub use inbound::*;
+pub use mempool_groups::{
+    MempoolFeeFloorsGroup, MempoolResourcesGroup, fee_floors_from_managed_info,
+    resources_from_managed_info,
+};
 pub use observability::*;
 pub use progress_guarantee::*;
 pub use recovery::SyncRecoveryCategory;
@@ -527,6 +532,10 @@ pub struct MempoolStatus {
     pub transactions: FieldAvailability<u64>,
     #[serde(default)]
     pub relay: relay_evidence::RelayEvidenceStatus,
+    #[serde(default = "mempool_groups::mempool_resources_unavailable")]
+    pub resources: FieldAvailability<MempoolResourcesGroup>,
+    #[serde(default = "mempool_groups::mempool_fee_floors_unavailable")]
+    pub fee_floors: FieldAvailability<MempoolFeeFloorsGroup>,
 }
 /// Wallet status fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

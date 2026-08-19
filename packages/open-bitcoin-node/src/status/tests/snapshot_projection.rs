@@ -143,10 +143,10 @@ fn populated_snapshot_serializes_obs_01_fields() {
             }]),
             inbound: FieldAvailability::unavailable(INBOUND_STATUS_UNAVAILABLE_REASON),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::available(12),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::available(12),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
