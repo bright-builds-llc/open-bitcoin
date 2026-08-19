@@ -478,3 +478,144 @@ fn resolve_service_daemon_binary_falls_back_to_literal_command_without_sibling()
     // Assert
     assert_eq!(resolved, PathBuf::from("open-bitcoind"));
 }
+
+#[test]
+fn package_dry_run_parses_hex_flags() {
+    // Arrange
+    let args = vec![os("package"), os("dry-run"), os("--hex"), os("00")];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Package(package) = cli.command else {
+        panic!("expected package command");
+    };
+    let PackageCommand::DryRun(hex_args) = package.command else {
+        panic!("expected package dry-run");
+    };
+    assert_eq!(hex_args.hex, vec!["00".to_string()]);
+}
+
+#[test]
+fn package_submit_parses_multiple_hex_flags() {
+    // Arrange
+    let args = vec![
+        os("package"),
+        os("submit"),
+        os("--hex"),
+        os("aa"),
+        os("--hex"),
+        os("bb"),
+    ];
+
+    // Act
+    let route = route_cli_invocation("open-bitcoin", &args).expect("route");
+
+    // Assert
+    let CliRoute::Operator(cli) = route else {
+        panic!("expected operator route");
+    };
+    let OperatorCommand::Package(package) = cli.command else {
+        panic!("expected package command");
+    };
+    let PackageCommand::Submit(hex_args) = package.command else {
+        panic!("expected package submit");
+    };
+    assert_eq!(hex_args.hex, vec!["aa".to_string(), "bb".to_string()]);
+}
+
+#[test]
+fn package_human_dry_run_includes_non_mutating_disclaimer() {
+    // Arrange
+    let value = serde_json::json!({
+        "fingerprint": "ab",
+        "status": "complete",
+        "members": [{"txid": "11", "wtxid": "22", "admission": "accepted", "relay": "relay_disabled"}]
+    });
+
+    // Act
+    let rendered = super::super::package::render_package_human(
+        super::super::package::PackageRenderMode::DryRun,
+        &value,
+    );
+
+    // Assert
+    assert!(
+        rendered.starts_with("Package dry-run"),
+        "unexpected heading: {rendered}"
+    );
+    assert!(
+        rendered.contains("Dry-run does not change mempool, relay, persistence, or evidence state."),
+        "missing dry-run disclaimer: {rendered}"
+    );
+    assert!(rendered.contains("ab"));
+    assert!(rendered.contains("11"));
+}
+
+#[test]
+fn package_human_submit_includes_local_admission_disclaimer() {
+    // Arrange
+    let value = serde_json::json!({
+        "fingerprint": "cd",
+        "status": "complete",
+        "members": [{"txid": "33", "wtxid": "44", "admission": "accepted", "relay": "eligible"}]
+    });
+
+    // Act
+    let rendered = super::super::package::render_package_human(
+        super::super::package::PackageRenderMode::Submit,
+        &value,
+    );
+
+    // Assert
+    assert!(
+        rendered.starts_with("Package submit"),
+        "unexpected heading: {rendered}"
+    );
+    assert!(
+        rendered.contains(
+            "Local admission only. This is not public or default relay and not network-wide propagation."
+        ),
+        "missing submit disclaimer: {rendered}"
+    );
+}
+
+#[test]
+fn package_copy_forbids_propagation_words() {
+    // Arrange
+    let value = serde_json::json!({
+        "fingerprint": "ef",
+        "status": "complete",
+        "members": [{"txid": "55", "admission": "still-present", "relay": "relay_disabled"}]
+    });
+    let source = include_str!("../package.rs");
+
+    // Act
+    let dry_run = super::super::package::render_package_human(
+        super::super::package::PackageRenderMode::DryRun,
+        &value,
+    );
+    let submit = super::super::package::render_package_human(
+        super::super::package::PackageRenderMode::Submit,
+        &value,
+    );
+
+    // Assert
+    for text in [dry_run.as_str(), submit.as_str(), source] {
+        for forbidden in [
+            "propagated",
+            "broadcast",
+            "guaranteed",
+            "public relay ready",
+        ] {
+            assert!(
+                !text.contains(forbidden),
+                "forbidden copy {forbidden} in {text}"
+            );
+        }
+    }
+}
