@@ -59,6 +59,8 @@ pub enum SupportedMethod {
     TestMempoolAccept,
     #[serde(rename = "submitpackage")]
     SubmitPackage,
+    #[serde(rename = "openbitcoinpackage")]
+    OpenBitcoinPackage,
     #[serde(rename = "deriveaddresses")]
     DeriveAddresses,
     #[serde(rename = "sendtoaddress")]
@@ -98,6 +100,7 @@ impl SupportedMethod {
             Self::SendRawTransaction,
             Self::TestMempoolAccept,
             Self::SubmitPackage,
+            Self::OpenBitcoinPackage,
             Self::DeriveAddresses,
             Self::SendToAddress,
             Self::GetNewAddress,
@@ -125,6 +128,7 @@ impl SupportedMethod {
             Self::SendRawTransaction => "sendrawtransaction",
             Self::TestMempoolAccept => "testmempoolaccept",
             Self::SubmitPackage => "submitpackage",
+            Self::OpenBitcoinPackage => "openbitcoinpackage",
             Self::DeriveAddresses => "deriveaddresses",
             Self::SendToAddress => "sendtoaddress",
             Self::GetNewAddress => "getnewaddress",
@@ -146,6 +150,7 @@ impl SupportedMethod {
             | Self::OpenBitcoinSyncStatus
             | Self::OpenBitcoinSyncPause
             | Self::OpenBitcoinSyncResume
+            | Self::OpenBitcoinPackage
             | Self::BuildTransaction
             | Self::BuildAndSignTransaction => MethodOrigin::OpenBitcoinExtension,
             _ => MethodOrigin::BaselineParity,
@@ -175,6 +180,7 @@ impl SupportedMethod {
             | Self::SendRawTransaction
             | Self::TestMempoolAccept
             | Self::SubmitPackage
+            | Self::OpenBitcoinPackage
             | Self::DeriveAddresses => MethodScope::Node,
         }
     }
@@ -221,6 +227,7 @@ pub enum MethodCall {
     SendRawTransaction(SendRawTransactionRequest),
     TestMempoolAccept(TestMempoolAcceptRequest),
     SubmitPackage(SubmitPackageRequest),
+    OpenBitcoinPackage(OpenBitcoinPackageRequest),
     DeriveAddresses(DeriveAddressesRequest),
     SendToAddress(SendToAddressRequest),
     GetNewAddress(GetNewAddressRequest),
@@ -259,6 +266,7 @@ impl MethodCall {
             | Self::SendRawTransaction(_)
             | Self::TestMempoolAccept(_)
             | Self::SubmitPackage(_)
+            | Self::OpenBitcoinPackage(_)
             | Self::DeriveAddresses(_) => MethodScope::Node,
         }
     }
@@ -320,6 +328,10 @@ pub fn normalize_method_call(
             params,
         )
         .map(MethodCall::SubmitPackage),
+        SupportedMethod::OpenBitcoinPackage => {
+            normalize::normalize_request::<OpenBitcoinPackageRequest>(&["mode", "rawtxs"], params)
+                .map(MethodCall::OpenBitcoinPackage)
+        }
         SupportedMethod::DeriveAddresses => {
             let request = normalize::normalize_request::<DeriveAddressesRequest>(
                 &["descriptor", "range"],

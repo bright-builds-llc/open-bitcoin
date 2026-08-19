@@ -68,8 +68,8 @@ use crate::{
         GetWalletInfoRequest, ImportDescriptorsRequest, ListUnspentRequest, MethodCall,
         OpenBitcoinNetworkStatusRequest, OpenBitcoinPackageMode, OpenBitcoinPackageRequest,
         OpenBitcoinSyncPauseRequest, OpenBitcoinSyncResumeRequest, OpenBitcoinSyncStatusRequest,
-        RescanBlockchainRequest, SendRawTransactionRequest,
-        SendToAddressRequest, SubmitPackageRequest, TestMempoolAcceptRequest, TransactionRecipient,
+        RescanBlockchainRequest, SendRawTransactionRequest, SendToAddressRequest,
+        SubmitPackageRequest, TestMempoolAcceptRequest, TransactionRecipient,
     },
 };
 

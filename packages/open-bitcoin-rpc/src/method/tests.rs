@@ -39,6 +39,7 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
         "sendrawtransaction",
         "testmempoolaccept",
         "submitpackage",
+        "openbitcoinpackage",
         "deriveaddresses",
         "sendtoaddress",
         "getnewaddress",
@@ -71,6 +72,7 @@ fn build_transaction_methods_are_marked_as_open_bitcoin_extensions() {
         "openbitcoinsyncstatus",
         "openbitcoinsyncpause",
         "openbitcoinsyncresume",
+        "openbitcoinpackage",
         "buildtransaction",
         "buildandsigntransaction",
     ];

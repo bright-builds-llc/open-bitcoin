@@ -12,8 +12,9 @@
 use std::collections::HashMap;
 
 use open_bitcoin_mempool::{
-    MAX_PACKAGE_COUNT, MempoolLifecycleRemoval, MempoolRemovalCause, PackageMemberResult,
-    PackageReport, transaction_weight_and_virtual_size,
+    MAX_PACKAGE_COUNT, MempoolLifecycleDelta, MempoolLifecycleRemoval, MempoolRemovalCause,
+    MempoolRetryClearCause, PackageMemberResult, PackageReport,
+    transaction_weight_and_virtual_size,
 };
 use open_bitcoin_node::core::{
     chainstate::ChainstateSnapshot,
@@ -27,9 +28,14 @@ use serde_json::Value;
 use crate::{
     ManagedRpcContext,
     error::RpcFailure,
-    method::{SubmitPackageRequest, TestMempoolAcceptRequest},
+    method::{
+        OpenBitcoinPackageMode, OpenBitcoinPackageRequest, SubmitPackageRequest,
+        TestMempoolAcceptRequest,
+    },
     package_projection::{
-        PackageMemberProjectionFacts, project_submitpackage, project_testmempoolaccept,
+        PackageMemberDualState, PackageMemberProjectionFacts, PackageSubmitRelayFacts,
+        admission_state_for_member, dry_run_relay_state_for_member, project_open_bitcoin_package,
+        project_submitpackage, project_testmempoolaccept, submit_relay_state_for_member,
     },
 };
 
@@ -82,6 +88,74 @@ pub(super) fn submit_package(
     let replaced_txids = replacement_txids(&submitted.delta.removed);
     project_submitpackage(&submitted.report, &facts, &replaced_txids)
         .map_err(|error| RpcFailure::internal_error(format!("{error:?}")))
+}
+
+pub(super) fn open_bitcoin_package(
+    context: &ManagedRpcContext,
+    request: OpenBitcoinPackageRequest,
+) -> Result<Value, RpcFailure> {
+    reject_package_count(request.raw_txs.len())?;
+    let transactions = decode_package_transactions(&request.raw_txs)?;
+    let now_unix_seconds = current_timestamp_unix_seconds()?;
+    let relay_disabled = context
+        .package_relay_disabled()
+        .map_err(package_authority_error_to_failure)?;
+    match request.mode {
+        OpenBitcoinPackageMode::DryRun => {
+            let report = context
+                .dry_run_local_package(transactions.clone(), now_unix_seconds)
+                .map_err(package_authority_error_to_failure)?;
+            let facts = member_projection_facts(context, &transactions, &report)?;
+            let dual_state = dry_run_dual_state(&report, relay_disabled);
+            project_open_bitcoin_package(&report, &facts, &dual_state)
+                .map_err(|error| RpcFailure::internal_error(format!("{error:?}")))
+        }
+        OpenBitcoinPackageMode::Submit => {
+            let submitted = context
+                .submit_local_package(transactions.clone(), now_unix_seconds)
+                .map_err(package_authority_error_to_failure)?;
+            let facts = member_projection_facts(context, &transactions, &submitted.report)?;
+            let dual_state = submit_dual_state(&submitted.report, &submitted.delta, relay_disabled);
+            project_open_bitcoin_package(&submitted.report, &facts, &dual_state)
+                .map_err(|error| RpcFailure::internal_error(format!("{error:?}")))
+        }
+    }
+}
+
+fn dry_run_dual_state(report: &PackageReport, relay_disabled: bool) -> Vec<PackageMemberDualState> {
+    report
+        .members()
+        .iter()
+        .map(|member| PackageMemberDualState {
+            admission: admission_state_for_member(member),
+            relay: dry_run_relay_state_for_member(member, relay_disabled),
+        })
+        .collect()
+}
+
+fn submit_dual_state(
+    report: &PackageReport,
+    delta: &MempoolLifecycleDelta,
+    relay_disabled: bool,
+) -> Vec<PackageMemberDualState> {
+    report
+        .members()
+        .iter()
+        .map(|member| {
+            let identity = member.requested_identity();
+            let facts = PackageSubmitRelayFacts {
+                served: delta.retry_clears.iter().any(|clear| {
+                    clear.member == identity && clear.cause == MempoolRetryClearCause::EligibleServe
+                }),
+                admitted: delta.admitted.contains(&identity),
+                ..PackageSubmitRelayFacts::default()
+            };
+            PackageMemberDualState {
+                admission: admission_state_for_member(member),
+                relay: submit_relay_state_for_member(member, relay_disabled, facts),
+            }
+        })
+        .collect()
 }
 
 fn reject_unsupported_options(
@@ -244,10 +318,7 @@ fn maybe_input_minus_output_fee(
     input_sum.checked_sub(output_sum)
 }
 
-fn maybe_singleton_group_fee(
-    report: &PackageReport,
-    wtxid: &Wtxid,
-) -> Option<i64> {
+fn maybe_singleton_group_fee(report: &PackageReport, wtxid: &Wtxid) -> Option<i64> {
     report.effective_fee_groups().iter().find_map(|group| {
         let wtxids = group.ordered_wtxids();
         if wtxids.len() == 1 && wtxids[0] == *wtxid {

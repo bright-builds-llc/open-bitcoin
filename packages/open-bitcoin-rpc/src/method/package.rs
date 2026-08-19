@@ -35,3 +35,19 @@ pub struct SubmitPackageRequest {
     #[serde(default)]
     pub ignore_rejects: Vec<String>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum OpenBitcoinPackageMode {
+    #[serde(rename = "dry-run")]
+    DryRun,
+    #[serde(rename = "submit")]
+    Submit,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpenBitcoinPackageRequest {
+    pub mode: OpenBitcoinPackageMode,
+    #[serde(rename = "rawtxs")]
+    pub raw_txs: Vec<String>,
+}

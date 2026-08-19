@@ -66,6 +66,7 @@ pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Val
         }
         MethodCall::TestMempoolAccept(request) => package::test_mempool_accept(context, request),
         MethodCall::SubmitPackage(request) => package::submit_package(context, request),
+        MethodCall::OpenBitcoinPackage(request) => package::open_bitcoin_package(context, request),
         MethodCall::DeriveAddresses(request) => {
             serde_json::to_value(node::derive_addresses(context, request)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))

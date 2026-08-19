@@ -542,6 +542,13 @@ impl ManagedRpcContext {
         }
     }
 
+    pub(crate) fn package_relay_disabled(&self) -> Result<bool, ManagedNetworkAuthorityError> {
+        Ok(
+            matches!(self.local_relay_intent()?, RelayIntent::NotRequested)
+                || !self.network_info()?.relay,
+        )
+    }
+
     pub fn mempool_entry_metadata(
         &self,
         txid: &Txid,

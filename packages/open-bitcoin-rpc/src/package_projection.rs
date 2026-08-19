@@ -1,10 +1,11 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
 
-//! Pure Knots JSON projection for an authoritative [`PackageReport`].
+//! Projector family for an authoritative [`PackageReport`].
 //!
-//! Knots JSON must not include fingerprint, admission, or effective_fee_groups
-//! keys. Those names appear here only to forbid them on BaselineParity trees.
+//! Knots JSON must not include fingerprint, admission, or dual-state keys.
+//! [`project_open_bitcoin_package`] is the D-05 typed sibling and may emit
+//! fingerprint, still-present, and relay_disabled on the extension path.
 
 #![allow(dead_code)]
 
@@ -13,6 +14,7 @@ use open_bitcoin_mempool::{
     PackageMemberResult, PackageReport, PackageStatus, ReconsiderableMemberFailure,
 };
 use open_bitcoin_node::core::primitives::{Txid, Wtxid};
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 mod report_view;
@@ -35,6 +37,50 @@ pub struct PackageMemberProjectionFacts {
 pub enum PackageProjectionError {
     MissingMemberFacts { index: usize },
     MemberFactsWtxidMismatch { index: usize },
+    DualStateLengthMismatch { expected: usize, actual: usize },
+}
+
+/// Admission tokens on the typed Open Bitcoin package report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PackageAdmissionState {
+    Accepted,
+    StillPresent,
+    Cleared,
+}
+
+/// Relay/fanout tokens on the typed Open Bitcoin package report.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PackageRelayState {
+    Eligible,
+    Queued,
+    Attempted,
+    Emitted,
+    Requested,
+    Served,
+    Suppressed,
+    RelayDisabled,
+}
+
+/// Caller-supplied dual-state for one input-ordered member.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PackageMemberDualState {
+    pub admission: PackageAdmissionState,
+    pub relay: PackageRelayState,
+}
+
+/// Identity-bearing submit facts used to walk the D-15 relay ladder.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct PackageSubmitRelayFacts {
+    pub queued: bool,
+    pub leftover_unattempted: bool,
+    pub emitted: bool,
+    pub requested: bool,
+    pub served: bool,
+    pub suppressed: bool,
+    pub unbroadcast: bool,
+    pub admitted: bool,
 }
 
 /// Projects Knots `testmempoolaccept` array JSON from one package report.
@@ -89,6 +135,209 @@ pub fn project_submitpackage(
     object.insert("tx-results".to_string(), Value::Object(tx_results));
     object.insert("replaced-transactions".to_string(), Value::Array(replaced));
     Ok(Value::Object(object))
+}
+
+/// Projects the typed Open Bitcoin package report from the same PackageReport family.
+pub fn project_open_bitcoin_package(
+    report: &PackageReport,
+    member_facts: &[PackageMemberProjectionFacts],
+    member_dual_state: &[PackageMemberDualState],
+) -> Result<Value, PackageProjectionError> {
+    if member_dual_state.len() != report.members().len() {
+        return Err(PackageProjectionError::DualStateLengthMismatch {
+            expected: report.members().len(),
+            actual: member_dual_state.len(),
+        });
+    }
+
+    let mut members = Vec::with_capacity(report.members().len());
+    for (index, (member, dual_state)) in report
+        .members()
+        .iter()
+        .zip(member_dual_state.iter())
+        .enumerate()
+    {
+        members.push(project_open_bitcoin_member(
+            index,
+            member,
+            member_facts,
+            *dual_state,
+        )?);
+    }
+
+    let mut object = Map::new();
+    object.insert(
+        "fingerprint".to_string(),
+        Value::String(encode_hex(report.fingerprint().as_bytes())),
+    );
+    object.insert(
+        "status".to_string(),
+        Value::String(package_status_token(*report.status()).to_string()),
+    );
+    object.insert("members".to_string(), Value::Array(members));
+    object.insert(
+        "effective_fee_groups".to_string(),
+        project_effective_fee_groups(report),
+    );
+    Ok(Value::Object(object))
+}
+
+/// Maps PackageMemberResult onto the locked admission tokens for both modes.
+pub fn admission_state_for_member(member: &PackageMemberResult) -> PackageAdmissionState {
+    match member {
+        PackageMemberResult::FinallyPresent(_) => PackageAdmissionState::Accepted,
+        PackageMemberResult::AlreadyPresent(_) => PackageAdmissionState::StillPresent,
+        PackageMemberResult::HardRejected(_)
+        | PackageMemberResult::Reconsiderable(_)
+        | PackageMemberResult::SameTxidDifferentWitness(_)
+        | PackageMemberResult::PostTrimAbsent(_) => PackageAdmissionState::Cleared,
+    }
+}
+
+/// Dry-run relay uses only RelayIntent / network.relay plus presence.
+pub fn dry_run_relay_state_for_member(
+    member: &PackageMemberResult,
+    relay_disabled: bool,
+) -> PackageRelayState {
+    if relay_disabled {
+        return PackageRelayState::RelayDisabled;
+    }
+    match member {
+        PackageMemberResult::FinallyPresent(_) | PackageMemberResult::AlreadyPresent(_) => {
+            PackageRelayState::Eligible
+        }
+        PackageMemberResult::HardRejected(_)
+        | PackageMemberResult::Reconsiderable(_)
+        | PackageMemberResult::SameTxidDifferentWitness(_)
+        | PackageMemberResult::PostTrimAbsent(_) => PackageRelayState::Suppressed,
+    }
+}
+
+/// Submit relay walks the D-15 transport ladder; first match wins.
+pub fn submit_relay_state_for_member(
+    member: &PackageMemberResult,
+    relay_disabled: bool,
+    facts: PackageSubmitRelayFacts,
+) -> PackageRelayState {
+    if relay_disabled {
+        return PackageRelayState::RelayDisabled;
+    }
+    if facts.queued {
+        return PackageRelayState::Queued;
+    }
+    if facts.leftover_unattempted {
+        return PackageRelayState::Attempted;
+    }
+    if facts.emitted {
+        return PackageRelayState::Emitted;
+    }
+    if facts.requested {
+        return PackageRelayState::Requested;
+    }
+    if facts.served {
+        return PackageRelayState::Served;
+    }
+    if facts.suppressed {
+        return PackageRelayState::Suppressed;
+    }
+    if matches!(
+        member,
+        PackageMemberResult::FinallyPresent(_) | PackageMemberResult::AlreadyPresent(_)
+    ) || facts.admitted
+        || facts.unbroadcast
+    {
+        return PackageRelayState::Eligible;
+    }
+    PackageRelayState::Suppressed
+}
+
+fn project_open_bitcoin_member(
+    index: usize,
+    member: &PackageMemberResult,
+    member_facts: &[PackageMemberProjectionFacts],
+    dual_state: PackageMemberDualState,
+) -> Result<Value, PackageProjectionError> {
+    let identity = member.requested_identity();
+    let facts = member_facts
+        .iter()
+        .find(|facts| facts.wtxid == identity.wtxid)
+        .or_else(|| member_facts.get(index));
+    let txid_hex = facts.map_or_else(
+        || encode_hex(identity.txid.as_bytes()),
+        |facts| encode_hex(facts.txid.as_bytes()),
+    );
+    let wtxid_hex = facts.map_or_else(
+        || encode_hex(identity.wtxid.as_bytes()),
+        |facts| encode_hex(facts.wtxid.as_bytes()),
+    );
+    Ok(json!({
+        "txid": txid_hex,
+        "wtxid": wtxid_hex,
+        "result": member_result_name(member),
+        "admission": admission_token(dual_state.admission),
+        "relay": relay_token(dual_state.relay),
+    }))
+}
+
+fn admission_token(state: PackageAdmissionState) -> &'static str {
+    match state {
+        PackageAdmissionState::Accepted => "accepted",
+        PackageAdmissionState::StillPresent => "still-present",
+        PackageAdmissionState::Cleared => "cleared",
+    }
+}
+
+fn relay_token(state: PackageRelayState) -> &'static str {
+    match state {
+        PackageRelayState::Eligible => "eligible",
+        PackageRelayState::Queued => "queued",
+        PackageRelayState::Attempted => "attempted",
+        PackageRelayState::Emitted => "emitted",
+        PackageRelayState::Requested => "requested",
+        PackageRelayState::Served => "served",
+        PackageRelayState::Suppressed => "suppressed",
+        PackageRelayState::RelayDisabled => "relay_disabled",
+    }
+}
+
+fn member_result_name(member: &PackageMemberResult) -> &'static str {
+    match member {
+        PackageMemberResult::FinallyPresent(_) => "FinallyPresent",
+        PackageMemberResult::AlreadyPresent(_) => "AlreadyPresent",
+        PackageMemberResult::SameTxidDifferentWitness(_) => "SameTxidDifferentWitness",
+        PackageMemberResult::HardRejected(_) => "HardRejected",
+        PackageMemberResult::Reconsiderable(_) => "Reconsiderable",
+        PackageMemberResult::PostTrimAbsent(_) => "PostTrimAbsent",
+    }
+}
+
+fn package_status_token(status: PackageStatus) -> &'static str {
+    match status {
+        PackageStatus::Complete => "complete",
+        PackageStatus::Partial => "partial",
+        PackageStatus::Failed => "failed",
+    }
+}
+
+fn project_effective_fee_groups(report: &PackageReport) -> Value {
+    let groups = report_view::fee_groups(report)
+        .iter()
+        .map(|group| {
+            json!({
+                "id": group.id().as_u64(),
+                "ordered_wtxids": group
+                    .ordered_wtxids()
+                    .iter()
+                    .map(|wtxid| encode_hex(wtxid.as_bytes()))
+                    .collect::<Vec<_>>(),
+                "base_fee_sats": group.base_fee_sats().to_sats(),
+                "modified_fee_sats": group.modified_fee_sats().to_sats(),
+                "virtual_size": group.virtual_size().as_usize(),
+                "effective_fee_rate_sats_per_kvb": group.effective_fee_rate().sats_per_kvb(),
+            })
+        })
+        .collect();
+    Value::Array(groups)
 }
 
 fn project_submitpackage_member(
