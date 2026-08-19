@@ -14,7 +14,10 @@ use open_bitcoin_node::core::primitives::{
     Txid, Wtxid,
 };
 
-use super::{PackageMemberProjectionFacts, project_submitpackage, project_testmempoolaccept};
+use super::{
+    PackageAdmissionState, PackageMemberDualState, PackageMemberProjectionFacts, PackageRelayState,
+    project_open_bitcoin_package, project_submitpackage, project_testmempoolaccept,
+};
 
 fn encode_hex(bytes: &[u8]) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
@@ -468,4 +471,69 @@ fn submitpackage_omits_broadcast_and_propagation_keys() {
             "unexpected string {forbidden}"
         );
     }
+}
+
+#[test]
+fn project_open_bitcoin_package_includes_fingerprint_and_dual_state() {
+    // Arrange
+    let (report, facts, _) = finally_present_report();
+    let dual_state = vec![PackageMemberDualState {
+        admission: PackageAdmissionState::Accepted,
+        relay: PackageRelayState::Eligible,
+    }];
+
+    // Act
+    let projected = project_open_bitcoin_package(&report, &facts, &dual_state).expect("project");
+
+    // Assert
+    let object = projected.as_object().expect("typed package object");
+    assert_eq!(
+        object["fingerprint"],
+        json!(encode_hex(report.fingerprint().as_bytes()))
+    );
+    assert_eq!(object["status"], json!("complete"));
+    assert!(object.contains_key("effective_fee_groups"));
+    let members = object["members"].as_array().expect("input-ordered members");
+    assert_eq!(members.len(), 1);
+    assert_eq!(members[0]["result"], json!("FinallyPresent"));
+    assert_eq!(members[0]["admission"], json!("accepted"));
+    assert_eq!(members[0]["relay"], json!("eligible"));
+    assert!(members[0]["txid"].is_string());
+    assert!(members[0]["wtxid"].is_string());
+}
+
+#[test]
+fn project_open_bitcoin_package_omits_propagation_keys() {
+    // Arrange
+    let package = singleton_package(12);
+    let requested = identity_at(&package, 0);
+    let report = PackageReport::try_new(
+        &package,
+        PackageStatus::Complete,
+        vec![PackageMemberResult::AlreadyPresent(ExistingMember {
+            requested,
+        })],
+        vec![],
+    )
+    .expect("already-present report");
+    let facts = vec![facts_for(requested, 141, 200)];
+    let dual_state = vec![PackageMemberDualState {
+        admission: PackageAdmissionState::StillPresent,
+        relay: PackageRelayState::RelayDisabled,
+    }];
+
+    // Act
+    let projected = project_open_bitcoin_package(&report, &facts, &dual_state).expect("project");
+
+    // Assert
+    let mut keys = Vec::new();
+    collect_object_keys(&projected, &mut keys);
+    for forbidden in ["propagated", "broadcast", "public_relay"] {
+        assert!(
+            !keys.iter().any(|key| key == forbidden),
+            "unexpected key {forbidden}"
+        );
+    }
+    assert_eq!(projected["members"][0]["admission"], json!("still-present"));
+    assert_eq!(projected["members"][0]["relay"], json!("relay_disabled"));
 }

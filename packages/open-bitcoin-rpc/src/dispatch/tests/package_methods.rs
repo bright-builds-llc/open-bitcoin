@@ -58,6 +58,13 @@ fn submit_request(package: Vec<String>) -> SubmitPackageRequest {
     }
 }
 
+fn open_bitcoin_package_request(
+    mode: OpenBitcoinPackageMode,
+    raw_txs: Vec<String>,
+) -> OpenBitcoinPackageRequest {
+    OpenBitcoinPackageRequest { mode, raw_txs }
+}
+
 #[test]
 fn testmempoolaccept_empty_array_is_invalid_parameter_minus_eight() {
     // Arrange
@@ -269,4 +276,61 @@ fn package_methods_fail_closed_on_explicit_maxfeerate() {
             detail.message
         );
     }
+}
+
+#[test]
+fn openbitcoinpackage_dry_run_does_not_change_mempool_size() {
+    // Arrange
+    let (mut context, transaction_hex, _) = spendable_package_context();
+    let before = dispatch(
+        &mut context,
+        MethodCall::GetMempoolInfo(GetMempoolInfoRequest::default()),
+    )
+    .expect("mempool before");
+    let size_before = before["size"].as_u64().expect("size before");
+
+    // Act
+    let accepted = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinPackage(open_bitcoin_package_request(
+            OpenBitcoinPackageMode::DryRun,
+            vec![transaction_hex],
+        )),
+    )
+    .expect("extension dry-run");
+    let after = dispatch(
+        &mut context,
+        MethodCall::GetMempoolInfo(GetMempoolInfoRequest::default()),
+    )
+    .expect("mempool after");
+
+    // Assert
+    assert_eq!(after["size"], json!(size_before));
+    assert_eq!(accepted["status"], json!("complete"));
+    assert_eq!(accepted["members"][0]["admission"], json!("accepted"));
+}
+
+#[test]
+fn openbitcoinpackage_dry_run_already_present_is_still_present() {
+    // Arrange
+    let (mut context, transaction_hex, _) = spendable_package_context();
+    dispatch(
+        &mut context,
+        MethodCall::SubmitPackage(submit_request(vec![transaction_hex.clone()])),
+    )
+    .expect("seed mempool");
+
+    // Act
+    let dry_run = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinPackage(open_bitcoin_package_request(
+            OpenBitcoinPackageMode::DryRun,
+            vec![transaction_hex],
+        )),
+    )
+    .expect("extension dry-run of already-present member");
+
+    // Assert
+    assert_eq!(dry_run["members"][0]["result"], json!("AlreadyPresent"));
+    assert_eq!(dry_run["members"][0]["admission"], json!("still-present"));
 }

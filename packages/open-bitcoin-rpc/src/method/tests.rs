@@ -14,7 +14,10 @@ use serde_json::json;
 use crate::{
     RpcFailure, RpcFailureKind,
     error::RpcErrorCode,
-    method::{SubmitPackageRequest, TestMempoolAcceptRequest},
+    method::{
+        OpenBitcoinPackageMode, OpenBitcoinPackageRequest, SubmitPackageRequest,
+        TestMempoolAcceptRequest,
+    },
 };
 
 use super::{
@@ -435,4 +438,61 @@ fn package_requests_deny_unknown_fields() {
     assert!(submit.ignore_rejects.is_empty());
     assert!(unknown_accept.is_err(), "unknown testmempoolaccept field");
     assert!(unknown_submit.is_err(), "unknown submitpackage field");
+}
+
+#[test]
+fn openbitcoinpackage_is_open_bitcoin_extension() {
+    // Arrange
+    let maybe_method = SupportedMethod::from_name("openbitcoinpackage");
+
+    // Act
+    let method = maybe_method.expect("openbitcoinpackage should be registered");
+    let call = normalize_method_call(
+        "openbitcoinpackage",
+        RequestParameters::Named(vec![
+            ("mode".to_string(), json!("dry-run")),
+            ("rawtxs".to_string(), json!(["00"])),
+        ]),
+    )
+    .expect("normalize openbitcoinpackage");
+    let missing_mode = serde_json::from_value::<OpenBitcoinPackageRequest>(json!({
+        "rawtxs": ["00"]
+    }));
+
+    // Assert
+    assert_eq!(method, SupportedMethod::OpenBitcoinPackage);
+    assert_eq!(method.origin(), MethodOrigin::OpenBitcoinExtension);
+    assert_eq!(method.scope(), MethodScope::Node);
+    assert_eq!(method.name(), "openbitcoinpackage");
+    assert_eq!(call.scope(), MethodScope::Node);
+    assert!(matches!(call, MethodCall::OpenBitcoinPackage(_)));
+    assert!(
+        SupportedMethod::all().contains(&SupportedMethod::OpenBitcoinPackage),
+        "all() should include OpenBitcoinPackage"
+    );
+    assert!(missing_mode.is_err(), "mode is required");
+}
+
+#[test]
+fn openbitcoinpackage_unknown_field_is_rejected() {
+    // Arrange
+    let known = json!({
+        "mode": "submit",
+        "rawtxs": ["00"]
+    });
+    let unknown = json!({
+        "mode": "dry-run",
+        "rawtxs": ["00"],
+        "extra": true
+    });
+
+    // Act
+    let accepted = serde_json::from_value::<OpenBitcoinPackageRequest>(known);
+    let rejected = serde_json::from_value::<OpenBitcoinPackageRequest>(unknown);
+
+    // Assert
+    let accepted = accepted.expect("known openbitcoinpackage fields should deserialize");
+    assert_eq!(accepted.mode, OpenBitcoinPackageMode::Submit);
+    assert_eq!(accepted.raw_txs, vec!["00".to_string()]);
+    assert!(rejected.is_err(), "unknown openbitcoinpackage field");
 }
