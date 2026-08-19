@@ -8,6 +8,7 @@ use open_bitcoin_node::{
     status::{
         BlockRelayEvidenceStatus, FieldAvailability, InboundAddressDecisionEvent,
         InboundPeerPolicyEvent, InboundPeerServingStatus, InboundResourceGovernanceEvent,
+        MempoolStatus,
         relay_evidence::{RelayEvidenceField, RelayEvidenceStatus},
     },
 };
@@ -45,7 +46,7 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             "RPC password and RPC auth values".to_string(),
             "wallet private material and raw wallet files".to_string(),
             "raw unbounded log contents".to_string(),
-            "raw transaction hex, txids, wtxids, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels"
+            "raw transaction hex, txids, wtxids, package fingerprints, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels"
                 .to_string(),
         ],
         safeguards: vec![
@@ -68,6 +69,7 @@ pub(crate) fn support_status_for_bundle(
     mut status: OpenBitcoinStatusSnapshot,
 ) -> OpenBitcoinStatusSnapshot {
     redact_relay_mempool_evidence(&mut status.mempool.relay);
+    redact_mempool_policy_groups(&mut status.mempool);
     redact_block_relay_evidence(&mut status.block_relay);
     redact_inbound_endpoint_evidence(&mut status.peers.inbound);
     redact_inbound_permission_evidence(&mut status.peers.inbound);
@@ -75,6 +77,24 @@ pub(crate) fn support_status_for_bundle(
     redact_inbound_peer_policy_evidence(&mut status.peers.inbound);
     redact_inbound_resource_governance_evidence(&mut status.peers.inbound);
     status
+}
+
+fn redact_mempool_policy_groups(mempool: &mut MempoolStatus) {
+    sanitize_mempool_group_reason(&mut mempool.resources);
+    sanitize_mempool_group_reason(&mut mempool.fee_floors);
+    sanitize_mempool_group_reason(&mut mempool.pressure);
+    sanitize_mempool_group_reason(&mut mempool.eviction);
+    sanitize_mempool_group_reason(&mut mempool.checkpoint);
+    sanitize_mempool_group_reason(&mut mempool.recovery);
+    sanitize_mempool_group_reason(&mut mempool.retry);
+    sanitize_mempool_group_reason(&mut mempool.admission);
+}
+
+fn sanitize_mempool_group_reason<T>(field: &mut FieldAvailability<T>) {
+    let FieldAvailability::Unavailable { reason } = field else {
+        return;
+    };
+    *reason = sanitized_relay_evidence_text(reason);
 }
 
 fn redact_relay_mempool_evidence(relay: &mut RelayEvidenceStatus) {
