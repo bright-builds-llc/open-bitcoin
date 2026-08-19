@@ -11,7 +11,11 @@
 
 use serde_json::json;
 
-use crate::RpcFailure;
+use crate::{
+    RpcFailure, RpcFailureKind,
+    error::RpcErrorCode,
+    method::{SubmitPackageRequest, TestMempoolAcceptRequest},
+};
 
 use super::{
     MethodCall, MethodOrigin, MethodScope, RequestParameters, SupportedMethod,
@@ -30,6 +34,8 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
         "openbitcoinsyncpause",
         "openbitcoinsyncresume",
         "sendrawtransaction",
+        "testmempoolaccept",
+        "submitpackage",
         "deriveaddresses",
         "sendtoaddress",
         "getnewaddress",
@@ -277,4 +283,157 @@ fn named_params_distinguish_duplicate_keys_from_positional_collisions() {
             "named parameter descriptor collides with a positional argument"
         ),
     );
+}
+
+#[test]
+fn rpc_error_codes_include_knots_minus_eight_twenty_two_twenty_five() {
+    // Arrange
+    let codes = [
+        RpcErrorCode::InvalidParameter,
+        RpcErrorCode::DeserializationError,
+        RpcErrorCode::VerifyError,
+    ];
+
+    // Act
+    let as_i32 = codes.map(RpcErrorCode::as_i32);
+    let invalid_parameter = RpcFailure::invalid_parameter("count");
+    let deserialization = RpcFailure::deserialization_error("hex");
+    let verify = RpcFailure::verify_error("topology");
+
+    // Assert
+    assert_eq!(as_i32, [-8, -22, -25]);
+    assert_eq!(
+        RpcErrorCode::try_from(-8),
+        Ok(RpcErrorCode::InvalidParameter)
+    );
+    assert_eq!(
+        RpcErrorCode::try_from(-22),
+        Ok(RpcErrorCode::DeserializationError)
+    );
+    assert_eq!(RpcErrorCode::try_from(-25), Ok(RpcErrorCode::VerifyError));
+    assert_eq!(invalid_parameter.kind, RpcFailureKind::InvalidParams);
+    assert_eq!(
+        invalid_parameter
+            .maybe_detail
+            .as_ref()
+            .map(|detail| detail.code.as_i32()),
+        Some(-8)
+    );
+    assert_eq!(deserialization.kind, RpcFailureKind::InvalidParams);
+    assert_eq!(
+        deserialization
+            .maybe_detail
+            .as_ref()
+            .map(|detail| detail.code.as_i32()),
+        Some(-22)
+    );
+    assert_eq!(verify.kind, RpcFailureKind::InvalidParams);
+    assert_eq!(
+        verify
+            .maybe_detail
+            .as_ref()
+            .map(|detail| detail.code.as_i32()),
+        Some(-25)
+    );
+}
+
+#[test]
+fn testmempoolaccept_is_baseline_parity_node_method() {
+    // Arrange
+    let maybe_method = SupportedMethod::from_name("testmempoolaccept");
+
+    // Act
+    let method = maybe_method.expect("testmempoolaccept should be registered");
+    let call = normalize_method_call(
+        "testmempoolaccept",
+        RequestParameters::Named(vec![("rawtxs".to_string(), json!(["00"]))]),
+    )
+    .expect("normalize testmempoolaccept");
+
+    // Assert
+    assert_eq!(method, SupportedMethod::TestMempoolAccept);
+    assert_eq!(method.origin(), MethodOrigin::BaselineParity);
+    assert_eq!(method.scope(), MethodScope::Node);
+    assert_eq!(method.name(), "testmempoolaccept");
+    assert_eq!(call.scope(), MethodScope::Node);
+    assert!(matches!(call, MethodCall::TestMempoolAccept(_)));
+    assert!(
+        SupportedMethod::all().contains(&SupportedMethod::TestMempoolAccept),
+        "all() should include TestMempoolAccept"
+    );
+}
+
+#[test]
+fn submitpackage_is_baseline_parity_node_method() {
+    // Arrange
+    let maybe_method = SupportedMethod::from_name("submitpackage");
+
+    // Act
+    let method = maybe_method.expect("submitpackage should be registered");
+    let call = normalize_method_call(
+        "submitpackage",
+        RequestParameters::Named(vec![("package".to_string(), json!(["00"]))]),
+    )
+    .expect("normalize submitpackage");
+
+    // Assert
+    assert_eq!(method, SupportedMethod::SubmitPackage);
+    assert_eq!(method.origin(), MethodOrigin::BaselineParity);
+    assert_eq!(method.scope(), MethodScope::Node);
+    assert_eq!(method.name(), "submitpackage");
+    assert_eq!(call.scope(), MethodScope::Node);
+    assert!(matches!(call, MethodCall::SubmitPackage(_)));
+    assert!(
+        SupportedMethod::all().contains(&SupportedMethod::SubmitPackage),
+        "all() should include SubmitPackage"
+    );
+}
+
+#[test]
+fn package_requests_deny_unknown_fields() {
+    // Arrange
+    let accept_json = json!({
+        "rawtxs": ["00"],
+        "maxfeerate": 1,
+        "maxburnamount": 0,
+        "ignore_rejects": ["txn-mempool-conflict"]
+    });
+    let submit_json = json!({
+        "package": ["00"],
+        "maxfeerate": 1,
+        "maxburnamount": 0,
+        "ignore_rejects": []
+    });
+    let unknown_accept = json!({
+        "rawtxs": ["00"],
+        "extra": true
+    });
+    let unknown_submit = json!({
+        "package": ["00"],
+        "extra": true
+    });
+
+    // Act
+    let accept = serde_json::from_value::<TestMempoolAcceptRequest>(accept_json);
+    let submit = serde_json::from_value::<SubmitPackageRequest>(submit_json);
+    let unknown_accept =
+        serde_json::from_value::<TestMempoolAcceptRequest>(unknown_accept);
+    let unknown_submit = serde_json::from_value::<SubmitPackageRequest>(unknown_submit);
+
+    // Assert
+    let accept = accept.expect("known testmempoolaccept fields should deserialize");
+    let submit = submit.expect("known submitpackage fields should deserialize");
+    assert_eq!(accept.raw_txs, vec!["00".to_string()]);
+    assert_eq!(accept.maybe_max_fee_rate, Some(1));
+    assert_eq!(accept.maybe_max_burn_amount, Some(0));
+    assert_eq!(
+        accept.ignore_rejects,
+        vec!["txn-mempool-conflict".to_string()]
+    );
+    assert_eq!(submit.package, vec!["00".to_string()]);
+    assert_eq!(submit.maybe_max_fee_rate, Some(1));
+    assert_eq!(submit.maybe_max_burn_amount, Some(0));
+    assert!(submit.ignore_rejects.is_empty());
+    assert!(unknown_accept.is_err(), "unknown testmempoolaccept field");
+    assert!(unknown_submit.is_err(), "unknown submitpackage field");
 }
