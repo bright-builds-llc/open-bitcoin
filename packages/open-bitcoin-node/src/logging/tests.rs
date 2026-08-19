@@ -3,11 +3,11 @@
 
 use super::{
     BLOCK_RELAY_LOG_SOURCE, INBOUND_PEER_POLICY_LOG_SOURCE, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE,
-    LogPathStatus, LogRetentionPolicy, LogRotation, LogStatus, RELAY_MEMPOOL_LOG_SOURCE,
-    RecentLogSignal, StructuredLogLevel, StructuredLogRecord, block_relay_log_record,
-    health_signals_from_recent_logs, inbound_peer_policy_log_record,
-    inbound_resource_governance_log_record, recent_log_signals_from_records,
-    relay_mempool_log_record,
+    LogPathStatus, LogRetentionPolicy, LogRotation, LogStatus, MEMPOOL_POLICY_LOG_SOURCE,
+    RELAY_MEMPOOL_LOG_SOURCE, RecentLogSignal, StructuredLogLevel, StructuredLogRecord,
+    block_relay_log_record, health_signals_from_recent_logs, inbound_peer_policy_log_record,
+    inbound_resource_governance_log_record, mempool_policy_log_record,
+    recent_log_signals_from_records, relay_mempool_log_record,
 };
 use super::{
     prune::{LogFileMetadata, plan_log_retention},

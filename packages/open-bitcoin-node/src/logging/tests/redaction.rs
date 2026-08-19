@@ -323,3 +323,169 @@ fn block_relay_log_record_omits_sensitive_and_dynamic_material() {
         assert!(!record.message.contains(raw), "leaked {raw}");
     }
 }
+
+const MEMPOOL_POLICY_SNAPSHOT_KEYS: [&str; 16] = [
+    "virtual_size",
+    "accounted_usage",
+    "accounted_capacity",
+    "static_relay_floor",
+    "rolling_mempool_floor",
+    "effective_admission_floor",
+    "incremental_relay_fee",
+    "pressure_removal_count",
+    "decay",
+    "recovered_count",
+    "retry_eligible",
+    "retry_cleared",
+    "admission_accepted",
+    "admission_still_present",
+    "admission_cleared",
+    "relay_disabled",
+];
+
+fn mempool_policy_status_fixture() -> crate::status::MempoolStatus {
+    let mut mempool = crate::status::MempoolStatus::default();
+    mempool.resources = crate::status::FieldAvailability::available(
+        crate::status::MempoolResourcesGroup {
+            virtual_size: 111,
+            accounted_usage: 222,
+            accounted_capacity: 333,
+            transaction_count: 4,
+        },
+    );
+    mempool.fee_floors = crate::status::FieldAvailability::available(
+        crate::status::MempoolFeeFloorsGroup {
+            static_relay_floor: 1_000,
+            rolling_mempool_floor: 2_500,
+            effective_admission_floor: 2_500,
+            incremental_relay_fee: 500,
+        },
+    );
+    mempool.pressure = crate::status::FieldAvailability::available(
+        crate::status::MempoolPressureGroup {
+            pressure_removal_count: 7,
+            decay_half_life_label: "half_life_6h".to_string(),
+        },
+    );
+    mempool.recovery = crate::status::FieldAvailability::available(
+        crate::status::MempoolRecoveryGroup {
+            recovered_count: 3,
+            dropped_confirmed_count: 0,
+            dropped_duplicate_count: 0,
+            dropped_missing_parent_count: 0,
+            dropped_policy_incompatible_count: 0,
+            dropped_expired_count: 0,
+            dropped_evicted_count: 0,
+        },
+    );
+    mempool.retry = crate::status::FieldAvailability::available(crate::status::MempoolRetryGroup {
+        eligible: 8,
+        queued: 1,
+        attempted: 0,
+        emitted: 2,
+        requested: 0,
+        served: 0,
+        suppressed: 0,
+        relay_disabled: 1,
+        cleared: 5,
+    });
+    mempool.admission = crate::status::FieldAvailability::available(
+        crate::status::MempoolAdmissionGroup {
+            accepted: 9,
+            still_present: 4,
+            cleared: 6,
+        },
+    );
+    mempool
+}
+
+#[test]
+fn mempool_policy_log_source_is_fixed() {
+    // Arrange
+    let mempool = mempool_policy_status_fixture();
+
+    // Act
+    let record = mempool_policy_log_record(&mempool, 1_777_225_400);
+
+    // Assert
+    assert_eq!(record.source, MEMPOOL_POLICY_LOG_SOURCE);
+    assert_eq!(MEMPOOL_POLICY_LOG_SOURCE, "mempool_policy");
+    assert_eq!(record.level, StructuredLogLevel::Info);
+    assert_eq!(record.timestamp_unix_seconds, 1_777_225_400);
+}
+
+#[test]
+fn mempool_policy_log_message_uses_snapshot_keys() {
+    // Arrange
+    let mempool = mempool_policy_status_fixture();
+
+    // Act
+    let record = mempool_policy_log_record(&mempool, 1_777_225_401);
+
+    // Assert
+    for key in MEMPOOL_POLICY_SNAPSHOT_KEYS {
+        assert!(
+            record.message.contains(&format!("{key}=")),
+            "missing snapshot key {key}"
+        );
+    }
+    assert!(record.message.contains("virtual_size=111"));
+    assert!(record.message.contains("accounted_usage=222"));
+    assert!(record.message.contains("accounted_capacity=333"));
+    assert!(record.message.contains("static_relay_floor=1000"));
+    assert!(record.message.contains("rolling_mempool_floor=2500"));
+    assert!(record.message.contains("effective_admission_floor=2500"));
+    assert!(record.message.contains("incremental_relay_fee=500"));
+    assert!(record.message.contains("pressure_removal_count=7"));
+    assert!(record.message.contains("decay=half_life_6h"));
+    assert!(record.message.contains("recovered_count=3"));
+    assert!(record.message.contains("retry_eligible=8"));
+    assert!(record.message.contains("retry_cleared=5"));
+    assert!(record.message.contains("admission_accepted=9"));
+    assert!(record.message.contains("admission_still_present=4"));
+    assert!(record.message.contains("admission_cleared=6"));
+    assert!(record.message.contains("relay_disabled=1"));
+}
+
+#[test]
+fn mempool_policy_log_message_has_no_txid_hex() {
+    // Arrange
+    let fake_txid = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+    let mempool = mempool_policy_status_fixture();
+
+    // Act
+    let record = mempool_policy_log_record(&mempool, 1_777_225_402);
+
+    // Assert
+    assert!(
+        !record.message.contains(fake_txid),
+        "log message must not include recovery identities"
+    );
+    let maybe_hex_run = record
+        .message
+        .split(|character: char| !character.is_ascii_hexdigit())
+        .find(|part| part.len() == 64);
+    assert_eq!(maybe_hex_run, None);
+}
+
+#[test]
+fn mempool_policy_log_forbids_propagation_and_knots_alias_keys() {
+    // Arrange
+    let mempool = mempool_policy_status_fixture();
+
+    // Act
+    let record = mempool_policy_log_record(&mempool, 1_777_225_403);
+
+    // Assert
+    for forbidden in [
+        "propagated",
+        "broadcast",
+        "mempoolminfee",
+        "rebroadcast_deferred",
+    ] {
+        assert!(
+            !record.message.contains(forbidden),
+            "log message leaked forbidden key {forbidden}"
+        );
+    }
+}
