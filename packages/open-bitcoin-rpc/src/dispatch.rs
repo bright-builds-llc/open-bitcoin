@@ -25,6 +25,7 @@ use crate::{
 
 mod decode;
 mod node;
+mod package;
 #[cfg(test)]
 mod tests;
 mod wallet;
@@ -63,9 +64,8 @@ pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Val
             serde_json::to_value(node::send_raw_transaction(context, request)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))
         }
-        MethodCall::TestMempoolAccept(_) | MethodCall::SubmitPackage(_) => Err(
-            RpcFailure::internal_error("package RPC dispatch is not implemented yet"),
-        ),
+        MethodCall::TestMempoolAccept(request) => package::test_mempool_accept(context, request),
+        MethodCall::SubmitPackage(request) => package::submit_package(context, request),
         MethodCall::DeriveAddresses(request) => {
             serde_json::to_value(node::derive_addresses(context, request)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))

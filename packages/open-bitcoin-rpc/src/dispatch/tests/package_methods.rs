@@ -252,8 +252,8 @@ fn package_methods_fail_closed_on_explicit_maxfeerate() {
     // Act
     let accept_failure = dispatch(&mut context, MethodCall::TestMempoolAccept(accept))
         .expect_err("explicit maxfeerate");
-    let submit_failure = dispatch(&mut context, MethodCall::SubmitPackage(submit))
-        .expect_err("explicit maxfeerate");
+    let submit_failure =
+        dispatch(&mut context, MethodCall::SubmitPackage(submit)).expect_err("explicit maxfeerate");
 
     // Assert
     for failure in [accept_failure, submit_failure] {

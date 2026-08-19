@@ -11,6 +11,7 @@
 
 use std::net::SocketAddr;
 
+use open_bitcoin_mempool::{PackageReport, SubmittedPackageResult};
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
     InboundListenerConfig, InboundPermissionDecision, ReconnectSuppressionInput,
@@ -499,6 +500,46 @@ impl ManagedRpcContext {
             }
         }
         Ok(outcome)
+    }
+
+    /// Local package dry-run; relay intent follows activation.
+    pub fn dry_run_local_package(
+        &self,
+        transactions: Vec<Transaction>,
+        now_unix_seconds: i64,
+    ) -> Result<PackageReport, ManagedNetworkAuthorityError> {
+        let relay_intent = self.local_relay_intent()?;
+        self.network.dry_run_local_package(
+            transactions,
+            self.verify_flags,
+            self.consensus_params,
+            now_unix_seconds,
+            relay_intent,
+        )
+    }
+
+    /// Local package submit; relay intent follows activation.
+    pub fn submit_local_package(
+        &self,
+        transactions: Vec<Transaction>,
+        now_unix_seconds: i64,
+    ) -> Result<SubmittedPackageResult, ManagedNetworkAuthorityError> {
+        let relay_intent = self.local_relay_intent()?;
+        self.network.submit_local_package(
+            transactions,
+            self.verify_flags,
+            self.consensus_params,
+            now_unix_seconds,
+            relay_intent,
+        )
+    }
+
+    fn local_relay_intent(&self) -> Result<RelayIntent, ManagedNetworkAuthorityError> {
+        if self.network.relay_activation_enabled()? {
+            Ok(RelayIntent::Requested)
+        } else {
+            Ok(RelayIntent::NotRequested)
+        }
     }
 
     pub fn mempool_entry_metadata(

@@ -2032,6 +2032,7 @@
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_status_admission.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_status_schema.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/node_info.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/tests/package_methods.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/permissions.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/storage_fixtures.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/sync_control.rs",
