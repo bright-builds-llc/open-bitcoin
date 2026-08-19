@@ -23,7 +23,11 @@ use open_bitcoin_mempool::{
 };
 use open_bitcoin_network::{NetworkError, PeerId, WireNetworkMessage};
 
-use crate::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus};
+use crate::status::{
+    BlockRelayEvidenceStatus, MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup,
+    MempoolPressureGroup, MempoolRecoveryGroup, MempoolRetryGroup,
+    relay_evidence::RelayEvidenceStatus,
+};
 
 use super::{
     ManagedAddressBoundaryInfo, ManagedBlockServeIntent, ManagedInboundAdmissionInfo,
@@ -150,6 +154,12 @@ pub struct ManagedNetworkOperatorSnapshot {
     pub(super) address_boundary: ManagedAddressBoundaryInfo,
     pub(super) peer_policy: ManagedPeerPolicyInfo,
     pub(super) resource_governance: ManagedResourceGovernanceInfo,
+    pub(super) pressure: MempoolPressureGroup,
+    pub(super) eviction: MempoolEvictionGroup,
+    pub(super) checkpoint: MempoolCheckpointGroup,
+    pub(super) recovery: MempoolRecoveryGroup,
+    pub(super) retry: MempoolRetryGroup,
+    pub(super) admission: MempoolAdmissionGroup,
 }
 
 impl ManagedNetworkOperatorSnapshot {
@@ -194,6 +204,30 @@ impl ManagedNetworkOperatorSnapshot {
 
     pub fn resource_governance(&self) -> &ManagedResourceGovernanceInfo {
         &self.resource_governance
+    }
+
+    pub fn pressure(&self) -> &MempoolPressureGroup {
+        &self.pressure
+    }
+
+    pub fn eviction(&self) -> &MempoolEvictionGroup {
+        &self.eviction
+    }
+
+    pub fn checkpoint(&self) -> &MempoolCheckpointGroup {
+        &self.checkpoint
+    }
+
+    pub fn recovery(&self) -> &MempoolRecoveryGroup {
+        &self.recovery
+    }
+
+    pub fn retry(&self) -> &MempoolRetryGroup {
+        &self.retry
+    }
+
+    pub fn admission(&self) -> &MempoolAdmissionGroup {
+        &self.admission
     }
 }
 

@@ -16,7 +16,7 @@ use crate::network::{
 use crate::status::relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus};
 use crate::status::{
     FieldAvailability, MempoolAdmissionGroup, MempoolPressureGroup, MempoolResourcesGroup,
-    MempoolRetryGroup, MempoolStatus, checkpoint_group_from_evidence, decay_half_life_label,
+    MempoolStatus, checkpoint_group_from_evidence, decay_half_life_label,
     fee_floors_from_managed_info, recovery_group_from_summary, resources_from_managed_info,
     retry_group_from_relay,
 };

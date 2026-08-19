@@ -1407,6 +1407,7 @@
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
         "packages/open-bitcoin-node/src/network/action_translation.rs",
+        "packages/open-bitcoin-node/src/network/operator_snapshot.rs",
         "packages/open-bitcoin-node/src/network/admission_bridge.rs",
         "packages/open-bitcoin-node/src/network/inbound.rs",
         "packages/open-bitcoin-node/src/network/inventory.rs",

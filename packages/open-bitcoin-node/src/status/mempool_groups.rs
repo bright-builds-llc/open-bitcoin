@@ -10,7 +10,10 @@ use crate::network::{
     ManagedMempoolInfo, ManagedMempoolRecoverySummary,
 };
 
-use super::{FieldAvailability, MempoolStatus, relay_evidence::RelayEvidenceStatus};
+use super::{
+    FieldAvailability, MempoolStatus,
+    relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
+};
 
 /// Occupancy-sensitive rolling-fee decay labels from UI-SPEC / research A1.
 pub const DECAY_HALF_LIFE_12H: &str = "half_life_12h";
@@ -65,7 +68,7 @@ pub struct MempoolCheckpointGroup {
 }
 
 /// Count-only recovery projection. Recovery member identities are never copied.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MempoolRecoveryGroup {
     pub recovered_count: u64,
     pub dropped_confirmed_count: u64,
@@ -74,6 +77,34 @@ pub struct MempoolRecoveryGroup {
     pub dropped_policy_incompatible_count: u64,
     pub dropped_expired_count: u64,
     pub dropped_evicted_count: u64,
+}
+
+/// Local retry/fanout aggregates. Distinct from Phase 105 deferred counters (D-13).
+///
+/// `relay_disabled` is boolean-as-0/1. Local still-present membership while relay is
+/// off lives on [`MempoolAdmissionGroup::still_present`].
+///
+/// `attempted` has no separate live leftover counter and is reported as zero until a
+/// later phase owns it. `emitted` copies the current relay announce outcome counter.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MempoolRetryGroup {
+    pub eligible: u64,
+    pub queued: u64,
+    pub attempted: u64,
+    pub emitted: u64,
+    pub requested: u64,
+    pub served: u64,
+    pub suppressed: u64,
+    pub relay_disabled: u64,
+    pub cleared: u64,
+}
+
+/// Admission aggregates only (D-15). Independent of retry/fanout axes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MempoolAdmissionGroup {
+    pub accepted: u64,
+    pub still_present: u64,
+    pub cleared: u64,
 }
 
 /// Maps managed mempool pressure into the shared resource group.
@@ -159,6 +190,42 @@ fn checkpoint_persistence_label(
     }
 }
 
+/// Maps live retry facts without reading Phase 105 deferred counters.
+pub fn retry_group_from_relay(
+    eligible: u64,
+    queued: u64,
+    attempted: u64,
+    emitted: u64,
+    counters: &RelayEvidenceCounters,
+    relay_enabled: bool,
+    cleared: u64,
+) -> MempoolRetryGroup {
+    MempoolRetryGroup {
+        eligible,
+        queued,
+        attempted,
+        emitted,
+        requested: counters.requested_count,
+        served: counters.served_count,
+        suppressed: counters.suppressed_count,
+        relay_disabled: u64::from(!relay_enabled),
+        cleared,
+    }
+}
+
+/// Maps D-15 admission counts only.
+pub fn admission_group_from_counts(
+    accepted: u64,
+    still_present: u64,
+    cleared: u64,
+) -> MempoolAdmissionGroup {
+    MempoolAdmissionGroup {
+        accepted,
+        still_present,
+        cleared,
+    }
+}
+
 pub(super) fn mempool_resources_unavailable() -> FieldAvailability<MempoolResourcesGroup> {
     FieldAvailability::unavailable(MEMPOOL_GROUP_UNAVAILABLE_REASON)
 }
@@ -180,6 +247,14 @@ pub(super) fn mempool_checkpoint_unavailable() -> FieldAvailability<MempoolCheck
 }
 
 pub(super) fn mempool_recovery_unavailable() -> FieldAvailability<MempoolRecoveryGroup> {
+    FieldAvailability::unavailable(MEMPOOL_GROUP_UNAVAILABLE_REASON)
+}
+
+pub(super) fn mempool_retry_unavailable() -> FieldAvailability<MempoolRetryGroup> {
+    FieldAvailability::unavailable(MEMPOOL_GROUP_UNAVAILABLE_REASON)
+}
+
+pub(super) fn mempool_admission_unavailable() -> FieldAvailability<MempoolAdmissionGroup> {
     FieldAvailability::unavailable(MEMPOOL_GROUP_UNAVAILABLE_REASON)
 }
 
@@ -207,6 +282,8 @@ impl Default for MempoolStatus {
             eviction: mempool_eviction_unavailable(),
             checkpoint: mempool_checkpoint_unavailable(),
             recovery: mempool_recovery_unavailable(),
+            retry: mempool_retry_unavailable(),
+            admission: mempool_admission_unavailable(),
         }
     }
 }

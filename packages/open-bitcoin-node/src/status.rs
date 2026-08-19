@@ -16,10 +16,11 @@ pub use block_relay_evidence::*;
 pub use block_serving::*;
 pub use inbound::*;
 pub use mempool_groups::{
-    MempoolCheckpointGroup, MempoolEvictionGroup, MempoolFeeFloorsGroup, MempoolPressureGroup,
-    MempoolRecoveryGroup, MempoolResourcesGroup, checkpoint_group_from_evidence,
-    decay_half_life_label, fee_floors_from_managed_info, recovery_group_from_summary,
-    resources_from_managed_info,
+    MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup, MempoolFeeFloorsGroup,
+    MempoolPressureGroup, MempoolRecoveryGroup, MempoolResourcesGroup, MempoolRetryGroup,
+    admission_group_from_counts, checkpoint_group_from_evidence, decay_half_life_label,
+    fee_floors_from_managed_info, recovery_group_from_summary, resources_from_managed_info,
+    retry_group_from_relay,
 };
 pub use observability::*;
 pub use progress_guarantee::*;
@@ -546,6 +547,10 @@ pub struct MempoolStatus {
     pub checkpoint: FieldAvailability<MempoolCheckpointGroup>,
     #[serde(default = "mempool_groups::mempool_recovery_unavailable")]
     pub recovery: FieldAvailability<MempoolRecoveryGroup>,
+    #[serde(default = "mempool_groups::mempool_retry_unavailable")]
+    pub retry: FieldAvailability<MempoolRetryGroup>,
+    #[serde(default = "mempool_groups::mempool_admission_unavailable")]
+    pub admission: FieldAvailability<MempoolAdmissionGroup>,
 }
 /// Wallet status fields.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

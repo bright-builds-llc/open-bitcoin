@@ -225,11 +225,22 @@ pub(super) fn open_bitcoin_network_status(
         relay: snapshot.relay().clone(),
         block_relay: snapshot.block_relay().clone(),
         metrics: context.metrics_status(),
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::available(mempool_info.transaction_count as u64),
-            relay: snapshot.relay().clone(),
-            resources: FieldAvailability::available(resources_from_managed_info(mempool_info)),
-            fee_floors: FieldAvailability::available(fee_floors_from_managed_info(mempool_info)),
+        mempool: {
+            let groups = snapshot.operator_network();
+            MempoolStatus {
+                transactions: FieldAvailability::available(mempool_info.transaction_count as u64),
+                relay: snapshot.relay().clone(),
+                resources: FieldAvailability::available(resources_from_managed_info(mempool_info)),
+                fee_floors: FieldAvailability::available(fee_floors_from_managed_info(
+                    mempool_info,
+                )),
+                pressure: FieldAvailability::available(groups.pressure().clone()),
+                eviction: FieldAvailability::available(*groups.eviction()),
+                checkpoint: FieldAvailability::available(groups.checkpoint().clone()),
+                recovery: FieldAvailability::available(*groups.recovery()),
+                retry: FieldAvailability::available(*groups.retry()),
+                admission: FieldAvailability::available(*groups.admission()),
+            }
         },
     })
 }

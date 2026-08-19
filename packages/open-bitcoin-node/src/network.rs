@@ -31,6 +31,7 @@ mod lifecycle_effects;
 #[allow(dead_code)] // Phase 134 builds this sealed contract before routing callers in later plans.
 pub(super) mod lifecycle_projection;
 mod mempool_lifecycle;
+mod operator_snapshot;
 mod peer_policy;
 mod recovery;
 mod relay_fanout;
@@ -308,21 +309,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             outbound_peers,
             wtxidrelay_peers,
             header_preferring_peers,
-        }
-    }
-
-    pub fn operator_snapshot(&self) -> ManagedNetworkOperatorSnapshot {
-        let block_relay = self.block_relay_runtime_evidence_snapshot();
-        ManagedNetworkOperatorSnapshot {
-            network: self.network_info(),
-            mempool: self.mempool_info(),
-            relay: self.relay_evidence_status(),
-            block_relay: block_relay.status,
-            block_served_count: block_relay.served_count,
-            inbound_admission: self.inbound_admission_info().clone(),
-            address_boundary: self.address_boundary_info(),
-            peer_policy: self.peer_policy_info(),
-            resource_governance: self.resource_governance_info(),
         }
     }
 

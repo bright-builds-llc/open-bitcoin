@@ -56,6 +56,10 @@ impl AuthoritativeOperatorSnapshot {
     pub fn block_relay(&self) -> &open_bitcoin_node::status::BlockRelayEvidenceStatus {
         self.network.block_relay()
     }
+
+    pub fn operator_network(&self) -> &ManagedNetworkOperatorSnapshot {
+        &self.network
+    }
 }
 
 impl ManagedRpcContext {
