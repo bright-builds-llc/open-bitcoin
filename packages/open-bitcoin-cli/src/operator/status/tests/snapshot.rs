@@ -161,6 +161,7 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
                     1_777_225_022,
                 )],
             ),
+            mempool: MempoolStatus::default(),
         }),
         ..FakeStatusRpcClient::running()
     };
@@ -189,6 +190,7 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
             relay: relay_evidence_status_fixture(),
             block_relay: block_relay_evidence_status_fixture(),
             metrics: MetricsStatus::default(),
+            mempool: MempoolStatus::default(),
         }),
         ..FakeStatusRpcClient::running()
     };
@@ -280,6 +282,7 @@ fn operator_status_block_relay_maps_shared_contract_and_human_lines() {
             relay: RelayEvidenceStatus::default(),
             block_relay: block_relay_evidence_status_fixture(),
             metrics: MetricsStatus::default(),
+            mempool: MempoolStatus::default(),
         }),
         ..FakeStatusRpcClient::running()
     };

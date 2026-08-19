@@ -226,6 +226,9 @@ fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
         })),
         MethodCall::BuildTransaction(request) => to_json_value(request),
         MethodCall::BuildAndSignTransaction(request) => to_json_value(request),
+        MethodCall::TestMempoolAccept(request) => to_json_value(request),
+        MethodCall::SubmitPackage(request) => to_json_value(request),
+        MethodCall::OpenBitcoinPackage(request) => to_json_value(request),
     }
 }
 

@@ -143,10 +143,10 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::available(3),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::available(3),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),

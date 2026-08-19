@@ -17,6 +17,7 @@ pub mod dashboard;
 pub mod detect;
 pub mod migration;
 pub mod onboarding;
+pub mod package;
 pub mod runtime;
 pub mod service;
 pub mod soak;
@@ -25,6 +26,8 @@ pub mod support;
 pub(crate) mod sync_truth_render;
 pub mod wallet;
 pub(crate) mod wallet_support;
+
+pub use package::{PackageArgs, PackageCommand, PackageHexArgs, PackageRenderMode};
 
 /// First-party Open Bitcoin operator CLI contract.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
@@ -59,6 +62,7 @@ pub enum OperatorCommand {
     Onboard(OnboardArgs),
     Wallet(WalletArgs),
     Support(SupportArgs),
+    Package(PackageArgs),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]

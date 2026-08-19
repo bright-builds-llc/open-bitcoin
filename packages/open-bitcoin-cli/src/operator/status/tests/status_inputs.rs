@@ -227,6 +227,7 @@ impl FakeStatusRpcClient {
                 relay: RelayEvidenceStatus::default(),
                 block_relay: BlockRelayEvidenceStatus::default_unavailable(),
                 metrics: MetricsStatus::default(),
+                mempool: MempoolStatus::default(),
             }),
             maybe_wallet_error: None,
         }
@@ -267,6 +268,7 @@ impl FakeStatusRpcClient {
                 relay: RelayEvidenceStatus::default(),
                 block_relay: BlockRelayEvidenceStatus::default_unavailable(),
                 metrics: MetricsStatus::default(),
+                mempool: MempoolStatus::default(),
             }),
             maybe_wallet_error: Some(error),
         }
@@ -324,6 +326,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 relay: RelayEvidenceStatus::default(),
                 block_relay: BlockRelayEvidenceStatus::default_unavailable(),
                 metrics: MetricsStatus::default(),
+                mempool: MempoolStatus::default(),
             }))
     }
 
@@ -502,5 +505,6 @@ pub(super) fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
         relay: RelayEvidenceStatus::default(),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         metrics: MetricsStatus::default(),
+        mempool: MempoolStatus::default(),
     }
 }

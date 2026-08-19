@@ -31,6 +31,7 @@ use super::{
         apply_onboarding_plan, plan_onboarding, prompt_onboarding_answers,
         read_existing_open_bitcoin_config, render_onboarding_plan,
     },
+    package::execute_package_command,
     service::{execute_service_command, platform_service_manager, service_log_path_from_log_dir},
     status::{
         HttpStatusRpcClient, StatusCollectorInput, StatusDetectionEvidence,
@@ -263,6 +264,9 @@ fn execute_operator_cli_inner(
         OperatorCommand::Support(args) => {
             execute_support(&cli, config_resolution, detections, args)
         }
+        OperatorCommand::Package(args) => {
+            execute_package_command(args, &cli, &config_resolution, &default_data_dir)
+        }
     }
 }
 
@@ -368,7 +372,8 @@ fn command_detections(
         | OperatorCommand::Service(_)
         | OperatorCommand::Dashboard(_)
         | OperatorCommand::Wallet(_)
-        | OperatorCommand::Support(_) => {
+        | OperatorCommand::Support(_)
+        | OperatorCommand::Package(_) => {
             detect_existing_installations(&detection_roots(config_resolution))
         }
     }

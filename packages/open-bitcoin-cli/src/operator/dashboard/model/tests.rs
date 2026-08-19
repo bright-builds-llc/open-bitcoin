@@ -189,10 +189,10 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             recent_peers: FieldAvailability::unavailable("no peer telemetry"),
             inbound: inbound_status_unavailable(),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::available(4),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::available(4),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(50_000),

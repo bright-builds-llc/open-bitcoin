@@ -62,9 +62,10 @@ fn authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_clas
     let status = phase127_authoritative_status_with_sensitive_operator_evidence();
     let network_status = OpenBitcoinNetworkStatusResponse {
         inbound: status.peers.inbound,
-        relay: status.mempool.relay,
+        relay: status.mempool.relay.clone(),
         block_relay: status.block_relay,
         metrics: status.metrics,
+        mempool: status.mempool,
     };
     let rpc = Phase127SensitiveStatusRpc { network_status };
     let input = phase127_status_collector_input(temp.path());

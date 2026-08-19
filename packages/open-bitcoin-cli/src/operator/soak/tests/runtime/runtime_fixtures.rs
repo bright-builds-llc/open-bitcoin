@@ -435,10 +435,10 @@ pub(super) fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot 
             recent_peers: FieldAvailability::unavailable("recent peers unavailable"),
             inbound: inbound_status_unavailable(),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::unavailable("mempool unavailable"),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::unavailable("mempool unavailable"),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),

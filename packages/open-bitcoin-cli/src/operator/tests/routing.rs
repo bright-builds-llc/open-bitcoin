@@ -549,7 +549,8 @@ fn package_human_dry_run_includes_non_mutating_disclaimer() {
         "unexpected heading: {rendered}"
     );
     assert!(
-        rendered.contains("Dry-run does not change mempool, relay, persistence, or evidence state."),
+        rendered
+            .contains("Dry-run does not change mempool, relay, persistence, or evidence state."),
         "missing dry-run disclaimer: {rendered}"
     );
     assert!(rendered.contains("ab"));

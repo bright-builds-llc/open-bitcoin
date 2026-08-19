@@ -235,10 +235,10 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
             }]),
             inbound: FieldAvailability::available(inbound_peer_serving_status()),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::unavailable("mempool unavailable"),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::unavailable("mempool unavailable"),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),

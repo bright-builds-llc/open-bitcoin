@@ -250,10 +250,10 @@ fn collect_live_status_snapshot(
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
             inbound,
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
             relay,
-        },
+        ),
         block_relay,
         wallet,
         logs: log_status(&input.config_resolution),
@@ -303,10 +303,10 @@ fn stopped_status_snapshot(
             recent_peers: FieldAvailability::unavailable(reason.clone()),
             inbound: FieldAvailability::unavailable(reason.clone()),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::unavailable(reason.clone()),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::unavailable(reason.clone()),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),
@@ -332,6 +332,7 @@ fn collect_open_bitcoin_network_status(
             relay: RelayEvidenceStatus::default(),
             block_relay: BlockRelayEvidenceStatus::default_unavailable(),
             metrics: metrics_status(),
+            mempool: MempoolStatus::default(),
         },
     }
 }

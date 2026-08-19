@@ -119,10 +119,10 @@ pub(super) fn phase72_status() -> OpenBitcoinStatusSnapshot {
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
             inbound: inbound_status_unavailable(),
         },
-        mempool: MempoolStatus {
-            transactions: FieldAvailability::unavailable("mempool unavailable"),
-            relay: RelayEvidenceStatus::default(),
-        },
+        mempool: MempoolStatus::from_transactions_and_relay(
+            FieldAvailability::unavailable("mempool unavailable"),
+            RelayEvidenceStatus::default(),
+        ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
