@@ -322,6 +322,7 @@
         "packages/open-bitcoin-cli/src/operator/support/tests.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/forensics_recovery_relay.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/inbound.rs",
+        "packages/open-bitcoin-cli/src/operator/support/tests/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/inbound_status_fixtures.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/recovery_progress_inbound.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/soak_forensics_fixtures.rs",

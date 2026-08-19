@@ -16,6 +16,8 @@ use open_bitcoin_node::{
         ConfigStatus, FieldAvailability, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
         InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
         InboundPeerServingStatus, InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
+        MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup, MempoolFeeFloorsGroup,
+        MempoolPressureGroup, MempoolRecoveryGroup, MempoolResourcesGroup, MempoolRetryGroup,
         MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence, NoProgressThresholdState,
         NodeRuntimeState, NodeStatus, PeerContributionEvidence, PeerContributionKind, PeerCounts,
         PeerStatus, PeerTipAgreement, PeerTipAgreementStatus, ProgressCreditEvidence,
@@ -75,5 +77,6 @@ mod soak_forensics_fixtures;
 use soak_forensics_fixtures::*;
 mod forensics_recovery_relay;
 mod inbound;
+mod mempool_policy;
 mod recovery_progress_inbound;
 mod sync_soak_forensics;
