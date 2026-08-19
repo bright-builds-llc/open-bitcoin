@@ -64,6 +64,7 @@ mod compact_timeout_cases;
 mod getdata_tx_receipt_cases;
 mod lifecycle_projection_cases;
 mod lifecycle_projection_target_cases;
+mod local_package_cases;
 mod maintenance_tick_cases;
 mod mempool_lifecycle_cases;
 mod package_bridge_cases;
