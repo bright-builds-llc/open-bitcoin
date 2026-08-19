@@ -5,12 +5,19 @@ use open_bitcoin_mempool::{
     MempoolCapacityEnforcement, MempoolCapacityStatus, RollingFeeParityStatus,
 };
 
-use crate::network::ManagedMempoolInfo;
+use open_bitcoin_core::primitives::Txid;
+
+use crate::network::{
+    CheckpointEvidenceSnapshot, CheckpointOutcome, CheckpointPersistenceStrength,
+    ManagedMempoolInfo, ManagedMempoolRecoverySummary,
+};
 use crate::status::relay_evidence::RelayEvidenceStatus;
 use crate::status::{
-    FieldAvailability, MempoolResourcesGroup, MempoolStatus, fee_floors_from_managed_info,
-    resources_from_managed_info,
+    FieldAvailability, MempoolPressureGroup, MempoolResourcesGroup, MempoolStatus,
+    checkpoint_group_from_evidence, decay_half_life_label, fee_floors_from_managed_info,
+    recovery_group_from_summary, resources_from_managed_info,
 };
+use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus};
 
 fn managed_info_with_distinct_resource_and_fee_roles() -> ManagedMempoolInfo {
     ManagedMempoolInfo {
@@ -137,4 +144,144 @@ fn resources_from_managed_info_does_not_swap_vsize_and_accounted_usage() {
     assert_eq!(group.accounted_capacity, 9_000);
     assert_eq!(group.transaction_count, 7);
     assert_ne!(group.virtual_size, group.accounted_usage);
+}
+
+#[test]
+fn decay_label_is_not_decaying_when_gate_closed() {
+    // Arrange
+    let usage = 10;
+    let capacity = 100;
+    let decay_gate_open = false;
+
+    // Act
+    let label = decay_half_life_label(usage, capacity, decay_gate_open);
+
+    // Assert
+    assert_eq!(label, "not_decaying");
+}
+
+#[test]
+fn decay_label_is_3h_when_usage_below_quarter_capacity() {
+    // Arrange
+    let usage = 10;
+    let capacity = 100;
+    let decay_gate_open = true;
+
+    // Act
+    let label = decay_half_life_label(usage, capacity, decay_gate_open);
+
+    // Assert
+    assert_eq!(label, "half_life_3h");
+}
+
+#[test]
+fn recovery_group_from_summary_drops_txid_records() {
+    // Arrange
+    let leaked_hex = "abababababababababababababababababababababababababababababababab";
+    let summary = ManagedMempoolRecoverySummary {
+        recovered_count: 2,
+        dropped_confirmed_count: 1,
+        dropped_duplicate_count: 3,
+        dropped_missing_parent_count: 4,
+        dropped_policy_incompatible_count: 5,
+        dropped_expired_count: 6,
+        dropped_evicted_count: 7,
+        records: vec![MempoolRecoveryRecord {
+            txid: Txid::from_byte_array([0xab; 32]),
+            status: MempoolRecoveryStatus::Recovered,
+        }],
+    };
+
+    // Act
+    let group = recovery_group_from_summary(&summary);
+    let encoded = serde_json::to_string(&group).expect("recovery group json");
+
+    // Assert
+    assert_eq!(group.recovered_count, 2);
+    assert_eq!(group.dropped_confirmed_count, 1);
+    assert_eq!(group.dropped_duplicate_count, 3);
+    assert_eq!(group.dropped_missing_parent_count, 4);
+    assert_eq!(group.dropped_policy_incompatible_count, 5);
+    assert_eq!(group.dropped_expired_count, 6);
+    assert_eq!(group.dropped_evicted_count, 7);
+    assert!(!encoded.contains(leaked_hex));
+    assert!(!regex_contains_txid_hex(&encoded));
+    let object = serde_json::from_str::<serde_json::Value>(&encoded)
+        .expect("recovery json value")
+        .as_object()
+        .expect("recovery group serializes to object")
+        .clone();
+    assert_eq!(object.get("records"), None);
+    forbidden_identity_or_knots_alias_keys(&object);
+}
+
+#[test]
+fn checkpoint_group_exposes_dirty_generation_present_not_generation_id() {
+    // Arrange
+    let evidence = CheckpointEvidenceSnapshot {
+        current_generation: 9,
+        maybe_dirty_generation: Some(42),
+        maybe_in_flight_generation: None,
+        maybe_last_durable_generation: Some(8),
+        maybe_captured_at: None,
+        maybe_completed_at: None,
+        maybe_failed_at: None,
+        maybe_trigger: None,
+        maybe_persistence_strength: Some(CheckpointPersistenceStrength::Sync),
+        outcome: CheckpointOutcome::Succeeded,
+        maybe_failure: None,
+        overdue: false,
+        checkpoint_age_seconds: Some(11),
+        maybe_loss_bound_seconds: Some(30),
+        maybe_generation_loss_range: None,
+    };
+
+    // Act
+    let group = checkpoint_group_from_evidence(&evidence);
+    let encoded = serde_json::to_value(&group).expect("checkpoint group json");
+    let object = encoded
+        .as_object()
+        .expect("checkpoint group serializes to object");
+
+    // Assert
+    assert!(group.dirty_generation_present);
+    assert_eq!(group.outcome, "succeeded");
+    assert!(!group.overdue);
+    assert_eq!(group.persistence_strength, "sync");
+    assert_eq!(group.age_seconds, Some(11));
+    assert_eq!(group.loss_bound_seconds, Some(30));
+    assert_eq!(object.get("dirty_generation"), None);
+    assert_eq!(object.get("current_generation"), None);
+    assert_ne!(encoded["dirty_generation_present"], 42);
+    forbidden_identity_or_knots_alias_keys(object);
+}
+
+#[test]
+fn pressure_group_json_has_no_evicted_count_or_rebroadcast_deferred() {
+    // Arrange
+    let group = MempoolPressureGroup {
+        pressure_removal_count: 4,
+        decay_half_life_label: "half_life_12h".to_string(),
+    };
+
+    // Act
+    let encoded = serde_json::to_value(&group).expect("pressure group json");
+    let object = encoded
+        .as_object()
+        .expect("pressure group serializes to object");
+
+    // Assert
+    assert_eq!(encoded["pressure_removal_count"], 4);
+    assert_eq!(encoded["decay_half_life_label"], "half_life_12h");
+    assert_eq!(object.get("evicted_count"), None);
+    assert_eq!(object.get("rebroadcast_deferred_count"), None);
+    assert_eq!(object.get("rebroadcast_deferred"), None);
+    forbidden_identity_or_knots_alias_keys(object);
+}
+
+fn regex_contains_txid_hex(encoded: &str) -> bool {
+    encoded
+        .as_bytes()
+        .windows(64)
+        .any(|window| window.iter().all(|byte| byte.is_ascii_hexdigit()))
 }
