@@ -5,9 +5,9 @@
 
 mod block_relay;
 mod inbound;
+mod mempool_policy;
 mod progress_guarantee;
 mod relay;
-
 use open_bitcoin_node::{
     MetricsStatus, RecoveryEvidenceSnapshot,
     status::{
@@ -24,6 +24,7 @@ use serde::Serialize;
 
 use block_relay::block_relay_evidence_lines;
 use inbound::inbound_status_text;
+pub(crate) use mempool_policy::{mempool_policy_entries, mempool_policy_lines};
 use progress_guarantee::progress_guarantee_lines;
 use relay::relay_evidence_lines;
 
@@ -184,6 +185,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
         "Mempool: {}",
         u64_availability(&snapshot.mempool.transactions, "transactions")
     ));
+    lines.extend(mempool_policy_lines(&snapshot.mempool));
     lines.extend(relay_evidence_lines(&snapshot.mempool));
     lines.extend(block_relay_evidence_lines(&snapshot.block_relay));
     lines.push(format!(

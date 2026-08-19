@@ -271,6 +271,7 @@
         "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/block_relay.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/relay.rs",

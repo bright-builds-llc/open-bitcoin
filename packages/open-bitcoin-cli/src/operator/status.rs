@@ -229,8 +229,8 @@ fn collect_live_status_snapshot(
     health_signals.extend(log_health_signals(input));
 
     let network_status = collect_open_bitcoin_network_status(rpc_client);
+    let mempool = live_mempool_status(&network_status, &mempool_info);
     let inbound = network_status.inbound;
-    let relay = network_status.relay;
     let block_relay = network_status.block_relay;
     let metrics = network_status.metrics;
 
@@ -250,10 +250,7 @@ fn collect_live_status_snapshot(
             recent_peers: FieldAvailability::unavailable("peer telemetry unavailable"),
             inbound,
         },
-        mempool: MempoolStatus::from_transactions_and_relay(
-            FieldAvailability::available(saturating_usize_to_u64(mempool_info.size)),
-            relay,
-        ),
+        mempool,
         block_relay,
         wallet,
         logs: log_status(&input.config_resolution),
@@ -303,10 +300,7 @@ fn stopped_status_snapshot(
             recent_peers: FieldAvailability::unavailable(reason.clone()),
             inbound: FieldAvailability::unavailable(reason.clone()),
         },
-        mempool: MempoolStatus::from_transactions_and_relay(
-            FieldAvailability::unavailable(reason.clone()),
-            RelayEvidenceStatus::default(),
-        ),
+        mempool: unavailable_policy_mempool(&reason),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),
@@ -319,6 +313,34 @@ fn stopped_status_snapshot(
         resource_bounds: collect_resource_bounds(&input.config_resolution, None),
         health_signals,
         build: current_build_provenance(),
+    }
+}
+
+fn live_mempool_status(
+    network_status: &OpenBitcoinNetworkStatusResponse,
+    mempool_info: &GetMempoolInfoResponse,
+) -> MempoolStatus {
+    let mut mempool = network_status.mempool.clone();
+    mempool.relay = network_status.relay.clone();
+    if matches!(mempool.resources, FieldAvailability::Unavailable { .. }) {
+        mempool.transactions =
+            FieldAvailability::available(saturating_usize_to_u64(mempool_info.size));
+    }
+    mempool
+}
+
+fn unavailable_policy_mempool(reason: &str) -> MempoolStatus {
+    MempoolStatus {
+        transactions: FieldAvailability::unavailable(reason),
+        relay: RelayEvidenceStatus::default(),
+        resources: FieldAvailability::unavailable(reason),
+        fee_floors: FieldAvailability::unavailable(reason),
+        pressure: FieldAvailability::unavailable(reason),
+        eviction: FieldAvailability::unavailable(reason),
+        checkpoint: FieldAvailability::unavailable(reason),
+        recovery: FieldAvailability::unavailable(reason),
+        retry: FieldAvailability::unavailable(reason),
+        admission: FieldAvailability::unavailable(reason),
     }
 }
 
