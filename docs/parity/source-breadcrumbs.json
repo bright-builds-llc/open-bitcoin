@@ -282,6 +282,7 @@
         "packages/open-bitcoin-cli/src/operator/status/render/tests/inbound_and_sync.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/tests/service.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/inbound_recovery_wallet.rs",
+        "packages/open-bitcoin-cli/src/operator/status/tests/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/relay_and_filesystem_fixtures.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/rendering_and_service.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/restart_resume.rs",

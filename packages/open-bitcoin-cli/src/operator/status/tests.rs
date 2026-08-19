@@ -34,11 +34,13 @@ use open_bitcoin_node::status::{
     BestKnownTipStatus, BlockRelayEvidenceStatus, BuildProvenance, ConfigStatus, FieldAvailability,
     INBOUND_STATUS_UNAVAILABLE_REASON, InboundAddressDecisionEvent, InboundAddressEvidenceEntry,
     InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
-    InboundPeerServingStatus, InboundPermissionDecisionEvent, MempoolStatus, NodeRuntimeState,
-    NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, ServiceLifecycleStatus,
-    ServiceStatus, StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets,
-    SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
-    WalletStatus,
+    InboundPeerServingStatus, InboundPermissionDecisionEvent, MempoolAdmissionGroup,
+    MempoolCheckpointGroup, MempoolEvictionGroup, MempoolFeeFloorsGroup, MempoolPressureGroup,
+    MempoolRecoveryGroup, MempoolResourcesGroup, MempoolRetryGroup, MempoolStatus,
+    NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus,
+    ServiceLifecycleStatus, ServiceStatus, StayCurrentStatus, SyncAttemptCounters,
+    SyncConfiguredTargets, SyncProgressSignal, SyncStatus, SyncStopReasonStatus, WalletFreshness,
+    WalletScanProgress, WalletStatus,
     relay_evidence::{
         RelayActivationEvidence, RelayCapabilityEvidence, RelayDownloadEligibilityCounters,
         RelayEvidenceCapability, RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
@@ -61,6 +63,7 @@ use status_inputs::*;
 mod relay_and_filesystem_fixtures;
 use relay_and_filesystem_fixtures::*;
 mod inbound_recovery_wallet;
+mod mempool_policy;
 mod rendering_and_service;
 mod restart_resume;
 mod service_manager;
