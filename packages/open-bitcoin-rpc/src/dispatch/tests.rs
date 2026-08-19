@@ -41,6 +41,7 @@ use open_bitcoin_node::{
         primitives::{
             Amount, Block, BlockHash, BlockHeader, NetworkAddress, NetworkMagic, OutPoint,
             ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput, Txid,
+            Wtxid,
         },
         wallet::{AddressNetwork, DescriptorRole, SingleKeyDescriptor, Wallet},
     },
@@ -80,6 +81,7 @@ const RANGED_TPUB: &str = "tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qk
 use super::{network_error_to_failure, node};
 
 mod chain_fixtures;
+mod dual_state;
 mod network_errors;
 mod network_fixtures;
 mod network_status;

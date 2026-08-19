@@ -2034,6 +2034,7 @@
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs",
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/inbound_runtime.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/chain_fixtures.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/tests/dual_state.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_errors.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_fixtures.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_status.rs",

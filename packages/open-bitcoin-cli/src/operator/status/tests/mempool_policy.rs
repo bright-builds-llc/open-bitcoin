@@ -208,6 +208,46 @@ fn json_status_has_mempool_fee_floors_and_no_last_package_members() {
 }
 
 #[test]
+fn json_status_has_no_last_package_members() {
+    // Arrange
+    let snapshot = collect_status_snapshot(
+        &status_input(Vec::new()),
+        Some(&live_rpc_with_policy_mempool()),
+    );
+
+    // Act
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("json status");
+    let decoded: serde_json::Value = serde_json::from_str(&json).expect("decode status json");
+    let mempool = decoded["mempool"].as_object().expect("mempool object");
+
+    // Assert
+    for forbidden_key in [
+        "last_package",
+        "package_members",
+        "members",
+        "fingerprint",
+        "txid",
+        "wtxid",
+    ] {
+        assert!(
+            mempool.get(forbidden_key).is_none(),
+            "operator JSON mempool leaked {forbidden_key}"
+        );
+    }
+    for group in ["admission", "retry"] {
+        let object = mempool[group]["value"]
+            .as_object()
+            .unwrap_or_else(|| panic!("{group} value"));
+        for forbidden in ["propagated", "broadcast", "public_relay"] {
+            assert!(
+                object.get(forbidden).is_none(),
+                "operator JSON mempool.{group} leaked {forbidden}"
+            );
+        }
+    }
+}
+
+#[test]
 fn human_status_forbids_mempoolminfee_label() {
     // Arrange
     let human = rendered_live_human_status();
