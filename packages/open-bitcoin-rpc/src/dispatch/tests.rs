@@ -81,6 +81,7 @@ use super::{network_error_to_failure, node};
 mod chain_fixtures;
 mod network_errors;
 mod network_fixtures;
+mod network_status;
 mod network_status_admission;
 mod network_status_schema;
 mod node_info;
