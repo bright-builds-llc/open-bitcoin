@@ -11,7 +11,9 @@ use open_bitcoin_node::{
         CompactRelayCleanupCounters, CompactRelayFallbackCounters, CompactRelayInFlightCounters,
         CompactRelayMissingTransactionCounters, CompactRelayNegotiationCounters,
         CompactRelayReconstructionCounters, ConfigStatus, FieldAvailability, HealthSignal,
-        HealthSignalLevel, MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence,
+        HealthSignalLevel, MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup,
+        MempoolFeeFloorsGroup, MempoolPressureGroup, MempoolRecoveryGroup, MempoolResourcesGroup,
+        MempoolRetryGroup, MempoolStatus, NoProgressDiagnosis, NoProgressThresholdEvidence,
         NoProgressThresholdState, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot,
         PeerContributionEvidence, PeerContributionKind, PeerCounts, PeerStatus, PeerTipAgreement,
         PeerTipAgreementStatus, ProgressCreditEvidence, ProgressCreditKind, ProgressWindowEvidence,
@@ -327,6 +329,7 @@ fn phase77_recovery_evidence() -> RecoveryEvidenceSnapshot {
     }
 }
 
+mod mempool_policy;
 mod projection;
 mod recovery_unavailable;
 mod sync_and_recovery;

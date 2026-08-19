@@ -377,6 +377,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/model/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/sync_section.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/projection.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/recovery_unavailable.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/sync_and_recovery.rs"
