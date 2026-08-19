@@ -6,6 +6,8 @@ use super::*;
 const POISONED_RECOVERY_TXID: &str =
     "cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe";
 
+const LOCKED_SUPPORT_NEXT_ACTION: &str = "Next action: Treat package, pressure, checkpoint, recovery, and retry evidence as bounded local operator status. Successful local admission is not public or default relay and is not network-wide propagation.";
+
 fn available_retry_group() -> MempoolRetryGroup {
     MempoolRetryGroup {
         eligible: 1,
@@ -65,6 +67,37 @@ fn snapshot_with_available_policy_counts() -> OpenBitcoinStatusSnapshot {
         cleared: 10,
     });
     status
+}
+
+fn rendered_policy_support_markdown() -> String {
+    let temp = TestDirectory::new("phase137-09-support-markdown");
+    let bundle =
+        phase77_support_bundle_with_status(temp.path(), snapshot_with_available_policy_counts());
+    render::render_support_markdown(&bundle)
+}
+
+fn markdown_line_index(markdown: &str, prefix: &str) -> usize {
+    markdown
+        .lines()
+        .position(|line| line.starts_with(prefix))
+        .unwrap_or_else(|| panic!("missing {prefix}"))
+}
+
+fn contains_64_hex_token(text: &str) -> bool {
+    text.split(|character: char| !character.is_ascii_hexdigit())
+        .any(|token| token.len() >= 64)
+}
+
+fn relay_and_mempool_section(markdown: &str) -> &str {
+    let start = markdown
+        .find("## Relay and Mempool Evidence")
+        .expect("relay and mempool section");
+    let section = &markdown[start..];
+    let maybe_end = section[3..].find("\n## ").map(|offset| offset + 3);
+    match maybe_end {
+        Some(end) => &section[..end],
+        None => section,
+    }
 }
 
 #[test]
@@ -139,5 +172,57 @@ fn support_bundle_json_has_no_64_hex_after_poisoned_recovery_reason() {
     assert!(
         !json.contains(POISONED_RECOVERY_TXID),
         "poisoned recovery txid leaked into shareable snapshot json"
+    );
+}
+
+#[test]
+fn support_markdown_inserts_virtual_size_before_relay_evidence() {
+    // Arrange
+    let markdown = rendered_policy_support_markdown();
+
+    // Act
+    let mempool_idx = markdown_line_index(&markdown, "- Mempool:");
+    let virtual_size_idx = markdown_line_index(&markdown, "- Virtual size:");
+    let relay_evidence_idx = markdown_line_index(&markdown, "- Relay evidence:");
+    let recovery_idx = markdown_line_index(&markdown, "- Recovery:");
+    let relay_recovery_idx = markdown_line_index(&markdown, "- Relay recovery:");
+
+    // Assert
+    assert!(mempool_idx < virtual_size_idx);
+    assert!(virtual_size_idx < relay_evidence_idx);
+    assert!(markdown.contains("- Virtual size: 2048 vbytes"));
+    assert!(markdown.contains("- Mempool: transactions=7"));
+    assert!(markdown.contains("- Relay evidence:"));
+    assert_ne!(recovery_idx, relay_recovery_idx);
+}
+
+#[test]
+fn support_markdown_includes_locked_next_action() {
+    // Arrange
+    let markdown = rendered_policy_support_markdown();
+
+    // Act
+    let occurrences = markdown.matches(LOCKED_SUPPORT_NEXT_ACTION).count();
+
+    // Assert
+    assert_eq!(occurrences, 1);
+}
+
+#[test]
+fn support_markdown_forbids_propagation_and_knots_alias_labels() {
+    // Arrange
+    let markdown = rendered_policy_support_markdown();
+    let section = relay_and_mempool_section(&markdown);
+
+    // Act
+    let has_forbidden_copy = ["propagated", "guaranteed", "mempoolminfee"]
+        .into_iter()
+        .any(|forbidden| section.contains(forbidden));
+
+    // Assert
+    assert!(!has_forbidden_copy);
+    assert!(
+        !contains_64_hex_token(section),
+        "policy support markdown leaked a 64-hex identifier"
     );
 }
