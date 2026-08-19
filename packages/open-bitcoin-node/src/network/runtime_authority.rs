@@ -15,7 +15,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{
     MempoolLifecycleDelta, PackageReport, PolicyConfig, PolicyTime, RelayIntent,
-    ReorgLifecycleContext,
+    ReorgLifecycleContext, SubmittedPackageResult,
 };
 use open_bitcoin_network::{
     BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
@@ -516,6 +516,26 @@ impl ManagedNetworkHandle {
     ) -> Result<PackageReport, ManagedNetworkAuthorityError> {
         self.try_read(|network| {
             network.dry_run_local_package(
+                transactions,
+                verify_flags,
+                consensus_params,
+                now_unix_seconds,
+                relay_intent,
+            )
+        })
+    }
+
+    /// Submits a local package through PackageAdmission Local.
+    pub fn submit_local_package(
+        &self,
+        transactions: Vec<Transaction>,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+        now_unix_seconds: i64,
+        relay_intent: RelayIntent,
+    ) -> Result<SubmittedPackageResult, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network.submit_local_package(
                 transactions,
                 verify_flags,
                 consensus_params,

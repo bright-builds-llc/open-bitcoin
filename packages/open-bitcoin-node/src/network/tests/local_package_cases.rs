@@ -275,13 +275,7 @@ fn submit_local_package_does_not_call_peer_bridge() {
             .peer_manager()
             .reconsiderable_transaction_contains(identity.wtxid)
     );
-    assert!(
-        network
-            .mempool()
-            .mempool()
-            .entry(&identity.txid)
-            .is_some()
-    );
+    assert!(network.mempool().mempool().entry(&identity.txid).is_some());
     assert!(
         !handle
             .authority_debug_snapshot_for_test()
