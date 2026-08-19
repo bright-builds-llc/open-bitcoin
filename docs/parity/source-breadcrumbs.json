@@ -1782,6 +1782,8 @@
       "files": [
         "packages/open-bitcoin-node/src/metrics.rs",
         "packages/open-bitcoin-node/src/metrics/block_relay.rs",
+        "packages/open-bitcoin-node/src/metrics/inbound.rs",
+        "packages/open-bitcoin-node/src/metrics/mempool_policy.rs",
         "packages/open-bitcoin-node/src/metrics/tests.rs",
         "packages/open-bitcoin-node/src/logging.rs",
         "packages/open-bitcoin-node/src/logging/prune.rs",

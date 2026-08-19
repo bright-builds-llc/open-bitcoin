@@ -16,8 +16,8 @@ use std::{
 };
 
 use open_bitcoin_node::{
-    FjallNodeStore, MetricRetentionPolicy, PersistMode, inbound_metric_samples,
-    relay_metric_samples,
+    FjallNodeStore, MetricRetentionPolicy, MetricSample, PersistMode, inbound_metric_samples,
+    mempool_policy_metric_samples, mempool_status_from_operator_snapshot, relay_metric_samples,
 };
 use open_bitcoin_rpc::{ManagedRpcContext, config::RuntimeConfig};
 
@@ -115,6 +115,13 @@ fn persist_inbound_metrics_once(
     let relay = snapshot.relay().clone();
     let mut samples = inbound_metric_samples(&inbound, timestamp);
     samples.extend(relay_metric_samples(&relay, timestamp));
+    samples.extend(
+        mempool_policy_metric_samples(&mempool_status_from_operator_snapshot(
+            snapshot.operator_network(),
+        ))
+        .into_iter()
+        .map(|(kind, value)| MetricSample::new(kind, value as f64, timestamp)),
+    );
     if samples.is_empty() {
         return;
     }

@@ -234,7 +234,7 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(MetricKind::ALL.len(), 60);
+    assert_eq!(MetricKind::ALL.len(), 74);
     assert_eq!(
         labels,
         vec![
@@ -440,20 +440,18 @@ fn mempool_policy_metric_all_includes_new_kinds() {
 fn mempool_policy_samples_skip_unavailable_groups() {
     // Arrange
     let mut mempool = crate::status::MempoolStatus::default();
-    mempool.resources = crate::status::FieldAvailability::available(
-        crate::status::MempoolResourcesGroup {
+    mempool.resources =
+        crate::status::FieldAvailability::available(crate::status::MempoolResourcesGroup {
             virtual_size: 100,
             accounted_usage: 200,
             accounted_capacity: 300,
             transaction_count: 4,
-        },
-    );
-    mempool.pressure = crate::status::FieldAvailability::available(
-        crate::status::MempoolPressureGroup {
+        });
+    mempool.pressure =
+        crate::status::FieldAvailability::available(crate::status::MempoolPressureGroup {
             pressure_removal_count: 7,
             decay_half_life_label: "half_life_12h".to_string(),
-        },
-    );
+        });
 
     // Act
     let samples = super::super::mempool_policy_metric_samples(&mempool);
@@ -484,10 +482,7 @@ fn mempool_policy_samples_skip_unavailable_groups() {
     assert_eq!(samples.get(&MetricKind::MempoolRetryEligible), None);
     assert_eq!(samples.get(&MetricKind::MempoolRetryCleared), None);
     assert_eq!(samples.get(&MetricKind::MempoolAdmissionAccepted), None);
-    assert_eq!(
-        samples.get(&MetricKind::MempoolAdmissionStillPresent),
-        None
-    );
+    assert_eq!(samples.get(&MetricKind::MempoolAdmissionStillPresent), None);
 }
 
 #[test]

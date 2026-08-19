@@ -8,8 +8,9 @@
 use std::sync::Arc;
 
 use crate::{
-    FieldAvailability, InboundPeerServingStatus, MetricRetentionPolicy, block_relay_metric_samples,
-    inbound_metric_samples, network::BlockRelayRuntimeEvidenceSnapshot,
+    FieldAvailability, InboundPeerServingStatus, MetricRetentionPolicy, MetricSample,
+    block_relay_metric_samples, inbound_metric_samples, mempool_policy_metric_samples,
+    mempool_status_from_operator_snapshot, network::BlockRelayRuntimeEvidenceSnapshot,
 };
 
 use super::{DurableSyncRuntime, SyncRunSummary, SyncRuntimeError};
@@ -40,6 +41,13 @@ impl DurableSyncRuntime {
                 snapshot.served_count,
                 timestamp,
             ));
+        }
+        if let Ok(snapshot) = self.network.operator_snapshot() {
+            samples.extend(
+                mempool_policy_metric_samples(&mempool_status_from_operator_snapshot(&snapshot))
+                    .into_iter()
+                    .map(|(kind, value)| MetricSample::new(kind, value as f64, timestamp)),
+            );
         }
         self.store.append_metric_samples(
             &samples,

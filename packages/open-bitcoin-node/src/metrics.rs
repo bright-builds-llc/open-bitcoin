@@ -4,18 +4,21 @@
 //! Serializable metrics retention and status contracts.
 
 mod block_relay;
+mod inbound;
+mod mempool_policy;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::status::{
-    FieldAvailability, InboundPeerServingStatus,
-    relay_evidence::{RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus},
+use crate::status::relay_evidence::{
+    RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
 };
 pub use block_relay::block_relay_metric_samples;
+pub use inbound::inbound_metric_samples;
+pub use mempool_policy::{mempool_policy_metric_samples, mempool_status_from_operator_snapshot};
 
 /// Metric series names exposed to status and dashboard consumers.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MetricKind {
     SyncHeight,
@@ -78,10 +81,24 @@ pub enum MetricKind {
     CompactMalformedCount,
     CompactTimeoutCount,
     CompactCleanupCount,
+    MempoolVirtualSize,
+    MempoolAccountedUsage,
+    MempoolAccountedCapacity,
+    MempoolStaticRelayFloor,
+    MempoolRollingMempoolFloor,
+    MempoolEffectiveAdmissionFloor,
+    MempoolIncrementalRelayFee,
+    MempoolPressureRemovalCount,
+    MempoolCheckpointOverdue,
+    MempoolRecoveryRecoveredCount,
+    MempoolRetryEligible,
+    MempoolRetryCleared,
+    MempoolAdmissionAccepted,
+    MempoolAdmissionStillPresent,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 60] = [
+    pub const ALL: [Self; 74] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -142,6 +159,20 @@ impl MetricKind {
         Self::CompactMalformedCount,
         Self::CompactTimeoutCount,
         Self::CompactCleanupCount,
+        Self::MempoolVirtualSize,
+        Self::MempoolAccountedUsage,
+        Self::MempoolAccountedCapacity,
+        Self::MempoolStaticRelayFloor,
+        Self::MempoolRollingMempoolFloor,
+        Self::MempoolEffectiveAdmissionFloor,
+        Self::MempoolIncrementalRelayFee,
+        Self::MempoolPressureRemovalCount,
+        Self::MempoolCheckpointOverdue,
+        Self::MempoolRecoveryRecoveredCount,
+        Self::MempoolRetryEligible,
+        Self::MempoolRetryCleared,
+        Self::MempoolAdmissionAccepted,
+        Self::MempoolAdmissionStillPresent,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -214,6 +245,20 @@ impl MetricKind {
             Self::CompactMalformedCount => "compact_malformed_count",
             Self::CompactTimeoutCount => "compact_timeout_count",
             Self::CompactCleanupCount => "compact_cleanup_count",
+            Self::MempoolVirtualSize => "mempool_virtual_size",
+            Self::MempoolAccountedUsage => "mempool_accounted_usage",
+            Self::MempoolAccountedCapacity => "mempool_accounted_capacity",
+            Self::MempoolStaticRelayFloor => "mempool_static_relay_floor",
+            Self::MempoolRollingMempoolFloor => "mempool_rolling_mempool_floor",
+            Self::MempoolEffectiveAdmissionFloor => "mempool_effective_admission_floor",
+            Self::MempoolIncrementalRelayFee => "mempool_incremental_relay_fee",
+            Self::MempoolPressureRemovalCount => "mempool_pressure_removal_count",
+            Self::MempoolCheckpointOverdue => "mempool_checkpoint_overdue",
+            Self::MempoolRecoveryRecoveredCount => "mempool_recovery_recovered_count",
+            Self::MempoolRetryEligible => "mempool_retry_eligible",
+            Self::MempoolRetryCleared => "mempool_retry_cleared",
+            Self::MempoolAdmissionAccepted => "mempool_admission_accepted",
+            Self::MempoolAdmissionStillPresent => "mempool_admission_still_present",
         }
     }
 }
@@ -252,134 +297,6 @@ impl MetricSample {
             timestamp_unix_seconds,
         }
     }
-}
-
-/// Project the canonical inbound status aggregate into fixed low-cardinality metric samples.
-pub fn inbound_metric_samples(
-    inbound: &FieldAvailability<InboundPeerServingStatus>,
-    timestamp_unix_seconds: u64,
-) -> Vec<MetricSample> {
-    let FieldAvailability::Available(status) = inbound else {
-        return Vec::new();
-    };
-
-    vec![
-        MetricSample::new(
-            MetricKind::InboundAdmittedPeerCount,
-            f64::from(status.admitted_inbound_peers),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundRejectedPeerCount,
-            f64::from(status.rejected_inbound_peers),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundCapRejectCount,
-            f64::from(status.cap_rejects),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundReservedSlotRejectCount,
-            f64::from(status.reserved_slot_rejects),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundDuplicateRejectCount,
-            f64::from(status.duplicate_rejects),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundSelfConnectionRejectCount,
-            f64::from(status.self_connection_rejects),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundPermissionedAdmitCount,
-            f64::from(status.permissioned_inbound_peers),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundProtectedAdmitCount,
-            f64::from(status.protected_inbound_peers),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundInactivePermissionEffectCount,
-            f64::from(status.inactive_permission_effect_observations),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundPermissionValidationFailureCount,
-            f64::from(status.permission_validation_failures),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundEvictionCandidateCount,
-            f64::from(status.eviction_candidates_evaluated),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundDisconnectCount,
-            f64::from(status.disconnects_requested),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundActiveBanCount,
-            f64::from(status.active_bans),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundMisbehaviorObservationCount,
-            f64::from(status.misbehavior_observations),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundProtectedNoActionCount,
-            f64::from(status.protected_no_actions),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundResourcePressureActiveCount,
-            f64::from(status.resource_pressure_events),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundReadQueuePressureCount,
-            f64::from(status.read_queue_pressure_events),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundWriteQueuePressureCount,
-            f64::from(status.write_queue_pressure_events),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundRequestCapReachedCount,
-            f64::from(status.request_cap_events),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundPayloadRejectedCount,
-            f64::from(status.payload_rejections),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundTimeoutDisconnectCount,
-            f64::from(status.timeout_disconnects),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundChurnRejectedCount,
-            f64::from(status.churn_rejections),
-            timestamp_unix_seconds,
-        ),
-        MetricSample::new(
-            MetricKind::InboundReconnectSuppressedCount,
-            f64::from(status.reconnect_suppressions),
-            timestamp_unix_seconds,
-        ),
-    ]
 }
 
 /// Project sanitized relay evidence counters into fixed low-cardinality metric samples.
