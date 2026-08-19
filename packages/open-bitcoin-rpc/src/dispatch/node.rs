@@ -18,7 +18,8 @@ use open_bitcoin_node::core::{
     wallet::SingleKeyDescriptor,
 };
 use open_bitcoin_node::status::{
-    FieldAvailability, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+    FieldAvailability, MempoolStatus, SyncLifecycleState, SyncProgress, SyncProgressSignal,
+    fee_floors_from_managed_info, resources_from_managed_info,
 };
 
 use crate::{
@@ -218,11 +219,18 @@ pub(super) fn open_bitcoin_network_status(
     let snapshot = context
         .authoritative_operator_snapshot()
         .map_err(network_authority_error_to_failure)?;
+    let mempool_info = snapshot.mempool();
     Ok(OpenBitcoinNetworkStatusResponse {
         inbound: snapshot.inbound().clone(),
         relay: snapshot.relay().clone(),
         block_relay: snapshot.block_relay().clone(),
         metrics: context.metrics_status(),
+        mempool: MempoolStatus {
+            transactions: FieldAvailability::available(mempool_info.transaction_count as u64),
+            relay: snapshot.relay().clone(),
+            resources: FieldAvailability::available(resources_from_managed_info(mempool_info)),
+            fee_floors: FieldAvailability::available(fee_floors_from_managed_info(mempool_info)),
+        },
     })
 }
 

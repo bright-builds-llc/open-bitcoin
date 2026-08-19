@@ -2028,6 +2028,7 @@
         "packages/open-bitcoin-rpc/src/dispatch/tests/chain_fixtures.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_errors.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_fixtures.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/tests/network_status.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_status_admission.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/network_status_schema.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/node_info.rs",

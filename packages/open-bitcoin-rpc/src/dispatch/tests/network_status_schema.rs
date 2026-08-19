@@ -123,7 +123,7 @@ fn authoritative_operator_snapshot_preserves_network_status_schema_and_provenanc
             .expect("status object")
             .keys()
             .collect::<Vec<_>>(),
-        vec!["block_relay", "inbound", "metrics", "relay"]
+        vec!["block_relay", "inbound", "mempool", "metrics", "relay"]
     );
     assert_eq!(
         status["inbound"],

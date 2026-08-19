@@ -62,7 +62,10 @@ fn openbitcoinnetworkstatus_fee_floors_are_distinct_from_getmempoolinfo_aliases(
     assert_eq!(floors["rolling_mempool_floor"], json!(3_000));
     assert_eq!(floors["effective_admission_floor"], json!(3_000));
     assert_eq!(floors["incremental_relay_fee"], json!(7_000));
-    assert_ne!(floors["static_relay_floor"], floors["rolling_mempool_floor"]);
+    assert_ne!(
+        floors["static_relay_floor"],
+        floors["rolling_mempool_floor"]
+    );
     assert_ne!(
         floors["incremental_relay_fee"],
         floors["effective_admission_floor"]
