@@ -349,3 +349,154 @@ fn relay_metric_kinds_are_low_cardinality_counters() {
         }
     }
 }
+
+const MEMPOOL_POLICY_METRIC_KINDS: [(MetricKind, &str); 14] = [
+    (MetricKind::MempoolVirtualSize, "mempool_virtual_size"),
+    (MetricKind::MempoolAccountedUsage, "mempool_accounted_usage"),
+    (
+        MetricKind::MempoolAccountedCapacity,
+        "mempool_accounted_capacity",
+    ),
+    (
+        MetricKind::MempoolStaticRelayFloor,
+        "mempool_static_relay_floor",
+    ),
+    (
+        MetricKind::MempoolRollingMempoolFloor,
+        "mempool_rolling_mempool_floor",
+    ),
+    (
+        MetricKind::MempoolEffectiveAdmissionFloor,
+        "mempool_effective_admission_floor",
+    ),
+    (
+        MetricKind::MempoolIncrementalRelayFee,
+        "mempool_incremental_relay_fee",
+    ),
+    (
+        MetricKind::MempoolPressureRemovalCount,
+        "mempool_pressure_removal_count",
+    ),
+    (
+        MetricKind::MempoolCheckpointOverdue,
+        "mempool_checkpoint_overdue",
+    ),
+    (
+        MetricKind::MempoolRecoveryRecoveredCount,
+        "mempool_recovery_recovered_count",
+    ),
+    (MetricKind::MempoolRetryEligible, "mempool_retry_eligible"),
+    (MetricKind::MempoolRetryCleared, "mempool_retry_cleared"),
+    (
+        MetricKind::MempoolAdmissionAccepted,
+        "mempool_admission_accepted",
+    ),
+    (
+        MetricKind::MempoolAdmissionStillPresent,
+        "mempool_admission_still_present",
+    ),
+];
+
+// Copied from the eight dashboard sparkline names. New mempool-policy kinds stay off
+// this strip; MAX_DASHBOARD_CHARTS remains 8 in dashboard/model/metrics.rs.
+const DASHBOARD_CHART_KIND_NAMES: [&str; 8] = [
+    "header_height",
+    "downloaded_block_height",
+    "connected_block_height",
+    "sync_height",
+    "peer_count",
+    "mempool_transactions",
+    "disk_usage_bytes",
+    "rpc_health",
+];
+
+#[test]
+fn mempool_policy_metric_kinds_use_open_bitcoin_names() {
+    // Arrange / Act / Assert
+    for (kind, expected_name) in MEMPOOL_POLICY_METRIC_KINDS {
+        assert_eq!(kind.as_str(), expected_name);
+        assert_ne!(expected_name, "bytes");
+        assert_ne!(expected_name, "usage");
+        assert_ne!(expected_name, "maxmempool");
+        assert_ne!(expected_name, "mempoolminfee");
+        assert_ne!(expected_name, "broadcast");
+        assert_ne!(expected_name, "propagated");
+    }
+}
+
+#[test]
+fn mempool_policy_metric_all_includes_new_kinds() {
+    // Arrange
+    let new_kinds = MEMPOOL_POLICY_METRIC_KINDS.map(|(kind, _)| kind);
+
+    // Act / Assert
+    for kind in new_kinds {
+        assert!(MetricKind::ALL.contains(&kind));
+    }
+    assert_eq!(MetricKind::ALL.len(), 74);
+}
+
+#[test]
+fn mempool_policy_samples_skip_unavailable_groups() {
+    // Arrange
+    let mut mempool = crate::status::MempoolStatus::default();
+    mempool.resources = crate::status::FieldAvailability::available(
+        crate::status::MempoolResourcesGroup {
+            virtual_size: 100,
+            accounted_usage: 200,
+            accounted_capacity: 300,
+            transaction_count: 4,
+        },
+    );
+    mempool.pressure = crate::status::FieldAvailability::available(
+        crate::status::MempoolPressureGroup {
+            pressure_removal_count: 7,
+            decay_half_life_label: "half_life_12h".to_string(),
+        },
+    );
+
+    // Act
+    let samples = super::super::mempool_policy_metric_samples(&mempool);
+
+    // Assert
+    assert_eq!(samples.get(&MetricKind::MempoolVirtualSize), Some(&100));
+    assert_eq!(samples.get(&MetricKind::MempoolAccountedUsage), Some(&200));
+    assert_eq!(
+        samples.get(&MetricKind::MempoolAccountedCapacity),
+        Some(&300)
+    );
+    assert_eq!(
+        samples.get(&MetricKind::MempoolPressureRemovalCount),
+        Some(&7)
+    );
+    assert_eq!(samples.get(&MetricKind::MempoolStaticRelayFloor), None);
+    assert_eq!(samples.get(&MetricKind::MempoolRollingMempoolFloor), None);
+    assert_eq!(
+        samples.get(&MetricKind::MempoolEffectiveAdmissionFloor),
+        None
+    );
+    assert_eq!(samples.get(&MetricKind::MempoolIncrementalRelayFee), None);
+    assert_eq!(samples.get(&MetricKind::MempoolCheckpointOverdue), None);
+    assert_eq!(
+        samples.get(&MetricKind::MempoolRecoveryRecoveredCount),
+        None
+    );
+    assert_eq!(samples.get(&MetricKind::MempoolRetryEligible), None);
+    assert_eq!(samples.get(&MetricKind::MempoolRetryCleared), None);
+    assert_eq!(samples.get(&MetricKind::MempoolAdmissionAccepted), None);
+    assert_eq!(
+        samples.get(&MetricKind::MempoolAdmissionStillPresent),
+        None
+    );
+}
+
+#[test]
+fn mempool_policy_kinds_are_not_dashboard_chart_slots() {
+    // Arrange / Act / Assert
+    for (_kind, name) in MEMPOOL_POLICY_METRIC_KINDS {
+        assert!(
+            !DASHBOARD_CHART_KIND_NAMES.contains(&name),
+            "{name} must not occupy a dashboard sparkline slot"
+        );
+    }
+}
