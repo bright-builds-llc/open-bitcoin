@@ -3,16 +3,23 @@
 
 //! Pure Knots JSON projection for an authoritative [`PackageReport`].
 //!
-//! This module must not emit extra Open Bitcoin keys on Knots JSON. Comments
-//! that name fingerprint, admission, or effective_fee_groups exist only to
-//! forbid those keys on the BaselineParity result trees.
+//! Knots JSON must not include fingerprint, admission, or effective_fee_groups
+//! keys. Those names appear here only to forbid them on BaselineParity trees.
 
-use open_bitcoin_mempool::PackageReport;
+#![allow(dead_code)]
+
+use open_bitcoin_mempool::{
+    EffectiveFeeGroup, EffectiveFeeGroupId, HardMemberFailure, MempoolMemberIdentity,
+    PackageMemberResult, PackageReport, PackageStatus, ReconsiderableMemberFailure,
+};
 use open_bitcoin_node::core::primitives::{Txid, Wtxid};
-use serde_json::Value;
+use serde_json::{Map, Value, json};
 
+mod report_view;
 #[cfg(test)]
 mod tests;
+
+const SATOSHIS_PER_BITCOIN: u64 = 100_000_000;
 
 /// Caller-supplied per-member sizes and fees used by Knots result bodies.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,8 +39,227 @@ pub enum PackageProjectionError {
 
 /// Projects Knots `testmempoolaccept` array JSON from one package report.
 pub fn project_testmempoolaccept(
-    _report: &PackageReport,
-    _member_facts: &[PackageMemberProjectionFacts],
+    report: &PackageReport,
+    member_facts: &[PackageMemberProjectionFacts],
 ) -> Result<Value, PackageProjectionError> {
-    Ok(Value::Array(Vec::new()))
+    let maybe_package_error = maybe_failed_package_error(report);
+    let mut elements = Vec::with_capacity(report.members().len());
+    for (index, member) in report.members().iter().enumerate() {
+        elements.push(project_testmempoolaccept_member(
+            index,
+            member,
+            report,
+            member_facts,
+            maybe_package_error.as_deref(),
+        )?);
+    }
+    Ok(Value::Array(elements))
+}
+
+fn project_testmempoolaccept_member(
+    index: usize,
+    member: &PackageMemberResult,
+    report: &PackageReport,
+    member_facts: &[PackageMemberProjectionFacts],
+    maybe_package_error: Option<&str>,
+) -> Result<Value, PackageProjectionError> {
+    let identity = member.requested_identity();
+    let mut object = identity_object(identity);
+    if let Some(package_error) = maybe_package_error {
+        object.insert(
+            "package-error".to_string(),
+            Value::String(package_error.to_string()),
+        );
+    }
+
+    match member {
+        PackageMemberResult::FinallyPresent(present) => {
+            let facts = require_facts(identity, member_facts, index)?;
+            let maybe_group = maybe_fee_group(report, present.effective_fee_group_id);
+            object.insert("allowed".to_string(), json!(true));
+            object.insert("vsize".to_string(), json!(facts.virtual_size));
+            object.insert("fees".to_string(), finally_present_fees(facts, maybe_group));
+        }
+        PackageMemberResult::AlreadyPresent(_) => {
+            insert_rejected(&mut object, "txn-already-in-mempool");
+        }
+        PackageMemberResult::SameTxidDifferentWitness(_) => {
+            insert_rejected(&mut object, "txn-same-nonwitness-data-already-in-mempool");
+        }
+        PackageMemberResult::HardRejected(failure) => {
+            insert_rejected(&mut object, hard_reject_reason(failure));
+        }
+        PackageMemberResult::Reconsiderable(failure) => {
+            insert_rejected(&mut object, &reconsiderable_reject_reason(failure));
+        }
+        PackageMemberResult::PostTrimAbsent(_) => {
+            insert_rejected(&mut object, "mempool full");
+        }
+    }
+
+    Ok(Value::Object(object))
+}
+
+fn identity_object(identity: MempoolMemberIdentity) -> Map<String, Value> {
+    let mut object = Map::new();
+    object.insert(
+        "txid".to_string(),
+        Value::String(encode_hex(identity.txid.as_bytes())),
+    );
+    object.insert(
+        "wtxid".to_string(),
+        Value::String(encode_hex(identity.wtxid.as_bytes())),
+    );
+    object
+}
+
+fn insert_rejected(object: &mut Map<String, Value>, reason: &str) {
+    object.insert("allowed".to_string(), json!(false));
+    object.insert(
+        "reject-reason".to_string(),
+        Value::String(reason.to_string()),
+    );
+}
+
+fn finally_present_fees(
+    facts: &PackageMemberProjectionFacts,
+    maybe_group: Option<&EffectiveFeeGroup>,
+) -> Value {
+    let mut fees = Map::new();
+    fees.insert(
+        "base".to_string(),
+        amount_sats_to_btc_json(facts.base_fee_sats),
+    );
+    let (feerate_sats, includes) = match maybe_group {
+        Some(group) => (
+            group.effective_fee_rate().sats_per_kvb(),
+            group
+                .ordered_wtxids()
+                .iter()
+                .map(|wtxid| Value::String(encode_hex(wtxid.as_bytes())))
+                .collect(),
+        ),
+        None => (0, Vec::new()),
+    };
+    fees.insert(
+        "effective-feerate".to_string(),
+        amount_sats_to_btc_json(feerate_sats),
+    );
+    fees.insert("effective-includes".to_string(), Value::Array(includes));
+    Value::Object(fees)
+}
+
+fn maybe_failed_package_error(report: &PackageReport) -> Option<String> {
+    if *report.status() != PackageStatus::Failed {
+        return None;
+    }
+
+    report
+        .members()
+        .iter()
+        .find_map(maybe_reject_reason)
+        .or_else(|| Some("transaction failed".to_string()))
+}
+
+fn maybe_reject_reason(member: &PackageMemberResult) -> Option<String> {
+    match member {
+        PackageMemberResult::AlreadyPresent(_) => Some("txn-already-in-mempool".to_string()),
+        PackageMemberResult::SameTxidDifferentWitness(_) => {
+            Some("txn-same-nonwitness-data-already-in-mempool".to_string())
+        }
+        PackageMemberResult::HardRejected(failure) => Some(hard_reject_reason(failure).to_string()),
+        PackageMemberResult::Reconsiderable(failure) => Some(reconsiderable_reject_reason(failure)),
+        PackageMemberResult::PostTrimAbsent(_) => Some("mempool full".to_string()),
+        PackageMemberResult::FinallyPresent(_) => None,
+    }
+}
+
+fn hard_reject_reason(failure: &HardMemberFailure) -> &str {
+    let reason = match failure {
+        HardMemberFailure::Policy { reason, .. }
+        | HardMemberFailure::TrucPolicy { reason, .. }
+        | HardMemberFailure::EphemeralPolicy { reason, .. }
+        | HardMemberFailure::PackageReplacement { reason, .. } => reason.as_str(),
+    };
+    if reason.is_empty() {
+        "rejected"
+    } else {
+        reason
+    }
+}
+
+fn reconsiderable_reject_reason(failure: &ReconsiderableMemberFailure) -> String {
+    match failure {
+        ReconsiderableMemberFailure::MissingInputs { .. } => "missing-inputs".to_string(),
+        ReconsiderableMemberFailure::PackageReplacement { .. } => {
+            "package rbf rejected".to_string()
+        }
+        ReconsiderableMemberFailure::PackageFee { .. } => "package-fee".to_string(),
+    }
+}
+
+fn maybe_fee_group(report: &PackageReport, id: EffectiveFeeGroupId) -> Option<&EffectiveFeeGroup> {
+    report_view::fee_groups(report)
+        .iter()
+        .find(|group| group.id() == id)
+}
+
+fn require_facts(
+    identity: MempoolMemberIdentity,
+    member_facts: &[PackageMemberProjectionFacts],
+    index: usize,
+) -> Result<&PackageMemberProjectionFacts, PackageProjectionError> {
+    let Some(facts) = member_facts
+        .iter()
+        .find(|facts| facts.wtxid == identity.wtxid)
+    else {
+        return Err(PackageProjectionError::MissingMemberFacts { index });
+    };
+    if facts.txid != identity.txid {
+        return Err(PackageProjectionError::MemberFactsWtxidMismatch { index });
+    }
+    Ok(facts)
+}
+
+fn maybe_facts<'a>(
+    identity: MempoolMemberIdentity,
+    member_facts: &'a [PackageMemberProjectionFacts],
+    index: usize,
+) -> Result<Option<&'a PackageMemberProjectionFacts>, PackageProjectionError> {
+    let Some(facts) = member_facts
+        .iter()
+        .find(|facts| facts.wtxid == identity.wtxid)
+    else {
+        return Ok(None);
+    };
+    if facts.txid != identity.txid {
+        return Err(PackageProjectionError::MemberFactsWtxidMismatch { index });
+    }
+    Ok(Some(facts))
+}
+
+fn encode_hex(bytes: &[u8]) -> String {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        output.push(HEX[(byte >> 4) as usize] as char);
+        output.push(HEX[(byte & 0x0f) as usize] as char);
+    }
+    output
+}
+
+fn amount_sats_to_btc_json(sats: i64) -> Value {
+    let negative = sats < 0;
+    let abs = sats.unsigned_abs();
+    let whole = abs / SATOSHIS_PER_BITCOIN;
+    let frac = abs % SATOSHIS_PER_BITCOIN;
+    let formatted = if negative {
+        format!("-{whole}.{frac:08}")
+    } else {
+        format!("{whole}.{frac:08}")
+    };
+    formatted
+        .parse::<serde_json::Number>()
+        .map(Value::Number)
+        .unwrap_or(Value::String(formatted))
 }
