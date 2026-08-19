@@ -95,3 +95,37 @@ fn getmempoolinfo_aliases_remain_bytes_usage_maxmempool_mempoolminfee() {
     assert_eq!(mempool.get("virtual_size"), None);
     assert_eq!(mempool.get("effective_admission_floor"), None);
 }
+
+#[test]
+fn openbitcoinnetworkstatus_includes_retry_and_admission_groups() {
+    // Arrange
+    let (mut context, _) = resource_fee_evidence_context();
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+    let retry = &status["mempool"]["retry"]["value"];
+    let admission = &status["mempool"]["admission"]["value"];
+    let retry_object = retry.as_object().expect("retry value is an object");
+    let admission_object = admission.as_object().expect("admission value is an object");
+
+    // Assert
+    assert_eq!(status["mempool"]["retry"]["state"], json!("available"));
+    assert_eq!(status["mempool"]["admission"]["state"], json!("available"));
+    assert!(retry.get("eligible").is_some());
+    assert!(retry.get("queued").is_some());
+    assert!(retry.get("cleared").is_some());
+    assert_eq!(retry_object.get("propagated"), None);
+    assert_eq!(retry_object.get("broadcast"), None);
+    assert_eq!(retry_object.get("public_relay"), None);
+    assert_eq!(admission_object.len(), 3);
+    assert!(admission.get("accepted").is_some());
+    assert!(admission.get("still_present").is_some());
+    assert!(admission.get("cleared").is_some());
+    assert_eq!(admission_object.get("propagated"), None);
+    assert_eq!(admission_object.get("broadcast"), None);
+    assert_eq!(admission_object.get("public_relay"), None);
+}

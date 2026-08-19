@@ -1,21 +1,24 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
+use open_bitcoin_core::primitives::{NetworkAddress, NetworkMagic, Txid, Wtxid};
 use open_bitcoin_mempool::{
-    MempoolCapacityEnforcement, MempoolCapacityStatus, RollingFeeParityStatus,
+    MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolMemberIdentity, PolicyConfig,
+    RollingFeeParityStatus,
 };
+use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 
-use open_bitcoin_core::primitives::Txid;
-
+use crate::MemoryChainstateStore;
 use crate::network::{
     CheckpointEvidenceSnapshot, CheckpointOutcome, CheckpointPersistenceStrength,
-    ManagedMempoolInfo, ManagedMempoolRecoverySummary,
+    ManagedMempoolInfo, ManagedMempoolRecoverySummary, ManagedPeerNetwork,
 };
-use crate::status::relay_evidence::RelayEvidenceStatus;
+use crate::status::relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus};
 use crate::status::{
-    FieldAvailability, MempoolPressureGroup, MempoolResourcesGroup, MempoolStatus,
-    checkpoint_group_from_evidence, decay_half_life_label, fee_floors_from_managed_info,
-    recovery_group_from_summary, resources_from_managed_info,
+    FieldAvailability, MempoolAdmissionGroup, MempoolPressureGroup, MempoolResourcesGroup,
+    MempoolRetryGroup, MempoolStatus, checkpoint_group_from_evidence, decay_half_life_label,
+    fee_floors_from_managed_info, recovery_group_from_summary, resources_from_managed_info,
+    retry_group_from_relay,
 };
 use crate::storage::{MempoolRecoveryRecord, MempoolRecoveryStatus};
 
@@ -284,4 +287,136 @@ fn regex_contains_txid_hex(encoded: &str) -> bool {
         .as_bytes()
         .windows(64)
         .any(|window| window.iter().all(|byte| byte.is_ascii_hexdigit()))
+}
+
+#[test]
+fn retry_group_does_not_use_rebroadcast_deferred_count() {
+    // Arrange
+    let mut counters = RelayEvidenceCounters::default();
+    counters.rebroadcast_deferred_count = 99;
+    counters.requested_count = 3;
+    counters.served_count = 2;
+    counters.suppressed_count = 1;
+
+    // Act
+    let group = retry_group_from_relay(4, 5, 0, 0, &counters, false, 7);
+    let encoded = serde_json::to_value(&group).expect("retry group json");
+    let object = encoded
+        .as_object()
+        .expect("retry group serializes to object");
+
+    // Assert
+    assert_eq!(group.eligible, 4);
+    assert_eq!(group.queued, 5);
+    assert_eq!(group.requested, 3);
+    assert_eq!(group.served, 2);
+    assert_eq!(group.suppressed, 1);
+    assert_eq!(group.relay_disabled, 1);
+    assert_eq!(group.cleared, 7);
+    assert_ne!(group.eligible, 99);
+    assert_ne!(group.cleared, 99);
+    assert_eq!(object.get("rebroadcast_deferred_count"), None);
+    assert_eq!(object.get("propagated"), None);
+    assert_eq!(object.get("broadcast"), None);
+    assert_eq!(object.get("public_relay"), None);
+    forbidden_identity_or_knots_alias_keys(object);
+}
+
+#[test]
+fn admission_group_has_accepted_still_present_cleared_only() {
+    // Arrange
+    let group = MempoolAdmissionGroup {
+        accepted: 8,
+        still_present: 3,
+        cleared: 5,
+    };
+
+    // Act
+    let encoded = serde_json::to_value(&group).expect("admission group json");
+    let object = encoded
+        .as_object()
+        .expect("admission group serializes to object");
+
+    // Assert
+    assert_eq!(object.len(), 3);
+    assert_eq!(encoded["accepted"], 8);
+    assert_eq!(encoded["still_present"], 3);
+    assert_eq!(encoded["cleared"], 5);
+    assert_eq!(object.get("propagated"), None);
+    assert_eq!(object.get("broadcast"), None);
+    assert_eq!(object.get("public_relay"), None);
+    forbidden_identity_or_knots_alias_keys(object);
+}
+
+#[test]
+fn recovery_snapshot_field_has_no_txid_hex() {
+    // Arrange
+    let leaked_hex = "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd";
+    let summary = ManagedMempoolRecoverySummary {
+        recovered_count: 1,
+        dropped_confirmed_count: 0,
+        dropped_duplicate_count: 0,
+        dropped_missing_parent_count: 0,
+        dropped_policy_incompatible_count: 0,
+        dropped_expired_count: 0,
+        dropped_evicted_count: 0,
+        records: vec![MempoolRecoveryRecord {
+            txid: Txid::from_byte_array([0xcd; 32]),
+            status: MempoolRecoveryStatus::Recovered,
+        }],
+    };
+    let status = MempoolStatus {
+        recovery: FieldAvailability::available(recovery_group_from_summary(&summary)),
+        ..MempoolStatus::default()
+    };
+
+    // Act
+    let encoded = serde_json::to_string(&status).expect("mempool status json");
+
+    // Assert
+    assert!(!encoded.contains(leaked_hex));
+    assert!(!regex_contains_txid_hex(&encoded));
+    assert_eq!(
+        serde_json::to_value(&status).expect("status value")["recovery"]["value"]["recovered_count"],
+        1
+    );
+}
+
+#[test]
+fn operator_snapshot_retry_eligible_equals_unbroadcast_len() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        LocalPeerConfig {
+            magic: NetworkMagic::MAINNET,
+            services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+            address: NetworkAddress {
+                services: 0,
+                address_bytes: [0_u8; 16],
+                port: 8_333,
+            },
+            nonce: 13_705,
+            relay: true,
+            user_agent: "/open-bitcoin:phase137-05/".to_string(),
+        },
+        PolicyConfig::default(),
+    );
+    network.insert_unbroadcast_member_for_test(MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x11; 32]),
+        wtxid: Wtxid::from_byte_array([0x22; 32]),
+    });
+    network.insert_unbroadcast_member_for_test(MempoolMemberIdentity {
+        txid: Txid::from_byte_array([0x33; 32]),
+        wtxid: Wtxid::from_byte_array([0x44; 32]),
+    });
+
+    // Act
+    let snapshot = network.operator_snapshot();
+
+    // Assert
+    assert_eq!(snapshot.retry().eligible, 2);
+    assert_eq!(
+        snapshot.retry().eligible,
+        network.unbroadcast_member_count()
+    );
 }
