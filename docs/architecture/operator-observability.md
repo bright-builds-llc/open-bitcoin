@@ -520,6 +520,30 @@ while keeping default verification loopback/synthetic and public-network-free.
 This evidence documents bounded resource-governance review only and does not
 expand listener exposure or release claims.
 
+## Phase 137 mempool policy metrics and logs
+
+Phase 137 projects the shared mempool groups through fixed `MetricKind` values
+and the `mempool_policy` structured-log source. Metric kinds match snapshot
+labels such as `MempoolVirtualSize`, `MempoolAccountedUsage`,
+`MempoolAccountedCapacity`, `MempoolStaticRelayFloor`,
+`MempoolRollingMempoolFloor`, `MempoolEffectiveAdmissionFloor`,
+`MempoolIncrementalRelayFee`, `MempoolPressureRemovalCount`,
+`MempoolCheckpointOverdue`, `MempoolRecoveryRecoveredCount`,
+`MempoolRetryEligible`, `MempoolRetryCleared`, `MempoolAdmissionAccepted`, and
+`MempoolAdmissionStillPresent`. Unavailable groups are omitted rather than
+recorded as zeros.
+
+The `mempool_policy` log source uses the same allowlisted keys. It must not
+copy txids, wtxids, package fingerprints, recovery member identities, or
+dynamic labels. Status RPC, dashboard, metrics, logs, and support bundles are
+not originating package responses; identifiers stay on `testmempoolaccept`,
+`submitpackage`, `sendrawtransaction`, and `openbitcoinpackage` /
+`open-bitcoin package` only.
+
+Support next action: Treat package, pressure, checkpoint, recovery, and retry
+evidence as bounded local operator status. Successful local admission is not
+public or default relay and is not network-wide propagation.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

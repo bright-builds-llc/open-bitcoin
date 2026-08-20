@@ -15,7 +15,7 @@ For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, 
 | `service` | Service lifecycle collector | service manager and installed/enabled/running state |
 | `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, bounded reorg/reconcile evidence, no-progress diagnosis, resource pressure, recovery guidance, and last error |
 | `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
-| `mempool` | Mempool collector | mempool summary |
+| `mempool` | Mempool collector | `transactions` and `relay` plus Phase 137 groups `resources`, `fee_floors`, `pressure`, `eviction`, `checkpoint`, `recovery`, `retry`, and `admission` |
 | `block_relay` | Network collector | block-serving activation/eligibility/status plus compact-relay evidence |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
 | `logs` | Logging collector | log paths and retention |
@@ -362,6 +362,33 @@ public-network relay CI, production-service operation, production full-node
 readiness, production-funds wallet safety/use, destructive repair, source
 datadir mutation, compaction, reindexing, store surgery, or automatic support
 upload.
+
+## Phase 137 mempool policy groups
+
+Phase 137 extends `OpenBitcoinStatusSnapshot.mempool` with typed identifier-free
+groups beside the existing `transactions` and `relay` fields:
+
+- `resources` (`MempoolResourcesGroup`): virtual size, accounted usage, and
+  accounted capacity stay distinct.
+- `fee_floors` (`MempoolFeeFloorsGroup`): static relay floor, rolling mempool
+  floor, effective admission (`max(static, rolling)`), and incremental relay
+  fee stay distinct. Knots `getmempoolinfo` aliases remain RPC-only.
+- `pressure`: pressure-removal count plus a fixed decay label.
+- `eviction`: Phase 105 `evicted_count` only; do not fold pressure trims or
+  retry into this group.
+- `checkpoint`: freshness, overdue, persistence strength, age, loss bound, and
+  dirty-generation facts from Phase 135 evidence.
+- `recovery`: aggregate recovered and dropped counts only.
+- `retry`: receive-independent retry/fanout aggregates from Phase 136.
+- `admission`: count-only `accepted`, `still_present`, and `cleared`.
+
+`mempool.fee_floors` and the sibling groups are shared status evidence. They
+must not carry txids, wtxids, package fingerprints, raw transaction hex, peer
+ids, or last-package member tables. Status RPC is authenticated and is still
+not an originating package response.
+
+These groups document local operator evidence only. They do not enable public
+or default relay and they do not mark a production-readiness gate.
 
 ## Phase 110 block-serving boundary status
 

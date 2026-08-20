@@ -407,6 +407,60 @@ Default verification must stay deterministic, loopback/synthetic, and free of
 public-network relay, service-manager, wall-clock soak, production-deployment,
 or public relay CI gates.
 
+## Phase 137 Package RPC And Operator Review
+
+Phase 137 exposes Knots-named package RPC through `open-bitcoin-cli` and the
+typed Open Bitcoin workflow through `open-bitcoin package`. Dry-run does not
+change mempool, relay, persistence, or evidence state. Submit reports local
+admission only. This is not public or default relay and not network-wide
+propagation. Shared `status --format json` stays identifier-free and is not an
+originating `openbitcoinpackage` response.
+
+Inspect baseline package methods:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  testmempoolaccept '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  testmempoolaccept '["<hex>"]'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  submitpackage '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  submitpackage '["<hex>"]'
+```
+
+Inspect the typed Open Bitcoin package workflow:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package dry-run --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package dry-run --hex '<hex>'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package submit --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package submit --hex '<hex>'
+```
+
+Inspect redacted shared status after a local review:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  status --format json
+```
+
 ## Phase 105 Operator Relay Evidence Review
 
 Phase 105 exposes bounded relay and mempool evidence across operator status,
