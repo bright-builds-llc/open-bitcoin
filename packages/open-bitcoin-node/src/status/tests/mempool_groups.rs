@@ -66,7 +66,7 @@ fn resources_group_json_uses_open_bitcoin_names_not_knots_aliases() {
     };
 
     // Act
-    let encoded = serde_json::to_value(&group).expect("resources group json");
+    let encoded = serde_json::to_value(group).expect("resources group json");
     let object = encoded
         .as_object()
         .expect("resources group serializes to object");
@@ -90,7 +90,7 @@ fn fee_floors_keep_four_distinct_values_when_rolling_exceeds_static() {
 
     // Act
     let group = fee_floors_from_managed_info(&info);
-    let encoded = serde_json::to_value(&group).expect("fee floors json");
+    let encoded = serde_json::to_value(group).expect("fee floors json");
     let object = encoded
         .as_object()
         .expect("fee floors group serializes to object");
@@ -292,15 +292,17 @@ fn regex_contains_txid_hex(encoded: &str) -> bool {
 #[test]
 fn retry_group_does_not_use_rebroadcast_deferred_count() {
     // Arrange
-    let mut counters = RelayEvidenceCounters::default();
-    counters.rebroadcast_deferred_count = 99;
-    counters.requested_count = 3;
-    counters.served_count = 2;
-    counters.suppressed_count = 1;
+    let counters = RelayEvidenceCounters {
+        rebroadcast_deferred_count: 99,
+        requested_count: 3,
+        served_count: 2,
+        suppressed_count: 1,
+        ..RelayEvidenceCounters::default()
+    };
 
     // Act
     let group = retry_group_from_relay(4, 5, 0, 0, &counters, false, 7);
-    let encoded = serde_json::to_value(&group).expect("retry group json");
+    let encoded = serde_json::to_value(group).expect("retry group json");
     let object = encoded
         .as_object()
         .expect("retry group serializes to object");
@@ -332,7 +334,7 @@ fn admission_group_has_accepted_still_present_cleared_only() {
     };
 
     // Act
-    let encoded = serde_json::to_value(&group).expect("admission group json");
+    let encoded = serde_json::to_value(group).expect("admission group json");
     let object = encoded
         .as_object()
         .expect("admission group serializes to object");

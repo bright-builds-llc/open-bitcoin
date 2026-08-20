@@ -14,8 +14,7 @@ use open_bitcoin_core::{
     primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction, Txid},
 };
 use open_bitcoin_mempool::{
-    MempoolLifecycleDelta, PackageReport, PolicyConfig, PolicyTime, RelayIntent,
-    ReorgLifecycleContext, SubmittedPackageResult,
+    MempoolLifecycleDelta, PolicyConfig, PolicyTime, RelayIntent, ReorgLifecycleContext,
 };
 use open_bitcoin_network::{
     BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
@@ -43,6 +42,7 @@ mod effects;
 pub use effects::{CheckpointAbortDispatchError, CheckpointCompletionDispatchError};
 mod lifecycle;
 pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
+mod local_package;
 mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
 mod recovery;
@@ -502,46 +502,6 @@ impl ManagedNetworkHandle {
     ) -> Result<AdmissionResult, ManagedNetworkAuthorityError> {
         self.try_mutate(|network| {
             network.submit_local_transaction(transaction, verify_flags, consensus_params)
-        })
-    }
-
-    /// Evaluates a local package without committing mempool or lifecycle state.
-    pub fn dry_run_local_package(
-        &self,
-        transactions: Vec<Transaction>,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-        now_unix_seconds: i64,
-        relay_intent: RelayIntent,
-    ) -> Result<PackageReport, ManagedNetworkAuthorityError> {
-        self.try_read(|network| {
-            network.dry_run_local_package(
-                transactions,
-                verify_flags,
-                consensus_params,
-                now_unix_seconds,
-                relay_intent,
-            )
-        })
-    }
-
-    /// Submits a local package through PackageAdmission Local.
-    pub fn submit_local_package(
-        &self,
-        transactions: Vec<Transaction>,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-        now_unix_seconds: i64,
-        relay_intent: RelayIntent,
-    ) -> Result<SubmittedPackageResult, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
-            network.submit_local_package(
-                transactions,
-                verify_flags,
-                consensus_params,
-                now_unix_seconds,
-                relay_intent,
-            )
         })
     }
 

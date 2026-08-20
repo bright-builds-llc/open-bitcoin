@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: verifying
-stopped_at: Phase 136 complete; next is Phase 137 discuss
-last_updated: "2026-08-16T21:38:21.701Z"
-last_activity: 2026-08-16
+status: executing
+stopped_at: Phase 137 context gathered
+last_updated: "2026-08-20T00:09:05.773Z"
+last_activity: 2026-08-20
 progress:
   total_phases: 10
-  completed_phases: 8
-  total_plans: 80
-  completed_plans: 80
+  completed_phases: 9
+  total_plans: 91
+  completed_plans: 91
   percent: 100
 ---
 
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 136 — Receive-Independent Maintenance and Transport Receipts
+**Current focus:** Phase 137 — RPC and Sanitized Operator Evidence
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 137
+Phase: 138
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-08-16
+Status: Executing Phase 137
+Last activity: 2026-08-20
 
 Progress: [██████████] 97%
 
@@ -39,7 +39,7 @@ Next action: `/gsd-discuss-phase 136`
 
 **Current milestone:**
 
-- Total plans completed: 80
+- Total plans completed: 91
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
@@ -54,6 +54,7 @@ Next action: `/gsd-discuss-phase 136`
 | 134 | 24 | - | - |
 | 135 | 14 | - | - |
 | 136 | 6 | - | - |
+| 137 | 11 | - | - |
 
 ### Plan Execution History
 
@@ -314,6 +315,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-16T21:38:21.697Z
-Stopped at: Phase 136 complete; next is Phase 137 discuss
-Resume file: .planning/phases/136-receive-independent-maintenance-and-transport-receipts/136-VERIFICATION.md
+Last session: 2026-08-19T22:14:45.475Z
+Stopped at: Phase 137 context gathered
+Resume file: .planning/phases/137-rpc-and-sanitized-operator-evidence/137-CONTEXT.md

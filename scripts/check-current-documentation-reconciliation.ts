@@ -21,6 +21,7 @@ const EXTENSION_METHODS = new Set([
   "openbitcoinsyncstatus",
   "openbitcoinsyncpause",
   "openbitcoinsyncresume",
+  "openbitcoinpackage",
   "buildtransaction",
   "buildandsigntransaction",
 ]);
@@ -275,8 +276,8 @@ function verifyCatalogMethodSet(corpus: Corpus, failures: string[]): void {
   );
   const catalogMethods = new Set([...baselineMethods, ...extensionMethods]);
 
-  if (rustMethods.size !== 20) {
-    failures.push(`SupportedMethod enum must expose exactly 20 serde names (found ${rustMethods.size})`);
+  if (rustMethods.size !== 23) {
+    failures.push(`SupportedMethod enum must expose exactly 23 serde names (found ${rustMethods.size})`);
   }
   reportSetDifference(rustMethods, catalogMethods, "missing", failures);
   reportSetDifference(catalogMethods, rustMethods, "extra", failures);

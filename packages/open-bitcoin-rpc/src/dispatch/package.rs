@@ -279,13 +279,7 @@ fn known_input_values(
             let Ok(vout) = u32::try_from(vout) else {
                 continue;
             };
-            values.insert(
-                OutPoint {
-                    txid: txid.clone(),
-                    vout,
-                },
-                output.value.to_sats(),
-            );
+            values.insert(OutPoint { txid, vout }, output.value.to_sats());
         }
     }
     values
@@ -333,6 +327,6 @@ fn replacement_txids(removals: &[MempoolLifecycleRemoval]) -> Vec<Txid> {
     removals
         .iter()
         .filter(|removal| removal.cause == MempoolRemovalCause::Replacement)
-        .map(|removal| removal.member.txid.clone())
+        .map(|removal| removal.member.txid)
         .collect()
 }

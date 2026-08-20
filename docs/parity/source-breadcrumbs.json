@@ -275,11 +275,13 @@
         "packages/open-bitcoin-cli/src/operator/onboarding.rs",
         "packages/open-bitcoin-cli/src/operator/onboarding/tests.rs",
         "packages/open-bitcoin-cli/src/operator/runtime.rs",
+        "packages/open-bitcoin-cli/src/operator/runtime/onboarding.rs",
         "packages/open-bitcoin-cli/src/operator/runtime/support.rs",
         "packages/open-bitcoin-cli/src/operator/status.rs",
         "packages/open-bitcoin-cli/src/operator/status/http.rs",
         "packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/status/render.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/labels.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/block_relay.rs",
@@ -1561,6 +1563,7 @@
       "label": "node-network-runtime-authority",
       "files": [
         "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/local_package.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/recovery.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/tests.rs"
       ],

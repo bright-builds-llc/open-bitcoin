@@ -12,8 +12,8 @@
 use super::chain_fixtures::*;
 use super::*;
 use crate::package_projection::{
-    admission_state_for_member, submit_relay_state_for_member, PackageAdmissionState,
-    PackageRelayState, PackageSubmitRelayFacts,
+    PackageAdmissionState, PackageRelayState, PackageSubmitRelayFacts, admission_state_for_member,
+    submit_relay_state_for_member,
 };
 use open_bitcoin_mempool::{
     EffectiveFeeGroupId, MempoolMemberIdentity, NewlyPresent, PackageMemberResult,

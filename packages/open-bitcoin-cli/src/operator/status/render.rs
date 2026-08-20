@@ -5,6 +5,7 @@
 
 mod block_relay;
 mod inbound;
+mod labels;
 mod mempool_policy;
 mod progress_guarantee;
 mod relay;
@@ -12,18 +13,22 @@ use open_bitcoin_node::{
     MetricsStatus, RecoveryEvidenceSnapshot,
     status::{
         BuildProvenance, ChainTipStatus, FieldAvailability, HealthSignal, HealthSignalLevel,
-        NodeRuntimeState, OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry,
-        ResourceBoundSnapshot, ResourcePressureState, ServiceLifecycleStatus,
-        ServicePriorShutdownStatus, ServiceRestartResumeStatus, ServiceResumeProgressStatus,
-        ServiceStaleInflightStatus, ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets,
-        SyncLifecycleState, SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure,
-        SyncStopReasonStatus, WalletFreshness, WalletScanProgress,
+        OpenBitcoinStatusSnapshot, PeerCounts, PeerTelemetry, ResourceBoundSnapshot,
+        ResourcePressureState, ServiceLifecycleStatus, ServicePriorShutdownStatus,
+        ServiceRestartResumeStatus, ServiceResumeProgressStatus, ServiceStaleInflightStatus,
+        ServiceStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncLifecycleState,
+        SyncProgressSignal, SyncRecoveryCategory, SyncResourcePressure, SyncStopReasonStatus,
+        WalletFreshness, WalletScanProgress,
     },
 };
 use serde::Serialize;
 
 use block_relay::block_relay_evidence_lines;
 use inbound::inbound_status_text;
+use labels::{
+    health_level_name, runtime_state_name, sync_lifecycle_name, sync_progress_signal_name,
+    wallet_freshness_name, wallet_scan_progress_ratio,
+};
 pub(crate) use mempool_policy::{mempool_policy_entries, mempool_policy_lines};
 use progress_guarantee::progress_guarantee_lines;
 use relay::relay_evidence_lines;
@@ -566,62 +571,6 @@ fn build_text(build: &BuildProvenance) -> String {
         string_availability(&build.target),
         string_availability(&build.profile)
     )
-}
-
-fn runtime_state_name(state: NodeRuntimeState) -> &'static str {
-    match state {
-        NodeRuntimeState::Running => "running",
-        NodeRuntimeState::Stopped => "stopped",
-        NodeRuntimeState::Starting => "starting",
-        NodeRuntimeState::Stopping => "stopping",
-        NodeRuntimeState::Unreachable => "unreachable",
-        NodeRuntimeState::Unknown => "unknown",
-    }
-}
-
-fn health_level_name(level: HealthSignalLevel) -> &'static str {
-    match level {
-        HealthSignalLevel::Info => "info",
-        HealthSignalLevel::Warn => "warn",
-        HealthSignalLevel::Error => "error",
-    }
-}
-
-fn wallet_freshness_name(freshness: WalletFreshness) -> &'static str {
-    match freshness {
-        WalletFreshness::Fresh => "fresh",
-        WalletFreshness::Stale => "stale",
-        WalletFreshness::Partial => "partial",
-        WalletFreshness::Scanning => "scanning",
-    }
-}
-
-fn wallet_scan_progress_ratio(progress: &WalletScanProgress) -> f64 {
-    if progress.target_tip_height == 0 {
-        return 0.0;
-    }
-    f64::from(progress.scanned_through_height) / f64::from(progress.target_tip_height)
-}
-
-fn sync_lifecycle_name(state: SyncLifecycleState) -> &'static str {
-    match state {
-        SyncLifecycleState::Active => "active",
-        SyncLifecycleState::Paused => "paused",
-        SyncLifecycleState::Recovering => "recovering",
-        SyncLifecycleState::Failed => "failed",
-        SyncLifecycleState::Stopped => "stopped",
-    }
-}
-
-fn sync_progress_signal_name(signal: SyncProgressSignal) -> &'static str {
-    match signal {
-        SyncProgressSignal::HeaderProgress => "header_progress",
-        SyncProgressSignal::BlockProgress => "block_progress",
-        SyncProgressSignal::WaitingForPeers => "waiting_for_peers",
-        SyncProgressSignal::PeerFailures => "peer_failures",
-        SyncProgressSignal::AwaitingBlocks => "awaiting_blocks",
-        SyncProgressSignal::Steady => "steady",
-    }
 }
 
 #[cfg(test)]

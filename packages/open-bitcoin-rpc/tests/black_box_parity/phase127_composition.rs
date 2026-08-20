@@ -415,7 +415,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     );
     assert_eq!(
         sorted_result_keys(&status_response),
-        ["block_relay", "inbound", "metrics", "relay"]
+        ["block_relay", "inbound", "mempool", "metrics", "relay"]
     );
     assert_eq!(
         status_response["result"]["block_relay"],

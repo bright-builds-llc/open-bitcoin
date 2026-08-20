@@ -238,8 +238,8 @@ test("catalog rejects a catalog-only supported method", () => {
   replaceInFixture(
     root,
     "docs/parity/catalog/rpc-cli-config.md",
-    "  `buildandsigntransaction`\n",
-    "  `buildandsigntransaction`, and `catalogonlymethod`\n",
+    "  `buildtransaction`, and `buildandsigntransaction`\n",
+    "  `buildtransaction`, `buildandsigntransaction`, and `catalogonlymethod`\n",
   );
 
   // Act

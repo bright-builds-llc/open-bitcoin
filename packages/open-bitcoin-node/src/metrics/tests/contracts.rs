@@ -439,19 +439,23 @@ fn mempool_policy_metric_all_includes_new_kinds() {
 #[test]
 fn mempool_policy_samples_skip_unavailable_groups() {
     // Arrange
-    let mut mempool = crate::status::MempoolStatus::default();
-    mempool.resources =
-        crate::status::FieldAvailability::available(crate::status::MempoolResourcesGroup {
-            virtual_size: 100,
-            accounted_usage: 200,
-            accounted_capacity: 300,
-            transaction_count: 4,
-        });
-    mempool.pressure =
-        crate::status::FieldAvailability::available(crate::status::MempoolPressureGroup {
-            pressure_removal_count: 7,
-            decay_half_life_label: "half_life_12h".to_string(),
-        });
+    let mempool = crate::status::MempoolStatus {
+        resources: crate::status::FieldAvailability::available(
+            crate::status::MempoolResourcesGroup {
+                virtual_size: 100,
+                accounted_usage: 200,
+                accounted_capacity: 300,
+                transaction_count: 4,
+            },
+        ),
+        pressure: crate::status::FieldAvailability::available(
+            crate::status::MempoolPressureGroup {
+                pressure_removal_count: 7,
+                decay_half_life_label: "half_life_12h".to_string(),
+            },
+        ),
+        ..crate::status::MempoolStatus::default()
+    };
 
     // Act
     let samples = super::super::mempool_policy_metric_samples(&mempool);

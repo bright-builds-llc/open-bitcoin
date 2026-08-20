@@ -344,54 +344,60 @@ const MEMPOOL_POLICY_SNAPSHOT_KEYS: [&str; 16] = [
 ];
 
 fn mempool_policy_status_fixture() -> crate::status::MempoolStatus {
-    let mut mempool = crate::status::MempoolStatus::default();
-    mempool.resources =
-        crate::status::FieldAvailability::available(crate::status::MempoolResourcesGroup {
-            virtual_size: 111,
-            accounted_usage: 222,
-            accounted_capacity: 333,
-            transaction_count: 4,
-        });
-    mempool.fee_floors =
-        crate::status::FieldAvailability::available(crate::status::MempoolFeeFloorsGroup {
-            static_relay_floor: 1_000,
-            rolling_mempool_floor: 2_500,
-            effective_admission_floor: 2_500,
-            incremental_relay_fee: 500,
-        });
-    mempool.pressure =
-        crate::status::FieldAvailability::available(crate::status::MempoolPressureGroup {
-            pressure_removal_count: 7,
-            decay_half_life_label: "half_life_6h".to_string(),
-        });
-    mempool.recovery =
-        crate::status::FieldAvailability::available(crate::status::MempoolRecoveryGroup {
-            recovered_count: 3,
-            dropped_confirmed_count: 0,
-            dropped_duplicate_count: 0,
-            dropped_missing_parent_count: 0,
-            dropped_policy_incompatible_count: 0,
-            dropped_expired_count: 0,
-            dropped_evicted_count: 0,
-        });
-    mempool.retry = crate::status::FieldAvailability::available(crate::status::MempoolRetryGroup {
-        eligible: 8,
-        queued: 1,
-        attempted: 0,
-        emitted: 2,
-        requested: 0,
-        served: 0,
-        suppressed: 0,
-        relay_disabled: 1,
-        cleared: 5,
-    });
-    mempool.admission =
-        crate::status::FieldAvailability::available(crate::status::MempoolAdmissionGroup {
-            accepted: 9,
-            still_present: 4,
-            cleared: 6,
-        });
-    mempool
+    crate::status::MempoolStatus {
+        resources: crate::status::FieldAvailability::available(
+            crate::status::MempoolResourcesGroup {
+                virtual_size: 111,
+                accounted_usage: 222,
+                accounted_capacity: 333,
+                transaction_count: 4,
+            },
+        ),
+        fee_floors: crate::status::FieldAvailability::available(
+            crate::status::MempoolFeeFloorsGroup {
+                static_relay_floor: 1_000,
+                rolling_mempool_floor: 2_500,
+                effective_admission_floor: 2_500,
+                incremental_relay_fee: 500,
+            },
+        ),
+        pressure: crate::status::FieldAvailability::available(
+            crate::status::MempoolPressureGroup {
+                pressure_removal_count: 7,
+                decay_half_life_label: "half_life_6h".to_string(),
+            },
+        ),
+        recovery: crate::status::FieldAvailability::available(
+            crate::status::MempoolRecoveryGroup {
+                recovered_count: 3,
+                dropped_confirmed_count: 0,
+                dropped_duplicate_count: 0,
+                dropped_missing_parent_count: 0,
+                dropped_policy_incompatible_count: 0,
+                dropped_expired_count: 0,
+                dropped_evicted_count: 0,
+            },
+        ),
+        retry: crate::status::FieldAvailability::available(crate::status::MempoolRetryGroup {
+            eligible: 8,
+            queued: 1,
+            attempted: 0,
+            emitted: 2,
+            requested: 0,
+            served: 0,
+            suppressed: 0,
+            relay_disabled: 1,
+            cleared: 5,
+        }),
+        admission: crate::status::FieldAvailability::available(
+            crate::status::MempoolAdmissionGroup {
+                accepted: 9,
+                still_present: 4,
+                cleared: 6,
+            },
+        ),
+        ..crate::status::MempoolStatus::default()
+    }
 }
 
 #[test]

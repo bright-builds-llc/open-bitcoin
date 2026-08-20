@@ -35,7 +35,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 - [x] **Phase 134: Authoritative Cross-Cache Lifecycle Integration** — Make one runtime authority and lifecycle delta govern every package and mempool consequence across dependent state. (completed 2026-07-30)
 - [x] **Phase 135: Snapshot Schema, Checkpointing, and Recovery** — Persist source mempool records and local unbroadcast state, then recover them through policy-aware topological replay. (completed 2026-08-15)
 - [x] **Phase 136: Receive-Independent Maintenance and Transport Receipts** — Run bounded initial broadcast retry and topological package fanout through existing relay and achieved-effect transport paths. (completed 2026-08-16)
-- [ ] **Phase 137: RPC and Sanitized Operator Evidence** — Expose package, pressure, recovery, checkpoint, and retry truth through stable redacted operator surfaces.
+- [x] **Phase 137: RPC and Sanitized Operator Evidence** — Expose package, pressure, recovery, checkpoint, and retry truth through stable redacted operator surfaces. (completed 2026-08-20)
 - [ ] **Phase 138: Parity, Adversarial Pressure, Restart, and Release Guardrails** — Prove integrated Knots parity, bounded work, restart safety, and the deliberately narrow v2.2 claim.
 
 ## Phase Details
@@ -254,8 +254,21 @@ Plans:
 3. Shared evidence distinguishes accepted, still-present, eligible, queued, attempted, emitted, requested, served, suppressed, and cleared states without leaking identifiers or per-member details beyond the authenticated direct response.
 4. Relay-disabled or peer-policy-suppressed operation can show successful local admission while truthfully showing that no public/default relay or propagation result was achieved.
 
-**Plans**: TBD
+**Plans**: 11 plans
 **UI hint**: yes
+
+Plans:
+- [x] 137-01-PLAN.md — Pure PackageReport projector for Knots testmempoolaccept and submitpackage JSON
+- [x] 137-02-PLAN.md — Local dry-run/submit handle methods through Phase 132 commands
+- [x] 137-03-PLAN.md — BaselineParity testmempoolaccept and submitpackage RPC dispatch
+- [x] 137-04-PLAN.md — Snapshot resources and fee-floor groups on openbitcoinnetworkstatus
+- [x] 137-05-PLAN.md — Pressure, eviction, checkpoint, recovery, retry, and admission groups
+- [x] 137-06-PLAN.md — openbitcoinpackage extension RPC and open-bitcoin package CLI
+- [x] 137-07-PLAN.md — Dashboard and human/JSON status rows per UI-SPEC
+- [x] 137-08-PLAN.md — Fixed MetricKind and mempool_policy structured logs
+- [x] 137-09-PLAN.md — Support-bundle redaction and count-only Markdown
+- [x] 137-10-PLAN.md — Dual-state proofs; sendrawtransaction stays txid-only
+- [x] 137-11-PLAN.md — Parity catalog, breadcrumbs, UAT command forms, README freshness
 
 ### Phase 138: Parity, Adversarial Pressure, Restart, and Release Guardrails
 
@@ -285,7 +298,7 @@ Plans:
 | 134. Authoritative Cross-Cache Lifecycle Integration | 24/24 | Complete    | 2026-07-30 |
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
 | 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete    | 2026-08-16 |
-| 137. RPC and Sanitized Operator Evidence | 0/TBD | Not started | - |
+| 137. RPC and Sanitized Operator Evidence | 11/11 | Complete    | 2026-08-20 |
 | 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
 
 ***

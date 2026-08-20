@@ -20,7 +20,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "RPC password and RPC auth values",
             "wallet private material and raw wallet files",
             "raw unbounded log contents",
-            "raw transaction hex, txids, wtxids, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels",
+            "raw transaction hex, txids, wtxids, package fingerprints, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels",
         ]
     );
     assert_eq!(
@@ -40,7 +40,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
         ]
     );
     assert!(omitted.contains(
-        &"raw transaction hex, txids, wtxids, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels"
+        &"raw transaction hex, txids, wtxids, package fingerprints, cmpctblock/blocktxn payloads, peer endpoints, permission strings, credentials, and dynamic relay labels"
             .to_string()
     ));
 }
