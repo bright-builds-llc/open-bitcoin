@@ -359,7 +359,8 @@
             "The supported operator slice is intentionally single-wallet and local-auth only; deferred surfaces are listed explicitly instead of implied by omission.",
             "Open Bitcoin adds deterministic buildtransaction and buildandsigntransaction extension methods for the current wallet adapter slice, plus openbitcoinsyncstatus/openbitcoinsyncpause/openbitcoinsyncresume extension methods for daemon-owned sync control.",
             "The CLI keeps -getinfo as a four-call helper batch while normal method execution stays RPC-shaped.",
-            "Wallet-scoped RPC routing now covers -rpcwallet or /wallet/<name> for the shipped wallet subset while open-bitcoin keeps preview or backup workflows outside the baseline-compatible parser."
+            "Wallet-scoped RPC routing now covers -rpcwallet or /wallet/<name> for the shipped wallet subset while open-bitcoin keeps preview or backup workflows outside the baseline-compatible parser.",
+            "Phase 137 adds Knots-named testmempoolaccept/submitpackage BaselineParity methods and the openbitcoinpackage / open-bitcoin package extension; getrawmempool and MPVFY claim-guardrail closeout remain Phase 138."
           ],
           "known_bugs": [],
           "known_bugs_status": "none-confirmed",
@@ -744,6 +745,10 @@
     },
     {
       "name": "v2 snapshot schema, checkpointing, and recovery",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-2-rpc-and-sanitized-operator-evidence",
       "status": "in_progress"
     }
   ],
@@ -3423,6 +3428,44 @@
         ],
         "suspected_unknowns": [
           "Phase 138 restart and pressure campaigns may expose cadence or crash-window interactions beyond Phase 135's deterministic local recovery matrix."
+        ]
+      },
+      {
+        "id": "v2-2-rpc-and-sanitized-operator-evidence",
+        "title": "v2.2 RPC and Sanitized Operator Evidence",
+        "status": "in_progress",
+        "requirements": [
+          "MPOBS-01",
+          "MPOBS-02",
+          "MPOBS-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/rpc-cli-config.md",
+          "docs/parity/service-operation-expectations.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/open-bitcoin-rpc/src/package_projection.rs",
+          "packages/open-bitcoin-rpc/src/dispatch/package.rs",
+          "packages/open-bitcoin-rpc/src/method/package.rs",
+          "packages/open-bitcoin-cli/src/operator/package.rs"
+        ],
+        "rationale": "Phase 137 projects Knots-named testmempoolaccept/submitpackage plus the typed openbitcoinpackage operator path from one PackageReport family, and publishes identifier-free mempool snapshot groups. MPVFY claim-guardrail closeout stays Phase 138.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/rpc/mempool.cpp",
+            "packages/bitcoin-knots/src/rpc/protocol.h",
+            "packages/bitcoin-knots/src/bitcoin-cli.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "MPVFY-04 claim-guardrail mutation tests and adversarial closeout remain Phase 138.",
+          "getrawmempool and other high-cardinality mempool query RPCs remain out of Phase 137.",
+          "Public or default relay, network-wide delivery, and production-readiness claims remain deferred."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 adversarial and claim-guardrail review may tighten wording beyond this in_progress pointer."
         ]
       }
     ]

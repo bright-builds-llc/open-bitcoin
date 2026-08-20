@@ -1,8 +1,16 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman_impl.cpp
+// - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/src/node/mempool_persist.cpp
-// - packages/bitcoin-knots/src/txmempool.cpp
+// - packages/bitcoin-knots/src/protocol.h
+// - packages/bitcoin-knots/src/txorphanage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
+// - packages/bitcoin-knots/test/functional/mempool_persist.py
+// - packages/bitcoin-knots/test/functional/p2p_getdata.py
+// - packages/bitcoin-knots/test/functional/p2p_orphan_handling.py
+// - packages/bitcoin-knots/test/functional/p2p_tx_download.py
+// - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 //! Identifier-free operator snapshot assembly for shared mempool evidence.
 

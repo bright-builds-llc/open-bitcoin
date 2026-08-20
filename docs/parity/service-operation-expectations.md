@@ -81,6 +81,28 @@ cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bit
 bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet sync status --format json
 ```
 
+### Phase 137 Package RPC And Operator Review
+
+These commands exercise Knots-named package RPC through `open-bitcoin-cli`
+and the typed `open-bitcoin package` extension. Replace `<hex>` with a
+local placeholder transaction hex. Package accept or submit reports local
+admission only; they do not enable public or default relay.
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- -datadir=/tmp/open-bitcoin-mainnet -server=1
+bazel run //packages/open-bitcoin-rpc:open_bitcoind -- -datadir=/tmp/open-bitcoin-mainnet -server=1
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -datadir=/tmp/open-bitcoin-mainnet testmempoolaccept '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -datadir=/tmp/open-bitcoin-mainnet testmempoolaccept '["<hex>"]'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -datadir=/tmp/open-bitcoin-mainnet submitpackage '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -datadir=/tmp/open-bitcoin-mainnet submitpackage '["<hex>"]'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package dry-run --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package dry-run --hex '<hex>'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package submit --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package submit --hex '<hex>'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+```
+
 ### Service Preview And Install Review
 
 ```bash

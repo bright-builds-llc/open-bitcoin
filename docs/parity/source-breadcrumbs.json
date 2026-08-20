@@ -236,6 +236,16 @@
       ]
     },
     {
+      "label": "cli-operator-package",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/package.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/rpc/mempool.cpp"
+      ]
+    },
+    {
       "label": "cli-operator-config-contracts",
       "files": [
         "packages/open-bitcoin-cli/src/operator/config.rs",
@@ -1392,6 +1402,17 @@
       ]
     },
     {
+      "label": "node-local-package-admission",
+      "files": [
+        "packages/open-bitcoin-node/src/network/admission_bridge/local_package.rs",
+        "packages/open-bitcoin-node/src/network/tests/local_package_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/mempool.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "node-mempool-recovery-topology",
       "files": [
         "packages/open-bitcoin-node/src/network/recovery/staging.rs",
@@ -2064,6 +2085,18 @@
         "packages/bitcoin-knots/src/rpc/net.cpp",
         "packages/bitcoin-knots/src/rpc/rawtransaction.cpp",
         "packages/bitcoin-knots/test/functional/interface_rpc.py"
+      ]
+    },
+    {
+      "label": "rpc-package-projection",
+      "files": [
+        "packages/open-bitcoin-rpc/src/package_projection.rs",
+        "packages/open-bitcoin-rpc/src/package_projection/report_view.rs",
+        "packages/open-bitcoin-rpc/src/package_projection/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/mempool.cpp",
+        "packages/bitcoin-knots/src/rpc/protocol.h"
       ]
     },
     {

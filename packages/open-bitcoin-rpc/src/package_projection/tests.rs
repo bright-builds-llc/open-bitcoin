@@ -1,5 +1,6 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/rpc/protocol.h
 
 use serde_json::{Value, json};
 

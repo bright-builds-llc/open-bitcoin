@@ -15,13 +15,14 @@ adapters can back honestly.
   `-getinfo`, and `-color`
 - supported baseline-backed RPC methods:
   `getblockchaininfo`, `getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`,
+  `testmempoolaccept`, `submitpackage`,
   `deriveaddresses`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
   `listdescriptors`, `getwalletinfo`, `getbalances`, `listunspent`,
   `importdescriptors`, and `rescanblockchain`
 - supported Open Bitcoin extension RPC methods:
   `openbitcoinnetworkstatus`, `openbitcoinsyncstatus`,
-  `openbitcoinsyncpause`, `openbitcoinsyncresume`, `buildtransaction`, and
-  `buildandsigntransaction`
+  `openbitcoinsyncpause`, `openbitcoinsyncresume`, `openbitcoinpackage`,
+  `buildtransaction`, and `buildandsigntransaction`
 - deterministic machine-readable CLI output for `-getinfo --json` and JSON
   result rendering for object or array RPC responses
 - hermetic single-wallet operator workflow:
@@ -43,6 +44,10 @@ adapters can back honestly.
 - [`packages/open-bitcoin-cli/src/startup.rs`](../../../packages/open-bitcoin-cli/src/startup.rs)
 - [`packages/open-bitcoin-rpc/src/http.rs`](../../../packages/open-bitcoin-rpc/src/http.rs)
 - [`packages/open-bitcoin-rpc/src/method.rs`](../../../packages/open-bitcoin-rpc/src/method.rs)
+- [`packages/open-bitcoin-rpc/src/method/package.rs`](../../../packages/open-bitcoin-rpc/src/method/package.rs)
+- [`packages/open-bitcoin-rpc/src/dispatch/package.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/package.rs)
+- [`packages/open-bitcoin-rpc/src/package_projection.rs`](../../../packages/open-bitcoin-rpc/src/package_projection.rs)
+- [`packages/open-bitcoin-cli/src/operator/package.rs`](../../../packages/open-bitcoin-cli/src/operator/package.rs)
 
 ## Supported behaviors
 
@@ -157,6 +162,32 @@ compact block relay, package relay, bloom/filter serving, public-network relay
 CI, production-service operation, production full-node readiness,
 production-funds wallet safety/use, destructive repair, source datadir
 mutation, compaction, reindexing, store surgery, or automatic support upload.
+
+## Phase 137 package RPC and operator split
+
+Phase 137 registers the scoped package surfaces without widening v2.2
+claims. The BaselineParity versus Open Bitcoin extension split is:
+
+- `testmempoolaccept` and `submitpackage` are `MethodOrigin::BaselineParity`
+  Knots 29.3 names and result shapes. `open-bitcoin-cli` forwards those
+  baseline method names. Projector and dispatch live in
+  [`packages/open-bitcoin-rpc/src/dispatch/package.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/package.rs).
+- `openbitcoinpackage` is the typed `MethodOrigin::OpenBitcoinExtension`
+  RPC. The matching operator workflow is `open-bitcoin package` (`dry-run`
+  and `submit`). Extra keys such as fingerprint, input-ordered member
+  results, and dual-state admission/relay fields stay on this extension
+  path only.
+- `getmempoolinfo` Knots aliases (`bytes`, `usage`, `maxmempool`,
+  `mempoolminfee`) stay RPC-only compatibility names. Dashboard, status
+  JSON, metrics, logs, and support bundles use Open Bitcoin labels.
+- `getrawmempool` is out of Phase 137.
+- Open Bitcoin `submitpackage` does not throw a Knots
+  `BroadcastTransaction` failure after accept. That is an intentional
+  difference: fanout stays local transport facts on the typed report and
+  shared aggregates.
+- Local package accept or submit does not enable public or default relay.
+  Status, dashboard, metrics, logs, and support bundles stay
+  identifier-free and are not originating package responses.
 
 ## Deferred surfaces
 

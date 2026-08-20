@@ -1,5 +1,6 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
+// - packages/bitcoin-knots/src/rpc/protocol.h
 
 //! Private accessors so the Knots projector file can name fee groups without
 //! repeating the PackageReport method that collides with a forbidden JSON key.
