@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 137 context gathered
-last_updated: "2026-08-20T00:09:05.773Z"
+stopped_at: Phase 138 context gathered
+last_updated: "2026-08-22T04:29:11.313Z"
 last_activity: 2026-08-20
 progress:
   total_phases: 10
@@ -315,6 +315,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-19T22:14:45.475Z
-Stopped at: Phase 137 context gathered
-Resume file: .planning/phases/137-rpc-and-sanitized-operator-evidence/137-CONTEXT.md
+Last session: 2026-08-22T04:29:11.309Z
+Stopped at: Phase 138 context gathered
+Resume file: .planning/phases/138-parity-adversarial-pressure-restart-and-release-guardrails/138-CONTEXT.md
