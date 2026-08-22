@@ -305,7 +305,7 @@ Plans:
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
 | 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete    | 2026-08-16 |
 | 137. RPC and Sanitized Operator Evidence | 11/11 | Complete    | 2026-08-20 |
-| 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 4/4 | Complete   | 2026-08-22 |
+| 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 4/4 | Complete    | 2026-08-22 |
 
 ***
 *Roadmap created: 2026-07-22*

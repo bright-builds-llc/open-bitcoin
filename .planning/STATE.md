@@ -4,7 +4,7 @@ milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: verifying
 stopped_at: Completed 138-04-PLAN.md
-last_updated: "2026-08-22T10:24:03.346Z"
+last_updated: "2026-08-22T10:39:50.126Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 10
@@ -26,8 +26,8 @@ See: `.planning/PROJECT.md` (updated 2026-08-22 after Phase 138 closeout evidenc
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 138 (Parity, Adversarial Pressure, Restart, and Release Guardrails) — EXECUTING
-Plan: 4 of 4
+Phase: 138
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-08-22
 
@@ -39,7 +39,7 @@ Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 t
 
 **Current milestone:**
 
-- Total plans completed: 91
+- Total plans completed: 95
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
@@ -55,6 +55,7 @@ Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 t
 | 135 | 14 | - | - |
 | 136 | 6 | - | - |
 | 137 | 11 | - | - |
+| 138 | 4 | - | - |
 
 ### Plan Execution History
 

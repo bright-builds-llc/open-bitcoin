@@ -16,7 +16,7 @@ v2.1 Block Serving and Compact Block Relay Boundary shipped and was archived on 
 
 The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, first-party BIP152 codecs, compact negotiation/reconstruction/fallback, authoritative production network state, real compact-announcement transport, sanitized operator evidence, and deterministic guardrails that keep public-network and production claims scoped.
 
-Milestone v2.2 remains active and unarchived after initialization through `/gsd-new-milestone`. Phases 130–138 now have implementation and closeout evidence covering the scoped v2.2 surface: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. Milestone archival remains `/gsd-complete-milestone v2.2` after Phase 138 verification passes. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.2 remains active and unarchived after initialization through `/gsd-new-milestone`. Phases 130–138 completed with implementation and closeout evidence covering the scoped v2.2 surface: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. Phase 138 verification passed on 2026-08-22. Milestone archival remains `/gsd-complete-milestone v2.2`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Current Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 
@@ -218,4 +218,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-08-15 after completing Phase 135*
+*Last updated: 2026-08-22 after completing Phase 138*
