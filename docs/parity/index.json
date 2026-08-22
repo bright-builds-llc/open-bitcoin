@@ -733,7 +733,7 @@
     },
     {
       "name": "v2-2-resource-time-fee-primitives",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-2-package-aware-download-orphan-bridge",
@@ -741,31 +741,31 @@
     },
     {
       "name": "v2-2-authoritative-cross-cache-lifecycle-integration",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2 snapshot schema, checkpointing, and recovery",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-2-rpc-and-sanitized-operator-evidence",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-2-typed-package-staged-admission",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-2-rolling-fee-expiry-pressure",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-2-receive-independent-maintenance-and-transport-receipts",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-2-parity-uat-release-boundary",
-      "status": "in_progress"
+      "status": "done"
     }
   ],
   "checklist": {
@@ -3083,7 +3083,7 @@
       {
         "id": "v2-2-resource-time-fee-primitives",
         "title": "v2.2 Resource, Time, and Fee Primitives",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "FEEP-01",
           "FEEP-02",
@@ -3206,7 +3206,7 @@
       {
         "id": "v2-2-authoritative-cross-cache-lifecycle-integration",
         "title": "v2.2 Authoritative Cross-Cache Lifecycle Integration",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "MPLIFE-01",
           "MPLIFE-02",
@@ -3378,7 +3378,7 @@
           "Phase 136 owns receive-independent retry scheduling, package fanout, and retry clearing.",
           "Phase 137 owns broad RPC and sanitized operator presentation.",
           "Phase 138 owns MPVFY-01 through MPVFY-04",
-          "MPLIFE-01 through MPLIFE-04 remain pending in the milestone requirement ledger until phase-level verification records its final result."
+          "MPLIFE-01 through MPLIFE-04 are closed by Phase 134 verification and Phase 138 named evidence."
         ],
         "suspected_unknowns": [
           "Phase 138 adversarial pressure and restart coverage may expose interactions beyond Phase 134's deterministic scenario and failure-injection matrix."
@@ -3388,7 +3388,7 @@
         "id": "v2-2-snapshot-schema-checkpointing-recovery",
         "title": "v2 Snapshot Schema, Checkpointing, and Recovery",
         "name": "v2 snapshot schema, checkpointing, and recovery",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "MPDUR-01",
           "MPDUR-02",
@@ -3435,7 +3435,7 @@
           ]
         },
         "known_gaps": [
-          "MPDUR-01 through MPDUR-04 remain pending until independent phase verification records its result.",
+          "MPDUR-01 through MPDUR-04 are closed by Phase 135 verification and Phase 138 named evidence.",
           "Phase 135 review warning WR-01 remains open and non-blocking: the live preflight is unconditional, while outer-cfg lexical-checker hardening is deferred.",
           "Phase 136 owns receive-independent retry scheduling, package fanout, receipt clearing, and any later checkpoint-cadence change.",
           "Phase 137 owns broad RPC and sanitized operator presentation.",
@@ -3449,7 +3449,7 @@
       {
         "id": "v2-2-rpc-and-sanitized-operator-evidence",
         "title": "v2.2 RPC and Sanitized Operator Evidence",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "MPOBS-01",
           "MPOBS-02",
@@ -3487,7 +3487,7 @@
       {
         "id": "v2-2-typed-package-staged-admission",
         "title": "v2.2 Typed Package Vocabulary and Staged Admission",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "PACK-01",
           "PACK-02",
@@ -3529,7 +3529,7 @@
       {
         "id": "v2-2-rolling-fee-expiry-pressure",
         "title": "v2.2 Rolling Fee, Expiry, and Pressure",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "PRESS-01",
           "PRESS-02",
@@ -3567,7 +3567,7 @@
       {
         "id": "v2-2-receive-independent-maintenance-and-transport-receipts",
         "title": "v2.2 Receive-Independent Maintenance and Transport Receipts",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "PPKG-04",
           "IBR-01",
@@ -3604,7 +3604,7 @@
       {
         "id": "v2-2-parity-uat-release-boundary",
         "title": "v2.2 Parity, UAT, and Release Boundary",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "MPVFY-01",
           "MPVFY-02",
@@ -3634,12 +3634,12 @@
           ]
         },
         "known_gaps": [
-          "The Phase 138 checker file is named here and lands in a later plan; this surface stays in_progress until that checker can name evidence.",
+          "Phase 138 owns MPVFY-01 through MPVFY-04. The last-gate checker names 4x6 evidence; Phase 138 closes the v2.2 claim boundary without archiving the milestone.",
           "Required UAT stays deterministic; optional public-network review is never a default, CI, or release gate.",
           "FUT-12 through FUT-17 remain deferred: general package wire, arbitrary multi-parent assembly, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness or production-funds claims."
         ],
         "suspected_unknowns": [
-          "Later plans still own last-gate wiring, requirement-row flips, and surface promotion to done."
+          "Milestone archival remains a later command after Phase 138 verification passes."
         ]
       }
     ]

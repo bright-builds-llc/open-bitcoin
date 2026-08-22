@@ -1,7 +1,7 @@
 export const SCOPE_CLAIM_DIAGNOSTIC =
   "P134 scope: Phase 135-138 and broad relay/readiness claims must remain deferred";
 export const PARITY_STATUS_DIAGNOSTIC =
-  "P134 parity: pending requirements or verification gaps require in_progress status";
+  "P134 parity: pending MPLIFE requirements require in_progress status";
 
 export const SCOPE_CLAIM_SOURCE_FILES = [
   "README.md",
@@ -54,6 +54,8 @@ export function parityStatusMutations(): ScopeClaimMutation[] {
       name: "human checklist claims done while MPLIFE remains pending",
       expectedFailure: PARITY_STATUS_DIAGNOSTIC,
       mutate: (files) => {
+        reopenMplife(files);
+        setAllPhase134Statuses(files, "in_progress");
         setChecklistStatus(files, "done");
       },
     },
@@ -61,6 +63,8 @@ export function parityStatusMutations(): ScopeClaimMutation[] {
       name: "machine surface claims done while MPLIFE remains pending",
       expectedFailure: PARITY_STATUS_DIAGNOSTIC,
       mutate: (files) => {
+        reopenMplife(files);
+        setAllPhase134Statuses(files, "in_progress");
         setIndexStatus(files, "surfaces", "done");
       },
     },
@@ -68,6 +72,8 @@ export function parityStatusMutations(): ScopeClaimMutation[] {
       name: "machine checklist claims done while MPLIFE remains pending",
       expectedFailure: PARITY_STATUS_DIAGNOSTIC,
       mutate: (files) => {
+        reopenMplife(files);
+        setAllPhase134Statuses(files, "in_progress");
         setIndexStatus(files, "checklist", "done");
       },
     },
@@ -85,6 +91,25 @@ function insertClaim(relativePath: string, claim: string): Mutator {
 
     files.set(relativePath, `${requireFile(files, relativePath)}\n${claim}\n`);
   };
+}
+
+function reopenMplife(files: Map<string, string>): void {
+  const relativePath = ".planning/REQUIREMENTS.md";
+  const source = requireFile(files, relativePath);
+  const search = "- [x] **MPLIFE-01**";
+  if (!source.includes(search)) {
+    throw new Error("missing checked MPLIFE-01 checkbox");
+  }
+  files.set(relativePath, source.replace(search, "- [ ] **MPLIFE-01**"));
+}
+
+function setAllPhase134Statuses(
+  files: Map<string, string>,
+  status: "done" | "in_progress",
+): void {
+  setChecklistStatus(files, status);
+  setIndexStatus(files, "surfaces", status);
+  setIndexStatus(files, "checklist", status);
 }
 
 function setChecklistStatus(

@@ -89,6 +89,8 @@ export const CLAIM_FILES = [
   "docs/parity/support-matrix.md",
 ] as const;
 
+export const REQUIREMENTS_FILE = ".planning/REQUIREMENTS.md";
+
 export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,
   "docs/parity/index.json",
@@ -97,7 +99,12 @@ export const REQUIRED_DOC_FILES = [
   "scripts/check-benchmark-report.ts",
   "packages/open-bitcoin-bench/src/cases/mempool.rs",
   UAT_PACKAGE,
+  REQUIREMENTS_FILE,
 ] as const;
+
+export function allV22RequirementIds(): string[] {
+  return Object.values(REQUIREMENTS_BY_SURFACE).flatMap((requirements) => [...requirements]);
+}
 
 export const D21_REQUIRED_FILES = ["README.md", "docs/operator/runtime-guide.md"] as const;
 

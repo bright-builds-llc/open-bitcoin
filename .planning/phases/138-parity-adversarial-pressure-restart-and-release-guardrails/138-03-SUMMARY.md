@@ -52,7 +52,7 @@ patterns-established:
   - "Pattern 1: verify.sh and reconciliation sequences are 117 then 138 then current-documentation-reconciliation"
   - "Pattern 2: 124/129/130/131 last-gate needles name the Phase 138 check and still require 117 immediately before it"
 
-requirements-completed: []
+requirements-completed: [MPVFY-01, MPVFY-02, MPVFY-03, MPVFY-04]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 138-2026-08-22T04-13-58

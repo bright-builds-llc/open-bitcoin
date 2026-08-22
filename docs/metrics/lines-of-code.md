@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,134 |
-| Total lines | 323,114 |
-| Code/content lines | 281,896 |
-| Comment-only lines | 14,464 |
-| Blank lines | 26,754 |
+| Total lines | 323,209 |
+| Code/content lines | 281,974 |
+| Comment-only lines | 14,470 |
+| Blank lines | 26,765 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 434 | 123,112 | 104,769 | 8,707 | 9,636 |
 | Rust production | 366 | 108,424 | 94,308 | 3,974 | 10,142 |
-| TypeScript/Bun scripts | 265 | 74,714 | 66,892 | 1,705 | 6,117 |
+| TypeScript/Bun scripts | 265 | 74,809 | 66,970 | 1,711 | 6,128 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,501 | 4,028 | 64 | 409 |
 | TOML/config | 16 | 3,466 | 3,100 | 0 | 366 |
@@ -191,21 +191,21 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/aggregate-reachability.ts | 513 |
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/strict-reachability.ts | 256 |
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/token-scanner-reachability.ts | 557 |
-| scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts | 150 |
+| scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts | 175 |
 | scripts/check-phase134-authoritative-lifecycle.ts | 509 |
-| scripts/check-phase134-authoritative-lifecycle/scope.ts | 173 |
-| scripts/check-phase135-snapshot-recovery.test.ts | 532 |
-| scripts/check-phase135-snapshot-recovery.ts | 586 |
+| scripts/check-phase134-authoritative-lifecycle/scope.ts | 170 |
+| scripts/check-phase135-snapshot-recovery.test.ts | 538 |
+| scripts/check-phase135-snapshot-recovery.ts | 585 |
 | scripts/check-phase135-snapshot-recovery/persisted-input-mutations.ts | 310 |
 | scripts/check-phase135-snapshot-recovery/persisted-input.ts | 253 |
 | scripts/check-phase135-snapshot-recovery/source.ts | 217 |
-| scripts/check-phase138-parity-uat-release-boundary.test.ts | 331 |
+| scripts/check-phase138-parity-uat-release-boundary.test.ts | 369 |
 | scripts/check-phase138-parity-uat-release-boundary.ts | 14 |
-| scripts/check-phase138-parity-uat-release-boundary/checks.ts | 214 |
+| scripts/check-phase138-parity-uat-release-boundary/checks.ts | 228 |
 | scripts/check-phase138-parity-uat-release-boundary/claims.ts | 93 |
-| scripts/check-phase138-parity-uat-release-boundary/constants.ts | 222 |
+| scripts/check-phase138-parity-uat-release-boundary/constants.ts | 229 |
 | scripts/check-phase138-parity-uat-release-boundary/matrix.ts | 167 |
-| scripts/check-phase138-parity-uat-release-boundary/test-fixtures.ts | 178 |
+| scripts/check-phase138-parity-uat-release-boundary/test-fixtures.ts | 187 |
 | scripts/check-phase138-parity-uat-release-boundary/verifier.ts | 129 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
@@ -346,7 +346,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 12f2b88b064439015e46bfe78a23b6d466dcea18f7363efa75c16ad139abc826 |
+| Input fingerprint | fb4531a44ad3179d78e9201a8811c71e6d9c526048bb97407aec9313ec0d1aac |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

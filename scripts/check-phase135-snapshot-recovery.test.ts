@@ -149,6 +149,7 @@ function contractMutations(): Mutation[] {
     verify: "scripts/verify.sh",
     index: "docs/parity/index.json",
     checklist: "docs/parity/checklist.md",
+    requirements: ".planning/REQUIREMENTS.md",
   } as const;
 
   return [
@@ -407,8 +408,8 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.parity,
       replace(
         files.index,
+        '"name": "v2 snapshot schema, checkpointing, and recovery",\n      "status": "done"',
         '"name": "v2 snapshot schema, checkpointing, and recovery",\n      "status": "in_progress"',
-        '"name": "v2 snapshot schema, checkpointing, and recovery",\n      "status": "complete"',
       ),
     ],
     [
@@ -416,9 +417,14 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.parity,
       replace(
         files.checklist,
-        "| MPDUR-01 | Pending |",
         "| MPDUR-01 | Complete |",
+        "| MPDUR-01 | Pending |",
       ),
+    ],
+    [
+      "requirements checkbox reopens",
+      PHASE135_DIAGNOSTICS.parity,
+      replace(files.requirements, "- [x] **MPDUR-01**", "- [ ] **MPDUR-01**"),
     ],
     [
       "verifier order drifts",

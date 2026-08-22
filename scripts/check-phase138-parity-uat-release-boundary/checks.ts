@@ -11,7 +11,9 @@ import {
   REQUIRED_KNOTS_ANCHORS,
   REQUIRED_TOP_LEVEL_NAMES,
   REQUIREMENTS_BY_SURFACE,
+  REQUIREMENTS_FILE,
   SNAPSHOT_CHECKLIST_ID,
+  allV22RequirementIds,
 } from "./constants.ts";
 import { cellLabel, COMPOSITION_CELL, MATRIX_CELLS } from "./matrix.ts";
 import { checkBenchmarks, checkUatCommands, checkVerifier } from "./verifier.ts";
@@ -34,6 +36,7 @@ export function checkPhase138ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   checkMatrixEvidence(repoRoot, failures);
   const maybeIndex = parseParityIndex(texts.get("docs/parity/index.json") ?? "", failures);
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
+  checkRequirementCheckboxes(texts.get(REQUIREMENTS_FILE) ?? "", failures);
   checkBreadcrumbGroups(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkClaims(texts, failures);
   checkVerifier(texts.get("scripts/verify.sh") ?? "", failures);
@@ -97,6 +100,8 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
     const matches = topSurfaces.filter((surface) => surface.name === name);
     if (matches.length !== 1) {
       failures.push(`v2.2 surface ${name} must have exactly one top-level entry`);
+    } else if (matches[0]?.status !== "done") {
+      failures.push(`v2.2 surface ${name} must be done`);
     }
   }
 
@@ -110,6 +115,9 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
     if (checklist && !sameMembers(asStringArray(checklist.requirements), expectedRequirements)) {
       failures.push(`v2.2 surface ${checklistId} has incorrect requirement ownership`);
     }
+    if (checklist && checklist.status !== "done") {
+      failures.push(`v2.2 surface ${checklistId} must be done`);
+    }
   }
 
   const ownersByRequirement = new Map<string, string[]>();
@@ -122,7 +130,7 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
     }
   }
 
-  for (const requirement of allV22Requirements()) {
+  for (const requirement of allV22RequirementIds()) {
     const owners = ownersByRequirement.get(requirement) ?? [];
     if (owners.length !== 1) {
       failures.push(`${requirement} must have exactly one parity surface owner`);
@@ -195,8 +203,14 @@ function isInsideRepo(repoRoot: string, absolutePath: string): boolean {
   return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
 }
 
-function allV22Requirements(): string[] {
-  return Object.values(REQUIREMENTS_BY_SURFACE).flatMap((requirements) => [...requirements]);
+function checkRequirementCheckboxes(requirementsText: string, failures: string[]): void {
+  for (const id of allV22RequirementIds()) {
+    const checked = (requirementsText.match(new RegExp(`- \\[x\\] \\*\\*${id}\\*\\*`, "g")) ?? [])
+      .length;
+    if (checked !== 1) {
+      failures.push(`v2.2 requirement ${id} must be checked [x] exactly once`);
+    }
+  }
 }
 
 function asSurfaceArray(value: unknown): ParitySurface[] {

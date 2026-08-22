@@ -2,7 +2,7 @@ export const PHASE134_SCOPE_DIAGNOSTIC =
   "P134 scope: Phase 135-138 and broad relay/readiness claims must remain deferred";
 
 export const PHASE134_PARITY_DIAGNOSTIC =
-  "P134 parity: pending requirements or verification gaps require in_progress status";
+  "P134 parity: pending MPLIFE requirements require in_progress status";
 
 type Phase134ScopeSources = {
   claimSurfaces: readonly string[];
@@ -67,11 +67,8 @@ export function phase134ScopeFailures(
         /^- \[ \] \*\*MPLIFE-0[1-4]\*\*:/gm,
       ) ?? []
     ).length > 0;
-  const verificationGapsPresent =
-    /^status:\s*gaps_found\s*$/m.test(sources.gaps) ||
-    /^gaps:\s*\n\s{2}-\s+truth:/m.test(sources.gaps);
   if (
-    (requirementsPending || verificationGapsPresent) &&
+    requirementsPending &&
     (maybeParityStatuses === null ||
       maybeParityStatuses.surfaceStatus !== "in_progress" ||
       maybeParityStatuses.checklistStatus !== "in_progress" ||

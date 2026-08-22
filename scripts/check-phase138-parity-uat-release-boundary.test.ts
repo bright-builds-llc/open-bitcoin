@@ -13,6 +13,7 @@ import {
   PHASE132_SURFACE,
   PHASE138_CHECK,
   REQUIRED_UAT_COMMANDS,
+  REQUIREMENTS_FILE,
 } from "./check-phase138-parity-uat-release-boundary/constants.ts";
 import { MATRIX_CELLS } from "./check-phase138-parity-uat-release-boundary/matrix.ts";
 import {
@@ -115,6 +116,43 @@ test("fails_when_mpvfy_is_owned_by_a_phase132_surface", () => {
   // Assert
   expect(failures).toContain("MPVFY-01");
   expect(failures).toContain(PHASE132_SURFACE);
+});
+
+test("fails_when_a_leftover_mpvfy_checkbox_is_unchecked", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(files, REQUIREMENTS_FILE, "- [x] **MPVFY-01**", "- [ ] **MPVFY-01**");
+    },
+  });
+
+  // Act
+  const failures = checkPhase138ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("MPVFY-01");
+  expect(failures).toContain("must be checked [x] exactly once");
+});
+
+test("fails_when_the_closeout_surface_stays_in_progress", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      mutateIndex(files, (index) => {
+        const closeout = index.checklist.surfaces.find(
+          (surface: { id: string }) => surface.id === CLOSEOUT_SURFACE,
+        );
+        closeout.status = "in_progress";
+      });
+    },
+  });
+
+  // Act
+  const failures = checkPhase138ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(CLOSEOUT_SURFACE);
+  expect(failures).toContain("must be done");
 });
 
 test("fails_when_the_d21_sentence_is_missing", () => {

@@ -46,7 +46,7 @@ patterns-established:
   - "maintenance_tick is receive-independent and walks only unbroadcast_members with production 256/32 budgets."
   - "Clocks and CSPRNG stay in the open-bitcoind shell; node tests inject RetryDecisionContext."
 
-requirements-completed: []
+requirements-completed: [PPKG-04, IBR-01, IBR-02, IBR-03, IBR-04]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 136-2026-08-15T21-24-17

@@ -621,13 +621,13 @@ shape; they preserve the in-scope restart result without claiming binary
 
 | Requirement | Status | Concrete implementation evidence |
 | --- | --- | --- |
-| `MPDUR-01` | Pending | Source-only v2 DTO and bounded exact v1 decode-only migration in `storage/{mempool_snapshot.rs,snapshot_codec/mempool.rs}` |
-| `MPDUR-02` | Pending | Deterministic bounded topology, seven outcomes, exact final membership, fresh rolling state, and one staged install in `network/recovery/` and `network/lifecycle_projection/` |
-| `MPDUR-03` | Pending | Fresh rolling-fee initialization, restored acceptance-time age behavior, and exact local-unbroadcast identity recovery in `network/recovery/staging.rs` with expiry, restart-baseline, and exact-member regression tests in `network/tests/recovery_cases/staging.rs` |
-| `MPDUR-04` | Pending | Affine single-flight SyncAll checkpointing, retained completion and abort capabilities, durable-generation/loss-range evidence owned by `network/lifecycle_projection/checkpoint.rs`, and producer-before-checkpoint-before-clean daemon shutdown across `network/{lifecycle_effects/checkpoint.rs,checkpoint.rs}`, `storage/fjall_store/mempool.rs`, and `open-bitcoin-rpc/src/bin/` |
+| `MPDUR-01` | Complete | Source-only v2 DTO and bounded exact v1 decode-only migration in `storage/{mempool_snapshot.rs,snapshot_codec/mempool.rs}` |
+| `MPDUR-02` | Complete | Deterministic bounded topology, seven outcomes, exact final membership, fresh rolling state, and one staged install in `network/recovery/` and `network/lifecycle_projection/` |
+| `MPDUR-03` | Complete | Fresh rolling-fee initialization, restored acceptance-time age behavior, and exact local-unbroadcast identity recovery in `network/recovery/staging.rs` with expiry, restart-baseline, and exact-member regression tests in `network/tests/recovery_cases/staging.rs` |
+| `MPDUR-04` | Complete | Affine single-flight SyncAll checkpointing, retained completion and abort capabilities, durable-generation/loss-range evidence owned by `network/lifecycle_projection/checkpoint.rs`, and producer-before-checkpoint-before-clean daemon shutdown across `network/{lifecycle_effects/checkpoint.rs,checkpoint.rs}`, `storage/fjall_store/mempool.rs`, and `open-bitcoin-rpc/src/bin/` |
 
-These requirements remain pending until independent phase verification records
-its final result. Phase 136 owns retry scheduling and package fanout, Phase 137
+MPDUR-01 through MPDUR-04 are closed by Phase 135 verification and Phase 138 named evidence.
+Phase 136 owns retry scheduling and package fanout, Phase 137
 owns broad operator surfaces, and Phase 138 owns adversarial release proof.
 Phase 135 review warning WR-01 remains open and non-blocking: the live preflight
 is unconditional, while outer-`cfg` lexical-checker hardening is deferred and is

@@ -26,20 +26,20 @@ Requirements for package admission and relay, rolling minimum-fee behavior, init
 
 ### Package Admission
 
-- [ ] **PACK-01**: Node validates package shape before expensive work, including non-empty input, the pinned 25-transaction and 404,000-weight limits, unique identities, topological order, and no internal input conflicts.
-- [ ] **PACK-02**: Operator can dry-run package admission and receive ordered per-transaction results without mutating mempool, relay, persistence, or evidence state.
-- [ ] **PACK-03**: Operator can submit a child-with-unconfirmed-parents package and receive package-wide status plus ordered final per-transaction outcomes and effective-fee membership.
-- [ ] **PACK-04**: Package admission preserves pinned individual-first partial-acceptance behavior instead of treating the entire call as globally atomic.
-- [ ] **PACK-05**: Each accepted subpackage is staged and committed through one coherent mempool delta, with no partial mutation when validation, replacement, limits, or commit preparation fails.
-- [ ] **PACK-06**: Package fee evaluation applies the pinned effective-fee grouping rules while preserving the static relay floor and evaluating the active rolling floor correctly.
-- [ ] **PACK-07**: Package outcomes reflect final post-trim membership and match the pinned replacement, TRUC, ephemeral-dust, same-txid/different-witness, and reconsiderable-failure boundaries selected for the scoped surface.
+- [x] **PACK-01**: Node validates package shape before expensive work, including non-empty input, the pinned 25-transaction and 404,000-weight limits, unique identities, topological order, and no internal input conflicts.
+- [x] **PACK-02**: Operator can dry-run package admission and receive ordered per-transaction results without mutating mempool, relay, persistence, or evidence state.
+- [x] **PACK-03**: Operator can submit a child-with-unconfirmed-parents package and receive package-wide status plus ordered final per-transaction outcomes and effective-fee membership.
+- [x] **PACK-04**: Package admission preserves pinned individual-first partial-acceptance behavior instead of treating the entire call as globally atomic.
+- [x] **PACK-05**: Each accepted subpackage is staged and committed through one coherent mempool delta, with no partial mutation when validation, replacement, limits, or commit preparation fails.
+- [x] **PACK-06**: Package fee evaluation applies the pinned effective-fee grouping rules while preserving the static relay floor and evaluating the active rolling floor correctly.
+- [x] **PACK-07**: Package outcomes reflect final post-trim membership and match the pinned replacement, TRUC, ephemeral-dust, same-txid/different-witness, and reconsiderable-failure boundaries selected for the scoped surface.
 
 ### Opportunistic Peer Package Relay
 
 - [x] **PPKG-01**: Node distinguishes hard rejects from reconsiderable package candidates and retains only bounded, rotating candidate and reject evidence.
 - [x] **PPKG-02**: Node assembles only sender-aware same-peer one-parent/one-child candidates over ordinary transaction messages, preserving member origin and exact pinned package identity.
 - [x] **PPKG-03**: Peer-originated package candidates reuse the authoritative package admission engine rather than reimplementing package policy in the network or RPC layers.
-- [ ] **PPKG-04**: Accepted and still-present package members enter existing transaction serving and relay fanout in parent-before-child order under existing activation, peer-policy, queue, rate, and txid/wtxid controls.
+- [x] **PPKG-04**: Accepted and still-present package members enter existing transaction serving and relay fanout in parent-before-child order under existing activation, peer-policy, queue, rate, and txid/wtxid controls.
 
 ### Authoritative Lifecycle Integration
 
@@ -50,30 +50,30 @@ Requirements for package admission and relay, rolling minimum-fee behavior, init
 
 ### Durable Mempool Policy Recovery
 
-- [ ] **MPDUR-01**: Durable mempool snapshots preserve canonical transactions, acceptance times, and surviving locally submitted unbroadcast membership without persisting derived peer, topology, or rolling-fee state.
-- [ ] **MPDUR-02**: Recovery validates and topologically replays durable records against current chainstate and policy, rebuilds derived indexes, and reports typed recovered and dropped classifications.
-- [ ] **MPDUR-03**: Rolling minimum-fee state resets to the pinned restart baseline while restored entries retain supported age and local-unbroadcast semantics.
-- [ ] **MPDUR-04**: Coalesced periodic and clean-shutdown checkpoint paths expose freshness, dirty generation, persistence strength, and the documented crash-loss window without holding runtime authority across I/O.
+- [x] **MPDUR-01**: Durable mempool snapshots preserve canonical transactions, acceptance times, and surviving locally submitted unbroadcast membership without persisting derived peer, topology, or rolling-fee state.
+- [x] **MPDUR-02**: Recovery validates and topologically replays durable records against current chainstate and policy, rebuilds derived indexes, and reports typed recovered and dropped classifications.
+- [x] **MPDUR-03**: Rolling minimum-fee state resets to the pinned restart baseline while restored entries retain supported age and local-unbroadcast semantics.
+- [x] **MPDUR-04**: Coalesced periodic and clean-shutdown checkpoint paths expose freshness, dirty generation, persistence strength, and the documented crash-loss window without holding runtime authority across I/O.
 
 ### Initial Broadcast Retry
 
-- [ ] **IBR-01**: Node tracks only bounded locally submitted, relay-requested, still-present transactions for initial broadcast retry; it never treats the whole mempool as a rebroadcast set.
-- [ ] **IBR-02**: Receive-independent maintenance schedules fresh randomized 10-to-15-minute retry cycles from injected inputs and caps work and emissions per tick.
-- [ ] **IBR-03**: Retry uses existing relay activation, peer eligibility, txid/wtxid selection, rate limits, bounded outboxes, serving paths, and successful transport receipts rather than a parallel fanout path.
-- [ ] **IBR-04**: Unbroadcast membership clears only at the documented eligible serve or successful-write receipt, or on authoritative lifecycle removal, and survives supported restart boundaries without claiming guaranteed propagation.
+- [x] **IBR-01**: Node tracks only bounded locally submitted, relay-requested, still-present transactions for initial broadcast retry; it never treats the whole mempool as a rebroadcast set.
+- [x] **IBR-02**: Receive-independent maintenance schedules fresh randomized 10-to-15-minute retry cycles from injected inputs and caps work and emissions per tick.
+- [x] **IBR-03**: Retry uses existing relay activation, peer eligibility, txid/wtxid selection, rate limits, bounded outboxes, serving paths, and successful transport receipts rather than a parallel fanout path.
+- [x] **IBR-04**: Unbroadcast membership clears only at the documented eligible serve or successful-write receipt, or on authoritative lifecycle removal, and survives supported restart boundaries without claiming guaranteed propagation.
 
 ### RPC and Operator Evidence
 
-- [ ] **MPOBS-01**: RPC and CLI expose the scoped package dry-run, submission, and mempool-info behavior with stable errors and per-transaction results that match the authoritative core.
-- [ ] **MPOBS-02**: Status, dashboard, metrics, logs, and support bundles distinguish vsize, accounted usage, capacity, static and rolling fee floors, pressure and decay state, eviction, checkpoint, recovery, and retry outcomes using fixed low-cardinality fields.
-- [ ] **MPOBS-03**: Shared evidence is redacted and distinguishes accepted, still-present, eligible, queued, attempted, emitted, requested, served, suppressed, and cleared states; identifiers and detailed per-member results remain confined to the authenticated direct response that supplied them.
+- [x] **MPOBS-01**: RPC and CLI expose the scoped package dry-run, submission, and mempool-info behavior with stable errors and per-transaction results that match the authoritative core.
+- [x] **MPOBS-02**: Status, dashboard, metrics, logs, and support bundles distinguish vsize, accounted usage, capacity, static and rolling fee floors, pressure and decay state, eviction, checkpoint, recovery, and retry outcomes using fixed low-cardinality fields.
+- [x] **MPOBS-03**: Shared evidence is redacted and distinguishes accepted, still-present, eligible, queued, attempted, emitted, requested, served, suppressed, and cleared states; identifiers and detailed per-member results remain confined to the authenticated direct response that supplied them.
 
 ### Parity, Verification, and Release Boundaries
 
-- [ ] **MPVFY-01**: Package, rolling-fee, pressure, expiry, recovery, and retry behavior has deterministic pinned-Knots fixtures, fake-clock scenarios, randomized graph-oracle tests, and failure-injection coverage.
-- [ ] **MPVFY-02**: Package and sustained-pressure benchmarks enforce documented bounded-work and performance expectations without adding public-network or wall-clock gates to default verification.
-- [ ] **MPVFY-03**: Parity catalogs, breadcrumbs, operator docs, and repo-local Cargo and Bazel UAT commands identify exact Knots anchors, intentional differences, and evidence boundaries for every v2.2 surface.
-- [ ] **MPVFY-04**: Deterministic claim guardrails require the bounded local-package, same-peer 1P1C, ordinary transaction fanout, and initial-broadcast-retry wording while rejecting general package wire, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness claims.
+- [x] **MPVFY-01**: Package, rolling-fee, pressure, expiry, recovery, and retry behavior has deterministic pinned-Knots fixtures, fake-clock scenarios, randomized graph-oracle tests, and failure-injection coverage.
+- [x] **MPVFY-02**: Package and sustained-pressure benchmarks enforce documented bounded-work and performance expectations without adding public-network or wall-clock gates to default verification.
+- [x] **MPVFY-03**: Parity catalogs, breadcrumbs, operator docs, and repo-local Cargo and Bazel UAT commands identify exact Knots anchors, intentional differences, and evidence boundaries for every v2.2 surface.
+- [x] **MPVFY-04**: Deterministic claim guardrails require the bounded local-package, same-peer 1P1C, ordinary transaction fanout, and initial-broadcast-retry wording while rejecting general package wire, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness claims.
 
 ## Future Requirements
 
@@ -120,36 +120,36 @@ Every v2.2 requirement maps to exactly one roadmap phase.
 | PRESS-03 | Phase 131 | Complete |
 | PRESS-04 | Phase 131 | Complete |
 | PRESS-05 | Phase 131 | Complete |
-| PACK-01 | Phase 132 | Pending |
-| PACK-02 | Phase 132 | Pending |
-| PACK-03 | Phase 132 | Pending |
-| PACK-04 | Phase 132 | Pending |
-| PACK-05 | Phase 132 | Pending |
-| PACK-06 | Phase 132 | Pending |
-| PACK-07 | Phase 132 | Pending |
+| PACK-01 | Phase 132 | Complete |
+| PACK-02 | Phase 132 | Complete |
+| PACK-03 | Phase 132 | Complete |
+| PACK-04 | Phase 132 | Complete |
+| PACK-05 | Phase 132 | Complete |
+| PACK-06 | Phase 132 | Complete |
+| PACK-07 | Phase 132 | Complete |
 | PPKG-01 | Phase 133 | Complete |
 | PPKG-02 | Phase 133 | Complete |
 | PPKG-03 | Phase 133 | Complete |
-| PPKG-04 | Phase 136 | Pending |
+| PPKG-04 | Phase 136 | Complete |
 | MPLIFE-01 | Phase 134 | Complete |
 | MPLIFE-02 | Phase 134 | Complete |
 | MPLIFE-03 | Phase 134 | Complete |
 | MPLIFE-04 | Phase 134 | Complete |
-| MPDUR-01 | Phase 135 | Pending |
-| MPDUR-02 | Phase 135 | Pending |
-| MPDUR-03 | Phase 135 | Pending |
-| MPDUR-04 | Phase 135 | Pending |
-| IBR-01 | Phase 136 | Pending |
-| IBR-02 | Phase 136 | Pending |
-| IBR-03 | Phase 136 | Pending |
-| IBR-04 | Phase 136 | Pending |
-| MPOBS-01 | Phase 137 | Pending |
-| MPOBS-02 | Phase 137 | Pending |
-| MPOBS-03 | Phase 137 | Pending |
-| MPVFY-01 | Phase 138 | Pending |
-| MPVFY-02 | Phase 138 | Pending |
-| MPVFY-03 | Phase 138 | Pending |
-| MPVFY-04 | Phase 138 | Pending |
+| MPDUR-01 | Phase 135 | Complete |
+| MPDUR-02 | Phase 135 | Complete |
+| MPDUR-03 | Phase 135 | Complete |
+| MPDUR-04 | Phase 135 | Complete |
+| IBR-01 | Phase 136 | Complete |
+| IBR-02 | Phase 136 | Complete |
+| IBR-03 | Phase 136 | Complete |
+| IBR-04 | Phase 136 | Complete |
+| MPOBS-01 | Phase 137 | Complete |
+| MPOBS-02 | Phase 137 | Complete |
+| MPOBS-03 | Phase 137 | Complete |
+| MPVFY-01 | Phase 138 | Complete |
+| MPVFY-02 | Phase 138 | Complete |
+| MPVFY-03 | Phase 138 | Complete |
+| MPVFY-04 | Phase 138 | Complete |
 
 **Coverage:**
 - v2.2 requirements: 40 total

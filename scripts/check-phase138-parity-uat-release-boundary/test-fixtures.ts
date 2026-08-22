@@ -27,11 +27,13 @@ import {
   REQUIRED_TOP_LEVEL_NAMES,
   REQUIRED_UAT_COMMANDS,
   REQUIREMENTS_BY_SURFACE,
+  REQUIREMENTS_FILE,
   RUNNABLE_CARGO_FILTERS,
   SNAPSHOT_CHECKLIST_ID,
   SNAPSHOT_TOP_LEVEL_NAME,
   THRESHOLD_FREE,
   UAT_PACKAGE,
+  allV22RequirementIds,
   type RequiredDocFile,
 } from "./constants.ts";
 import { COMPOSITION_CELL, MATRIX_CELLS } from "./matrix.ts";
@@ -57,6 +59,7 @@ export function createFixture(options: FixtureOptions = {}): string {
     files.set(file, scopedClaim);
   }
   files.set("docs/parity/index.json", JSON.stringify(createParityIndex(), null, 2));
+  files.set(REQUIREMENTS_FILE, createRequirements());
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
   files.set("docs/operator/runtime-guide.md", createRuntimeGuide(scopedClaim));
   files.set(UAT_PACKAGE, createUatPackage(scopedClaim));
@@ -95,12 +98,12 @@ export function createParityIndex(): {
   };
 } {
   return {
-    surfaces: REQUIRED_TOP_LEVEL_NAMES.map((name) => ({ name, status: "in_progress" })),
+    surfaces: REQUIRED_TOP_LEVEL_NAMES.map((name) => ({ name, status: "done" })),
     checklist: {
       surfaces: Object.entries(REQUIREMENTS_BY_SURFACE).map(([id, requirements]) => ({
         id,
         requirements: [...requirements],
-        status: "in_progress",
+        status: "done",
         upstream:
           id === CLOSEOUT_SURFACE
             ? { sources: [...REQUIRED_KNOTS_ANCHORS], tests: [] }
@@ -108,6 +111,12 @@ export function createParityIndex(): {
       })),
     },
   };
+}
+
+export function createRequirements(): string {
+  return allV22RequirementIds()
+    .map((id) => `- [x] **${id}**`)
+    .join("\n");
 }
 
 export function createBreadcrumbs(): string {

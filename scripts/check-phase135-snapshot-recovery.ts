@@ -94,8 +94,8 @@ export const PHASE135_DIAGNOSTICS = {
     "P135 daemon: recovery and private 300-second checkpointing must precede publication",
   shutdown:
     "P135 shutdown: producers must quiesce before final checkpoint and clean marking",
-  parity:
-    "P135 parity: evidence stays in progress and MPDUR requirements stay pending",
+    parity:
+    "P135 parity: evidence is done and MPDUR requirements are complete",
   claims:
     "P135 scope: broad relay, public-network, repair, and readiness claims must remain deferred",
   deterministic:
@@ -473,10 +473,10 @@ export function checkPhase135SnapshotRecovery(
   }
   addFailure(
     failures,
-    topLevelStatus !== "in_progress" ||
-      checklistStatus !== "in_progress" ||
+    topLevelStatus !== "done" ||
+      checklistStatus !== "done" ||
       !checklist.includes(
-        "| v2 snapshot schema, checkpointing, and recovery | In progress |",
+        "| v2 snapshot schema, checkpointing, and recovery | Done |",
       ) ||
       !catalog.includes(
         "Format-owned candidate bounds govern persisted load and topology before current",
@@ -492,12 +492,11 @@ export function checkPhase135SnapshotRecovery(
       ) ||
       !hasAll([catalog, checklist, index].join("\n"), [
         "WR-01 remains open and non-blocking",
-        "MPDUR-01 through MPDUR-04 remain pending",
       ]) ||
       ["MPDUR-01", "MPDUR-02", "MPDUR-03", "MPDUR-04"].some(
         (id) =>
-          !requirements.includes(`- [ ] **${id}**`) ||
-          !checklist.includes(`| ${id} | Pending |`),
+          !requirements.includes(`- [x] **${id}**`) ||
+          !checklist.includes(`| ${id} | Complete |`),
       ),
     PHASE135_DIAGNOSTICS.parity,
   );
