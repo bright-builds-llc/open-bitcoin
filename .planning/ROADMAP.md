@@ -285,7 +285,7 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 138-01-PLAN.md — Restart composition test and Instant-free PRESS-05 work-count gate
+- [x] 138-01-PLAN.md — Restart composition test and Instant-free PRESS-05 work-count gate
 - [ ] 138-02-PLAN.md — Backfill PACK/PRESS/136/MPVFY owners, 138-UAT, and D-21 wording
 - [ ] 138-03-PLAN.md — Last-gate Phase 138 checker and 117→138→reconciliation wiring
 - [ ] 138-04-PLAN.md — Flip leftover Pending rows, promote surfaces, reconcile metadata

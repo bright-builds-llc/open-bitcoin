@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Phase 138 context gathered
-last_updated: "2026-08-22T04:29:11.313Z"
-last_activity: 2026-08-20
+stopped_at: Completed 138-01-PLAN.md
+last_updated: "2026-08-22T05:49:47.814Z"
+last_activity: 2026-08-22
 progress:
   total_phases: 10
   completed_phases: 9
-  total_plans: 91
-  completed_plans: 91
-  percent: 100
+  total_plans: 95
+  completed_plans: 92
+  percent: 97
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 137 — RPC and Sanitized Operator Evidence
+**Current focus:** Phase 138 — Parity, Adversarial Pressure, Restart, and Release Guardrails
 
 ## Current Position
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 138
-Plan: Not started
-Status: Executing Phase 137
-Last activity: 2026-08-20
+Phase: 138 (Parity, Adversarial Pressure, Restart, and Release Guardrails) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-08-22
 
 Progress: [██████████] 97%
 
@@ -103,6 +103,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 136 P04 | 55 | 2 tasks | 22 files |
 | Phase 136-receive-independent-maintenance-and-transport-receipts P05 | 74 | 2 tasks | 10 files |
 | Phase 136 P06 | 72min | 2 tasks | 21 files |
+| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P01 | 32 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -292,6 +293,8 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 136]: Drain first-hop INV after accept; abort unused write capabilities until a later socket write path exists.
 - [Phase 136]: Always start the retry worker from open-bitcoind main beside the checkpoint worker, never from DurableSyncRuntime.
 - [Phase 136]: Keep IBR-01 through IBR-04 Pending until lifecycle-valid phase verification.
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Place the D-04/D-05 composition in recovery_cases/restart_composition.rs next to staging, not a new mega-harness — D-05 allows at most one named Rust composition; staging.rs is already 483 lines
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Retire SUSTAINED_PRESSURE_MAX_ELAPSED and pin PRESS-05 to N=24 work-count symbols while Phase 117 remains last-gate until Plan 03 — D-07/D-08 require Instant-free default smoke; Plan 03 owns last-gate rewiring
 
 ### Pending Todos
 
@@ -315,6 +318,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-22T04:29:11.309Z
-Stopped at: Phase 138 context gathered
-Resume file: .planning/phases/138-parity-adversarial-pressure-restart-and-release-guardrails/138-CONTEXT.md
+Last session: 2026-08-22T05:49:27.058Z
+Stopped at: Completed 138-01-PLAN.md
+Resume file: None
