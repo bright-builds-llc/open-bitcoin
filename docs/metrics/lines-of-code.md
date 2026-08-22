@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,126 |
-| Total lines | 321,701 |
-| Code/content lines | 280,671 |
-| Comment-only lines | 14,413 |
-| Blank lines | 26,617 |
+| Included files | 1,134 |
+| Total lines | 322,617 |
+| Code/content lines | 281,439 |
+| Comment-only lines | 14,460 |
+| Blank lines | 26,718 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 434 | 123,112 | 104,769 | 8,707 | 9,636 |
 | Rust production | 366 | 108,424 | 94,308 | 3,974 | 10,142 |
-| TypeScript/Bun scripts | 257 | 73,303 | 65,671 | 1,652 | 5,980 |
+| TypeScript/Bun scripts | 265 | 74,219 | 66,439 | 1,699 | 6,081 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,499 | 4,024 | 66 | 409 |
 | TOML/config | 16 | 3,466 | 3,100 | 0 | 366 |
@@ -199,6 +199,14 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase135-snapshot-recovery/persisted-input-mutations.ts | 310 |
 | scripts/check-phase135-snapshot-recovery/persisted-input.ts | 253 |
 | scripts/check-phase135-snapshot-recovery/source.ts | 217 |
+| scripts/check-phase138-parity-uat-release-boundary.test.ts | 312 |
+| scripts/check-phase138-parity-uat-release-boundary.ts | 14 |
+| scripts/check-phase138-parity-uat-release-boundary/checks.ts | 12 |
+| scripts/check-phase138-parity-uat-release-boundary/claims.ts | 9 |
+| scripts/check-phase138-parity-uat-release-boundary/constants.ts | 219 |
+| scripts/check-phase138-parity-uat-release-boundary/matrix.ts | 167 |
+| scripts/check-phase138-parity-uat-release-boundary/test-fixtures.ts | 178 |
+| scripts/check-phase138-parity-uat-release-boundary/verifier.ts | 5 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -338,7 +346,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | bde3250c6c4d9637fa592c535e1bd380b4edd48b82a7fe387f4e94315d495e71 |
+| Input fingerprint | 8ca7416405d9544ca1100f0573b3a9045884c3a9234d4a858f8076e2ca5deda6 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
