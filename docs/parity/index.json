@@ -750,6 +750,22 @@
     {
       "name": "v2-2-rpc-and-sanitized-operator-evidence",
       "status": "in_progress"
+    },
+    {
+      "name": "v2-2-typed-package-staged-admission",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-2-rolling-fee-expiry-pressure",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-2-receive-independent-maintenance-and-transport-receipts",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-2-parity-uat-release-boundary",
+      "status": "in_progress"
     }
   ],
   "checklist": {
@@ -3361,7 +3377,7 @@
           "Phase 135 owns snapshot schema, checkpoint coordination, recovery, and crash-loss semantics.",
           "Phase 136 owns receive-independent retry scheduling, package fanout, and retry clearing.",
           "Phase 137 owns broad RPC and sanitized operator presentation.",
-          "Phase 138 owns final adversarial, parity, release, and claim proof.",
+          "Phase 138 owns MPVFY-01 through MPVFY-04",
           "MPLIFE-01 through MPLIFE-04 remain pending in the milestone requirement ledger until phase-level verification records its final result."
         ],
         "suspected_unknowns": [
@@ -3466,6 +3482,164 @@
         ],
         "suspected_unknowns": [
           "Phase 138 adversarial and claim-guardrail review may tighten wording beyond this in_progress pointer."
+        ]
+      },
+      {
+        "id": "v2-2-typed-package-staged-admission",
+        "title": "v2.2 Typed Package Vocabulary and Staged Admission",
+        "status": "in_progress",
+        "requirements": [
+          "PACK-01",
+          "PACK-02",
+          "PACK-03",
+          "PACK-04",
+          "PACK-05",
+          "PACK-06",
+          "PACK-07"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "packages/open-bitcoin-mempool/src/package",
+          "scripts/check-phase132-typed-package-staged-admission.ts"
+        ],
+        "rationale": "Phase 132 uniquely owns PACK-01 through PACK-07. Catalog prose in docs/parity/catalog/mempool-policy.md section Typed Package Vocabulary and Staged Admission already records checked package shape, non-mutating dry-run, staged submit, individual-first partial acceptance, coherent commit, separated fee roles, and pinned package-policy exceptions. This index/checklist row is the machine-readable owner; it does not add a new catalog page.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/policy/packages.cpp",
+            "packages/bitcoin-knots/src/rpc/mempool.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Intentional difference: Open Bitcoin uses a revision-bound staged overlay and individual-first partial acceptance rather than treating a local package call as globally atomic.",
+          "Phase 133 owns peer-originated same-peer 1P1C assembly over ordinary transaction messages.",
+          "Phase 136 owns parent-before-child fanout and initial-broadcast-retry receipts.",
+          "Phase 137 owns RPC and operator package adapters.",
+          "Phase 138 owns MPVFY-01 through MPVFY-04.",
+          "FUT-12 through FUT-17 remain deferred: general package wire, arbitrary multi-parent assembly, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness or production-funds claims."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 claim-guardrail review may tighten wording beyond this in_progress owner."
+        ]
+      },
+      {
+        "id": "v2-2-rolling-fee-expiry-pressure",
+        "title": "v2.2 Rolling Fee, Expiry, and Pressure",
+        "status": "in_progress",
+        "requirements": [
+          "PRESS-01",
+          "PRESS-02",
+          "PRESS-03",
+          "PRESS-04",
+          "PRESS-05"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "packages/open-bitcoin-mempool/src/pool/tests/sustained_pressure_cases.rs",
+          "scripts/check-phase131-rolling-fee-expiry-pressure.ts"
+        ],
+        "rationale": "Phase 131 uniquely owns PRESS-01 through PRESS-05. Existing PRESS catalog prose in docs/parity/catalog/mempool-policy.md already records accounted-memory capacity enforcement, descendant-score pressure trim, block-gated rolling-fee decay, expiry cleanup, and Instant-free work-count PRESS-05 smoke. This index/checklist row is the machine-readable owner; it does not add a new catalog page.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/txmempool.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/mempool_limit.py"
+          ]
+        },
+        "known_gaps": [
+          "Intentional difference: equal-score pressure eviction uses descendant-score plus txid tie-break rather than Knots modified-fee or entry-time multi-index ordering.",
+          "Default PRESS-05 smoke is work-count and threshold_free; documented timing budgets remain opt-in --full or UAT only.",
+          "Phase 135 owns durable snapshot recovery and rolling-fee restart reset.",
+          "Phase 138 owns MPVFY-01 through MPVFY-04.",
+          "FUT-12 through FUT-17 remain deferred: general package wire, arbitrary multi-parent assembly, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness or production-funds claims."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 adversarial review may expose pressure edge cases beyond hermetic Phase 131 oracles."
+        ]
+      },
+      {
+        "id": "v2-2-receive-independent-maintenance-and-transport-receipts",
+        "title": "v2.2 Receive-Independent Maintenance and Transport Receipts",
+        "status": "in_progress",
+        "requirements": [
+          "PPKG-04",
+          "IBR-01",
+          "IBR-02",
+          "IBR-03",
+          "IBR-04"
+        ],
+        "evidence": [
+          "docs/parity/catalog/mempool-policy.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json",
+          "packages/open-bitcoin-network/src/peer/transaction_relay/retry.rs",
+          "packages/open-bitcoin-node/src/network/tests/maintenance_tick_cases.rs",
+          "packages/open-bitcoin-node/src/network/tests/package_fanout_cases.rs",
+          ".planning/phases/136-receive-independent-maintenance-and-transport-receipts/136-VERIFICATION.md"
+        ],
+        "rationale": "Phase 136 uniquely owns PPKG-04 and IBR-01 through IBR-04: parent-before-child package fanout on the existing transaction path, receive-independent initial-broadcast-retry of locally submitted unbroadcast members, and TransportWritten TX-response receipts. This index/checklist row is the machine-readable owner; it does not add a new catalog page.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Intentional difference: maintenance is receive-independent and clears unbroadcast only on Applied current-epoch TX-response writes or lifecycle removal, never on EligibleServe or TX INV.",
+          "Phase 137 owns RPC and sanitized operator presentation.",
+          "Phase 138 owns MPVFY-01 through MPVFY-04.",
+          "FUT-12 through FUT-17 remain deferred: general package wire, arbitrary multi-parent assembly, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness or production-funds claims."
+        ],
+        "suspected_unknowns": [
+          "Phase 138 restart composition and claim-guardrail review may tighten retry-remint wording beyond this in_progress owner."
+        ]
+      },
+      {
+        "id": "v2-2-parity-uat-release-boundary",
+        "title": "v2.2 Parity, UAT, and Release Boundary",
+        "status": "in_progress",
+        "requirements": [
+          "MPVFY-01",
+          "MPVFY-02",
+          "MPVFY-03",
+          "MPVFY-04"
+        ],
+        "evidence": [
+          ".planning/phases/138-parity-adversarial-pressure-restart-and-release-guardrails/138-UAT.md",
+          "scripts/check-phase138-parity-uat-release-boundary.ts",
+          "docs/parity/release-readiness.md",
+          "docs/parity/checklist.md",
+          "docs/parity/index.json"
+        ],
+        "rationale": "Phase 138 uniquely owns MPVFY-01 through MPVFY-04 as the v2.2 closeout surface. It inventories Phase 130-137 evidence, records the committed UAT package, and names the last-gate claim checker. It does not absorb FEEP, PRESS, PACK, PPKG, MPLIFE, MPDUR, IBR, or MPOBS ownership.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/txmempool.cpp",
+            "packages/bitcoin-knots/src/policy/packages.cpp",
+            "packages/bitcoin-knots/src/rpc/mempool.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/txpackage_tests.cpp",
+            "packages/bitcoin-knots/test/functional/mempool_limit.py",
+            "packages/bitcoin-knots/test/functional/mempool_persist.py",
+            "packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py"
+          ]
+        },
+        "known_gaps": [
+          "The Phase 138 checker file is named here and lands in a later plan; this surface stays in_progress until that checker can name evidence.",
+          "Required UAT stays deterministic; optional public-network review is never a default, CI, or release gate.",
+          "FUT-12 through FUT-17 remain deferred: general package wire, arbitrary multi-parent assembly, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness or production-funds claims."
+        ],
+        "suspected_unknowns": [
+          "Later plans still own last-gate wiring, requirement-row flips, and surface promotion to done."
         ]
       }
     ]
