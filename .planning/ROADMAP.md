@@ -282,7 +282,7 @@ Plans:
 3. Parity catalogs, source breadcrumbs, operator docs, and repo-local Cargo and Bazel UAT commands identify exact Knots anchors, intentional differences, and evidence boundaries for every v2.2 surface.
 4. Deterministic guardrails require bounded local-package, same-peer 1P1C, ordinary transaction fanout, and initial-broadcast-retry wording while rejecting general package wire, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness claims.
 
-**Plans**: 4 plans
+**Plans:** 4 plans
 
 Plans:
 - [x] 138-01-PLAN.md — Restart composition test and Instant-free PRESS-05 work-count gate

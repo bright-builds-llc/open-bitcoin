@@ -18,7 +18,7 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
+See: `.planning/PROJECT.md` (updated 2026-08-22 after Phase 138 closeout evidence).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 **Current focus:** Phase 138 — Parity, Adversarial Pressure, Restart, and Release Guardrails
@@ -28,12 +28,12 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 138 (Parity, Adversarial Pressure, Restart, and Release Guardrails) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Closeout evidence in place; leftover Pending rows flipped; milestone remains unarchived
 Last activity: 2026-08-22
 
-Progress: [██████████] 97%
+Progress: [██████████] 99%
 
-Next action: `/gsd-discuss-phase 136`
+Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 through MPVFY-04. Do not run `/gsd-complete-milestone v2.2` until Phase 138 verification passes.
 
 ## Performance Metrics
 
@@ -303,6 +303,7 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Pin pressure/failure-injection to missing_pressure_victim_is_rejected because prospective_failure_cases.rs has no trim symbol — The plan pin was not present in the live file; using the existing pressure failure-injection test keeps the same file without inventing a trim harness
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Treat future, future-gated, and without broadening as D-22 no-claim markers so live README future-gated readiness wording stays valid — D-22 says future-gated wording remains valid; adding those markers avoids a false positive without globally allowing package relay
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Leave SUMMARY requirements-completed empty so MPVFY IDs are not flipped before Plan 04 — Putting MPVFY IDs in requirements-completed fails check-active-milestone-verification-traceability before Plan 04 verification exists
+- [Phase 138]: Flip leftover Pending v2.2 rows only after the Plan 03 checker can name evidence. Phase 138 owns MPVFY-01 through MPVFY-04; do not archive the milestone.
 
 ### Pending Todos
 
