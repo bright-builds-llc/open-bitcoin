@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 138-02-PLAN.md
-last_updated: "2026-08-22T07:04:28.933Z"
+stopped_at: Completed 138-03-PLAN.md
+last_updated: "2026-08-22T08:59:40.851Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 95
-  completed_plans: 93
-  percent: 98
+  completed_plans: 94
+  percent: 99
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 138 (Parity, Adversarial Pressure, Restart, and Release Guardrails) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-08-22
 
@@ -105,6 +105,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 136 P06 | 72min | 2 tasks | 21 files |
 | Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P01 | 32 min | 2 tasks | 8 files |
 | Phase 138 P02 | 58 | 2 tasks | 7 files |
+| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P03 | 86min | 2 tasks | 27 files |
 
 ## Accumulated Context
 
@@ -299,6 +300,9 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 138]: Keep the four new surfaces in_progress and leave existing in_progress surfaces unchanged until Plan 04
 - [Phase 138]: Copy the D-21 sentence verbatim and keep the README P2P-row package-relay remain-deferred clause for Phase 117
 - [Phase 138]: Leave SUMMARY requirements-completed empty so MPVFY-03 is not flipped before the last-gate checker exists
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Pin pressure/failure-injection to missing_pressure_victim_is_rejected because prospective_failure_cases.rs has no trim symbol — The plan pin was not present in the live file; using the existing pressure failure-injection test keeps the same file without inventing a trim harness
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Treat future, future-gated, and without broadening as D-22 no-claim markers so live README future-gated readiness wording stays valid — D-22 says future-gated wording remains valid; adding those markers avoids a false positive without globally allowing package relay
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Leave SUMMARY requirements-completed empty so MPVFY IDs are not flipped before Plan 04 — Putting MPVFY IDs in requirements-completed fails check-active-milestone-verification-traceability before Plan 04 verification exists
 
 ### Pending Todos
 
@@ -322,6 +326,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-22T07:04:28.929Z
-Stopped at: Completed 138-02-PLAN.md
+Last session: 2026-08-22T08:59:34.180Z
+Stopped at: Completed 138-03-PLAN.md
 Resume file: None
