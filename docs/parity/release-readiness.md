@@ -110,6 +110,8 @@ Phase 114 reconstruction, Phase 115 fallback and validation handoff, Phase 116
 aggregate operator evidence, and Phase 117 parity/UAT guardrails. Its canonical
 surface id is `v2-1-parity-uat-release-boundary`.
 
+Active v2.2 work uses this scoped wording: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. Companion allowed wording includes persist canonical entries, acceptance times, and surviving local unbroadcast, rebuild derived state and reset rolling fee on restart, and hermetic default verification. The closeout surface `v2-2-parity-uat-release-boundary` remains in_progress.
+
 Phase 126 independently verified and promoted the six residual-hardening
 requirements after removing the factless receive route, aligning compact
 announcement nonce generation with the randomized Knots shell boundary, and

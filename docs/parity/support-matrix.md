@@ -33,6 +33,7 @@ as `preview` behavior with deterministic local evidence and optional
 public-network operator review. Public serving or relay defaults, archive-node
 and production-scale historical serving, production service/deployment, and
 production readiness remain `deferred`.
+The allowed scoped v2.2 wording is bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
 Package relay, BIP37 bloom-filter serving, compact-filter serving,
 production-funds wallet safety/use, packaging, GUI and hosted dashboards,
 migration apply mode, destructive repair, and automatic support upload also

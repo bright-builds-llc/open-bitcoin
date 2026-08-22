@@ -461,6 +461,75 @@ bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
   status --format json
 ```
 
+## Phase 138 Parity UAT And Release Boundary Review
+
+The allowed scoped v2.2 wording is bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
+
+Companion allowed wording includes persist canonical entries, acceptance times,
+and surviving local unbroadcast, rebuild derived state and reset rolling fee on
+restart, and hermetic default verification. Required UAT stays deterministic.
+Optional public-network review is never a default, CI, or release gate.
+
+Inspect baseline package methods:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  testmempoolaccept '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  testmempoolaccept '["<hex>"]'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  submitpackage '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- \
+  -datadir=/tmp/open-bitcoin-mainnet \
+  submitpackage '["<hex>"]'
+```
+
+Inspect the typed Open Bitcoin package workflow:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package dry-run --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package dry-run --hex '<hex>'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package submit --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  package submit --hex '<hex>'
+```
+
+Inspect redacted shared status after a local review:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- \
+  --datadir=/tmp/open-bitcoin-mainnet \
+  status --format json
+```
+
+Exact single-line copy-paste forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -datadir=/tmp/open-bitcoin-mainnet testmempoolaccept '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -datadir=/tmp/open-bitcoin-mainnet testmempoolaccept '["<hex>"]'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -datadir=/tmp/open-bitcoin-mainnet submitpackage '["<hex>"]'
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -datadir=/tmp/open-bitcoin-mainnet submitpackage '["<hex>"]'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package dry-run --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package dry-run --hex '<hex>'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package submit --hex '<hex>'
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet package submit --hex '<hex>'
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir=/tmp/open-bitcoin-mainnet status --format json
+```
+
 ## Phase 105 Operator Relay Evidence Review
 
 Phase 105 exposes bounded relay and mempool evidence across operator status,

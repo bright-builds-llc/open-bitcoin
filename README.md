@@ -28,6 +28,7 @@ auditable, and modular.
 > teardown, symmetric reconciliation, unique authority-incarnation receipts,
 > peer-local freshness, and bounded complete-or-abort outside-lock peer and
 > current-schema snapshot effects.
+> The allowed scoped v2.2 wording is bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
 > Canonical evidence lives in the
 > [mempool parity catalog](./docs/parity/catalog/mempool-policy.md).
 > v2.1 remains the latest shipped release: bounded, explicit, default-off block
