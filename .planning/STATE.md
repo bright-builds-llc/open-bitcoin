@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
 status: executing
-stopped_at: Completed 138-01-PLAN.md
-last_updated: "2026-08-22T05:49:47.814Z"
+stopped_at: Completed 138-02-PLAN.md
+last_updated: "2026-08-22T07:04:28.933Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 95
-  completed_plans: 92
-  percent: 97
+  completed_plans: 93
+  percent: 98
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-07-22 after starting milestone v2.2).
 
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 138 (Parity, Adversarial Pressure, Restart, and Release Guardrails) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-08-22
 
@@ -104,6 +104,7 @@ Next action: `/gsd-discuss-phase 136`
 | Phase 136-receive-independent-maintenance-and-transport-receipts P05 | 74 | 2 tasks | 10 files |
 | Phase 136 P06 | 72min | 2 tasks | 21 files |
 | Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P01 | 32 min | 2 tasks | 8 files |
+| Phase 138 P02 | 58 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -295,6 +296,9 @@ Next action: `/gsd-discuss-phase 136`
 - [Phase 136]: Keep IBR-01 through IBR-04 Pending until lifecycle-valid phase verification.
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Place the D-04/D-05 composition in recovery_cases/restart_composition.rs next to staging, not a new mega-harness — D-05 allows at most one named Rust composition; staging.rs is already 483 lines
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Retire SUSTAINED_PRESSURE_MAX_ELAPSED and pin PRESS-05 to N=24 work-count symbols while Phase 117 remains last-gate until Plan 03 — D-07/D-08 require Instant-free default smoke; Plan 03 owns last-gate rewiring
+- [Phase 138]: Keep the four new surfaces in_progress and leave existing in_progress surfaces unchanged until Plan 04
+- [Phase 138]: Copy the D-21 sentence verbatim and keep the README P2P-row package-relay remain-deferred clause for Phase 117
+- [Phase 138]: Leave SUMMARY requirements-completed empty so MPVFY-03 is not flipped before the last-gate checker exists
 
 ### Pending Todos
 
@@ -318,6 +322,6 @@ Next action: `/gsd-discuss-phase 136`
 
 ## Session Continuity
 
-Last session: 2026-08-22T05:49:27.058Z
-Stopped at: Completed 138-01-PLAN.md
+Last session: 2026-08-22T07:04:28.929Z
+Stopped at: Completed 138-02-PLAN.md
 Resume file: None
