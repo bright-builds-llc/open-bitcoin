@@ -11,7 +11,12 @@ import {
   sameFields,
 } from "./check-phase135-snapshot-recovery/source";
 import { checkPersistedInputContract } from "./check-phase135-snapshot-recovery/persisted-input";
-import { readSourceRoot } from "./source-corpus";
+import {
+  ARCHIVED_V22_REQUIREMENTS,
+  V22_REQUIREMENTS_MILESTONE_NEEDLE,
+  readPlanningRequirements,
+  readSourceRoot,
+} from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -110,7 +115,13 @@ export function checkPhase135SnapshotRecovery(
   const sources = new Map(
     PHASE135_TARGET_FILES.map((file) => [
       file,
-      readSourceRoot(maybeRepoRoot, file),
+      file === FILES.requirements
+        ? readPlanningRequirements(
+            maybeRepoRoot,
+            ARCHIVED_V22_REQUIREMENTS,
+            V22_REQUIREMENTS_MILESTONE_NEEDLE,
+          )
+        : readSourceRoot(maybeRepoRoot, file),
     ]),
   );
   const get = (file: string): string => sources.get(file) ?? "";

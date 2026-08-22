@@ -27,7 +27,12 @@ import {
   parityStatusMutations,
   scopeClaimMutations,
 } from "./check-phase134-authoritative-lifecycle.test/scope-claims";
-import { readSourceRoot } from "./source-corpus";
+import {
+  ARCHIVED_V22_REQUIREMENTS,
+  V22_REQUIREMENTS_MILESTONE_NEEDLE,
+  readPlanningRequirements,
+  readSourceRoot,
+} from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const tempRoots: string[] = [];
@@ -532,7 +537,16 @@ function createFixture(
   tempRoots.push(root);
   const files = new Map<string, string>();
   for (const relativePath of relativePaths) {
-    files.set(relativePath, readSourceRoot(REPO_ROOT, relativePath));
+    files.set(
+      relativePath,
+      relativePath === ".planning/REQUIREMENTS.md"
+        ? readPlanningRequirements(
+            REPO_ROOT,
+            ARCHIVED_V22_REQUIREMENTS,
+            V22_REQUIREMENTS_MILESTONE_NEEDLE,
+          )
+        : readSourceRoot(REPO_ROOT, relativePath),
+    );
   }
   maybeMutate?.(files);
   for (const [relativePath, contents] of files) {

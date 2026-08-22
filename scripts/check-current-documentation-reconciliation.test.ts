@@ -68,8 +68,8 @@ test("README rejects the completed-milestone route", () => {
   replaceInFixture(
     root,
     "README.md",
-    "Active milestone: v2.2",
-    "/gsd-complete-milestone v2.1",
+    "v2.2 shipped and was archived on 2026-08-22",
+    "/gsd-complete-milestone v2.2",
   );
 
   // Act

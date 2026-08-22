@@ -18,36 +18,24 @@ consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
 configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
-> Status: Active milestone: v2.2 — Package Relay and Long-Lived Mempool Policy.
-> Phase 130 provides typed resource, time, and fee primitives; Phases 131–134
-> add accounted long-lived pressure and bounded local pure-core package
-> admission with ordered dry-run and submission results, staged commit, limited
-> replacement, TRUC, and ephemeral-dust policy, plus bounded same-peer
-> one-parent/one-child assembly from ordinary transaction relay messages and
-> one atomic core-first cross-cache lifecycle projector with exact identity
-> teardown, symmetric reconciliation, unique authority-incarnation receipts,
-> peer-local freshness, and bounded complete-or-abort outside-lock peer and
-> current-schema snapshot effects.
-> The allowed scoped v2.2 wording is bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
-> Canonical evidence lives in the
-> [mempool parity catalog](./docs/parity/catalog/mempool-policy.md).
-> v2.1 remains the latest shipped release: bounded, explicit, default-off block
-> serving and compact-block relay with deterministic local evidence. The rerun
-> v2.1 milestone audit passed at 39/39 requirements, 20/20 phases, 13/13
-> integration links, and 11/11 end-to-end flows. v2.1 shipped and was archived
-> on 2026-07-22; see
-> [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
-> Peer package assembly beyond that bounded 1P1C bridge, general package wire
-> relay, arbitrary multi-parent peer assembly, Phase 135 snapshot schema and
-> recovery, Phase 136 receive-independent retry scheduling and package fanout,
-> Phase 138 release proof, whole-mempool rebroadcast, BIP37
-> bloom-filter serving, compact-filter serving,
-> public serving or relay defaults, archive-node and production-scale historical
-> serving, public-network CI or release gates, production service/deployment,
-> guaranteed propagation, production full-node readiness, production-funds
-> wallet use, packaging, GUI
-> and hosted dashboards, migration apply mode, destructive repair, and
-> automatic support upload remain deferred or unsupported.
+> Status: Open Bitcoin v2.2 provides bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
+> The v2.2 milestone audit passed at 40/40 requirements, 10/10 phases, 8/8
+> integration seams, and 8/8 end-to-end flows. v2.2 shipped and was archived on 2026-08-22; start future work with `/gsd-new-milestone`. Canonical
+> evidence lives in the
+> [mempool parity catalog](./docs/parity/catalog/mempool-policy.md)
+> and [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
+> v2.1 remains a prior shipped release: bounded, explicit, default-off block
+> serving and compact-block relay. The rerun v2.1 milestone audit passed at
+> 39/39 requirements, 20/20 phases, 13/13 integration links, and 11/11
+> end-to-end flows. v2.1 shipped and was archived on 2026-07-22.
+> General package wire, peer package assembly, arbitrary multi-parent peer assembly, cluster mempool,
+> whole-mempool rebroadcast, BIP37 bloom-filter serving, compact-filter
+> serving, public serving or relay defaults, archive-node and production-scale
+> historical serving, public-network CI or release gates, production
+> service/deployment, guaranteed propagation, production full-node readiness,
+> production-funds wallet use, packaging, GUI and hosted dashboards, migration
+> apply mode, destructive repair, and automatic support upload remain deferred
+> or unsupported.
 
 ## Parity At A Glance
 

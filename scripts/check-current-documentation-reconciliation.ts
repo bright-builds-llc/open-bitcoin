@@ -93,7 +93,16 @@ function verifyArchivedProjectState(corpus: Corpus, failures: string[]): void {
   requireAll(
     "README final audit counts",
     normalized(readmeCurrent),
-    ["39/39 requirements", "20/20 phases", "13/13 integration links", "11/11 end-to-end flows"],
+    [
+      "40/40 requirements",
+      "10/10 phases",
+      "8/8 integration seams",
+      "8/8 end-to-end flows",
+      "39/39 requirements",
+      "20/20 phases",
+      "13/13 integration links",
+      "11/11 end-to-end flows",
+    ],
     failures,
   );
 
@@ -132,16 +141,20 @@ function verifyArchivedProjectState(corpus: Corpus, failures: string[]): void {
 function verifyActiveReadmeState(text: string, failures: string[]): void {
   const value = normalized(text);
   const required = [
-    "active milestone: v2.2",
-    "phase 130",
-    "v2.1 remains the latest shipped release",
+    "bounded local-package apis, same-peer 1p1c assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members",
+    "40/40 requirements",
+    "10/10 phases",
+    "8/8 integration seams",
+    "8/8 end-to-end flows",
+    "v2.2 shipped and was archived on 2026-08-22",
     "[mempool parity catalog](./docs/parity/catalog/mempool-policy.md)",
+    "/gsd-new-milestone",
     "v2.1 shipped and was archived on 2026-07-22",
   ];
   const forbidden = [
-    "> status: open bitcoin v2.1",
-    "start future work with `/gsd-new-milestone`.",
-    "/gsd-complete-milestone v2.1",
+    "active milestone: v2.2",
+    "/gsd-complete-milestone v2.2",
+    "v2.1 remains the latest shipped release",
     "archive-ready",
     "archive ready",
     "pending completion",
@@ -149,7 +162,7 @@ function verifyActiveReadmeState(text: string, failures: string[]): void {
   ];
   if (required.some((needle) => !value.includes(needle))) {
     failures.push(
-      "README archived milestone state: missing active v2.2 Phase 130 anchors or shipped v2.1 archive date",
+      "README archived milestone state: missing shipped v2.2 archive anchors or next-milestone route",
     );
   }
   if (forbidden.some((needle) => value.includes(needle))) {

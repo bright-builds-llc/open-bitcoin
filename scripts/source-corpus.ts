@@ -78,3 +78,42 @@ export function readSourceCorpus(repoRoot: string, relativePath: string): string
 export function readSourceRoot(repoRoot: string, relativePath: string): string {
   return readFileSync(path.join(repoRoot, relativePath), "utf8");
 }
+
+export const LIVE_PLANNING_REQUIREMENTS = ".planning/REQUIREMENTS.md";
+export const ARCHIVED_V22_REQUIREMENTS = ".planning/milestones/v2.2-REQUIREMENTS.md";
+export const V22_REQUIREMENTS_MILESTONE_NEEDLE = "**Milestone:** v2.2 ";
+
+/**
+ * Resolves live milestone requirements, then the versioned archive after
+ * `/gsd-complete-milestone` deletes the live file.
+ */
+export function resolvePlanningRequirementsSource(
+  repoRoot: string,
+  archiveRelativePath: string,
+  milestoneNeedle: string,
+): string {
+  const livePath = path.join(repoRoot, LIVE_PLANNING_REQUIREMENTS);
+  if (existsSync(livePath)) {
+    const liveRequirements = readFileSync(livePath, "utf8");
+    if (liveRequirements.includes(milestoneNeedle)) {
+      return LIVE_PLANNING_REQUIREMENTS;
+    }
+  }
+
+  if (existsSync(path.join(repoRoot, archiveRelativePath))) {
+    return archiveRelativePath;
+  }
+
+  return LIVE_PLANNING_REQUIREMENTS;
+}
+
+export function readPlanningRequirements(
+  repoRoot: string,
+  archiveRelativePath: string,
+  milestoneNeedle: string,
+): string {
+  return readSourceRoot(
+    repoRoot,
+    resolvePlanningRequirementsSource(repoRoot, archiveRelativePath, milestoneNeedle),
+  );
+}

@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: verifying
-stopped_at: Completed 138-04-PLAN.md
-last_updated: "2026-08-22T10:39:50.126Z"
+status: archived
+stopped_at: Archived v2.2 milestone
+last_updated: "2026-08-22T17:11:30.158Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 10
@@ -18,22 +18,22 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-08-22 after Phase 138 closeout evidence).
+See: `.planning/PROJECT.md` (updated 2026-08-22 after v2.2 archive).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 138 — Parity, Adversarial Pressure, Restart, and Release Guardrails
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
-Phase: 138
-Plan: Not started
-Status: Phase complete — ready for verification
+Milestone: none (v2.2 archived)
+Phase: —
+Plan: —
+Status: Milestone archived — ready for `/gsd-new-milestone`
 Last activity: 2026-08-22
 
-Progress: [██████████] 99%
+Progress: [██████████] 100%
 
-Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 through MPVFY-04. Do not run `/gsd-complete-milestone v2.2` until Phase 138 verification passes.
+Next action: Start the next milestone with `/gsd-new-milestone`.
 
 ## Performance Metrics
 
@@ -318,20 +318,16 @@ Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 t
 
 ### Blockers/Concerns
 
-- Phase 131 planning must define accounted-memory enforcement and parity tolerance against the Plan 130 ledger.
-- Phase 132 planning must confirm scoped package RBF, TRUC, and ephemeral-dust prerequisites or narrow unsupported outcomes explicitly.
-- Phase 135 planning must choose mempool-local snapshot compatibility, checkpoint cadence/strength, and the advertised crash-loss window.
-- Phase 136 planning must specify the exact eligible-serve or successful-write receipt that clears unbroadcast membership.
-- Phase 135 verification passed 19/19 after gap-closure plans 12-14; historical 2026-08-10 gaps are closed. Broad operator presentation remains Phase 137.
+- Historical Phase 130–138 planning notes remain in the v2.2 archive. No open v2.2 blockers remain after the passed milestone audit.
 
 ## Latest Milestone Archive
 
-- Roadmap: `.planning/milestones/v2.1-ROADMAP.md`
-- Requirements: `.planning/milestones/v2.1-REQUIREMENTS.md`
-- Audit: `.planning/milestones/v2.1-MILESTONE-AUDIT.md`
+- Roadmap: `.planning/milestones/v2.2-ROADMAP.md`
+- Requirements: `.planning/milestones/v2.2-REQUIREMENTS.md`
+- Audit: `.planning/milestones/v2.2-MILESTONE-AUDIT.md`
 
 ## Session Continuity
 
-Last session: 2026-08-22T10:24:03.343Z
-Stopped at: Completed 138-04-PLAN.md
+Last session: 2026-08-22T17:11:30.158Z
+Stopped at: Archived v2.2 milestone
 Resume file: None

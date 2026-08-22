@@ -461,6 +461,56 @@
 
 ***
 
+## Milestone: v2.2 - Package Relay and Long-Lived Mempool Policy
+
+**Shipped:** 2026-08-22
+**Phases:** 10
+**Plans:** 95
+**Tasks:** 202
+
+### What Was Built
+
+- Typed resource, fee, time, and lifecycle-outcome contracts plus accounted-memory pressure, descendant-score eviction, expiry cleanup, and block-gated rolling-fee decay.
+- Bounded local package dry-run and submit with cheap-first validation, partial acceptance, effective-fee grouping, and selected replacement, TRUC, and ephemeral-dust policy.
+- Sender-aware same-peer 1P1C assembly over ordinary transaction messages, routed through one `ManagedNetworkHandle` lifecycle authority.
+- Source-only durable mempool snapshots with fail-closed topological recovery, rolling-fee reset, and reminted retry timers.
+- Receive-independent initial-broadcast retry of locally submitted unbroadcast members and parent-before-child ordinary fanout.
+- Redacted package and mempool operator evidence plus a last-gate D-21/D-22 claim checker.
+
+### What Worked
+
+- Locking one verbatim D-21 sentence kept README, operator, and release-readiness claims from drifting into general package-wire or public-relay language.
+- The last-gate checker, not a public-network default, was enough to prove the scoped package and retry surface.
+- Reusing the v2.1 archive-aware checker pattern again made it possible to delete live `REQUIREMENTS.md` without breaking historical verification.
+
+### What Was Inefficient
+
+- Several phase SUMMARYs left PRESS, MPDUR, MPOBS, and MPVFY out of `requirements-completed`, so audit and archive work had to reconstruct completeness from verification tables.
+- `138-UAT.md` required-test rows stayed `pending` even after deterministic proof existed.
+- ROADMAP rollup prose and one release-readiness closeout status lagged the completed 130–138 checkbox list until archival.
+- Historical checkers were still coupled to live `.planning/REQUIREMENTS.md` and an active v2.2 README status until this closeout.
+
+### Patterns Established
+
+- Keep the allowed v2.2 wording exact: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
+- Leave historical `.planning/phases/` directories tracked when repository verifiers consume their evidence.
+- Make milestone checkers resolve versioned archives before deleting live control files.
+
+### Key Lessons
+
+1. A locked claim sentence is cheaper than reconciling drifted operator docs at archive time.
+2. Historical checkers must treat live `REQUIREMENTS.md` as optional after `/gsd-complete-milestone`.
+3. Empty SUMMARY `requirements-completed` fields create avoidable audit ambiguity even when verification tables are complete.
+4. Curate generated milestone prose before committing it as durable project history.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD yolo execution, code-review, verification, UAT, milestone audit, and archive turns across Phases 130–138.
+- Notable: 10 phases, 95 plans, and 202 counted summary tasks; 432 commits in `v2.1..6a1022be` before this archive closeout.
+
+***
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -479,6 +529,7 @@
 | v1.9 | 10 | Added opt-in inbound peer serving, permission/address/peer-policy/resource governance, retained inbound metrics, structured peer-policy logs, and release-boundary no-claim checks. |
 | v2.0 | 10 | Added bounded transaction relay and mempool participation, explicit relay activation, txid/wtxid download, orphan/admission outcomes, durable recovery, relay evidence surfaces, and release-boundary no-claim checks. |
 | v2.1 | 20 | Added bounded block serving and compact-block relay, BIP152 reconstruction, authoritative runtime state, real post-write announcement evidence, operator observability, and archive-aware integration guardrails. |
+| v2.2 | 10 | Added bounded local-package admission, same-peer 1P1C assembly, accounted long-lived pressure, durable mempool recovery, initial-broadcast retry, and last-gate D-21 claim guardrails. |
 
 ### Cumulative Quality
 
@@ -496,6 +547,7 @@
 | v1.9 | 28/28 complete | Passed with zero critical gaps after Phase 99 closed structured-log tech debt | Repo-native `scripts/verify.sh`, Phase 90-99 deterministic checkers, inbound listener/permission/address/peer-policy/resource metrics evidence, and 10/10 integration plus 8/8 flow audit checks. |
 | v2.0 | 32/32 complete | Passed with zero critical gaps after Phase 109 closed archive-readiness metadata debt | Repo-native `scripts/verify.sh`, Phase 100-108 deterministic checkers, transaction relay/mempool/orphan/durable recovery/operator evidence, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 | v2.1 | 39/39 complete | Passed with zero requirement, integration, or flow gaps after Phase 129 reconciliation | Repo-native `scripts/verify.sh`, Phase 110-129 deterministic checkers, lifecycle-valid requirement traceability, production composition tests, and 13/13 integration plus 11/11 flow audit checks. |
+| v2.2 | 40/40 complete | Passed with zero requirement, integration, or flow gaps after Phase 138 closeout | Repo-native `scripts/verify.sh`, Phase 130-138 deterministic checkers, last-gate D-21/D-22 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 
 ### Top Lessons
 

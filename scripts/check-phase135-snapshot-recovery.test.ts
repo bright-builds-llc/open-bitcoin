@@ -17,7 +17,12 @@ import {
   type Phase135Mutation,
   type Phase135Mutator,
 } from "./check-phase135-snapshot-recovery/persisted-input-mutations";
-import { readSourceRoot } from "./source-corpus";
+import {
+  ARCHIVED_V22_REQUIREMENTS,
+  V22_REQUIREMENTS_MILESTONE_NEEDLE,
+  readPlanningRequirements,
+  readSourceRoot,
+} from "./source-corpus";
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const tempRoots: string[] = [];
 type Mutator = Phase135Mutator;
@@ -493,7 +498,16 @@ function createFixture(maybeMutate?: Mutator): string {
   tempRoots.push(root);
   const files = new Map<string, string>();
   for (const relativePath of PHASE135_TARGET_FILES) {
-    files.set(relativePath, readSourceRoot(REPO_ROOT, relativePath));
+    files.set(
+      relativePath,
+      relativePath === ".planning/REQUIREMENTS.md"
+        ? readPlanningRequirements(
+            REPO_ROOT,
+            ARCHIVED_V22_REQUIREMENTS,
+            V22_REQUIREMENTS_MILESTONE_NEEDLE,
+          )
+        : readSourceRoot(REPO_ROOT, relativePath),
+    );
   }
   maybeMutate?.(files);
   for (const [relativePath, contents] of files) {

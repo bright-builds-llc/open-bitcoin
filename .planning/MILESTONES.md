@@ -1,5 +1,52 @@
 # Milestones: Open Bitcoin
 
+## v2.2 Package Relay and Long-Lived Mempool Policy (Shipped: 2026-08-22)
+
+**Delivered:** Knots-aligned package admission and opportunistic same-peer 1P1C relay, deterministic long-lived pressure policy, durable mempool recovery, bounded initial broadcast retry, sanitized operator evidence, and last-gate release guardrails. The milestone does not claim a general package wire protocol, whole-mempool rebroadcast, public/default relay, guaranteed propagation, public-network CI, production service operation, production full-node readiness, or production-funds wallet safety.
+
+**Phases completed:** 10 phases, 95 plans, 202 counted summary tasks
+
+**Key accomplishments:**
+
+- Added typed resource, fee, time, and lifecycle-outcome contracts, then enforced accounted-memory capacity, descendant-score eviction, expiry cleanup, and block-gated rolling-fee decay.
+- Added bounded local package dry-run and submit with cheap-first validation, individual-first partial acceptance, effective-fee grouping, and selected replacement, TRUC, and ephemeral-dust policy.
+- Assembled only sender-aware same-peer 1P1C candidates over ordinary transaction messages and projected every admission or removal through one `ManagedNetworkHandle` lifecycle authority.
+- Persisted source-only mempool snapshots and recovered them through fail-closed topological replay while resetting rolling fee and reminting retry timers.
+- Scheduled receive-independent initial-broadcast retry of locally submitted unbroadcast members and parent-before-child package fanout through existing transport receipts.
+- Exposed package, pressure, checkpoint, recovery, and retry truth through redacted RPC, CLI, dashboard, metrics, logs, and support surfaces, then locked the D-21 claim boundary with a last-gate checker.
+
+**Stats:**
+
+- 40/40 requirements complete.
+- 10 phases, 95 plans, and 202 counted summary tasks complete.
+- 323,209 tracked first-party lines at archive time, including 281,974 code/content lines.
+- 1,164 files changed across the post-v2.1 delivery range, with 224,435 insertions and 87,012 deletions before archive.
+- Git range after the v2.1 tag: `2acc4edf` → `6a1022be` (432 commits), plus this archive closeout.
+- Timeline: 2026-07-22 through 2026-08-22.
+- Milestone audit status: `passed` with 40/40 requirements, 10/10 phases, 8/8 integration seams, and 8/8 end-to-end flows.
+- Full repo-native verification passed during Phase 138 closeout and the milestone audit commit.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v2.2-ROADMAP.md`
+- `.planning/milestones/v2.2-REQUIREMENTS.md`
+- `.planning/milestones/v2.2-MILESTONE-AUDIT.md`
+
+**Technical debt:**
+
+- Several phase SUMMARYs left PRESS, MPDUR, MPOBS, and MPVFY out of `requirements-completed`; verification tables and the archived requirements file still mark them Complete.
+- `138-UAT.md` required-test rows remain `pending`; deterministic proof is the last-gate checker.
+- `docs/parity/release-readiness.md` still under-claimed the closeout surface as `in_progress` until this archive closeout.
+- ROADMAP rollup prose lagged the completed 130–138 checkbox list until archival.
+
+**Residual boundary:**
+
+General package wire, arbitrary multi-parent assembly, cluster mempool, Erlay, bloom/filter expansion, Knots `mempool.dat` import/export, public/default relay, public-network CI as a release gate, production full-node readiness, production service operation, guaranteed propagation, and production-funds wallet claims remain future scope.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+***
+
 ## v2.1 Block Serving and Compact Block Relay Boundary (Shipped: 2026-07-22)
 
 **Delivered:** Bounded, explicit, default-off validated block serving and compact-block relay through BIP152 negotiation, reconstruction, missing-transaction recovery, production transport, authoritative runtime state, sanitized operator evidence, Knots parity roots, and deterministic no-claim guardrails.

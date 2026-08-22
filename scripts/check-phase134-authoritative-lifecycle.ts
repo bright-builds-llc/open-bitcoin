@@ -2,7 +2,12 @@
 
 import path from "node:path";
 
-import { readSourceRoot } from "./source-corpus";
+import {
+  ARCHIVED_V22_REQUIREMENTS,
+  V22_REQUIREMENTS_MILESTONE_NEEDLE,
+  readPlanningRequirements,
+  readSourceRoot,
+} from "./source-corpus";
 import { phase134ScopeFailures } from "./check-phase134-authoritative-lifecycle/scope";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
@@ -200,7 +205,13 @@ export function checkPhase134AuthoritativeLifecycle(
   const source = new Map(
     PHASE134_TARGET_FILES.map((file) => [
       file,
-      readSourceRoot(maybeRepoRoot, file),
+      file === FILES.requirements
+        ? readPlanningRequirements(
+            maybeRepoRoot,
+            ARCHIVED_V22_REQUIREMENTS,
+            V22_REQUIREMENTS_MILESTONE_NEEDLE,
+          )
+        : readSourceRoot(maybeRepoRoot, file),
     ]),
   );
   const get = (file: string): string => source.get(file) ?? "";

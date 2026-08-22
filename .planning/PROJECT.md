@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. Through the shipped v2.1 milestone, the project includes a headless parity baseline, a terminal-first operator surface for status, service management, dashboard workflows, wallet operations, and dry-run migration planning, plus an explicit opt-in `open-bitcoind` workflow for public-mainnet initial block download, unattended operator review, full-sync completion evidence, multi-day soak evidence, resource-bound enforcement, recovery diagnosis, support-bundle forensics, audited node-hardening, public peer compatibility, validated header and block progress, same-datadir restart/resume evidence, service lifecycle evidence, redacted support bundles, compatibility harness reports, sync-to-tip evidence, stay-current evidence, truthful release boundaries, a production full-node readiness boundary with support, upgrade, service, runbook, release-readiness, and deterministic claim-guardrail evidence, opt-in inbound peer serving with admission, permission, address, eviction/ban, DoS, metrics, and structured-log evidence, bounded transaction relay and mempool participation, and bounded, explicit, default-off block serving and compact-block relay. v2.1 does not imply public relay defaults, production service operation, production-funds wallet use, public-network CI, or production full-node readiness.
+Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. Through the shipped v2.2 milestone, the project includes a headless parity baseline, a terminal-first operator surface, opt-in public-mainnet sync and inbound serving, bounded transaction relay, default-off block serving and compact-block relay, and the scoped v2.2 package and long-lived mempool surface: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. v2.2 does not imply a general package wire protocol, public/default relay, guaranteed propagation, public-network CI, production service operation, production-funds wallet use, or production full-node readiness.
 
 It is for contributors and operators who want a reference-grade node with a cleaner, more type-safe internal architecture, auditable parity, and a strict separation between pure domain logic and effectful adapters.
 
@@ -12,28 +12,32 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-v2.1 Block Serving and Compact Block Relay Boundary shipped and was archived on 2026-07-22 after Phases 110–129 completed 70/70 plans and all 39 requirements. The final audit passed with 13/13 integration links, 11/11 end-to-end flows, and no blocking gaps.
+v2.2 Package Relay and Long-Lived Mempool Policy shipped and was archived on 2026-08-22 after Phases 130–138, including inserted 133.1, completed 95/95 plans and all 40 requirements. The final audit passed with 8/8 production seams, 8/8 end-to-end flows, and no blocking gaps.
 
-The repository now includes durable Fjall-backed runtime storage, real-network sync foundations, bounded metrics and structured logs, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, first-party BIP152 codecs, compact negotiation/reconstruction/fallback, authoritative production network state, real compact-announcement transport, sanitized operator evidence, and deterministic guardrails that keep public-network and production claims scoped.
+The repository now includes durable Fjall-backed runtime storage, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized package and mempool evidence, and last-gate claim guardrails.
 
-Milestone v2.2 remains active and unarchived after initialization through `/gsd-new-milestone`. Phases 130–138 completed with implementation and closeout evidence covering the scoped v2.2 surface: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. Phase 138 verification passed on 2026-08-22. Milestone archival remains `/gsd-complete-milestone v2.2`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+No milestone is currently active. Start the next version with `/gsd-new-milestone`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
-## Current Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
+## Latest Completed Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 
-**Goal:** Extend the bounded v2.0 relay and mempool foundation with Knots-aligned package admission and relay plus durable, observable policy behavior during long-running and sustained-pressure operation.
+**Status:** Shipped and archived on 2026-08-22 after Phase 138 closed parity, UAT, restart, and release-boundary guardrails.
 
-**Target features:**
+**Goal:** Extend the bounded v2.0 relay and mempool foundation with Knots-aligned package admission and opportunistic same-peer 1P1C relay plus durable, observable policy behavior during long-running and sustained-pressure operation.
 
-- Package-aware transaction admission, validation, and relay with auditable Bitcoin Knots parity.
-- Rolling minimum-fee behavior covering pressure-driven adjustment, decay, persistence and recovery boundaries, and operator evidence.
-- Periodic transaction rebroadcast with bounded scheduling, peer-policy integration, restart behavior, and no accidental public-default claim.
-- Sustained mempool-pressure handling covering eviction, descendant and package consistency, resource bounds, relay consequences, and diagnostics.
+**Shipped features:**
 
-## Latest Completed Milestone: v2.1 Block Serving and Compact Block Relay Boundary
+- Bounded local package dry-run and submit with cheap-first validation, partial acceptance, effective-fee grouping, and selected replacement, TRUC, and ephemeral-dust policy.
+- Sender-aware same-peer 1P1C assembly over ordinary transaction messages, routed through one authoritative package engine and lifecycle projector.
+- Accounted-memory capacity enforcement, descendant-score eviction, expiry cleanup, and block-gated rolling-fee decay.
+- Source-only durable mempool snapshots, fail-closed recovery, rolling-fee reset, and reminted retry timers.
+- Receive-independent initial-broadcast retry of locally submitted unbroadcast members and parent-before-child ordinary fanout.
+- Redacted RPC, CLI, dashboard, metrics, logs, and support evidence plus a last-gate D-21/D-22 claim checker.
+
+## Completed Milestone: v2.1 Block Serving and Compact Block Relay Boundary
 
 **Status:** Shipped and archived on 2026-07-22 after Phase 129 closed integration guardrails and milestone reconciliation.
 
-At the v2.1 archive boundary, package relay, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred to later milestones; v2.2 now activates only the package-relay and long-lived mempool-policy portion of that historical inventory.
+v2.1 does not imply public relay defaults, production service operation, production-funds wallet use, public-network CI, or production full-node readiness. Residual v2.1 inventory kept package relay, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred. v2.2 later shipped only the scoped package-relay and long-lived mempool-policy portion of that inventory.
 
 **Goal:** Add bounded, opt-in block-serving and compact-block relay behavior with auditable Bitcoin Knots parity while preserving deterministic default verification and avoiding public-default or production-readiness claims.
 
@@ -101,16 +105,15 @@ At the v2.1 archive boundary, package relay, bloom/filter serving, public relay 
 - ✓ v1.9 validated all 28 inbound peer serving and network participation boundary requirements across opt-in listener admission, peer permissions, address advertisement, eviction/ban policy, DoS/resource governance, retained inbound metrics, peer-policy runtime evidence, structured logs, traceability closure, and release-boundary no-claim guardrails. Archive: `.planning/milestones/v1.9-REQUIREMENTS.md`
 - ✓ v2.0 validated all 32 transaction relay and mempool participation boundary requirements across explicit relay activation, txid/wtxid inventory, bounded download/orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT, and deterministic no-claim guardrails. Archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
 - ✓ v2.1 validated all 39 block-serving and compact-relay requirements across explicit activation, validated durable serving, BIP152 codecs and negotiation, reconstruction and fallback, authoritative runtime state, production announcement transport, sanitized operator evidence, parity roots, UAT, and deterministic no-claim/integration guardrails. Archive: `.planning/milestones/v2.1-REQUIREMENTS.md`
+- ✓ v2.2 validated all 40 package-relay and long-lived mempool-policy requirements across resource/fee primitives, pressure and expiry, typed package admission, same-peer 1P1C, authoritative lifecycle projection, snapshot recovery, initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails. Archive: `.planning/milestones/v2.2-REQUIREMENTS.md`
+
 ### Active
 
-- [ ] Package-aware transaction admission, validation, and relay preserve in-scope Knots behavior and existing bounded relay activation.
-- [ ] Rolling minimum-fee behavior adjusts and decays deterministically under sustained mempool pressure and survives supported recovery boundaries.
-- [ ] Periodic transaction rebroadcast is bounded, policy-aware, restart-safe, observable, and does not broaden public/default relay claims.
-- [ ] Sustained mempool pressure preserves eviction, descendant, package, relay, resource, and diagnostic invariants.
+- [ ] Define the next milestone through `/gsd-new-milestone`.
 
 ### Out of Scope
 
-The boundary keeps bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.2.
+The boundary keeps general package wire, arbitrary multi-parent assembly, cluster mempool, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.2.
 
 - Faithful Qt GUI parity or porting the upstream GUI code - shipped milestones remain terminal-first and headless.
 - Windows service integration - still deferred until a later milestone.
@@ -129,7 +132,7 @@ The boundary keeps bloom/filter serving, public relay defaults, public-network C
 
 - The repository has first-party pure-core domain and codec crates under `packages/`, plus parity catalog artifacts under `docs/parity/`.
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
-- The current codebase totals 247,855 tracked first-party lines in the v2.1 archive-time LOC report, including 218,250 code/content lines.
+- The current codebase totals 323,209 tracked first-party lines in the v2.2 archive-time LOC report, including 281,974 code/content lines.
 - Repo-native verification remains centered on `bash scripts/verify.sh`, including Rust checks, parity breadcrumbs, benchmark smoke and report validation, and Bazel smoke builds.
 - Bun is a pinned runtime for repo-owned TypeScript automation, not a package-install surface; there is no `package.json` or `bun install` bootstrap step.
 - Operator-facing surfaces should stay quiet, information-dense, and work-focused: terminal dashboard controls, status output, onboarding copy, service actions, and migration guidance should help operators make decisions without marketing language.
@@ -177,7 +180,7 @@ The boundary keeps bloom/filter serving, public relay defaults, public-network C
 | Scope v1.9 to inbound peer serving and network participation boundaries | v1.8 defined claim gates, so the next safe expansion is opt-in inbound serving with admission, permissions, address, eviction/ban, and DoS governance before relay or production participation claims | Shipped in v1.9 with 28/28 requirements, 10/10 integration categories, and 8/8 flows passing; transaction relay, compact blocks, mempool propagation, public inbound defaults, and production readiness remain deferred |
 | Scope v2.0 to transaction relay and mempool participation boundaries | v1.9 created opt-in inbound serving and left relay-like permission labels inert, so the next fundamental node capability is bounded transaction relay and mempool propagation before compact blocks or production full-node readiness | Shipped on 2026-07-03 with 32/32 requirements complete through Phases 100 through 108 and Phase 109 archive-readiness audit debt closure |
 | Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | Shipped and archived on 2026-07-22 with 39/39 requirements, 13/13 integration links, and 11/11 flows passing |
-| Scope v2.2 to package relay and long-lived mempool policy | v2.0 established bounded mempool and transaction relay while v2.1 supplied authoritative peer transport and observability, making package policy, rolling fees, rebroadcast, and sustained-pressure behavior the next coherent parity boundary | — Pending |
+| Scope v2.2 to package relay and long-lived mempool policy | v2.0 established bounded mempool and transaction relay while v2.1 supplied authoritative peer transport and observability, making package policy, rolling fees, rebroadcast, and sustained-pressure behavior the next coherent parity boundary | Shipped and archived on 2026-08-22 with 40/40 requirements, 8/8 seams, and 8/8 flows passing |
 
 ## Evolution
 
@@ -213,9 +216,10 @@ This document evolves at phase transitions and milestone boundaries.
 - v1.9 archive: `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-REQUIREMENTS.md`, `.planning/milestones/v1.9-MILESTONE-AUDIT.md`
 - v2.0 archive: `.planning/milestones/v2.0-ROADMAP.md`, `.planning/milestones/v2.0-REQUIREMENTS.md`, `.planning/milestones/v2.0-MILESTONE-AUDIT.md`
 - v2.1 archive: `.planning/milestones/v2.1-ROADMAP.md`, `.planning/milestones/v2.1-REQUIREMENTS.md`, `.planning/milestones/v2.1-MILESTONE-AUDIT.md`
+- v2.2 archive: `.planning/milestones/v2.2-ROADMAP.md`, `.planning/milestones/v2.2-REQUIREMENTS.md`, `.planning/milestones/v2.2-MILESTONE-AUDIT.md`
 - Active phase execution directories are created under `.planning/phases/` during an active milestone. Historical phase directories remain tracked when verifier scripts depend on them. Archived roadmap, requirements, audit, and the v1.1/v1.2 raw phase archives remain under `.planning/milestones/`.
 
 </details>
 
 ***
-*Last updated: 2026-08-22 after completing Phase 138*
+*Last updated: 2026-08-22 after v2.2 milestone*

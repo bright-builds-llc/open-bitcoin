@@ -110,7 +110,7 @@ Phase 114 reconstruction, Phase 115 fallback and validation handoff, Phase 116
 aggregate operator evidence, and Phase 117 parity/UAT guardrails. Its canonical
 surface id is `v2-1-parity-uat-release-boundary`.
 
-Active v2.2 work uses this scoped wording: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. Companion allowed wording includes persist canonical entries, acceptance times, and surviving local unbroadcast, rebuild derived state and reset rolling fee on restart, and hermetic default verification. The closeout surface `v2-2-parity-uat-release-boundary` remains in_progress.
+Shipped v2.2 work uses this scoped wording: bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members. Companion allowed wording includes persist canonical entries, acceptance times, and surviving local unbroadcast, rebuild derived state and reset rolling fee on restart, and hermetic default verification. The closeout surface `v2-2-parity-uat-release-boundary` is done. The [`v2.2 milestone audit`](../../.planning/milestones/v2.2-MILESTONE-AUDIT.md) passed at 40/40 requirements, 10/10 phases, 8/8 integration seams, and 8/8 end-to-end flows. v2.2 shipped and was archived on 2026-08-22.
 
 Phase 126 independently verified and promoted the six residual-hardening
 requirements after removing the factless receive route, aligning compact
@@ -119,7 +119,7 @@ refreshing exact parity and deterministic regression evidence. Phases 127
 through 129 then closed the remaining production integration gaps. The
 [`v2.1 milestone audit`](../../.planning/milestones/v2.1-MILESTONE-AUDIT.md)
 passed at 39/39 requirements, 20/20 phases, 13/13 integration links, and 11/11
-end-to-end flows. v2.1 shipped and was archived on 2026-07-22. The only next
+end-to-end flows. v2.1 shipped and was archived on 2026-07-22. v2.2 shipped and was archived on 2026-08-22. The only next
 workflow route is `/gsd-new-milestone`.
 
 This is not a production-node or production-funds claim. It does not claim

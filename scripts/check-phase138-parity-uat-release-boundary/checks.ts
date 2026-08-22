@@ -1,6 +1,11 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+  ARCHIVED_V22_REQUIREMENTS,
+  V22_REQUIREMENTS_MILESTONE_NEEDLE,
+  resolvePlanningRequirementsSource,
+} from "../source-corpus.ts";
 import { checkClaims } from "./claims.ts";
 import {
   CLOSEOUT_SURFACE,
@@ -49,7 +54,15 @@ function loadCorpus(repoRoot: string, failures: string[]): Map<string, string> {
   const texts = new Map<string, string>();
   const resolvedRoot = path.resolve(repoRoot);
   for (const file of REQUIRED_DOC_FILES) {
-    const absolutePath = path.resolve(resolvedRoot, file);
+    const sourceFile =
+      file === REQUIREMENTS_FILE
+        ? resolvePlanningRequirementsSource(
+            resolvedRoot,
+            ARCHIVED_V22_REQUIREMENTS,
+            V22_REQUIREMENTS_MILESTONE_NEEDLE,
+          )
+        : file;
+    const absolutePath = path.resolve(resolvedRoot, sourceFile);
     if (!isInsideRepo(resolvedRoot, absolutePath)) {
       failures.push(`path escapes repo root: ${file}`);
       texts.set(file, "");

@@ -201,7 +201,7 @@ test.each([
     "P130 README root freshness: README.md still advertises v2.1 active status",
     replace(
       "README.md",
-      "> Status: Active milestone: v2.2 — Package Relay and Long-Lived Mempool Policy.",
+      "> Status: Open Bitcoin v2.2 provides bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.",
       "> Status: Open Bitcoin v2.1",
     ),
   ],
