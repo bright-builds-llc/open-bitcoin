@@ -36,7 +36,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy is planned across Phases 130–
 - [x] **Phase 135: Snapshot Schema, Checkpointing, and Recovery** — Persist source mempool records and local unbroadcast state, then recover them through policy-aware topological replay. (completed 2026-08-15)
 - [x] **Phase 136: Receive-Independent Maintenance and Transport Receipts** — Run bounded initial broadcast retry and topological package fanout through existing relay and achieved-effect transport paths. (completed 2026-08-16)
 - [x] **Phase 137: RPC and Sanitized Operator Evidence** — Expose package, pressure, recovery, checkpoint, and retry truth through stable redacted operator surfaces. (completed 2026-08-20)
-- [ ] **Phase 138: Parity, Adversarial Pressure, Restart, and Release Guardrails** — Prove integrated Knots parity, bounded work, restart safety, and the deliberately narrow v2.2 claim.
+- [x] **Phase 138: Parity, Adversarial Pressure, Restart, and Release Guardrails** — Prove integrated Knots parity, bounded work, restart safety, and the deliberately narrow v2.2 claim. (completed 2026-08-22)
 
 ## Phase Details
 
@@ -282,13 +282,13 @@ Plans:
 3. Parity catalogs, source breadcrumbs, operator docs, and repo-local Cargo and Bazel UAT commands identify exact Knots anchors, intentional differences, and evidence boundaries for every v2.2 surface.
 4. Deterministic guardrails require bounded local-package, same-peer 1P1C, ordinary transaction fanout, and initial-broadcast-retry wording while rejecting general package wire, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness claims.
 
-**Plans:** 4 plans
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 138-01-PLAN.md — Restart composition test and Instant-free PRESS-05 work-count gate
 - [x] 138-02-PLAN.md — Backfill PACK/PRESS/136/MPVFY owners, 138-UAT, and D-21 wording
 - [x] 138-03-PLAN.md — Last-gate Phase 138 checker and 117→138→reconciliation wiring
-- [ ] 138-04-PLAN.md — Flip leftover Pending rows, promote surfaces, reconcile metadata
+- [x] 138-04-PLAN.md — Flip leftover Pending rows, promote surfaces, reconcile metadata
 
 ## Progress
 
@@ -305,7 +305,7 @@ Plans:
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
 | 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete    | 2026-08-16 |
 | 137. RPC and Sanitized Operator Evidence | 11/11 | Complete    | 2026-08-20 |
-| 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 3/4 | In Progress|  |
+| 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 4/4 | Complete   | 2026-08-22 |
 
 ***
 *Roadmap created: 2026-07-22*

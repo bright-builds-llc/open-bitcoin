@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.2
 milestone_name: Package Relay and Long-Lived Mempool Policy
-status: executing
-stopped_at: Completed 138-03-PLAN.md
-last_updated: "2026-08-22T08:59:40.851Z"
+status: verifying
+stopped_at: Completed 138-04-PLAN.md
+last_updated: "2026-08-22T10:24:03.346Z"
 last_activity: 2026-08-22
 progress:
   total_phases: 10
-  completed_phases: 9
+  completed_phases: 10
   total_plans: 95
-  completed_plans: 94
-  percent: 99
+  completed_plans: 95
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-22 after Phase 138 closeout evidenc
 Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 Phase: 138 (Parity, Adversarial Pressure, Restart, and Release Guardrails) — EXECUTING
 Plan: 4 of 4
-Status: Closeout evidence in place; leftover Pending rows flipped; milestone remains unarchived
+Status: Phase complete — ready for verification
 Last activity: 2026-08-22
 
 Progress: [██████████] 99%
@@ -106,6 +106,7 @@ Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 t
 | Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P01 | 32 min | 2 tasks | 8 files |
 | Phase 138 P02 | 58 | 2 tasks | 7 files |
 | Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P03 | 86min | 2 tasks | 27 files |
+| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P04 | 63 | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -304,6 +305,9 @@ Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 t
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Treat future, future-gated, and without broadening as D-22 no-claim markers so live README future-gated readiness wording stays valid — D-22 says future-gated wording remains valid; adding those markers avoids a false positive without globally allowing package relay
 - [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Leave SUMMARY requirements-completed empty so MPVFY IDs are not flipped before Plan 04 — Putting MPVFY IDs in requirements-completed fails check-active-milestone-verification-traceability before Plan 04 verification exists
 - [Phase 138]: Flip leftover Pending v2.2 rows only after the Plan 03 checker can name evidence. Phase 138 owns MPVFY-01 through MPVFY-04; do not archive the milestone.
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Flip leftover Pending v2.2 rows only after the Plan 03 checker can name evidence
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Retarget the Phase 134 pending lock so historical 134-GAPS.md does not block done after MPLIFE is Complete
+- [Phase 138-parity-adversarial-pressure-restart-and-release-guardrails]: Phase 138 owns MPVFY-01 through MPVFY-04; do not archive the milestone
 
 ### Pending Todos
 
@@ -327,6 +331,6 @@ Next action: Keep Phase 138 closeout evidence current. Phase 138 owns MPVFY-01 t
 
 ## Session Continuity
 
-Last session: 2026-08-22T08:59:34.180Z
-Stopped at: Completed 138-03-PLAN.md
+Last session: 2026-08-22T10:24:03.343Z
+Stopped at: Completed 138-04-PLAN.md
 Resume file: None
