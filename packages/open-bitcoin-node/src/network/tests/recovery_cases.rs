@@ -144,6 +144,7 @@ fn topology_identities(transactions: Vec<Transaction>) -> Vec<(Txid, Wtxid)> {
 }
 
 mod metadata;
+mod restart_composition;
 mod staging;
 #[test]
 fn staged_recovery_classifies_later_capacity_trim_from_final_membership() {
