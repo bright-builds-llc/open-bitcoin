@@ -282,7 +282,13 @@ Plans:
 3. Parity catalogs, source breadcrumbs, operator docs, and repo-local Cargo and Bazel UAT commands identify exact Knots anchors, intentional differences, and evidence boundaries for every v2.2 surface.
 4. Deterministic guardrails require bounded local-package, same-peer 1P1C, ordinary transaction fanout, and initial-broadcast-retry wording while rejecting general package wire, whole-mempool rebroadcast, public/default/production relay, guaranteed propagation, public-network CI, and production-readiness claims.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 138-01-PLAN.md — Restart composition test and Instant-free PRESS-05 work-count gate
+- [ ] 138-02-PLAN.md — Backfill PACK/PRESS/136/MPVFY owners, 138-UAT, and D-21 wording
+- [ ] 138-03-PLAN.md — Last-gate Phase 138 checker and 117→138→reconciliation wiring
+- [ ] 138-04-PLAN.md — Flip leftover Pending rows, promote surfaces, reconcile metadata
 
 ## Progress
 
@@ -299,7 +305,7 @@ Plans:
 | 135. Snapshot Schema, Checkpointing, and Recovery | 14/14 | Complete    | 2026-08-15 |
 | 136. Receive-Independent Maintenance and Transport Receipts | 6/6 | Complete    | 2026-08-16 |
 | 137. RPC and Sanitized Operator Evidence | 11/11 | Complete    | 2026-08-20 |
-| 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/TBD | Not started | - |
+| 138. Parity, Adversarial Pressure, Restart, and Release Guardrails | 0/4 | Not started | - |
 
 ***
 *Roadmap created: 2026-07-22*
