@@ -83,11 +83,11 @@ test.each([
   ],
   [
     "PRESS-05 bench threshold",
-    "P131 PRESS-05: hermetic sustained-pressure bench threshold must remain verifier-reachable",
+    "P131 PRESS-05: hermetic sustained-pressure bench work-count bounds must remain verifier-reachable",
     replace(
       "packages/open-bitcoin-bench/src/cases/mempool.rs",
-      "mempool-policy.sustained-pressure-trim",
-      "mempool-policy.pressure-trim-sustained",
+      "SUSTAINED_PRESSURE_TRIM_CYCLES",
+      "SUSTAINED_PRESSURE_WORK_CYCLES",
     ),
   ],
   [

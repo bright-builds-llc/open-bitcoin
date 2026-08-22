@@ -4,8 +4,6 @@
 // - packages/bitcoin-knots/src/txmempool.cpp
 // - packages/bitcoin-knots/src/policy/policy.cpp
 
-use std::time::{Duration, Instant};
-
 use open_bitcoin_mempool::{
     AdmissionContext, Mempool, MempoolCapacity, PolicyConfig, transaction_sigops_cost,
     transaction_weight_and_virtual_size, validate_standard_transaction,
@@ -32,13 +30,6 @@ const SUSTAINED_PRESSURE_CASE_ID: &str = "mempool-policy.sustained-pressure-trim
 /// small enough that the loop stays a default-verifier smoke check.
 const SUSTAINED_PRESSURE_TRIM_CYCLES: usize = 24;
 
-/// Maximum wall time for one sustained-pressure case invocation.
-///
-/// Measured locally under debug/test profile (~tens of ms for 24 cycles on Apple
-/// Silicon). The 2s budget is loose enough for CI noise but fails on unbounded
-/// blowups. Pure durability — no network, no sleep.
-const SUSTAINED_PRESSURE_MAX_ELAPSED: Duration = Duration::from_millis(2_000);
-
 pub const CASES: [BenchCase; 2] = [
     BenchCase {
         id: STANDARD_ADMISSION_CASE_ID,
@@ -55,7 +46,7 @@ pub const CASES: [BenchCase; 2] = [
     BenchCase {
         id: SUSTAINED_PRESSURE_CASE_ID,
         group: BenchGroupId::MempoolPolicy,
-        description: "Hermetic accounted-capacity fill/trim loop with a wall-time blowup threshold.",
+        description: "Hermetic accounted-capacity fill/trim loop with work-count bounds.",
         measurement: BenchMeasurement {
             focus: "mempool_pressure_trim",
             fixture: "sustained_pressure_coinbase_chain",
@@ -148,7 +139,6 @@ fn run_sustained_pressure_trim() -> Result<(), BenchError> {
         ..PolicyConfig::default()
     });
 
-    let started = Instant::now();
     for (index, coinbase_txid) in coinbase_txids.iter().skip(1).enumerate() {
         // Lower output value => higher fee so the newest admission survives trim.
         let output_value = 499_999_000 - (index as i64) * 1_000;
@@ -178,7 +168,6 @@ fn run_sustained_pressure_trim() -> Result<(), BenchError> {
             ));
         }
     }
-    let elapsed = started.elapsed();
 
     if mempool.entries().len() != 1 {
         return Err(BenchError::case_failed(
@@ -193,15 +182,6 @@ fn run_sustained_pressure_trim() -> Result<(), BenchError> {
         return Err(BenchError::case_failed(
             SUSTAINED_PRESSURE_CASE_ID,
             "expected rolling fee bump after pressure package removals",
-        ));
-    }
-    if elapsed > SUSTAINED_PRESSURE_MAX_ELAPSED {
-        return Err(BenchError::case_failed(
-            SUSTAINED_PRESSURE_CASE_ID,
-            format!(
-                "sustained-pressure trim exceeded hermetic threshold: {:?} > {:?} (N={})",
-                elapsed, SUSTAINED_PRESSURE_MAX_ELAPSED, SUSTAINED_PRESSURE_TRIM_CYCLES
-            ),
         ));
     }
 

@@ -18,6 +18,8 @@ Benchmarks now cover two layers:
 
 The default smoke path remains threshold-free so `bash scripts/verify.sh` can
 run it without turning machine-local timing into a release criterion.
+`mempool-policy.sustained-pressure-trim` default-smoke evidence is work-count /
+`threshold_free`, not a 2-second Instant gate.
 
 ## Modes
 

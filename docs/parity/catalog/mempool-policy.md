@@ -337,10 +337,8 @@ evidence to `accounted_memory`.
 
 Hermetic fill→trim→block→decay→expiry→refill→reorg scenarios must agree with
 `recompute_resource_ledger` and the rolling-fee state machine after each
-committed transition. Performance bounds for accounted-capacity trim loops are
-enforced by the Pure `open-bitcoin-bench` case
-`mempool-policy.sustained-pressure-trim` (N=24 admit/trim cycles, 2s wall-time
-ceiling under the default verifier). Phase 131 does not add public-network or
+committed transition. `mempool-policy.sustained-pressure-trim` (N=24 admit/trim cycles) enforces work-count bounds under default smoke; default smoke stays `threshold_free` and must not use a wall-clock Instant ceiling. Documented timing budgets belong only on the opt-in `--full` / UAT path.
+Phase 131 does not add public-network or
 non-deterministic soak gates.
 
 ### Non-durable rolling fee (D-15)

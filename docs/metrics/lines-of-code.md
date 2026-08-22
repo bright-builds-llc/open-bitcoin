@@ -7,16 +7,16 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,126 |
-| Total lines | 321,720 |
-| Code/content lines | 280,683 |
-| Comment-only lines | 14,418 |
-| Blank lines | 26,619 |
+| Total lines | 321,701 |
+| Code/content lines | 280,671 |
+| Comment-only lines | 14,413 |
+| Blank lines | 26,617 |
 
 ## Per-Crate Modules
 
 | Module | Files | Production Rust | Test Rust | Manifest/Build | Total | Test/Source |
 | --- | --- | --- | --- | --- | --- | --- |
-| open-bitcoin-bench | 22 | 3,780 | 0 | 85 | 3,865 | 0.0% |
+| open-bitcoin-bench | 22 | 3,760 | 0 | 85 | 3,845 | 0.0% |
 | open-bitcoin-chainstate | 13 | 1,099 | 2,078 | 26 | 3,203 | 189.1% |
 | open-bitcoin-cli | 142 | 22,270 | 21,144 | 97 | 43,511 | 94.9% |
 | open-bitcoin-codec | 15 | 1,811 | 779 | 28 | 2,621 | 43.0% |
@@ -35,8 +35,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 434 | 123,112 | 104,769 | 8,707 | 9,636 |
-| Rust production | 366 | 108,444 | 94,321 | 3,979 | 10,144 |
-| TypeScript/Bun scripts | 257 | 73,302 | 65,670 | 1,652 | 5,980 |
+| Rust production | 366 | 108,424 | 94,308 | 3,974 | 10,142 |
+| TypeScript/Bun scripts | 257 | 73,303 | 65,671 | 1,652 | 5,980 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,499 | 4,024 | 66 | 409 |
 | TOML/config | 16 | 3,466 | 3,100 | 0 | 366 |
@@ -166,7 +166,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase130-resource-time-fee-primitives.test.ts | 295 |
 | scripts/check-phase130-resource-time-fee-primitives.ts | 588 |
 | scripts/check-phase131-rolling-fee-expiry-pressure.test.ts | 184 |
-| scripts/check-phase131-rolling-fee-expiry-pressure.ts | 352 |
+| scripts/check-phase131-rolling-fee-expiry-pressure.ts | 353 |
 | scripts/check-phase132-typed-package-staged-admission.test.ts | 399 |
 | scripts/check-phase132-typed-package-staged-admission.ts | 16 |
 | scripts/check-phase132-typed-package-staged-admission/checks.ts | 305 |
@@ -338,7 +338,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | f99b7d8f36a18f0d5d7dcf739441c430ce04f2e643411796817da11fc7578752 |
+| Input fingerprint | bde3250c6c4d9637fa592c535e1bd380b4edd48b82a7fe387f4e94315d495e71 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

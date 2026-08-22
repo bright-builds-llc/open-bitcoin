@@ -177,11 +177,12 @@ function checkPress05OracleAndBench(repoRoot: string, failures: string[]): void 
   }
   if (
     !bench.includes("mempool-policy.sustained-pressure-trim") ||
-    !bench.includes("SUSTAINED_PRESSURE_MAX_ELAPSED") ||
+    !bench.includes("SUSTAINED_PRESSURE_TRIM_CYCLES") ||
+    !bench.includes("const SUSTAINED_PRESSURE_TRIM_CYCLES: usize = 24") ||
     !catalog.includes("sustained-pressure-trim")
   ) {
     failures.push(
-      "P131 PRESS-05: hermetic sustained-pressure bench threshold must remain verifier-reachable",
+      "P131 PRESS-05: hermetic sustained-pressure bench work-count bounds must remain verifier-reachable",
     );
   }
 }
