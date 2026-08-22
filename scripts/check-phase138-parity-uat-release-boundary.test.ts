@@ -169,6 +169,25 @@ test("fails_when_docs_claim_supports_package_relay_and_also_fails_phase117", () 
   expect(failures117).toContain("package relay");
 });
 
+test("allows_future_gated_production_full_node_readiness_wording", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      append(
+        files,
+        "README.md",
+        "v1.8 defines the support terms required before a future production full-node readiness claim; v1.9 adds bounded opt-in inbound evidence without broadening that claim.",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase138ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 test("allows_verbatim_d21_sentence_on_phase117_and_phase138", () => {
   // Arrange
   const root138 = createFixture();

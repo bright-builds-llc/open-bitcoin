@@ -81,7 +81,7 @@ export const MATRIX_CELLS: readonly MatrixCell[] = [
     method: "failure-injection",
     behavior: "pressure",
     file: "packages/open-bitcoin-mempool/src/pool/tests/prospective_failure_cases.rs",
-    symbol: "trim",
+    symbol: "missing_pressure_victim_is_rejected",
   },
   {
     method: "pinned-Knots",

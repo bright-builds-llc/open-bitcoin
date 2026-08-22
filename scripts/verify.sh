@@ -301,9 +301,7 @@ run_coverage_report() {
 # Phase 105 is followed by Phase 106. Phase 106 is followed by Phase 107.
 # Phase 107 is followed by Phase 108. Phase 108 is followed by Phase 110 and Phase 111.
 # Phase 123 is followed by Phase 124. Phase 124 is followed by the active-milestone
-# verification-traceability guard, then Phase 117 remains the final changed-path
-# release-boundary and no-claim gate. The current-documentation reconciliation
-# test/check pair runs immediately after that final Phase 117 gate.
+# verification-traceability guard, then Phase 117 remains the v2.1 BOUND gate. Phase 138 is the final changed-path v2.2 release-boundary and no-claim gate. The current-documentation reconciliation test/check pair runs immediately after that final Phase 138 gate.
 # Phase 128 is followed by Phase 129, and Phase 129 precedes the final Phase 117 gate.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
@@ -426,6 +424,8 @@ bun test scripts/check-phase135-snapshot-recovery.test.ts
 bun run scripts/check-phase135-snapshot-recovery.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase117-parity-uat-release-boundary.ts
+bun test scripts/check-phase138-parity-uat-release-boundary.test.ts
+bun run scripts/check-phase138-parity-uat-release-boundary.ts
 bun test scripts/check-current-documentation-reconciliation.test.ts
 bun run scripts/check-current-documentation-reconciliation.ts
 bun test scripts/command-timings.test.ts
@@ -588,6 +588,8 @@ run_step "test Phase 135 snapshot recovery checker" bun test scripts/check-phase
 run_step "check Phase 135 snapshot recovery" bun run scripts/check-phase135-snapshot-recovery.ts
 run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
 run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
+run_step "test Phase 138 parity UAT release boundary checker" bun test scripts/check-phase138-parity-uat-release-boundary.test.ts
+run_step "check Phase 138 parity UAT release boundary" bun run scripts/check-phase138-parity-uat-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts
 run_step "check current documentation reconciliation" bun run scripts/check-current-documentation-reconciliation.ts
 run_step "test local command timing tooling" bun test scripts/command-timings.test.ts

@@ -29,6 +29,10 @@ const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK =
   "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
+const PHASE138_TEST =
+  "bun test scripts/check-phase138-parity-uat-release-boundary.test.ts";
+const PHASE138_CHECK =
+  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
 const RECONCILIATION_TEST =
   "bun test scripts/check-current-documentation-reconciliation.test.ts";
 const RECONCILIATION_CHECK =
@@ -36,12 +40,16 @@ const RECONCILIATION_CHECK =
 const VISIBLE_SEQUENCE = [
   PHASE117_TEST,
   PHASE117_CHECK,
+  PHASE138_TEST,
+  PHASE138_CHECK,
   RECONCILIATION_TEST,
   RECONCILIATION_CHECK,
 ].join("\n");
 const EXECUTABLE_SEQUENCE = [
   `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
   `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`,
+  `run_step "test Phase 138 parity UAT release boundary checker" ${PHASE138_TEST}`,
+  `run_step "check Phase 138 parity UAT release boundary" ${PHASE138_CHECK}`,
   `run_step "test current documentation reconciliation checker" ${RECONCILIATION_TEST}`,
   `run_step "check current documentation reconciliation" ${RECONCILIATION_CHECK}`,
 ].join("\n");

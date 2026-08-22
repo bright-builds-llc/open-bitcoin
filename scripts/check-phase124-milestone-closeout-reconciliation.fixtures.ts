@@ -6,6 +6,8 @@ export { ACTIVE_TRACEABILITY_TEST } from "./check-phase124-milestone-closeout-re
 export { ACTIVE_TRACEABILITY_CHECK } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
 export { PHASE117_TEST } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
 export { PHASE117_CHECK } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
+export { PHASE138_TEST } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
+export { PHASE138_CHECK } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
 export { LIFECYCLE_ID } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
 export { PHASE125_LIFECYCLE_ID } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";
 export { ARCHIVE_ROUTE } from "./check-phase124-milestone-closeout-reconciliation.fixtures/base.ts";

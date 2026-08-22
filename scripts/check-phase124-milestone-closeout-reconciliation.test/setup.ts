@@ -15,6 +15,7 @@ import {
   PHASE129_VERIFICATION_FILE,
   PHASE117_CHECK,
   PHASE117_TEST,
+  PHASE138_CHECK,
   PHASE124_CHECK,
   PHASE124_TEST,
   replace,
@@ -46,4 +47,4 @@ afterEach(() => {
 
 
 export const PHASE129_SUMMARY_04_FILE =
-  ".planning/phases/129-integration-guardrails-and-milestone-reconciliation/129-04-SUMMARY.md" as const;export { spawnSync, rmSync, path, checkPhase124MilestoneCloseoutReconciliation, append, ARCHIVE_ROUTE, CONTEXT_FILE, createPhase124Fixture, LIFECYCLE_ID, PHASE128_EXECUTION_ROUTE, PHASE129_ROUTE, PHASE129_VERIFICATION_FILE, PHASE117_CHECK, PHASE117_TEST, PHASE124_CHECK, PHASE124_TEST, replace, RESOLVED_DEBT_IDS, SUMMARY_FILE, VERIFICATION_FILE };
+  ".planning/phases/129-integration-guardrails-and-milestone-reconciliation/129-04-SUMMARY.md" as const;export { spawnSync, rmSync, path, checkPhase124MilestoneCloseoutReconciliation, append, ARCHIVE_ROUTE, CONTEXT_FILE, createPhase124Fixture, LIFECYCLE_ID, PHASE128_EXECUTION_ROUTE, PHASE129_ROUTE, PHASE129_VERIFICATION_FILE, PHASE117_CHECK, PHASE117_TEST, PHASE138_CHECK, PHASE124_CHECK, PHASE124_TEST, replace, RESOLVED_DEBT_IDS, SUMMARY_FILE, VERIFICATION_FILE };

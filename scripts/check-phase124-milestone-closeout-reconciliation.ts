@@ -37,6 +37,8 @@ const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK =
   "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
+const PHASE138_CHECK =
+  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
 const PHASE125_VERIFICATION_FILE =
   ".planning/phases/125-compact-download-verification-traceability-closure/125-VERIFICATION.md";
 const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";
@@ -533,8 +535,11 @@ function requireFinalPhaseChecker(text: string, label: string, failures: string[
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => /\bbun (?:test|run) scripts\/check-phase\d+/.test(line));
-  if (!phaseCommands.at(-1)?.includes(PHASE117_CHECK)) {
-    failures.push(`${label} must end with ${PHASE117_CHECK}`);
+  if (!phaseCommands.at(-1)?.includes(PHASE138_CHECK)) {
+    failures.push(`${label} must end with ${PHASE138_CHECK}`);
+  }
+  if (!text.includes(PHASE117_CHECK)) {
+    failures.push(`${label} must keep ${PHASE117_CHECK} present`);
   }
 }
 

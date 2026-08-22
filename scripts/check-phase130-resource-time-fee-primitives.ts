@@ -23,6 +23,8 @@ const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK =
   "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
+const PHASE138_CHECK =
+  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
 
 export const PHASE130_TARGET_FILES = [
   "README.md",
@@ -538,8 +540,11 @@ function requireFinalPhaseChecker(
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => /\bbun (?:test|run) scripts\/check-phase\d+/.test(line));
-  if (!phaseCommands.at(-1)?.includes(PHASE117_CHECK)) {
-    failures.push(`${label} must end with ${PHASE117_CHECK}`);
+  if (!phaseCommands.at(-1)?.includes(PHASE138_CHECK)) {
+    failures.push(`${label} must end with ${PHASE138_CHECK}`);
+  }
+  if (!text.includes(PHASE117_CHECK)) {
+    failures.push(`${label} must keep ${PHASE117_CHECK} present`);
   }
 }
 

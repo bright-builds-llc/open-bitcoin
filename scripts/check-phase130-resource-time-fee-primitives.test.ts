@@ -247,7 +247,7 @@ test.each([
   ],
   [
     "final-gate ordering",
-    "P130 final gate run_step order must end with bun run scripts/check-phase117-parity-uat-release-boundary.ts",
+    "P130 final gate run_step order must end with bun run scripts/check-phase138-parity-uat-release-boundary.ts",
     append(
       "scripts/verify.sh",
       'run_step "check Phase 131 placeholder" bun run scripts/check-phase131-placeholder.ts',

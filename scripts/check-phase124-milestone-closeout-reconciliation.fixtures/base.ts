@@ -28,6 +28,10 @@ export const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 export const PHASE117_CHECK =
   "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
+export const PHASE138_TEST =
+  "bun test scripts/check-phase138-parity-uat-release-boundary.test.ts";
+export const PHASE138_CHECK =
+  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
 export const LIFECYCLE_ID = "124-2026-07-16T20-19-53";
 export const PHASE125_LIFECYCLE_ID = "125-2026-07-17T13-21-01";
 export const ARCHIVE_ROUTE = "/gsd-complete-milestone v2.1";

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { tempRoots, createFixture, PHASE129_SUMMARY_04_FILE, spawnSync, rmSync, path, checkPhase124MilestoneCloseoutReconciliation, append, ARCHIVE_ROUTE, CONTEXT_FILE, createPhase124Fixture, LIFECYCLE_ID, PHASE128_EXECUTION_ROUTE, PHASE129_ROUTE, PHASE129_VERIFICATION_FILE, PHASE117_CHECK, PHASE117_TEST, PHASE124_CHECK, PHASE124_TEST, replace, RESOLVED_DEBT_IDS, SUMMARY_FILE, VERIFICATION_FILE } from "./setup.ts";
+import { tempRoots, createFixture, PHASE129_SUMMARY_04_FILE, spawnSync, rmSync, path, checkPhase124MilestoneCloseoutReconciliation, append, ARCHIVE_ROUTE, CONTEXT_FILE, createPhase124Fixture, LIFECYCLE_ID, PHASE128_EXECUTION_ROUTE, PHASE129_ROUTE, PHASE129_VERIFICATION_FILE, PHASE117_CHECK, PHASE117_TEST, PHASE138_CHECK, PHASE124_CHECK, PHASE124_TEST, replace, RESOLVED_DEBT_IDS, SUMMARY_FILE, VERIFICATION_FILE } from "./setup.ts";
 test("fails_archive_ready_stage_with_wrong_input_lifecycle_identity", () => {
   // Arrange
   const root = createFixture({
@@ -200,8 +200,8 @@ test("fails_missing_checker_command_or_phase_checker_after_phase117", () => {
       replace(
         files,
         "scripts/verify.sh",
-        `${PHASE117_CHECK}\nVERIFY_COMMAND_ORDER`,
-        `${PHASE117_CHECK}\nbun test scripts/check-phase125-synthetic.test.ts\nbun run scripts/check-phase125-synthetic.ts\nVERIFY_COMMAND_ORDER`,
+        `${PHASE138_CHECK}\nVERIFY_COMMAND_ORDER`,
+        `${PHASE138_CHECK}\nbun test scripts/check-phase125-synthetic.test.ts\nbun run scripts/check-phase125-synthetic.ts\nVERIFY_COMMAND_ORDER`,
       );
       append(
         files,
