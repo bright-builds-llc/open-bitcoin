@@ -16,11 +16,24 @@ v2.2 Package Relay and Long-Lived Mempool Policy shipped and was archived on 202
 
 The repository now includes durable Fjall-backed runtime storage, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized package and mempool evidence, and last-gate claim guardrails.
 
-No milestone is currently active. Start the next version with `/gsd-new-milestone`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.3 is active after initialization through `/gsd-new-milestone` and is defining requirements for chainstate durability and honest historical availability. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+
+## Current Milestone: v2.3 Chainstate Durability and Historical Serving
+
+**Goal:** Replace snapshot-style coin persistence with disk-backed coins, cache-flush policy, and fuller chainstate-manager behavior, while keeping block-serving honest about what is actually stored.
+
+**Target features:**
+
+- Disk-backed coins database and cache-flush policy for the active chainstate.
+- Fuller chainstate-manager behavior around that durable coins view.
+- Honest availability: serve or report a stored block only when the payload is actually present; refuse cleanly when it is not.
+- Operator and parity evidence for the new persistence and availability truth.
 
 ## Latest Completed Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 
 **Status:** Shipped and archived on 2026-08-22 after Phase 138 closed parity, UAT, restart, and release-boundary guardrails.
+
+At the v2.2 archive boundary, disk-backed coins databases, cache-flush policy, fuller chainstate-manager behavior, prune/archive modes, compact-filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use remained deferred. v2.3 now activates only the storage-first chainstate-durability and honest-availability portion of that inventory.
 
 **Goal:** Extend the bounded v2.0 relay and mempool foundation with Knots-aligned package admission and opportunistic same-peer 1P1C relay plus durable, observable policy behavior during long-running and sustained-pressure operation.
 
@@ -109,11 +122,14 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 
-- [ ] Define the next milestone through `/gsd-new-milestone`.
+- [ ] Disk-backed coins databases and cache-flush policy persist and recover the active chainstate without snapshot-only coin truth.
+- [ ] Fuller chainstate-manager behavior owns the durable coins view, flush points, and restart-safe cache lifecycle.
+- [ ] Block serving and operator evidence report a stored block only when the payload is actually present and refuse cleanly when it is not.
+- [ ] Parity and operator evidence keep the new persistence and availability truth auditable without broadening public or production claims.
 
 ### Out of Scope
 
-The boundary keeps general package wire, arbitrary multi-parent assembly, cluster mempool, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.2.
+The boundary keeps prune and archive product modes, assumeutxo and IBD snapshot shortcuts, compact-filter and BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.3.
 
 - Faithful Qt GUI parity or porting the upstream GUI code - shipped milestones remain terminal-first and headless.
 - Windows service integration - still deferred until a later milestone.
@@ -122,6 +138,8 @@ The boundary keeps general package wire, arbitrary multi-parent assembly, cluste
 - Public marketing sites or hosted dashboards - completed milestones prioritize local operator surfaces and node correctness.
 - Replacing `bitcoin.conf` compatibility with an Open Bitcoin-only config format - JSONC layers on top of, not instead of, baseline config behavior.
 - Production full-node readiness, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and release-blocking live sync - these remain deferred to future milestones.
+- assumeutxo, assumevalid, and IBD snapshot shortcuts - v2.3 is durability and honest availability, not a sync-speed milestone.
+- Prune-mode and archive-mode product behavior, including archive-node or production-scale historical serving - later work can add those modes on top of durable coins and honest availability.
 - Public relay by default or unbounded public-network relay participation - v2.0 should keep relay activation scoped, observable, and evidence-backed until a later production-readiness milestone deliberately changes that boundary.
 - Public compact-block relay defaults or production-scale block-serving claims - v2.1 should keep block-serving and compact-block relay scoped, observable, and evidence-backed until production-readiness and public-default requirements deliberately change that boundary.
 - Public inbound serving by default - inbound participation remains opt-in unless a later milestone deliberately changes that boundary with evidence.
@@ -147,6 +165,7 @@ The boundary keeps general package wire, arbitrary multi-parent assembly, cluste
 - Future relay, mempool, and peer-participation work should continue citing pinned Knots anchors such as `net_processing.cpp`, `txmempool.cpp`, `validation.cpp`, `policy/`, and related relay tests, or document intentional behavior differences in `docs/parity/`.
 - v2.1 block-serving and compact-block relay work should cite pinned Knots anchors for block inventory, `sendcmpct`, `cmpctblock`, `getblocktxn`, `blocktxn`, compact-block reconstruction, block serving, validation, peer state, and resource-governance behavior, or document intentional behavior differences in `docs/parity/`.
 - v2.2 package relay and long-lived mempool policy should reuse v2.0 admission, lifecycle, recovery, and relay foundations plus v2.1 authoritative peer transport and observability, while citing pinned Knots package-policy, rolling-fee, rebroadcast, eviction, and mempool-pressure anchors.
+- v2.3 chainstate durability should reuse the existing pure-core UTXO engine and node-side snapshot adapter, then add disk-backed coins, cache-flush policy, and manager behavior while citing pinned Knots `coins.h`, `coins.cpp`, `validation.cpp`, and `node/blockstorage.cpp` anchors or documenting intentional differences.
 
 ## Constraints
 
@@ -181,6 +200,7 @@ The boundary keeps general package wire, arbitrary multi-parent assembly, cluste
 | Scope v2.0 to transaction relay and mempool participation boundaries | v1.9 created opt-in inbound serving and left relay-like permission labels inert, so the next fundamental node capability is bounded transaction relay and mempool propagation before compact blocks or production full-node readiness | Shipped on 2026-07-03 with 32/32 requirements complete through Phases 100 through 108 and Phase 109 archive-readiness audit debt closure |
 | Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | Shipped and archived on 2026-07-22 with 39/39 requirements, 13/13 integration links, and 11/11 flows passing |
 | Scope v2.2 to package relay and long-lived mempool policy | v2.0 established bounded mempool and transaction relay while v2.1 supplied authoritative peer transport and observability, making package policy, rolling fees, rebroadcast, and sustained-pressure behavior the next coherent parity boundary | Shipped and archived on 2026-08-22 with 40/40 requirements, 8/8 seams, and 8/8 flows passing |
+| Scope v2.3 to chainstate durability and honest historical availability | After v2.2, disk-backed coins, cache-flush policy, and fuller chainstate-manager behavior are the missing foundation; prune/archive modes, assumeutxo, compact filters, and production claims stay later | — Pending |
 
 ## Evolution
 
@@ -222,4 +242,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-08-22 after v2.2 milestone*
+*Last updated: 2026-08-29 after starting milestone v2.3*

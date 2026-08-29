@@ -1,43 +1,45 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.2
-milestone_name: Package Relay and Long-Lived Mempool Policy
-status: archived
-stopped_at: Archived v2.2 milestone
-last_updated: "2026-08-22T17:11:30.158Z"
-last_activity: 2026-08-22
+milestone: v2.3
+milestone_name: Chainstate Durability and Historical Serving
+status: Defining requirements
+stopped_at: Defining milestone v2.3 requirements
+last_updated: "2026-08-29T19:50:00Z"
+last_activity: 2026-08-29
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 95
-  completed_plans: 95
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-08-22 after v2.2 archive).
+See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning next milestone
+**Current focus:** Defining v2.3 chainstate durability and honest historical availability requirements
 
 ## Current Position
 
-Milestone: none (v2.2 archived)
-Phase: —
+Milestone: v2.3 Chainstate Durability and Historical Serving
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone archived — ready for `/gsd-new-milestone`
-Last activity: 2026-08-22
+Status: Defining requirements
+Last activity: 2026-08-29 — Milestone v2.3 started
 
-Progress: [██████████] 100%
+The milestone was initialized through `/gsd-new-milestone` and will close explicit gaps around disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred.
 
-Next action: Start the next milestone with `/gsd-new-milestone`.
+Next action: Define v2.3 requirements and create the roadmap, continuing phase numbering after Phase 138.
 
 ## Performance Metrics
 
-**Current milestone:**
+**Current milestone:** v2.3 has no completed plans yet.
+
+**Previous milestone (v2.2 archive):**
 
 - Total plans completed: 95
 - Average duration: 42 min
@@ -117,6 +119,10 @@ Next action: Start the next milestone with `/gsd-new-milestone`.
 
 ### Decisions
 
+- [v2.3 milestone]: Initialized the new milestone through `/gsd-new-milestone` after the archived v2.2 closeout.
+- [v2.3 milestone]: Storage-first scope: disk-backed coins, cache-flush, and chainstate-manager now; prune/archive product modes later.
+- [v2.3 milestone]: Honest availability means serve or report a stored block only when the payload is present; refuse cleanly when it is not.
+- [v2.3 milestone]: Keep assumeutxo, assumevalid, and IBD snapshot shortcuts out.
 - [v2.2 milestone]: Initialized the new milestone through `/gsd-new-milestone` after the archived v2.1 closeout.
 - [v2.2 roadmap]: Use the research-backed nine-phase dependency order across Phases 130–138 at fine granularity.
 - [v2.2 roadmap]: Assign PPKG-04 to Phase 136, where parent-before-child package fanout becomes an achieved transport behavior after the peer bridge and lifecycle authority exist.
@@ -315,6 +321,7 @@ Next action: Start the next milestone with `/gsd-new-milestone`.
 - Keep historical `.planning/phases/` directories tracked because repository verifiers consume selected evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance.
 - Preserve existing explicit relay activation and public-network opt-in boundaries.
+- Keep prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims deferred.
 
 ### Blockers/Concerns
 
@@ -328,6 +335,6 @@ Next action: Start the next milestone with `/gsd-new-milestone`.
 
 ## Session Continuity
 
-Last session: 2026-08-22T17:11:30.158Z
-Stopped at: Archived v2.2 milestone
+Last session: 2026-08-29T19:50:00Z
+Stopped at: Defining milestone v2.3 requirements
 Resume file: None
