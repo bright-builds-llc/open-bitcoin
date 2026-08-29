@@ -1,202 +1,275 @@
 # Stack Research
 
-**Domain:** Bitcoin package admission/relay and long-lived mempool policy
-**Researched:** 2026-07-22
+**Domain:** Bitcoin chainstate durability (coins DB, cache flush, chainstate manager)
+**Researched:** 2026-08-29
 **Confidence:** HIGH
 
 ## Recommendation
 
-v2.2 should add **no new external production dependencies**. The required capabilities fit the existing Rust workspace, first-party Bitcoin primitives, bounded transaction-relay state machines, Fjall-backed snapshot store, and Tokio daemon shell.
+v2.3 should add **no new production crates**. Disk-backed coins, cache-flush policy, and fuller chainstate-manager behavior fit the existing Rust workspace, first-party UTXO types, and Fjall `3.1.4` store already used by `FjallNodeStore`.
 
-The milestone is primarily an internal policy and state-model expansion:
+The milestone is an internal persistence-shape change:
 
-- Extend `open-bitcoin-mempool` with typed package validation/admission, rolling-minimum-fee state, entry-time accounting, and pressure/eviction transitions.
-- Extend `open-bitcoin-network` with bounded 1-parent/1-child package-candidate assembly and topological fanout decisions, while continuing to relay ordinary `tx`/`wtx` inventories.
-- Extend `open-bitcoin-node` with atomic orchestration, recovery metadata, peer-policy cleanup, and observable outcomes.
-- Use the existing Tokio runtime in `open-bitcoin-rpc` only as the timer-driving imperative shell for periodic maintenance. Keep clocks and randomness out of the pure crates by passing timestamps and sampled jitter into typed transition functions.
+- Stop treating a pretty-printed JSON `ChainstateSnapshot` blob as coin truth.
+- Add a first-party coins-view/cache in `open-bitcoin-chainstate` that mirrors Knots `CCoinsView` / `CCoinsViewCache` semantics (`DIRTY` / `FRESH`, `Flush` vs `Sync`).
+- Persist per-outpoint coin records plus best-block / head-blocks metadata through the existing Fjall database.
+- Move `ManagedChainstate` from "clone the whole UTXO map and rewrite `snapshot`" to a manager that owns cache lifecycle, flush points, and restart-safe reopen.
+- Make block serving and operator evidence ask Fjall whether the `block:` payload key exists; do not infer availability from the header/index snapshot.
 
-This is the lowest-risk stack because the current code already contains the needed seams: package topology breadcrumbs in the mempool crate, descendant-score eviction, a bounded per-peer fanout queue, caller-injected timestamps, durable mempool snapshots, authoritative network state, and an explicit `RebroadcastDeferred` action.
+Keep Fjall at the repo pin. Do not add LevelDB, RocksDB, or rust-bitcoin. Those would duplicate a store and domain model the project already owns.
 
 ## Recommended Stack
 
 ### Core Technologies
 
 | Technology | Version | Purpose | Why Recommended |
-| --- | --- | --- | --- |
-| Rust | `1.94.1` | Pure package/mempool policy and typed state transitions | Already pinned by `rust-toolchain.toml`; no toolchain change is needed. Rust enums/newtypes can make package topology, admission results, removal causes, and recovery states explicit. |
-| Open Bitcoin workspace crates | `0.1.0`, Rust 2024 | Own package policy, relay policy, persistence boundaries, and operator projections | Preserves the first-party production-path policy and the established functional-core/imperative-shell split. |
-| Bitcoin Knots | `29.3.knots20260210` | External behavior and fixture baseline | The vendored source is the authoritative contract for package shape, admission results, rolling-fee decay, eviction, initial rebroadcast, and recovery metadata. |
-| Fjall | `3.1.4`, existing | Durable mempool snapshot and restart metadata | Reuse the existing versioned snapshot codec and `StorageNamespace::Mempool`; a second database or sidecar log would add recovery ordering problems without adding capability. |
-| Tokio | `1.52.1`, existing in `open-bitcoin-rpc` | Daemon maintenance tick and shutdown-aware scheduling | The daemon already owns Tokio with `time` and `test-util`. Use it only to wake the shell; pass explicit `now_unix_seconds` and jitter into pure policy functions. Do not add Tokio to `open-bitcoin-mempool` or `open-bitcoin-network`. |
+|------------|---------|---------|-----------------|
+| Rust | `1.94.1`, edition 2024 | Pure coins-view/cache, flush-policy state machines, and typed recovery outcomes | Already pinned by `rust-toolchain.toml` and `packages/Cargo.toml`. Enums can make `Flush` vs `Sync`, cache-size state, and incomplete-flush recovery explicit. |
+| Open Bitcoin workspace crates | `0.1.0` | Own UTXO types, coin codec, node store adapter, and manager orchestration | Preserves the production-path ownership rule and the functional-core / imperative-shell split. `open-bitcoin-chainstate` has no I/O deps today; keep it that way. |
+| Bitcoin Knots | `29.3.knots20260210` | External behavior contract for coins cache, coins DB writes, and flush policy | Vendored `coins.h` / `coins.cpp`, `txdb.h` / `txdb.cpp`, `validation.cpp` (`FlushStateToDisk`), and `node/blockstorage.cpp` (block/undo flush before coins) are the parity roots. |
+| Fjall | `3.1.4`, existing, `default-features = false` | Durable per-coin records, atomic batches, prefix/range cursors, and persist modes | Already backs headers, block payloads, chainstate snapshots, mempool, and runtime markers. `Database::batch()`, `Keyspace::{get,insert,remove,contains_key,prefix,range}`, and `persist(Buffer \| SyncAll)` cover the Knots `CCoinsViewDB` surface without a second database. |
+| Tokio | `1.52.1`, existing in `open-bitcoin-rpc` only | Optional periodic flush wakeup in the daemon shell | Knots schedules `PERIODIC` writes on an injected clock, not inside the coins cache. Do not add Tokio to `open-bitcoin-chainstate` or `open-bitcoin-node`. |
+| serde / serde_json | `1.0.228` / `1.0.149`, existing | Versioned metadata and operator/report shapes | Keep for tip metadata, recovery markers, and evidence. Do **not** encode the live UTXO set as pretty JSON. |
 
 ### First-Party Modules to Extend
 
 | Crate / module | New responsibility | Integration point |
 | --- | --- | --- |
-| `open-bitcoin-mempool` package policy | `Package`, validated topological package, package-wide result, per-transaction result, package hash, count/weight/consistency checks | Build on `Transaction`, `Txid`, `Wtxid`, existing transaction validation, and first-party `Sha256`. Match Knots limits of 25 transactions and 404,000 weight units. |
-| `open-bitcoin-mempool` admission | Validate against a prospective state, then commit each Knots-aligned subpackage as one state transition | Refactor the existing clone/recompute/trim flow into an explicit prepare/commit transaction so a failed subpackage cannot leave partial mutations. Preserve final per-wtxid results plus package-level status across already-present, individually accepted, and package-evaluated members. |
-| `open-bitcoin-mempool` rolling fee | Pure `RollingMinimumFeeState` with last update, last pressure bump, block-since-bump state, and injected time | Feed the effective fee into both single-transaction and package feerate checks. Mirror Knots' 12-hour half-life, faster decay below one-half and one-quarter capacity, 10-second update gate, incremental-relay floor, and zeroing threshold. |
-| `open-bitcoin-mempool` pressure index | Canonical `HashMap<Txid, MempoolEntry>` plus standard-library ordered keys/sets for deterministic package selection | Replace repeated whole-map victim scans as scale requires. Key eviction by descendant package score with txid tie-breaking, and remove the selected transaction plus descendants as one lifecycle outcome. |
-| `open-bitcoin-network` package candidate state | Bounded 1-parent/1-child candidate assembly from reconsiderable parents and orphan children | Extend the existing orphanage/download manager. The pinned P2P baseline currently forms 1P1C packages from ordinary `tx` receipt; it does not negotiate a new wire protocol. |
-| `open-bitcoin-network` fanout | Queue accepted package members in topological order through the existing `TxFanoutQueue` | Preserve txid/wtxid negotiation, per-peer eligibility, origin suppression, queue caps, rate limiting, cleanup, and ordinary `inv` transport. |
-| `open-bitcoin-node` recovery | Extend `MempoolSnapshot` and its versioned DTO with entry acceptance time and unbroadcast membership | Reuse `FjallNodeStore::save_mempool_snapshot` / `load_mempool_snapshot`; replay parents before children and emit a status for every recovered or dropped member. |
-| `open-bitcoin-node` runtime authority | Apply package admission, pressure removal, relay cleanup, serving cleanup, metrics, logs, and durable writes under one authoritative mutation boundary | Reuse `ManagedNetworkHandle` and `ManagedPeerNetwork`; do not create a second mempool or relay authority in RPC/background tasks. |
-| `open-bitcoin-rpc` daemon shell | Drive periodic mempool maintenance and initial-rebroadcast retries | Use a bounded Tokio task or existing daemon loop, shutdown-aware waits, and explicit ticks. The shell samples time/jitter and invokes authority methods; it does not own policy decisions. |
-| `open-bitcoin-bench` | Deterministic package admission and sustained-pressure benchmarks | Extend the existing custom benchmark harness; do not add Criterion solely for this milestone. |
+| `open-bitcoin-chainstate` coins view | Pure `CoinsView` / `CoinsViewCache` with `GetCoin`, `HaveCoin`, `AddCoin`, `SpendCoin`, `BatchWrite`, `Flush`, `Sync`, `Uncache`, cache-size accounting, and `DIRTY`/`FRESH` flags | Replace `Chainstate.utxos: HashMap<OutPoint, Coin>` as the live spend view. The engine should apply connect/disconnect against the cache, not clone the whole map on every block. |
+| `open-bitcoin-chainstate` flush policy | Pure `FlushStateMode { None, IfNeeded, Periodic, Always }` and `CoinsCacheSizeState { Ok, Large, Critical }` | Mirror Knots `validation.h` / `validation.cpp`. Inputs are injected: now, cache bytes, cache limit, mempool leftover bytes, and whether a write is due. Do not read clocks or disk here. Omit prune-triggered flush (`fFlushForPrune`); that product mode is out of scope. |
+| `open-bitcoin-codec` coin records | First-party compact outpoint keys and coin values, including Open Bitcoin's extra `created_median_time_past` field | Reuse existing compact-size / script / output encoders. Do not invent a rust-bitcoin `TxOutCompression` port and do not persist coins as `CoinDto` JSON. |
+| `open-bitcoin-node` `FjallNodeStore` | Disk-backed coins adapter: per-outpoint get/put/erase, `best_block`, two-element `head_blocks`, batched dirty writes, payload-presence checks | Add a `coins` keyspace (or an equivalent prefix inside the existing `chainstate` keyspace). Reuse `PersistMode::{Buffered,Flush,Sync}` already mapped to Fjall `None` / `Buffer` / `SyncAll`. |
+| `open-bitcoin-node` `ManagedChainstate` | Fuller manager: init coins DB, verify store health, then init cache; flush on policy, not after every connect; fail closed on incomplete `head_blocks` | Today's `persist()` calls `save_snapshot` after every connect/disconnect/reorg. That is the snapshot-only contract to replace. Keep `MemoryChainstateStore` as an in-memory view for tests. |
+| `open-bitcoin-node` sync runtime | Call manager flush (`IfNeeded` after connect, `Periodic` on ticks, `Always` on clean shutdown) instead of `save_chainstate_snapshot` of the full UTXO map | `DurableSyncRuntime::persist_progress` currently writes the JSON snapshot with `config.persist_mode` (default `PersistMode::Flush`). |
+| `open-bitcoin-node` / `open-bitcoin-network` serving | Honest availability: `Available` only when `block:` payload exists | `serve_managed_block_request` already refuses a missing lookup. `inventory.rs` still treats `has_local_data \|\| durable_availability` as enough and labels a missing non-tip active block `Pruned`. Change the facts, not the stack. |
+| `open-bitcoin-rpc` daemon shell | Drive periodic flush ticks with injected time and sampled 50–70 minute jitter | Use existing Tokio `time` / `test-util`. Sample jitter with existing `getrandom 0.3.4` in the shell. |
 
 ### Supporting Libraries and Standard-Library Approaches
 
 | Library / facility | Version | Purpose | When to Use |
-| --- | --- | --- | --- |
-| `std::collections::{HashMap, BTreeMap, BTreeSet, VecDeque}` | Rust `1.94.1` | Canonical entry lookup, deterministic result ordering, topology sets, bounded fanout queues, and maintenance work queues | Use throughout the pure core. Prefer deterministic ordered outputs at evidence and serialization boundaries. |
-| `std::time::{Duration, SystemTime, UNIX_EPOCH}` | Rust `1.94.1` | Shell time acquisition and interval representation | Acquire wall time only in daemon/adapters. Pure policy APIs receive integer timestamps or typed durations. |
-| `f64::powf` plus explicit Knots-compatible rounding | Rust `1.94.1` | Exponential rolling-fee decay matching Knots' `double`/`pow` formula | Keep it inside the rolling-fee module, expose only integer sat/kvB `FeeRate`, and lock boundary behavior with differential fixtures. Do not spread floating-point fee values through the domain model. |
-| `getrandom` | `0.3.4`, existing in `open-bitcoin-node` | Sample privacy-preserving rebroadcast jitter | Sample in the node shell and pass a bounded delay to pure scheduling logic. If randomness fails, return a typed degraded scheduling outcome rather than silently using a fingerprintable constant. |
-| `open_bitcoin_consensus::crypto::Sha256` | first-party workspace `0.1.0` | Knots-compatible package hash for reconsiderable-package rejection tracking | Hash sorted little-endian wtxids exactly as the pinned baseline specifies; do not add a general hashing crate. |
-| `serde` / `serde_json` | `1.0.228` / `1.0.149`, existing | Versioned durable DTOs and stable operator/report shapes | Extend the existing node snapshot codec and projections. Do not serialize internal maps directly as the persistence contract. |
-| Tokio time/test utilities | Tokio `1.52.1`, existing | Runtime wakeups and paused-time integration tests | Use only in the RPC/daemon shell. Unit-test core scheduling with explicit timestamps and no sleeps. |
+|--------------------|---------|---------|-------------|
+| `std::collections::HashMap` plus an explicit dirty/fresh index | Rust `1.94.1` | In-memory coins cache | Prefer a dirty-entry list or flagged-entry set so `BatchWrite` does not scan the whole cache. Do not add `indexmap`, `hashbrown`, or a pool allocator crate to copy Knots `PoolAllocator`. |
+| First-party compact codec | workspace `0.1.0` | On-disk coin and outpoint encoding | Encode `Coin { output, is_coinbase, created_height, created_median_time_past }`. Knots on-disk `Coin` omits MTP; copying that format would drop an in-scope Open Bitcoin field. |
+| Existing `PersistMode` | node crate | Durability of a flush batch | `Buffered` for in-flush partial batches, `Flush` for journal-to-OS, `Sync` for shutdown / schema / recovery-marker writes. Fjall documents that `persist` affects durability, not consistency; the `head_blocks` protocol is what makes a multi-batch flush restart-safe. |
+| `getrandom` | `0.3.4`, existing | 50–70 minute periodic-write jitter | Sample in the node/RPC shell and pass the next-write deadline into pure policy. Match Knots `DATABASE_WRITE_INTERVAL_MIN/MAX` (`50min` / `70min`). |
+| `FjallNodeStore::contains_key` / `get` / `size_of` | Fjall `3.1.4` | Honest block-payload presence | Prefer existence of the `block:` key over header-index membership. Load the payload only when serving. |
+| Existing `StorageRecoveryAction` | node crate | Operator-visible recovery | Map incomplete `head_blocks` or schema mismatch to `Reindex` / `Repair` / `RestoreFromBackup`. Do not add automatic destructive repair. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
-| --- | --- | --- |
-| `bash scripts/verify.sh` | Repo-native format, lint, build, test, coverage, architecture, parity-breadcrumb, benchmark, and Bazel contract | Remains the deterministic default gate. Public-network scenarios stay opt-in. |
-| Existing Rust unit/property tests | Package topology, aggregate feerate, atomicity, rolling decay, eviction, restart, and scheduling fixtures | Use injected clocks and deterministic jitter values. Compare stable labels and integer fee outcomes to pinned Knots fixtures. |
-| Existing `open-bitcoin-bench` harness | Detect topology recomputation and pressure-path regressions | Add workloads for 25-member packages, long chains, wide descendant sets, repeated trim/refill cycles, and rebroadcast-set scans. |
-| Pinned Knots functional/unit tests | Source of parity cases | Mine cases from `txpackage_tests.cpp`, `mempool_tests.cpp`, `txdownload_tests.cpp`, `mempool_packages.py`, `p2p_opportunistic_1p1c.py`, `mempool_unbroadcast.py`, and `mempool_persist.py`. Only claim behavior represented by the pinned tree. |
+|------|---------|-------|
+| `bash scripts/verify.sh` | Repo-native format, lint, build, test, coverage, architecture, parity-breadcrumb, and Bazel contract | Remains the deterministic default gate. Do not add public-network or full-mainnet UTXO-set checks to the default gate. |
+| Existing Rust unit tests + temporary Fjall stores | Cache flag combinations, flush vs sync, two-phase `head_blocks`, restart reopen, missing-payload serving | Inject clocks and cache limits. Use `simulate_crash` style fixtures in the adapter (Knots `CoinsViewOptions.simulate_crash_ratio`) without process `_Exit`. |
+| Pinned Knots tests | Source of parity cases | Mine `coins.cpp` flag/flush behavior, `txdb.cpp` `BatchWrite`, `validation.cpp` `FlushStateToDisk` / `GetCoinsCacheSizeState`, and `test/chainstate_write_tests.cpp` for the 50–70 minute window. |
+| Existing `open-bitcoin-bench` | Detect full-map clone and full-snapshot encode regressions | Add connect/flush workloads that dirty a bounded coin set; do not add Criterion. |
 
 ## Detailed Stack Decisions
 
-### Package Admission and Relay
+### Disk-backed coins: extend Fjall, do not add LevelDB
 
-Implement package semantics as first-party domain types, not `Vec<Transaction>` passed unchecked across layers. A fallible constructor should enforce non-empty, maximum count, maximum total weight, unique txids, topological parent-before-child order, and no cross-package input conflicts. A stricter child-with-unconfirmed-parents type should represent the topology accepted by the pinned `AcceptPackage` path.
+Knots `CCoinsViewDB` is a LevelDB wrapper (`txdb.h`) with:
 
-The mempool should evaluate each submission subpackage against one prospective state and commit that subpackage only after context-free checks, input/consensus checks, package feerate checks, ancestor/descendant checks, and policy-script checks succeed. The higher-level package flow may reuse already-present members or preserve individually accepted members exactly as Knots does, so atomicity must be scoped to the matching subpackage commit rather than asserted across unlike result classes. Results need both a package-level status and final per-wtxid outcomes because Knots can report already-present members, invalid members, replaced transactions, and members whose status changes after size limiting.
+- per-outpoint `DB_COIN` records
+- `DB_BEST_BLOCK` when consistent
+- `DB_HEAD_BLOCKS = [new_tip, old_tip]` while a flush is in progress
+- batched dirty writes, default `nDefaultDbBatchSize = 64 << 20` (64 MiB)
+- cursor iteration over coin keys
 
-For P2P, keep the first milestone's transport scope to the pinned behavior: assemble a bounded 1-parent/1-child candidate when a reconsiderable parent and orphan child meet, submit it to package admission, then announce accepted members through the existing per-peer `inv` path. A repository-wide search of the pinned tree found no `sendpackages`, `ancpkginfo`, `getpkgtxns`, or `pkgtxns` commands. Adding those would be a new protocol claim, not implementation of this pin.
+Fjall `3.1.4` already provides the required primitives on the same `Database` the node opens today:
 
-### Rolling Minimum Fee and Sustained Pressure
+- atomic `WriteBatch` across keyspaces
+- per-key get / insert / remove / `contains_key`
+- prefix and range iterators for a coins cursor
+- `persist(PersistMode::{Buffer,SyncAll})`
+- `disk_space()` for low-disk classification already mapped to `StorageRecoveryAction::FreeDisk`
 
-The current `Mempool` already evicts the lowest descendant-score transaction and its descendants, but capacity is expressed as aggregate virtual size and selection scans/recomputes the complete map. Knots trims against estimated dynamic memory usage and bumps the rolling floor to the removed descendant package feerate plus the incremental relay feerate. v2.2 therefore needs an owned, deterministic memory-accounting model and an explicit pressure state transition; simply exposing the existing `max_mempool_virtual_size` result as Knots parity would be too broad.
+There is no documented capability gap that justifies `rusty-leveldb`, `leveldb-sys`, RocksDB, or a second process-local store. A second database would split crash ordering between coins and block payloads, which is the opposite of fuller manager behavior.
 
-Keep the rolling fee as a small pure state machine. The state transition should take current time, accounted usage, configured byte limit, incremental relay feerate, and whether a block arrived after the last bump. It should return the new state and rounded effective `FeeRate`. Using `f64` locally is justified because the pinned implementation uses `double` and `pow`; the externally visible value remains integer sat/kvB. Add differential tests at the 10-second gate, 12-hour half-life, one-half/one-quarter occupancy changes, incremental floor, and zero threshold. Consider a narrowly scoped deterministic math implementation only if cross-platform verification demonstrates a real rounding mismatch; do not preemptively add `libm`.
+**Layout recommendation:** add a dedicated `coins` keyspace (new `StorageNamespace::Coins`) rather than stuffing millions of outpoints next to the current `chainstate` `"snapshot"` key. Keep tip/undo/active-chain metadata in `chainstate` as small records, not as a cloned UTXO map.
 
-Use a canonical entry map plus explicit adjacency and ordered eviction keys. Standard-library collections are sufficient. Keep index updates inside the same prospective-state transaction as package admission/removal, and assert/recompute indexes in tests. This avoids adding a graph crate while preventing sustained-pressure work from degenerating into repeated full-map scans.
+**Record format:** first-party compact binary. The current `encode_chainstate_snapshot` path uses `serde_json::to_vec_pretty`. That is acceptable for bounded mempool/runtime metadata and unacceptable as coin truth: every connect currently rewrites the entire set. Knots writes only dirty coins.
 
-### Rebroadcast and Restart Boundaries
+**Schema:** `SchemaVersion::CURRENT` is `1`. Introducing a coins keyspace and retiring snapshot-as-coin-truth is a breaking store layout. Bump the schema, fail closed on mismatch (existing `StorageError::schema_mismatch`), and treat leftover `"snapshot"` blobs as non-authoritative once coins records exist. Do not silently convert a JSON snapshot into per-coin rows without an explicit, testable migration step in this milestone.
 
-Activate the existing `RebroadcastDeferred` seam as Knots-style **initial broadcast retry**, separate from wallet-wide periodic resubmission. Locally submitted transactions with relay enabled enter a bounded unbroadcast set. A shell timer wakes every randomized 10–15 minutes, asks the pure core for eligible retry actions, and routes those actions through the same peer eligibility and bounded fanout queue as first announcements. Confirmation, replacement, eviction, expiry, or evidence that a peer announced the transaction removes it from the set.
+**Crash protocol:** implement Knots `CCoinsViewDB::BatchWrite` in the adapter:
 
-Persist the unbroadcast set with the mempool snapshot, because the pinned mempool format persists and optionally restores it. Persist entry acceptance times as well so expiry and ordered recovery do not reset transaction age. Do **not** persist `rollingMinimumFeeRate` by default: the inspected Knots mempool dump stores transaction time, fee deltas, and unbroadcast txids but not the rolling fee fields. On restart, replay, limit enforcement, and current pressure derive the new in-memory policy state. Any decision to persist additional rolling-fee state must be recorded as an intentional Knots behavior difference.
+1. Erase `best_block`, write `head_blocks = [new, old]`.
+2. Write dirty coins in batches bounded by 64 MiB of estimated payload (first-party size accounting; Fjall batches expose `len()`, not LevelDB `SizeEstimate`).
+3. Erase `head_blocks`, write `best_block = new`.
+4. On reopen, if `head_blocks` is a two-element vector and `best_block` is missing, resume only when `head_blocks[0]` matches the flush target; otherwise return a typed `Reindex` recovery error.
 
-The wallet's separate 12–24 hour randomized resubmission policy is not required to implement the node mempool's 10–15 minute initial-broadcast retry. Do not couple v2.2 node relay correctness to wallet scheduling unless milestone requirements explicitly activate that separate behavior.
+A single Fjall batch is atomic, but large flushes still need this protocol because Knots (and this milestone) must be able to split a 64 MiB-capped write sequence. Fjall's own docs state persist changes durability, not consistency; the head-blocks keys are the application consistency marker.
 
-### Observability and Verification
+### Cache-flush policy: first-party, injected time, no prune product
 
-Extend existing status, metrics, structured logs, support evidence, RPC, and CLI projections with stable counts and reasons: package accepted/rejected/member results, current effective mempool minimum fee, last pressure bump, decay state, evicted package/member counts, unbroadcast count, retry due/attempted/queued/suppressed counts, recovery restored/dropped counts, and bounded-resource state.
+Implement the Knots policy in pure code, then let the node shell apply it:
 
-Default tests remain synthetic and deterministic: injected timestamps, fixed jitter inputs, in-memory authoritative state, temporary Fjall stores, and fixture peer sets. Public-network review remains opt-in and must not become a prerequisite for `bash scripts/verify.sh`.
+| Mode | When the shell asks | What the cache does |
+|------|---------------------|---------------------|
+| `None` | Observability / future prune hook only | Do not write coins. Do not implement file pruning. |
+| `IfNeeded` | After connect / reorg | Write if cache is `Critical` (over budget). Knots also flushes when `SystemNeedsMemoryReleased()`; treat that as an injected boolean from the shell, not a new crate. |
+| `Periodic` | Daemon tick | Write if cache is `Large` (≥ 90% of budget, or within 10 MiB of the limit) **or** `now >= next_write`. Periodic writes `Sync` (keep unspent cache entries). Large/critical writes `Flush` (wipe cache). |
+| `Always` | Clean shutdown, explicit force flush | `Flush` the cache. |
+
+Knots numbers to pin in first-party constants (do not pull them from a C++ crate):
+
+- default kernel/dbcache budget: `450 MiB` (`DEFAULT_KERNEL_CACHE`)
+- minimum dbcache: `4 MiB`
+- coins-DB cache cap: `8 MiB` (Fjall block cache is store-level; do not pretend to resize LevelDB)
+- coins-tip cache gets the remainder after the small index/coins-db reservation
+- large-flush warning threshold: Knots `WARN_FLUSH_COINS_SIZE`
+- disk-space guard: `48 * 2 * 2 * cache_entry_count` bytes before a coins write
+- periodic window: 50–70 minutes, sampled once per successful write
+
+`ManagedChainstate` must stop calling `save_snapshot` inside `connect_block` / `disconnect_tip` / `reorg`. Connect updates the cache and records undo; flush is a separate manager step. `prepare_*` / `commit_*` can stay, but commit should not imply a full UTXO rewrite.
+
+Do not port `PruneAndFlush`, `FindFilesToPrune`, or `UnlinkPrunedFiles`. `blockstorage.cpp` flush that **is** in scope is the ordering constraint: flush block/undo payloads before coins, then treat a missing block body as unavailable. Open Bitcoin already stores blocks under `block:` keys; the manager should persist those payloads (existing `save_block`) before a coins `best_block` advance.
+
+### Fuller chainstate-manager behavior
+
+Knots splits this across `CoinsViews`, `Chainstate`, and `ChainstateManager`:
+
+- `CoinsViews`: disk view → read-error catcher → tip cache
+- `InitCoinsDB` then health check then `InitCoinsCache` (`CanFlushToDisk` is false until the cache exists)
+- `CoinsTip()` is the only spend/connect view
+- `FlushStateToDisk` writes block/undo, then block index, then coins
+- assumeutxo / background snapshot chainstates exist on `ChainstateManager` and are **out of scope**
+
+Open Bitcoin should grow `ManagedChainstate` to own that active-chainstate subset only:
+
+1. Open Fjall coins + existing block/header namespaces.
+2. If `head_blocks` is inconsistent, do not install a cache and do not flush.
+3. Install the cache only after the disk view is readable.
+4. Serve `GetCoin` through the cache, falling back to Fjall on miss.
+5. Persist undo per block as its own record (today undo lives inside the JSON snapshot). A disconnect must not require reloading a full UTXO blob.
+6. Keep one active chainstate. Do not add a second snapshot chainstate or `EmplaceCoinInternalDANGER`.
+
+`ChainstateStore` should change from `{ load_snapshot, save_snapshot }` to a view-backed store (`get_coin`, `batch_write`, `best_block`, `head_blocks`, `load_undo`, `save_undo`, `has_block_payload`). `MemoryChainstateStore` implements the same trait in RAM for tests.
+
+### Honest availability: no new stack
+
+`serve_managed_block_request` already takes `lookup_block: FnOnce(BlockHash) -> Option<Block>` and returns `LookupUnavailable` when the payload is missing. The defect is upstream classification in `inventory.rs`:
+
+- `has_local_data` is an in-memory map
+- `durable_availability` is a boolean that can be true without a payload get
+- active + not tip + missing data is labeled `Pruned`
+
+v2.3 should set `data_availability` from an actual store probe (`contains_key` / `get` on `block:{hex}`). Missing payload is `Unavailable`, not `Pruned`. Keep the `Pruned` enum for later product work; do not report it from “index says yes, body says no.”
+
+Operator status, RPC, and support evidence should use the same probe. Do not add a search index, object store, or archive-mode crate.
 
 ## Installation
 
-No Cargo packages or system services should be added for v2.2.
+No Cargo packages or system services should be added for v2.3.
 
 ```bash
 # Materialize the pinned behavioral baseline if needed.
 git submodule update --init --recursive
 
-# Verify the unchanged dependency/toolchain contract and all first-party work.
+# Verify the unchanged dependency/toolchain contract after implementation.
+# Do not treat this research step as a reason to run verify now.
 bash scripts/verify.sh
 ```
 
-If implementation introduces a dependency despite this recommendation, require a written capability gap, maintenance/security review, Cargo and Bazel wiring, and evidence that a small first-party or standard-library implementation is less safe.
+If implementation proposes a dependency despite this recommendation, require a written capability gap against Fjall `3.1.4` (`batch`, `persist`, `contains_key`, prefix/range), a maintenance/security review, Cargo and Bazel wiring, and evidence that a first-party adapter is less safe.
+
+Do not bump Fjall to crates.io `3.1.5` (current docs.rs latest as of this research) as part of this milestone. The lockfile pin is `3.1.4` (`b62b25b4d815ae178d7d9e4aa32ee59f072efd5431c736abede1e6ee13c8c453`).
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
-| --- | --- | --- |
-| Standard-library collections and owned topology indexes | `petgraph`, `indexmap`, or a priority-queue crate | Only if profiling proves the owned index cannot meet sustained-pressure bounds and the selected crate passes dependency/security review. The current domain needs a constrained DAG, not a general graph API. |
-| Existing Fjall mempool namespace and versioned snapshot DTO | SQLite, RocksDB, or a second append-only policy store | Only if a future milestone requires independent transactional history/query semantics that Fjall cannot provide. v2.2 needs one restart snapshot boundary. |
-| Existing Tokio daemon shell | A new scheduler/background-job framework | Only if scheduling expands beyond the daemon runtime and needs durable distributed jobs, which is out of scope. |
-| Local `f64` decay matching Knots, rounded immediately | `libm` or a decimal/fixed-point crate | Use only after a reproduced cross-platform parity failure shows the standard implementation cannot preserve integer outputs. |
-| Bounded rotating sets / owned filter state | Bloom-filter or cache crate | Use an external crate only if memory/false-positive targets cannot be met cleanly by the existing first-party hashing and bounded generations. |
-| Ordinary tx/wtx inventory relay of accepted package members | BIP331-style package-relay wire commands | Use only in a separately researched milestone whose pinned baseline and requirements explicitly include those messages. |
+|-------------|----------------|-------------------------|
+| Fjall `3.1.4` coins keyspace | rusty-leveldb / LevelDB / Bitcoin `dbwrapper` | Only if a later milestone requires byte-identical Knots `chainstate/` files for datadir migration. Migration apply is explicitly out of scope. |
+| Fjall `3.1.4` coins keyspace | RocksDB / `rust-rocksdb` | Only if measured flush/read latency on a full UTXO set proves Fjall cannot meet an explicit budget **and** RocksDB passes dependency review. Do not preempt that with a rewrite. |
+| First-party compact coin codec | serde JSON `UtxoRecordDto` per coin | Never for live coin truth. JSON may remain for small metadata and tests. |
+| First-party compact coin codec | rust-bitcoin / bitcoinconsensus codecs | Forbidden on the production path. The workspace already owns `Coin`, `OutPoint`, scripts, and compact-size. |
+| `HashMap` + dirty index | `indexmap`, `hashbrown`, `lru` | Only after a cache-size benchmark shows standard-library maps cannot meet the 450 MiB accounting model. Knots pool-allocator tricks are not required for correctness. |
+| Injected periodic tick in RPC shell | New scheduler / job crate | Never for one interval. Tokio `time` is already in `open-bitcoin-rpc`. |
+| `contains_key` on `block:` | Infer availability from header/index snapshot | Never. That is the dishonest path this milestone exists to close. |
+| One active `ManagedChainstate` | Knots dual IBD + assumeutxo chainstates | Later milestone. `EmplaceCoinInternalDANGER` and snapshot-base chainstates stay unused. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
-| --- | --- | --- |
-| Third-party Rust Bitcoin domain libraries | Violates the production-path ownership policy and obscures parity differences | Existing first-party primitives, codec, consensus, mempool, and network crates |
-| New package-relay P2P commands | Not present in the inspected pinned baseline and would broaden interoperability claims | Knots-aligned 1P1C candidate assembly over existing transaction/orphan flow and ordinary inventory relay |
-| Tokio, wall-clock reads, or randomness in pure crates | Makes policy tests timing-dependent and breaks functional-core boundaries | Inject integer time and sampled bounded jitter from the daemon/node shell |
-| A second mempool database or rebroadcast journal | Creates dual-authority and crash-ordering ambiguity | Extend the existing versioned Fjall mempool snapshot atomically |
-| Persisting the rolling fee as if Knots did so | The inspected baseline dump does not store rolling-fee fields; silent persistence changes restart behavior | Persist entry time and unbroadcast metadata; explicitly derive/reset rolling state at recovery |
-| Unbounded `HashSet`/`BTreeSet` histories for package rejects or rebroadcast evidence | Leaks memory during long-lived hostile traffic | Capacity-limited, generation-rotated state with typed eviction evidence |
-| Sleeping tests or live network in default verification | Produces slow/flaky gates and violates the deterministic-default boundary | Fake clocks, fixed jitter, temporary stores, fixture peers, and opt-in public-network UAT |
-| Virtual-size-only pressure accounting presented as full Knots parity | Knots' configured mempool limit is enforced against dynamic memory usage | First-party accounted-memory model plus explicit documented approximation bounds |
+|-------|-----|-------------|
+| Third-party Rust Bitcoin domain libraries | Violates the production-path ownership policy and would re-encode `Coin` without `created_median_time_past` | Existing `open-bitcoin-primitives` / `chainstate` / `codec` types |
+| LevelDB, rusty-leveldb, `dbwrapper` ports | No capability gap over Fjall for per-key coins, batches, and cursors; splits crash domains | Extend `FjallNodeStore` with a coins keyspace |
+| RocksDB or a second LSM | Extra native toolchain, extra lock/datadir story, no required API | Same Fjall `Database` the node already opens |
+| Fjall `OptimisticTxDatabase` / `SingleWriterTxDatabase` | Coins flush is write-batch + application `head_blocks`, not interactive read-modify-write | Existing `db.batch()` |
+| Pretty JSON as UTXO truth | Rewrites the whole set on every persist; unbounded encode cost | Compact per-outpoint records + dirty-set flush |
+| Tokio, wall clocks, or `getrandom` in `open-bitcoin-chainstate` | Breaks functional-core tests and architecture policy | Inject `now`, jitter, and persist mode from the shell |
+| Prune-mode file managers / `fFlushForPrune` | Out of milestone scope; current code already mis-labels missing bodies as `Pruned` | Payload-present → `Available`, else `Unavailable` |
+| assumeutxo / assumevalid / snapshot-load APIs | Out of scope; Knots `EmplaceCoinInternalDANGER` is snapshot-only | Single active chainstate from genesis connect + coins DB |
+| Bumping Fjall to `3.1.5` “while we are here” | Invented upgrade; lockfile pin is the source of truth | Stay on `3.1.4` unless a reproduced API bug requires a documented bump |
 
 ## Stack Patterns by Variant
 
-**For deterministic default verification:**
+**If implementing the coins cache (pure core):**
 
-- Use injected timestamps and deterministic jitter values.
-- Use in-memory mempool/network state and temporary Fjall stores.
-- Assert integer fee outcomes, stable labels, topological ordering, queue bounds, and restart metadata.
+- Use a view trait with an in-memory cache adapter and a test memory backend.
+- Track `DIRTY` / `FRESH` exactly as Knots documents the five valid combinations.
+- `Flush` wipes the cache after a successful `BatchWrite`; `Sync` writes dirty entries and drops spent ones.
+- Never open Fjall from `open-bitcoin-chainstate`.
 
-**For opt-in public-network review:**
+**If implementing the coins DB (node shell):**
 
-- Use the same authoritative network state and production peer transport already validated in v2.1.
-- Enable relay explicitly; do not introduce a public/default relay mode.
-- Capture sanitized package, pressure, fee, and rebroadcast evidence without peer addresses or transaction-origin claims.
+- One Fjall `Database`, new `coins` keyspace, existing `PersistMode` mapping.
+- Two-phase `head_blocks` around 64 MiB batches.
+- Init DB → health check → init cache. No flush until `CanFlushToDisk`.
+- Bump `SchemaVersion` and fail closed.
 
-**For peer-originated package candidates:**
+**If implementing flush policy:**
 
-- Assemble only the pinned 1P1C topology from reconsiderable/orphan state.
-- Attribute each transaction's sender, bound candidate retries, and cache rejected package hashes with bounded state.
-- Relay accepted members through ordinary txid/wtxid fanout.
+- Pure decision function: `(mode, cache_state, now, next_write, memory_pressure) -> FlushAction { None, Sync, Flush }`.
+- Shell executes the action, updates `next_write`, and records evidence.
+- After connect: `IfNeeded`. On timer: `Periodic`. On shutdown: `Always`.
 
-**For local/RPC package submission:**
+**If implementing honest availability:**
 
-- Reuse the general child-with-unconfirmed-parents package type and atomic admission path.
-- Track locally originated accepted members in the unbroadcast set only when relay is requested.
-- Keep fee guardrails and per-transaction result reporting at the RPC boundary.
+- Probe `block:` payload keys.
+- Serve only after `get` returns bytes that decode as a block.
+- Report `Unavailable` when the index or tip mentions a hash whose payload is missing.
+- Do not introduce prune-mode serving behavior.
 
-**For restart/recovery:**
+**If a later milestone needs Knots datadir import:**
 
-- Decode a versioned snapshot, validate metadata, replay parents before children, and emit a result for every record.
-- Restore unbroadcast membership only for transactions successfully recovered into the mempool.
-- Rebuild volatile indexes and rolling-fee state; do not trust serialized derived topology.
+- That is the only plausible reason to revisit LevelDB or a Knots-compatible coin record layout.
+- It is not a v2.3 stack change.
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
-| --- | --- | --- |
+|-----------|-----------------|-------|
 | Rust `1.94.1` / edition 2024 | All workspace crates `0.1.0` | `rust-toolchain.toml` and `packages/Cargo.toml` remain the sources of truth. |
-| `open-bitcoin-mempool` `0.1.0` | `open-bitcoin-chainstate`, `codec`, `consensus`, `primitives` workspace crates | No external crate addition is required for package topology, hashing inputs, fee math, or eviction state. |
-| `open-bitcoin-network` `0.1.0` | Existing first-party chainstate/codec/consensus/primitives crates | Keep package-candidate decisions pure and transport-neutral. |
-| `open-bitcoin-node` `0.1.0` | Fjall `3.1.4`, getrandom `0.3.4`, serde `1.0.228`, serde_json `1.0.149` | Extend the current storage and authority boundaries; bump the snapshot schema version when durable fields change. |
-| `open-bitcoin-rpc` `0.1.0` | Tokio `1.52.1` with `time` and `test-util` | Sufficient for maintenance wakeups and paused-time tests; no new timer framework is needed. |
-| Bitcoin Knots `29.3.knots20260210` | v2.2 parity fixtures | Do not mix defaults or protocol behavior from newer Core/Knots releases into this milestone. |
+| `open-bitcoin-chainstate` `0.1.0` | `open-bitcoin-consensus`, `open-bitcoin-primitives` only | Do not add Fjall, Tokio, or serde to this crate. |
+| `open-bitcoin-codec` `0.1.0` | `open-bitcoin-primitives` only | Add coin/outpoint record encoding here, not in the node JSON snapshot codec. |
+| `open-bitcoin-node` `0.1.0` | Fjall `3.1.4`, serde `1.0.228`, serde_json `1.0.149`, getrandom `0.3.4` | Extend `FjallNodeStore` and `ManagedChainstate`; bump `SchemaVersion` when coins records become authoritative. |
+| `open-bitcoin-rpc` `0.1.0` | Tokio `1.52.1` with `time` and `test-util` | Sufficient for periodic flush wakeups; no new timer framework. |
+| Fjall `3.1.4` | Existing `PersistMode` mapping (`Buffered` → no persist, `Flush` → `Buffer`, `Sync` → `SyncAll`) | `SyncData` exists on Fjall but is unused; do not remap unless flush evidence shows `SyncAll` is too strong for periodic writes. |
+| Bitcoin Knots `29.3.knots20260210` | v2.3 coins/flush fixtures | Do not mix Core 30+ assumeutxo or later flush defaults into this pin. |
 
 ## Sources
 
-All decisive findings were verified from local primary sources; no training-data-only version claims were used.
+All decisive stack and version claims were verified from local pins or official docs. Web-only “latest crate” mentions are labeled.
 
-- `rust-toolchain.toml` and `packages/Cargo.toml` — Rust `1.94.1`, Rust 2024, and workspace `0.1.0` sources of truth. **HIGH confidence.**
-- `packages/open-bitcoin-mempool/Cargo.toml`, `packages/open-bitcoin-network/Cargo.toml`, `packages/open-bitcoin-node/Cargo.toml`, and `packages/open-bitcoin-rpc/Cargo.toml` — current dependency surfaces and exact external versions. **HIGH confidence.**
-- `packages/open-bitcoin-mempool/src/pool.rs` and `pool/lifecycle.rs` — existing prospective admission, descendant-score trimming, pressure summary, and explicit deferred rolling-fee seam. **HIGH confidence.**
-- `packages/open-bitcoin-network/src/peer/transaction_relay/fanout.rs` and `scheduler.rs` — bounded queues, injected timestamps, peer eligibility, cleanup, and `RebroadcastDeferred`. **HIGH confidence.**
-- `packages/open-bitcoin-node/src/storage/mempool_snapshot.rs`, `storage/snapshot_codec.rs`, and `storage/fjall_store/mempool.rs` — current durable snapshot/replay boundary. **HIGH confidence.**
-- `packages/open-bitcoin-node/src/network/runtime_authority.rs` and `relay_fanout.rs` — authoritative runtime mutation boundary and current relay integration. **HIGH confidence.**
-- `packages/bitcoin-knots/src/policy/packages.h` and `policy/packages.cpp` — package limits, topology, consistency, and package-hash contract. **HIGH confidence.**
-- `packages/bitcoin-knots/src/validation.cpp` (`AcceptMultipleTransactions`, `AcceptPackage`, `ProcessNewPackage`) — package validation order, aggregate feerate, topology scope, atomic submission, and result semantics. **HIGH confidence.**
-- `packages/bitcoin-knots/src/node/txdownloadman.h`, `node/txdownloadman_impl.cpp`, and `net_processing.cpp` (`ProcessPackageResult`) — P2P 1P1C candidate assembly and relay-result handling. **HIGH confidence.**
-- `packages/bitcoin-knots/src/txmempool.cpp` (`GetMinFee`, `trackPackageRemoved`, `TrimToSize`, `Expire`) and `txmempool.h` — rolling-fee formula/state, descendant-package eviction, and expiry behavior. **HIGH confidence.**
-- `packages/bitcoin-knots/src/net_processing.cpp` (`ReattemptInitialBroadcast`) and `node/transaction.cpp` — locally submitted unbroadcast tracking and randomized 10–15 minute retry. **HIGH confidence.**
-- `packages/bitcoin-knots/src/node/mempool_persist.cpp` — persisted entry time, fee metadata, and unbroadcast set; absence of rolling-fee fields in the inspected dump/load format. **HIGH confidence.**
-- `AGENTS.md`, `AGENTS.bright-builds.md`, `standards/core/architecture.md`, `standards/core/verification.md`, `standards/core/testing.md`, and `standards/languages/rust.md` — local functional-core, dependency, verification, and Rust design constraints that materially shaped this recommendation. **HIGH confidence.**
+- `rust-toolchain.toml` and `packages/Cargo.toml` — Rust `1.94.1`, edition 2024, workspace `0.1.0`. **HIGH confidence.**
+- `packages/open-bitcoin-node/Cargo.toml` and `packages/Cargo.lock` — Fjall `3.1.4`, serde `1.0.228`, serde_json `1.0.149`, getrandom `0.3.4`. **HIGH confidence.**
+- `packages/open-bitcoin-rpc/Cargo.toml` — Tokio `1.52.1`, axum `0.8.9`. **HIGH confidence.**
+- `packages/open-bitcoin-chainstate/Cargo.toml` and `src/engine.rs` — in-memory `HashMap` UTXO truth, no I/O deps. **HIGH confidence.**
+- `packages/open-bitcoin-node/src/chainstate.rs` — `ManagedChainstate` snapshot persist after every mutation. **HIGH confidence.**
+- `packages/open-bitcoin-node/src/storage.rs` and `storage/fjall_store.rs` — namespaces, `SchemaVersion::CURRENT = 1`, `PersistMode` mapping, `save_chainstate_snapshot` / `save_block` / `load_block`. **HIGH confidence.**
+- `packages/open-bitcoin-node/src/storage/snapshot_codec.rs` — JSON pretty snapshot as current coin persistence. **HIGH confidence.**
+- `packages/open-bitcoin-node/src/network/inventory.rs` and `network/block_serving.rs` — serving lookup vs pruned/unavailable classification. **HIGH confidence.**
+- `packages/bitcoin-knots/src/coins.h`, `coins.cpp` — `CCoinsView` / cache flags / `Flush` vs `Sync`. **HIGH confidence.**
+- `packages/bitcoin-knots/src/txdb.h`, `txdb.cpp` — LevelDB coins DB, 64 MiB batches, `best_block` / `head_blocks`. **HIGH confidence.**
+- `packages/bitcoin-knots/src/validation.h`, `validation.cpp` — `CoinsViews`, `FlushStateMode`, cache-size state, 50–70 minute write interval, flush-before-coins ordering. **HIGH confidence.**
+- `packages/bitcoin-knots/src/kernel/caches.h`, `node/caches.h` — 450 MiB default, 8 MiB coins-DB cap, 4 MiB minimum. **HIGH confidence.**
+- `packages/bitcoin-knots/src/node/blockstorage.cpp` — `FlushChainstateBlockFile` / block+undo flush; prune helpers noted only to exclude them. **HIGH confidence.**
+- [Fjall `3.1.4` `Database`](https://docs.rs/fjall/3.1.4/fjall/struct.Database.html), [`Keyspace`](https://docs.rs/fjall/3.1.4/fjall/struct.Keyspace.html), [`PersistMode`](https://docs.rs/fjall/3.1.4/fjall/enum.PersistMode.html) — batch, persist, get/contains_key/prefix/range. **HIGH confidence.**
+- [crates.io / docs.rs fjall latest `3.1.5`](https://docs.rs/crate/fjall/latest) — newer than the repo pin; do not upgrade in this milestone. **MEDIUM confidence** (registry latest can move; pin is authoritative).
+- `standards/core/architecture.md` — functional core / imperative shell. **HIGH confidence.**
 
-***
-
-*Stack research for: Open Bitcoin v2.2 Package Relay and Long-Lived Mempool Policy*
-*Researched: 2026-07-22*
+---
+*Stack research for: Bitcoin chainstate durability (coins DB, cache flush, chainstate manager)*
+*Researched: 2026-08-29*

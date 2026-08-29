@@ -1,376 +1,436 @@
-# Architecture Research: v2.2 Package Relay and Long-Lived Mempool Policy
+# Architecture Research
 
-**Domain:** Headless Bitcoin node package admission, transaction relay, and sustained mempool policy
-**Researched:** 2026-07-22
-**Confidence:** HIGH for current Open Bitcoin and pinned Knots boundaries; MEDIUM for the final production scheduler shape until v2.2 requirements choose exact activation and crash-durability guarantees
+**Domain:** Open Bitcoin chainstate durability integration
+**Researched:** 2026-08-29
+**Confidence:** HIGH for current Open Bitcoin core/shell seams and pinned Knots coins/manager APIs; MEDIUM for the exact Fjall per-coin key schema and crash-atomic batch contract until a later phase researches those details
 
 ## Recommendation
 
-Extend the existing authoritative `ManagedPeerNetwork` instead of creating a package service, mempool worker, or rebroadcast daemon with its own state. The pure `open-bitcoin-mempool` crate should remain the sole owner of accepted-transaction graph state, package admission decisions, rolling minimum-fee state, expiry, and pressure-driven eviction. The pure `open-bitcoin-network` crate should remain the owner of peer download, orphan/reconsiderable, fanout, serving, and per-peer eligibility decisions. `open-bitcoin-node` should compose both behind the existing `ManagedNetworkHandle`, run time-based maintenance, persist complete snapshots, and translate typed actions into the v2.1 peer outboxes.
+Keep coins policy, cache flags, and flush *decisions* in `open-bitcoin-chainstate`. Keep Fjall, filesystem, clocks, and persist execution in `open-bitcoin-node`. Do not put Fjall or filesystem calls in the chainstate crate.
 
-Package relay must not introduce a new P2P package wire message. The pinned Knots baseline opportunistically constructs a bounded 1-parent/1-child package from ordinary `inv`/`getdata`/`tx` traffic and orphan/reconsiderable state. Direct RPC submission supports the broader child-with-unconfirmed-parents package shape. These are two entry adapters over one package admission engine, not two policy implementations.
+Replace the current “clone the whole UTXO map, then write one `snapshot` blob” path with a Knots-shaped layered view: a typed coins-view contract, an in-memory dirty/fresh cache, a Fjall-backed disk view, and a manager that chooses flush points and rebuilds the cache on restart. Block-serving availability must become a payload-present fact, not a hardcoded `durable_availability: true`.
 
-Rolling fee and rebroadcast are different kinds of state. Rolling fee is pure mempool policy derived from eviction, block arrival, occupancy, and injected time. Initial-broadcast retry is relay-delivery state derived from local admission, peer requests, and injected time. Knots persists the unbroadcast set but not its rolling fee variables. Open Bitcoin should preserve that restart boundary unless v2.2 explicitly records an intentional deviation.
+v2.3 is a single active chainstate. Do not port assumeutxo dual-chainstate, prune product modes, or LevelDB.
 
 ## Standard Architecture
 
 ### System Overview
 
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ Effectful entry points                                               │
-│ RPC submitpackage/testmempoolaccept | inbound tx | daemon tick       │
-└───────────────────────────────┬──────────────────────────────────────┘
-                                │ typed commands + injected time/randomness
-┌───────────────────────────────▼──────────────────────────────────────┐
-│ One runtime authority: ManagedNetworkHandle                         │
-│ ┌──────────────────────────────────────────────────────────────────┐ │
-│ │ ManagedPeerNetwork                                               │ │
-│ │ ┌──────────────────────┐  ┌───────────────────────────────────┐ │ │
-│ │ │ ManagedMempool       │  │ PeerManager + orphanage + relay  │ │ │
-│ │ │ accepted DAG         │  │ download/fanout/serving state    │ │ │
-│ │ │ rolling fee          │  │ unbroadcast + per-peer queues    │ │ │
-│ │ │ expiry/eviction      │  │ package candidates/reject cache  │ │ │
-│ │ └──────────────────────┘  └───────────────────────────────────┘ │ │
-│ │          │ one mutation delta updates every dependent cache       │ │
-│ └──────────┼─────────────────────────────────────────────────────────┘ │
-└────────────┼──────────────────────┬───────────────────────────────────┘
-             │ owned snapshot       │ bounded peer emissions + receipts
-┌────────────▼─────────────┐  ┌─────▼──────────────────────────────────┐
-│ Node shell              │  │ v2.1 authoritative peer transport      │
-│ maintenance scheduler   │  │ generalized peer outbox registry       │
-│ persistence coordinator│  │ inbound/outbound session writers       │
-│ metrics/log projection  │  │ successful serve/request evidence      │
-└────────────┬─────────────┘  └────────────────────────────────────────┘
-             │
-┌────────────▼─────────────────────────────────────────────────────────┐
-│ Fjall: versioned mempool runtime snapshot                           │
-│ transactions + entry times + unbroadcast markers + schema metadata │
-└──────────────────────────────────────────────────────────────────────┘
 ```
-
-### Authority Boundaries
-
-| State or effect | Sole authority | Persistence | Notes |
-| --- | --- | --- | --- |
-| Accepted transactions, parent/child graph, aggregate stats | `open_bitcoin_mempool::Mempool` inside `ManagedPeerNetwork` | Reconstruct from transaction records | Never duplicate the graph in a scheduler or RPC context. |
-| Rolling minimum fee and decay eligibility | Pure mempool state | Reset on restart for Knots parity | It changes only through typed eviction, block-connected, and time-sampled transitions. |
-| Package candidates and reconsiderable rejects | `PeerManager`/transaction relay state | Volatile unless a later parity requirement proves otherwise | P2P auto-packaging is bounded 1-parent/1-child state, not a general package pool. |
-| Relay-serving transaction bodies and txid/wtxid indexes | `ManagedPeerNetwork` | Rebuilt from recovered mempool entries | Lifecycle delta must remove evicted/replaced/confirmed/expired entries everywhere. |
-| Unbroadcast locally submitted transactions | Relay-delivery state under `ManagedPeerNetwork` | Persist txids with mempool snapshot | Clear only when the Knots-equivalent initial-broadcast acknowledgement boundary is reached, not when an `inv` is merely queued. |
-| Per-peer fanout, known inventory, request state, and outboxes | Network authority plus live transport registry | Volatile | Rebuilt from active sessions after restart; no stale per-peer queue restoration. |
-| Clock, jitter, storage I/O, sockets, metrics, and logs | `open-bitcoin-node`/daemon shell | As applicable | These adapters supply facts and execute decisions; they do not decide policy. |
+┌──────────────────────────────────────────────────────────────────────────┐
+│ Effectful entry points                                                    │
+│ open-bitcoind | DurableSyncRuntime | inbound getdata | RPC/CLI/status     │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                │ typed commands + injected time/size/mode
+┌───────────────────────────────▼──────────────────────────────────────────┐
+│ Node shell: ManagedChainstate + DurableSyncRuntime                       │
+│ ┌────────────────────────┐  ┌─────────────────────────────────────────┐  │
+│ │ Flush orchestration    │  │ Honest availability                     │  │
+│ │ flush points           │  │ payload-present? → Available            │  │
+│ │ restart cache init     │  │ missing payload  → Unavailable/NotFound │  │
+│ │ persist execution      │  │ never claim Available without bytes     │  │
+│ └───────────┬────────────┘  └──────────────────┬──────────────────────┘  │
+└─────────────┼──────────────────────────────────┼─────────────────────────┘
+              │ decisions (pure)                 │ load_block / has_payload
+┌─────────────▼──────────────────────────────────┼─────────────────────────┐
+│ Pure core: open-bitcoin-chainstate             │                         │
+│ CoinsView contract | CoinsCache | FlushPolicy  │                         │
+│ connect / disconnect / reorg against the view  │                         │
+│ (no Fjall, no fs, no clock)                    │                         │
+└─────────────┬──────────────────────────────────┼─────────────────────────┘
+              │ BatchWrite / GetCoin             │
+┌─────────────▼──────────────────────────────────▼─────────────────────────┐
+│ Fjall (existing store, new coins keys)                                    │
+│ chainstate: per-outpoint coins + best-block + head-blocks                │
+│ block_index: per-hash block payloads (already stored)                    │
+│ headers / runtime / schema: unchanged roles                              │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Component Responsibilities
 
-| Component | Change | Responsibility |
-| --- | --- | --- |
-| `open-bitcoin-mempool::package` | New | Package identity, context-free bounds, topological/consistency checks, child-with-parents classification, and typed package-wide errors. |
-| `Mempool` staged admission | Modify | Evaluate individual transactions first, then the eligible subpackage; return ordered per-transaction results and apply one coherent graph mutation for each accepted subpackage. |
-| `Mempool` rolling-fee/pressure state | New/modify | Track effective rolling floor, eviction bump, block-since-bump gate, decay, expiry, accounted usage, and descendant-package eviction. |
-| `open-bitcoin-network` transaction relay | Modify | Distinguish hard rejects from reconsiderable fee rejects, pair a parent with a same-peer orphan child, cache rejected package identity, and emit typed package candidates. |
-| `ManagedPeerNetwork` admission bridge | Modify | Invoke the package engine, apply each admitted result to serving/fanout/compact-candidate state, and process all removals through one lifecycle delta. |
-| Relay fanout and serving | Modify | Queue every still-admitted package transaction using existing txid/wtxid inventory, peer filters, topology-aware ordering, bounds, and activation policy. |
-| Mempool persistence coordinator | New in node shell | Capture a complete snapshot under the authority, coalesce dirty generations, checkpoint periodically and on clean shutdown, and report failures without inventing a second in-memory truth. |
-| Daemon maintenance scheduler | New or generalized shell adapter | Wake independently of message receives, inject time and randomized delay, call one authority maintenance command, enqueue resulting emissions, and request persistence checkpoints. |
-| v2.1 peer outbox transport | Generalize | Carry transaction inventory as well as block announcements through the same bounded live-session registry and return typed completion/serve receipts. |
-| RPC/status/metrics/log/support projection | Modify | Add package results, effective mempool floor, pressure/eviction, unbroadcast/retry, persistence, and recovery fields from one authoritative snapshot. |
+| Component | Change | Responsibility | Typical implementation |
+|-----------|--------|----------------|------------------------|
+| `CoinsView` contract | New | Get/Have coin, best-block, batch write, optional cursor | Pure trait in `open-bitcoin-chainstate` |
+| `CoinsCache` | New | Dirty/fresh overlay, `Flush` vs `Sync`, cache-size facts | Pure cache over a parent view |
+| `FlushPolicy` | New | Decide none / if-needed / periodic / always, empty-cache vs retain | Pure function of injected time, size, mode |
+| `Chainstate` engine | Modify | Apply connect/disconnect/reorg to a view instead of cloning `HashMap` | Keep consensus/undo rules; stop owning the live UTXO map |
+| `MemoryCoinsView` | New (replaces snapshot store role) | In-memory parent for tests and prepare overlays | Hash map + best-block; no I/O |
+| `FjallCoinsView` | New | Disk-backed parent: per-outpoint coins, best-block, head-blocks | `open-bitcoin-node` adapter only |
+| `ManagedChainstate` | Modify | Own cache lifecycle, flush points, restart init | Shell orchestration; execute policy, do not invent policy |
+| `ChainstateStore` | Modify | Evolve from full-snapshot load/save to view attach + flush | Keep test memory impl; stop treating snapshot as durable truth |
+| `FjallNodeStore` | Modify | Add coins keyspace ops; keep `save_block` / `load_block` | Do not write a complete UTXO blob after every connect |
+| `DurableSyncRuntime` | Modify | Flush coins + headers on progress; hydrate cache, not full map | Attach Fjall view; do not reload entire UTXO into RAM |
+| `ManagedPeerNetwork` | Modify | Consume manager + payload-present facts | Keep `MemoryCoinsView` in hermetic tests |
+| Block serving / inbound wire | Modify | Label Available only when payload exists | Gate before serve; `NotFound` when lookup misses |
+| Wallet rescan | Modify | Read coins through a view or cursor, not a full snapshot blob | Keep chunking; stop requiring `load_chainstate_snapshot()` |
+| RPC / CLI / status / parity | Modify | Project flush, recovery, and honest availability | One authoritative snapshot; no second coins truth |
+
+## New vs Modified
+
+### New (add these)
+
+| Piece | Lives in | Why new |
+|-------|----------|---------|
+| `CoinsView` / `CoinsCacheEntry` / batch-write cursor types | `open-bitcoin-chainstate` | Current engine has no view layer; Knots `CCoinsView` / `CCoinsViewCache` is the missing contract |
+| Flush policy types (`FlushMode`, cache-size state, flush vs sync) | `open-bitcoin-chainstate` | Policy must stay pure and unit-testable |
+| `MemoryCoinsView` | `open-bitcoin-chainstate` or node test adapter | Tests and prepare overlays need a parent that is not Fjall |
+| `FjallCoinsView` + coins codec | `open-bitcoin-node` `storage/` | Disk parent; Fjall stays in the shell |
+| Cache-lifecycle commands on the manager | `open-bitcoin-node` `chainstate.rs` | Restart-safe init, flush points, shutdown flush |
+| Payload-present availability fact | node/network + RPC inbound | Today durable serving hardcodes `durable_availability: true` |
+
+### Modified (do not fork)
+
+| Piece | What changes | What stays |
+|-------|--------------|------------|
+| `Coin`, `TxUndo`, `BlockUndo`, `ChainPosition` | Serialization/metadata only as needed for disk coins | Domain meaning stays |
+| `Chainstate` connect/disconnect/reorg | Apply against a cache/view | Contextual validation, undo order, BIP30 overwrite reject |
+| `ChainstateSnapshot` | Test/migration/export helper, not durable truth | Keep for fixtures and one-time snapshot→coins migration |
+| `ManagedChainstate` persist-after-every-mutation | Become policy-driven flush | prepare/commit remains; implement with a child cache, not a full clone |
+| `MemoryChainstateStore` | Become or wrap `MemoryCoinsView` | Hermetic tests keep an in-memory parent |
+| `FjallNodeStore::save_chainstate_snapshot` | Retire as the live write path | Keep decode for migration from existing datadirs |
+| `DurableSyncRuntime::persist_progress` | Flush coins cache + headers, not a UTXO blob | Still persist headers/runtime metadata |
+| `DurableSyncRuntime::open` | Attach disk view + init cache after DB health check | Still load headers; still seed `ManagedPeerNetwork` |
+| `managed_block_serve_input` | Availability from payload-present, not a bool default | Existing status/eligibility classifiers stay |
+| `docs/parity/catalog/chainstate.md` | Close the known disk-backed / manager gap | Keep existing connect/disconnect/reorg claims |
+
+### Do not add
+
+| Anti-feature | Why |
+|--------------|-----|
+| Fjall, `std::fs`, Tokio, or wall clock in `open-bitcoin-chainstate` | Bright Builds functional-core rule; quality gate |
+| LevelDB / `CCoinsViewDB` port | Storage decision is Fjall |
+| Assumeutxo / second `Chainstate` / snapshot chain | Out of scope for v2.3 |
+| Prune or archive product modes | Later milestone; keep the `Pruned` *label* only as “active but payload absent” if still needed |
+| A second coins authority beside `ManagedChainstate` | Same failure mode v2.2 already forbade for mempool |
 
 ## Recommended Project Structure
 
-```text
-packages/
-├── open-bitcoin-mempool/src/
-│   ├── package.rs                    # Package shapes, IDs, bounds, errors
-│   ├── pool/package_admission.rs     # Staged individual + package evaluation
-│   ├── pool/rolling_fee.rs           # Pure bump/gate/decay state machine
-│   └── pool/pressure.rs              # Usage, expiry, descendant eviction delta
-├── open-bitcoin-network/src/peer/transaction_relay/
-│   ├── package.rs                    # Bounded P2P 1p1c candidate assembly
-│   └── rebroadcast.rs                # Pure retry schedule and unbroadcast actions
-├── open-bitcoin-node/src/network/
-│   ├── package_admission.rs          # Mempool/network outcome bridge
-│   ├── mempool_maintenance.rs        # Apply time/block/pressure lifecycle deltas
-│   └── relay_rebroadcast.rs          # Prepare retry fanout and acknowledgements
-├── open-bitcoin-node/src/storage/
-│   └── mempool_snapshot.rs           # Versioned runtime snapshot and recovery
-└── open-bitcoin-rpc/src/
-    ├── dispatch/node.rs              # submitpackage/testmempoolaccept/getmempoolinfo
-    └── bin/open_bitcoind/             # Clock/transport/persistence scheduling shell
+```
+packages/open-bitcoin-chainstate/src/
+├── engine.rs                 # Modify: apply connect/disconnect/reorg to a view
+├── types.rs                  # Keep Coin / undo / position; snapshot becomes helper
+├── coins.rs                  # New: CoinsView, cache entry flags, cursor types
+├── coins/
+│   ├── cache.rs              # New: dirty/fresh cache, Flush vs Sync
+│   ├── memory.rs             # New: MemoryCoinsView
+│   └── flush.rs              # New: FlushMode, cache-size state, decide_flush
+└── error.rs                  # Modify: view/cache/flush typed errors
+
+packages/open-bitcoin-node/src/
+├── chainstate.rs             # Modify: manager orchestration, cache lifecycle
+├── storage.rs                # Modify: namespace/schema notes for coins keys
+├── storage/
+│   ├── fjall_store.rs        # Modify: coins get/batch/best-block; keep save_block
+│   ├── coins_codec.rs        # New: per-outpoint encode/decode
+│   └── snapshot_codec.rs     # Modify: migration read of legacy snapshot blob
+├── network/
+│   ├── inventory.rs          # Modify: payload-present availability
+│   └── block_serving.rs      # Keep classifiers; feed honest facts
+└── sync/
+    ├── runtime_state.rs      # Modify: persist_progress flushes coins
+    └── wallet_rescan.rs      # Modify: read through view/cursor
+
+packages/open-bitcoin-rpc/src/context/inbound_wire.rs
+                              # Modify: refuse when load_block is None
+docs/parity/catalog/chainstate.md
+                              # Modify: disk coins + manager + availability
 ```
 
-These are recommended responsibility boundaries, not a requirement to create every file immediately. Extend the current `foo.rs` plus `foo/` layout and split only when a module has a coherent invariant of its own.
+### Structure Rationale
+
+- **`open-bitcoin-chainstate/coins*`:** Mirrors Knots `coins.h` / `coins.cpp` without importing their I/O. Policy and cache flags live next to the UTXO engine that already cites those breadcrumbs.
+- **`open-bitcoin-node/storage`:** Already owns Fjall keyspaces, `PersistMode`, schema, and recovery markers. Coins keys belong here, not in a new crate.
+- **`ManagedChainstate` stays in the node crate:** It is already the imperative shell around the pure engine. Growing it into a flush manager is a modification, not a new service.
+- **RPC inbound stays a lookup adapter:** `DurableBlockSource::load_block` already exists. Honesty is feeding it a true presence fact *before* labeling Available, then still refusing on `None`.
 
 ## Architectural Patterns
 
-### Staged Pure Transition With One Commit Point
+### Pattern 1: Layered coins view (Knots `CoinsViews`, Fjall instead of LevelDB)
 
-Package acceptance must operate on a staged mempool view. The result needs both package-wide state and per-transaction results because Knots may admit transactions that pass individually even when the remaining package fails. "Atomic package" must therefore mean no half-applied accepted subpackage or cross-cache mutation, not all-or-nothing for the entire RPC call.
+**What:** A parent view is the durable coin set. A child cache answers hits in memory and records dirty/fresh mutations. `Flush` writes dirty coins and empties the cache. `Sync` writes dirty coins and keeps unspent entries cached.
+
+**When to use:** Every production connect/disconnect/reorg, and every test that claims restart safety.
+
+**Trade-offs:** Extra types and a batch-write protocol. Avoids cloning the whole UTXO set per block and rewriting one giant snapshot blob. Matches pinned Knots `CCoinsView` / `CCoinsViewCache` / `CoinsViews` in `validation.h`.
+
+**Example:**
 
 ```rust
-pub struct PackageAdmissionTransition {
-    pub package_result: PackageAdmissionResult,
-    pub mempool_delta: MempoolDelta,
+pub trait CoinsView {
+    fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError>;
+    fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError>;
+    fn best_block(&self) -> Option<BlockHash>;
+    fn batch_write(
+        &mut self,
+        writes: CoinsBatch,
+        best_block: BlockHash,
+    ) -> Result<(), ChainstateError>;
 }
 
-pub fn evaluate_package(
-    current: &MempoolState,
-    package: Package,
-    chainstate: &ChainstateSnapshot,
-    now: UnixSeconds,
-) -> Result<PackageAdmissionTransition, PackageAdmissionError>;
+pub struct CoinsCache<V> {
+    parent: V,
+    entries: HashMap<OutPoint, CoinsCacheEntry>,
+    best_block: Option<BlockHash>,
+}
 ```
 
-The node bridge applies `MempoolDelta` once, then derives serving-cache, fanout, compact-candidate, unbroadcast, metrics, and persistence-dirty effects from that same delta. Do not call the current single-transaction mutation repeatedly and attempt rollback after a later failure.
+The parent in production is `FjallCoinsView`. The parent in tests is `MemoryCoinsView`. `prepare_connect` uses a child cache over the live cache, then commits by `Flush` into the parent cache — not by cloning `Chainstate`.
 
-### Two Fee Floors, One Effective Admission Decision
+### Pattern 2: Injected-fact flush policy
 
-Keep the configured minimum relay fee distinct from the rolling mempool minimum:
+**What:** A pure function returns `FlushDecision { write: Flush \| Sync \| None, empty_cache: bool }` from `FlushMode`, cache-size state, last-flush age, and prune-for-later=false.
 
-- Individual transaction admission requires the effective threshold `max(static min relay, rolling mempool floor)`.
-- Package aggregate feerate may satisfy the rolling mempool floor for the eligible subpackage.
-- Package feerate must not silently bypass the static minimum relay fee; any Knots exception such as a specifically scoped TRUC rule must be explicit and separately evidenced.
-- `getmempoolinfo.mempoolminfee` projects `max(rolling floor, min relay)`, while `minrelaytxfee` remains the configured static value.
+**When to use:** After connect/reorg, on periodic sync ticks, on clean shutdown, and before restart-sensitive availability claims.
 
-This separation prevents the existing `min_relay_feerate` field from becoming an overloaded mutable value.
+**Trade-offs:** Callers must inject time and size. That is required: the core must not read a clock. Knots `FlushStateToDisk` uses `FlushStateMode::{NONE, IF_NEEDED, PERIODIC, ALWAYS}` and empties the cache only when the mode is ALWAYS or the cache is large/critical (or prune — out of scope). Prefer `Sync` for periodic writes so the working set stays warm.
 
-### Injected-Time Rolling Fee State Machine
+**Example:**
 
-Rolling-fee logic belongs in the pure mempool crate and accepts `now` as data. From the pinned Knots implementation:
+```rust
+pub enum FlushMode {
+    None,
+    IfNeeded,
+    Periodic,
+    Always,
+}
 
-- Descendant-package eviction bumps the rolling floor to the removed package feerate plus the incremental relay fee.
-- Decay is disabled until a block has been connected after the latest bump.
-- After that gate opens, the floor decays with a 12-hour half-life, accelerated when usage falls below one-half or one-quarter capacity.
-- Values below half the incremental relay fee collapse to zero; otherwise the returned rolling floor is at least the incremental relay fee.
-
-Use deterministic integer/fixed-point arithmetic or golden vectors around the Knots floating-point result. Do not read wall-clock time inside `Mempool`.
-
-### Command/Delta/Receipt Across Effects
-
-Time and transport effects should be modeled as a three-step protocol:
-
-1. The shell sends `MaintenanceTick { now, jitter }` to `ManagedNetworkHandle`.
-2. The authority returns bounded peer emissions plus a state/persistence delta.
-3. The transport returns a typed receipt; the authority records achieved evidence and updates delivery state.
-
-For initial broadcast, an inventory write is not sufficient acknowledgement. The pinned baseline removes an unbroadcast tx when an eligible peer requests it and the node serves the transaction. The Open Bitcoin receipt should bind that serve event; eviction, confirmation, replacement, or expiry also removes the marker.
-
-## Data Flows
-
-### P2P Limited Package Relay
-
-```text
-ordinary inv → bounded tx request → ordinary tx received
-                                   ↓
-                         individual admission attempt
-                                   ↓ reconsiderable/missing
-                reconsiderable filter + bounded orphanage
-                                   ↓ eligible same-peer pair
-                    PackageCandidate(parent, child, senders)
-                                   ↓
-                   node package admission bridge
-                                   ↓
-       per-tx result + one mempool/lifecycle mutation delta
-                                   ↓
-      existing txid/wtxid fanout → peer outboxes → transport
+pub fn decide_flush(input: FlushPolicyInput) -> FlushDecision {
+    // empty_cache only for Always or CacheSizeState::{Large, Critical}
+}
 ```
 
-No codec or wire-message change is required for package relay itself. The network layer must keep hard reject, missing-input, and fee-reconsiderable categories distinct so a valid CPFP package is not suppressed by the ordinary recent-reject path.
+The shell maps `PersistMode::{Buffered, Flush, Sync}` onto Fjall durability *after* the policy decides *whether* to write.
 
-### Direct Package RPC
+### Pattern 3: Restart-safe cache lifecycle
 
-```text
-submitpackage/testmempoolaccept
-    → decode all transactions at RPC boundary
-    → context-free package checks
-    → child-with-unconfirmed-parents/tree check for submission
-    → authoritative package admission command
-    → per-wtxid results + package result
-    → enqueue each still-admitted transaction through existing relay policy
+**What:** Knots initializes the disk view first, verifies it, then `InitCoinsCache`, then `LoadChainTip` from the coins view’s best block. Cache is created only after the database is healthy. Shutdown `ForceFlush` then `ResetCoinsViews`.
+
+**When to use:** `DurableSyncRuntime::open`, clean shutdown, and crash recovery.
+
+**Trade-offs:** Startup is more steps than today’s “decode one snapshot into a HashMap.” It is the only way a crash during cache residency does not invent a fake tip.
+
+Open Bitcoin mapping:
+
+1. Open Fjall and verify schema / recovery markers.
+2. Attach `FjallCoinsView` (do not create the cache yet).
+3. If coins best-block is null, start empty; else treat that hash as tip identity.
+4. Init `CoinsCache` with a configured byte budget.
+5. Rebuild active-chain metadata from headers/block-index plus coins best-block. Do not load every coin into RAM.
+6. On progress: policy → `Flush`/`Sync` → Fjall persist.
+7. On clean shutdown: `Always` flush, then drop the cache.
+
+### Pattern 4: Parse at the storage boundary
+
+**What:** Raw Fjall bytes become `Coin` / `BlockHash` in the adapter. The engine only sees domain types.
+
+**When to use:** Every coins read/write.
+
+**Trade-offs:** A coins codec to maintain. Prevents snapshot-DTO leakage into connect/reorg. Matches `standards/core/architecture.md`.
+
+## Data Flow
+
+### Request Flow
+
+```
+Peer getdata / RPC / sync connect
+    ↓
+ManagedPeerNetwork / DurableSyncRuntime
+    ↓
+ManagedChainstate (shell)
+    ↓  injected time, cache size, persist mode
+FlushPolicy (pure) → FlushDecision
+    ↓
+CoinsCache (pure) Get/Add/Spend or Flush/Sync
+    ↓
+FjallCoinsView or MemoryCoinsView
+    ↓
+Fjall keyspaces  |  in-memory test map
 ```
 
-The pinned limits are at most 25 transactions and 404,000 total weight, topologically sorted with no duplicate transactions or internal input conflicts. RPC response ordering and partial-result behavior must remain explicit. A successful local result still does not promise public propagation.
+### State Management
 
-### Pressure, Eviction, and Rolling-Fee Flow
-
-```text
-admission/package admission/maintenance tick
-    → expire old entries with descendants
-    → compare accounted memory usage to configured byte capacity
-    → select lowest descendant-package score
-    → remove victim + descendants
-    → bump rolling fee from removed package + incremental fee
-    → emit one MempoolDelta
-        ├── remove serving/fanout/unbroadcast state
-        ├── clear compact reconstruction candidates/slots
-        ├── update package/orphan/reject state where applicable
-        ├── mark persistence generation dirty
-        └── project fixed-label evidence
+```
+Live truth: CoinsCache over FjallCoinsView + coins best-block
+Active-chain metadata: headers / ChainPosition list (already persisted separately)
+Block payloads: Fjall BlockIndex per-hash keys (already exist)
+Serving label: Available only if load_block(hash) is Some
 ```
 
-The current Open Bitcoin cap is expressed as total virtual size, while Knots trims on estimated dynamic memory usage. v2.2 should introduce explicit accounted-byte pressure (or document and test an intentional difference); it must not label a virtual-size-only cap as Knots pressure parity.
+`ChainstateSnapshot` is no longer live truth. It may still be built for tests, wallet-rescan chunks, or one-time migration.
 
-### Block Connect and Decay Gate
+### Key Data Flows
 
-```text
-validated block connect under ManagedNetworkHandle
-    → existing confirmed/conflict/descendant removals
-    → clear related relay/compact/unbroadcast state
-    → record block-since-last-rolling-fee-bump
-    → later maintenance tick may decay rolling floor
-```
+1. **Connect a block:** Validate with coins from the cache (parent miss → Fjall get). Spend inputs, add outputs, write undo, set cache best-block to the new tip. Do **not** persist yet unless policy says so. `prepare_connect` uses a child cache; `commit` flushes that child into the live cache.
 
-This must stay on the existing authoritative block-connect path. A parallel chain observer would race the mempool and recreate the v2.1 split-authority failure mode.
+2. **Flush / Sync:** Cache emits a dirty batch + best-block. `FjallCoinsView` writes per-outpoint keys and best-block (and head-blocks if a write is two-phase). `Flush` then empties the cache; `Sync` drops spent entries and keeps unspent hits.
 
-### Persistence and Restart
+3. **Restart:** Open Fjall → attach coins view → init empty cache → tip from coins best-block, not from a reconstructed full UTXO map. Unflushed cache entries from a crash are gone; durable tip is the last successful batch.
 
-```text
-authoritative mutation
-    → increment dirty generation
-    → capture owned snapshot under one authority lock
-    → release lock
-    → Fjall atomic versioned write
-    → checkpoint success/failure evidence
+4. **Persist progress today vs after:** Today `persist_progress` encodes the entire `ChainstateSnapshot` under `chainstate/snapshot` after header/connect work. After: flush dirty coins + save headers/runtime. Stop rewriting the whole UTXO set on every connected block.
 
-startup
-    → load schema-versioned snapshot
-    → validate txid/wtxid and timestamps
-    → replay records in topological order against authoritative chainstate
-    → rebuild graph, serving indexes, and compact candidates
-    → restore only surviving unbroadcast markers
-    → start rolling fee at the Knots restart baseline
-```
+5. **Honest serve:** Inventory gate asks “is the payload stored?” (`blocks_by_hash` **or** `FjallNodeStore::load_block`). Only then `BlockServingDataAvailability::Available`. RPC `resolve_block_intent` already NotFounds on `None`; the lie is labeling Available first via `durable_availability: true` in `gate_inventory_for_durable_serving`.
 
-Extend the current snapshot with admission time and unbroadcast membership. Sorting records only by txid is insufficient for parent/child recovery. Derived ancestry, descendant scores, relay caches, and peer queues should be rebuilt, not persisted. Clean shutdown should force a final checkpoint; periodic checkpoints may be coalesced, and crash-loss guarantees must be stated rather than implied.
+6. **Wallet rescan:** Today `required_chainstate_snapshot()` loads the full blob and filters by height. After: walk a coins cursor or height-indexed reads. Do not reintroduce a full-map snapshot as the rescan API.
 
 ## Integration Points
 
-| Existing seam | v2.2 integration |
-| --- | --- |
-| `open-bitcoin-mempool::Mempool::accept_transaction*` | Refactor shared validation into staged single/package evaluation; keep one graph authority. |
-| `Mempool::pressure_summary`, `trim_to_size`, and `remove_for_connected_block` | Replace deferred rolling status with actual state, accounted pressure, expiry, eviction reason, and one lifecycle delta. |
-| `TxDownloadScheduler` and `TxOrphanage` | Add reconsiderable-package identity and bounded 1p1c assembly without adding wire messages. |
-| `ManagedPeerNetwork::process_actions`/admission bridge | Handle package candidates and atomically propagate admission/removal effects to every cache. |
-| `ManagedRelayFanoutState` | Replace `defer_local_rebroadcast` with persisted unbroadcast state and pure due-retry decisions. |
-| `RelayServingCache` | Clear unbroadcast only at the served-request acknowledgement boundary; remove every lifecycle victim. |
-| `ManagedNetworkHandle` | Add package admission, maintenance tick, snapshot capture, and typed receipt methods; all consumers share cloned handles to the same authority. |
-| `AnnouncementOutboxRegistry`/`PeerEmission` | Generalize from block-only metadata to an enum payload/receipt that also carries bounded transaction inventory and transaction-serve acknowledgements. |
-| `DurableSyncRuntime` and `open-bitcoind` loop | Reuse its clock, store, metrics, and shared network handle, but schedule mempool maintenance even when sync has no incoming traffic; do not make policy depend on a receive call. |
-| `FjallNodeStore::save/load_mempool_snapshot` | Upgrade schema and add the missing production checkpoint coordinator around the existing codec/adapter. |
-| `ManagedNetworkOperatorSnapshot` | Add package, rolling floor, pressure, eviction, unbroadcast/retry, checkpoint, and recovery evidence under the same read guard. |
-| RPC/CLI/dashboard/support | Consume the shared snapshot; add `submitpackage`/`testmempoolaccept` only as adapters, never as a second admission implementation. |
+### Internal Boundaries
 
-## Dependency-Aware Build Order
+| Boundary | Communication | Notes |
+|----------|---------------|-------|
+| `Chainstate` ↔ `CoinsView` | Direct trait calls | Engine must not assume a `HashMap` or a snapshot |
+| `CoinsCache` ↔ parent view | `get_coin` / `batch_write` | Parent may be memory or Fjall; cache must not know which |
+| `FlushPolicy` ↔ `ManagedChainstate` | Pure decision in, persist out | Inject last-flush time, cache bytes, `FlushMode` |
+| `ManagedChainstate` ↔ `FjallCoinsView` | Shell-owned adapter | Only place Fjall coins I/O happens |
+| `DurableSyncRuntime` ↔ manager | Flush on progress / shutdown | Replace `save_chainstate_snapshot` as the live path |
+| `ManagedPeerNetwork` ↔ manager | Connect/reorg/tip/snapshot-for-status | `AuthoritativeNetwork` can stay generic over a store, but production must not hydrate a full in-memory UTXO map from Fjall |
+| Block serving ↔ `DurableBlockSource` | `load_block` | Presence fact must match this lookup |
+| Wallet rescan ↔ coins view | Cursor / height reads | Snapshot helper only if built from the view, not from the legacy blob |
+| Status / RPC / CLI ↔ one snapshot | Existing `OpenBitcoinStatusSnapshot` | Add flush/recovery/availability fields; do not invent a second tip |
 
-1. **Resource and fee primitives** — split static relay fee from rolling floor, add accounted usage, entry time, typed removal reasons, and deterministic clock types. Everything later depends on these semantics.
-2. **Rolling fee, expiry, and eviction core** — implement pure bump/gate/decay and descendant-package eviction with invariant/property tests. Package admission must evaluate against the correct dynamic floor.
-3. **Package vocabulary and staged admission** — add context-free limits, topological/tree checks, individual-first evaluation, package feerate, package limits/RBF boundary, and coherent deltas.
-4. **Package-aware download/orphan bridge** — distinguish reconsiderable rejects, assemble bounded P2P 1p1c candidates, and feed the staged admission engine. Do not touch transport yet.
-5. **Cross-cache lifecycle integration** — apply package acceptance, replacement, pressure eviction, expiry, block connect, and reorg deltas to relay serving, fanout, compact candidates, orphanage, and unbroadcast state.
-6. **Snapshot schema and recovery** — persist entry time and unbroadcast markers, topologically replay, rebuild indexes, reset rolling fee per parity, and add clean-shutdown/periodic checkpoint behavior.
-7. **Receive-independent maintenance and transport** — generalize v2.1 outboxes, run maintenance on a daemon clock, add randomized 10–15 minute initial-broadcast retries, and wire request/serve receipts.
-8. **RPC and operator evidence** — expose package methods and authoritative fee/pressure/retry/checkpoint fields through RPC, CLI, dashboard, metrics, logs, and support bundles.
-9. **Parity, adversarial pressure, restart, and release guardrails** — verify Knots vectors, long-run boundedness, no duplicate authority, no public-default expansion, and deterministic default verification.
+### External Services
 
-Phases 1–3 are pure-core work and should land before shell integration. Phase 5 must precede persistence and transport so recovered or relayed state cannot bypass cleanup invariants. Operator projection belongs after achieved effects exist, not before.
+| Service | Integration Pattern | Notes |
+|---------|---------------------|-------|
+| Fjall | Existing `FjallNodeStore` keyspaces | Reuse `StorageNamespace::Chainstate`; change value layout from one `snapshot` key to per-coin keys + metadata |
+| Bitcoin Knots `29.3.knots20260210` | Behavioral reference only | Cite `coins.h`, `coins.cpp`, `validation.cpp`, `node/chainstate.cpp`, `node/blockstorage.cpp` |
+| LevelDB | Do not integrate | Intentional stack exception vs Knots |
+
+### Current seams that make snapshot-style persist visible
+
+| Seam | Today | After |
+|------|-------|-------|
+| `Chainstate` fields | `utxos: HashMap<OutPoint, Coin>` plus undo + chain | View/cache handle; undo + chain metadata remain first-class |
+| `ManagedChainstate::persist` | `save_snapshot(self.chainstate.snapshot())` after every mutation | Policy-driven flush; memory store used only in tests |
+| `DurableSyncRuntime::open` | Load snapshot blob into `MemoryChainstateStore` | Attach `FjallCoinsView`, then init cache |
+| `persist_progress` | `save_chainstate_snapshot` of the full map | Coins flush + headers + runtime metadata |
+| `gate_inventory_for_durable_serving` | `durable_availability: true` | Payload-present from store or local cache |
+| `serve_inventory` | In-memory `blocks_by_hash` only | Same honesty rule if that path can report Available |
+| Confirmation migration | Rebuild counts from stored active-chain blocks | Keep as a one-time adapter; do not depend on a UTXO blob |
 
 ## Scaling Considerations
 
-| Load | Architecture response |
-| --- | --- |
-| Small/regtest | Simple maps and full invariant checks are acceptable; deterministic fake-clock and package vector coverage dominate. |
-| Sustained realistic mempool | Avoid cloning and fully recomputing the entire graph per transaction/package. Maintain staged adjacency/aggregate deltas and a bounded eviction index, with benchmarks against current behavior. |
-| Adversarial limits | Bound package count/weight, orphanage and reconsiderable filters, per-peer announcements/in-flight requests, maintenance work per tick, persistence generations, and operator evidence cardinality. Apply backpressure rather than spawn more tasks. |
+This milestone scales with **UTXO set size and IBD write amplification**, not user count.
 
-Do not shard the mempool or create per-peer package pools. Admission, conflicts, ancestry, descendant eviction, and the rolling floor are global policy decisions and require one coherent state.
+| Scale | Architecture adjustments |
+|-------|--------------------------|
+| Fixtures / regtest | `MemoryCoinsView` + cache; snapshot helpers in tests are fine |
+| Short public-mainnet review | Disk coins + periodic `Sync`; do not reload the full set on restart |
+| Full mainnet UTXO | Per-outpoint Fjall keys + bounded cache; snapshot blob is a non-starter |
+
+### Scaling Priorities
+
+1. **First bottleneck:** Full-map clone on every `connect_block` / `prepare_connect` and a complete snapshot write on persist. Fix with a cache overlay and incremental batch write.
+2. **Second bottleneck:** Loading the entire UTXO set into `MemoryChainstateStore` at `DurableSyncRuntime::open`. Fix with disk parent + empty cache + best-block tip.
+3. **Third bottleneck:** Serving labels that assume durable payloads exist. That does not scale to honest historical getdata; fix before operator evidence.
+
+Cache byte budget and Fjall batch atomicity need phase-level research (MEDIUM). Do not pick Knots `dbcache` defaults until that research runs.
 
 ## Anti-Patterns
 
-### A Second Mempool or Scheduler Authority
+### Anti-Pattern 1: Fjall or filesystem in `open-bitcoin-chainstate`
 
-**Wrong:** Let RPC, the daemon maintenance worker, or persistence own a copy of mempool/package/retry state.
-**Consequence:** Admission, relay, status, and restart diverge exactly as v2.1's authority unification was designed to prevent.
-**Instead:** Every mutation and snapshot goes through `ManagedNetworkHandle`; workers own only effect handles and timers.
+**What people do:** Implement `FjallCoinsView` next to the engine “for convenience.”
 
-### Treating Package Relay as a New Protocol Message
+**Why it's wrong:** Breaks functional core / imperative shell, architecture-policy checks, and hermetic engine tests.
 
-**Wrong:** Add `package`, `getpackage`, or package-inventory wire codecs.
-**Consequence:** It diverges from the pinned limited-package-relay baseline and creates unsupported interoperability claims.
-**Instead:** Assemble bounded candidates from ordinary transaction relay and expose wider submission only through RPC.
+**Do this instead:** Pure `CoinsView` trait + `CoinsCache` + `MemoryCoinsView`. Fjall adapter in `open-bitcoin-node/src/storage`.
 
-### Aggregate Fee Bypasses Every Floor
+### Anti-Pattern 2: Keep the snapshot blob as live truth
 
-**Wrong:** Compare package feerate to one overloaded `min_relay_feerate` value.
-**Consequence:** Low-fee transactions receive free relay and parity-sensitive exceptions become accidental global behavior.
-**Instead:** Model static relay floor and dynamic mempool floor separately, with explicit scoped exceptions.
+**What people do:** Write per-coin keys *and* still `save_chainstate_snapshot` after every connect.
 
-### Clear Unbroadcast on Inventory Queueing
+**Why it's wrong:** Two truths, double write amplification, restart will pick the wrong one.
 
-**Wrong:** Mark initial broadcast complete when an `inv` is queued or written.
-**Consequence:** With no interested peer or a failed request path, restart stops retrying a transaction that was never served.
-**Instead:** Clear on the pinned-equivalent eligible `getdata`/transaction-serve boundary or lifecycle removal.
+**Do this instead:** One durable coins view. Snapshot encode stays for migration and tests only.
 
-### Persist Derived or Volatile State Blindly
+### Anti-Pattern 3: Clone `Chainstate` to prepare a connect
 
-**Wrong:** Serialize ancestry maps, peer queues, package candidates, rolling fee, and partial compact state.
-**Consequence:** Recovery trusts stale topology/peer facts and changes the Knots restart boundary.
-**Instead:** Persist source records, entry time, and unbroadcast markers; validate and rebuild derived indexes.
+**What people do:** Keep `prepare_connect_block` as `self.chainstate.clone()`.
 
-### Maintenance Only on Incoming Messages
+**Why it's wrong:** Clone copies the entire UTXO map. That is the snapshot architecture.
 
-**Wrong:** Decay fees, expire entries, or retry broadcast only inside receive handlers.
-**Consequence:** Idle nodes never advance long-lived policy.
-**Instead:** Use a receive-independent daemon tick with injected time and bounded work.
+**Do this instead:** Child `CoinsCache` over the live cache; commit is `Flush` into the parent cache.
 
-### Virtual Size Presented as Memory-Pressure Parity
+### Anti-Pattern 4: Hardcode durable availability
 
-**Wrong:** Keep only `max_mempool_virtual_size` while claiming Knots `-maxmempool` behavior.
-**Consequence:** Pressure, eviction timing, rolling floors, and operator diagnostics diverge under realistic entry overhead.
-**Instead:** Add explicit accounted memory usage or document the intentional difference with parity tests.
+**What people do:** `managed_block_serve_input(..., durable_availability: true)` because a later `load_block` can NotFound.
 
-## Research Flags
+**Why it's wrong:** Status/eligibility already reported Available. Operators and peers see a lie; `LookupUnavailable` is a correction, not honesty.
 
-- **TRUC/package-RBF scope:** The pinned baseline contains narrowly scoped package RBF and TRUC exceptions. Confirm whether v2.2 includes them before broadening package admission; otherwise return explicit unsupported/deferred outcomes.
-- **Crash durability contract:** Knots persists on its mempool dump lifecycle and restores unbroadcast markers, but rolling fee variables are not serialized. Requirements should distinguish clean restart, periodic checkpoint, and sudden-crash expectations.
-- **Transport acknowledgement:** Knots clears unbroadcast when an eligible `getdata` is served. Specify whether Open Bitcoin records completion when the tx response is queued or successfully written; never clear on `inv` alone.
-- **Memory accounting parity:** Exact `DynamicMemoryUsage()` parity is implementation-specific. Establish an auditable Rust accounting model and acceptable observable tolerance before claiming sustained-pressure parity.
+**Do this instead:** `Available` only when `blocks_by_hash` or `load_block` has the payload. Missing payload on an active hash is Unavailable (or the existing `Pruned` label if the classifier still needs that distinction). Refuse with `NotFound`.
 
-## Sources
+### Anti-Pattern 5: Port Knots `CoinsViews` dual-chainstate
 
-All baseline sources below are from the pinned local Bitcoin Knots tag `v29.3.knots20260210`, commit `a9aee730466ac67d35a3c03ee24676be5e045878`.
+**What people do:** Add background/snapshot chainstate because `validation.h` has it.
 
-- [Pinned Bitcoin Knots source tree](https://github.com/bitcoinknots/bitcoin/tree/a9aee730466ac67d35a3c03ee24676be5e045878) — authoritative baseline commit used for every Knots claim below.
+**Why it's wrong:** Assumeutxo is explicitly out of scope. Dual tips would fork manager work.
 
-### Current Open Bitcoin
+**Do this instead:** One active chainstate, one coins view stack, one best-block.
 
-- `packages/open-bitcoin-mempool/src/pool.rs` — current single-transaction clone/recompute admission, descendant eviction, and virtual-size cap.
-- `packages/open-bitcoin-mempool/src/pool/lifecycle.rs` — current pressure summary and explicitly deferred rolling-fee status.
-- `packages/open-bitcoin-node/src/network.rs` and `network/runtime_authority.rs` — one authoritative mempool/network/chainstate aggregate behind `ManagedNetworkHandle`.
-- `packages/open-bitcoin-node/src/network/admission_bridge.rs`, `relay_fanout.rs`, `relay_serving.rs`, and `mempool_lifecycle.rs` — current admission, cache, fanout, serving, and compact cleanup seams.
-- `packages/open-bitcoin-node/src/storage/mempool_snapshot.rs`, `storage/snapshot_codec.rs`, and `storage/fjall_store/mempool.rs` — current transaction snapshot, schema, load/save adapters, and recovery classifications.
-- `packages/open-bitcoin-node/src/sync.rs`, `sync/session.rs`, and `network/announcement_transport.rs` — v2.1 shared network handle, live peer outbox registry, and receipt-based transport evidence.
-- `packages/open-bitcoin-rpc/src/context/network.rs`, `dispatch/node.rs`, and `src/bin/open-bitcoind.rs` — authoritative RPC projection, current mempool RPCs, and daemon timing shell.
+### Anti-Pattern 6: Put the clock in flush policy
 
-### Pinned Bitcoin Knots
+**What people do:** `Instant::now()` inside `decide_flush`.
 
-- `packages/bitcoin-knots/doc/policy/packages.md` — package definitions, individual-first semantics, fee-floor separation, and package policy rationale.
-- `packages/bitcoin-knots/src/policy/packages.h` and `packages.cpp` — count/weight, sorting, duplicate, conflict, and child-with-parents checks.
-- `packages/bitcoin-knots/src/validation.cpp` — staged package acceptance, package feerate, limits, replacement boundary, trimming, and per-transaction results.
-- `packages/bitcoin-knots/src/node/txdownloadman.h`, `txdownloadman_impl.cpp`, and `src/net_processing.cpp` — opportunistic P2P 1p1c construction, package-result relay, per-peer queues, and initial-broadcast retry scheduling.
-- `packages/bitcoin-knots/src/txmempool.h` and `txmempool.cpp` — rolling fee state machine, dynamic-memory trim, descendant eviction, block decay gate, expiry, and unbroadcast lifecycle.
-- `packages/bitcoin-knots/src/node/mempool_persist.cpp` — transaction entry time, fee delta, and unbroadcast persistence; rolling fee is not serialized.
-- `packages/bitcoin-knots/src/node/transaction.cpp` and `test/functional/mempool_unbroadcast.py` — local submission unbroadcast marking, restart recovery, retry, and acknowledgement behavior.
-- `packages/bitcoin-knots/src/rpc/mempool.cpp` — `submitpackage`, `testmempoolaccept`, per-wtxid results, `getmempoolinfo`, and unbroadcast count.
+**Why it's wrong:** Core becomes impure; tests need real time.
+
+**Do this instead:** Inject `now` and `last_flush` from the shell, same as mempool rolling-fee time.
+
+### Anti-Pattern 7: Claim a block available because the header or coins tip exists
+
+**What people do:** Treat coins best-block or header index as “we can serve this block.”
+
+**Why it's wrong:** Headers and coins can exist without the block payload. v2.3 availability is payload-present.
+
+**Do this instead:** Serving reads `FjallNodeStore::load_block` (or the in-memory cache of a stored payload). Coins tip answers “what UTXO set is this,” not “can I send `block`.”
+
+## Suggested Build Order
+
+Dependency order for roadmap phases starting at Phase 139:
+
+1. **Typed coins-view contracts** — `CoinsView`, cache-entry dirty/fresh flags, batch-write cursor, best-block, `MemoryCoinsView`. No Fjall. Engine tests can still use today’s snapshot helpers.
+
+2. **Flush policy** — Pure `FlushMode` / cache-size / `Flush` vs `Sync` decisions with injected time and size. Unit tests only.
+
+3. **Engine apply on a view** — Refactor connect/disconnect/reorg to mutate a `CoinsCache`. Keep undo and chain metadata. Replace prepare/commit clone with a child cache. Still no disk.
+
+4. **Durable Fjall adapter** — Per-outpoint coins, best-block, head-blocks, schema bump, one-way migration from the legacy `snapshot` blob. `save_block` / `load_block` unchanged. No manager rewrite yet.
+
+5. **Manager orchestration** — `ManagedChainstate` owns cache init, flush points, shutdown flush, and restart from coins best-block. `DurableSyncRuntime::open` and `persist_progress` switch off snapshot-blob writes.
+
+6. **Availability truth** — Payload-present fact into `managed_block_serve_input` and inbound `DurableBlock` gating. Active-but-missing-bytes refuses cleanly. Do not wait until docs to stop the hardcoded `true`.
+
+7. **Operator and parity evidence** — Status/RPC/CLI/dashboard/metrics/logs: flush, recovery, honest serve labels. Update `docs/parity/catalog/chainstate.md` and breadcrumbs. Keep public/production claims deferred.
+
+8. **Consumers that still load the blob** — Wallet rescan, confirmation migration leftovers, and any RPC that materializes `ChainstateSnapshot.utxos` must read the view/cursor so they cannot resurrect snapshot-as-truth.
+
+Steps 1–3 stay in the pure crate. Step 4 is the first Fjall change. Step 5 is the first runtime wiring. Step 6 can start as soon as `load_block` is the presence oracle — it does not need the coins adapter, but it must not ship *after* operator evidence that would re-document the lie.
 
 ## Confidence Assessment
 
-| Area | Confidence | Basis |
-| --- | --- | --- |
-| Existing Open Bitcoin integration seams | HIGH | Direct inspection of current Rust source and completed v2.0/v2.1 roadmaps. |
-| Package admission and limited P2P relay | HIGH | Pinned Knots policy docs, validation, tx download manager, net processing, RPC, and tests agree. |
-| Rolling fee and pressure lifecycle | HIGH | Direct pinned `CTxMemPool` and `LimitMempoolSize` implementation. |
-| Persistence/restart boundary | HIGH | Direct dump/load format and unbroadcast functional test; no rolling-fee fields are serialized. |
-| Exact daemon scheduler/outbox refactor | MEDIUM | The authority and transport constraints are clear, but the smallest implementation depends on v2.2 activation and crash-durability requirements. |
+| Area | Confidence | Notes |
+|------|------------|-------|
+| Current Open Bitcoin layout | HIGH | Read engine, `ManagedChainstate`, Fjall snapshot persist, sync open/persist, inventory, inbound wire |
+| Knots coins / manager APIs | HIGH | Official `v29.3.knots20260210` `coins.h` and `validation.h`; published Flush vs Sync behavior |
+| Fjall per-coin schema / atomic batch | MEDIUM | Needs phase research; do not copy LevelDB layout |
+| Exact flush thresholds / cache bytes | MEDIUM | Knots `dbcache` and periodic intervals should be researched before copying numbers |
+| Local `packages/bitcoin-knots` tree | LOW for file-path reads | Submodule was not materialized in this session; citations use the pinned GitHub tag |
 
-*Architecture research for: Open Bitcoin v2.2 Package Relay and Long-Lived Mempool Policy*
-*Researched: 2026-07-22*
+## Sources
+
+- Open Bitcoin engine and types: `packages/open-bitcoin-chainstate/src/engine.rs`, `types.rs`, `lib.rs`
+- Node manager and snapshot store: `packages/open-bitcoin-node/src/chainstate.rs`
+- Fjall snapshot + per-hash blocks: `packages/open-bitcoin-node/src/storage.rs`, `storage/fjall_store.rs`
+- Sync hydrate/persist: `packages/open-bitcoin-node/src/sync.rs`, `sync/runtime_state.rs`
+- Serving honesty gap: `packages/open-bitcoin-node/src/network/inventory.rs` (`durable_availability: true`); `packages/open-bitcoin-rpc/src/context/inbound_wire.rs`
+- Architecture rules: `standards/core/architecture.md`, `.planning/ARCHITECTURE.md`, `.planning/PROJECT.md`
+- Parity gap: `docs/parity/catalog/chainstate.md` (disk-backed coins and full manager still listed as known gaps)
+- Pinned Knots coins API: https://github.com/bitcoinknots/bitcoin/blob/v29.3.knots20260210/src/coins.h
+- Pinned Knots chainstate / flush API: https://github.com/bitcoinknots/bitcoin/blob/v29.3.knots20260210/src/validation.h (`CoinsViews`, `CoinsTip`, `FlushStateMode`, `FlushStateToDisk`, `InitCoinsCache`)
+- Knots periodic flush retains cache via `Sync`: https://github.com/bitcoinknots/bitcoin/commit/2cafbe3796cd811826c8aa48ac26bd4bda2895a3
+- Knots post-IBD `CoinsTip().Sync()`: https://github.com/bitcoinknots/bitcoin/commit/2f1bf089f7540356daf8c88ab81341d1248ad81b
+
+---
+*Architecture research for: Open Bitcoin chainstate durability integration*
+*Researched: 2026-08-29*
