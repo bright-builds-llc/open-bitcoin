@@ -62,7 +62,13 @@ v2.3 Chainstate Durability and Historical Serving is planned across Phases 139�
   2. A cache hit is distinguishable from parent-view truth; HaveCoin and in-cache occupancy remain separate facts.
   3. Prepare/commit uses a child cache flushed into the parent cache, and a failed prepare leaves the parent view unchanged.
   4. The chainstate core remains I/O-free: no Fjall, filesystem, or clock appears in `open-bitcoin-chainstate`.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 139-01-PLAN.md — CoinsView contract, MemoryCoinsView, and four lookup facts
+- [ ] 139-02-PLAN.md — DIRTY/FRESH AddCoin/SpendCoin/BatchWrite/Flush/Sync algebra
+- [ ] 139-03-PLAN.md — Engine apply on child overlay without next_utxos clone
+- [ ] 139-04-PLAN.md — Manager prepare/commit overlay isolation and leftover persist
 
 ### Phase 140: Pure Flush Policy and Typed Decisions
 **Goal**: Flush and recovery decisions are a typed, injectable policy the later manager can execute without clocks or I/O in core.
@@ -167,7 +173,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
-| 139. Coins-View, Cache Contract, and Engine Apply | 0/TBD | Not started | - |
+| 139. Coins-View, Cache Contract, and Engine Apply | 0/4 | Not started | - |
 | 140. Pure Flush Policy and Typed Decisions | 0/TBD | Not started | - |
 | 141. Durable Fjall Coins Adapter | 0/TBD | Not started | - |
 | 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
@@ -177,7 +183,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 
 ## Next Step
 
-Run `/gsd-plan-phase 139` to plan the coins-view, cache contract, and engine-apply work.
+Run `/gsd-execute-phase 139` to implement the coins-view, cache contract, and engine-apply plans.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*
