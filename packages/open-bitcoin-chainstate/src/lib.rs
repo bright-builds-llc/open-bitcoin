@@ -16,10 +16,14 @@
 
 //! Pure-core chainstate and UTXO domain models for Open Bitcoin.
 
+pub mod coins;
 pub mod engine;
 pub mod error;
 pub mod types;
 
+pub use coins::{
+    CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView,
+};
 pub use engine::{Chainstate, prefer_candidate_tip};
 pub use error::ChainstateError;
 pub use types::{
