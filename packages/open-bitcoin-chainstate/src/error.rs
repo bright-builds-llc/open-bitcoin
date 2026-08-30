@@ -53,6 +53,14 @@ pub enum ChainstateError {
         context: &'static str,
         reason: String,
     },
+    InvalidCacheEntry {
+        dirty: bool,
+        fresh: bool,
+        spent: bool,
+    },
+    FreshFlagMisapplied {
+        outpoint: OutPoint,
+    },
 }
 
 impl fmt::Display for ChainstateError {
@@ -128,6 +136,19 @@ impl fmt::Display for ChainstateError {
             Self::Serialization { context, reason } => {
                 write!(f, "{context} serialization failed: {reason}")
             }
+            Self::InvalidCacheEntry {
+                dirty,
+                fresh,
+                spent,
+            } => write!(
+                f,
+                "invalid coins cache entry flags dirty={dirty} fresh={fresh} spent={spent}"
+            ),
+            Self::FreshFlagMisapplied { outpoint } => write!(
+                f,
+                "FRESH flag misapplied to coin that exists in parent cache {:?}:{}",
+                outpoint.txid, outpoint.vout
+            ),
         }
     }
 }
@@ -201,6 +222,14 @@ mod tests {
             ChainstateError::Serialization {
                 context: "txid derivation",
                 reason: "bad compact size".to_string(),
+            },
+            ChainstateError::InvalidCacheEntry {
+                dirty: true,
+                fresh: true,
+                spent: true,
+            },
+            ChainstateError::FreshFlagMisapplied {
+                outpoint: outpoint.clone(),
             },
         ];
 

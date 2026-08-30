@@ -154,6 +154,10 @@
       "label": "chainstate-engine",
       "files": [
         "packages/open-bitcoin-chainstate/src/engine.rs",
+        "packages/open-bitcoin-chainstate/src/coins.rs",
+        "packages/open-bitcoin-chainstate/src/coins/cache.rs",
+        "packages/open-bitcoin-chainstate/src/coins/memory.rs",
+        "packages/open-bitcoin-chainstate/src/coins/tests.rs",
         "packages/open-bitcoin-chainstate/src/engine/tests.rs",
         "packages/open-bitcoin-chainstate/src/engine/tests/apply_non_coinbase_transaction_returns_fee_and_records_undo.rs",
         "packages/open-bitcoin-chainstate/src/engine/tests/derives_contexts_from_chainstate_metadata.rs",
