@@ -17,7 +17,7 @@ use open_bitcoin_primitives::{BlockHash, OutPoint};
 use crate::error::ChainstateError;
 use crate::types::Coin;
 
-pub use cache::CoinsCache;
+pub use cache::{CoinsCache, CoinsOverlay};
 pub use memory::MemoryCoinsView;
 
 pub trait CoinsView {
@@ -48,7 +48,7 @@ pub enum CoinsCacheFlags {
     SpentFresh,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CoinsCacheEntry {
     maybe_coin: Option<Coin>,
     flags: CoinsCacheFlags,
@@ -115,5 +115,25 @@ impl CoinsCacheEntry {
 
     pub fn flags(&self) -> CoinsCacheFlags {
         self.flags
+    }
+
+    pub const fn is_dirty(&self) -> bool {
+        matches!(
+            self.flags,
+            CoinsCacheFlags::UnspentDirty
+                | CoinsCacheFlags::UnspentFreshDirty
+                | CoinsCacheFlags::SpentDirty
+        )
+    }
+
+    pub const fn is_fresh(&self) -> bool {
+        matches!(
+            self.flags,
+            CoinsCacheFlags::UnspentFreshDirty | CoinsCacheFlags::SpentFresh
+        )
+    }
+
+    pub fn is_spent(&self) -> bool {
+        self.maybe_coin.is_none()
     }
 }
