@@ -74,9 +74,21 @@ fn chainstate_helper_error_paths_return_typed_failures() {
         40,
         TransactionInput::SEQUENCE_FINAL,
     );
+    let present_coin = Coin {
+        output: TransactionOutput {
+            value: Amount::from_sats(50).expect("valid amount"),
+            script_pubkey: script(&[0x51]),
+        },
+        is_coinbase: true,
+        created_height: 0,
+        created_median_time_past: 0,
+    };
+    let mut present_utxos = HashMap::from([(missing_outpoint.clone(), present_coin.clone())]);
     let mut empty_utxos = HashMap::new();
 
     // Act
+    let removed = remove_spent_input(&mut present_utxos, &transaction.inputs[0])
+        .expect("present spent input should be removed");
     let remove_error = remove_spent_input(&mut empty_utxos, &transaction.inputs[0])
         .expect_err("missing spent input should fail");
     let context_error = build_transaction_context(
@@ -92,6 +104,8 @@ fn chainstate_helper_error_paths_return_typed_failures() {
     let serialization_error = txid_serialization_error("encoded txid failure");
 
     // Assert
+    assert_eq!(removed, present_coin);
+    assert!(!present_utxos.contains_key(&missing_outpoint));
     assert_eq!(
         remove_error,
         crate::ChainstateError::MissingCoin {

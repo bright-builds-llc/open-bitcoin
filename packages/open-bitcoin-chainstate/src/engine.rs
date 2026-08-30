@@ -10,21 +10,22 @@ use std::collections::HashMap;
 use open_bitcoin_consensus::block::enforce_coinbase_reward_limit;
 use open_bitcoin_consensus::context::{MinDifficultyRecoveryTarget, RetargetAnchor};
 use open_bitcoin_consensus::{
-    BlockValidationContext, BlockValidationResult, ConsensusParams, ScriptVerifyFlags,
-    TransactionInputContext, TransactionValidationContext, ValidationError, block_hash,
-    check_block_contextual, transaction_txid, validate_transaction_with_context,
+    BlockValidationContext, ConsensusParams, ScriptVerifyFlags, block_hash, check_block_contextual,
+    transaction_txid,
 };
 use open_bitcoin_primitives::{
-    Amount, Block, BlockHash, BlockHeader, MAX_MONEY, OutPoint, ScriptBuf, Transaction,
+    Amount, Block, BlockHash, BlockHeader, MAX_MONEY, OutPoint, Transaction,
 };
 
+use crate::coins::{CoinsCache, CoinsOverlay, MemoryCoinsView};
 use crate::{
     AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, ChainstateError, ChainstateSnapshot,
     Coin, TxUndo,
 };
 
+mod apply;
+
 const MEDIAN_TIME_PAST_WINDOW: usize = 11;
-const OP_RETURN: u8 = 0x6a;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Chainstate {
@@ -371,6 +372,23 @@ fn maybe_min_difficulty_recovery_target(
     }
 }
 
+fn hashmap_parent(utxos: &HashMap<OutPoint, Coin>) -> CoinsCache<MemoryCoinsView> {
+    CoinsCache::from_parent(MemoryCoinsView::from_coins(utxos.clone(), None))
+}
+
+fn write_overlay_into_hashmap(utxos: &mut HashMap<OutPoint, Coin>, overlay: CoinsOverlay) {
+    for (outpoint, entry) in overlay.into_dirty_batch().entries {
+        match entry.maybe_coin() {
+            Some(coin) => {
+                utxos.insert(outpoint, coin.clone());
+            }
+            None => {
+                utxos.remove(&outpoint);
+            }
+        }
+    }
+}
+
 fn apply_non_coinbase_transaction(
     next_utxos: &mut HashMap<OutPoint, Coin>,
     block_undo: &mut BlockUndo,
@@ -379,48 +397,31 @@ fn apply_non_coinbase_transaction(
     verify_flags: ScriptVerifyFlags,
     block_context: &BlockValidationContext,
 ) -> Result<Amount, ChainstateError> {
-    let transaction_context = build_transaction_context(
+    let parent = hashmap_parent(next_utxos);
+    let mut overlay = CoinsOverlay::new();
+    let fee = apply::apply_non_coinbase_transaction(
+        &mut overlay,
+        &parent,
+        block_undo,
         transaction,
-        next_utxos,
-        block_context.height,
         block_time,
-        block_context.previous_median_time_past,
         verify_flags,
-        block_context.consensus_params,
+        block_context,
     )?;
-    let fee = validate_transaction_with_context(transaction, &transaction_context)
-        .map_err(|source| ChainstateError::TransactionValidation { source })?;
-
-    let mut undo = TxUndo::default();
-    for input in &transaction.inputs {
-        let coin = remove_spent_input(next_utxos, input)?;
-        undo.restored_inputs.push(coin);
-    }
-    block_undo.transactions.push(undo);
-
+    write_overlay_into_hashmap(next_utxos, overlay);
     Ok(fee)
 }
 
+#[cfg(test)]
 fn remove_spent_input(
     next_utxos: &mut HashMap<OutPoint, Coin>,
     input: &open_bitcoin_primitives::TransactionInput,
 ) -> Result<Coin, ChainstateError> {
-    let Some(coin) = next_utxos.remove(&input.previous_output) else {
-        return Err(ChainstateError::MissingCoin {
-            outpoint: input.previous_output.clone(),
-        });
-    };
+    let parent = hashmap_parent(next_utxos);
+    let mut overlay = CoinsOverlay::new();
+    let coin = apply::remove_spent_input(&mut overlay, &parent, input)?;
+    write_overlay_into_hashmap(next_utxos, overlay);
     Ok(coin)
-}
-
-fn accumulated_fee_out_of_range() -> ChainstateError {
-    ChainstateError::BlockValidation {
-        source: ValidationError::new(
-            BlockValidationResult::Consensus,
-            "bad-txns-accumulated-fee-outofrange",
-            Some("accumulated fee in the block out of range".to_string()),
-        ),
-    }
 }
 
 fn restore_non_coinbase_inputs(
@@ -428,29 +429,14 @@ fn restore_non_coinbase_inputs(
     transaction: &Transaction,
     tx_undo: &TxUndo,
 ) -> Result<(), ChainstateError> {
-    if tx_undo.restored_inputs.len() != transaction.inputs.len() {
-        return Err(ChainstateError::UndoMismatch {
-            expected_transactions: transaction.inputs.len(),
-            actual_transactions: tx_undo.restored_inputs.len(),
-        });
-    }
-
-    for (input, restored_coin) in transaction
-        .inputs
-        .iter()
-        .zip(&tx_undo.restored_inputs)
-        .rev()
-    {
-        let outpoint = input.previous_output.clone();
-        if utxos.contains_key(&outpoint) {
-            return Err(ChainstateError::RestoredCoinOverwrite { outpoint });
-        }
-        utxos.insert(outpoint, restored_coin.clone());
-    }
-
+    let parent = hashmap_parent(utxos);
+    let mut overlay = CoinsOverlay::new();
+    apply::restore_non_coinbase_inputs(&mut overlay, &parent, transaction, tx_undo)?;
+    write_overlay_into_hashmap(utxos, overlay);
     Ok(())
 }
 
+#[cfg(test)]
 fn build_transaction_context(
     transaction: &Transaction,
     utxos: &HashMap<OutPoint, Coin>,
@@ -459,29 +445,25 @@ fn build_transaction_context(
     median_time_past: i64,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
-) -> Result<TransactionValidationContext, ChainstateError> {
-    let mut inputs = Vec::with_capacity(transaction.inputs.len());
-    for input in &transaction.inputs {
-        let Some(coin) = utxos.get(&input.previous_output) else {
-            return Err(ChainstateError::MissingCoin {
-                outpoint: input.previous_output.clone(),
-            });
-        };
-        inputs.push(TransactionInputContext {
-            spent_output: coin.as_spent_output(),
-            created_height: coin.created_height,
-            created_median_time_past: coin.created_median_time_past,
-        });
-    }
-
-    Ok(TransactionValidationContext {
-        inputs,
-        spend_height,
+) -> Result<open_bitcoin_consensus::TransactionValidationContext, ChainstateError> {
+    let parent = hashmap_parent(utxos);
+    let overlay = CoinsOverlay::new();
+    apply::build_transaction_context(
+        &overlay,
+        &parent,
+        transaction,
         block_time,
-        median_time_past,
         verify_flags,
-        consensus_params,
-    })
+        &BlockValidationContext {
+            height: spend_height,
+            previous_header: BlockHeader::default(),
+            maybe_retarget_anchor: None,
+            maybe_min_difficulty_recovery_target: None,
+            previous_median_time_past: median_time_past,
+            current_time: block_time,
+            consensus_params,
+        },
+    )
 }
 
 fn add_transaction_outputs(
@@ -490,31 +472,16 @@ fn add_transaction_outputs(
     height: u32,
     created_median_time_past: i64,
 ) -> Result<(), ChainstateError> {
-    let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
-    for (vout, output) in transaction.outputs.iter().enumerate() {
-        if is_unspendable_script(&output.script_pubkey) {
-            continue;
-        }
-
-        let outpoint = OutPoint {
-            txid,
-            vout: vout as u32,
-        };
-        if utxos.contains_key(&outpoint) {
-            return Err(ChainstateError::OutputOverwrite { outpoint });
-        }
-
-        utxos.insert(
-            outpoint,
-            Coin {
-                output: output.clone(),
-                is_coinbase: transaction.is_coinbase(),
-                created_height: height,
-                created_median_time_past,
-            },
-        );
-    }
-
+    let parent = hashmap_parent(utxos);
+    let mut overlay = CoinsOverlay::new();
+    apply::add_transaction_outputs(
+        &mut overlay,
+        &parent,
+        transaction,
+        height,
+        created_median_time_past,
+    )?;
+    write_overlay_into_hashmap(utxos, overlay);
     Ok(())
 }
 
@@ -523,38 +490,19 @@ fn remove_transaction_outputs(
     transaction: &Transaction,
     expected_height: u32,
 ) -> Result<(), ChainstateError> {
-    let txid = transaction_txid(transaction).map_err(txid_serialization_error)?;
-    for (vout, output) in transaction.outputs.iter().enumerate() {
-        if is_unspendable_script(&output.script_pubkey) {
-            continue;
-        }
-
-        let outpoint = OutPoint {
-            txid,
-            vout: vout as u32,
-        };
-        let Some(existing_coin) = utxos.remove(&outpoint) else {
-            return Err(ChainstateError::DisconnectSpentOutputMismatch { outpoint });
-        };
-        if existing_coin.output != *output
-            || existing_coin.created_height != expected_height
-            || existing_coin.is_coinbase != transaction.is_coinbase()
-        {
-            return Err(ChainstateError::DisconnectSpentOutputMismatch { outpoint });
-        }
-    }
-
+    let parent = hashmap_parent(utxos);
+    let mut overlay = CoinsOverlay::new();
+    apply::remove_transaction_outputs(&mut overlay, &parent, transaction, expected_height)?;
+    write_overlay_into_hashmap(utxos, overlay);
     Ok(())
 }
 
-fn txid_serialization_error(source: impl std::fmt::Display) -> ChainstateError {
-    ChainstateError::Serialization {
-        context: "txid derivation",
-        reason: source.to_string(),
-    }
-}
+pub(crate) use apply::{accumulated_fee_out_of_range, txid_serialization_error};
 
-fn compute_median_time_past(active_chain: &[ChainPosition], maybe_new_time: Option<u32>) -> i64 {
+pub(super) fn compute_median_time_past(
+    active_chain: &[ChainPosition],
+    maybe_new_time: Option<u32>,
+) -> i64 {
     let mut times: Vec<u32> = active_chain
         .iter()
         .rev()
@@ -570,13 +518,6 @@ fn compute_median_time_past(active_chain: &[ChainPosition], maybe_new_time: Opti
 
     times.sort_unstable();
     i64::from(times[times.len() / 2])
-}
-
-fn is_unspendable_script(script_pubkey: &ScriptBuf) -> bool {
-    script_pubkey
-        .as_bytes()
-        .first()
-        .is_some_and(|opcode| *opcode == OP_RETURN)
 }
 
 #[cfg(test)]
