@@ -9,6 +9,8 @@ use std::collections::HashMap;
 
 use open_bitcoin_primitives::{Amount, BlockHash, OutPoint, ScriptBuf, TransactionOutput, Txid};
 
+mod algebra;
+
 use super::{CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView};
 use crate::error::ChainstateError;
 use crate::types::Coin;
@@ -34,6 +36,13 @@ fn fixture_coin() -> Coin {
 
 fn fixture_best_block() -> BlockHash {
     BlockHash::from_byte_array([2_u8; 32])
+}
+
+fn fixture_outpoint_two() -> OutPoint {
+    OutPoint {
+        txid: Txid::from_byte_array([3_u8; 32]),
+        vout: 1,
+    }
 }
 
 #[test]
