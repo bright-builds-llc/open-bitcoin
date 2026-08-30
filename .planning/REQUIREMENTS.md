@@ -84,27 +84,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| COIN-01 | — | Pending |
-| CACHE-01 | — | Pending |
-| FLUSH-01 | — | Pending |
-| FLUSH-02 | — | Pending |
-| MGR-01 | — | Pending |
-| MGR-02 | — | Pending |
-| MGR-03 | — | Pending |
-| HAVL-01 | — | Pending |
-| HAVL-02 | — | Pending |
-| HAVL-03 | — | Pending |
-| CSOBS-01 | — | Pending |
-| CSOBS-02 | — | Pending |
-| CSOBS-03 | — | Pending |
-| CSVFY-01 | — | Pending |
-| CSVFY-02 | — | Pending |
+| CACHE-01 | Phase 139 | Pending |
+| FLUSH-01 | Phase 140 | Pending |
+| MGR-03 | Phase 140 | Pending |
+| COIN-01 | Phase 141 | Pending |
+| CSOBS-03 | Phase 141 | Pending |
+| MGR-01 | Phase 142 | Pending |
+| MGR-02 | Phase 142 | Pending |
+| FLUSH-02 | Phase 142 | Pending |
+| HAVL-01 | Phase 143 | Pending |
+| HAVL-02 | Phase 143 | Pending |
+| HAVL-03 | Phase 143 | Pending |
+| CSOBS-01 | Phase 144 | Pending |
+| CSOBS-02 | Phase 144 | Pending |
+| CSVFY-01 | Phase 145 | Pending |
+| CSVFY-02 | Phase 145 | Pending |
 
 **Coverage:**
 - v2.3 requirements: 15 total
-- Mapped to phases: 0
-- Unmapped: 15
+- Mapped to phases: 15
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-08-29*
-*Last updated: 2026-08-29 after initial definition*
+*Last updated: 2026-08-29 after roadmap mapping to Phases 139–145*

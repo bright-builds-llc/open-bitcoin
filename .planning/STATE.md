@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: Defining requirements
-stopped_at: Defining milestone v2.3 requirements
-last_updated: "2026-08-29T19:50:00Z"
+status: Ready to plan
+stopped_at: Roadmap created for v2.3 Phases 139–145
+last_updated: "2026-08-29T20:40:00Z"
 last_activity: 2026-08-29
 progress:
-  total_phases: 0
+  total_phases: 7
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,19 +21,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Defining v2.3 chainstate durability and honest historical availability requirements
+**Current focus:** Phase 139 — Coins-View, Cache Contract, and Engine Apply
 
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: Not started (defining requirements)
+Phase: 139 of 145 (Coins-View, Cache Contract, and Engine Apply)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-08-29 — Milestone v2.3 started
+Status: Not started — ready to plan
+Last activity: 2026-08-29 — Created the v2.3 roadmap across Phases 139–145
 
-The milestone was initialized through `/gsd-new-milestone` and will close explicit gaps around disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred.
+The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
-Next action: Define v2.3 requirements and create the roadmap, continuing phase numbering after Phase 138.
+Progress: [░░░░░░░░░░] 0%
+
+Next action: `/gsd-plan-phase 139`
 
 ## Performance Metrics
 
@@ -116,9 +118,16 @@ Next action: Define v2.3 requirements and create the roadmap, continuing phase n
 ### Roadmap Evolution
 
 - Phase 133.1 inserted after Phase 133: Bright Builds Verification Baseline Cleanup (URGENT)
+- v2.3 roadmap continues numbering after Phase 138; Phases 139–145 own the 15 v2.3 requirements.
 
 ### Decisions
 
+- [v2.3 roadmap]: Continue phase numbering at 139. Do not reset to Phase 1. Do not delete or archive historical `.planning/phases/` directories.
+- [v2.3 roadmap]: Seven fine-granularity phases follow research order: typed coins-view/cache and engine apply, pure flush policy, Fjall coins adapter, manager lifecycle/restart, honest availability, operator evidence, then parity/no-claim guardrails.
+- [v2.3 roadmap]: Merge research "view/cache" and "engine apply" into Phase 139 because CACHE-01 is the only requirement those two conceptual slices share.
+- [v2.3 roadmap]: Assign CSOBS-03 to Phase 141 so coins disk-read errors fail closed at the first durable-read seam, not later as operator copy.
+- [v2.3 roadmap]: Honest availability (Phase 143) comes after coins truth exists and before operator evidence, so docs cannot re-document a serving lie.
+- [v2.3 roadmap]: Storage-first locked scope: no prune/archive product modes, no assumeutxo/assumevalid/IBD shortcuts, no LevelDB or rust-bitcoin, functional core stays I/O-free.
 - [v2.3 milestone]: Initialized the new milestone through `/gsd-new-milestone` after the archived v2.2 closeout.
 - [v2.3 milestone]: Storage-first scope: disk-backed coins, cache-flush, and chainstate-manager now; prune/archive product modes later.
 - [v2.3 milestone]: Honest availability means serve or report a stored block only when the payload is present; refuse cleanly when it is not.
@@ -325,6 +334,9 @@ Next action: Define v2.3 requirements and create the roadmap, continuing phase n
 
 ### Blockers/Concerns
 
+- Phase 141 planning should resolve Fjall coins keyspace, compact codec home, undo-record location, and schema-bump versus multi-namespace migration before the first production write.
+- Phase 142 planning should name the allowed crash-loss window and the interrupted-flush replay-versus-fail-closed rule when bodies or undo are missing.
+- Phase 143 planning should pin `durable_availability` and reserve `Pruned` so help text cannot be read as prune-mode.
 - Historical Phase 130–138 planning notes remain in the v2.2 archive. No open v2.2 blockers remain after the passed milestone audit.
 
 ## Latest Milestone Archive
@@ -335,6 +347,6 @@ Next action: Define v2.3 requirements and create the roadmap, continuing phase n
 
 ## Session Continuity
 
-Last session: 2026-08-29T19:50:00Z
-Stopped at: Defining milestone v2.3 requirements
+Last session: 2026-08-29T20:40:00Z
+Stopped at: Roadmap created for v2.3 Phases 139–145
 Resume file: None
