@@ -24,7 +24,9 @@ pub mod types;
 pub use coins::{
     CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView,
 };
-pub use engine::{Chainstate, prefer_candidate_tip};
+pub use engine::{
+    Chainstate, StagedChainstateConnect, StagedChainstateReorg, prefer_candidate_tip,
+};
 pub use error::ChainstateError;
 pub use types::{
     AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, ChainstateSnapshot, Coin, TxUndo,

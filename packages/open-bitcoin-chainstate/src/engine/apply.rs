@@ -5,12 +5,15 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
+use open_bitcoin_consensus::block::enforce_coinbase_reward_limit;
 use open_bitcoin_consensus::{
     BlockValidationContext, BlockValidationResult, ScriptVerifyFlags, TransactionInputContext,
     TransactionValidationContext, ValidationError, transaction_txid,
     validate_transaction_with_context,
 };
-use open_bitcoin_primitives::{Amount, OutPoint, ScriptBuf, Transaction, TransactionInput};
+use open_bitcoin_primitives::{
+    Amount, Block, MAX_MONEY, OutPoint, ScriptBuf, Transaction, TransactionInput,
+};
 
 use crate::coins::{CoinsOverlay, CoinsView};
 use crate::{BlockUndo, ChainstateError, Coin, TxUndo};
@@ -202,4 +205,75 @@ pub(crate) fn is_unspendable_script(script_pubkey: &ScriptBuf) -> bool {
         .as_bytes()
         .first()
         .is_some_and(|opcode| *opcode == OP_RETURN)
+}
+
+pub(crate) fn apply_connect_transactions<V: CoinsView>(
+    overlay: &mut CoinsOverlay,
+    parent: &V,
+    block: &Block,
+    height: u32,
+    previous_median_time_past: i64,
+    verify_flags: ScriptVerifyFlags,
+    block_context: &BlockValidationContext,
+) -> Result<(BlockUndo, i64), ChainstateError> {
+    let mut block_undo = BlockUndo::default();
+    let block_time = i64::from(block.header.time);
+    let mut total_fees_sats = 0_i64;
+    for (transaction_index, transaction) in block.transactions.iter().enumerate() {
+        if transaction_index > 0 {
+            let fee = apply_non_coinbase_transaction(
+                overlay,
+                parent,
+                &mut block_undo,
+                transaction,
+                block_time,
+                verify_flags,
+                block_context,
+            )?;
+            let next_total_fees_sats = total_fees_sats
+                .checked_add(fee.to_sats())
+                .ok_or_else(accumulated_fee_out_of_range)?;
+            if !(0..=MAX_MONEY).contains(&next_total_fees_sats) {
+                return Err(accumulated_fee_out_of_range());
+            }
+            total_fees_sats = next_total_fees_sats;
+        }
+
+        add_transaction_outputs(
+            overlay,
+            parent,
+            transaction,
+            height,
+            previous_median_time_past,
+        )?;
+    }
+    enforce_coinbase_reward_limit(
+        block,
+        height,
+        total_fees_sats,
+        &block_context.consensus_params,
+    )
+    .map_err(|source| ChainstateError::BlockValidation { source })?;
+
+    Ok((block_undo, total_fees_sats))
+}
+
+pub(crate) fn apply_disconnect_transactions<V: CoinsView>(
+    overlay: &mut CoinsOverlay,
+    parent: &V,
+    block: &Block,
+    expected_height: u32,
+    block_undo: &BlockUndo,
+) -> Result<(), ChainstateError> {
+    for transaction_index in (0..block.transactions.len()).rev() {
+        let transaction = &block.transactions[transaction_index];
+        remove_transaction_outputs(overlay, parent, transaction, expected_height)?;
+
+        if transaction_index > 0 {
+            let tx_undo = &block_undo.transactions[transaction_index - 1];
+            restore_non_coinbase_inputs(overlay, parent, transaction, tx_undo)?;
+        }
+    }
+
+    Ok(())
 }

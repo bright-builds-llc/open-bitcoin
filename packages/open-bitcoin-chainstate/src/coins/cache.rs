@@ -13,6 +13,7 @@ use super::{CoinsBatch, CoinsCacheEntry, CoinsView};
 use crate::error::ChainstateError;
 use crate::types::Coin;
 
+#[derive(Debug)]
 pub struct CoinsOverlay {
     entries: HashMap<OutPoint, CoinsCacheEntry>,
     maybe_best_block: Option<BlockHash>,
@@ -73,6 +74,19 @@ impl CoinsOverlay {
 
     pub fn set_best_block(&mut self, block_hash: BlockHash) {
         self.maybe_best_block = Some(block_hash);
+    }
+
+    pub fn overlay_unspent_into(&self, coins: &mut HashMap<OutPoint, Coin>) {
+        for (outpoint, entry) in &self.entries {
+            match entry.maybe_coin() {
+                Some(coin) => {
+                    coins.insert(outpoint.clone(), coin.clone());
+                }
+                None => {
+                    coins.remove(outpoint);
+                }
+            }
+        }
     }
 
     fn get(&self, outpoint: &OutPoint) -> Option<&CoinsCacheEntry> {
@@ -325,6 +339,14 @@ impl<V: CoinsView> CoinsCache<V> {
     #[cfg(test)]
     pub(crate) fn insert_entry_for_test(&mut self, outpoint: OutPoint, entry: CoinsCacheEntry) {
         self.overlay.insert(outpoint, entry);
+    }
+}
+
+impl CoinsCache<crate::MemoryCoinsView> {
+    pub fn collect_unspent(&self) -> HashMap<OutPoint, Coin> {
+        let mut coins = self.parent.unspent_coins();
+        self.overlay.overlay_unspent_into(&mut coins);
+        coins
     }
 }
 

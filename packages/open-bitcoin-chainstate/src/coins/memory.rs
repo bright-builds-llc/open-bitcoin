@@ -29,6 +29,10 @@ impl MemoryCoinsView {
     pub fn contains_outpoint(&self, outpoint: &OutPoint) -> bool {
         self.coins.contains_key(outpoint)
     }
+
+    pub fn unspent_coins(&self) -> HashMap<OutPoint, Coin> {
+        self.coins.clone()
+    }
 }
 
 impl CoinsView for MemoryCoinsView {
