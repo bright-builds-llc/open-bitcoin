@@ -22,6 +22,7 @@ use crate::{
 };
 
 mod apply;
+mod stage;
 
 const MEDIAN_TIME_PAST_WINDOW: usize = 11;
 
@@ -92,12 +93,6 @@ impl PartialEq for Chainstate {
 }
 
 impl Eq for Chainstate {}
-
-impl Clone for Chainstate {
-    fn clone(&self) -> Self {
-        Self::from_snapshot(self.snapshot())
-    }
-}
 
 impl Chainstate {
     pub fn new() -> Self {

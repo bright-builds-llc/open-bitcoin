@@ -7,6 +7,8 @@
 
 use std::collections::HashMap;
 
+use open_bitcoin_primitives::OutPoint;
+
 use super::{
     CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView,
     fixture_best_block, fixture_coin, fixture_outpoint, fixture_outpoint_two,
@@ -346,6 +348,83 @@ fn batch_write_parent_miss_copies_fresh_and_overwrites_without_fresh() {
             .map(CoinsCacheEntry::flags),
         Some(CoinsCacheFlags::SpentDirty)
     );
+}
+
+#[test]
+fn absorb_batch_write_clears_fresh_on_live_unspent_occupancy() {
+    // Arrange
+    let outpoint = fixture_outpoint();
+    let coin = fixture_coin();
+    let parent = MemoryCoinsView::from_coins(HashMap::new(), None);
+    let mut cache = CoinsCache::from_parent(parent);
+    cache.insert_entry_for_test(
+        outpoint.clone(),
+        CoinsCacheEntry::unspent_clean(coin.clone()),
+    );
+    let mut writes = HashMap::new();
+    writes.insert(
+        outpoint.clone(),
+        CoinsCacheEntry::unspent_fresh_dirty(coin.clone()),
+    );
+
+    // Act
+    cache.absorb_batch_write(CoinsBatch { entries: writes }, None);
+
+    // Assert
+    assert_eq!(
+        cache.cached_entry(&outpoint).map(CoinsCacheEntry::flags),
+        Some(CoinsCacheFlags::UnspentDirty)
+    );
+}
+
+#[test]
+fn absorb_batch_write_covers_skip_parent_miss_and_fresh_parent_erase() {
+    // Arrange
+    let skip_outpoint = fixture_outpoint();
+    let miss_outpoint = fixture_outpoint_two();
+    let erase_outpoint = OutPoint {
+        txid: fixture_outpoint().txid,
+        vout: 2,
+    };
+    let ignore_spent_outpoint = OutPoint {
+        txid: fixture_outpoint().txid,
+        vout: 3,
+    };
+    let coin = fixture_coin();
+    let parent = MemoryCoinsView::from_coins(HashMap::new(), None);
+    let mut cache = CoinsCache::from_parent(parent);
+    cache.insert_entry_for_test(
+        erase_outpoint.clone(),
+        CoinsCacheEntry::unspent_fresh_dirty(coin.clone()),
+    );
+    let mut writes = HashMap::new();
+    writes.insert(
+        skip_outpoint.clone(),
+        CoinsCacheEntry::unspent_clean(coin.clone()),
+    );
+    writes.insert(
+        miss_outpoint.clone(),
+        CoinsCacheEntry::unspent_fresh_dirty(coin.clone()),
+    );
+    writes.insert(erase_outpoint.clone(), CoinsCacheEntry::spent_dirty());
+    writes.insert(
+        ignore_spent_outpoint.clone(),
+        CoinsCacheEntry::spent_fresh(),
+    );
+
+    // Act
+    cache.absorb_batch_write(CoinsBatch { entries: writes }, None);
+
+    // Assert
+    assert!(!cache.contains_in_cache(&skip_outpoint));
+    assert_eq!(
+        cache
+            .cached_entry(&miss_outpoint)
+            .map(CoinsCacheEntry::flags),
+        Some(CoinsCacheFlags::UnspentFreshDirty)
+    );
+    assert!(!cache.contains_in_cache(&erase_outpoint));
+    assert!(!cache.contains_in_cache(&ignore_spent_outpoint));
 }
 
 #[test]

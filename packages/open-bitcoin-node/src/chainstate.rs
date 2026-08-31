@@ -4,7 +4,10 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 use open_bitcoin_core::{
-    chainstate::{AnchoredBlock, ChainPosition, ChainTransition, Chainstate, ChainstateSnapshot},
+    chainstate::{
+        AnchoredBlock, ChainPosition, ChainTransition, Chainstate, ChainstateSnapshot,
+        StagedChainstateConnect, StagedChainstateReorg,
+    },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Block,
 };
@@ -41,15 +44,24 @@ impl ChainstateStore for MemoryChainstateStore {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct ManagedChainstate<S> {
     store: S,
     chainstate: Chainstate,
 }
 
+impl<S: Clone> Clone for ManagedChainstate<S> {
+    fn clone(&self) -> Self {
+        Self {
+            store: self.store.clone(),
+            chainstate: Chainstate::from_snapshot(self.chainstate.snapshot()),
+        }
+    }
+}
+
 /// Opaque, fully validated replacement for one connected block.
 pub(crate) struct PreparedChainstateConnect {
-    chainstate: Chainstate,
+    staged: StagedChainstateConnect,
     position: ChainPosition,
 }
 
@@ -61,17 +73,13 @@ impl PreparedChainstateConnect {
 
 /// Opaque, fully validated replacement for one complete reorg.
 pub(crate) struct PreparedChainstateReorg {
-    chainstate: Chainstate,
+    staged: StagedChainstateReorg,
     transition: ChainTransition,
 }
 
 impl PreparedChainstateReorg {
     pub(crate) const fn transition(&self) -> &ChainTransition {
         &self.transition
-    }
-
-    pub(crate) const fn preview(&self) -> &Chainstate {
-        &self.chainstate
     }
 }
 
@@ -152,27 +160,28 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<PreparedChainstateConnect, open_bitcoin_core::chainstate::ChainstateError> {
-        let mut chainstate = self.chainstate.clone();
-        let position = chainstate.connect_block_with_current_time(
+        let staged = self.chainstate.stage_connect_block_with_current_time(
             block,
             chain_work,
             current_time,
             verify_flags,
             consensus_params,
         )?;
-        Ok(PreparedChainstateConnect {
-            chainstate,
-            position,
-        })
+        let position = staged.position().clone();
+        Ok(PreparedChainstateConnect { staged, position })
     }
 
     pub(crate) fn commit_prepared_connect(
         &mut self,
         prepared: PreparedChainstateConnect,
     ) -> ChainPosition {
-        self.chainstate = prepared.chainstate;
+        // D-18: commit_prepared_mempool_transition_with applies the mempool
+        // patch after this closure returns, including when R is Err. This
+        // return stays infallible. FreshFlagMisapplied after an unmodified
+        // live cache is a programming bug; absorb clears FRESH and overwrites dirty.
+        let position = self.chainstate.absorb_staged_connect(prepared.staged);
         self.persist();
-        prepared.position
+        position
     }
 
     pub fn disconnect_tip(
@@ -209,30 +218,28 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<PreparedChainstateReorg, open_bitcoin_core::chainstate::ChainstateError> {
-        let mut chainstate = self.chainstate.clone();
-        let transition = chainstate.reorg(
+        let staged = self.chainstate.stage_reorg(
             disconnect_blocks,
             replacement_branch,
             verify_flags,
             consensus_params,
         )?;
-        Ok(PreparedChainstateReorg {
-            chainstate,
-            transition,
-        })
+        let transition = staged.transition().clone();
+        Ok(PreparedChainstateReorg { staged, transition })
     }
 
     pub(crate) fn install_prepared_reorg_preview(&mut self, prepared: &PreparedChainstateReorg) {
-        self.chainstate = prepared.preview().clone();
+        self.chainstate
+            .install_staged_reorg_preview(&prepared.staged);
     }
 
     pub(crate) fn commit_prepared_reorg(
         &mut self,
         prepared: PreparedChainstateReorg,
     ) -> ChainTransition {
-        self.chainstate = prepared.chainstate;
+        let transition = self.chainstate.absorb_staged_reorg(prepared.staged);
         self.persist();
-        prepared.transition
+        transition
     }
 
     pub fn into_parts(self) -> (S, Chainstate) {
@@ -245,133 +252,4 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
 }
 
 #[cfg(test)]
-mod tests {
-    use open_bitcoin_core::{
-        consensus::{ConsensusParams, ScriptVerifyFlags, block_merkle_root, check_block_header},
-        primitives::{
-            Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-            TransactionInput, TransactionOutput,
-        },
-    };
-
-    use crate::chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
-
-    const EASY_BITS: u32 = 0x207f_ffff;
-
-    fn script(bytes: &[u8]) -> ScriptBuf {
-        ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
-    }
-
-    fn serialized_script_num(value: i64) -> Vec<u8> {
-        if value == 0 {
-            return vec![0x00];
-        }
-
-        let mut magnitude = value as u64;
-        let mut encoded = Vec::new();
-        while magnitude > 0 {
-            encoded.push((magnitude & 0xff) as u8);
-            magnitude >>= 8;
-        }
-
-        let mut script = Vec::with_capacity(encoded.len() + 2);
-        script.push(encoded.len() as u8);
-        script.extend(encoded);
-        script.push(0x51);
-        script
-    }
-
-    fn coinbase_transaction(height: u32, value: i64) -> Transaction {
-        let mut script_sig = serialized_script_num(i64::from(height));
-        script_sig.push(0x51);
-        Transaction {
-            version: 1,
-            inputs: vec![TransactionInput {
-                previous_output: OutPoint::null(),
-                script_sig: script(&script_sig),
-                sequence: TransactionInput::SEQUENCE_FINAL,
-                witness: ScriptWitness::default(),
-            }],
-            outputs: vec![TransactionOutput {
-                value: Amount::from_sats(value).expect("valid amount"),
-                script_pubkey: script(&[0x51]),
-            }],
-            lock_time: 0,
-        }
-    }
-
-    fn mine_header(block: &mut Block) {
-        block.header.nonce = (0..=u32::MAX)
-            .find(|nonce| {
-                block.header.nonce = *nonce;
-                check_block_header(&block.header).is_ok()
-            })
-            .expect("expected nonce at easy target");
-    }
-
-    fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block {
-        let transactions = vec![coinbase_transaction(height, value)];
-        let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
-        assert!(!maybe_mutated);
-
-        let mut block = Block {
-            header: BlockHeader {
-                version: 1,
-                previous_block_hash,
-                merkle_root,
-                time: 1_231_006_500 + height,
-                bits: EASY_BITS,
-                nonce: 0,
-            },
-            transactions,
-        };
-        mine_header(&mut block);
-        block
-    }
-
-    #[test]
-    fn memory_store_round_trips_saved_snapshots() {
-        // Arrange
-        let mut store = MemoryChainstateStore::default();
-        let snapshot = open_bitcoin_core::chainstate::ChainstateSnapshot::new(
-            Vec::new(),
-            Default::default(),
-            Default::default(),
-        );
-
-        // Act
-        store.save_snapshot(snapshot.clone());
-
-        // Assert
-        assert_eq!(store.load_snapshot(), Some(snapshot));
-    }
-
-    #[test]
-    fn managed_chainstate_persists_after_connect() {
-        // Arrange
-        let mut managed = ManagedChainstate::from_store(MemoryChainstateStore::default());
-        let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
-
-        // Act
-        let position = managed
-            .connect_block(
-                &genesis,
-                1,
-                ScriptVerifyFlags::P2SH,
-                ConsensusParams {
-                    coinbase_maturity: 1,
-                    ..ConsensusParams::default()
-                },
-            )
-            .expect("managed chainstate should persist connected snapshot");
-
-        // Assert
-        assert_eq!(position.height, 0);
-        let saved_snapshot = managed
-            .store()
-            .load_snapshot()
-            .expect("snapshot should be present");
-        assert_eq!(saved_snapshot.tip(), Some(&position));
-        assert_eq!(managed.chainstate().tip(), Some(&position));
-    }
-}
+mod tests;

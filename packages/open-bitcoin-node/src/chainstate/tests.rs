@@ -1,0 +1,299 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/node/chainstate.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+// - packages/bitcoin-knots/src/validation.cpp
+
+use open_bitcoin_core::{
+    consensus::{
+        ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
+        transaction_txid,
+    },
+    primitives::{
+        Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
+        TransactionInput, TransactionOutput, Txid,
+    },
+};
+
+use crate::chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
+
+const EASY_BITS: u32 = 0x207f_ffff;
+
+fn script(bytes: &[u8]) -> ScriptBuf {
+    ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
+}
+
+fn serialized_script_num(value: i64) -> Vec<u8> {
+    if value == 0 {
+        return vec![0x00];
+    }
+
+    let mut magnitude = value as u64;
+    let mut encoded = Vec::new();
+    while magnitude > 0 {
+        encoded.push((magnitude & 0xff) as u8);
+        magnitude >>= 8;
+    }
+
+    let mut script = Vec::with_capacity(encoded.len() + 2);
+    script.push(encoded.len() as u8);
+    script.extend(encoded);
+    script.push(0x51);
+    script
+}
+
+fn coinbase_transaction(height: u32, value: i64) -> Transaction {
+    let mut script_sig = serialized_script_num(i64::from(height));
+    script_sig.push(0x51);
+    Transaction {
+        version: 1,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint::null(),
+            script_sig: script(&script_sig),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(value).expect("valid amount"),
+            script_pubkey: script(&[0x51]),
+        }],
+        lock_time: 0,
+    }
+}
+
+fn spend_transaction(
+    previous_txid: Txid,
+    previous_vout: u32,
+    value: i64,
+    extra_missing_input: bool,
+) -> Transaction {
+    let mut inputs = vec![TransactionInput {
+        previous_output: OutPoint {
+            txid: previous_txid,
+            vout: previous_vout,
+        },
+        script_sig: script(&[0x51]),
+        sequence: TransactionInput::SEQUENCE_FINAL,
+        witness: ScriptWitness::default(),
+    }];
+    if extra_missing_input {
+        inputs.push(TransactionInput {
+            previous_output: OutPoint {
+                txid: Txid::from_byte_array([9_u8; 32]),
+                vout: 0,
+            },
+            script_sig: script(&[0x51]),
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        });
+    }
+    Transaction {
+        version: 2,
+        inputs,
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(value).expect("valid amount"),
+            script_pubkey: script(&[0x51]),
+        }],
+        lock_time: 0,
+    }
+}
+
+fn mine_header(block: &mut Block) {
+    block.header.nonce = (0..=u32::MAX)
+        .find(|nonce| {
+            block.header.nonce = *nonce;
+            check_block_header(&block.header).is_ok()
+        })
+        .expect("expected nonce at easy target");
+}
+
+fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block {
+    build_block_with_transactions(
+        previous_block_hash,
+        height,
+        vec![coinbase_transaction(height, value)],
+    )
+}
+
+fn build_block_with_transactions(
+    previous_block_hash: BlockHash,
+    height: u32,
+    transactions: Vec<Transaction>,
+) -> Block {
+    let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
+    assert!(!maybe_mutated);
+
+    let mut block = Block {
+        header: BlockHeader {
+            version: 1,
+            previous_block_hash,
+            merkle_root,
+            time: 1_231_006_500 + height,
+            bits: EASY_BITS,
+            nonce: 0,
+        },
+        transactions,
+    };
+    mine_header(&mut block);
+    block
+}
+
+fn mature_params() -> ConsensusParams {
+    ConsensusParams {
+        coinbase_maturity: 1,
+        ..ConsensusParams::default()
+    }
+}
+
+fn connect_genesis(managed: &mut ManagedChainstate<MemoryChainstateStore>) -> (Block, OutPoint) {
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
+    managed
+        .connect_block(&genesis, 1, ScriptVerifyFlags::P2SH, mature_params())
+        .expect("genesis should connect");
+    let genesis_txid = transaction_txid(&genesis.transactions[0]).expect("txid");
+    (
+        genesis,
+        OutPoint {
+            txid: genesis_txid,
+            vout: 0,
+        },
+    )
+}
+
+#[test]
+fn memory_store_round_trips_saved_snapshots() {
+    // Arrange
+    let mut store = MemoryChainstateStore::default();
+    let snapshot = open_bitcoin_core::chainstate::ChainstateSnapshot::new(
+        Vec::new(),
+        Default::default(),
+        Default::default(),
+    );
+
+    // Act
+    store.save_snapshot(snapshot.clone());
+
+    // Assert
+    assert_eq!(store.load_snapshot(), Some(snapshot));
+}
+
+#[test]
+fn managed_chainstate_persists_after_connect() {
+    // Arrange
+    let mut managed = ManagedChainstate::from_store(MemoryChainstateStore::default());
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
+
+    // Act
+    let position = managed
+        .connect_block(&genesis, 1, ScriptVerifyFlags::P2SH, mature_params())
+        .expect("managed chainstate should persist connected snapshot");
+
+    // Assert
+    assert_eq!(position.height, 0);
+    let saved_snapshot = managed
+        .store()
+        .load_snapshot()
+        .expect("snapshot should be present");
+    assert_eq!(saved_snapshot.tip(), Some(&position));
+    assert_eq!(managed.chainstate().tip(), Some(&position));
+}
+
+#[test]
+fn prepare_connect_does_not_change_live_utxos_or_best_block() {
+    // Arrange
+    let mut managed = ManagedChainstate::from_store(MemoryChainstateStore::default());
+    let (_genesis, genesis_outpoint) = connect_genesis(&mut managed);
+    let tip_before = managed.chainstate().tip().cloned();
+    let utxos_before = managed.chainstate().utxos();
+    let in_cache_before = managed.chainstate().have_coin_in_cache(&genesis_outpoint);
+    let orphan = build_block(BlockHash::from_byte_array([7_u8; 32]), 1, 50);
+
+    // Act
+    let result =
+        managed.prepare_connect_block(&orphan, 2, ScriptVerifyFlags::P2SH, mature_params());
+
+    // Assert
+    let Err(error) = result else {
+        panic!("wrong prev hash must fail prepare");
+    };
+    assert!(matches!(
+        error,
+        open_bitcoin_core::chainstate::ChainstateError::InvalidTipExtension { .. }
+    ));
+    assert_eq!(managed.chainstate().tip(), tip_before.as_ref());
+    assert_eq!(managed.chainstate().utxos(), utxos_before);
+    assert_eq!(
+        managed.chainstate().have_coin_in_cache(&genesis_outpoint),
+        in_cache_before
+    );
+}
+
+#[test]
+fn prepare_connect_then_drop_leaves_parent_unpopulated() {
+    // Arrange
+    let mut seeded = ManagedChainstate::from_store(MemoryChainstateStore::default());
+    let (genesis, genesis_outpoint) = connect_genesis(&mut seeded);
+    let snapshot = seeded
+        .store()
+        .load_snapshot()
+        .expect("connect persist writes a snapshot blob");
+    let rematerialized =
+        ManagedChainstate::from_store(MemoryChainstateStore::from_snapshot(snapshot));
+    assert!(
+        !rematerialized
+            .chainstate()
+            .have_coin_in_cache(&genesis_outpoint),
+        "from_snapshot hydrates parent-only coins"
+    );
+    let spend = spend_transaction(genesis_outpoint.txid, genesis_outpoint.vout, 40, true);
+    let failing = build_block_with_transactions(
+        block_hash(&genesis.header),
+        1,
+        vec![coinbase_transaction(1, 50), spend],
+    );
+
+    // Act
+    let result =
+        rematerialized.prepare_connect_block(&failing, 2, ScriptVerifyFlags::P2SH, mature_params());
+
+    // Assert
+    let Err(_) = result else {
+        panic!("missing second input must fail after peeking the parent coin");
+    };
+
+    // Assert
+    assert!(
+        !rematerialized
+            .chainstate()
+            .have_coin_in_cache(&genesis_outpoint),
+        "failed prepare must not FetchCoin into the live cache"
+    );
+    assert!(
+        rematerialized
+            .chainstate()
+            .have_coin(&genesis_outpoint)
+            .expect("parent-only genesis coin stays spendable")
+    );
+}
+
+#[test]
+fn commit_prepared_connect_flushes_and_persists_snapshot_blob() {
+    // Arrange
+    let mut managed = ManagedChainstate::from_store(MemoryChainstateStore::default());
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
+    let prepared = managed
+        .prepare_connect_block(&genesis, 1, ScriptVerifyFlags::P2SH, mature_params())
+        .expect("genesis should prepare");
+
+    // Act
+    let position = managed.commit_prepared_connect(prepared);
+
+    // Assert
+    assert_eq!(position.height, 0);
+    let saved = managed
+        .store()
+        .load_snapshot()
+        .expect("persist path still calls save_snapshot");
+    assert!(!saved.utxos.is_empty());
+    assert_eq!(saved.tip(), Some(&position));
+    assert_eq!(managed.chainstate().tip(), Some(&position));
+}

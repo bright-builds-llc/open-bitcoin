@@ -155,6 +155,7 @@
       "files": [
         "packages/open-bitcoin-chainstate/src/engine.rs",
         "packages/open-bitcoin-chainstate/src/engine/apply.rs",
+        "packages/open-bitcoin-chainstate/src/engine/stage.rs",
         "packages/open-bitcoin-chainstate/src/coins.rs",
         "packages/open-bitcoin-chainstate/src/coins/cache.rs",
         "packages/open-bitcoin-chainstate/src/coins/memory.rs",
@@ -1275,7 +1276,8 @@
     {
       "label": "node-chainstate-adapter",
       "files": [
-        "packages/open-bitcoin-node/src/chainstate.rs"
+        "packages/open-bitcoin-node/src/chainstate.rs",
+        "packages/open-bitcoin-node/src/chainstate/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/node/chainstate.cpp",

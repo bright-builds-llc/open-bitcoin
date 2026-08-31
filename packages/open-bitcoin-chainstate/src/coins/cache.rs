@@ -13,7 +13,7 @@ use super::{CoinsBatch, CoinsCacheEntry, CoinsView};
 use crate::error::ChainstateError;
 use crate::types::Coin;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct CoinsOverlay {
     entries: HashMap<OutPoint, CoinsCacheEntry>,
     maybe_best_block: Option<BlockHash>,
@@ -224,6 +224,30 @@ fn apply_child_write(
     Ok(())
 }
 
+fn absorb_child_write(
+    overlay: &mut CoinsOverlay,
+    outpoint: OutPoint,
+    child_entry: CoinsCacheEntry,
+) {
+    if child_entry.is_fresh() && child_entry.is_spent() && !overlay.contains(&outpoint) {
+        return;
+    }
+    if !child_entry.is_dirty() {
+        return;
+    }
+
+    let Some(parent_entry) = overlay.get(&outpoint) else {
+        overlay.insert(outpoint, dirty_copying_fresh(child_entry));
+        return;
+    };
+    let parent_is_fresh = parent_entry.is_fresh();
+    if parent_is_fresh && child_entry.is_spent() {
+        overlay.remove(&outpoint);
+        return;
+    }
+    overlay.insert(outpoint, overwrite_dirty_without_fresh(child_entry));
+}
+
 fn dirty_copying_fresh(child_entry: CoinsCacheEntry) -> CoinsCacheEntry {
     match (child_entry.maybe_coin().cloned(), child_entry.is_fresh()) {
         (Some(coin), true) => CoinsCacheEntry::unspent_fresh_dirty(coin),
@@ -339,6 +363,20 @@ impl<V: CoinsView> CoinsCache<V> {
     #[cfg(test)]
     pub(crate) fn insert_entry_for_test(&mut self, outpoint: OutPoint, entry: CoinsCacheEntry) {
         self.overlay.insert(outpoint, entry);
+    }
+
+    /// Flush dirty child writes, treating `FreshFlagMisapplied` as a dirty overwrite.
+    ///
+    /// Used by the D-18 two-phase commit window: prepare did not mutate the live
+    /// cache, so a FRESH child against an unexpected live occupancy is a
+    /// programming bug that must still install metadata.
+    pub fn absorb_batch_write(&mut self, writes: CoinsBatch, maybe_best_block: Option<BlockHash>) {
+        for (outpoint, child_entry) in writes.entries {
+            absorb_child_write(&mut self.overlay, outpoint, child_entry);
+        }
+        if let Some(best_block) = maybe_best_block {
+            self.overlay.maybe_best_block = Some(best_block);
+        }
     }
 }
 
