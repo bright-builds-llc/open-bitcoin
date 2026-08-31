@@ -9,12 +9,15 @@ use open_bitcoin_core::{
         transaction_txid,
     },
     primitives::{
-        Amount, Block, BlockHash, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-        TransactionInput, TransactionOutput, Txid,
+        Amount, Block, BlockHash, BlockHeader, NetworkAddress, NetworkMagic, OutPoint, ScriptBuf,
+        ScriptWitness, Transaction, TransactionInput, TransactionOutput, Txid,
     },
 };
 
+use crate::ManagedPeerNetwork;
 use crate::chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
+use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
@@ -296,4 +299,53 @@ fn commit_prepared_connect_flushes_and_persists_snapshot_blob() {
     assert!(!saved.utxos.is_empty());
     assert_eq!(saved.tip(), Some(&position));
     assert_eq!(managed.chainstate().tip(), Some(&position));
+}
+
+fn network_local_config() -> LocalPeerConfig {
+    LocalPeerConfig {
+        magic: NetworkMagic::MAINNET,
+        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        address: NetworkAddress {
+            services: 0,
+            address_bytes: [0_u8; 16],
+            port: 8333,
+        },
+        nonce: 13904,
+        relay: true,
+        user_agent: "/open-bitcoin:test/".to_string(),
+    }
+}
+
+#[test]
+fn prepare_chainstate_failure_does_not_warm_live_cache_before_mempool_prepare() {
+    // Arrange
+    let mut network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        network_local_config(),
+        PolicyConfig::default(),
+    );
+    let orphan = build_block(BlockHash::from_byte_array([7_u8; 32]), 1, 50);
+    let tip_before = network.chainstate().chainstate().tip().cloned();
+    let utxos_before = network.chainstate().chainstate().utxos();
+
+    // Act
+    let result = network.chainstate().prepare_connect_block(
+        &orphan,
+        2,
+        ScriptVerifyFlags::P2SH,
+        mature_params(),
+    );
+
+    // Assert
+    let Err(_) = result else {
+        panic!("non-extending header must fail prepare before mempool prepare");
+    };
+    assert_eq!(network.chainstate().chainstate().tip(), tip_before.as_ref());
+    assert_eq!(network.chainstate().chainstate().utxos(), utxos_before);
+
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
+    let position = network
+        .connect_local_block(&genesis, ScriptVerifyFlags::P2SH, mature_params())
+        .expect("failed prepare must not corrupt the live handle");
+    assert_eq!(position.height, 0);
 }

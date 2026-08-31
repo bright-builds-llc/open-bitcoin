@@ -348,8 +348,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                         let parent_in_chainstate = self
                             .chainstate
                             .chainstate()
-                            .utxos()
-                            .contains_key(&input.previous_output);
+                            .have_coin(&input.previous_output)
+                            .unwrap_or_default();
                         (!parent_in_mempool && !parent_in_chainstate).then_some(parent_txid)
                     })
                     .fold(Vec::new(), |mut parents, parent| {
