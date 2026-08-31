@@ -42,8 +42,8 @@ fn derives_contexts_from_chainstate_metadata() {
 
     // Assert
     assert_eq!(next_position.height, 1);
-    let spendable = chainstate
-        .utxos()
+    let utxos = chainstate.utxos();
+    let spendable = utxos
         .values()
         .find(|coin| !coin.is_coinbase)
         .expect("expected transaction output to be added");

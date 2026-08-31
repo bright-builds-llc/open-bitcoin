@@ -6,6 +6,7 @@
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
 use super::*;
+use crate::ChainstateSnapshot;
 
 #[test]
 fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs() {
@@ -45,7 +46,7 @@ fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs(
             ),
         ],
     );
-    let missing_created_output = Chainstate {
+    let missing_created_output = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![ChainPosition::new(spend_block.header.clone(), 1, 2, 1)],
         utxos: HashMap::new(),
         undo_by_block: HashMap::from([(
@@ -62,7 +63,7 @@ fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs(
             },
         )]),
         maybe_confirmed_txid_counts: None,
-    }
+    })
     .disconnect_tip(&spend_block)
     .expect_err("missing created spendable outputs should fail");
     assert!(matches!(
@@ -185,12 +186,12 @@ fn disconnect_tip_rejects_missing_tip_and_missing_undo() {
     assert!(matches!(missing_tip, crate::ChainstateError::MissingTip));
 
     let tip = ChainPosition::new(genesis_block.header.clone(), 0, 1, 1);
-    let mut chainstate = Chainstate {
+    let mut chainstate = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::new(),
         maybe_confirmed_txid_counts: None,
-    };
+    });
     let missing_undo = chainstate
         .disconnect_tip(&genesis_block)
         .expect_err("missing undo should fail");
@@ -222,12 +223,12 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
     );
     let tip = ChainPosition::new(block.header.clone(), 1, 2, 1);
 
-    let mismatch = Chainstate {
+    let mismatch = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::new(),
         maybe_confirmed_txid_counts: None,
-    }
+    })
     .disconnect_tip(&genesis_block)
     .expect_err("wrong block should fail");
     assert!(matches!(
@@ -235,12 +236,12 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         crate::ChainstateError::DisconnectBlockMismatch { .. }
     ));
 
-    let undo_shape = Chainstate {
+    let undo_shape = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::from([(tip.block_hash, BlockUndo::default())]),
         maybe_confirmed_txid_counts: None,
-    }
+    })
     .disconnect_tip(&block)
     .expect_err("corrupt top-level undo shape should fail");
     assert!(matches!(
@@ -248,7 +249,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         crate::ChainstateError::UndoMismatch { .. }
     ));
 
-    let inner_undo_shape = Chainstate {
+    let inner_undo_shape = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::from([
             (
@@ -285,7 +286,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
             },
         )]),
         maybe_confirmed_txid_counts: None,
-    }
+    })
     .disconnect_tip(&block)
     .expect_err("corrupt inner undo shape should fail");
     assert!(matches!(
@@ -324,7 +325,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
         vout: 0,
     };
 
-    let restore_overwrite = Chainstate {
+    let restore_overwrite = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::from([
             (
@@ -369,7 +370,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
             },
         )]),
         maybe_confirmed_txid_counts: None,
-    }
+    })
     .disconnect_tip(&block)
     .expect_err("restoring into an occupied outpoint should fail");
     assert!(matches!(
@@ -388,7 +389,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
             .expect("txid"),
         vout: 0,
     };
-    let output_mismatch = Chainstate {
+    let output_mismatch = Chainstate::from_snapshot(ChainstateSnapshot {
         active_chain: vec![mismatch_tip],
         utxos: HashMap::from([(
             mismatch_coinbase_outpoint,
@@ -404,7 +405,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
             BlockUndo::default(),
         )]),
         maybe_confirmed_txid_counts: None,
-    }
+    })
     .disconnect_tip(&mismatch_block)
     .expect_err("mismatched created output metadata should fail");
     assert!(matches!(
@@ -494,4 +495,88 @@ fn reorg_and_tip_preference_cover_remaining_decision_branches() {
         error,
         crate::ChainstateError::DisconnectPastGenesis { .. }
     ));
+}
+
+#[test]
+fn stage_reorg_rejects_missing_undo_on_the_disconnected_branch() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    connect_block(&mut chainstate, &genesis_block, 1);
+    let child = build_block(
+        chainstate.tip().expect("genesis tip").block_hash,
+        1_231_006_600,
+        vec![coinbase_transaction(1, 50)],
+    );
+    connect_block(&mut chainstate, &child, 2);
+    let mut snapshot = chainstate.snapshot();
+    snapshot.undo_by_block.clear();
+    let mut poisoned = Chainstate::from_snapshot(snapshot);
+
+    // Act
+    let error = poisoned
+        .reorg(
+            std::slice::from_ref(&child),
+            &[],
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams::default(),
+        )
+        .expect_err("reorg disconnect without undo must fail");
+
+    // Assert
+    assert!(matches!(error, crate::ChainstateError::MissingUndo { .. }));
+}
+
+#[test]
+fn stage_reorg_rejects_replacement_branch_that_spends_a_missing_coin() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    let genesis_position = connect_block(&mut chainstate, &genesis_block, 1);
+    let branch_a = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![coinbase_transaction(1, 50)],
+    );
+    connect_block(&mut chainstate, &branch_a, 2);
+    let missing_spend = spend_transaction(
+        Txid::from_byte_array([9_u8; 32]),
+        0,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let branch_b = build_block(
+        genesis_position.block_hash,
+        1_231_006_650,
+        vec![coinbase_transaction(1, 50), missing_spend],
+    );
+
+    // Act
+    let error = chainstate
+        .reorg(
+            std::slice::from_ref(&branch_a),
+            &[AnchoredBlock {
+                block: branch_b,
+                chain_work: 3,
+            }],
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect_err("replacement spend of a missing coin must fail");
+
+    // Assert
+    assert!(matches!(error, crate::ChainstateError::MissingCoin { .. }));
 }

@@ -458,3 +458,153 @@ fn connect_block_skips_unspendable_outputs() {
     // Assert
     assert_eq!(chainstate.utxos().len(), 1);
 }
+
+#[test]
+fn failed_connect_leaves_live_cache_occupancy_and_best_block_unchanged() {
+    // Arrange
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let genesis_txid = open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid");
+    let genesis_outpoint = OutPoint {
+        txid: genesis_txid,
+        vout: 0,
+    };
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![genesis_coinbase.clone()],
+    );
+    let genesis_position = ChainPosition::new(genesis_block.header.clone(), 0, 1, 1_231_006_500);
+    let genesis_coin = Coin {
+        output: genesis_coinbase.outputs[0].clone(),
+        is_coinbase: true,
+        created_height: 0,
+        created_median_time_past: 0,
+    };
+    let mut chainstate = Chainstate::from_snapshot(crate::ChainstateSnapshot {
+        active_chain: vec![genesis_position.clone()],
+        utxos: HashMap::from([(genesis_outpoint.clone(), genesis_coin)]),
+        undo_by_block: HashMap::new(),
+        maybe_confirmed_txid_counts: Some(HashMap::new()),
+    });
+    let occupancy_before = chainstate.have_coin_in_cache(&genesis_outpoint);
+    let tip_before = chainstate.tip().cloned();
+    let best_before = chainstate.coins_best_block();
+    let utxo_len_before = chainstate.utxos().len();
+    let missing = spend_transaction(
+        Txid::from_byte_array([9_u8; 32]),
+        0,
+        40,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let bad_block = build_block(
+        genesis_position.block_hash,
+        1_231_006_600,
+        vec![coinbase_transaction(1, 50), missing],
+    );
+
+    // Act
+    let error = chainstate
+        .connect_block_with_current_time(
+            &bad_block,
+            2,
+            i64::from(bad_block.header.time),
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect_err("missing prevout must fail");
+
+    // Assert
+    assert!(matches!(error, crate::ChainstateError::MissingCoin { .. }));
+    assert!(!occupancy_before);
+    assert!(!chainstate.have_coin_in_cache(&genesis_outpoint));
+    assert_eq!(chainstate.tip(), tip_before.as_ref());
+    assert_eq!(chainstate.coins_best_block(), best_before);
+    assert_eq!(chainstate.utxos().len(), utxo_len_before);
+    assert!(
+        chainstate
+            .have_coin(&genesis_outpoint)
+            .expect("genesis coin remains spendable")
+    );
+}
+
+#[test]
+fn connect_block_does_not_clone_utxo_map() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+
+    // Act
+    connect_block(&mut chainstate, &genesis_block, 1);
+
+    // Assert
+    assert_eq!(chainstate.utxos().len(), 1);
+    assert_eq!(chainstate.snapshot().utxos.len(), 1);
+    assert_eq!(chainstate.clone(), chainstate);
+    assert!(!format!("{chainstate:?}").is_empty());
+}
+
+#[test]
+fn commit_staged_connect_rejects_fresh_flag_misapplied_to_live_cache() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis_coinbase = coinbase_transaction(0, 50);
+    let genesis_block = build_block(
+        BlockHash::from_byte_array([0_u8; 32]),
+        1_231_006_500,
+        vec![genesis_coinbase.clone()],
+    );
+    connect_block(&mut chainstate, &genesis_block, 1);
+    let genesis_txid = open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid");
+    let genesis_outpoint = OutPoint {
+        txid: genesis_txid,
+        vout: 0,
+    };
+    let genesis_coin = chainstate
+        .utxos()
+        .remove(&genesis_outpoint)
+        .expect("genesis coin");
+    let child = build_block(
+        chainstate.tip().expect("genesis tip").block_hash,
+        1_231_006_600,
+        vec![coinbase_transaction(1, 50)],
+    );
+    let mut staged = chainstate
+        .stage_connect_block_with_current_time(
+            &child,
+            2,
+            i64::from(child.header.time),
+            ScriptVerifyFlags::P2SH
+                | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
+                | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("child should stage");
+    let empty_parent = CoinsCache::from_parent(MemoryCoinsView::from_coins(HashMap::new(), None));
+    staged
+        .overlay
+        .add_coin(&empty_parent, genesis_outpoint, genesis_coin, false)
+        .expect("fresh write against an empty peek parent");
+
+    // Act
+    let error = chainstate
+        .commit_staged_connect(staged)
+        .expect_err("fresh write over live unspent occupancy must fail");
+
+    // Assert
+    assert!(matches!(
+        error,
+        crate::ChainstateError::FreshFlagMisapplied { .. }
+    ));
+}

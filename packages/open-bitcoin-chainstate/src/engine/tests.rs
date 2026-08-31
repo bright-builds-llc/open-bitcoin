@@ -17,12 +17,107 @@ use open_bitcoin_primitives::{
 };
 
 use super::{
-    Chainstate, accumulated_fee_out_of_range, apply_non_coinbase_transaction,
-    build_transaction_context, compute_median_time_past, difficulty_adjustment_interval,
-    prefer_candidate_tip, remove_spent_input, restore_non_coinbase_inputs,
-    txid_serialization_error,
+    Chainstate, accumulated_fee_out_of_range, compute_median_time_past,
+    difficulty_adjustment_interval, prefer_candidate_tip, txid_serialization_error,
 };
-use crate::{AnchoredBlock, BlockUndo, ChainPosition, Coin, TxUndo};
+use crate::coins::{CoinsCache, CoinsOverlay, MemoryCoinsView};
+use crate::{AnchoredBlock, BlockUndo, ChainPosition, ChainstateError, Coin, TxUndo};
+
+fn hashmap_parent(utxos: &HashMap<OutPoint, Coin>) -> CoinsCache<MemoryCoinsView> {
+    CoinsCache::from_parent(MemoryCoinsView::from_coins(utxos.clone(), None))
+}
+
+fn write_overlay_into_hashmap(utxos: &mut HashMap<OutPoint, Coin>, overlay: CoinsOverlay) {
+    for (outpoint, entry) in overlay.into_dirty_batch().entries {
+        match entry.maybe_coin() {
+            Some(coin) => {
+                utxos.insert(outpoint, coin.clone());
+            }
+            None => {
+                utxos.remove(&outpoint);
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+fn apply_non_coinbase_transaction(
+    next_utxos: &mut HashMap<OutPoint, Coin>,
+    block_undo: &mut BlockUndo,
+    transaction: &Transaction,
+    block_time: i64,
+    verify_flags: ScriptVerifyFlags,
+    block_context: &BlockValidationContext,
+) -> Result<Amount, ChainstateError> {
+    let parent = hashmap_parent(next_utxos);
+    let mut overlay = CoinsOverlay::new();
+    let fee = super::apply::apply_non_coinbase_transaction(
+        &mut overlay,
+        &parent,
+        block_undo,
+        transaction,
+        block_time,
+        verify_flags,
+        block_context,
+    )?;
+    write_overlay_into_hashmap(next_utxos, overlay);
+    Ok(fee)
+}
+
+#[cfg(test)]
+fn remove_spent_input(
+    next_utxos: &mut HashMap<OutPoint, Coin>,
+    input: &open_bitcoin_primitives::TransactionInput,
+) -> Result<Coin, ChainstateError> {
+    let parent = hashmap_parent(next_utxos);
+    let mut overlay = CoinsOverlay::new();
+    let coin = super::apply::remove_spent_input(&mut overlay, &parent, input)?;
+    write_overlay_into_hashmap(next_utxos, overlay);
+    Ok(coin)
+}
+
+#[cfg(test)]
+fn restore_non_coinbase_inputs(
+    utxos: &mut HashMap<OutPoint, Coin>,
+    transaction: &Transaction,
+    tx_undo: &TxUndo,
+) -> Result<(), ChainstateError> {
+    let parent = hashmap_parent(utxos);
+    let mut overlay = CoinsOverlay::new();
+    super::apply::restore_non_coinbase_inputs(&mut overlay, &parent, transaction, tx_undo)?;
+    write_overlay_into_hashmap(utxos, overlay);
+    Ok(())
+}
+
+#[cfg(test)]
+fn build_transaction_context(
+    transaction: &Transaction,
+    utxos: &HashMap<OutPoint, Coin>,
+    spend_height: u32,
+    block_time: i64,
+    median_time_past: i64,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+) -> Result<open_bitcoin_consensus::TransactionValidationContext, ChainstateError> {
+    let parent = hashmap_parent(utxos);
+    let overlay = CoinsOverlay::new();
+    super::apply::build_transaction_context(
+        &overlay,
+        &parent,
+        transaction,
+        block_time,
+        verify_flags,
+        &BlockValidationContext {
+            height: spend_height,
+            previous_header: BlockHeader::default(),
+            maybe_retarget_anchor: None,
+            maybe_min_difficulty_recovery_target: None,
+            previous_median_time_past: median_time_past,
+            current_time: block_time,
+            consensus_params,
+        },
+    )
+}
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
