@@ -144,7 +144,7 @@ _Note: TDD RED was verified locally (7 failing `coins::` tests) before GREEN. A 
 - **Verification:** retry of hook-backed docs commit
 - **Committed in:** this docs commit
 
----
+***
 
 **Total deviations:** 5 auto-fixed (3 blocking, 1 missing-critical, 1 process)
 **Impact on plan:** Required for hook-passing verification and typed construction. No scope creep into add/spend/Flush or engine apply. CACHE-01 remains pending until phase verification.
@@ -164,7 +164,7 @@ None - no external service configuration required.
 - `FreshFlagMisapplied` is registered and unused until BatchWrite FRESH-misapply tests.
 - Engine apply and node prepare remain untouched, as required.
 
----
+***
 *Phase: 139-coins-view-cache-contract-and-engine-apply*
 *Completed: 2026-08-30*
 

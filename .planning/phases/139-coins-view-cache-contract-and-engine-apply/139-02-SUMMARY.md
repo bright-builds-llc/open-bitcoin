@@ -140,7 +140,7 @@ _Note: TDD RED was verified locally (11 failing `coins::tests::algebra` tests, c
 - **Verification:** same checker that failed Plan 01 when CACHE-01 was listed
 - **Committed in:** this docs commit
 
----
+***
 
 **Total deviations:** 5 auto-fixed (3 blocking, 1 missing-critical, 1 process)
 **Impact on plan:** Required for hook-passing verification. No scope creep into engine apply or node prepare. CACHE-01 remains pending until phase verification.
@@ -160,7 +160,7 @@ None - no external service configuration required.
 - Detached `CoinsOverlay` is ready for prepare isolation without cloning `CoinsCache`.
 - Engine and node files remain unchanged, as required.
 
----
+***
 *Phase: 139-coins-view-cache-contract-and-engine-apply*
 *Completed: 2026-08-30*
 

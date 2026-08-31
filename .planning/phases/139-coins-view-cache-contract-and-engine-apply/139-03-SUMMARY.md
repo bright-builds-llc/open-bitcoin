@@ -158,7 +158,7 @@ Each task was committed atomically:
 - **Verification:** same checker that failed Plan 01 when CACHE-01 was listed
 - **Committed in:** this docs commit
 
----
+***
 
 **Total deviations:** 6 auto-fixed (4 blocking, 2 missing-critical)
 **Impact on plan:** Required for hook-passing verification and workspace compile. No node prepare rewrite (Plan 04). CACHE-01 remains pending until phase verification.
@@ -179,7 +179,7 @@ None - no external service configuration required.
 - Drop the snapshot-Clone shim once node prepare no longer calls `chainstate.clone()`.
 - `have_coin_in_cache` is available for prepare peek-isolation assertions.
 
----
+***
 *Phase: 139-coins-view-cache-contract-and-engine-apply*
 *Completed: 2026-08-31*
 

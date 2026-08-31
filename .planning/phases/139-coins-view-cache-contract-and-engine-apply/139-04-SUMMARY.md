@@ -152,7 +152,7 @@ Each task was committed atomically:
 - **Verification:** same checker that failed Plan 01 when CACHE-01 was listed
 - **Committed in:** this docs commit
 
----
+***
 
 **Total deviations:** 6 auto-fixed (4 blocking, 1 bug, 1 missing-critical)
 **Impact on plan:** Overlay absorb is required for D-18. TDD process adapted to hook coverage. CACHE-01 remains pending until phase verification. No Fjall/flush-policy scope creep.
@@ -172,7 +172,7 @@ None - no external service configuration required.
 - Two-phase mempool order is unchanged: prepare chainstate, prepare mempool, commit both.
 - Do not treat a cache hit as durably persisted.
 
----
+***
 *Phase: 139-coins-view-cache-contract-and-engine-apply*
 *Completed: 2026-08-31*
 
