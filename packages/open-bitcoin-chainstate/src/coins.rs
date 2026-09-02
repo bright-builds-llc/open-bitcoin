@@ -6,6 +6,7 @@
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
 mod cache;
+mod flush;
 mod memory;
 #[cfg(test)]
 mod tests;
@@ -18,6 +19,11 @@ use crate::error::ChainstateError;
 use crate::types::Coin;
 
 pub use cache::{CoinsCache, CoinsOverlay};
+pub use flush::{
+    COIN_WRITE_GUARD_BYTES_PER_ENTRY, CoinsCacheSizeState, FlushDecision, FlushDecisionFacts,
+    FlushMode, FlushPolicyInput, FlushPolicyTime, LARGE_CACHE_DENOMINATOR,
+    LARGE_CACHE_HEADROOM_BYTES, LARGE_CACHE_NUMERATOR, LastFlushReason, decide_flush,
+};
 pub use memory::MemoryCoinsView;
 
 pub trait CoinsView {

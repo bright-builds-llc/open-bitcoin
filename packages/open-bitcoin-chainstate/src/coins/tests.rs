@@ -10,6 +10,7 @@ use std::collections::HashMap;
 use open_bitcoin_primitives::{Amount, BlockHash, OutPoint, ScriptBuf, TransactionOutput, Txid};
 
 mod algebra;
+mod flush;
 
 use super::{CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView};
 use crate::error::ChainstateError;
