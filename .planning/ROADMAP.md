@@ -79,7 +79,12 @@ Plans:
   2. Disk-space refusal is a first-class decision outcome, not a later adapter surprise.
   3. Cache-size state is classified as OK, LARGE, or CRITICAL from injected occupancy facts.
   4. Flush and Sync remain distinct decisions, and FlushForPrune is not implemented.
-**Plans**: TBD
+**Plans**: 3 plans
+
+Plans:
+- [ ] 140-01-PLAN.md — Types, cache-size classification, and decide_flush skeleton
+- [ ] 140-02-PLAN.md — Knots Flush/Sync/refusal decision matrix
+- [ ] 140-03-PLAN.md — RecoveryDecision sketch, crate exports, leftover-persist guard
 
 ### Phase 141: Durable Fjall Coins Adapter
 **Goal**: Spendable UTXOs live as per-outpoint Fjall records with best-block and interrupted-flush markers; snapshot blobs are no longer live coin truth.
@@ -174,7 +179,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
-| 140. Pure Flush Policy and Typed Decisions | 0/TBD | Not started | - |
+| 140. Pure Flush Policy and Typed Decisions | 0/3 | Not started | - |
 | 141. Durable Fjall Coins Adapter | 0/TBD | Not started | - |
 | 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
@@ -183,7 +188,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 
 ## Next Step
 
-Run `/gsd-execute-phase 139` to implement the coins-view, cache contract, and engine-apply plans.
+Run `/gsd-execute-phase 140` to implement the pure flush-policy and typed-decision plans.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*
