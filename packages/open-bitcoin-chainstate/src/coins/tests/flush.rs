@@ -247,3 +247,354 @@ fn flush_decision_accessors_read_shared_facts_on_every_variant() {
         vec![(CoinsCacheSizeState::Large, LastFlushReason::Needed); 4]
     );
 }
+
+const MATRIX_CACHE_BYTE_LIMIT: u64 = 50 * 1024 * 1024;
+const MATRIX_OK_CACHE_BYTES: u64 = 0;
+const MATRIX_LARGE_CACHE_BYTES: u64 = 45 * 1024 * 1024 + 1;
+const MATRIX_CRITICAL_CACHE_BYTES: u64 = 50 * 1024 * 1024 + 1;
+const MATRIX_DISK_PLENTY: u64 = u64::MAX;
+const MATRIX_ENTRY_COUNT: u64 = 10;
+const MATRIX_DISK_GUARD_FAIL: u64 = 192 * 10 - 1;
+const MATRIX_DISK_GUARD_PASS: u64 = 1920;
+
+fn matrix_input(
+    mode: FlushMode,
+    cache_bytes: u64,
+    memory_pressure: bool,
+    now_seconds: u64,
+    next_write_seconds: u64,
+    disk_free_bytes: u64,
+    cache_entry_count: u64,
+) -> FlushPolicyInput {
+    FlushPolicyInput {
+        mode,
+        cache_bytes,
+        cache_byte_limit: MATRIX_CACHE_BYTE_LIMIT,
+        mempool_leftover_bytes: 0,
+        now: FlushPolicyTime::from_unix_seconds(now_seconds),
+        next_write: FlushPolicyTime::from_unix_seconds(next_write_seconds),
+        memory_pressure,
+        disk_free_bytes,
+        cache_entry_count,
+    }
+}
+
+#[test]
+fn always_mode_returns_flush_with_reason_always() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Always,
+        MATRIX_OK_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::Flush(_)),
+        "expected FlushDecision::Flush, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Always);
+    assert_eq!(decision.cache_size(), CoinsCacheSizeState::Ok);
+}
+
+#[test]
+fn always_mode_refuses_disk_when_free_below_192_times_entries() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Always,
+        MATRIX_OK_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_GUARD_FAIL,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert_eq!(MATRIX_DISK_GUARD_FAIL, 1919);
+    assert_eq!(
+        COIN_WRITE_GUARD_BYTES_PER_ENTRY.saturating_mul(MATRIX_ENTRY_COUNT),
+        1920
+    );
+    assert!(
+        matches!(decision, FlushDecision::RefuseDiskSpace(_)),
+        "expected FlushDecision::RefuseDiskSpace, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::FailedDisk);
+}
+
+#[test]
+fn always_mode_writes_flush_when_free_equals_192_times_entries() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Always,
+        MATRIX_OK_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_GUARD_PASS,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert_eq!(MATRIX_DISK_GUARD_PASS, 1920);
+    assert!(
+        matches!(decision, FlushDecision::Flush(_)),
+        "expected FlushDecision::Flush, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Always);
+}
+
+#[test]
+fn periodic_large_returns_flush_even_when_not_due() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Periodic,
+        MATRIX_LARGE_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::Flush(_)),
+        "expected FlushDecision::Flush, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Periodic);
+    assert_eq!(decision.cache_size(), CoinsCacheSizeState::Large);
+}
+
+#[test]
+fn periodic_critical_returns_flush_even_when_not_due() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Periodic,
+        MATRIX_CRITICAL_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::Flush(_)),
+        "expected FlushDecision::Flush, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Periodic);
+    assert_eq!(decision.cache_size(), CoinsCacheSizeState::Critical);
+}
+
+#[test]
+fn periodic_ok_due_returns_sync() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Periodic,
+        MATRIX_OK_CACHE_BYTES,
+        false,
+        100,
+        100,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::Sync(_)),
+        "expected FlushDecision::Sync, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Periodic);
+    assert_eq!(decision.cache_size(), CoinsCacheSizeState::Ok);
+}
+
+#[test]
+fn periodic_ok_not_due_returns_none() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Periodic,
+        MATRIX_OK_CACHE_BYTES,
+        false,
+        99,
+        100,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::None(_)),
+        "expected FlushDecision::None, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::None);
+}
+
+#[test]
+fn periodic_ok_due_refuses_disk_instead_of_sync() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::Periodic,
+        MATRIX_OK_CACHE_BYTES,
+        false,
+        100,
+        100,
+        MATRIX_DISK_GUARD_FAIL,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::RefuseDiskSpace(_)),
+        "expected FlushDecision::RefuseDiskSpace, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::FailedDisk);
+}
+
+#[test]
+fn ifneeded_critical_returns_flush_with_reason_needed() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::IfNeeded,
+        MATRIX_CRITICAL_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::Flush(_)),
+        "expected FlushDecision::Flush, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Needed);
+    assert_eq!(decision.cache_size(), CoinsCacheSizeState::Critical);
+}
+
+#[test]
+fn ifneeded_ok_with_memory_pressure_returns_flush() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::IfNeeded,
+        MATRIX_OK_CACHE_BYTES,
+        true,
+        0,
+        1,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::Flush(_)),
+        "expected FlushDecision::Flush, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::Needed);
+}
+
+#[test]
+fn ifneeded_large_without_pressure_returns_none() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::IfNeeded,
+        MATRIX_LARGE_CACHE_BYTES,
+        false,
+        0,
+        1,
+        MATRIX_DISK_PLENTY,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::None(_)),
+        "expected FlushDecision::None, got {decision:?}"
+    );
+    assert_eq!(decision.reason(), LastFlushReason::None);
+}
+
+#[test]
+fn ifneeded_large_with_low_disk_still_returns_none() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::IfNeeded,
+        MATRIX_LARGE_CACHE_BYTES,
+        false,
+        0,
+        1,
+        0,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert!(
+        matches!(decision, FlushDecision::None(_)),
+        "expected FlushDecision::None, got {decision:?}"
+    );
+    assert!(!matches!(decision, FlushDecision::RefuseDiskSpace(_)));
+    assert_eq!(decision.reason(), LastFlushReason::None);
+}
+
+#[test]
+fn none_mode_critical_with_pressure_and_low_disk_still_returns_none() {
+    // Arrange
+    let input = matrix_input(
+        FlushMode::None,
+        MATRIX_CRITICAL_CACHE_BYTES,
+        true,
+        0,
+        1,
+        0,
+        MATRIX_ENTRY_COUNT,
+    );
+
+    // Act
+    let decision = decide_flush(input);
+
+    // Assert
+    assert_none_decision(decision, CoinsCacheSizeState::Critical);
+}

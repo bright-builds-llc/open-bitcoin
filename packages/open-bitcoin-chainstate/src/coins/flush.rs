@@ -143,15 +143,70 @@ pub(crate) fn classify_cache_size(
     CoinsCacheSizeState::Ok
 }
 
-/// Classifies cache size and, in this skeleton, always returns `FlushDecision::None`.
+enum FlushWriteKind {
+    Flush,
+    Sync,
+}
+
+fn maybe_intended_write(
+    mode: FlushMode,
+    cache_size: CoinsCacheSizeState,
+    periodic_due: bool,
+    memory_pressure: bool,
+) -> Option<(FlushWriteKind, LastFlushReason)> {
+    match mode {
+        FlushMode::None => None,
+        FlushMode::Always => Some((FlushWriteKind::Flush, LastFlushReason::Always)),
+        FlushMode::Periodic => {
+            if cache_size >= CoinsCacheSizeState::Large {
+                Some((FlushWriteKind::Flush, LastFlushReason::Periodic))
+            } else if periodic_due {
+                Some((FlushWriteKind::Sync, LastFlushReason::Periodic))
+            } else {
+                None
+            }
+        }
+        FlushMode::IfNeeded => {
+            if cache_size == CoinsCacheSizeState::Critical || memory_pressure {
+                Some((FlushWriteKind::Flush, LastFlushReason::Needed))
+            } else {
+                None
+            }
+        }
+    }
+}
+
+fn disk_guard_fails(disk_free_bytes: u64, cache_entry_count: u64) -> bool {
+    let required = COIN_WRITE_GUARD_BYTES_PER_ENTRY.saturating_mul(cache_entry_count);
+    disk_free_bytes < required
+}
+
+/// Knots `FlushStateToDisk` boolean split with first-class disk-space refusal.
 pub fn decide_flush(input: FlushPolicyInput) -> FlushDecision {
     let cache_size = classify_cache_size(
         input.cache_bytes,
         input.cache_byte_limit,
         input.mempool_leftover_bytes,
     );
-    FlushDecision::None(FlushDecisionFacts {
+    let Some((kind, reason)) = maybe_intended_write(
+        input.mode,
         cache_size,
-        reason: LastFlushReason::None,
-    })
+        input.periodic_due(),
+        input.memory_pressure,
+    ) else {
+        return FlushDecision::None(FlushDecisionFacts {
+            cache_size,
+            reason: LastFlushReason::None,
+        });
+    };
+    if disk_guard_fails(input.disk_free_bytes, input.cache_entry_count) {
+        return FlushDecision::RefuseDiskSpace(FlushDecisionFacts {
+            cache_size,
+            reason: LastFlushReason::FailedDisk,
+        });
+    }
+    match kind {
+        FlushWriteKind::Flush => FlushDecision::Flush(FlushDecisionFacts { cache_size, reason }),
+        FlushWriteKind::Sync => FlushDecision::Sync(FlushDecisionFacts { cache_size, reason }),
+    }
 }
