@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Phase 139 context gathered
-last_updated: "2026-08-31T04:37:09.364Z"
+stopped_at: Phase 140 context gathered
+last_updated: "2026-09-02T02:43:06.976Z"
 last_activity: 2026-08-31
 progress:
   total_phases: 7
@@ -348,6 +348,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-08-30T15:58:39.198Z
-Stopped at: Phase 139 context gathered
-Resume file: .planning/phases/139-coins-view-cache-contract-and-engine-apply/139-CONTEXT.md
+Last session: 2026-09-02T02:43:06.964Z
+Stopped at: Phase 140 context gathered
+Resume file: .planning/phases/140-pure-flush-policy-and-typed-decisions/140-CONTEXT.md
