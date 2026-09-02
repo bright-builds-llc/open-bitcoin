@@ -22,7 +22,10 @@ pub mod error;
 pub mod types;
 
 pub use coins::{
-    CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView,
+    COIN_WRITE_GUARD_BYTES_PER_ENTRY, CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags,
+    CoinsCacheSizeState, CoinsView, FlushDecision, FlushDecisionFacts, FlushMode, FlushPolicyInput,
+    FlushPolicyTime, LARGE_CACHE_DENOMINATOR, LARGE_CACHE_HEADROOM_BYTES, LARGE_CACHE_NUMERATOR,
+    LastFlushReason, MemoryCoinsView, RecoveryDecision, decide_flush, decide_recovery,
 };
 pub use engine::{
     Chainstate, StagedChainstateConnect, StagedChainstateReorg, prefer_candidate_tip,

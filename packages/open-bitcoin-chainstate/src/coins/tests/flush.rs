@@ -8,7 +8,8 @@
 use crate::coins::{
     COIN_WRITE_GUARD_BYTES_PER_ENTRY, CoinsCacheSizeState, FlushDecision, FlushDecisionFacts,
     FlushMode, FlushPolicyInput, FlushPolicyTime, LARGE_CACHE_DENOMINATOR,
-    LARGE_CACHE_HEADROOM_BYTES, LARGE_CACHE_NUMERATOR, LastFlushReason, decide_flush,
+    LARGE_CACHE_HEADROOM_BYTES, LARGE_CACHE_NUMERATOR, LastFlushReason, RecoveryDecision,
+    decide_flush, decide_recovery,
 };
 
 const MIB: u64 = 1024 * 1024;
@@ -597,4 +598,148 @@ fn none_mode_critical_with_pressure_and_low_disk_still_returns_none() {
 
     // Assert
     assert_none_decision(decision, CoinsCacheSizeState::Critical);
+}
+
+#[test]
+fn decide_recovery_zero_heads_is_consistent_empty() {
+    // Arrange
+    let head_marker_count = 0;
+
+    // Act
+    let decision = decide_recovery(head_marker_count);
+
+    // Assert
+    assert_eq!(decision, RecoveryDecision::ConsistentEmptyHeads);
+}
+
+#[test]
+fn decide_recovery_one_head_is_first_class() {
+    // Arrange
+    let head_marker_count = 1;
+
+    // Act
+    let decision = decide_recovery(head_marker_count);
+
+    // Assert
+    assert_eq!(decision, RecoveryDecision::OneHead);
+    assert!(!matches!(
+        decision,
+        RecoveryDecision::InconsistentOtherCount { count: 1 }
+    ));
+}
+
+#[test]
+fn decide_recovery_two_heads_is_interrupted() {
+    // Arrange
+    let head_marker_count = 2;
+
+    // Act
+    let decision = decide_recovery(head_marker_count);
+
+    // Assert
+    assert_eq!(decision, RecoveryDecision::InterruptedTwoHeads);
+}
+
+#[test]
+fn decide_recovery_three_heads_is_inconsistent_other_count() {
+    // Arrange
+    let head_marker_count = 3;
+
+    // Act
+    let decision = decide_recovery(head_marker_count);
+
+    // Assert
+    assert_eq!(
+        decision,
+        RecoveryDecision::InconsistentOtherCount { count: 3 }
+    );
+}
+
+#[test]
+fn decide_recovery_does_not_mention_block_hash_or_replay_in_source() {
+    // Arrange
+    let flush_src = include_str!("../flush.rs");
+
+    // Act
+    let mentions_forbidden = flush_src.contains("ReplayBlocks")
+        || flush_src.contains("BlockHash")
+        || flush_src.contains("PruneAndFlush")
+        || flush_src.contains("FlushForPrune");
+
+    // Assert
+    assert!(
+        !mentions_forbidden,
+        "flush.rs must stay count-only and prune-flush-free"
+    );
+}
+
+#[test]
+fn crate_root_reexports_flush_and_recovery_types() {
+    // Arrange
+    let now = crate::FlushPolicyTime::from_unix_seconds(0);
+    let input = crate::FlushPolicyInput {
+        mode: crate::FlushMode::None,
+        cache_bytes: 0,
+        cache_byte_limit: 1,
+        mempool_leftover_bytes: 0,
+        now,
+        next_write: now,
+        memory_pressure: false,
+        disk_free_bytes: 0,
+        cache_entry_count: 0,
+    };
+
+    // Act
+    let flush_decision = crate::decide_flush(input);
+    let recovery_decision = crate::decide_recovery(0);
+
+    // Assert
+    assert!(matches!(flush_decision, crate::FlushDecision::None(_)));
+    assert_eq!(
+        recovery_decision,
+        crate::RecoveryDecision::ConsistentEmptyHeads
+    );
+}
+
+#[test]
+fn managed_chainstate_persist_still_writes_snapshot_and_does_not_call_decide_flush() {
+    // Arrange
+    let persist_src = include_str!("../../../../open-bitcoin-node/src/chainstate.rs");
+
+    // Act
+    let writes_snapshot =
+        persist_src.contains("fn persist(") && persist_src.contains("save_snapshot");
+    let retargeted =
+        persist_src.contains("decide_flush") || persist_src.contains("RefuseDiskSpace");
+
+    // Assert
+    assert!(
+        writes_snapshot,
+        "ManagedChainstate::persist must still write a snapshot"
+    );
+    assert!(
+        !retargeted,
+        "ManagedChainstate::persist must not call decide_flush or mention RefuseDiskSpace"
+    );
+}
+
+#[test]
+fn durable_sync_persist_progress_still_writes_snapshot_and_does_not_call_decide_flush() {
+    // Arrange
+    let persist_src = include_str!("../../../../open-bitcoin-node/src/sync/runtime_state.rs");
+
+    // Act
+    let writes_snapshot = persist_src.contains("fn persist_progress")
+        && persist_src.contains("save_chainstate_snapshot");
+    let retargeted = persist_src.contains("decide_flush") || persist_src.contains("FlushMode");
+
+    // Assert
+    assert!(
+        writes_snapshot,
+        "DurableSyncRuntime::persist_progress must still write a chainstate snapshot"
+    );
+    assert!(
+        !retargeted,
+        "DurableSyncRuntime::persist_progress must not call decide_flush or mention FlushMode"
+    );
 }

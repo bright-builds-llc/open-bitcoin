@@ -210,3 +210,22 @@ pub fn decide_flush(input: FlushPolicyInput) -> FlushDecision {
         FlushWriteKind::Sync => FlushDecision::Sync(FlushDecisionFacts { cache_size, reason }),
     }
 }
+
+/// Count-only recovery sketch from injected head-marker cardinality.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecoveryDecision {
+    ConsistentEmptyHeads,
+    OneHead,
+    InterruptedTwoHeads,
+    InconsistentOtherCount { count: usize },
+}
+
+/// Maps head-marker count to a recovery sketch. Count-only; no hashes or I/O.
+pub fn decide_recovery(head_marker_count: usize) -> RecoveryDecision {
+    match head_marker_count {
+        0 => RecoveryDecision::ConsistentEmptyHeads,
+        1 => RecoveryDecision::OneHead,
+        2 => RecoveryDecision::InterruptedTwoHeads,
+        count => RecoveryDecision::InconsistentOtherCount { count },
+    }
+}

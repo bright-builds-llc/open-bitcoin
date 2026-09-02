@@ -7,17 +7,17 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,144 |
-| Total lines | 326,795 |
-| Code/content lines | 284,867 |
-| Comment-only lines | 14,785 |
-| Blank lines | 27,143 |
+| Total lines | 326,963 |
+| Code/content lines | 284,983 |
+| Comment-only lines | 14,811 |
+| Blank lines | 27,169 |
 
 ## Per-Crate Modules
 
 | Module | Files | Production Rust | Test Rust | Manifest/Build | Total | Test/Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | open-bitcoin-bench | 22 | 3,760 | 0 | 85 | 3,845 | 0.0% |
-| open-bitcoin-chainstate | 22 | 2,379 | 4,040 | 26 | 6,445 | 169.8% |
+| open-bitcoin-chainstate | 22 | 2,402 | 4,185 | 26 | 6,613 | 174.2% |
 | open-bitcoin-cli | 142 | 22,270 | 21,144 | 97 | 43,511 | 94.9% |
 | open-bitcoin-codec | 15 | 1,811 | 779 | 28 | 2,621 | 43.0% |
 | open-bitcoin-consensus | 47 | 6,592 | 7,851 | 28 | 14,471 | 119.1% |
@@ -34,8 +34,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 438 | 125,425 | 106,586 | 8,946 | 9,893 |
-| Rust production | 372 | 109,582 | 95,278 | 4,046 | 10,258 |
+| Rust tests | 438 | 125,570 | 106,683 | 8,970 | 9,917 |
+| Rust production | 372 | 109,605 | 95,297 | 4,048 | 10,260 |
 | TypeScript/Bun scripts | 265 | 74,924 | 67,076 | 1,715 | 6,133 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,501 | 4,028 | 64 | 409 |
@@ -322,31 +322,31 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- |
 | 1 | MODULE.bazel.lock | Fixture/data | 8,217 |
 | 2 | packages/Cargo.lock | TOML/config | 3,205 |
-| 3 | packages/open-bitcoin-chainstate/src/engine/tests/apply_non_coinbase_transaction_returns_fee_and_records_undo.rs | Rust tests | 714 |
-| 4 | packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs | Rust tests | 646 |
-| 5 | scripts/check-phase134-authoritative-lifecycle.test.ts | TypeScript/Bun scripts | 640 |
-| 6 | scripts/verify.sh | Shell scripts | 630 |
-| 7 | packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs | Rust tests | 628 |
-| 8 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
-| 9 | packages/open-bitcoin-cli/src/operator/support/render.rs | Rust production | 627 |
-| 10 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
-| 11 | packages/open-bitcoin-node/src/network/relay_fanout.rs | Rust production | 627 |
-| 12 | scripts/check-phase92-address-boundaries.ts | TypeScript/Bun scripts | 627 |
-| 13 | scripts/check-phase94-dos-resource-governance.ts | TypeScript/Bun scripts | 627 |
-| 14 | packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs | Rust production | 626 |
-| 15 | packages/open-bitcoin-wallet/src/address.rs | Rust production | 626 |
-| 16 | scripts/check-phase124-milestone-closeout-reconciliation.ts | TypeScript/Bun scripts | 626 |
-| 17 | packages/open-bitcoin-rpc/src/config/loader.rs | Rust production | 625 |
-| 18 | packages/open-bitcoin-rpc/src/package_projection.rs | Rust production | 625 |
-| 19 | packages/open-bitcoin-cli/src/operator/wallet.rs | Rust production | 624 |
-| 20 | packages/open-bitcoin-node/src/network/block_serving.rs | Rust production | 624 |
+| 3 | packages/open-bitcoin-chainstate/src/coins/tests/flush.rs | Rust tests | 745 |
+| 4 | packages/open-bitcoin-chainstate/src/engine/tests/apply_non_coinbase_transaction_returns_fee_and_records_undo.rs | Rust tests | 714 |
+| 5 | packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs | Rust tests | 646 |
+| 6 | scripts/check-phase134-authoritative-lifecycle.test.ts | TypeScript/Bun scripts | 640 |
+| 7 | scripts/verify.sh | Shell scripts | 630 |
+| 8 | packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs | Rust tests | 628 |
+| 9 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
+| 10 | packages/open-bitcoin-cli/src/operator/support/render.rs | Rust production | 627 |
+| 11 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
+| 12 | packages/open-bitcoin-node/src/network/relay_fanout.rs | Rust production | 627 |
+| 13 | scripts/check-phase92-address-boundaries.ts | TypeScript/Bun scripts | 627 |
+| 14 | scripts/check-phase94-dos-resource-governance.ts | TypeScript/Bun scripts | 627 |
+| 15 | packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs | Rust production | 626 |
+| 16 | packages/open-bitcoin-wallet/src/address.rs | Rust production | 626 |
+| 17 | scripts/check-phase124-milestone-closeout-reconciliation.ts | TypeScript/Bun scripts | 626 |
+| 18 | packages/open-bitcoin-rpc/src/config/loader.rs | Rust production | 625 |
+| 19 | packages/open-bitcoin-rpc/src/package_projection.rs | Rust production | 625 |
+| 20 | packages/open-bitcoin-cli/src/operator/wallet.rs | Rust production | 624 |
 
 ## Metadata
 
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | cbae454320c9d13bcdf46260e62393636fcebbc7f783366b24efa38ba05943ff |
+| Input fingerprint | 0f3a05428813fe2505f43b485edc22f23190c88deee78957f08990878d50a262 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -22,7 +22,8 @@ pub use cache::{CoinsCache, CoinsOverlay};
 pub use flush::{
     COIN_WRITE_GUARD_BYTES_PER_ENTRY, CoinsCacheSizeState, FlushDecision, FlushDecisionFacts,
     FlushMode, FlushPolicyInput, FlushPolicyTime, LARGE_CACHE_DENOMINATOR,
-    LARGE_CACHE_HEADROOM_BYTES, LARGE_CACHE_NUMERATOR, LastFlushReason, decide_flush,
+    LARGE_CACHE_HEADROOM_BYTES, LARGE_CACHE_NUMERATOR, LastFlushReason, RecoveryDecision,
+    decide_flush, decide_recovery,
 };
 pub use memory::MemoryCoinsView;
 
