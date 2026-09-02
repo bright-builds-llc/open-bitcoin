@@ -15,7 +15,7 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 ### Flush Policy and Recovery
 
-- [ ] **FLUSH-01**: Node flushes coins using IfNeeded, Periodic, and Always policy, including disk-space refusal, from injected cache, time, and disk facts.
+- [x] **FLUSH-01**: Node flushes coins using IfNeeded, Periodic, and Always policy, including disk-space refusal, from injected cache, time, and disk facts.
 - [ ] **FLUSH-02**: A mid-flush crash is recovered by interrupted-flush replay using stored undo and block bodies, or fails closed without inventing a consistent tip.
 
 ### Chainstate Manager
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | CACHE-01 | Phase 139 | Pending |
-| FLUSH-01 | Phase 140 | Pending |
+| FLUSH-01 | Phase 140 | Complete |
 | MGR-03 | Phase 140 | Pending |
 | COIN-01 | Phase 141 | Pending |
 | CSOBS-03 | Phase 141 | Pending |

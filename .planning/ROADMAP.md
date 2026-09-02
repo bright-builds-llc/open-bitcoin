@@ -83,7 +83,7 @@ Plans:
 
 Plans:
 - [x] 140-01-PLAN.md — Types, cache-size classification, and decide_flush skeleton
-- [ ] 140-02-PLAN.md — Knots Flush/Sync/refusal decision matrix
+- [x] 140-02-PLAN.md — Knots Flush/Sync/refusal decision matrix
 - [ ] 140-03-PLAN.md — RecoveryDecision sketch, crate exports, leftover-persist guard
 
 ### Phase 141: Durable Fjall Coins Adapter
@@ -179,7 +179,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
-| 140. Pure Flush Policy and Typed Decisions | 1/3 | In Progress|  |
+| 140. Pure Flush Policy and Typed Decisions | 2/3 | In Progress|  |
 | 141. Durable Fjall Coins Adapter | 0/TBD | Not started | - |
 | 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |

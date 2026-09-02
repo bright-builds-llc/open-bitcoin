@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Completed 140-01-PLAN.md
-last_updated: "2026-09-02T06:40:21.478Z"
+stopped_at: Completed 140-02-PLAN.md
+last_updated: "2026-09-02T08:21:59.304Z"
 last_activity: 2026-09-02
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 7
-  completed_plans: 5
-  percent: 71
+  completed_plans: 6
+  percent: 86
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 140 (Pure Flush Policy and Typed Decisions) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-02
 
@@ -114,6 +114,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P03 | 86min | 2 tasks | 27 files |
 | Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P04 | 63 | 2 tasks | 21 files |
 | Phase 140 P01 | 133 | 2 tasks | 6 files |
+| Phase 140 P02 | 79 | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -329,6 +330,9 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 140]: FlushPolicyTime is a u64 unix-seconds newtype; core never samples a clock
 - [Phase 140]: classify_cache_size is pub(crate); Plan 01 decide_flush always returns FlushDecision::None
 - [Phase 140]: Combined 140-01 RED and GREEN into one hook-passing feat commit because pre-commit runs cargo test
+- [Phase 140]: Periodic LARGE/CRITICAL flushes even when not due; IfNeeded LARGE without pressure returns None
+- [Phase 140]: RefuseDiskSpace replaces an intended Flush or Sync only; guard is free_bytes < 192 * entry_count
+- [Phase 140]: Combined 140-02 RED and GREEN into one hook-passing feat commit because pre-commit runs cargo test
 
 ### Pending Todos
 
@@ -352,6 +356,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-02T06:40:21.475Z
-Stopped at: Completed 140-01-PLAN.md
+Last session: 2026-09-02T08:21:59.301Z
+Stopped at: Completed 140-02-PLAN.md
 Resume file: None
