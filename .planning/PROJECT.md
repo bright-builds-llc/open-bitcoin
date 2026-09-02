@@ -16,7 +16,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy shipped and was archived on 202
 
 The repository now includes durable Fjall-backed runtime storage, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized package and mempool evidence, and last-gate claim guardrails.
 
-Milestone v2.3 is active after initialization through `/gsd-new-milestone`. Phase 139 shipped the in-memory DIRTY/FRESH coins overlay and engine apply without cloning the UTXO map; leftover snapshot-blob persist remains until later durability phases. Next is Phase 140 (pure flush policy). Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.3 is active after initialization through `/gsd-new-milestone`. Phase 139 shipped the in-memory DIRTY/FRESH coins overlay and engine apply without cloning the UTXO map. Phase 140 shipped the I/O-free flush and recovery decision machine (`decide_flush` / `decide_recovery`); leftover snapshot-blob persist remains until later durability phases. Next is Phase 141 (durable Fjall coins adapter). Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Current Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -242,4 +242,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-08-31 after completing Phase 139*
+*Last updated: 2026-09-01 after completing Phase 140*

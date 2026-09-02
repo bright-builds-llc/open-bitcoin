@@ -125,7 +125,7 @@ _Note: TDD tasks may have multiple commits (test → feat → refactor). This pl
 - **Verification:** RED log exit 101, then GREEN 15/15 and `verify.sh` 0
 - **Committed in:** `40fd4133`
 
----
+***
 
 **Total deviations:** 3 auto-fixed (3 blocking)
 **Impact on plan:** Required for hook-compatible TDD in this repo. No scope creep into write-kind, disk refusal, or recovery.
@@ -146,7 +146,7 @@ None - no external service configuration required.
 - `lib.rs` crate-root exports, `RecoveryDecision`, leftover persist, and `empty_cache` remain untouched as specified.
 - FLUSH-01 and MGR-03 stay pending until Plans 02 and 03 close write-kind, refusal, and recovery types.
 
----
+***
 *Phase: 140-pure-flush-policy-and-typed-decisions*
 *Completed: 2026-09-02*
 

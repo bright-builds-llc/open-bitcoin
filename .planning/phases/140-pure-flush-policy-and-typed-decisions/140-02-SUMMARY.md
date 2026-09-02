@@ -109,7 +109,7 @@ _Note: TDD tasks may have multiple commits (test → feat → refactor). This pl
 - **Verification:** Second pre-commit `verify.sh` completed in 1h 1m
 - **Committed in:** `d1ac9965`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (2 blocking)
 **Impact on plan:** Required for hook-compatible TDD and rustfmt. No scope creep into FlushForPrune, persist, or RecoveryDecision.
@@ -129,7 +129,7 @@ None - no external service configuration required.
 - `FlushForPrune`, coins-cache algebra, and node persist remain untouched as specified.
 - MGR-03 stays pending until Plan 03 ships recovery types.
 
----
+***
 *Phase: 140-pure-flush-policy-and-typed-decisions*
 *Completed: 2026-09-02*
 

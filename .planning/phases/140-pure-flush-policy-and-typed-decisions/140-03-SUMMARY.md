@@ -125,7 +125,7 @@ _Note: TDD tasks may have multiple commits (test → feat → refactor). This pl
 - **Verification:** First docs commit hook failed on MGR-03 activation; retry keeps MGR-03 Pending
 - **Committed in:** pending docs commit
 
----
+***
 
 **Total deviations:** 3 auto-fixed (3 blocking)
 **Impact on plan:** Required for hook-compatible TDD, compiling RED, and milestone traceability. No scope creep into ReplayBlocks, Fjall coins view, or persist retargeting.
@@ -146,7 +146,7 @@ None - no external service configuration required.
 - `ManagedChainstate::persist` and `persist_progress` remain leftover snapshot writes.
 - MGR-03 stays Pending until a lifecycle-valid `140-VERIFICATION.md` exists.
 
----
+***
 *Phase: 140-pure-flush-policy-and-typed-decisions*
 *Completed: 2026-09-02*
 
