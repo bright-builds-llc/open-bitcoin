@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Phase 141 context gathered
-last_updated: "2026-09-04T18:40:48.271Z"
-last_activity: 2026-09-04 -- Phase 141 planning complete
+stopped_at: Completed 141-01-PLAN.md
+last_updated: "2026-09-04T19:42:07.019Z"
+last_activity: 2026-09-04
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 11
-  completed_plans: 7
-  percent: 64
+  completed_plans: 8
+  percent: 73
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 140 — Pure Flush Policy and Typed Decisions
+**Current focus:** Phase 141 — Durable Fjall Coins Adapter
 
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: 141
-Plan: Not started
+Phase: 141 (Durable Fjall Coins Adapter) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-04 -- Phase 141 planning complete
+Last activity: 2026-09-04
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
@@ -117,6 +117,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 140 P01 | 133 | 2 tasks | 6 files |
 | Phase 140 P02 | 79 | 2 tasks | 3 files |
 | Phase 140 P03 | 28 | 2 tasks | 5 files |
+| Phase 141 P01 | 42 | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -339,6 +340,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 140]: Crate root re-exports flush and recovery types; classify_cache_size stays crate-private
 - [Phase 140]: Combined 140-03 RED and GREEN into one hook-passing feat commit because pre-commit runs cargo test
 - [Phase 140]: Leave MGR-03 Pending and requirements-completed empty until lifecycle-valid phase verification
+- [Phase 141]: Combined 141-01 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
+- [Phase 141]: CoinsCache::from_parent does not probe parent.best_block; overlay starts with maybe_best_block None
+- [Phase 141]: FjallNodeStore database() and coins_keyspace() live in fjall_store/coins_access.rs so fjall_store.rs stays under 628 lines
+- [Phase 141]: SchemaVersion::CURRENT stays 1; COIN-01 and CSOBS-03 remain Pending until phase verification
 
 ### Pending Todos
 
@@ -362,6 +367,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-04T18:00:42.678Z
-Stopped at: Phase 141 context gathered
-Resume file: .planning/phases/141-durable-fjall-coins-adapter/141-CONTEXT.md
+Last session: 2026-09-04T19:42:07.016Z
+Stopped at: Completed 141-01-PLAN.md
+Resume file: None
