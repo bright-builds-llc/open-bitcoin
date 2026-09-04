@@ -99,7 +99,7 @@ Plans:
 
 Plans:
 - [x] 141-01-PLAN.md — Namespace, compact codec, and fallible CoinsView heads
-- [ ] 141-02-PLAN.md — FjallCoinsView BatchWrite, 64 MiB accounting, fail-closed reads
+- [x] 141-02-PLAN.md — FjallCoinsView BatchWrite, 64 MiB accounting, fail-closed reads
 - [ ] 141-03-PLAN.md — Undo codec extract and MemoryChainstateStore view-backed surface
 - [ ] 141-04-PLAN.md — Schema 1→2 migration and leftover-snapshot non-authority
 
@@ -186,7 +186,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | --- | --- | --- | --- |
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
-| 141. Durable Fjall Coins Adapter | 1/4 | In Progress|  |
+| 141. Durable Fjall Coins Adapter | 2/4 | In Progress|  |
 | 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
