@@ -30,7 +30,8 @@ pub use memory::MemoryCoinsView;
 pub trait CoinsView {
     fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError>;
     fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError>;
-    fn best_block(&self) -> Option<BlockHash>;
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError>;
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError>;
     fn batch_write(
         &mut self,
         writes: CoinsBatch,

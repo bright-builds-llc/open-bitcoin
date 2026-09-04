@@ -44,8 +44,12 @@ impl CoinsView for MemoryCoinsView {
         Ok(self.coins.contains_key(outpoint))
     }
 
-    fn best_block(&self) -> Option<BlockHash> {
-        self.maybe_best_block
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
+        Ok(self.maybe_best_block)
+    }
+
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
+        Ok(Vec::new())
     }
 
     fn batch_write(

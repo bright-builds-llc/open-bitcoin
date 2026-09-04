@@ -78,7 +78,7 @@ fn memory_coins_view_round_trips_unspent_coins_and_best_block() {
     // Assert
     assert_eq!(maybe_found, Ok(Some(coin)));
     assert_eq!(has_coin, Ok(true));
-    assert_eq!(best_block, maybe_best_block);
+    assert_eq!(best_block, Ok(maybe_best_block));
     assert_eq!(maybe_miss, Ok(None));
     assert!(!matches!(
         maybe_miss,
@@ -249,7 +249,7 @@ fn coins_view_get_coin_does_not_insert_on_parent_miss() {
     // Assert
     assert_eq!(maybe_coin, Ok(None));
     assert!(!occupancy);
-    assert_eq!(best_block, None);
+    assert_eq!(best_block, Ok(None));
 }
 
 #[test]
@@ -356,7 +356,7 @@ fn coins_cache_have_coin_and_best_block_consult_parent_on_overlay_miss() {
 
     // Assert
     assert_eq!(have_coin, Ok(true));
-    assert_eq!(best_block, maybe_best_block);
+    assert_eq!(best_block, Ok(maybe_best_block));
     assert!(!cache.contains_in_cache(&outpoint));
 }
 
@@ -382,7 +382,7 @@ fn coins_cache_batch_write_installs_overlay_and_best_block() {
     assert!(cache.contains_in_cache(&outpoint));
     assert!(cache.have_coin_in_cache(&outpoint));
     assert_eq!(cache.get_coin(&outpoint), Ok(Some(coin)));
-    assert_eq!(cache.best_block(), maybe_best_block);
+    assert_eq!(cache.best_block(), Ok(maybe_best_block));
 }
 
 #[test]
@@ -405,5 +405,109 @@ fn memory_coins_view_batch_write_inserts_unspent_and_updates_best_block() {
     assert_eq!(write_result, Ok(()));
     assert_eq!(view.get_coin(&outpoint), Ok(Some(coin)));
     assert!(view.contains_outpoint(&outpoint));
-    assert_eq!(view.best_block(), maybe_best_block);
+    assert_eq!(view.best_block(), Ok(maybe_best_block));
+}
+
+struct FailingCoinsView;
+
+impl CoinsView for FailingCoinsView {
+    fn get_coin(&self, _outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
+        Err(ChainstateError::CoinsStorage {
+            detail: "injected-disk-failure".to_string(),
+        })
+    }
+
+    fn have_coin(&self, _outpoint: &OutPoint) -> Result<bool, ChainstateError> {
+        Err(ChainstateError::CoinsStorage {
+            detail: "injected-disk-failure".to_string(),
+        })
+    }
+
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
+        Err(ChainstateError::CoinsStorage {
+            detail: "injected-disk-failure".to_string(),
+        })
+    }
+
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
+        Err(ChainstateError::CoinsStorage {
+            detail: "injected-disk-failure".to_string(),
+        })
+    }
+
+    fn batch_write(
+        &mut self,
+        _writes: CoinsBatch,
+        _maybe_best_block: Option<BlockHash>,
+    ) -> Result<(), ChainstateError> {
+        Ok(())
+    }
+}
+
+#[test]
+fn memory_coins_view_best_block_and_head_blocks_are_ok() {
+    // Arrange
+    let maybe_best_block = Some(BlockHash::from_byte_array([2_u8; 32]));
+    let view = MemoryCoinsView::from_coins(HashMap::new(), maybe_best_block);
+
+    // Act
+    let best_block = view.best_block();
+    let heads = view.head_blocks();
+
+    // Assert
+    assert_eq!(best_block, Ok(maybe_best_block));
+    assert_eq!(heads, Ok(Vec::new()));
+}
+
+#[test]
+fn coins_cache_propagates_parent_coins_storage_on_get_have_best_and_heads() {
+    // Arrange
+    let failing = FailingCoinsView;
+    let cache = CoinsCache::from_parent(failing);
+    let outpoint = fixture_outpoint();
+    let expected = ChainstateError::CoinsStorage {
+        detail: "injected-disk-failure".to_string(),
+    };
+
+    // Act
+    let maybe_coin = cache.get_coin(&outpoint);
+    let have_coin = cache.have_coin(&outpoint);
+    let best_block = cache.best_block();
+    let heads = cache.head_blocks();
+
+    // Assert
+    assert_eq!(maybe_coin, Err(expected.clone()));
+    assert_eq!(have_coin, Err(expected.clone()));
+    assert_eq!(best_block, Err(expected.clone()));
+    assert_eq!(heads, Err(expected));
+    assert!(!matches!(maybe_coin, Ok(None)));
+    assert!(!matches!(have_coin, Ok(false)));
+    assert!(!matches!(
+        maybe_coin,
+        Err(ChainstateError::MissingCoin { .. })
+    ));
+    assert!(!matches!(
+        have_coin,
+        Err(ChainstateError::MissingCoin { .. })
+    ));
+    assert!(!matches!(
+        best_block,
+        Err(ChainstateError::MissingCoin { .. })
+    ));
+    assert!(!matches!(heads, Err(ChainstateError::MissingCoin { .. })));
+}
+
+#[test]
+fn coins_storage_display_is_not_missing_coin() {
+    // Arrange
+    let error = ChainstateError::CoinsStorage {
+        detail: "decode failed".into(),
+    };
+
+    // Act
+    let message = error.to_string();
+
+    // Assert
+    assert_eq!(message, "coins storage error: decode failed");
+    assert!(!message.contains("missing coin"));
 }

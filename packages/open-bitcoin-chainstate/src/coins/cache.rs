@@ -270,12 +270,11 @@ pub struct CoinsCache<V: CoinsView> {
 
 impl<V: CoinsView> CoinsCache<V> {
     pub fn from_parent(parent: V) -> Self {
-        let maybe_best_block = parent.best_block();
         Self {
             parent,
             overlay: CoinsOverlay {
                 entries: HashMap::new(),
-                maybe_best_block,
+                maybe_best_block: None,
             },
         }
     }
@@ -403,10 +402,15 @@ impl<V: CoinsView> CoinsView for CoinsCache<V> {
         self.parent.have_coin(outpoint)
     }
 
-    fn best_block(&self) -> Option<BlockHash> {
-        self.overlay
-            .maybe_best_block
-            .or_else(|| self.parent.best_block())
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
+        if let Some(hash) = self.overlay.maybe_best_block {
+            return Ok(Some(hash));
+        }
+        self.parent.best_block()
+    }
+
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
+        self.parent.head_blocks()
     }
 
     fn batch_write(

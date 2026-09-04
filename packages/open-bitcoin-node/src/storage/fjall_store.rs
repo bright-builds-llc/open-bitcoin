@@ -34,6 +34,7 @@ use super::{
 };
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
+mod coins_access;
 mod mempool;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
 
@@ -50,6 +51,7 @@ pub struct FjallNodeStore {
     headers: Keyspace,
     block_index: Keyspace,
     chainstate: Keyspace,
+    coins: Keyspace,
     wallet: Keyspace,
     metrics: Keyspace,
     mempool: Keyspace,
@@ -68,6 +70,7 @@ impl FjallNodeStore {
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
             chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,
+            coins: open_keyspace(&db, StorageNamespace::Coins)?,
             wallet: open_keyspace(&db, StorageNamespace::Wallet)?,
             metrics: open_keyspace(&db, StorageNamespace::Metrics)?,
             mempool: open_keyspace(&db, StorageNamespace::Mempool)?,
@@ -491,6 +494,7 @@ impl FjallNodeStore {
             StorageNamespace::Headers => &self.headers,
             StorageNamespace::BlockIndex => &self.block_index,
             StorageNamespace::Chainstate => &self.chainstate,
+            StorageNamespace::Coins => &self.coins,
             StorageNamespace::Wallet => &self.wallet,
             StorageNamespace::Metrics => &self.metrics,
             StorageNamespace::Mempool => &self.mempool,

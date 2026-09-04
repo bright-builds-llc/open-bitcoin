@@ -61,6 +61,9 @@ pub enum ChainstateError {
     FreshFlagMisapplied {
         outpoint: OutPoint,
     },
+    CoinsStorage {
+        detail: String,
+    },
 }
 
 impl fmt::Display for ChainstateError {
@@ -149,6 +152,7 @@ impl fmt::Display for ChainstateError {
                 "FRESH flag misapplied to coin that exists in parent cache {:?}:{}",
                 outpoint.txid, outpoint.vout
             ),
+            Self::CoinsStorage { detail } => write!(f, "coins storage error: {detail}"),
         }
     }
 }
@@ -230,6 +234,9 @@ mod tests {
             },
             ChainstateError::FreshFlagMisapplied {
                 outpoint: outpoint.clone(),
+            },
+            ChainstateError::CoinsStorage {
+                detail: "decode failed".to_string(),
             },
         ];
 

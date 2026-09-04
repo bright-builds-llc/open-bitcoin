@@ -7,6 +7,7 @@ use core::fmt;
 
 use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
+pub mod coins_codec;
 pub mod fjall_store;
 mod lock_probe;
 pub mod mempool_snapshot;
@@ -26,6 +27,7 @@ pub enum StorageNamespace {
     Headers,
     BlockIndex,
     Chainstate,
+    Coins,
     Wallet,
     Metrics,
     Mempool,
@@ -39,6 +41,7 @@ impl StorageNamespace {
             Self::Headers => "headers",
             Self::BlockIndex => "block_index",
             Self::Chainstate => "chainstate",
+            Self::Coins => "coins",
             Self::Wallet => "wallet",
             Self::Metrics => "metrics",
             Self::Mempool => "mempool",
@@ -349,6 +352,7 @@ mod tests {
             (StorageNamespace::Headers, "headers"),
             (StorageNamespace::BlockIndex, "block_index"),
             (StorageNamespace::Chainstate, "chainstate"),
+            (StorageNamespace::Coins, "coins"),
             (StorageNamespace::Wallet, "wallet"),
             (StorageNamespace::Metrics, "metrics"),
             (StorageNamespace::Runtime, "runtime"),
@@ -359,6 +363,24 @@ mod tests {
         for (namespace, expected_name) in namespaces {
             assert_eq!(namespace.as_str(), expected_name);
         }
+    }
+
+    #[test]
+    fn storage_namespace_coins_is_coins() {
+        // Arrange / Act
+        let name = StorageNamespace::Coins.as_str();
+
+        // Assert
+        assert_eq!(name, "coins");
+    }
+
+    #[test]
+    fn schema_version_current_stays_one_until_plan_04() {
+        // Arrange / Act
+        let current = SchemaVersion::CURRENT.get();
+
+        // Assert
+        assert_eq!(current, 1);
     }
 
     #[test]

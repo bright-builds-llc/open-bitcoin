@@ -138,7 +138,7 @@ impl Chainstate {
         self.coins.have_coin_in_cache(outpoint)
     }
 
-    pub fn coins_best_block(&self) -> Option<BlockHash> {
+    pub fn coins_best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
         self.coins.best_block()
     }
 
