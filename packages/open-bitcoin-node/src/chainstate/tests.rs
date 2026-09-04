@@ -3,7 +3,10 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
+use std::collections::HashMap;
+
 use open_bitcoin_core::{
+    chainstate::{BlockUndo, ChainstateSnapshot, Coin, CoinsBatch, CoinsCacheEntry, TxUndo},
     consensus::{
         ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
         transaction_txid,
@@ -147,6 +150,18 @@ fn mature_params() -> ConsensusParams {
     }
 }
 
+fn sample_coin(created_height: u32, created_median_time_past: i64) -> Coin {
+    Coin {
+        output: TransactionOutput {
+            value: Amount::from_sats(50).expect("valid amount"),
+            script_pubkey: script(&[0x51]),
+        },
+        is_coinbase: true,
+        created_height,
+        created_median_time_past,
+    }
+}
+
 fn connect_genesis(managed: &mut ManagedChainstate<MemoryChainstateStore>) -> (Block, OutPoint) {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
     managed
@@ -177,6 +192,111 @@ fn memory_store_round_trips_saved_snapshots() {
 
     // Assert
     assert_eq!(store.load_snapshot(), Some(snapshot));
+}
+
+#[test]
+fn memory_store_from_snapshot_serves_coins_from_view_not_later_snapshot_utxos() {
+    // Arrange
+    let outpoint = OutPoint {
+        txid: Txid::from_byte_array([1; 32]),
+        vout: 0,
+    };
+    let coin = sample_coin(4, 9);
+    let undo_hash = BlockHash::from_byte_array([2; 32]);
+    let undo = BlockUndo {
+        transactions: vec![TxUndo {
+            restored_inputs: vec![coin.clone()],
+        }],
+    };
+    let mut utxos = HashMap::new();
+    utxos.insert(outpoint.clone(), coin.clone());
+    let mut undo_by_block = HashMap::new();
+    undo_by_block.insert(undo_hash, undo.clone());
+    let snapshot = ChainstateSnapshot::new(Vec::new(), utxos, undo_by_block);
+    let mut store = MemoryChainstateStore::from_snapshot(snapshot);
+    let leftover = ChainstateSnapshot::new(Vec::new(), HashMap::new(), HashMap::new());
+
+    // Act
+    store.save_snapshot(leftover.clone());
+
+    // Assert
+    assert_eq!(
+        store.get_coin(&outpoint).expect("view-backed get_coin"),
+        Some(coin)
+    );
+    assert_eq!(
+        store.load_undo(undo_hash).expect("view-backed load_undo"),
+        Some(undo)
+    );
+    assert_eq!(store.load_snapshot(), Some(leftover));
+}
+
+#[test]
+fn memory_store_batch_write_updates_view_and_best_block() {
+    // Arrange
+    let mut store = MemoryChainstateStore::default();
+    let outpoint = OutPoint {
+        txid: Txid::from_byte_array([1; 32]),
+        vout: 0,
+    };
+    let coin = sample_coin(4, 9);
+    let mut entries = HashMap::new();
+    entries.insert(
+        outpoint.clone(),
+        CoinsCacheEntry::unspent_dirty(coin.clone()),
+    );
+    let best_block = BlockHash::from_byte_array([3; 32]);
+
+    // Act
+    store
+        .batch_write(CoinsBatch { entries }, Some(best_block))
+        .expect("batch_write updates the memory view");
+
+    // Assert
+    assert_eq!(
+        store
+            .get_coin(&outpoint)
+            .expect("get_coin after batch_write"),
+        Some(coin)
+    );
+    assert_eq!(
+        store.best_block().expect("best_block after batch_write"),
+        Some(best_block)
+    );
+    assert_eq!(
+        store.head_blocks().expect("memory heads stay empty"),
+        Vec::<BlockHash>::new()
+    );
+    assert_eq!(store.load_snapshot(), None);
+}
+
+#[test]
+fn memory_store_save_undo_round_trips_without_snapshot() {
+    // Arrange
+    let mut store = MemoryChainstateStore::default();
+    let block_hash = BlockHash::from_byte_array([4; 32]);
+    let undo = BlockUndo {
+        transactions: vec![TxUndo {
+            restored_inputs: vec![sample_coin(4, 9)],
+        }],
+    };
+
+    // Act
+    store
+        .save_undo(block_hash, undo.clone())
+        .expect("save_undo stores the record");
+
+    // Assert
+    assert_eq!(
+        store.load_undo(block_hash).expect("load_undo round-trip"),
+        Some(undo)
+    );
+    assert_eq!(
+        store
+            .load_undo(BlockHash::from_byte_array([9; 32]))
+            .expect("missing undo is a successful miss"),
+        None
+    );
 }
 
 #[test]

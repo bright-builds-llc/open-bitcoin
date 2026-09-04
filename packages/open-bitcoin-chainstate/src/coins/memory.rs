@@ -13,6 +13,7 @@ use super::{CoinsBatch, CoinsView};
 use crate::error::ChainstateError;
 use crate::types::Coin;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MemoryCoinsView {
     coins: HashMap<OutPoint, Coin>,
     maybe_best_block: Option<BlockHash>,

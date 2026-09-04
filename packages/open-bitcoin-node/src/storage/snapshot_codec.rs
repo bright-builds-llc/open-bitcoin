@@ -159,6 +159,17 @@ pub(crate) fn decode_chainstate_snapshot(bytes: &[u8]) -> Result<ChainstateSnaps
     dto.try_into()
 }
 
+#[allow(dead_code)] // Plan 04 persists undo: records through this codec.
+pub(crate) fn encode_block_undo(undo: &BlockUndo) -> Result<Vec<u8>, StorageError> {
+    encode_versioned(StorageNamespace::Chainstate, &BlockUndoDto::from(undo))
+}
+
+#[allow(dead_code)] // Plan 04 loads undo: records through this codec.
+pub(crate) fn decode_block_undo(bytes: &[u8]) -> Result<BlockUndo, StorageError> {
+    let dto: BlockUndoDto = decode_versioned(StorageNamespace::Chainstate, bytes)?;
+    BlockUndo::try_from(dto)
+}
+
 pub(crate) fn encode_header_entries(entries: &[HeaderEntry]) -> Result<Vec<u8>, StorageError> {
     encode_header_entries_for(StorageNamespace::Headers, entries)
 }

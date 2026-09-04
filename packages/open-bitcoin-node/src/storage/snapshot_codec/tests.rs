@@ -15,13 +15,13 @@ use open_bitcoin_core::{
 use open_bitcoin_network::HeaderEntry;
 
 use super::{
-    MempoolSnapshotDecodeLimits, MetricsStorageSnapshot, decode_chainstate_snapshot,
-    decode_header_entries, decode_mempool_snapshot, decode_mempool_snapshot_with_limits,
-    decode_metrics_snapshot, decode_selected_wallet, decode_wallet_registry_snapshot,
-    decode_wallet_rescan_job, decode_wallet_snapshot, encode_chainstate_snapshot,
-    encode_header_entries, encode_mempool_snapshot, encode_metrics_snapshot,
-    encode_selected_wallet, encode_wallet_registry_snapshot, encode_wallet_rescan_job,
-    encode_wallet_snapshot,
+    MempoolSnapshotDecodeLimits, MetricsStorageSnapshot, decode_block_undo,
+    decode_chainstate_snapshot, decode_header_entries, decode_mempool_snapshot,
+    decode_mempool_snapshot_with_limits, decode_metrics_snapshot, decode_selected_wallet,
+    decode_wallet_registry_snapshot, decode_wallet_rescan_job, decode_wallet_snapshot,
+    encode_block_undo, encode_chainstate_snapshot, encode_header_entries, encode_mempool_snapshot,
+    encode_metrics_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
+    encode_wallet_rescan_job, encode_wallet_snapshot,
 };
 use open_bitcoin_mempool::{
     MempoolAcceptanceTime, MempoolEntryMetadata, MempoolMemberIdentity, MempoolOrigin, PolicyTime,
@@ -189,6 +189,37 @@ fn chainstate_snapshot_round_trips_through_storage_dto() {
 
     // Assert
     assert_eq!(decoded, snapshot);
+}
+
+#[test]
+fn encode_block_undo_round_trips_and_is_not_full_snapshot() {
+    // Arrange
+    let undo = BlockUndo {
+        transactions: vec![TxUndo {
+            restored_inputs: vec![Coin {
+                output: output(5_000),
+                is_coinbase: false,
+                created_height: 6,
+                created_median_time_past: 11,
+            }],
+        }],
+    };
+
+    // Act
+    let encoded = encode_block_undo(&undo).expect("encode block undo");
+    let decoded = decode_block_undo(&encoded).expect("decode block undo");
+    let encoded_json = String::from_utf8(encoded).expect("undo encode is JSON");
+
+    // Assert
+    assert_eq!(decoded, undo);
+    assert!(
+        encoded_json.contains("transactions"),
+        "undo JSON must contain transactions: {encoded_json}"
+    );
+    assert!(
+        !encoded_json.contains("\"utxos\""),
+        "undo JSON must not embed leftover snapshot utxos: {encoded_json}"
+    );
 }
 
 #[test]

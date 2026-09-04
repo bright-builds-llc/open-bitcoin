@@ -3,29 +3,55 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
+use std::collections::HashMap;
+
 use open_bitcoin_core::{
     chainstate::{
-        AnchoredBlock, ChainPosition, ChainTransition, Chainstate, ChainstateSnapshot,
-        StagedChainstateConnect, StagedChainstateReorg,
+        AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, Chainstate, ChainstateError,
+        ChainstateSnapshot, Coin, CoinsBatch, CoinsView, MemoryCoinsView, StagedChainstateConnect,
+        StagedChainstateReorg,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
-    primitives::Block,
+    primitives::{Block, BlockHash, OutPoint},
 };
 
 pub trait ChainstateStore {
     fn load_snapshot(&self) -> Option<ChainstateSnapshot>;
     fn save_snapshot(&mut self, snapshot: ChainstateSnapshot);
+    fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError>;
+    fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError>;
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError>;
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError>;
+    fn batch_write(
+        &mut self,
+        writes: CoinsBatch,
+        maybe_best_block: Option<BlockHash>,
+    ) -> Result<(), ChainstateError>;
+    fn load_undo(&self, block_hash: BlockHash) -> Result<Option<BlockUndo>, ChainstateError>;
+    fn save_undo(&mut self, block_hash: BlockHash, undo: BlockUndo) -> Result<(), ChainstateError>;
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MemoryChainstateStore {
     maybe_snapshot: Option<ChainstateSnapshot>,
+    coins: MemoryCoinsView,
+    undo_by_block: HashMap<BlockHash, BlockUndo>,
 }
 
 impl MemoryChainstateStore {
     pub fn from_snapshot(snapshot: ChainstateSnapshot) -> Self {
+        let coins = MemoryCoinsView::from_coins(
+            snapshot.utxos.clone(),
+            snapshot
+                .active_chain
+                .last()
+                .map(|position| position.block_hash),
+        );
+        let undo_by_block = snapshot.undo_by_block.clone();
         Self {
             maybe_snapshot: Some(snapshot),
+            coins,
+            undo_by_block,
         }
     }
 
@@ -41,6 +67,39 @@ impl ChainstateStore for MemoryChainstateStore {
 
     fn save_snapshot(&mut self, snapshot: ChainstateSnapshot) {
         self.maybe_snapshot = Some(snapshot);
+    }
+
+    fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
+        self.coins.get_coin(outpoint)
+    }
+
+    fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError> {
+        self.coins.have_coin(outpoint)
+    }
+
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
+        self.coins.best_block()
+    }
+
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
+        self.coins.head_blocks()
+    }
+
+    fn batch_write(
+        &mut self,
+        writes: CoinsBatch,
+        maybe_best_block: Option<BlockHash>,
+    ) -> Result<(), ChainstateError> {
+        self.coins.batch_write(writes, maybe_best_block)
+    }
+
+    fn load_undo(&self, block_hash: BlockHash) -> Result<Option<BlockUndo>, ChainstateError> {
+        Ok(self.undo_by_block.get(&block_hash).cloned())
+    }
+
+    fn save_undo(&mut self, block_hash: BlockHash, undo: BlockUndo) -> Result<(), ChainstateError> {
+        self.undo_by_block.insert(block_hash, undo);
+        Ok(())
     }
 }
 
