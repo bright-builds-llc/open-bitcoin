@@ -1771,7 +1771,9 @@
       "label": "node-coins-adapter",
       "files": [
         "packages/open-bitcoin-node/src/storage/coins_codec.rs",
-        "packages/open-bitcoin-node/src/storage/coins_codec/tests.rs"
+        "packages/open-bitcoin-node/src/storage/coins_codec/tests.rs",
+        "packages/open-bitcoin-node/src/storage/coins_view.rs",
+        "packages/open-bitcoin-node/src/storage/coins_view/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/txdb.h",

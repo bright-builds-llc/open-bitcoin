@@ -8,6 +8,7 @@ use core::fmt;
 use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
 pub mod coins_codec;
+pub mod coins_view;
 pub mod fjall_store;
 mod lock_probe;
 pub mod mempool_snapshot;
