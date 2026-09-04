@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: verifying
-stopped_at: Completed 140-03-PLAN.md
-last_updated: "2026-09-02T10:24:58.003Z"
+stopped_at: Phase 141 context gathered
+last_updated: "2026-09-04T18:00:42.685Z"
 last_activity: 2026-09-02
 progress:
   total_phases: 7
@@ -362,6 +362,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-02T09:36:36.993Z
-Stopped at: Completed 140-03-PLAN.md
-Resume file: None
+Last session: 2026-09-04T18:00:42.678Z
+Stopped at: Phase 141 context gathered
+Resume file: .planning/phases/141-durable-fjall-coins-adapter/141-CONTEXT.md
