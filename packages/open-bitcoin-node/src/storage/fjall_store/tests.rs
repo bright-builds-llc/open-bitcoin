@@ -245,6 +245,18 @@ fn wallet_snapshot() -> WalletSnapshot {
     snapshot
 }
 
+fn plant_coins_best_block_for_schema2_reopen(store: &FjallNodeStore) {
+    use crate::storage::coins_codec::{encode_best_block_key, encode_best_block_value};
+    use crate::storage::coins_view::FjallCoinsView;
+    let view = FjallCoinsView::from_store(store);
+    view.write_raw_bytes(
+        &encode_best_block_key(),
+        encode_best_block_value(BlockHash::from_byte_array([0_u8; 32])),
+    )
+    .expect("plant B so leftover reopen is not empty-coins fail-closed");
+}
+
+mod coins_migration;
 mod corruption_and_markers;
 mod lock_probe;
 mod metrics_persistence;

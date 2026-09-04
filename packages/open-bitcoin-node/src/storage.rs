@@ -57,7 +57,7 @@ impl StorageNamespace {
 pub struct SchemaVersion(u32);
 
 impl SchemaVersion {
-    pub const CURRENT: Self = Self(1);
+    pub const CURRENT: Self = Self(2);
 
     pub fn new(version: u32) -> Result<Self, StorageError> {
         if version == 0 {
@@ -70,6 +70,12 @@ impl SchemaVersion {
     pub const fn get(self) -> u32 {
         self.0
     }
+}
+
+/// Leftover snapshot, wallet, mempool, and runtime JSON blobs stay readable
+/// under store schema 2. Other blob versions fail closed (D-17).
+pub(crate) const fn blob_schema_is_readable(actual: SchemaVersion) -> bool {
+    matches!(actual.get(), 1 | 2)
 }
 
 /// Persistence strength requested by a storage operation.
@@ -376,12 +382,21 @@ mod tests {
     }
 
     #[test]
-    fn schema_version_current_stays_one_until_plan_04() {
+    fn schema_version_current_is_two() {
         // Arrange / Act
         let current = SchemaVersion::CURRENT.get();
 
         // Assert
-        assert_eq!(current, 1);
+        assert_eq!(current, 2);
+        assert!(super::blob_schema_is_readable(
+            SchemaVersion::new(1).expect("readable blob schema 1")
+        ));
+        assert!(super::blob_schema_is_readable(
+            SchemaVersion::new(2).expect("readable blob schema 2")
+        ));
+        assert!(!super::blob_schema_is_readable(
+            SchemaVersion::new(3).expect("unreadable blob schema 3")
+        ));
     }
 
     #[test]

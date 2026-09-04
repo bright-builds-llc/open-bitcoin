@@ -46,6 +46,7 @@ const FILES = {
     "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
   coordinator: "packages/open-bitcoin-node/src/network/checkpoint.rs",
   store: "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
+  coins: "packages/open-bitcoin-node/src/storage/fjall_store/coins.rs",
   fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
   chainstateTypes: "packages/open-bitcoin-chainstate/src/types.rs",
   syncRuntime: "packages/open-bitcoin-node/src/sync.rs",
@@ -162,7 +163,7 @@ export function checkPhase135SnapshotRecovery(
         "unbroadcast_members: Vec<MempoolMemberIdentityDto>",
       ]) ||
       !snapshot.includes("pub const CURRENT: Self = Self(2);") ||
-      !storage.includes("pub const CURRENT: Self = Self(1);") ||
+      !storage.includes("pub const CURRENT: Self = Self(2);") ||
       !codec.includes("MempoolAcceptanceTime::LegacyUnknown => None,") ||
       !codec.includes("None => MempoolAcceptanceTime::LegacyUnknown,") ||
       !get(FILES.codecDecode).includes(
@@ -390,6 +391,10 @@ export function checkPhase135SnapshotRecovery(
     get(FILES.syncRuntime),
     "pub fn open_with_runtime_activation(",
   );
+  const leftoverMigrate = body(
+    get(FILES.coins),
+    "fn migrate_schema_1_coins(",
+  );
   const confirmationMigration = body(
     get(FILES.store),
     "pub fn load_chainstate_snapshot_with_confirmation_migration(",
@@ -417,7 +422,8 @@ export function checkPhase135SnapshotRecovery(
     failures,
     !startup.includes("prepare_mempool_recovery_at") ||
       !startup.includes("install_mempool_recovery") ||
-      !syncRuntimeConstruction.includes(
+      !syncRuntimeConstruction.includes("hydrate_chainstate_for_open()?") ||
+      !leftoverMigrate.includes(
         "load_chainstate_snapshot_with_confirmation_migration()?",
       ) ||
       !hasAll(confirmationMigration, [

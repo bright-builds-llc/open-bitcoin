@@ -102,6 +102,9 @@ fn restart_resume_advances_pending_rescan_in_bounded_chunks() {
     store
         .save_chainstate_snapshot(&funded_chainstate(&wallet), PersistMode::Sync)
         .expect("save chainstate");
+    store
+        .seed_coins_from_leftover_for_reopen()
+        .expect("seed coins for leftover reopen");
     let mut registry = WalletRegistry::default();
     registry
         .create_wallet(&store, "alpha", wallet, PersistMode::Sync)

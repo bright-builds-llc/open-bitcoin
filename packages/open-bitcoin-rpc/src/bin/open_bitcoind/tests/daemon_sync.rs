@@ -97,6 +97,12 @@ fn authoritative_daemon_runtime_migrates_legacy_confirmation_evidence_before_pub
     store
         .save_chainstate_snapshot(&legacy_chainstate, PersistMode::Sync)
         .expect("save legacy chainstate");
+    store
+        .load_chainstate_snapshot_with_confirmation_migration()
+        .expect("migrate leftover confirmation evidence");
+    store
+        .seed_coins_from_leftover_for_reopen()
+        .expect("seed coins after leftover persist");
     let runtime = RuntimeConfig {
         maybe_data_dir: Some(data_dir.clone()),
         ..RuntimeConfig::default()
@@ -147,7 +153,13 @@ fn authoritative_daemon_runtime_rejects_legacy_chainstate_with_missing_block() {
     };
 
     // Assert
-    assert!(error.to_string().contains("missing active-chain block"));
+    // Schema 2 leftover plus empty coins fails closed on hydrate; leftover
+    // confirmation migration no longer runs on DurableSyncRuntime::open.
+    assert!(
+        error
+            .to_string()
+            .contains("leftover snapshot with empty coins")
+    );
     remove_dir_if_exists(&data_dir);
 }
 

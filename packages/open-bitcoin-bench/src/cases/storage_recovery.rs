@@ -129,6 +129,9 @@ fn run_restart_recovery_case() -> Result<(), BenchError> {
             .save_chainstate_snapshot(&chainstate, PersistMode::Sync)
             .map_err(|error| BenchError::case_failed(RESTART_CASE_ID, error.to_string()))?;
         store
+            .seed_coins_from_leftover_for_reopen()
+            .map_err(|error| BenchError::case_failed(RESTART_CASE_ID, error.to_string()))?;
+        store
             .save_wallet_snapshot(&wallet_snapshot, PersistMode::Sync)
             .map_err(|error| BenchError::case_failed(RESTART_CASE_ID, error.to_string()))?;
         store

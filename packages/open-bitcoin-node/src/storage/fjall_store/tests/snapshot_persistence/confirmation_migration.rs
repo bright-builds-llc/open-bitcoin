@@ -73,6 +73,7 @@ fn legacy_confirmation_evidence_migrates_from_blocks_before_recovery_classificat
         store
             .save_mempool_snapshot(&mempool_snapshot, PersistMode::Sync)
             .expect("save mempool snapshot");
+        plant_coins_best_block_for_schema2_reopen(&store);
     }
     let reopened = FjallNodeStore::open(&path).expect("reopen store");
 

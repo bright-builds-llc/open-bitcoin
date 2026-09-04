@@ -3,7 +3,7 @@
 
 //! Fjall-backed durable storage adapter for node-owned runtime state.
 
-use std::{path::Path, str};
+use std::path::Path;
 
 use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode as FjallPersistMode};
 use open_bitcoin_core::{
@@ -34,6 +34,7 @@ use super::{
 };
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
+mod coins;
 mod coins_access;
 mod mempool;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
@@ -414,17 +415,7 @@ impl FjallNodeStore {
     }
 
     fn ensure_schema(&self) -> Result<(), StorageError> {
-        let Some(bytes) = self.get_bytes(StorageNamespace::Schema, SCHEMA_VERSION_KEY)? else {
-            let version = SchemaVersion::CURRENT.get().to_string().into_bytes();
-            return self.put_bytes(
-                StorageNamespace::Schema,
-                SCHEMA_VERSION_KEY,
-                version,
-                PersistMode::Sync,
-            );
-        };
-
-        validate_schema_version(&bytes)
+        self.ensure_schema_and_migrate_coins()
     }
 
     fn put_bytes(
@@ -514,13 +505,34 @@ impl FjallNodeStore {
     }
 
     #[cfg(test)]
-    fn write_schema_version_for_test(&self, version: u32) -> Result<(), StorageError> {
+    pub(crate) fn write_schema_version_for_test(&self, version: u32) -> Result<(), StorageError> {
         self.put_bytes(
             StorageNamespace::Schema,
             SCHEMA_VERSION_KEY,
             version.to_string().into_bytes(),
             PersistMode::Sync,
         )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn open_without_ensure_schema_for_test(
+        path: impl AsRef<std::path::Path>,
+    ) -> Result<Self, StorageError> {
+        let db = Database::builder(path.as_ref())
+            .open()
+            .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
+        Ok(Self {
+            headers: open_keyspace(&db, StorageNamespace::Headers)?,
+            block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
+            chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,
+            coins: open_keyspace(&db, StorageNamespace::Coins)?,
+            wallet: open_keyspace(&db, StorageNamespace::Wallet)?,
+            metrics: open_keyspace(&db, StorageNamespace::Metrics)?,
+            mempool: open_keyspace(&db, StorageNamespace::Mempool)?,
+            runtime: open_keyspace(&db, StorageNamespace::Runtime)?,
+            schema: open_keyspace(&db, StorageNamespace::Schema)?,
+            db,
+        })
     }
 }
 
@@ -535,23 +547,6 @@ fn fjall_persist_mode(mode: PersistMode) -> Option<FjallPersistMode> {
         PersistMode::Flush => Some(FjallPersistMode::Buffer),
         PersistMode::Sync => Some(FjallPersistMode::SyncAll),
     }
-}
-
-fn validate_schema_version(bytes: &[u8]) -> Result<(), StorageError> {
-    let text =
-        str::from_utf8(bytes).map_err(|error| corruption(StorageNamespace::Schema, error))?;
-    let version = text
-        .parse::<u32>()
-        .map_err(|error| corruption(StorageNamespace::Schema, error))?;
-    let actual = SchemaVersion::new(version)?;
-    if actual != SchemaVersion::CURRENT {
-        return Err(StorageError::schema_mismatch(
-            SchemaVersion::CURRENT,
-            actual,
-        ));
-    }
-
-    Ok(())
 }
 
 fn block_key(block_hash: BlockHash) -> String {

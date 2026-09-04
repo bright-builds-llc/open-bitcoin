@@ -536,7 +536,7 @@ fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
         MempoolMemberIdentity { txid, wtxid }
     );
     assert!(decoded.unbroadcast_members().is_empty());
-    assert_eq!(SchemaVersion::CURRENT.get(), 1);
+    assert_eq!(SchemaVersion::CURRENT.get(), 2);
 }
 
 #[test]
@@ -649,7 +649,7 @@ fn mempool_snapshot_encoded_schema_version_remains_current() {
         value["schema_version"].as_u64().expect("schema"),
         u64::from(SchemaVersion::CURRENT.get())
     );
-    assert_eq!(SchemaVersion::CURRENT.get(), 1);
+    assert_eq!(SchemaVersion::CURRENT.get(), 2);
 }
 
 #[path = "tests/mempool_limits.rs"]

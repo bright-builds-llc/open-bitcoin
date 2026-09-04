@@ -1773,7 +1773,9 @@
         "packages/open-bitcoin-node/src/storage/coins_codec.rs",
         "packages/open-bitcoin-node/src/storage/coins_codec/tests.rs",
         "packages/open-bitcoin-node/src/storage/coins_view.rs",
-        "packages/open-bitcoin-node/src/storage/coins_view/tests.rs"
+        "packages/open-bitcoin-node/src/storage/coins_view/tests.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/coins.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/coins_migration.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/txdb.h",
@@ -1793,6 +1795,7 @@
         "packages/open-bitcoin-node/src/storage/snapshot_codec.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/wallet.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/chain_meta.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/corruption_and_markers.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/lock_probe.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/metrics_persistence.rs",

@@ -192,8 +192,8 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.schema,
       replace(
         files.storage,
-        "pub const CURRENT: Self = Self(1);",
         "pub const CURRENT: Self = Self(2);",
+        "pub const CURRENT: Self = Self(3);",
       ),
     ],
     [
@@ -364,11 +364,11 @@ function contractMutations(): Mutation[] {
       ),
     ],
     [
-      "authoritative runtime bypasses confirmation migration",
+      "authoritative runtime bypasses coins hydrate",
       PHASE135_DIAGNOSTICS.startup,
       replace(
         files.syncRuntime,
-        "load_chainstate_snapshot_with_confirmation_migration()?",
+        "hydrate_chainstate_for_open()?",
         "load_chainstate_snapshot()?",
       ),
     ],

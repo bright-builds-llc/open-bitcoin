@@ -20,9 +20,11 @@ use crate::{
     StorageRecoveryAction, metrics::MetricSample,
 };
 
+mod chain_meta;
 mod mempool;
 mod wallet;
 
+pub(crate) use chain_meta::{HydratedChainMeta, decode_chain_meta, encode_chain_meta};
 pub use mempool::{MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limits};
 pub(crate) use mempool::{
     MempoolSnapshotPersistedInputLimits, assert_mempool_snapshot_representable,
@@ -159,12 +161,10 @@ pub(crate) fn decode_chainstate_snapshot(bytes: &[u8]) -> Result<ChainstateSnaps
     dto.try_into()
 }
 
-#[allow(dead_code)] // Plan 04 persists undo: records through this codec.
 pub(crate) fn encode_block_undo(undo: &BlockUndo) -> Result<Vec<u8>, StorageError> {
     encode_versioned(StorageNamespace::Chainstate, &BlockUndoDto::from(undo))
 }
 
-#[allow(dead_code)] // Plan 04 loads undo: records through this codec.
 pub(crate) fn decode_block_undo(bytes: &[u8]) -> Result<BlockUndo, StorageError> {
     let dto: BlockUndoDto = decode_versioned(StorageNamespace::Chainstate, bytes)?;
     BlockUndo::try_from(dto)
@@ -262,7 +262,7 @@ pub(super) fn decode_versioned<T: DeserializeOwned>(
     let snapshot: VersionedSnapshot<T> =
         serde_json::from_slice(bytes).map_err(|error| corruption(namespace, error))?;
     let actual = SchemaVersion::new(snapshot.schema_version)?;
-    if actual != SchemaVersion::CURRENT {
+    if !super::blob_schema_is_readable(actual) {
         return Err(StorageError::schema_mismatch(
             SchemaVersion::CURRENT,
             actual,

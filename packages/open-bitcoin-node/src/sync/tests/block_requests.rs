@@ -69,6 +69,9 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
             )
             .expect("save active chain snapshot");
         store
+            .seed_coins_from_leftover_for_reopen()
+            .expect("seed coins for leftover reopen");
+        store
             .save_block(&active_block, PersistMode::Sync)
             .expect("save active-chain block for confirmation migration");
         store

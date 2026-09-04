@@ -15,6 +15,7 @@ use super::{
     MempoolSnapshotPayloadDto, MempoolSnapshotV1Dto, MempoolSnapshotV1RecordDto,
     MempoolSnapshotV2Dto, MempoolSnapshotV2RecordDto, snapshot_failure,
 };
+use crate::storage::blob_schema_is_readable;
 use crate::storage::mempool_snapshot::MempoolSnapshotError;
 use crate::{SchemaVersion, StorageError};
 
@@ -38,7 +39,7 @@ pub(super) fn decode_bounded_versioned(
     deserializer.end().map_err(map_stream_error)?;
 
     let actual = SchemaVersion::new(decoded.schema_version)?;
-    if actual != SchemaVersion::CURRENT {
+    if !blob_schema_is_readable(actual) {
         return Err(StorageError::schema_mismatch(
             SchemaVersion::CURRENT,
             actual,

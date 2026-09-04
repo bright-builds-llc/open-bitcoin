@@ -42,6 +42,7 @@ fn fjall_store_reopens_saved_snapshots_and_metadata() {
         store
             .save_runtime_metadata(&metadata, PersistMode::Sync)
             .expect("save runtime metadata");
+        plant_coins_best_block_for_schema2_reopen(&store);
     }
     let reopened = FjallNodeStore::open(&path).expect("reopen store");
 

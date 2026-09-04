@@ -12,7 +12,7 @@ use open_bitcoin_codec::{
 };
 use open_bitcoin_core::{
     chainstate::Coin,
-    primitives::{Amount, BlockHash, OutPoint, ScriptBuf, TransactionOutput},
+    primitives::{Amount, BlockHash, OutPoint, ScriptBuf, TransactionOutput, Txid},
 };
 
 use super::{StorageError, StorageNamespace, StorageRecoveryAction};
@@ -31,6 +31,22 @@ fn coins_corruption(detail: impl core::fmt::Display) -> StorageError {
         detail: detail.to_string(),
         action: StorageRecoveryAction::Repair,
     }
+}
+
+pub fn decode_coin_key(key: &[u8]) -> Result<OutPoint, StorageError> {
+    if key.len() != 37 || key.first().copied() != Some(DB_COIN) {
+        return Err(coins_corruption("coin key must be C + txid + le vout"));
+    }
+    let txid_bytes: [u8; 32] = key[1..33]
+        .try_into()
+        .map_err(|_| coins_corruption("coin key txid slice"))?;
+    let vout_bytes: [u8; 4] = key[33..37]
+        .try_into()
+        .map_err(|_| coins_corruption("coin key vout slice"))?;
+    Ok(OutPoint {
+        txid: Txid::from_byte_array(txid_bytes),
+        vout: u32::from_le_bytes(vout_bytes),
+    })
 }
 
 pub fn encode_coin_key(outpoint: &OutPoint) -> [u8; 37] {

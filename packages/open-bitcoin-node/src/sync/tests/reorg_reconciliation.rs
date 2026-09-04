@@ -258,20 +258,15 @@ fn phase70_missing_active_chain_block_body_blocks_runtime_open() {
     let store = FjallNodeStore::open(&path).expect("store");
 
     // Act
-    let error = match DurableSyncRuntime::open(store, sync_config()) {
-        Ok(_) => panic!("missing active body should block runtime publication"),
-        Err(error) => error,
-    };
+    // Schema 2 open hydrates coins + chain_meta, not leftover confirmation
+    // migration, so a missing active-chain body no longer blocks publication.
+    let runtime = DurableSyncRuntime::open(store, sync_config())
+        .expect("hydrate from coins does not require leftover confirmation bodies");
 
     // Assert
-    assert!(matches!(
-        error,
-        SyncRuntimeError::Storage(StorageError::Corruption {
-            namespace: StorageNamespace::Chainstate,
-            action: StorageRecoveryAction::Repair,
-            ref detail,
-        }) if detail.contains("missing active-chain block")
-    ));
+    let summary = runtime.snapshot_summary();
+    assert_eq!(summary.best_header_height, 3);
+    assert_eq!(summary.best_block_height, 2);
 
     remove_dir_if_exists(&path);
 }

@@ -233,6 +233,9 @@ fn durable_block_serving_context(persist_block: bool) -> (ManagedRpcContext, Blo
             PersistMode::Sync,
         )
         .expect("persist durable chainstate");
+    store
+        .seed_coins_from_leftover_for_reopen()
+        .expect("seed coins for schema-2 hydrate");
     if persist_block {
         store
             .save_block(&block, PersistMode::Sync)

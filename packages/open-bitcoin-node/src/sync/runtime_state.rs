@@ -92,6 +92,9 @@ impl DurableSyncRuntime {
             .save_header_entries(&header_entries, self.config.persist_mode)?;
         self.store
             .save_chainstate_snapshot(&chainstate_snapshot, self.config.persist_mode)?;
+        // Transitional dual-write until Phase 142 persist cutover: leftover stays
+        // authoritative for writes, coins must exist so schema-2 reopen can hydrate.
+        self.store.seed_coins_from_leftover_for_reopen()?;
         let mut metadata = self.load_runtime_metadata()?;
         metadata.last_clean_shutdown = false;
         self.store

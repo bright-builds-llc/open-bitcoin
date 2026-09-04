@@ -169,6 +169,9 @@ pub(super) fn save_chain_headers_snapshot_and_blocks(
             PersistMode::Sync,
         )
         .expect("save active chain snapshot");
+    store
+        .seed_coins_from_leftover_for_reopen()
+        .expect("seed coins for leftover reopen");
     for (block, _) in stored_blocks {
         store
             .save_block(block, PersistMode::Sync)
