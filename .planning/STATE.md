@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: executing
-stopped_at: Completed 141-03-PLAN.md
-last_updated: "2026-09-04T21:24:11.037Z"
+status: verifying
+stopped_at: Completed 141-04-PLAN.md
+last_updated: "2026-09-04T23:36:01.355Z"
 last_activity: 2026-09-04
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
-  percent: 91
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 141 (Durable Fjall Coins Adapter) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-04
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
@@ -120,6 +120,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 141 P01 | 42 | 2 tasks | 13 files |
 | Phase 141 P02 | 27 | 2 tasks | 5 files |
 | Phase 141 P03 | 37 | 2 tasks | 6 files |
+| Phase 141-durable-fjall-coins-adapter P04 | 118min | 2 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -354,6 +355,9 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 141]: MemoryCoinsView gained Debug/Clone/Default/PartialEq/Eq so MemoryChainstateStore can keep those derives
 - [Phase 141]: encode_block_undo and decode_block_undo allow(dead_code) until Plan 04 writes undo: records
 - [Phase 141]: SchemaVersion::CURRENT stays 1; COIN-01 remains Pending until phase verification
+- [Phase 141]: Combined 141-04 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
+- [Phase 141]: persist_progress still writes leftover snapshots and also seeds coins so schema-2 reopen can hydrate until Phase 142 write-site cutover
+- [Phase 141]: Phase 135 snapshot-recovery checks now require store CURRENT = 2 and DurableSyncRuntime hydrate_chainstate_for_open
 
 ### Pending Todos
 
@@ -377,6 +381,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-04T21:24:11.034Z
-Stopped at: Completed 141-03-PLAN.md
+Last session: 2026-09-04T23:36:01.352Z
+Stopped at: Completed 141-04-PLAN.md
 Resume file: None

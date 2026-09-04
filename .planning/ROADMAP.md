@@ -45,7 +45,7 @@ v2.3 Chainstate Durability and Historical Serving is planned across Phases 139�
 
 - [x] **Phase 139: Coins-View, Cache Contract, and Engine Apply** — Overlay a typed DIRTY/FRESH coins cache so connect and disconnect stop cloning or rewriting the whole UTXO set. (completed 2026-08-31)
 - [x] **Phase 140: Pure Flush Policy and Typed Decisions** — Decide IfNeeded, Periodic, Always, and disk-space refusal from injected facts in an I/O-free state machine. (completed 2026-09-02)
-- [ ] **Phase 141: Durable Fjall Coins Adapter** — Persist per-outpoint coins, best-block, and interrupted-flush markers; fail closed on coins disk-read errors.
+- [x] **Phase 141: Durable Fjall Coins Adapter** — Persist per-outpoint coins, best-block, and interrupted-flush markers; fail closed on coins disk-read errors. (completed 2026-09-04)
 - [ ] **Phase 142: Manager Flush Lifecycle and Restart** — One manager owns coins init, ordered flush, interrupted-flush recovery, and restart from coins best-block.
 - [ ] **Phase 143: Honest Stored-Block Availability** — Serve or report Available only when payload bytes are present; refuse cleanly when they are not.
 - [ ] **Phase 144: Operator Flush and Availability Evidence** — Expose sanitized flush, recovery, cache-size, and have-bytes vs do-not facts on operator surfaces.
@@ -101,7 +101,7 @@ Plans:
 - [x] 141-01-PLAN.md — Namespace, compact codec, and fallible CoinsView heads
 - [x] 141-02-PLAN.md — FjallCoinsView BatchWrite, 64 MiB accounting, fail-closed reads
 - [x] 141-03-PLAN.md — Undo codec extract and MemoryChainstateStore view-backed surface
-- [ ] 141-04-PLAN.md — Schema 1→2 migration and leftover-snapshot non-authority
+- [x] 141-04-PLAN.md — Schema 1→2 migration and leftover-snapshot non-authority
 
 ### Phase 142: Manager Flush Lifecycle and Restart
 **Goal**: One manager owns coins init, flush points, interrupted-flush recovery, and restart from durable coins best-block.
@@ -186,7 +186,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | --- | --- | --- | --- |
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
-| 141. Durable Fjall Coins Adapter | 3/4 | In Progress|  |
+| 141. Durable Fjall Coins Adapter | 4/4 | Complete   | 2026-09-04 |
 | 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
