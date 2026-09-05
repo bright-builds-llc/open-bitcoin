@@ -413,3 +413,51 @@ fn same_datadir_reopen_connects_best_available_branch_when_blocks_are_already_lo
 
     remove_dir_if_exists(&path);
 }
+
+#[test]
+fn runtime_open_hydrates_view_backed_maps_from_snapshot() {
+    // Arrange
+    let path = temp_store_path("open-from-snapshot");
+    remove_dir_if_exists(&path);
+    let tip = ChainPosition::new(header(BlockHash::from_byte_array([0_u8; 32]), 1), 0, 1, 1);
+    let outpoint = OutPoint {
+        txid: open_bitcoin_core::primitives::Txid::from_byte_array([0xab; 32]),
+        vout: 0,
+    };
+    let coin = open_bitcoin_core::chainstate::Coin {
+        output: TransactionOutput {
+            value: Amount::from_sats(7_000).expect("amount"),
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("script"),
+        },
+        is_coinbase: false,
+        created_height: 0,
+        created_median_time_past: 1,
+    };
+    let mut utxos = std::collections::HashMap::new();
+    utxos.insert(outpoint.clone(), coin.clone());
+    let snapshot = ChainstateSnapshot::new(vec![tip], utxos, Default::default());
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        store
+            .save_chainstate_snapshot(&snapshot, PersistMode::Sync)
+            .expect("leftover");
+        store
+            .seed_coins_from_leftover_for_reopen()
+            .expect("seed coins");
+    }
+
+    // Act
+    let store = FjallNodeStore::open(&path).expect("reopen");
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("open hydrates");
+    let hydrated = runtime
+        .network_handle()
+        .chainstate_snapshot()
+        .expect("engine snapshot");
+    let open_src = include_str!("../../sync.rs");
+
+    // Assert
+    assert_eq!(hydrated.utxos.get(&outpoint), Some(&coin));
+    assert!(open_src.contains("MemoryChainstateStore::from_snapshot(snapshot)"));
+    assert!(!open_src.contains("memory_store.save_snapshot(snapshot)"));
+    remove_dir_if_exists(&path);
+}

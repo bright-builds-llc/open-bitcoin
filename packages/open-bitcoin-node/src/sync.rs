@@ -47,8 +47,8 @@ pub use types::{
 pub use wallet_rescan::WalletRescanRuntime;
 
 use crate::{
-    ChainstateStore, FieldAvailability, FjallNodeStore, InboundPeerServingStatus,
-    ManagedNetworkHandle, ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
+    FieldAvailability, FjallNodeStore, InboundPeerServingStatus, ManagedNetworkHandle,
+    ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
     network::{BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot},
 };
 use progress::{PeerFailure, PeerProgress};
@@ -127,10 +127,10 @@ impl DurableSyncRuntime {
         block_relay_activation: BlockRelayActivationPolicy,
         inbound_enabled: bool,
     ) -> Result<Self, SyncRuntimeError> {
-        let mut memory_store = MemoryChainstateStore::default();
-        if let Some(snapshot) = store.hydrate_chainstate_for_open()? {
-            memory_store.save_snapshot(snapshot);
-        }
+        let memory_store = match store.hydrate_chainstate_for_open()? {
+            Some(snapshot) => MemoryChainstateStore::from_snapshot(snapshot),
+            None => MemoryChainstateStore::default(),
+        };
 
         let local_config = progress::local_peer_config(&config);
         let mut network = ManagedPeerNetwork::with_sync_limits_and_block_relay_activation(
