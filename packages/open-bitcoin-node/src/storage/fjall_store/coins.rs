@@ -190,28 +190,30 @@ impl FjallNodeStore {
         let Some(leftover) = self.load_chainstate_snapshot()? else {
             return Ok(());
         };
-        if let Some(tip) = leftover.active_chain.last() {
-            self.write_migrated_coins_with_tip(&leftover.utxos, tip.block_hash)?;
-        } else if leftover.utxos.is_empty() {
-            #[cfg(test)]
-            {
-                let view = FjallCoinsView::from_store(self);
-                view.write_raw_bytes(
-                    &encode_best_block_key(),
-                    crate::storage::coins_codec::encode_best_block_value(
-                        BlockHash::from_byte_array([0_u8; 32]),
-                    ),
-                )?;
-            }
+        self.seed_coins_from_snapshot(&leftover)
+    }
+
+    /// Replaces the coins keyspace from a snapshot so persist can write coins before leftover.
+    pub fn seed_coins_from_snapshot(
+        &self,
+        snapshot: &ChainstateSnapshot,
+    ) -> Result<(), StorageError> {
+        if let Some(tip) = snapshot.active_chain.last() {
+            self.write_migrated_coins_with_tip(&snapshot.utxos, tip.block_hash)?;
+        } else if snapshot.utxos.is_empty() {
+            self.write_migrated_coins_with_tip(
+                &HashMap::new(),
+                BlockHash::from_byte_array([0_u8; 32]),
+            )?;
         } else {
-            self.write_migrated_coins_without_tip(&leftover.utxos)?;
+            self.write_migrated_coins_without_tip(&snapshot.utxos)?;
         }
-        for (block_hash, undo) in &leftover.undo_by_block {
+        for (block_hash, undo) in &snapshot.undo_by_block {
             self.save_undo(*block_hash, undo, PersistMode::Sync)?;
         }
         let meta_bytes = encode_chain_meta(
-            &leftover.active_chain,
-            leftover.maybe_confirmed_txid_counts.as_ref(),
+            &snapshot.active_chain,
+            snapshot.maybe_confirmed_txid_counts.as_ref(),
         )?;
         self.put_bytes(
             StorageNamespace::Chainstate,

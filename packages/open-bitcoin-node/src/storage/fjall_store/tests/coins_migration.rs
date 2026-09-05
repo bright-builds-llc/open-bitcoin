@@ -582,4 +582,14 @@ fn persist_progress_source_still_writes_leftover_snapshot() {
     // Act / Assert
     assert!(runtime_state.contains("save_chainstate_snapshot"));
     assert!(chainstate.contains("save_snapshot(self.chainstate.snapshot())"));
+    let seed_at = runtime_state
+        .find("seed_coins_from_snapshot")
+        .expect("persist seeds coins");
+    let leftover_at = runtime_state
+        .find("save_chainstate_snapshot")
+        .expect("persist writes leftover");
+    assert!(
+        seed_at < leftover_at,
+        "persist_progress must seed coins before leftover"
+    );
 }

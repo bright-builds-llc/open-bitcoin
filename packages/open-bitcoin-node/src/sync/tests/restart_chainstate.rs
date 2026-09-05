@@ -461,3 +461,64 @@ fn runtime_open_hydrates_view_backed_maps_from_snapshot() {
     assert!(!open_src.contains("memory_store.save_snapshot(snapshot)"));
     remove_dir_if_exists(&path);
 }
+
+#[test]
+fn persist_progress_seeds_coins_before_leftover_and_survives_missing_leftover() {
+    // Arrange
+    let path = temp_store_path("persist-coins-first");
+    remove_dir_if_exists(&path);
+    let tip = ChainPosition::new(header(BlockHash::from_byte_array([0_u8; 32]), 1), 0, 1, 1);
+    let outpoint = OutPoint {
+        txid: open_bitcoin_core::primitives::Txid::from_byte_array([0xcd; 32]),
+        vout: 1,
+    };
+    let coin = open_bitcoin_core::chainstate::Coin {
+        output: TransactionOutput {
+            value: Amount::from_sats(8_000).expect("amount"),
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("script"),
+        },
+        is_coinbase: false,
+        created_height: 0,
+        created_median_time_past: 1,
+    };
+    let mut utxos = std::collections::HashMap::new();
+    utxos.insert(outpoint.clone(), coin.clone());
+    let snapshot = ChainstateSnapshot::new(vec![tip], utxos, Default::default());
+    {
+        let store = FjallNodeStore::open(&path).expect("store");
+        store
+            .seed_coins_from_snapshot(&snapshot)
+            .expect("coins without leftover");
+    }
+
+    // Act
+    let store = FjallNodeStore::open(&path).expect("reopen after coins-only persist");
+    let hydrated = store
+        .hydrate_chainstate_for_open()
+        .expect("hydrate coins truth")
+        .expect("coins snapshot");
+    let persist_src = include_str!("../../sync/runtime_state.rs");
+    let seed_at = persist_src
+        .find("seed_coins_from_snapshot")
+        .expect("persist seeds coins");
+    let leftover_at = persist_src
+        .find("save_chainstate_snapshot")
+        .expect("persist still writes leftover");
+
+    // Assert
+    assert_eq!(hydrated.utxos.get(&outpoint), Some(&coin));
+    assert_eq!(store.load_chainstate_snapshot().expect("no leftover"), None);
+    assert!(seed_at < leftover_at);
+    let runtime = DurableSyncRuntime::open(store, sync_config()).expect("open after coins-only");
+    runtime
+        .persist_progress()
+        .expect("dual-write leftover after coins");
+    assert!(
+        runtime
+            .store()
+            .load_chainstate_snapshot()
+            .expect("leftover after persist")
+            .is_some()
+    );
+    remove_dir_if_exists(&path);
+}
