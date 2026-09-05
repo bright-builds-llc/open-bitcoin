@@ -108,6 +108,10 @@ impl FjallNodeStore {
     }
 
     fn ensure_schema_two(&self) -> Result<(), StorageError> {
+        match FjallCoinsView::from_store(self).head_blocks() {
+            Ok(_) => {}
+            Err(error) => return Err(map_heads_error(error)),
+        }
         let leftover_present = self.leftover_snapshot_present()?;
         let coins_empty = self.coins_keyspace_is_empty()?;
         if leftover_present && coins_empty {

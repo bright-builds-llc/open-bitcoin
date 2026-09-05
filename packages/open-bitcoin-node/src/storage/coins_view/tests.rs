@@ -335,11 +335,23 @@ fn simulate_crash_after_partial_leaves_h_and_fails_closed() {
         .expect_err("crash seam returns interrupted");
     drop(view);
     drop(store);
-    let reopened = FjallNodeStore::open(&path).expect("reopen same path");
+    let open_error = match FjallNodeStore::open(&path) {
+        Ok(_) => panic!("interrupted H must fail closed on open"),
+        Err(error) => error,
+    };
+    let reopened = FjallNodeStore::open_without_ensure_schema_for_test(&path)
+        .expect("peek interrupted markers");
     let reopened_view = FjallCoinsView::from_store(&reopened);
 
     // Assert
     assert_coins_storage_detail(write_error, "interrupted");
+    assert!(matches!(
+        open_error,
+        StorageError::InterruptedWrite {
+            namespace: StorageNamespace::Coins,
+            action: StorageRecoveryAction::Reindex,
+        }
+    ));
     assert_coins_storage_detail(
         reopened_view
             .head_blocks()

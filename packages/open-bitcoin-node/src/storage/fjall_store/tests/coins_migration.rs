@@ -350,6 +350,44 @@ fn hydrate_two_element_h_without_b_fails_closed() {
 }
 
 #[test]
+fn leftover_plus_two_element_h_without_b_is_interrupted_write() {
+    // Arrange
+    let path = temp_store_path("leftover-interrupted-h");
+    remove_dir_if_exists(&path);
+    let (snapshot, _outpoint, _coin, _tip, _undo) = leftover_snapshot();
+    {
+        let store = FjallNodeStore::open(&path).expect("schema 2");
+        store
+            .save_chainstate_snapshot(&snapshot, PersistMode::Sync)
+            .expect("leftover");
+        let view = FjallCoinsView::from_store(&store);
+        let heads = encode_head_blocks_value(&[
+            BlockHash::from_byte_array([0x44; 32]),
+            BlockHash::from_byte_array([0x55; 32]),
+        ])
+        .expect("encode H");
+        view.write_raw_bytes(&encode_head_blocks_key(), heads)
+            .expect("plant H without C or B");
+    }
+
+    // Act
+    let error = match FjallNodeStore::open(&path) {
+        Ok(_) => panic!("leftover plus interrupted H must not open as leftover-empty"),
+        Err(error) => error,
+    };
+
+    // Assert
+    assert!(matches!(
+        error,
+        StorageError::InterruptedWrite {
+            namespace: StorageNamespace::Coins,
+            action: StorageRecoveryAction::Reindex,
+        }
+    ));
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn schema_three_is_schema_mismatch() {
     // Arrange
     let path = temp_store_path("schema-three");
