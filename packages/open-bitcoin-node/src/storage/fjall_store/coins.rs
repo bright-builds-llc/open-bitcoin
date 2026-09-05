@@ -191,6 +191,15 @@ impl FjallNodeStore {
     ) -> Result<(), StorageError> {
         let mut view = FjallCoinsView::from_store(self);
         let mut entries = HashMap::new();
+        for guard in self.coins.prefix([DB_COIN]) {
+            let (key_bytes, _) = guard
+                .into_inner()
+                .map_err(|error| backend_failure(StorageNamespace::Coins, error))?;
+            let outpoint = decode_coin_key(key_bytes.as_ref())?;
+            if !utxos.contains_key(&outpoint) {
+                entries.insert(outpoint, CoinsCacheEntry::spent_dirty());
+            }
+        }
         for (outpoint, coin) in utxos {
             entries.insert(
                 outpoint.clone(),

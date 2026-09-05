@@ -439,6 +439,55 @@ fn save_block_and_load_block_still_use_block_hex_keys() {
 }
 
 #[test]
+fn leftover_seed_then_spend_does_not_resurrect_spent_c_keys_on_hydrate() {
+    // Arrange
+    let path = temp_store_path("seed-replace-spent");
+    remove_dir_if_exists(&path);
+    let (mut snapshot, spent_outpoint, _spent_coin, _tip_hash, _undo_hash) = leftover_snapshot();
+    let kept_outpoint = OutPoint {
+        txid: Txid::from_byte_array([0x77; 32]),
+        vout: 0,
+    };
+    let kept_coin = sample_coin(6, 60);
+    snapshot
+        .utxos
+        .insert(kept_outpoint.clone(), kept_coin.clone());
+    let store = FjallNodeStore::open(&path).expect("schema 2");
+    store
+        .save_chainstate_snapshot(&snapshot, PersistMode::Sync)
+        .expect("first leftover");
+    store
+        .seed_coins_from_leftover_for_reopen()
+        .expect("seed live coins");
+
+    let mut spent_snapshot = snapshot.clone();
+    spent_snapshot.utxos.remove(&spent_outpoint);
+    store
+        .save_chainstate_snapshot(&spent_snapshot, PersistMode::Sync)
+        .expect("leftover after spend");
+    store
+        .seed_coins_from_leftover_for_reopen()
+        .expect("seed after spend");
+
+    // Act
+    let view = FjallCoinsView::from_store(&store);
+    let hydrated = store
+        .hydrate_chainstate_for_open()
+        .expect("hydrate")
+        .expect("coins snapshot");
+
+    // Assert
+    assert_eq!(view.get_coin(&spent_outpoint).expect("spent lookup"), None);
+    assert!(!hydrated.utxos.contains_key(&spent_outpoint));
+    assert_eq!(
+        view.get_coin(&kept_outpoint).expect("kept lookup"),
+        Some(kept_coin.clone())
+    );
+    assert_eq!(hydrated.utxos.get(&kept_outpoint), Some(&kept_coin));
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn persist_progress_source_still_writes_leftover_snapshot() {
     // Arrange
     let runtime_state = include_str!("../../../sync/runtime_state.rs");
