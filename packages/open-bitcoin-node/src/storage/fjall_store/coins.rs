@@ -98,11 +98,19 @@ impl FjallNodeStore {
     fn ensure_schema_one(&self, _actual: SchemaVersion) -> Result<(), StorageError> {
         let leftover_present = self.leftover_snapshot_present()?;
         let coins_empty = self.coins_keyspace_is_empty()?;
-        if leftover_present && !coins_empty {
-            return Err(mixed_schema_one_corruption());
-        }
         if leftover_present && coins_empty {
             self.migrate_schema_1_coins()?;
+            return self.write_schema_version(SchemaVersion::CURRENT);
+        }
+        if leftover_present && !coins_empty {
+            let Some(leftover) = self.load_chainstate_snapshot_with_confirmation_migration()?
+            else {
+                return Err(mixed_schema_one_corruption());
+            };
+            if !self.leftover_matches_consistent_coins(&leftover)? {
+                return Err(mixed_schema_one_corruption());
+            }
+            self.finish_schema_one_undo_and_chain_meta(&leftover)?;
         }
         self.write_schema_version(SchemaVersion::CURRENT)
     }
@@ -120,6 +128,46 @@ impl FjallNodeStore {
         Ok(())
     }
 
+    fn leftover_matches_consistent_coins(
+        &self,
+        leftover: &ChainstateSnapshot,
+    ) -> Result<bool, StorageError> {
+        let view = FjallCoinsView::from_store(self);
+        match view.head_blocks() {
+            Ok(_) => {}
+            Err(error) => return Err(map_heads_error(error)),
+        }
+        let Some(best) = view.best_block().map_err(map_heads_error)? else {
+            return Ok(false);
+        };
+        let Some(tip) = leftover.active_chain.last() else {
+            return Ok(false);
+        };
+        if best != tip.block_hash {
+            return Ok(false);
+        }
+        Ok(self.scan_coin_records()? == leftover.utxos)
+    }
+
+    fn finish_schema_one_undo_and_chain_meta(
+        &self,
+        leftover: &ChainstateSnapshot,
+    ) -> Result<(), StorageError> {
+        for (block_hash, undo) in &leftover.undo_by_block {
+            self.save_undo(*block_hash, undo, PersistMode::Sync)?;
+        }
+        let meta_bytes = encode_chain_meta(
+            &leftover.active_chain,
+            leftover.maybe_confirmed_txid_counts.as_ref(),
+        )?;
+        self.put_bytes(
+            StorageNamespace::Chainstate,
+            CHAIN_META_KEY,
+            meta_bytes,
+            PersistMode::Sync,
+        )
+    }
+
     fn migrate_schema_1_coins(&self) -> Result<(), StorageError> {
         let Some(leftover) = self.load_chainstate_snapshot_with_confirmation_migration()? else {
             return Ok(());
@@ -130,22 +178,7 @@ impl FjallNodeStore {
         } else {
             self.write_migrated_coins_without_tip(&leftover.utxos)?;
         }
-
-        for (block_hash, undo) in &leftover.undo_by_block {
-            self.save_undo(*block_hash, undo, PersistMode::Sync)?;
-        }
-
-        let meta_bytes = encode_chain_meta(
-            &leftover.active_chain,
-            leftover.maybe_confirmed_txid_counts.as_ref(),
-        )?;
-        self.put_bytes(
-            StorageNamespace::Chainstate,
-            CHAIN_META_KEY,
-            meta_bytes,
-            PersistMode::Sync,
-        )?;
-        Ok(())
+        self.finish_schema_one_undo_and_chain_meta(&leftover)
     }
 
     /// Copies leftover snapshot UTXOs into coins so a schema-2 reopen can hydrate.

@@ -310,6 +310,54 @@ fn schema_one_leftover_plus_nonempty_coins_is_corruption_without_remigrate() {
 }
 
 #[test]
+fn schema_one_leftover_plus_consistent_coins_finishes_migrate() {
+    // Arrange
+    let path = temp_store_path("schema-one-resume");
+    remove_dir_if_exists(&path);
+    let (snapshot, outpoint, coin, tip_hash, undo_hash) = leftover_snapshot();
+    {
+        let store = FjallNodeStore::open(&path).expect("open store");
+        store
+            .write_schema_version_for_test(1)
+            .expect("plant schema 1");
+        store
+            .save_chainstate_snapshot(&snapshot, PersistMode::Sync)
+            .expect("leftover");
+        let view = FjallCoinsView::from_store(&store);
+        view.write_raw_bytes(
+            &encode_coin_key(&outpoint),
+            encode_coin_value(&coin).expect("encode C"),
+        )
+        .expect("plant matching C");
+        view.write_raw_bytes(&encode_best_block_key(), encode_best_block_value(tip_hash))
+            .expect("plant matching B");
+    }
+
+    // Act
+    let store = FjallNodeStore::open(&path).expect("resume interrupted migrate");
+    let view = FjallCoinsView::from_store(&store);
+    let hydrated = store
+        .hydrate_chainstate_for_open()
+        .expect("hydrate")
+        .expect("resumed snapshot");
+
+    // Assert
+    assert_eq!(raw_schema_version(&store), "2");
+    assert_eq!(view.best_block().expect("best_block"), Some(tip_hash));
+    assert_eq!(
+        view.head_blocks().expect("empty H"),
+        Vec::<BlockHash>::new()
+    );
+    assert_eq!(
+        store.load_undo(undo_hash).expect("finished undo"),
+        Some(snapshot.undo_by_block[&undo_hash].clone())
+    );
+    assert_eq!(hydrated.utxos.get(&outpoint), Some(&coin));
+    assert_eq!(hydrated.active_chain, snapshot.active_chain);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn hydrate_two_element_h_without_b_fails_closed() {
     // Arrange
     let path = temp_store_path("interrupted-h");
