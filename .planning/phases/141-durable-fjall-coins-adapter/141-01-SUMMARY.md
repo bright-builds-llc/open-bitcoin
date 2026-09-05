@@ -153,6 +153,6 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
----
+***
 *Phase: 141-durable-fjall-coins-adapter*
 *Completed: 2026-09-04*

@@ -10,7 +10,7 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 ### Coins Database and Cache
 
-- [ ] **COIN-01**: Node persists spendable UTXOs as per-outpoint durable coin records with coins best-block and interrupted-flush markers, not as live snapshot-blob truth.
+- [x] **COIN-01**: Node persists spendable UTXOs as per-outpoint durable coin records with coins best-block and interrupted-flush markers, not as live snapshot-blob truth.
 - [ ] **CACHE-01**: Node overlays an in-memory DIRTY/FRESH coins cache so connect and disconnect do not persist the whole UTXO set after every block.
 
 ### Flush Policy and Recovery
@@ -34,7 +34,7 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 - [ ] **CSOBS-01**: Status, RPC, CLI, dashboard, metrics, logs, and support expose flush, recovery, and have-bytes vs do-not using sanitized low-cardinality fields.
 - [ ] **CSOBS-02**: Operator evidence reports cache-size state (OK / LARGE / CRITICAL) and last flush reason.
-- [ ] **CSOBS-03**: A coins disk-read error fails closed as a typed storage or recovery error, not as spent or missing.
+- [x] **CSOBS-03**: A coins disk-read error fails closed as a typed storage or recovery error, not as spent or missing.
 
 ### Parity and Release Boundaries
 
@@ -87,8 +87,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CACHE-01 | Phase 139 | Pending |
 | FLUSH-01 | Phase 140 | Complete |
 | MGR-03 | Phase 140 | Pending |
-| COIN-01 | Phase 141 | Pending |
-| CSOBS-03 | Phase 141 | Pending |
+| COIN-01 | Phase 141 | Complete |
+| CSOBS-03 | Phase 141 | Complete |
 | MGR-01 | Phase 142 | Pending |
 | MGR-02 | Phase 142 | Pending |
 | FLUSH-02 | Phase 142 | Pending |

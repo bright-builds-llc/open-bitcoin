@@ -49,7 +49,7 @@ patterns-established:
   - "Pattern 1: ensure_schema migrates leftover once on schema 1 plus empty coins, then writes schema 2; schema 2 leftover plus empty coins is Corruption RestoreFromBackup"
   - "Pattern 2: hydrate_chainstate_for_open calls head_blocks before any C scan; leftover utxos are ignored after coins exist"
 
-requirements-completed: []
+requirements-completed: [COIN-01, CSOBS-03]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 141-2026-09-04T17-37-21
@@ -170,6 +170,6 @@ None - no external service configuration required.
 
 ## Self-Check: PASSED
 
----
+***
 *Phase: 141-durable-fjall-coins-adapter*
 *Completed: 2026-09-04*

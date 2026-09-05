@@ -186,7 +186,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | --- | --- | --- | --- |
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
-| 141. Durable Fjall Coins Adapter | 4/4 | Complete   | 2026-09-04 |
+| 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
