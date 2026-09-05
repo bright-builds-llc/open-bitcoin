@@ -86,7 +86,7 @@ Each task was committed atomically:
 1. **Task 1: Write failing schema-2, migrate, leftover-non-authority, and blob-read tests** — RED verified locally by writing the locked test names first; atomic RED commit skipped because `.githooks/pre-commit` runs workspace `verify.sh`.
 2. **Task 2: Implement schema 1→2 migrate, Fjall undo, and coins hydrate** - `0c14e1a9` (feat)
 
-**Plan metadata:** (pending docs commit)
+**Plan metadata:** `6f3a72e6` (docs: complete plan)
 
 ## Files Created/Modified
 
@@ -167,8 +167,6 @@ None - no external service configuration required.
 - Schema 2 + leftover-non-authority hydrate is in place for phase verification.
 - Phase 142 still owns persist write-site cutover off leftover snapshots and `ReplayBlocks`.
 - `COIN-01` and `CSOBS-03` stay Pending until phase verification.
-
-## Self-Check: PASSED
 
 ## Self-Check: PASSED
 
