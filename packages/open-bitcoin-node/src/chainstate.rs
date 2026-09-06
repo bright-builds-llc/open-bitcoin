@@ -310,6 +310,12 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
     }
 }
 
+mod flush_lifecycle;
+pub use flush_lifecycle::{
+    COINS_DB_CACHE_CAP_BYTES, DEFAULT_KERNEL_CACHE_BYTES, FlushExecution, FlushLifecycle,
+    FlushPersistSink, MIN_DBCACHE_BYTES, ManagerReadiness, default_coins_cache_byte_limit,
+    initialize, probe_disk_free_bytes,
+};
 mod replay;
 pub use replay::replay_interrupted_flush;
 
