@@ -18,7 +18,9 @@ use open_bitcoin_core::{
 };
 
 use crate::ManagedPeerNetwork;
-use crate::chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
+use crate::chainstate::{
+    ChainstateStore, FlushLifecycle, ManagedChainstate, ManagerReadiness, MemoryChainstateStore,
+};
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 
@@ -312,12 +314,10 @@ fn managed_chainstate_persists_after_connect() {
 
     // Assert
     assert_eq!(position.height, 0);
-    let saved_snapshot = managed
-        .store()
-        .load_snapshot()
-        .expect("snapshot should be present");
-    assert_eq!(saved_snapshot.tip(), Some(&position));
+    assert_eq!(managed.store().load_snapshot(), None);
+    let _ = managed.store().best_block().expect("coins best_block");
     assert_eq!(managed.chainstate().tip(), Some(&position));
+    assert!(!managed.chainstate().utxos().is_empty());
 }
 
 #[test]
@@ -355,10 +355,7 @@ fn prepare_connect_then_drop_leaves_parent_unpopulated() {
     // Arrange
     let mut seeded = ManagedChainstate::from_store(MemoryChainstateStore::default());
     let (genesis, genesis_outpoint) = connect_genesis(&mut seeded);
-    let snapshot = seeded
-        .store()
-        .load_snapshot()
-        .expect("connect persist writes a snapshot blob");
+    let snapshot = seeded.chainstate().snapshot();
     let rematerialized =
         ManagedChainstate::from_store(MemoryChainstateStore::from_snapshot(snapshot));
     assert!(
@@ -412,13 +409,79 @@ fn commit_prepared_connect_flushes_and_persists_snapshot_blob() {
 
     // Assert
     assert_eq!(position.height, 0);
-    let saved = managed
-        .store()
-        .load_snapshot()
-        .expect("persist path still calls save_snapshot");
-    assert!(!saved.utxos.is_empty());
-    assert_eq!(saved.tip(), Some(&position));
+    assert_eq!(managed.store().load_snapshot(), None);
+    let _ = managed.store().get_coin(&OutPoint {
+        txid: transaction_txid(&genesis.transactions[0]).expect("txid"),
+        vout: 0,
+    });
+    let _ = managed.store().best_block().expect("coins best_block");
     assert_eq!(managed.chainstate().tip(), Some(&position));
+    assert!(!managed.chainstate().utxos().is_empty());
+}
+
+#[test]
+fn managed_chainstate_owns_required_flush_lifecycle() {
+    // Arrange
+    let managed = ManagedChainstate::from_store(MemoryChainstateStore::default());
+    let source = include_str!("../chainstate.rs");
+
+    // Act / Assert
+    assert_eq!(
+        managed.flush_lifecycle.readiness(),
+        ManagerReadiness::ReadyToFlush
+    );
+    assert!(source.contains("flush_lifecycle: FlushLifecycle"));
+    assert!(!source.contains("Option<FlushLifecycle>"));
+    assert!(!source.contains("maybe_flush_lifecycle"));
+    let _ = FlushLifecycle::ready(
+        open_bitcoin_core::chainstate::FlushPolicyTime::from_unix_seconds(0),
+        open_bitcoin_core::chainstate::FlushPolicyTime::from_unix_seconds(0),
+        0,
+        false,
+    );
+}
+
+#[test]
+fn connect_block_does_not_call_flush_mode_always() {
+    // Arrange
+    let source = include_str!("../chainstate.rs");
+    let names = [
+        "fn persist",
+        "fn connect_block",
+        "fn commit_prepared_connect",
+        "fn commit_prepared_reorg",
+        "fn disconnect_tip",
+        "fn reorg",
+    ];
+
+    // Act / Assert
+    for name in names {
+        let body = function_body(source, name);
+        assert!(
+            !body.contains("FlushMode::Always") && !body.contains("FlushMode::Periodic"),
+            "{name} must not call Always or Periodic"
+        );
+    }
+}
+
+fn function_body(source: &str, marker: &str) -> String {
+    let start = source.find(marker).expect(marker);
+    let after = &source[start..];
+    let open = after.find('{').expect("body open");
+    let mut depth = 0_i32;
+    for (idx, ch) in after[open..].char_indices() {
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return after[open..=open + idx].to_string();
+                }
+            }
+            _ => {}
+        }
+    }
+    panic!("unbalanced {marker}");
 }
 
 fn network_local_config() -> LocalPeerConfig {

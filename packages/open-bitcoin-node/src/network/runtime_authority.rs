@@ -8,7 +8,10 @@ use std::{
 };
 
 use open_bitcoin_core::{
-    chainstate::{AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot},
+    chainstate::{
+        AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, FlushMode,
+        FlushPolicyTime,
+    },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
     primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction, Txid},
@@ -574,6 +577,12 @@ impl ManagedNetworkHandle {
 
     #[rustfmt::skip]
     pub fn prepare_block_announcements(&self, block: &Block, outboxes: &[PeerOutboxSnapshot]) -> Result<Vec<AnnouncementPreparationOutcome>, ManagedNetworkAuthorityError> { let compact_nonces = super::announcement_transport::compact_nonces(outboxes); self.mutate(|network| network.prepare_block_announcements(block, outboxes, &compact_nonces)) }
+
+    #[rustfmt::skip]
+    pub fn flush_coins(&self, mode: FlushMode, now: FlushPolicyTime, disk_free_bytes: u64) -> Result<crate::chainstate::FlushExecution, ManagedNetworkAuthorityError> { self.mutate(|network| network.chainstate_mut().flush_with_mode(mode, now, disk_free_bytes))?.map_err(|error| ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())) }
+
+    #[rustfmt::skip]
+    pub fn set_coins_next_write(&self, next_write: FlushPolicyTime) -> Result<(), ManagedNetworkAuthorityError> { self.mutate(|network| network.chainstate_mut().flush_lifecycle.set_next_write(next_write)) }
 
     #[cfg(test)]
     pub(in crate::network) fn authority_snapshot_for_test(

@@ -2051,6 +2051,18 @@
       ]
     },
     {
+      "label": "rpc-coins-flush-daemon",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
       "label": "rpc-mempool-checkpoint-daemon",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",

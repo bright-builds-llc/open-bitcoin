@@ -8,14 +8,17 @@ use std::collections::HashMap;
 use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, Chainstate, ChainstateError,
-        ChainstateSnapshot, Coin, CoinsBatch, CoinsView, MemoryCoinsView, StagedChainstateConnect,
-        StagedChainstateReorg,
+        ChainstateSnapshot, Coin, CoinsBatch, CoinsView, FlushMode, FlushPolicyTime,
+        MemoryCoinsView, StagedChainstateConnect, StagedChainstateReorg,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::{Block, BlockHash, OutPoint},
 };
+use open_bitcoin_network::HeaderEntry;
 
-pub trait ChainstateStore {
+use crate::storage::StorageError;
+
+pub trait ChainstateStore: FlushPersistSink {
     fn load_snapshot(&self) -> Option<ChainstateSnapshot>;
     fn save_snapshot(&mut self, snapshot: ChainstateSnapshot);
     fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError>;
@@ -103,10 +106,33 @@ impl ChainstateStore for MemoryChainstateStore {
     }
 }
 
+impl FlushPersistSink for MemoryChainstateStore {
+    fn persist_block(&mut self, _block: &Block) -> Result<(), StorageError> {
+        Ok(())
+    }
+
+    fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError> {
+        self.save_undo(hash, undo.clone()).map_err(map_memory_store)
+    }
+
+    fn persist_header_entries(&mut self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
+        Ok(())
+    }
+}
+
+fn map_memory_store(error: ChainstateError) -> StorageError {
+    StorageError::Corruption {
+        namespace: crate::storage::StorageNamespace::Chainstate,
+        detail: error.to_string(),
+        action: crate::storage::StorageRecoveryAction::Repair,
+    }
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub struct ManagedChainstate<S> {
     store: S,
     chainstate: Chainstate,
+    pub(crate) flush_lifecycle: FlushLifecycle,
 }
 
 impl<S: Clone> Clone for ManagedChainstate<S> {
@@ -114,6 +140,7 @@ impl<S: Clone> Clone for ManagedChainstate<S> {
         Self {
             store: self.store.clone(),
             chainstate: Chainstate::from_snapshot(self.chainstate.snapshot()),
+            flush_lifecycle: self.flush_lifecycle.clone(),
         }
     }
 }
@@ -149,7 +176,16 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
             .map(Chainstate::from_snapshot)
             .unwrap_or_default();
 
-        Self { store, chainstate }
+        Self {
+            store,
+            chainstate,
+            flush_lifecycle: FlushLifecycle::ready(
+                FlushPolicyTime::from_unix_seconds(0),
+                FlushPolicyTime::from_unix_seconds(0),
+                0,
+                false,
+            ),
+        }
     }
 
     pub fn chainstate(&self) -> &Chainstate {
@@ -305,8 +341,53 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
         (self.store, self.chainstate)
     }
 
-    fn persist(&mut self) {
-        self.store.save_snapshot(self.chainstate.snapshot());
+    fn flush_window(&self) -> (Vec<(BlockHash, BlockUndo)>, Vec<HeaderEntry>, Vec<Block>) {
+        let snapshot = self.chainstate.snapshot();
+        let undo_window = snapshot.undo_by_block.into_iter().collect();
+        let header_entries = snapshot
+            .active_chain
+            .iter()
+            .map(|position| HeaderEntry {
+                block_hash: position.block_hash,
+                header: position.header.clone(),
+                height: position.height,
+                chain_work: position.chain_work,
+            })
+            .collect();
+        (undo_window, header_entries, Vec::new())
+    }
+
+    pub(crate) fn flush_with_mode(
+        &mut self,
+        mode: FlushMode,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+    ) -> Result<FlushExecution, StorageError>
+    where
+        S: FlushPersistSink,
+    {
+        let (undo_window, header_entries, block_payloads) = self.flush_window();
+        self.flush_lifecycle.execute_flush(
+            &mut self.store,
+            self.chainstate.coins_mut(),
+            mode,
+            now,
+            disk_free_bytes,
+            &undo_window,
+            &header_entries,
+            &block_payloads,
+        )
+    }
+
+    fn persist(&mut self)
+    where
+        S: FlushPersistSink,
+    {
+        let _ = self.flush_with_mode(
+            FlushMode::IfNeeded,
+            FlushPolicyTime::from_unix_seconds(0),
+            u64::MAX,
+        );
     }
 }
 

@@ -156,15 +156,15 @@ fn expect_error<T>(result: Result<T, StorageError>, message: &str) -> StorageErr
 struct SucceedingSink;
 
 impl FlushPersistSink for SucceedingSink {
-    fn persist_block(&self, _block: &Block) -> Result<(), StorageError> {
+    fn persist_block(&mut self, _block: &Block) -> Result<(), StorageError> {
         Ok(())
     }
 
-    fn persist_undo(&self, _hash: BlockHash, _undo: &BlockUndo) -> Result<(), StorageError> {
+    fn persist_undo(&mut self, _hash: BlockHash, _undo: &BlockUndo) -> Result<(), StorageError> {
         Ok(())
     }
 
-    fn persist_header_entries(&self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
+    fn persist_header_entries(&mut self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
         Ok(())
     }
 }
@@ -172,11 +172,11 @@ impl FlushPersistSink for SucceedingSink {
 struct UndoFailingSink;
 
 impl FlushPersistSink for UndoFailingSink {
-    fn persist_block(&self, _block: &Block) -> Result<(), StorageError> {
+    fn persist_block(&mut self, _block: &Block) -> Result<(), StorageError> {
         Ok(())
     }
 
-    fn persist_undo(&self, _hash: BlockHash, _undo: &BlockUndo) -> Result<(), StorageError> {
+    fn persist_undo(&mut self, _hash: BlockHash, _undo: &BlockUndo) -> Result<(), StorageError> {
         Err(StorageError::BackendFailure {
             namespace: StorageNamespace::Chainstate,
             message: "undo persist failed".to_string(),
@@ -184,7 +184,7 @@ impl FlushPersistSink for UndoFailingSink {
         })
     }
 
-    fn persist_header_entries(&self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
+    fn persist_header_entries(&mut self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
         Ok(())
     }
 }
@@ -351,7 +351,7 @@ fn execute_flush_none_does_not_write_coins() {
     // Act
     let execution = lifecycle
         .execute_flush(
-            &SucceedingSink,
+            &mut SucceedingSink,
             &mut cache,
             FlushMode::IfNeeded,
             policy_now(),
@@ -381,7 +381,7 @@ fn execute_flush_aborts_coins_when_undo_save_fails() {
     // Act
     let error = expect_error(
         lifecycle.execute_flush(
-            &UndoFailingSink,
+            &mut UndoFailingSink,
             &mut cache,
             FlushMode::Always,
             policy_now(),
@@ -418,7 +418,7 @@ fn execute_flush_always_uses_cache_flush_kind_from_decide_flush() {
     // Act
     let execution = lifecycle
         .execute_flush(
-            &SucceedingSink,
+            &mut SucceedingSink,
             &mut cache,
             FlushMode::Always,
             policy_now(),
@@ -448,7 +448,7 @@ fn execute_flush_before_ready_does_not_write() {
     // Act
     let error = expect_error(
         lifecycle.execute_flush(
-            &SucceedingSink,
+            &mut SucceedingSink,
             &mut cache,
             FlushMode::Always,
             policy_now(),
@@ -485,7 +485,7 @@ fn execute_flush_refuse_disk_space_does_not_write_coins() {
     // Act
     let error = expect_error(
         lifecycle.execute_flush(
-            &SucceedingSink,
+            &mut SucceedingSink,
             &mut cache,
             FlushMode::Always,
             policy_now(),
@@ -551,7 +551,7 @@ fn apply_recovery_one_head_and_inconsistent_count() {
 #[test]
 fn fjall_store_implements_flush_persist_sink() {
     // Arrange
-    let (path, store) = open_temp_store("fjall-sink");
+    let (path, mut store) = open_temp_store("fjall-sink");
     let block_header = header(BlockHash::from_byte_array([0_u8; 32]), 9);
     let block = Block {
         header: block_header.clone(),
@@ -595,7 +595,7 @@ fn execute_flush_periodic_due_uses_sync_from_decide_flush() {
     // Act
     let execution = lifecycle
         .execute_flush(
-            &SucceedingSink,
+            &mut SucceedingSink,
             &mut cache,
             FlushMode::Periodic,
             FlushPolicyTime::from_unix_seconds(2),
@@ -617,10 +617,19 @@ fn execute_flush_periodic_due_uses_sync_from_decide_flush() {
 }
 
 #[test]
-fn persist_still_writes_snapshot() {
+fn persist_calls_execute_flush_ifneeded() {
     // Arrange / Act / Assert
+    let persist_src = include_str!("../../chainstate.rs");
     assert!(
-        include_str!("../../chainstate.rs").contains("save_snapshot(self.chainstate.snapshot())"),
-        "ManagedChainstate::persist must still write leftover snapshots this plan"
+        persist_src.contains("self.flush_lifecycle.execute_flush"),
+        "ManagedChainstate::persist must call execute_flush"
+    );
+    assert!(
+        persist_src.contains("FlushMode::IfNeeded"),
+        "ManagedChainstate::persist must use IfNeeded"
+    );
+    assert!(
+        !persist_src.contains("save_snapshot(self.chainstate.snapshot())"),
+        "ManagedChainstate::persist must not write leftover snapshots"
     );
 }

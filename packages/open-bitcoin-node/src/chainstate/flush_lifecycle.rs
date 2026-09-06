@@ -50,7 +50,7 @@ pub enum ManagerReadiness {
 }
 
 /// One owner for cache defaults, readiness, and ordered flush execution.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FlushLifecycle {
     readiness: ManagerReadiness,
     cache_byte_limit: u64,
@@ -68,25 +68,25 @@ pub struct FlushExecution {
 
 /// Injected persist sink so undo/index abort tests do not chmod a Fjall datadir.
 pub trait FlushPersistSink {
-    fn persist_block(&self, block: &Block) -> Result<(), StorageError>;
-    fn persist_undo(&self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError>;
-    fn persist_header_entries(&self, entries: &[HeaderEntry]) -> Result<(), StorageError>;
+    fn persist_block(&mut self, block: &Block) -> Result<(), StorageError>;
+    fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError>;
+    fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError>;
 }
 
 impl FlushPersistSink for FjallNodeStore {
-    fn persist_block(&self, block: &Block) -> Result<(), StorageError> {
-        self.save_block(block, PersistMode::Flush).map(|_| ())
+    fn persist_block(&mut self, block: &Block) -> Result<(), StorageError> {
+        FjallNodeStore::save_block(self, block, PersistMode::Flush).map(|_| ())
     }
 
-    fn persist_undo(&self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError> {
-        self.save_undo(hash, undo, PersistMode::Flush)
+    fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError> {
+        FjallNodeStore::save_undo(self, hash, undo, PersistMode::Flush)
     }
 
-    fn persist_header_entries(&self, entries: &[HeaderEntry]) -> Result<(), StorageError> {
+    fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError> {
         if entries.is_empty() {
             return Ok(());
         }
-        self.save_header_entries(entries, PersistMode::Flush)
+        FjallNodeStore::save_header_entries(self, entries, PersistMode::Flush)
     }
 }
 
@@ -129,10 +129,26 @@ impl FlushLifecycle {
         self.next_write = next_write;
     }
 
+    /// Memory `from_store` / tests only. Production Fjall uses `initialize` (Plan 04 / 06).
+    pub fn ready(
+        _now: FlushPolicyTime,
+        next_write: FlushPolicyTime,
+        mempool_leftover_bytes: u64,
+        memory_pressure: bool,
+    ) -> Self {
+        Self {
+            readiness: ManagerReadiness::ReadyToFlush,
+            cache_byte_limit: default_coins_cache_byte_limit(),
+            mempool_leftover_bytes,
+            next_write,
+            memory_pressure,
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn execute_flush<V: CoinsView, S: FlushPersistSink>(
         &mut self,
-        sink: &S,
+        sink: &mut S,
         cache: &mut CoinsCache<V>,
         mode: FlushMode,
         now: FlushPolicyTime,
@@ -243,7 +259,7 @@ const fn coins_write_kind(decision: FlushDecision) -> Option<CoinsWriteKind> {
 }
 
 fn persist_ordered_prefix<S: FlushPersistSink>(
-    sink: &S,
+    sink: &mut S,
     block_payloads: &[Block],
     undo_window: &[(BlockHash, BlockUndo)],
     header_entries: &[HeaderEntry],

@@ -702,24 +702,23 @@ fn crate_root_reexports_flush_and_recovery_types() {
 }
 
 #[test]
-fn managed_chainstate_persist_still_writes_snapshot_and_does_not_call_decide_flush() {
+fn managed_chainstate_persist_calls_decide_flush_and_does_not_write_snapshot() {
     // Arrange
     let persist_src = include_str!("../../../../open-bitcoin-node/src/chainstate.rs");
 
     // Act
-    let writes_snapshot =
-        persist_src.contains("fn persist(") && persist_src.contains("save_snapshot");
-    let retargeted =
-        persist_src.contains("decide_flush") || persist_src.contains("RefuseDiskSpace");
+    let calls_execute = persist_src.contains("self.flush_lifecycle.execute_flush")
+        && persist_src.contains("FlushMode::IfNeeded");
+    let leftover_snapshot = persist_src.contains("save_snapshot(self.chainstate.snapshot())");
 
     // Assert
     assert!(
-        writes_snapshot,
-        "ManagedChainstate::persist must still write a snapshot"
+        calls_execute,
+        "ManagedChainstate::persist must call execute_flush with IfNeeded"
     );
     assert!(
-        !retargeted,
-        "ManagedChainstate::persist must not call decide_flush or mention RefuseDiskSpace"
+        !leftover_snapshot,
+        "ManagedChainstate::persist must not write leftover snapshots"
     );
 }
 

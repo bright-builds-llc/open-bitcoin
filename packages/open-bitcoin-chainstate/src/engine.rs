@@ -148,6 +148,10 @@ impl<V: CoinsView> Chainstate<V> {
         &self.coins
     }
 
+    pub fn coins_mut(&mut self) -> &mut CoinsCache<V> {
+        &mut self.coins
+    }
+
     pub fn tip(&self) -> Option<&ChainPosition> {
         self.active_chain.last()
     }

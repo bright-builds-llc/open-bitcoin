@@ -590,7 +590,8 @@ fn persist_progress_source_still_writes_leftover_snapshot() {
 
     // Act / Assert
     assert!(runtime_state.contains("save_chainstate_snapshot"));
-    assert!(chainstate.contains("save_snapshot(self.chainstate.snapshot())"));
+    assert!(chainstate.contains("self.flush_lifecycle.execute_flush"));
+    assert!(!chainstate.contains("save_snapshot(self.chainstate.snapshot())"));
     let seed_at = runtime_state
         .find("seed_coins_from_snapshot")
         .expect("persist seeds coins");

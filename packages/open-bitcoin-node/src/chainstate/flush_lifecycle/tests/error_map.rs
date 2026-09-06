@@ -49,14 +49,14 @@ struct SucceedingSink;
 
 impl FlushPersistSink for SucceedingSink {
     fn persist_block(
-        &self,
+        &mut self,
         _block: &open_bitcoin_core::primitives::Block,
     ) -> Result<(), StorageError> {
         Ok(())
     }
 
     fn persist_undo(
-        &self,
+        &mut self,
         _hash: BlockHash,
         _undo: &open_bitcoin_core::chainstate::BlockUndo,
     ) -> Result<(), StorageError> {
@@ -64,7 +64,7 @@ impl FlushPersistSink for SucceedingSink {
     }
 
     fn persist_header_entries(
-        &self,
+        &mut self,
         _entries: &[open_bitcoin_network::HeaderEntry],
     ) -> Result<(), StorageError> {
         Ok(())
@@ -125,7 +125,7 @@ fn execute_flush_maps_coins_write_errors() {
         // Act
         let mapped = expect_error(
             lifecycle.execute_flush(
-                &SucceedingSink,
+                &mut SucceedingSink,
                 &mut cache,
                 FlushMode::Always,
                 FlushPolicyTime::from_unix_seconds(1),

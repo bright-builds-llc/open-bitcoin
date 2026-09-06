@@ -581,6 +581,22 @@ fn from_parent_does_not_probe_best_block() {
 }
 
 #[test]
+fn coins_mut_exposes_the_same_live_cache() {
+    // Arrange
+    let parent_tip = BlockHash::from_byte_array([9_u8; 32]);
+    let parent = MemoryCoinsView::from_coins(HashMap::new(), Some(parent_tip));
+    let mut chainstate =
+        Chainstate::from_parent(parent, Vec::new(), HashMap::new(), Some(HashMap::new()));
+
+    // Act
+    let count = chainstate.coins_mut().cache_entry_count();
+
+    // Assert
+    assert_eq!(count, 0);
+    assert_eq!(chainstate.coins_best_block(), Ok(Some(parent_tip)));
+}
+
+#[test]
 fn into_dirty_parent_write_returns_parent_and_dirty_overlay() {
     // Arrange
     let parent_tip = BlockHash::from_byte_array([3_u8; 32]);

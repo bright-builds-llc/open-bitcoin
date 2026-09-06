@@ -151,6 +151,9 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn chainstate(&self) -> &ManagedChainstate<S> { &self.chainstate }
 
     #[rustfmt::skip]
+    pub fn chainstate_mut(&mut self) -> &mut ManagedChainstate<S> { &mut self.chainstate }
+
+    #[rustfmt::skip]
     pub fn mempool(&self) -> &ManagedMempool { &self.mempool }
 
     #[rustfmt::skip]

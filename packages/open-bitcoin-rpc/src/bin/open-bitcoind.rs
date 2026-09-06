@@ -46,6 +46,8 @@ use open_bitcoin_rpc::{
 
 #[path = "open_bitcoind/checkpoint.rs"]
 mod checkpoint;
+#[path = "open_bitcoind/coins_flush.rs"]
+mod coins_flush;
 #[path = "open_bitcoind/inbound_metrics.rs"]
 mod inbound_metrics;
 #[path = "open_bitcoind/retry.rs"]
@@ -56,6 +58,7 @@ mod runtime_control;
 mod sync_seed;
 
 use checkpoint::{DaemonCheckpointError, start_mempool_checkpoint_worker};
+use coins_flush::start_coins_flush_worker;
 use inbound_metrics::start_inbound_metrics_worker;
 use retry::start_initial_broadcast_retry_worker;
 use runtime_control::{
@@ -93,11 +96,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Arc::clone(&shared_context),
         authoritative_runtime.maybe_sync_runtime.take(),
     )?;
-    let maybe_checkpoint_worker = start_mempool_checkpoint_worker(
-        authoritative_runtime.network.clone(),
-        maybe_runtime_store.clone(),
-    );
-    let retry_worker = start_initial_broadcast_retry_worker(authoritative_runtime.network.clone());
+    let handle = authoritative_runtime.network.clone();
+    let store = maybe_runtime_store.clone();
+    let maybe_checkpoint_worker = start_mempool_checkpoint_worker(handle.clone(), store.clone());
+    let maybe_coins_flush_worker = start_coins_flush_worker(handle.clone(), store);
+    let retry_worker = start_initial_broadcast_retry_worker(handle);
     if let Some(worker) = maybe_sync_worker.as_ref() {
         let mut context = shared_context.lock().await;
         context.set_daemon_sync_control(worker.control.clone());
@@ -135,6 +138,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     if let Some(worker) = maybe_sync_worker {
         worker.shutdown()?;
+    }
+    if let Some(worker) = maybe_coins_flush_worker {
+        worker.shutdown_always()?;
     }
     if let Some(worker) = maybe_checkpoint_worker {
         worker.shutdown_and_mark_clean()?;
@@ -224,20 +230,14 @@ impl InboundDaemonListener {
     }
 }
 
+#[rustfmt::skip]
 impl DaemonSyncPreflightError {
-    fn new(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-        }
-    }
+    fn new(message: impl Into<String>) -> Self { Self { message: message.into() } }
 }
-
+#[rustfmt::skip]
 impl core::fmt::Display for DaemonSyncPreflightError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&self.message)
-    }
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result { f.write_str(&self.message) }
 }
-
 impl Error for DaemonSyncPreflightError {}
 
 fn open_authoritative_network_runtime(
