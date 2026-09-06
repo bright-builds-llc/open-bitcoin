@@ -113,7 +113,7 @@ Each task was committed atomically:
 - **Verification:** `cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib storage::` — 142 passed
 - **Committed in:** `d86db036` (part of combined feat commit)
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** Required for GREEN under the new D-09/D-10 contract. No scope creep; leftover-write guards and `flush.rs` stay unflipped.
@@ -136,7 +136,7 @@ None - no external service configuration required.
 - Replay, CanFlush, and persist cutover are intentionally not implemented.
 - `FLUSH-02` remains Pending until later plans replay or fail closed from stored undo/bodies.
 
----
+***
 *Phase: 142-manager-flush-lifecycle-and-restart*
 *Completed: 2026-09-06*
 
