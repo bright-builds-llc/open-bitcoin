@@ -11,7 +11,7 @@ use std::{collections::HashMap, str};
 use open_bitcoin_core::{
     chainstate::{
         BlockUndo, ChainstateError, ChainstateSnapshot, Coin, CoinsBatch, CoinsCacheEntry,
-        CoinsView,
+        CoinsView, RecoveryDecision, decide_recovery,
     },
     primitives::{BlockHash, OutPoint},
 };
@@ -56,9 +56,12 @@ impl FjallNodeStore {
 
     pub fn hydrate_chainstate_for_open(&self) -> Result<Option<ChainstateSnapshot>, StorageError> {
         let view = FjallCoinsView::from_store(self);
-        match view.head_blocks() {
-            Ok(_) => {}
-            Err(error) => return Err(map_heads_error(error)),
+        let heads = view.head_blocks().map_err(map_heads_error)?;
+        if matches!(
+            decide_recovery(heads.len()),
+            RecoveryDecision::InterruptedTwoHeads
+        ) {
+            return Err(interrupted_coins_write());
         }
 
         let leftover_present = self.leftover_snapshot_present()?;
@@ -116,9 +119,14 @@ impl FjallNodeStore {
     }
 
     fn ensure_schema_two(&self) -> Result<(), StorageError> {
-        match FjallCoinsView::from_store(self).head_blocks() {
-            Ok(_) => {}
-            Err(error) => return Err(map_heads_error(error)),
+        let heads = FjallCoinsView::from_store(self)
+            .head_blocks()
+            .map_err(map_heads_error)?;
+        if matches!(
+            decide_recovery(heads.len()),
+            RecoveryDecision::InterruptedTwoHeads
+        ) {
+            return Ok(());
         }
         let leftover_present = self.leftover_snapshot_present()?;
         let coins_empty = self.coins_keyspace_is_empty()?;
@@ -386,20 +394,18 @@ fn parse_schema_version(bytes: &[u8]) -> Result<SchemaVersion, StorageError> {
 }
 
 fn map_heads_error(error: ChainstateError) -> StorageError {
-    let ChainstateError::CoinsStorage { detail } = error else {
-        return StorageError::Corruption {
+    match error {
+        ChainstateError::InterruptedWrite { .. } => interrupted_coins_write(),
+        ChainstateError::CoinsStorage { detail } => StorageError::Corruption {
             namespace: StorageNamespace::Coins,
-            detail: error.to_string(),
+            detail,
             action: StorageRecoveryAction::Repair,
-        };
-    };
-    if detail.contains("interrupted write") {
-        return interrupted_coins_write();
-    }
-    StorageError::Corruption {
-        namespace: StorageNamespace::Coins,
-        detail,
-        action: StorageRecoveryAction::Repair,
+        },
+        other => StorageError::Corruption {
+            namespace: StorageNamespace::Coins,
+            detail: other.to_string(),
+            action: StorageRecoveryAction::Repair,
+        },
     }
 }
 

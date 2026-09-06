@@ -398,7 +398,7 @@ fn hydrate_two_element_h_without_b_fails_closed() {
 }
 
 #[test]
-fn leftover_plus_two_element_h_without_b_is_interrupted_write() {
+fn leftover_plus_two_element_h_without_b_opens_as_interrupted_not_leftover_empty() {
     // Arrange
     let path = temp_store_path("leftover-interrupted-h");
     remove_dir_if_exists(&path);
@@ -419,20 +419,29 @@ fn leftover_plus_two_element_h_without_b_is_interrupted_write() {
     }
 
     // Act
-    let error = match FjallNodeStore::open(&path) {
-        Ok(_) => panic!("leftover plus interrupted H must not open as leftover-empty"),
-        Err(error) => error,
-    };
+    let store = FjallNodeStore::open(&path).expect("interrupted H must open");
+    let view = FjallCoinsView::from_store(&store);
+    let heads = view.head_blocks().expect("observable interrupted H");
 
     // Assert
-    assert!(matches!(
-        error,
-        StorageError::InterruptedWrite {
-            namespace: StorageNamespace::Coins,
-            action: StorageRecoveryAction::Reindex,
-        }
-    ));
+    assert_eq!(heads.len(), 2);
     remove_dir_if_exists(&path);
+}
+
+#[test]
+fn map_heads_error_source_does_not_match_display_text() {
+    // Arrange
+    let source = include_str!("../coins.rs");
+
+    // Act / Assert
+    assert!(
+        !source.contains("detail.contains(\"interrupted write\")"),
+        "IN-01: remap must not inspect Display text"
+    );
+    assert!(
+        source.contains("ChainstateError::InterruptedWrite"),
+        "IN-01: remap must match typed InterruptedWrite"
+    );
 }
 
 #[test]

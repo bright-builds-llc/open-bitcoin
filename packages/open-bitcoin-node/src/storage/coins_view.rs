@@ -28,6 +28,7 @@ mod tests;
 enum MarkerState {
     Empty,
     Consistent { best_block: BlockHash },
+    Interrupted { new: BlockHash, old: BlockHash },
 }
 
 /// Disk-backed coins parent. Application consistency is `H` then coins then `B`.
@@ -127,7 +128,10 @@ impl FjallCoinsView {
 
         let heads = decode_head_blocks_value(&heads_bytes)?;
         match (heads.len(), maybe_best) {
-            (2, None) => Err(interrupted_write()),
+            (2, None) => Ok(MarkerState::Interrupted {
+                new: heads[0],
+                old: heads[1],
+            }),
             (2, Some(_)) => Err(coins_corruption(
                 "head_blocks still present after best-block write",
             )),
@@ -256,7 +260,7 @@ impl CoinsView for FjallCoinsView {
 
     fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
         match self.classify_markers().map_err(map_storage)? {
-            MarkerState::Empty => Ok(None),
+            MarkerState::Empty | MarkerState::Interrupted { .. } => Ok(None),
             MarkerState::Consistent { best_block } => Ok(Some(best_block)),
         }
     }
@@ -264,6 +268,7 @@ impl CoinsView for FjallCoinsView {
     fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
         match self.classify_markers().map_err(map_storage)? {
             MarkerState::Empty | MarkerState::Consistent { .. } => Ok(Vec::new()),
+            MarkerState::Interrupted { new, old } => Ok(vec![new, old]),
         }
     }
 
@@ -282,8 +287,13 @@ impl CoinsView for FjallCoinsView {
 }
 
 fn map_storage(error: StorageError) -> ChainstateError {
-    ChainstateError::CoinsStorage {
-        detail: error.to_string(),
+    match error {
+        StorageError::InterruptedWrite { .. } => {
+            ChainstateError::InterruptedWrite { heads: Vec::new() }
+        }
+        other => ChainstateError::CoinsStorage {
+            detail: other.to_string(),
+        },
     }
 }
 

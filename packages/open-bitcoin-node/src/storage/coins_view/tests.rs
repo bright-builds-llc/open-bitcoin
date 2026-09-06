@@ -12,7 +12,10 @@ use std::{
 };
 
 use open_bitcoin_core::{
-    chainstate::{ChainstateError, Coin, CoinsBatch, CoinsCacheEntry, CoinsView},
+    chainstate::{
+        ChainstateError, Coin, CoinsBatch, CoinsCacheEntry, CoinsView, RecoveryDecision,
+        decide_recovery,
+    },
     primitives::{Amount, BlockHash, OutPoint, ScriptBuf, TransactionOutput, Txid},
 };
 
@@ -81,6 +84,13 @@ fn assert_coins_storage_detail(error: ChainstateError, needle: &str) {
     assert!(
         detail.to_ascii_lowercase().contains(needle),
         "detail {detail:?} should contain {needle:?}"
+    );
+}
+
+fn assert_interrupted_write(error: ChainstateError) {
+    assert!(
+        matches!(error, ChainstateError::InterruptedWrite { .. }),
+        "expected InterruptedWrite, got {error:?}"
     );
 }
 
@@ -227,8 +237,10 @@ fn two_element_h_without_b_is_interrupted_write() {
     let coin = sample_coin();
 
     // Act
-    let best_error = view.best_block().expect_err("best_block fail closed");
-    let heads_error = view.head_blocks().expect_err("head_blocks fail closed");
+    let maybe_best = view.best_block().expect("best_block observes missing B");
+    let heads = view
+        .head_blocks()
+        .expect("head_blocks observes interrupted H");
     let write_error = view
         .batch_write(
             dirty_unspent_batch(&[(outpoint.clone(), coin)]),
@@ -237,12 +249,43 @@ fn two_element_h_without_b_is_interrupted_write() {
         .expect_err("batch_write refuses present H");
 
     // Assert
-    assert_coins_storage_detail(best_error, "interrupted");
-    assert_coins_storage_detail(heads_error, "interrupted");
-    assert_coins_storage_detail(write_error, "interrupted");
+    assert_eq!(maybe_best, None);
+    assert_eq!(heads, vec![new_tip, old_tip]);
+    assert_interrupted_write(write_error);
     assert_eq!(
         view.get_coin(&outpoint).expect("new coin must stay absent"),
         None
+    );
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn head_blocks_two_element_h_without_b_returns_both_hashes() {
+    // Arrange
+    let path = temp_store_path("observable-two-hash-h");
+    remove_dir_if_exists(&path);
+    let hash_44 = BlockHash::from_byte_array([0x44; 32]);
+    let hash_55 = BlockHash::from_byte_array([0x55; 32]);
+    {
+        let store = FjallNodeStore::open(&path).expect("schema 2");
+        let view = FjallCoinsView::from_store(&store);
+        let heads = encode_head_blocks_value(&[hash_44, hash_55]).expect("encode H");
+        view.write_raw_bytes(&encode_head_blocks_key(), heads)
+            .expect("plant H");
+    }
+
+    // Act
+    let store = FjallNodeStore::open(&path).expect("open interrupted H");
+    let view = FjallCoinsView::from_store(&store);
+    let heads = view.head_blocks().expect("observable H");
+    let maybe_best = view.best_block().expect("missing B");
+
+    // Assert
+    assert_eq!(heads, vec![hash_44, hash_55]);
+    assert_eq!(maybe_best, None);
+    assert_eq!(
+        decide_recovery(heads.len()),
+        RecoveryDecision::InterruptedTwoHeads
     );
     remove_dir_if_exists(&path);
 }
@@ -335,35 +378,19 @@ fn simulate_crash_after_partial_leaves_h_and_fails_closed() {
         .expect_err("crash seam returns interrupted");
     drop(view);
     drop(store);
-    let open_error = match FjallNodeStore::open(&path) {
-        Ok(_) => panic!("interrupted H must fail closed on open"),
-        Err(error) => error,
-    };
-    let reopened = FjallNodeStore::open_without_ensure_schema_for_test(&path)
-        .expect("peek interrupted markers");
+    let reopened = FjallNodeStore::open(&path).expect("interrupted H is observable on open");
     let reopened_view = FjallCoinsView::from_store(&reopened);
+    let heads = reopened_view
+        .head_blocks()
+        .expect("reopen head_blocks observes H");
+    let maybe_best = reopened_view
+        .best_block()
+        .expect("reopen best_block observes missing B");
 
     // Assert
-    assert_coins_storage_detail(write_error, "interrupted");
-    assert!(matches!(
-        open_error,
-        StorageError::InterruptedWrite {
-            namespace: StorageNamespace::Coins,
-            action: StorageRecoveryAction::Reindex,
-        }
-    ));
-    assert_coins_storage_detail(
-        reopened_view
-            .head_blocks()
-            .expect_err("reopen head_blocks fail closed"),
-        "interrupted",
-    );
-    assert_coins_storage_detail(
-        reopened_view
-            .best_block()
-            .expect_err("reopen best_block fail closed"),
-        "interrupted",
-    );
+    assert_interrupted_write(write_error);
+    assert_eq!(heads.len(), 2);
+    assert_eq!(maybe_best, None);
     remove_dir_if_exists(&path);
 }
 
@@ -415,5 +442,8 @@ fn map_storage_preserves_storage_detail() {
     let mapped = map_storage(error);
 
     // Assert
-    assert_coins_storage_detail(mapped, "interrupted");
+    assert!(matches!(
+        mapped,
+        ChainstateError::InterruptedWrite { heads } if heads.is_empty()
+    ));
 }

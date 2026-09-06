@@ -64,6 +64,9 @@ pub enum ChainstateError {
     CoinsStorage {
         detail: String,
     },
+    InterruptedWrite {
+        heads: Vec<BlockHash>,
+    },
 }
 
 impl fmt::Display for ChainstateError {
@@ -153,6 +156,7 @@ impl fmt::Display for ChainstateError {
                 outpoint.txid, outpoint.vout
             ),
             Self::CoinsStorage { detail } => write!(f, "coins storage error: {detail}"),
+            Self::InterruptedWrite { heads: _ } => write!(f, "interrupted coins write"),
         }
     }
 }
@@ -238,6 +242,9 @@ mod tests {
             ChainstateError::CoinsStorage {
                 detail: "decode failed".to_string(),
             },
+            ChainstateError::InterruptedWrite {
+                heads: vec![block_hash],
+            },
         ];
 
         for error in cases {
@@ -264,5 +271,20 @@ mod tests {
 
         assert_eq!(block_error.to_string(), "bad-block (details)");
         assert_eq!(tx_error.to_string(), "bad-tx (details)");
+    }
+
+    #[test]
+    fn interrupted_write_display_covers_variant() {
+        // Arrange
+        let error = ChainstateError::InterruptedWrite {
+            heads: vec![BlockHash::from_byte_array([1_u8; 32])],
+        };
+
+        // Act
+        let display = error.to_string();
+
+        // Assert
+        assert!(!display.is_empty());
+        assert_ne!(display, "missing coin");
     }
 }
