@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: verifying
-stopped_at: Phase 142 context gathered
-last_updated: "2026-09-06T16:43:09.891Z"
-last_activity: 2026-09-05
+status: executing
+stopped_at: Completed 142-01-PLAN.md
+last_updated: "2026-09-06T18:23:38.977Z"
+last_activity: 2026-09-06
 progress:
   total_phases: 7
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
-  percent: 100
+  total_plans: 17
+  completed_plans: 12
+  percent: 71
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 141 — Durable Fjall Coins Adapter
+**Current focus:** Phase 142 — Manager Flush Lifecycle and Restart
 
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: 142
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-09-05
+Phase: 142 (Manager Flush Lifecycle and Restart) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-09-06
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
@@ -122,6 +122,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 141 P02 | 27 | 2 tasks | 5 files |
 | Phase 141 P03 | 37 | 2 tasks | 6 files |
 | Phase 141-durable-fjall-coins-adapter P04 | 118min | 2 tasks | 25 files |
+| Phase 142-manager-flush-lifecycle-and-restart P01 | 21 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -359,6 +360,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 141]: Combined 141-04 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
 - [Phase 141]: persist_progress still writes leftover snapshots and also seeds coins so schema-2 reopen can hydrate until Phase 142 write-site cutover
 - [Phase 141]: Phase 135 snapshot-recovery checks now require store CURRENT = 2 and DurableSyncRuntime hydrate_chainstate_for_open
+- [Phase 142]: Combined 142-01 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh — Hooks run the workspace verifier, so a RED-only commit cannot pass pre-commit.
+- [Phase 142]: classify_markers (2, None) is Ok(Interrupted); store open succeeds; hydrate still fail-closes — FLUSH-02 cannot replay if open fail-closes; leftover scanners must not invent a tip (D-09/D-10).
+- [Phase 142]: map_heads_error matches ChainstateError::InterruptedWrite; leftover-empty skipped when InterruptedTwoHeads — IN-01/WR-02: Display remaps hide crash state; leftover-empty must not shadow interrupted H.
+- [Phase 142]: Leave FLUSH-02 Pending until replay and lifecycle-valid phase verification — This plan only makes the interrupted marker observable; ReplayBlocks is Plan 03.
 
 ### Pending Todos
 
@@ -382,6 +387,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-06T16:43:09.883Z
-Stopped at: Phase 142 context gathered
-Resume file: .planning/phases/142-manager-flush-lifecycle-and-restart/142-CONTEXT.md
+Last session: 2026-09-06T18:23:34.109Z
+Stopped at: Completed 142-01-PLAN.md
+Resume file: None
