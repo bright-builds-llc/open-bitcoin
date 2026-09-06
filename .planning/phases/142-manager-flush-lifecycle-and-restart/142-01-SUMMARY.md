@@ -83,7 +83,7 @@ Each task was committed atomically:
 1. **Task 1: Write failing interrupted-marker and typed-remap tests** — RED verified by construction (new tests plus `InterruptedWrite` variant). Atomic RED commit skipped because `.githooks/pre-commit` runs workspace `verify.sh`.
 2. **Task 2: Implement Interrupted marker, leftover-empty skip, and typed remap** - `d86db036` (feat)
 
-**Plan metadata:** pending `docs(142-01): complete observable interrupted H plan`
+**Plan metadata:** `cc914a8d` (docs: complete plan)
 
 ## Files Created/Modified
 
