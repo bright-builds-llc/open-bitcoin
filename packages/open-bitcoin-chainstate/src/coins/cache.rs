@@ -294,6 +294,14 @@ impl<V: CoinsView> CoinsCache<V> {
         }
     }
 
+    pub fn set_best_block(&mut self, block_hash: BlockHash) {
+        self.overlay.set_best_block(block_hash);
+    }
+
+    pub fn into_dirty_parent_write(self) -> (V, CoinsBatch) {
+        (self.parent, self.overlay.into_dirty_batch())
+    }
+
     pub fn cache_entry_count(&self) -> u64 {
         u64::try_from(self.overlay.entries.len()).unwrap_or(u64::MAX)
     }

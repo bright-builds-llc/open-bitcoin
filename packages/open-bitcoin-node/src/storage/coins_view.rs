@@ -99,7 +99,31 @@ impl FjallCoinsView {
             maybe_best_block,
             Self::persist_mode_for_final_best_block(),
             cap_bytes,
+            false,
         )
+    }
+
+    pub fn batch_write_with_persist_mode(
+        &mut self,
+        writes: CoinsBatch,
+        maybe_best_block: Option<BlockHash>,
+        final_mode: PersistMode,
+    ) -> Result<(), ChainstateError> {
+        self.batch_write_capped(
+            writes,
+            maybe_best_block,
+            final_mode,
+            DEFAULT_COINS_DB_BATCH_BYTES,
+            true,
+        )
+    }
+
+    #[cfg(test)]
+    pub fn delete_raw_bytes(&self, key: &[u8]) -> Result<(), StorageError> {
+        self.coins.remove(key).map_err(coins_backend_failure)?;
+        self.db
+            .persist(FjallPersistMode::SyncAll)
+            .map_err(coins_backend_failure)
     }
 
     fn coins_get(&self, key: &[u8]) -> Result<Option<Vec<u8>>, StorageError> {
@@ -151,10 +175,12 @@ impl FjallCoinsView {
         maybe_best_block: Option<BlockHash>,
         final_mode: PersistMode,
         cap_bytes: usize,
+        allow_existing_heads: bool,
     ) -> Result<(), ChainstateError> {
-        if self
-            .coins_contains(&encode_head_blocks_key())
-            .map_err(map_storage)?
+        if !allow_existing_heads
+            && self
+                .coins_contains(&encode_head_blocks_key())
+                .map_err(map_storage)?
         {
             return Err(map_storage(interrupted_write()));
         }
@@ -282,6 +308,7 @@ impl CoinsView for FjallCoinsView {
             maybe_best_block,
             Self::persist_mode_for_final_best_block(),
             DEFAULT_COINS_DB_BATCH_BYTES,
+            false,
         )
     }
 }

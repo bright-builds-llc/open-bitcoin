@@ -310,5 +310,8 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
     }
 }
 
+mod replay;
+pub use replay::replay_interrupted_flush;
+
 #[cfg(test)]
 mod tests;

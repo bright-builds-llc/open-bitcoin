@@ -581,6 +581,31 @@ fn from_parent_does_not_probe_best_block() {
 }
 
 #[test]
+fn into_dirty_parent_write_returns_parent_and_dirty_overlay() {
+    // Arrange
+    let parent_tip = BlockHash::from_byte_array([3_u8; 32]);
+    let new_tip = BlockHash::from_byte_array([4_u8; 32]);
+    let parent = MemoryCoinsView::from_coins(HashMap::new(), Some(parent_tip));
+    let mut cache = CoinsCache::from_parent(parent);
+    let outpoint = fixture_outpoint();
+    let coin = fixture_coin();
+    cache
+        .add_coin(outpoint.clone(), coin.clone(), true)
+        .expect("add dirty coin");
+    cache.set_best_block(new_tip);
+
+    // Act
+    let (parent, writes) = cache.into_dirty_parent_write();
+
+    // Assert
+    assert_eq!(parent.best_block().expect("parent tip"), Some(parent_tip));
+    assert_eq!(writes.entries.len(), 1);
+    let entry = writes.entries.get(&outpoint).expect("dirty outpoint");
+    assert_eq!(entry.maybe_coin(), Some(&coin));
+    assert!(entry.is_dirty());
+}
+
+#[test]
 fn memory_backed_alias_is_default_chainstate() {
     // Arrange
     let snapshot = ChainstateSnapshot::new(Vec::new(), HashMap::new(), HashMap::new());

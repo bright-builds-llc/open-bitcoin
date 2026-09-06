@@ -1280,7 +1280,9 @@
       "label": "node-chainstate-adapter",
       "files": [
         "packages/open-bitcoin-node/src/chainstate.rs",
-        "packages/open-bitcoin-node/src/chainstate/tests.rs"
+        "packages/open-bitcoin-node/src/chainstate/tests.rs",
+        "packages/open-bitcoin-node/src/chainstate/replay.rs",
+        "packages/open-bitcoin-node/src/chainstate/replay/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/node/chainstate.cpp",
