@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Completed 142-03-PLAN.md
-last_updated: "2026-09-06T20:23:26.260Z"
+stopped_at: Completed 142-04-PLAN.md
+last_updated: "2026-09-06T21:21:22.622Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 17
-  completed_plans: 14
-  percent: 82
+  completed_plans: 15
+  percent: 88
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 142 (Manager Flush Lifecycle and Restart) — EXECUTING
-Plan: 4 of 6
+Plan: 5 of 6
 Status: Ready to execute
 Last activity: 2026-09-06
 
@@ -125,6 +125,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 142-manager-flush-lifecycle-and-restart P01 | 21 min | 2 tasks | 6 files |
 | Phase 142-manager-flush-lifecycle-and-restart P02 | 23 min | 2 tasks | 9 files |
 | Phase 142 P03 | 53 | 2 tasks | 8 files |
+| Phase 142-manager-flush-lifecycle-and-restart P04 | 43 | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -374,6 +375,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 142]: batch_write_with_persist_mode allows present H so replay can finish markers; ordinary batch_write still refuses H
 - [Phase 142]: CoinsCache::set_best_block and into_dirty_parent_write extract Sync writes without calling cache.flush
 - [Phase 142]: Leave FLUSH-02 Pending until lifecycle-valid phase verification
+- [Phase 142]: Combined 142-04 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
+- [Phase 142]: execute_flush is generic over FlushPersistSink so undo-abort uses UndoFailingSink + RecordingCoinsView
+- [Phase 142]: probe_disk_free_bytes returns u64::MAX because the node crate forbids unsafe libc::statvfs
+- [Phase 142]: Leave MGR-01 Pending until persist cutover and lifecycle-valid phase verification
 
 ### Pending Todos
 
@@ -397,6 +402,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-06T20:23:26.257Z
-Stopped at: Completed 142-03-PLAN.md
+Last session: 2026-09-06T21:21:22.618Z
+Stopped at: Completed 142-04-PLAN.md
 Resume file: None
