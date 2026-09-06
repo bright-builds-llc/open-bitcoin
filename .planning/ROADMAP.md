@@ -118,7 +118,7 @@ Plans:
 Plans:
 - [x] 142-01-PLAN.md — Observable interrupted H and typed remap
 - [x] 142-02-PLAN.md — Generic Chainstate parent and cache occupancy
-- [ ] 142-03-PLAN.md — Interrupted-flush apply-only replay
+- [x] 142-03-PLAN.md — Interrupted-flush apply-only replay
 - [ ] 142-04-PLAN.md — CanFlush owner and ordered flush
 - [ ] 142-05-PLAN.md — IfNeeded / Periodic / Always call sites
 - [ ] 142-06-PLAN.md — Restart from coins best-block and persist-progress cutover
@@ -195,7 +195,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
-| 142. Manager Flush Lifecycle and Restart | 2/6 | In Progress|  |
+| 142. Manager Flush Lifecycle and Restart | 3/6 | In Progress|  |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |

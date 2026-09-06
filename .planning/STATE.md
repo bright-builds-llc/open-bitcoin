@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Completed 142-02-PLAN.md
-last_updated: "2026-09-06T19:14:07.744Z"
+stopped_at: Completed 142-03-PLAN.md
+last_updated: "2026-09-06T20:23:26.260Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 17
-  completed_plans: 13
-  percent: 76
+  completed_plans: 14
+  percent: 82
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 142 (Manager Flush Lifecycle and Restart) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-09-06
 
@@ -124,6 +124,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 141-durable-fjall-coins-adapter P04 | 118min | 2 tasks | 25 files |
 | Phase 142-manager-flush-lifecycle-and-restart P01 | 21 min | 2 tasks | 6 files |
 | Phase 142-manager-flush-lifecycle-and-restart P02 | 23 min | 2 tasks | 9 files |
+| Phase 142 P03 | 53 | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -369,6 +370,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 142]: from_parent does not probe best_block; overlay occupancy starts at 0 while coins_best_block reads the parent tip — Empty overlay cannot pretend the parent tip is cache-dirty (141 / D-13).
 - [Phase 142]: estimated_cache_bytes is first-party overlay math (48 + unspent payload), never Fjall len or LevelDB SizeEstimate — D-05 forbids Fjall item counts and LevelDB SizeEstimate; 450/4/8 MiB defaults stay in the shell.
 - [Phase 142]: Leave MGR-01 and MGR-02 Pending until Fjall attach, manager flush, and lifecycle-valid phase verification — This plan only supplies the generic parent and occupancy facts; later plans own attach and flush wiring.
+- [Phase 142]: Combined 142-03 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
+- [Phase 142]: batch_write_with_persist_mode allows present H so replay can finish markers; ordinary batch_write still refuses H
+- [Phase 142]: CoinsCache::set_best_block and into_dirty_parent_write extract Sync writes without calling cache.flush
+- [Phase 142]: Leave FLUSH-02 Pending until lifecycle-valid phase verification
 
 ### Pending Todos
 
@@ -392,6 +397,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-06T19:14:01.640Z
-Stopped at: Completed 142-02-PLAN.md
+Last session: 2026-09-06T20:23:26.257Z
+Stopped at: Completed 142-03-PLAN.md
 Resume file: None
