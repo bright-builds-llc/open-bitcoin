@@ -113,7 +113,15 @@ Plans:
   3. The node flushes IfNeeded after connect/reorg, Periodic on injected ticks, and Always on shutdown, writing block, undo, and index before coins.
   4. A mid-flush crash is recovered by interrupted-flush replay from stored undo and block bodies, or fails closed without inventing a consistent tip.
   5. Progress credit and `persist_progress` no longer rewrite the full UTXO snapshot as live truth.
-**Plans**: TBD
+**Plans**: 6 plans
+
+Plans:
+- [ ] 142-01-PLAN.md — Observable interrupted H and typed remap
+- [ ] 142-02-PLAN.md — Generic Chainstate parent and cache occupancy
+- [ ] 142-03-PLAN.md — Interrupted-flush apply-only replay
+- [ ] 142-04-PLAN.md — CanFlush owner and ordered flush
+- [ ] 142-05-PLAN.md — IfNeeded / Periodic / Always call sites
+- [ ] 142-06-PLAN.md — Restart from coins best-block and persist-progress cutover
 
 ### Phase 143: Honest Stored-Block Availability
 **Goal**: The node serves or reports a stored block only when the payload bytes are present and refuses cleanly when they are not.
@@ -187,14 +195,14 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
-| 142. Manager Flush Lifecycle and Restart | 0/TBD | Not started | - |
+| 142. Manager Flush Lifecycle and Restart | 0/6 | Not started | - |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
 
-Run `/gsd-execute-phase 141` to implement the durable Fjall coins adapter plans.
+Run `/gsd-execute-phase 142` to implement the manager flush lifecycle and restart plans.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*
