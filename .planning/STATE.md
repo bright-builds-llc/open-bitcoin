@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Completed 142-04-PLAN.md
-last_updated: "2026-09-06T21:21:22.622Z"
+stopped_at: Completed 142-05-PLAN.md
+last_updated: "2026-09-06T22:36:47.590Z"
 last_activity: 2026-09-06
 progress:
   total_phases: 7
   completed_phases: 3
   total_plans: 17
-  completed_plans: 15
-  percent: 88
+  completed_plans: 16
+  percent: 94
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 142 (Manager Flush Lifecycle and Restart) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-09-06
 
@@ -126,6 +126,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 142-manager-flush-lifecycle-and-restart P02 | 23 min | 2 tasks | 9 files |
 | Phase 142 P03 | 53 | 2 tasks | 8 files |
 | Phase 142-manager-flush-lifecycle-and-restart P04 | 43 | 2 tasks | 6 files |
+| Phase 142 P05 | 60min | 2 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -379,6 +380,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 142]: execute_flush is generic over FlushPersistSink so undo-abort uses UndoFailingSink + RecordingCoinsView
 - [Phase 142]: probe_disk_free_bytes returns u64::MAX because the node crate forbids unsafe libc::statvfs
 - [Phase 142]: Leave MGR-01 Pending until persist cutover and lifecycle-valid phase verification
+- [Phase 142]: Combined 142-05 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh — Hooks run the workspace verifier, so a RED-only commit cannot pass pre-commit.
+- [Phase 142]: FlushLifecycle is a required ManagedChainstate field; persist() always execute_flush(IfNeeded) — Plan revision forbids Option gating and when-installed hedges.
+- [Phase 142]: Periodic/Always go through ManagedNetworkHandle; the worker does not own a second lifecycle — Same ownership pattern as checkpoint.rs.
+- [Phase 142]: Leave MGR-01 Pending until persist_progress cutover and lifecycle-valid phase verification — persist_progress leftover snapshot writes remain for Plan 06.
 
 ### Pending Todos
 
@@ -402,6 +407,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-06T21:21:22.618Z
-Stopped at: Completed 142-04-PLAN.md
+Last session: 2026-09-06T22:36:47.586Z
+Stopped at: Completed 142-05-PLAN.md
 Resume file: None
