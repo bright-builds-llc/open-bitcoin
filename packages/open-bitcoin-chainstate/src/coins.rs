@@ -18,7 +18,7 @@ use open_bitcoin_primitives::{BlockHash, OutPoint};
 use crate::error::ChainstateError;
 use crate::types::Coin;
 
-pub use cache::{CoinsCache, CoinsOverlay};
+pub use cache::{CoinsCache, CoinsOverlay, ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES};
 pub use flush::{
     COIN_WRITE_GUARD_BYTES_PER_ENTRY, CoinsCacheSizeState, FlushDecision, FlushDecisionFacts,
     FlushMode, FlushPolicyInput, FlushPolicyTime, LARGE_CACHE_DENOMINATOR,

@@ -9,11 +9,8 @@ use std::collections::HashMap;
 use std::fmt;
 
 use open_bitcoin_consensus::context::{MinDifficultyRecoveryTarget, RetargetAnchor};
-use open_bitcoin_consensus::{
-    BlockValidationContext, ConsensusParams, ScriptVerifyFlags, block_hash, check_block_contextual,
-    transaction_txid,
-};
-use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, OutPoint, Txid};
+use open_bitcoin_consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid};
+use open_bitcoin_primitives::{Block, BlockHash, OutPoint, Txid};
 
 use crate::coins::{CoinsCache, CoinsOverlay, CoinsView, MemoryCoinsView};
 use crate::{
@@ -22,7 +19,10 @@ use crate::{
 };
 
 mod apply;
+mod overlay_apply;
 mod stage;
+
+use overlay_apply::{apply_connect_on_overlay, apply_disconnect_on_overlay};
 
 const MEDIAN_TIME_PAST_WINDOW: usize = 11;
 
@@ -33,14 +33,16 @@ type StagedDisconnect = (
     HashMap<BlockHash, BlockUndo>,
     Option<HashMap<Txid, u32>>,
 );
-type ConnectApplyOutcome = (ChainPosition, BlockUndo, Option<HashMap<Txid, u32>>);
+pub(super) type ConnectApplyOutcome = (ChainPosition, BlockUndo, Option<HashMap<Txid, u32>>);
 
-pub struct Chainstate {
+pub struct Chainstate<V: CoinsView = MemoryCoinsView> {
     active_chain: Vec<ChainPosition>,
-    coins: CoinsCache<MemoryCoinsView>,
+    coins: CoinsCache<V>,
     undo_by_block: HashMap<BlockHash, BlockUndo>,
     maybe_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
 }
+
+pub type MemoryBackedChainstate = Chainstate<MemoryCoinsView>;
 
 #[derive(Debug)]
 pub struct StagedChainstateConnect {
@@ -60,7 +62,7 @@ pub struct StagedChainstateReorg {
     pub next_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
 }
 
-impl Default for Chainstate {
+impl Default for Chainstate<MemoryCoinsView> {
     fn default() -> Self {
         Self {
             active_chain: Vec::new(),
@@ -71,7 +73,7 @@ impl Default for Chainstate {
     }
 }
 
-impl fmt::Debug for Chainstate {
+impl fmt::Debug for Chainstate<MemoryCoinsView> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("Chainstate")
@@ -86,15 +88,15 @@ impl fmt::Debug for Chainstate {
     }
 }
 
-impl PartialEq for Chainstate {
+impl PartialEq for Chainstate<MemoryCoinsView> {
     fn eq(&self, other: &Self) -> bool {
         self.snapshot() == other.snapshot()
     }
 }
 
-impl Eq for Chainstate {}
+impl Eq for Chainstate<MemoryCoinsView> {}
 
-impl Chainstate {
+impl Chainstate<MemoryCoinsView> {
     pub fn new() -> Self {
         Self::default()
     }
@@ -122,12 +124,32 @@ impl Chainstate {
         snapshot
     }
 
-    pub fn tip(&self) -> Option<&ChainPosition> {
-        self.active_chain.last()
-    }
-
     pub fn utxos(&self) -> HashMap<OutPoint, Coin> {
         self.coins.collect_unspent()
+    }
+}
+
+impl<V: CoinsView> Chainstate<V> {
+    pub fn from_parent(
+        parent: V,
+        active_chain: Vec<ChainPosition>,
+        undo_by_block: HashMap<BlockHash, BlockUndo>,
+        maybe_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
+    ) -> Self {
+        Self {
+            active_chain,
+            coins: CoinsCache::from_parent(parent),
+            undo_by_block,
+            maybe_confirmed_txid_counts,
+        }
+    }
+
+    pub fn coins(&self) -> &CoinsCache<V> {
+        &self.coins
+    }
+
+    pub fn tip(&self) -> Option<&ChainPosition> {
+        self.active_chain.last()
     }
 
     pub fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError> {
@@ -376,105 +398,7 @@ pub fn prefer_candidate_tip(current: &ChainPosition, candidate: &ChainPosition) 
     candidate.block_hash > current.block_hash
 }
 
-#[allow(clippy::too_many_arguments)]
-fn apply_connect_on_overlay(
-    overlay: &mut CoinsOverlay,
-    parent: &CoinsCache<MemoryCoinsView>,
-    active_chain: &[ChainPosition],
-    maybe_confirmed_txid_counts: &Option<HashMap<Txid, u32>>,
-    block: &Block,
-    chain_work: u128,
-    current_time: i64,
-    verify_flags: ScriptVerifyFlags,
-    consensus_params: ConsensusParams,
-) -> Result<ConnectApplyOutcome, ChainstateError> {
-    let expected_previous = active_chain
-        .last()
-        .map_or(BlockHash::from_byte_array([0_u8; 32]), |tip| tip.block_hash);
-    let actual_previous = block.header.previous_block_hash;
-    if actual_previous != expected_previous {
-        return Err(ChainstateError::InvalidTipExtension {
-            expected_previous,
-            actual_previous,
-        });
-    }
-
-    let height = active_chain
-        .last()
-        .map_or(0, |tip| tip.height.saturating_add(1));
-    let previous_header = active_chain
-        .last()
-        .map_or_else(BlockHeader::default, |tip| tip.header.clone());
-    let maybe_retarget_anchor = maybe_retarget_anchor(active_chain, height, &consensus_params);
-    let maybe_min_difficulty_recovery_target =
-        maybe_min_difficulty_recovery_target(active_chain, height, &consensus_params);
-    let previous_median_time_past = active_chain.last().map_or(0, |tip| tip.median_time_past);
-    let block_context = BlockValidationContext {
-        height,
-        previous_header,
-        maybe_retarget_anchor,
-        maybe_min_difficulty_recovery_target,
-        previous_median_time_past,
-        current_time,
-        consensus_params,
-    };
-    check_block_contextual(block, &block_context)
-        .map_err(|source| ChainstateError::BlockValidation { source })?;
-
-    let next_confirmed_txid_counts = next_counts_after_connect(maybe_confirmed_txid_counts, block)?;
-    let (block_undo, _total_fees_sats) = apply::apply_connect_transactions(
-        overlay,
-        parent,
-        block,
-        height,
-        previous_median_time_past,
-        verify_flags,
-        &block_context,
-    )?;
-    let median_time_past = compute_median_time_past(active_chain, Some(block.header.time));
-    let position = ChainPosition::new(block.header.clone(), height, chain_work, median_time_past);
-    Ok((position, block_undo, next_confirmed_txid_counts))
-}
-
-fn apply_disconnect_on_overlay(
-    overlay: &mut CoinsOverlay,
-    parent: &CoinsCache<MemoryCoinsView>,
-    next_active_chain: &mut Vec<ChainPosition>,
-    next_undo_by_block: &mut HashMap<BlockHash, BlockUndo>,
-    next_confirmed_txid_counts: &mut Option<HashMap<Txid, u32>>,
-    block: &Block,
-) -> Result<ChainPosition, ChainstateError> {
-    let Some(tip) = next_active_chain.last().cloned() else {
-        return Err(ChainstateError::MissingTip);
-    };
-    let actual_block = block_hash(&block.header);
-    if actual_block != tip.block_hash {
-        return Err(ChainstateError::DisconnectBlockMismatch {
-            expected_tip: tip.block_hash,
-            actual_block,
-        });
-    }
-
-    let Some(block_undo) = next_undo_by_block.get(&tip.block_hash).cloned() else {
-        return Err(ChainstateError::MissingUndo {
-            block_hash: tip.block_hash,
-        });
-    };
-    if block.transactions.len().saturating_sub(1) != block_undo.transactions.len() {
-        return Err(ChainstateError::UndoMismatch {
-            expected_transactions: block.transactions.len().saturating_sub(1),
-            actual_transactions: block_undo.transactions.len(),
-        });
-    }
-
-    *next_confirmed_txid_counts = next_counts_after_disconnect(next_confirmed_txid_counts, block)?;
-    apply::apply_disconnect_transactions(overlay, parent, block, tip.height, &block_undo)?;
-    next_undo_by_block.remove(&tip.block_hash);
-    next_active_chain.pop();
-    Ok(tip)
-}
-
-fn next_counts_after_connect(
+pub(super) fn next_counts_after_connect(
     maybe_confirmed_txid_counts: &Option<HashMap<Txid, u32>>,
     block: &Block,
 ) -> Result<Option<HashMap<Txid, u32>>, ChainstateError> {
@@ -497,7 +421,7 @@ fn next_counts_after_connect(
         .transpose()
 }
 
-fn next_counts_after_disconnect(
+pub(super) fn next_counts_after_disconnect(
     maybe_confirmed_txid_counts: &Option<HashMap<Txid, u32>>,
     block: &Block,
 ) -> Result<Option<HashMap<Txid, u32>>, ChainstateError> {
@@ -534,7 +458,7 @@ fn difficulty_adjustment_interval(consensus_params: &ConsensusParams) -> u32 {
     interval.max(1) as u32
 }
 
-fn maybe_retarget_anchor(
+pub(super) fn maybe_retarget_anchor(
     active_chain: &[ChainPosition],
     height: u32,
     consensus_params: &ConsensusParams,
@@ -556,7 +480,7 @@ fn maybe_retarget_anchor(
     })
 }
 
-fn maybe_min_difficulty_recovery_target(
+pub(super) fn maybe_min_difficulty_recovery_target(
     active_chain: &[ChainPosition],
     height: u32,
     consensus_params: &ConsensusParams,

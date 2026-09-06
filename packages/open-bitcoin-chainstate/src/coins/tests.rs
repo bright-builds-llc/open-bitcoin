@@ -12,9 +12,13 @@ use open_bitcoin_primitives::{Amount, BlockHash, OutPoint, ScriptBuf, Transactio
 mod algebra;
 mod flush;
 
-use super::{CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView, MemoryCoinsView};
+use super::{
+    CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags, CoinsView,
+    ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES, MemoryCoinsView,
+};
 use crate::error::ChainstateError;
 use crate::types::Coin;
+use crate::{Chainstate, ChainstateSnapshot, MemoryBackedChainstate};
 
 fn fixture_outpoint() -> OutPoint {
     OutPoint {
@@ -510,4 +514,83 @@ fn coins_storage_display_is_not_missing_coin() {
     // Assert
     assert_eq!(message, "coins storage error: decode failed");
     assert!(!message.contains("missing coin"));
+}
+
+#[test]
+fn cache_entry_count_is_overlay_len() {
+    // Arrange
+    let mut cache = CoinsCache::from_parent(MemoryCoinsView::default());
+
+    // Act
+    let empty_count = cache.cache_entry_count();
+    cache.insert_entry_for_test(fixture_outpoint(), CoinsCacheEntry::spent_dirty());
+    cache.insert_entry_for_test(
+        fixture_outpoint_two(),
+        CoinsCacheEntry::unspent_dirty(fixture_coin()),
+    );
+    let occupied_count = cache.cache_entry_count();
+
+    // Assert
+    assert_eq!(empty_count, 0);
+    assert_eq!(occupied_count, 2);
+}
+
+#[test]
+fn estimated_cache_bytes_uses_first_party_overhead() {
+    // Arrange
+    let unspent = Coin {
+        output: TransactionOutput {
+            value: Amount::from_sats(50).expect("valid amount"),
+            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("valid script"),
+        },
+        is_coinbase: true,
+        created_height: 7,
+        created_median_time_past: 1_000,
+    };
+    let mut cache = CoinsCache::from_parent(MemoryCoinsView::default());
+    let expected_unspent = ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES + 8 + 1 + 4 + 8 + 1;
+    let expected_spent = ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES;
+    let cache_source = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/src/coins/cache.rs"));
+
+    // Act
+    cache.insert_entry_for_test(fixture_outpoint(), CoinsCacheEntry::unspent_dirty(unspent));
+    let after_unspent = cache.estimated_cache_bytes();
+    cache.insert_entry_for_test(fixture_outpoint_two(), CoinsCacheEntry::spent_dirty());
+    let after_both = cache.estimated_cache_bytes();
+
+    // Assert
+    assert_eq!(after_unspent, expected_unspent);
+    assert_eq!(after_both, expected_unspent + expected_spent);
+    assert!(!cache_source.contains("SizeEstimate"));
+    assert!(!cache_source.contains("fjall"));
+}
+
+#[test]
+fn from_parent_does_not_probe_best_block() {
+    // Arrange
+    let parent_tip = BlockHash::from_byte_array([9_u8; 32]);
+    let parent = MemoryCoinsView::from_coins(HashMap::new(), Some(parent_tip));
+
+    // Act
+    let chainstate =
+        Chainstate::from_parent(parent, Vec::new(), HashMap::new(), Some(HashMap::new()));
+
+    // Assert
+    assert_eq!(chainstate.coins().cache_entry_count(), 0);
+    assert_eq!(chainstate.coins_best_block(), Ok(Some(parent_tip)));
+}
+
+#[test]
+fn memory_backed_alias_is_default_chainstate() {
+    // Arrange
+    let snapshot = ChainstateSnapshot::new(Vec::new(), HashMap::new(), HashMap::new());
+
+    // Act
+    let from_snapshot = Chainstate::from_snapshot(snapshot);
+    let from_default: MemoryBackedChainstate = Chainstate::default();
+
+    // Assert
+    let aliased: MemoryBackedChainstate = from_snapshot;
+    assert_eq!(from_default, Chainstate::new());
+    assert_eq!(aliased.coins_best_block(), Ok(None));
 }

@@ -154,6 +154,7 @@
       "label": "chainstate-engine",
       "files": [
         "packages/open-bitcoin-chainstate/src/engine.rs",
+        "packages/open-bitcoin-chainstate/src/engine/overlay_apply.rs",
         "packages/open-bitcoin-chainstate/src/engine/apply.rs",
         "packages/open-bitcoin-chainstate/src/engine/stage.rs",
         "packages/open-bitcoin-chainstate/src/coins.rs",

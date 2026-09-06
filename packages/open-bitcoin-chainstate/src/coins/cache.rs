@@ -13,6 +13,21 @@ use super::{CoinsBatch, CoinsCacheEntry, CoinsView};
 use crate::error::ChainstateError;
 use crate::types::Coin;
 
+pub const ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES: u64 = 48;
+
+fn estimated_cache_entry_bytes(entry: &CoinsCacheEntry) -> u64 {
+    let Some(coin) = entry.maybe_coin() else {
+        return ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES;
+    };
+    let script_len = u64::try_from(coin.output.script_pubkey.as_bytes().len()).unwrap_or(u64::MAX);
+    ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES
+        .saturating_add(8)
+        .saturating_add(script_len)
+        .saturating_add(4)
+        .saturating_add(8)
+        .saturating_add(1)
+}
+
 #[derive(Debug, Clone)]
 pub struct CoinsOverlay {
     entries: HashMap<OutPoint, CoinsCacheEntry>,
@@ -277,6 +292,18 @@ impl<V: CoinsView> CoinsCache<V> {
                 maybe_best_block: None,
             },
         }
+    }
+
+    pub fn cache_entry_count(&self) -> u64 {
+        u64::try_from(self.overlay.entries.len()).unwrap_or(u64::MAX)
+    }
+
+    pub fn estimated_cache_bytes(&self) -> u64 {
+        self.overlay
+            .entries
+            .values()
+            .map(estimated_cache_entry_bytes)
+            .fold(0_u64, u64::saturating_add)
     }
 
     pub fn contains_in_cache(&self, outpoint: &OutPoint) -> bool {

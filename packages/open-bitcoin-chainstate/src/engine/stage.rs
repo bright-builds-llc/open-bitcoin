@@ -8,7 +8,7 @@
 use open_bitcoin_primitives::BlockHash;
 
 use super::{Chainstate, StagedChainstateConnect, StagedChainstateReorg};
-use crate::coins::CoinsOverlay;
+use crate::coins::{CoinsOverlay, CoinsView};
 use crate::{ChainPosition, ChainTransition};
 
 impl StagedChainstateConnect {
@@ -23,7 +23,7 @@ impl StagedChainstateReorg {
     }
 }
 
-impl Chainstate {
+impl<V: CoinsView> Chainstate<V> {
     /// Flush a staged connect overlay and install metadata.
     ///
     /// Infallible for the D-18 prepare/mempool/commit window: `FreshFlagMisapplied`
