@@ -538,20 +538,23 @@ const COINS_DB_CACHE_CAP_BYTES: u64 = 8 * 1024 * 1024;
 
 **If this table were empty:** all claims would be verified. These two are the only assumed injection sources.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Who owns IfNeeded after connect — `commit_prepared_*` or `persist_progress`?**
    - What we know: Both currently persist. `should_persist_progress` is every accepted connect/reorg. D-16 says IfNeeded after connect/reorg.
    - What's unclear: Putting IfNeeded in both double-asks policy (harmless) vs splitting headers persist from coins flush (clearer).
    - Recommendation: `commit_prepared_connect` / `commit_prepared_reorg` / `connect_block` / `disconnect_tip` / `reorg` call the one manager flush with `IfNeeded`. `persist_progress` persists headers/runtime only and credits from coins `B`.
+   - **RESOLVED:** Plans 05–06 implement the recommendation. Connect/reorg/`persist()` call `execute_flush(IfNeeded)` on the stored `FlushLifecycle`. `persist_progress` is headers/runtime only and credits from coins `B`.
 
 2. **Wallet rescan leftover consumer**
    - What we know: 141 deferred rescan rewrite. Tests still `seed_coins_from_leftover_for_reopen`.
    - What's unclear: How many rescan tests break if leftover writes stop.
    - Recommendation: Keep `seed_*` as a test helper; production persist must not call it. Do not expand Phase 142 into rescan product work.
+   - **RESOLVED:** Plan 06 keeps `seed_coins_from_snapshot` / `seed_coins_from_leftover_for_reopen` as test helpers. Production persist and `persist_progress` must not call them.
 
 3. **Delete vs leave leftover snapshot files**
    - Discretion. Recommendation: leave unread; stop writing. Deletion is optional cleanup, not required for MGR-02.
+   - **RESOLVED:** Plan 06 leaves leftover `"snapshot"` blobs unread and does not delete them. Production persist paths stop writing them.
 
 ## Environment Availability
 
