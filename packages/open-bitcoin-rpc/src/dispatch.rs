@@ -30,7 +30,14 @@ mod package;
 mod tests;
 mod wallet;
 
-pub fn dispatch(context: &mut ManagedRpcContext, call: MethodCall) -> Result<Value, RpcFailure> {
+pub fn dispatch<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
+    call: MethodCall,
+) -> Result<Value, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     match call {
         MethodCall::GetBlockchainInfo(_request) => {
             serde_json::to_value(node::get_blockchain_info(context)?)

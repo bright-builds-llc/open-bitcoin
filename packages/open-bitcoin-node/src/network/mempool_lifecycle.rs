@@ -6,6 +6,7 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainTransition},
     consensus::{
@@ -38,7 +39,7 @@ pub(super) struct ManagedMempoolReorgLifecycle {
     pub reconsidered: Vec<MempoolOutcome>,
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn connect_local_block(
         &mut self,
         block: &Block,
@@ -81,8 +82,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         if self
             .chainstate
             .chainstate()
-            .snapshot()
-            .active_chain
+            .active_chain()
             .iter()
             .any(|position| position.block_hash == block_hash)
         {
@@ -142,10 +142,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         context: ReorgLifecycleContext,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-    ) -> ManagedResult<ChainTransition>
-    where
-        S: Clone,
-    {
+    ) -> ManagedResult<ChainTransition> {
         let prepared_chainstate = self.chainstate.prepare_reorg(
             disconnect_blocks,
             replacement_branch,
@@ -153,24 +150,20 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             consensus_params,
         )?;
         let transition = prepared_chainstate.transition().clone();
-        let mut staged = self.clone();
-        staged
-            .chainstate
+        self.chainstate
             .install_prepared_reorg_preview(&prepared_chainstate);
-        staged
-            .peer_manager
+        self.peer_manager
             .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         for anchored_block in replacement_branch {
             let block_hash = block_hash(&anchored_block.block.header);
-            staged
-                .blocks_by_hash
+            self.blocks_by_hash
                 .insert(block_hash, anchored_block.block.clone());
-            staged.peer_manager.note_local_block_hash(block_hash);
+            self.peer_manager.note_local_block_hash(block_hash);
         }
         for position in &transition.connected {
-            staged.peer_manager.note_local_position(position);
+            self.peer_manager.note_local_position(position);
         }
-        staged.apply_reorg_mempool_lifecycle(
+        self.apply_reorg_mempool_lifecycle(
             disconnect_blocks,
             replacement_branch,
             &transition.connected,
@@ -180,8 +173,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )?;
 
         self.chainstate.commit_prepared_reorg(prepared_chainstate);
-        std::mem::swap(&mut self.chainstate, &mut staged.chainstate);
-        *self = staged;
         Ok(transition)
     }
 

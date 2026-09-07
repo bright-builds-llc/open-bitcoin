@@ -38,11 +38,15 @@ impl InboundMetricsWorker {
     }
 }
 
-pub(super) fn start_inbound_metrics_worker(
+pub(super) fn start_inbound_metrics_worker<S, V>(
     runtime: &RuntimeConfig,
-    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     maybe_store: Option<FjallNodeStore>,
-) -> Result<Option<InboundMetricsWorker>, DaemonSyncPreflightError> {
+) -> Result<Option<InboundMetricsWorker>, DaemonSyncPreflightError>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     if !runtime.inbound.enabled || runtime.sync.is_enabled() {
         return Ok(None);
     }
@@ -80,13 +84,16 @@ pub(super) fn start_inbound_metrics_worker(
     }))
 }
 
-fn inbound_metrics_worker(
+fn inbound_metrics_worker<S, V>(
     store: FjallNodeStore,
     retention: MetricRetentionPolicy,
     persist_mode: PersistMode,
-    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     shutdown_receiver: mpsc::Receiver<()>,
-) {
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     loop {
         persist_inbound_metrics_once(&store, retention, persist_mode, Arc::clone(&shared_context));
         let wait_seconds = retention.sample_interval_seconds.max(1);
@@ -97,12 +104,15 @@ fn inbound_metrics_worker(
     }
 }
 
-fn persist_inbound_metrics_once(
+fn persist_inbound_metrics_once<S, V>(
     store: &FjallNodeStore,
     retention: MetricRetentionPolicy,
     persist_mode: PersistMode,
-    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-) {
+    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let timestamp = current_timestamp_unix_seconds();
     let context = shared_context.blocking_lock();
     let maybe_snapshot = context.authoritative_operator_snapshot().ok();

@@ -225,6 +225,7 @@ pub(super) fn phase70_save_reorg_ready_branch(
         runtime
             .sync_once(&mut transport, i64::from(branch_a_two.header.time))
             .expect("initial branch sync");
+        flush_coins_always(&runtime);
     }
 
     {

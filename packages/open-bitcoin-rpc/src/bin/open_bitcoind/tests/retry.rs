@@ -130,7 +130,10 @@ fn retry_worker_is_not_started_from_durable_sync_runtime() {
     // Arrange
     let sync_runtime = include_str!("../../../../../open-bitcoin-node/src/sync.rs");
     let sync_seed = include_str!("../sync_seed.rs");
-    let worker_start = start_initial_broadcast_retry_worker;
+    let worker_start = start_initial_broadcast_retry_worker::<
+        open_bitcoin_node::MemoryChainstateStore,
+        open_bitcoin_node::core::chainstate::MemoryCoinsView,
+    >;
 
     // Act / Assert
     assert!(!sync_runtime.contains("start_initial_broadcast_retry_worker"));

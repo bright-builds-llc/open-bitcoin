@@ -33,9 +33,9 @@ use open_bitcoin_node::core::{
 };
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, ManagedNetworkHandle, PeerIdentityAuthority, PersistMode,
-    StorageError, StorageNamespace, StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
-    sync::AnnouncementOutboxRegistry,
+    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore, ManagedNetworkHandle,
+    PeerIdentityAuthority, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
+    SyncNetwork, SyncRuntimeConfig, sync::AnnouncementOutboxRegistry,
 };
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
@@ -197,7 +197,13 @@ fn phase123_block_request(block: &Block) -> WireNetworkMessage {
     }]))
 }
 
-fn durable_block_serving_context(persist_block: bool) -> (ManagedRpcContext, Block, PathBuf) {
+fn durable_block_serving_context(
+    persist_block: bool,
+) -> (
+    ManagedRpcContext<FjallChainstateStore, FjallCoinsView>,
+    Block,
+    PathBuf,
+) {
     let data_dir = std::env::temp_dir().join(format!(
         "open-bitcoin-durable-block-serving-{}-{}",
         process::id(),

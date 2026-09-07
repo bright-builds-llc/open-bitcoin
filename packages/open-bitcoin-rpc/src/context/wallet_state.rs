@@ -33,7 +33,9 @@ pub(super) enum WalletState {
     },
 }
 
-impl ManagedRpcContext {
+impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
+    ManagedRpcContext<S, V>
+{
     pub fn wallet_info(&self) -> ManagedWalletInfo {
         self.selected_wallet_info().unwrap_or(ManagedWalletInfo {
             network: self.chain,

@@ -28,7 +28,9 @@ pub mod sync;
 pub mod wallet;
 pub mod wallet_registry;
 
-pub use chainstate::{ChainstateStore, ManagedChainstate, MemoryChainstateStore};
+pub use chainstate::{
+    ChainstateStore, FjallChainstateStore, ManagedChainstate, MemoryChainstateStore,
+};
 pub use logging::{LogRetentionPolicy, LogStatus};
 pub use mempool::ManagedMempool;
 pub use metrics::{
@@ -40,7 +42,7 @@ pub use network::{
     ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
     ManagedInboundResponsePlanItem, ManagedNetworkAuthorityError, ManagedNetworkError,
     ManagedNetworkHandle, ManagedNetworkInfo, ManagedNetworkOperatorSnapshot, ManagedPeerNetwork,
-    ManagedPeerPolicyInfo,
+    ManagedPeerPolicyInfo, MemoryNetworkHandle,
 };
 pub use open_bitcoin_core as core;
 pub use recovery::{
@@ -65,15 +67,17 @@ pub use status::{
     SyncResourcePressure, SyncStatus,
 };
 pub use storage::{
-    FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker, RuntimeMetadata,
-    SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction, StoredHeaderEntries,
+    FjallCoinsView, FjallNodeStore, MetricsStorageSnapshot, PersistMode, RecoveryMarker,
+    RuntimeMetadata, SchemaVersion, StorageError, StorageNamespace, StorageRecoveryAction,
+    StoredHeaderEntries,
 };
 pub use sync::{
-    DurableSyncRuntime, PeerCapabilitySummary, PeerContribution, PeerFailureReason,
-    PeerIdentityAuthority, PeerSyncOutcome, PeerSyncState, ResolvedSyncPeerAddress, SyncNetwork,
-    SyncPeerAddress, SyncPeerReceiveOutcome, SyncPeerResolver, SyncPeerSession, SyncPeerSource,
-    SyncRunSummary, SyncRuntimeConfig, SyncRuntimeError, SyncStopReason, SyncTransport,
-    SystemSyncPeerResolver, TcpPeerTransport, WalletRescanRuntime,
+    DurableNetworkHandle, DurableSyncRuntime, PeerCapabilitySummary, PeerContribution,
+    PeerFailureReason, PeerIdentityAuthority, PeerSyncOutcome, PeerSyncState,
+    ResolvedSyncPeerAddress, SyncNetwork, SyncPeerAddress, SyncPeerReceiveOutcome,
+    SyncPeerResolver, SyncPeerSession, SyncPeerSource, SyncRunSummary, SyncRuntimeConfig,
+    SyncRuntimeError, SyncStopReason, SyncTransport, SystemSyncPeerResolver, TcpPeerTransport,
+    WalletRescanRuntime,
 };
 pub use wallet::{ManagedWallet, MemoryWalletStore, WalletStore};
 pub use wallet_registry::{

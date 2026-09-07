@@ -57,9 +57,12 @@ impl ManagedMempool {
 
     /// Prepares singleton admission against the caller's immutable chain snapshot.
     #[allow(dead_code)] // Phase 134 establishes the sealed preparation API before routing callers.
-    pub(crate) fn prepare_transaction_with_context<S: ChainstateStore>(
+    pub(crate) fn prepare_transaction_with_context<
+        S: ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    >(
         &self,
-        chainstate: &ManagedChainstate<S>,
+        chainstate: &ManagedChainstate<S, V>,
         transaction: Transaction,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -67,7 +70,7 @@ impl ManagedMempool {
     ) -> Result<PreparedMempoolTransition, MempoolError> {
         self.mempool.prepare_transaction_with_context(
             transaction,
-            &chainstate.chainstate().snapshot(),
+            &chainstate.export_chainstate_snapshot(),
             verify_flags,
             consensus_params,
             context,
@@ -185,7 +188,7 @@ impl ManagedMempool {
     ) -> Result<AdmissionResult, MempoolError> {
         self.mempool.accept_transaction_with_context(
             transaction,
-            &chainstate.chainstate().snapshot(),
+            &chainstate.export_chainstate_snapshot(),
             verify_flags,
             consensus_params,
             context,
@@ -193,9 +196,12 @@ impl ManagedMempool {
     }
 
     /// Submits a transaction and returns attempt details plus committed lifecycle facts.
-    pub fn submit_transaction_transition_with_context<S: ChainstateStore>(
+    pub fn submit_transaction_transition_with_context<
+        S: ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    >(
         &mut self,
-        chainstate: &ManagedChainstate<S>,
+        chainstate: &ManagedChainstate<S, V>,
         transaction: Transaction,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -203,7 +209,7 @@ impl ManagedMempool {
     ) -> Result<MempoolTransition, MempoolError> {
         self.mempool.accept_transaction_transition_with_context(
             transaction,
-            &chainstate.chainstate().snapshot(),
+            &chainstate.export_chainstate_snapshot(),
             verify_flags,
             consensus_params,
             context,

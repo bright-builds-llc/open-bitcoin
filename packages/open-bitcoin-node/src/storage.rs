@@ -14,6 +14,7 @@ mod lock_probe;
 pub mod mempool_snapshot;
 pub mod snapshot_codec;
 
+pub use coins_view::FjallCoinsView;
 pub use fjall_store::FjallNodeStore;
 pub use lock_probe::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
 pub use mempool_snapshot::{

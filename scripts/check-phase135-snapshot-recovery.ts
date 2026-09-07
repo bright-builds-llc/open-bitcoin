@@ -49,7 +49,7 @@ const FILES = {
   coins: "packages/open-bitcoin-node/src/storage/fjall_store/coins.rs",
   fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
   chainstateTypes: "packages/open-bitcoin-chainstate/src/types.rs",
-  syncRuntime: "packages/open-bitcoin-node/src/sync.rs",
+  syncRuntime: "packages/open-bitcoin-node/src/sync/open_runtime.rs",
   startup: "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
   startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
   daemonCheckpoint:
@@ -319,7 +319,7 @@ export function checkPhase135SnapshotRecovery(
   const fjall = get(FILES.fjall);
   const execute = body(
     store,
-    "\nfn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(",
+    "\nfn execute_prepared_mempool_snapshot_write_with<",
   );
   const dispatch = body(
     dispatcher,
@@ -343,7 +343,7 @@ export function checkPhase135SnapshotRecovery(
 
   const coordinator = get(FILES.coordinator);
   const claim = body(coordinator, "fn claim_flight(&self)");
-  const complete = body(coordinator, "fn complete_or_retain(");
+  const complete = body(coordinator, "fn complete_or_retain<");
   addFailure(
     failures,
     !hasAll(coordinator, [
@@ -363,7 +363,7 @@ export function checkPhase135SnapshotRecovery(
       !complete.includes(
         "CheckpointCoordinatorState::AchievedAwaitingCompletion(receipt)",
       ) ||
-      !coordinator.includes("fn abort_or_retain(") ||
+      !coordinator.includes("fn abort_or_retain<") ||
       !coordinator.includes(
         "CheckpointCoordinatorState::UnachievedAwaitingAbort(abort)",
       ) ||
@@ -422,7 +422,9 @@ export function checkPhase135SnapshotRecovery(
     failures,
     !startup.includes("prepare_mempool_recovery_at") ||
       !startup.includes("install_mempool_recovery") ||
-      !syncRuntimeConstruction.includes("hydrate_chainstate_for_open()?") ||
+      !syncRuntimeConstruction.includes("initialize(") ||
+      !syncRuntimeConstruction.includes("Chainstate::from_coins_cache") ||
+      !syncRuntimeConstruction.includes("ManagedChainstate::from_chainstate") ||
       !leftoverMigrate.includes(
         "load_chainstate_snapshot_with_confirmation_migration()?",
       ) ||

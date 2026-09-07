@@ -8,6 +8,7 @@
 
 use std::collections::BTreeSet;
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{chainstate::ChainPosition, primitives::Block};
 use open_bitcoin_mempool::{
     MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PolicyTime,
@@ -296,7 +297,7 @@ impl CheckpointAuthorityState {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(in crate::network) fn apply_prepared_peer_lifecycle(
         &mut self,
         prepared: PreparedPeerLifecycleProjection,
@@ -450,7 +451,7 @@ pub(in crate::network) struct PreparedDependentLifecycleProjection {
     evidence: PreparedLifecycleEvidence,
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(in crate::network) fn install_prepared_recovery(
         &mut self,
         prepared: PreparedMempoolRecovery,

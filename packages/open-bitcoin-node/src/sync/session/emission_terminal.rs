@@ -19,13 +19,18 @@ use crate::{
 
 use super::super::{SyncPeerSession, SyncRuntimeError};
 
-pub(super) fn send_peer_emissions<S: SyncPeerSession>(
-    network: &ManagedNetworkHandle,
-    session: &mut S,
+pub(super) fn send_peer_emissions<Sess, Store, View>(
+    network: &ManagedNetworkHandle<Store, View>,
+    session: &mut Sess,
     peer_id: PeerId,
     network_magic: NetworkMagic,
     emissions: Vec<PeerEmission>,
-) -> Result<(), SyncRuntimeError> {
+) -> Result<(), SyncRuntimeError>
+where
+    Sess: SyncPeerSession,
+    Store: crate::ChainstateStore,
+    View: open_bitcoin_core::chainstate::CoinsView,
+{
     let mut emissions = VecDeque::from(emissions);
     while let Some(emission) = emissions.pop_front() {
         let (target_peer_id, message, capability) = emission.into_parts();
@@ -48,10 +53,14 @@ pub(super) fn send_peer_emissions<S: SyncPeerSession>(
     Ok(())
 }
 
-pub(super) fn abort_emissions(
-    network: &ManagedNetworkHandle,
+pub(super) fn abort_emissions<S, V>(
+    network: &ManagedNetworkHandle<S, V>,
     emissions: impl IntoIterator<Item = PeerEmission>,
-) -> Result<(), SyncRuntimeError> {
+) -> Result<(), SyncRuntimeError>
+where
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+{
     abort_capabilities(
         network,
         emissions
@@ -60,10 +69,14 @@ pub(super) fn abort_emissions(
     )
 }
 
-pub(super) fn abort_outcomes(
-    network: &ManagedNetworkHandle,
+pub(super) fn abort_outcomes<S, V>(
+    network: &ManagedNetworkHandle<S, V>,
     outcomes: Vec<AnnouncementPreparationOutcome>,
-) -> Result<(), SyncRuntimeError> {
+) -> Result<(), SyncRuntimeError>
+where
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+{
     abort_emissions(
         network,
         outcomes.into_iter().filter_map(|outcome| match outcome {
@@ -88,21 +101,29 @@ pub(super) fn surface_abort_cleanup_error(
     }
 }
 
-fn abort_current_and_suffix(
-    network: &ManagedNetworkHandle,
+fn abort_current_and_suffix<S, V>(
+    network: &ManagedNetworkHandle<S, V>,
     current: PeerEmissionWriteCapability,
     suffix: VecDeque<PeerEmission>,
-) -> Result<(), SyncRuntimeError> {
+) -> Result<(), SyncRuntimeError>
+where
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+{
     abort_capabilities(
         network,
         std::iter::once(current).chain(suffix.into_iter().map(|emission| emission.into_parts().2)),
     )
 }
 
-fn abort_capabilities(
-    network: &ManagedNetworkHandle,
+fn abort_capabilities<S, V>(
+    network: &ManagedNetworkHandle<S, V>,
     capabilities: impl IntoIterator<Item = PeerEmissionWriteCapability>,
-) -> Result<(), SyncRuntimeError> {
+) -> Result<(), SyncRuntimeError>
+where
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+{
     let mut maybe_first_error = None;
     for capability in capabilities {
         let abort_result = network

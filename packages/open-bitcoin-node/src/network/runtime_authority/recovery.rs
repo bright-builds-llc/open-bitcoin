@@ -11,7 +11,9 @@ use super::{
     ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork,
 };
 
-impl ManagedNetworkHandle {
+impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
+    ManagedNetworkHandle<S, V>
+{
     /// Stages startup recovery after releasing the authority guard.
     pub fn prepare_mempool_recovery_at(
         &self,

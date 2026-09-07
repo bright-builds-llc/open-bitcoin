@@ -6,6 +6,7 @@
 
 //! Typed singleton admission facade for local and peer transaction sources.
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags, transaction_wtxid},
     primitives::Transaction,
@@ -19,7 +20,7 @@ use crate::network::lifecycle_projection::{
 use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 use crate::{ChainstateStore, ManagedNetworkError, ManagedPeerNetwork};
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(super) fn submit_singleton_transition(
         &mut self,
         transaction: Transaction,

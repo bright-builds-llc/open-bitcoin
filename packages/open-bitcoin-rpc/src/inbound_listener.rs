@@ -270,9 +270,8 @@ impl InboundListenerWorker {
     }
 }
 
-#[derive(Clone)]
-struct InboundAcceptLoopShared {
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+struct InboundAcceptLoopShared<S, V: open_bitcoin_node::core::chainstate::CoinsView> {
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     initial_evidence: InboundListenerEvidence,
     shutdown_requested: Arc<AtomicBool>,
@@ -280,20 +279,57 @@ struct InboundAcceptLoopShared {
     peer_identity_authority: PeerIdentityAuthority,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
     connection_handles: Arc<tokio::sync::Mutex<Vec<JoinHandle<()>>>>,
-    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
+    maybe_announcement_transport: Option<InboundAnnouncementTransport<S, V>>,
 }
 
-#[derive(Clone)]
-struct InboundAnnouncementTransport {
+struct InboundAnnouncementTransport<S, V: open_bitcoin_node::core::chainstate::CoinsView> {
     outboxes: AnnouncementOutboxRegistry,
-    network: ManagedNetworkHandle,
+    network: ManagedNetworkHandle<S, V>,
 }
 
-#[derive(Clone)]
-struct InboundConnectionControl {
+struct InboundConnectionControl<S, V: open_bitcoin_node::core::chainstate::CoinsView> {
     shutdown_requested: Arc<AtomicBool>,
     shutdown_notify: Arc<tokio::sync::Notify>,
-    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
+    maybe_announcement_transport: Option<InboundAnnouncementTransport<S, V>>,
+}
+
+impl<S, V: open_bitcoin_node::core::chainstate::CoinsView> Clone
+    for InboundAnnouncementTransport<S, V>
+{
+    fn clone(&self) -> Self {
+        Self {
+            outboxes: self.outboxes.clone(),
+            network: self.network.clone(),
+        }
+    }
+}
+
+impl<S, V: open_bitcoin_node::core::chainstate::CoinsView> Clone
+    for InboundConnectionControl<S, V>
+{
+    fn clone(&self) -> Self {
+        Self {
+            shutdown_requested: Arc::clone(&self.shutdown_requested),
+            shutdown_notify: Arc::clone(&self.shutdown_notify),
+            maybe_announcement_transport: self.maybe_announcement_transport.clone(),
+        }
+    }
+}
+
+impl<S, V: open_bitcoin_node::core::chainstate::CoinsView> Clone for InboundAcceptLoopShared<S, V> {
+    fn clone(&self) -> Self {
+        Self {
+            context: Arc::clone(&self.context),
+            evidence: Arc::clone(&self.evidence),
+            initial_evidence: self.initial_evidence.clone(),
+            shutdown_requested: Arc::clone(&self.shutdown_requested),
+            shutdown_notify: Arc::clone(&self.shutdown_notify),
+            peer_identity_authority: self.peer_identity_authority.clone(),
+            runtime_counters: Arc::clone(&self.runtime_counters),
+            connection_handles: Arc::clone(&self.connection_handles),
+            maybe_announcement_transport: self.maybe_announcement_transport.clone(),
+        }
+    }
 }
 
 pub async fn activate_inbound_listener(
@@ -333,20 +369,28 @@ pub async fn activate_inbound_listener(
     InboundListenerActivation::listening(plan.diagnostics().to_vec(), bound_endpoints, listeners)
 }
 
-pub fn start_inbound_accept_loop(
+pub fn start_inbound_accept_loop<S, V>(
     activation: InboundListenerActivation,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-) -> Option<InboundListenerWorker> {
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
+) -> Option<InboundListenerWorker>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     start_inbound_accept_loop_inner(activation, context, PeerIdentityAuthority::default(), None)
 }
 
-pub fn start_inbound_accept_loop_with_announcements(
+pub fn start_inbound_accept_loop_with_announcements<S, V>(
     activation: InboundListenerActivation,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     peer_identity_authority: PeerIdentityAuthority,
     outboxes: AnnouncementOutboxRegistry,
-    network: ManagedNetworkHandle,
-) -> Option<InboundListenerWorker> {
+    network: ManagedNetworkHandle<S, V>,
+) -> Option<InboundListenerWorker>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     start_inbound_accept_loop_inner(
         activation,
         context,
@@ -355,12 +399,16 @@ pub fn start_inbound_accept_loop_with_announcements(
     )
 }
 
-fn start_inbound_accept_loop_inner(
+fn start_inbound_accept_loop_inner<S, V>(
     activation: InboundListenerActivation,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     peer_identity_authority: PeerIdentityAuthority,
-    maybe_announcement_transport: Option<InboundAnnouncementTransport>,
-) -> Option<InboundListenerWorker> {
+    maybe_announcement_transport: Option<InboundAnnouncementTransport<S, V>>,
+) -> Option<InboundListenerWorker>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     if activation.state != InboundListenerState::Listening {
         return None;
     }
@@ -428,7 +476,13 @@ fn activation_bind_diagnostic(
     .into_preflight_diagnostic()
 }
 
-async fn accept_loop(bound_listener: BoundInboundListener, shared: InboundAcceptLoopShared) {
+async fn accept_loop<S, V>(
+    bound_listener: BoundInboundListener,
+    shared: InboundAcceptLoopShared<S, V>,
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     if shared
         .context
         .lock()

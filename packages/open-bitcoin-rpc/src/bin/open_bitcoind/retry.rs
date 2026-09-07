@@ -69,9 +69,13 @@ impl InitialBroadcastRetryWorker {
 ///
 /// This is initial-broadcast retry for the local unbroadcast set; it is not
 /// public/default relay and does not guarantee propagation.
-pub(super) fn start_initial_broadcast_retry_worker(
-    handle: ManagedNetworkHandle,
-) -> InitialBroadcastRetryWorker {
+pub(super) fn start_initial_broadcast_retry_worker<S, V>(
+    handle: ManagedNetworkHandle<S, V>,
+) -> InitialBroadcastRetryWorker
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
     let join_handle = thread::spawn(move || {
         retry_worker_loop(
@@ -91,13 +95,15 @@ pub(super) fn start_initial_broadcast_retry_worker(
     }
 }
 
-pub(super) fn retry_worker_loop<Wait, Now, Jitter>(
-    handle: ManagedNetworkHandle,
+pub(super) fn retry_worker_loop<S, V, Wait, Now, Jitter>(
+    handle: ManagedNetworkHandle<S, V>,
     mut wait: Wait,
     mut now: Now,
     mut jitter: Jitter,
 ) -> Result<(), DaemonRetryError>
 where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
     Wait: FnMut(Duration) -> RetryWait,
     Now: FnMut() -> i64,
     Jitter: FnMut() -> Option<RetryJitterSeconds>,

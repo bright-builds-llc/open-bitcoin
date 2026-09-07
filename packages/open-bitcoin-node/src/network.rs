@@ -32,6 +32,7 @@ mod lifecycle_effects;
 pub(super) mod lifecycle_projection;
 mod mempool_lifecycle;
 mod operator_snapshot;
+mod peer_network_clone;
 mod peer_policy;
 mod recovery;
 mod relay_fanout;
@@ -50,7 +51,7 @@ pub use checkpoint::{
 };
 
 use open_bitcoin_core::{
-    chainstate::{ChainPosition, ChainstateSnapshot},
+    chainstate::{ChainPosition, ChainstateSnapshot, CoinsView, MemoryCoinsView},
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{Block, BlockHash, Transaction, Txid, Wtxid},
 };
@@ -87,6 +88,7 @@ pub use relay_fanout::{
 pub use runtime_authority::{
     CheckpointAbortDispatchError, CheckpointCompletionDispatchError, MaintenanceTickError,
     MaintenanceTickOutcome, ManagedNetworkAuthorityError, ManagedNetworkHandle,
+    MemoryNetworkHandle,
 };
 pub use types::{
     BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,
@@ -110,9 +112,8 @@ fn allocate_authority_epoch() -> lifecycle_projection::AuthorityEpoch {
     next_epoch
 }
 
-#[derive(Debug, Clone)]
-pub struct ManagedPeerNetwork<S> {
-    chainstate: ManagedChainstate<S>,
+pub struct ManagedPeerNetwork<S, V: CoinsView = MemoryCoinsView> {
+    chainstate: ManagedChainstate<S, V>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
     known_peers: BTreeSet<PeerId>,
@@ -146,12 +147,12 @@ pub struct ManagedPeerNetwork<S> {
     transactions_by_wtxid: BTreeMap<Wtxid, Transaction>,
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     #[rustfmt::skip]
-    pub fn chainstate(&self) -> &ManagedChainstate<S> { &self.chainstate }
+    pub fn chainstate(&self) -> &ManagedChainstate<S, V> { &self.chainstate }
 
     #[rustfmt::skip]
-    pub fn chainstate_mut(&mut self) -> &mut ManagedChainstate<S> { &mut self.chainstate }
+    pub fn chainstate_mut(&mut self) -> &mut ManagedChainstate<S, V> { &mut self.chainstate }
 
     #[rustfmt::skip]
     pub fn mempool(&self) -> &ManagedMempool { &self.mempool }
@@ -191,7 +192,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     pub fn best_chain_entries(&self) -> Vec<HeaderEntry> { self.peer_manager.header_store().best_chain_entries() }
 
     pub fn chainstate_snapshot(&self) -> ChainstateSnapshot {
-        self.chainstate.chainstate().snapshot()
+        self.chainstate.export_chainstate_snapshot()
     }
 
     #[rustfmt::skip]

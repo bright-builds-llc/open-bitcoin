@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
 use open_bitcoin_codec::CompactBlockPayload;
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::primitives::{Transaction, Wtxid};
 use open_bitcoin_mempool::{
     Mempool, MempoolError, MempoolRemovalCause, PreparedLifecycleFacts,
@@ -181,7 +182,7 @@ fn checked_approximate_tx_bytes(transaction: &Transaction) -> Result<usize, Memp
 
 type OwnedCompactTxnPairs = Vec<(Wtxid, Transaction)>;
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(super) fn prepare_compact_projection(
         &self,
         facts: &PreparedLifecycleFacts,

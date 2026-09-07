@@ -14,6 +14,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_mempool::{MempoolOutcome, RelayIntent};
 use open_bitcoin_network::{
@@ -309,7 +310,7 @@ impl ManagedRelayFanoutState {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     #[allow(dead_code)] // Plan 134-05 invokes the closed aggregate apply.
     pub(super) fn apply_prepared_fanout(&mut self, prepared: PreparedFanoutProjection) {
         self.relay_fanout = prepared.replacement;
@@ -612,7 +613,6 @@ fn local_submission_evidence(
         maybe_rebroadcast,
     }
 }
-
 fn local_submission_outcome_label(outcome: &MempoolOutcome) -> LocalRelaySubmissionLabel {
     match outcome {
         MempoolOutcome::Accepted { .. } | MempoolOutcome::Replaced { .. } => {

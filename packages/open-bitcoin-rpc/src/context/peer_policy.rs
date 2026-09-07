@@ -17,7 +17,9 @@ use open_bitcoin_node::{
 
 use super::{ManagedRpcContext, resource_governance::current_unix_seconds};
 
-impl ManagedRpcContext {
+impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
+    ManagedRpcContext<S, V>
+{
     pub fn record_inbound_peer_policy_event(&mut self, event: InboundPeerPolicyEvent) {
         if self
             .record_inbound_peer_policy_event_at(event, current_unix_seconds())

@@ -4,6 +4,7 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 use std::collections::HashMap;
+use std::fmt;
 
 use open_bitcoin_core::{
     chainstate::{
@@ -118,6 +119,13 @@ impl FlushPersistSink for MemoryChainstateStore {
     fn persist_header_entries(&mut self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
         Ok(())
     }
+
+    fn persist_chain_meta(
+        &mut self,
+        _active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+    ) -> Result<(), StorageError> {
+        Ok(())
+    }
 }
 
 fn map_memory_store(error: ChainstateError) -> StorageError {
@@ -128,14 +136,13 @@ fn map_memory_store(error: ChainstateError) -> StorageError {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub struct ManagedChainstate<S> {
+pub struct ManagedChainstate<S, V: CoinsView = MemoryCoinsView> {
     store: S,
-    chainstate: Chainstate,
+    chainstate: Chainstate<V>,
     pub(crate) flush_lifecycle: FlushLifecycle,
 }
 
-impl<S: Clone> Clone for ManagedChainstate<S> {
+impl<S: Clone> Clone for ManagedChainstate<S, MemoryCoinsView> {
     fn clone(&self) -> Self {
         Self {
             store: self.store.clone(),
@@ -144,6 +151,27 @@ impl<S: Clone> Clone for ManagedChainstate<S> {
         }
     }
 }
+
+impl<S: fmt::Debug> fmt::Debug for ManagedChainstate<S, MemoryCoinsView> {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        formatter
+            .debug_struct("ManagedChainstate")
+            .field("store", &self.store)
+            .field("chainstate", &self.chainstate)
+            .field("flush_lifecycle", &self.flush_lifecycle)
+            .finish()
+    }
+}
+
+impl<S: PartialEq> PartialEq for ManagedChainstate<S, MemoryCoinsView> {
+    fn eq(&self, other: &Self) -> bool {
+        self.store == other.store
+            && self.chainstate == other.chainstate
+            && self.flush_lifecycle == other.flush_lifecycle
+    }
+}
+
+impl<S: Eq> Eq for ManagedChainstate<S, MemoryCoinsView> {}
 
 /// Opaque, fully validated replacement for one connected block.
 pub(crate) struct PreparedChainstateConnect {
@@ -169,7 +197,7 @@ impl PreparedChainstateReorg {
     }
 }
 
-impl<S: ChainstateStore> ManagedChainstate<S> {
+impl<S: ChainstateStore> ManagedChainstate<S, MemoryCoinsView> {
     pub fn from_store(store: S) -> Self {
         let chainstate = store
             .load_snapshot()
@@ -187,8 +215,18 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
             ),
         }
     }
+}
 
-    pub fn chainstate(&self) -> &Chainstate {
+impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
+    pub fn from_chainstate(store: S, chainstate: Chainstate<V>, lifecycle: FlushLifecycle) -> Self {
+        Self {
+            store,
+            chainstate,
+            flush_lifecycle: lifecycle,
+        }
+    }
+
+    pub fn chainstate(&self) -> &Chainstate<V> {
         &self.chainstate
     }
 
@@ -337,24 +375,19 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
         transition
     }
 
-    pub fn into_parts(self) -> (S, Chainstate) {
+    pub fn into_parts(self) -> (S, Chainstate<V>) {
         (self.store, self.chainstate)
     }
 
-    fn flush_window(&self) -> (Vec<(BlockHash, BlockUndo)>, Vec<HeaderEntry>, Vec<Block>) {
-        let snapshot = self.chainstate.snapshot();
-        let undo_window = snapshot.undo_by_block.into_iter().collect();
-        let header_entries = snapshot
-            .active_chain
+    fn flush_window(&self) -> (Vec<(BlockHash, BlockUndo)>, Vec<Block>, Vec<ChainPosition>) {
+        let undo_window = self
+            .chainstate
+            .undo_by_block()
             .iter()
-            .map(|position| HeaderEntry {
-                block_hash: position.block_hash,
-                header: position.header.clone(),
-                height: position.height,
-                chain_work: position.chain_work,
-            })
+            .map(|(block_hash, undo)| (*block_hash, undo.clone()))
             .collect();
-        (undo_window, header_entries, Vec::new())
+        let active_chain = self.chainstate.active_chain().to_vec();
+        (undo_window, Vec::new(), active_chain)
     }
 
     pub(crate) fn flush_with_mode(
@@ -366,7 +399,7 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
     where
         S: FlushPersistSink,
     {
-        let (undo_window, header_entries, block_payloads) = self.flush_window();
+        let (undo_window, block_payloads, active_chain) = self.flush_window();
         self.flush_lifecycle.execute_flush(
             &mut self.store,
             self.chainstate.coins_mut(),
@@ -374,8 +407,9 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
             now,
             disk_free_bytes,
             &undo_window,
-            &header_entries,
+            &[],
             &block_payloads,
+            &active_chain,
         )
     }
 
@@ -391,6 +425,14 @@ impl<S: ChainstateStore> ManagedChainstate<S> {
     }
 }
 
+impl<S, V: CoinsView> ManagedChainstate<S, V> {
+    pub fn export_chainstate_snapshot(&self) -> ChainstateSnapshot {
+        self.chainstate.admission_snapshot()
+    }
+}
+
+mod fjall_store;
+pub use fjall_store::FjallChainstateStore;
 mod flush_lifecycle;
 pub use flush_lifecycle::{
     COINS_DB_CACHE_CAP_BYTES, DEFAULT_KERNEL_CACHE_BYTES, FlushExecution, FlushLifecycle,

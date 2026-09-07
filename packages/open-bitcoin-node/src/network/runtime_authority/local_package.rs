@@ -9,7 +9,9 @@ use open_bitcoin_mempool::{PackageReport, RelayIntent, SubmittedPackageResult};
 
 use super::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
-impl ManagedNetworkHandle {
+impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
+    ManagedNetworkHandle<S, V>
+{
     /// Evaluates a local package without committing mempool or lifecycle state.
     pub fn dry_run_local_package(
         &self,

@@ -275,6 +275,7 @@ fn phase75_synthetic_soak_reopen_preserves_resume_progress_without_duplicate_get
             i64::from(blocks[18].header.time),
         )
         .expect("partial synthetic soak sync");
+    flush_coins_always(&runtime);
     drop(runtime);
 
     // Act

@@ -12,6 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_mempool::{
     MempoolOrigin, MempoolOutcome, MempoolRemovalCause, PreparedLifecycleFacts, RelayIntent,
@@ -61,7 +62,7 @@ impl ManagedRelayFanoutState {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(in crate::network) fn prepare_fanout_projection(
         &self,
         facts: &PreparedLifecycleFacts,

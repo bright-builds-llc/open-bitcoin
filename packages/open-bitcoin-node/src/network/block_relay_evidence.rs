@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/net.h
 // - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::primitives::InventoryType;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingEligibilityReason, BlockServingStatusLabel,
@@ -353,7 +354,7 @@ pub(super) const fn compact_announce_evidence_reason(
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn block_relay_evidence_status(&self) -> BlockRelayEvidenceStatus {
         self.block_relay_runtime_evidence_snapshot().status
     }

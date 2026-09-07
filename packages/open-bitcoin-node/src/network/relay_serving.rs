@@ -33,6 +33,7 @@ use super::ManagedNetworkError;
 use super::{ManagedInboundAdmissionInfo, ManagedPeerNetwork, ManagedResourceGovernanceInfo};
 use crate::status::relay_evidence::RelayDownloadEligibilityCounters;
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
+use open_bitcoin_core::chainstate::CoinsView;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RelayServingRecord {
@@ -252,10 +253,6 @@ impl RelayServingCache {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
-    pub(super) fn install_authority_incarnation(&mut self) {
-        self.authority_epoch = super::allocate_authority_epoch();
-    }
-
     pub fn new(store: S, local_config: LocalPeerConfig, mempool_config: PolicyConfig) -> Self {
         Self::new_with_relay_activation(
             store,
@@ -291,7 +288,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         block_relay_activation: BlockRelayActivationPolicy,
         inbound_serving_enabled: bool,
     ) -> Self {
-        Self::from_peer_manager(
+        Self::from_peer_manager_memory(
             store,
             local_config.clone(),
             mempool_config,
@@ -351,7 +348,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             max_blocks_in_flight_per_peer,
             fresh_reject_evidence_tweak(),
         );
-        Self::from_peer_manager(
+        Self::from_peer_manager_memory(
             store,
             local_config,
             mempool_config,
@@ -360,6 +357,126 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             block_relay_activation,
             inbound_serving_enabled,
         )
+    }
+
+    fn from_peer_manager_memory(
+        store: S,
+        local_config: LocalPeerConfig,
+        mempool_config: PolicyConfig,
+        mut peer_manager: PeerManager,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_serving_enabled: bool,
+    ) -> Self {
+        let chainstate = ManagedChainstate::from_store(store);
+        peer_manager.seed_local_chain(chainstate.chainstate().active_chain());
+        peer_manager.set_relay_download_policy(RelayDownloadPolicy {
+            activation: relay_activation,
+            inbound_serving_enabled,
+        });
+        peer_manager.set_block_relay_activation_policy(block_relay_activation);
+
+        Self {
+            chainstate,
+            mempool: ManagedMempool::new(mempool_config),
+            peer_manager,
+            known_peers: Default::default(),
+            inbound_admission_policy: InboundAdmissionPolicy::new(usize::MAX, 0),
+            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
+            resource_governance_info: ManagedResourceGovernanceInfo::default(),
+            relay_activation,
+            block_relay_activation,
+            inbound_serving_enabled,
+            block_relay_evidence:
+                super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
+            relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
+            relay_serving: RelayServingCache::default(),
+            compact_extra_txn:
+                super::compact_receive_candidates::CompactExtraTxnBuffer::with_defaults(),
+            authority_epoch: super::lifecycle_projection::AuthorityEpoch::INITIAL,
+            lifecycle_generation: super::lifecycle_projection::LifecycleGeneration::INITIAL,
+            dirty_generation: None,
+            unbroadcast_members: Default::default(),
+            maybe_retry_due_at_unix_seconds: None,
+            maybe_unbroadcast_walk_cursor: None,
+            maybe_last_transport_written_clear: None,
+            lifecycle_evidence: super::lifecycle_projection::LifecycleEvidenceSnapshot::default(),
+            checkpoint_evidence: super::lifecycle_projection::CheckpointAuthorityState::default(),
+            peer_session_generations: Default::default(),
+            peer_effect_ledger: super::lifecycle_effects::PeerEffectLedger::default(),
+            snapshot_effect_ledger: super::lifecycle_effects::SnapshotEffectLedger::default(),
+            latest_mempool_recovery: None,
+            latest_mempool_recovery_storage_error: None,
+            local_config,
+            blocks_by_hash: Default::default(),
+            transactions_by_txid: Default::default(),
+            transactions_by_wtxid: Default::default(),
+        }
+    }
+}
+
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
+    pub(super) fn install_authority_incarnation(&mut self) {
+        self.authority_epoch = super::allocate_authority_epoch();
+    }
+
+    pub(crate) fn from_initialized_chainstate(
+        chainstate: ManagedChainstate<S, V>,
+        local_config: LocalPeerConfig,
+        mempool_config: PolicyConfig,
+        max_blocks_in_flight_per_peer: usize,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_serving_enabled: bool,
+    ) -> Self {
+        let mut peer_manager = PeerManager::with_max_blocks_in_flight_and_reject_evidence_tweak(
+            local_config.clone(),
+            max_blocks_in_flight_per_peer,
+            fresh_reject_evidence_tweak(),
+        );
+        peer_manager.seed_local_chain(chainstate.chainstate().active_chain());
+        peer_manager.set_relay_download_policy(RelayDownloadPolicy {
+            activation: relay_activation,
+            inbound_serving_enabled,
+        });
+        peer_manager.set_block_relay_activation_policy(block_relay_activation);
+
+        Self {
+            chainstate,
+            mempool: ManagedMempool::new(mempool_config),
+            peer_manager,
+            known_peers: Default::default(),
+            inbound_admission_policy: InboundAdmissionPolicy::new(usize::MAX, 0),
+            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
+            resource_governance_info: ManagedResourceGovernanceInfo::default(),
+            relay_activation,
+            block_relay_activation,
+            inbound_serving_enabled,
+            block_relay_evidence:
+                super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
+            relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
+            relay_serving: RelayServingCache::default(),
+            compact_extra_txn:
+                super::compact_receive_candidates::CompactExtraTxnBuffer::with_defaults(),
+            authority_epoch: super::lifecycle_projection::AuthorityEpoch::INITIAL,
+            lifecycle_generation: super::lifecycle_projection::LifecycleGeneration::INITIAL,
+            dirty_generation: None,
+            unbroadcast_members: BTreeSet::new(),
+            maybe_retry_due_at_unix_seconds: None,
+            maybe_unbroadcast_walk_cursor: None,
+            maybe_last_transport_written_clear: None,
+            lifecycle_evidence: super::lifecycle_projection::LifecycleEvidenceSnapshot::default(),
+            checkpoint_evidence: super::lifecycle_projection::CheckpointAuthorityState::default(),
+            peer_session_generations: Default::default(),
+            peer_effect_ledger: super::lifecycle_effects::PeerEffectLedger::default(),
+            snapshot_effect_ledger: super::lifecycle_effects::SnapshotEffectLedger::default(),
+            latest_mempool_recovery: None,
+            latest_mempool_recovery_storage_error: None,
+            local_config,
+            blocks_by_hash: Default::default(),
+            transactions_by_txid: Default::default(),
+            transactions_by_wtxid: Default::default(),
+        }
     }
 
     pub fn relay_serving_info(&self) -> ManagedRelayServingInfo {
@@ -452,61 +569,6 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
                 inactive_permission_effects,
             }),
         )
-    }
-
-    fn from_peer_manager(
-        store: S,
-        local_config: LocalPeerConfig,
-        mempool_config: PolicyConfig,
-        mut peer_manager: PeerManager,
-        relay_activation: RelayActivationConfig,
-        block_relay_activation: BlockRelayActivationPolicy,
-        inbound_serving_enabled: bool,
-    ) -> Self {
-        let chainstate = ManagedChainstate::from_store(store);
-        peer_manager.seed_local_chain(&chainstate.chainstate().snapshot().active_chain);
-        peer_manager.set_relay_download_policy(RelayDownloadPolicy {
-            activation: relay_activation,
-            inbound_serving_enabled,
-        });
-        peer_manager.set_block_relay_activation_policy(block_relay_activation);
-
-        Self {
-            chainstate,
-            mempool: ManagedMempool::new(mempool_config),
-            peer_manager,
-            known_peers: Default::default(),
-            inbound_admission_policy: InboundAdmissionPolicy::new(usize::MAX, 0),
-            inbound_admission_info: ManagedInboundAdmissionInfo::default(),
-            resource_governance_info: ManagedResourceGovernanceInfo::default(),
-            relay_activation,
-            block_relay_activation,
-            inbound_serving_enabled,
-            block_relay_evidence:
-                super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
-            relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
-            relay_serving: RelayServingCache::default(),
-            compact_extra_txn:
-                super::compact_receive_candidates::CompactExtraTxnBuffer::with_defaults(),
-            authority_epoch: super::lifecycle_projection::AuthorityEpoch::INITIAL,
-            lifecycle_generation: super::lifecycle_projection::LifecycleGeneration::INITIAL,
-            dirty_generation: None,
-            unbroadcast_members: BTreeSet::new(),
-            maybe_retry_due_at_unix_seconds: None,
-            maybe_unbroadcast_walk_cursor: None,
-            maybe_last_transport_written_clear: None,
-            lifecycle_evidence: super::lifecycle_projection::LifecycleEvidenceSnapshot::default(),
-            checkpoint_evidence: super::lifecycle_projection::CheckpointAuthorityState::default(),
-            peer_session_generations: BTreeMap::new(),
-            peer_effect_ledger: super::lifecycle_effects::PeerEffectLedger::default(),
-            snapshot_effect_ledger: super::lifecycle_effects::SnapshotEffectLedger::default(),
-            latest_mempool_recovery: None,
-            latest_mempool_recovery_storage_error: None,
-            local_config,
-            blocks_by_hash: BTreeMap::new(),
-            transactions_by_txid: BTreeMap::new(),
-            transactions_by_wtxid: BTreeMap::new(),
-        }
     }
 }
 

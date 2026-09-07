@@ -110,9 +110,9 @@ use support_transport::{
 };
 mod support_runtime;
 use support_runtime::{
-    connect_runtime_peer, durable_tip_capture, headers_script, load_structured_log_records,
-    remove_dir_if_exists, sync_config, sync_config_with_log_dir, temp_store_path,
-    two_peer_sync_config, version_verack_script,
+    connect_runtime_peer, durable_tip_capture, flush_coins_always, headers_script,
+    load_structured_log_records, remove_dir_if_exists, sync_config, sync_config_with_log_dir,
+    temp_store_path, two_peer_sync_config, version_verack_script,
 };
 mod support_blocks;
 use support_blocks::{

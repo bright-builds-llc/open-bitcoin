@@ -97,7 +97,9 @@ impl From<LifecycleProjectionError> for ManagedNetworkAuthorityError {
     }
 }
 
-impl ManagedNetworkHandle {
+impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
+    ManagedNetworkHandle<S, V>
+{
     #[cfg(test)]
     pub(crate) fn mark_checkpoint_dirty_for_test(
         &self,

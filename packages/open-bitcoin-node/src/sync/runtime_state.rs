@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::primitives::BlockHash;
 use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 
@@ -87,15 +88,8 @@ impl DurableSyncRuntime {
 
     pub(super) fn persist_progress(&self) -> Result<(), SyncRuntimeError> {
         let header_entries = self.network.header_entries()?;
-        let chainstate_snapshot = self.network.chainstate_snapshot()?;
         self.store
             .save_header_entries(&header_entries, self.config.persist_mode)?;
-        // Coins first so a crash before leftover cannot fail-closed as leftover-plus-empty
-        // or hydrate a stale coins set while leftover is newer. Leftover dual-write stays
-        // until Phase 142 persist cutover (D-19).
-        self.store.seed_coins_from_snapshot(&chainstate_snapshot)?;
-        self.store
-            .save_chainstate_snapshot(&chainstate_snapshot, self.config.persist_mode)?;
         let mut metadata = self.load_runtime_metadata()?;
         metadata.last_clean_shutdown = false;
         self.store
@@ -571,7 +565,14 @@ impl DurableSyncRuntime {
                 maybe_previous_credit: maybe_previous_credit.as_ref(),
                 evaluated_at_unix_seconds: observed_at_unix_seconds,
             };
-            let progress_credit = super::progress::classify_progress_credit(&progress_input);
+            let progress_credit = helpers::gate_progress_credit_on_coins_best(
+                super::progress::classify_progress_credit(&progress_input),
+                self.store.coins_view().best_block().map_err(|error| {
+                    SyncRuntimeError::Network {
+                        message: error.to_string(),
+                    }
+                })?,
+            );
             let last_useful_work = super::progress::derive_last_useful_work(
                 &progress_input,
                 maybe_available_ref(&progress_credit),

@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/rpc/mempool.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::Transaction,
@@ -18,7 +19,7 @@ use crate::network::lifecycle_projection::{
 };
 use crate::network::runtime_authority::{LifecycleCommandResult, apply_lifecycle_command};
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     /// Evaluates a local package through `DryRunPackageCommand` without lifecycle mutation.
     pub fn dry_run_local_package(
         &self,

@@ -15,6 +15,7 @@ use std::{
 mod block_reconcile;
 mod block_response;
 mod metrics;
+mod open_runtime;
 mod progress;
 mod reconcile_status;
 mod resolver;
@@ -32,7 +33,6 @@ use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::{Block, BlockHash},
 };
-use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{BlockRelayActivationPolicy, RelayActivationConfig};
 
 pub use resolver::{SyncPeerResolver, SystemSyncPeerResolver};
@@ -47,10 +47,12 @@ pub use types::{
 pub use wallet_rescan::WalletRescanRuntime;
 
 use crate::{
-    FieldAvailability, FjallNodeStore, InboundPeerServingStatus, ManagedNetworkHandle,
-    ManagedPeerNetwork, MemoryChainstateStore, SyncLifecycleState,
+    FieldAvailability, FjallChainstateStore, FjallCoinsView, FjallNodeStore,
+    InboundPeerServingStatus, ManagedNetworkHandle, SyncLifecycleState,
     network::{BlockConnectDisposition, BlockRelayRuntimeEvidenceSnapshot},
 };
+
+pub type DurableNetworkHandle = ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView>;
 use progress::{PeerFailure, PeerProgress};
 use types::SyncReconcileProgress;
 
@@ -81,7 +83,7 @@ struct PeerRetryState {
 
 pub struct DurableSyncRuntime {
     store: FjallNodeStore,
-    network: ManagedNetworkHandle,
+    network: DurableNetworkHandle,
     config: SyncRuntimeConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
@@ -119,61 +121,6 @@ impl DurableSyncRuntime {
         )
     }
 
-    /// Opens a durable runtime with all resolved network activation policies.
-    pub fn open_with_runtime_activation(
-        store: FjallNodeStore,
-        config: SyncRuntimeConfig,
-        relay_activation: RelayActivationConfig,
-        block_relay_activation: BlockRelayActivationPolicy,
-        inbound_enabled: bool,
-    ) -> Result<Self, SyncRuntimeError> {
-        let memory_store = match store.hydrate_chainstate_for_open()? {
-            Some(snapshot) => MemoryChainstateStore::from_snapshot(snapshot),
-            None => MemoryChainstateStore::default(),
-        };
-
-        let local_config = progress::local_peer_config(&config);
-        let mut network = ManagedPeerNetwork::with_sync_limits_and_block_relay_activation(
-            memory_store,
-            local_config,
-            PolicyConfig::default(),
-            config.max_blocks_in_flight_per_peer,
-            relay_activation,
-            block_relay_activation,
-            inbound_enabled,
-        );
-        if let Some(header_store) = store.load_header_store()? {
-            network.seed_header_store(header_store);
-        }
-        let network = ManagedNetworkHandle::new(network);
-        let announcement_outboxes = AnnouncementOutboxRegistry::default();
-        let announcement_network = network.clone();
-        let announcement_outboxes_for_sink = announcement_outboxes.clone();
-        let durable_tip_announcement_sink: DurableTipAnnouncementSink = Arc::new(move |event| {
-            let outboxes = announcement_outboxes_for_sink.snapshots()?;
-            let outcomes =
-                announcement_network.prepare_block_announcements(event.block(), &outboxes)?;
-            announcement_outboxes_for_sink.enqueue_prepared(&announcement_network, outcomes)
-        });
-
-        let consensus_params = config.network.consensus_params();
-        Ok(Self {
-            store,
-            network,
-            config,
-            verify_flags: ScriptVerifyFlags::P2SH,
-            consensus_params,
-            peer_identity_authority: PeerIdentityAuthority::default(),
-            peer_backoff: BTreeMap::new(),
-            inflight_blocks: BTreeSet::new(),
-            maybe_reconcile_progress: None,
-            maybe_pending_durable_tip: None,
-            maybe_durable_tip_announcement_sink: Some(durable_tip_announcement_sink),
-            announcement_outboxes,
-            maybe_inbound_metric_status_provider: None,
-        })
-    }
-
     pub fn config(&self) -> &SyncRuntimeConfig {
         &self.config
     }
@@ -182,7 +129,7 @@ impl DurableSyncRuntime {
         &self.store
     }
 
-    pub fn network_handle(&self) -> ManagedNetworkHandle {
+    pub fn network_handle(&self) -> DurableNetworkHandle {
         self.network.clone()
     }
 

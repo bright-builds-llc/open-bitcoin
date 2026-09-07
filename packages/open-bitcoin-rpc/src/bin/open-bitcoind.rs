@@ -29,19 +29,18 @@ use std::{
 };
 
 use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
+use open_bitcoin_node::core::chainstate::{CoinsView, MemoryCoinsView};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, ManagedNetworkHandle, PeerIdentityAuthority,
-    SyncLifecycleState, SyncRunSummary, SyncRuntimeError, SyncStopReason, TcpPeerTransport,
+    ChainstateStore, DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore,
+    ManagedNetworkHandle, MemoryChainstateStore, PeerIdentityAuthority, SyncLifecycleState,
+    SyncRunSummary, SyncRuntimeError, SyncStopReason, TcpPeerTransport,
     status::inbound_status_unavailable, sync::AnnouncementOutboxRegistry,
 };
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
     config::{RuntimeConfig, load_runtime_config},
     http,
-    inbound_listener::{
-        InboundListenerState, InboundListenerWorker, activate_inbound_listener,
-        start_inbound_accept_loop, start_inbound_accept_loop_with_announcements,
-    },
+    inbound_listener::{InboundListenerState, InboundListenerWorker},
 };
 
 #[path = "open_bitcoind/checkpoint.rs"]
@@ -50,6 +49,8 @@ mod checkpoint;
 mod coins_flush;
 #[path = "open_bitcoind/inbound_metrics.rs"]
 mod inbound_metrics;
+#[path = "open_bitcoind/inbound_startup.rs"]
+mod inbound_startup;
 #[path = "open_bitcoind/retry.rs"]
 mod retry;
 #[path = "open_bitcoind/runtime_control.rs"]
@@ -60,6 +61,15 @@ mod sync_seed;
 use checkpoint::{DaemonCheckpointError, start_mempool_checkpoint_worker};
 use coins_flush::start_coins_flush_worker;
 use inbound_metrics::start_inbound_metrics_worker;
+#[cfg(test)]
+use inbound_startup::{
+    inbound_listener_startup_message, start_inbound_listener_for_runtime,
+    start_inbound_listener_for_runtime_with_context,
+};
+use inbound_startup::{
+    report_inbound_listener_startup,
+    start_inbound_listener_for_runtime_with_context_and_announcements,
+};
 use retry::start_initial_broadcast_retry_worker;
 use runtime_control::{
     current_timestamp_unix_seconds, daemon_sync_shutdown_requested, daemon_sync_wait_or_shutdown,
@@ -78,8 +88,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bind_address = runtime.rpc_server.bind_address;
     let auth = runtime.rpc_server.auth.clone();
     let maybe_runtime_store = open_runtime_store(&runtime)?;
-    let mut authoritative_runtime =
-        open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?;
+    match open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())? {
+        OpenedAuthoritativeRuntime::Durable(authoritative_runtime) => {
+            serve_authoritative_runtime(
+                runtime,
+                bind_address,
+                auth,
+                maybe_runtime_store,
+                authoritative_runtime,
+            )
+            .await
+        }
+        OpenedAuthoritativeRuntime::Transient(authoritative_runtime) => {
+            serve_authoritative_runtime(
+                runtime,
+                bind_address,
+                auth,
+                maybe_runtime_store,
+                authoritative_runtime,
+            )
+            .await
+        }
+    }
+}
+
+async fn serve_authoritative_runtime<S, V>(
+    runtime: RuntimeConfig,
+    bind_address: std::net::SocketAddr,
+    auth: open_bitcoin_rpc::config::RpcAuthConfig,
+    maybe_runtime_store: Option<FjallNodeStore>,
+    mut authoritative_runtime: AuthoritativeNetworkRuntime<S, V>,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     if let Some(preflight) =
         preflight_daemon_sync(&runtime, authoritative_runtime.maybe_sync_runtime.as_ref())?
     {
@@ -162,11 +205,26 @@ struct DaemonSyncWorker {
     metrics_store: FjallNodeStore,
 }
 
-struct AuthoritativeNetworkRuntime {
-    network: ManagedNetworkHandle,
+struct AuthoritativeNetworkRuntime<S, V: CoinsView> {
+    network: ManagedNetworkHandle<S, V>,
     peer_identity_authority: PeerIdentityAuthority,
     announcement_outboxes: AnnouncementOutboxRegistry,
     maybe_sync_runtime: Option<DurableSyncRuntime>,
+}
+
+enum OpenedAuthoritativeRuntime {
+    Durable(AuthoritativeNetworkRuntime<FjallChainstateStore, FjallCoinsView>),
+    Transient(AuthoritativeNetworkRuntime<MemoryChainstateStore, MemoryCoinsView>),
+}
+
+#[cfg(test)]
+impl OpenedAuthoritativeRuntime {
+    fn expect_durable(self) -> AuthoritativeNetworkRuntime<FjallChainstateStore, FjallCoinsView> {
+        match self {
+            Self::Durable(runtime) => runtime,
+            Self::Transient(_) => panic!("expected durable authoritative runtime"),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -243,7 +301,7 @@ impl Error for DaemonSyncPreflightError {}
 fn open_authoritative_network_runtime(
     runtime: &RuntimeConfig,
     maybe_store: Option<FjallNodeStore>,
-) -> Result<AuthoritativeNetworkRuntime, DaemonSyncPreflightError> {
+) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
     if let Some(store) = maybe_store {
         let sync_runtime = DurableSyncRuntime::open_with_runtime_activation(
             store,
@@ -257,12 +315,14 @@ fn open_authoritative_network_runtime(
                 "open-bitcoind failed to construct authoritative network runtime: {error}"
             ))
         })?;
-        return Ok(AuthoritativeNetworkRuntime {
-            network: sync_runtime.network_handle(),
-            peer_identity_authority: sync_runtime.peer_identity_authority(),
-            announcement_outboxes: sync_runtime.announcement_outboxes(),
-            maybe_sync_runtime: Some(sync_runtime),
-        });
+        return Ok(OpenedAuthoritativeRuntime::Durable(
+            AuthoritativeNetworkRuntime {
+                network: sync_runtime.network_handle(),
+                peer_identity_authority: sync_runtime.peer_identity_authority(),
+                announcement_outboxes: sync_runtime.announcement_outboxes(),
+                maybe_sync_runtime: Some(sync_runtime),
+            },
+        ));
     }
 
     if runtime.sync.is_enabled() {
@@ -271,22 +331,20 @@ fn open_authoritative_network_runtime(
         ));
     }
 
-    Ok(AuthoritativeNetworkRuntime {
-        network: ManagedNetworkHandle::transient_runtime(
-            runtime.sync.runtime.network.magic(),
-            runtime.sync.runtime.network.default_port(),
-            runtime.relay,
-            runtime.block_serving,
-            runtime.inbound.enabled,
-        ),
-        peer_identity_authority: PeerIdentityAuthority::default(),
-        announcement_outboxes: AnnouncementOutboxRegistry::default(),
-        maybe_sync_runtime: None,
-    })
-}
-
-fn report_inbound_listener_startup(listener: &InboundDaemonListener) {
-    eprintln!("{}", inbound_listener_startup_message(listener));
+    Ok(OpenedAuthoritativeRuntime::Transient(
+        AuthoritativeNetworkRuntime {
+            network: ManagedNetworkHandle::transient_runtime(
+                runtime.sync.runtime.network.magic(),
+                runtime.sync.runtime.network.default_port(),
+                runtime.relay,
+                runtime.block_serving,
+                runtime.inbound.enabled,
+            ),
+            peer_identity_authority: PeerIdentityAuthority::default(),
+            announcement_outboxes: AnnouncementOutboxRegistry::default(),
+            maybe_sync_runtime: None,
+        },
+    ))
 }
 
 fn open_runtime_store(
@@ -308,132 +366,15 @@ fn open_runtime_store(
     })
 }
 
-#[cfg(test)]
-async fn start_inbound_listener_for_runtime(runtime: &RuntimeConfig) -> InboundDaemonListener {
-    let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config(runtime),
-    ));
-    start_inbound_listener_for_runtime_with_context(runtime, context).await
-}
-
-#[cfg(test)]
-async fn start_inbound_listener_for_runtime_with_context(
+fn start_daemon_sync_worker<S, V>(
     runtime: &RuntimeConfig,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-) -> InboundDaemonListener {
-    start_inbound_listener_for_runtime_with_context_inner(runtime, context, None).await
-}
-
-async fn start_inbound_listener_for_runtime_with_context_and_announcements(
-    runtime: &RuntimeConfig,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-    peer_identity_authority: PeerIdentityAuthority,
-    outboxes: AnnouncementOutboxRegistry,
-    network: ManagedNetworkHandle,
-) -> InboundDaemonListener {
-    start_inbound_listener_for_runtime_with_context_inner(
-        runtime,
-        context,
-        Some((peer_identity_authority, outboxes, network)),
-    )
-    .await
-}
-
-async fn start_inbound_listener_for_runtime_with_context_inner(
-    runtime: &RuntimeConfig,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-    maybe_announcement_transport: Option<(
-        PeerIdentityAuthority,
-        AnnouncementOutboxRegistry,
-        ManagedNetworkHandle,
-    )>,
-) -> InboundDaemonListener {
-    let activation = activate_inbound_listener(&runtime.inbound).await;
-    let mut state = activation.state();
-    let mut preflight_reason = activation.preflight_reason();
-    let bound_endpoints = activation
-        .bound_endpoints()
-        .iter()
-        .map(|endpoint| endpoint.bound_endpoint.clone())
-        .collect::<Vec<_>>();
-    let mut diagnostics = activation.diagnostics().to_vec();
-    let authority_available = {
-        let mut context = context.lock().await;
-        context
-            .set_inbound_listener_evidence(activation.evidence().clone())
-            .is_ok()
-    };
-    if !authority_available {
-        state = InboundListenerState::Blocked;
-        preflight_reason = InboundPreflightReason::BindUnavailable;
-        diagnostics.push(InboundPreflightDiagnostic {
-            reason: InboundPreflightReason::BindUnavailable,
-            maybe_endpoint: None,
-            field: "authoritative_network",
-            message: "authoritative network state is unavailable".to_string(),
-            next_action: "restart open-bitcoind and inspect runtime health".to_string(),
-        });
-    }
-    let maybe_worker = if state == InboundListenerState::Listening && authority_available {
-        match maybe_announcement_transport {
-            Some((peer_identity_authority, outboxes, network)) => {
-                start_inbound_accept_loop_with_announcements(
-                    activation,
-                    context,
-                    peer_identity_authority,
-                    outboxes,
-                    network,
-                )
-            }
-            None => start_inbound_accept_loop(activation, context),
-        }
-    } else {
-        None
-    };
-
-    InboundDaemonListener {
-        state,
-        preflight_reason,
-        bound_endpoints,
-        diagnostics,
-        maybe_worker,
-    }
-}
-
-fn inbound_listener_startup_message(listener: &InboundDaemonListener) -> String {
-    let bound_endpoint = listener
-        .bound_endpoints
-        .first()
-        .cloned()
-        .unwrap_or_else(|| "unavailable".to_string());
-    let next_action = listener
-        .diagnostics
-        .first()
-        .map(|diagnostic| diagnostic.next_action.as_str())
-        .unwrap_or("no listener action needed");
-    format!(
-        "open-bitcoind inbound listener startup: inbound_listener_state={} inbound_preflight_reason={} bound_endpoint={} admission_reject_reason=unavailable; opt-in inbound listener/admission {}; next_action=\"{}\"; deferred network participation remains out of scope.",
-        listener.state.as_str(),
-        listener.preflight_reason.as_str(),
-        bound_endpoint,
-        inbound_listener_state_description(listener.state),
-        next_action
-    )
-}
-
-fn inbound_listener_state_description(state: InboundListenerState) -> &'static str {
-    match state {
-        InboundListenerState::Disabled => "is disabled by configuration",
-        InboundListenerState::Blocked => "is blocked before socket serving",
-        InboundListenerState::Listening => "is active on configured endpoints",
-    }
-}
-
-fn start_daemon_sync_worker(
-    runtime: &RuntimeConfig,
-    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     maybe_sync_runtime: Option<DurableSyncRuntime>,
-) -> Result<Option<DaemonSyncWorker>, DaemonSyncPreflightError> {
+) -> Result<Option<DaemonSyncWorker>, DaemonSyncPreflightError>
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     if !runtime.sync.is_enabled() {
         return Ok(None);
     }

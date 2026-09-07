@@ -18,6 +18,7 @@ mod local_package;
 mod package;
 mod singleton;
 
+use open_bitcoin_core::chainstate::CoinsView;
 #[cfg(test)]
 use open_bitcoin_core::consensus::transaction_txid;
 use open_bitcoin_core::{
@@ -64,7 +65,7 @@ impl ManagedAdmissionBridgeResult {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     #[cfg(test)]
     pub(super) fn process_peer_transaction_admission(
         &mut self,

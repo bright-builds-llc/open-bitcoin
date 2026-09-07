@@ -30,19 +30,48 @@ use axum::{
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use tokio::sync::Mutex;
 
+use open_bitcoin_node::core::chainstate::CoinsView;
+use open_bitcoin_node::{ChainstateStore, MemoryChainstateStore};
+
 use crate::{
-    JsonRpcId, ManagedRpcContext, RpcAuthConfig, RpcFailure, RpcFailureKind,
+    JsonRpcId, ManagedRpcContext, RpcAuthConfig, RpcFailure,
     config::DEFAULT_COOKIE_AUTH_USER,
     dispatch::dispatch,
     method::{MethodScope, RequestParameters, normalize_method_call},
 };
 
+mod request;
+use request::{
+    ParsedRequest, error_body, legacy_error_body, legacy_status_for_failure, parse_request,
+    rpc_error_object, status_for_single, success_body,
+};
+
 const WWW_AUTH_HEADER_DATA: &str = "Basic realm=\"jsonrpc\"";
 
-#[derive(Debug, Clone)]
-pub struct RpcHttpState {
+pub struct RpcHttpState<
+    S = MemoryChainstateStore,
+    V: CoinsView = open_bitcoin_node::core::chainstate::MemoryCoinsView,
+> {
     auth: ResolvedHttpAuth,
-    context: Arc<Mutex<ManagedRpcContext>>,
+    context: Arc<Mutex<ManagedRpcContext<S, V>>>,
+}
+
+impl<S, V: CoinsView> Clone for RpcHttpState<S, V> {
+    fn clone(&self) -> Self {
+        Self {
+            auth: self.auth.clone(),
+            context: Arc::clone(&self.context),
+        }
+    }
+}
+
+impl<S, V: CoinsView> core::fmt::Debug for RpcHttpState<S, V> {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter
+            .debug_struct("RpcHttpState")
+            .field("auth", &self.auth)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -51,59 +80,53 @@ struct ResolvedHttpAuth {
     password: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RequestVersion {
-    Legacy,
-    V2,
-}
-
-#[derive(Debug, Clone)]
-struct ParsedRequest {
-    version: RequestVersion,
-    maybe_id: Option<JsonRpcId>,
-    method: String,
-    params: serde_json::Value,
-    is_notification: bool,
-}
-
-#[derive(Debug, Clone)]
-struct ParsedRequestError {
-    version: RequestVersion,
-    maybe_id: Option<JsonRpcId>,
-    failure: RpcFailure,
-}
-
-pub fn build_http_state(
+pub fn build_http_state<S, V>(
     auth: RpcAuthConfig,
-    context: ManagedRpcContext,
-) -> std::io::Result<RpcHttpState> {
+    context: ManagedRpcContext<S, V>,
+) -> std::io::Result<RpcHttpState<S, V>>
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     build_http_state_with_shared_context(auth, Arc::new(Mutex::new(context)))
 }
 
-pub fn build_http_state_with_shared_context(
+pub fn build_http_state_with_shared_context<S, V>(
     auth: RpcAuthConfig,
-    context: Arc<Mutex<ManagedRpcContext>>,
-) -> std::io::Result<RpcHttpState> {
+    context: Arc<Mutex<ManagedRpcContext<S, V>>>,
+) -> std::io::Result<RpcHttpState<S, V>>
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     Ok(RpcHttpState {
         auth: resolve_auth(auth)?,
         context,
     })
 }
 
-pub fn router(state: RpcHttpState) -> Router {
+pub fn router<S, V>(state: RpcHttpState<S, V>) -> Router
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     Router::new()
         .route("/", any(rpc_handler))
         .route("/wallet/{*wallet_name}", any(rpc_handler))
         .with_state(state)
 }
 
-pub async fn handle_http_request(
-    state: &RpcHttpState,
+pub async fn handle_http_request<S, V>(
+    state: &RpcHttpState<S, V>,
     path: &str,
     method: Method,
     headers: &HeaderMap,
     body: &[u8],
-) -> Response {
+) -> Response
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     if method != Method::POST {
         return plain_response(
             StatusCode::METHOD_NOT_ALLOWED,
@@ -140,21 +163,29 @@ pub async fn handle_http_request(
     }
 }
 
-async fn rpc_handler(
-    State(state): State<RpcHttpState>,
+async fn rpc_handler<S, V>(
+    State(state): State<RpcHttpState<S, V>>,
     OriginalUri(uri): OriginalUri,
     method: Method,
     headers: HeaderMap,
     body: Bytes,
-) -> Response {
+) -> Response
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     handle_http_request(&state, uri.path(), method, &headers, &body).await
 }
 
-async fn handle_single_request(
-    state: &RpcHttpState,
+async fn handle_single_request<S, V>(
+    state: &RpcHttpState<S, V>,
     path: &str,
     value: serde_json::Value,
-) -> Response {
+) -> Response
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     let parsed = match parse_request(value) {
         Ok(parsed) => parsed,
         Err(error) => {
@@ -172,11 +203,15 @@ async fn handle_single_request(
     }
 }
 
-async fn handle_batch_request(
-    state: &RpcHttpState,
+async fn handle_batch_request<S, V>(
+    state: &RpcHttpState<S, V>,
     path: &str,
     batch: Vec<serde_json::Value>,
-) -> Response {
+) -> Response
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     if batch.is_empty() {
         return json_response(StatusCode::OK, serde_json::Value::Array(Vec::new()));
     }
@@ -201,11 +236,15 @@ async fn handle_batch_request(
     json_response(StatusCode::OK, serde_json::Value::Array(responses))
 }
 
-async fn execute_request(
-    state: &RpcHttpState,
+async fn execute_request<S, V>(
+    state: &RpcHttpState<S, V>,
     path: &str,
     parsed: ParsedRequest,
-) -> Option<(StatusCode, serde_json::Value)> {
+) -> Option<(StatusCode, serde_json::Value)>
+where
+    S: ChainstateStore + Send + 'static,
+    V: CoinsView + Send + 'static,
+{
     let call = match normalize_method_call(
         &parsed.method,
         RequestParameters::from_json(parsed.params.clone()),
@@ -273,11 +312,15 @@ async fn execute_request(
     }
 }
 
-fn validate_scope(
-    context: &mut ManagedRpcContext,
+fn validate_scope<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
     scope: MethodScope,
     maybe_wallet_name: Option<&str>,
-) -> Result<(), RpcFailure> {
+) -> Result<(), RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     match scope {
         MethodScope::Node => {
             if maybe_wallet_name.is_some() {
@@ -346,163 +389,6 @@ fn decode_hex_nibble(value: u8) -> Result<u8, RpcFailure> {
             "Wallet URI path contains an invalid percent-encoding sequence.",
         )),
     }
-}
-
-fn parse_request(value: serde_json::Value) -> Result<ParsedRequest, ParsedRequestError> {
-    let serde_json::Value::Object(object) = value else {
-        return Err(ParsedRequestError {
-            version: RequestVersion::Legacy,
-            maybe_id: Some(JsonRpcId::Null),
-            failure: RpcFailure::invalid_request("Invalid Request object"),
-        });
-    };
-
-    let version = match object.get("jsonrpc") {
-        Some(serde_json::Value::String(marker)) if marker == "2.0" => RequestVersion::V2,
-        _ => RequestVersion::Legacy,
-    };
-    let maybe_id = object.get("id").and_then(parse_id);
-    let is_notification = version == RequestVersion::V2 && !object.contains_key("id");
-
-    let Some(method) = object.get("method") else {
-        return Err(ParsedRequestError {
-            version,
-            maybe_id,
-            failure: RpcFailure::invalid_request("Missing method"),
-        });
-    };
-    let serde_json::Value::String(method) = method else {
-        return Err(ParsedRequestError {
-            version,
-            maybe_id,
-            failure: RpcFailure::invalid_request("Method must be a string"),
-        });
-    };
-
-    let params = match object.get("params") {
-        None | Some(serde_json::Value::Null) => serde_json::Value::Null,
-        Some(serde_json::Value::Array(values)) => serde_json::Value::Array(values.clone()),
-        Some(serde_json::Value::Object(values)) => serde_json::Value::Object(values.clone()),
-        Some(_) => {
-            return Err(ParsedRequestError {
-                version,
-                maybe_id,
-                failure: RpcFailure::invalid_request("Params must be an array or object"),
-            });
-        }
-    };
-
-    Ok(ParsedRequest {
-        version,
-        maybe_id,
-        method: method.clone(),
-        params,
-        is_notification,
-    })
-}
-
-fn parse_id(value: &serde_json::Value) -> Option<JsonRpcId> {
-    match value {
-        serde_json::Value::Null => Some(JsonRpcId::Null),
-        serde_json::Value::Number(number) => number.as_i64().map(JsonRpcId::Number),
-        serde_json::Value::String(string) => Some(JsonRpcId::String(string.clone())),
-        _ => None,
-    }
-}
-
-fn status_for_single(version: RequestVersion, kind: RpcFailureKind) -> StatusCode {
-    match version {
-        RequestVersion::V2 => StatusCode::OK,
-        RequestVersion::Legacy => legacy_status_for_failure(kind),
-    }
-}
-
-fn legacy_status_for_failure(kind: RpcFailureKind) -> StatusCode {
-    match kind {
-        RpcFailureKind::MethodNotFound => StatusCode::NOT_FOUND,
-        _ => StatusCode::INTERNAL_SERVER_ERROR,
-    }
-}
-
-fn success_body(
-    version: RequestVersion,
-    maybe_id: Option<JsonRpcId>,
-    result: serde_json::Value,
-) -> serde_json::Value {
-    match version {
-        RequestVersion::V2 => {
-            let mut object = serde_json::Map::new();
-            object.insert("jsonrpc".to_string(), serde_json::json!("2.0"));
-            object.insert("result".to_string(), result);
-            if let Some(id) = maybe_id {
-                object.insert("id".to_string(), json_id_value(id));
-            }
-            serde_json::Value::Object(object)
-        }
-        RequestVersion::Legacy => legacy_success_body(maybe_id, result),
-    }
-}
-
-fn error_body(
-    version: RequestVersion,
-    maybe_id: Option<JsonRpcId>,
-    failure: RpcFailure,
-) -> serde_json::Value {
-    let detail = failure.maybe_detail.unwrap_or_else(|| {
-        crate::RpcErrorDetail::new(crate::RpcErrorCode::InternalError, "Internal error")
-    });
-    let error = rpc_error_object(&detail.message, detail.code.as_i32());
-    match version {
-        RequestVersion::V2 => {
-            let mut object = serde_json::Map::new();
-            object.insert("jsonrpc".to_string(), serde_json::json!("2.0"));
-            object.insert("error".to_string(), error);
-            object.insert(
-                "id".to_string(),
-                maybe_id.map_or(serde_json::Value::Null, json_id_value),
-            );
-            serde_json::Value::Object(object)
-        }
-        RequestVersion::Legacy => legacy_error_body(maybe_id, error),
-    }
-}
-
-fn legacy_success_body(
-    maybe_id: Option<JsonRpcId>,
-    result: serde_json::Value,
-) -> serde_json::Value {
-    let mut object = serde_json::Map::new();
-    object.insert("result".to_string(), result);
-    object.insert("error".to_string(), serde_json::Value::Null);
-    if let Some(id) = maybe_id {
-        object.insert("id".to_string(), json_id_value(id));
-    }
-    serde_json::Value::Object(object)
-}
-
-fn legacy_error_body(maybe_id: Option<JsonRpcId>, error: serde_json::Value) -> serde_json::Value {
-    let mut object = serde_json::Map::new();
-    object.insert("result".to_string(), serde_json::Value::Null);
-    object.insert("error".to_string(), error);
-    if let Some(id) = maybe_id {
-        object.insert("id".to_string(), json_id_value(id));
-    }
-    serde_json::Value::Object(object)
-}
-
-fn json_id_value(id: JsonRpcId) -> serde_json::Value {
-    match id {
-        JsonRpcId::Null => serde_json::Value::Null,
-        JsonRpcId::Number(number) => serde_json::json!(number),
-        JsonRpcId::String(string) => serde_json::json!(string),
-    }
-}
-
-fn rpc_error_object(message: &str, code: i32) -> serde_json::Value {
-    serde_json::json!({
-        "code": code,
-        "message": message,
-    })
 }
 
 fn authorized(headers: &HeaderMap, auth: &ResolvedHttpAuth) -> bool {

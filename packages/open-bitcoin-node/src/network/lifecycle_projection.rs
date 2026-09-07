@@ -410,8 +410,8 @@ pub(super) struct LifecycleProjectionPlan {
 }
 
 impl LifecycleProjectionPlan {
-    pub(super) fn prepare<S: ChainstateStore>(
-        network: &ManagedPeerNetwork<S>,
+    pub(super) fn prepare<S: ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>(
+        network: &ManagedPeerNetwork<S, V>,
         authority_epoch: AuthorityEpoch,
         core: PreparedMempoolTransition,
     ) -> Result<Self, LifecyclePreparationError> {
@@ -423,8 +423,11 @@ impl LifecycleProjectionPlan {
         )
     }
 
-    pub(super) fn prepare_admission<S: ChainstateStore>(
-        network: &ManagedPeerNetwork<S>,
+    pub(super) fn prepare_admission<
+        S: ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    >(
+        network: &ManagedPeerNetwork<S, V>,
         authority_epoch: AuthorityEpoch,
         core: PreparedMempoolTransition,
         source: AdmissionProjectionSource,
@@ -476,8 +479,8 @@ impl LifecycleProjectionPlan {
     }
 }
 
-fn prepare_peer_projection<S: ChainstateStore>(
-    network: &ManagedPeerNetwork<S>,
+fn prepare_peer_projection<S: ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>(
+    network: &ManagedPeerNetwork<S, V>,
     facts: &PreparedLifecycleFacts,
 ) -> Result<PreparedPeerLifecycleProjection, LifecyclePreparationError> {
     let admissions = facts

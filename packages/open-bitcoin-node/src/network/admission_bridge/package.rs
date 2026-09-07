@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/test/functional/p2p_opportunistic_1p1c.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{
     consensus::{ConsensusParams, ScriptVerifyFlags, transaction_txid, transaction_wtxid},
     primitives::{Transaction, Txid, Wtxid},
@@ -46,7 +47,7 @@ struct PeerAdmissionOptions {
     consensus_params: ConsensusParams,
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(in crate::network) fn process_peer_transaction_admission_with_provenance(
         &mut self,
         transaction: Transaction,
@@ -188,7 +189,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
-        let chainstate = self.chainstate.chainstate().snapshot();
+        let chainstate = self.chainstate.export_chainstate_snapshot();
         let package = WellFormedPackage::try_from(vec![transaction])?;
         let submission = SubmissionPackage::try_from_package(package, &chainstate)?;
         let prepared = self.mempool.prepare_package(
@@ -248,7 +249,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         );
         while let Some(candidate) = maybe_candidate {
             let (members, origins, provenances) = candidate.into_ordered_parts_with_provenance();
-            let chainstate = self.chainstate.chainstate().snapshot();
+            let chainstate = self.chainstate.export_chainstate_snapshot();
             let checked = WellFormedPackage::try_from(Vec::from(members.clone()))?;
             let fingerprint = *checked.fingerprint().as_bytes();
             if self
@@ -331,7 +332,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
-        let chainstate = self.chainstate.chainstate().snapshot();
+        let chainstate = self.chainstate.export_chainstate_snapshot();
         let checked = WellFormedPackage::try_from(Vec::from(members))?;
         let package = SubmissionPackage::try_from_package(checked, &chainstate)?;
         self.submit_package_through_lifecycle(

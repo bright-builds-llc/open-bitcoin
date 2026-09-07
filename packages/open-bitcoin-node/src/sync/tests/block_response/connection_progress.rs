@@ -72,6 +72,7 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
         .sync_once(&mut transport, i64::from(child.header.time))
         .expect("sync");
     let connected_progress = summary.sync_status(SyncNetwork::Regtest).sync_progress;
+    flush_coins_always(&runtime);
     drop(runtime);
 
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
@@ -143,12 +144,11 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
             .expect("load reopened child")
             .is_some()
     );
-    let snapshot = reopened_runtime
-        .store()
-        .load_chainstate_snapshot()
-        .expect("load chainstate snapshot")
-        .expect("chainstate snapshot");
-    let active_tip = snapshot.active_chain.last().expect("active tip");
+    let active_tip = reopened_runtime
+        .network_handle()
+        .maybe_chain_tip()
+        .expect("reopened tip")
+        .expect("active tip after coins B reopen");
     assert_eq!(active_tip.height, 1);
     assert_eq!(active_tip.block_hash, child_hash);
     assert_eq!(active_tip.chain_work, 2);

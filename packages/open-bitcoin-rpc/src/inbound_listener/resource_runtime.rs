@@ -29,10 +29,13 @@ pub(super) fn current_timestamp() -> i64 {
     i64::try_from(duration.as_secs()).unwrap_or(i64::MAX)
 }
 
-pub(super) async fn disconnect_admitted_peer(
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+pub(super) async fn disconnect_admitted_peer<S, V>(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     peer_id: u64,
-) {
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let mut context = context.lock().await;
     if let Err(_error) = context.disconnect_peer(peer_id) {
         // The message loop may already have removed the peer, for example after
@@ -40,11 +43,14 @@ pub(super) async fn disconnect_admitted_peer(
     }
 }
 
-pub(super) async fn record_shared_resource_event(
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+pub(super) async fn record_shared_resource_event<S, V>(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     evidence: &Arc<Mutex<InboundListenerEvidence>>,
     event: InboundResourceEvent,
-) {
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     lock_evidence(evidence).record_resource_event(event.clone());
     context.lock().await.record_inbound_resource_event(event);
 }

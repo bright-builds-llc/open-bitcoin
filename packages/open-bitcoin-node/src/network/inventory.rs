@@ -12,6 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 #[cfg(test)]
 use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_core::{
@@ -39,7 +40,7 @@ use super::{
 };
 use crate::ChainstateStore;
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(super) fn prepare_serving_projection(
         &self,
         facts: &PreparedLifecycleFacts,
@@ -271,7 +272,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         suppressed: bool,
         durable_availability: bool,
     ) -> ManagedBlockServeInput {
-        let snapshot = self.chainstate.chainstate().snapshot();
+        let snapshot = self.chainstate.export_chainstate_snapshot();
         let maybe_active_index = snapshot
             .active_chain
             .iter()

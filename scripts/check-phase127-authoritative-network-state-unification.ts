@@ -96,16 +96,20 @@ function checkProductionAuthority(
     daemon,
     "async fn main() -> Result<(), Box<dyn std::error::Error>>",
   );
+  const serve = rustFunction(
+    daemon,
+    "async fn serve_authoritative_runtime<",
+  );
   const authoritativeRuntimeInitializers = rustLetInitializers(
-    main,
+    serve,
     "authoritative_runtime",
   );
-  const sharedContextStart = main.indexOf("let shared_context");
+  const sharedContextStart = serve.indexOf("let shared_context");
   const contextInitializers = rustLetInitializers(
-    sharedContextStart === -1 ? "" : main.slice(0, sharedContextStart),
+    sharedContextStart === -1 ? "" : serve.slice(0, sharedContextStart),
     "context",
   );
-  const sharedContextInitializers = rustLetInitializers(main, "shared_context");
+  const sharedContextInitializers = rustLetInitializers(serve, "shared_context");
   const authorityFactory = rustFunction(
     daemon,
     "fn open_authoritative_network_runtime(",
@@ -127,10 +131,11 @@ function checkProductionAuthority(
     "ManagedPeerNetwork",
   );
   if (
-    authoritativeRuntimeInitializers.length !== 1 ||
-    normalizeRust(authoritativeRuntimeInitializers[0] ?? "") !==
-      "open_authoritative_network_runtime(&runtime,maybe_runtime_store.clone())?" ||
     countOccurrences(main, "open_authoritative_network_runtime(") !== 1 ||
+    countOccurrences(main, "serve_authoritative_runtime(") !== 2 ||
+    !main.includes("OpenedAuthoritativeRuntime::Durable") ||
+    !main.includes("OpenedAuthoritativeRuntime::Transient") ||
+    authoritativeRuntimeInitializers.length !== 0 ||
     contextInitializers.length !== 1 ||
     normalizeRust(contextInitializers[0] ?? "") !==
       "ManagedRpcContext::from_runtime_config_with_network_handle(&runtime,authoritative_runtime.network.clone(),maybe_runtime_store.clone(),)?" ||
@@ -242,11 +247,11 @@ function checkOperatorProjection(texts: TextCorpus, failures: string[]): void {
   );
   const networkInfoProjection = rustFunction(
     dispatch,
-    "pub(super) fn get_network_info(",
+    "pub(super) fn get_network_info<",
   );
   const networkStatusProjection = rustFunction(
     dispatch,
-    "pub(super) fn open_bitcoin_network_status(",
+    "pub(super) fn open_bitcoin_network_status<",
   );
   const statusResultCalls = rustCallArguments(networkStatusProjection, "Ok");
   const returnedStatus =

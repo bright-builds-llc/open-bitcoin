@@ -9,8 +9,8 @@ use std::{
 
 use open_bitcoin_core::{
     chainstate::{
-        AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, FlushMode,
-        FlushPolicyTime,
+        AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, CoinsView, FlushMode,
+        FlushPolicyTime, MemoryCoinsView,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
@@ -28,9 +28,8 @@ use open_bitcoin_network::{
 };
 
 use crate::{
-    MemoryChainstateStore,
+    ChainstateStore, MemoryChainstateStore,
     status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus},
-    sync::SyncRuntimeError,
 };
 
 use super::{
@@ -43,6 +42,7 @@ use super::{
 
 mod effects;
 pub use effects::{CheckpointAbortDispatchError, CheckpointCompletionDispatchError};
+mod error;
 mod lifecycle;
 pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_command};
 mod local_package;
@@ -50,7 +50,7 @@ mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
 mod recovery;
 
-type AuthoritativeNetwork = ManagedPeerNetwork<MemoryChainstateStore>;
+pub type MemoryNetworkHandle = ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView>;
 
 #[derive(Debug)]
 pub enum ManagedNetworkAuthorityError {
@@ -60,54 +60,26 @@ pub enum ManagedNetworkAuthorityError {
     MaintenanceTick(MaintenanceTickError),
 }
 
-impl fmt::Display for ManagedNetworkAuthorityError {
+pub struct ManagedNetworkHandle<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView> {
+    authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>,
+}
+
+impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
+    fn clone(&self) -> Self {
+        Self {
+            authority: Arc::clone(&self.authority),
+        }
+    }
+}
+
+impl<S, V: CoinsView> fmt::Debug for ManagedNetworkHandle<S, V> {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Poisoned => formatter.write_str("authoritative network state is unavailable"),
-            Self::LifecycleEffect(message) => formatter.write_str(message),
-            Self::Operation(error) => error.fmt(formatter),
-            Self::MaintenanceTick(error) => error.fmt(formatter),
-        }
+        formatter.debug_struct("ManagedNetworkHandle").finish()
     }
 }
 
-impl std::error::Error for ManagedNetworkAuthorityError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Self::Poisoned | Self::LifecycleEffect(_) | Self::MaintenanceTick(_) => None,
-            Self::Operation(error) => Some(error),
-        }
-    }
-}
-
-impl From<ManagedNetworkError> for ManagedNetworkAuthorityError {
-    fn from(value: ManagedNetworkError) -> Self {
-        Self::Operation(value)
-    }
-}
-
-impl From<ManagedNetworkAuthorityError> for SyncRuntimeError {
-    fn from(value: ManagedNetworkAuthorityError) -> Self {
-        match value {
-            ManagedNetworkAuthorityError::Poisoned => Self::Network {
-                message: "authoritative network state is unavailable".to_string(),
-            },
-            ManagedNetworkAuthorityError::LifecycleEffect(message) => Self::Network { message },
-            ManagedNetworkAuthorityError::Operation(error) => Self::from(error),
-            ManagedNetworkAuthorityError::MaintenanceTick(error) => Self::Network {
-                message: error.to_string(),
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ManagedNetworkHandle {
-    authority: Arc<Mutex<AuthoritativeNetwork>>,
-}
-
-impl ManagedNetworkHandle {
-    pub(crate) fn new(mut network: AuthoritativeNetwork) -> Self {
+impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
+    pub(crate) fn new(mut network: ManagedPeerNetwork<S, V>) -> Self {
         network.install_authority_incarnation();
         Self {
             authority: Arc::new(Mutex::new(network)),
@@ -115,44 +87,13 @@ impl ManagedNetworkHandle {
     }
 
     /// Wraps an explicitly constructed in-memory network for tests and benchmarks.
-    pub fn from_network_fixture(network: AuthoritativeNetwork) -> Self {
-        Self::new(network)
-    }
-
-    /// Creates a transient production authority when no durable store is configured.
-    pub fn transient_runtime(
-        magic: NetworkMagic,
-        port: u16,
-        relay_activation: RelayActivationConfig,
-        block_relay_activation: BlockRelayActivationPolicy,
-        inbound_enabled: bool,
-    ) -> Self {
-        let local_config = LocalPeerConfig {
-            magic,
-            services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
-            address: NetworkAddress {
-                services: 0,
-                address_bytes: [0_u8; 16],
-                port,
-            },
-            nonce: 0,
-            relay: true,
-            user_agent: "/open-bitcoin:0.1.0/".to_string(),
-        };
-        let network = ManagedPeerNetwork::new_with_block_relay_activation(
-            MemoryChainstateStore::default(),
-            local_config,
-            PolicyConfig::default(),
-            relay_activation,
-            block_relay_activation,
-            inbound_enabled,
-        );
+    pub fn from_network_fixture(network: ManagedPeerNetwork<S, V>) -> Self {
         Self::new(network)
     }
 
     fn read<T>(
         &self,
-        snapshot: impl FnOnce(&AuthoritativeNetwork) -> T,
+        snapshot: impl FnOnce(&ManagedPeerNetwork<S, V>) -> T,
     ) -> Result<T, ManagedNetworkAuthorityError> {
         let network = self
             .authority
@@ -163,7 +104,7 @@ impl ManagedNetworkHandle {
 
     fn mutate<T>(
         &self,
-        command: impl FnOnce(&mut AuthoritativeNetwork) -> T,
+        command: impl FnOnce(&mut ManagedPeerNetwork<S, V>) -> T,
     ) -> Result<T, ManagedNetworkAuthorityError> {
         let mut network = self
             .authority
@@ -174,14 +115,14 @@ impl ManagedNetworkHandle {
 
     fn try_mutate<T>(
         &self,
-        command: impl FnOnce(&mut AuthoritativeNetwork) -> Result<T, ManagedNetworkError>,
+        command: impl FnOnce(&mut ManagedPeerNetwork<S, V>) -> Result<T, ManagedNetworkError>,
     ) -> Result<T, ManagedNetworkAuthorityError> {
         self.mutate(command)?.map_err(Into::into)
     }
 
     fn try_read<T>(
         &self,
-        snapshot: impl FnOnce(&AuthoritativeNetwork) -> Result<T, ManagedNetworkError>,
+        snapshot: impl FnOnce(&ManagedPeerNetwork<S, V>) -> Result<T, ManagedNetworkError>,
     ) -> Result<T, ManagedNetworkAuthorityError> {
         self.read(snapshot)?.map_err(Into::into)
     }
@@ -587,19 +528,31 @@ impl ManagedNetworkHandle {
     #[cfg(test)]
     pub(in crate::network) fn authority_snapshot_for_test(
         &self,
-    ) -> Result<AuthoritativeNetwork, ManagedNetworkAuthorityError> {
+    ) -> Result<ManagedPeerNetwork<S, V>, ManagedNetworkAuthorityError>
+    where
+        ManagedPeerNetwork<S, V>: Clone,
+    {
         self.read(Clone::clone)
     }
 
     #[cfg(test)]
     pub(in crate::network) fn authority_debug_snapshot_for_test(
         &self,
-    ) -> Result<String, ManagedNetworkAuthorityError> {
+    ) -> Result<String, ManagedNetworkAuthorityError>
+    where
+        S: std::fmt::Debug,
+        V: std::fmt::Debug,
+        ManagedPeerNetwork<S, V>: std::fmt::Debug,
+    {
         self.read(|network| format!("{network:?}"))
     }
 
     #[cfg(test)]
-    fn poison_for_test(&self) {
+    fn poison_for_test(&self)
+    where
+        S: Send + 'static,
+        V: Send + 'static,
+    {
         let authority = Arc::clone(&self.authority);
         let result = std::thread::spawn(move || {
             let _network = authority.lock().expect("test authority should lock");
@@ -607,6 +560,39 @@ impl ManagedNetworkHandle {
         })
         .join();
         assert!(result.is_err());
+    }
+}
+
+impl ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
+    /// Creates a transient production authority when no durable store is configured.
+    pub fn transient_runtime(
+        magic: NetworkMagic,
+        port: u16,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_enabled: bool,
+    ) -> Self {
+        let local_config = LocalPeerConfig {
+            magic,
+            services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+            address: NetworkAddress {
+                services: 0,
+                address_bytes: [0_u8; 16],
+                port,
+            },
+            nonce: 0,
+            relay: true,
+            user_agent: "/open-bitcoin:0.1.0/".to_string(),
+        };
+        let network = ManagedPeerNetwork::new_with_block_relay_activation(
+            MemoryChainstateStore::default(),
+            local_config,
+            PolicyConfig::default(),
+            relay_activation,
+            block_relay_activation,
+            inbound_enabled,
+        );
+        Self::new(network)
     }
 }
 

@@ -17,8 +17,36 @@ use super::{
     ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES, MemoryCoinsView,
 };
 use crate::error::ChainstateError;
-use crate::types::Coin;
+use crate::types::{BlockUndo, Coin};
 use crate::{Chainstate, ChainstateSnapshot, MemoryBackedChainstate};
+
+struct HintlessView;
+
+impl CoinsView for HintlessView {
+    fn get_coin(&self, _outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
+        Ok(None)
+    }
+
+    fn have_coin(&self, _outpoint: &OutPoint) -> Result<bool, ChainstateError> {
+        Ok(false)
+    }
+
+    fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError> {
+        Ok(None)
+    }
+
+    fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
+        Ok(Vec::new())
+    }
+
+    fn batch_write(
+        &mut self,
+        _writes: CoinsBatch,
+        _maybe_best_block: Option<BlockHash>,
+    ) -> Result<(), ChainstateError> {
+        Ok(())
+    }
+}
 
 fn fixture_outpoint() -> OutPoint {
     OutPoint {
@@ -634,4 +662,94 @@ fn memory_backed_alias_is_default_chainstate() {
     let aliased: MemoryBackedChainstate = from_snapshot;
     assert_eq!(from_default, Chainstate::new());
     assert_eq!(aliased.coins_best_block(), Ok(None));
+}
+
+#[test]
+fn default_collect_unspent_hint_is_empty() {
+    // Arrange
+    let view = HintlessView;
+
+    // Act
+    let hint = CoinsView::collect_unspent_hint(&view);
+
+    // Assert
+    assert!(hint.is_empty());
+}
+
+#[test]
+fn memory_collect_unspent_hint_returns_unspent_coins() {
+    // Arrange
+    let outpoint = fixture_outpoint();
+    let coin = fixture_coin();
+    let mut coins = HashMap::new();
+    coins.insert(outpoint.clone(), coin.clone());
+    let view = MemoryCoinsView::from_coins(coins, None);
+
+    // Act
+    let hint = CoinsView::collect_unspent_hint(&view);
+
+    // Assert
+    assert_eq!(hint.get(&outpoint), Some(&coin));
+}
+
+#[test]
+fn cache_admission_unspent_merges_parent_hint_with_overlay() {
+    // Arrange
+    let parent_outpoint = fixture_outpoint();
+    let overlay_outpoint = fixture_outpoint_two();
+    let parent_coin = fixture_coin();
+    let overlay_coin = fixture_coin();
+    let mut parent_coins = HashMap::new();
+    parent_coins.insert(parent_outpoint.clone(), parent_coin);
+    let mut cache = CoinsCache::from_parent(MemoryCoinsView::from_coins(parent_coins, None));
+    cache.insert_entry_for_test(
+        overlay_outpoint.clone(),
+        CoinsCacheEntry::unspent_dirty(overlay_coin.clone()),
+    );
+    cache.insert_entry_for_test(parent_outpoint.clone(), CoinsCacheEntry::spent_dirty());
+
+    // Act
+    let admission = cache.collect_admission_unspent();
+    let overlay = cache.collect_overlay_unspent();
+
+    // Assert
+    assert!(!admission.contains_key(&parent_outpoint));
+    assert_eq!(admission.get(&overlay_outpoint), Some(&overlay_coin));
+    assert!(!overlay.contains_key(&parent_outpoint));
+    assert_eq!(overlay.get(&overlay_outpoint), Some(&overlay_coin));
+}
+
+#[test]
+fn from_coins_cache_exposes_admission_and_overlay_snapshots() {
+    // Arrange
+    let outpoint = fixture_outpoint();
+    let coin = fixture_coin();
+    let tip = fixture_best_block();
+    let mut parent_coins = HashMap::new();
+    parent_coins.insert(outpoint.clone(), coin.clone());
+    let cache = CoinsCache::from_parent(MemoryCoinsView::from_coins(parent_coins, Some(tip)));
+    let mut undo_by_block = HashMap::new();
+    undo_by_block.insert(tip, BlockUndo::default());
+
+    // Act
+    let mut chainstate = Chainstate::from_coins_cache(
+        cache,
+        Vec::new(),
+        undo_by_block.clone(),
+        Some(HashMap::new()),
+    );
+    let maybe_found = chainstate.get_coin(&outpoint).expect("lookup");
+    let admission = chainstate.admission_snapshot();
+    let overlay = chainstate.overlay_snapshot();
+    let overlay_count = chainstate.coins().cache_entry_count();
+    let live_count = chainstate.coins_mut().cache_entry_count();
+
+    // Assert
+    assert!(chainstate.active_chain().is_empty());
+    assert_eq!(chainstate.undo_by_block(), &undo_by_block);
+    assert_eq!(maybe_found, Some(coin.clone()));
+    assert_eq!(admission.utxos.get(&outpoint), Some(&coin));
+    assert!(overlay.utxos.is_empty());
+    assert_eq!(overlay_count, 0);
+    assert_eq!(live_count, 0);
 }

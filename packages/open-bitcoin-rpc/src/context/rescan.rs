@@ -48,7 +48,9 @@ pub struct WalletRescanExecution {
     pub freshness: WalletFreshnessView,
 }
 
-impl ManagedRpcContext {
+impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
+    ManagedRpcContext<S, V>
+{
     pub fn wallet_rescan_job(&self) -> Result<Option<WalletRescanJob>, RpcFailure> {
         let WalletState::DurableNamedRegistry { store, .. } = &self.wallet_state else {
             return Ok(None);

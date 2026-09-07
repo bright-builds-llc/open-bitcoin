@@ -19,14 +19,18 @@ use open_bitcoin_node::{FjallNodeStore, ManagedNetworkAuthorityError, ManagedNet
 
 use crate::config::RuntimeConfig;
 
-pub(super) fn recover_mempool_snapshot_from_store_handle(
+pub(super) fn recover_mempool_snapshot_from_store_handle<S, V>(
     config: &RuntimeConfig,
     maybe_store: Option<&FjallNodeStore>,
-    network: &ManagedNetworkHandle,
+    network: &ManagedNetworkHandle<S, V>,
     policy: &PolicyConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
-) -> Result<(), ManagedNetworkAuthorityError> {
+) -> Result<(), ManagedNetworkAuthorityError>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     recover_mempool_snapshot_from_store_handle_at(
         config,
         maybe_store,
@@ -39,15 +43,19 @@ pub(super) fn recover_mempool_snapshot_from_store_handle(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn recover_mempool_snapshot_from_store_handle_at(
+fn recover_mempool_snapshot_from_store_handle_at<S, V>(
     config: &RuntimeConfig,
     maybe_store: Option<&FjallNodeStore>,
-    network: &ManagedNetworkHandle,
+    network: &ManagedNetworkHandle<S, V>,
     policy: &PolicyConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
     startup_at: Result<PolicyTime, SyncRecoveryCategory>,
-) -> Result<(), ManagedNetworkAuthorityError> {
+) -> Result<(), ManagedNetworkAuthorityError>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let startup_at = match startup_at {
         Ok(startup_at) => startup_at,
         Err(category) => {
@@ -85,8 +93,8 @@ fn recover_mempool_snapshot_from_store_handle_at(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn recover_mempool_snapshot_with_loader<Load>(
-    network: &ManagedNetworkHandle,
+fn recover_mempool_snapshot_with_loader<S, V, Load>(
+    network: &ManagedNetworkHandle<S, V>,
     _policy: &PolicyConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
@@ -94,6 +102,8 @@ fn recover_mempool_snapshot_with_loader<Load>(
     load: Load,
 ) -> Result<(), ManagedNetworkAuthorityError>
 where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
     Load: FnOnce(
         MempoolSnapshotDecodeLimits,
     ) -> Result<

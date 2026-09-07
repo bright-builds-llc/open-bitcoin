@@ -6,6 +6,7 @@
 
 use std::collections::BTreeMap;
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{
     consensus::block_hash,
     primitives::{Block, BlockHash, InventoryType, InventoryVector},
@@ -400,7 +401,7 @@ pub(super) fn compact_nonces(outboxes: &[PeerOutboxSnapshot]) -> BTreeMap<PeerId
         .collect()
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(crate) fn prepare_peer_emission(
         &mut self,
         peer_id: PeerId,

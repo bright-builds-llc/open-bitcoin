@@ -37,10 +37,17 @@ export function verifyProductionActivation(
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
   for (const needle of [
     "pub fn open_with_block_relay_activation",
-    "ManagedPeerNetwork::with_sync_limits_and_block_relay_activation",
     "block_relay_activation",
   ]) {
     requireContains(sync, needle, "P123 sync production activation", failures);
+  }
+  const openRuntime = texts.get("packages/open-bitcoin-node/src/sync/open_runtime.rs") ?? "";
+  for (const needle of [
+    "ManagedPeerNetwork::from_initialized_chainstate",
+    "block_relay_activation",
+    "initialize(",
+  ]) {
+    requireContains(openRuntime, needle, "P123 sync production activation", failures);
   }
   const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
   requireOrdered(

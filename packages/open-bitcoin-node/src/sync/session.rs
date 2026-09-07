@@ -127,11 +127,15 @@ impl AnnouncementOutboxRegistry {
     }
 
     /// Removes one peer and aborts its bounded volatile announcement queue.
-    pub fn unregister_peer(
+    pub fn unregister_peer<S, V>(
         &self,
-        network: &crate::ManagedNetworkHandle,
+        network: &crate::ManagedNetworkHandle<S, V>,
         peer_id: PeerId,
-    ) -> Result<(), SyncRuntimeError> {
+    ) -> Result<(), SyncRuntimeError>
+    where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    {
         let maybe_outbox = self.lock_outboxes()?.remove(&peer_id);
         let emissions = maybe_outbox
             .map(|outbox| outbox.emissions)
@@ -155,11 +159,15 @@ impl AnnouncementOutboxRegistry {
     }
 
     /// Enqueues prepared emissions while preserving per-peer and aggregate bounds.
-    pub fn enqueue_prepared(
+    pub fn enqueue_prepared<S, V>(
         &self,
-        network: &crate::ManagedNetworkHandle,
+        network: &crate::ManagedNetworkHandle<S, V>,
         outcomes: Vec<AnnouncementPreparationOutcome>,
-    ) -> Result<(), SyncRuntimeError> {
+    ) -> Result<(), SyncRuntimeError>
+    where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    {
         let mut outboxes = match self.lock_outboxes() {
             Ok(outboxes) => outboxes,
             Err(error) => {
@@ -605,7 +613,6 @@ impl DurableSyncRuntime {
                 });
         compact_download_in_flight || full_block_response_pending
     }
-
     pub(super) fn complete_peer_session_progress(
         &self,
         progress: &mut PeerProgress,

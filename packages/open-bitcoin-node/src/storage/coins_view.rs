@@ -6,6 +6,8 @@
 
 //! Fjall-backed `CoinsView` parent with Knots two-phase `H`/`B` BatchWrite.
 
+use std::collections::HashMap;
+
 use fjall::PersistMode as FjallPersistMode;
 use open_bitcoin_core::{
     chainstate::{ChainstateError, Coin, CoinsBatch, CoinsView},
@@ -15,10 +17,10 @@ use open_bitcoin_core::{
 use super::{
     FjallNodeStore, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
     coins_codec::{
-        DEFAULT_COINS_DB_BATCH_BYTES, decode_best_block_value, decode_coin_value,
-        decode_head_blocks_value, encode_best_block_key, encode_best_block_value, encode_coin_key,
-        encode_coin_value, encode_head_blocks_key, encode_head_blocks_value,
-        estimated_encoded_bytes,
+        DB_COIN, DEFAULT_COINS_DB_BATCH_BYTES, decode_best_block_value, decode_coin_key,
+        decode_coin_value, decode_head_blocks_value, encode_best_block_key,
+        encode_best_block_value, encode_coin_key, encode_coin_value, encode_head_blocks_key,
+        encode_head_blocks_value, estimated_encoded_bytes,
     },
 };
 
@@ -310,6 +312,23 @@ impl CoinsView for FjallCoinsView {
             DEFAULT_COINS_DB_BATCH_BYTES,
             false,
         )
+    }
+
+    fn collect_unspent_hint(&self) -> HashMap<OutPoint, Coin> {
+        let mut utxos = HashMap::new();
+        for guard in self.coins.prefix([DB_COIN]) {
+            let Ok((key_bytes, value_bytes)) = guard.into_inner() else {
+                return HashMap::new();
+            };
+            let Ok(outpoint) = decode_coin_key(key_bytes.as_ref()) else {
+                return HashMap::new();
+            };
+            let Ok(coin) = decode_coin_value(value_bytes.as_ref()) else {
+                return HashMap::new();
+            };
+            utxos.insert(outpoint, coin);
+        }
+        utxos
     }
 }
 

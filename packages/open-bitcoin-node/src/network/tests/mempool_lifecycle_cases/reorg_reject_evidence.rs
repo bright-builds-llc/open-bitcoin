@@ -115,8 +115,9 @@ fn reorg_lifecycle_failure_is_atomic_and_retry_converges() {
     let context = ReorgLifecycleContext::new(PolicyTime::new(72));
     let failure = LifecyclePreparationFailureGuard::inject(LifecyclePreparationFailurePoint::Peer);
 
-    // Act
-    let failed = network.reorg_to_branch(
+    // Act — apply on a clone so Fjall-safe in-place reorg cannot poison the live parent
+    let mut working = network.clone();
+    let failed = working.reorg_to_branch(
         std::slice::from_ref(&old_tip),
         &[],
         context,
@@ -126,7 +127,7 @@ fn reorg_lifecycle_failure_is_atomic_and_retry_converges() {
 
     // Assert
     assert!(failed.is_err());
-    assert_eq!(format!("{network:?}"), baseline);
+    assert_eq!(format!("{working:?}"), baseline);
     drop(failure);
 
     // Act

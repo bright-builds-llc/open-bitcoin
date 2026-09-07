@@ -62,7 +62,9 @@ impl AuthoritativeOperatorSnapshot {
     }
 }
 
-impl ManagedRpcContext {
+impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
+    ManagedRpcContext<S, V>
+{
     pub fn authoritative_operator_snapshot(
         &self,
     ) -> Result<AuthoritativeOperatorSnapshot, ManagedNetworkAuthorityError> {

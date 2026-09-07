@@ -49,10 +49,14 @@ const UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE: &str =
 const UNSUPPORTED_IGNORE_REJECTS_MESSAGE: &str =
     "package RPC ignore_rejects is not supported; omit ignore_rejects or pass an empty array";
 
-pub(super) fn test_mempool_accept(
-    context: &ManagedRpcContext,
+pub(super) fn test_mempool_accept<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: TestMempoolAcceptRequest,
-) -> Result<Value, RpcFailure> {
+) -> Result<Value, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     reject_unsupported_options(
         request.maybe_max_fee_rate,
         request.maybe_max_burn_amount,
@@ -69,10 +73,14 @@ pub(super) fn test_mempool_accept(
         .map_err(|error| RpcFailure::internal_error(format!("{error:?}")))
 }
 
-pub(super) fn submit_package(
-    context: &ManagedRpcContext,
+pub(super) fn submit_package<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: SubmitPackageRequest,
-) -> Result<Value, RpcFailure> {
+) -> Result<Value, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     reject_unsupported_options(
         request.maybe_max_fee_rate,
         request.maybe_max_burn_amount,
@@ -90,10 +98,14 @@ pub(super) fn submit_package(
         .map_err(|error| RpcFailure::internal_error(format!("{error:?}")))
 }
 
-pub(super) fn open_bitcoin_package(
-    context: &ManagedRpcContext,
+pub(super) fn open_bitcoin_package<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: OpenBitcoinPackageRequest,
-) -> Result<Value, RpcFailure> {
+) -> Result<Value, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     reject_package_count(request.raw_txs.len())?;
     let transactions = decode_package_transactions(&request.raw_txs)?;
     let now_unix_seconds = current_timestamp_unix_seconds()?;
@@ -213,11 +225,15 @@ fn package_authority_error_to_failure(error: ManagedNetworkAuthorityError) -> Rp
     }
 }
 
-fn member_projection_facts(
-    context: &ManagedRpcContext,
+fn member_projection_facts<S, V>(
+    context: &ManagedRpcContext<S, V>,
     transactions: &[Transaction],
     report: &PackageReport,
-) -> Result<Vec<PackageMemberProjectionFacts>, RpcFailure> {
+) -> Result<Vec<PackageMemberProjectionFacts>, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let snapshot = context
         .blockchain_snapshot()
         .map_err(network_authority_error_to_failure)?;

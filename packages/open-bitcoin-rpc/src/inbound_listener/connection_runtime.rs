@@ -39,15 +39,18 @@ use super::{
     },
 };
 
-pub(super) async fn handle_inbound_stream(
+pub(super) async fn handle_inbound_stream<S, V>(
     peer_id: u64,
     remote_addr: SocketAddr,
     stream: tokio::net::TcpStream,
-    context: Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     evidence: Arc<Mutex<InboundListenerEvidence>>,
     runtime_counters: Arc<Mutex<InboundRuntimeCounters>>,
-    connection_control: InboundConnectionControl,
-) {
+    connection_control: InboundConnectionControl<S, V>,
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let InboundConnectionControl {
         shutdown_requested,
         shutdown_notify,
@@ -300,10 +303,14 @@ async fn wait_for_outbox_notification(
     notification.notified().await;
 }
 
-fn unregister_announcement_peer(
-    maybe_transport: &Option<InboundAnnouncementTransport>,
+fn unregister_announcement_peer<S, V>(
+    maybe_transport: &Option<InboundAnnouncementTransport<S, V>>,
     peer_id: u64,
-) -> Result<(), SyncRuntimeError> {
+) -> Result<(), SyncRuntimeError>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     if let Some(transport) = maybe_transport {
         return transport
             .outboxes
@@ -425,8 +432,8 @@ fn abort_capabilities<E: InboundEmissionExecutor>(
 }
 
 #[allow(clippy::too_many_arguments)]
-struct SocketInboundEmissionExecutor<'a> {
-    transport: &'a InboundAnnouncementTransport,
+struct SocketInboundEmissionExecutor<'a, S, V: open_bitcoin_node::core::chainstate::CoinsView> {
+    transport: &'a InboundAnnouncementTransport<S, V>,
     stream: &'a tokio::net::TcpStream,
     network_magic: NetworkMagic,
     resource_policy: &'a ResourceGovernancePolicy,
@@ -436,12 +443,16 @@ struct SocketInboundEmissionExecutor<'a> {
     queue_pressure: &'a mut RuntimeQueuePressureState,
     active_permission_effects: Vec<PermissionEffectLabel>,
     inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
-    context: &'a Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    context: &'a Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     evidence: &'a Arc<Mutex<InboundListenerEvidence>>,
     runtime_counters: &'a Arc<Mutex<InboundRuntimeCounters>>,
 }
 
-impl InboundEmissionExecutor for SocketInboundEmissionExecutor<'_> {
+impl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor<'_, S, V>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()> {
         message.encode_wire(self.network_magic).map_err(|_error| ())
     }
@@ -510,8 +521,8 @@ impl InboundEmissionExecutor for SocketInboundEmissionExecutor<'_> {
 }
 
 #[allow(clippy::too_many_arguments)]
-async fn drain_inbound_announcements(
-    maybe_transport: Option<&InboundAnnouncementTransport>,
+async fn drain_inbound_announcements<S, V>(
+    maybe_transport: Option<&InboundAnnouncementTransport<S, V>>,
     peer_id: u64,
     stream: &tokio::net::TcpStream,
     network_magic: NetworkMagic,
@@ -522,10 +533,14 @@ async fn drain_inbound_announcements(
     queue_pressure: &mut RuntimeQueuePressureState,
     active_permission_effects: Vec<PermissionEffectLabel>,
     inactive_permission_effects: Vec<InactivePermissionEffectLabel>,
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     evidence: &Arc<Mutex<InboundListenerEvidence>>,
     runtime_counters: &Arc<Mutex<InboundRuntimeCounters>>,
-) -> bool {
+) -> bool
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let Some(transport) = maybe_transport else {
         return true;
     };
@@ -551,11 +566,15 @@ async fn drain_inbound_announcements(
         == InboundEmissionExecutionOutcome::Complete
 }
 
-pub(super) async fn acknowledge_inbound_response_write(
+pub(super) async fn acknowledge_inbound_response_write<S, V>(
     write_result: &io::Result<WriteWireMessageOutcome>,
     response: &mut EncodedWireResponse,
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-) -> bool {
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
+) -> bool
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let was_written = matches!(write_result, Ok(WriteWireMessageOutcome::Written));
     if let Some(capability) = response.maybe_tx_write_capability.take() {
         let context = context.lock().await;

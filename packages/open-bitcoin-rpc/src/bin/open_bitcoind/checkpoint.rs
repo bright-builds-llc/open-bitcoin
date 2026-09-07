@@ -84,10 +84,14 @@ impl MempoolCheckpointWorker {
     }
 }
 
-pub(super) fn start_mempool_checkpoint_worker(
-    handle: ManagedNetworkHandle,
+pub(super) fn start_mempool_checkpoint_worker<S, V>(
+    handle: ManagedNetworkHandle<S, V>,
     maybe_store: Option<FjallNodeStore>,
-) -> Option<MempoolCheckpointWorker> {
+) -> Option<MempoolCheckpointWorker>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let store = maybe_store?;
     let worker_store = store.clone();
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
@@ -110,13 +114,15 @@ pub(super) fn start_mempool_checkpoint_worker(
     })
 }
 
-pub(super) fn checkpoint_worker_loop<Wait, Now>(
-    handle: ManagedNetworkHandle,
+pub(super) fn checkpoint_worker_loop<S, V, Wait, Now>(
+    handle: ManagedNetworkHandle<S, V>,
     store: FjallNodeStore,
     mut wait: Wait,
     mut now: Now,
 ) -> Result<MempoolCheckpointOutcome, MempoolCheckpointError>
 where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
     Wait: FnMut(Duration) -> CheckpointWait,
     Now: FnMut() -> PolicyTime,
 {

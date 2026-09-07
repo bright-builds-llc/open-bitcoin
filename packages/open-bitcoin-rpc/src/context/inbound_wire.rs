@@ -219,12 +219,16 @@ fn request_scoped_compact_nonce(
     hasher.finish()
 }
 
-pub(crate) async fn resolve_inbound_wire_responses(
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
+pub(crate) async fn resolve_inbound_wire_responses<S, V>(
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
     peer_id: u64,
     message: WireNetworkMessage,
     timestamp: i64,
-) -> Option<Vec<EncodedWireResponse>> {
+) -> Option<Vec<EncodedWireResponse>>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let plan = {
         let mut context = context.lock().await;
         context
@@ -261,11 +265,15 @@ pub(crate) async fn resolve_inbound_wire_responses(
     (!resolved.failed).then_some(resolved.responses)
 }
 
-pub(crate) async fn acknowledge_encoded_wire_response(
+pub(crate) async fn acknowledge_encoded_wire_response<S, V>(
     was_written: bool,
     response: &mut EncodedWireResponse,
-    context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
-) -> bool {
+    context: &Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
+) -> bool
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     if let Some(capability) = response.maybe_tx_write_capability.take() {
         let context = context.lock().await;
         return if was_written {

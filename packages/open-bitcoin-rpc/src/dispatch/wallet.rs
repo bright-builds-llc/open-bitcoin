@@ -34,10 +34,14 @@ use super::{
     rpc_failure_message, wallet_error_to_failure,
 };
 
-pub(super) fn send_to_address(
-    context: &mut ManagedRpcContext,
+pub(super) fn send_to_address<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
     request: SendToAddressRequest,
-) -> Result<String, RpcFailure> {
+) -> Result<String, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let recipient = Recipient {
         script_pubkey: decode::script_pubkey_from_address(context.chain(), &request.address)?,
         value: Amount::from_sats(request.amount_sats)
@@ -66,23 +70,37 @@ pub(super) fn send_to_address(
     Ok(decode::encode_hex(submitted.accepted.as_bytes()))
 }
 
-pub(super) fn get_new_address(context: &mut ManagedRpcContext) -> Result<String, RpcFailure> {
+pub(super) fn get_new_address<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
+) -> Result<String, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     context
         .allocate_receive_address()
         .map(|address| address.to_string())
 }
 
-pub(super) fn get_raw_change_address(
-    context: &mut ManagedRpcContext,
-) -> Result<String, RpcFailure> {
+pub(super) fn get_raw_change_address<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
+) -> Result<String, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     context
         .allocate_change_address()
         .map(|address| address.to_string())
 }
 
-pub(super) fn list_descriptors(
-    context: &ManagedRpcContext,
-) -> Result<ListDescriptorsResponse, RpcFailure> {
+pub(super) fn list_descriptors<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<ListDescriptorsResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let snapshot = context.wallet_snapshot()?;
     let descriptors = snapshot
         .descriptors
@@ -108,7 +126,11 @@ pub(super) fn list_descriptors(
     })
 }
 
-pub(super) fn get_wallet_info(context: &ManagedRpcContext) -> Result<Value, RpcFailure> {
+pub(super) fn get_wallet_info<S, V>(context: &ManagedRpcContext<S, V>) -> Result<Value, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let wallet_info = context.selected_wallet_info()?;
     let freshness = context.wallet_freshness()?;
     let base = GetWalletInfoResponse {
@@ -159,7 +181,13 @@ pub(super) fn get_wallet_info(context: &ManagedRpcContext) -> Result<Value, RpcF
     Ok(value)
 }
 
-pub(super) fn get_balances(context: &ManagedRpcContext) -> Result<GetBalancesResponse, RpcFailure> {
+pub(super) fn get_balances<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<GetBalancesResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let balance = context.wallet_balance(context.coinbase_maturity())?;
     Ok(GetBalancesResponse {
         mine: WalletBalanceDetails {
@@ -170,10 +198,14 @@ pub(super) fn get_balances(context: &ManagedRpcContext) -> Result<GetBalancesRes
     })
 }
 
-pub(super) fn list_unspent(
-    context: &ManagedRpcContext,
+pub(super) fn list_unspent<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: ListUnspentRequest,
-) -> Result<ListUnspentResponse, RpcFailure> {
+) -> Result<ListUnspentResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let tip_height = context
         .maybe_chain_tip()
         .map_err(network_authority_error_to_failure)?
@@ -249,10 +281,14 @@ pub(super) fn list_unspent(
     Ok(ListUnspentResponse { entries })
 }
 
-pub(super) fn import_descriptors(
-    context: &mut ManagedRpcContext,
+pub(super) fn import_descriptors<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
     request: crate::method::ImportDescriptorsRequest,
-) -> Result<crate::method::ImportDescriptorsResponse, RpcFailure> {
+) -> Result<crate::method::ImportDescriptorsResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let mut results = Vec::with_capacity(request.requests.len());
 
     for item in request.requests {
@@ -278,10 +314,14 @@ pub(super) fn import_descriptors(
     Ok(crate::method::ImportDescriptorsResponse { results })
 }
 
-pub(super) fn rescan_blockchain(
-    context: &mut ManagedRpcContext,
+pub(super) fn rescan_blockchain<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
     request: RescanBlockchainRequest,
-) -> Result<RescanBlockchainResponse, RpcFailure> {
+) -> Result<RescanBlockchainResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let execution =
         context.rescan_wallet_range(request.maybe_start_height, request.maybe_stop_height)?;
     Ok(RescanBlockchainResponse {
@@ -294,10 +334,14 @@ pub(super) fn rescan_blockchain(
     })
 }
 
-pub(super) fn build_transaction(
-    context: &ManagedRpcContext,
+pub(super) fn build_transaction<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: BuildTransactionRequest,
-) -> Result<BuildTransactionResponse, RpcFailure> {
+) -> Result<BuildTransactionResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let build_request = build_wallet_request(
         request.recipients,
         request.fee_rate_sat_per_kvb,
@@ -309,10 +353,14 @@ pub(super) fn build_transaction(
     map_built_transaction(&built)
 }
 
-pub(super) fn build_and_sign_transaction(
-    context: &ManagedRpcContext,
+pub(super) fn build_and_sign_transaction<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: BuildAndSignTransactionRequest,
-) -> Result<BuildAndSignTransactionResponse, RpcFailure> {
+) -> Result<BuildAndSignTransactionResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let build_request = build_wallet_request(
         request.recipients,
         request.fee_rate_sat_per_kvb,

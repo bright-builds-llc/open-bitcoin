@@ -24,7 +24,11 @@ use std::{
     time::Duration,
 };
 
-use open_bitcoin_node::{FjallNodeStore, ManagedNetworkHandle, PersistMode, RuntimeMetadata};
+use open_bitcoin_node::core::chainstate::{CoinsView, MemoryCoinsView};
+use open_bitcoin_node::{
+    ChainstateStore, FjallNodeStore, ManagedNetworkHandle, MemoryChainstateStore, PersistMode,
+    RuntimeMetadata,
+};
 
 use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
@@ -49,11 +53,11 @@ pub(crate) use inbound_wire::{
 pub use rescan::{WalletFreshnessKind, WalletFreshnessView, WalletRescanExecution};
 use wallet_state::WalletState;
 
-pub struct ManagedRpcContext {
+pub struct ManagedRpcContext<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView> {
     chain: AddressNetwork,
     consensus_params: ConsensusParams,
     verify_flags: ScriptVerifyFlags,
-    network: ManagedNetworkHandle,
+    network: ManagedNetworkHandle<S, V>,
     permission_classes: PeerPermissionClassRegistry,
     inbound_permission_validation_failures: u32,
     inbound_listener_config: InboundListenerConfig,
@@ -257,7 +261,9 @@ fn save_daemon_sync_metadata(
         .map_err(|error| DaemonSyncControlError::new(error.to_string()))
 }
 
-impl core::fmt::Debug for ManagedRpcContext {
+impl<S, V: open_bitcoin_node::core::chainstate::CoinsView> core::fmt::Debug
+    for ManagedRpcContext<S, V>
+{
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let wallet_mode = match &self.wallet_state {
             WalletState::Local(_) => "local",
@@ -288,7 +294,7 @@ impl core::fmt::Debug for ManagedRpcContext {
     }
 }
 
-impl ManagedRpcContext {
+impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
     #[cfg(test)]
     pub(crate) fn set_durable_block_source_for_test(
         &mut self,

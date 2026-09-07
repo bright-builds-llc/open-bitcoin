@@ -318,7 +318,7 @@ fn phase70_missing_undo_data_is_storage_blocker() {
 }
 
 #[test]
-fn phase70_malformed_stored_chainstate_is_storage_blocker() {
+fn phase70_malformed_leftover_chainstate_does_not_block_open() {
     // Arrange
     let path = temp_store_path("phase70-malformed-chainstate");
     remove_dir_if_exists(&path);
@@ -332,20 +332,11 @@ fn phase70_malformed_stored_chainstate_is_storage_blocker() {
         .expect("write malformed chainstate snapshot");
 
     // Act
-    let error = match DurableSyncRuntime::open(store, sync_config()) {
-        Ok(_) => panic!("malformed chainstate should block runtime open"),
-        Err(error) => error,
-    };
+    let runtime = DurableSyncRuntime::open(store, sync_config())
+        .expect("leftover snapshot is unread; malformed leftover must not block open");
 
     // Assert
-    assert!(matches!(
-        error,
-        SyncRuntimeError::Storage(StorageError::Corruption {
-            namespace: StorageNamespace::Chainstate,
-            action: StorageRecoveryAction::Repair,
-            ..
-        })
-    ));
+    assert_eq!(runtime.snapshot_summary().best_block_height, 0);
 
     remove_dir_if_exists(&path);
 }

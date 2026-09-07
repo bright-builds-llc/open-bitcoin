@@ -38,7 +38,9 @@ pub(in crate::network) enum LifecycleCommandResult {
     SnapshotEffectCompleted(EffectCompletion),
 }
 
-impl ManagedNetworkHandle {
+impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
+    ManagedNetworkHandle<S, V>
+{
     pub(super) fn apply_lifecycle_command(
         &self,
         command: LifecycleCommand,
@@ -116,8 +118,11 @@ const fn take_injected_checkpoint_completion_dispatch_failure() -> bool {
 }
 
 /// Dispatches one typed lifecycle command while the caller holds the sole authority guard.
-pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
-    network: &mut ManagedPeerNetwork<S>,
+pub(in crate::network) fn apply_lifecycle_command<
+    S: ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+>(
+    network: &mut ManagedPeerNetwork<S, V>,
     command: LifecycleCommand,
 ) -> Result<LifecycleCommandResult, LifecycleProjectionError> {
     match command {
@@ -222,8 +227,11 @@ pub(in crate::network) fn apply_lifecycle_command<S: ChainstateStore>(
     }
 }
 
-fn abort_checkpoint_snapshot_effect<S: ChainstateStore>(
-    network: &mut ManagedPeerNetwork<S>,
+fn abort_checkpoint_snapshot_effect<
+    S: ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+>(
+    network: &mut ManagedPeerNetwork<S, V>,
     abort_request: &SnapshotWriteAbort,
 ) -> Result<EffectAbort, LifecycleProjectionError> {
     let capability = abort_request.capability();
@@ -239,8 +247,11 @@ fn abort_checkpoint_snapshot_effect<S: ChainstateStore>(
     Ok(abort)
 }
 
-fn complete_checkpoint_snapshot_effect<S: ChainstateStore>(
-    network: &mut ManagedPeerNetwork<S>,
+fn complete_checkpoint_snapshot_effect<
+    S: ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+>(
+    network: &mut ManagedPeerNetwork<S, V>,
     receipt: &SnapshotWriteReceipt,
 ) -> Result<EffectCompletion, LifecycleProjectionError> {
     if receipt.completed_at().is_none() || receipt.persistence_strength().is_none() {
@@ -271,8 +282,8 @@ fn complete_checkpoint_snapshot_effect<S: ChainstateStore>(
     })
 }
 
-fn complete_peer_effect<S: ChainstateStore>(
-    network: &mut ManagedPeerNetwork<S>,
+fn complete_peer_effect<S: ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>(
+    network: &mut ManagedPeerNetwork<S, V>,
     receipt: PeerEffectReceipt,
     maybe_evidence: Option<PeerEmissionEvidence>,
 ) -> Result<EffectCompletion, LifecycleProjectionError> {
@@ -307,8 +318,11 @@ fn complete_peer_effect<S: ChainstateStore>(
     }
 }
 
-fn apply_fresh_tx_response_transport_written<S: ChainstateStore>(
-    network: &mut ManagedPeerNetwork<S>,
+fn apply_fresh_tx_response_transport_written<
+    S: ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+>(
+    network: &mut ManagedPeerNetwork<S, V>,
     maybe_evidence: Option<PeerEmissionEvidence>,
 ) {
     let Some(evidence) = maybe_evidence else {

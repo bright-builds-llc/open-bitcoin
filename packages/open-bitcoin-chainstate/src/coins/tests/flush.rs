@@ -723,22 +723,19 @@ fn managed_chainstate_persist_calls_decide_flush_and_does_not_write_snapshot() {
 }
 
 #[test]
-fn durable_sync_persist_progress_still_writes_snapshot_and_does_not_call_decide_flush() {
+fn durable_sync_persist_progress_does_not_write_snapshot() {
     // Arrange
     let persist_src = include_str!("../../../../open-bitcoin-node/src/sync/runtime_state.rs");
 
     // Act
-    let writes_snapshot = persist_src.contains("fn persist_progress")
-        && persist_src.contains("save_chainstate_snapshot");
-    let retargeted = persist_src.contains("decide_flush") || persist_src.contains("FlushMode");
+    let has_persist = persist_src.contains("fn persist_progress");
+    let leftover_write = persist_src.contains("save_chainstate_snapshot")
+        || persist_src.contains("seed_coins_from_snapshot");
 
     // Assert
+    assert!(has_persist, "DurableSyncRuntime must keep persist_progress");
     assert!(
-        writes_snapshot,
-        "DurableSyncRuntime::persist_progress must still write a chainstate snapshot"
-    );
-    assert!(
-        !retargeted,
-        "DurableSyncRuntime::persist_progress must not call decide_flush or mention FlushMode"
+        !leftover_write,
+        "DurableSyncRuntime::persist_progress must not write leftover snapshots"
     );
 }

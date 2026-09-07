@@ -25,6 +25,7 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
   "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs",
   "packages/open-bitcoin-node/src/sync.rs",
+  "packages/open-bitcoin-node/src/sync/open_runtime.rs",
   "packages/open-bitcoin-node/src/sync/block_response.rs",
   "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
   "packages/open-bitcoin-node/src/sync/session.rs",
@@ -159,6 +160,7 @@ function checkPostDurableTrigger(
   }
 
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  const openRuntime = texts.get("packages/open-bitcoin-node/src/sync/open_runtime.rs") ?? "";
   const persistAndDispatch = section(
     response,
     "pub(super) fn persist_progress_and_dispatch_tip(",
@@ -166,7 +168,7 @@ function checkPostDurableTrigger(
   );
   if (
     !sync.includes("pub struct DurableTipAdvanced") ||
-    !orderedFragments(sync, [
+    !orderedFragments(openRuntime, [
       "let outboxes = announcement_outboxes_for_sink.snapshots()?;",
       "announcement_network.prepare_block_announcements(event.block(), &outboxes)?;",
       "announcement_outboxes_for_sink.enqueue_prepared(&announcement_network, outcomes)",
@@ -316,8 +318,8 @@ function checkProductionWriteBoundaries(
     ) ?? "";
   const drain = section(
     inbound,
-    "async fn drain_inbound_announcements(",
-    "\nasync fn acknowledge_inbound_response_write(",
+    "async fn drain_inbound_announcements<",
+    "\nasync fn acknowledge_inbound_response_write<",
   );
   const executor = section(
     inbound,
@@ -326,8 +328,8 @@ function checkProductionWriteBoundaries(
   );
   const socketExecutor = section(
     inbound,
-    "impl InboundEmissionExecutor for SocketInboundEmissionExecutor",
-    "\n#[allow(clippy::too_many_arguments)]\nasync fn drain_inbound_announcements",
+    "InboundEmissionExecutor for SocketInboundEmissionExecutor",
+    "\n#[allow(clippy::too_many_arguments)]\nasync fn drain_inbound_announcements<",
   );
   if (
     !drain.includes("execute_inbound_emissions(emissions, peer_id, &mut executor).await") ||

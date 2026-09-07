@@ -136,13 +136,15 @@ impl MempoolCheckpointCoordinator {
     }
 
     /// Drives a periodic checkpoint, skipping clean generations.
-    pub fn periodic_tick<Now>(
+    pub fn periodic_tick<S, V, Now>(
         &self,
-        handle: &ManagedNetworkHandle,
+        handle: &ManagedNetworkHandle<S, V>,
         store: &FjallNodeStore,
         mut now: Now,
     ) -> Result<MempoolCheckpointOutcome, MempoolCheckpointError>
     where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
         Now: FnMut() -> PolicyTime,
     {
         self.run_with(
@@ -156,13 +158,15 @@ impl MempoolCheckpointCoordinator {
     }
 
     /// Forces shutdown checkpoint progress after mutation producers have quiesced.
-    pub fn settle_shutdown<Now>(
+    pub fn settle_shutdown<S, V, Now>(
         &self,
-        handle: &ManagedNetworkHandle,
+        handle: &ManagedNetworkHandle<S, V>,
         store: &FjallNodeStore,
         mut now: Now,
     ) -> Result<MempoolCheckpointOutcome, MempoolCheckpointError>
     where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
         Now: FnMut() -> PolicyTime,
     {
         let outcome = self.run_with(
@@ -185,14 +189,16 @@ impl MempoolCheckpointCoordinator {
         Ok(outcome)
     }
 
-    fn run_with<Now, Execute>(
+    fn run_with<S, V, Now, Execute>(
         &self,
-        handle: &ManagedNetworkHandle,
+        handle: &ManagedNetworkHandle<S, V>,
         trigger: CheckpointTrigger,
         now: &mut Now,
         execute: &mut Execute,
     ) -> Result<MempoolCheckpointOutcome, MempoolCheckpointError>
     where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
         Now: FnMut() -> PolicyTime,
         Execute: FnMut(
             PreparedSnapshotWrite,
@@ -292,11 +298,15 @@ impl MempoolCheckpointCoordinator {
         }
     }
 
-    fn abort_or_retain(
+    fn abort_or_retain<S, V>(
         &self,
-        handle: &ManagedNetworkHandle,
+        handle: &ManagedNetworkHandle<S, V>,
         abort: super::SnapshotWriteAbort,
-    ) -> Result<(), MempoolCheckpointError> {
+    ) -> Result<(), MempoolCheckpointError>
+    where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    {
         match handle.abort_snapshot_write(abort) {
             Ok(_) => Ok(()),
             Err(error) => {
@@ -319,11 +329,15 @@ impl MempoolCheckpointCoordinator {
         Ok(())
     }
 
-    fn complete_or_retain(
+    fn complete_or_retain<S, V>(
         &self,
-        handle: &ManagedNetworkHandle,
+        handle: &ManagedNetworkHandle<S, V>,
         receipt: SnapshotWriteReceipt,
-    ) -> Result<EffectCompletion, MempoolCheckpointError> {
+    ) -> Result<EffectCompletion, MempoolCheckpointError>
+    where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
+    {
         match handle.complete_snapshot_write(receipt) {
             Ok(completion) => Ok(completion),
             Err(error) => {

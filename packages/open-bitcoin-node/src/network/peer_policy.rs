@@ -11,10 +11,11 @@ use open_bitcoin_network::{
 };
 
 use crate::ChainstateStore;
+use open_bitcoin_core::chainstate::CoinsView;
 
 use super::{ManagedPeerNetwork, inbound::ManagedPeerPolicyInfo};
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn peer_policy_info(&self) -> ManagedPeerPolicyInfo {
         let eviction_candidate_count = self.peer_manager.eviction_candidate_inputs().len();
         let peer_policy_runtime_state = self.peer_manager.peer_policy_runtime_state();

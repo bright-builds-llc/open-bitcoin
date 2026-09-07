@@ -583,23 +583,15 @@ fn leftover_seed_then_spend_does_not_resurrect_spent_c_keys_on_hydrate() {
 }
 
 #[test]
-fn persist_progress_source_still_writes_leftover_snapshot() {
+fn persist_progress_source_does_not_write_leftover_snapshot() {
     // Arrange
     let runtime_state = include_str!("../../../sync/runtime_state.rs");
     let chainstate = include_str!("../../../chainstate.rs");
 
     // Act / Assert
-    assert!(runtime_state.contains("save_chainstate_snapshot"));
+    assert!(runtime_state.contains("fn persist_progress"));
+    assert!(!runtime_state.contains("save_chainstate_snapshot"));
+    assert!(!runtime_state.contains("seed_coins_from_snapshot"));
     assert!(chainstate.contains("self.flush_lifecycle.execute_flush"));
     assert!(!chainstate.contains("save_snapshot(self.chainstate.snapshot())"));
-    let seed_at = runtime_state
-        .find("seed_coins_from_snapshot")
-        .expect("persist seeds coins");
-    let leftover_at = runtime_state
-        .find("save_chainstate_snapshot")
-        .expect("persist writes leftover");
-    assert!(
-        seed_at < leftover_at,
-        "persist_progress must seed coins before leftover"
-    );
 }

@@ -12,6 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags, block_hash};
 use open_bitcoin_network::{
     CompactDownloadCleanupCause, DisconnectReason, InventoryList, MisbehaviorDecision,
@@ -41,7 +42,7 @@ pub(super) fn process_transaction_relay_action(
     })
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn receive_message_for_durable_serving(
         &mut self,
         peer_id: PeerId,

@@ -221,7 +221,7 @@ export function checkPhase134AuthoritativeLifecycle(
   const authority = get(FILES.authority);
   addFailure(
     failures,
-    authority.split("authority: Arc<Mutex<AuthoritativeNetwork>>").length - 1 !==
+    authority.split("authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>").length - 1 !==
       1 ||
       /shadow_(?:mempool|unbroadcast|lifecycle_generation)/.test(network),
     DIAGNOSTICS.authority,

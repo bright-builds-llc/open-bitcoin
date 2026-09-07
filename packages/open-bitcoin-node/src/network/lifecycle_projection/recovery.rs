@@ -11,6 +11,7 @@ use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::primitives::{Transaction, Txid, Wtxid};
 use open_bitcoin_mempool::{Mempool, MempoolMemberIdentity, PolicyTime};
 use open_bitcoin_network::{
@@ -96,8 +97,8 @@ pub(in crate::network) struct PreparedRecoveryProjection {
 }
 
 impl PreparedRecoveryProjection {
-    pub(super) fn prepare<S: ChainstateStore>(
-        network: &ManagedPeerNetwork<S>,
+    pub(super) fn prepare<S: ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>(
+        network: &ManagedPeerNetwork<S, V>,
         prepared: PreparedMempoolRecovery,
     ) -> Result<Self, RecoveryInstallError> {
         #[cfg(test)]
@@ -212,7 +213,7 @@ impl PreparedRecoveryProjection {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     fn is_fresh_for_recovery_install(&self) -> bool {
         let peer = self.peer_manager.mempool_lifecycle_snapshot();
         self.mempool.mempool().entries().is_empty()

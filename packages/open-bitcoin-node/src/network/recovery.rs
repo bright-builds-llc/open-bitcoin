@@ -12,6 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
     consensus::{ConsensusParams, ScriptVerifyFlags},
@@ -107,7 +108,7 @@ impl From<&ManagedMempoolRecoverySummary> for RelayRecoveryCounters {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     #[allow(dead_code)] // Installed by the atomic startup cutover in Plan 135-03.
     pub(crate) fn prepare_mempool_recovery_at(
         &self,
@@ -118,7 +119,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
     ) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
         prepare_mempool_recovery_from_inputs(
             snapshot,
-            &self.chainstate.chainstate().snapshot(),
+            &self.chainstate.export_chainstate_snapshot(),
             verify_flags,
             consensus_params,
             self.mempool.mempool().config().clone(),

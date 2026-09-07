@@ -30,6 +30,7 @@ use crate::{
         InboundResourceGovernanceEvent,
     },
 };
+use open_bitcoin_core::chainstate::CoinsView;
 
 use super::{ManagedNetworkError, ManagedPeerNetwork};
 
@@ -516,7 +517,7 @@ impl ManagedInboundAdmissionInfo {
     }
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     #[rustfmt::skip]
     pub fn inbound_admission_info(&self) -> &ManagedInboundAdmissionInfo { &self.inbound_admission_info }
 

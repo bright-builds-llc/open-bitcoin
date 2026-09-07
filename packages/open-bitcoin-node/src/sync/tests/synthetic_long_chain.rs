@@ -87,6 +87,7 @@ fn phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network
     let metrics_retention = MetricRetentionPolicy::default();
     let log_retention = LogRetentionPolicy::default();
     let log_status = load_log_status(&log_dir, LogRetentionPolicy::default(), 10);
+    flush_coins_always(&runtime);
     drop(runtime);
 
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");

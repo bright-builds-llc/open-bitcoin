@@ -37,6 +37,9 @@ pub trait CoinsView {
         writes: CoinsBatch,
         maybe_best_block: Option<BlockHash>,
     ) -> Result<(), ChainstateError>;
+    fn collect_unspent_hint(&self) -> HashMap<OutPoint, Coin> {
+        HashMap::new()
+    }
 }
 
 pub struct CoinsBatch {

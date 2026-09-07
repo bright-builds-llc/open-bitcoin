@@ -65,10 +65,14 @@ impl CoinsFlushWorker {
     }
 }
 
-pub(super) fn start_coins_flush_worker(
-    handle: ManagedNetworkHandle,
+pub(super) fn start_coins_flush_worker<S, V>(
+    handle: ManagedNetworkHandle<S, V>,
     maybe_store: Option<FjallNodeStore>,
-) -> Option<CoinsFlushWorker> {
+) -> Option<CoinsFlushWorker>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let store = maybe_store?;
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
     let join_handle = thread::spawn(move || {
@@ -97,11 +101,13 @@ pub(super) fn resample_periodic_next_write(now: u64) -> Result<FlushPolicyTime, 
     ))
 }
 
-fn coins_flush_worker_loop<Wait>(
-    handle: ManagedNetworkHandle,
+fn coins_flush_worker_loop<S, V, Wait>(
+    handle: ManagedNetworkHandle<S, V>,
     mut wait: Wait,
 ) -> Result<(), CoinsFlushError>
 where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
     Wait: FnMut(Duration) -> CheckpointWait,
 {
     loop {
@@ -112,21 +118,33 @@ where
     }
 }
 
-fn drive_periodic(handle: &ManagedNetworkHandle) {
+fn drive_periodic<S, V>(handle: &ManagedNetworkHandle<S, V>)
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     match flush_now(handle, FlushMode::Periodic) {
         Ok(execution) => resample_after_periodic_write(handle, execution),
         Err(error) => eprintln!("open-bitcoind periodic coins flush failed: {error}"),
     }
 }
 
-fn drive_always(handle: &ManagedNetworkHandle) -> Result<(), CoinsFlushError> {
+fn drive_always<S, V>(handle: &ManagedNetworkHandle<S, V>) -> Result<(), CoinsFlushError>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     flush_now(handle, FlushMode::Always).map(|_| ())
 }
 
-fn flush_now(
-    handle: &ManagedNetworkHandle,
+fn flush_now<S, V>(
+    handle: &ManagedNetworkHandle<S, V>,
     mode: FlushMode,
-) -> Result<FlushExecution, CoinsFlushError> {
+) -> Result<FlushExecution, CoinsFlushError>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let now = current_flush_policy_time();
     let disk_free_bytes = probe_disk_free_bytes(std::path::Path::new("."));
     handle
@@ -134,7 +152,13 @@ fn flush_now(
         .map_err(CoinsFlushError::from)
 }
 
-fn resample_after_periodic_write(handle: &ManagedNetworkHandle, execution: FlushExecution) {
+fn resample_after_periodic_write<S, V>(
+    handle: &ManagedNetworkHandle<S, V>,
+    execution: FlushExecution,
+) where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     if !execution.wrote_coins {
         return;
     }

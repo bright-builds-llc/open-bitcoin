@@ -42,9 +42,13 @@ const UNSUPPORTED_MAX_FEE_RATE_MESSAGE: &str =
 const UNSUPPORTED_MAX_BURN_AMOUNT_MESSAGE: &str =
     "sendrawtransaction maxburnamount enforcement is not supported in Phase 8; omit maxburnamount";
 
-pub(super) fn get_blockchain_info(
-    context: &ManagedRpcContext,
-) -> Result<GetBlockchainInfoResponse, RpcFailure> {
+pub(super) fn get_blockchain_info<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<GetBlockchainInfoResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let maybe_durable_sync_state = context
         .current_durable_sync_state()
         .map_err(|_| RpcFailure::client_not_connected("durable sync metadata unavailable"))?;
@@ -69,10 +73,14 @@ pub(super) fn get_blockchain_info(
     })
 }
 
-fn durable_blockchain_info(
-    context: &ManagedRpcContext,
+fn durable_blockchain_info<S, V>(
+    context: &ManagedRpcContext<S, V>,
     durable_sync_state: &open_bitcoin_node::DurableSyncState,
-) -> Result<GetBlockchainInfoResponse, RpcFailure> {
+) -> Result<GetBlockchainInfoResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let maybe_tip = context
         .maybe_chain_tip()
         .map_err(network_authority_error_to_failure)?;
@@ -101,9 +109,13 @@ fn durable_blockchain_info(
     })
 }
 
-pub(super) fn get_mempool_info(
-    context: &ManagedRpcContext,
-) -> Result<GetMempoolInfoResponse, RpcFailure> {
+pub(super) fn get_mempool_info<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<GetMempoolInfoResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let info = context
         .mempool_info()
         .map_err(network_authority_error_to_failure)?;
@@ -187,9 +199,13 @@ fn u64_to_u32(value: u64) -> u32 {
     u32::try_from(value).unwrap_or(u32::MAX)
 }
 
-pub(super) fn get_network_info(
-    context: &ManagedRpcContext,
-) -> Result<GetNetworkInfoResponse, RpcFailure> {
+pub(super) fn get_network_info<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<GetNetworkInfoResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let snapshot = context
         .authoritative_operator_snapshot()
         .map_err(network_authority_error_to_failure)?;
@@ -210,9 +226,13 @@ pub(super) fn get_network_info(
     })
 }
 
-pub(super) fn open_bitcoin_network_status(
-    context: &ManagedRpcContext,
-) -> Result<OpenBitcoinNetworkStatusResponse, RpcFailure> {
+pub(super) fn open_bitcoin_network_status<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<OpenBitcoinNetworkStatusResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     /* Phase 116 compatibility anchor for the replaced direct projection:
     block_relay_evidence_status()
             .map_err(network_authority_error_to_failure)? */
@@ -245,21 +265,33 @@ pub(super) fn open_bitcoin_network_status(
     })
 }
 
-pub(super) fn open_bitcoin_sync_status(
-    context: &ManagedRpcContext,
-) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+pub(super) fn open_bitcoin_sync_status<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     open_bitcoin_sync_response(context.daemon_sync_status()?)
 }
 
-pub(super) fn open_bitcoin_sync_pause(
-    context: &ManagedRpcContext,
-) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+pub(super) fn open_bitcoin_sync_pause<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     open_bitcoin_sync_response(context.daemon_sync_pause()?)
 }
 
-pub(super) fn open_bitcoin_sync_resume(
-    context: &ManagedRpcContext,
-) -> Result<OpenBitcoinSyncControlResponse, RpcFailure> {
+pub(super) fn open_bitcoin_sync_resume<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<OpenBitcoinSyncControlResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     open_bitcoin_sync_response(context.daemon_sync_resume()?)
 }
 
@@ -269,10 +301,14 @@ fn open_bitcoin_sync_response(
     Ok(OpenBitcoinSyncControlResponse { metadata })
 }
 
-pub(super) fn derive_addresses(
-    context: &ManagedRpcContext,
+pub(super) fn derive_addresses<S, V>(
+    context: &ManagedRpcContext<S, V>,
     request: DeriveAddressesRequest,
-) -> Result<DeriveAddressesResponse, RpcFailure> {
+) -> Result<DeriveAddressesResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let descriptor = SingleKeyDescriptor::parse(&request.descriptor, context.chain())
         .map_err(wallet_error_to_failure)?;
     let address = descriptor
@@ -283,10 +319,14 @@ pub(super) fn derive_addresses(
     })
 }
 
-pub(super) fn send_raw_transaction(
-    context: &mut ManagedRpcContext,
+pub(super) fn send_raw_transaction<S, V>(
+    context: &mut ManagedRpcContext<S, V>,
     request: SendRawTransactionRequest,
-) -> Result<SendRawTransactionResponse, RpcFailure> {
+) -> Result<SendRawTransactionResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     if request.maybe_max_fee_rate_sat_per_kvb.is_some() {
         return Err(RpcFailure::invalid_params(UNSUPPORTED_MAX_FEE_RATE_MESSAGE));
     }

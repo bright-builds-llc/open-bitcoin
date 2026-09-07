@@ -1280,6 +1280,7 @@
       "label": "node-chainstate-adapter",
       "files": [
         "packages/open-bitcoin-node/src/chainstate.rs",
+        "packages/open-bitcoin-node/src/chainstate/fjall_store.rs",
         "packages/open-bitcoin-node/src/chainstate/tests.rs",
         "packages/open-bitcoin-node/src/chainstate/replay.rs",
         "packages/open-bitcoin-node/src/chainstate/replay/tests.rs",
@@ -1450,6 +1451,7 @@
       "label": "node-network-adapter",
       "files": [
         "packages/open-bitcoin-node/src/network.rs",
+        "packages/open-bitcoin-node/src/network/peer_network_clone.rs",
         "packages/open-bitcoin-node/src/network/action_translation.rs",
         "packages/open-bitcoin-node/src/network/operator_snapshot.rs",
         "packages/open-bitcoin-node/src/network/admission_bridge.rs",
@@ -1580,6 +1582,7 @@
       "label": "node-network-runtime-authority",
       "files": [
         "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/error.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/local_package.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/recovery.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/tests.rs"
@@ -1592,6 +1595,7 @@
       "label": "node-sync-runtime",
       "files": [
         "packages/open-bitcoin-node/src/sync.rs",
+        "packages/open-bitcoin-node/src/sync/open_runtime.rs",
         "packages/open-bitcoin-node/src/sync/block_response.rs",
         "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
         "packages/open-bitcoin-node/src/sync/progress.rs",
@@ -2080,6 +2084,7 @@
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_startup.rs",
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/runtime_control.rs",
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
@@ -2100,6 +2105,7 @@
         "packages/open-bitcoin-rpc/src/envelope/tests.rs",
         "packages/open-bitcoin-rpc/src/error.rs",
         "packages/open-bitcoin-rpc/src/http.rs",
+        "packages/open-bitcoin-rpc/src/http/request.rs",
         "packages/open-bitcoin-rpc/src/http/tests.rs",
         "packages/open-bitcoin-rpc/src/method.rs",
         "packages/open-bitcoin-rpc/src/method/tests.rs",

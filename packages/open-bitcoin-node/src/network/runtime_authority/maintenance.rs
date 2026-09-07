@@ -22,9 +22,10 @@ use super::{
         PeerEmission,
         lifecycle_projection::{LifecycleCommand, PeerRelayPreparationRequest},
     },
-    AuthoritativeNetwork, LifecycleCommandResult, ManagedNetworkAuthorityError,
-    ManagedNetworkHandle, apply_lifecycle_command,
+    LifecycleCommandResult, ManagedNetworkAuthorityError, ManagedNetworkHandle,
+    apply_lifecycle_command,
 };
+use crate::network::ManagedPeerNetwork;
 
 /// Outcome of one receive-independent maintenance tick.
 #[derive(Debug)]
@@ -58,7 +59,9 @@ impl fmt::Display for MaintenanceTickError {
 
 impl std::error::Error for MaintenanceTickError {}
 
-impl ManagedNetworkHandle {
+impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
+    ManagedNetworkHandle<S, V>
+{
     /// Issues one process-global initial-broadcast retry tick.
     ///
     /// This is initial-broadcast retry for the local unbroadcast set; it is not
@@ -118,8 +121,11 @@ impl ManagedNetworkHandle {
     }
 }
 
-fn apply_maintenance_tick(
-    network: &mut AuthoritativeNetwork,
+fn apply_maintenance_tick<
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+>(
+    network: &mut ManagedPeerNetwork<S, V>,
     context: RetryDecisionContext,
 ) -> Result<MaintenanceTickOutcome, ManagedNetworkAuthorityError> {
     let Some(next_due) = next_retry_due_unix_seconds(context) else {
@@ -166,8 +172,11 @@ fn apply_maintenance_tick(
     })
 }
 
-fn drain_tx_fanout_emissions_locked(
-    network: &mut AuthoritativeNetwork,
+fn drain_tx_fanout_emissions_locked<
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+>(
+    network: &mut ManagedPeerNetwork<S, V>,
     now_unix_seconds: i64,
 ) -> Result<Vec<PeerEmission>, ManagedNetworkAuthorityError> {
     let drained = network.drain_relay_fanout(now_unix_seconds);
@@ -201,8 +210,8 @@ fn drain_tx_fanout_emissions_locked(
     Ok(emissions)
 }
 
-fn member_for_inventory(
-    network: &AuthoritativeNetwork,
+fn member_for_inventory<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>(
+    network: &ManagedPeerNetwork<S, V>,
     message: &WireNetworkMessage,
 ) -> Option<MempoolMemberIdentity> {
     let WireNetworkMessage::Inv(list) = message else {

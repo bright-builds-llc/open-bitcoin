@@ -128,12 +128,12 @@ fn phase69_post_catch_up_new_headers_connect_and_report_stay_current_progress() 
         .expect("load runtime metadata")
         .expect("runtime metadata");
     let state = metadata.maybe_sync_state.expect("persisted sync state");
-    let snapshot = runtime
-        .store()
-        .load_chainstate_snapshot()
-        .expect("load chainstate snapshot")
-        .expect("chainstate snapshot");
-    let active_tip = snapshot.active_chain.last().expect("active tip");
+    flush_coins_always(&runtime);
+    let active_tip = runtime
+        .network_handle()
+        .maybe_chain_tip()
+        .expect("live tip")
+        .expect("active tip after flush");
 
     // Assert
     assert_eq!(summary.headers_received, 1);

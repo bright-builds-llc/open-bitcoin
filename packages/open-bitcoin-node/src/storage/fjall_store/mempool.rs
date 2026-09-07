@@ -256,13 +256,15 @@ impl FjallNodeStore {
     ///
     /// Encoding or save failure aborts the exact pre-achievement reservation.
     /// Only a successful save converts the capability into an achieved receipt.
-    pub fn execute_prepared_mempool_snapshot_write<Now>(
+    pub fn execute_prepared_mempool_snapshot_write<S, V, Now>(
         &self,
-        handle: &ManagedNetworkHandle,
+        handle: &ManagedNetworkHandle<S, V>,
         prepared: PreparedSnapshotWrite,
         now: Now,
     ) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>
     where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
         Now: FnMut() -> PolicyTime,
     {
         execute_prepared_mempool_snapshot_write_with(
@@ -275,14 +277,16 @@ impl FjallNodeStore {
     }
 
     #[cfg(test)]
-    pub(crate) fn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(
-        handle: &ManagedNetworkHandle,
+    pub(crate) fn execute_prepared_mempool_snapshot_write_with<S, V, Encode, Save, Now>(
+        handle: &ManagedNetworkHandle<S, V>,
         prepared: PreparedSnapshotWrite,
         encode: Encode,
         save: Save,
         now: Now,
     ) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>
     where
+        S: crate::ChainstateStore,
+        V: open_bitcoin_core::chainstate::CoinsView,
         Encode: FnOnce(&MempoolSnapshot) -> Result<Vec<u8>, StorageError>,
         Save: FnOnce(Vec<u8>, PersistMode) -> Result<(), StorageError>,
         Now: FnMut() -> PolicyTime,
@@ -361,14 +365,16 @@ fn resource_bound_failure() -> StorageError {
     }
 }
 
-fn execute_prepared_mempool_snapshot_write_with<Encode, Save, Now>(
-    handle: &ManagedNetworkHandle,
+fn execute_prepared_mempool_snapshot_write_with<S, V, Encode, Save, Now>(
+    handle: &ManagedNetworkHandle<S, V>,
     prepared: PreparedSnapshotWrite,
     encode: Encode,
     save: Save,
     mut now: Now,
 ) -> Result<SnapshotWriteReceipt, SnapshotWriteExecutionError>
 where
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
     Encode: FnOnce(&MempoolSnapshot) -> Result<Vec<u8>, StorageError>,
     Save: FnOnce(Vec<u8>, PersistMode) -> Result<(), StorageError>,
     Now: FnMut() -> PolicyTime,
@@ -399,13 +405,17 @@ where
     Ok(capability.acknowledge_write(now(), CheckpointPersistenceStrength::Sync))
 }
 
-fn abort_failed_write(
-    handle: &ManagedNetworkHandle,
+fn abort_failed_write<S, V>(
+    handle: &ManagedNetworkHandle<S, V>,
     capability: SnapshotWriteCapability,
     storage_error: StorageError,
     failed_at: PolicyTime,
     failure: SnapshotWriteFailure,
-) -> SnapshotWriteExecutionError {
+) -> SnapshotWriteExecutionError
+where
+    S: crate::ChainstateStore,
+    V: open_bitcoin_core::chainstate::CoinsView,
+{
     let abort = match SnapshotWriteAbort::new(capability, failed_at, failure) {
         Ok(abort) => abort,
         Err(source) => {

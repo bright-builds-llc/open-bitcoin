@@ -100,6 +100,14 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
             .is_some()
     );
 
+    runtime
+        .network_handle()
+        .flush_coins(
+            open_bitcoin_node::core::chainstate::FlushMode::Always,
+            open_bitcoin_node::core::chainstate::FlushPolicyTime::from_unix_seconds(0),
+            u64::MAX,
+        )
+        .expect("phase 127 coins B should flush before restart");
     drop(pre_sync_context);
     drop(runtime);
     drop(store);

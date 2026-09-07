@@ -145,7 +145,7 @@ function contractMutations(): Mutation[] {
     store: "packages/open-bitcoin-node/src/storage/fjall_store/mempool.rs",
     fjall: "packages/open-bitcoin-node/src/storage/fjall_store.rs",
     chainstateTypes: "packages/open-bitcoin-chainstate/src/types.rs",
-    syncRuntime: "packages/open-bitcoin-node/src/sync.rs",
+    syncRuntime: "packages/open-bitcoin-node/src/sync/open_runtime.rs",
     startup: "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
     startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
     daemonCheckpoint:
@@ -364,12 +364,12 @@ function contractMutations(): Mutation[] {
       ),
     ],
     [
-      "authoritative runtime bypasses coins hydrate",
+      "authoritative runtime bypasses initialize cache attach",
       PHASE135_DIAGNOSTICS.startup,
       replace(
         files.syncRuntime,
-        "hydrate_chainstate_for_open()?",
-        "load_chainstate_snapshot()?",
+        "Chainstate::from_coins_cache",
+        "Chainstate::from_snapshot",
       ),
     ],
     [

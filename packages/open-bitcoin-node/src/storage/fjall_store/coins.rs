@@ -33,6 +33,20 @@ const UNDO_KEY_PREFIX: &str = "undo:";
 const CHAIN_META_KEY: &str = "chain_meta";
 
 impl FjallNodeStore {
+    pub fn save_chain_meta(
+        &self,
+        active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        let meta_bytes = encode_chain_meta(active_chain, None)?;
+        self.put_bytes(
+            StorageNamespace::Chainstate,
+            CHAIN_META_KEY,
+            meta_bytes,
+            mode,
+        )
+    }
+
     pub fn save_undo(
         &self,
         block_hash: BlockHash,
@@ -308,7 +322,9 @@ impl FjallNodeStore {
         Ok(utxos)
     }
 
-    fn load_all_undo_records(&self) -> Result<HashMap<BlockHash, BlockUndo>, StorageError> {
+    pub(crate) fn load_all_undo_records(
+        &self,
+    ) -> Result<HashMap<BlockHash, BlockUndo>, StorageError> {
         let mut undo_by_block = HashMap::new();
         for guard in self.chainstate.prefix(UNDO_KEY_PREFIX) {
             let (key_bytes, value_bytes) = guard
@@ -320,6 +336,13 @@ impl FjallNodeStore {
             undo_by_block.insert(block_hash, decode_block_undo(value_bytes.as_ref())?);
         }
         Ok(undo_by_block)
+    }
+
+    pub(crate) fn load_chain_meta_for_open(&self) -> Result<HydratedChainMeta, StorageError> {
+        if let Some(bytes) = self.get_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY)? {
+            return decode_chain_meta(&bytes);
+        }
+        Ok((Vec::new(), Some(HashMap::new())))
     }
 
     fn load_hydrate_chain_meta(&self) -> Result<HydratedChainMeta, StorageError> {

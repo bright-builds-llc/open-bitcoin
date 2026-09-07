@@ -144,6 +144,52 @@ impl<V: CoinsView> Chainstate<V> {
         }
     }
 
+    pub fn from_coins_cache(
+        coins: CoinsCache<V>,
+        active_chain: Vec<ChainPosition>,
+        undo_by_block: HashMap<BlockHash, BlockUndo>,
+        maybe_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
+    ) -> Self {
+        Self {
+            active_chain,
+            coins,
+            undo_by_block,
+            maybe_confirmed_txid_counts,
+        }
+    }
+
+    pub fn active_chain(&self) -> &[ChainPosition] {
+        &self.active_chain
+    }
+
+    pub fn undo_by_block(&self) -> &HashMap<BlockHash, BlockUndo> {
+        &self.undo_by_block
+    }
+
+    pub fn admission_snapshot(&self) -> ChainstateSnapshot {
+        let mut snapshot = ChainstateSnapshot::new(
+            self.active_chain.clone(),
+            self.coins.collect_admission_unspent(),
+            self.undo_by_block.clone(),
+        );
+        snapshot.maybe_confirmed_txid_counts = self.maybe_confirmed_txid_counts.clone();
+        snapshot
+    }
+
+    pub fn overlay_snapshot(&self) -> ChainstateSnapshot {
+        let mut snapshot = ChainstateSnapshot::new(
+            self.active_chain.clone(),
+            self.coins.collect_overlay_unspent(),
+            self.undo_by_block.clone(),
+        );
+        snapshot.maybe_confirmed_txid_counts = self.maybe_confirmed_txid_counts.clone();
+        snapshot
+    }
+
+    pub fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
+        self.coins.get_coin(outpoint)
+    }
+
     pub fn coins(&self) -> &CoinsCache<V> {
         &self.coins
     }

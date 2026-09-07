@@ -8,6 +8,7 @@
 
 use std::collections::BTreeSet;
 
+use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::consensus::{transaction_txid, transaction_wtxid};
 use open_bitcoin_mempool::MempoolMemberIdentity;
 use open_bitcoin_network::PeerTransactionIdentity;
@@ -62,7 +63,7 @@ pub(in crate::network) struct ExactLifecycleProjectionMismatches {
     pub(in crate::network) unbroadcast: BTreeSet<MempoolMemberIdentity>,
 }
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     /// Explicit audit/startup oracle. It never mutates or repairs lifecycle state.
     pub(in crate::network) fn reconcile_lifecycle_projection(
         &self,

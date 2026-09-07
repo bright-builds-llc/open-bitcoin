@@ -138,3 +138,14 @@ pub(super) fn load_structured_log_records(log_dir: &Path) -> Vec<StructuredLogRe
     }
     records
 }
+
+pub(super) fn flush_coins_always(runtime: &DurableSyncRuntime) {
+    runtime
+        .network_handle()
+        .flush_coins(
+            open_bitcoin_core::chainstate::FlushMode::Always,
+            open_bitcoin_core::chainstate::FlushPolicyTime::from_unix_seconds(0),
+            u64::MAX,
+        )
+        .expect("always flush coins B");
+}

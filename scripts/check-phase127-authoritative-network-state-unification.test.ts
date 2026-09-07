@@ -55,11 +55,11 @@ test("fails_when_production_constructs_a_duplicate_network_authority", () => {
       replace(
         files,
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-        "open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?;",
+        "match open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?",
         [
-          "open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?;",
-          "    let _duplicate =",
-          "        open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?;",
+          "let _duplicate =",
+          "            open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?;",
+          "        match open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?",
         ].join("\n"),
       );
     },

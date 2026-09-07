@@ -412,6 +412,18 @@ impl<V: CoinsView> CoinsCache<V> {
             self.overlay.maybe_best_block = Some(best_block);
         }
     }
+
+    pub fn collect_overlay_unspent(&self) -> HashMap<OutPoint, Coin> {
+        let mut coins = HashMap::new();
+        self.overlay.overlay_unspent_into(&mut coins);
+        coins
+    }
+
+    pub fn collect_admission_unspent(&self) -> HashMap<OutPoint, Coin> {
+        let mut coins = self.parent.collect_unspent_hint();
+        self.overlay.overlay_unspent_into(&mut coins);
+        coins
+    }
 }
 
 impl CoinsCache<crate::MemoryCoinsView> {

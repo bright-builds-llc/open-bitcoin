@@ -67,8 +67,9 @@ fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
         ..RuntimeConfig::default()
     };
     let store = FjallNodeStore::open(&data_dir).expect("authoritative store");
-    let authoritative_runtime =
-        open_authoritative_network_runtime(&runtime, Some(store)).expect("authoritative runtime");
+    let authoritative_runtime = open_authoritative_network_runtime(&runtime, Some(store))
+        .expect("authoritative runtime")
+        .expect_durable();
 
     // Act
     let preflight =
@@ -110,7 +111,8 @@ fn authoritative_daemon_runtime_migrates_legacy_confirmation_evidence_before_pub
 
     // Act
     let authoritative = open_authoritative_network_runtime(&runtime, Some(store.clone()))
-        .expect("authoritative runtime");
+        .expect("authoritative runtime")
+        .expect_durable();
     let migrated = authoritative
         .network
         .chainstate_snapshot()
@@ -130,7 +132,7 @@ fn authoritative_daemon_runtime_migrates_legacy_confirmation_evidence_before_pub
 }
 
 #[test]
-fn authoritative_daemon_runtime_rejects_legacy_chainstate_with_missing_block() {
+fn authoritative_daemon_runtime_ignores_leftover_chainstate_with_missing_block() {
     // Arrange
     let data_dir = temp_store_path("legacy-confirmation-missing-block");
     remove_dir_if_exists(&data_dir);
@@ -140,25 +142,29 @@ fn authoritative_daemon_runtime_rejects_legacy_chainstate_with_missing_block() {
             &legacy_daemon_chainstate(&daemon_migration_block()),
             PersistMode::Sync,
         )
-        .expect("save legacy chainstate");
+        .expect("save leftover chainstate");
     let runtime = RuntimeConfig {
         maybe_data_dir: Some(data_dir.clone()),
         ..RuntimeConfig::default()
     };
 
     // Act
-    let error = match open_authoritative_network_runtime(&runtime, Some(store)) {
-        Ok(_) => panic!("missing active-chain block must prevent handle publication"),
-        Err(error) => error,
-    };
+    let authoritative = open_authoritative_network_runtime(&runtime, Some(store.clone()))
+        .expect("unread leftover snapshot must not block open")
+        .expect_durable();
+    let snapshot = authoritative
+        .network
+        .chainstate_snapshot()
+        .expect("authoritative chainstate");
 
     // Assert
-    // Schema 2 leftover plus empty coins fails closed on hydrate; leftover
-    // confirmation migration no longer runs on DurableSyncRuntime::open.
+    // Leftover snapshot files stay unread; empty coins B is live truth.
+    assert!(snapshot.active_chain.is_empty());
     assert!(
-        error
-            .to_string()
-            .contains("leftover snapshot with empty coins")
+        store
+            .load_chainstate_snapshot()
+            .expect("leftover file remains readable")
+            .is_some()
     );
     remove_dir_if_exists(&data_dir);
 }
@@ -174,7 +180,8 @@ fn authoritative_network_daemon_composition_shares_runtime_handle_with_rpc() {
     };
     let store = FjallNodeStore::open(&data_dir).expect("authoritative store");
     let authoritative_runtime = open_authoritative_network_runtime(&runtime, Some(store.clone()))
-        .expect("authoritative runtime");
+        .expect("authoritative runtime")
+        .expect_durable();
     let sync_network = authoritative_runtime.network.clone();
     let context = ManagedRpcContext::from_runtime_config_with_network_handle(
         &runtime,
@@ -193,7 +200,9 @@ fn authoritative_network_daemon_composition_shares_runtime_handle_with_rpc() {
     assert_eq!(network_info.outbound_peers, 1);
     let daemon_source = include_str!("../../open-bitcoind.rs");
     assert!(!daemon_source.contains("ManagedPeerNetwork::"));
-    assert!(!daemon_source.contains("MemoryChainstateStore::"));
+    assert!(daemon_source.contains("OpenedAuthoritativeRuntime::Durable"));
+    assert!(daemon_source.contains("OpenedAuthoritativeRuntime::Transient"));
+    assert!(!daemon_source.contains("MemoryChainstateStore::default"));
     assert_eq!(
         daemon_source
             .matches("ManagedRpcContext::from_runtime_config_with_network_handle(")

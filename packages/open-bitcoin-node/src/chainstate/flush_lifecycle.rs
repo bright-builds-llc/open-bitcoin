@@ -9,7 +9,7 @@ use std::path::Path;
 
 use open_bitcoin_core::{
     chainstate::{
-        BlockUndo, ChainstateError, CoinsCache, CoinsView, FlushDecision, FlushMode,
+        BlockUndo, ChainPosition, ChainstateError, CoinsCache, CoinsView, FlushDecision, FlushMode,
         FlushPolicyInput, FlushPolicyTime, RecoveryDecision, decide_flush, decide_recovery,
     },
     primitives::{Block, BlockHash},
@@ -71,6 +71,7 @@ pub trait FlushPersistSink {
     fn persist_block(&mut self, block: &Block) -> Result<(), StorageError>;
     fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError>;
     fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError>;
+    fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError>;
 }
 
 impl FlushPersistSink for FjallNodeStore {
@@ -87,6 +88,10 @@ impl FlushPersistSink for FjallNodeStore {
             return Ok(());
         }
         FjallNodeStore::save_header_entries(self, entries, PersistMode::Flush)
+    }
+
+    fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError> {
+        FjallNodeStore::save_chain_meta(self, active_chain, PersistMode::Flush)
     }
 }
 
@@ -156,6 +161,7 @@ impl FlushLifecycle {
         undo_window: &[(BlockHash, BlockUndo)],
         header_entries: &[HeaderEntry],
         block_payloads: &[Block],
+        active_chain: &[ChainPosition],
     ) -> Result<FlushExecution, StorageError> {
         if self.readiness != ManagerReadiness::ReadyToFlush {
             return Err(coins_corruption("flush before ready"));
@@ -187,6 +193,7 @@ impl FlushLifecycle {
             CoinsWriteKind::Flush => cache.flush().map_err(map_chainstate)?,
             CoinsWriteKind::Sync => cache.sync().map_err(map_chainstate)?,
         }
+        sink.persist_chain_meta(active_chain)?;
         Ok(FlushExecution {
             decision,
             wrote_coins: true,

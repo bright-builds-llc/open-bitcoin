@@ -69,6 +69,13 @@ impl FlushPersistSink for SucceedingSink {
     ) -> Result<(), StorageError> {
         Ok(())
     }
+
+    fn persist_chain_meta(
+        &mut self,
+        _active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+    ) -> Result<(), StorageError> {
+        Ok(())
+    }
 }
 
 fn sample_coin() -> Coin {
@@ -130,6 +137,7 @@ fn execute_flush_maps_coins_write_errors() {
                 FlushMode::Always,
                 FlushPolicyTime::from_unix_seconds(1),
                 u64::MAX,
+                &[],
                 &[],
                 &[],
                 &[],

@@ -25,11 +25,12 @@ use crate::status::{
     checkpoint_group_from_evidence, decay_half_life_label, recovery_group_from_summary,
     retry_group_from_relay,
 };
+use open_bitcoin_core::chainstate::CoinsView;
 
 /// Periodic checkpoint interval used to derive overdue and loss-bound facts.
 const OPERATOR_CHECKPOINT_INTERVAL_SECONDS: u64 = 300;
 
-impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn operator_snapshot(&self) -> ManagedNetworkOperatorSnapshot {
         let block_relay = self.block_relay_runtime_evidence_snapshot();
         let mempool = self.mempool_info();

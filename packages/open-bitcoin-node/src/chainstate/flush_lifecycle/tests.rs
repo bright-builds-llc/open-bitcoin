@@ -167,6 +167,13 @@ impl FlushPersistSink for SucceedingSink {
     fn persist_header_entries(&mut self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
         Ok(())
     }
+
+    fn persist_chain_meta(
+        &mut self,
+        _active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+    ) -> Result<(), StorageError> {
+        Ok(())
+    }
 }
 
 struct UndoFailingSink;
@@ -185,6 +192,13 @@ impl FlushPersistSink for UndoFailingSink {
     }
 
     fn persist_header_entries(&mut self, _entries: &[HeaderEntry]) -> Result<(), StorageError> {
+        Ok(())
+    }
+
+    fn persist_chain_meta(
+        &mut self,
+        _active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+    ) -> Result<(), StorageError> {
         Ok(())
     }
 }
@@ -359,6 +373,7 @@ fn execute_flush_none_does_not_write_coins() {
             &[],
             &[],
             &[],
+            &[],
         )
         .expect("none flush");
 
@@ -387,6 +402,7 @@ fn execute_flush_aborts_coins_when_undo_save_fails() {
             policy_now(),
             u64::MAX,
             &[(undo_hash, BlockUndo::default())],
+            &[],
             &[],
             &[],
         ),
@@ -426,6 +442,7 @@ fn execute_flush_always_uses_cache_flush_kind_from_decide_flush() {
             &[],
             &[],
             &[],
+            &[],
         )
         .expect("always flush");
 
@@ -453,6 +470,7 @@ fn execute_flush_before_ready_does_not_write() {
             FlushMode::Always,
             policy_now(),
             u64::MAX,
+            &[],
             &[],
             &[],
             &[],
@@ -490,6 +508,7 @@ fn execute_flush_refuse_disk_space_does_not_write_coins() {
             FlushMode::Always,
             policy_now(),
             0,
+            &[],
             &[],
             &[],
             &[],
@@ -600,6 +619,7 @@ fn execute_flush_periodic_due_uses_sync_from_decide_flush() {
             FlushMode::Periodic,
             FlushPolicyTime::from_unix_seconds(2),
             u64::MAX,
+            &[],
             &[],
             &[],
             &[],

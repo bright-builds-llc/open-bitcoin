@@ -49,6 +49,10 @@ impl CoinsView for MemoryCoinsView {
         Ok(self.maybe_best_block)
     }
 
+    fn collect_unspent_hint(&self) -> HashMap<OutPoint, Coin> {
+        self.unspent_coins()
+    }
+
     fn head_blocks(&self) -> Result<Vec<BlockHash>, ChainstateError> {
         Ok(Vec::new())
     }

@@ -166,9 +166,20 @@ impl ManagedRpcContext {
         })
     }
 
+    pub fn for_local_operator(network: AddressNetwork) -> Self {
+        Self::from_runtime_config(&RuntimeConfig {
+            chain: network,
+            ..RuntimeConfig::default()
+        })
+    }
+}
+
+impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
+    ManagedRpcContext<S, V>
+{
     pub fn from_runtime_config_with_network_handle(
         config: &RuntimeConfig,
-        network: ManagedNetworkHandle,
+        network: ManagedNetworkHandle<S, V>,
         maybe_store: Option<FjallNodeStore>,
     ) -> Result<Self, ManagedNetworkAuthorityError> {
         network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
@@ -214,13 +225,6 @@ impl ManagedRpcContext {
             maybe_runtime_metadata_source: effective_store,
             maybe_daemon_sync_control: None,
             wallet_state,
-        })
-    }
-
-    pub fn for_local_operator(network: AddressNetwork) -> Self {
-        Self::from_runtime_config(&RuntimeConfig {
-            chain: network,
-            ..RuntimeConfig::default()
         })
     }
 
