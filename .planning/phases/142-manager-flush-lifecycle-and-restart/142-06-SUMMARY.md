@@ -58,7 +58,7 @@ patterns-established:
   - "Pattern 2: Restart and credit follow durable coins B; leftover files may remain unread"
   - "Pattern 3: FjallCoinsView.collect_unspent_hint scans coins B so admission snapshots see parent UTXOs"
 
-requirements-completed: []
+requirements-completed: [MGR-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 142-2026-09-06T16-23-52

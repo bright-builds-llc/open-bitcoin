@@ -48,7 +48,7 @@ patterns-established:
   - "Pattern 1: Apply-only spend/add overwrite replays interrupted H; missing body/undo fail-closes without dropping H"
   - "Pattern 2: Marker finish uses PersistMode::Sync through batch_write_with_persist_mode, not the Flush default"
 
-requirements-completed: []
+requirements-completed: [FLUSH-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 142-2026-09-06T16-23-52

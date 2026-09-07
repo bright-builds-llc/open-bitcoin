@@ -49,7 +49,7 @@ patterns-established:
   - "Pattern 1: persist() always calls self.flush_lifecycle.execute_flush(IfNeeded) with coins_mut() and a defined flush window"
   - "Pattern 2: Daemon Periodic/Always use handle.flush_coins and set_coins_next_write; Always precedes the clean marker"
 
-requirements-completed: []
+requirements-completed: [MGR-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 142-2026-09-06T16-23-52

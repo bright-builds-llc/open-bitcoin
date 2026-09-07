@@ -164,9 +164,9 @@ Plans:
 | MGR-03 | Phase 140 | Pending |
 | COIN-01 | Phase 141 | Pending |
 | CSOBS-03 | Phase 141 | Pending |
-| MGR-01 | Phase 142 | Pending |
-| MGR-02 | Phase 142 | Pending |
-| FLUSH-02 | Phase 142 | Pending |
+| MGR-01 | Phase 142 | Complete |
+| MGR-02 | Phase 142 | Complete |
+| FLUSH-02 | Phase 142 | Complete |
 | HAVL-01 | Phase 143 | Pending |
 | HAVL-02 | Phase 143 | Pending |
 | HAVL-03 | Phase 143 | Pending |
@@ -195,7 +195,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
-| 142. Manager Flush Lifecycle and Restart | 6/6 | Complete   | 2026-09-07 |
+| 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |

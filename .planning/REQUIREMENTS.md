@@ -16,12 +16,12 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 ### Flush Policy and Recovery
 
 - [x] **FLUSH-01**: Node flushes coins using IfNeeded, Periodic, and Always policy, including disk-space refusal, from injected cache, time, and disk facts.
-- [ ] **FLUSH-02**: A mid-flush crash is recovered by interrupted-flush replay using stored undo and block bodies, or fails closed without inventing a consistent tip.
+- [x] **FLUSH-02**: A mid-flush crash is recovered by interrupted-flush replay using stored undo and block bodies, or fails closed without inventing a consistent tip.
 
 ### Chainstate Manager
 
-- [ ] **MGR-01**: One manager owns coins-database init, health-check, cache init, and CanFlush-style readiness for the single active chainstate.
-- [ ] **MGR-02**: After restart, tip and UTXO view come from durable coins best-block, not a leftover snapshot blob.
+- [x] **MGR-01**: One manager owns coins-database init, health-check, cache init, and CanFlush-style readiness for the single active chainstate.
+- [x] **MGR-02**: After restart, tip and UTXO view come from durable coins best-block, not a leftover snapshot blob.
 - [ ] **MGR-03**: Flush and recovery decisions are a typed pure-core state machine; adapters perform I/O.
 
 ### Honest Availability
@@ -89,9 +89,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MGR-03 | Phase 140 | Pending |
 | COIN-01 | Phase 141 | Complete |
 | CSOBS-03 | Phase 141 | Complete |
-| MGR-01 | Phase 142 | Pending |
-| MGR-02 | Phase 142 | Pending |
-| FLUSH-02 | Phase 142 | Pending |
+| MGR-01 | Phase 142 | Complete |
+| MGR-02 | Phase 142 | Complete |
+| FLUSH-02 | Phase 142 | Complete |
 | HAVL-01 | Phase 143 | Pending |
 | HAVL-02 | Phase 143 | Pending |
 | HAVL-03 | Phase 143 | Pending |
