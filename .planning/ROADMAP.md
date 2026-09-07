@@ -46,7 +46,7 @@ v2.3 Chainstate Durability and Historical Serving is planned across Phases 139�
 - [x] **Phase 139: Coins-View, Cache Contract, and Engine Apply** — Overlay a typed DIRTY/FRESH coins cache so connect and disconnect stop cloning or rewriting the whole UTXO set. (completed 2026-08-31)
 - [x] **Phase 140: Pure Flush Policy and Typed Decisions** — Decide IfNeeded, Periodic, Always, and disk-space refusal from injected facts in an I/O-free state machine. (completed 2026-09-02)
 - [x] **Phase 141: Durable Fjall Coins Adapter** — Persist per-outpoint coins, best-block, and interrupted-flush markers; fail closed on coins disk-read errors. (completed 2026-09-04)
-- [ ] **Phase 142: Manager Flush Lifecycle and Restart** — One manager owns coins init, ordered flush, interrupted-flush recovery, and restart from coins best-block.
+- [x] **Phase 142: Manager Flush Lifecycle and Restart** — One manager owns coins init, ordered flush, interrupted-flush recovery, and restart from coins best-block. (completed 2026-09-07)
 - [ ] **Phase 143: Honest Stored-Block Availability** — Serve or report Available only when payload bytes are present; refuse cleanly when they are not.
 - [ ] **Phase 144: Operator Flush and Availability Evidence** — Expose sanitized flush, recovery, cache-size, and have-bytes vs do-not facts on operator surfaces.
 - [ ] **Phase 145: Parity Roots and No-Claim Guardrails** — Cite Knots coins/flush/manager/serve-path anchors and keep deferred claims out of v2.3.
@@ -121,7 +121,7 @@ Plans:
 - [x] 142-03-PLAN.md — Interrupted-flush apply-only replay
 - [x] 142-04-PLAN.md — CanFlush owner and ordered flush
 - [x] 142-05-PLAN.md — IfNeeded / Periodic / Always call sites
-- [ ] 142-06-PLAN.md — Restart from coins best-block and persist-progress cutover
+- [x] 142-06-PLAN.md — Restart from coins best-block and persist-progress cutover
 
 ### Phase 143: Honest Stored-Block Availability
 **Goal**: The node serves or reports a stored block only when the payload bytes are present and refuses cleanly when they are not.
@@ -195,7 +195,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 139. Coins-View, Cache Contract, and Engine Apply | 4/4 | Complete    | 2026-08-31 |
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
-| 142. Manager Flush Lifecycle and Restart | 5/6 | In Progress|  |
+| 142. Manager Flush Lifecycle and Restart | 6/6 | Complete   | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |

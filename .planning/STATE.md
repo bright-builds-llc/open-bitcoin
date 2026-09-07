@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: executing
-stopped_at: Completed 142-05-PLAN.md
-last_updated: "2026-09-06T22:36:47.590Z"
-last_activity: 2026-09-06
+status: verifying
+stopped_at: Completed 142-06-PLAN.md
+last_updated: "2026-09-07T01:35:30.640Z"
+last_activity: 2026-09-07
 progress:
   total_phases: 7
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 17
-  completed_plans: 16
-  percent: 94
+  completed_plans: 17
+  percent: 100
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 142 (Manager Flush Lifecycle and Restart) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-09-06
+Status: Phase complete — ready for verification
+Last activity: 2026-09-07
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
@@ -127,6 +127,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 142 P03 | 53 | 2 tasks | 8 files |
 | Phase 142-manager-flush-lifecycle-and-restart P04 | 43 | 2 tasks | 6 files |
 | Phase 142 P05 | 60min | 2 tasks | 16 files |
+| Phase 142 P06 | 120min | 2 tasks | 104 files |
 
 ## Accumulated Context
 
@@ -384,6 +385,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 142]: FlushLifecycle is a required ManagedChainstate field; persist() always execute_flush(IfNeeded) — Plan revision forbids Option gating and when-installed hedges.
 - [Phase 142]: Periodic/Always go through ManagedNetworkHandle; the worker does not own a second lifecycle — Same ownership pattern as checkpoint.rs.
 - [Phase 142]: Leave MGR-01 Pending until persist_progress cutover and lifecycle-valid phase verification — persist_progress leftover snapshot writes remain for Plan 06.
+- [Phase 142]: Open attaches initialize cache and lifecycle; leftover snapshot UTXOs stay unread — MGR-02 and D-13 require restart from coins B, not leftover hydrate
+- [Phase 142]: persist_progress writes headers and runtime only; credit requires coins B == claimed tip — D-17 cutover: leftover snapshot is no longer live UTXO truth
+- [Phase 142]: Flush persist_chain_meta after coins write; do not clobber the fork-aware header index — Reopen hydrates active_chain from chain_meta; active-chain-only header persist wiped competing branches
+- [Phase 142]: Leave MGR-01 Pending; this plan completes MGR-02 only — Plan frontmatter requirements are MGR-02; manager CanFlush verification remains later
 
 ### Pending Todos
 
@@ -407,6 +412,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-06T22:36:47.586Z
-Stopped at: Completed 142-05-PLAN.md
+Last session: 2026-09-07T01:35:30.637Z
+Stopped at: Completed 142-06-PLAN.md
 Resume file: None
