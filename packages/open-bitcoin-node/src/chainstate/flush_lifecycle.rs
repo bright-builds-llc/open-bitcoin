@@ -72,6 +72,9 @@ pub trait FlushPersistSink {
     fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError>;
     fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError>;
     fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError>;
+    fn disk_free_bytes(&self) -> u64 {
+        u64::MAX
+    }
 }
 
 impl FlushPersistSink for FjallNodeStore {
@@ -92,6 +95,10 @@ impl FlushPersistSink for FjallNodeStore {
 
     fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError> {
         FjallNodeStore::save_chain_meta(self, active_chain, PersistMode::Flush)
+    }
+
+    fn disk_free_bytes(&self) -> u64 {
+        probe_disk_free_bytes(self.datadir())
     }
 }
 
@@ -230,12 +237,11 @@ impl FlushLifecycle {
 
 /// Available bytes for the datadir filesystem. Callers may also inject a fact.
 ///
-/// This crate forbids `unsafe_code`, so unix `libc::statvfs` cannot live here.
-/// Production `execute_flush` injects `disk_free_bytes` (D-04). Non-unix and
-/// unprobed paths report `u64::MAX`.
+/// Uses `fs4` so this crate can stay `forbid(unsafe_code)`. Probe failure
+/// reports `0` so the disk-space guard can refuse writes. Keep `u64::MAX`
+/// only for explicit unprobed test paths via `FlushPersistSink::disk_free_bytes`.
 pub fn probe_disk_free_bytes(datadir: &Path) -> u64 {
-    let _ = datadir;
-    u64::MAX
+    fs4::available_space(datadir).unwrap_or(0)
 }
 
 fn apply_recovery_decision(

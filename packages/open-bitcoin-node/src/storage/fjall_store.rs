@@ -3,7 +3,7 @@
 
 //! Fjall-backed durable storage adapter for node-owned runtime state.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode as FjallPersistMode};
 use open_bitcoin_core::{
@@ -48,6 +48,7 @@ const SELECTED_WALLET_KEY: &str = "selected_wallet";
 /// Durable node storage backed by one fjall database and namespace keyspaces.
 #[derive(Clone)]
 pub struct FjallNodeStore {
+    path: PathBuf,
     db: Database,
     headers: Keyspace,
     block_index: Keyspace,
@@ -68,6 +69,7 @@ impl FjallNodeStore {
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
 
         let store = Self {
+            path: path.as_ref().to_path_buf(),
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
             chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,
@@ -82,6 +84,11 @@ impl FjallNodeStore {
         store.ensure_schema()?;
 
         Ok(store)
+    }
+
+    /// Filesystem root used when opening this store.
+    pub fn datadir(&self) -> &Path {
+        &self.path
     }
 
     /// Persist a complete chainstate snapshot.
@@ -522,6 +529,7 @@ impl FjallNodeStore {
             .open()
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
         Ok(Self {
+            path: path.as_ref().to_path_buf(),
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
             chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,

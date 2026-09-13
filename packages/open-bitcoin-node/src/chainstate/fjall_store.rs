@@ -99,6 +99,10 @@ impl FlushPersistSink for FjallChainstateStore {
     ) -> Result<(), StorageError> {
         FlushPersistSink::persist_chain_meta(&mut self.store, active_chain)
     }
+
+    fn disk_free_bytes(&self) -> u64 {
+        FlushPersistSink::disk_free_bytes(&self.store)
+    }
 }
 
 fn map_fjall(error: StorageError) -> ChainstateError {

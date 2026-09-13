@@ -594,8 +594,19 @@ fn fjall_store_implements_flush_persist_sink() {
 
 #[test]
 fn probe_disk_free_bytes_is_defined() {
-    // Arrange / Act / Assert
-    assert_eq!(probe_disk_free_bytes(Path::new("/")), u64::MAX);
+    // Arrange / Act
+    let root_free = probe_disk_free_bytes(Path::new("/"));
+    let missing_free = probe_disk_free_bytes(Path::new(
+        "/open-bitcoin-missing-datadir-for-disk-probe-142",
+    ));
+
+    // Assert
+    assert_ne!(
+        root_free,
+        u64::MAX,
+        "production probe must not stub available space as u64::MAX"
+    );
+    assert_eq!(missing_free, 0);
 }
 
 #[test]
