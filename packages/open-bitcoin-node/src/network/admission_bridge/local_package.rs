@@ -38,7 +38,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     relay_intent,
                 ),
             },
-            &self.chainstate_snapshot(),
+            &self.chainstate_snapshot()?,
             verify_flags,
             consensus_params,
         )?;
@@ -55,7 +55,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         relay_intent: RelayIntent,
     ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
         let package = WellFormedPackage::try_from(transactions)?;
-        let chainstate = self.chainstate_snapshot();
+        let chainstate = self.chainstate_snapshot()?;
         let submission = SubmissionPackage::try_from_package(package, &chainstate)?;
         let prepared = self.mempool.prepare_package(
             SubmitPackageCommand {

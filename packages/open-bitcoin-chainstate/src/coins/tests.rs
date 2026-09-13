@@ -670,7 +670,7 @@ fn default_collect_unspent_hint_is_empty() {
     let view = HintlessView;
 
     // Act
-    let hint = CoinsView::collect_unspent_hint(&view);
+    let hint = CoinsView::collect_unspent_hint(&view).expect("default hint");
 
     // Assert
     assert!(hint.is_empty());
@@ -686,7 +686,7 @@ fn memory_collect_unspent_hint_returns_unspent_coins() {
     let view = MemoryCoinsView::from_coins(coins, None);
 
     // Act
-    let hint = CoinsView::collect_unspent_hint(&view);
+    let hint = CoinsView::collect_unspent_hint(&view).expect("memory hint");
 
     // Assert
     assert_eq!(hint.get(&outpoint), Some(&coin));
@@ -709,7 +709,7 @@ fn cache_admission_unspent_merges_parent_hint_with_overlay() {
     cache.insert_entry_for_test(parent_outpoint.clone(), CoinsCacheEntry::spent_dirty());
 
     // Act
-    let admission = cache.collect_admission_unspent();
+    let admission = cache.collect_admission_unspent().expect("admission hint");
     let overlay = cache.collect_overlay_unspent();
 
     // Assert
@@ -739,7 +739,7 @@ fn from_coins_cache_exposes_admission_and_overlay_snapshots() {
         Some(HashMap::new()),
     );
     let maybe_found = chainstate.get_coin(&outpoint).expect("lookup");
-    let admission = chainstate.admission_snapshot();
+    let admission = chainstate.admission_snapshot().expect("admission snapshot");
     let overlay = chainstate.overlay_snapshot();
     let overlay_count = chainstate.coins().cache_entry_count();
     let live_count = chainstate.coins_mut().cache_entry_count();

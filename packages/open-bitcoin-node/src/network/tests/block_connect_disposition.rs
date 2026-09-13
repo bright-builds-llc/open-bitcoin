@@ -84,7 +84,14 @@ fn connect_stored_block_returns_duplicate_disposition() {
 
     // Assert
     assert_eq!(disposition, BlockConnectDisposition::Duplicate(child_hash));
-    assert_eq!(network.chainstate_snapshot().active_chain.len(), 2);
+    assert_eq!(
+        network
+            .chainstate_snapshot()
+            .expect("chainstate snapshot")
+            .active_chain
+            .len(),
+        2
+    );
     assert_eq!(network.maybe_chain_tip().expect("tip").height, 1);
 }
 

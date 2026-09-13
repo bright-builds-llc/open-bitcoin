@@ -272,15 +272,13 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         suppressed: bool,
         durable_availability: bool,
     ) -> ManagedBlockServeInput {
-        let snapshot = self.chainstate.export_chainstate_snapshot();
-        let maybe_active_index = snapshot
-            .active_chain
+        let active_chain = self.chainstate.chainstate().active_chain();
+        let maybe_active_index = active_chain
             .iter()
             .position(|position| position.block_hash == block_hash);
         let has_local_data = self.blocks_by_hash.contains_key(&block_hash);
         let is_active = maybe_active_index.is_some();
-        let is_tip =
-            maybe_active_index.is_some_and(|index| index + 1 == snapshot.active_chain.len());
+        let is_tip = maybe_active_index.is_some_and(|index| index + 1 == active_chain.len());
         let chain_position = if is_active {
             BlockServingChainPosition::Active
         } else if has_local_data {

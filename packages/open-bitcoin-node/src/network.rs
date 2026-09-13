@@ -191,8 +191,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     #[rustfmt::skip]
     pub fn best_chain_entries(&self) -> Vec<HeaderEntry> { self.peer_manager.header_store().best_chain_entries() }
 
-    pub fn chainstate_snapshot(&self) -> ChainstateSnapshot {
-        self.chainstate.export_chainstate_snapshot()
+    pub fn chainstate_snapshot(&self) -> Result<ChainstateSnapshot, ManagedNetworkError> {
+        self.chainstate
+            .export_chainstate_snapshot()
+            .map_err(ManagedNetworkError::Chainstate)
     }
 
     #[rustfmt::skip]

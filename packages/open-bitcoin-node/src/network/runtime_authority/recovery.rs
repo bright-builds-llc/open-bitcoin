@@ -22,12 +22,12 @@ impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
         consensus_params: ConsensusParams,
         startup_at: PolicyTime,
     ) -> Result<PreparedMempoolRecovery, ManagedNetworkAuthorityError> {
-        let (chainstate, config, authority_epoch) = self.read(|network| {
-            (
-                network.chainstate_snapshot(),
+        let (chainstate, config, authority_epoch) = self.try_read(|network| {
+            Ok((
+                network.chainstate_snapshot()?,
                 network.mempool().mempool().config().clone(),
                 network.authority_epoch(),
-            )
+            ))
         })?;
         crate::network::recovery::prepare_mempool_recovery_from_inputs(
             snapshot,

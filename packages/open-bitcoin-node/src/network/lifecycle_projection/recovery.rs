@@ -106,7 +106,12 @@ impl PreparedRecoveryProjection {
         if prepared.authority_epoch != network.authority_epoch {
             return Err(RecoveryInstallError::StaleAuthorityEpoch);
         }
-        if prepared.maybe_chainstate_tip != network.chainstate_snapshot().tip().cloned() {
+        let snapshot_tip = network
+            .chainstate_snapshot()
+            .map_err(|_| RecoveryInstallError::StaleChainstate)?
+            .tip()
+            .cloned();
+        if prepared.maybe_chainstate_tip != snapshot_tip {
             return Err(RecoveryInstallError::StaleChainstate);
         }
 

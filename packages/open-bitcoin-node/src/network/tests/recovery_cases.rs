@@ -160,7 +160,9 @@ fn staged_recovery_classifies_later_capacity_trim_from_final_membership() {
     measuring_pool
         .accept_transaction_transition_with_context(
             lower_fee.clone(),
-            &measurement_network.chainstate_snapshot(),
+            &measurement_network
+                .chainstate_snapshot()
+                .expect("chainstate snapshot"),
             verify_flags(),
             consensus_params(),
             AdmissionContext::recovery(MempoolEntryMetadata::legacy_unknown()),

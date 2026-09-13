@@ -232,7 +232,11 @@ fn disconnect_cleanup_clears_volatile_compact_state_only() {
     start_shared_compact_on_peer(&mut network, peer_id, payload, 2_000);
     assert_in_flight(&network, peer_id, announced_hash);
     let tip_before = network.maybe_chain_tip().expect("tip before disconnect");
-    let chain_len_before = network.chainstate_snapshot().active_chain.len();
+    let chain_len_before = network
+        .chainstate_snapshot()
+        .expect("chainstate snapshot")
+        .active_chain
+        .len();
     let durable_blocks_before = network.blocks_by_hash.len();
     let spendable_hash = block_hash(&spendable.header);
     assert!(network.blocks_by_hash.contains_key(&spendable_hash));
@@ -257,7 +261,11 @@ fn disconnect_cleanup_clears_volatile_compact_state_only() {
         tip_before.block_hash
     );
     assert_eq!(
-        network.chainstate_snapshot().active_chain.len(),
+        network
+            .chainstate_snapshot()
+            .expect("chainstate snapshot")
+            .active_chain
+            .len(),
         chain_len_before
     );
     assert_eq!(network.blocks_by_hash.len(), durable_blocks_before);
@@ -277,7 +285,11 @@ fn timeout_cleanup_leaves_durable_store_unchanged() {
     start_shared_compact_on_peer(&mut network, peer_id, payload, 3_000);
     assert_in_flight(&network, peer_id, announced_hash);
     let tip_before = network.maybe_chain_tip().expect("tip before timeout");
-    let chain_len_before = network.chainstate_snapshot().active_chain.len();
+    let chain_len_before = network
+        .chainstate_snapshot()
+        .expect("chainstate snapshot")
+        .active_chain
+        .len();
     let durable_blocks_before = network.blocks_by_hash.len();
 
     // Act
@@ -295,7 +307,11 @@ fn timeout_cleanup_leaves_durable_store_unchanged() {
         tip_before.block_hash
     );
     assert_eq!(
-        network.chainstate_snapshot().active_chain.len(),
+        network
+            .chainstate_snapshot()
+            .expect("chainstate snapshot")
+            .active_chain
+            .len(),
         chain_len_before
     );
     assert_eq!(network.blocks_by_hash.len(), durable_blocks_before);
@@ -314,7 +330,11 @@ fn reorg_restart_cleanup_clears_only_volatile_in_flight() {
     start_shared_compact_on_peer(&mut network, peer_id, payload, 4_000);
     assert_in_flight(&network, peer_id, announced_hash);
     let tip_before = network.maybe_chain_tip().expect("tip before reorg cleanup");
-    let chain_len_before = network.chainstate_snapshot().active_chain.len();
+    let chain_len_before = network
+        .chainstate_snapshot()
+        .expect("chainstate snapshot")
+        .active_chain
+        .len();
     let durable_blocks_before = network.blocks_by_hash.len();
     let spendable_hash = block_hash(&spendable.header);
 
@@ -356,7 +376,11 @@ fn reorg_restart_cleanup_clears_only_volatile_in_flight() {
         tip_before.block_hash
     );
     assert_eq!(
-        network.chainstate_snapshot().active_chain.len(),
+        network
+            .chainstate_snapshot()
+            .expect("chainstate snapshot")
+            .active_chain
+            .len(),
         chain_len_before
     );
     assert_eq!(network.blocks_by_hash.len(), durable_blocks_before);

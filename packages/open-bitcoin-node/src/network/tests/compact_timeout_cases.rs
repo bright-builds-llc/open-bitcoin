@@ -327,7 +327,11 @@ fn compact_timeout_cleanup_leaves_durable_chainstate_unchanged() {
     let start_time = 4_000;
     let _block_hash = start_in_flight_compact_download(&mut network, peer_id, start_time);
     let tip_before = network.maybe_chain_tip().expect("tip before timeout");
-    let chain_len_before = network.chainstate_snapshot().active_chain.len();
+    let chain_len_before = network
+        .chainstate_snapshot()
+        .expect("chainstate snapshot")
+        .active_chain
+        .len();
     let durable_blocks_before = network.blocks_by_hash.len();
 
     // Act
@@ -340,7 +344,11 @@ fn compact_timeout_cleanup_leaves_durable_chainstate_unchanged() {
     assert_eq!(tip_after.block_hash, tip_before.block_hash);
     assert_eq!(tip_after.height, tip_before.height);
     assert_eq!(
-        network.chainstate_snapshot().active_chain.len(),
+        network
+            .chainstate_snapshot()
+            .expect("chainstate snapshot")
+            .active_chain
+            .len(),
         chain_len_before
     );
     assert_eq!(network.blocks_by_hash.len(), durable_blocks_before);

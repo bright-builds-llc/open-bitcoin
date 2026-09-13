@@ -119,7 +119,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     ) -> Result<PreparedMempoolRecovery, ManagedNetworkError> {
         prepare_mempool_recovery_from_inputs(
             snapshot,
-            &self.chainstate.export_chainstate_snapshot(),
+            &self.chainstate.export_chainstate_snapshot()?,
             verify_flags,
             consensus_params,
             self.mempool.mempool().config().clone(),

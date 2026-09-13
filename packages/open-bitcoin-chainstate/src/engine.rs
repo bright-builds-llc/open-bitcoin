@@ -166,14 +166,14 @@ impl<V: CoinsView> Chainstate<V> {
         &self.undo_by_block
     }
 
-    pub fn admission_snapshot(&self) -> ChainstateSnapshot {
+    pub fn admission_snapshot(&self) -> Result<ChainstateSnapshot, ChainstateError> {
         let mut snapshot = ChainstateSnapshot::new(
             self.active_chain.clone(),
-            self.coins.collect_admission_unspent(),
+            self.coins.collect_admission_unspent()?,
             self.undo_by_block.clone(),
         );
         snapshot.maybe_confirmed_txid_counts = self.maybe_confirmed_txid_counts.clone();
-        snapshot
+        Ok(snapshot)
     }
 
     pub fn overlay_snapshot(&self) -> ChainstateSnapshot {

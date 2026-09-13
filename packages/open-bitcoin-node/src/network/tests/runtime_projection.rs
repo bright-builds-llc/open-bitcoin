@@ -138,7 +138,7 @@ fn managed_network_info_exposes_rpc_projection_helpers() {
         .expect("submit");
 
     // Act
-    let snapshot = network.chainstate_snapshot();
+    let snapshot = network.chainstate_snapshot().expect("chainstate snapshot");
     let maybe_tip = network.maybe_chain_tip();
     let mempool_info = network.mempool_info();
     let network_info = network.network_info();

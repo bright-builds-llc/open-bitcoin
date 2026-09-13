@@ -70,7 +70,7 @@ impl ManagedMempool {
     ) -> Result<PreparedMempoolTransition, MempoolError> {
         self.mempool.prepare_transaction_with_context(
             transaction,
-            &chainstate.export_chainstate_snapshot(),
+            &admission_chainstate_snapshot(chainstate)?,
             verify_flags,
             consensus_params,
             context,
@@ -188,7 +188,7 @@ impl ManagedMempool {
     ) -> Result<AdmissionResult, MempoolError> {
         self.mempool.accept_transaction_with_context(
             transaction,
-            &chainstate.export_chainstate_snapshot(),
+            &admission_chainstate_snapshot(chainstate)?,
             verify_flags,
             consensus_params,
             context,
@@ -209,7 +209,7 @@ impl ManagedMempool {
     ) -> Result<MempoolTransition, MempoolError> {
         self.mempool.accept_transaction_transition_with_context(
             transaction,
-            &chainstate.export_chainstate_snapshot(),
+            &admission_chainstate_snapshot(chainstate)?,
             verify_flags,
             consensus_params,
             context,
@@ -261,6 +261,16 @@ impl ManagedMempool {
             consensus_params,
         )
     }
+}
+
+fn admission_chainstate_snapshot<S, V: open_bitcoin_core::chainstate::CoinsView>(
+    chainstate: &ManagedChainstate<S, V>,
+) -> Result<ChainstateSnapshot, MempoolError> {
+    chainstate
+        .export_chainstate_snapshot()
+        .map_err(|error| MempoolError::InternalInvariant {
+            reason: error.to_string(),
+        })
 }
 
 #[cfg(test)]

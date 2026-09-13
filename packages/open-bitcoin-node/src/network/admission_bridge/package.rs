@@ -189,7 +189,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
-        let chainstate = self.chainstate.export_chainstate_snapshot();
+        let chainstate = self.chainstate.export_chainstate_snapshot()?;
         let package = WellFormedPackage::try_from(vec![transaction])?;
         let submission = SubmissionPackage::try_from_package(package, &chainstate)?;
         let prepared = self.mempool.prepare_package(
@@ -249,7 +249,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         );
         while let Some(candidate) = maybe_candidate {
             let (members, origins, provenances) = candidate.into_ordered_parts_with_provenance();
-            let chainstate = self.chainstate.export_chainstate_snapshot();
+            let chainstate = self.chainstate.export_chainstate_snapshot()?;
             let checked = WellFormedPackage::try_from(Vec::from(members.clone()))?;
             let fingerprint = *checked.fingerprint().as_bytes();
             if self
@@ -332,7 +332,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<SubmittedPackageResult, ManagedNetworkError> {
-        let chainstate = self.chainstate.export_chainstate_snapshot();
+        let chainstate = self.chainstate.export_chainstate_snapshot()?;
         let checked = WellFormedPackage::try_from(Vec::from(members))?;
         let package = SubmissionPackage::try_from_package(checked, &chainstate)?;
         self.submit_package_through_lifecycle(

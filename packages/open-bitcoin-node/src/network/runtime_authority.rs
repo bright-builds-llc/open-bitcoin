@@ -128,7 +128,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     }
 
     pub fn chainstate_snapshot(&self) -> Result<ChainstateSnapshot, ManagedNetworkAuthorityError> {
-        self.read(ManagedPeerNetwork::chainstate_snapshot)
+        self.try_read(ManagedPeerNetwork::chainstate_snapshot)
     }
 
     pub fn maybe_chain_tip(&self) -> Result<Option<ChainPosition>, ManagedNetworkAuthorityError> {
