@@ -105,6 +105,16 @@ impl FjallCoinsView {
         )
     }
 
+    #[cfg(test)]
+    pub fn batch_write_replay_with_limit(
+        &mut self,
+        writes: CoinsBatch,
+        maybe_best_block: Option<BlockHash>,
+        cap_bytes: usize,
+    ) -> Result<(), ChainstateError> {
+        self.batch_write_capped(writes, maybe_best_block, PersistMode::Sync, cap_bytes, true)
+    }
+
     pub fn batch_write_with_persist_mode(
         &mut self,
         writes: CoinsBatch,
@@ -137,6 +147,18 @@ impl FjallCoinsView {
 
     fn coins_contains(&self, key: &[u8]) -> Result<bool, StorageError> {
         self.coins.contains_key(key).map_err(coins_backend_failure)
+    }
+
+    fn old_tip_for_heads(&self) -> Result<BlockHash, StorageError> {
+        match self.coins_get(&encode_best_block_key())? {
+            Some(bytes) => decode_best_block_value(&bytes),
+            None => match self.classify_markers()? {
+                MarkerState::Interrupted { old, .. } => Ok(old),
+                MarkerState::Empty | MarkerState::Consistent { .. } => {
+                    Ok(BlockHash::from_byte_array([0_u8; 32]))
+                }
+            },
+        }
     }
 
     fn classify_markers(&self) -> Result<MarkerState, StorageError> {
@@ -193,13 +215,7 @@ impl FjallCoinsView {
             });
         };
 
-        let old_tip = match self
-            .coins_get(&encode_best_block_key())
-            .map_err(map_storage)?
-        {
-            Some(bytes) => decode_best_block_value(&bytes).map_err(map_storage)?,
-            None => BlockHash::from_byte_array([0_u8; 32]),
-        };
+        let old_tip = self.old_tip_for_heads().map_err(map_storage)?;
 
         let best_key = encode_best_block_key();
         let heads_key = encode_head_blocks_key();
@@ -314,21 +330,32 @@ impl CoinsView for FjallCoinsView {
         )
     }
 
-    fn collect_unspent_hint(&self) -> HashMap<OutPoint, Coin> {
+    fn batch_write_sync(
+        &mut self,
+        writes: CoinsBatch,
+        maybe_best_block: Option<BlockHash>,
+    ) -> Result<(), ChainstateError> {
+        self.batch_write_capped(
+            writes,
+            maybe_best_block,
+            PersistMode::Sync,
+            DEFAULT_COINS_DB_BATCH_BYTES,
+            false,
+        )
+    }
+
+    fn collect_unspent_hint(&self) -> Result<HashMap<OutPoint, Coin>, ChainstateError> {
         let mut utxos = HashMap::new();
         for guard in self.coins.prefix([DB_COIN]) {
-            let Ok((key_bytes, value_bytes)) = guard.into_inner() else {
-                return HashMap::new();
-            };
-            let Ok(outpoint) = decode_coin_key(key_bytes.as_ref()) else {
-                return HashMap::new();
-            };
-            let Ok(coin) = decode_coin_value(value_bytes.as_ref()) else {
-                return HashMap::new();
-            };
+            let (key_bytes, value_bytes) = guard
+                .into_inner()
+                .map_err(coins_backend_failure)
+                .map_err(map_storage)?;
+            let outpoint = decode_coin_key(key_bytes.as_ref()).map_err(map_storage)?;
+            let coin = decode_coin_value(value_bytes.as_ref()).map_err(map_storage)?;
             utxos.insert(outpoint, coin);
         }
-        utxos
+        Ok(utxos)
     }
 }
 

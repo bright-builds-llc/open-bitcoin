@@ -171,6 +171,25 @@ fn spent_dirty_deletes_coin_key() {
 }
 
 #[test]
+fn collect_unspent_hint_decode_failure_is_coins_storage() {
+    // Arrange
+    let path = temp_store_path("hint-decode-failure");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open temp store");
+    let view = FjallCoinsView::from_store(&store);
+    let outpoint = sample_outpoint(11);
+    view.write_raw_bytes(&encode_coin_key(&outpoint), vec![0x00])
+        .expect("plant corrupt coin");
+
+    // Act
+    let error = CoinsView::collect_unspent_hint(&view).expect_err("hint must fail closed");
+
+    // Assert
+    assert_coins_storage_detail(error, "corruption");
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn get_coin_decode_failure_is_coins_storage_not_none() {
     // Arrange
     let path = temp_store_path("decode-failure");
@@ -391,6 +410,45 @@ fn simulate_crash_after_partial_leaves_h_and_fails_closed() {
     assert_interrupted_write(write_error);
     assert_eq!(heads.len(), 2);
     assert_eq!(maybe_best, None);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn replay_partial_commit_preserves_interrupted_old_head() {
+    // Arrange
+    let path = temp_store_path("replay-preserves-old-h");
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open temp store");
+    let mut view = FjallCoinsView::from_store(&store);
+    let replay_new = BlockHash::from_byte_array([0x22; 32]);
+    let replay_old = BlockHash::from_byte_array([0x33; 32]);
+    let heads = encode_head_blocks_value(&[replay_new, replay_old]).expect("encode H");
+    view.write_raw_bytes(&encode_head_blocks_key(), heads)
+        .expect("plant interrupted H");
+    view.set_simulate_crash_after_partial(true);
+    let first = sample_outpoint(9);
+    let second = sample_outpoint(10);
+    let coin = sample_coin();
+
+    // Act
+    let write_error = view
+        .batch_write_replay_with_limit(
+            dirty_unspent_batch(&[(first, coin.clone()), (second, coin)]),
+            Some(replay_new),
+            80,
+        )
+        .expect_err("crash seam returns interrupted");
+    drop(view);
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("interrupted H is observable on open");
+    let reopened_view = FjallCoinsView::from_store(&reopened);
+    let heads = reopened_view
+        .head_blocks()
+        .expect("reopen head_blocks observes H");
+
+    // Assert
+    assert_interrupted_write(write_error);
+    assert_eq!(heads, vec![replay_new, replay_old]);
     remove_dir_if_exists(&path);
 }
 
