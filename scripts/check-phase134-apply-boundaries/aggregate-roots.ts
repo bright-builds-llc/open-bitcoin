@@ -189,13 +189,17 @@ export function inspectConnectedBlockRoot(
   }
 
   const afterTransaction = maskedBody.slice(statementEnd + 1);
+  const afterPersist = afterTransaction.replace(
+    /^\s*persist_result\.map_err\s*\(\s*LifecycleProjectionError::from\s*\)\s*\?;\s*/,
+    "",
+  );
   const afterMethods = tools
-    .methodCalls(afterTransaction)
+    .methodCalls(afterPersist)
     .map(({ receiver, name }) => `${receiver}.${name}`);
   return (
     afterMethods.length === 1 &&
     afterMethods[0] === "self.apply_prepared_lifecycle" &&
-    !isFallibleOrEffectful(afterTransaction)
+    !isFallibleOrEffectful(afterPersist)
   );
 }
 

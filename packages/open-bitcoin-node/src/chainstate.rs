@@ -265,7 +265,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             verify_flags,
             consensus_params,
         )?;
-        self.persist();
+        self.persist().map_err(map_persist)?;
         Ok(position)
     }
 
@@ -307,14 +307,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     pub(crate) fn commit_prepared_connect(
         &mut self,
         prepared: PreparedChainstateConnect,
-    ) -> ChainPosition {
-        // D-18: commit_prepared_mempool_transition_with applies the mempool
-        // patch after this closure returns, including when R is Err. This
-        // return stays infallible. FreshFlagMisapplied after an unmodified
-        // live cache is a programming bug; absorb clears FRESH and overwrites dirty.
+    ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
+        // D-18: absorb stays infallible. Persist after absorb can fail; mempool
+        // still applies the patch when this closure returns Err.
         let position = self.chainstate.absorb_staged_connect(prepared.staged);
-        self.persist();
-        position
+        self.persist().map_err(map_persist)?;
+        Ok(position)
     }
 
     pub fn disconnect_tip(
@@ -322,7 +320,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         block: &Block,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
         let position = self.chainstate.disconnect_tip(block)?;
-        self.persist();
+        self.persist().map_err(map_persist)?;
 
         Ok(position)
     }
@@ -340,7 +338,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             verify_flags,
             consensus_params,
         )?;
-        self.persist();
+        self.persist().map_err(map_persist)?;
         Ok(transition)
     }
 
@@ -369,10 +367,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     pub(crate) fn commit_prepared_reorg(
         &mut self,
         prepared: PreparedChainstateReorg,
-    ) -> ChainTransition {
+    ) -> Result<ChainTransition, open_bitcoin_core::chainstate::ChainstateError> {
         let transition = self.chainstate.absorb_staged_reorg(prepared.staged);
-        self.persist();
-        transition
+        self.persist().map_err(map_persist)?;
+        Ok(transition)
     }
 
     pub fn into_parts(self) -> (S, Chainstate<V>) {
@@ -413,20 +411,32 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         )
     }
 
-    fn persist(&mut self)
+    fn persist(&mut self) -> Result<(), StorageError>
     where
         S: FlushPersistSink,
     {
-        let _ = self.flush_with_mode(
+        self.flush_with_mode(
             FlushMode::IfNeeded,
             FlushPolicyTime::from_unix_seconds(0),
-            u64::MAX,
-        );
+            self.store.disk_free_bytes(),
+        )
+        .map(|_| ())
+    }
+}
+
+fn map_persist(error: StorageError) -> ChainstateError {
+    match error {
+        StorageError::InterruptedWrite { .. } => {
+            ChainstateError::InterruptedWrite { heads: Vec::new() }
+        }
+        other => ChainstateError::CoinsStorage {
+            detail: other.to_string(),
+        },
     }
 }
 
 impl<S, V: CoinsView> ManagedChainstate<S, V> {
-    pub fn export_chainstate_snapshot(&self) -> ChainstateSnapshot {
+    pub fn export_chainstate_snapshot(&self) -> Result<ChainstateSnapshot, ChainstateError> {
         self.chainstate.admission_snapshot()
     }
 }

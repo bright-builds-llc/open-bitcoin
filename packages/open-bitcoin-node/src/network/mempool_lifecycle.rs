@@ -172,7 +172,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             consensus_params,
         )?;
 
-        self.chainstate.commit_prepared_reorg(prepared_chainstate);
+        self.chainstate
+            .commit_prepared_reorg(prepared_chainstate)
+            .map_err(ManagedNetworkError::Chainstate)?;
         Ok(transition)
     }
 

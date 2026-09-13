@@ -214,9 +214,14 @@ export function inspectCriticalReachability(
       new Set(),
       allowedMutableBorrowTargets,
     );
+    const afterTransaction = target.body.slice(statementEnd + 1);
+    const afterPersist = afterTransaction.replace(
+      /^\s*persist_result\.map_err\s*\(\s*LifecycleProjectionError::from\s*\)\s*\?;\s*/,
+      "",
+    );
     inspectSource(
       target,
-      target.body.slice(statementEnd + 1),
+      afterPersist,
       true,
       new Set(["self.apply_prepared_lifecycle"]),
       new Set(),

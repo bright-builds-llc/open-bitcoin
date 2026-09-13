@@ -405,7 +405,9 @@ fn commit_prepared_connect_flushes_and_persists_snapshot_blob() {
         .expect("genesis should prepare");
 
     // Act
-    let position = managed.commit_prepared_connect(prepared);
+    let position = managed
+        .commit_prepared_connect(prepared)
+        .expect("prepared connect persist");
 
     // Assert
     assert_eq!(position.height, 0);

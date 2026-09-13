@@ -11,6 +11,7 @@ use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
+use open_bitcoin_core::chainstate::ChainstateError;
 use open_bitcoin_core::primitives::{Transaction, Txid, Wtxid};
 use open_bitcoin_mempool::{
     MempoolError, MempoolMemberIdentity, PreparedLifecycleFacts, PreparedMempoolTransition,
@@ -320,6 +321,12 @@ impl std::error::Error for LifecycleProjectionError {
 impl From<EffectPreparationError> for LifecycleProjectionError {
     fn from(value: EffectPreparationError) -> Self {
         Self::EffectPreparation(value)
+    }
+}
+
+impl From<ChainstateError> for LifecycleProjectionError {
+    fn from(value: ChainstateError) -> Self {
+        Self::PeerEvidence(super::types::ManagedNetworkError::Chainstate(value))
     }
 }
 

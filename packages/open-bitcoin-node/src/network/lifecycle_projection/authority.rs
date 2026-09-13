@@ -8,8 +8,10 @@
 
 use std::collections::BTreeSet;
 
-use open_bitcoin_core::chainstate::CoinsView;
-use open_bitcoin_core::{chainstate::ChainPosition, primitives::Block};
+use open_bitcoin_core::{
+    chainstate::{ChainPosition, ChainstateError, CoinsView},
+    primitives::Block,
+};
 use open_bitcoin_mempool::{
     MempoolLifecycleDelta, MempoolMemberIdentity, MempoolRemovalCause, PolicyTime,
     PreparedLifecycleFacts, PreparedMempoolTransition,
@@ -309,11 +311,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub(in crate::network) const fn authority_epoch(&self) -> AuthorityEpoch {
         self.authority_epoch
     }
-
     pub(in crate::network) const fn lifecycle_generation(&self) -> LifecycleGeneration {
         self.lifecycle_generation
     }
-
     pub(in crate::network) const fn dirty_generation(&self) -> Option<LifecycleGeneration> {
         self.dirty_generation
     }
@@ -553,11 +553,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         let chainstate = &mut self.chainstate;
         let peer_manager = &mut self.peer_manager;
         let blocks_by_hash = &mut self.blocks_by_hash;
+        let mut persist_result = Err(ChainstateError::MissingTip);
         let ((), delta) = self
             .mempool
             .mempool_mut()
             .commit_prepared_mempool_transition_with(core, || {
-                chainstate.commit_prepared_connect(prepared_chainstate);
+                persist_result = chainstate.commit_prepared_connect(prepared_chainstate);
                 peer_manager.on_active_tip_changed(
                     super::super::relay_serving::fresh_reject_evidence_tweak(),
                 );
@@ -565,6 +566,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 peer_manager.note_local_position(position);
             })
             .map_err(LifecycleProjectionError::Mempool)?;
+        persist_result.map_err(LifecycleProjectionError::from)?;
         self.apply_prepared_lifecycle(dependent);
         Ok(delta)
     }
