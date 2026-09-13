@@ -37,8 +37,15 @@ pub trait CoinsView {
         writes: CoinsBatch,
         maybe_best_block: Option<BlockHash>,
     ) -> Result<(), ChainstateError>;
-    fn collect_unspent_hint(&self) -> HashMap<OutPoint, Coin> {
-        HashMap::new()
+    fn batch_write_sync(
+        &mut self,
+        writes: CoinsBatch,
+        maybe_best_block: Option<BlockHash>,
+    ) -> Result<(), ChainstateError> {
+        self.batch_write(writes, maybe_best_block)
+    }
+    fn collect_unspent_hint(&self) -> Result<HashMap<OutPoint, Coin>, ChainstateError> {
+        Ok(HashMap::new())
     }
 }
 

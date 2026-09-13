@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,166 |
-| Total lines | 333,728 |
-| Code/content lines | 290,698 |
+| Total lines | 333,735 |
+| Code/content lines | 290,705 |
 | Comment-only lines | 15,199 |
 | Blank lines | 27,831 |
 
@@ -17,7 +17,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Module | Files | Production Rust | Test Rust | Manifest/Build | Total | Test/Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | open-bitcoin-bench | 22 | 3,763 | 0 | 85 | 3,848 | 0.0% |
-| open-bitcoin-chainstate | 23 | 2,589 | 4,527 | 26 | 7,142 | 174.9% |
+| open-bitcoin-chainstate | 23 | 2,596 | 4,527 | 26 | 7,149 | 174.4% |
 | open-bitcoin-cli | 142 | 22,270 | 21,144 | 97 | 43,511 | 94.9% |
 | open-bitcoin-codec | 15 | 1,811 | 779 | 28 | 2,621 | 43.0% |
 | open-bitcoin-consensus | 47 | 6,592 | 7,851 | 28 | 14,471 | 119.1% |
@@ -35,7 +35,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 445 | 129,018 | 109,512 | 9,240 | 10,266 |
-| Rust production | 387 | 112,888 | 98,149 | 4,166 | 10,573 |
+| Rust production | 387 | 112,895 | 98,156 | 4,166 | 10,573 |
 | TypeScript/Bun scripts | 265 | 74,958 | 67,110 | 1,715 | 6,133 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,501 | 4,028 | 64 | 409 |
@@ -346,7 +346,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | e63a8215435f93bcd0354dc6e8ca23989fe30bd0dfaa9d24bb5383824803913c |
+| Input fingerprint | 12e7d3bf7eaaacab8605ffe53fc335e9c41c29a4ef9411a3e6bc8bd4292d2b4a |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

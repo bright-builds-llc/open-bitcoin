@@ -383,7 +383,7 @@ impl<V: CoinsView> CoinsCache<V> {
     pub fn sync(&mut self) -> Result<(), ChainstateError> {
         let batch = self.overlay.dirty_batch();
         let maybe_best_block = self.overlay.maybe_best_block;
-        self.parent.batch_write(batch, maybe_best_block)?;
+        self.parent.batch_write_sync(batch, maybe_best_block)?;
         self.overlay.entries.retain(|_, entry| {
             let Some(coin) = entry.maybe_coin().cloned() else {
                 return false;
@@ -419,10 +419,10 @@ impl<V: CoinsView> CoinsCache<V> {
         coins
     }
 
-    pub fn collect_admission_unspent(&self) -> HashMap<OutPoint, Coin> {
-        let mut coins = self.parent.collect_unspent_hint();
+    pub fn collect_admission_unspent(&self) -> Result<HashMap<OutPoint, Coin>, ChainstateError> {
+        let mut coins = self.parent.collect_unspent_hint()?;
         self.overlay.overlay_unspent_into(&mut coins);
-        coins
+        Ok(coins)
     }
 }
 
