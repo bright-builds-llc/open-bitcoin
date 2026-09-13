@@ -47,4 +47,6 @@ fn coins_flush_worker_does_not_own_a_second_lifecycle() {
     assert!(!source.contains("initialize("));
     assert!(source.contains("handle.flush_coins") || source.contains("flush_coins("));
     assert!(source.contains("set_coins_next_write"));
+    assert!(source.contains("store.datadir()"));
+    assert!(source.contains("PERIODIC_WRITE_MIN_SECS"));
 }
