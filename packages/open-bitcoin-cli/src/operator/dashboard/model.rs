@@ -17,6 +17,7 @@ use open_bitcoin_node::{
 };
 
 mod block_relay;
+mod chainstate_durability;
 mod metrics;
 mod recovery;
 mod relay;
@@ -26,6 +27,7 @@ mod sync_section;
 mod tests;
 
 use block_relay::block_relay_rows;
+use chainstate_durability::chainstate_durability_rows;
 use recovery::recovery_category;
 use relay::mempool_and_wallet_rows;
 use sync_section::sync_and_peers_section;
@@ -113,6 +115,7 @@ pub fn derive_metric_points(points: &[MetricSample], width: usize) -> Vec<u64> {
 fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSection> {
     let mut mempool_and_wallet = mempool_and_wallet_rows(snapshot);
     mempool_and_wallet.extend(block_relay_rows(snapshot));
+    mempool_and_wallet.extend(chainstate_durability_rows(snapshot));
 
     vec![
         DashboardSection {

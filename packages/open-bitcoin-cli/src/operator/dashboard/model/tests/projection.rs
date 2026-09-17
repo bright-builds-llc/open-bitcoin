@@ -285,7 +285,11 @@ fn dashboard_model_block_relay_rows_surface_shared_status_contract() {
         .iter()
         .position(|row| row.label == "Block relay activation")
         .expect("block relay rows");
-    let rendered_rows = first_rows[block_relay_start..]
+    let durability_start = first_rows
+        .iter()
+        .position(|row| row.label == "Chainstate durability")
+        .unwrap_or(first_rows.len());
+    let rendered_rows = first_rows[block_relay_start..durability_start]
         .iter()
         .map(|row| (row.label.as_str(), row.value.as_str()))
         .collect::<Vec<_>>();
@@ -362,7 +366,11 @@ fn dashboard_model_block_relay_rows_preserve_unavailable_reason_without_sensitiv
         .iter()
         .position(|row| row.label == "Block relay activation")
         .expect("block relay rows");
-    let rendered_rows = rows[block_relay_start..]
+    let durability_start = rows
+        .iter()
+        .position(|row| row.label == "Chainstate durability")
+        .unwrap_or(rows.len());
+    let rendered_rows = rows[block_relay_start..durability_start]
         .iter()
         .map(|row| (row.label.as_str(), row.value.as_str()))
         .collect::<Vec<_>>();
@@ -437,4 +445,147 @@ fn derive_metric_points_is_width_bounded() {
 
     // Assert
     assert_eq!(points, vec![2, 3]);
+}
+
+fn available_chainstate_durability() -> FieldAvailability<ChainstateDurabilityEvidence> {
+    FieldAvailability::available(ChainstateDurabilityEvidence {
+        cache_size: CacheSizeLabel::Ok,
+        last_flush_reason: LastFlushReasonLabel::Periodic,
+        write_kind: WriteKindLabel::Sync,
+        readiness: ReadinessLabel::ReadyToFlush,
+        cache_bytes: 1_024,
+        cache_byte_limit: 8_192,
+        recovery_outcome: CoinsRecoveryOutcome::Replayed,
+        maybe_coins_best_block_height: Some(840_004),
+        maybe_coins_best_block_hash: Some("11".repeat(32)),
+        last_serving_status: ServingStatusLabel::Unavailable,
+        last_payload_present: false,
+        last_index_known: true,
+        last_validated_on_active_chain: true,
+        available_count: 0,
+        unavailable_count: 1,
+        index_known_without_payload_count: 1,
+    })
+}
+
+#[test]
+fn dashboard_model_chainstate_durability_rows_surface_shared_status_contract() {
+    // Arrange
+    let mut snapshot = test_snapshot();
+    snapshot.chainstate_durability = available_chainstate_durability();
+    let coins_hash = "11".repeat(32);
+    let coins_best_block = format!("height=840004 hash={coins_hash}");
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let rows = &state.sections[2].rows;
+    let block_relay_end = rows
+        .iter()
+        .rposition(|row| row.label.starts_with("Compact ") || row.label.starts_with("Block relay"))
+        .expect("block relay cluster");
+    let durability_start = rows
+        .iter()
+        .position(|row| row.label == "Chainstate durability")
+        .expect("durability rows");
+    let rendered = rows[durability_start..durability_start + 6]
+        .iter()
+        .map(|row| (row.label.as_str(), row.value.as_str()))
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(durability_start, block_relay_end + 1);
+    assert_eq!(
+        rendered,
+        vec![
+            (
+                "Chainstate durability",
+                "cache_size=OK last_flush_reason=periodic write_kind=sync readiness=ready_to_flush",
+            ),
+            ("Cache occupancy", "cache_bytes=1024 cache_byte_limit=8192"),
+            ("Coins best-block", coins_best_block.as_str()),
+            ("Coins recovery", "replayed"),
+            (
+                "Have-bytes",
+                "unavailable payload_present=false index_known=true validated_on_active_chain=true",
+            ),
+            (
+                "Have-bytes counts",
+                "available_count=0 unavailable_count=1 index_known_without_payload_count=1",
+            ),
+        ]
+    );
+}
+
+#[test]
+fn dashboard_model_chainstate_durability_rows_preserve_unavailable_reason_without_sensitive_text() {
+    // Arrange
+    let mut snapshot = test_snapshot();
+    let reason = "chainstate durability evidence unavailable";
+    snapshot.chainstate_durability = FieldAvailability::unavailable(reason);
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let rows = &state.sections[2].rows;
+    let durability_start = rows
+        .iter()
+        .position(|row| row.label == "Chainstate durability")
+        .expect("durability rows");
+    let rendered = &rows[durability_start..durability_start + 6];
+    let serialized = rendered
+        .iter()
+        .map(|row| format!("{}: {}", row.label, row.value))
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    // Assert
+    for row in rendered {
+        assert_eq!(row.value, format!("Unavailable: {reason}"));
+    }
+    for forbidden in ["127.0.0.1:", "peer_id=", "pruned"] {
+        assert!(
+            !serialized.contains(forbidden),
+            "durability rows leaked {forbidden}"
+        );
+    }
+}
+
+#[test]
+fn dashboard_max_charts_remains_eight() {
+    // Arrange
+    let snapshot = test_snapshot();
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+
+    // Assert
+    assert_eq!(MAX_DASHBOARD_CHARTS, 8);
+    assert_eq!(DASHBOARD_METRIC_KINDS.len(), 8);
+    assert_eq!(state.charts.len(), 8);
+}
+
+#[test]
+fn dashboard_sections_remain_five_with_353530_split_unchanged() {
+    // Arrange
+    let snapshot = test_snapshot();
+
+    // Act
+    let state = DashboardState::from_snapshot(&snapshot);
+    let titles = state
+        .sections
+        .iter()
+        .map(|section| section.title.as_str())
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(
+        titles,
+        vec![
+            "Node",
+            "Sync and Peers",
+            "Mempool and Wallet",
+            "Service",
+            "Logs and Health",
+        ]
+    );
+    assert_eq!(state.sections.len(), 5);
 }
