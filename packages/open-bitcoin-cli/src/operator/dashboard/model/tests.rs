@@ -196,6 +196,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             RelayEvidenceStatus::default(),
         ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: FieldAvailability::default(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(50_000),
             freshness: FieldAvailability::available(WalletFreshness::Fresh),

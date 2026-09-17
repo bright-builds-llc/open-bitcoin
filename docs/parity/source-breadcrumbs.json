@@ -295,6 +295,7 @@
         "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/block_relay.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/relay.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
@@ -338,6 +339,7 @@
         "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/block_relay.rs",
+        "packages/open-bitcoin-cli/src/operator/support/render/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/relay.rs",
         "packages/open-bitcoin-cli/src/operator/support/soak_evidence.rs",
@@ -394,6 +396,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/app/tests.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/block_relay.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/metrics.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/relay.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/recovery.rs",
@@ -1333,7 +1336,9 @@
     {
       "label": "node-network-block-relay-evidence-adapter",
       "files": [
-        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs"
+        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+        "packages/open-bitcoin-node/src/network/chainstate_durability_evidence.rs",
+        "packages/open-bitcoin-node/src/network/chainstate_durability_evidence/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/blockencodings.cpp",
@@ -1850,10 +1855,12 @@
       "files": [
         "packages/open-bitcoin-node/src/metrics.rs",
         "packages/open-bitcoin-node/src/metrics/block_relay.rs",
+        "packages/open-bitcoin-node/src/metrics/chainstate_durability.rs",
         "packages/open-bitcoin-node/src/metrics/inbound.rs",
         "packages/open-bitcoin-node/src/metrics/mempool_policy.rs",
         "packages/open-bitcoin-node/src/metrics/tests.rs",
         "packages/open-bitcoin-node/src/logging.rs",
+        "packages/open-bitcoin-node/src/logging/chainstate_durability.rs",
         "packages/open-bitcoin-node/src/logging/mempool_policy.rs",
         "packages/open-bitcoin-node/src/logging/prune.rs",
         "packages/open-bitcoin-node/src/logging/tests.rs",
@@ -1879,6 +1886,8 @@
         "packages/open-bitcoin-node/src/status.rs",
         "packages/open-bitcoin-node/src/status/block_relay_evidence.rs",
         "packages/open-bitcoin-node/src/status/block_relay_evidence/tests.rs",
+        "packages/open-bitcoin-node/src/status/chainstate_durability.rs",
+        "packages/open-bitcoin-node/src/status/chainstate_durability/tests.rs",
         "packages/open-bitcoin-node/src/status/block_serving.rs",
         "packages/open-bitcoin-node/src/status/block_serving/tests.rs",
         "packages/open-bitcoin-node/src/status/inbound.rs",

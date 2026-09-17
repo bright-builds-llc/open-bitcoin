@@ -440,6 +440,7 @@ pub(super) fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot 
             RelayEvidenceStatus::default(),
         ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: FieldAvailability::default(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
             freshness: FieldAvailability::unavailable("wallet freshness unavailable"),

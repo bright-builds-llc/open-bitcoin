@@ -4,6 +4,7 @@
 //! Shared operator status snapshot contracts.
 mod block_relay_evidence;
 mod block_serving;
+mod chainstate_durability;
 mod inbound;
 mod mempool_groups;
 mod observability;
@@ -14,6 +15,7 @@ mod resource_bounds;
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
 pub use block_relay_evidence::*;
 pub use block_serving::*;
+pub use chainstate_durability::*;
 pub use inbound::*;
 pub use mempool_groups::{
     MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup, MempoolFeeFloorsGroup,
@@ -603,6 +605,8 @@ pub struct OpenBitcoinStatusSnapshot {
     pub mempool: MempoolStatus,
     #[serde(default)]
     pub block_relay: BlockRelayEvidenceStatus,
+    #[serde(default)]
+    pub chainstate_durability: FieldAvailability<ChainstateDurabilityEvidence>,
     pub wallet: WalletStatus,
     pub logs: LogStatus,
     pub metrics: MetricsStatus,

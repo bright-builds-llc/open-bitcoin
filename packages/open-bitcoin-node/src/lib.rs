@@ -51,8 +51,9 @@ pub use recovery::{
     classify_recovery,
 };
 pub use status::{
-    BuildProvenance, ConfigStatus, DurableSyncState, FieldAvailability,
-    INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON, INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
+    BuildProvenance, ChainstateDurabilityEvidence, ConfigStatus, DurableSyncState,
+    FieldAvailability, INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON,
+    INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
     INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, INBOUND_STATUS_UNAVAILABLE_REASON,
     InboundAddressDecisionEvent, InboundAddressEvidenceEntry, InboundAdmissionEvent,
     InboundHandshakeStatusCounts, InboundPeerPolicyEvent, InboundPeerServingStatus,

@@ -13,10 +13,10 @@ use open_bitcoin_node::{
     LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus,
     logging::writer::load_log_status,
     status::{
-        BlockRelayEvidenceStatus, BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal,
-        HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState,
-        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
-        relay_evidence::RelayEvidenceStatus,
+        BlockRelayEvidenceStatus, BuildProvenance, ChainstateDurabilityEvidence, ConfigStatus,
+        FieldAvailability, HealthSignal, HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON,
+        MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
+        PeerStatus, WalletStatus, relay_evidence::RelayEvidenceStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -253,6 +253,7 @@ fn collect_live_status_snapshot(
         },
         mempool,
         block_relay,
+        chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
         wallet,
         logs: log_status(&input.config_resolution),
         metrics,
@@ -303,6 +304,7 @@ fn stopped_status_snapshot(
         },
         mempool: unavailable_policy_mempool(&reason),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: FieldAvailability::unavailable(reason.clone()),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable(reason.clone()),
             freshness: FieldAvailability::unavailable(reason.clone()),

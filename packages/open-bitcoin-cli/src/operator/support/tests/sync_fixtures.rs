@@ -124,6 +124,7 @@ pub(super) fn phase72_status() -> OpenBitcoinStatusSnapshot {
             RelayEvidenceStatus::default(),
         ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: FieldAvailability::default(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::unavailable("wallet unavailable"),
             freshness: FieldAvailability::unavailable("wallet unavailable"),

@@ -148,6 +148,7 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
             RelayEvidenceStatus::default(),
         ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: FieldAvailability::default(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
             freshness: FieldAvailability::available(WalletFreshness::Scanning),

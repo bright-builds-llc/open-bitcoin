@@ -148,6 +148,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
             RelayEvidenceStatus::default(),
         ),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: FieldAvailability::default(),
         wallet: WalletStatus {
             trusted_balance_sats: FieldAvailability::available(25_000),
             freshness: FieldAvailability::available(WalletFreshness::Fresh),
