@@ -3,6 +3,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
+mod durability;
 mod error_map;
 
 use std::{
@@ -37,7 +38,7 @@ use crate::storage::{
     coins_view::FjallCoinsView,
 };
 
-fn temp_store_path(test_name: &str) -> PathBuf {
+pub(super) fn temp_store_path(test_name: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time after unix epoch")
@@ -48,7 +49,7 @@ fn temp_store_path(test_name: &str) -> PathBuf {
     ))
 }
 
-fn remove_dir_if_exists(path: &Path) {
+pub(super) fn remove_dir_if_exists(path: &Path) {
     match fs::remove_dir_all(path) {
         Ok(()) => {}
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -56,29 +57,29 @@ fn remove_dir_if_exists(path: &Path) {
     }
 }
 
-fn policy_now() -> FlushPolicyTime {
+pub(super) fn policy_now() -> FlushPolicyTime {
     FlushPolicyTime::from_unix_seconds(1_700_000_000)
 }
 
-fn open_temp_store(test_name: &str) -> (PathBuf, FjallNodeStore) {
+pub(super) fn open_temp_store(test_name: &str) -> (PathBuf, FjallNodeStore) {
     let path = temp_store_path(test_name);
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("open temp store");
     (path, store)
 }
 
-fn script() -> ScriptBuf {
+pub(super) fn script() -> ScriptBuf {
     ScriptBuf::from_bytes(vec![0x51]).expect("valid script")
 }
 
-fn output(value: i64) -> TransactionOutput {
+pub(super) fn output(value: i64) -> TransactionOutput {
     TransactionOutput {
         value: Amount::from_sats(value).expect("valid amount"),
         script_pubkey: script(),
     }
 }
 
-fn sample_coin() -> Coin {
+pub(super) fn sample_coin() -> Coin {
     Coin {
         output: output(50),
         is_coinbase: false,
@@ -87,7 +88,7 @@ fn sample_coin() -> Coin {
     }
 }
 
-fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
+pub(super) fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
     BlockHeader {
         version: 1,
         previous_block_hash,
@@ -98,7 +99,11 @@ fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
     }
 }
 
-fn header_entry(block_header: BlockHeader, height: u32, chain_work: u128) -> HeaderEntry {
+pub(super) fn header_entry(
+    block_header: BlockHeader,
+    height: u32,
+    chain_work: u128,
+) -> HeaderEntry {
     HeaderEntry {
         block_hash: block_hash(&block_header),
         header: block_header,
@@ -107,7 +112,7 @@ fn header_entry(block_header: BlockHeader, height: u32, chain_work: u128) -> Hea
     }
 }
 
-fn coinbase(height: u32, value: i64) -> Transaction {
+pub(super) fn coinbase(height: u32, value: i64) -> Transaction {
     Transaction {
         version: 1,
         inputs: vec![TransactionInput {
@@ -121,7 +126,7 @@ fn coinbase(height: u32, value: i64) -> Transaction {
     }
 }
 
-fn dirty_unspent_batch(pairs: &[(OutPoint, Coin)]) -> CoinsBatch {
+pub(super) fn dirty_unspent_batch(pairs: &[(OutPoint, Coin)]) -> CoinsBatch {
     let mut entries = HashMap::new();
     for (outpoint, planted) in pairs {
         entries.insert(
@@ -132,7 +137,11 @@ fn dirty_unspent_batch(pairs: &[(OutPoint, Coin)]) -> CoinsBatch {
     CoinsBatch { entries }
 }
 
-fn plant_interrupted_heads(view: &FjallCoinsView, new_hash: BlockHash, old_hash: BlockHash) {
+pub(super) fn plant_interrupted_heads(
+    view: &FjallCoinsView,
+    new_hash: BlockHash,
+    old_hash: BlockHash,
+) {
     let heads = encode_head_blocks_value(&[new_hash, old_hash]).expect("encode H");
     view.write_raw_bytes(&encode_head_blocks_key(), heads)
         .expect("plant H");
@@ -140,20 +149,20 @@ fn plant_interrupted_heads(view: &FjallCoinsView, new_hash: BlockHash, old_hash:
         .expect("remove B");
 }
 
-fn initialize_ready(
+pub(super) fn initialize_ready(
     store: &FjallNodeStore,
 ) -> (FlushLifecycle, FjallCoinsView, CoinsCache<FjallCoinsView>) {
     initialize(store, policy_now(), policy_now(), 0, false, u64::MAX).expect("initialize")
 }
 
-fn expect_error<T>(result: Result<T, StorageError>, message: &str) -> StorageError {
+pub(super) fn expect_error<T>(result: Result<T, StorageError>, message: &str) -> StorageError {
     match result {
         Ok(_) => panic!("{message}: expected error"),
         Err(error) => error,
     }
 }
 
-struct SucceedingSink;
+pub(super) struct SucceedingSink;
 
 impl FlushPersistSink for SucceedingSink {
     fn persist_block(&mut self, _block: &Block) -> Result<(), StorageError> {
@@ -203,8 +212,8 @@ impl FlushPersistSink for UndoFailingSink {
     }
 }
 
-struct RecordingCoinsView {
-    writes: Cell<usize>,
+pub(super) struct RecordingCoinsView {
+    pub(super) writes: Cell<usize>,
 }
 
 impl CoinsView for RecordingCoinsView {
@@ -304,15 +313,14 @@ fn initialize_interrupted_without_bodies_is_not_ready_to_flush() {
     );
 
     // Assert
+    let display = error.to_string();
     assert!(
-        matches!(
-            error,
-            StorageError::InterruptedWrite {
-                namespace: StorageNamespace::Coins,
-                action: StorageRecoveryAction::Reindex,
-            }
-        ),
-        "expected InterruptedWrite, got {error:?}"
+        display.contains("fail_closed"),
+        "missing-body replay must say fail_closed, got {display}"
+    );
+    assert!(
+        display.contains("interrupted"),
+        "missing-body replay must say interrupted, got {display}"
     );
     remove_dir_if_exists(&path);
 }

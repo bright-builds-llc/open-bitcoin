@@ -17,6 +17,10 @@ use open_bitcoin_core::{
 use open_bitcoin_network::HeaderEntry;
 
 use super::replay_interrupted_flush;
+use crate::status::{
+    CoinsRecoveryOutcome, FieldAvailability, HaveBytesEvidence, ReadinessLabel,
+    project_chainstate_durability,
+};
 use crate::storage::{
     FjallNodeStore, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
     coins_view::FjallCoinsView,
@@ -57,6 +61,8 @@ pub struct FlushLifecycle {
     mempool_leftover_bytes: u64,
     next_write: FlushPolicyTime,
     memory_pressure: bool,
+    maybe_last_write_decision: Option<FlushDecision>,
+    maybe_recovery_outcome: Option<CoinsRecoveryOutcome>,
 }
 
 /// Outcome of one `execute_flush` call after `decide_flush`.
@@ -111,25 +117,34 @@ pub fn initialize(
     memory_pressure: bool,
     _disk_free_bytes: u64,
 ) -> Result<(FlushLifecycle, FjallCoinsView, CoinsCache<FjallCoinsView>), StorageError> {
-    let lifecycle = FlushLifecycle {
+    let mut lifecycle = FlushLifecycle {
         readiness: ManagerReadiness::NotReady,
         cache_byte_limit: default_coins_cache_byte_limit(),
         mempool_leftover_bytes,
         next_write,
         memory_pressure,
+        maybe_last_write_decision: None,
+        maybe_recovery_outcome: None,
     };
     let view = FjallCoinsView::from_store(store);
-    let heads = view.head_blocks().map_err(map_chainstate)?;
-    let recovered = apply_recovery_decision(store, view, decide_recovery(heads.len()))?;
+    let heads = view
+        .head_blocks()
+        .map_err(|error| annotate_fail_closed(map_chainstate(error), false))?;
+    let decision = decide_recovery(heads.len());
+    let recovered = apply_recovery_decision(store, view, decision).map_err(|error| {
+        annotate_fail_closed(
+            error,
+            matches!(decision, RecoveryDecision::InterruptedTwoHeads),
+        )
+    })?;
+    let maybe_best_block = recovered.best_block().map_err(map_chainstate)?;
+    lifecycle.maybe_recovery_outcome = Some(coins_recovery_outcome_after_success(
+        decision,
+        maybe_best_block,
+    )?);
+    lifecycle.readiness = ManagerReadiness::ReadyToFlush;
     let cache = CoinsCache::from_parent(recovered);
-    Ok((
-        FlushLifecycle {
-            readiness: ManagerReadiness::ReadyToFlush,
-            ..lifecycle
-        },
-        FjallCoinsView::from_store(store),
-        cache,
-    ))
+    Ok((lifecycle, FjallCoinsView::from_store(store), cache))
 }
 
 impl FlushLifecycle {
@@ -154,7 +169,49 @@ impl FlushLifecycle {
             mempool_leftover_bytes,
             next_write,
             memory_pressure,
+            maybe_last_write_decision: None,
+            maybe_recovery_outcome: Some(CoinsRecoveryOutcome::Consistent),
         }
+    }
+
+    pub const fn maybe_last_write_decision(&self) -> Option<FlushDecision> {
+        self.maybe_last_write_decision
+    }
+
+    pub const fn maybe_recovery_outcome(&self) -> Option<CoinsRecoveryOutcome> {
+        self.maybe_recovery_outcome
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn project_chainstate_durability(
+        &self,
+        estimated_cache_bytes: u64,
+        cache_entry_count: u64,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+        maybe_coins_best_block: Option<BlockHash>,
+        maybe_coins_best_block_height: Option<u64>,
+        have_bytes: HaveBytesEvidence,
+    ) -> FieldAvailability<crate::status::ChainstateDurabilityEvidence> {
+        project_chainstate_durability(
+            self.maybe_last_write_decision,
+            self.maybe_recovery_outcome,
+            match self.readiness {
+                ManagerReadiness::NotReady => ReadinessLabel::NotReady,
+                ManagerReadiness::ReadyToFlush => ReadinessLabel::ReadyToFlush,
+            },
+            estimated_cache_bytes,
+            self.cache_byte_limit,
+            self.mempool_leftover_bytes,
+            cache_entry_count,
+            now,
+            self.next_write,
+            self.memory_pressure,
+            disk_free_bytes,
+            maybe_coins_best_block,
+            maybe_coins_best_block_height,
+            have_bytes,
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -185,6 +242,9 @@ impl FlushLifecycle {
             disk_free_bytes,
             cache_entry_count: cache.cache_entry_count(),
         });
+        if mode != FlushMode::None {
+            self.maybe_last_write_decision = Some(decision);
+        }
         let Some(write_kind) = coins_write_kind(decision) else {
             if matches!(decision, FlushDecision::RefuseDiskSpace(_)) {
                 return Err(refuse_disk_space());
@@ -220,6 +280,8 @@ impl FlushLifecycle {
             mempool_leftover_bytes,
             next_write,
             memory_pressure,
+            maybe_last_write_decision: None,
+            maybe_recovery_outcome: Some(CoinsRecoveryOutcome::Consistent),
         }
     }
 
@@ -231,6 +293,8 @@ impl FlushLifecycle {
             mempool_leftover_bytes: 0,
             next_write: FlushPolicyTime::from_unix_seconds(0),
             memory_pressure: false,
+            maybe_last_write_decision: None,
+            maybe_recovery_outcome: None,
         }
     }
 }
@@ -253,8 +317,66 @@ fn apply_recovery_decision(
         RecoveryDecision::ConsistentEmptyHeads | RecoveryDecision::OneHead => Ok(view),
         RecoveryDecision::InterruptedTwoHeads => replay_interrupted_flush(store, view),
         RecoveryDecision::InconsistentOtherCount { count } => Err(coins_corruption(format!(
-            "unexpected head_blocks count {count}"
+            "fail_closed unexpected head_blocks count {count}"
         ))),
+    }
+}
+
+pub(crate) fn coins_recovery_outcome_after_success(
+    decision: RecoveryDecision,
+    maybe_best_block: Option<BlockHash>,
+) -> Result<CoinsRecoveryOutcome, StorageError> {
+    match decision {
+        RecoveryDecision::InterruptedTwoHeads => Ok(CoinsRecoveryOutcome::Replayed),
+        RecoveryDecision::ConsistentEmptyHeads | RecoveryDecision::OneHead => {
+            if maybe_best_block.is_some() {
+                Ok(CoinsRecoveryOutcome::Consistent)
+            } else {
+                Ok(CoinsRecoveryOutcome::FailClosed)
+            }
+        }
+        RecoveryDecision::InconsistentOtherCount { count } => Err(coins_corruption(format!(
+            "fail_closed unexpected head_blocks count {count}"
+        ))),
+    }
+}
+
+fn annotate_fail_closed(error: StorageError, interrupted: bool) -> StorageError {
+    let (namespace, action, detail) = match error {
+        StorageError::InterruptedWrite { namespace, action } => (
+            namespace,
+            action,
+            if interrupted {
+                "fail_closed interrupted replay could not finish".to_string()
+            } else {
+                "fail_closed".to_string()
+            },
+        ),
+        StorageError::Corruption {
+            namespace,
+            detail,
+            action,
+        } => (
+            namespace,
+            action,
+            if detail.contains("fail_closed") {
+                if interrupted && !detail.contains("interrupted") {
+                    format!("fail_closed interrupted {detail}")
+                } else {
+                    detail
+                }
+            } else if interrupted {
+                format!("fail_closed interrupted {detail}")
+            } else {
+                format!("fail_closed {detail}")
+            },
+        ),
+        other => return other,
+    };
+    StorageError::Corruption {
+        namespace,
+        detail,
+        action,
     }
 }
 
