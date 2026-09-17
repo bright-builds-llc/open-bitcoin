@@ -152,8 +152,8 @@ Plans:
 **UI hint**: yes
 
 Plans:
-- [ ] 144-01-PLAN.md — Shared chainstate_durability contract and runtime retention
-- [ ] 144-02-PLAN.md — RPC, CLI JSON/human, and dashboard rows
+- [x] 144-01-PLAN.md — Shared chainstate_durability contract and runtime retention
+- [x] 144-02-PLAN.md — RPC, CLI JSON/human, and dashboard rows
 - [ ] 144-03-PLAN.md — Metrics, structured logs, and support redaction
 - [ ] 144-04-PLAN.md — Docs, cross-surface checker, breadcrumbs, and verify wiring
 
@@ -209,7 +209,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 4/4 | Complete    | 2026-09-17 |
-| 144. Operator Flush and Availability Evidence | 0/4 | Not started | - |
+| 144. Operator Flush and Availability Evidence | 2/4 | In Progress|  |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
