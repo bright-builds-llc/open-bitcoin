@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: verifying
-stopped_at: Completed 143-04-PLAN.md
-last_updated: "2026-09-17T06:41:34.264Z"
+stopped_at: Phase 144 context gathered
+last_updated: "2026-09-17T11:41:48.578Z"
 last_activity: 2026-09-17
 progress:
   total_phases: 7
@@ -431,6 +431,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-17T06:12:18.712Z
-Stopped at: Completed 143-04-PLAN.md
-Resume file: None
+Last session: 2026-09-17T11:41:48.569Z
+Stopped at: Phase 144 context gathered
+Resume file: .planning/phases/144-operator-flush-and-availability-evidence/144-CONTEXT.md
