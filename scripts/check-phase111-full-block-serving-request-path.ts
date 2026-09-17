@@ -77,7 +77,7 @@ const REQUIRED_TERMS = [
 ] as const;
 const REQUIRED_TESTS = [
   "phase111_side_chain_cached_block_is_not_served",
-  "phase111_active_chain_non_tip_missing_local_block_returns_pruned_notfound",
+  "phase111_active_chain_non_tip_missing_local_block_returns_unavailable_notfound",
   "phase111_active_tip_missing_local_block_returns_unavailable_notfound",
   "phase111_recent_valid_available_block_is_served_after_policy_gate",
   "phase111_stale_block_fact_returns_unavailable_notfound_without_lookup",

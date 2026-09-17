@@ -28,8 +28,8 @@ use open_bitcoin_network::{
 };
 
 use super::block_serving::{
-    ManagedBlockServeGateDecision, ManagedBlockServeInput, gate_managed_block_request,
-    serve_managed_block_request,
+    BlockServingPresenceFacts, ManagedBlockServeGateDecision, ManagedBlockServeInput,
+    gate_managed_block_request, serve_managed_block_request,
 };
 use super::lifecycle_projection::PreparedServingProjection;
 use super::{
@@ -270,18 +270,20 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         request: &InventoryVector,
         block_hash: BlockHash,
         suppressed: bool,
-        durable_availability: bool,
+        durable_payload_present: bool,
     ) -> ManagedBlockServeInput {
         let active_chain = self.chainstate.chainstate().active_chain();
         let maybe_active_index = active_chain
             .iter()
             .position(|position| position.block_hash == block_hash);
-        let has_local_data = self.blocks_by_hash.contains_key(&block_hash);
-        let is_active = maybe_active_index.is_some();
-        let is_tip = maybe_active_index.is_some_and(|index| index + 1 == active_chain.len());
+        let cache_present = self.blocks_by_hash.contains_key(&block_hash);
+        let payload_present = cache_present || durable_payload_present;
+        let index_known = self.peer_manager.header_store().contains(&block_hash);
+        let validated_on_active_chain = maybe_active_index.is_some();
+        let is_active = validated_on_active_chain;
         let chain_position = if is_active {
             BlockServingChainPosition::Active
-        } else if has_local_data {
+        } else if cache_present {
             BlockServingChainPosition::SideChain
         } else {
             BlockServingChainPosition::Unknown
@@ -291,10 +293,15 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         } else {
             BlockServingValidationState::Unknown
         };
-        let data_availability = match (is_active, is_tip, has_local_data || durable_availability) {
-            (true, _, true) => BlockServingDataAvailability::Available,
-            (true, false, false) => BlockServingDataAvailability::Pruned,
-            _ => BlockServingDataAvailability::Unavailable,
+        let data_availability = if payload_present {
+            BlockServingDataAvailability::Available
+        } else {
+            BlockServingDataAvailability::Unavailable
+        };
+        let presence = BlockServingPresenceFacts {
+            payload_present,
+            index_known,
+            validated_on_active_chain,
         };
         let (connection_class, active_permission_effects, inactive_permission_effects) =
             self.block_serving_context_for_peer(peer_id);
@@ -320,6 +327,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             validation_state,
             data_availability,
             suppressed,
+            presence,
         }
     }
 

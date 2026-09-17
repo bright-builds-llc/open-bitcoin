@@ -359,7 +359,7 @@ function peerInventorySourceText(): string {
 function nodeTestsText(): string {
   return [
     "phase111_side_chain_cached_block_is_not_served",
-    "phase111_active_chain_non_tip_missing_local_block_returns_pruned_notfound",
+    "phase111_active_chain_non_tip_missing_local_block_returns_unavailable_notfound",
     "phase111_active_tip_missing_local_block_returns_unavailable_notfound",
     "phase111_cached_old_block_outside_active_chain_is_not_archive_served",
     "phase111_managed_getdata_over_request_cap_disconnects_without_block_payload",

@@ -12,8 +12,12 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use open_bitcoin_network::{BlockServingDataAvailability, BlockServingStatusLabel};
+
 use super::resource_governance::assert_request_cap_resource_governance;
 use super::*;
+use crate::network::block_serving::serve_managed_block_request;
+use crate::status::FieldAvailability;
 
 #[test]
 fn phase111_disabled_block_serving_suppresses_cached_active_block() {
@@ -250,7 +254,7 @@ fn phase111_side_chain_cached_block_is_not_served() {
 }
 
 #[test]
-fn phase111_active_chain_non_tip_missing_local_block_returns_pruned_notfound() {
+fn phase111_active_chain_non_tip_missing_local_block_returns_unavailable_notfound() {
     // Arrange
     let mut network = block_serving_enabled_managed_network(111_207);
     network
@@ -265,7 +269,8 @@ fn phase111_active_chain_non_tip_missing_local_block_returns_pruned_notfound() {
         .connect_local_block(&child, verify_flags(), consensus_params())
         .expect("connect child");
     let inventory = block_getdata_inventory(&genesis);
-    network.blocks_by_hash.remove(&block_hash(&genesis.header));
+    let genesis_hash = block_hash(&genesis.header);
+    network.blocks_by_hash.remove(&genesis_hash);
 
     // Act
     let outbound = network
@@ -276,11 +281,28 @@ fn phase111_active_chain_non_tip_missing_local_block_returns_pruned_notfound() {
             verify_flags(),
             consensus_params(),
         )
-        .expect("pruned non-tip getdata")
+        .expect("unavailable non-tip getdata")
         .outbound;
+    let request = inventory
+        .inventory
+        .first()
+        .cloned()
+        .expect("genesis getdata request");
+    let input = network.managed_block_serve_input(111_207, &request, genesis_hash, false, false);
+    let decision =
+        serve_managed_block_request(input, |hash| network.blocks_by_hash.get(&hash).cloned());
 
     // Assert
     assert_eq!(outbound, vec![WireNetworkMessage::NotFound(inventory)]);
+    assert_eq!(decision.status_label, BlockServingStatusLabel::Unavailable);
+    assert!(!decision.presence.payload_present);
+    let FieldAvailability::Available(status) =
+        network.block_relay_evidence_status().block_serving.status
+    else {
+        panic!("block-serving status counters should be available after getdata");
+    };
+    assert_eq!(status.unavailable_count, 1);
+    assert_eq!(status.pruned_count, 0);
 }
 
 #[test]
@@ -461,5 +483,99 @@ fn phase111_mixed_getdata_preserves_transaction_relay_serving() {
             WireNetworkMessage::Block(genesis),
             WireNetworkMessage::Tx(transaction),
         ]
+    );
+}
+
+#[test]
+fn managed_serve_input_exposes_presence_facts_without_authorizing_available_from_index() {
+    // Arrange
+    let mut network = block_serving_enabled_managed_network(143_101);
+    network
+        .connect_outbound_peer(143_101, 1)
+        .expect("connect outbound");
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    let genesis_hash = block_hash(&genesis.header);
+    network.blocks_by_hash.remove(&genesis_hash);
+    let request = block_getdata_inventory(&genesis)
+        .inventory
+        .into_iter()
+        .next()
+        .expect("genesis getdata request");
+
+    // Act
+    let input = network.managed_block_serve_input(143_101, &request, genesis_hash, false, false);
+
+    // Assert
+    assert!(network.peer_manager.header_store().contains(&genesis_hash));
+    assert!(!input.presence.payload_present);
+    assert!(input.presence.index_known);
+    assert!(input.presence.validated_on_active_chain);
+    assert_eq!(
+        input.data_availability,
+        BlockServingDataAvailability::Unavailable
+    );
+}
+
+#[test]
+fn managed_serve_input_cache_hit_sets_payload_present_true() {
+    // Arrange
+    let mut network = block_serving_enabled_managed_network(143_102);
+    network
+        .connect_outbound_peer(143_102, 1)
+        .expect("connect outbound");
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    let genesis_hash = block_hash(&genesis.header);
+    let request = block_getdata_inventory(&genesis)
+        .inventory
+        .into_iter()
+        .next()
+        .expect("genesis getdata request");
+
+    // Act
+    let input = network.managed_block_serve_input(143_102, &request, genesis_hash, false, false);
+
+    // Assert
+    assert!(input.presence.payload_present);
+    assert_eq!(
+        input.data_availability,
+        BlockServingDataAvailability::Available
+    );
+}
+
+#[test]
+fn production_inventory_source_does_not_inject_pruned() {
+    // Arrange
+    let inventory_source = include_str!("../inventory.rs");
+
+    // Act
+    let injects_pruned = inventory_source.contains("BlockServingDataAvailability::Pruned");
+
+    // Assert
+    assert!(
+        !injects_pruned,
+        "production inventory assembly must not inject BlockServingDataAvailability::Pruned"
+    );
+}
+
+#[test]
+fn classify_block_serving_status_has_no_fjall_or_cache_reads() {
+    // Arrange
+    let classifier_source = include_str!("../../../../open-bitcoin-network/src/block_serving.rs");
+
+    // Act
+    let has_fjall = classifier_source.contains("fjall");
+    let has_cache = classifier_source.contains("blocks_by_hash");
+    let has_block_probe = classifier_source.contains("has_block");
+
+    // Assert
+    assert!(
+        !has_fjall && !has_cache && !has_block_probe,
+        "classify_block_serving_status must stay I/O-free"
     );
 }
