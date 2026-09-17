@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: verifying
-stopped_at: Completed 142-06-PLAN.md
-last_updated: "2026-09-07T02:11:14.248Z"
+stopped_at: Phase 143 context gathered
+last_updated: "2026-09-17T01:57:15.781Z"
 last_activity: 2026-09-07
 progress:
   total_phases: 7
@@ -413,6 +413,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-07T01:35:30.637Z
-Stopped at: Completed 142-06-PLAN.md
-Resume file: None
+Last session: 2026-09-17T01:57:15.776Z
+Stopped at: Phase 143 context gathered
+Resume file: .planning/phases/143-honest-stored-block-availability/143-CONTEXT.md
