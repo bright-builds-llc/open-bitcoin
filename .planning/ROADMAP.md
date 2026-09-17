@@ -48,7 +48,7 @@ v2.3 Chainstate Durability and Historical Serving is planned across Phases 139�
 - [x] **Phase 141: Durable Fjall Coins Adapter** — Persist per-outpoint coins, best-block, and interrupted-flush markers; fail closed on coins disk-read errors. (completed 2026-09-04)
 - [x] **Phase 142: Manager Flush Lifecycle and Restart** — One manager owns coins init, ordered flush, interrupted-flush recovery, and restart from coins best-block. (completed 2026-09-07)
 - [x] **Phase 143: Honest Stored-Block Availability** — Serve or report Available only when payload bytes are present; refuse cleanly when they are not. (completed 2026-09-17)
-- [ ] **Phase 144: Operator Flush and Availability Evidence** — Expose sanitized flush, recovery, cache-size, and have-bytes vs do-not facts on operator surfaces.
+- [x] **Phase 144: Operator Flush and Availability Evidence** — Expose sanitized flush, recovery, cache-size, and have-bytes vs do-not facts on operator surfaces. (completed 2026-09-17)
 - [ ] **Phase 145: Parity Roots and No-Claim Guardrails** — Cite Knots coins/flush/manager/serve-path anchors and keep deferred claims out of v2.3.
 
 ## Phase Details
@@ -155,7 +155,7 @@ Plans:
 - [x] 144-01-PLAN.md — Shared chainstate_durability contract and runtime retention
 - [x] 144-02-PLAN.md — RPC, CLI JSON/human, and dashboard rows
 - [x] 144-03-PLAN.md — Metrics, structured logs, and support redaction
-- [ ] 144-04-PLAN.md — Docs, cross-surface checker, breadcrumbs, and verify wiring
+- [x] 144-04-PLAN.md — Docs, cross-surface checker, breadcrumbs, and verify wiring
 
 ### Phase 145: Parity Roots and No-Claim Guardrails
 **Goal**: Parity evidence is auditable and the v2.3 claim cannot be read as prune, assumeutxo, archive, or production readiness.
@@ -209,7 +209,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 4/4 | Complete    | 2026-09-17 |
-| 144. Operator Flush and Availability Evidence | 3/4 | In Progress|  |
+| 144. Operator Flush and Availability Evidence | 4/4 | Complete   | 2026-09-17 |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step

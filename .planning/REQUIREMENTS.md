@@ -32,8 +32,8 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 ### Operator Evidence
 
-- [ ] **CSOBS-01**: Status, RPC, CLI, dashboard, metrics, logs, and support expose flush, recovery, and have-bytes vs do-not using sanitized low-cardinality fields.
-- [ ] **CSOBS-02**: Operator evidence reports cache-size state (OK / LARGE / CRITICAL) and last flush reason.
+- [x] **CSOBS-01**: Status, RPC, CLI, dashboard, metrics, logs, and support expose flush, recovery, and have-bytes vs do-not using sanitized low-cardinality fields.
+- [x] **CSOBS-02**: Operator evidence reports cache-size state (OK / LARGE / CRITICAL) and last flush reason.
 - [x] **CSOBS-03**: A coins disk-read error fails closed as a typed storage or recovery error, not as spent or missing.
 
 ### Parity and Release Boundaries
@@ -95,8 +95,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HAVL-01 | Phase 143 | Complete |
 | HAVL-02 | Phase 143 | Complete |
 | HAVL-03 | Phase 143 | Complete |
-| CSOBS-01 | Phase 144 | Pending |
-| CSOBS-02 | Phase 144 | Pending |
+| CSOBS-01 | Phase 144 | Complete |
+| CSOBS-02 | Phase 144 | Complete |
 | CSVFY-01 | Phase 145 | Pending |
 | CSVFY-02 | Phase 145 | Pending |
 
