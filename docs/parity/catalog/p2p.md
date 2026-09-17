@@ -1243,9 +1243,12 @@ The request-path terms are `ManagedBlockServeInput`,
 `block_status_pruned`, `block_status_unavailable`, and
 `block_request_cap_reached`. Active validated local block and witness-block
 payloads can return a block payload after policy gates. Compact-block
-inventory, side-chain cached blocks, pruned active non-tip blocks, missing
-active-tip payloads, stale facts, and request-cap pressure stay bounded to
-notfound or disconnect outcomes.
+inventory, side-chain cached blocks, missing active-tip payloads, stale facts,
+and request-cap pressure stay bounded to notfound or disconnect outcomes.
+Active-chain blocks whose payload bytes are missing, including non-tip hashes,
+return `WireNetworkMessage::NotFound` with `block_status_unavailable`. The
+label `block_status_pruned` remains reserved for a future prune-mode delete
+when prune mode actually deleted files and is not emitted on production paths.
 
 Knots anchors for this request path are
 `packages/bitcoin-knots/src/net_processing.cpp`,

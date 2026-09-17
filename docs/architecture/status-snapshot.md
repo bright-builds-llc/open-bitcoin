@@ -433,11 +433,14 @@ policy labels and now routes `InventoryType::Block`,
 
 For active validated local blocks with available payload data, the adapter
 performs lazy `lookup_block` after eligibility and resource gates and returns
-`WireNetworkMessage::Block`. Requests for side-chain cached blocks, pruned
-active non-tip blocks, active tips missing local payload data, stale facts, and
-compact-block inventory return `WireNetworkMessage::NotFound` with fixed labels
-including `block_status_pruned`, `block_status_unavailable`, and
-`block_request_cap_reached`.
+`WireNetworkMessage::Block`. Requests for side-chain cached blocks, active
+tips missing local payload data, stale facts, and compact-block inventory
+return `WireNetworkMessage::NotFound` with fixed labels including
+`block_status_unavailable` and `block_request_cap_reached`. Active-chain
+blocks whose payload bytes are missing, including non-tip hashes, return
+`WireNetworkMessage::NotFound` with `block_status_unavailable`. The label
+`block_status_pruned` remains reserved for a future prune-mode delete when
+prune mode actually deleted files and is not emitted on production paths.
 
 Status consumers must keep Phase 111 bounded to the opt-in managed request
 path. Phase 111 does not add BIP152 compact block payload serving, compact
