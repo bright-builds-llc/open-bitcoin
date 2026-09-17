@@ -253,3 +253,152 @@ fn phase123_block_served_metric_uses_runtime_count() {
         assert!(!serialized.contains(forbidden));
     }
 }
+
+fn available_durability_fixture() -> ChainstateDurabilityEvidence {
+    ChainstateDurabilityEvidence {
+        cache_size: CacheSizeLabel::Critical,
+        last_flush_reason: LastFlushReasonLabel::Periodic,
+        write_kind: WriteKindLabel::Sync,
+        readiness: ReadinessLabel::ReadyToFlush,
+        cache_bytes: 9_000,
+        cache_byte_limit: 8_192,
+        recovery_outcome: CoinsRecoveryOutcome::Replayed,
+        maybe_coins_best_block_height: Some(840_004),
+        maybe_coins_best_block_hash: Some(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string(),
+        ),
+        last_serving_status: ServingStatusLabel::Unavailable,
+        last_payload_present: false,
+        last_index_known: true,
+        last_validated_on_active_chain: true,
+        available_count: 3,
+        unavailable_count: 1,
+        index_known_without_payload_count: 1,
+    }
+}
+
+#[test]
+fn chainstate_durability_metric_kinds_are_low_cardinality_gauges_and_counters() {
+    // Arrange
+    let durability = FieldAvailability::available(available_durability_fixture());
+    let timestamp = 1_779_000_001;
+
+    // Act
+    let samples = chainstate_durability_metric_samples(&durability, timestamp);
+    let kinds = samples.iter().map(|sample| sample.kind).collect::<Vec<_>>();
+    let labels = kinds
+        .iter()
+        .copied()
+        .map(MetricKind::as_str)
+        .collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(
+        kinds,
+        vec![
+            MetricKind::ChainstateDurabilityCacheSizeClass,
+            MetricKind::ChainstateDurabilityLastFlushReasonClass,
+            MetricKind::ChainstateDurabilityWriteKindClass,
+            MetricKind::ChainstateDurabilityRecoveryClass,
+            MetricKind::ChainstateDurabilityAvailableCount,
+            MetricKind::ChainstateDurabilityUnavailableCount,
+            MetricKind::ChainstateDurabilityIndexKnownWithoutPayloadCount,
+        ]
+    );
+    for label in labels {
+        assert!(label.ends_with("_class") || label.ends_with("_count"));
+        assert!(!label.contains("dynamic_label"));
+        assert!(!label.contains("peer_id"));
+    }
+}
+
+#[test]
+fn chainstate_durability_metric_status_maps_to_each_fixed_metric_kind() {
+    // Arrange
+    let durability = FieldAvailability::available(available_durability_fixture());
+    let timestamp = 1_779_000_002;
+
+    // Act
+    let samples = chainstate_durability_metric_samples(&durability, timestamp);
+
+    // Assert
+    assert_eq!(
+        samples,
+        vec![
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityCacheSizeClass,
+                2.0,
+                timestamp
+            ),
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityLastFlushReasonClass,
+                2.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityWriteKindClass,
+                2.0,
+                timestamp
+            ),
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityRecoveryClass,
+                1.0,
+                timestamp
+            ),
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityAvailableCount,
+                3.0,
+                timestamp
+            ),
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityUnavailableCount,
+                1.0,
+                timestamp,
+            ),
+            MetricSample::new(
+                MetricKind::ChainstateDurabilityIndexKnownWithoutPayloadCount,
+                1.0,
+                timestamp,
+            ),
+        ]
+    );
+}
+
+#[test]
+fn chainstate_durability_metric_unavailable_emits_no_samples() {
+    // Arrange
+    let durability = FieldAvailability::<ChainstateDurabilityEvidence>::unavailable(
+        "chainstate durability evidence unavailable",
+    );
+
+    // Act
+    let samples = chainstate_durability_metric_samples(&durability, 1_779_000_003);
+
+    // Assert
+    assert!(samples.is_empty());
+}
+
+#[test]
+fn chainstate_durability_metric_samples_omit_hash_peer_and_pruned() {
+    // Arrange
+    let durability = FieldAvailability::available(available_durability_fixture());
+
+    // Act
+    let samples = chainstate_durability_metric_samples(&durability, 1_779_000_004);
+    let debug_text = format!("{samples:?}");
+    let serialized = serde_json::to_string(&samples).expect("durability metric samples json");
+
+    // Assert
+    for text in [debug_text.as_str(), serialized.as_str()] {
+        assert!(!text.contains("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+        for forbidden in ["peer_id", "pruned", "block_hash", "dynamic_label"] {
+            assert!(!text.contains(forbidden), "leaked {forbidden} in {text}");
+        }
+    }
+}
+
+#[test]
+fn metric_kind_all_len_is_81() {
+    // Arrange / Act / Assert
+    assert_eq!(MetricKind::ALL.len(), 81);
+}

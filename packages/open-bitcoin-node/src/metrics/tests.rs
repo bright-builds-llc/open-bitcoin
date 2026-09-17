@@ -3,12 +3,13 @@
 
 use super::{
     MetricKind, MetricRetentionPolicy, MetricSample, MetricsAvailability, MetricsStatus,
-    append_and_prune_metric_samples, block_relay_metric_samples, inbound_metric_samples,
-    relay_metric_samples,
+    append_and_prune_metric_samples, block_relay_metric_samples,
+    chainstate_durability_metric_samples, inbound_metric_samples, relay_metric_samples,
 };
 use crate::status::{
-    BlockRelayEvidenceStatus, FieldAvailability, InboundHandshakeStatusCounts,
-    InboundPeerServingStatus,
+    BlockRelayEvidenceStatus, CacheSizeLabel, ChainstateDurabilityEvidence, CoinsRecoveryOutcome,
+    FieldAvailability, InboundHandshakeStatusCounts, InboundPeerServingStatus,
+    LastFlushReasonLabel, ReadinessLabel, ServingStatusLabel, WriteKindLabel,
     relay_evidence::{RelayEvidenceCounters, RelayEvidenceStatus},
     relay_evidence::{RelayEvidenceField, RelayRecoveryCounters},
 };

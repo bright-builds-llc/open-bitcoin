@@ -234,7 +234,7 @@ fn inbound_metric_kinds_are_low_cardinality_counters() {
         .collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(MetricKind::ALL.len(), 74);
+    assert_eq!(MetricKind::ALL.len(), 81);
     assert_eq!(
         labels,
         vec![
@@ -433,7 +433,7 @@ fn mempool_policy_metric_all_includes_new_kinds() {
     for kind in new_kinds {
         assert!(MetricKind::ALL.contains(&kind));
     }
-    assert_eq!(MetricKind::ALL.len(), 74);
+    assert_eq!(MetricKind::ALL.len(), 81);
 }
 
 #[test]

@@ -4,6 +4,7 @@
 //! Serializable metrics retention and status contracts.
 
 mod block_relay;
+mod chainstate_durability;
 mod inbound;
 mod mempool_policy;
 
@@ -14,6 +15,7 @@ use crate::status::relay_evidence::{
     RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus,
 };
 pub use block_relay::block_relay_metric_samples;
+pub use chainstate_durability::chainstate_durability_metric_samples;
 pub use inbound::inbound_metric_samples;
 pub use mempool_policy::{mempool_policy_metric_samples, mempool_status_from_operator_snapshot};
 
@@ -95,10 +97,17 @@ pub enum MetricKind {
     MempoolRetryCleared,
     MempoolAdmissionAccepted,
     MempoolAdmissionStillPresent,
+    ChainstateDurabilityCacheSizeClass,
+    ChainstateDurabilityLastFlushReasonClass,
+    ChainstateDurabilityWriteKindClass,
+    ChainstateDurabilityRecoveryClass,
+    ChainstateDurabilityAvailableCount,
+    ChainstateDurabilityUnavailableCount,
+    ChainstateDurabilityIndexKnownWithoutPayloadCount,
 }
 
 impl MetricKind {
-    pub const ALL: [Self; 74] = [
+    pub const ALL: [Self; 81] = [
         Self::SyncHeight,
         Self::HeaderHeight,
         Self::DownloadedBlockHeight,
@@ -173,6 +182,13 @@ impl MetricKind {
         Self::MempoolRetryCleared,
         Self::MempoolAdmissionAccepted,
         Self::MempoolAdmissionStillPresent,
+        Self::ChainstateDurabilityCacheSizeClass,
+        Self::ChainstateDurabilityLastFlushReasonClass,
+        Self::ChainstateDurabilityWriteKindClass,
+        Self::ChainstateDurabilityRecoveryClass,
+        Self::ChainstateDurabilityAvailableCount,
+        Self::ChainstateDurabilityUnavailableCount,
+        Self::ChainstateDurabilityIndexKnownWithoutPayloadCount,
     ];
 
     pub const fn as_str(self) -> &'static str {
@@ -259,6 +275,17 @@ impl MetricKind {
             Self::MempoolRetryCleared => "mempool_retry_cleared",
             Self::MempoolAdmissionAccepted => "mempool_admission_accepted",
             Self::MempoolAdmissionStillPresent => "mempool_admission_still_present",
+            Self::ChainstateDurabilityCacheSizeClass => "chainstate_durability_cache_size_class",
+            Self::ChainstateDurabilityLastFlushReasonClass => {
+                "chainstate_durability_last_flush_reason_class"
+            }
+            Self::ChainstateDurabilityWriteKindClass => "chainstate_durability_write_kind_class",
+            Self::ChainstateDurabilityRecoveryClass => "chainstate_durability_recovery_class",
+            Self::ChainstateDurabilityAvailableCount => "chainstate_durability_available_count",
+            Self::ChainstateDurabilityUnavailableCount => "chainstate_durability_unavailable_count",
+            Self::ChainstateDurabilityIndexKnownWithoutPayloadCount => {
+                "chainstate_durability_index_known_without_payload_count"
+            }
         }
     }
 }
