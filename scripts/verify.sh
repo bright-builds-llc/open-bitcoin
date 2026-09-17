@@ -391,6 +391,8 @@ bun test scripts/check-phase111-full-block-serving-request-path.test.ts
 bun run scripts/check-phase111-full-block-serving-request-path.ts
 bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 bun run scripts/check-phase116-operator-block-relay-evidence.ts
+bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
+bun run scripts/check-phase144-operator-flush-availability-evidence.ts
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
@@ -555,6 +557,8 @@ run_step "test Phase 111 full block-serving request path checker" bun test scrip
 run_step "check Phase 111 full block-serving request path" bun run scripts/check-phase111-full-block-serving-request-path.ts
 run_step "test Phase 116 operator block-relay evidence checker" bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts
+run_step "test Phase 144 operator flush and availability evidence checker" bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
+run_step "check Phase 144 operator flush and availability evidence" bun run scripts/check-phase144-operator-flush-availability-evidence.ts
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
