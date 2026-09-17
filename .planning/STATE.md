@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: executing
-stopped_at: Completed 143-03-PLAN.md
-last_updated: "2026-09-17T05:18:06.179Z"
+status: verifying
+stopped_at: Completed 143-04-PLAN.md
+last_updated: "2026-09-17T06:12:18.716Z"
 last_activity: 2026-09-17
 progress:
   total_phases: 7
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 21
-  completed_plans: 20
-  percent: 95
+  completed_plans: 21
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 143 (honest-stored-block-availability) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-17
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
@@ -132,6 +132,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 143-honest-stored-block-availability P01 | 23 | 2 tasks | 9 files |
 | Phase 143-honest-stored-block-availability P02 | 28 | 2 tasks | 16 files |
 | Phase 143-honest-stored-block-availability P03 | 26 | 2 tasks | 3 files |
+| Phase 143-honest-stored-block-availability P04 | 14min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -404,6 +405,8 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 143]: Combined 143-03 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
 - [Phase 143]: LookupUnavailable uses 4-arg missing with rewritten presence instead of mutating a 3-arg result
 - [Phase 143]: Leave HAVL-01 and HAVL-02 Pending until later plans and lifecycle-valid phase verification
+- [Phase 143]: Leave HAVL-02 Pending until lifecycle-valid phase verification
+- [Phase 143]: Task 2 needed no checker fixture edits because fixtures already used unavailable_notfound
 
 ### Pending Todos
 
@@ -427,6 +430,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-17T05:18:06.175Z
-Stopped at: Completed 143-03-PLAN.md
+Last session: 2026-09-17T06:12:18.712Z
+Stopped at: Completed 143-04-PLAN.md
 Resume file: None

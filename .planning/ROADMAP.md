@@ -47,7 +47,7 @@ v2.3 Chainstate Durability and Historical Serving is planned across Phases 139�
 - [x] **Phase 140: Pure Flush Policy and Typed Decisions** — Decide IfNeeded, Periodic, Always, and disk-space refusal from injected facts in an I/O-free state machine. (completed 2026-09-02)
 - [x] **Phase 141: Durable Fjall Coins Adapter** — Persist per-outpoint coins, best-block, and interrupted-flush markers; fail closed on coins disk-read errors. (completed 2026-09-04)
 - [x] **Phase 142: Manager Flush Lifecycle and Restart** — One manager owns coins init, ordered flush, interrupted-flush recovery, and restart from coins best-block. (completed 2026-09-07)
-- [ ] **Phase 143: Honest Stored-Block Availability** — Serve or report Available only when payload bytes are present; refuse cleanly when they are not.
+- [x] **Phase 143: Honest Stored-Block Availability** — Serve or report Available only when payload bytes are present; refuse cleanly when they are not. (completed 2026-09-17)
 - [ ] **Phase 144: Operator Flush and Availability Evidence** — Expose sanitized flush, recovery, cache-size, and have-bytes vs do-not facts on operator surfaces.
 - [ ] **Phase 145: Parity Roots and No-Claim Guardrails** — Cite Knots coins/flush/manager/serve-path anchors and keep deferred claims out of v2.3.
 
@@ -138,7 +138,7 @@ Plans:
 - [x] 143-01-PLAN.md — Presence facts and reserved Pruned
 - [x] 143-02-PLAN.md — Payload-byte probe replaces override
 - [x] 143-03-PLAN.md — Missing-payload refuse and LookupUnavailable honesty
-- [ ] 143-04-PLAN.md — Reserved-Pruned docs and Phase 111 claim copy
+- [x] 143-04-PLAN.md — Reserved-Pruned docs and Phase 111 claim copy
 
 ### Phase 144: Operator Flush and Availability Evidence
 **Goal**: Operators can see flush, recovery, cache-size, and have-bytes versus do-not through sanitized surfaces.
@@ -202,7 +202,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
-| 143. Honest Stored-Block Availability | 3/4 | In Progress|  |
+| 143. Honest Stored-Block Availability | 4/4 | Complete   | 2026-09-17 |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
