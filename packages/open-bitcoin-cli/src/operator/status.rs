@@ -13,10 +13,10 @@ use open_bitcoin_node::{
     LogRetentionPolicy, MetricRetentionPolicy, MetricsStatus,
     logging::writer::load_log_status,
     status::{
-        BlockRelayEvidenceStatus, BuildProvenance, ChainstateDurabilityEvidence, ConfigStatus,
-        FieldAvailability, HealthSignal, HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON,
-        MempoolStatus, NodeRuntimeState, NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts,
-        PeerStatus, WalletStatus, relay_evidence::RelayEvidenceStatus,
+        BlockRelayEvidenceStatus, BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal,
+        HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState,
+        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
+        relay_evidence::RelayEvidenceStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -233,6 +233,7 @@ fn collect_live_status_snapshot(
     let mempool = live_mempool_status(&network_status, &mempool_info);
     let inbound = network_status.inbound;
     let block_relay = network_status.block_relay;
+    let chainstate_durability = network_status.chainstate_durability;
     let metrics = network_status.metrics;
 
     OpenBitcoinStatusSnapshot {
@@ -253,7 +254,7 @@ fn collect_live_status_snapshot(
         },
         mempool,
         block_relay,
-        chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
+        chainstate_durability,
         wallet,
         logs: log_status(&input.config_resolution),
         metrics,
@@ -356,7 +357,9 @@ fn collect_open_bitcoin_network_status(
             inbound: FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
             relay: RelayEvidenceStatus::default(),
             block_relay: BlockRelayEvidenceStatus::default_unavailable(),
-            chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
+            chainstate_durability: FieldAvailability::unavailable(
+                inbound_status_unavailable_reason(&error),
+            ),
             metrics: metrics_status(),
             mempool: MempoolStatus::default(),
         },

@@ -4,6 +4,7 @@
 //! Human and JSON status rendering.
 
 mod block_relay;
+mod chainstate_durability;
 mod inbound;
 mod labels;
 mod mempool_policy;
@@ -24,6 +25,7 @@ use open_bitcoin_node::{
 use serde::Serialize;
 
 use block_relay::block_relay_evidence_lines;
+use chainstate_durability::chainstate_durability_lines;
 use inbound::inbound_status_text;
 use labels::{
     health_level_name, runtime_state_name, sync_lifecycle_name, sync_progress_signal_name,
@@ -193,6 +195,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.extend(mempool_policy_lines(&snapshot.mempool));
     lines.extend(relay_evidence_lines(&snapshot.mempool));
     lines.extend(block_relay_evidence_lines(&snapshot.block_relay));
+    lines.extend(chainstate_durability_lines(&snapshot.chainstate_durability));
     lines.push(format!(
         "Wallet: {}",
         u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats")

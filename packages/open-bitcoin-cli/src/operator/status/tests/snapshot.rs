@@ -373,3 +373,199 @@ fn operator_status_block_relay_fallback_uses_default_unavailable_contract() {
         human.contains("Block relay activation: Unavailable: block serving evidence unavailable")
     );
 }
+
+fn available_chainstate_durability() -> FieldAvailability<ChainstateDurabilityEvidence> {
+    FieldAvailability::available(ChainstateDurabilityEvidence {
+        cache_size: CacheSizeLabel::Ok,
+        last_flush_reason: LastFlushReasonLabel::Periodic,
+        write_kind: WriteKindLabel::Sync,
+        readiness: ReadinessLabel::ReadyToFlush,
+        cache_bytes: 1_024,
+        cache_byte_limit: 8_192,
+        recovery_outcome: CoinsRecoveryOutcome::Replayed,
+        maybe_coins_best_block_height: Some(840_004),
+        maybe_coins_best_block_hash: Some("11".repeat(32)),
+        last_serving_status: ServingStatusLabel::Unavailable,
+        last_payload_present: false,
+        last_index_known: true,
+        last_validated_on_active_chain: true,
+        available_count: 0,
+        unavailable_count: 1,
+        index_known_without_payload_count: 1,
+    })
+}
+
+fn live_rpc_with_chainstate_durability() -> FakeStatusRpcClient {
+    FakeStatusRpcClient {
+        maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
+                INBOUND_STATUS_UNAVAILABLE_REASON,
+            ),
+            relay: RelayEvidenceStatus::default(),
+            block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+            chainstate_durability: available_chainstate_durability(),
+            metrics: MetricsStatus::default(),
+            mempool: MempoolStatus::default(),
+        }),
+        ..FakeStatusRpcClient::running()
+    }
+}
+
+#[test]
+fn operator_status_chainstate_durability_maps_shared_contract_and_human_lines() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = live_rpc_with_chainstate_durability();
+    let expected = available_chainstate_durability();
+    let coins_hash = "11".repeat(32);
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let lines = human.lines().collect::<Vec<_>>();
+
+    // Assert
+    assert_eq!(snapshot.chainstate_durability, expected);
+    let maybe_block_relay = lines
+        .iter()
+        .rposition(|line| line.starts_with("Block relay") || line.starts_with("Compact "));
+    let maybe_durability = lines
+        .iter()
+        .position(|line| line.starts_with("Chainstate durability:"));
+    let maybe_wallet = lines.iter().position(|line| line.starts_with("Wallet:"));
+    let durability_start = maybe_durability.expect("durability cluster");
+    assert_eq!(
+        maybe_block_relay.map(|index| index + 1),
+        Some(durability_start)
+    );
+    assert_eq!(maybe_wallet, Some(durability_start + 6));
+    assert_eq!(
+        lines[durability_start],
+        "Chainstate durability: cache_size=OK last_flush_reason=periodic write_kind=sync readiness=ready_to_flush"
+    );
+    assert_eq!(
+        lines[durability_start + 1],
+        "Cache occupancy: cache_bytes=1024 cache_byte_limit=8192"
+    );
+    assert_eq!(
+        lines[durability_start + 2],
+        format!("Coins best-block: height=840004 hash={coins_hash}")
+    );
+    assert_eq!(lines[durability_start + 3], "Coins recovery: replayed");
+    assert_eq!(
+        lines[durability_start + 4],
+        "Have-bytes: unavailable payload_present=false index_known=true validated_on_active_chain=true"
+    );
+    assert_eq!(
+        lines[durability_start + 5],
+        "Have-bytes counts: available_count=0 unavailable_count=1 index_known_without_payload_count=1"
+    );
+}
+
+#[test]
+fn operator_status_chainstate_durability_fallback_uses_default_unavailable_contract() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = FakeStatusRpcClient::network_status_failing(StatusRpcError::from_rpc_detail(
+        RpcErrorDetail::new(RpcErrorCode::MethodNotFound, "Method not found"),
+    ));
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&json).expect("decode status json");
+
+    // Assert
+    let reason = decoded["chainstate_durability"]["value"]["reason"]
+        .as_str()
+        .expect("unavailable reason");
+    assert_eq!(decoded["chainstate_durability"]["state"], "unavailable");
+    assert!(
+        reason.starts_with("openbitcoinnetworkstatus unavailable:"),
+        "fallback reason was {reason}"
+    );
+    assert_eq!(
+        snapshot.chainstate_durability,
+        FieldAvailability::unavailable(reason)
+    );
+    for label in [
+        "Chainstate durability",
+        "Cache occupancy",
+        "Coins best-block",
+        "Coins recovery",
+        "Have-bytes",
+        "Have-bytes counts",
+    ] {
+        assert!(
+            human.contains(&format!("{label}: Unavailable: {reason}")),
+            "{label} missing shared unavailable reason"
+        );
+    }
+}
+
+#[test]
+fn operator_status_json_serializes_snapshot_chainstate_durability_only() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = live_rpc_with_chainstate_durability();
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let json = render_status(&snapshot, StatusRenderMode::Json).expect("status json");
+    let decoded: serde_json::Value = serde_json::from_str(&json).expect("decode status json");
+
+    // Assert
+    assert_eq!(
+        decoded["chainstate_durability"],
+        serde_json::to_value(&snapshot.chainstate_durability).expect("durability json")
+    );
+    assert_eq!(decoded["chainstate_durability"]["state"], "available");
+    assert_eq!(
+        decoded["chainstate_durability"]["value"]["cache_size"],
+        "ok"
+    );
+    let object = decoded.as_object().expect("status object");
+    assert!(!object.contains_key("getblock"));
+    assert!(!object.contains_key("coins"));
+    assert!(
+        decoded
+            .get("chainstate_durability")
+            .and_then(|value| value.get("value"))
+            .and_then(serde_json::Value::as_object)
+            .is_some_and(|value| !value.contains_key("getblock") && !value.contains_key("coins"))
+    );
+}
+
+#[test]
+fn operator_status_human_omits_pruned_and_blank_lines_in_durability_cluster() {
+    // Arrange
+    let input = status_input(Vec::new());
+    let rpc = live_rpc_with_chainstate_durability();
+
+    // Act
+    let snapshot = collect_status_snapshot(&input, Some(&rpc));
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let lines = human.lines().collect::<Vec<_>>();
+    let durability_start = lines
+        .iter()
+        .position(|line| line.starts_with("Chainstate durability:"))
+        .expect("durability cluster");
+    let cluster = &lines[durability_start..durability_start + 6];
+
+    // Assert
+    assert!(cluster.iter().all(|line| !line.is_empty()));
+    assert!(!human.contains("\n\nChainstate durability:"));
+    assert!(!human.contains("Cache occupancy:\n\n"));
+    for line in cluster {
+        assert!(!line.contains("pruned"), "durability line leaked pruned");
+        assert!(
+            !line.contains("archive-node"),
+            "durability line leaked archive-node"
+        );
+        assert!(
+            !line.contains("getblock"),
+            "durability line leaked getblock"
+        );
+    }
+}
