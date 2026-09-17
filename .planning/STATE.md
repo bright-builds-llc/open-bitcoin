@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: verifying
+status: executing
 stopped_at: Phase 143 context gathered
-last_updated: "2026-09-17T01:57:15.781Z"
-last_activity: 2026-09-07
+last_updated: "2026-09-17T03:18:27.306Z"
+last_activity: 2026-09-17 -- Phase 143 planning complete
 progress:
   total_phases: 7
   completed_phases: 4
-  total_plans: 17
+  total_plans: 21
   completed_plans: 17
-  percent: 100
+  percent: 81
 ---
 
 # Project State
@@ -28,8 +28,8 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 143
 Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-09-07
+Status: Ready to execute
+Last activity: 2026-09-17 -- Phase 143 planning complete
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
