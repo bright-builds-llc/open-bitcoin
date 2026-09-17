@@ -19,13 +19,14 @@ use open_bitcoin_mempool::MempoolMemberIdentity;
 
 use super::{ManagedNetworkOperatorSnapshot, ManagedPeerNetwork};
 use crate::ChainstateStore;
+use crate::chainstate::ManagerReadiness;
 use crate::status::relay_evidence::{RelayEvidenceCounters, RelayEvidenceField};
 use crate::status::{
-    MempoolEvictionGroup, MempoolPressureGroup, admission_group_from_counts,
-    checkpoint_group_from_evidence, decay_half_life_label, recovery_group_from_summary,
-    retry_group_from_relay,
+    ChainstateDurabilityEvidence, FieldAvailability, MempoolEvictionGroup, MempoolPressureGroup,
+    admission_group_from_counts, checkpoint_group_from_evidence, decay_half_life_label,
+    recovery_group_from_summary, retry_group_from_relay,
 };
-use open_bitcoin_core::chainstate::CoinsView;
+use open_bitcoin_core::chainstate::{CoinsView, FlushPolicyTime};
 
 /// Periodic checkpoint interval used to derive overdue and loss-bound facts.
 const OPERATOR_CHECKPOINT_INTERVAL_SECONDS: u64 = 300;
@@ -61,6 +62,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             mempool: mempool.clone(),
             relay,
             block_relay: block_relay.status,
+            chainstate_durability: self.project_chainstate_durability(),
             block_served_count: block_relay.served_count,
             inbound_admission: self.inbound_admission_info().clone(),
             address_boundary: self.address_boundary_info(),
@@ -95,6 +97,38 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 evidence.removed_members,
             ),
         }
+    }
+
+    fn project_chainstate_durability(&self) -> FieldAvailability<ChainstateDurabilityEvidence> {
+        let lifecycle = &self.chainstate.flush_lifecycle;
+        if lifecycle.readiness() == ManagerReadiness::NotReady
+            && lifecycle.maybe_recovery_outcome().is_none()
+        {
+            return ChainstateDurabilityEvidence::default_unavailable();
+        }
+
+        let coins = self.chainstate.chainstate().coins();
+        let maybe_coins_best_block = self
+            .chainstate
+            .chainstate()
+            .coins_best_block()
+            .ok()
+            .flatten();
+        let maybe_coins_best_block_height = maybe_coins_best_block.and_then(|block_hash| {
+            self.peer_manager
+                .header_store()
+                .entry(&block_hash)
+                .map(|entry| u64::from(entry.height))
+        });
+        lifecycle.project_chainstate_durability(
+            coins.estimated_cache_bytes(),
+            coins.cache_entry_count(),
+            FlushPolicyTime::from_unix_seconds(0),
+            u64::MAX,
+            maybe_coins_best_block,
+            maybe_coins_best_block_height,
+            self.have_bytes_accumulator.snapshot(),
+        )
     }
 
     pub fn unbroadcast_member_count(&self) -> u64 {

@@ -38,6 +38,7 @@ impl<S: Clone> Clone for ManagedPeerNetwork<S, MemoryCoinsView> {
             block_relay_activation: self.block_relay_activation,
             inbound_serving_enabled: self.inbound_serving_enabled,
             block_relay_evidence: self.block_relay_evidence.clone(),
+            have_bytes_accumulator: self.have_bytes_accumulator.clone(),
             relay_fanout: self.relay_fanout.clone(),
             relay_serving: self.relay_serving.clone(),
             compact_extra_txn: self.compact_extra_txn.clone(),

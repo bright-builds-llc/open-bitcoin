@@ -392,6 +392,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     ) {
         self.block_relay_evidence
             .record_block_serving(inventory_type, decision);
+        self.have_bytes_accumulator
+            .record_have_bytes(decision.presence);
     }
 
     pub(in crate::network) fn record_peer_emission(

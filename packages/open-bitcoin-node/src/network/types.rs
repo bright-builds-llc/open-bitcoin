@@ -24,9 +24,9 @@ use open_bitcoin_mempool::{
 use open_bitcoin_network::{NetworkError, PeerId, WireNetworkMessage};
 
 use crate::status::{
-    BlockRelayEvidenceStatus, MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup,
-    MempoolPressureGroup, MempoolRecoveryGroup, MempoolRetryGroup,
-    relay_evidence::RelayEvidenceStatus,
+    BlockRelayEvidenceStatus, ChainstateDurabilityEvidence, FieldAvailability,
+    MempoolAdmissionGroup, MempoolCheckpointGroup, MempoolEvictionGroup, MempoolPressureGroup,
+    MempoolRecoveryGroup, MempoolRetryGroup, relay_evidence::RelayEvidenceStatus,
 };
 
 use super::{
@@ -149,6 +149,7 @@ pub struct ManagedNetworkOperatorSnapshot {
     pub(super) mempool: ManagedMempoolInfo,
     pub(super) relay: RelayEvidenceStatus,
     pub(super) block_relay: BlockRelayEvidenceStatus,
+    pub(super) chainstate_durability: FieldAvailability<ChainstateDurabilityEvidence>,
     pub(super) block_served_count: u64,
     pub(super) inbound_admission: ManagedInboundAdmissionInfo,
     pub(super) address_boundary: ManagedAddressBoundaryInfo,
@@ -177,6 +178,10 @@ impl ManagedNetworkOperatorSnapshot {
 
     pub fn block_relay(&self) -> &BlockRelayEvidenceStatus {
         &self.block_relay
+    }
+
+    pub fn chainstate_durability(&self) -> &FieldAvailability<ChainstateDurabilityEvidence> {
+        &self.chainstate_durability
     }
 
     pub const fn block_served_count(&self) -> u64 {

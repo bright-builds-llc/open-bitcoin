@@ -389,6 +389,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             inbound_serving_enabled,
             block_relay_evidence:
                 super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
+            have_bytes_accumulator:
+                super::chainstate_durability_evidence::HaveBytesAccumulator::default(),
             relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
             relay_serving: RelayServingCache::default(),
             compact_extra_txn:
@@ -454,6 +456,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             inbound_serving_enabled,
             block_relay_evidence:
                 super::block_relay_evidence::ManagedBlockRelayEvidenceState::default(),
+            have_bytes_accumulator:
+                super::chainstate_durability_evidence::HaveBytesAccumulator::default(),
             relay_fanout: super::relay_fanout::ManagedRelayFanoutState::default(),
             relay_serving: RelayServingCache::default(),
             compact_extra_txn:

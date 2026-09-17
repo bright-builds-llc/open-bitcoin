@@ -22,6 +22,7 @@ mod admission_bridge;
 mod announcement_transport;
 mod block_relay_evidence;
 mod block_serving;
+mod chainstate_durability_evidence;
 mod checkpoint;
 mod compact_receive_candidates;
 mod header_sync;
@@ -124,6 +125,7 @@ pub struct ManagedPeerNetwork<S, V: CoinsView = MemoryCoinsView> {
     block_relay_activation: BlockRelayActivationPolicy,
     inbound_serving_enabled: bool,
     block_relay_evidence: block_relay_evidence::ManagedBlockRelayEvidenceState,
+    have_bytes_accumulator: chainstate_durability_evidence::HaveBytesAccumulator,
     relay_fanout: relay_fanout::ManagedRelayFanoutState,
     relay_serving: relay_serving::RelayServingCache,
     compact_extra_txn: compact_receive_candidates::CompactExtraTxnBuffer,

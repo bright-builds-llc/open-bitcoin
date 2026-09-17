@@ -1323,6 +1323,17 @@
       ]
     },
     {
+      "label": "node-network-chainstate-durability-evidence",
+      "files": [
+        "packages/open-bitcoin-node/src/network/chainstate_durability_evidence.rs",
+        "packages/open-bitcoin-node/src/network/chainstate_durability_evidence/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "node-mempool-checkpoint-coordinator",
       "files": [
         "packages/open-bitcoin-node/src/network/checkpoint.rs",
@@ -1337,9 +1348,7 @@
     {
       "label": "node-network-block-relay-evidence-adapter",
       "files": [
-        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
-        "packages/open-bitcoin-node/src/network/chainstate_durability_evidence.rs",
-        "packages/open-bitcoin-node/src/network/chainstate_durability_evidence/tests.rs"
+        "packages/open-bitcoin-node/src/network/block_relay_evidence.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/blockencodings.cpp",
