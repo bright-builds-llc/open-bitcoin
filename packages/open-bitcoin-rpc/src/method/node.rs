@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 
 use open_bitcoin_node::{
     FieldAvailability, InboundPeerServingStatus, MetricsStatus, RuntimeMetadata,
-    status::{BlockRelayEvidenceStatus, MempoolStatus, relay_evidence::RelayEvidenceStatus},
+    status::{
+        BlockRelayEvidenceStatus, ChainstateDurabilityEvidence, MempoolStatus,
+        relay_evidence::RelayEvidenceStatus,
+    },
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -86,6 +89,8 @@ pub struct OpenBitcoinNetworkStatusResponse {
     pub relay: RelayEvidenceStatus,
     #[serde(default)]
     pub block_relay: BlockRelayEvidenceStatus,
+    #[serde(default)]
+    pub chainstate_durability: FieldAvailability<ChainstateDurabilityEvidence>,
     #[serde(default)]
     pub metrics: MetricsStatus,
     #[serde(default)]

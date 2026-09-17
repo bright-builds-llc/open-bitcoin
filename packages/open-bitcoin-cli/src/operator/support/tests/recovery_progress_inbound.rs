@@ -64,6 +64,7 @@ fn authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_clas
         inbound: status.peers.inbound,
         relay: status.mempool.relay.clone(),
         block_relay: status.block_relay,
+        chainstate_durability: status.chainstate_durability,
         metrics: status.metrics,
         mempool: status.mempool,
     };

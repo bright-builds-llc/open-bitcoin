@@ -356,6 +356,7 @@ fn collect_open_bitcoin_network_status(
             inbound: FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
             relay: RelayEvidenceStatus::default(),
             block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+            chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: metrics_status(),
             mempool: MempoolStatus::default(),
         },

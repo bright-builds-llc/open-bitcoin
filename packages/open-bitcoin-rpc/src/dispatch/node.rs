@@ -244,6 +244,7 @@ where
         inbound: snapshot.inbound().clone(),
         relay: snapshot.relay().clone(),
         block_relay: snapshot.block_relay().clone(),
+        chainstate_durability: snapshot.chainstate_durability().clone(),
         metrics: context.metrics_status(),
         mempool: {
             let groups = snapshot.operator_network();

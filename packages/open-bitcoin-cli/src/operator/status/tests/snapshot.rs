@@ -153,6 +153,7 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
             ),
             relay: RelayEvidenceStatus::default(),
             block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+            chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::available_with_samples(
                 MetricRetentionPolicy::default(),
                 vec![MetricSample::new(
@@ -189,6 +190,7 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
             ),
             relay: relay_evidence_status_fixture(),
             block_relay: block_relay_evidence_status_fixture(),
+            chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::default(),
             mempool: MempoolStatus::default(),
         }),
@@ -281,6 +283,7 @@ fn operator_status_block_relay_maps_shared_contract_and_human_lines() {
             ),
             relay: RelayEvidenceStatus::default(),
             block_relay: block_relay_evidence_status_fixture(),
+            chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::default(),
             mempool: MempoolStatus::default(),
         }),

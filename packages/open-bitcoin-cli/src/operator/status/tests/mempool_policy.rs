@@ -87,6 +87,7 @@ fn live_rpc_with_policy_mempool() -> FakeStatusRpcClient {
             ),
             relay: relay_evidence_status_fixture(),
             block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+            chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::default(),
             mempool: available_policy_mempool(),
         }),

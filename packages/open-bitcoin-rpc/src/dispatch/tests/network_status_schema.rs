@@ -123,7 +123,14 @@ fn authoritative_operator_snapshot_preserves_network_status_schema_and_provenanc
             .expect("status object")
             .keys()
             .collect::<Vec<_>>(),
-        vec!["block_relay", "inbound", "mempool", "metrics", "relay"]
+        vec![
+            "block_relay",
+            "chainstate_durability",
+            "inbound",
+            "mempool",
+            "metrics",
+            "relay",
+        ]
     );
     assert_eq!(
         status["inbound"],
@@ -136,6 +143,10 @@ fn authoritative_operator_snapshot_preserves_network_status_schema_and_provenanc
     assert_eq!(
         status["block_relay"],
         serde_json::to_value(snapshot.block_relay()).expect("block-relay snapshot")
+    );
+    assert_eq!(
+        status["chainstate_durability"],
+        serde_json::to_value(snapshot.chainstate_durability()).expect("durability snapshot")
     );
 }
 
@@ -157,6 +168,128 @@ fn open_bitcoin_network_status_includes_block_relay_projection() {
         status["block_relay"]["cleanup"]["value"]["compact_cleanup_count"],
         json!(0)
     );
+}
+
+#[test]
+fn open_bitcoin_network_status_includes_chainstate_durability_projection() {
+    // Arrange
+    let mut context = empty_context();
+    let snapshot = context
+        .authoritative_operator_snapshot()
+        .expect("owned authoritative operator snapshot");
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert_eq!(
+        status["chainstate_durability"],
+        serde_json::to_value(snapshot.chainstate_durability()).expect("durability snapshot")
+    );
+}
+
+#[test]
+fn open_bitcoin_network_status_exact_keys_include_chainstate_durability() {
+    // Arrange
+    let mut context = empty_context();
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert_eq!(
+        status
+            .as_object()
+            .expect("status object")
+            .keys()
+            .collect::<Vec<_>>(),
+        vec![
+            "block_relay",
+            "chainstate_durability",
+            "inbound",
+            "mempool",
+            "metrics",
+            "relay",
+        ]
+    );
+}
+
+#[test]
+fn getblockchaininfo_and_getnetworkinfo_shapes_unchanged() {
+    // Arrange
+    let mut context = empty_context();
+
+    // Act
+    let blockchain = dispatch(
+        &mut context,
+        MethodCall::GetBlockchainInfo(GetBlockchainInfoRequest::default()),
+    )
+    .expect("blockchain");
+    let network = dispatch(
+        &mut context,
+        MethodCall::GetNetworkInfo(GetNetworkInfoRequest::default()),
+    )
+    .expect("network");
+
+    // Assert
+    for (name, value) in [
+        ("getblockchaininfo", &blockchain),
+        ("getnetworkinfo", &network),
+    ] {
+        let object = value.as_object().expect(name);
+        assert!(
+            !object.contains_key("chainstate_durability"),
+            "{name} gained chainstate_durability"
+        );
+        let serialized = serde_json::to_string(value).expect(name);
+        assert!(
+            !serialized.contains("chainstate_durability"),
+            "{name} serialized chainstate_durability"
+        );
+    }
+}
+
+#[test]
+fn open_bitcoin_network_status_omits_getblock_and_pruned_on_durability() {
+    // Arrange
+    let mut context = empty_context();
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    let durability = &status["chainstate_durability"];
+    let serialized = serde_json::to_string(durability).expect("serialize durability");
+    for forbidden in ["getblock", "pruned", "peer_id"] {
+        assert!(
+            !serialized.contains(forbidden),
+            "durability exposed {forbidden}"
+        );
+        if let Some(object) = durability.as_object() {
+            assert!(
+                !object.contains_key(forbidden),
+                "durability object keyed {forbidden}"
+            );
+            if let Some(value) = object.get("value").and_then(serde_json::Value::as_object) {
+                assert!(
+                    !value.contains_key(forbidden),
+                    "durability value keyed {forbidden}"
+                );
+            }
+        }
+    }
 }
 
 #[test]

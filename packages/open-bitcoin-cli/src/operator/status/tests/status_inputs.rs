@@ -226,6 +226,7 @@ impl FakeStatusRpcClient {
                 ),
                 relay: RelayEvidenceStatus::default(),
                 block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+                chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
                 metrics: MetricsStatus::default(),
                 mempool: MempoolStatus::default(),
             }),
@@ -267,6 +268,7 @@ impl FakeStatusRpcClient {
                 ),
                 relay: RelayEvidenceStatus::default(),
                 block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+                chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
                 metrics: MetricsStatus::default(),
                 mempool: MempoolStatus::default(),
             }),
@@ -325,6 +327,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 ),
                 relay: RelayEvidenceStatus::default(),
                 block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+                chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
                 metrics: MetricsStatus::default(),
                 mempool: MempoolStatus::default(),
             }))
@@ -504,6 +507,7 @@ pub(super) fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
         }),
         relay: RelayEvidenceStatus::default(),
         block_relay: BlockRelayEvidenceStatus::default_unavailable(),
+        chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
         metrics: MetricsStatus::default(),
         mempool: MempoolStatus::default(),
     }

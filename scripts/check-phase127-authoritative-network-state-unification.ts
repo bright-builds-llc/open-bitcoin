@@ -353,7 +353,7 @@ function checkIntegrationAndParity(
     "phase127_mixed_missing_transaction_block_request",
     "let mixed_block_response = peer.receive().await;",
     "let mixed_not_found_response = peer.receive().await;",
-    'sorted_result_keys(&status_response),\n        ["block_relay", "inbound", "mempool", "metrics", "relay"]',
+    'sorted_result_keys(&status_response),\n        [\n            "block_relay",\n            "chainstate_durability",\n            "inbound",\n            "mempool",\n            "metrics",\n            "relay",\n        ]',
   ];
   if (!integrationAnchors.every((anchor) => integration.includes(anchor))) {
     failures.push(

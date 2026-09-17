@@ -14,7 +14,8 @@ use open_bitcoin_node::{
     ManagedNetworkAuthorityError, ManagedNetworkOperatorSnapshot,
     network::{ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedPeerPolicyInfo},
     status::{
-        FieldAvailability, INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON,
+        ChainstateDurabilityEvidence, FieldAvailability,
+        INBOUND_ADDRESS_DECISION_UNAVAILABLE_REASON,
         INBOUND_PEER_POLICY_DECISION_UNAVAILABLE_REASON,
         INBOUND_PERMISSION_DECISION_UNAVAILABLE_REASON, InboundAddressDecisionEvent,
         InboundAdmissionEvent, InboundHandshakeStatusCounts, InboundPeerPolicyEvent,
@@ -55,6 +56,10 @@ impl AuthoritativeOperatorSnapshot {
 
     pub fn block_relay(&self) -> &open_bitcoin_node::status::BlockRelayEvidenceStatus {
         self.network.block_relay()
+    }
+
+    pub fn chainstate_durability(&self) -> &FieldAvailability<ChainstateDurabilityEvidence> {
+        self.network.chainstate_durability()
     }
 
     pub fn operator_network(&self) -> &ManagedNetworkOperatorSnapshot {
