@@ -494,3 +494,34 @@ fn support_bundle_renders_block_relay_evidence_from_shared_projection() {
         assert!(markdown.contains(expected), "missing {expected}");
     }
 }
+
+#[test]
+fn support_bundle_renders_chainstate_durability_from_shared_projection() {
+    // Arrange
+    let temp = TestDirectory::new("phase144-durability-support");
+    let status = phase144_status_with_chainstate_durability_evidence();
+    let expected_field = status.chainstate_durability.clone();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["chainstate_durability"],
+        serde_json::to_value(&expected_field).expect("shared field json")
+    );
+    for expected in [
+        "## Chainstate Durability",
+        "- Chainstate durability: cache_size=CRITICAL last_flush_reason=periodic write_kind=sync readiness=ready_to_flush",
+        "- Cache occupancy: cache_bytes=9000 cache_byte_limit=8192",
+        "- Coins best-block: height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111",
+        "- Coins recovery: replayed",
+        "- Have-bytes: unavailable payload_present=false index_known=true validated_on_active_chain=true",
+        "- Have-bytes counts: available_count=3 unavailable_count=1 index_known_without_payload_count=1",
+        "- Next action: Treat flush, coins recovery, cache-size, and have-bytes versus do-not as bounded local operator status. This is not prune-mode, archive-node serving, public-default historical serving, or production readiness.",
+    ] {
+        assert!(markdown.contains(expected), "missing {expected}");
+    }
+}

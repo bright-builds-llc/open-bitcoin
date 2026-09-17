@@ -4,15 +4,17 @@
 //! Rendering helpers for support bundle command output.
 
 mod block_relay;
+mod chainstate_durability;
 mod inbound;
 mod relay;
+mod text;
 
-use serde::Serialize;
 use serde_json::{Value, json};
 
 use crate::operator::{OperatorOutputFormat, runtime::OperatorRuntimeError};
 
-use super::{EvidenceAvailability, EvidenceState, SupportEvidenceBundle};
+use super::{EvidenceState, SupportEvidenceBundle};
+use text::{availability_name, csv_or_unavailable, evidence_state_name, json_compact, json_string};
 
 pub(super) fn render_support_outcome(
     bundle: &SupportEvidenceBundle,
@@ -92,10 +94,13 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
 
     relay::push_relay_mempool_evidence(&mut output, &bundle.status.mempool);
     block_relay::push_block_relay_evidence(&mut output, &bundle.status.block_relay);
+    chainstate_durability::push_chainstate_durability(
+        &mut output,
+        &bundle.status.chainstate_durability,
+    );
     inbound::push_inbound_serving(&mut output, &bundle.status.peers.inbound);
     output.push_str("\n## Recovery Evidence\n\n");
     push_recovery_evidence(&mut output, &bundle.recovery_evidence);
-
     output.push_str("\n## Resource Bound Evidence\n\n");
     push_resource_bound_evidence(&mut output, &bundle.resource_bound_evidence);
 
@@ -112,7 +117,6 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         "- Metrics history: {}\n",
         availability_name(&bundle.store_health.metrics_history.availability)
     ));
-
     output.push_str("\n## Full Sync Evidence\n\n");
     push_full_sync_evidence(&mut output, &bundle.full_sync_evidence);
 
@@ -593,35 +597,4 @@ fn push_config_evidence(output: &mut String, config: &super::ConfigEvidence) {
 fn push_optional_path(output: &mut String, label: &str, maybe_path: Option<&str>) {
     let path = maybe_path.unwrap_or("unavailable");
     output.push_str(&format!("- {label}: {path}\n"));
-}
-
-fn csv_or_unavailable(values: &[String]) -> String {
-    if values.is_empty() {
-        return "unavailable".to_string();
-    }
-    values.join(", ")
-}
-
-fn json_string<T: Serialize>(value: &T) -> String {
-    serde_json::to_value(value)
-        .ok()
-        .and_then(|value| value.as_str().map(str::to_string))
-        .unwrap_or_else(|| "unknown".to_string())
-}
-
-fn json_compact<T: Serialize>(value: &T) -> String {
-    serde_json::to_value(value)
-        .map(|value| value.to_string())
-        .unwrap_or_else(|_| "unknown".to_string())
-}
-
-fn availability_name(availability: &EvidenceAvailability) -> &'static str {
-    evidence_state_name(availability.state)
-}
-
-const fn evidence_state_name(state: EvidenceState) -> &'static str {
-    match state {
-        EvidenceState::Available => "available",
-        EvidenceState::Unavailable => "unavailable",
-    }
 }

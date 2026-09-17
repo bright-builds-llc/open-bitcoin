@@ -447,3 +447,90 @@ fn inbound_support_markdown_renders_phase94_resource_governance_evidence() {
         assert!(markdown.contains(expected), "missing {expected}");
     }
 }
+
+#[test]
+fn support_bundle_redacts_sensitive_chainstate_durability_reasons_in_json_and_markdown() {
+    // Arrange
+    let temp = TestDirectory::new("phase144-durability-redaction");
+    let status = phase144_status_with_sensitive_chainstate_durability_reason();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let json_text = serde_json::to_string_pretty(&serialized["status"]["chainstate_durability"])
+        .expect("durability json");
+    let markdown = render::render_support_markdown(&bundle);
+    let durability_markdown = markdown
+        .split("## Chainstate Durability")
+        .nth(1)
+        .and_then(|section| section.split("## Inbound Serving").next())
+        .expect("durability markdown section");
+
+    // Assert
+    assert_eq!(
+        serialized["status"]["chainstate_durability"]["value"]["reason"],
+        json!("redacted_chainstate_durability_evidence")
+    );
+    for rendered in [&json_text, durability_markdown] {
+        assert!(rendered.contains("redacted_chainstate_durability_evidence"));
+        for forbidden in [
+            "127.0.0.1:",
+            "peer_id=",
+            "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            "credential=",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+}
+
+#[test]
+fn support_bundle_chainstate_durability_keeps_counts_and_tip_hash_pattern() {
+    // Arrange
+    let temp = TestDirectory::new("phase144-durability-tip-hash");
+    let status = phase144_status_with_chainstate_durability_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let markdown = render::render_support_markdown(&bundle);
+    let field = &serialized["status"]["chainstate_durability"]["value"];
+
+    // Assert
+    assert_eq!(field["available_count"], json!(3));
+    assert_eq!(field["unavailable_count"], json!(1));
+    assert_eq!(field["index_known_without_payload_count"], json!(1));
+    assert_eq!(field["maybe_coins_best_block_hash"], json!("11".repeat(32)));
+    assert!(markdown.contains("available_count=3"));
+    assert!(markdown.contains(&format!("hash={}", "11".repeat(32))));
+    for forbidden in ["txid:vout", "undo blob", "undo_blob"] {
+        assert_absent(&markdown, forbidden);
+        assert_absent(&field.to_string(), forbidden);
+    }
+}
+
+#[test]
+fn support_bundle_chainstate_durability_forbids_prune_and_getblock_copy() {
+    // Arrange
+    let temp = TestDirectory::new("phase144-durability-no-prune");
+    let status = phase144_status_with_chainstate_durability_evidence();
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+
+    // Act
+    let serialized = serde_json::to_value(&bundle).expect("support bundle json");
+    let json_text = serde_json::to_string_pretty(&serialized["status"]["chainstate_durability"])
+        .expect("durability json");
+    let markdown = render::render_support_markdown(&bundle);
+    let value_section = markdown
+        .split("## Chainstate Durability")
+        .nth(1)
+        .and_then(|section| section.split("- Next action:").next())
+        .expect("durability value bullets");
+
+    // Assert
+    for rendered in [&json_text, value_section] {
+        for forbidden in ["pruned", "getblock", "archive-node", "production ready"] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+}

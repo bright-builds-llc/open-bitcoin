@@ -32,6 +32,7 @@ fn phase71_support_redaction_names_compact_evidence_bounds() {
             "resource bounds are recorded as compact status summaries only",
             "relay and mempool evidence bounded/redacted",
             "block relay evidence bounded/redacted",
+            "chainstate durability free-text reasons bounded/redacted",
             "inbound peer endpoints bounded/redacted",
             "inbound permission labels bounded to machine classes/effects",
             "inbound address boundary evidence bounded/redacted",

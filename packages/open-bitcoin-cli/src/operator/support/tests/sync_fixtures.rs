@@ -1,6 +1,11 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
+use open_bitcoin_node::status::{
+    CacheSizeLabel, ChainstateDurabilityEvidence, CoinsRecoveryOutcome, LastFlushReasonLabel,
+    ReadinessLabel, ServingStatusLabel, WriteKindLabel,
+};
+
 use super::*;
 
 pub(super) const PHASE96_PEER_POLICY_RUNTIME_BRIDGE_NEXT_ACTION: &str = "Treat Phase 96 as scoped runtime peer policy bridge evidence only; review ban, discourage, unban, and misbehavior labels before changing listener exposure or peer policy.";
@@ -371,6 +376,38 @@ pub(super) fn phase116_status_with_block_relay_evidence() -> OpenBitcoinStatusSn
             compact_download_restart_count: 0,
             compact_download_block_connected_count: 1,
         },
+    );
+    status
+}
+
+pub(super) fn phase144_status_with_chainstate_durability_evidence() -> OpenBitcoinStatusSnapshot {
+    let mut status = phase116_status_with_block_relay_evidence();
+    status.chainstate_durability = FieldAvailability::available(ChainstateDurabilityEvidence {
+        cache_size: CacheSizeLabel::Critical,
+        last_flush_reason: LastFlushReasonLabel::Periodic,
+        write_kind: WriteKindLabel::Sync,
+        readiness: ReadinessLabel::ReadyToFlush,
+        cache_bytes: 9_000,
+        cache_byte_limit: 8_192,
+        recovery_outcome: CoinsRecoveryOutcome::Replayed,
+        maybe_coins_best_block_height: Some(840_004),
+        maybe_coins_best_block_hash: Some("11".repeat(32)),
+        last_serving_status: ServingStatusLabel::Unavailable,
+        last_payload_present: false,
+        last_index_known: true,
+        last_validated_on_active_chain: true,
+        available_count: 3,
+        unavailable_count: 1,
+        index_known_without_payload_count: 1,
+    });
+    status
+}
+
+pub(super) fn phase144_status_with_sensitive_chainstate_durability_reason()
+-> OpenBitcoinStatusSnapshot {
+    let mut status = phase144_status_with_chainstate_durability_evidence();
+    status.chainstate_durability = FieldAvailability::unavailable(
+        "127.0.0.1:18444 peer_id=144 credential=phase144 eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
     );
     status
 }

@@ -6,9 +6,9 @@ use std::net::SocketAddr;
 use open_bitcoin_node::{
     OpenBitcoinStatusSnapshot,
     status::{
-        BlockRelayEvidenceStatus, FieldAvailability, InboundAddressDecisionEvent,
-        InboundPeerPolicyEvent, InboundPeerServingStatus, InboundResourceGovernanceEvent,
-        MempoolStatus,
+        BlockRelayEvidenceStatus, ChainstateDurabilityEvidence, FieldAvailability,
+        InboundAddressDecisionEvent, InboundPeerPolicyEvent, InboundPeerServingStatus,
+        InboundResourceGovernanceEvent, MempoolStatus,
         relay_evidence::{RelayEvidenceField, RelayEvidenceStatus},
     },
 };
@@ -32,6 +32,9 @@ const REDACTED_PEER_POLICY_LABEL: &str = "redacted_peer_policy_label";
 const REDACTED_RESOURCE_GOVERNANCE_LABEL: &str = "redacted_resource_governance_evidence";
 const REDACTED_RELAY_MEMPOOL_LABEL: &str = "redacted_relay_mempool_evidence";
 const REDACTED_BLOCK_RELAY_LABEL: &str = "redacted_block_relay_evidence";
+const REDACTED_CHAINSTATE_DURABILITY_LABEL: &str = "redacted_chainstate_durability_evidence";
+const CHAINSTATE_DURABILITY_REDACTION_SAFEGUARD: &str =
+    "chainstate durability free-text reasons bounded/redacted";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct RedactionSummary {
@@ -56,6 +59,7 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
             "resource bounds are recorded as compact status summaries only".to_string(),
             RELAY_MEMPOOL_REDACTION_SAFEGUARD.to_string(),
             BLOCK_RELAY_REDACTION_SAFEGUARD.to_string(),
+            CHAINSTATE_DURABILITY_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ENDPOINT_REDACTION_SAFEGUARD.to_string(),
             INBOUND_PERMISSION_REDACTION_SAFEGUARD.to_string(),
             INBOUND_ADDRESS_REDACTION_SAFEGUARD.to_string(),
@@ -71,6 +75,7 @@ pub(crate) fn support_status_for_bundle(
     redact_relay_mempool_evidence(&mut status.mempool.relay);
     redact_mempool_policy_groups(&mut status.mempool);
     redact_block_relay_evidence(&mut status.block_relay);
+    redact_chainstate_durability(&mut status.chainstate_durability);
     redact_inbound_endpoint_evidence(&mut status.peers.inbound);
     redact_inbound_permission_evidence(&mut status.peers.inbound);
     redact_inbound_address_evidence(&mut status.peers.inbound);
@@ -119,6 +124,52 @@ fn sanitize_relay_reason_field<T>(field: &mut RelayEvidenceField<T>) {
             *reason = sanitized_relay_evidence_text(reason);
         }
     }
+}
+
+pub(crate) fn redact_chainstate_durability(
+    value: &mut FieldAvailability<ChainstateDurabilityEvidence>,
+) {
+    match value {
+        FieldAvailability::Unavailable { reason } => {
+            *reason = sanitized_chainstate_durability_reason(reason);
+        }
+        FieldAvailability::Available(evidence) => {
+            if let Some(hash) = evidence.maybe_coins_best_block_hash.as_mut()
+                && !is_allowed_tip_hash(hash)
+            {
+                *hash = REDACTED_CHAINSTATE_DURABILITY_LABEL.to_string();
+            }
+        }
+    }
+}
+
+fn sanitized_chainstate_durability_reason(value: &str) -> String {
+    if contains_chainstate_durability_sensitive_material(value) {
+        return REDACTED_CHAINSTATE_DURABILITY_LABEL.to_string();
+    }
+    value.to_string()
+}
+
+fn contains_chainstate_durability_sensitive_material(value: &str) -> bool {
+    let lower_value = value.to_ascii_lowercase();
+    contains_raw_address_evidence(value)
+        || contains_long_hex_token(value)
+        || lower_value.contains("peer_id=")
+        || lower_value.contains("peer-")
+        || lower_value.contains("credential")
+        || lower_value.contains("secret")
+        || lower_value.contains("cookie=")
+        || lower_value.contains("txid:vout")
+        || lower_value.contains("undo")
+        || lower_value.contains("getblock")
+        || lower_value.contains("dynamic_label")
+}
+
+fn is_allowed_tip_hash(value: &str) -> bool {
+    value.len() == 64
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
 }
 
 pub(crate) fn redact_block_relay_evidence(block_relay: &mut BlockRelayEvidenceStatus) {
