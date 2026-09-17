@@ -256,6 +256,7 @@ fn plant_coins_best_block_for_schema2_reopen(store: &FjallNodeStore) {
     .expect("plant B so leftover reopen is not empty-coins fail-closed");
 }
 
+mod block_presence;
 mod coins_migration;
 mod corruption_and_markers;
 mod lock_probe;

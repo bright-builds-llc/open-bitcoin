@@ -34,6 +34,7 @@ use super::{
 };
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
+mod blocks;
 mod coins;
 mod coins_access;
 mod mempool;

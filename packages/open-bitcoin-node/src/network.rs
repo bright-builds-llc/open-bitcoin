@@ -388,7 +388,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             timestamp,
             verify_flags,
             consensus_params,
-            false,
+            action_translation::immediate_inventory_serving(),
         )?;
         let expired = self.expire_compact_download_timeouts(timestamp)?;
         merge_compact_timeout_outbound(peer_id, expired, &mut result);
@@ -434,7 +434,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             timestamp,
             verify_flags,
             consensus_params,
-            false,
+            action_translation::immediate_inventory_serving(),
         )?;
         let expired = self.expire_compact_download_timeouts(timestamp)?;
         merge_compact_timeout_outbound(peer_id, expired, &mut result);

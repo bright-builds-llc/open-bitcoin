@@ -36,7 +36,7 @@ pub(crate) struct EncodedWireResponse {
 
 pub(crate) struct InboundWireResponsePlan {
     pub(super) network_magic: NetworkMagic,
-    pub(super) responses: Vec<ManagedInboundResponsePlanItem>,
+    pub(crate) responses: Vec<ManagedInboundResponsePlanItem>,
     pub(super) maybe_block_source: Option<Arc<dyn DurableBlockSource>>,
     pub(super) peer_id: u64,
     pub(super) timestamp: i64,
@@ -50,6 +50,11 @@ pub(crate) struct ResolvedInboundWireResponses {
 }
 
 pub(crate) trait DurableBlockSource: Send + Sync {
+    fn has_block(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::StorageError>;
+
     fn load_block(
         &self,
         block_hash: open_bitcoin_node::core::primitives::BlockHash,
@@ -57,6 +62,13 @@ pub(crate) trait DurableBlockSource: Send + Sync {
 }
 
 impl DurableBlockSource for FjallNodeStore {
+    fn has_block(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::StorageError> {
+        FjallNodeStore::has_block(self, block_hash)
+    }
+
     fn load_block(
         &self,
         block_hash: open_bitcoin_node::core::primitives::BlockHash,

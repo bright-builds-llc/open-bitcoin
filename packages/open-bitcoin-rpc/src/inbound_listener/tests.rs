@@ -33,9 +33,10 @@ use open_bitcoin_node::core::{
 };
 use open_bitcoin_node::status::{FieldAvailability, InboundPeerServingStatus};
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore, ManagedNetworkHandle,
-    PeerIdentityAuthority, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
-    SyncNetwork, SyncRuntimeConfig, sync::AnnouncementOutboxRegistry,
+    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore,
+    ManagedInboundResponsePlanItem, ManagedNetworkHandle, PeerIdentityAuthority, PersistMode,
+    StorageError, StorageNamespace, StorageRecoveryAction, SyncNetwork, SyncRuntimeConfig,
+    sync::AnnouncementOutboxRegistry,
 };
 use open_bitcoin_test_harness::PortReservation;
 use tokio::net::TcpStream;
@@ -72,6 +73,10 @@ struct ScriptedDurableBlockSource {
 }
 
 impl DurableBlockSource for ScriptedDurableBlockSource {
+    fn has_block(&self, _block_hash: BlockHash) -> Result<bool, StorageError> {
+        Ok(true)
+    }
+
     fn load_block(&self, _block_hash: BlockHash) -> Result<Option<Block>, StorageError> {
         Err(match self.failure {
             ScriptedDurableBlockFailure::Corruption => StorageError::Corruption {

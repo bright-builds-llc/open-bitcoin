@@ -549,6 +549,57 @@ fn managed_serve_input_cache_hit_sets_payload_present_true() {
 }
 
 #[test]
+fn gate_inventory_source_does_not_pass_literal_true_durable_override() {
+    // Arrange
+    let inventory_source = include_str!("../inventory.rs");
+
+    // Act
+    let passes_literal_true = inventory_source.contains("block_hash, false, true");
+    let uses_probe = inventory_source.contains("durable_payload_present(block_hash)");
+
+    // Assert
+    assert!(
+        !passes_literal_true,
+        "durable gate must not pass literal true as durable_payload_present"
+    );
+    assert!(
+        uses_probe,
+        "durable gate must classify from durable_payload_present(block_hash)"
+    );
+}
+
+#[test]
+fn durable_cache_miss_store_hit_is_payload_present() {
+    // Arrange
+    let mut network = block_serving_enabled_managed_network(143_201);
+    network
+        .connect_outbound_peer(143_201, 1)
+        .expect("connect outbound");
+    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
+    network
+        .connect_local_block(&genesis, verify_flags(), consensus_params())
+        .expect("connect genesis");
+    let genesis_hash = block_hash(&genesis.header);
+    network.blocks_by_hash.remove(&genesis_hash);
+    let request = block_getdata_inventory(&genesis)
+        .inventory
+        .into_iter()
+        .next()
+        .expect("genesis getdata request");
+
+    // Act
+    let input = network.managed_block_serve_input(143_201, &request, genesis_hash, false, true);
+
+    // Assert
+    assert!(!network.blocks_by_hash.contains_key(&genesis_hash));
+    assert!(input.presence.payload_present);
+    assert_eq!(
+        input.data_availability,
+        BlockServingDataAvailability::Available
+    );
+}
+
+#[test]
 fn production_inventory_source_does_not_inject_pruned() {
     // Arrange
     let inventory_source = include_str!("../inventory.rs");

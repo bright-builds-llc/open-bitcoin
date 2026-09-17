@@ -309,12 +309,17 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
         message: WireNetworkMessage,
         timestamp: i64,
     ) -> Result<InboundWireResponsePlan, open_bitcoin_node::ManagedNetworkAuthorityError> {
+        let maybe_source = self.maybe_block_source.clone();
         let result = self.network.receive_message_for_durable_serving(
             peer_id,
             message,
             timestamp,
             self.verify_flags,
             self.consensus_params,
+            |hash| match maybe_source.as_ref() {
+                Some(source) => source.has_block(hash).unwrap_or(false),
+                None => false,
+            },
         )?;
         let responses = result
             .outbound

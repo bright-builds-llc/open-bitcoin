@@ -1800,8 +1800,10 @@
       "files": [
         "packages/open-bitcoin-node/src/storage.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/blocks.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/coins_access.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/block_presence.rs",
         "packages/open-bitcoin-node/src/storage/lock_probe.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec.rs",
         "packages/open-bitcoin-node/src/storage/snapshot_codec/tests.rs",

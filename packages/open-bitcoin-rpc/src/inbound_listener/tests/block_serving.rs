@@ -141,6 +141,48 @@ async fn durable_block_serving_missing_body_returns_notfound_without_served_cred
     fs::remove_dir_all(data_dir).expect("remove missing durable block-serving store");
 }
 
+#[test]
+fn durable_getdata_without_store_body_is_unavailable_at_gate() {
+    // Arrange
+    let (mut context, block, data_dir) = durable_block_serving_context(false);
+
+    // Act
+    let plan = context
+        .prepare_inbound_wire_message(123, phase123_block_request(&block), 2)
+        .expect("prepare missing-body getdata");
+    let FieldAvailability::Available(status) = context
+        .block_relay_evidence_status()
+        .expect("block-serving evidence")
+        .block_serving
+        .status
+    else {
+        panic!("block-serving status should be available after the durable gate");
+    };
+    let has_durable_block_intent = plan
+        .responses
+        .iter()
+        .any(|item| matches!(item, ManagedInboundResponsePlanItem::DurableBlock(_)));
+    let resolved = plan.resolve();
+    let served_count = context
+        .block_served_write_count()
+        .expect("authoritative block write count");
+
+    // Assert
+    assert!(
+        !has_durable_block_intent,
+        "missing store body must not produce a DurableBlock intent"
+    );
+    assert_eq!(status.unavailable_count, 1);
+    assert_eq!(resolved.responses.len(), 1);
+    assert!(matches!(
+        resolved.responses[0].message,
+        WireNetworkMessage::NotFound(_)
+    ));
+    assert_eq!(served_count, 0);
+    drop(context);
+    fs::remove_dir_all(data_dir).expect("remove missing-body gate store");
+}
+
 #[tokio::test]
 async fn durable_block_serving_corruption_is_redacted_as_notfound() {
     // Arrange

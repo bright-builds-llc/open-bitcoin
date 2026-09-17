@@ -151,6 +151,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         &mut self,
         peer_id: PeerId,
         requests: Vec<InventoryVector>,
+        durable_payload_present: impl Fn(BlockHash) -> bool,
     ) -> Vec<ManagedInboundResponsePlanItem> {
         let mut response_plan = Vec::new();
         let mut requests = requests.into_iter().peekable();
@@ -192,8 +193,13 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     | InventoryType::WitnessBlock
                     | InventoryType::CompactBlock => {
                         let block_hash = BlockHash::from(request.object_hash);
-                        let input = self
-                            .managed_block_serve_input(peer_id, &request, block_hash, false, true);
+                        let input = self.managed_block_serve_input(
+                            peer_id,
+                            &request,
+                            block_hash,
+                            false,
+                            durable_payload_present(block_hash),
+                        );
                         match gate_managed_block_request(input) {
                             ManagedBlockServeGateDecision::Serve(intent) => {
                                 response_plan

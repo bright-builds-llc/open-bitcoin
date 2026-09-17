@@ -14,6 +14,7 @@
 
 use open_bitcoin_core::chainstate::CoinsView;
 use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags, block_hash};
+use open_bitcoin_core::primitives::BlockHash;
 use open_bitcoin_network::{
     CompactDownloadCleanupCause, DisconnectReason, InventoryList, MisbehaviorDecision,
     MisbehaviorKind, MisbehaviorPolicy, MisbehaviorResponse, PeerAction, PeerId, TxDownloadAction,
@@ -30,6 +31,15 @@ use super::{
     },
     inventory,
 };
+
+pub(super) enum InventoryServingMode<F> {
+    Immediate,
+    Durable(F),
+}
+
+pub(super) const fn immediate_inventory_serving() -> InventoryServingMode<fn(BlockHash) -> bool> {
+    InventoryServingMode::Immediate
+}
 
 pub(super) fn process_transaction_relay_action(
     action: TxDownloadAction,
@@ -50,6 +60,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
+        durable_payload_present: impl Fn(BlockHash) -> bool,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         self.receive_message_with_block_serving_mode(
             peer_id,
@@ -57,7 +68,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             timestamp,
             verify_flags,
             consensus_params,
-            true,
+            InventoryServingMode::Durable(durable_payload_present),
         )
     }
 
@@ -68,7 +79,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-        defer_block_serving: bool,
+        serving_mode: InventoryServingMode<impl Fn(BlockHash) -> bool>,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let observed_block_relay_message = matches!(
             &message,
@@ -94,7 +105,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             timestamp,
             verify_flags,
             consensus_params,
-            defer_block_serving,
+            serving_mode,
         )?;
         let expired = self.expire_compact_download_timeouts(timestamp)?;
         super::merge_compact_timeout_outbound(peer_id, expired, &mut result);
@@ -196,7 +207,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
-        defer_block_serving: bool,
+        serving_mode: InventoryServingMode<impl Fn(BlockHash) -> bool>,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         let mut outbound = Vec::new();
         let mut targeted_outbound = Vec::new();
@@ -208,12 +219,16 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             match action {
                 PeerAction::Send(message) => outbound.push(message),
                 PeerAction::ServeInventory(requests) => {
-                    let (messages, missing) = if defer_block_serving {
-                        inbound_response_plan
-                            .extend(self.gate_inventory_for_durable_serving(peer_id, requests));
-                        (Vec::new(), Vec::new())
-                    } else {
-                        self.serve_inventory(peer_id, requests)
+                    let (messages, missing) = match &serving_mode {
+                        InventoryServingMode::Durable(payload_present) => {
+                            inbound_response_plan.extend(self.gate_inventory_for_durable_serving(
+                                peer_id,
+                                requests,
+                                payload_present,
+                            ));
+                            (Vec::new(), Vec::new())
+                        }
+                        InventoryServingMode::Immediate => self.serve_inventory(peer_id, requests),
                     };
                     outbound.extend(messages);
                     if !missing.is_empty() {

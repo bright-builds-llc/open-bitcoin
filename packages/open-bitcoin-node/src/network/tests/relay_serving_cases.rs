@@ -213,6 +213,7 @@ fn durable_getdata_tx_prepares_receipt_bearing_serve_without_clearing_unbroadcas
             2,
             verify_flags(),
             consensus_params(),
+            |_| false,
         )
         .expect("durable getdata");
 

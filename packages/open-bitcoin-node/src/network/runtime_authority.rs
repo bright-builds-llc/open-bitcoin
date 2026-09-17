@@ -304,6 +304,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
+        durable_payload_present: impl Fn(BlockHash) -> bool,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
         self.try_mutate(|network| {
             network.receive_message_for_durable_serving(
@@ -312,6 +313,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
                 timestamp,
                 verify_flags,
                 consensus_params,
+                &durable_payload_present,
             )
         })
     }
