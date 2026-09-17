@@ -132,7 +132,13 @@ Plans:
   2. When the payload is absent, the node refuses cleanly as Unavailable and does not emit Pruned unless prune mode actually deleted files.
   3. Operator-visible facts distinguish `payload_present`, `index_known`, and `validated_on_active_chain`; coins tip or header index alone cannot authorize a serve.
   4. Missing-payload refuse does not change public-default serving or claim archive-node behavior.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 143-01-PLAN.md — Presence facts and reserved Pruned
+- [ ] 143-02-PLAN.md — Payload-byte probe replaces override
+- [ ] 143-03-PLAN.md — Missing-payload refuse and LookupUnavailable honesty
+- [ ] 143-04-PLAN.md — Reserved-Pruned docs and Phase 111 claim copy
 
 ### Phase 144: Operator Flush and Availability Evidence
 **Goal**: Operators can see flush, recovery, cache-size, and have-bytes versus do-not through sanitized surfaces.
@@ -196,13 +202,13 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
-| 143. Honest Stored-Block Availability | 0/TBD | Not started | - |
+| 143. Honest Stored-Block Availability | 0/4 | Not started | - |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
 
-Run `/gsd-execute-phase 142` to implement the manager flush lifecycle and restart plans.
+Run `/gsd-execute-phase 143` to implement honest stored-block availability.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*
