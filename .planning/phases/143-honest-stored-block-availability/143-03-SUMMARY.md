@@ -38,7 +38,7 @@ patterns-established:
   - "Pattern 1: Post-gate read failure reports Unavailable and increments unavailable_count, not available_count"
   - "Pattern 2: Compact paths inherit Plan 01 cache-only payload_present through managed_block_serve_input"
 
-requirements-completed: []
+requirements-completed: [HAVL-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 143-2026-09-17T01-47-45
@@ -101,7 +101,7 @@ _Note: Combined RED+GREEN in one hook-passing feat commit because pre-commit run
 - **Verification:** `verify.sh` passed on the successful feat commit
 - **Committed in:** `507c9167` (combined feat commit)
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** Narrow format guard. No scope creep. Combined RED+GREEN was an allowed plan exception, not a deviation.
@@ -120,7 +120,7 @@ None - no external service configuration required.
 - Inventory, durable-gate, compact inheritance, and post-gate read failure now report Unavailable + existing NotFound.
 - No new operator UI, `getblock`, wire error, or prune-mode product behavior was added.
 
----
+***
 *Phase: 143-honest-stored-block-availability*
 *Completed: 2026-09-17*
 

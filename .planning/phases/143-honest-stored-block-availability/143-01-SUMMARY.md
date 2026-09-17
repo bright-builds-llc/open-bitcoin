@@ -49,7 +49,7 @@ patterns-established:
   - "Pattern 1: Shell assembles payload_present, index_known, and validated_on_active_chain; the classifier stays I/O-free"
   - "Pattern 2: Production missing payload is Unavailable; Pruned remains a reserved unused mapping"
 
-requirements-completed: []
+requirements-completed: [HAVL-03]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 143-2026-09-17T01-47-45
@@ -119,7 +119,7 @@ _Note: Combined RED+GREEN in one hook-passing feat commit because pre-commit run
 - **Verification:** Node `network::` tests passed, including side-chain NotFound coverage
 - **Committed in:** `9cde0089` (combined feat commit)
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** Narrow correctness guard. No scope creep. Combined RED+GREEN was an allowed plan exception, not a deviation.
@@ -138,7 +138,7 @@ None - no external service configuration required.
 - Plan 03 can rewrite `LookupUnavailable` `status_label` to Unavailable without changing this fact-assembly seam.
 - No new operator UI, `getblock`, or prune-mode product behavior was added.
 
----
+***
 *Phase: 143-honest-stored-block-availability*
 *Completed: 2026-09-17*
 

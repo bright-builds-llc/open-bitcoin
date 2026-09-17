@@ -106,7 +106,7 @@ None - no external service configuration required.
 - Phase 144 can add operator evidence surfaces without inheriting prune-mode claim copy from these four docs.
 - No new operator UI, `getblock`, archive-node honesty, or public-default serving claim was added.
 
----
+***
 *Phase: 143-honest-stored-block-availability*
 *Completed: 2026-09-17*
 

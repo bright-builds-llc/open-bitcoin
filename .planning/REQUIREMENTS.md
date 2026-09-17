@@ -26,9 +26,9 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 ### Honest Availability
 
-- [ ] **HAVL-01**: Node serves or reports a stored block as Available only when the payload bytes are present.
-- [ ] **HAVL-02**: When the payload is absent, the node refuses cleanly with Unavailable and does not emit Pruned unless prune mode actually deleted files.
-- [ ] **HAVL-03**: Operator evidence distinguishes payload_present, index_known, and validated_on_active_chain.
+- [x] **HAVL-01**: Node serves or reports a stored block as Available only when the payload bytes are present.
+- [x] **HAVL-02**: When the payload is absent, the node refuses cleanly with Unavailable and does not emit Pruned unless prune mode actually deleted files.
+- [x] **HAVL-03**: Operator evidence distinguishes payload_present, index_known, and validated_on_active_chain.
 
 ### Operator Evidence
 
@@ -92,9 +92,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MGR-01 | Phase 142 | Complete |
 | MGR-02 | Phase 142 | Complete |
 | FLUSH-02 | Phase 142 | Complete |
-| HAVL-01 | Phase 143 | Pending |
-| HAVL-02 | Phase 143 | Pending |
-| HAVL-03 | Phase 143 | Pending |
+| HAVL-01 | Phase 143 | Complete |
+| HAVL-02 | Phase 143 | Complete |
+| HAVL-03 | Phase 143 | Complete |
 | CSOBS-01 | Phase 144 | Pending |
 | CSOBS-02 | Phase 144 | Pending |
 | CSVFY-01 | Phase 145 | Pending |

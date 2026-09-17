@@ -44,7 +44,7 @@ patterns-established:
   - "Pattern 1: Durable inbound classify uses a fail-closed has_block callback, never literal true"
   - "Pattern 2: Immediate serving stays cache-only through InventoryServingMode::Immediate"
 
-requirements-completed: []
+requirements-completed: [HAVL-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 143-2026-09-17T01-47-45
@@ -128,7 +128,7 @@ _Note: Combined RED+GREEN in one hook-passing feat commit because pre-commit run
 - **Verification:** `storage::fjall_store::tests::block_presence` passed
 - **Committed in:** `bd8b7f77` (combined feat commit)
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 blocking, 1 bug)
 **Impact on plan:** Narrow compile/clippy guards. No scope creep. Combined RED+GREEN was an allowed plan exception, not a deviation.
@@ -147,7 +147,7 @@ None - no external service configuration required.
 - Existing corruption/backend redaction tests still reach `load_block` because `ScriptedDurableBlockSource::has_block` returns `Ok(true)`.
 - No new operator UI, `getblock`, or prune-mode product behavior was added.
 
----
+***
 *Phase: 143-honest-stored-block-availability*
 *Completed: 2026-09-17*
 

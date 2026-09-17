@@ -16,7 +16,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy shipped and was archived on 202
 
 The repository now includes durable Fjall-backed runtime storage, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized package and mempool evidence, and last-gate claim guardrails.
 
-Milestone v2.3 is active after initialization through `/gsd-new-milestone`. Phase 139 shipped the in-memory DIRTY/FRESH coins overlay and engine apply without cloning the UTXO map. Phase 140 shipped the I/O-free flush and recovery decision machine (`decide_flush` / `decide_recovery`). Phase 141 shipped the durable Fjall coins adapter: per-outpoint `C` records, `B`/`H` markers, schema 1→2 one-way leftover migration, and fail-closed disk reads. Leftover snapshot *writes* remain until Phase 142 manager flush lifecycle. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.3 is active after initialization through `/gsd-new-milestone`. Phase 139 shipped the in-memory DIRTY/FRESH coins overlay and engine apply without cloning the UTXO map. Phase 140 shipped the I/O-free flush and recovery decision machine (`decide_flush` / `decide_recovery`). Phase 141 shipped the durable Fjall coins adapter: per-outpoint `C` records, `B`/`H` markers, schema 1→2 one-way leftover migration, and fail-closed disk reads. Phase 142 shipped manager flush lifecycle and restart from durable coins best-block. Phase 143 shipped honest stored-block availability: Available only after a cache-or-store payload-byte probe, missing payload refuses as Unavailable (not Pruned), and `payload_present` / `index_known` / `validated_on_active_chain` are distinguishable. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Current Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -124,7 +124,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - [ ] Disk-backed coins databases and cache-flush policy persist and recover the active chainstate without snapshot-only coin truth.
 - [ ] Fuller chainstate-manager behavior owns the durable coins view, flush points, and restart-safe cache lifecycle.
-- [ ] Block serving and operator evidence report a stored block only when the payload is actually present and refuse cleanly when it is not.
+- [x] Block serving reports a stored block only when the payload is actually present and refuses cleanly when it is not. Validated in Phase 143: Honest Stored-Block Availability. Full operator flush/availability evidence rollout remains Phase 144.
 - [ ] Parity and operator evidence keep the new persistence and availability truth auditable without broadening public or production claims.
 
 ### Out of Scope
@@ -242,4 +242,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-05 after completing Phase 141*
+*Last updated: 2026-09-17 after completing Phase 143*

@@ -4,7 +4,7 @@ milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: verifying
 stopped_at: Completed 143-04-PLAN.md
-last_updated: "2026-09-17T06:12:18.716Z"
+last_updated: "2026-09-17T06:41:34.264Z"
 last_activity: 2026-09-17
 progress:
   total_phases: 7
@@ -26,8 +26,8 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: 143 (honest-stored-block-availability) — EXECUTING
-Plan: 4 of 4
+Phase: 144
+Plan: Not started
 Status: Phase complete — ready for verification
 Last activity: 2026-09-17
 
@@ -43,7 +43,7 @@ Next action: `/gsd-plan-phase 139`
 
 **Previous milestone (v2.2 archive):**
 
-- Total plans completed: 112
+- Total plans completed: 116
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
@@ -64,6 +64,7 @@ Next action: `/gsd-plan-phase 139`
 | 140 | 3 | - | - |
 | 141 | 4 | - | - |
 | 142 | 6 | - | - |
+| 143 | 4 | - | - |
 
 ### Plan Execution History
 
