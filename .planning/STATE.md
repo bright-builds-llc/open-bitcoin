@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Phase 143 context gathered
-last_updated: "2026-09-17T03:18:27.306Z"
-last_activity: 2026-09-17 -- Phase 143 planning complete
+stopped_at: Completed 143-01-PLAN.md
+last_updated: "2026-09-17T03:54:56.129Z"
+last_activity: 2026-09-17
 progress:
   total_phases: 7
   completed_phases: 4
   total_plans: 21
-  completed_plans: 17
-  percent: 81
+  completed_plans: 18
+  percent: 86
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 142 — Manager Flush Lifecycle and Restart
+**Current focus:** Phase 143 — honest-stored-block-availability
 
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: 143
-Plan: Not started
+Phase: 143 (honest-stored-block-availability) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-17 -- Phase 143 planning complete
+Last activity: 2026-09-17
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
@@ -129,6 +129,7 @@ Next action: `/gsd-plan-phase 139`
 | Phase 142-manager-flush-lifecycle-and-restart P04 | 43 | 2 tasks | 6 files |
 | Phase 142 P05 | 60min | 2 tasks | 16 files |
 | Phase 142 P06 | 120min | 2 tasks | 104 files |
+| Phase 143-honest-stored-block-availability P01 | 23 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -390,6 +391,10 @@ Next action: `/gsd-plan-phase 139`
 - [Phase 142]: persist_progress writes headers and runtime only; credit requires coins B == claimed tip — D-17 cutover: leftover snapshot is no longer live UTXO truth
 - [Phase 142]: Flush persist_chain_meta after coins write; do not clobber the fork-aware header index — Reopen hydrates active_chain from chain_meta; active-chain-only header persist wiped competing branches
 - [Phase 142]: Leave MGR-01 Pending; this plan completes MGR-02 only — Plan frontmatter requirements are MGR-02; manager CanFlush verification remains later
+- [Phase 143]: Combined 143-01 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
+- [Phase 143]: BlockServingPresenceFacts sits beside BlockServingStatusFacts on the shell report seam
+- [Phase 143]: SideChain chain_position still uses cache_present, not durable_payload_present
+- [Phase 143]: Leave HAVL-02 and HAVL-03 Pending until later plans and lifecycle-valid phase verification
 
 ### Pending Todos
 
@@ -413,6 +418,6 @@ Next action: `/gsd-plan-phase 139`
 
 ## Session Continuity
 
-Last session: 2026-09-17T01:57:15.776Z
-Stopped at: Phase 143 context gathered
-Resume file: .planning/phases/143-honest-stored-block-availability/143-CONTEXT.md
+Last session: 2026-09-17T03:54:56.122Z
+Stopped at: Completed 143-01-PLAN.md
+Resume file: None
