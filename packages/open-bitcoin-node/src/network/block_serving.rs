@@ -82,9 +82,16 @@ impl ManagedBlockServeIntent {
         let decision = match outcome {
             ManagedBlockServeCompletionOutcome::LookupUnavailable => missing(
                 BlockServingOutcomeLabel::BlockStatusUnavailable,
-                self.eligible_decision.status_label,
+                BlockServingStatusLabel::Unavailable,
                 self.eligible_decision.eligibility_reason,
-                self.eligible_decision.presence,
+                BlockServingPresenceFacts {
+                    payload_present: false,
+                    index_known: self.eligible_decision.presence.index_known,
+                    validated_on_active_chain: self
+                        .eligible_decision
+                        .presence
+                        .validated_on_active_chain,
+                },
             ),
             ManagedBlockServeCompletionOutcome::TransportFailed
             | ManagedBlockServeCompletionOutcome::Written => self.eligible_decision.clone(),

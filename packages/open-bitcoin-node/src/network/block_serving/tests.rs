@@ -9,8 +9,9 @@ use core::cell::Cell;
 use open_bitcoin_core::primitives::Block;
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig, BlockServingChainPosition,
-    BlockServingDataAvailability, BlockServingOutcomeLabel, BlockServingValidationState,
-    CompactRelayActivationConfig, PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PeerConnectionClass,
+    BlockServingDataAvailability, BlockServingOutcomeLabel, BlockServingStatusLabel,
+    BlockServingValidationState, CompactRelayActivationConfig,
+    PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER, PeerConnectionClass,
 };
 
 use super::{
@@ -273,7 +274,116 @@ fn phase127_completion_preserves_unavailable_and_success_only_effects() {
         unavailable.decision().label,
         BlockServingOutcomeLabel::BlockStatusUnavailable
     );
+    assert_eq!(
+        unavailable.decision().status_label,
+        BlockServingStatusLabel::Unavailable
+    );
     assert!(!unavailable.records_served_effect());
     assert!(!transport_failed.records_served_effect());
     assert!(written.records_served_effect());
+}
+
+#[test]
+fn lookup_unavailable_completion_reports_unavailable_not_available() {
+    // Arrange
+    let ManagedBlockServeGateDecision::Serve(intent) = gate_managed_block_request(enabled_input())
+    else {
+        panic!("eligible request should yield an intent");
+    };
+
+    // Act
+    let completion = intent.completion(ManagedBlockServeCompletionOutcome::LookupUnavailable);
+    let decision = completion.decision();
+
+    // Assert
+    assert_eq!(
+        decision.label,
+        BlockServingOutcomeLabel::BlockStatusUnavailable
+    );
+    assert_eq!(decision.status_label, BlockServingStatusLabel::Unavailable);
+    assert!(!decision.presence.payload_present);
+    assert!(decision.missing_inventory);
+    assert!(!completion.records_served_effect());
+}
+
+#[test]
+fn lookup_unavailable_does_not_keep_available_status_label() {
+    // Arrange
+    let source = include_str!("../block_serving.rs");
+    let Some(completion_fn) = source.split("pub fn completion(").nth(1) else {
+        panic!("completion function must exist");
+    };
+    let Some(lookup_arm) = completion_fn
+        .split("ManagedBlockServeCompletionOutcome::LookupUnavailable =>")
+        .nth(1)
+    else {
+        panic!("LookupUnavailable arm must exist");
+    };
+    let lookup_arm = lookup_arm
+        .split("ManagedBlockServeCompletionOutcome::TransportFailed")
+        .next()
+        .unwrap_or(lookup_arm);
+
+    // Act
+    let rewrites_unavailable = lookup_arm.contains("BlockServingStatusLabel::Unavailable");
+    let copies_eligible_status = lookup_arm.contains("self.eligible_decision.status_label");
+
+    // Assert
+    assert!(
+        rewrites_unavailable,
+        "LookupUnavailable must rewrite status_label to Unavailable"
+    );
+    assert!(
+        !copies_eligible_status,
+        "LookupUnavailable must not pass eligible_decision.status_label into missing("
+    );
+}
+
+#[test]
+fn serve_managed_block_request_lookup_none_is_unavailable() {
+    // Arrange
+    let lookup_called = Cell::new(false);
+
+    // Act
+    let decision = serve_managed_block_request(enabled_input(), |_| {
+        lookup_called.set(true);
+        None
+    });
+
+    // Assert
+    assert_eq!(decision.status_label, BlockServingStatusLabel::Unavailable);
+    assert!(decision.maybe_block.is_none());
+    assert!(decision.missing_inventory);
+    assert!(lookup_called.get());
+}
+
+#[test]
+fn compact_paths_reuse_managed_block_serve_input_without_second_probe() {
+    // Arrange
+    let announcement = include_str!("../announcement_transport.rs");
+    let action_translation = include_str!("../action_translation.rs");
+
+    // Act
+    let announcement_reuses_input = announcement.contains("managed_block_serve_input");
+    let action_reuses_input = action_translation.contains("managed_block_serve_input");
+    let announcement_has_second_probe = announcement.contains("has_block");
+    let action_has_second_probe = action_translation.contains("has_block");
+
+    // Assert
+    assert!(
+        announcement_reuses_input,
+        "compact announcement must reuse managed_block_serve_input"
+    );
+    assert!(
+        action_reuses_input,
+        "compact-txn must reuse managed_block_serve_input"
+    );
+    assert!(
+        !announcement_has_second_probe,
+        "compact announcement must not add a second durable probe"
+    );
+    assert!(
+        !action_has_second_probe,
+        "compact-txn must not add a second durable probe"
+    );
 }
