@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Completed 144-02-PLAN.md
-last_updated: "2026-09-17T15:01:36.211Z"
+stopped_at: Completed 144-03-PLAN.md
+last_updated: "2026-09-17T16:34:47.695Z"
 last_activity: 2026-09-17
 progress:
   total_phases: 7
   completed_phases: 5
   total_plans: 25
-  completed_plans: 23
-  percent: 92
+  completed_plans: 24
+  percent: 96
 ---
 
 # Project State
@@ -27,15 +27,15 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 144
-Plan: 3 of 04
+Plan: 4 of 04
 Status: Ready to execute
 Last activity: 2026-09-17
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
-Progress: [█████████░] 92%
+Progress: [██████████] 96%
 
-Next action: `/gsd-execute-phase` (144-03 metrics/logs/support)
+Next action: `/gsd-execute-phase` (144-04 docs/checker)
 
 ## Performance Metrics
 
@@ -136,6 +136,7 @@ Next action: `/gsd-execute-phase` (144-03 metrics/logs/support)
 | Phase 143-honest-stored-block-availability P04 | 14min | 2 tasks | 4 files |
 | Phase 144 P01 | 71min | 3 tasks | 25 files |
 | Phase 144 P02 | 67 | 3 tasks | 20 files |
+| Phase 144-operator-flush-and-availability-evidence P03 | 80min | 3 tasks | 25 files |
 
 ## Accumulated Context
 
@@ -418,6 +419,10 @@ Next action: `/gsd-execute-phase` (144-03 metrics/logs/support)
 - [Phase 144]: Live CLI copies OpenBitcoinNetworkStatusResponse.chainstate_durability rather than the in-process snapshot
 - [Phase 144]: Duplicate small human formatters in CLI render and dashboard model; no shared web crate
 - [Phase 144]: Leave CSOBS-01 and CSOBS-02 Pending until Plan 03 surfaces and lifecycle-valid phase verification
+- [Phase 144]: Combined each 144-03 RED and GREEN into one hook-passing feat commit because pre-commit runs verify.sh
+- [Phase 144]: Duplicate OK/LARGE/CRITICAL tokens in support render rather than importing Plan 02 CLI/dashboard modules
+- [Phase 144]: Cache-size metric is current None-mode class from the snapshot, not last write
+- [Phase 144]: Leave CSOBS-01 and CSOBS-02 Pending until Plan 04 checker and lifecycle-valid phase verification
 
 ### Pending Todos
 
@@ -441,6 +446,6 @@ Next action: `/gsd-execute-phase` (144-03 metrics/logs/support)
 
 ## Session Continuity
 
-Last session: 2026-09-17T15:01:36.208Z
-Stopped at: Completed 144-02-PLAN.md
+Last session: 2026-09-17T16:34:47.692Z
+Stopped at: Completed 144-03-PLAN.md
 Resume file: None
