@@ -2,10 +2,12 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::{
-    BLOCK_RELAY_LOG_SOURCE, INBOUND_PEER_POLICY_LOG_SOURCE, INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE,
-    LogPathStatus, LogRetentionPolicy, LogRotation, LogStatus, MEMPOOL_POLICY_LOG_SOURCE,
-    RELAY_MEMPOOL_LOG_SOURCE, RecentLogSignal, StructuredLogLevel, StructuredLogRecord,
-    block_relay_log_record, health_signals_from_recent_logs, inbound_peer_policy_log_record,
+    BLOCK_RELAY_LOG_SOURCE, CHAINSTATE_DURABILITY_LOG_SOURCE, INBOUND_PEER_POLICY_LOG_SOURCE,
+    INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE, LogPathStatus, LogRetentionPolicy, LogRotation,
+    LogStatus, MEMPOOL_POLICY_LOG_SOURCE, RELAY_MEMPOOL_LOG_SOURCE, RecentLogSignal,
+    StructuredLogLevel, StructuredLogRecord, block_relay_log_record,
+    chainstate_durability_fail_closed_log_record, chainstate_durability_log_record,
+    health_signals_from_recent_logs, inbound_peer_policy_log_record,
     inbound_resource_governance_log_record, mempool_policy_log_record,
     recent_log_signals_from_records, relay_mempool_log_record,
 };
@@ -14,12 +16,14 @@ use super::{
     writer::{append_structured_log_record, load_log_status},
 };
 use crate::status::{
-    BlockRelayEvidenceStatus, HealthSignalLevel, InboundPeerPolicyEvent,
-    InboundResourceGovernanceEvent,
+    BlockRelayEvidenceStatus, CacheSizeLabel, ChainstateDurabilityEvidence, CoinsRecoveryOutcome,
+    FieldAvailability, HealthSignalLevel, InboundPeerPolicyEvent, InboundResourceGovernanceEvent,
+    LastFlushReasonLabel, ReadinessLabel, ServingStatusLabel, WriteKindLabel,
     relay_evidence::{
         RelayEvidenceCounters, RelayEvidenceField, RelayEvidenceStatus, RelayRecoveryCounters,
     },
 };
+use crate::storage::{StorageError, StorageNamespace, StorageRecoveryAction};
 use std::{
     fs,
     path::PathBuf,

@@ -1622,6 +1622,7 @@
         "packages/open-bitcoin-node/src/sync/reconcile_status.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state/helpers.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state/operator_logs.rs",
         "packages/open-bitcoin-node/src/sync/runtime_state/recovery.rs",
         "packages/open-bitcoin-node/src/sync/session.rs",
         "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",

@@ -15,6 +15,7 @@ use crate::status::{
     },
 };
 
+mod chainstate_durability;
 mod mempool_policy;
 pub mod prune;
 pub mod writer;
@@ -22,6 +23,10 @@ pub mod writer;
 #[cfg(test)]
 mod tests;
 
+pub use chainstate_durability::{
+    CHAINSTATE_DURABILITY_LOG_SOURCE, chainstate_durability_fail_closed_log_record,
+    chainstate_durability_log_record,
+};
 pub use mempool_policy::mempool_policy_log_record;
 
 pub const INBOUND_RESOURCE_GOVERNANCE_LOG_SOURCE: &str = "inbound_resource_governance";
@@ -273,7 +278,7 @@ pub fn block_relay_log_record(
     )
 }
 
-fn sanitized_resource_log_field(value: &str) -> Cow<'_, str> {
+pub(crate) fn sanitized_resource_log_field(value: &str) -> Cow<'_, str> {
     if value.is_empty()
         || value.len() > 128
         || value.contains('=')

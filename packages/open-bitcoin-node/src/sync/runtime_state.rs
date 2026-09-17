@@ -12,10 +12,9 @@ use open_bitcoin_network::{MAX_HEADERS_RESULTS, PeerId};
 use crate::{
     LogRetentionPolicy, RuntimeMetadata,
     logging::{
-        StructuredLogError, StructuredLogLevel, StructuredLogRecord, block_relay_log_record,
+        StructuredLogError, StructuredLogLevel, StructuredLogRecord,
         writer::append_structured_log_record,
     },
-    network::BlockRelayRuntimeEvidenceSnapshot,
     status::{
         DurableSyncState, FieldAvailability, SyncAttemptCounters, SyncConfiguredTargets,
         SyncControlState, SyncLifecycleState, SyncResourcePressure,
@@ -28,6 +27,8 @@ use super::{
 };
 
 mod helpers;
+// Emits chainstate_durability_log_record beside block-relay logs.
+mod operator_logs;
 mod recovery;
 
 use helpers::{maybe_available_ref, progress_ratio};
@@ -108,24 +109,6 @@ impl DurableSyncRuntime {
                     .push(super::progress::log_write_failed_signal(&error));
                 break;
             }
-        }
-    }
-
-    pub(super) fn write_block_relay_log(
-        &self,
-        summary: &mut SyncRunSummary,
-        maybe_block_relay_snapshot: Option<&BlockRelayRuntimeEvidenceSnapshot>,
-        timestamp: i64,
-    ) {
-        let Some(snapshot) = maybe_block_relay_snapshot else {
-            return;
-        };
-        let timestamp = u64::try_from(timestamp).unwrap_or(0);
-        let record = block_relay_log_record(&snapshot.status, snapshot.served_count, timestamp);
-        if let Err(error) = self.append_structured_record(&record) {
-            summary
-                .health_signals
-                .push(super::progress::log_write_failed_signal(&error));
         }
     }
 

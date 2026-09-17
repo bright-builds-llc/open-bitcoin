@@ -324,6 +324,121 @@ fn block_relay_log_record_omits_sensitive_and_dynamic_material() {
     }
 }
 
+fn available_durability_log_fixture() -> ChainstateDurabilityEvidence {
+    ChainstateDurabilityEvidence {
+        cache_size: CacheSizeLabel::Ok,
+        last_flush_reason: LastFlushReasonLabel::Periodic,
+        write_kind: WriteKindLabel::Sync,
+        readiness: ReadinessLabel::ReadyToFlush,
+        cache_bytes: 1_024,
+        cache_byte_limit: 8_192,
+        recovery_outcome: CoinsRecoveryOutcome::Replayed,
+        maybe_coins_best_block_height: Some(840_004),
+        maybe_coins_best_block_hash: Some(
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+        ),
+        last_serving_status: ServingStatusLabel::Unavailable,
+        last_payload_present: false,
+        last_index_known: true,
+        last_validated_on_active_chain: true,
+        available_count: 0,
+        unavailable_count: 1,
+        index_known_without_payload_count: 1,
+    }
+}
+
+#[test]
+fn chainstate_durability_log_record_uses_fixed_source_labels_and_counts() {
+    // Arrange
+    let durability = FieldAvailability::available(available_durability_log_fixture());
+
+    // Act
+    let record = chainstate_durability_log_record(&durability, 1_779_000_101);
+
+    // Assert
+    assert_eq!(record.source, CHAINSTATE_DURABILITY_LOG_SOURCE);
+    assert_eq!(record.level, StructuredLogLevel::Info);
+    for expected in [
+        "outcome=projected",
+        "cause=status_projection",
+        "label=chainstate_durability",
+        "cache_size=ok",
+        "last_flush_reason=periodic",
+        "recovery_outcome=replayed",
+        "available_count=0",
+        "unavailable_count=1",
+        "index_known_without_payload_count=1",
+        "height=840004",
+    ] {
+        assert!(record.message.contains(expected), "missing {expected}");
+    }
+}
+
+#[test]
+fn chainstate_durability_log_record_omits_sensitive_and_dynamic_material() {
+    // Arrange
+    let mut evidence = available_durability_log_fixture();
+    evidence.maybe_coins_best_block_hash =
+        Some("cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc".to_string());
+    let available = FieldAvailability::available(evidence);
+    let unavailable = FieldAvailability::<ChainstateDurabilityEvidence>::unavailable(
+        "peer_id=7 credential=secret 127.0.0.1:18444 abcd:1 getblock pruned",
+    );
+
+    // Act
+    let available_record = chainstate_durability_log_record(&available, 1_779_000_102);
+    let unavailable_record = chainstate_durability_log_record(&unavailable, 1_779_000_103);
+
+    // Assert
+    for record in [&available_record, &unavailable_record] {
+        for forbidden in [
+            "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "peer_id=",
+            "127.0.0.1:",
+            "txid:vout",
+            "pruned",
+            "getblock",
+            "credential=",
+        ] {
+            assert!(
+                !record.message.contains(forbidden),
+                "leaked {forbidden} in {}",
+                record.message
+            );
+        }
+    }
+    assert!(unavailable_record.message.contains("outcome=unavailable"));
+    assert!(
+        unavailable_record
+            .message
+            .contains("redacted_resource_field")
+    );
+}
+
+#[test]
+fn initialize_fail_closed_can_emit_log_label() {
+    // Arrange
+    let error = StorageError::Corruption {
+        namespace: StorageNamespace::Chainstate,
+        detail: "fail_closed coins marker H=dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd".to_string(),
+        action: StorageRecoveryAction::Repair,
+    };
+
+    // Act
+    let record = chainstate_durability_fail_closed_log_record(&error, 1_779_000_104);
+
+    // Assert
+    assert_eq!(record.source, CHAINSTATE_DURABILITY_LOG_SOURCE);
+    assert!(record.message.contains("recovery_outcome=fail_closed"));
+    assert!(
+        !record
+            .message
+            .contains("dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd")
+    );
+    assert!(!record.message.contains("H="));
+}
+
 const MEMPOOL_POLICY_SNAPSHOT_KEYS: [&str; 16] = [
     "virtual_size",
     "accounted_usage",
