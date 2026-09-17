@@ -170,7 +170,7 @@ _Note: Combined RED+GREEN in one hook-passing feat commit per task because pre-c
 - **Verification:** pre-commit `verify.sh`
 - **Committed in:** `7c5a047b` (Task 3)
 
----
+***
 
 **Total deviations:** 5 auto-fixed (4 blocking, 1 bug)
 **Impact on plan:** All auto-fixes kept file-length, clippy, and existing safeguard tests green. No RPC/CLI/dashboard rows, no docs/checker. Combined RED+GREEN was an allowed plan exception, not a deviation. Cargo cannot take two `--lib` filters; Task 3 verify used one `chainstate_durability` substring.
@@ -189,7 +189,7 @@ None - no external service configuration required.
 - Plan 04 can document the seven series, log source, support heading, and wire the cross-surface checker after Phase 116.
 - CSOBS-01 and CSOBS-02 stay Pending until that checker and lifecycle-valid phase verification exist.
 
----
+***
 *Phase: 144-operator-flush-and-availability-evidence*
 *Completed: 2026-09-17*
 

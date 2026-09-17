@@ -152,7 +152,7 @@ _Note: Combined RED+GREEN in one hook-passing feat commit per task because pre-c
 - **Verification:** `cargo test -p open-bitcoin-cli --lib operator_status_chainstate_durability` plus the JSON and omit-pruned tests
 - **Committed in:** `fcfe97cb` (Task 2)
 
----
+***
 
 **Total deviations:** 4 auto-fixed (4 blocking)
 **Impact on plan:** All auto-fixes necessary for compile, Phase 127 exact keys, and test placement. No metrics/logs/support, no getblock, no ninth chart. Combined RED+GREEN was an allowed plan exception, not a deviation.
@@ -171,7 +171,7 @@ None - no external service configuration required.
 - Plan 04 can document the six locked lines and wire the cross-surface checker.
 - CSOBS-01 and CSOBS-02 stay Pending until those surfaces and lifecycle-valid phase verification exist.
 
----
+***
 *Phase: 144-operator-flush-and-availability-evidence*
 *Completed: 2026-09-17*
 

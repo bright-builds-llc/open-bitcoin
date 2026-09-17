@@ -182,8 +182,8 @@ Plans:
 | HAVL-01 | Phase 143 | Pending |
 | HAVL-02 | Phase 143 | Pending |
 | HAVL-03 | Phase 143 | Pending |
-| CSOBS-01 | Phase 144 | Pending |
-| CSOBS-02 | Phase 144 | Pending |
+| CSOBS-01 | Phase 144 | Complete |
+| CSOBS-02 | Phase 144 | Complete |
 | CSVFY-01 | Phase 145 | Pending |
 | CSVFY-02 | Phase 145 | Pending |
 
@@ -209,12 +209,12 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 4/4 | Complete    | 2026-09-17 |
-| 144. Operator Flush and Availability Evidence | 4/4 | Complete   | 2026-09-17 |
+| 144. Operator Flush and Availability Evidence | 4/4 | Complete    | 2026-09-17 |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
 
-Run `/gsd-execute-phase 144` to implement operator flush and availability evidence.
+Run `/gsd-discuss-phase 145` to start parity roots and no-claim guardrails.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*

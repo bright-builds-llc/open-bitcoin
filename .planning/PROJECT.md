@@ -124,7 +124,8 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - [ ] Disk-backed coins databases and cache-flush policy persist and recover the active chainstate without snapshot-only coin truth.
 - [ ] Fuller chainstate-manager behavior owns the durable coins view, flush points, and restart-safe cache lifecycle.
-- [x] Block serving reports a stored block only when the payload is actually present and refuses cleanly when it is not. Validated in Phase 143: Honest Stored-Block Availability. Full operator flush/availability evidence rollout remains Phase 144.
+- [x] Block serving reports a stored block only when the payload is actually present and refuses cleanly when it is not. Validated in Phase 143: Honest Stored-Block Availability.
+- [x] Operators can see flush, recovery, cache-size, and have-bytes versus do-not through sanitized surfaces. Validated in Phase 144: Operator Flush and Availability Evidence.
 - [ ] Parity and operator evidence keep the new persistence and availability truth auditable without broadening public or production claims.
 
 ### Out of Scope
@@ -242,4 +243,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-17 after completing Phase 143*
+*Last updated: 2026-09-17 after completing Phase 144*

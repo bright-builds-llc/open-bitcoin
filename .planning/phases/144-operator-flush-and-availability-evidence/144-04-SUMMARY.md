@@ -113,7 +113,7 @@ _Note: Combined RED+GREEN in one hook-passing commit per task because pre-commit
 - **Verification:** `bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts`
 - **Committed in:** `792f1df7` (Task 2)
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 bug)
 **Impact on plan:** Necessary for the live-repo pass without weakening the injected-needle fail test. No CSVFY checker, no getblock section, no prune/archive/production-readiness claims. Combined RED+GREEN was an allowed plan exception, not a deviation.
@@ -131,7 +131,7 @@ None - no external service configuration required.
 - Phase 145 can add CSVFY no-claim guardrails and parity-root citations without reopening the CSOBS field contract.
 - CSOBS-01 and CSOBS-02 are implemented across status, RPC, CLI, dashboard, metrics, logs, support, docs, and the checker. Lifecycle-valid phase verification remains the phase-level closeout.
 
----
+***
 *Phase: 144-operator-flush-and-availability-evidence*
 *Completed: 2026-09-17*
 

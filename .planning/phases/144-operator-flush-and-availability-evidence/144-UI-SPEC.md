@@ -1,7 +1,8 @@
 ---
 phase: 144
 slug: operator-flush-and-availability-evidence
-status: draft
+status: approved
+reviewed_at: 2026-09-17T12:13:00Z
 shadcn_initialized: false
 preset: none
 generated_by: gsd-ui-researcher

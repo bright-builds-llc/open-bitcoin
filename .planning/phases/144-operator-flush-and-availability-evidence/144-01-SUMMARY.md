@@ -152,7 +152,7 @@ _Note: Combined RED+GREEN in one hook-passing feat commit per task because pre-c
 - **Verification:** pre-commit `verify.sh`
 - **Committed in:** `2499e636` (Task 3)
 
----
+***
 
 **Total deviations:** 3 auto-fixed (2 blocking, 1 bug)
 **Impact on plan:** All auto-fixes necessary for file-length, breadcrumb, and clippy gates. No scope creep. Combined RED+GREEN was an allowed plan exception, not a deviation.
@@ -171,7 +171,7 @@ None - no external service configuration required.
 - Plan 03 can log `fail_closed` from `StorageError` Display and emit metrics from the same sanitized labels.
 - No `getblock`, ninth chart, or Plan 02/03 renderer work landed beyond compile-fixing snapshot literals.
 
----
+***
 *Phase: 144-operator-flush-and-availability-evidence*
 *Completed: 2026-09-17*
 
