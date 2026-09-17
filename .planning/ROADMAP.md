@@ -148,8 +148,14 @@ Plans:
   1. Status, RPC, CLI, dashboard, metrics, logs, and support expose flush, recovery, and have-bytes versus do-not using sanitized low-cardinality fields.
   2. Operator evidence reports cache-size state (OK / LARGE / CRITICAL) and last flush reason.
   3. Coins best-block, interrupted-flush or replay outcome, and per-request availability labels are visible without peer identifiers or raw coin dumps.
-**Plans**: TBD
+**Plans**: 4 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 144-01-PLAN.md — Shared chainstate_durability contract and runtime retention
+- [ ] 144-02-PLAN.md — RPC, CLI JSON/human, and dashboard rows
+- [ ] 144-03-PLAN.md — Metrics, structured logs, and support redaction
+- [ ] 144-04-PLAN.md — Docs, cross-surface checker, breadcrumbs, and verify wiring
 
 ### Phase 145: Parity Roots and No-Claim Guardrails
 **Goal**: Parity evidence is auditable and the v2.3 claim cannot be read as prune, assumeutxo, archive, or production readiness.
@@ -203,12 +209,12 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 4/4 | Complete    | 2026-09-17 |
-| 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
+| 144. Operator Flush and Availability Evidence | 0/4 | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
 
-Run `/gsd-execute-phase 143` to implement honest stored-block availability.
+Run `/gsd-execute-phase 144` to implement operator flush and availability evidence.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*
