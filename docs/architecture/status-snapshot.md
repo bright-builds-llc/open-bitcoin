@@ -17,6 +17,7 @@ For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, 
 | `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
 | `mempool` | Mempool collector | `transactions` and `relay` plus Phase 137 groups `resources`, `fee_floors`, `pressure`, `eviction`, `checkpoint`, `recovery`, `retry`, and `admission` |
 | `block_relay` | Network collector | block-serving activation/eligibility/status plus compact-relay evidence |
+| `chainstate_durability` | Flush/availability projector | `FieldAvailability<ChainstateDurabilityEvidence>` for `cache_size`, `last_flush_reason`, coins recovery, and have-bytes versus do-not |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
 | `logs` | Logging collector | log paths and retention |
 | `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |
@@ -484,6 +485,46 @@ public block serving by default, BIP152 production readiness, archive-node
 behavior, package relay, bloom/filter serving, compact filter serving,
 public-network CI, production-service operation, production full-node
 readiness, or production-funds wallet use.
+
+## Phase 144 chainstate durability status
+
+Phase 144 adds a dedicated top-level
+`chainstate_durability: FieldAvailability<ChainstateDurabilityEvidence>` field
+on `OpenBitcoinStatusSnapshot`. CSOBS-01 and CSOBS-02 consume this shared
+contract. It is distinct from `recovery_evidence` (sync lock/corruption
+taxonomy) and `block_relay` (serving/compact counters). Renderers must not
+re-derive flush, cache-size, recovery, or have-bytes truth.
+
+When the runtime has not projected the field, every consumer must render the
+same wrapper as `Unavailable: {reason}` rather than inventing occupancy,
+flush reason, coins tip, or availability labels.
+
+Locked machine field names when the field is available:
+
+- `cache_size`: current None-mode occupancy (`ok` / `large` / `critical`)
+- `last_flush_reason`: last real `execute_flush` reason
+  (`none` / `needed` / `periodic` / `always` / `failed_disk`)
+- `write_kind`: last write-kind (`none` / `flush` / `sync` / `refuse_disk_space`)
+- `readiness`: CanFlush (`not_ready` / `ready_to_flush`)
+- `cache_bytes` and `cache_byte_limit`
+- `recovery_outcome`: `consistent` / `replayed` / `interrupted` / `fail_closed`
+- `maybe_coins_best_block_height` and `maybe_coins_best_block_hash`
+- have-bytes versus do-not last labels: `last_serving_status`,
+  `last_payload_present`, `last_index_known`,
+  `last_validated_on_active_chain`
+- have-bytes versus do-not counts: `available_count`, `unavailable_count`,
+  `index_known_without_payload_count`
+
+`cache_size` is current None-mode occupancy from
+`decide_flush(FlushMode::None)` at projection time. A later None classify
+must not overwrite `last_flush_reason` or `write_kind`. Fail-closed and
+interrupted-without-B must not present an invented coins tip; both
+coins-best-block fields stay unset.
+
+Have-bytes versus do-not is last serving status plus the three presence
+labels. Status is unavailable whenever `payload_present` is false. These
+are classification labels and bounded counters, not a stored-block fetch
+API. Phase 145 still owns CSVFY no-claim guardrails.
 
 ## Phase 117 v2.1 release-boundary status
 

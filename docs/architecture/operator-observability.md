@@ -544,6 +544,35 @@ Support next action: Treat package, pressure, checkpoint, recovery, and retry
 evidence as bounded local operator status. Successful local admission is not
 public or default relay and is not network-wide propagation.
 
+## Phase 144 chainstate durability metrics and logs
+
+Phase 144 projects `OpenBitcoinStatusSnapshot.chainstate_durability` through
+seven fixed `MetricKind` serde names and the allowlisted structured-log
+source `chainstate_durability` (`CHAINSTATE_DURABILITY_LOG_SOURCE`).
+CSOBS-01 and CSOBS-02 stay on this shared field. Metrics and logs must not
+add dynamic labels, and structured log fields must not include
+coins-best-block hash.
+
+The seven series are:
+
+- `chainstate_durability_cache_size_class` (`0` / `1` / `2` for `ok` /
+  `large` / `critical`)
+- `chainstate_durability_last_flush_reason_class` (`0..4`)
+- `chainstate_durability_write_kind_class` (`0..3`)
+- `chainstate_durability_recovery_class` (`0..3`)
+- `chainstate_durability_available_count`
+- `chainstate_durability_unavailable_count`
+- `chainstate_durability_index_known_without_payload_count`
+
+`cache_size` samples the current None-mode occupancy class. `last_flush_reason`
+samples the last real `execute_flush` reason. Unavailable fields emit no
+fabricated samples. Support bundles render `## Chainstate Durability` from
+the same projection and use recursive redaction
+(`redact_chainstate_durability`) for free-text reasons.
+
+These series must not bind to a ninth dashboard chart. Phase 145 still owns
+CSVFY no-claim guardrails.
+
 ## Phase Boundaries
 
 Phase 13 defines serializable contracts only. It must not install a tracing subscriber, create a file appender, write metric samples, prune log files, or render dashboard graphs. Runtime writers and readers are Phase 16 responsibilities.

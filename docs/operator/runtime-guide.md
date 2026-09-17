@@ -897,6 +897,55 @@ bun run scripts/check-phase116-operator-block-relay-evidence.ts
 bash scripts/verify.sh
 ```
 
+## Phase 144 Operator Flush And Availability Evidence Review
+
+Phase 144 exposes `chainstate_durability` across operator status, dashboard
+rows, `openbitcoinnetworkstatus`, metrics, structured logs, and support
+bundles for CSOBS-01 and CSOBS-02. Reviewers inspect `cache_size`,
+`last_flush_reason`, coins recovery, and have-bytes versus do-not from the
+shared field. When the field is missing, every line is `Unavailable:` with
+the same wrapper reason. Public-network review stays opt-in UAT only and is
+never required by default verification.
+
+Inspect shared operator status through both repo-local command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Collect a redacted chainstate-durability support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-chainstate-durability-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-chainstate-durability-support
+```
+
+Expected review evidence is bounded:
+
+- Human and JSON status project `chainstate_durability` after `block_relay`.
+- `cache_size` is current None-mode occupancy (`ok` / `large` / `critical`;
+  human `OK` / `LARGE` / `CRITICAL`). `last_flush_reason` is the last real
+  `execute_flush` reason.
+- Have-bytes versus do-not uses last serving status plus
+  `payload_present`, `index_known`, and `validated_on_active_chain`. Status
+  is unavailable whenever `payload_present` is false.
+- Support Markdown heading is `## Chainstate Durability`. Next action:
+  Treat flush, coins recovery, cache-size, and have-bytes versus do-not as
+  bounded local operator status. This is not prune-mode, archive-node
+  serving, public-default historical serving, or production readiness.
+
+Focused closeout verification uses the Phase 144 checker pair and the
+repo-native contract:
+
+```bash
+bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
+bun run scripts/check-phase144-operator-flush-availability-evidence.ts
+bash scripts/verify.sh
+```
+
 ## Phase 117 v2.1 Release Boundary Review
 
 Open Bitcoin v2.1 provides bounded, explicit, default-off block serving and
