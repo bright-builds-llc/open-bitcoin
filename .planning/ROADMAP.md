@@ -137,7 +137,7 @@ Plans:
 Plans:
 - [x] 143-01-PLAN.md — Presence facts and reserved Pruned
 - [x] 143-02-PLAN.md — Payload-byte probe replaces override
-- [ ] 143-03-PLAN.md — Missing-payload refuse and LookupUnavailable honesty
+- [x] 143-03-PLAN.md — Missing-payload refuse and LookupUnavailable honesty
 - [ ] 143-04-PLAN.md — Reserved-Pruned docs and Phase 111 claim copy
 
 ### Phase 144: Operator Flush and Availability Evidence
@@ -202,7 +202,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 140. Pure Flush Policy and Typed Decisions | 3/3 | Complete    | 2026-09-02 |
 | 141. Durable Fjall Coins Adapter | 4/4 | Complete    | 2026-09-05 |
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
-| 143. Honest Stored-Block Availability | 2/4 | In Progress|  |
+| 143. Honest Stored-Block Availability | 3/4 | In Progress|  |
 | 144. Operator Flush and Availability Evidence | 0/TBD | Not started | - |
 | 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
