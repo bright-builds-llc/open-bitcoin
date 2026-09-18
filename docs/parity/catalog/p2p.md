@@ -1249,6 +1249,11 @@ Active-chain blocks whose payload bytes are missing, including non-tip hashes,
 return `WireNetworkMessage::NotFound` with `block_status_unavailable`. The
 label `block_status_pruned` remains reserved for a future prune-mode delete
 when prune mode actually deleted files and is not emitted on production paths.
+The pinned Knots serve-path symbol is `BlockManager::CheckBlockDataAvailability`
+in `packages/bitcoin-knots/src/node/blockstorage.cpp`; `HaveBlockData` is the
+locked discussion name only, and
+`packages/bitcoin-knots/src/test/blockmanager_tests.cpp` is the matching test
+anchor.
 
 Knots anchors for this request path are
 `packages/bitcoin-knots/src/net_processing.cpp`,

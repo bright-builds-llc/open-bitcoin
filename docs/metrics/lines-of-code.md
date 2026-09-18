@@ -348,7 +348,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 3678619aa317bfecbd5a357c39baeebf56b55a8a6b3e18c9f61853ba71925e58 |
+| Input fingerprint | 0b29ec1437bc2755a8b29b6210979e602d417379f48741f1dde80a46bc75e247 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

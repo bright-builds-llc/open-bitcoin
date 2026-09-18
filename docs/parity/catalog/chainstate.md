@@ -1,13 +1,34 @@
 # Chainstate And UTXO Engine
 
-This entry tracks the Phase 4 chainstate slice implemented in Open Bitcoin.
-The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
+This entry tracks the Phase 4 chainstate slice implemented in Open Bitcoin
+and the later v2.3 disk-backed coins, flush, manager, and honest-availability
+claim. The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 
-## Coverage
+## Current v2.3 claim
+
+The live v2.3 claim is disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
+
+Leftover snapshot blobs are non-authoritative after the schema 1→2 one-way
+migration. Restart tip and UTXO view come from durable coins best-block.
+`Pruned` stays reserved. First-party overlay occupancy is not C++ allocator /
+LevelDB SizeEstimate. Fjall per-outpoint coins replace LevelDB `chainstate/`.
+Disk-space probe may stay fail-open at `u64::MAX` where the node crate forbids
+unsafe `statvfs`. Phase 144 `chainstate_durability` is the shared operator
+contract and is not re-derived here.
+
+Pinned Knots symbols for this claim include `FlushStateToDisk` and
+`GetCoinsCacheSizeState` in `validation.cpp`, `CanFlushToDisk` in
+`node/chainstate.cpp` and `validation.cpp`, and `CheckBlockDataAvailability`
+in `node/blockstorage.cpp`. The locked discussion name `HaveBlockData` is not
+a pinned-tree symbol; the serve-path root is `CheckBlockDataAvailability`.
+
+## Historical Phase 4 snapshot-engine coverage
+
+The following bullets are historical Phase 4 snapshot-engine coverage, not live v2.3 coin truth.
 
 - explicit UTXO entries carrying output, coinbase, creation-height, and
   creation-median-time-past metadata
-- pure-core active-chain snapshots and per-block undo payloads
+- historical Phase 4 pure-core active-chain snapshots and per-block undo payloads
 - direct block connect using the existing consensus validators plus derived
   spend contexts from the current UTXO view
 - direct tip disconnect that removes created outputs, restores spent inputs in
@@ -15,14 +36,15 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - explicit reorg application over disconnect and reconnect paths
 - deterministic best-tip preference by cumulative work, then height, then block
   hash for repo-owned fixtures
-- node-side in-memory snapshot persistence that keeps storage outside the pure
-  chainstate core
+- historical Phase 4 / later-snapshot node-side in-memory snapshot persistence
+  that keeps storage outside the pure chainstate core
 
 ## Knots sources
 
 - [`packages/bitcoin-knots/src/coins.h`](../../../packages/bitcoin-knots/src/coins.h)
 - [`packages/bitcoin-knots/src/coins.cpp`](../../../packages/bitcoin-knots/src/coins.cpp)
 - [`packages/bitcoin-knots/src/validation.cpp`](../../../packages/bitcoin-knots/src/validation.cpp)
+- [`packages/bitcoin-knots/src/node/chainstate.cpp`](../../../packages/bitcoin-knots/src/node/chainstate.cpp)
 - [`packages/bitcoin-knots/src/node/blockstorage.cpp`](../../../packages/bitcoin-knots/src/node/blockstorage.cpp)
 
 ## Knots behaviors mirrored here
@@ -35,6 +57,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - best-chain preference is work-first even though Open Bitcoin uses a stable
   hash tie-break for deterministic fixtures instead of Knots' pointer-identity
   fallback
+- flush and cache-size decisions follow `FlushStateToDisk` /
+  `GetCoinsCacheSizeState` and manager readiness follows `CanFlushToDisk`
+- stored-block serve/report availability follows
+  `CheckBlockDataAvailability`; `HaveBlockData` is the locked discussion name
+  only
 
 ## Phase 70 branch and reorg recovery claim
 
@@ -183,10 +210,13 @@ do not imply destructive repair.
 
 ## Known gaps
 
-- disk-backed coins databases, cache-flush policy, and assumeutxo flows
+- assumeutxo, assumevalid, and IBD snapshot shortcuts remain deferred FUT-21,
+  not a missing v2.3 deliverable
+- prune/archive product modes, compact-filter serving, public serving or relay
+  defaults, and production readiness remain deferred
 - mempool repair and disconnected-transaction pools during reorg
-- header-chain validation and full node chainstate-manager behavior beyond this
-  phase's active-chain slice
+- header-chain validation beyond the shipped active-chain and single-manager
+  durability slice
 
 ## Follow-up triggers
 

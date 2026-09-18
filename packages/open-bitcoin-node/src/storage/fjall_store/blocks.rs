@@ -1,5 +1,5 @@
 // Parity breadcrumbs:
-// - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use open_bitcoin_core::primitives::BlockHash;
 
