@@ -766,6 +766,34 @@
     {
       "name": "v2-2-parity-uat-release-boundary",
       "status": "done"
+    },
+    {
+      "name": "v2-3-coins-view-cache-contract",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-3-pure-flush-policy-and-typed-decisions",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-3-durable-fjall-coins-adapter",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-3-manager-flush-lifecycle-and-restart",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-3-honest-stored-block-availability",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-3-operator-flush-availability-evidence",
+      "status": "in_progress"
+    },
+    {
+      "name": "v2-3-parity-roots-and-no-claim-guardrails",
+      "status": "in_progress"
     }
   ],
   "checklist": {
@@ -3640,6 +3668,223 @@
         ],
         "suspected_unknowns": [
           "Milestone archival remains a later command after Phase 138 verification passes."
+        ]
+      },
+      {
+        "id": "v2-3-coins-view-cache-contract",
+        "title": "v2.3 Coins View Cache Contract",
+        "status": "in_progress",
+        "requirements": [
+          "CACHE-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          "packages/open-bitcoin-chainstate/src/coins.rs",
+          "packages/open-bitcoin-chainstate/src/coins/cache.rs",
+          ".planning/phases/139-coins-view-cache-contract-and-engine-apply/139-VERIFICATION.md"
+        ],
+        "rationale": "Phase 139 uniquely owns CACHE-01. The pure coins-view/cache overlay is the machine-readable owner for DIRTY/FRESH apply without absorbing FLUSH, COIN, MGR, HAVL, CSOBS, or CSVFY.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/coins.h",
+            "packages/bitcoin-knots/src/coins.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Assumeutxo dual-chainstate, prune/archive modes, and production readiness remain deferred."
+        ],
+        "suspected_unknowns": [
+          "CACHE-01 stays Pending in REQUIREMENTS until the last-gate checker can name its evidence."
+        ]
+      },
+      {
+        "id": "v2-3-pure-flush-policy-and-typed-decisions",
+        "title": "v2.3 Pure Flush Policy and Typed Decisions",
+        "status": "in_progress",
+        "requirements": [
+          "FLUSH-01",
+          "MGR-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          "packages/open-bitcoin-chainstate/src/coins/flush.rs",
+          ".planning/phases/140-pure-flush-policy-and-typed-decisions/140-VERIFICATION.md"
+        ],
+        "rationale": "Phase 140 uniquely owns FLUSH-01 and MGR-03. Typed IfNeeded/Periodic/Always flush and recovery decisions stay I/O-free in core.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "FlushStateToDisk and GetCoinsCacheSizeState are the pinned validation.cpp symbols; adapters still perform I/O."
+        ],
+        "suspected_unknowns": [
+          "MGR-03 stays Pending in REQUIREMENTS until the last-gate checker can name its evidence."
+        ]
+      },
+      {
+        "id": "v2-3-durable-fjall-coins-adapter",
+        "title": "v2.3 Durable Fjall Coins Adapter",
+        "status": "in_progress",
+        "requirements": [
+          "COIN-01",
+          "CSOBS-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          "packages/open-bitcoin-node/src/storage/coins_view.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/coins.rs"
+        ],
+        "rationale": "Phase 141 uniquely owns COIN-01 and CSOBS-03. Durable per-outpoint Fjall coins replace snapshot-blob truth; disk-read errors fail closed.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/coins.h",
+            "packages/bitcoin-knots/src/coins.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Intentional difference: Fjall per-outpoint coins instead of LevelDB chainstate/."
+        ],
+        "suspected_unknowns": [
+          "LevelDB chainstate/ live import or export remains FUT-22 and is not a missing v2.3 deliverable."
+        ]
+      },
+      {
+        "id": "v2-3-manager-flush-lifecycle-and-restart",
+        "title": "v2.3 Manager Flush Lifecycle and Restart",
+        "status": "in_progress",
+        "requirements": [
+          "MGR-01",
+          "MGR-02",
+          "FLUSH-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs",
+          "packages/open-bitcoin-node/src/chainstate/replay.rs"
+        ],
+        "rationale": "Phase 142 uniquely owns MGR-01, MGR-02, and FLUSH-02. One manager owns coins-db init, CanFlush-style readiness, ordered flush, and restart from durable coins best-block.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/node/chainstate.cpp",
+            "packages/bitcoin-knots/src/validation.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Intentional difference: single active chainstate, not assumeutxo dual-chainstate.",
+          "Intentional difference: disk-space probe may stay fail-open at u64::MAX where the node crate forbids unsafe statvfs.",
+          "Pinned manager symbol is CanFlushToDisk in node/chainstate.cpp and validation.cpp."
+        ],
+        "suspected_unknowns": [
+          "Assumeutxo dual-chainstate remains FUT-21 and is not a missing v2.3 deliverable."
+        ]
+      },
+      {
+        "id": "v2-3-honest-stored-block-availability",
+        "title": "v2.3 Honest Stored-Block Availability",
+        "status": "in_progress",
+        "requirements": [
+          "HAVL-01",
+          "HAVL-02",
+          "HAVL-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          "packages/open-bitcoin-node/src/storage/fjall_store/blocks.rs"
+        ],
+        "rationale": "Phase 143 uniquely owns HAVL-01, HAVL-02, and HAVL-03. A stored block is Available only after a payload-byte probe; missing payload is Unavailable, not Pruned.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockmanager_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Intentional difference: Pruned stays reserved and is not emitted on production paths.",
+          "Pinned serve-path symbol is CheckBlockDataAvailability; HaveBlockData is the locked discussion name only."
+        ],
+        "suspected_unknowns": [
+          "A getblock product and prune/archive modes remain outside v2.3."
+        ]
+      },
+      {
+        "id": "v2-3-operator-flush-availability-evidence",
+        "title": "v2.3 Operator Flush and Availability Evidence",
+        "status": "in_progress",
+        "requirements": [
+          "CSOBS-01",
+          "CSOBS-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          "docs/operator/runtime-guide.md",
+          "packages/open-bitcoin-node/src/network/chainstate_durability_evidence.rs"
+        ],
+        "rationale": "Phase 144 uniquely owns CSOBS-01 and CSOBS-02. Sanitized flush, recovery, cache-size, and have-bytes evidence reuse the shared chainstate_durability contract and do not re-derive those fields.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Phase 144 chainstate_durability is the shared operator contract and is not re-derived here."
+        ],
+        "suspected_unknowns": [
+          "Operator evidence remains local and sanitized; public-network CI and production-readiness claims stay deferred."
+        ]
+      },
+      {
+        "id": "v2-3-parity-roots-and-no-claim-guardrails",
+        "title": "v2.3 Parity Roots and No-Claim Guardrails",
+        "status": "in_progress",
+        "requirements": [
+          "CSVFY-01",
+          "CSVFY-02"
+        ],
+        "evidence": [
+          ".planning/phases/145-parity-roots-and-no-claim-guardrails/145-UAT.md",
+          "scripts/check-phase145-parity-uat-release-boundary.ts",
+          "docs/parity/release-readiness.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/index.json"
+        ],
+        "rationale": "Phase 145 uniquely owns CSVFY-01 and CSVFY-02 as the v2.3 closeout surface. It inventories Phase 139-144 evidence, records the committed UAT package, and names the last-gate claim checker. It does not absorb CACHE, FLUSH, COIN, MGR, HAVL, or CSOBS ownership.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/coins.h",
+            "packages/bitcoin-knots/src/coins.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/chainstate.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockmanager_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Phase 145 owns only CSVFY-01 and CSVFY-02.",
+          "FUT-18 through FUT-26 remain deferred: prune-mode product behavior, archive-node or production-scale historical serving, compact-filter or BIP37 serving, assumeutxo/assumevalid/IBD snapshot shortcuts, LevelDB chainstate/ live import/export, automatic destructive reindex or coins repair, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, and production full-node readiness, production service operation, or production-funds wallet safety.",
+          "Intentional differences, not missing deliverables: Fjall per-outpoint coins instead of LevelDB chainstate/; first-party overlay occupancy instead of C++ allocator / LevelDB SizeEstimate; leftover snapshot blobs are non-authoritative after the schema 1→2 one-way migration; Pruned stays reserved and is not emitted on production paths; single active chainstate, not assumeutxo dual-chainstate; disk-space probe may stay fail-open at u64::MAX where the node crate forbids unsafe statvfs.",
+          "Required UAT stays deterministic; optional public-network review is never a default, CI, or release gate."
+        ],
+        "suspected_unknowns": [
+          "Milestone archival remains /gsd-complete-milestone v2.3 after this phase passes."
         ]
       }
     ]
