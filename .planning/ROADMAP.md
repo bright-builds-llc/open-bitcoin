@@ -165,7 +165,13 @@ Plans:
   1. Parity roots cite pinned Knots coins, flush, manager, and serve-path anchors, or document intentional differences.
   2. Deterministic no-claim guardrails keep prune/archive modes, assumeutxo, compact filters, public defaults, and production readiness out of the v2.3 claim.
   3. Default `bash scripts/verify.sh` stays deterministic, and historical `.planning/phases/` directories remain tracked.
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+- [ ] 145-01-PLAN.md — Inventory and parity-root backfill
+- [ ] 145-02-PLAN.md — Last-gate checker and mutation fixtures
+- [ ] 145-03-PLAN.md — Claim copy, UAT package, and verify.sh wiring
+- [ ] 145-04-PLAN.md — Flip leftover Pending rows and reconcile metadata
 
 ## Requirement Coverage
 
@@ -210,11 +216,11 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 4/4 | Complete    | 2026-09-17 |
 | 144. Operator Flush and Availability Evidence | 4/4 | Complete    | 2026-09-17 |
-| 145. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
+| 145. Parity Roots and No-Claim Guardrails | 0/4 | Not started | - |
 
 ## Next Step
 
-Run `/gsd-discuss-phase 145` to start parity roots and no-claim guardrails.
+Run `/gsd-execute-phase 145` to execute parity roots and no-claim guardrails.
 
 ---
 *Roadmap created: 2026-08-29 for milestone v2.3. Phase numbering continues from v2.2 Phase 138.*
