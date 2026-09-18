@@ -177,21 +177,21 @@ Plans:
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| CACHE-01 | Phase 139 | Pending |
-| FLUSH-01 | Phase 140 | Pending |
-| MGR-03 | Phase 140 | Pending |
-| COIN-01 | Phase 141 | Pending |
-| CSOBS-03 | Phase 141 | Pending |
+| CACHE-01 | Phase 139 | Complete |
+| FLUSH-01 | Phase 140 | Complete |
+| MGR-03 | Phase 140 | Complete |
+| COIN-01 | Phase 141 | Complete |
+| CSOBS-03 | Phase 141 | Complete |
 | MGR-01 | Phase 142 | Complete |
 | MGR-02 | Phase 142 | Complete |
 | FLUSH-02 | Phase 142 | Complete |
-| HAVL-01 | Phase 143 | Pending |
-| HAVL-02 | Phase 143 | Pending |
-| HAVL-03 | Phase 143 | Pending |
+| HAVL-01 | Phase 143 | Complete |
+| HAVL-02 | Phase 143 | Complete |
+| HAVL-03 | Phase 143 | Complete |
 | CSOBS-01 | Phase 144 | Complete |
 | CSOBS-02 | Phase 144 | Complete |
-| CSVFY-01 | Phase 145 | Pending |
-| CSVFY-02 | Phase 145 | Pending |
+| CSVFY-01 | Phase 145 | Complete |
+| CSVFY-02 | Phase 145 | Complete |
 
 **Coverage:** 15/15 v2.3 requirements mapped. No orphans. No duplicates.
 

@@ -16,7 +16,7 @@ v2.2 Package Relay and Long-Lived Mempool Policy shipped and was archived on 202
 
 The repository now includes durable Fjall-backed runtime storage, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized package and mempool evidence, and last-gate claim guardrails.
 
-Milestone v2.3 is active after initialization through `/gsd-new-milestone`. Phase 139 shipped the in-memory DIRTY/FRESH coins overlay and engine apply without cloning the UTXO map. Phase 140 shipped the I/O-free flush and recovery decision machine (`decide_flush` / `decide_recovery`). Phase 141 shipped the durable Fjall coins adapter: per-outpoint `C` records, `B`/`H` markers, schema 1→2 one-way leftover migration, and fail-closed disk reads. Phase 142 shipped manager flush lifecycle and restart from durable coins best-block. Phase 143 shipped honest stored-block availability: Available only after a cache-or-store payload-byte probe, missing payload refuses as Unavailable (not Pruned), and `payload_present` / `index_known` / `validated_on_active_chain` are distinguishable. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+Milestone v2.3 is active after initialization through `/gsd-new-milestone`. Phase 139–145 implementation and closeout evidence now cover the scoped v2.3 surface: disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. Milestone archival remains `/gsd-complete-milestone v2.3` after Phase 145 verification passes. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Current Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -243,4 +243,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-17 after completing Phase 144*
+*Last updated: 2026-09-18 after Phase 145 closeout evidence*

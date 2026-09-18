@@ -21,21 +21,21 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 145 — Parity Roots and No-Claim Guardrails
+**Current focus:** Phase 145 closeout evidence — Parity Roots and No-Claim Guardrails
 
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 145 (Parity Roots and No-Claim Guardrails) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Closeout evidence in place
 Last activity: 2026-09-18
 
-The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
+Phase 145 owns CSVFY-01 and CSVFY-02. Leftover Pending v2.3 rows were flipped after named checker evidence. The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked. The v2.3 milestone is not archived.
 
 Progress: [██████████] 96%
 
-Next action: `/gsd-execute-phase` (144-04 docs/checker)
+Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains a future command
 
 ## Performance Metrics
 
