@@ -946,6 +946,47 @@ bun run scripts/check-phase144-operator-flush-availability-evidence.ts
 bash scripts/verify.sh
 ```
 
+## Phase 145 Parity Roots And No-Claim Guardrails Review
+
+The allowed scoped v2.3 wording is disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
+
+Companion allowed wording includes sanitized operator flush/recovery/cache-size/have-bytes evidence, leftover snapshot non-authority after one-way migration, restart from durable coins best-block, and hermetic default verification. Required UAT stays deterministic. Optional public-network review is never a default, CI, or release gate.
+
+Inspect shared operator status through both repo-local command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+Collect a redacted chainstate-durability support bundle:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-chainstate-durability-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-chainstate-durability-support
+```
+
+Inspect the local daemon and RPC CLI preview forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- -datadir=/tmp/open-bitcoin-preview
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=preview -rpcpassword=preview getblockchaininfo
+bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -rpcconnect=127.0.0.1 -rpcport=18443 -rpcuser=preview -rpcpassword=preview getblockchaininfo
+```
+
+v2.3 does not add prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, production full-node readiness, production-service operation, production-funds wallet safety, LevelDB `chainstate/` live import/export, or automatic destructive reindex or coins repair.
+
+Focused closeout verification uses the Phase 145 checker pair and the
+repo-native contract:
+
+```bash
+bun test scripts/check-phase145-parity-uat-release-boundary.test.ts
+bun run scripts/check-phase145-parity-uat-release-boundary.ts
+bash scripts/verify.sh
+```
+
 ## Phase 117 v2.1 Release Boundary Review
 
 Open Bitcoin v2.1 provides bounded, explicit, default-off block serving and

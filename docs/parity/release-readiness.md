@@ -24,6 +24,14 @@ deterministic local evidence, and optional public-network operator review. It
 does not promote public serving or relay defaults, archive-node behavior,
 production-scale historical serving, or any production readiness claim.
 
+## v2.3 Chainstate Durability And Historical Serving
+
+This file is the v2.3 release-review handoff. The allowed scoped claim is disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
+
+Default verification stays hermetic. `bash scripts/verify.sh` remains the deterministic local contract and does not add public-network, soak, or production-deployment gates.
+
+v2.3 does not add prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, production full-node readiness, production service operation, production-funds wallet safety, LevelDB `chainstate/` live import/export, or automatic destructive reindex or coins repair. FUT-18 through FUT-26 remain deferred.
+
 ## Readiness Verdict
 
 The v1.3 readiness claim remains historical: a source-built, opt-in,

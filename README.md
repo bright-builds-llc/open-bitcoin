@@ -20,9 +20,14 @@ auditable, and modular.
 
 > Status: Open Bitcoin v2.2 provides bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
 > The v2.2 milestone audit passed at 40/40 requirements, 10/10 phases, 8/8
-> integration seams, and 8/8 end-to-end flows. v2.2 shipped and was archived on 2026-08-22; start future work with `/gsd-new-milestone`. Canonical
-> evidence lives in the
-> [mempool parity catalog](./docs/parity/catalog/mempool-policy.md)
+> integration seams, and 8/8 end-to-end flows. v2.2 shipped and was archived on 2026-08-22.
+> The archived v2.2 closeout routed later work through `/gsd-new-milestone`.
+> v2.3 is the active milestone and currently provides disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
+> Canonical evidence lives in
+> [`docs/parity/index.json`](./docs/parity/index.json),
+> [`docs/parity/checklist.md`](./docs/parity/checklist.md),
+> [`docs/parity/catalog/chainstate.md`](./docs/parity/catalog/chainstate.md),
+> the [mempool parity catalog](./docs/parity/catalog/mempool-policy.md),
 > and [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md).
 > v2.1 remains a prior shipped release: bounded, explicit, default-off block
 > serving and compact-block relay. The rerun v2.1 milestone audit passed at
@@ -66,7 +71,7 @@ guardrails.
 | Reference baseline | `29.3.knots20260210` vendored under `packages/bitcoin-knots/` | ✓ done | [`docs/parity/index.json`](./docs/parity/index.json) | The pinned baseline is the external behavior contract. |
 | Core domain and serialization | Amounts, hashes, scripts, transactions, blocks, and wire framing | ✓ done | [`catalog/core-domain-and-serialization.md`](./docs/parity/catalog/core-domain-and-serialization.md) | Rust types preserve Bitcoin encoding and identity boundaries. |
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
-| Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Disk-backed databases and full manager behavior remain follow-up depth. |
+| Chainstate and UTXO engine | Connect, disconnect, reorg, UTXO, undo, and best-chain behavior | ✓ done | [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md) | Current v2.3 claim is in [`catalog/chainstate.md`](./docs/parity/catalog/chainstate.md). Prune/archive modes, assumeutxo, and production claims remain deferred. |
 | Mempool policy | Admission, replacement, fee accounting, ancestor/descendant, eviction | ✓ done | [`catalog/mempool-policy.md`](./docs/parity/catalog/mempool-policy.md) | Accounted long-lived pressure, bounded local package admission, and atomic authoritative cross-cache lifecycle projection with exact bounded effect accounting are implemented; Phase 137 registers Knots-named package RPC and sanitized operator evidence; durable recovery closeout, scheduled public fanout, public/default relay, and release proof remain deferred. |
 | P2P networking and sync | Handshake, peer lifecycle, headers, blocks, inventory, tx relay | ✓ done | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md) | v2.1 adds bounded, explicit, default-off block serving and compact-block relay with aggregate local evidence; package relay, bloom/filter serving, public defaults, archive/production-scale serving, public-network gates, and production readiness remain deferred. |
 | Wallet | Descriptors, addresses, balances, UTXOs, coin selection, signing | ✓ done | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md) | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces. |
@@ -390,5 +395,5 @@ For contributor workflow details beyond those two entrypoints, see [CONTRIBUTING
 - [`docs/parity/README.md`](./docs/parity/README.md) explains the parity ledger and its source-of-truth role.
 - [`docs/parity/index.json`](./docs/parity/index.json) is the machine-readable status index for in-scope surfaces, intentional deviations, catalog entries, checklist state, and audit roots.
 - [`docs/parity/checklist.md`](./docs/parity/checklist.md) is the human-readable parity checklist.
-- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the shipped-and-archived v2.1 handoff and historical release-evidence index.
+- [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md) is the current v2.3 release-review handoff and historical release-evidence index.
 - [`docs/parity/support-matrix.md`](./docs/parity/support-matrix.md) is the canonical support classification and issue-evidence checklist.

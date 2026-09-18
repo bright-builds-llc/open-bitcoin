@@ -34,6 +34,7 @@ public-network operator review. Public serving or relay defaults, archive-node
 and production-scale historical serving, production service/deployment, and
 production readiness remain `deferred`.
 The allowed scoped v2.2 wording is bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
+v2.3 does not add prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, production full-node readiness, production service operation, production-funds wallet safety, LevelDB `chainstate/` live import/export, or automatic destructive reindex or coins repair. Those D-16 surfaces remain `deferred`.
 Package relay, BIP37 bloom-filter serving, compact-filter serving,
 production-funds wallet safety/use, packaging, GUI and hosted dashboards,
 migration apply mode, destructive repair, and automatic support upload also
