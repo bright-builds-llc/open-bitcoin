@@ -301,7 +301,7 @@ run_coverage_report() {
 # Phase 105 is followed by Phase 106. Phase 106 is followed by Phase 107.
 # Phase 107 is followed by Phase 108. Phase 108 is followed by Phase 110 and Phase 111.
 # Phase 123 is followed by Phase 124. Phase 124 is followed by the active-milestone
-# verification-traceability guard, then Phase 117 remains the v2.1 BOUND gate. Phase 138 is the final changed-path v2.2 release-boundary and no-claim gate. The current-documentation reconciliation test/check pair runs immediately after that final Phase 138 gate.
+# verification-traceability guard, then Phase 117 remains the v2.1 BOUND gate. Phase 138 is the final changed-path v2.2 release-boundary and no-claim gate. The current-documentation reconciliation test/check pair runs immediately after that final Phase 138 gate. Phase 145 is the v2.3 closeout and no-claim gate and is wired immediately after Phase 144; Phase 138 remains the file-final check-phase* command.
 # Phase 128 is followed by Phase 129, and Phase 129 precedes the final Phase 117 gate.
 : <<'VERIFY_COMMAND_ORDER'
 bun run scripts/check-v1.3-release-boundaries.ts
@@ -393,6 +393,8 @@ bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
 bun run scripts/check-phase116-operator-block-relay-evidence.ts
 bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
 bun run scripts/check-phase144-operator-flush-availability-evidence.ts
+bun test scripts/check-phase145-parity-uat-release-boundary.test.ts
+bun run scripts/check-phase145-parity-uat-release-boundary.ts
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
@@ -559,6 +561,8 @@ run_step "test Phase 116 operator block-relay evidence checker" bun test scripts
 run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts
 run_step "test Phase 144 operator flush and availability evidence checker" bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
 run_step "check Phase 144 operator flush and availability evidence" bun run scripts/check-phase144-operator-flush-availability-evidence.ts
+run_step "test Phase 145 parity UAT release boundary checker" bun test scripts/check-phase145-parity-uat-release-boundary.test.ts
+run_step "check Phase 145 parity UAT release boundary" bun run scripts/check-phase145-parity-uat-release-boundary.ts
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts

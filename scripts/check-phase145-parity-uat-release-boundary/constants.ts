@@ -28,9 +28,9 @@ export const PHASE117_CHECK_STEP =
 export const PHASE138_CHECK_STEP =
   `run_step "check Phase 138 parity UAT release boundary" ${PHASE138_CHECK}`;
 export const PHASE144_TEST_STEP =
-  `run_step "test Phase 144 operator flush availability evidence checker" ${PHASE144_TEST}`;
+  `run_step "test Phase 144 operator flush and availability evidence checker" ${PHASE144_TEST}`;
 export const PHASE144_CHECK_STEP =
-  `run_step "check Phase 144 operator flush availability evidence" ${PHASE144_CHECK}`;
+  `run_step "check Phase 144 operator flush and availability evidence" ${PHASE144_CHECK}`;
 export const PHASE145_TEST_STEP =
   `run_step "test Phase 145 parity UAT release boundary checker" ${PHASE145_TEST}`;
 export const PHASE145_CHECK_STEP =
