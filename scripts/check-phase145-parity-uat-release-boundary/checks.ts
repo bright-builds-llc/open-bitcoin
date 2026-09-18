@@ -15,6 +15,7 @@ import {
   STORED_BLOCK_PRESENCE_GROUP,
   allV23RequirementIds,
 } from "./constants.ts";
+import { checkUatCommands, checkVerifier } from "./verifier.ts";
 
 type ParitySurface = {
   id?: unknown;
@@ -35,6 +36,8 @@ export function checkPhase145ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
   checkBreadcrumbGroups(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkClaims(texts, failures);
+  checkVerifier(repoRoot, texts, failures);
+  checkUatCommands(texts, failures);
   return failures;
 }
 

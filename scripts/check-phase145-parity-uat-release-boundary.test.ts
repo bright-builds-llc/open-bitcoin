@@ -9,6 +9,9 @@ import {
   CLAIM_FILES,
   CLOSEOUT_SURFACE,
   D14_SENTENCE,
+  HISTORICAL_PHASE138_DIR,
+  PHASE117_CHECK,
+  PHASE138_CHECK,
   PHASE139_SURFACE,
   REQUIRED_KNOTS_ANCHORS,
   STORED_BLOCK_PRESENCE_GROUP,
@@ -16,6 +19,7 @@ import {
 import {
   append,
   createFixture,
+  createVerifyScript,
   mutateIndex,
   replace,
 } from "./check-phase145-parity-uat-release-boundary/test-fixtures.ts";
@@ -25,6 +29,7 @@ const CHECKER_SOURCES = [
   "scripts/check-phase145-parity-uat-release-boundary/checks.ts",
   "scripts/check-phase145-parity-uat-release-boundary/constants.ts",
   "scripts/check-phase145-parity-uat-release-boundary/claims.ts",
+  "scripts/check-phase145-parity-uat-release-boundary/verifier.ts",
 ];
 
 test("passes_on_a_complete_fixture", () => {
@@ -254,4 +259,121 @@ test("checker_source_pins_d14_and_stays_filesystem_only", () => {
   expect(CLAIM_FILES.some((file) => file.includes(".planning/phases"))).toBe(false);
   expect(CLAIM_FILES.some((file) => file.includes(".planning/milestones"))).toBe(false);
   expect(REQUIRED_KNOTS_ANCHORS.join("\n")).not.toContain("HaveBlockData");
+  expect(source).not.toContain("final gate must end with");
+  expect(source).not.toContain("lastPhaseCommand !==");
+});
+
+test("fails_when_phase145_is_placed_before_phase144", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      files.set("scripts/verify.sh", createVerifyScript({ place145Before144: true }));
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("Phase 144 then Phase 145");
+});
+
+test("fails_when_phase117_is_removed", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      files.set("scripts/verify.sh", createVerifyScript({ omit117: true }));
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(PHASE117_CHECK);
+});
+
+test("fails_when_phase138_is_removed", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      files.set("scripts/verify.sh", createVerifyScript({ omit138: true }));
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(PHASE138_CHECK);
+});
+
+test("fails_when_run_live_mainnet_smoke_is_added_as_a_run_step", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      files.set("scripts/verify.sh", createVerifyScript({ addLiveMainnetSmoke: true }));
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("run-live-mainnet-smoke");
+});
+
+test("passes_when_the_last_check_phase_command_is_still_phase138", () => {
+  // Arrange
+  const root = createFixture();
+  const verifyText = readFileSync(path.join(root, "scripts", "verify.sh"), "utf8");
+  const phaseCommands = [...verifyText.matchAll(/bun (?:test|run) scripts\/check-phase\d+\S*/g)].map(
+    (match) => match[0],
+  );
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(phaseCommands.at(-1)).toBe(PHASE138_CHECK);
+  expect(failures).toEqual([]);
+});
+
+test("fails_when_the_support_bundle_uat_command_is_missing", () => {
+  // Arrange
+  const missing =
+    "cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-chainstate-durability-support";
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(files, "docs/operator/runtime-guide.md", missing, "missing support bundle command");
+      replace(
+        files,
+        ".planning/phases/145-parity-roots-and-no-claim-guardrails/145-UAT.md",
+        missing,
+        "missing support bundle command",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("/tmp/open-bitcoin-chainstate-durability-support");
+});
+
+test("fails_when_a_verifier_referenced_historical_phase_path_is_missing", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      files.delete(`${HISTORICAL_PHASE138_DIR}/138-CONTEXT.md`);
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("missing verifier-referenced historical phase path");
+  expect(failures).toContain(HISTORICAL_PHASE138_DIR);
 });
