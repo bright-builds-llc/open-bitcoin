@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Phase 145 context gathered
-last_updated: "2026-09-18T04:35:16.795Z"
-last_activity: 2026-09-18 -- Phase 145 planning complete
+stopped_at: Completed 145-01-PLAN.md
+last_updated: "2026-09-18T05:28:51.802Z"
+last_activity: 2026-09-18
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 29
-  completed_plans: 25
-  percent: 86
+  completed_plans: 26
+  percent: 90
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 144 — operator-flush-and-availability-evidence
+**Current focus:** Phase 145 — Parity Roots and No-Claim Guardrails
 
 ## Current Position
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: 145
-Plan: Not started
+Phase: 145 (Parity Roots and No-Claim Guardrails) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-18 -- Phase 145 planning complete
+Last activity: 2026-09-18
 
 The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked.
 
@@ -139,6 +139,7 @@ Next action: `/gsd-execute-phase` (144-04 docs/checker)
 | Phase 144 P02 | 67 | 3 tasks | 20 files |
 | Phase 144-operator-flush-and-availability-evidence P03 | 80min | 3 tasks | 25 files |
 | Phase 144 P04 | 30min | 2 tasks | 7 files |
+| Phase 145-parity-roots-and-no-claim-guardrails P01 | 35 min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -427,6 +428,10 @@ Next action: `/gsd-execute-phase` (144-04 docs/checker)
 - [Phase 144]: Leave CSOBS-01 and CSOBS-02 Pending until Plan 04 checker and lifecycle-valid phase verification
 - [Phase 144]: Phase 144 checker is wired immediately after Phase 116; Phase 145 still owns CSVFY no-claim guardrails
 - [Phase 144]: Operator UAT commands stay repo-local Cargo and Bazel twins, not only the open-bitcoin alias
+- [Phase 145]: Keep all seven v2.3 surfaces in_progress; the closeout surface owns only CSVFY-01 and CSVFY-02 — D-01 through D-04 and T-145-05 require exactly-once ownership without promoting surfaces or flipping Pending rows in Plan 01.
+- [Phase 145]: Cite CheckBlockDataAvailability as the pinned serve-path symbol; HaveBlockData is the locked discussion name only — HaveBlockData is not a symbol in the pinned Knots tree. Catalog and closeout roots must name CheckBlockDataAvailability and CanFlushToDisk.
+- [Phase 145]: Split has_block files onto node-stored-block-presence citing node/blockstorage.cpp — D-05 required a semantic breadcrumb split so has_block is auditable without inventing a HaveBlockData path.
+- [Phase 145]: Leave requirements-completed empty so CSVFY-01 is not activated before the last-gate checker exists — D-22 and the Phase 138 leftover-Pending lesson: flip CSVFY only after the checker can name evidence in Plan 04.
 
 ### Pending Todos
 
@@ -450,6 +455,6 @@ Next action: `/gsd-execute-phase` (144-04 docs/checker)
 
 ## Session Continuity
 
-Last session: 2026-09-18T03:55:33.569Z
-Stopped at: Phase 145 context gathered
-Resume file: .planning/phases/145-parity-roots-and-no-claim-guardrails/145-CONTEXT.md
+Last session: 2026-09-18T05:28:42.390Z
+Stopped at: Completed 145-01-PLAN.md
+Resume file: None
