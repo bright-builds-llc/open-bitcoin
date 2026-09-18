@@ -171,7 +171,7 @@ Plans:
 - [x] 145-01-PLAN.md — Inventory and parity-root backfill
 - [x] 145-02-PLAN.md — Last-gate checker and mutation fixtures
 - [x] 145-03-PLAN.md — Claim copy, UAT package, and verify.sh wiring
-- [ ] 145-04-PLAN.md — Flip leftover Pending rows and reconcile metadata
+- [x] 145-04-PLAN.md — Flip leftover Pending rows and reconcile metadata
 
 ## Requirement Coverage
 
@@ -216,7 +216,7 @@ Phases execute in numeric order: 139 → 140 → 141 → 142 → 143 → 144 →
 | 142. Manager Flush Lifecycle and Restart | 6/6 | Complete    | 2026-09-07 |
 | 143. Honest Stored-Block Availability | 4/4 | Complete    | 2026-09-17 |
 | 144. Operator Flush and Availability Evidence | 4/4 | Complete    | 2026-09-17 |
-| 145. Parity Roots and No-Claim Guardrails | 3/4 | In Progress|  |
+| 145. Parity Roots and No-Claim Guardrails | 4/4 | In Progress|  |
 
 ## Next Step
 

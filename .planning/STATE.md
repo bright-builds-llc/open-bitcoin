@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: executing
-stopped_at: Completed 145-03-PLAN.md
-last_updated: "2026-09-18T07:28:19.286Z"
+status: verifying
+stopped_at: Completed 145-04-PLAN.md
+last_updated: "2026-09-18T08:25:03.205Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 29
-  completed_plans: 28
-  percent: 97
+  completed_plans: 29
+  percent: 100
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 145 (Parity Roots and No-Claim Guardrails) — EXECUTING
 Plan: 4 of 4
-Status: Closeout evidence in place
+Status: Phase complete — ready for verification
 Last activity: 2026-09-18
 
 Phase 145 owns CSVFY-01 and CSVFY-02. Leftover Pending v2.3 rows were flipped after named checker evidence. The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked. The v2.3 milestone is not archived.
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
 Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains a future command
 
@@ -142,6 +142,7 @@ Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains
 | Phase 145-parity-roots-and-no-claim-guardrails P01 | 35 min | 2 tasks | 8 files |
 | Phase 145-parity-roots-and-no-claim-guardrails P02 | 36 min | 2 tasks | 8 files |
 | Phase 145-parity-roots-and-no-claim-guardrails P03 | 47min | 2 tasks | 9 files |
+| Phase 145-parity-roots-and-no-claim-guardrails P04 | 38 min | 2 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -441,6 +442,8 @@ Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains
 - [Phase 145-parity-roots-and-no-claim-guardrails]: Keep /gsd-new-milestone as a historical archive route; do not restore start future work with /gsd-new-milestone as current-state copy — Current-documentation reconciliation still requires the archive route token, but Plan 03 forbids using it as current-state copy.
 - [Phase 145-parity-roots-and-no-claim-guardrails]: Hyphenate production-service in the runtime-guide D-16 list so Phase 63 still rejects production service — Phase 63 forbids the unhyphenated production service phrase in the runtime guide.
 - [Phase 145-parity-roots-and-no-claim-guardrails]: Align Phase 145 Phase-144 run_step titles to the live verify.sh and availability wording — Plan 02 constants omitted and from the live Phase 144 titles, so the live 145 checker could not match verify.sh.
+- [Phase 145]: Flip leftover Pending v2.3 rows only after the Plan 03 checker can name evidence
+- [Phase 145]: Phase 145 owns only CSVFY-01 and CSVFY-02; do not archive the milestone
 
 ### Pending Todos
 
@@ -464,6 +467,6 @@ Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains
 
 ## Session Continuity
 
-Last session: 2026-09-18T07:28:09.960Z
-Stopped at: Completed 145-03-PLAN.md
+Last session: 2026-09-18T08:25:03.202Z
+Stopped at: Completed 145-04-PLAN.md
 Resume file: None

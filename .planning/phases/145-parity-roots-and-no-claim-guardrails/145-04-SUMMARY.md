@@ -53,10 +53,10 @@ requirements-completed: [CACHE-01, MGR-03, CSVFY-01, CSVFY-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 145-2026-09-18T03-36-29
-generated_at: 2026-09-18T07:46:11Z
+generated_at: 2026-09-18T08:24:20Z
 
 # Metrics
-duration: pending
+duration: 38min
 completed: 2026-09-18
 ---
 
@@ -68,26 +68,27 @@ The Phase 145 checker names CACHE-01, MGR-03, CSVFY-01, and CSVFY-02 on the seve
 
 ## Performance
 
-- **Duration:** pending Task 2
+- **Duration:** 38 min
 - **Started:** 2026-09-18T07:46:11Z
-- **Completed:** pending
-- **Tasks:** 1 of 2 in progress
-- **Files modified:** pending
+- **Completed:** 2026-09-18T08:24:20Z
+- **Tasks:** 2
+- **Files modified:** 13
 
 ## Accomplishments
 - Proved `bun run scripts/check-phase145-parity-uat-release-boundary.ts` exits 0 before any REQUIREMENTS checkbox change
 - Activated CACHE-01, MGR-03, CSVFY-01, and CSVFY-02 through this SUMMARY plus a lifecycle-valid 145-VERIFICATION.md
-- Flipped leftover Pending rows and promoted the seven `v2-3-*` surfaces to `done`
+- Flipped leftover Pending rows and promoted the seven `v2-3-*` surfaces to `done` without renaming `v2 snapshot schema, checkpointing, and recovery`
 - Tightened the Phase 145 checker so a leftover `- [ ] **CSVFY-01**` or an `in_progress` closeout surface fails
+- Reconciled ROADMAP coverage, PROJECT Current State (verbatim D-14), and STATE so closeout evidence exists and `/gsd-complete-milestone v2.3` remains a future command
 
 ## Task Commits
 
 Each task was committed atomically:
 
-1. **Task 1: Activate leftover IDs, flip Pending rows, promote surfaces, tighten the 145 checker** - pending
-2. **Task 2: Reconcile ROADMAP, PROJECT, and STATE without archiving** - pending
+1. **Task 1: Activate leftover IDs, flip Pending rows, promote surfaces, tighten the 145 checker** - `e07fcee7` (feat)
+2. **Task 2: Reconcile ROADMAP, PROJECT, and STATE without archiving** - `34bf99cd` (docs)
 
-**Plan metadata:** pending final docs commit
+**Plan metadata:** docs commit follows this summary
 
 ## Files Created/Modified
 - `.planning/phases/145-parity-roots-and-no-claim-guardrails/145-04-SUMMARY.md` - Activation artifact listing CACHE-01, MGR-03, CSVFY-01, and CSVFY-02
@@ -99,6 +100,10 @@ Each task was committed atomically:
 - `scripts/check-phase145-parity-uat-release-boundary/constants.ts` - Adds REQUIREMENTS.md to the corpus
 - `scripts/check-phase145-parity-uat-release-boundary/test-fixtures.ts` - Passing corpus uses `[x]` and `done`
 - `scripts/check-phase145-parity-uat-release-boundary.test.ts` - Mutations for leftover CSVFY-01 and in_progress closeout
+- `.planning/ROADMAP.md` - v2.3 Requirement Coverage Status cells Complete; Phase 145 heading remains unchecked
+- `.planning/PROJECT.md` - Current State uses the verbatim D-14 sentence; archival stays a future command
+- `.planning/STATE.md` - Phase 145 closeout evidence; leftover Pending flipped after named evidence; milestone not archived
+- `docs/metrics/lines-of-code.md` - Hook-regenerated freshness
 
 ## Decisions Made
 - Flip leftover Pending v2.3 rows only after the Plan 03 checker can name evidence
@@ -106,10 +111,23 @@ Each task was committed atomically:
 
 ## Deviations from Plan
 
-None - plan executed exactly as written.
+### Auto-fixed Issues
+
+**1. [Rule 2 - Missing Critical] Restored Phase 145 heading after update-plan-progress**
+- **Found during:** Plan closeout (`roadmap update-plan-progress 145`)
+- **Issue:** The CLI marked Phase 145 `[x]` / Complete because all four plans have summaries
+- **Fix:** Restored `- [ ] **Phase 145` and the progress-table Status `In Progress`, while keeping `145-04-PLAN.md` checked and `4/4` plan counts
+- **Files modified:** `.planning/ROADMAP.md`
+- **Verification:** Heading remains `- [ ] **Phase 145`; coverage Status cells stay Complete
+- **Committed in:** plan metadata commit
+
+---
+
+**Total deviations:** 1 auto-fixed (1 missing critical)
+**Impact on plan:** Required to keep Phase 145 unverified and v2.3 unarchived. No scope creep.
 
 ## Issues Encountered
-None
+Task 1 commit used `git commit -F` after a nested heredoc failed bash parsing. Task 2 plan-level `bash scripts/verify.sh` ran as the pre-commit hook (16m 22s) rather than a second standalone invocation.
 
 ## Authentication Gates
 None
@@ -121,9 +139,16 @@ None that prevent this plan's goal.
 None - no external service configuration required.
 
 ## Next Phase Readiness
-- Ready for Task 2 metadata reconciliation
-- Do not archive v2.3
-- Milestone archival remains `/gsd-complete-milestone v2.3` after Phase 145 verification passes
+- Phase 145 plan execution is complete and v2.3 stays unarchived
+- Phase 145 verification and `/gsd-complete-milestone v2.3` remain later commands
+- Phase 145 owns CSVFY-01 and CSVFY-02
+
+## Self-Check: PASSED
+
+- `145-04-SUMMARY.md`, `145-VERIFICATION.md`, `.planning/REQUIREMENTS.md`, `docs/parity/index.json`, and `docs/parity/checklist.md` exist
+- `git log --oneline --all --grep="145-04"` returns `e07fcee7` and `34bf99cd`
+- `bun run scripts/check-phase145-parity-uat-release-boundary.ts` exits 0
+- Phase 145 heading remains `- [ ] **Phase 145`; leftover CACHE-01, MGR-03, CSVFY-01, and CSVFY-02 checkboxes are `[x]`
 
 ---
 *Phase: 145-parity-roots-and-no-claim-guardrails*
