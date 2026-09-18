@@ -1,4 +1,8 @@
 ---
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 145-2026-09-18T03-36-29
+generated_at: 2026-09-18T07:27:15Z
 phase: 145-parity-roots-and-no-claim-guardrails
 plan: 03
 subsystem: docs
@@ -48,10 +52,6 @@ patterns-established:
   - "Pattern 2: Optional public-network UAT is status: not run and never a default, CI, or release gate"
 
 requirements-completed: []
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 145-2026-09-18T03-36-29
-generated_at: 2026-09-18T07:27:15Z
 
 # Metrics
 duration: 47min
@@ -129,7 +129,7 @@ Each task was committed atomically:
 - **Verification:** `bun run scripts/check-phase145-parity-uat-release-boundary.ts` exits 0
 - **Committed in:** `5a4a178f` (Task 2)
 
----
+***
 
 **Total deviations:** 3 auto-fixed (3 blocking)
 **Impact on plan:** Required for hook-passing live docs and lockstep verifier titles. No REQUIREMENTS flip and no milestone archive.
@@ -151,7 +151,7 @@ None - no external service configuration required.
 - Do not archive v2.3 from the next plan
 - Leave CSVFY-01 and CSVFY-02 unchecked until Plan 04 names their evidence
 
----
+***
 *Phase: 145-parity-roots-and-no-claim-guardrails*
 *Completed: 2026-09-18*
 

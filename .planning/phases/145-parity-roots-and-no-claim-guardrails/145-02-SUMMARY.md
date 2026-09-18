@@ -1,4 +1,8 @@
 ---
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 145-2026-09-18T03-36-29
+generated_at: 2026-09-18T06:22:27Z
 phase: 145-parity-roots-and-no-claim-guardrails
 plan: 02
 subsystem: tooling
@@ -47,10 +51,6 @@ patterns-established:
   - "Pattern 2: Historical phase-dir presence only for paths already named by verify.sh or check-phase*.ts"
 
 requirements-completed: []
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 145-2026-09-18T03-36-29
-generated_at: 2026-09-18T06:22:27Z
 
 # Metrics
 duration: 36min
@@ -112,7 +112,7 @@ Each task was committed atomically:
 - **Verification:** `bun test scripts/check-phase145-parity-uat-release-boundary.test.ts` exits 0
 - **Committed in:** `ac46e149` (Task 1), `cfdcc863` (Task 2)
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** Required for hook-passing TDD in this repo. No scope creep and no `verify.sh` wiring.
@@ -140,7 +140,7 @@ None - no external service configuration required.
 - Do not make Phase 145 the file-final `check-phase*` command
 - Do not archive v2.3 from later plans
 
----
+***
 *Phase: 145-parity-roots-and-no-claim-guardrails*
 *Completed: 2026-09-18*
 

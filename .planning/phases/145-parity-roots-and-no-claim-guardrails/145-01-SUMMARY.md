@@ -1,4 +1,8 @@
 ---
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 145-2026-09-18T03-36-29
+generated_at: 2026-09-18T05:28:30Z
 phase: 145-parity-roots-and-no-claim-guardrails
 plan: 01
 subsystem: docs
@@ -56,10 +60,6 @@ patterns-established:
   - "Pattern 2: Catalog current-claim section above labeled historical Phase 4 snapshot coverage"
 
 requirements-completed: []
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 145-2026-09-18T03-36-29
-generated_at: 2026-09-18T05:28:30Z
 
 # Metrics
 duration: 35min
@@ -122,7 +122,7 @@ Each task was committed atomically:
 - **Verification:** `bun run scripts/check-parity-breadcrumbs.ts` exits 0
 - **Committed in:** `6061684d` (Task 2 commit)
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** Required for the Task 2 breadcrumb checker. No scope creep and no runtime coins/flush/manager/serve change.
@@ -149,7 +149,7 @@ None - no external service configuration required.
 - Surfaces stay `in_progress`; CSVFY/CACHE/MGR rows stay Pending until Plan 04
 - Do not archive v2.3 from later plans
 
----
+***
 *Phase: 145-parity-roots-and-no-claim-guardrails*
 *Completed: 2026-09-18*
 

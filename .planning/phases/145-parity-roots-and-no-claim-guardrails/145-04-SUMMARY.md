@@ -1,4 +1,8 @@
 ---
+generated_by: gsd-execute-plan
+lifecycle_mode: yolo
+phase_lifecycle_id: 145-2026-09-18T03-36-29
+generated_at: 2026-09-18T08:24:20Z
 phase: 145-parity-roots-and-no-claim-guardrails
 plan: 04
 subsystem: docs
@@ -50,10 +54,6 @@ patterns-established:
   - "Pattern 2: Activate requirements-completed plus a lifecycle-valid VERIFICATION.md before flipping [x] Complete"
 
 requirements-completed: [CACHE-01, MGR-03, CSVFY-01, CSVFY-02]
-generated_by: gsd-execute-plan
-lifecycle_mode: yolo
-phase_lifecycle_id: 145-2026-09-18T03-36-29
-generated_at: 2026-09-18T08:24:20Z
 
 # Metrics
 duration: 38min
@@ -121,7 +121,7 @@ Each task was committed atomically:
 - **Verification:** Heading remains `- [ ] **Phase 145`; coverage Status cells stay Complete
 - **Committed in:** plan metadata commit
 
----
+***
 
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** Required to keep Phase 145 unverified and v2.3 unarchived. No scope creep.
@@ -150,6 +150,6 @@ None - no external service configuration required.
 - `bun run scripts/check-phase145-parity-uat-release-boundary.ts` exits 0
 - Phase 145 heading remains `- [ ] **Phase 145`; leftover CACHE-01, MGR-03, CSVFY-01, and CSVFY-02 checkboxes are `[x]`
 
----
+***
 *Phase: 145-parity-roots-and-no-claim-guardrails*
 *Completed: 2026-09-18*
