@@ -11,7 +11,7 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 ### Coins Database and Cache
 
 - [x] **COIN-01**: Node persists spendable UTXOs as per-outpoint durable coin records with coins best-block and interrupted-flush markers, not as live snapshot-blob truth.
-- [ ] **CACHE-01**: Node overlays an in-memory DIRTY/FRESH coins cache so connect and disconnect do not persist the whole UTXO set after every block.
+- [x] **CACHE-01**: Node overlays an in-memory DIRTY/FRESH coins cache so connect and disconnect do not persist the whole UTXO set after every block.
 
 ### Flush Policy and Recovery
 
@@ -22,7 +22,7 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 - [x] **MGR-01**: One manager owns coins-database init, health-check, cache init, and CanFlush-style readiness for the single active chainstate.
 - [x] **MGR-02**: After restart, tip and UTXO view come from durable coins best-block, not a leftover snapshot blob.
-- [ ] **MGR-03**: Flush and recovery decisions are a typed pure-core state machine; adapters perform I/O.
+- [x] **MGR-03**: Flush and recovery decisions are a typed pure-core state machine; adapters perform I/O.
 
 ### Honest Availability
 
@@ -38,8 +38,8 @@ Requirements for disk-backed coins, cache-flush policy, fuller chainstate-manage
 
 ### Parity and Release Boundaries
 
-- [ ] **CSVFY-01**: Parity roots cite pinned Knots coins, flush, manager, and serve-path anchors, or document intentional differences.
-- [ ] **CSVFY-02**: Deterministic no-claim guardrails keep prune/archive modes, assumeutxo, compact filters, public defaults, and production readiness out of the v2.3 claim.
+- [x] **CSVFY-01**: Parity roots cite pinned Knots coins, flush, manager, and serve-path anchors, or document intentional differences.
+- [x] **CSVFY-02**: Deterministic no-claim guardrails keep prune/archive modes, assumeutxo, compact filters, public defaults, and production readiness out of the v2.3 claim.
 
 ## Future Requirements
 
@@ -84,9 +84,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| CACHE-01 | Phase 139 | Pending |
+| CACHE-01 | Phase 139 | Complete |
 | FLUSH-01 | Phase 140 | Complete |
-| MGR-03 | Phase 140 | Pending |
+| MGR-03 | Phase 140 | Complete |
 | COIN-01 | Phase 141 | Complete |
 | CSOBS-03 | Phase 141 | Complete |
 | MGR-01 | Phase 142 | Complete |
@@ -97,8 +97,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HAVL-03 | Phase 143 | Complete |
 | CSOBS-01 | Phase 144 | Complete |
 | CSOBS-02 | Phase 144 | Complete |
-| CSVFY-01 | Phase 145 | Pending |
-| CSVFY-02 | Phase 145 | Pending |
+| CSVFY-01 | Phase 145 | Complete |
+| CSVFY-02 | Phase 145 | Complete |
 
 **Coverage:**
 - v2.3 requirements: 15 total

@@ -25,9 +25,11 @@ import {
   REQUIRED_TOP_LEVEL_NAMES,
   REQUIRED_UAT_COMMANDS,
   REQUIREMENTS_BY_SURFACE,
+  REQUIREMENTS_FILE,
   STORED_BLOCK_PRESENCE_ANCHOR,
   STORED_BLOCK_PRESENCE_GROUP,
   UAT_PACKAGE,
+  allV23RequirementIds,
   type RequiredDocFile,
 } from "./constants.ts";
 
@@ -55,6 +57,7 @@ export function createFixture(options: FixtureOptions = {}): string {
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
   files.set("docs/operator/runtime-guide.md", createRuntimeGuide(scopedClaim));
   files.set(UAT_PACKAGE, createUatPackage(scopedClaim));
+  files.set(REQUIREMENTS_FILE, createRequirements());
   files.set("scripts/verify.sh", createVerifyScript());
   files.set(
     "scripts/check-phase138-parity-uat-release-boundary.ts",
@@ -82,12 +85,12 @@ export function createParityIndex(): {
   };
 } {
   return {
-    surfaces: REQUIRED_TOP_LEVEL_NAMES.map((name) => ({ name, status: "in_progress" })),
+    surfaces: REQUIRED_TOP_LEVEL_NAMES.map((name) => ({ name, status: "done" })),
     checklist: {
       surfaces: Object.entries(REQUIREMENTS_BY_SURFACE).map(([id, requirements]) => ({
         id,
         requirements: [...requirements],
-        status: "in_progress",
+        status: "done",
         upstream:
           id === CLOSEOUT_SURFACE
             ? {
@@ -98,6 +101,12 @@ export function createParityIndex(): {
       })),
     },
   };
+}
+
+export function createRequirements(): string {
+  return allV23RequirementIds()
+    .map((id) => `- [x] **${id}**`)
+    .join("\n");
 }
 
 export function createBreadcrumbs(): string {

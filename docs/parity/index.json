@@ -769,31 +769,31 @@
     },
     {
       "name": "v2-3-coins-view-cache-contract",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-3-pure-flush-policy-and-typed-decisions",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-3-durable-fjall-coins-adapter",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-3-manager-flush-lifecycle-and-restart",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-3-honest-stored-block-availability",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-3-operator-flush-availability-evidence",
-      "status": "in_progress"
+      "status": "done"
     },
     {
       "name": "v2-3-parity-roots-and-no-claim-guardrails",
-      "status": "in_progress"
+      "status": "done"
     }
   ],
   "checklist": {
@@ -3673,7 +3673,7 @@
       {
         "id": "v2-3-coins-view-cache-contract",
         "title": "v2.3 Coins View Cache Contract",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "CACHE-01"
         ],
@@ -3692,17 +3692,17 @@
           "tests": []
         },
         "known_gaps": [
-          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Surface is done after the Phase 145 last-gate checker named leftover-Pending evidence.",
           "Assumeutxo dual-chainstate, prune/archive modes, and production readiness remain deferred."
         ],
         "suspected_unknowns": [
-          "CACHE-01 stays Pending in REQUIREMENTS until the last-gate checker can name its evidence."
+          "CACHE-01 was flipped after the Phase 145 checker named its evidence."
         ]
       },
       {
         "id": "v2-3-pure-flush-policy-and-typed-decisions",
         "title": "v2.3 Pure Flush Policy and Typed Decisions",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "FLUSH-01",
           "MGR-03"
@@ -3720,17 +3720,17 @@
           "tests": []
         },
         "known_gaps": [
-          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Surface is done after the Phase 145 last-gate checker named leftover-Pending evidence.",
           "FlushStateToDisk and GetCoinsCacheSizeState are the pinned validation.cpp symbols; adapters still perform I/O."
         ],
         "suspected_unknowns": [
-          "MGR-03 stays Pending in REQUIREMENTS until the last-gate checker can name its evidence."
+          "MGR-03 was flipped after the Phase 145 checker named its evidence."
         ]
       },
       {
         "id": "v2-3-durable-fjall-coins-adapter",
         "title": "v2.3 Durable Fjall Coins Adapter",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "COIN-01",
           "CSOBS-03"
@@ -3749,7 +3749,7 @@
           "tests": []
         },
         "known_gaps": [
-          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Surface is done after the Phase 145 last-gate checker named leftover-Pending evidence.",
           "Intentional difference: Fjall per-outpoint coins instead of LevelDB chainstate/."
         ],
         "suspected_unknowns": [
@@ -3759,7 +3759,7 @@
       {
         "id": "v2-3-manager-flush-lifecycle-and-restart",
         "title": "v2.3 Manager Flush Lifecycle and Restart",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "MGR-01",
           "MGR-02",
@@ -3779,7 +3779,7 @@
           "tests": []
         },
         "known_gaps": [
-          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Surface is done after the Phase 145 last-gate checker named leftover-Pending evidence.",
           "Intentional difference: single active chainstate, not assumeutxo dual-chainstate.",
           "Intentional difference: disk-space probe may stay fail-open at u64::MAX where the node crate forbids unsafe statvfs.",
           "Pinned manager symbol is CanFlushToDisk in node/chainstate.cpp and validation.cpp."
@@ -3791,7 +3791,7 @@
       {
         "id": "v2-3-honest-stored-block-availability",
         "title": "v2.3 Honest Stored-Block Availability",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "HAVL-01",
           "HAVL-02",
@@ -3812,7 +3812,7 @@
           ]
         },
         "known_gaps": [
-          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Surface is done after the Phase 145 last-gate checker named leftover-Pending evidence.",
           "Intentional difference: Pruned stays reserved and is not emitted on production paths.",
           "Pinned serve-path symbol is CheckBlockDataAvailability; HaveBlockData is the locked discussion name only."
         ],
@@ -3823,7 +3823,7 @@
       {
         "id": "v2-3-operator-flush-availability-evidence",
         "title": "v2.3 Operator Flush and Availability Evidence",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "CSOBS-01",
           "CSOBS-02"
@@ -3842,7 +3842,7 @@
           "tests": []
         },
         "known_gaps": [
-          "Surface remains in_progress until Phase 145 promotes completed v2.3 owners after evidence roots are current.",
+          "Surface is done after the Phase 145 last-gate checker named leftover-Pending evidence.",
           "Phase 144 chainstate_durability is the shared operator contract and is not re-derived here."
         ],
         "suspected_unknowns": [
@@ -3852,7 +3852,7 @@
       {
         "id": "v2-3-parity-roots-and-no-claim-guardrails",
         "title": "v2.3 Parity Roots and No-Claim Guardrails",
-        "status": "in_progress",
+        "status": "done",
         "requirements": [
           "CSVFY-01",
           "CSVFY-02"

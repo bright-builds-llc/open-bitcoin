@@ -11,6 +11,7 @@ import {
   REQUIRED_KNOTS_ANCHORS,
   REQUIRED_TOP_LEVEL_NAMES,
   REQUIREMENTS_BY_SURFACE,
+  REQUIREMENTS_FILE,
   STORED_BLOCK_PRESENCE_ANCHOR,
   STORED_BLOCK_PRESENCE_GROUP,
   allV23RequirementIds,
@@ -34,6 +35,7 @@ export function checkPhase145ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   const texts = loadCorpus(repoRoot, failures);
   const maybeIndex = parseParityIndex(texts.get("docs/parity/index.json") ?? "", failures);
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
+  checkRequirementCheckboxes(texts.get(REQUIREMENTS_FILE) ?? "", failures);
   checkBreadcrumbGroups(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkClaims(texts, failures);
   checkVerifier(repoRoot, texts, failures);
@@ -74,6 +76,8 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
     const matches = topSurfaces.filter((surface) => surface.name === name);
     if (matches.length !== 1) {
       failures.push(`v2.3 surface ${name} must have exactly one top-level entry`);
+    } else if (matches[0]?.status !== "done") {
+      failures.push(`v2.3 surface ${name} must be done`);
     }
   }
 
@@ -85,6 +89,9 @@ function checkSurfaceOwnership(index: ParityIndex, failures: string[]): void {
     const checklist = matches[0];
     if (checklist && !sameMembers(asStringArray(checklist.requirements), expectedRequirements)) {
       failures.push(`v2.3 surface ${surfaceId} has incorrect requirement ownership`);
+    }
+    if (checklist && checklist.status !== "done") {
+      failures.push(`v2.3 surface ${surfaceId} must be done`);
     }
   }
 
@@ -146,6 +153,16 @@ function checkBreadcrumbGroups(raw: string, failures: string[]): void {
     }
   } catch (error) {
     failures.push(`invalid source breadcrumbs JSON: ${String(error)}`);
+  }
+}
+
+function checkRequirementCheckboxes(requirementsText: string, failures: string[]): void {
+  for (const id of allV23RequirementIds()) {
+    const checked = (requirementsText.match(new RegExp(`- \\[x\\] \\*\\*${id}\\*\\*`, "g")) ?? [])
+      .length;
+    if (checked !== 1) {
+      failures.push(`v2.3 requirement ${id} must be checked [x] exactly once`);
+    }
   }
 }
 

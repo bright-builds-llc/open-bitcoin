@@ -14,6 +14,7 @@ import {
   PHASE138_CHECK,
   PHASE139_SURFACE,
   REQUIRED_KNOTS_ANCHORS,
+  REQUIREMENTS_FILE,
   STORED_BLOCK_PRESENCE_GROUP,
 } from "./check-phase145-parity-uat-release-boundary/constants.ts";
 import {
@@ -87,6 +88,43 @@ test("fails_when_csvfy_is_owned_by_a_phase139_surface", () => {
   // Assert
   expect(failures).toContain("CSVFY-01");
   expect(failures).toContain(PHASE139_SURFACE);
+});
+
+test("fails_when_a_leftover_csvfy_checkbox_is_unchecked", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(files, REQUIREMENTS_FILE, "- [x] **CSVFY-01**", "- [ ] **CSVFY-01**");
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("CSVFY-01");
+  expect(failures).toContain("must be checked [x] exactly once");
+});
+
+test("fails_when_the_closeout_surface_stays_in_progress", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      mutateIndex(files, (index) => {
+        const closeout = index.checklist.surfaces.find(
+          (surface: { id: string }) => surface.id === CLOSEOUT_SURFACE,
+        );
+        closeout.status = "in_progress";
+      });
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain(CLOSEOUT_SURFACE);
+  expect(failures).toContain("must be done");
 });
 
 test("fails_when_a_d06_file_is_missing_from_the_closeout_surface", () => {

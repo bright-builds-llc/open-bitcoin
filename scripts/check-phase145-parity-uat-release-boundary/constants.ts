@@ -72,12 +72,15 @@ export const CLAIM_FILES = [
   "docs/parity/support-matrix.md",
 ] as const;
 
+export const REQUIREMENTS_FILE = ".planning/REQUIREMENTS.md";
+
 export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
   "scripts/verify.sh",
   UAT_PACKAGE,
+  REQUIREMENTS_FILE,
 ] as const;
 
 export function allV23RequirementIds(): string[] {
