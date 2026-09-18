@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: executing
-stopped_at: Completed 145-02-PLAN.md
-last_updated: "2026-09-18T06:23:06.584Z"
+stopped_at: Completed 145-03-PLAN.md
+last_updated: "2026-09-18T07:28:19.286Z"
 last_activity: 2026-09-18
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 29
-  completed_plans: 27
-  percent: 93
+  completed_plans: 28
+  percent: 97
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
 
 Milestone: v2.3 Chainstate Durability and Historical Serving
 Phase: 145 (Parity Roots and No-Claim Guardrails) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-18
 
@@ -141,6 +141,7 @@ Next action: `/gsd-execute-phase` (144-04 docs/checker)
 | Phase 144 P04 | 30min | 2 tasks | 7 files |
 | Phase 145-parity-roots-and-no-claim-guardrails P01 | 35 min | 2 tasks | 8 files |
 | Phase 145-parity-roots-and-no-claim-guardrails P02 | 36 min | 2 tasks | 8 files |
+| Phase 145-parity-roots-and-no-claim-guardrails P03 | 47min | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -437,6 +438,9 @@ Next action: `/gsd-execute-phase` (144-04 docs/checker)
 - [Phase 145]: Assert 144 then 145 and keep 117/138 present; do not treat Phase 145 as the file-final check-phase command — Phase 138, 124, 129, 130, 131, and current-documentation-reconciliation require Phase 138 to remain the last check-phase command.
 - [Phase 145]: Cite CanFlushToDisk and CheckBlockDataAvailability; HaveBlockData is discussion-name only and is not a required-anchor token — HaveBlockData is not a symbol in the pinned Knots tree. Required anchors are the five D-06 files only.
 - [Phase 145]: Leave requirements-completed empty so CSVFY-01 and CSVFY-02 are not flipped before Plan 03 wiring and Plan 04 closeout — D-22 and the Phase 138 leftover-Pending lesson: flip CSVFY only after the checker can name live evidence.
+- [Phase 145-parity-roots-and-no-claim-guardrails]: Keep /gsd-new-milestone as a historical archive route; do not restore start future work with /gsd-new-milestone as current-state copy — Current-documentation reconciliation still requires the archive route token, but Plan 03 forbids using it as current-state copy.
+- [Phase 145-parity-roots-and-no-claim-guardrails]: Hyphenate production-service in the runtime-guide D-16 list so Phase 63 still rejects production service — Phase 63 forbids the unhyphenated production service phrase in the runtime guide.
+- [Phase 145-parity-roots-and-no-claim-guardrails]: Align Phase 145 Phase-144 run_step titles to the live verify.sh and availability wording — Plan 02 constants omitted and from the live Phase 144 titles, so the live 145 checker could not match verify.sh.
 
 ### Pending Todos
 
@@ -460,6 +464,6 @@ Next action: `/gsd-execute-phase` (144-04 docs/checker)
 
 ## Session Continuity
 
-Last session: 2026-09-18T06:22:56.195Z
-Stopped at: Completed 145-02-PLAN.md
+Last session: 2026-09-18T07:28:09.960Z
+Stopped at: Completed 145-03-PLAN.md
 Resume file: None
