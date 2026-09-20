@@ -79,6 +79,23 @@ test("README rejects the completed-milestone route", () => {
   expect(failures).toContain("README archived milestone state");
 });
 
+test("README rejects the v2.3 completed-milestone route", () => {
+  // Arrange
+  const root = createFixture();
+  replaceInFixture(
+    root,
+    "README.md",
+    "v2.3 shipped and was archived on 2026-09-20",
+    "/gsd-complete-milestone v2.3",
+  );
+
+  // Act
+  const failures = checkCurrentDocumentationReconciliation(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("README archived milestone state");
+});
+
 test("current v2.1 release section rejects archive-ready language", () => {
   // Arrange
   const root = createFixture();

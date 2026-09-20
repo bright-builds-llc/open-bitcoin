@@ -1,5 +1,53 @@
 # Milestones: Open Bitcoin
 
+## v2.3 Chainstate Durability and Historical Serving (Shipped: 2026-09-20)
+
+**Delivered:** Disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. The milestone does not claim prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI, production service operation, production full-node readiness, or production-funds wallet safety.
+
+**Phases completed:** 7 phases, 29 plans, 62 counted summary tasks
+
+**Key accomplishments:**
+
+- Overlayed a typed DIRTY/FRESH `CoinsView`/`CoinsCache` so connect, disconnect, and reorg mutate a child overlay instead of cloning or rewriting the whole UTXO set.
+- Made flush and recovery decisions an I/O-free typed policy (`IfNeeded`, `Periodic`, `Always`, `RefuseDiskSpace`) that adapters execute from injected cache, time, and disk facts.
+- Persisted spendable UTXOs as per-outpoint Fjall `C`/`B`/`H` records, migrated leftover snapshot blobs to non-authority, and fail-closed coins disk-read errors.
+- Owned coins init, ordered block/undo/index/coins flush, interrupted-flush replay, and same-datadir restart from durable coins best-block in one manager.
+- Served or reported Available only after a payload-byte probe and refused missing payloads as Unavailable without inventing Pruned.
+- Exposed sanitized flush, recovery, cache-size, and have-bytes versus do-not facts across RPC, CLI, dashboard, metrics, logs, and support, then locked the D-14/D-16 claim boundary with a last-gate checker.
+
+**Stats:**
+
+- 15/15 requirements complete.
+- 7 phases, 29 plans, and 62 counted summary tasks complete.
+- 339,149 tracked first-party lines at archive time, including 295,288 code/content lines.
+- 328 files changed across the post-v2.2 delivery range, with 43,216 insertions and 3,244 deletions before archive.
+- Git range after the v2.2 tag: `6882a49a` → `df3b8f71` (129 commits), plus this archive closeout.
+- Timeline: 2026-08-29 through 2026-09-20.
+- Milestone audit status: `passed` with 15/15 requirements, 7/7 phases, 8/8 integration seams, and 8/8 end-to-end flows.
+- Full repo-native verification passed during Phase 145 closeout and the milestone audit commit.
+
+**Archived artifacts:**
+
+- `.planning/milestones/v2.3-ROADMAP.md`
+- `.planning/milestones/v2.3-REQUIREMENTS.md`
+- `.planning/milestones/v2.3-MILESTONE-AUDIT.md`
+
+**Technical debt:**
+
+- CACHE-01 and MGR-03 appear in `145-04-SUMMARY.md` rather than owning-phase SUMMARYs; verification tables and the archived requirements file still mark them Complete.
+- `145-UAT.md` required-test rows remain `pending`; deterministic proof is the last-gate checker.
+- `CoinsRecoveryOutcome::Interrupted` is contract-ready; initialize success stores `Replayed`, and fail-closed is a `StorageError`.
+- Wallet rescan still reads leftover snapshot bytes; chainstate restart does not.
+
+**Residual boundary:**
+
+Prune-mode product behavior, archive-node or production-scale historical serving, compact-filter or BIP37 serving, assumeutxo / assumevalid / IBD snapshot shortcuts, dual snapshot/IBD chainstate, Knots/Core LevelDB `chainstate/` live import/export, automatic destructive reindex or coins repair, public serving or relay defaults, public-network CI as a release gate, production full-node readiness, production service operation, and production-funds wallet claims remain future scope.
+
+**What's next:** Start the next milestone with `/gsd-new-milestone`.
+
+***
+
+
 ## v2.2 Package Relay and Long-Lived Mempool Policy (Shipped: 2026-08-22)
 
 **Delivered:** Knots-aligned package admission and opportunistic same-peer 1P1C relay, deterministic long-lived pressure policy, durable mempool recovery, bounded initial broadcast retry, sanitized operator evidence, and last-gate release guardrails. The milestone does not claim a general package wire protocol, whole-mempool rebroadcast, public/default relay, guaranteed propagation, public-network CI, production service operation, production full-node readiness, or production-funds wallet safety.

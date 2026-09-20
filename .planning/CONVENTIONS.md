@@ -1,8 +1,8 @@
 # Open Bitcoin Conventions
 
-Last updated: 2026-08-22
+Last updated: 2026-09-20
 
-Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Future milestone
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Future milestone
 work starts with `/gsd-new-milestone`.
 
 ## Parity And Evidence

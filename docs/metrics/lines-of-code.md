@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,191 |
-| Total lines | 339,099 |
-| Code/content lines | 295,244 |
-| Comment-only lines | 15,529 |
-| Blank lines | 28,326 |
+| Total lines | 339,149 |
+| Code/content lines | 295,288 |
+| Comment-only lines | 15,532 |
+| Blank lines | 28,329 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 450 | 131,399 | 111,473 | 9,442 | 10,484 |
 | Rust production | 398 | 113,947 | 99,087 | 4,212 | 10,648 |
-| TypeScript/Bun scripts | 274 | 76,878 | 68,746 | 1,797 | 6,335 |
+| TypeScript/Bun scripts | 274 | 76,928 | 68,790 | 1,800 | 6,338 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 22 | 4,509 | 4,036 | 64 | 409 |
 | TOML/config | 16 | 3,468 | 3,102 | 0 | 366 |
@@ -64,8 +64,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-active-milestone-verification-traceability/test-fixtures.ts | 176 |
 | scripts/check-bazel-build-provenance.ts | 187 |
 | scripts/check-benchmark-report.ts | 210 |
-| scripts/check-current-documentation-reconciliation.test.ts | 342 |
-| scripts/check-current-documentation-reconciliation.ts | 461 |
+| scripts/check-current-documentation-reconciliation.test.ts | 359 |
+| scripts/check-current-documentation-reconciliation.ts | 479 |
 | scripts/check-parity-breadcrumbs.ts | 427 |
 | scripts/check-phase100-relay-activation-boundary.test.ts | 431 |
 | scripts/check-phase100-relay-activation-boundary.ts | 584 |
@@ -211,7 +211,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase144-operator-flush-availability-evidence.ts | 495 |
 | scripts/check-phase145-parity-uat-release-boundary.test.ts | 417 |
 | scripts/check-phase145-parity-uat-release-boundary.ts | 14 |
-| scripts/check-phase145-parity-uat-release-boundary/checks.ts | 195 |
+| scripts/check-phase145-parity-uat-release-boundary/checks.ts | 208 |
 | scripts/check-phase145-parity-uat-release-boundary/claims.ts | 93 |
 | scripts/check-phase145-parity-uat-release-boundary/constants.ts | 190 |
 | scripts/check-phase145-parity-uat-release-boundary/test-fixtures.ts | 185 |
@@ -322,7 +322,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/run-live-mainnet-smoke/types.ts | 542 |
 | scripts/rust-source-invariants.ts | 398 |
 | scripts/source-corpus.test.ts | 33 |
-| scripts/source-corpus.ts | 119 |
+| scripts/source-corpus.ts | 121 |
 | scripts/test-run-live-mainnet-smoke/assert-report.ts | 163 |
 
 ## Largest Included Files
@@ -355,7 +355,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 2b1a19a35b3c344afe05f7bf83aa69cb8adaccb3011e36f031b8d3e2806ad29c |
+| Input fingerprint | 7bea27eade8cb3334aef0bfda19bba791f86b5610dc3c6979f9d5ed131697c69 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -2,44 +2,45 @@
 gsd_state_version: 1.0
 milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
-status: verifying
-stopped_at: Completed 145-04-PLAN.md
-last_updated: "2026-09-18T08:49:22.644Z"
-last_activity: 2026-09-18
+status: archived
+stopped_at: Archived v2.3 milestone
+last_updated: "2026-09-20T21:50:00.000Z"
+last_activity: 2026-09-20
 progress:
-  total_phases: 7
-  completed_phases: 7
-  total_plans: 29
-  completed_plans: 29
-  percent: 100
+    total_phases: 7
+    completed_phases: 7
+    total_plans: 29
+    completed_plans: 29
+    percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-08-29 after starting milestone v2.3).
+See: `.planning/PROJECT.md` (updated 2026-09-20 after v2.3 archive).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 145 closeout evidence — Parity Roots and No-Claim Guardrails
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Milestone: v2.3 Chainstate Durability and Historical Serving
-Phase: 145
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-09-18
-
-Phase 145 owns CSVFY-01 and CSVFY-02. Leftover Pending v2.3 rows were flipped after named checker evidence. The milestone replaces snapshot-style coin persistence with disk-backed coins, cache-flush policy, fuller chainstate-manager behavior, and honest stored-block availability. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims remain deferred. Historical `.planning/phases/` directories stay tracked. The v2.3 milestone is not archived.
+Milestone: none (v2.3 archived)
+Phase: —
+Plan: —
+Status: Milestone archived — ready for `/gsd-new-milestone`
+Last activity: 2026-09-20
 
 Progress: [██████████] 100%
 
-Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains a future command
+Next action: Start the next milestone with `/gsd-new-milestone`.
 
 ## Performance Metrics
 
-**Current milestone:** v2.3 has no completed plans yet.
+**Archived milestone (v2.3):**
+
+- Total plans completed: 29
+- Counted summary tasks: 62
 
 **Previous milestone (v2.2 archive):**
 
@@ -455,19 +456,17 @@ Next action: Phase 145 verification, then `/gsd-complete-milestone v2.3` remains
 
 ### Blockers/Concerns
 
-- Phase 141 planning should resolve Fjall coins keyspace, compact codec home, undo-record location, and schema-bump versus multi-namespace migration before the first production write.
-- Phase 142 planning should name the allowed crash-loss window and the interrupted-flush replay-versus-fail-closed rule when bodies or undo are missing.
-- Phase 143 planning should pin `durable_availability` and reserve `Pruned` so help text cannot be read as prune-mode.
-- Historical Phase 130–138 planning notes remain in the v2.2 archive. No open v2.2 blockers remain after the passed milestone audit.
+- No open v2.3 blockers remain after the passed milestone audit.
+- Historical Phase 139–145 planning notes remain in `.planning/phases/` because repository verifiers consume selected evidence.
 
 ## Latest Milestone Archive
 
-- Roadmap: `.planning/milestones/v2.2-ROADMAP.md`
-- Requirements: `.planning/milestones/v2.2-REQUIREMENTS.md`
-- Audit: `.planning/milestones/v2.2-MILESTONE-AUDIT.md`
+- Roadmap: `.planning/milestones/v2.3-ROADMAP.md`
+- Requirements: `.planning/milestones/v2.3-REQUIREMENTS.md`
+- Audit: `.planning/milestones/v2.3-MILESTONE-AUDIT.md`
 
 ## Session Continuity
 
-Last session: 2026-09-18T08:25:03.202Z
-Stopped at: Completed 145-04-PLAN.md
+Last session: 2026-09-20T21:50:00.000Z
+Stopped at: Archived v2.3 milestone
 Resume file: None

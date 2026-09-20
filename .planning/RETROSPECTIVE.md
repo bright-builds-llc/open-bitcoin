@@ -511,6 +511,55 @@
 
 ***
 
+## Milestone: v2.3 - Chainstate Durability and Historical Serving
+
+**Shipped:** 2026-09-20
+**Phases:** 7
+**Plans:** 29
+**Tasks:** 62
+
+### What Was Built
+
+- Typed DIRTY/FRESH `CoinsView`/`CoinsCache` overlay so connect, disconnect, and reorg mutate a child cache instead of cloning or rewriting the whole UTXO set.
+- I/O-free flush and recovery decisions (`IfNeeded`, `Periodic`, `Always`, `RefuseDiskSpace`) executed by one shell-owned manager from injected cache, time, and disk facts.
+- Per-outpoint Fjall `C`/`B`/`H` coins records with coins best-block and interrupted-flush markers; leftover snapshot blobs are non-authoritative.
+- Same-datadir restart from durable coins best-block, with interrupted-flush replay or fail-closed recovery.
+- Payload-byte honest availability: Available only when bytes are present; missing payloads refuse as Unavailable without inventing Pruned.
+- Sanitized flush, recovery, cache-size, and have-bytes versus do-not operator evidence plus a last-gate D-14/D-16 claim checker.
+
+### What Worked
+
+- Locking one verbatim D-14 sentence kept README, operator, and release-readiness claims from drifting into prune, archive, assumeutxo, or production language.
+- Reusing the v2.2 archive-aware `resolvePlanningRequirementsSource` pattern made it possible to delete live `REQUIREMENTS.md` without breaking Phase 145 verification.
+- Storage-first sequencing (overlay, then policy, then Fjall, then manager, then honest serving, then evidence, then last-gate) kept later phases from documenting a serving lie.
+
+### What Was Inefficient
+
+- CACHE-01 and MGR-03 appeared in `145-04-SUMMARY.md` rather than owning-phase SUMMARYs, so audit work had to reconstruct completeness from verification tables.
+- `145-UAT.md` required-test rows stayed `pending` even after deterministic proof existed in the last-gate checker.
+- Historical Phase 145 checks still coupled to live `.planning/REQUIREMENTS.md` until this closeout remapped them to the v2.3 archive.
+
+### Patterns Established
+
+- Keep the allowed v2.3 wording exact: disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
+- Leave historical `.planning/phases/` directories tracked when repository verifiers consume their evidence.
+- Make each milestone's last-gate checker resolve its own versioned requirements archive before deleting the live control file.
+
+### Key Lessons
+
+1. A locked claim sentence is cheaper than reconciling drifted operator docs at archive time.
+2. Historical checkers must treat live `REQUIREMENTS.md` as optional after `/gsd-complete-milestone`.
+3. Empty or cross-phase SUMMARY `requirements-completed` fields create avoidable audit ambiguity even when verification tables are complete.
+4. Honest availability has to exist before prune or archive product modes can delete files.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: multiple GSD yolo execution, code-review, verification, UAT, milestone audit, and archive turns across Phases 139–145.
+- Notable: 7 phases, 29 plans, and 62 counted summary tasks; 129 commits in `v2.2..df3b8f71` before this archive closeout.
+
+***
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -530,6 +579,7 @@
 | v2.0 | 10 | Added bounded transaction relay and mempool participation, explicit relay activation, txid/wtxid download, orphan/admission outcomes, durable recovery, relay evidence surfaces, and release-boundary no-claim checks. |
 | v2.1 | 20 | Added bounded block serving and compact-block relay, BIP152 reconstruction, authoritative runtime state, real post-write announcement evidence, operator observability, and archive-aware integration guardrails. |
 | v2.2 | 10 | Added bounded local-package admission, same-peer 1P1C assembly, accounted long-lived pressure, durable mempool recovery, initial-broadcast retry, and last-gate D-21 claim guardrails. |
+| v2.3 | 7 | Added disk-backed per-outpoint coins, typed cache-flush policy, single-chainstate manager restart, honest stored-block availability, sanitized durability evidence, and last-gate D-14 claim guardrails. |
 
 ### Cumulative Quality
 
@@ -548,6 +598,7 @@
 | v2.0 | 32/32 complete | Passed with zero critical gaps after Phase 109 closed archive-readiness metadata debt | Repo-native `scripts/verify.sh`, Phase 100-108 deterministic checkers, transaction relay/mempool/orphan/durable recovery/operator evidence, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 | v2.1 | 39/39 complete | Passed with zero requirement, integration, or flow gaps after Phase 129 reconciliation | Repo-native `scripts/verify.sh`, Phase 110-129 deterministic checkers, lifecycle-valid requirement traceability, production composition tests, and 13/13 integration plus 11/11 flow audit checks. |
 | v2.2 | 40/40 complete | Passed with zero requirement, integration, or flow gaps after Phase 138 closeout | Repo-native `scripts/verify.sh`, Phase 130-138 deterministic checkers, last-gate D-21/D-22 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
+| v2.3 | 15/15 complete | Passed with zero requirement, integration, or flow gaps after Phase 145 closeout | Repo-native `scripts/verify.sh`, Phase 139-145 deterministic checkers, last-gate D-14/D-16 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 
 ### Top Lessons
 

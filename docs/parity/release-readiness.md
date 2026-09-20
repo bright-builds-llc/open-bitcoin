@@ -26,7 +26,7 @@ production-scale historical serving, or any production readiness claim.
 
 ## v2.3 Chainstate Durability And Historical Serving
 
-This file is the v2.3 release-review handoff. The allowed scoped claim is disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
+This file is the v2.3 release-review handoff. The allowed scoped claim is disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. The [`v2.3 milestone audit`](../../.planning/milestones/v2.3-MILESTONE-AUDIT.md) passed at 15/15 requirements, 7/7 phases, 8/8 integration seams, and 8/8 end-to-end flows. v2.3 shipped and was archived on 2026-09-20. The archived v2.3 closeout routed later work through `/gsd-new-milestone`.
 
 Default verification stays hermetic. `bash scripts/verify.sh` remains the deterministic local contract and does not add public-network, soak, or production-deployment gates.
 

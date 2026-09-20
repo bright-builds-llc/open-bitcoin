@@ -94,10 +94,12 @@ function verifyArchivedProjectState(corpus: Corpus, failures: string[]): void {
     "README final audit counts",
     normalized(readmeCurrent),
     [
-      "40/40 requirements",
-      "10/10 phases",
+      "15/15 requirements",
+      "7/7 phases",
       "8/8 integration seams",
       "8/8 end-to-end flows",
+      "40/40 requirements",
+      "10/10 phases",
       "39/39 requirements",
       "20/20 phases",
       "13/13 integration links",
@@ -113,6 +115,15 @@ function verifyArchivedProjectState(corpus: Corpus, failures: string[]): void {
     const current = sectionBefore(corpus.get(key) ?? "", "## Architectural Shape");
     const fallbackCurrent = sectionBefore(corpus.get(key) ?? "", "## Parity And Evidence");
     verifyArchivedStateText(label, current || fallbackCurrent, failures);
+    requireAll(
+      `${label} later shipped dates`,
+      normalized(current || fallbackCurrent),
+      [
+        "v2.2 shipped and was archived on 2026-08-22",
+        "v2.3 shipped and was archived on 2026-09-20",
+      ],
+      failures,
+    );
   }
 
   const releaseSection = markdownSection(
@@ -142,16 +153,23 @@ function verifyActiveReadmeState(text: string, failures: string[]): void {
   const value = normalized(text);
   const required = [
     "bounded local-package apis, same-peer 1p1c assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members",
+    "disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present",
     "40/40 requirements",
     "10/10 phases",
+    "15/15 requirements",
+    "7/7 phases",
     "8/8 integration seams",
     "8/8 end-to-end flows",
     "v2.2 shipped and was archived on 2026-08-22",
+    "v2.3 shipped and was archived on 2026-09-20",
     "[mempool parity catalog](./docs/parity/catalog/mempool-policy.md)",
     "/gsd-new-milestone",
     "v2.1 shipped and was archived on 2026-07-22",
   ];
   const forbidden = [
+    "v2.3 is the active milestone",
+    "active milestone: v2.3",
+    "/gsd-complete-milestone v2.3",
     "active milestone: v2.2",
     "/gsd-complete-milestone v2.2",
     "v2.1 remains the latest shipped release",
@@ -162,7 +180,7 @@ function verifyActiveReadmeState(text: string, failures: string[]): void {
   ];
   if (required.some((needle) => !value.includes(needle))) {
     failures.push(
-      "README archived milestone state: missing shipped v2.2 archive anchors or next-milestone route",
+      "README archived milestone state: missing shipped v2.3 archive anchors or next-milestone route",
     );
   }
   if (forbidden.some((needle) => value.includes(needle))) {

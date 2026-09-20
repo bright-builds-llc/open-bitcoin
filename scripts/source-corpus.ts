@@ -82,6 +82,8 @@ export function readSourceRoot(repoRoot: string, relativePath: string): string {
 export const LIVE_PLANNING_REQUIREMENTS = ".planning/REQUIREMENTS.md";
 export const ARCHIVED_V22_REQUIREMENTS = ".planning/milestones/v2.2-REQUIREMENTS.md";
 export const V22_REQUIREMENTS_MILESTONE_NEEDLE = "**Milestone:** v2.2 ";
+export const ARCHIVED_V23_REQUIREMENTS = ".planning/milestones/v2.3-REQUIREMENTS.md";
+export const V23_REQUIREMENTS_MILESTONE_NEEDLE = "**Milestone:** v2.3 ";
 
 /**
  * Resolves live milestone requirements, then the versioned archive after
