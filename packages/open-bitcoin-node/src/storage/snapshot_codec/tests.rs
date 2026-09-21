@@ -35,7 +35,7 @@ use crate::{
     WalletRegistrySnapshot, WalletRescanFreshness, WalletRescanJob, WalletRescanJobState,
 };
 
-fn header(seed: u8) -> BlockHeader {
+pub(super) fn header(seed: u8) -> BlockHeader {
     BlockHeader {
         version: 1,
         previous_block_hash: BlockHash::from_byte_array([seed.saturating_sub(1); 32]),
@@ -46,18 +46,18 @@ fn header(seed: u8) -> BlockHeader {
     }
 }
 
-fn script(bytes: &[u8]) -> ScriptBuf {
+pub(super) fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
 }
 
-fn output(value: i64) -> TransactionOutput {
+pub(super) fn output(value: i64) -> TransactionOutput {
     TransactionOutput {
         value: open_bitcoin_core::primitives::Amount::from_sats(value).expect("valid amount"),
         script_pubkey: script(&[0x51]),
     }
 }
 
-fn mempool_transaction(seed: u8) -> Transaction {
+pub(super) fn mempool_transaction(seed: u8) -> Transaction {
     Transaction {
         version: 2,
         inputs: vec![TransactionInput {
@@ -103,7 +103,7 @@ pub(super) fn mempool_snapshot() -> MempoolSnapshot {
     .expect("valid current mempool snapshot")
 }
 
-fn legacy_mempool_snapshot() -> MempoolSnapshot {
+pub(super) fn legacy_mempool_snapshot() -> MempoolSnapshot {
     let transaction = mempool_transaction(23);
     let txid = transaction_txid(&transaction).expect("txid");
     let wtxid = transaction_wtxid(&transaction).expect("wtxid");
@@ -121,7 +121,7 @@ fn legacy_mempool_snapshot() -> MempoolSnapshot {
     MempoolSnapshot::from_legacy_v1(vec![record])
 }
 
-fn chainstate_snapshot() -> ChainstateSnapshot {
+pub(super) fn chainstate_snapshot() -> ChainstateSnapshot {
     let position = ChainPosition::new(header(1), 0, 1, 1);
     let outpoint = OutPoint {
         txid: Txid::from_byte_array([9; 32]),
@@ -148,7 +148,7 @@ fn chainstate_snapshot() -> ChainstateSnapshot {
     ChainstateSnapshot::new(vec![position], utxos, undo_by_block)
 }
 
-fn wallet_snapshot() -> WalletSnapshot {
+pub(super) fn wallet_snapshot() -> WalletSnapshot {
     let mut wallet = Wallet::new(AddressNetwork::Regtest);
     let descriptor_id = wallet
         .import_descriptor(
@@ -191,466 +191,8 @@ fn chainstate_snapshot_round_trips_through_storage_dto() {
     assert_eq!(decoded, snapshot);
 }
 
-#[test]
-fn encode_block_undo_round_trips_and_is_not_full_snapshot() {
-    // Arrange
-    let undo = BlockUndo {
-        transactions: vec![TxUndo {
-            restored_inputs: vec![Coin {
-                output: output(5_000),
-                is_coinbase: false,
-                created_height: 6,
-                created_median_time_past: 11,
-            }],
-        }],
-    };
-
-    // Act
-    let encoded = encode_block_undo(&undo).expect("encode block undo");
-    let decoded = decode_block_undo(&encoded).expect("decode block undo");
-    let encoded_json = String::from_utf8(encoded).expect("undo encode is JSON");
-
-    // Assert
-    assert_eq!(decoded, undo);
-    assert!(
-        encoded_json.contains("transactions"),
-        "undo JSON must contain transactions: {encoded_json}"
-    );
-    assert!(
-        !encoded_json.contains("\"utxos\""),
-        "undo JSON must not embed leftover snapshot utxos: {encoded_json}"
-    );
-}
-
-#[test]
-fn chainstate_confirmation_counts_encode_deterministically_and_round_trip() {
-    // Arrange
-    let first_txid = Txid::from_byte_array([1_u8; 32]);
-    let second_txid = Txid::from_byte_array([2_u8; 32]);
-    let mut first = chainstate_snapshot();
-    first.maybe_confirmed_txid_counts = Some(HashMap::from([(second_txid, 2), (first_txid, 1)]));
-    let mut second = chainstate_snapshot();
-    second.maybe_confirmed_txid_counts = Some(HashMap::from([(first_txid, 1), (second_txid, 2)]));
-
-    // Act
-    let first_encoded = encode_chainstate_snapshot(&first).expect("encode first chainstate");
-    let second_encoded = encode_chainstate_snapshot(&second).expect("encode second chainstate");
-    let decoded = decode_chainstate_snapshot(&first_encoded).expect("decode chainstate counts");
-
-    // Assert
-    assert_eq!(first_encoded, second_encoded);
-    assert_eq!(
-        decoded.maybe_confirmed_txid_counts,
-        first.maybe_confirmed_txid_counts
-    );
-}
-
-#[test]
-fn chainstate_snapshot_without_confirmation_evidence_decodes_as_unknown() {
-    // Arrange
-    let encoded = encode_chainstate_snapshot(&chainstate_snapshot()).expect("encode chainstate");
-    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("chainstate JSON");
-    value["payload"]
-        .as_object_mut()
-        .expect("chainstate payload")
-        .remove("maybe_confirmed_txid_counts");
-    let legacy = serde_json::to_vec(&value).expect("encode legacy chainstate");
-
-    // Act
-    let decoded = decode_chainstate_snapshot(&legacy).expect("decode legacy chainstate");
-
-    // Assert
-    assert!(decoded.maybe_confirmed_txid_counts.is_none());
-}
-
-#[test]
-fn wallet_registry_and_selected_wallet_round_trip() {
-    // Arrange
-    let registry = WalletRegistrySnapshot::new(["alpha".to_string(), "beta".to_string()]);
-    let selected = SelectedWalletRecord {
-        wallet_name: "beta".to_string(),
-    };
-
-    // Act
-    let encoded_registry = encode_wallet_registry_snapshot(&registry).expect("encode registry");
-    let decoded_registry =
-        decode_wallet_registry_snapshot(&encoded_registry).expect("decode registry");
-    let encoded_selected = encode_selected_wallet(&selected).expect("encode selected");
-    let decoded_selected = decode_selected_wallet(&encoded_selected).expect("decode selected");
-
-    // Assert
-    assert_eq!(decoded_registry, registry);
-    assert_eq!(decoded_selected, selected);
-}
-
-#[test]
-fn wallet_rescan_job_round_trips_full_checkpoint_state() {
-    // Arrange
-    let job = WalletRescanJob {
-        wallet_name: "alpha".to_string(),
-        target_tip_hash: BlockHash::from_byte_array([7_u8; 32]),
-        target_tip_height: 144,
-        next_height: 121,
-        maybe_scanned_through_height: Some(120),
-        maybe_tip_median_time_past: Some(1_700_000_120),
-        freshness: WalletRescanFreshness::Partial,
-        state: WalletRescanJobState::Scanning,
-        maybe_error: None,
-    };
-
-    // Act
-    let encoded = encode_wallet_rescan_job(&job).expect("encode job");
-    let decoded = decode_wallet_rescan_job(&encoded).expect("decode job");
-
-    // Assert
-    assert_eq!(decoded, job);
-}
-
-#[test]
-fn wallet_snapshot_round_trips_through_original_descriptors() {
-    // Arrange
-    let snapshot = wallet_snapshot();
-
-    // Act
-    let encoded = encode_wallet_snapshot(&snapshot).expect("encode wallet");
-    let decoded = decode_wallet_snapshot(&encoded).expect("decode wallet");
-
-    // Assert
-    assert_eq!(decoded, snapshot);
-    assert_eq!(decoded.descriptors[0].descriptor.range_start(), Some(0));
-    assert_eq!(decoded.descriptors[0].descriptor.range_end(), Some(1000));
-    assert_eq!(decoded.descriptors[0].descriptor.next_index(), Some(2));
-}
-
-#[test]
-fn header_entries_round_trip_and_validate_header_hashes() {
-    // Arrange
-    let header = header(2);
-    let entry = HeaderEntry {
-        block_hash: open_bitcoin_core::consensus::block_hash(&header),
-        header,
-        height: 1,
-        chain_work: 2,
-    };
-
-    // Act
-    let encoded = encode_header_entries(std::slice::from_ref(&entry)).expect("encode headers");
-    let decoded = decode_header_entries(&encoded).expect("decode headers");
-
-    // Assert
-    assert_eq!(decoded.entries, vec![entry]);
-}
-
-#[test]
-fn metrics_snapshot_round_trips_samples() {
-    // Arrange
-    let snapshot = MetricsStorageSnapshot {
-        samples: vec![MetricSample::new(MetricKind::HeaderHeight, 1.0, 2)],
-    };
-
-    // Act
-    let encoded = encode_metrics_snapshot(&snapshot).expect("encode metrics");
-    let decoded = decode_metrics_snapshot(&encoded).expect("decode metrics");
-
-    // Assert
-    assert_eq!(decoded, snapshot);
-}
-
-#[test]
-fn mempool_snapshot_round_trips_transactions() {
-    // Arrange
-    let snapshot = mempool_snapshot();
-
-    // Act
-    let encoded = encode_mempool_snapshot(&snapshot).expect("encode mempool");
-    let decoded = decode_mempool_snapshot(&encoded).expect("decode mempool");
-
-    // Assert
-    assert_eq!(
-        decoded.records[0].transaction,
-        snapshot.records[0].transaction
-    );
-    assert_eq!(
-        decoded.records[0].acceptance_time,
-        snapshot.records[0].acceptance_time
-    );
-    assert_eq!(
-        decoded.captured_generation(),
-        snapshot.captured_generation()
-    );
-    assert_eq!(decoded.captured_at(), snapshot.captured_at());
-    assert_eq!(
-        decoded.unbroadcast_members(),
-        snapshot.unbroadcast_members()
-    );
-}
-
-#[test]
-fn mempool_snapshot_codec_rejects_schema_mismatch() {
-    // Arrange
-    let mismatched = br#"{"schema_version":999,"payload":{"records":[]}}"#;
-
-    // Act
-    let error = decode_mempool_snapshot(mismatched).expect_err("schema mismatch should fail");
-
-    // Assert
-    assert!(matches!(error, StorageError::SchemaMismatch { .. }));
-}
-
-#[test]
-fn mempool_snapshot_codec_rejects_corrupt_bytes() {
-    // Arrange
-    let corrupt = b"{not-json";
-
-    // Act
-    let error = decode_mempool_snapshot(corrupt).expect_err("corrupt bytes should fail");
-
-    // Assert
-    assert!(matches!(
-        error,
-        StorageError::Corruption {
-            namespace: StorageNamespace::Mempool,
-            ..
-        }
-    ));
-}
-
-#[test]
-fn malformed_json_maps_to_corruption() {
-    // Arrange
-    let malformed = b"{not-json";
-
-    // Act
-    let error = decode_chainstate_snapshot(malformed).expect_err("malformed json");
-
-    // Assert
-    assert!(matches!(
-        error,
-        StorageError::Corruption {
-            namespace: StorageNamespace::Chainstate,
-            ..
-        }
-    ));
-}
-
-#[test]
-fn mempool_snapshot_v2_encodes_only_source_authority() {
-    // Arrange
-    let snapshot = mempool_snapshot();
-
-    // Act
-    let encoded = encode_mempool_snapshot(&snapshot).expect("encode mempool");
-    let decoded = decode_mempool_snapshot(&encoded).expect("decode mempool");
-    let encoded_text = String::from_utf8(encoded.clone()).expect("utf8");
-
-    // Assert
-    assert_eq!(
-        decoded.records[0].transaction,
-        snapshot.records[0].transaction
-    );
-    assert!(encoded_text.contains("\"accepted_at_unix_seconds\": 90"));
-    assert!(encoded_text.contains("\"format_version\": 2"));
-    assert!(encoded_text.contains("\"captured_generation\": 42"));
-    assert!(encoded_text.contains("\"captured_at_unix_seconds\": 120"));
-    assert!(!encoded_text.contains("fee_sats"));
-    assert!(!encoded_text.contains("virtual_size"));
-    assert!(!encoded_text.contains("origin"));
-    assert!(!encoded_text.contains("relay_requested"));
-}
-
-#[test]
-fn legacy_unknown_current_snapshot_round_trips_as_explicit_null() {
-    // Arrange
-    let record = legacy_mempool_snapshot()
-        .records
-        .into_iter()
-        .next()
-        .expect("legacy record");
-    let snapshot = MempoolSnapshot::try_new_current(
-        CapturedMempoolGeneration::new(43),
-        PolicyTime::from_unix_seconds(121),
-        vec![record],
-        BTreeSet::new(),
-    )
-    .expect("legacy-unknown age remains representable");
-
-    // Act
-    let encoded = encode_mempool_snapshot(&snapshot).expect("encode legacy-unknown current v2");
-    let decoded = decode_mempool_snapshot(&encoded).expect("decode legacy-unknown current v2");
-    let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("snapshot JSON");
-
-    // Assert
-    assert!(value["payload"]["records"][0]["accepted_at_unix_seconds"].is_null());
-    assert_eq!(
-        decoded.records[0].acceptance_time,
-        MempoolAcceptanceTime::LegacyUnknown
-    );
-    value["payload"]["records"][0]
-        .as_object_mut()
-        .expect("record object")
-        .remove("accepted_at_unix_seconds");
-    let missing_key = serde_json::to_vec(&value).expect("encode missing key");
-    assert!(decode_mempool_snapshot(&missing_key).is_err());
-}
-
-#[test]
-fn legacy_mempool_snapshot_decodes_to_fail_closed_metadata() {
-    // Arrange
-    let transaction = mempool_transaction(24);
-    let txid = transaction_txid(&transaction).expect("txid");
-    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
-    let encoded_tx = open_bitcoin_core::codec::encode_transaction(
-        &transaction,
-        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
-    )
-    .expect("encode tx");
-    let legacy = serde_json::json!({
-        "schema_version": SchemaVersion::CURRENT.get(),
-        "payload": {
-            "records": [{
-                "txid": txid.to_byte_array(),
-                "wtxid": wtxid.to_byte_array(),
-                "transaction": encoded_tx,
-                "fee_sats": 1000,
-                "virtual_size": transaction_weight_and_virtual_size(&transaction)
-                    .expect("transaction size")
-                    .1
-            }]
-        }
-    });
-    let bytes = serde_json::to_vec(&legacy).expect("serialize legacy");
-
-    // Act
-    let decoded = decode_mempool_snapshot(&bytes).expect("decode legacy");
-
-    // Assert
-    assert_eq!(decoded.records.len(), 1);
-    assert_eq!(
-        decoded.records[0].acceptance_time,
-        MempoolAcceptanceTime::LegacyUnknown
-    );
-    assert_eq!(
-        decoded.records[0]
-            .member_identity()
-            .expect("canonical member identity"),
-        MempoolMemberIdentity { txid, wtxid }
-    );
-    assert!(decoded.unbroadcast_members().is_empty());
-    assert_eq!(SchemaVersion::CURRENT.get(), 2);
-}
-
-#[test]
-fn mempool_snapshot_partial_metadata_is_corruption() {
-    // Arrange
-    let transaction = mempool_transaction(25);
-    let txid = transaction_txid(&transaction).expect("txid");
-    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
-    let encoded_tx = open_bitcoin_core::codec::encode_transaction(
-        &transaction,
-        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
-    )
-    .expect("encode tx");
-    let base = |accepted, origin, relay| {
-        let mut record = serde_json::json!({
-            "txid": txid.to_byte_array(),
-            "wtxid": wtxid.to_byte_array(),
-            "transaction": encoded_tx,
-            "fee_sats": 1000,
-            "virtual_size": 100
-        });
-        if let Some(value) = accepted {
-            record["accepted_at_unix_seconds"] = serde_json::json!(value);
-        }
-        if let Some(value) = origin {
-            record["origin"] = serde_json::json!(value);
-        }
-        if let Some(value) = relay {
-            record["relay_requested"] = serde_json::json!(value);
-        }
-        serde_json::to_vec(&serde_json::json!({
-            "schema_version": SchemaVersion::CURRENT.get(),
-            "payload": {"records": [record]}
-        }))
-        .expect("serialize")
-    };
-
-    // Act / Assert
-    for bytes in [
-        base(Some(90), None, None),
-        base(None, Some("local"), None),
-        base(None, None, Some(true)),
-        base(Some(90), Some("local"), None),
-        base(Some(90), None, Some(true)),
-        base(None, Some("local"), Some(true)),
-    ] {
-        let error = decode_mempool_snapshot(&bytes).expect_err("partial metadata");
-        assert!(matches!(
-            error,
-            StorageError::Corruption {
-                namespace: StorageNamespace::Mempool,
-                ..
-            }
-        ));
-    }
-}
-
-#[test]
-fn mempool_snapshot_invalid_origin_is_corruption() {
-    // Arrange
-    let transaction = mempool_transaction(26);
-    let txid = transaction_txid(&transaction).expect("txid");
-    let wtxid = transaction_wtxid(&transaction).expect("wtxid");
-    let encoded_tx = open_bitcoin_core::codec::encode_transaction(
-        &transaction,
-        open_bitcoin_core::codec::TransactionEncoding::WithWitness,
-    )
-    .expect("encode tx");
-    let bytes = serde_json::to_vec(&serde_json::json!({
-        "schema_version": SchemaVersion::CURRENT.get(),
-        "payload": {
-            "records": [{
-                "txid": txid.to_byte_array(),
-                "wtxid": wtxid.to_byte_array(),
-                "transaction": encoded_tx,
-                "fee_sats": 1000,
-                "virtual_size": 100,
-                "accepted_at_unix_seconds": 90,
-                "origin": "miner",
-                "relay_requested": true
-            }]
-        }
-    }))
-    .expect("serialize");
-
-    // Act
-    let error = decode_mempool_snapshot(&bytes).expect_err("invalid origin");
-
-    // Assert
-    assert!(matches!(
-        error,
-        StorageError::Corruption {
-            namespace: StorageNamespace::Mempool,
-            ..
-        }
-    ));
-}
-
-#[test]
-fn mempool_snapshot_encoded_schema_version_remains_current() {
-    // Arrange
-    let snapshot = mempool_snapshot();
-
-    // Act
-    let encoded = encode_mempool_snapshot(&snapshot).expect("encode");
-    let value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
-
-    // Assert
-    assert_eq!(
-        value["schema_version"].as_u64().expect("schema"),
-        u64::from(SchemaVersion::CURRENT.get())
-    );
-    assert_eq!(SchemaVersion::CURRENT.get(), 2);
-}
+mod chainstate_wallet_and_headers;
+mod mempool_codec;
 
 #[path = "tests/mempool_limits.rs"]
 mod mempool_limits;

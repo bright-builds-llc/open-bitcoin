@@ -423,6 +423,11 @@ test("does_not_abandon_a_just_created_ownerless_lock", async () => {
 test("wires_local_verifier_history_without_masking_status_and_profiles_ci", async () => {
   // Arrange
   const verifyScript = await readFile(path.join(import.meta.dir, "verify.sh"), "utf8");
+  const verifyHelpers = await readFile(
+    path.join(import.meta.dir, "verify", "helpers.sh"),
+    "utf8",
+  );
+  const verifyCorpus = `${verifyScript}\n${verifyHelpers}`;
   const ciWorkflow = await readFile(
     path.join(import.meta.dir, "..", ".github", "workflows", "ci.yml"),
     "utf8",
@@ -440,8 +445,9 @@ test("wires_local_verifier_history_without_masking_status_and_profiles_ci", asyn
   ];
 
   // Assert
+  expect(verifyScript).toContain('source "${SCRIPT_DIR}/verify/helpers.sh"');
   for (const anchor of anchors) {
-    expect(verifyScript).toContain(anchor);
+    expect(verifyCorpus).toContain(anchor);
   }
   expect(ciWorkflow).toContain("bash scripts/verify.sh --profile");
 });

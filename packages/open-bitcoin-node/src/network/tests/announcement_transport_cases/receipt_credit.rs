@@ -1,0 +1,226 @@
+// Parity breadcrumbs:
+// - packages/bitcoin-knots/src/net.cpp
+// - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/net_processing.h
+// - packages/bitcoin-knots/test/functional/p2p_compactblocks.py
+
+use super::*;
+
+#[test]
+fn compact_success_receipt_records_achieved_effect_once() {
+    // Arrange
+    let peer_id = 128_210;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect peer");
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    let block_hash = BlockHash::from_byte_array([0x21; 32]);
+    let emission = prepared_emission(&network, peer_id, compact_message(), block_hash);
+    let (_, _, capability) = emission.into_parts();
+
+    // Act
+    let completion = network
+        .complete_peer_emission(capability.acknowledge_write())
+        .expect("complete compact write");
+
+    // Assert
+    assert_eq!(completion, EffectCompletion::Applied);
+    let encoded = announcement_counts(&network);
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_announced_count"],
+        1
+    );
+    assert!(
+        network
+            .peer_manager_snapshot()
+            .expect("peer manager")
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_announcements
+            .contains(&block_hash)
+    );
+}
+
+#[test]
+fn headers_success_receipt_records_only_header_fallback() {
+    // Arrange
+    let peer_id = 128_211;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect peer");
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    let block_hash = BlockHash::from_byte_array([0x22; 32]);
+    let (_, _, capability) =
+        prepared_emission(&network, peer_id, headers_message(), block_hash).into_parts();
+
+    // Act
+    network
+        .complete_peer_emission(capability.acknowledge_write())
+        .expect("complete headers write");
+
+    // Assert
+    let encoded = announcement_counts(&network);
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_headers_fallback_count"],
+        1
+    );
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_announced_count"],
+        0
+    );
+}
+
+#[test]
+fn inventory_success_receipt_records_only_inventory_fallback() {
+    // Arrange
+    let peer_id = 128_212;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect peer");
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    let block_hash = BlockHash::from_byte_array([0x23; 32]);
+    let (_, _, capability) =
+        prepared_emission(&network, peer_id, inventory_message(block_hash), block_hash)
+            .into_parts();
+
+    // Act
+    network
+        .complete_peer_emission(capability.acknowledge_write())
+        .expect("complete inventory write");
+
+    // Assert
+    let encoded = announcement_counts(&network);
+    assert_eq!(
+        encoded["announcement"]["value"]["compact_inventory_fallback_count"],
+        1
+    );
+    assert!(
+        network
+            .peer_manager_snapshot()
+            .expect("peer manager")
+            .peer_state(peer_id)
+            .expect("peer")
+            .compact_announcements
+            .is_empty()
+    );
+}
+
+#[test]
+fn failed_or_unsent_emission_receives_no_achieved_effect_credit() {
+    // Arrange
+    let peer_id = 128_213;
+    let network = compact_relay_enabled_managed_network(peer_id);
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    let block_hash = BlockHash::from_byte_array([0x24; 32]);
+    let emission = prepared_emission(&network, peer_id, compact_message(), block_hash);
+    let before = announcement_counts(&network);
+
+    // Act
+    drop(emission);
+
+    // Assert
+    assert_eq!(announcement_counts(&network), before);
+}
+
+#[test]
+fn queue_full_preparation_returns_no_receipt_or_achieved_effect_credit() {
+    // Arrange
+    let peer_id = 128_214;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect peer");
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    let block = Block::default();
+    let outboxes = [PeerOutboxSnapshot::new(
+        peer_id,
+        open_bitcoin_network::PHASE94_MAX_PEER_QUEUED_MESSAGES,
+        open_bitcoin_network::PHASE94_MAX_PEER_QUEUED_MESSAGES,
+    )];
+    let before = announcement_counts(&network);
+
+    // Act
+    let outcomes = network
+        .prepare_block_announcements(&block, &outboxes)
+        .expect("prepare announcements");
+
+    // Assert
+    assert!(matches!(
+        outcomes.as_slice(),
+        [AnnouncementPreparationOutcome::QueueFull { peer_id: 128_214 }]
+    ));
+    assert_eq!(announcement_counts(&network), before);
+}
+
+#[test]
+fn partial_successful_prefix_credits_only_completed_receipts() {
+    // Arrange
+    let peer_id = 128_215;
+    let mut network = compact_relay_enabled_managed_network(peer_id);
+    network
+        .connect_outbound_peer(peer_id, 1)
+        .expect("connect peer");
+    let network = ManagedNetworkHandle::from_network_fixture(network);
+    let hashes = [
+        BlockHash::from_byte_array([0x25; 32]),
+        BlockHash::from_byte_array([0x26; 32]),
+        BlockHash::from_byte_array([0x27; 32]),
+    ];
+    let emissions = [
+        prepared_emission(&network, peer_id, compact_message(), hashes[0]),
+        prepared_emission(&network, peer_id, headers_message(), hashes[1]),
+        prepared_emission(&network, peer_id, inventory_message(hashes[2]), hashes[2]),
+    ];
+    let [first, second, unsent] = emissions;
+    let (_, _, first_capability) = first.into_parts();
+    let (_, _, second_capability) = second.into_parts();
+    let before = announcement_counts(&network);
+
+    // Act
+    let first_completion = network
+        .complete_peer_emission(first_capability.acknowledge_write())
+        .expect("complete first write");
+    let second_completion = network
+        .complete_peer_emission(second_capability.acknowledge_write())
+        .expect("complete second write");
+    let after_successful_prefix = announcement_counts(&network);
+    let peer_after_successful_prefix = format!(
+        "{:?}",
+        network.peer_manager_snapshot().expect("peer manager")
+    );
+    drop(unsent);
+
+    // Assert
+    assert_eq!(first_completion, EffectCompletion::Applied);
+    assert_eq!(second_completion, EffectCompletion::Applied);
+    assert_ne!(after_successful_prefix, before);
+    assert_eq!(
+        after_successful_prefix["announcement"]["value"]["compact_announced_count"],
+        1
+    );
+    assert_eq!(
+        after_successful_prefix["announcement"]["value"]["compact_headers_fallback_count"],
+        1
+    );
+    assert_eq!(
+        after_successful_prefix["announcement"]["value"]["compact_inventory_fallback_count"],
+        0
+    );
+    assert_eq!(announcement_counts(&network), after_successful_prefix);
+    assert_eq!(
+        format!(
+            "{:?}",
+            network.peer_manager_snapshot().expect("peer manager")
+        ),
+        peer_after_successful_prefix
+    );
+    let peer_manager = network.peer_manager_snapshot().expect("peer manager");
+    let peer = peer_manager.peer_state(peer_id).expect("peer");
+    assert_eq!(peer.compact_announcements.len(), 2);
+    assert!(peer.compact_announcements.contains(&hashes[0]));
+    assert!(peer.compact_announcements.contains(&hashes[1]));
+    assert!(!peer.compact_announcements.contains(&hashes[2]));
+}

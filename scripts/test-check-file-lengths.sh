@@ -67,7 +67,10 @@ assert_timing_mode() {
   fi
 }
 
-write_rust_file() {
+oversized_line_count=$((expected_max_file_lines + 1))
+readonly oversized_line_count
+
+write_line_file() {
   local path="$1"
   local line_count="$2"
 
@@ -91,9 +94,11 @@ write_verify_test_fixture() {
   local repo_dir="$1"
   local fake_bin="$2"
 
-  mkdir -p "${repo_dir}/scripts" "$fake_bin"
+  mkdir -p "${repo_dir}/scripts/verify" "$fake_bin"
   cp "$helper_script" "${repo_dir}/scripts/check-file-lengths.sh"
+  cp "${script_dir}/bright-builds-check.ts" "${repo_dir}/scripts/bright-builds-check.ts"
   cp "$verify_script" "${repo_dir}/scripts/verify.sh"
+  cp "${script_dir}/verify/helpers.sh" "${repo_dir}/scripts/verify/helpers.sh"
   cp "$ensure_hooks_script" "${repo_dir}/scripts/ensure-git-hooks.sh"
   cp "${script_dir}/command-timings.ts" "${repo_dir}/scripts/command-timings.ts"
   cp "${script_dir}/command-timing-cli.ts" "${repo_dir}/scripts/command-timing-cli.ts"
@@ -162,28 +167,32 @@ set -euo pipefail
 touch "${VERIFY_MARKER_DIR:?}/bazel-called"
 exit 0
 EOF
-  cat >"${fake_bin}/bun" <<'EOF'
+  cat >"${fake_bin}/bun" <<EOF
 #!/usr/bin/env bash
 set -euo pipefail
-touch "${VERIFY_MARKER_DIR:?}/bun-called"
-if [[ "${1:-}" == "run" && "${2:-}" == "scripts/command-timings.ts" ]]; then
-  exec "${REAL_BUN:?}" "$@"
+touch "\${VERIFY_MARKER_DIR:?}/bun-called"
+real_bun_bin='${real_bun}'
+if [[ "\${1:-}" == *bright-builds-check.ts ]]; then
+  exec "\$real_bun_bin" "\$@"
 fi
-if [[ "${1:-}" == "--print" ]]; then
+if [[ "\${1:-}" == "run" && "\${2:-}" == "scripts/command-timings.ts" ]]; then
+  exec "\$real_bun_bin" "\$@"
+fi
+if [[ "\${1:-}" == "--print" ]]; then
   printf '%s' "0"
   exit 0
 fi
-if [[ "${1:-}" == "run" && "${2:-}" == "scripts/generate-loc-report.ts" ]]; then
-  touch "${VERIFY_MARKER_DIR:?}/loc-report-called"
+if [[ "\${1:-}" == "run" && "\${2:-}" == "scripts/generate-loc-report.ts" ]]; then
+  touch "\${VERIFY_MARKER_DIR:?}/loc-report-called"
   exit 0
 fi
-if [[ "${1:-}" == "run" && "${2:-}" == scripts/*.ts ]]; then
+if [[ "\${1:-}" == "run" && "\${2:-}" == scripts/*.ts ]]; then
   exit 0
 fi
-if [[ "${1:-}" == "test" && "${2:-}" == scripts/*.test.ts ]]; then
+if [[ "\${1:-}" == "test" && "\${2:-}" == scripts/*.test.ts ]]; then
   exit 0
 fi
-echo "unexpected bun invocation: $*" >&2
+echo "unexpected bun invocation: \$*" >&2
 exit 1
 EOF
   chmod +x "${fake_bin}/cargo" "${fake_bin}/cargo-llvm-cov" "${fake_bin}/bazel" "${fake_bin}/bun"
@@ -194,7 +203,7 @@ run_positive_case() {
   local output=""
 
   init_repo "$repo_dir"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
@@ -204,7 +213,8 @@ run_positive_case() {
   )
 
   output="$(cat "${repo_dir}/positive-output.txt")"
-  assert_contains "$output" "Production Rust file-length check passed"
+  assert_contains "$output" "SUMMARY file-lengths"
+  assert_contains "$output" "findings=0"
 }
 
 run_negative_case() {
@@ -212,7 +222,7 @@ run_negative_case() {
   local output=""
 
   init_repo "$repo_dir"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/oversized.rs" "$expected_max_file_lines"
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/oversized.rs" "$oversized_line_count"
 
   (
     cd "$repo_dir"
@@ -232,10 +242,27 @@ run_negative_case() {
     exit 1
   fi
 
-  assert_contains "$output" "packages/open-bitcoin-foo/src/oversized.rs"
-  assert_contains "$output" "${expected_max_file_lines} lines"
-  assert_contains "$output" "Move inline tests into a sibling tests.rs file."
-  assert_contains "$output" "Split the file into foo.rs plus foo/ child modules."
+  assert_contains "$output" "FAIL file-lengths packages/open-bitcoin-foo/src/oversized.rs"
+  assert_contains "$output" "${oversized_line_count} physical lines exceeds ${expected_max_file_lines}"
+}
+
+run_limit_boundary_case() {
+  local repo_dir="${tmp_root}/limit-boundary"
+  local output=""
+
+  init_repo "$repo_dir"
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" "$expected_max_file_lines"
+
+  (
+    cd "$repo_dir"
+    git add packages/open-bitcoin-foo/src/lib.rs
+    output="$("$helper_script" 2>&1)"
+    printf '%s' "$output" >boundary-output.txt
+  )
+
+  output="$(cat "${repo_dir}/boundary-output.txt")"
+  assert_contains "$output" "SUMMARY file-lengths"
+  assert_contains "$output" "findings=0"
 }
 
 run_scope_case() {
@@ -243,21 +270,32 @@ run_scope_case() {
   local output=""
 
   init_repo "$repo_dir"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 20
-  write_rust_file "${repo_dir}/packages/bitcoin-knots/src/ignored.rs" 900
-  write_rust_file "${repo_dir}/packages/target/debug/generated.rs" 900
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/tests.rs" 900
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/tests/helper.rs" 900
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 20
+  write_line_file "${repo_dir}/packages/target/debug/generated.rs" 900
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/tests.rs" 900
+  write_line_file "${repo_dir}/scripts/oversized.ts" 900
 
   (
     cd "$repo_dir"
-    git add packages
+    git add packages scripts
+    set +e
     output="$("$helper_script" 2>&1)"
+    status=$?
+    set -e
     printf '%s' "$output" >scope-output.txt
+    printf '%s' "$status" >scope-status.txt
   )
 
   output="$(cat "${repo_dir}/scope-output.txt")"
-  assert_contains "$output" "Production Rust file-length check passed"
+  status="$(cat "${repo_dir}/scope-status.txt")"
+  if [[ "$status" -eq 0 ]]; then
+    echo "scope case should fail on tracked tests and scripts" >&2
+    exit 1
+  fi
+
+  assert_contains "$output" "FAIL file-lengths packages/open-bitcoin-foo/src/tests.rs"
+  assert_contains "$output" "FAIL file-lengths scripts/oversized.ts"
+  assert_not_contains "$output" "packages/target/debug/generated.rs"
 }
 
 run_verify_integration_case() {
@@ -267,7 +305,7 @@ run_verify_integration_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/oversized.rs" "$expected_max_file_lines"
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/oversized.rs" "$oversized_line_count"
 
   (
     cd "$repo_dir"
@@ -289,7 +327,7 @@ run_verify_integration_case() {
     exit 1
   fi
 
-  assert_contains "$output" "production Rust files must stay below ${expected_max_file_lines} lines"
+  assert_contains "$output" "FAIL file-lengths packages/open-bitcoin-foo/src/oversized.rs"
   assert_contains "$output" "verify.sh failed after "
   assert_contains "$output" "ms)"
   assert_timing_history "$repo_dir"
@@ -307,7 +345,7 @@ run_verify_success_timing_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
@@ -367,7 +405,7 @@ run_verify_fast_mode_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
@@ -399,7 +437,7 @@ run_verify_profile_timing_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
@@ -431,7 +469,7 @@ run_verify_auto_installs_hooks_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
@@ -455,12 +493,13 @@ run_verify_skips_hook_install_in_ci_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
     git add packages scripts .githooks
-    output="$(PATH="${fake_bin}:$PATH" VERIFY_MARKER_DIR="$repo_dir" CI=true bash "$verify_script" 2>&1)"
+    output="$(PATH="${fake_bin}:$PATH" REAL_BUN="$real_bun" \
+      VERIFY_MARKER_DIR="$repo_dir" CI=true bash "$verify_script" 2>&1)"
     printf '%s' "$output" >ci-output.txt
     (git config --local --get core.hooksPath || true) >hooks-path.txt
   )
@@ -477,7 +516,7 @@ run_verify_recorder_failure_does_not_mask_status_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
   touch "${repo_dir}/timing-state-is-a-file"
 
   (
@@ -507,7 +546,7 @@ run_verify_interrupted_timing_case() {
 
   init_repo "$repo_dir"
   write_verify_test_fixture "$repo_dir" "$fake_bin"
-  write_rust_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
+  write_line_file "${repo_dir}/packages/open-bitcoin-foo/src/lib.rs" 40
 
   (
     cd "$repo_dir"
@@ -536,6 +575,7 @@ run_verify_interrupted_timing_case() {
 
 run_positive_case
 run_negative_case
+run_limit_boundary_case
 run_scope_case
 run_verify_integration_case
 run_verify_success_timing_case

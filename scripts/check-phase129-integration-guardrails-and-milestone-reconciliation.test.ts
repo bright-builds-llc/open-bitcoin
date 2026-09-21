@@ -31,6 +31,7 @@ const SPLIT_CORPUS_FILES = new Set([
   "packages/open-bitcoin-cli/tests/operator_flows.rs",
   "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+  "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs",
 ]);
 
 const FIXTURE_FILES = [

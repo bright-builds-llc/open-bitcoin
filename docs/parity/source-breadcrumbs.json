@@ -171,7 +171,15 @@
         "packages/open-bitcoin-chainstate/src/engine/tests/disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_out.rs",
         "packages/open-bitcoin-chainstate/src/engine/tests/script_num_helper_covers_negative_and_high_bit_cases.rs",
         "packages/open-bitcoin-chainstate/src/types.rs",
-        "packages/open-bitcoin-chainstate/tests/parity.rs"
+        "packages/open-bitcoin-chainstate/tests/parity.rs",
+        "packages/open-bitcoin-chainstate/src/coins/tests/cache_lookup_and_view.rs",
+        "packages/open-bitcoin-chainstate/src/coins/tests/view_errors_size_and_admission.rs",
+        "packages/open-bitcoin-chainstate/src/coins/tests/flush/none_mode.rs",
+        "packages/open-bitcoin-chainstate/src/coins/tests/flush/policy_time_and_accessors.rs",
+        "packages/open-bitcoin-chainstate/src/coins/tests/flush/matrix_modes.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests/apply_non_coinbase_transaction_returns_fee_and_records_undo/apply_and_connect_errors.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests/apply_non_coinbase_transaction_returns_fee_and_records_undo/connect_snapshot_and_cache.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests/apply_non_coinbase_transaction_returns_fee_and_records_undo/staged_connect_and_reorg.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/coins.h",
@@ -1292,7 +1300,10 @@
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs",
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests.rs",
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/durability.rs",
-        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/error_map.rs"
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/error_map.rs",
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/initialize.rs",
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/execute_flush.rs",
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/recovery_and_persist.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/node/chainstate.cpp",
@@ -1364,7 +1375,10 @@
       "label": "node-network-announcement-transport",
       "files": [
         "packages/open-bitcoin-node/src/network/announcement_transport.rs",
-        "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs"
+        "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs",
+        "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases/receipt_credit.rs",
+        "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases/classification_and_outbox.rs",
+        "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases/tx_emission.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net.cpp",
@@ -1502,7 +1516,8 @@
         "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_target_cases.rs",
         "packages/open-bitcoin-node/src/network/tests/resource_governance.rs",
         "packages/open-bitcoin-node/src/network/tests/runtime_projection.rs",
-        "packages/open-bitcoin-node/src/network/tests/transaction_relay.rs"
+        "packages/open-bitcoin-node/src/network/tests/transaction_relay.rs",
+        "packages/open-bitcoin-node/src/network/tests/block_serving/getdata_serving.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/net_processing.cpp",
@@ -1708,6 +1723,8 @@
         "packages/open-bitcoin-node/src/sync/tests/reorg_reconciliation.rs",
         "packages/open-bitcoin-node/src/sync/tests/restart_and_recovery.rs",
         "packages/open-bitcoin-node/src/sync/tests/restart_chainstate.rs",
+        "packages/open-bitcoin-node/src/sync/tests/restart_chainstate/download_and_invalid_body.rs",
+        "packages/open-bitcoin-node/src/sync/tests/restart_chainstate/persist_and_hydrate.rs",
         "packages/open-bitcoin-node/src/sync/tests/restart_resume_matrix.rs",
         "packages/open-bitcoin-node/src/sync/tests/status_projection.rs",
         "packages/open-bitcoin-node/src/sync/tests/stay_current_persistence.rs",
@@ -1843,8 +1860,10 @@
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/confirmation_migration.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/load_limits.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/reopen.rs",
-      "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/write_execution_failures.rs",
-        "packages/open-bitcoin-node/src/storage/fjall_store/tests/wallet_persistence.rs"
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/snapshot_persistence/write_execution_failures.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/wallet_persistence.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/chainstate_wallet_and_headers.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/mempool_codec.rs"
       ],
       "breadcrumbs": []
     },
