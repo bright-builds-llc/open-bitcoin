@@ -94,13 +94,29 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| | | |
+| SNAP-01 | Phase 146 | Pending |
+| PRUN-01 | Phase 147 | Pending |
+| PRUN-02 | Phase 147 | Pending |
+| PRUN-03 | Phase 147 | Pending |
+| LOCK-01 | Phase 147 | Pending |
+| UNLK-01 | Phase 148 | Pending |
+| UNLK-02 | Phase 148 | Pending |
+| UNLK-03 | Phase 148 | Pending |
+| SERV-01 | Phase 149 | Pending |
+| SERV-02 | Phase 149 | Pending |
+| SERV-03 | Phase 149 | Pending |
+| LABL-01 | Phase 149 | Pending |
+| OPER-01 | Phase 150 | Pending |
+| OPER-02 | Phase 150 | Pending |
+| OPER-03 | Phase 150 | Pending |
+| LOCK-02 | Phase 150 | Pending |
+| GRD-01 | Phase 151 | Pending |
 
 **Coverage:**
 - v2.4 requirements: 17 total
-- Mapped to phases: 0
-- Unmapped: 17
+- Mapped to phases: 17
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-09-21*
-*Last updated: 2026-09-21 after v2.4 scope confirmation*
+*Last updated: 2026-09-21 after v2.4 roadmap creation*

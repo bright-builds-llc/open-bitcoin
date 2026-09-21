@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: defining requirements
-stopped_at: Milestone v2.4 started
-last_updated: "2026-09-21T18:10:00.000Z"
+status: roadmap created / ready to plan
+stopped_at: Roadmap created for Phases 146–151
+last_updated: "2026-09-21T20:30:00.000Z"
 last_activity: 2026-09-21
 progress:
-    total_phases: 0
+    total_phases: 6
     completed_phases: 0
     total_plans: 0
     completed_plans: 0
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Defining v2.4 requirements
+**Current focus:** Phase 146 — Wallet Leftover-Snapshot Cutover (ready to discuss/plan)
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: Not started (defining requirements)
+Phase: 146 of 151 — Wallet Leftover-Snapshot Cutover (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-09-21 — Milestone v2.4 started
+Status: Roadmap created / ready to plan
+Last activity: 2026-09-21 — v2.4 roadmap created (Phases 146–151)
 
 Progress: [░░░░░░░░░░] 0%
 
-Next action: Choose whether to research prune-mode behavior before defining v2.4 requirements.
+Next action: `/gsd-discuss-phase 146`
 
 ## Performance Metrics
 
@@ -152,9 +152,12 @@ Next action: Choose whether to research prune-mode behavior before defining v2.4
 
 - Phase 133.1 inserted after Phase 133: Bright Builds Verification Baseline Cleanup (URGENT)
 - v2.3 roadmap continues numbering after Phase 138; Phases 139–145 own the 15 v2.3 requirements.
+- v2.4 roadmap continues numbering after Phase 145; Phases 146–151 own the 17 v2.4 requirements.
 
 ### Decisions
 
+- [v2.4 roadmap]: Phases continue at 146; historical `.planning/phases/` stay tracked; Fjall key deletion is the unlink substrate (no `blk`/`rev` store).
+- [v2.4 roadmap]: Six phases follow dependency order: wallet cutover → pure prune policy/locks → Fjall unlink/have-pruned → limited serving/labels → operator surfaces → parity/no-claim guardrails.
 - [v2.4 milestone]: Initialized through `/gsd-new-milestone` after the archived v2.3 closeout. Phase numbering continues at 146. Historical `.planning/phases/` directories stay tracked.
 - [v2.4 milestone]: Scope is Knots-aligned prune for the single active chainstate: height windows, file unlinking, `m_have_pruned`, prune locks, and `NODE_NETWORK_LIMITED`.
 - [v2.4 milestone]: Emit `Pruned` only after prune deletes files. A missing payload without prune stays `Unavailable`.
@@ -457,7 +460,7 @@ Next action: Choose whether to research prune-mode behavior before defining v2.4
 - Keep historical `.planning/phases/` directories tracked because repository verifiers consume selected evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance.
 - Preserve existing explicit relay activation and public-network opt-in boundaries.
-- Keep prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production claims deferred.
+- Keep archive-node serving, assumeutxo, compact-filter serving, public defaults, and production claims deferred beyond v2.4 prune scope.
 
 ### Blockers/Concerns
 
@@ -478,6 +481,6 @@ Next action: Choose whether to research prune-mode behavior before defining v2.4
 
 ## Session Continuity
 
-Last session: 2026-09-21T18:10:00.000Z
-Stopped at: Milestone v2.4 started — defining requirements
-Resume file: `.planning/PROJECT.md`
+Last session: 2026-09-21T20:30:00.000Z
+Stopped at: v2.4 roadmap created — Phases 146–151 ready to discuss/plan
+Resume file: `.planning/ROADMAP.md`
