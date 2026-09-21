@@ -384,22 +384,25 @@ let chainstate_store = durable_chainstate.map_or_else(
 | A2 | No live external service config embeds leftover snapshot authority outside the datadir. | Runtime State Inventory | If an out-of-repo operator harness caches leftover snapshots, docs would need a note (still no blob delete). |
 | A3 | “History” in success criteria means wallet tip/UTXO state, not a separate tx-history DB. | Code Examples | If a hidden history store exists outside wallet crate naming, tests must cover it too — none found in-repo. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Does SNAP-01 require cutting durable RPC `rescanblockchain` in the same phase?**
    - What we know: Locked text names `WalletRescanRuntime`; CONTEXT integration notes claim RPC flows through it, but code does not. RPC durable init still loads leftover. [VERIFIED]
    - What's unclear: Whether planner treats RPC as mandatory SNAP-01 scope or a follow-on micro-task inside 146.
    - Recommendation: **Include it in Phase 146** — otherwise operator-facing wallet rescan still violates SNAP-01 wording. Prefer routing durable named-wallet rescan through `WalletRescanRuntime` after that runtime is coins-backed, or change durable RPC snapshot seed to `hydrate_chainstate_for_open`.
+   - **RESOLVED:** Durable RPC cutover is in Phase 146. Plan 02 seeds `ManagedRpcContext` from `wallet_scan_chainstate_snapshot` (same fail-closed coins + `chain_meta` helper as Plan 01) and applies the same `has_block` payload-present gate on the durable named-wallet `rescanblockchain` path before a successful rescan.
 
 2. **Should wallet assembly refuse leftover `chain_meta` fallback entirely?**
    - What we know: `load_hydrate_chain_meta` can read leftover `active_chain` when `chain_meta` missing. [VERIFIED]
    - What's unclear: Whether any supported datadir can have coins without `chain_meta` after Phase 141.
    - Recommendation: On the wallet path, require `chain_meta` (or derive positions only from coins B + headers) and fail closed — do not use leftover meta for tip.
+   - **RESOLVED:** Wallet path fails closed without leftover `chain_meta` fallback. Both `WalletRescanRuntime` and durable RPC seed use `wallet_scan_chainstate_snapshot`, which loads `load_chain_meta_for_open` only and returns `Err` when coins are nonempty but meta/`active_chain` is missing or tip disagrees with coins best-block — never `load_hydrate_chain_meta` leftover tip.
 
 3. **How strictly must payload bytes be “used” vs merely present?**
    - What we know: Current `rescan_chainstate` does not decode block bodies; D-04/D-08 require creating-block payload present. [VERIFIED]
    - What's unclear: Whether planners expect scanning scripts from block bodies in this phase.
    - Recommendation: **Presence gate only** for SNAP-01; do not invent block-body wallet history scanning here (out of scope / not present today).
+   - **RESOLVED:** Presence gate only (`has_block` / payload bytes present). No full block-body history scan in Phase 146; missing payload fails the chunk/RPC rescan closed with `missing block payload` and stays Unavailable (not Pruned).
 
 ## Environment Availability
 
