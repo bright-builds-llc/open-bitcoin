@@ -1,277 +1,250 @@
 # Architecture Research
 
-**Domain:** Open Bitcoin chainstate durability integration
-**Researched:** 2026-08-29
-**Confidence:** HIGH for current Open Bitcoin core/shell seams and pinned Knots coins/manager APIs; MEDIUM for the exact Fjall per-coin key schema and crash-atomic batch contract until a later phase researches those details
+**Domain:** Open Bitcoin v2.4 prune-mode product behavior (single chainstate)
+**Researched:** 2026-09-21
+**Confidence:** HIGH for Open Bitcoin core/shell seams and pinned Knots prune/serving APIs read in-tree; MEDIUM for exact Fjall delete-batch atomicity and height-to-key grouping until a later phase pins those contracts
 
 ## Recommendation
 
-Keep coins policy, cache flags, and flush *decisions* in `open-bitcoin-chainstate`. Keep Fjall, filesystem, clocks, and persist execution in `open-bitcoin-node`. Do not put Fjall or filesystem calls in the chainstate crate.
+Keep prune **decisions** I/O-free. Keep Fjall key deletes, durable `have_pruned` flag writes, and any filesystem effects in `open-bitcoin-node` adapters. Do not move I/O into `open-bitcoin-chainstate`. Do not add a second chainstate, assumeutxo, or archive mode.
 
-Replace the current “clone the whole UTXO map, then write one `snapshot` blob” path with a Knots-shaped layered view: a typed coins-view contract, an in-memory dirty/fresh cache, a Fjall-backed disk view, and a manager that chooses flush points and rebuilds the cache on restart. Block-serving availability must become a payload-present fact, not a hardcoded `durable_availability: true`.
+Cut wallet leftover-snapshot reads **first** so prune cannot resurrect snapshot bytes as chain truth. Then add typed height-window / lock / `m_have_pruned` policy, then execute deletes, then project `NODE_NETWORK_LIMITED` serving limits and honest `Pruned` labels, then close with operator evidence and no-claim guardrails.
 
-v2.3 is a single active chainstate. Do not port assumeutxo dual-chainstate, prune product modes, or LevelDB.
+Open Bitcoin stores block payloads as per-hash Fjall keys (`FjallNodeStore::save_block` / `has_block`), not Knots `blk?????.dat` flat files. Behavioral parity is height windows, locks, have-pruned, serving limits, and honest labels — not a line-for-line block-file layout.
 
 ## Standard Architecture
 
 ### System Overview
 
 ```
-┌──────────────────────────────────────────────────────────────────────────┐
-│ Effectful entry points                                                    │
-│ open-bitcoind | DurableSyncRuntime | inbound getdata | RPC/CLI/status     │
-└───────────────────────────────┬──────────────────────────────────────────┘
-                                │ typed commands + injected time/size/mode
-┌───────────────────────────────▼──────────────────────────────────────────┐
-│ Node shell: ManagedChainstate + DurableSyncRuntime                       │
-│ ┌────────────────────────┐  ┌─────────────────────────────────────────┐  │
-│ │ Flush orchestration    │  │ Honest availability                     │  │
-│ │ flush points           │  │ payload-present? → Available            │  │
-│ │ restart cache init     │  │ missing payload  → Unavailable/NotFound │  │
-│ │ persist execution      │  │ never claim Available without bytes     │  │
-│ └───────────┬────────────┘  └──────────────────┬──────────────────────┘  │
-└─────────────┼──────────────────────────────────┼─────────────────────────┘
-              │ decisions (pure)                 │ load_block / has_payload
-┌─────────────▼──────────────────────────────────┼─────────────────────────┐
-│ Pure core: open-bitcoin-chainstate             │                         │
-│ CoinsView contract | CoinsCache | FlushPolicy  │                         │
-│ connect / disconnect / reorg against the view  │                         │
-│ (no Fjall, no fs, no clock)                    │                         │
-└─────────────┬──────────────────────────────────┼─────────────────────────┘
-              │ BatchWrite / GetCoin             │
-┌─────────────▼──────────────────────────────────▼─────────────────────────┐
-│ Fjall (existing store, new coins keys)                                    │
-│ chainstate: per-outpoint coins + best-block + head-blocks                │
-│ block_index: per-hash block payloads (already stored)                    │
-│ headers / runtime / schema: unchanged roles                              │
-└──────────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ Effectful entry points                                                        │
+│ open-bitcoind | DurableSyncRuntime | inbound getdata/getblocks | RPC/CLI     │
+└──────────────────────────────────┬───────────────────────────────────────────┘
+                                   │ typed prune + serve commands
+┌──────────────────────────────────▼───────────────────────────────────────────┐
+│ Node shell: ManagedChainstate + ManagedPeerNetwork + FjallNodeStore          │
+│ ┌─────────────────────────┐  ┌────────────────────────┐  ┌─────────────────┐ │
+│ │ FlushLifecycle + prune  │  │ Unlink adapter         │  │ Serving project │ │
+│ │ orchestrate decide →    │  │ delete block/undo keys │  │ NETWORK_LIMITED │ │
+│ │ persist flag → unlink   │  │ set have_pruned        │  │ Pruned label    │ │
+│ └───────────┬─────────────┘  └───────────┬────────────┘  └────────┬────────┘ │
+└─────────────┼────────────────────────────┼────────────────────────┼──────────┘
+              │ decisions (pure)           │ has_block / delete     │ facts
+┌─────────────▼────────────────────────────┼────────────────────────┼──────────┐
+│ Pure core                                                                  │
+│ open-bitcoin-chainstate: height window, prune locks, decide-what-to-prune  │
+│ open-bitcoin-network: BlockServingDataAvailability, ServiceFlags, gates    │
+│ (no Fjall, no fs, no unlink)                                               │
+└─────────────┬────────────────────────────┼────────────────────────┼──────────┘
+              │ coins best-block           │                        │
+┌─────────────▼────────────────────────────▼────────────────────────▼──────────┐
+│ Fjall                                                                        │
+│ coins: per-outpoint + best-block   block_index: block:<hex> payloads         │
+│ chainstate: undo keys + leftover snapshot blob (non-authoritative)           │
+│ prune meta: durable have_pruned (+ lock records as needed)                   │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
-| Component | Change | Responsibility | Typical implementation |
-|-----------|--------|----------------|------------------------|
-| `CoinsView` contract | New | Get/Have coin, best-block, batch write, optional cursor | Pure trait in `open-bitcoin-chainstate` |
-| `CoinsCache` | New | Dirty/fresh overlay, `Flush` vs `Sync`, cache-size facts | Pure cache over a parent view |
-| `FlushPolicy` | New | Decide none / if-needed / periodic / always, empty-cache vs retain | Pure function of injected time, size, mode |
-| `Chainstate` engine | Modify | Apply connect/disconnect/reorg to a view instead of cloning `HashMap` | Keep consensus/undo rules; stop owning the live UTXO map |
-| `MemoryCoinsView` | New (replaces snapshot store role) | In-memory parent for tests and prepare overlays | Hash map + best-block; no I/O |
-| `FjallCoinsView` | New | Disk-backed parent: per-outpoint coins, best-block, head-blocks | `open-bitcoin-node` adapter only |
-| `ManagedChainstate` | Modify | Own cache lifecycle, flush points, restart init | Shell orchestration; execute policy, do not invent policy |
-| `ChainstateStore` | Modify | Evolve from full-snapshot load/save to view attach + flush | Keep test memory impl; stop treating snapshot as durable truth |
-| `FjallNodeStore` | Modify | Add coins keyspace ops; keep `save_block` / `load_block` | Do not write a complete UTXO blob after every connect |
-| `DurableSyncRuntime` | Modify | Flush coins + headers on progress; hydrate cache, not full map | Attach Fjall view; do not reload entire UTXO into RAM |
-| `ManagedPeerNetwork` | Modify | Consume manager + payload-present facts | Keep `MemoryCoinsView` in hermetic tests |
-| Block serving / inbound wire | Modify | Label Available only when payload exists | Gate before serve; `NotFound` when lookup misses |
-| Wallet rescan | Modify | Read coins through a view or cursor, not a full snapshot blob | Keep chunking; stop requiring `load_chainstate_snapshot()` |
-| RPC / CLI / status / parity | Modify | Project flush, recovery, and honest availability | One authoritative snapshot; no second coins truth |
-
-## New vs Modified
-
-### New (add these)
-
-| Piece | Lives in | Why new |
-|-------|----------|---------|
-| `CoinsView` / `CoinsCacheEntry` / batch-write cursor types | `open-bitcoin-chainstate` | Current engine has no view layer; Knots `CCoinsView` / `CCoinsViewCache` is the missing contract |
-| Flush policy types (`FlushMode`, cache-size state, flush vs sync) | `open-bitcoin-chainstate` | Policy must stay pure and unit-testable |
-| `MemoryCoinsView` | `open-bitcoin-chainstate` or node test adapter | Tests and prepare overlays need a parent that is not Fjall |
-| `FjallCoinsView` + coins codec | `open-bitcoin-node` `storage/` | Disk parent; Fjall stays in the shell |
-| Cache-lifecycle commands on the manager | `open-bitcoin-node` `chainstate.rs` | Restart-safe init, flush points, shutdown flush |
-| Payload-present availability fact | node/network + RPC inbound | Today durable serving hardcodes `durable_availability: true` |
-
-### Modified (do not fork)
-
-| Piece | What changes | What stays |
-|-------|--------------|------------|
-| `Coin`, `TxUndo`, `BlockUndo`, `ChainPosition` | Serialization/metadata only as needed for disk coins | Domain meaning stays |
-| `Chainstate` connect/disconnect/reorg | Apply against a cache/view | Contextual validation, undo order, BIP30 overwrite reject |
-| `ChainstateSnapshot` | Test/migration/export helper, not durable truth | Keep for fixtures and one-time snapshot→coins migration |
-| `ManagedChainstate` persist-after-every-mutation | Become policy-driven flush | prepare/commit remains; implement with a child cache, not a full clone |
-| `MemoryChainstateStore` | Become or wrap `MemoryCoinsView` | Hermetic tests keep an in-memory parent |
-| `FjallNodeStore::save_chainstate_snapshot` | Retire as the live write path | Keep decode for migration from existing datadirs |
-| `DurableSyncRuntime::persist_progress` | Flush coins cache + headers, not a UTXO blob | Still persist headers/runtime metadata |
-| `DurableSyncRuntime::open` | Attach disk view + init cache after DB health check | Still load headers; still seed `ManagedPeerNetwork` |
-| `managed_block_serve_input` | Availability from payload-present, not a bool default | Existing status/eligibility classifiers stay |
-| `docs/parity/catalog/chainstate.md` | Close the known disk-backed / manager gap | Keep existing connect/disconnect/reorg claims |
-
-### Do not add
-
-| Anti-feature | Why |
-|--------------|-----|
-| Fjall, `std::fs`, Tokio, or wall clock in `open-bitcoin-chainstate` | Bright Builds functional-core rule; quality gate |
-| LevelDB / `CCoinsViewDB` port | Storage decision is Fjall |
-| Assumeutxo / second `Chainstate` / snapshot chain | Out of scope for v2.3 |
-| Prune or archive product modes | Later milestone; keep the `Pruned` *label* only as “active but payload absent” if still needed |
-| A second coins authority beside `ManagedChainstate` | Same failure mode v2.2 already forbade for mempool |
+| Component | Responsibility | Typical implementation |
+|-----------|----------------|------------------------|
+| `WalletRescanRuntime` | Rescan from coins/headers/blocks, never leftover snapshot | Modify `packages/open-bitcoin-node/src/sync/wallet_rescan.rs` |
+| Pure prune policy | Height window, target, locks → set of deletable hashes/ranges | New I/O-free types + functions (prefer `open-bitcoin-chainstate` prune module) |
+| `ManagedChainstate` / `FlushLifecycle` | Single-chainstate orchestration: flush coins, then apply prune decision | Modify `packages/open-bitcoin-node/src/chainstate.rs` + `flush_lifecycle.rs` |
+| `FjallNodeStore` | Payload probe (`has_block`), save/load, **delete** block/undo keys, persist `have_pruned` | Modify `storage/fjall_store.rs` + `blocks.rs` + coins undo helpers |
+| Availability classifier | `Available` iff bytes present; `Pruned` only after prune deleted; else `Unavailable` | Modify `ManagedPeerNetwork::managed_block_serve_input` (`network/inventory.rs`) + pure `BlockServingDataAvailability` |
+| Service-flag projector | Advertise `NETWORK` vs `NETWORK_LIMITED` from prune mode | Modify `ServiceFlags` in `open-bitcoin-network/src/message.rs` + local peer config |
+| Serving gates | Tip-distance limit + stop `getblocks` when pruned/too-old | Modify block-serving / peer inventory path; mirror Knots `net_processing.cpp` |
+| Operator evidence | Sanitized prune/have-bytes/serving evidence; last-gate no-claim | Modify status/metrics/CLI + claim checkers |
 
 ## Recommended Project Structure
 
 ```
-packages/open-bitcoin-chainstate/src/
-├── engine.rs                 # Modify: apply connect/disconnect/reorg to a view
-├── types.rs                  # Keep Coin / undo / position; snapshot becomes helper
-├── coins.rs                  # New: CoinsView, cache entry flags, cursor types
-├── coins/
-│   ├── cache.rs              # New: dirty/fresh cache, Flush vs Sync
-│   ├── memory.rs             # New: MemoryCoinsView
-│   └── flush.rs              # New: FlushMode, cache-size state, decide_flush
-└── error.rs                  # Modify: view/cache/flush typed errors
-
-packages/open-bitcoin-node/src/
-├── chainstate.rs             # Modify: manager orchestration, cache lifecycle
-├── storage.rs                # Modify: namespace/schema notes for coins keys
-├── storage/
-│   ├── fjall_store.rs        # Modify: coins get/batch/best-block; keep save_block
-│   ├── coins_codec.rs        # New: per-outpoint encode/decode
-│   └── snapshot_codec.rs     # Modify: migration read of legacy snapshot blob
-├── network/
-│   ├── inventory.rs          # Modify: payload-present availability
-│   └── block_serving.rs      # Keep classifiers; feed honest facts
-└── sync/
-    ├── runtime_state.rs      # Modify: persist_progress flushes coins
-    └── wallet_rescan.rs      # Modify: read through view/cursor
-
-packages/open-bitcoin-rpc/src/context/inbound_wire.rs
-                              # Modify: refuse when load_block is None
-docs/parity/catalog/chainstate.md
-                              # Modify: disk coins + manager + availability
+packages/
+├── open-bitcoin-chainstate/src/
+│   ├── coins/flush.rs              # existing I/O-free flush policy (keep)
+│   └── prune/                      # NEW: height window, locks, prune decision types
+│       ├── policy.rs               # decide files/hashes to prune (pure)
+│       ├── locks.rs                # PruneLockInfo-shaped facts + forbid check
+│       └── have_pruned.rs          # typed flag transition (decision only)
+├── open-bitcoin-network/src/
+│   ├── message.rs                  # MODIFY: ServiceFlags::NETWORK_LIMITED
+│   └── block_serving.rs            # MODIFY: wire Pruned into live classification
+├── open-bitcoin-node/src/
+│   ├── sync/wallet_rescan.rs       # MODIFY FIRST: drop load_chainstate_snapshot truth
+│   ├── chainstate.rs               # MODIFY: ManagedChainstate prune orchestration
+│   ├── chainstate/flush_lifecycle.rs  # MODIFY: flush-then-prune hook points
+│   ├── storage/fjall_store/
+│   │   ├── blocks.rs               # MODIFY: has_block + delete_block
+│   │   └── coins.rs                # MODIFY: delete_undo alongside block prune
+│   ├── network/inventory.rs        # MODIFY: Pruned vs Unavailable facts
+│   ├── network/block_serving.rs    # MODIFY: gates + NETWORK_LIMITED distance
+│   └── status/                     # MODIFY: prune evidence surfaces
+└── bitcoin-knots/src/              # pinned baseline only (read, do not port wholesale)
+    ├── node/blockstorage.{h,cpp}
+    ├── validation.cpp / validation.h
+    ├── net_processing.cpp
+    └── protocol.h
 ```
 
 ### Structure Rationale
 
-- **`open-bitcoin-chainstate/coins*`:** Mirrors Knots `coins.h` / `coins.cpp` without importing their I/O. Policy and cache flags live next to the UTXO engine that already cites those breadcrumbs.
-- **`open-bitcoin-node/storage`:** Already owns Fjall keyspaces, `PersistMode`, schema, and recovery markers. Coins keys belong here, not in a new crate.
-- **`ManagedChainstate` stays in the node crate:** It is already the imperative shell around the pure engine. Growing it into a flush manager is a modification, not a new service.
-- **RPC inbound stays a lookup adapter:** `DurableBlockSource::load_block` already exists. Honesty is feeding it a true presence fact *before* labeling Available, then still refusing on `None`.
+- **`open-bitcoin-chainstate/prune/`:** Mirrors the v2.3 flush-policy pattern — decisions stay unit-testable and free of Fjall. Knots puts `FindFilesToPrune` on `BlockManager`; Open Bitcoin adapts that to height→hash/key selection without importing filesystem APIs into the core crate.
+- **`open-bitcoin-node` adapters:** Own all deletes and durable flag writes, same as `FlushLifecycle` executes `decide_flush` today.
+- **`open-bitcoin-network`:** Already owns `BlockServingDataAvailability::{Available, Pruned, Unavailable}` and serving gates; v2.4 makes `Pruned` live instead of reserved.
+- **Do not add** a second chainstate package path, LevelDB importer, or archive-serving crate.
 
 ## Architectural Patterns
 
-### Pattern 1: Layered coins view (Knots `CoinsViews`, Fjall instead of LevelDB)
+### Pattern 1: Decide → Persist Flag → Unlink (Knots FlushStateToDisk shape)
 
-**What:** A parent view is the durable coin set. A child cache answers hits in memory and records dirty/fresh mutations. `Flush` writes dirty coins and empties the cache. `Sync` writes dirty coins and keeps unspent entries cached.
-
-**When to use:** Every production connect/disconnect/reorg, and every test that claims restart safety.
-
-**Trade-offs:** Extra types and a batch-write protocol. Avoids cloning the whole UTXO set per block and rewriting one giant snapshot blob. Matches pinned Knots `CCoinsView` / `CCoinsViewCache` / `CoinsViews` in `validation.h`.
+**What:** Pure policy returns a prune plan; shell writes `have_pruned` when the plan is non-empty; shell deletes payloads last.
+**When to use:** Every automatic or manual prune event on the single active chainstate.
+**Trade-offs:** Matches Knots ordering in `Chainstate::FlushStateToDisk` (find files → set `m_have_pruned` → write index → `UnlinkPrunedFiles`). Slightly more ceremony than delete-first, but prevents “bytes gone, flag never set” and keeps crash stories auditable.
 
 **Example:**
-
 ```rust
-pub trait CoinsView {
-    fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError>;
-    fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError>;
-    fn best_block(&self) -> Option<BlockHash>;
-    fn batch_write(
-        &mut self,
-        writes: CoinsBatch,
-        best_block: BlockHash,
-    ) -> Result<(), ChainstateError>;
-}
-
-pub struct CoinsCache<V> {
-    parent: V,
-    entries: HashMap<OutPoint, CoinsCacheEntry>,
-    best_block: Option<BlockHash>,
+// Pure (open-bitcoin-chainstate)
+let plan = decide_prune(PrunePolicyInput { tip_height, target_bytes, locks, candidates });
+// Shell (ManagedChainstate / FlushLifecycle)
+if !plan.is_empty() {
+    store.set_have_pruned(true)?;
+    store.delete_block_payloads(&plan.hashes_to_delete)?;
 }
 ```
 
-The parent in production is `FjallCoinsView`. The parent in tests is `MemoryCoinsView`. `prepare_connect` uses a child cache over the live cache, then commits by `Flush` into the parent cache — not by cloning `Chainstate`.
+### Pattern 2: Payload Facts Drive Labels (extend v2.3 honesty)
 
-### Pattern 2: Injected-fact flush policy
-
-**What:** A pure function returns `FlushDecision { write: Flush \| Sync \| None, empty_cache: bool }` from `FlushMode`, cache-size state, last-flush age, and prune-for-later=false.
-
-**When to use:** After connect/reorg, on periodic sync ticks, on clean shutdown, and before restart-sensitive availability claims.
-
-**Trade-offs:** Callers must inject time and size. That is required: the core must not read a clock. Knots `FlushStateToDisk` uses `FlushStateMode::{NONE, IF_NEEDED, PERIODIC, ALWAYS}` and empties the cache only when the mode is ALWAYS or the cache is large/critical (or prune — out of scope). Prefer `Sync` for periodic writes so the working set stays warm.
+**What:** Serving labels remain a pure function of typed facts. Today `managed_block_serve_input` maps `payload_present → Available else Unavailable` and never emits `Pruned`. After prune product behavior, facts must include `have_pruned` / “deleted by prune” so missing-without-prune stays `Unavailable`.
+**When to use:** Every `getdata` / compact serve / inventory eligibility path.
+**Trade-offs:** Requires durable prune metadata; cannot infer `Pruned` from absence alone (v2.3 deliberately forbids that).
 
 **Example:**
-
 ```rust
-pub enum FlushMode {
-    None,
-    IfNeeded,
-    Periodic,
-    Always,
-}
-
-pub fn decide_flush(input: FlushPolicyInput) -> FlushDecision {
-    // empty_cache only for Always or CacheSizeState::{Large, Critical}
-}
+let data_availability = match (payload_present, deleted_by_prune) {
+    (true, _) => BlockServingDataAvailability::Available,
+    (false, true) => BlockServingDataAvailability::Pruned,
+    (false, false) => BlockServingDataAvailability::Unavailable,
+};
 ```
 
-The shell maps `PersistMode::{Buffered, Flush, Sync}` onto Fjall durability *after* the policy decides *whether* to write.
+### Pattern 3: Service-Flag Projection Separate From Storage
 
-### Pattern 3: Restart-safe cache lifecycle
-
-**What:** Knots initializes the disk view first, verifies it, then `InitCoinsCache`, then `LoadChainTip` from the coins view’s best block. Cache is created only after the database is healthy. Shutdown `ForceFlush` then `ResetCoinsViews`.
-
-**When to use:** `DurableSyncRuntime::open`, clean shutdown, and crash recovery.
-
-**Trade-offs:** Startup is more steps than today’s “decode one snapshot into a HashMap.” It is the only way a crash during cache residency does not invent a fake tip.
-
-Open Bitcoin mapping:
-
-1. Open Fjall and verify schema / recovery markers.
-2. Attach `FjallCoinsView` (do not create the cache yet).
-3. If coins best-block is null, start empty; else treat that hash as tip identity.
-4. Init `CoinsCache` with a configured byte budget.
-5. Rebuild active-chain metadata from headers/block-index plus coins best-block. Do not load every coin into RAM.
-6. On progress: policy → `Flush`/`Sync` → Fjall persist.
-7. On clean shutdown: `Always` flush, then drop the cache.
-
-### Pattern 4: Parse at the storage boundary
-
-**What:** Raw Fjall bytes become `Coin` / `BlockHash` in the adapter. The engine only sees domain types.
-
-**When to use:** Every coins read/write.
-
-**Trade-offs:** A coins codec to maintain. Prevents snapshot-DTO leakage into connect/reorg. Matches `standards/core/architecture.md`.
+**What:** Prune mode projects `ServiceFlags::NETWORK_LIMITED` (and clears full `NETWORK` when Knots would) independently of per-block availability. Tip-distance gates then refuse deep historical `getdata` even if a payload still exists inside the limited window policy.
+**When to use:** Version handshake / local advertisement and block-serve resource gates.
+**Trade-offs:** Decouples “we deleted old files” from “we advertise limited history,” matching BIP159 / Knots `NODE_NETWORK_LIMITED` (bit `1 << 10` in `protocol.h`).
 
 ## Data Flow
 
-### Request Flow
+### Prune Decision → Unlink → Availability → Service Flags
 
 ```
-Peer getdata / RPC / sync connect
+Tip height + usage + prune target + prune locks
+    ↓  (pure decide_prune)
+PrunePlan { hashes/ranges, should_set_have_pruned }
+    ↓  (shell)
+Persist have_pruned flag (if first delete)
     ↓
-ManagedPeerNetwork / DurableSyncRuntime
+Delete Fjall block:<hex> (+ undo) keys   ≈ Knots UnlinkPrunedFiles
     ↓
-ManagedChainstate (shell)
-    ↓  injected time, cache size, persist mode
-FlushPolicy (pure) → FlushDecision
-    ↓
-CoinsCache (pure) Get/Add/Spend or Flush/Sync
-    ↓
-FjallCoinsView or MemoryCoinsView
-    ↓
-Fjall keyspaces  |  in-memory test map
+has_block(hash) == false
+    ↓  (inventory / block_serving facts)
+BlockServingDataAvailability::Pruned   (only if have_pruned + prune deleted)
+    ↓  (peer config projection)
+ServiceFlags::NETWORK_LIMITED  (+ tip-distance refuse on getdata/getblocks)
 ```
+
+### Key Data Flows
+
+1. **Wallet rescan cutover:** `WalletRescanRuntime` stops calling `FjallNodeStore::load_chainstate_snapshot()` as authoritative UTXO/chain truth; builds rescan inputs from coins best-block, headers, and present block payloads (or fails closed when payload missing).
+2. **Automatic prune on flush:** `FlushLifecycle` / `ManagedChainstate::flush_with_mode` — after coins flush points analogous to Knots `FlushStateToDisk` — asks pure policy for a plan, then shell unlinks.
+3. **Manual prune:** RPC/operator command supplies a height; same pure `GetPruneRange`-shaped window (`tip - MIN_BLOCKS_TO_KEEP`, locks) into the same unlink adapter.
+4. **Serve path:** `has_block` + prune metadata → `BlockServingStatusLabel`; `NETWORK_LIMITED` distance check (`NODE_NETWORK_LIMITED_MIN_BLOCKS = 288` in Knots `net_processing.cpp`) may disconnect/refuse before storage read.
+5. **Restart:** Load durable `have_pruned`; do not resurrect deleted payloads from leftover snapshot blobs.
 
 ### State Management
 
 ```
-Live truth: CoinsCache over FjallCoinsView + coins best-block
-Active-chain metadata: headers / ChainPosition list (already persisted separately)
-Block payloads: Fjall BlockIndex per-hash keys (already exist)
-Serving label: Available only if load_block(hash) is Some
+Durable: coins best-block + per-outpoint coins + block payloads + have_pruned (+ locks)
+In-memory: ManagedChainstate cache, ManagedPeerNetwork blocks_by_hash, serving counters
+Leftover snapshot blob: non-authoritative; must not feed wallet rescan or prune honesty
 ```
 
-`ChainstateSnapshot` is no longer live truth. It may still be built for tests, wallet-rescan chunks, or one-time migration.
+## Scaling Considerations
 
-### Key Data Flows
+| Scale | Architecture adjustments |
+|-------|--------------------------|
+| Dev / short chains | Height-window policy + in-memory tests; Fjall deletes are per-hash |
+| Mainnet pruned node | Batch deletes; avoid scanning entire keyspace on every flush — maintain height-indexed candidates or file/group metadata if needed |
+| Archive / dual chainstate | Out of scope — do not add assumeutxo background chain or archive product mode |
 
-1. **Connect a block:** Validate with coins from the cache (parent miss → Fjall get). Spend inputs, add outputs, write undo, set cache best-block to the new tip. Do **not** persist yet unless policy says so. `prepare_connect` uses a child cache; `commit` flushes that child into the live cache.
+### Scaling Priorities
 
-2. **Flush / Sync:** Cache emits a dirty batch + best-block. `FjallCoinsView` writes per-outpoint keys and best-block (and head-blocks if a write is two-phase). `Flush` then empties the cache; `Sync` drops spent entries and keeps unspent hits.
+1. **First bottleneck:** Naïve “scan all block keys every prune” — mitigate with height-indexed candidate sets derived at connect time.
+2. **Second bottleneck:** Serving/CPU on tip-window traffic under `NETWORK_LIMITED` — reuse existing request caps in `evaluate_block_serving_resource_gate`.
 
-3. **Restart:** Open Fjall → attach coins view → init empty cache → tip from coins best-block, not from a reconstructed full UTXO map. Unflushed cache entries from a crash are gone; durable tip is the last successful batch.
+## Anti-Patterns
 
-4. **Persist progress today vs after:** Today `persist_progress` encodes the entire `ChainstateSnapshot` under `chainstate/snapshot` after header/connect work. After: flush dirty coins + save headers/runtime. Stop rewriting the whole UTXO set on every connected block.
+### Anti-Pattern 1: Infer Pruned From Missing Bytes
 
-5. **Honest serve:** Inventory gate asks “is the payload stored?” (`blocks_by_hash` **or** `FjallNodeStore::load_block`). Only then `BlockServingDataAvailability::Available`. RPC `resolve_block_intent` already NotFounds on `None`; the lie is labeling Available first via `durable_availability: true` in `gate_inventory_for_durable_serving`.
+**What people do:** Map `!has_block` → `Pruned`.
+**Why it's wrong:** v2.3 honesty and Knots `IsBlockPruned` require `m_have_pruned && !HAVE_DATA && nTx > 0`. Corruption or never-downloaded blocks are `Unavailable`, not pruned.
+**Do this instead:** Emit `Pruned` only when prune product behavior deleted the payload (and have_pruned is set).
 
-6. **Wallet rescan:** Today `required_chainstate_snapshot()` loads the full blob and filters by height. After: walk a coins cursor or height-indexed reads. Do not reintroduce a full-map snapshot as the rescan API.
+### Anti-Pattern 2: Unlink Inside `open-bitcoin-chainstate`
+
+**What people do:** Call Fjall/fs from the chainstate crate during `decide_prune`.
+**Why it's wrong:** Breaks functional-core policy and the repo architecture verifier contract.
+**Do this instead:** Return a `PrunePlan`; `FjallNodeStore` / flush lifecycle executes deletes.
+
+### Anti-Pattern 3: Second Chainstate Or Snapshot Shortcut
+
+**What people do:** Port Knots assumeutxo `GetPruneRange` dual-chainstart logic or keep wallet on leftover snapshots “until prune lands.”
+**Why it's wrong:** Out of scope; leftover snapshot as rescan truth lets prune resurrect stale UTXO maps.
+**Do this instead:** Single `ManagedChainstate`; wallet cutover phase first.
+
+### Anti-Pattern 4: Advertise Full `NETWORK` While Pruned
+
+**What people do:** Leave `ServiceFlags::NETWORK | WITNESS` defaults after deletes.
+**Why it's wrong:** Peers expect historical serving; Knots switches limited peers to `NODE_NETWORK_LIMITED`.
+**Do this instead:** Project limited flags and enforce tip-distance on `getdata` / stop `getblocks` when pruned or too old.
+
+## New vs Modified
+
+### New
+
+| Piece | Lives in | Why new |
+|-------|----------|---------|
+| Prune policy / height-window / target types | `open-bitcoin-chainstate` (pure) | No existing decide-what-to-prune API; Knots `FindFilesToPrune` / `GetPruneRange` |
+| `PruneLockInfo`-shaped lock table + forbid check | pure + durable shell records | Knots `m_prune_locks` / `DoPruneLocksForbidPruning` / `PRUNE_LOCK_BUFFER` |
+| Durable `have_pruned` (`prunedblockfiles` flag analogue) | `FjallNodeStore` meta | Required for honest `IsBlockPruned` and restart |
+| `delete_block` / batch unlink adapter | `FjallNodeStore` | Today only `save_block` / `load_block` / `has_block` |
+| `ServiceFlags::NETWORK_LIMITED` | `open-bitcoin-network` | Missing today (`NETWORK`, `WITNESS`, `REPLACE_BY_FEE` only) |
+| Tip-distance / getblocks-stop serving policy | network + node serving path | Knots `NODE_NETWORK_LIMITED_MIN_BLOCKS` / prune stop in `getblocks` |
+
+### Modified
+
+| Piece | Path / type | Change |
+|-------|-------------|--------|
+| `WalletRescanRuntime` | `sync/wallet_rescan.rs` | Stop `required_chainstate_snapshot` → `load_chainstate_snapshot`; use coins + headers + payloads |
+| RPC rescan helper | `open-bitcoin-rpc/src/context/rescan.rs` | Same cutover for `partial_chainstate_snapshot` consumers |
+| `ManagedChainstate` / `FlushLifecycle` | `chainstate.rs`, `flush_lifecycle.rs` | Hook prune plan execution after flush (Knots `FlushStateToDisk` order) |
+| Availability assembly | `network/inventory.rs` `managed_block_serve_input` | Pass prune facts; may emit `Pruned` |
+| `BlockServingDataAvailability` / labels | `block_serving.rs` | Activate reserved `Pruned` in live paths (already classified in pure status gates) |
+| Compact / getdata serving | `network/block_serving.rs`, announcement transport | Respect pruned + limited-window refusals |
+| Local peer / version services | `LocalPeerConfig`, runtime authority defaults | Project limited flags when prune mode active |
+| Status / metrics / CLI evidence | `status/`, `HaveBytesAccumulator`, claim checkers | Prune evidence without overclaiming archive/public defaults |
+| Tests asserting “no pruned injection” | e.g. inventory / durability tests | Flip from “must not emit Pruned” to “emit only when earned” |
+
+### Explicitly Out (do not build)
+
+| Piece | Why |
+|-------|-----|
+| Second chainstate / assumeutxo prune range split | Milestone out of scope |
+| Literal `blk?????.dat` layout + LevelDB block tree | Open Bitcoin Fjall per-hash payloads; parity is behavioral |
+| Archive mode / BIP37 / public defaults / auto destructive reindex | Milestone out of scope |
 
 ## Integration Points
 
@@ -279,158 +252,59 @@ Serving label: Available only if load_block(hash) is Some
 
 | Boundary | Communication | Notes |
 |----------|---------------|-------|
-| `Chainstate` ↔ `CoinsView` | Direct trait calls | Engine must not assume a `HashMap` or a snapshot |
-| `CoinsCache` ↔ parent view | `get_coin` / `batch_write` | Parent may be memory or Fjall; cache must not know which |
-| `FlushPolicy` ↔ `ManagedChainstate` | Pure decision in, persist out | Inject last-flush time, cache bytes, `FlushMode` |
-| `ManagedChainstate` ↔ `FjallCoinsView` | Shell-owned adapter | Only place Fjall coins I/O happens |
-| `DurableSyncRuntime` ↔ manager | Flush on progress / shutdown | Replace `save_chainstate_snapshot` as the live path |
-| `ManagedPeerNetwork` ↔ manager | Connect/reorg/tip/snapshot-for-status | `AuthoritativeNetwork` can stay generic over a store, but production must not hydrate a full in-memory UTXO map from Fjall |
-| Block serving ↔ `DurableBlockSource` | `load_block` | Presence fact must match this lookup |
-| Wallet rescan ↔ coins view | Cursor / height reads | Snapshot helper only if built from the view, not from the legacy blob |
-| Status / RPC / CLI ↔ one snapshot | Existing `OpenBitcoinStatusSnapshot` | Add flush/recovery/availability fields; do not invent a second tip |
+| `decide_prune` ↔ `FlushLifecycle` | Pure plan → shell execute | Same pattern as `decide_flush` → persist |
+| `FjallNodeStore::has_block` ↔ inventory | `bool` payload probe | Already the v2.3 honesty seam (`blocks.rs`) |
+| Prune meta ↔ `BlockServingDataAvailability` | Facts struct, not globals | Never derive Pruned from probe alone |
+| Prune mode ↔ `ServiceFlags` | Config/projection at handshake | Bit `1 << 10` per Knots `protocol.h` |
+| `ManagedChainstate` ↔ wallet rescan | Coins best-block + headers + blocks | Snapshot blob is leftover only |
+| Serving gates ↔ Knots anchors | Parity breadcrumbs | `net_processing.cpp` getdata limited threshold; getblocks prune stop |
 
-### External Services
+### External / Baseline Anchors (read)
 
-| Service | Integration Pattern | Notes |
-|---------|---------------------|-------|
-| Fjall | Existing `FjallNodeStore` keyspaces | Reuse `StorageNamespace::Chainstate`; change value layout from one `snapshot` key to per-coin keys + metadata |
-| Bitcoin Knots `29.3.knots20260210` | Behavioral reference only | Cite `coins.h`, `coins.cpp`, `validation.cpp`, `node/chainstate.cpp`, `node/blockstorage.cpp` |
-| LevelDB | Do not integrate | Intentional stack exception vs Knots |
+| Knots API | File | Role for Open Bitcoin |
+|-----------|------|------------------------|
+| `FindFilesToPrune` / `FindFilesToPruneManual` / `PruneOneBlockFile` | `node/blockstorage.cpp` | Height/usage selection + clear HAVE_DATA |
+| `UnlinkPrunedFiles` / `ScanAndUnlinkAlreadyPrunedFiles` | `node/blockstorage.cpp` | Adapter deletes after flag |
+| `m_have_pruned` / `IsBlockPruned` | `blockstorage.h/.cpp` | Honest pruned labeling |
+| `PruneLockInfo` / `DoPruneLocksForbidPruning` | `blockstorage.h/.cpp` | Lock windows + buffer 10 |
+| `FlushStateToDisk` prune branch | `validation.cpp` | Ordering: find → set flag → unlink |
+| `GetPruneRange` / `MIN_BLOCKS_TO_KEEP` (288) | `validation.cpp` / `validation.h` | Tip keep-window |
+| `NODE_NETWORK_LIMITED` | `protocol.h` | Service bit `1 << 10` |
+| Limited getdata / pruned getblocks stop | `net_processing.cpp` | Serving limits |
 
-### Current seams that make snapshot-style persist visible
+### Open Bitcoin modules cited
 
-| Seam | Today | After |
-|------|-------|-------|
-| `Chainstate` fields | `utxos: HashMap<OutPoint, Coin>` plus undo + chain | View/cache handle; undo + chain metadata remain first-class |
-| `ManagedChainstate::persist` | `save_snapshot(self.chainstate.snapshot())` after every mutation | Policy-driven flush; memory store used only in tests |
-| `DurableSyncRuntime::open` | Load snapshot blob into `MemoryChainstateStore` | Attach `FjallCoinsView`, then init cache |
-| `persist_progress` | `save_chainstate_snapshot` of the full map | Coins flush + headers + runtime metadata |
-| `gate_inventory_for_durable_serving` | `durable_availability: true` | Payload-present from store or local cache |
-| `serve_inventory` | In-memory `blocks_by_hash` only | Same honesty rule if that path can report Available |
-| Confirmation migration | Rebuild counts from stored active-chain blocks | Keep as a one-time adapter; do not depend on a UTXO blob |
+| Module | Types / functions read |
+|--------|-------------------------|
+| `open-bitcoin-network/src/block_serving.rs` | `BlockServingDataAvailability`, `BlockServingStatusLabel`, `classify_block_serving_status` |
+| `open-bitcoin-node/src/network/inventory.rs` | `managed_block_serve_input` (Available/Unavailable only today) |
+| `open-bitcoin-node/src/network/block_serving.rs` | `BlockServingPresenceFacts`, `gate_managed_block_request` |
+| `open-bitcoin-node/src/storage/fjall_store/blocks.rs` | `FjallNodeStore::has_block` |
+| `open-bitcoin-node/src/storage/fjall_store.rs` | `save_block` / `load_block` / `load_chainstate_snapshot` |
+| `open-bitcoin-node/src/chainstate.rs` | `ManagedChainstate`, `ChainstateStore`, `flush_with_mode` |
+| `open-bitcoin-node/src/chainstate/flush_lifecycle.rs` | Flush orchestration |
+| `open-bitcoin-node/src/sync/wallet_rescan.rs` | `WalletRescanRuntime`, `required_chainstate_snapshot` |
+| `open-bitcoin-network/src/message.rs` | `ServiceFlags` (needs `NETWORK_LIMITED`) |
+| `open-bitcoin-chainstate/src/coins/flush.rs` | `decide_flush` pattern to mirror |
 
-## Scaling Considerations
+## Suggested Build Order (from phase 146)
 
-This milestone scales with **UTXO set size and IBD write amplification**, not user count.
+| Phase | Focus | Why this order |
+|-------|-------|----------------|
+| **146** | Wallet leftover-snapshot cutover | Removes snapshot-as-truth before any delete; prune cannot resurrect UTXO blob |
+| **147** | Prune policy + state | Height windows, target, locks, typed `have_pruned` decisions (still I/O-free) |
+| **148** | File/key unlinking adapters | Shell executes plans: delete block/undo keys, persist flag |
+| **149** | Serving limits + `Pruned` labeling | `NETWORK_LIMITED`, tip-distance getdata, getblocks stop, honest labels |
+| **150** | Operator evidence + no-claim guardrails | Sanitized prune evidence; forbid archive/public-default/production overclaims |
 
-| Scale | Architecture adjustments |
-|-------|--------------------------|
-| Fixtures / regtest | `MemoryCoinsView` + cache; snapshot helpers in tests are fine |
-| Short public-mainnet review | Disk coins + periodic `Sync`; do not reload the full set on restart |
-| Full mainnet UTXO | Per-outpoint Fjall keys + bounded cache; snapshot blob is a non-starter |
-
-### Scaling Priorities
-
-1. **First bottleneck:** Full-map clone on every `connect_block` / `prepare_connect` and a complete snapshot write on persist. Fix with a cache overlay and incremental batch write.
-2. **Second bottleneck:** Loading the entire UTXO set into `MemoryChainstateStore` at `DurableSyncRuntime::open`. Fix with disk parent + empty cache + best-block tip.
-3. **Third bottleneck:** Serving labels that assume durable payloads exist. That does not scale to honest historical getdata; fix before operator evidence.
-
-Cache byte budget and Fjall batch atomicity need phase-level research (MEDIUM). Do not pick Knots `dbcache` defaults until that research runs.
-
-## Anti-Patterns
-
-### Anti-Pattern 1: Fjall or filesystem in `open-bitcoin-chainstate`
-
-**What people do:** Implement `FjallCoinsView` next to the engine “for convenience.”
-
-**Why it's wrong:** Breaks functional core / imperative shell, architecture-policy checks, and hermetic engine tests.
-
-**Do this instead:** Pure `CoinsView` trait + `CoinsCache` + `MemoryCoinsView`. Fjall adapter in `open-bitcoin-node/src/storage`.
-
-### Anti-Pattern 2: Keep the snapshot blob as live truth
-
-**What people do:** Write per-coin keys *and* still `save_chainstate_snapshot` after every connect.
-
-**Why it's wrong:** Two truths, double write amplification, restart will pick the wrong one.
-
-**Do this instead:** One durable coins view. Snapshot encode stays for migration and tests only.
-
-### Anti-Pattern 3: Clone `Chainstate` to prepare a connect
-
-**What people do:** Keep `prepare_connect_block` as `self.chainstate.clone()`.
-
-**Why it's wrong:** Clone copies the entire UTXO map. That is the snapshot architecture.
-
-**Do this instead:** Child `CoinsCache` over the live cache; commit is `Flush` into the parent cache.
-
-### Anti-Pattern 4: Hardcode durable availability
-
-**What people do:** `managed_block_serve_input(..., durable_availability: true)` because a later `load_block` can NotFound.
-
-**Why it's wrong:** Status/eligibility already reported Available. Operators and peers see a lie; `LookupUnavailable` is a correction, not honesty.
-
-**Do this instead:** `Available` only when `blocks_by_hash` or `load_block` has the payload. Missing payload on an active hash is Unavailable (or the existing `Pruned` label if the classifier still needs that distinction). Refuse with `NotFound`.
-
-### Anti-Pattern 5: Port Knots `CoinsViews` dual-chainstate
-
-**What people do:** Add background/snapshot chainstate because `validation.h` has it.
-
-**Why it's wrong:** Assumeutxo is explicitly out of scope. Dual tips would fork manager work.
-
-**Do this instead:** One active chainstate, one coins view stack, one best-block.
-
-### Anti-Pattern 6: Put the clock in flush policy
-
-**What people do:** `Instant::now()` inside `decide_flush`.
-
-**Why it's wrong:** Core becomes impure; tests need real time.
-
-**Do this instead:** Inject `now` and `last_flush` from the shell, same as mempool rolling-fee time.
-
-### Anti-Pattern 7: Claim a block available because the header or coins tip exists
-
-**What people do:** Treat coins best-block or header index as “we can serve this block.”
-
-**Why it's wrong:** Headers and coins can exist without the block payload. v2.3 availability is payload-present.
-
-**Do this instead:** Serving reads `FjallNodeStore::load_block` (or the in-memory cache of a stored payload). Coins tip answers “what UTXO set is this,” not “can I send `block`.”
-
-## Suggested Build Order
-
-Dependency order for roadmap phases starting at Phase 139:
-
-1. **Typed coins-view contracts** — `CoinsView`, cache-entry dirty/fresh flags, batch-write cursor, best-block, `MemoryCoinsView`. No Fjall. Engine tests can still use today’s snapshot helpers.
-
-2. **Flush policy** — Pure `FlushMode` / cache-size / `Flush` vs `Sync` decisions with injected time and size. Unit tests only.
-
-3. **Engine apply on a view** — Refactor connect/disconnect/reorg to mutate a `CoinsCache`. Keep undo and chain metadata. Replace prepare/commit clone with a child cache. Still no disk.
-
-4. **Durable Fjall adapter** — Per-outpoint coins, best-block, head-blocks, schema bump, one-way migration from the legacy `snapshot` blob. `save_block` / `load_block` unchanged. No manager rewrite yet.
-
-5. **Manager orchestration** — `ManagedChainstate` owns cache init, flush points, shutdown flush, and restart from coins best-block. `DurableSyncRuntime::open` and `persist_progress` switch off snapshot-blob writes.
-
-6. **Availability truth** — Payload-present fact into `managed_block_serve_input` and inbound `DurableBlock` gating. Active-but-missing-bytes refuses cleanly. Do not wait until docs to stop the hardcoded `true`.
-
-7. **Operator and parity evidence** — Status/RPC/CLI/dashboard/metrics/logs: flush, recovery, honest serve labels. Update `docs/parity/catalog/chainstate.md` and breadcrumbs. Keep public/production claims deferred.
-
-8. **Consumers that still load the blob** — Wallet rescan, confirmation migration leftovers, and any RPC that materializes `ChainstateSnapshot.utxos` must read the view/cursor so they cannot resurrect snapshot-as-truth.
-
-Steps 1–3 stay in the pure crate. Step 4 is the first Fjall change. Step 5 is the first runtime wiring. Step 6 can start as soon as `load_block` is the presence oracle — it does not need the coins adapter, but it must not ship *after* operator evidence that would re-document the lie.
-
-## Confidence Assessment
-
-| Area | Confidence | Notes |
-|------|------------|-------|
-| Current Open Bitcoin layout | HIGH | Read engine, `ManagedChainstate`, Fjall snapshot persist, sync open/persist, inventory, inbound wire |
-| Knots coins / manager APIs | HIGH | Official `v29.3.knots20260210` `coins.h` and `validation.h`; published Flush vs Sync behavior |
-| Fjall per-coin schema / atomic batch | MEDIUM | Needs phase research; do not copy LevelDB layout |
-| Exact flush thresholds / cache bytes | MEDIUM | Knots `dbcache` and periodic intervals should be researched before copying numbers |
-| Local `packages/bitcoin-knots` tree | LOW for file-path reads | Submodule was not materialized in this session; citations use the pinned GitHub tag |
+**Dependency rationale:** Cutover → policy → unlink → serve projection → evidence. Serving labels before unlinks would invent `Pruned` without deletes; unlinks before cutover risk rescan reading stale snapshot coins after payloads vanish.
 
 ## Sources
 
-- Open Bitcoin engine and types: `packages/open-bitcoin-chainstate/src/engine.rs`, `types.rs`, `lib.rs`
-- Node manager and snapshot store: `packages/open-bitcoin-node/src/chainstate.rs`
-- Fjall snapshot + per-hash blocks: `packages/open-bitcoin-node/src/storage.rs`, `storage/fjall_store.rs`
-- Sync hydrate/persist: `packages/open-bitcoin-node/src/sync.rs`, `sync/runtime_state.rs`
-- Serving honesty gap: `packages/open-bitcoin-node/src/network/inventory.rs` (`durable_availability: true`); `packages/open-bitcoin-rpc/src/context/inbound_wire.rs`
-- Architecture rules: `standards/core/architecture.md`, `.planning/ARCHITECTURE.md`, `.planning/PROJECT.md`
-- Parity gap: `docs/parity/catalog/chainstate.md` (disk-backed coins and full manager still listed as known gaps)
-- Pinned Knots coins API: https://github.com/bitcoinknots/bitcoin/blob/v29.3.knots20260210/src/coins.h
-- Pinned Knots chainstate / flush API: https://github.com/bitcoinknots/bitcoin/blob/v29.3.knots20260210/src/validation.h (`CoinsViews`, `CoinsTip`, `FlushStateMode`, `FlushStateToDisk`, `InitCoinsCache`)
-- Knots periodic flush retains cache via `Sync`: https://github.com/bitcoinknots/bitcoin/commit/2cafbe3796cd811826c8aa48ac26bd4bda2895a3
-- Knots post-IBD `CoinsTip().Sync()`: https://github.com/bitcoinknots/bitcoin/commit/2f1bf089f7540356daf8c88ab81341d1248ad81b
+- Open Bitcoin v2.3 seams: `ManagedChainstate`, `FlushLifecycle`, `FjallNodeStore::has_block`, `managed_block_serve_input`, `WalletRescanRuntime` (read 2026-09-21)
+- Pinned Knots `29.3.knots20260210`: `node/blockstorage.cpp/.h`, `validation.cpp` (`FlushStateToDisk`, `GetPruneRange`), `validation.h` (`MIN_BLOCKS_TO_KEEP`), `net_processing.cpp` (`NODE_NETWORK_LIMITED_*`, getdata/getblocks), `protocol.h` (`NODE_NETWORK_LIMITED`)
+- Project constraints: `.planning/PROJECT.md` v2.4 milestone scope; `.planning/ARCHITECTURE.md` package boundaries
 
 ---
-*Architecture research for: Open Bitcoin chainstate durability integration*
-*Researched: 2026-08-29*
+*Architecture research for: Open Bitcoin v2.4 prune-mode product behavior*
+*Researched: 2026-09-21*
