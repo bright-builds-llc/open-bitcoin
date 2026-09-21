@@ -16,7 +16,19 @@ v2.3 Chainstate Durability and Historical Serving shipped and was archived on 20
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
 
-No milestone is currently active. Ranked post-v2.3 candidates are recorded in [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md). Start the next version with `/gsd-new-milestone`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+v2.4 Prune-Mode Product Behavior is the active milestone. Requirements are being defined, and phase numbering continues at 146. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
+
+## Current Milestone: v2.4 Prune-Mode Product Behavior
+
+**Goal:** Add Knots-aligned prune product behavior for the single active chainstate, so the node can delete old block files inside a height window and still tell the truth about what remains.
+
+Initialized through `/gsd-new-milestone` after the archived v2.3 closeout.
+
+**Target features:**
+- Height windows, file unlinking, `m_have_pruned`, and prune locks
+- `NODE_NETWORK_LIMITED` serving limits for the pruned window
+- Emit `Pruned` only after prune actually deleted files; keep `Unavailable` for a missing payload when prune did not delete it
+- Cut wallet rescan off leftover snapshot bytes in the first phase, so prune cannot resurrect snapshot-as-truth
 
 ## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -127,11 +139,14 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 
-- [ ] Next-milestone requirements are defined through `/gsd-new-milestone`. Ranked candidates: `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production-readiness claims remain deferred.
+- [ ] Height windows, file unlinking, `m_have_pruned`, and prune locks for the single active chainstate
+- [ ] `NODE_NETWORK_LIMITED` serving limits for the pruned window
+- [ ] `Pruned` is emitted only after prune deletes files; a missing payload without prune stays `Unavailable`
+- [ ] Wallet rescan no longer reads leftover snapshot bytes, so prune cannot resurrect snapshot-as-truth
 
 ### Out of Scope
 
-The boundary keeps prune and archive product modes, assumeutxo and IBD snapshot shortcuts, compact-filter and BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond v2.3. Those exclusions remain valid after the v2.3 archive.
+The boundary keeps archive-node product modes, assumeutxo and IBD snapshot shortcuts, compact-filter and BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond the v2.4 prune scope. Prune-mode product behavior is in scope for v2.4.
 
 - Faithful Qt GUI parity or porting the upstream GUI code - shipped milestones remain terminal-first and headless.
 - Windows service integration - still deferred until a later milestone.
@@ -141,7 +156,7 @@ The boundary keeps prune and archive product modes, assumeutxo and IBD snapshot 
 - Replacing `bitcoin.conf` compatibility with an Open Bitcoin-only config format - JSONC layers on top of, not instead of, baseline config behavior.
 - Production full-node readiness, production-funds wallet use, migration apply mode, signed packaging, hosted dashboards, GUI parity, public-network CI, destructive repair, automatic support-bundle upload, and release-blocking live sync - these remain deferred to future milestones.
 - assumeutxo, assumevalid, and IBD snapshot shortcuts - v2.3 is durability and honest availability, not a sync-speed milestone.
-- Prune-mode and archive-mode product behavior, including archive-node or production-scale historical serving - later work can add those modes on top of durable coins and honest availability.
+- Archive-mode product behavior, including archive-node or production-scale historical serving - honesty about stored bytes is not an archive claim, and archive serving is the opposite operator problem from prune.
 - Public relay by default or unbounded public-network relay participation - v2.0 should keep relay activation scoped, observable, and evidence-backed until a later production-readiness milestone deliberately changes that boundary.
 - Public compact-block relay defaults or production-scale block-serving claims - v2.1 should keep block-serving and compact-block relay scoped, observable, and evidence-backed until production-readiness and public-default requirements deliberately change that boundary.
 - Public inbound serving by default - inbound participation remains opt-in unless a later milestone deliberately changes that boundary with evidence.
@@ -168,6 +183,7 @@ The boundary keeps prune and archive product modes, assumeutxo and IBD snapshot 
 - v2.1 block-serving and compact-block relay work should cite pinned Knots anchors for block inventory, `sendcmpct`, `cmpctblock`, `getblocktxn`, `blocktxn`, compact-block reconstruction, block serving, validation, peer state, and resource-governance behavior, or document intentional behavior differences in `docs/parity/`.
 - v2.2 package relay and long-lived mempool policy should reuse v2.0 admission, lifecycle, recovery, and relay foundations plus v2.1 authoritative peer transport and observability, while citing pinned Knots package-policy, rolling-fee, rebroadcast, eviction, and mempool-pressure anchors.
 - v2.3 chainstate durability reused the existing pure-core UTXO engine and node-side snapshot adapter, then added disk-backed coins, cache-flush policy, and manager behavior while citing pinned Knots `coins.h`, `coins.cpp`, `validation.cpp`, `node/chainstate.cpp`, and `node/blockstorage.cpp` anchors or documenting intentional differences.
+- v2.4 prune-mode work builds on that honest-availability and durable-coins foundation. Cite pinned Knots prune anchors (`-prune`, block-file unlinking, `m_have_pruned`, prune locks, `NODE_NETWORK_LIMITED`) or document intentional differences in `docs/parity/`. Functional-core crates stay I/O-free, and historical `.planning/phases/` directories stay tracked.
 
 ## Constraints
 
@@ -203,6 +219,7 @@ The boundary keeps prune and archive product modes, assumeutxo and IBD snapshot 
 | Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | Shipped and archived on 2026-07-22 with 39/39 requirements, 13/13 integration links, and 11/11 flows passing |
 | Scope v2.2 to package relay and long-lived mempool policy | v2.0 established bounded mempool and transaction relay while v2.1 supplied authoritative peer transport and observability, making package policy, rolling fees, rebroadcast, and sustained-pressure behavior the next coherent parity boundary | Shipped and archived on 2026-08-22 with 40/40 requirements, 8/8 seams, and 8/8 flows passing |
 | Scope v2.3 to chainstate durability and honest historical availability | After v2.2, disk-backed coins, cache-flush policy, and fuller chainstate-manager behavior are the missing foundation; prune/archive modes, assumeutxo, compact filters, and production claims stay later | Shipped and archived on 2026-09-20 with 15/15 requirements, 8/8 seams, and 8/8 flows passing |
+| Scope v2.4 to prune-mode product behavior | v2.3 shipped honest availability and durable coins so files can be deleted without lying about payload presence; archive serving, assumeutxo, public defaults, and production claims stay later | — Pending |
 
 ## Evolution
 
@@ -245,4 +262,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-21 after persisting next-milestone candidates*
+*Last updated: 2026-09-21 after starting milestone v2.4*

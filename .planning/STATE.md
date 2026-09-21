@@ -1,39 +1,39 @@
 ---
 gsd_state_version: 1.0
-milestone: v2.3
-milestone_name: Chainstate Durability and Historical Serving
-status: archived
-stopped_at: Archived v2.3 milestone
-last_updated: "2026-09-21T17:36:15.488Z"
+milestone: v2.4
+milestone_name: Prune-Mode Product Behavior
+status: defining requirements
+stopped_at: Milestone v2.4 started
+last_updated: "2026-09-21T18:10:00.000Z"
 last_activity: 2026-09-21
 progress:
-    total_phases: 7
-    completed_phases: 7
-    total_plans: 29
-    completed_plans: 29
-    percent: 100
+    total_phases: 0
+    completed_phases: 0
+    total_plans: 0
+    completed_plans: 0
+    percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-09-21 with next-milestone candidates pointer).
+See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning next milestone
+**Current focus:** Defining v2.4 requirements
 
 ## Current Position
 
-Milestone: none (v2.3 archived)
-Phase: —
+Milestone: v2.4 Prune-Mode Product Behavior
+Phase: Not started (defining requirements)
 Plan: —
-Status: Milestone archived — ready for `/gsd-new-milestone`
-Last activity: 2026-09-21
+Status: Defining requirements
+Last activity: 2026-09-21 — Milestone v2.4 started
 
-Progress: [██████████] 100%
+Progress: [░░░░░░░░░░] 0%
 
-Next action: Review `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`, then start the next milestone with `/gsd-new-milestone`.
+Next action: Choose whether to research prune-mode behavior before defining v2.4 requirements.
 
 ## Performance Metrics
 
@@ -155,6 +155,11 @@ Next action: Review `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`, then start
 
 ### Decisions
 
+- [v2.4 milestone]: Initialized through `/gsd-new-milestone` after the archived v2.3 closeout. Phase numbering continues at 146. Historical `.planning/phases/` directories stay tracked.
+- [v2.4 milestone]: Scope is Knots-aligned prune for the single active chainstate: height windows, file unlinking, `m_have_pruned`, prune locks, and `NODE_NETWORK_LIMITED`.
+- [v2.4 milestone]: Emit `Pruned` only after prune deletes files. A missing payload without prune stays `Unavailable`.
+- [v2.4 milestone]: First phase cuts wallet rescan off leftover snapshot bytes so prune cannot resurrect snapshot-as-truth.
+- [v2.4 milestone]: Keep archive-node serving, assumeutxo / dual chainstate, BIP37, LevelDB chainstate import, automatic destructive reindex, public defaults, public-network CI as a release gate, and production-readiness or production-funds wallet claims out.
 - [v2.3 roadmap]: Continue phase numbering at 139. Do not reset to Phase 1. Do not delete or archive historical `.planning/phases/` directories.
 - [v2.3 roadmap]: Seven fine-granularity phases follow research order: typed coins-view/cache and engine apply, pure flush policy, Fjall coins adapter, manager lifecycle/restart, honest availability, operator evidence, then parity/no-claim guardrails.
 - [v2.3 roadmap]: Merge research "view/cache" and "engine apply" into Phase 139 because CACHE-01 is the only requirement those two conceptual slices share.
@@ -473,6 +478,6 @@ Next action: Review `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`, then start
 
 ## Session Continuity
 
-Last session: 2026-09-21T17:36:15.488Z
-Stopped at: Persisted next-milestone candidates report
-Resume file: `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`
+Last session: 2026-09-21T18:10:00.000Z
+Stopped at: Milestone v2.4 started — defining requirements
+Resume file: `.planning/PROJECT.md`
