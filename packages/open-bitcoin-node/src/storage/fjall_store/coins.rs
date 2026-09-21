@@ -97,6 +97,42 @@ impl FjallNodeStore {
         Ok(Some(snapshot))
     }
 
+    /// Assembles wallet-rescan chain truth from durable coins and `chain_meta` only.
+    ///
+    /// Never reads the leftover chainstate `"snapshot"` key. Returns `Ok(None)` when
+    /// the coins keyspace is empty. Fails closed when `chain_meta` is empty or when
+    /// coins best-block disagrees with `active_chain` tip.
+    pub fn wallet_scan_chainstate_snapshot(
+        &self,
+    ) -> Result<Option<ChainstateSnapshot>, StorageError> {
+        if self.coins_keyspace_is_empty()? {
+            return Ok(None);
+        }
+
+        let utxos = self.scan_coin_records()?;
+        let undo_by_block = self.load_all_undo_records()?;
+        let (active_chain, maybe_confirmed_txid_counts) = self.load_chain_meta_for_open()?;
+        if active_chain.is_empty() {
+            return Err(StorageError::UnavailableNamespace {
+                namespace: StorageNamespace::Chainstate,
+            });
+        }
+
+        let view = FjallCoinsView::from_store(self);
+        let maybe_best = view.best_block().map_err(map_heads_error)?;
+        if let Some(best) = maybe_best
+            && active_chain.last().map(|position| position.block_hash) != Some(best)
+        {
+            return Err(StorageError::UnavailableNamespace {
+                namespace: StorageNamespace::Chainstate,
+            });
+        }
+
+        let mut snapshot = ChainstateSnapshot::new(active_chain, utxos, undo_by_block);
+        snapshot.maybe_confirmed_txid_counts = maybe_confirmed_txid_counts;
+        Ok(Some(snapshot))
+    }
+
     pub(crate) fn ensure_schema_and_migrate_coins(&self) -> Result<(), StorageError> {
         let Some(bytes) = self.get_bytes(StorageNamespace::Schema, SCHEMA_VERSION_KEY)? else {
             return self.write_schema_version(SchemaVersion::CURRENT);

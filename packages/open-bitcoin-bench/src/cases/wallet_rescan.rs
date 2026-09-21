@@ -5,7 +5,7 @@
 
 use open_bitcoin_node::{
     FjallNodeStore, PersistMode, WalletRegistry, WalletRescanFreshness, WalletRescanJobState,
-    WalletRescanRuntime,
+    WalletRescanRuntime, core::primitives::Block,
 };
 
 use crate::{
@@ -34,9 +34,21 @@ fn run_wallet_rescan_case() -> Result<(), BenchError> {
     let store = FjallNodeStore::open(temp_dir.path())
         .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
     let wallet = wallet_with_ranged_descriptor()?;
+    let coins_truth = funded_chainstate(&wallet)?;
     store
-        .save_chainstate_snapshot(&funded_chainstate(&wallet)?, PersistMode::Sync)
+        .seed_coins_from_snapshot(&coins_truth)
         .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
+    for position in &coins_truth.active_chain {
+        store
+            .save_block(
+                &Block {
+                    header: position.header.clone(),
+                    transactions: Vec::new(),
+                },
+                PersistMode::Sync,
+            )
+            .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
+    }
     let mut registry = WalletRegistry::default();
     registry
         .create_wallet(&store, "alpha", wallet, PersistMode::Sync)

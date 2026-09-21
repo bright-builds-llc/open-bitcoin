@@ -118,6 +118,22 @@ impl WalletRescanRuntime {
 
         let chunk_end_height =
             chunk_end_height(job.next_height, job.target_tip_height, self.chunk_size);
+        for position in chainstate.active_chain.iter().filter(|position| {
+            position.height >= job.next_height && position.height <= chunk_end_height
+        }) {
+            if !self.store.has_block(position.block_hash)? {
+                job.mark_failed(format!(
+                    "missing block payload at height {} hash {:?}",
+                    position.height, position.block_hash
+                ));
+                registry.save_rescan_job(&self.store, job.clone(), self.persist_mode)?;
+                return Err(WalletRegistryError::Storage(
+                    StorageError::UnavailableNamespace {
+                        namespace: StorageNamespace::BlockIndex,
+                    },
+                ));
+            }
+        }
         let partial_snapshot = partial_chainstate_snapshot(&chainstate, chunk_end_height);
         let maybe_tip_median_time_past = partial_snapshot.tip().map(|tip| tip.median_time_past);
         let mut wallet = registry.wallet(wallet_name)?;
@@ -136,7 +152,7 @@ impl WalletRescanRuntime {
     fn required_chainstate_snapshot(
         &self,
     ) -> Result<open_bitcoin_core::chainstate::ChainstateSnapshot, WalletRegistryError> {
-        self.store.load_chainstate_snapshot()?.ok_or({
+        self.store.wallet_scan_chainstate_snapshot()?.ok_or({
             WalletRegistryError::Storage(StorageError::UnavailableNamespace {
                 namespace: StorageNamespace::Chainstate,
             })
