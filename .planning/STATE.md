@@ -4,8 +4,8 @@ milestone: v2.3
 milestone_name: Chainstate Durability and Historical Serving
 status: archived
 stopped_at: Archived v2.3 milestone
-last_updated: "2026-09-20T21:50:00.000Z"
-last_activity: 2026-09-20
+last_updated: "2026-09-21T17:36:15.488Z"
+last_activity: 2026-09-21
 progress:
     total_phases: 7
     completed_phases: 7
@@ -18,7 +18,7 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-09-20 after v2.3 archive).
+See: `.planning/PROJECT.md` (updated 2026-09-21 with next-milestone candidates pointer).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 **Current focus:** Planning next milestone
@@ -29,11 +29,11 @@ Milestone: none (v2.3 archived)
 Phase: —
 Plan: —
 Status: Milestone archived — ready for `/gsd-new-milestone`
-Last activity: 2026-09-20
+Last activity: 2026-09-21
 
 Progress: [██████████] 100%
 
-Next action: Start the next milestone with `/gsd-new-milestone`.
+Next action: Review `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`, then start the next milestone with `/gsd-new-milestone`.
 
 ## Performance Metrics
 
@@ -459,6 +459,12 @@ Next action: Start the next milestone with `/gsd-new-milestone`.
 - No open v2.3 blockers remain after the passed milestone audit.
 - Historical Phase 139–145 planning notes remain in `.planning/phases/` because repository verifiers consume selected evidence.
 
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260921-hi7 | Persist post-v2.3 next milestone candidates report under .planning/reports | 2026-09-21 | uncommitted | [260921-hi7-persist-post-v2-3-next-milestone-candida](./quick/260921-hi7-persist-post-v2-3-next-milestone-candida/) |
+
 ## Latest Milestone Archive
 
 - Roadmap: `.planning/milestones/v2.3-ROADMAP.md`
@@ -467,6 +473,6 @@ Next action: Start the next milestone with `/gsd-new-milestone`.
 
 ## Session Continuity
 
-Last session: 2026-09-20T21:50:00.000Z
-Stopped at: Archived v2.3 milestone
-Resume file: None
+Last session: 2026-09-21T17:36:15.488Z
+Stopped at: Persisted next-milestone candidates report
+Resume file: `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`

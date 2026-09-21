@@ -16,7 +16,7 @@ v2.3 Chainstate Durability and Historical Serving shipped and was archived on 20
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
 
-No milestone is currently active. Start the next version with `/gsd-new-milestone`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
+No milestone is currently active. Ranked post-v2.3 candidates are recorded in [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md). Start the next version with `/gsd-new-milestone`. Historical phase directories remain tracked because repository verifiers reference selected evidence.
 
 ## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -127,7 +127,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 
-- [ ] Next-milestone requirements are defined through `/gsd-new-milestone`. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production-readiness claims remain deferred.
+- [ ] Next-milestone requirements are defined through `/gsd-new-milestone`. Ranked candidates: `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`. Prune/archive product modes, assumeutxo, compact-filter serving, public defaults, and production-readiness claims remain deferred.
 
 ### Out of Scope
 
@@ -245,4 +245,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-20 after v2.3 milestone*
+*Last updated: 2026-09-21 after persisting next-milestone candidates*

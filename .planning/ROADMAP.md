@@ -37,4 +37,4 @@ v2.3 Chainstate Durability and Historical Serving shipped and was archived on 20
 
 ## Next Step
 
-Run `/gsd-new-milestone` to define fresh requirements and a roadmap for the next version.
+Ranked post-v2.3 candidates live in [reports/NEXT-MILESTONE-CANDIDATES.md](reports/NEXT-MILESTONE-CANDIDATES.md). Start the next version with `/gsd-new-milestone`.

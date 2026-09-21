@@ -43,7 +43,7 @@
 
 Prune-mode product behavior, archive-node or production-scale historical serving, compact-filter or BIP37 serving, assumeutxo / assumevalid / IBD snapshot shortcuts, dual snapshot/IBD chainstate, Knots/Core LevelDB `chainstate/` live import/export, automatic destructive reindex or coins repair, public serving or relay defaults, public-network CI as a release gate, production full-node readiness, production service operation, and production-funds wallet claims remain future scope.
 
-**What's next:** Start the next milestone with `/gsd-new-milestone`.
+**What's next:** Ranked post-v2.3 candidates live in [reports/NEXT-MILESTONE-CANDIDATES.md](reports/NEXT-MILESTONE-CANDIDATES.md). Start the next milestone with `/gsd-new-milestone`.
 
 ***
 
