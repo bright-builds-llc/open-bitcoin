@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: roadmap created / ready to plan
-stopped_at: Roadmap created for Phases 146–151
-last_updated: "2026-09-21T20:30:00.000Z"
-last_activity: 2026-09-21
+status: planning
+stopped_at: Phase 146 context gathered
+last_updated: "2026-09-21T21:16:03.486Z"
+last_activity: 2026-09-21 — v2.4 roadmap created (Phases 146–151)
 progress:
-    total_phases: 6
-    completed_phases: 0
-    total_plans: 0
-    completed_plans: 0
-    percent: 0
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -481,6 +481,6 @@ Next action: `/gsd-discuss-phase 146`
 
 ## Session Continuity
 
-Last session: 2026-09-21T20:30:00.000Z
-Stopped at: v2.4 roadmap created — Phases 146–151 ready to discuss/plan
-Resume file: `.planning/ROADMAP.md`
+Last session: 2026-09-21T21:16:03.480Z
+Stopped at: Phase 146 context gathered
+Resume file: .planning/phases/146-wallet-leftover-snapshot-cutover/146-CONTEXT.md
