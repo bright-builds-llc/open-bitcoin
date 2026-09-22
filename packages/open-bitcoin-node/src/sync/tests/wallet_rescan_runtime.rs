@@ -300,3 +300,56 @@ fn missing_block_payload_fails_chunk_closed() {
 
     remove_dir_if_exists(&path);
 }
+
+#[test]
+fn phase146_cutover_does_not_invent_have_pruned() {
+    // Arrange
+    let wallet_rescan = include_str!("../wallet_rescan.rs");
+    let coins = include_str!("../../storage/fjall_store/coins.rs");
+    let combined = format!("{wallet_rescan}\n{coins}");
+
+    // Act
+    let invents_have_pruned = combined.contains("have_pruned");
+    let invents_block_status_pruned = combined.contains("block_status_pruned");
+    let invents_node_network_limited = combined.contains("NODE_NETWORK_LIMITED");
+    let uses_wallet_scan = wallet_rescan.contains("wallet_scan_chainstate_snapshot")
+        || wallet_rescan.contains("has_block");
+    let reads_leftover = wallet_rescan.contains("load_chainstate_snapshot");
+
+    // Assert
+    assert!(
+        !invents_have_pruned,
+        "wallet cutover must not invent have_pruned"
+    );
+    assert!(
+        !invents_block_status_pruned,
+        "wallet cutover must not invent block_status_pruned"
+    );
+    assert!(
+        !invents_node_network_limited,
+        "wallet cutover must not invent NODE_NETWORK_LIMITED"
+    );
+    assert!(
+        uses_wallet_scan,
+        "wallet_rescan must use wallet_scan_chainstate_snapshot or has_block"
+    );
+    assert!(
+        !reads_leftover,
+        "wallet_rescan must not call load_chainstate_snapshot"
+    );
+}
+
+#[test]
+fn phase146_persist_progress_still_skips_leftover_snapshot_writes() {
+    // Arrange
+    let runtime_state = include_str!("../runtime_state.rs");
+
+    // Act
+    let writes_leftover = runtime_state.contains("save_chainstate_snapshot");
+
+    // Assert
+    assert!(
+        !writes_leftover,
+        "persist_progress path must not restore leftover snapshot writes"
+    );
+}

@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,213 |
-| Total lines | 339,834 |
-| Code/content lines | 295,788 |
-| Comment-only lines | 15,652 |
-| Blank lines | 28,394 |
+| Total lines | 339,887 |
+| Code/content lines | 295,829 |
+| Comment-only lines | 15,658 |
+| Blank lines | 28,400 |
 
 ## Per-Crate Modules
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,799 | 15,647 | 30 | 26,476 | 144.9% |
 | open-bitcoin-network | 124 | 14,538 | 21,148 | 30 | 35,716 | 145.5% |
-| open-bitcoin-node | 291 | 33,441 | 44,674 | 42 | 78,157 | 133.6% |
+| open-bitcoin-node | 291 | 33,441 | 44,727 | 42 | 78,210 | 133.7% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 97 | 12,765 | 13,078 | 59 | 25,902 | 102.5% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,7 +34,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 469 | 131,951 | 111,856 | 9,552 | 10,543 |
+| Rust tests | 469 | 132,004 | 111,897 | 9,558 | 10,549 |
 | Rust production | 398 | 114,040 | 99,170 | 4,217 | 10,653 |
 | TypeScript/Bun scripts | 276 | 76,963 | 68,824 | 1,800 | 6,339 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
@@ -357,7 +357,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 265a0ce65781273ebcf946d20e691fbc55347136ab1195a9fd8ff4252fa6ac70 |
+| Input fingerprint | d2c6fd759d0e843986ebcf8da647c5a1e8cb3434e2a41ee9a4ce42e7821970af |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
