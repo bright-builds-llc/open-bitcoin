@@ -196,10 +196,12 @@
         "packages/open-bitcoin-chainstate/src/prune/mode.rs",
         "packages/open-bitcoin-chainstate/src/prune/range.rs",
         "packages/open-bitcoin-chainstate/src/prune/locks.rs",
+        "packages/open-bitcoin-chainstate/src/prune/plan.rs",
         "packages/open-bitcoin-chainstate/src/prune/tests.rs",
         "packages/open-bitcoin-chainstate/src/prune/tests/mode.rs",
         "packages/open-bitcoin-chainstate/src/prune/tests/range.rs",
-        "packages/open-bitcoin-chainstate/src/prune/tests/locks.rs"
+        "packages/open-bitcoin-chainstate/src/prune/tests/locks.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests/automatic.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/validation.h",

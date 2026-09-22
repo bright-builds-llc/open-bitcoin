@@ -5,6 +5,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.h
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
+mod automatic;
 mod locks;
 mod mode;
 mod range;
