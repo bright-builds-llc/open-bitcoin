@@ -77,7 +77,11 @@ Plans:
   2. Automatic prune plans keep the last 288 blocks and do not start before the network prune-after height.
   3. Manual prune refuses a target height inside the 288-block keep window.
   4. A prune lock forbids deleting the locked height range plus a 10-block buffer, decided in `open-bitcoin-chainstate` without Fjall or filesystem access.
-**Plans**: TBD
+**Plans:** 3 plans
+Plans:
+- [ ] 147-01-PLAN.md — Typed PruneMode parse, keep-window helpers, lock-buffer predicates, chainstate-prune breadcrumbs
+- [ ] 147-02-PLAN.md — Automatic prune planner (288 keep, prune-after empty plan, injected byte budget, lock omit)
+- [ ] 147-03-PLAN.md — Manual prune planner with keep-window typed refusal (no clamp) and lock omit
 
 ### Phase 148: Fjall Payload Unlink and Have-Pruned
 **Goal**: Eligible heights lose paired block and undo payloads on disk, and have-pruned is recorded only after that delete is durable.
