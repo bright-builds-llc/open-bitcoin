@@ -14,7 +14,7 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Prune Policy
 
-- [x] **PRUN-01**: Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB.
+- [ ] **PRUN-01**: Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB.
 - [ ] **PRUN-02**: Automatic prune keeps the last 288 blocks and does not start before the network prune-after height.
 - [ ] **PRUN-03**: Manual prune refuses a target inside the 288-block keep window.
 
@@ -26,7 +26,7 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Locks
 
-- [x] **LOCK-01**: A prune lock keeps the locked height range, plus a 10-block buffer, from deletion.
+- [ ] **LOCK-01**: A prune lock keeps the locked height range, plus a 10-block buffer, from deletion.
 - [ ] **LOCK-02**: Operator can list and set prune locks.
 
 ### Serving
@@ -95,10 +95,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | SNAP-01 | Phase 146 | Complete |
-| PRUN-01 | Phase 147 | Complete |
+| PRUN-01 | Phase 147 | Pending |
 | PRUN-02 | Phase 147 | Pending |
 | PRUN-03 | Phase 147 | Pending |
-| LOCK-01 | Phase 147 | Complete |
+| LOCK-01 | Phase 147 | Pending |
 | UNLK-01 | Phase 148 | Pending |
 | UNLK-02 | Phase 148 | Pending |
 | UNLK-03 | Phase 148 | Pending |
