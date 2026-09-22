@@ -47,7 +47,7 @@ patterns-established:
   - "Prune policy lives in open-bitcoin-chainstate/src/prune/ with crate-root re-exports"
   - "chainstate-prune breadcrumb group cites validation.h/cpp and node/blockmanager_args.cpp + blockstorage.h/cpp"
 
-requirements-completed: []
+requirements-completed: [PRUN-01, LOCK-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 147-2026-09-22T12-05-43
@@ -138,7 +138,6 @@ _Note: Task 2 breadcrumbs were folded into the Task 1 feat commit because pre-co
 - **Verification:** Traceability checker accepts Pending rows until phase VERIFICATION
 - **Committed in:** (docs metadata commit)
 
----
 
 **Total deviations:** 4 auto-fixed (1 bug, 3 blocking)
 **Impact on plan:** Required for hook-passing correctness; no scope creep (no planners, unlink, RPC, or FlushMode changes)
@@ -168,6 +167,5 @@ Left `requirements-completed` empty and PRUN-01/LOCK-01 Pending until lifecycle-
 - FOUND: `docs/parity/source-breadcrumbs.json` (`chainstate-prune`)
 - FOUND: commit `5e29c644`
 
----
 *Phase: 147-pure-prune-policy-and-lock-windows*
 *Completed: 2026-09-22*

@@ -16,7 +16,7 @@ v2.3 Chainstate Durability and Historical Serving shipped and was archived on 20
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
 
-v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Prune policy, unlink, and have-pruned remain later phases. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
+v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Phase 147 is complete: `open-bitcoin-chainstate` decides prune mode (disabled, manual-only, or an automatic target of at least 550 MiB), keeps the last 288 blocks, waits for the network prune-after height, refuses a manual target inside that keep window, and protects a prune-lock range plus a 10-block buffer. Those decisions do not delete payloads or set have-pruned. Payload unlink remains Phase 148. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
 
 ## Current Milestone: v2.4 Prune-Mode Product Behavior
 
@@ -262,4 +262,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-22 after Phase 146 wallet leftover-snapshot cutover*
+*Last updated: 2026-09-22 after Phase 147 pure prune policy and lock windows*

@@ -41,7 +41,7 @@ patterns-established:
   - "plan.rs owns both automatic and manual planners; ManualPruneInput has no byte-budget fields"
   - "Coverage tests exercise maybe_present_heights Some path including lock omit and past-end break"
 
-requirements-completed: []
+requirements-completed: [PRUN-03]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 147-2026-09-22T12-05-43
@@ -116,7 +116,6 @@ _Note: Combined RED+GREEN in one hook-passing feat commit (plan allows this)._
 - **Verification:** Commit `d135e8f6` succeeded with hooks
 - **Committed in:** `d135e8f6`
 
----
 
 **Total deviations:** 2 auto-fixed (1 bug, 1 blocking)
 **Impact on plan:** Required for hook-passing coverage and format; no scope creep (no unlink, RPC, FlushMode, or automatic planner behavior change)
@@ -144,6 +143,5 @@ Left `requirements-completed` empty and PRUN-03/LOCK-01 Pending until lifecycle-
 - FOUND: `packages/open-bitcoin-chainstate/src/prune/tests/manual.rs`
 - FOUND: commit `d135e8f6`
 
----
 *Phase: 147-pure-prune-policy-and-lock-windows*
 *Completed: 2026-09-22*

@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: verifying
-stopped_at: Completed 147-03-PLAN.md
-last_updated: "2026-09-22T18:20:49.800Z"
+status: ready
+stopped_at: Phase 147 complete
+last_updated: "2026-09-22T19:19:28.185Z"
 last_activity: 2026-09-22
 progress:
   total_phases: 6
@@ -21,25 +21,25 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 147 — pure-prune-policy-and-lock-windows
+**Current focus:** Phase 148 — Fjall Payload Unlink and Have-Pruned
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 147 (pure-prune-policy-and-lock-windows) — COMPLETE
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-22
+Phase: 148
+Plan: Not started
+Status: Ready to discuss
+Last activity: 2026-09-22 — Phase 147 pure prune policy and lock windows complete
 
-Progress: [██████████] 100%
+Progress: [███░░░░░░░] 33%
 
-Next action: Verify Phase 147 (`/gsd-verify-work` or phase verifier)
+Next action: `/gsd-discuss-phase 148`
 
 ## Performance Metrics
 
 **Archived milestone (v2.3):**
 
-- Total plans completed: 32
+- Total plans completed: 35
 - Counted summary tasks: 62
 
 **Previous milestone (v2.2 archive):**
@@ -69,6 +69,7 @@ Next action: Verify Phase 147 (`/gsd-verify-work` or phase verifier)
 | 144 | 4 | - | - |
 | 145 | 4 | - | - |
 | 146 | 3 | - | - |
+| 147 | 3 | - | - |
 
 ### Plan Execution History
 

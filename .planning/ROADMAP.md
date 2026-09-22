@@ -132,10 +132,10 @@ Plans:
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | SNAP-01 | Phase 146 | Complete |
-| PRUN-01 | Phase 147 | Pending |
-| PRUN-02 | Phase 147 | Pending |
-| PRUN-03 | Phase 147 | Pending |
-| LOCK-01 | Phase 147 | Pending |
+| PRUN-01 | Phase 147 | Complete |
+| PRUN-02 | Phase 147 | Complete |
+| PRUN-03 | Phase 147 | Complete |
+| LOCK-01 | Phase 147 | Complete |
 | UNLK-01 | Phase 148 | Pending |
 | UNLK-02 | Phase 148 | Pending |
 | UNLK-03 | Phase 148 | Pending |
@@ -166,7 +166,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
-| 147. Pure Prune Policy and Lock Windows | 3/3 | Complete   | 2026-09-22 |
+| 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 0/TBD | Not started | - |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
@@ -174,7 +174,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 
 ## Next Step
 
-Run `/gsd-discuss-phase 147` to discuss pure prune policy and lock windows before planning.
+Run `/gsd-discuss-phase 148` to discuss Fjall payload unlink and have-pruned before planning.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*

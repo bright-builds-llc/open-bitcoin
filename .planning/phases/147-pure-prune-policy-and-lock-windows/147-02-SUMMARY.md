@@ -40,7 +40,7 @@ patterns-established:
   - "plan.rs owns PrunePlan + AutomaticPruneInput; manual planner deferred to Plan 03"
   - "Coverage tests for overflow and height > last_prunable early break"
 
-requirements-completed: []
+requirements-completed: [PRUN-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 147-2026-09-22T12-05-43
@@ -115,7 +115,6 @@ _Note: Combined RED+GREEN in one hook-passing feat commit (plan allows this; bre
 - **Verification:** Commit `9eaa7293` succeeded with hooks
 - **Committed in:** `9eaa7293`
 
----
 
 **Total deviations:** 2 auto-fixed (1 bug, 1 blocking)
 **Impact on plan:** Required for hook-passing coverage and LOC freshness; no scope creep (no manual planner, unlink, RPC, or FlushMode)
@@ -143,6 +142,5 @@ Left `requirements-completed` empty and PRUN-02/LOCK-01 Pending until lifecycle-
 - FOUND: `packages/open-bitcoin-chainstate/src/prune/tests/automatic.rs`
 - FOUND: commit `9eaa7293`
 
----
 *Phase: 147-pure-prune-policy-and-lock-windows*
 *Completed: 2026-09-22*
