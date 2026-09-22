@@ -61,11 +61,11 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
   1. Wallet rescan reads coins best-block and payload-present blocks; leftover snapshot blobs are non-authoritative on the wallet path.
   2. After same-datadir reopen with a leftover snapshot present, rescan does not rebuild balances or history from that snapshot.
   3. Contributors can observe that unlink-ready prune work has not yet deleted payloads; cutover alone does not invent have-pruned.
-**Plans:** 1/3 plans executed
+**Plans:** 2/3 plans executed
 
 Plans:
 - [x] 146-01-PLAN.md — Cut WalletRescanRuntime to coins + has_block scan authority
-- [ ] 146-02-PLAN.md — Cut durable RPC rescan seed off leftover snapshot load
+- [x] 146-02-PLAN.md — Cut durable RPC rescan seed off leftover snapshot load
 - [ ] 146-03-PLAN.md — Parity breadcrumbs and no-prune / leftover-write guardrails
 
 ### Phase 147: Pure Prune Policy and Lock Windows
@@ -161,7 +161,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
-| 146. Wallet Leftover-Snapshot Cutover | 1/3 | In Progress|  |
+| 146. Wallet Leftover-Snapshot Cutover | 2/3 | In Progress|  |
 | 147. Pure Prune Policy and Lock Windows | 0/TBD | Not started | - |
 | 148. Fjall Payload Unlink and Have-Pruned | 0/TBD | Not started | - |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
