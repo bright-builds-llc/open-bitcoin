@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 147-01-PLAN.md
-last_updated: "2026-09-22T15:26:48.650Z"
+stopped_at: Completed 147-02-PLAN.md
+last_updated: "2026-09-22T16:59:37.312Z"
 last_activity: 2026-09-22
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
-  percent: 67
+  completed_plans: 5
+  percent: 83
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 147 (pure-prune-policy-and-lock-windows) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-09-22
 
@@ -150,6 +150,7 @@ Next action: Execute 147-02-PLAN.md
 | Phase 146 P02 | 70 min | 2 tasks | 6 files |
 | Phase 146 P03 | 18 min | 2 tasks | 1 files |
 | Phase 147 P01 | 1h 2m | 2 tasks | 11 files |
+| Phase 147 P02 | 55 min | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -472,6 +473,8 @@ Next action: Execute 147-02-PLAN.md
 - [Phase 147]: PruneMode::Disabled uses derive Default with default on Disabled instead of a manual Default impl — Clippy -D warnings rejects handwritten Default when derivable (clippy::derivable_impls).
 - [Phase 147]: height_forbidden_by_lock uses Knots DoPruneLocksForbidPruning formula including lock_height=1 when height_first<=11 — Locked inclusivity and low-height special case from research section 5 and D-10.
 - [Phase 147]: Leave PRUN-01 and LOCK-01 Pending until lifecycle-valid Phase 147 VERIFICATION — Active-milestone verification traceability rejects Complete flips without phase verification coverage.
+- [Phase 147]: Automatic prune stops when remaining_usage <= target_bytes after a selected candidate — Research Open Question 1 locked; matches unit fixture selecting 700 then 701
+- [Phase 147]: Leave PRUN-02 and LOCK-01 Pending until Phase 147 VERIFICATION — Same active-milestone verification traceability gate as 147-01
 
 ### Pending Todos
 
@@ -499,6 +502,6 @@ Next action: Execute 147-02-PLAN.md
 
 ## Session Continuity
 
-Last session: 2026-09-22T15:16:59.336Z
-Stopped at: Completed 147-01-PLAN.md
+Last session: 2026-09-22T16:59:37.308Z
+Stopped at: Completed 147-02-PLAN.md
 Resume file: None
