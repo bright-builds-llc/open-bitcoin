@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Phase 146 context gathered
-last_updated: "2026-09-21T22:36:17.500Z"
-last_activity: 2026-09-21 -- Phase 146 planning complete
+stopped_at: Completed 146-01-PLAN.md
+last_updated: "2026-09-22T00:13:33.357Z"
+last_activity: 2026-09-22
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 3
-  completed_plans: 0
-  percent: 0
+  completed_plans: 1
+  percent: 33
 ---
 
 # Project State
@@ -21,15 +21,15 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 146 — Wallet Leftover-Snapshot Cutover (ready to discuss/plan)
+**Current focus:** Phase 146 — Wallet Leftover-Snapshot Cutover
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 146 of 151 — Wallet Leftover-Snapshot Cutover (not started)
-Plan: —
+Phase: 146 (Wallet Leftover-Snapshot Cutover) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-21 -- Phase 146 planning complete
+Last activity: 2026-09-22
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -145,6 +145,7 @@ Next action: `/gsd-discuss-phase 146`
 | Phase 145-parity-roots-and-no-claim-guardrails P02 | 36 min | 2 tasks | 8 files |
 | Phase 145-parity-roots-and-no-claim-guardrails P03 | 47min | 2 tasks | 9 files |
 | Phase 145-parity-roots-and-no-claim-guardrails P04 | 38 min | 2 tasks | 13 files |
+| Phase 146 P01 | 79 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -454,6 +455,9 @@ Next action: `/gsd-discuss-phase 146`
 - [Phase 145-parity-roots-and-no-claim-guardrails]: Align Phase 145 Phase-144 run_step titles to the live verify.sh and availability wording — Plan 02 constants omitted and from the live Phase 144 titles, so the live 145 checker could not match verify.sh.
 - [Phase 145]: Flip leftover Pending v2.3 rows only after the Plan 03 checker can name evidence
 - [Phase 145]: Phase 145 owns only CSVFY-01 and CSVFY-02; do not archive the milestone
+- [Phase 146]: Keep feeding assembled ChainstateSnapshot into rescan_chainstate; do not invent a narrower wallet scan-input type
+- [Phase 146]: Combined 146-01 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs full verify.sh
+- [Phase 146]: wallet-rescan bench plants coins via seed_coins_from_snapshot and save_block so has_block gate passes
 
 ### Pending Todos
 
@@ -481,6 +485,6 @@ Next action: `/gsd-discuss-phase 146`
 
 ## Session Continuity
 
-Last session: 2026-09-21T21:16:03.480Z
-Stopped at: Phase 146 context gathered
-Resume file: .planning/phases/146-wallet-leftover-snapshot-cutover/146-CONTEXT.md
+Last session: 2026-09-22T00:13:33.353Z
+Stopped at: Completed 146-01-PLAN.md
+Resume file: None
