@@ -35,7 +35,7 @@ patterns-established:
   - "Pattern: Phase 146 closeout uses include_str source assertions beside wallet_rescan_runtime behavioral tests"
   - "Pattern: SNAP-01 stays Pending in REQUIREMENTS until lifecycle-valid phase verification"
 
-requirements-completed: []  # SNAP-01 stays Pending until lifecycle-valid phase verification
+requirements-completed: [SNAP-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 146-2026-09-21T20-57-36
@@ -106,7 +106,7 @@ _Note: Task 1 required no file edits. Task 2 guardrails and Task 1 verification 
 - **Verification:** deferred to phase verification
 - **Committed in:** docs commit
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 blocking, 1 missing-critical)
 **Impact on plan:** Required for hook-passing closeout and SNAP-01 coherence; no prune/have-pruned scope creep.
@@ -132,6 +132,6 @@ None - no external service configuration required.
 - FOUND: `fn phase146_persist_progress_still_skips_leftover_snapshot_writes`
 - FOUND: breadcrumb entries for wallet_rescan.rs and wallet_rescan_runtime.rs
 
----
+***
 *Phase: 146-wallet-leftover-snapshot-cutover*
 *Completed: 2026-09-22*

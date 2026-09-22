@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: verifying
-stopped_at: Completed 146-03-PLAN.md
-last_updated: "2026-09-22T04:31:32.805Z"
+status: ready
+stopped_at: Phase 146 complete
+last_updated: "2026-09-22T05:31:10.235Z"
 last_activity: 2026-09-22
 progress:
   total_phases: 6
@@ -21,25 +21,25 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 146 — Wallet Leftover-Snapshot Cutover
+**Current focus:** Phase 147 — Pure Prune Policy and Lock Windows
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 146 (Wallet Leftover-Snapshot Cutover) — EXECUTING
-Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-09-22
+Phase: 147
+Plan: Not started
+Status: Ready to discuss
+Last activity: 2026-09-22 — Phase 146 wallet leftover-snapshot cutover complete
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██░░░░░░░░] 17%
 
-Next action: `/gsd-discuss-phase 146`
+Next action: `/gsd-discuss-phase 147`
 
 ## Performance Metrics
 
 **Archived milestone (v2.3):**
 
-- Total plans completed: 29
+- Total plans completed: 32
 - Counted summary tasks: 62
 
 **Previous milestone (v2.2 archive):**
@@ -68,6 +68,7 @@ Next action: `/gsd-discuss-phase 146`
 | 143 | 4 | - | - |
 | 144 | 4 | - | - |
 | 145 | 4 | - | - |
+| 146 | 3 | - | - |
 
 ### Plan Execution History
 
@@ -494,5 +495,5 @@ Next action: `/gsd-discuss-phase 146`
 ## Session Continuity
 
 Last session: 2026-09-22T04:31:32.801Z
-Stopped at: Completed 146-03-PLAN.md
+Stopped at: Phase 146 complete — ready to discuss Phase 147
 Resume file: None

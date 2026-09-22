@@ -10,7 +10,7 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Wallet Cutover
 
-- [ ] **SNAP-01**: Wallet rescan reads durable coins and payload-present blocks, and does not treat leftover snapshot bytes as chain truth.
+- [x] **SNAP-01**: Wallet rescan reads durable coins and payload-present blocks, and does not treat leftover snapshot bytes as chain truth.
 
 ### Prune Policy
 
@@ -94,7 +94,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| SNAP-01 | Phase 146 | Pending |
+| SNAP-01 | Phase 146 | Complete |
 | PRUN-01 | Phase 147 | Pending |
 | PRUN-02 | Phase 147 | Pending |
 | PRUN-03 | Phase 147 | Pending |

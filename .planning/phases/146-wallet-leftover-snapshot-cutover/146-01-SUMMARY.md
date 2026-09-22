@@ -127,7 +127,7 @@ _Note: TDD RED/GREEN and the two plan tasks were combined into one hook-passing 
 - **Verification:** Commit `8c5fec01` completed with hooks
 - **Committed in:** `8c5fec01`
 
----
+***
 
 **4. [Rule 2 - Missing Critical] Leave SNAP-01 Pending until phase verification**
 - **Found during:** Plan metadata commit
@@ -137,7 +137,7 @@ _Note: TDD RED/GREEN and the two plan tasks were combined into one hook-passing 
 - **Verification:** Will confirm on docs commit verify
 - **Committed in:** `46a83ccd`
 
----
+***
 
 **Total deviations:** 4 auto-fixed (1 bug, 2 blocking, 1 missing-critical)
 **Impact on plan:** Required for compile correctness and verify passage; no prune/have-pruned scope creep.
@@ -163,6 +163,6 @@ None - no external service configuration required.
 - FOUND: zero `load_chainstate_snapshot` in wallet_rescan.rs
 - FOUND: disagreeing leftover and missing-payload tests
 
----
+***
 *Phase: 146-wallet-leftover-snapshot-cutover*
 *Completed: 2026-09-22*

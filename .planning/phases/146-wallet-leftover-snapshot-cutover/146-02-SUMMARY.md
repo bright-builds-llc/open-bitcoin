@@ -143,7 +143,7 @@ _Note: TDD RED/GREEN and the two plan tasks were combined into one hook-passing 
 - **Verification:** deferred to Plan 03 / phase verification
 - **Committed in:** docs commit
 
----
+***
 
 **Total deviations:** 5 auto-fixed (1 bug, 3 blocking, 1 missing-critical)
 **Impact on plan:** Required for verify passage and SNAP-01 coherence; no prune/have-pruned scope creep.
@@ -169,6 +169,6 @@ None - no external service configuration required.
 - FOUND: `has_block` and `missing block payload` in rescan.rs
 - FOUND: `fn durable_rescan_ignores_disagreeing_leftover_snapshot` in construction.rs
 
----
+***
 *Phase: 146-wallet-leftover-snapshot-cutover*
 *Completed: 2026-09-22*

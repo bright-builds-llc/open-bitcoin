@@ -16,7 +16,7 @@ v2.3 Chainstate Durability and Historical Serving shipped and was archived on 20
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
 
-v2.4 Prune-Mode Product Behavior is the active milestone. Requirements are being defined, and phase numbering continues at 146. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
+v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Prune policy, unlink, and have-pruned remain later phases. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
 
 ## Current Milestone: v2.4 Prune-Mode Product Behavior
 
@@ -136,13 +136,13 @@ v2.1 does not imply public relay defaults, production service operation, product
 - ✓ v2.1 validated all 39 block-serving and compact-relay requirements across explicit activation, validated durable serving, BIP152 codecs and negotiation, reconstruction and fallback, authoritative runtime state, production announcement transport, sanitized operator evidence, parity roots, UAT, and deterministic no-claim/integration guardrails. Archive: `.planning/milestones/v2.1-REQUIREMENTS.md`
 - ✓ v2.2 validated all 40 package-relay and long-lived mempool-policy requirements across resource/fee primitives, pressure and expiry, typed package admission, same-peer 1P1C, authoritative lifecycle projection, snapshot recovery, initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails. Archive: `.planning/milestones/v2.2-REQUIREMENTS.md`
 - ✓ v2.3 validated all 15 chainstate-durability and honest-availability requirements across coins overlay/cache, typed flush policy, durable Fjall coins, manager flush/restart, payload-byte serving, sanitized operator evidence, and last-gate no-claim guardrails. Archive: `.planning/milestones/v2.3-REQUIREMENTS.md`
+- ✓ SNAP-01 validated in Phase 146: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are not chain truth.
 
 ### Active
 
 - [ ] Height windows, file unlinking, `m_have_pruned`, and prune locks for the single active chainstate
 - [ ] `NODE_NETWORK_LIMITED` serving limits for the pruned window
 - [ ] `Pruned` is emitted only after prune deletes files; a missing payload without prune stays `Unavailable`
-- [ ] Wallet rescan no longer reads leftover snapshot bytes, so prune cannot resurrect snapshot-as-truth
 
 ### Out of Scope
 
@@ -262,4 +262,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-21 after starting milestone v2.4*
+*Last updated: 2026-09-22 after Phase 146 wallet leftover-snapshot cutover*
