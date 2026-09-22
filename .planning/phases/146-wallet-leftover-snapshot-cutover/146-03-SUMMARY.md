@@ -71,7 +71,7 @@ Each task was committed atomically:
 
 1. **Task 1 + Task 2 (combined):** `f8c95871` (feat) — no-prune / leftover-write guardrail tests; Task 1 breadcrumbs already complete
 
-**Plan metadata:** (pending docs commit)
+**Plan metadata:** `07d8d2ea` (docs: complete plan)
 
 _Note: Task 1 required no file edits. Task 2 guardrails and Task 1 verification evidence shipped in one hook-passing feat commit because pre-commit always runs `bash scripts/verify.sh`._
 
