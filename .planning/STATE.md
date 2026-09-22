@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Phase 147 context gathered
-last_updated: "2026-09-22T13:52:49.404Z"
-last_activity: 2026-09-22 -- Phase 147 planning complete
+stopped_at: Completed 147-01-PLAN.md
+last_updated: "2026-09-22T15:26:48.650Z"
+last_activity: 2026-09-22
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 6
-  completed_plans: 3
-  percent: 50
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 147 — Pure Prune Policy and Lock Windows
+**Current focus:** Phase 147 — pure-prune-policy-and-lock-windows
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 147
-Plan: Not started
+Phase: 147 (pure-prune-policy-and-lock-windows) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-09-22 -- Phase 147 planning complete
+Last activity: 2026-09-22
 
-Progress: [██░░░░░░░░] 17%
+Progress: [███████░░░] 67%
 
-Next action: `/gsd-discuss-phase 147`
+Next action: Execute 147-02-PLAN.md
 
 ## Performance Metrics
 
@@ -149,6 +149,7 @@ Next action: `/gsd-discuss-phase 147`
 | Phase 146 P01 | 79 min | 2 tasks | 5 files |
 | Phase 146 P02 | 70 min | 2 tasks | 6 files |
 | Phase 146 P03 | 18 min | 2 tasks | 1 files |
+| Phase 147 P01 | 1h 2m | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -467,6 +468,10 @@ Next action: `/gsd-discuss-phase 147`
 - [Phase 146]: Task 1 needed no breadcrumb edits; Plans 01–02 already listed all touched Phase 146 Rust paths
 - [Phase 146]: Do not invent a v2.4 prune parity surface or flip SNAP-01 Complete before phase VERIFICATION
 - [Phase 146]: Combined Task 1 verification evidence and Task 2 guardrails into one hook-passing feat commit
+- [Phase 147]: Combined 147-01 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh and new Rust paths require breadcrumbs — Pre-commit always runs bash scripts/verify.sh; breadcrumb coverage is required for new first-party Rust sources.
+- [Phase 147]: PruneMode::Disabled uses derive Default with default on Disabled instead of a manual Default impl — Clippy -D warnings rejects handwritten Default when derivable (clippy::derivable_impls).
+- [Phase 147]: height_forbidden_by_lock uses Knots DoPruneLocksForbidPruning formula including lock_height=1 when height_first<=11 — Locked inclusivity and low-height special case from research section 5 and D-10.
+- [Phase 147]: Leave PRUN-01 and LOCK-01 Pending until lifecycle-valid Phase 147 VERIFICATION — Active-milestone verification traceability rejects Complete flips without phase verification coverage.
 
 ### Pending Todos
 
@@ -494,6 +499,6 @@ Next action: `/gsd-discuss-phase 147`
 
 ## Session Continuity
 
-Last session: 2026-09-22T12:25:59.837Z
-Stopped at: Phase 147 context gathered
-Resume file: .planning/phases/147-pure-prune-policy-and-lock-windows/147-CONTEXT.md
+Last session: 2026-09-22T15:16:59.336Z
+Stopped at: Completed 147-01-PLAN.md
+Resume file: None

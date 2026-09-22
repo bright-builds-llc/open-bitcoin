@@ -77,9 +77,9 @@ Plans:
   2. Automatic prune plans keep the last 288 blocks and do not start before the network prune-after height.
   3. Manual prune refuses a target height inside the 288-block keep window.
   4. A prune lock forbids deleting the locked height range plus a 10-block buffer, decided in `open-bitcoin-chainstate` without Fjall or filesystem access.
-**Plans:** 3 plans
+**Plans:** 1/3 plans executed
 Plans:
-- [ ] 147-01-PLAN.md — Typed PruneMode parse, keep-window helpers, lock-buffer predicates, chainstate-prune breadcrumbs
+- [x] 147-01-PLAN.md — Typed PruneMode parse, keep-window helpers, lock-buffer predicates, chainstate-prune breadcrumbs
 - [ ] 147-02-PLAN.md — Automatic prune planner (288 keep, prune-after empty plan, injected byte budget, lock omit)
 - [ ] 147-03-PLAN.md — Manual prune planner with keep-window typed refusal (no clamp) and lock omit
 
@@ -166,7 +166,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
-| 147. Pure Prune Policy and Lock Windows | 0/TBD | Not started | - |
+| 147. Pure Prune Policy and Lock Windows | 1/3 | In Progress|  |
 | 148. Fjall Payload Unlink and Have-Pruned | 0/TBD | Not started | - |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
