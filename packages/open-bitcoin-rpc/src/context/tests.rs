@@ -171,8 +171,8 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
     )
     .expect("mempool snapshot");
     store
-        .save_chainstate_snapshot(&chainstate, PersistMode::Sync)
-        .expect("save chainstate snapshot");
+        .seed_coins_from_snapshot(&chainstate)
+        .expect("seed coins-backed chainstate for mempool recovery");
     store
         .save_mempool_snapshot(&snapshot, PersistMode::Sync)
         .expect("save mempool snapshot");
@@ -204,14 +204,14 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
 }
 
 #[test]
-fn managed_rpc_context_propagates_confirmation_migration_failure() {
+fn managed_rpc_context_ignores_leftover_snapshot_when_coins_are_empty() {
     use std::collections::HashMap;
 
     use open_bitcoin_node::core::chainstate::{ChainPosition, ChainstateSnapshot};
     use open_bitcoin_node::core::primitives::{BlockHash, BlockHeader};
 
-    // Arrange
-    let data_dir = test_data_dir("confirmation-migration-failure");
+    // Arrange: leftover snapshot alone must not seed durable RPC memory chainstate (SNAP-01).
+    let data_dir = test_data_dir("leftover-ignored-empty-coins");
     let store = FjallNodeStore::open(&data_dir).expect("open store");
     let snapshot = ChainstateSnapshot::new(
         vec![ChainPosition::new(
@@ -229,7 +229,7 @@ fn managed_rpc_context_propagates_confirmation_migration_failure() {
     );
     store
         .save_chainstate_snapshot(&snapshot, PersistMode::Sync)
-        .expect("save legacy chainstate");
+        .expect("save leftover chainstate");
     let runtime = RuntimeConfig {
         chain: AddressNetwork::Regtest,
         maybe_data_dir: Some(data_dir.clone()),
@@ -237,13 +237,15 @@ fn managed_rpc_context_propagates_confirmation_migration_failure() {
     };
 
     // Act
-    let error = match ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store)) {
-        Ok(_) => panic!("migration failure must not publish an empty context"),
-        Err(error) => error,
-    };
+    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store))
+        .expect("empty coins open with leftover must succeed");
+    let chain = context
+        .blockchain_snapshot()
+        .expect("authoritative chainstate snapshot");
 
     // Assert
-    assert!(error.to_string().contains("missing active-chain block"));
+    assert!(chain.active_chain.is_empty());
+    assert!(chain.utxos.is_empty());
     fs::remove_dir_all(data_dir).expect("remove durable store");
 }
 

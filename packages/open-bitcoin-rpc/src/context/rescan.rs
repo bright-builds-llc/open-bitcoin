@@ -162,6 +162,25 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
                     .save_rescan_job(store, job.clone(), PersistMode::Sync)
                     .map_err(wallet_registry_error_to_failure)?;
 
+                for position in partial_snapshot.active_chain.iter().filter(|position| {
+                    position.height >= start_height && position.height <= stop_height
+                }) {
+                    let payload_present = store
+                        .has_block(position.block_hash)
+                        .map_err(|error| RpcFailure::wallet_error(error.to_string()))?;
+                    if !payload_present {
+                        let message = format!(
+                            "missing block payload at height {} hash {:?}",
+                            position.height, position.block_hash
+                        );
+                        job.mark_failed(message.clone());
+                        registry
+                            .save_rescan_job(store, job, PersistMode::Sync)
+                            .map_err(wallet_registry_error_to_failure)?;
+                        return Err(RpcFailure::wallet_error(message));
+                    }
+                }
+
                 let mut wallet = registry
                     .wallet(&wallet_name)
                     .map_err(wallet_registry_error_to_failure)?;

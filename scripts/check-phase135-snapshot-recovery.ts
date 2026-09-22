@@ -408,7 +408,7 @@ export function checkPhase135SnapshotRecovery(
     "pub fn from_runtime_config_with_store(",
   );
   const chainstateLoad = startupConstruction.indexOf(
-    "load_chainstate_snapshot",
+    "wallet_scan_chainstate_snapshot",
   );
   const handleConstruction = startupConstruction.indexOf(
     "ManagedNetworkHandle::from_network_fixture",
@@ -437,7 +437,7 @@ export function checkPhase135SnapshotRecovery(
         "maybe_confirmed_txid_counts: None",
       ) ||
       !startupConstruction.includes(
-        "load_chainstate_snapshot_with_confirmation_migration()?",
+        "wallet_scan_chainstate_snapshot()?",
       ) ||
       chainstateLoad < 0 ||
       handleConstruction < chainstateLoad ||

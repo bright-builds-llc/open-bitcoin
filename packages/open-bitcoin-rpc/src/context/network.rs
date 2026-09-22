@@ -31,7 +31,8 @@ use open_bitcoin_node::network::{
 };
 use open_bitcoin_node::status::{BlockRelayEvidenceStatus, relay_evidence::RelayEvidenceStatus};
 use open_bitcoin_node::{
-    DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus, StorageError,
+    DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus, PersistMode,
+    StorageError,
 };
 use open_bitcoin_node::{
     ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork, ManagedWallet,
@@ -41,7 +42,7 @@ use open_bitcoin_node::{
 #[cfg(test)]
 use super::EncodedWireResponse;
 use super::mempool_recovery::recover_mempool_snapshot_from_store_handle;
-use super::wallet_state::build_wallet_state_with_store;
+use super::wallet_state::{WalletState, build_wallet_state_with_store};
 use super::{ManagedRpcContext, address_boundary::local_advertisement_decisions};
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
@@ -117,7 +118,7 @@ impl ManagedRpcContext {
             }
         };
         let durable_chainstate = match effective_store.as_ref() {
-            Some(store) => store.load_chainstate_snapshot_with_confirmation_migration()?,
+            Some(store) => store.wallet_scan_chainstate_snapshot()?,
             None => None,
         };
         let chainstate_store = durable_chainstate.map_or_else(
@@ -463,8 +464,17 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         block: &Block,
     ) -> Result<open_bitcoin_node::core::chainstate::ChainPosition, ManagedNetworkAuthorityError>
     {
-        self.network
-            .connect_local_block(block, self.verify_flags, self.consensus_params)
+        let position =
+            self.network
+                .connect_local_block(block, self.verify_flags, self.consensus_params)?;
+        if let WalletState::DurableNamedRegistry { store, .. } = &self.wallet_state {
+            store
+                .save_block(block, PersistMode::Sync)
+                .map_err(|error| {
+                    ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())
+                })?;
+        }
+        Ok(position)
     }
 
     #[allow(deprecated)] // Wallet still uses the AdmissionResult path.
