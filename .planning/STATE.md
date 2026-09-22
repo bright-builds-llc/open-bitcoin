@@ -2,10 +2,10 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: ready
-stopped_at: Phase 146 complete
-last_updated: "2026-09-22T05:31:10.235Z"
-last_activity: 2026-09-22
+status: Ready to discuss
+stopped_at: Phase 147 context gathered
+last_updated: "2026-09-22T12:25:59.842Z"
+last_activity: 2026-09-22 — Phase 146 wallet leftover-snapshot cutover complete
 progress:
   total_phases: 6
   completed_phases: 1
@@ -494,6 +494,6 @@ Next action: `/gsd-discuss-phase 147`
 
 ## Session Continuity
 
-Last session: 2026-09-22T04:31:32.801Z
-Stopped at: Phase 146 complete — ready to discuss Phase 147
-Resume file: None
+Last session: 2026-09-22T12:25:59.837Z
+Stopped at: Phase 147 context gathered
+Resume file: .planning/phases/147-pure-prune-policy-and-lock-windows/147-CONTEXT.md
