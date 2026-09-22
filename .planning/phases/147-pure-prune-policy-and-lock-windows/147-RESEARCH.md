@@ -558,20 +558,19 @@ pub fn height_forbidden_by_lock(height: u64, height_first: u64, height_last: u64
 
 **If this table is empty:** N/A — three discretionary assumptions remain for planner confirmation.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Automatic stop predicate: `remaining <= target` vs `remaining < target`?**
+1. **Automatic stop predicate: `remaining <= target` vs `remaining < target`?** — RESOLVED
    - What we know: Knots breaks when `usage + buffer < target`.
-   - What's unclear: Without buffer, exact equality edge for height sums.
-   - Recommendation: Stop when `remaining_usage <= target_bytes` after subtracting a candidate; unit-test equality.
+   - Resolution: Stop when `remaining_usage <= target_bytes` after subtracting a candidate; unit-test equality.
 
-2. **Should `parse_prune_arg` accept `u64` MiB directly as a second constructor for Phase 150 JSONC?**
+2. **Should `parse_prune_arg` accept `u64` MiB directly as a second constructor for Phase 150 JSONC?** — RESOLVED
    - What we know: Knots argv is signed `int64` MiB count.
-   - Recommendation: Keep `i64` parse for Knots parity; add `PruneMode::automatic_mib(u64) -> Result<...>` for already-validated non-negative paths if needed.
+   - Resolution: Keep `i64` `parse_prune_arg` only this phase (no second `u64` constructor / `automatic_mib`); Phase 150 may add a validated non-negative path later if needed.
 
-3. **Prune-start for single chainstate always 0?**
+3. **Prune-start for single chainstate always 0?** — RESOLVED
    - What we know: `GetPruneRange` sets `prune_start` non-zero only for snapshot/background dual-chainstate (out of scope D-14).
-   - Recommendation: Hardcode start `0` / omit snapshot branch; document intentionally.
+   - Resolution: Single-chainstate prune start = `0`; omit snapshot branch; document intentionally.
 
 ## Environment Availability
 
