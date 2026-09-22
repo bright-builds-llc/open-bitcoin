@@ -190,6 +190,26 @@
       ]
     },
     {
+      "label": "chainstate-prune",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/prune.rs",
+        "packages/open-bitcoin-chainstate/src/prune/mode.rs",
+        "packages/open-bitcoin-chainstate/src/prune/range.rs",
+        "packages/open-bitcoin-chainstate/src/prune/locks.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests/mode.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests/range.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests/locks.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockmanager_args.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.h",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
       "label": "chainstate-support",
       "files": [
         "packages/open-bitcoin-chainstate/src/error.rs",

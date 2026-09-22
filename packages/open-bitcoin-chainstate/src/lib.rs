@@ -19,6 +19,7 @@
 pub mod coins;
 pub mod engine;
 pub mod error;
+pub mod prune;
 pub mod types;
 
 pub use coins::{
@@ -33,6 +34,11 @@ pub use engine::{
     prefer_candidate_tip,
 };
 pub use error::ChainstateError;
+pub use prune::{
+    MIN_BLOCKS_TO_KEEP, MIN_DISK_SPACE_FOR_BLOCK_FILES_MIB, PRUNE_LOCK_BUFFER, PruneLockInfo,
+    PruneMode, PruneModeParseError, automatic_prune_allowed, height_forbidden_by_any_lock,
+    height_forbidden_by_lock, height_inside_keep_window, last_prunable_height, parse_prune_arg,
+};
 pub use types::{
     AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, ChainstateSnapshot, Coin, TxUndo,
 };
