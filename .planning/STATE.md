@@ -26,14 +26,14 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 147 (pure-prune-policy-and-lock-windows) — EXECUTING
+Phase: 147 (pure-prune-policy-and-lock-windows) — COMPLETE
 Plan: 3 of 3
 Status: Phase complete — ready for verification
 Last activity: 2026-09-22
 
-Progress: [███████░░░] 67%
+Progress: [██████████] 100%
 
-Next action: Execute 147-02-PLAN.md
+Next action: Verify Phase 147 (`/gsd-verify-work` or phase verifier)
 
 ## Performance Metrics
 
