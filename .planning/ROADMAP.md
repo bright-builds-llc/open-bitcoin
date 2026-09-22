@@ -44,7 +44,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
 
 ## Phases
 
-- [ ] **Phase 146: Wallet Leftover-Snapshot Cutover** — Cut wallet rescan off leftover snapshot bytes so prune cannot resurrect snapshot-as-truth.
+- [x] **Phase 146: Wallet Leftover-Snapshot Cutover** — Cut wallet rescan off leftover snapshot bytes so prune cannot resurrect snapshot-as-truth. (completed 2026-09-22)
 - [ ] **Phase 147: Pure Prune Policy and Lock Windows** — Encode height windows, 550 MiB target, 288-block keep, and 10-block lock buffer as I/O-free decisions.
 - [ ] **Phase 148: Fjall Payload Unlink and Have-Pruned** — Delete paired block and undo keys durably, record have-pruned only after success, and fail closed on interrupted prune.
 - [ ] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned.
@@ -61,12 +61,12 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
   1. Wallet rescan reads coins best-block and payload-present blocks; leftover snapshot blobs are non-authoritative on the wallet path.
   2. After same-datadir reopen with a leftover snapshot present, rescan does not rebuild balances or history from that snapshot.
   3. Contributors can observe that unlink-ready prune work has not yet deleted payloads; cutover alone does not invent have-pruned.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 
 Plans:
 - [x] 146-01-PLAN.md — Cut WalletRescanRuntime to coins + has_block scan authority
 - [x] 146-02-PLAN.md — Cut durable RPC rescan seed off leftover snapshot load
-- [ ] 146-03-PLAN.md — Parity breadcrumbs and no-prune / leftover-write guardrails
+- [x] 146-03-PLAN.md — Parity breadcrumbs and no-prune / leftover-write guardrails
 
 ### Phase 147: Pure Prune Policy and Lock Windows
 **Goal**: Operators and later unlink get Knots-aligned prune mode, height-window, and lock-buffer decisions without any disk I/O in core.
@@ -161,7 +161,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
-| 146. Wallet Leftover-Snapshot Cutover | 2/3 | In Progress|  |
+| 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete   | 2026-09-22 |
 | 147. Pure Prune Policy and Lock Windows | 0/TBD | Not started | - |
 | 148. Fjall Payload Unlink and Have-Pruned | 0/TBD | Not started | - |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
