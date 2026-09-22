@@ -80,7 +80,7 @@ Each task was committed atomically:
 
 1. **Task 1 + Task 2 (combined):** `d90dfb80` (feat) — durable RPC seed cutover, has_block gate, regressions, P135 checker, and related fixture fixes
 
-**Plan metadata:**  (docs: complete plan)
+**Plan metadata:** `dffa0c75` (docs: complete plan)
 
 _Note: TDD RED/GREEN and the two plan tasks were combined into one hook-passing feat commit because pre-commit always runs `bash scripts/verify.sh`._
 
