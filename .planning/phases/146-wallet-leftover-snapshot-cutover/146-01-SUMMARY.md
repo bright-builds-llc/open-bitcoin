@@ -81,7 +81,7 @@ Each task was committed atomically:
 
 1. **Task 1 + Task 2 (combined):** `8c5fec01` (feat) — coins-backed cutover, has_block gate, reopen/missing-payload tests, and bench fixture update
 
-**Plan metadata:** _(pending docs commit)_
+**Plan metadata:** `46a83ccd` (docs: complete plan)
 
 _Note: TDD RED/GREEN and the two plan tasks were combined into one hook-passing feat commit because pre-commit always runs `bash scripts/verify.sh`._
 
@@ -135,7 +135,7 @@ _Note: TDD RED/GREEN and the two plan tasks were combined into one hook-passing 
 - **Fix:** Revert SNAP-01 to Pending; keep SUMMARY `requirements-completed` empty (Phases 140–145 pattern).
 - **Files modified:** `.planning/REQUIREMENTS.md`, `146-01-SUMMARY.md`
 - **Verification:** Will confirm on docs commit verify
-- **Committed in:** _(docs commit)_
+- **Committed in:** `46a83ccd`
 
 ---
 
