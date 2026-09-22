@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: executing
-stopped_at: Completed 147-02-PLAN.md
-last_updated: "2026-09-22T16:59:37.312Z"
+status: verifying
+stopped_at: Completed 147-03-PLAN.md
+last_updated: "2026-09-22T18:20:49.800Z"
 last_activity: 2026-09-22
 progress:
   total_phases: 6
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 83
+  completed_plans: 6
+  percent: 100
 ---
 
 # Project State
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 147 (pure-prune-policy-and-lock-windows) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-22
 
 Progress: [███████░░░] 67%
@@ -151,6 +151,7 @@ Next action: Execute 147-02-PLAN.md
 | Phase 146 P03 | 18 min | 2 tasks | 1 files |
 | Phase 147 P01 | 1h 2m | 2 tasks | 11 files |
 | Phase 147 P02 | 55 min | 1 tasks | 7 files |
+| Phase 147 P03 | 62 min | 1 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -475,6 +476,8 @@ Next action: Execute 147-02-PLAN.md
 - [Phase 147]: Leave PRUN-01 and LOCK-01 Pending until lifecycle-valid Phase 147 VERIFICATION — Active-milestone verification traceability rejects Complete flips without phase verification coverage.
 - [Phase 147]: Automatic prune stops when remaining_usage <= target_bytes after a selected candidate — Research Open Question 1 locked; matches unit fixture selecting 700 then 701
 - [Phase 147]: Leave PRUN-02 and LOCK-01 Pending until Phase 147 VERIFICATION — Same active-milestone verification traceability gate as 147-01
+- [Phase 147]: Refuse keep-window targets; do not clamp like Knots RPC (D-07 / PRUN-03) — Open Bitcoin refusal differs from Knots RPC clamp for near-tip manual prune
+- [Phase 147]: tip == prune_after_height is allowed for manual; tip < prune_after is ChainTooShort — Matches Knots RPC asymmetry vs automatic tip <= prune_after empty plan
 
 ### Pending Todos
 
@@ -502,6 +505,6 @@ Next action: Execute 147-02-PLAN.md
 
 ## Session Continuity
 
-Last session: 2026-09-22T16:59:37.308Z
-Stopped at: Completed 147-02-PLAN.md
+Last session: 2026-09-22T18:20:43.491Z
+Stopped at: Completed 147-03-PLAN.md
 Resume file: None

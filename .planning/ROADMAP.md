@@ -45,7 +45,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
 ## Phases
 
 - [x] **Phase 146: Wallet Leftover-Snapshot Cutover** — Cut wallet rescan off leftover snapshot bytes so prune cannot resurrect snapshot-as-truth. (completed 2026-09-22)
-- [ ] **Phase 147: Pure Prune Policy and Lock Windows** — Encode height windows, 550 MiB target, 288-block keep, and 10-block lock buffer as I/O-free decisions.
+- [x] **Phase 147: Pure Prune Policy and Lock Windows** — Encode height windows, 550 MiB target, 288-block keep, and 10-block lock buffer as I/O-free decisions. (completed 2026-09-22)
 - [ ] **Phase 148: Fjall Payload Unlink and Have-Pruned** — Delete paired block and undo keys durably, record have-pruned only after success, and fail closed on interrupted prune.
 - [ ] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned.
 - [ ] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces.
@@ -77,11 +77,11 @@ Plans:
   2. Automatic prune plans keep the last 288 blocks and do not start before the network prune-after height.
   3. Manual prune refuses a target height inside the 288-block keep window.
   4. A prune lock forbids deleting the locked height range plus a 10-block buffer, decided in `open-bitcoin-chainstate` without Fjall or filesystem access.
-**Plans:** 2/3 plans executed
+**Plans:** 3/3 plans complete
 Plans:
 - [x] 147-01-PLAN.md — Typed PruneMode parse, keep-window helpers, lock-buffer predicates, chainstate-prune breadcrumbs
 - [x] 147-02-PLAN.md — Automatic prune planner (288 keep, prune-after empty plan, injected byte budget, lock omit)
-- [ ] 147-03-PLAN.md — Manual prune planner with keep-window typed refusal (no clamp) and lock omit
+- [x] 147-03-PLAN.md — Manual prune planner with keep-window typed refusal (no clamp) and lock omit
 
 ### Phase 148: Fjall Payload Unlink and Have-Pruned
 **Goal**: Eligible heights lose paired block and undo payloads on disk, and have-pruned is recorded only after that delete is durable.
@@ -166,7 +166,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
-| 147. Pure Prune Policy and Lock Windows | 2/3 | In Progress|  |
+| 147. Pure Prune Policy and Lock Windows | 3/3 | Complete   | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 0/TBD | Not started | - |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
