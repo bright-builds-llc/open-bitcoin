@@ -21,7 +21,10 @@ pub use locks::{
 pub use mode::{
     MIN_DISK_SPACE_FOR_BLOCK_FILES_MIB, PruneMode, PruneModeParseError, parse_prune_arg,
 };
-pub use plan::{AutomaticPruneInput, PrunePlan, plan_automatic_prune};
+pub use plan::{
+    AutomaticPruneInput, ManualPruneInput, ManualPruneRefusal, PrunePlan, plan_automatic_prune,
+    plan_manual_prune,
+};
 pub use range::{
     MIN_BLOCKS_TO_KEEP, automatic_prune_allowed, height_inside_keep_window, last_prunable_height,
 };

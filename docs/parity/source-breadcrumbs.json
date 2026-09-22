@@ -201,7 +201,8 @@
         "packages/open-bitcoin-chainstate/src/prune/tests/mode.rs",
         "packages/open-bitcoin-chainstate/src/prune/tests/range.rs",
         "packages/open-bitcoin-chainstate/src/prune/tests/locks.rs",
-        "packages/open-bitcoin-chainstate/src/prune/tests/automatic.rs"
+        "packages/open-bitcoin-chainstate/src/prune/tests/automatic.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests/manual.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/validation.h",

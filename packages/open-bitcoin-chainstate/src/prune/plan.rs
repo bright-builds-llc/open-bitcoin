@@ -5,13 +5,13 @@
 // - packages/bitcoin-knots/src/node/blockstorage.h
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-//! Pure automatic prune planner: injected sizes and locks in, candidate heights out.
+//! Pure prune planners: injected facts and locks in, candidate heights or refusals out.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::locks::{PruneLockInfo, height_forbidden_by_any_lock};
 use super::mode::PruneMode;
-use super::range::{automatic_prune_allowed, last_prunable_height};
+use super::range::{automatic_prune_allowed, height_inside_keep_window, last_prunable_height};
 
 /// Ascending unique candidate heights for a later unlink phase.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -77,4 +77,97 @@ pub fn plan_automatic_prune(input: &AutomaticPruneInput) -> PrunePlan {
     }
 
     PrunePlan { heights }
+}
+
+/// Injected facts for manual prune planning. No storage I/O and no byte budget.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ManualPruneInput {
+    pub tip: u32,
+    /// Injected chain-params prune-after height — never a hardcoded mainnet constant.
+    pub prune_after_height: u32,
+    pub mode: PruneMode,
+    pub target_height: u32,
+    /// Optional presence filter: if Some, only heights present in the set are candidates.
+    /// If None, every height in `0..=effective_end` that is not lock-forbidden is a candidate.
+    pub maybe_present_heights: Option<BTreeSet<u32>>,
+    pub locks: Vec<PruneLockInfo>,
+}
+
+/// Typed refusal for an illegal manual prune request.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ManualPruneRefusal {
+    Disabled,
+    ChainTooShort {
+        tip: u32,
+        prune_after_height: u32,
+    },
+    TargetInsideKeepWindow {
+        tip: u32,
+        target: u32,
+        last_prunable: u32,
+    },
+    TargetAboveTip {
+        tip: u32,
+        target: u32,
+    },
+}
+
+/// Builds a manual prune candidate plan, or a typed refusal for illegal targets.
+///
+/// Unlike Knots RPC (which clamps near-tip targets to `tip-288`), Open Bitcoin
+/// refuses keep-window targets with [`ManualPruneRefusal::TargetInsideKeepWindow`].
+pub fn plan_manual_prune(input: &ManualPruneInput) -> Result<PrunePlan, ManualPruneRefusal> {
+    if matches!(input.mode, PruneMode::Disabled) {
+        return Err(ManualPruneRefusal::Disabled);
+    }
+
+    if input.tip < input.prune_after_height {
+        return Err(ManualPruneRefusal::ChainTooShort {
+            tip: input.tip,
+            prune_after_height: input.prune_after_height,
+        });
+    }
+
+    if input.target_height > input.tip {
+        return Err(ManualPruneRefusal::TargetAboveTip {
+            tip: input.tip,
+            target: input.target_height,
+        });
+    }
+
+    let last_prunable = last_prunable_height(input.tip);
+    if height_inside_keep_window(input.tip, input.target_height) {
+        return Err(ManualPruneRefusal::TargetInsideKeepWindow {
+            tip: input.tip,
+            target: input.target_height,
+            last_prunable,
+        });
+    }
+
+    let effective_end = input.target_height.min(last_prunable);
+    let mut heights = Vec::new();
+
+    match &input.maybe_present_heights {
+        Some(present) => {
+            for &height in present {
+                if height > effective_end {
+                    break;
+                }
+                if height_forbidden_by_any_lock(height, &input.locks) {
+                    continue;
+                }
+                heights.push(height);
+            }
+        }
+        None => {
+            for height in 0..=effective_end {
+                if height_forbidden_by_any_lock(height, &input.locks) {
+                    continue;
+                }
+                heights.push(height);
+            }
+        }
+    }
+
+    Ok(PrunePlan { heights })
 }

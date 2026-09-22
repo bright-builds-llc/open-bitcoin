@@ -7,5 +7,6 @@
 
 mod automatic;
 mod locks;
+mod manual;
 mod mode;
 mod range;
