@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Phase 149 context gathered
-last_updated: "2026-09-27T21:17:13.710Z"
-last_activity: 2026-09-27 -- Phase 149 planning complete
+stopped_at: Completed 149-01-PLAN.md
+last_updated: "2026-09-27T22:14:12.603Z"
+last_activity: 2026-09-27
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 15
-  completed_plans: 11
-  percent: 73
+  completed_plans: 12
+  percent: 80
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 149
-Plan: Not started
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-27 -- Phase 149 planning complete
+Last activity: 2026-09-27
 
-Progress: [██████████] 100%
+Progress: [████████░░] 80%
 
-Next action: `/gsd-discuss-phase 149`
+Next action: /gsd-execute-phase 149
 
 ## Performance Metrics
 
@@ -159,6 +159,7 @@ Next action: `/gsd-discuss-phase 149`
 | Phase 148 P03 | 31 min | 2 tasks | 5 files |
 | Phase 148 P04 | 29 min | 2 tasks | 5 files |
 | Phase 148 P05 | 27 min | 2 tasks | 4 files |
+| Phase 149 P01 | 27 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -502,6 +503,9 @@ Next action: `/gsd-discuss-phase 149`
 - [Phase 148]: FlushApplyError carries hashes already passed to forget_undo so cache removal runs before the mutate closure returns the storage error
 - [Phase 148]: Leave UNLK-01 Pending until lifecycle-valid Phase 148 verification — Active-milestone verification traceability rejects Complete flips before phase verification exists. Plan 148-05 closes the error-path cache gap but does not close the phase.
 - [Phase 148]: Verification passed 9/9 and UNLK-01, UNLK-02, and UNLK-03 are Complete — 148-VERIFICATION.md status is passed. Summaries 01 and 03 list those ids in requirements-completed.
+- [Phase 149]: Combined 149-01 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh and new Rust paths require breadcrumbs — Plan action 6 requires tests and implementation in the same commit as breadcrumbs. A RED-only commit fails bash scripts/verify.sh.
+- [Phase 149]: Leave SERV-01 Pending until lifecycle-valid Phase 149 verification — Active-milestone verification traceability rejects requirements-completed activation before 149-VERIFICATION.md exists. Task 2 forbids flipping SERV-01 in this plan.
+- [Phase 149]: Limited-serve window is tip distance greater than MIN_BLOCKS_TO_KEEP plus 2; deletion still keeps 288 — D-05. Distance 290 stays inside and 291 is outside. height_inside_keep_window was not edited.
 
 ### Pending Todos
 
@@ -529,6 +533,6 @@ Next action: `/gsd-discuss-phase 149`
 
 ## Session Continuity
 
-Last session: 2026-09-27T20:12:20.986Z
-Stopped at: Phase 149 context gathered
-Resume file: .planning/phases/149-limited-serving-and-honest-pruned-labels/149-CONTEXT.md
+Last session: 2026-09-27T22:13:58.372Z
+Stopped at: Completed 149-01-PLAN.md
+Resume file: None
