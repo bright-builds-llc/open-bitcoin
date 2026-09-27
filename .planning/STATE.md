@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: executing
-stopped_at: Phase 148 gap context gathered
-last_updated: "2026-09-27T15:23:24.348Z"
-last_activity: 2026-09-27 -- Phase 148 planning complete
+status: verifying
+stopped_at: Completed 148-05-PLAN.md
+last_updated: "2026-09-27T18:16:40.232Z"
+last_activity: 2026-09-27
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 11
-  completed_plans: 10
-  percent: 91
+  completed_plans: 11
+  percent: 100
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 148 (fjall-payload-unlink-and-have-pruned) — EXECUTING
-Plan: 4 of 4
-Status: Ready to execute
-Last activity: 2026-09-27 -- Phase 148 planning complete
+Plan: 5 of 5
+Status: Phase complete — ready for verification
+Last activity: 2026-09-27
 
-Progress: [███░░░░░░░] 33%
+Progress: [██████████] 100%
 
 Next action: `/gsd-verify-work 148`
 
@@ -157,6 +157,7 @@ Next action: `/gsd-verify-work 148`
 | Phase 148 P02 | 59 min | 2 tasks | 14 files |
 | Phase 148 P03 | 31 min | 2 tasks | 5 files |
 | Phase 148 P04 | 29 min | 2 tasks | 5 files |
+| Phase 148 P05 | 27 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -496,6 +497,9 @@ Next action: `/gsd-verify-work 148`
 - [Phase 148]: flush_applying_prune_plan lives in prune_flush.rs so runtime_authority.rs stays under 628 lines
 - [Phase 148]: Non-test builds allow dead_code on flush_applying_prune_plan because flush_coins still passes an empty plan
 - [Phase 148]: Leave UNLK-01 Pending until lifecycle-valid Phase 148 verification — Plan 148-04 evicts deleted hashes from the block cache but does not close the phase.
+- [Phase 148]: Combined 148-05 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh and the plan includes both tests in that commit
+- [Phase 148]: FlushApplyError carries hashes already passed to forget_undo so cache removal runs before the mutate closure returns the storage error
+- [Phase 148]: Leave UNLK-01 Pending until lifecycle-valid Phase 148 verification — Active-milestone verification traceability rejects Complete flips before phase verification exists. Plan 148-05 closes the error-path cache gap but does not close the phase.
 
 ### Pending Todos
 
@@ -523,6 +527,6 @@ Next action: `/gsd-verify-work 148`
 
 ## Session Continuity
 
-Last session: 2026-09-27T15:23:24.343Z
-Stopped at: Phase 148 gap context gathered
-Resume file: .planning/phases/148-fjall-payload-unlink-and-have-pruned/148-CONTEXT.md
+Last session: 2026-09-27T18:15:29.694Z
+Stopped at: Completed 148-05-PLAN.md
+Resume file: None

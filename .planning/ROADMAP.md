@@ -92,14 +92,14 @@ Plans:
   2. The node records have-pruned only after a non-empty durable delete batch succeeds, never from prune config alone.
   3. Restart after an interrupted prune finishes the partial delete or refuses closed without inventing blocks or triggering reindex.
   4. Heights covered by the Phase 147 lock buffer remain present after a prune attempt that would otherwise delete them.
-**Plans:** 5 plans
+**Plans:** 5/5 plans complete
 
 Plans:
 - [x] 148-01-PLAN.md — Paired Fjall delete and have-pruned marker
 - [x] 148-02-PLAN.md — Flush owner consumes the prune plan
 - [x] 148-03-PLAN.md — Finish or refuse an interrupted prune
 - [x] 148-04-PLAN.md — Drop deleted hashes from the block cache
-- [ ] 148-05-PLAN.md — Evict cache hashes when a committed unlink is followed by a flush error
+- [x] 148-05-PLAN.md — Evict cache hashes when a committed unlink is followed by a flush error
 
 ### Phase 149: Limited Serving and Honest Pruned Labels
 **Goal**: Peers and status see limited-network serving and honest `Pruned` versus `Unavailable` labels only after real deletes.
@@ -174,7 +174,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | --- | --- | --- | --- |
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
-| 148. Fjall Payload Unlink and Have-Pruned | 4/4 | Complete   | 2026-09-27 |
+| 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete   | 2026-09-27 |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
