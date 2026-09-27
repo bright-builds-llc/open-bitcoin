@@ -68,6 +68,16 @@ impl FjallNodeStore {
             .transpose()
     }
 
+    /// Returns whether an undo record exists for `block_hash`.
+    ///
+    /// Presence is a `contains_key` probe on `undo:<64-hex>` and does not decode
+    /// the record.
+    pub fn has_undo(&self, block_hash: BlockHash) -> Result<bool, StorageError> {
+        self.chainstate
+            .contains_key(undo_key(block_hash))
+            .map_err(|error| backend_failure(StorageNamespace::Chainstate, error))
+    }
+
     pub fn hydrate_chainstate_for_open(&self) -> Result<Option<ChainstateSnapshot>, StorageError> {
         let view = FjallCoinsView::from_store(self);
         let heads = view.head_blocks().map_err(map_heads_error)?;
@@ -401,7 +411,7 @@ impl FjallNodeStore {
     }
 }
 
-fn undo_key(block_hash: BlockHash) -> String {
+pub(super) fn undo_key(block_hash: BlockHash) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
 
     let mut key = String::with_capacity(UNDO_KEY_PREFIX.len() + 64);

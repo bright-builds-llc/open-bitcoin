@@ -1864,6 +1864,19 @@
       ]
     },
     {
+      "label": "node-fjall-prune-unlink",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/prune.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_unlink.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.h",
+        "packages/bitcoin-knots/src/validation.h"
+      ]
+    },
+    {
       "label": "node-storage-contract",
       "files": [
         "packages/open-bitcoin-node/src/storage.rs",

@@ -38,7 +38,10 @@ mod blocks;
 mod coins;
 mod coins_access;
 mod mempool;
+mod prune;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
+#[cfg_attr(not(test), allow(unused_imports))] // Plan 148-02 consumes this re-export.
+pub(crate) use prune::PairedDeleteOutcome;
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";

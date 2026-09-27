@@ -261,6 +261,7 @@ mod coins_migration;
 mod corruption_and_markers;
 mod lock_probe;
 mod metrics_persistence;
+mod prune_unlink;
 mod recovery_classification;
 mod snapshot_persistence;
 mod wallet_persistence;
