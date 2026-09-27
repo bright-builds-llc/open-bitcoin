@@ -110,11 +110,11 @@ Plans:
   2. A peer request for a block older than the limited serve window is refused.
   3. A peer request for a block whose payload prune removed is not served.
   4. Status and RPC report `Pruned` only when have-pruned is set and the payload is gone; a missing payload without prune stays `Unavailable`.
-**Plans:** 1/4 plans executed
+**Plans:** 2/4 plans executed
 
 Plans:
 - [x] 149-01-PLAN.md — Pure NETWORK_LIMITED bit and limited-serve window predicates
-- [ ] 149-02-PLAN.md — Advertise limited service from PruneMode on the version message
+- [x] 149-02-PLAN.md — Advertise limited service from PruneMode on the version message
 - [ ] 149-03-PLAN.md — Refuse out-of-window and pruned block bodies
 - [ ] 149-04-PLAN.md — Project honest Pruned status only after have-pruned
 
@@ -181,7 +181,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
-| 149. Limited Serving and Honest Pruned Labels | 1/4 | In Progress|  |
+| 149. Limited Serving and Honest Pruned Labels | 2/4 | In Progress|  |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
