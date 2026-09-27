@@ -24,7 +24,8 @@ use crate::status::{
 };
 use crate::storage::{
     FjallNodeStore, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
-    coins_view::FjallCoinsView, fjall_store::PairedDeleteOutcome,
+    coins_view::FjallCoinsView,
+    fjall_store::{PairedDeleteOutcome, resume_prune_intent},
 };
 
 #[cfg(test)]
@@ -165,6 +166,8 @@ pub fn initialize(
         decision,
         maybe_best_block,
     )?);
+    // Locks are not durable until Phase 150, so startup resumes with none.
+    resume_prune_intent(store, &[])?;
     lifecycle.readiness = ManagerReadiness::ReadyToFlush;
     let cache = CoinsCache::from_parent(recovered);
     Ok((lifecycle, FjallCoinsView::from_store(store), cache))

@@ -40,7 +40,9 @@ mod coins_access;
 mod mempool;
 mod prune;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
-pub(crate) use prune::PairedDeleteOutcome;
+#[cfg(test)]
+pub(crate) use prune::{HAVE_PRUNED_KEY, PruneIntent};
+pub(crate) use prune::{PairedDeleteOutcome, resume_prune_intent};
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";

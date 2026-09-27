@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,227 |
-| Total lines | 342,101 |
-| Code/content lines | 297,427 |
-| Comment-only lines | 15,995 |
-| Blank lines | 28,679 |
+| Total lines | 342,524 |
+| Code/content lines | 297,764 |
+| Comment-only lines | 16,030 |
+| Blank lines | 28,730 |
 
 ## Per-Crate Modules
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,799 | 15,647 | 30 | 26,476 | 144.9% |
 | open-bitcoin-network | 124 | 14,538 | 21,148 | 30 | 35,716 | 145.5% |
-| open-bitcoin-node | 294 | 33,918 | 45,367 | 42 | 79,327 | 133.8% |
+| open-bitcoin-node | 294 | 34,037 | 45,671 | 42 | 79,750 | 134.2% |
 | open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
 | open-bitcoin-rpc | 97 | 12,765 | 13,078 | 59 | 25,902 | 102.5% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,8 +34,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 476 | 133,399 | 112,909 | 9,758 | 10,732 |
-| Rust production | 405 | 114,859 | 99,756 | 4,354 | 10,749 |
+| Rust tests | 476 | 133,703 | 113,144 | 9,785 | 10,774 |
+| Rust production | 405 | 114,978 | 99,858 | 4,362 | 10,758 |
 | TypeScript/Bun scripts | 276 | 76,963 | 68,824 | 1,800 | 6,339 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 23 | 4,514 | 4,036 | 69 | 409 |
@@ -333,14 +333,14 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- |
 | 1 | MODULE.bazel.lock | Fixture/data | 8,217 |
 | 2 | packages/Cargo.lock | TOML/config | 3,206 |
-| 3 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
-| 4 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
-| 5 | packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs | Rust production | 627 |
-| 6 | packages/open-bitcoin-node/src/network/relay_fanout.rs | Rust production | 627 |
-| 7 | packages/open-bitcoin-node/src/sync/session.rs | Rust production | 627 |
-| 8 | scripts/check-phase92-address-boundaries.ts | TypeScript/Bun scripts | 627 |
-| 9 | scripts/check-phase94-dos-resource-governance.ts | TypeScript/Bun scripts | 627 |
-| 10 | packages/open-bitcoin-node/src/storage/fjall_store.rs | Rust production | 626 |
+| 3 | packages/open-bitcoin-node/src/storage/fjall_store.rs | Rust production | 628 |
+| 4 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
+| 5 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
+| 6 | packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs | Rust production | 627 |
+| 7 | packages/open-bitcoin-node/src/network/relay_fanout.rs | Rust production | 627 |
+| 8 | packages/open-bitcoin-node/src/sync/session.rs | Rust production | 627 |
+| 9 | scripts/check-phase92-address-boundaries.ts | TypeScript/Bun scripts | 627 |
+| 10 | scripts/check-phase94-dos-resource-governance.ts | TypeScript/Bun scripts | 627 |
 | 11 | packages/open-bitcoin-wallet/src/address.rs | Rust production | 626 |
 | 12 | scripts/check-phase124-milestone-closeout-reconciliation.ts | TypeScript/Bun scripts | 626 |
 | 13 | packages/open-bitcoin-rpc/src/config/loader.rs | Rust production | 625 |
@@ -357,7 +357,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 176086a7972129418cb8f0a52b622236cf39be092b6e820baad052c4bbeba60b |
+| Input fingerprint | 9a568bc09ab195df6f187e614b2edf1c053061c8df8e631b5a048c949a24afbb |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
