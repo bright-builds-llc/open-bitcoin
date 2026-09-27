@@ -40,6 +40,7 @@ impl ServiceFlags {
     pub const NONE: Self = Self(0);
     pub const NETWORK: Self = Self(1 << 0);
     pub const WITNESS: Self = Self(1 << 3);
+    pub const NETWORK_LIMITED: Self = Self(1 << 10);
     pub const REPLACE_BY_FEE: Self = Self(1 << 26);
 
     pub const fn from_bits(bits: u64) -> Self {

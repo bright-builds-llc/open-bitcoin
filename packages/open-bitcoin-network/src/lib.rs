@@ -24,6 +24,7 @@ mod compatibility;
 mod error;
 mod header_store;
 mod inbound;
+mod limited_serve;
 mod message;
 mod peer;
 mod peer_policy;
@@ -89,6 +90,9 @@ pub use inbound::{
     PeerPermissionClassRegistry, PeerPermissionDirection, PeerPermissionParseError,
     PeerPermissionSet, PeerPermissionToken, PermissionClassName, PermissionEffectLabel,
     RelayPermissionEffectLabel, classify_inbound_preflight,
+};
+pub use limited_serve::{
+    LIMITED_SERVE_RACE_BUFFER, advertised_service_flags, block_request_exceeds_limited_serve_window,
 };
 pub use message::{
     HeadersMessage, InventoryList, LocalPeerConfig, MAX_HEADERS_RESULTS, MAX_INV_SIZE,

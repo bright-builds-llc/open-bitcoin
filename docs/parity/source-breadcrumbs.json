@@ -967,6 +967,18 @@
       "breadcrumbs": []
     },
     {
+      "label": "network-limited-serve",
+      "files": [
+        "packages/open-bitcoin-network/src/limited_serve.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/validation.h"
+      ]
+    },
+    {
       "label": "network-message-codec",
       "files": [
         "packages/open-bitcoin-network/src/message/cursor.rs",
