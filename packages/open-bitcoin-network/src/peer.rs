@@ -16,7 +16,9 @@ use crate::compact_download::CompactDownloadPeerState;
 use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::HeaderStore;
 use crate::inbound::{InboundAdmissionRejectionReason, InboundHandshakeState, InboundPeerRecord};
-use crate::message::{HeadersMessage, InventoryList, LocalPeerConfig, WireNetworkMessage};
+use crate::message::{
+    HeadersMessage, InventoryList, LocalPeerConfig, ServiceFlags, WireNetworkMessage,
+};
 use crate::peer_policy::{
     EvictionCandidateInput, EvictionDecision, MisbehaviorDecision, MisbehaviorKind,
     MisbehaviorObservation, MisbehaviorPolicy, PeerPolicyRuntimeState, select_eviction_candidate,
@@ -464,6 +466,10 @@ impl PeerManager {
             .get(&peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
         Ok(peer.requested_blocks.iter().copied().collect())
+    }
+
+    pub fn set_local_services(&mut self, services: ServiceFlags) {
+        self.local_config.services = services;
     }
 
     pub fn add_outbound_peer(

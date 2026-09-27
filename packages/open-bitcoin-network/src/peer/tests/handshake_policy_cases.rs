@@ -350,3 +350,25 @@ fn inbound_version_response_uses_sender_policy_and_suppressed_advertisements_kee
     assert_eq!(version.sender, super::super::super::message::zero_address());
     assert_eq!(evidence.suppressed_advertisements.len(), 1);
 }
+
+#[test]
+fn set_local_services_changes_the_outbound_version_message() {
+    // Arrange
+    let mut manager = PeerManager::new(local_config());
+    let limited = ServiceFlags::NETWORK_LIMITED | ServiceFlags::WITNESS;
+
+    // Act
+    manager.set_local_services(limited);
+    let actions = manager
+        .add_outbound_peer(41, 20)
+        .expect("add outbound peer");
+
+    // Assert
+    let [PeerAction::Send(WireNetworkMessage::Version(version))] = actions.as_slice() else {
+        panic!("expected one version message");
+    };
+    assert!(version.services.contains(ServiceFlags::NETWORK_LIMITED));
+    assert!(version.services.contains(ServiceFlags::WITNESS));
+    assert!(!version.services.contains(ServiceFlags::NETWORK));
+    assert_eq!(version.services, limited);
+}

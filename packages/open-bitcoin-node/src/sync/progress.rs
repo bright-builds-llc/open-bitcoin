@@ -5,8 +5,9 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
+use open_bitcoin_core::chainstate::PruneMode;
 use open_bitcoin_core::primitives::NetworkAddress;
-use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
+use open_bitcoin_network::{LocalPeerConfig, advertised_service_flags};
 
 use crate::{
     logging::{StructuredLogError, StructuredLogLevel},
@@ -426,7 +427,7 @@ pub(super) fn waiting_peer_signal() -> HealthSignal {
 pub(super) fn local_peer_config(config: &SyncRuntimeConfig) -> LocalPeerConfig {
     LocalPeerConfig {
         magic: config.network.magic(),
-        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        services: advertised_service_flags(PruneMode::Disabled),
         address: NetworkAddress {
             services: 0,
             address_bytes: [0_u8; 16],

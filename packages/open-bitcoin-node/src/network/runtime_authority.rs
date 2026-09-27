@@ -10,7 +10,7 @@ use std::{
 use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, CoinsView, FlushMode,
-        FlushPolicyTime, MemoryCoinsView, PrunePlan,
+        FlushPolicyTime, MemoryCoinsView, PruneMode, PrunePlan,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
@@ -23,8 +23,8 @@ use open_bitcoin_network::{
     BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
     InboundAdmissionPolicy, InboundAdmissionRequest, InboundResourceEvent,
     LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision, PeerBanEntry, PeerId,
-    PeerManager, ReconnectSuppressionInput, RelayActivationConfig, ServiceFlags, UnbanDecision,
-    WireNetworkMessage,
+    PeerManager, ReconnectSuppressionInput, RelayActivationConfig, UnbanDecision,
+    WireNetworkMessage, advertised_service_flags,
 };
 
 use crate::{
@@ -230,6 +230,13 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         policy: InboundAdmissionPolicy,
     ) -> Result<(), ManagedNetworkAuthorityError> {
         self.mutate(|network| network.set_inbound_admission_policy(policy))
+    }
+
+    pub fn set_serving_have_pruned(
+        &mut self,
+        have_pruned: bool,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.set_serving_have_pruned(have_pruned))
     }
 
     pub fn set_local_address_decisions(
@@ -593,7 +600,7 @@ impl ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
     ) -> Self {
         let local_config = LocalPeerConfig {
             magic,
-            services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+            services: advertised_service_flags(PruneMode::Disabled),
             address: NetworkAddress {
                 services: 0,
                 address_bytes: [0_u8; 16],

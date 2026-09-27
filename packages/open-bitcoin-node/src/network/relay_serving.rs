@@ -33,7 +33,7 @@ use super::ManagedNetworkError;
 use super::{ManagedInboundAdmissionInfo, ManagedPeerNetwork, ManagedResourceGovernanceInfo};
 use crate::status::relay_evidence::RelayDownloadEligibilityCounters;
 use crate::{ChainstateStore, ManagedChainstate, ManagedMempool};
-use open_bitcoin_core::chainstate::CoinsView;
+use open_bitcoin_core::chainstate::{CoinsView, PruneMode};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct RelayServingRecord {
@@ -410,6 +410,8 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             latest_mempool_recovery: None,
             latest_mempool_recovery_storage_error: None,
             local_config,
+            prune_mode: PruneMode::Disabled,
+            serving_have_pruned: false,
             blocks_by_hash: Default::default(),
             transactions_by_txid: Default::default(),
             transactions_by_wtxid: Default::default(),
@@ -477,6 +479,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             latest_mempool_recovery: None,
             latest_mempool_recovery_storage_error: None,
             local_config,
+            prune_mode: PruneMode::Disabled,
+            serving_have_pruned: false,
             blocks_by_hash: Default::default(),
             transactions_by_txid: Default::default(),
             transactions_by_wtxid: Default::default(),

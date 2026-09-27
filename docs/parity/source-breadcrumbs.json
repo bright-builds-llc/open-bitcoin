@@ -979,6 +979,18 @@
       ]
     },
     {
+      "label": "node-limited-serve",
+      "files": [
+        "packages/open-bitcoin-node/src/network/limited_serve.rs",
+        "packages/open-bitcoin-node/src/network/tests/limited_serve_advertisement.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
       "label": "network-message-codec",
       "files": [
         "packages/open-bitcoin-network/src/message/cursor.rs",

@@ -57,6 +57,8 @@ impl<S: Clone> Clone for ManagedPeerNetwork<S, MemoryCoinsView> {
             latest_mempool_recovery: self.latest_mempool_recovery.clone(),
             latest_mempool_recovery_storage_error: self.latest_mempool_recovery_storage_error,
             local_config: self.local_config.clone(),
+            prune_mode: self.prune_mode,
+            serving_have_pruned: self.serving_have_pruned,
             blocks_by_hash: self.blocks_by_hash.clone(),
             transactions_by_txid: self.transactions_by_txid.clone(),
             transactions_by_wtxid: self.transactions_by_wtxid.clone(),

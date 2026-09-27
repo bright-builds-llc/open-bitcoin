@@ -31,6 +31,7 @@ mod inventory;
 mod lifecycle_effects;
 #[allow(dead_code)] // Phase 134 builds this sealed contract before routing callers in later plans.
 pub(super) mod lifecycle_projection;
+mod limited_serve;
 mod mempool_lifecycle;
 mod operator_snapshot;
 mod peer_network_clone;
@@ -52,7 +53,7 @@ pub use checkpoint::{
 };
 
 use open_bitcoin_core::{
-    chainstate::{ChainPosition, ChainstateSnapshot, CoinsView, MemoryCoinsView},
+    chainstate::{ChainPosition, ChainstateSnapshot, CoinsView, MemoryCoinsView, PruneMode},
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{Block, BlockHash, Transaction, Txid, Wtxid},
 };
@@ -144,6 +145,8 @@ pub struct ManagedPeerNetwork<S, V: CoinsView = MemoryCoinsView> {
     latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
     latest_mempool_recovery_storage_error: Option<crate::status::SyncRecoveryCategory>,
     local_config: LocalPeerConfig,
+    prune_mode: PruneMode,
+    serving_have_pruned: bool,
     blocks_by_hash: BTreeMap<BlockHash, Block>,
     transactions_by_txid: BTreeMap<Txid, Transaction>,
     transactions_by_wtxid: BTreeMap<Wtxid, Transaction>,
