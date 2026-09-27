@@ -28,6 +28,7 @@ use crate::storage::{
     PersistMode, coins_codec::encode_head_blocks_key, coins_view::FjallCoinsView,
 };
 use std::cell::Cell;
+use std::rc::Rc;
 
 fn available_evidence(
     availability: FieldAvailability<crate::status::ChainstateDurabilityEvidence>,
@@ -50,7 +51,7 @@ fn execute_flush_retains_last_write_decision_not_later_none_classification() {
         false,
     );
     let mut cache = CoinsCache::from_parent(RecordingCoinsView {
-        writes: Cell::new(0),
+        writes: Rc::new(Cell::new(0)),
     });
     let execution = lifecycle
         .execute_flush(
@@ -90,7 +91,7 @@ fn project_chainstate_durability_uses_none_mode_for_current_cache_size() {
     let mut lifecycle =
         FlushLifecycle::ready_for_test(100, 0, FlushPolicyTime::from_unix_seconds(1), false);
     let mut cache = CoinsCache::from_parent(RecordingCoinsView {
-        writes: Cell::new(0),
+        writes: Rc::new(Cell::new(0)),
     });
     lifecycle
         .execute_flush(

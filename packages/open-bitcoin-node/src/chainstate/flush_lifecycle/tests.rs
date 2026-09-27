@@ -14,6 +14,7 @@ use std::{
     collections::HashMap,
     fs, io,
     path::{Path, PathBuf},
+    rc::Rc,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -216,7 +217,7 @@ impl FlushPersistSink for UndoFailingSink {
 }
 
 pub(super) struct RecordingCoinsView {
-    pub(super) writes: Cell<usize>,
+    pub(super) writes: Rc<Cell<usize>>,
 }
 
 impl CoinsView for RecordingCoinsView {
@@ -248,7 +249,7 @@ impl CoinsView for RecordingCoinsView {
 
 pub(super) fn dirty_recording_cache() -> CoinsCache<RecordingCoinsView> {
     let mut cache = CoinsCache::from_parent(RecordingCoinsView {
-        writes: Cell::new(0),
+        writes: Rc::new(Cell::new(0)),
     });
     cache
         .add_coin(

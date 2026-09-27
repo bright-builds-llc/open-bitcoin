@@ -93,7 +93,7 @@ fn execute_flush_periodic_due_uses_sync_from_decide_flush() {
         false,
     );
     let mut cache = CoinsCache::from_parent(RecordingCoinsView {
-        writes: Cell::new(0),
+        writes: std::rc::Rc::new(Cell::new(0)),
     });
 
     // Act

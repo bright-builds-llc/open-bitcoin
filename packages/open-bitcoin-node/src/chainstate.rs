@@ -434,7 +434,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     }
 
     #[cfg(test)]
-    #[allow(dead_code)] // Task 2 plants an active chain through this seam.
     pub(crate) fn install_chainstate_for_test(&mut self, chainstate: Chainstate<V>) {
         self.chainstate = chainstate;
     }
