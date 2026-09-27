@@ -110,7 +110,7 @@ The plan requires Task 2's tests in the same hook-passing commit as Task 1, beca
 - **Verification:** Pre-commit `bash scripts/verify.sh` completed in 18m 43s
 - **Committed in:** `077bc553`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 blocking, 1 plan-prescribed combined commit)
 **Impact on plan:** The unused-wrapper allow keeps the crate-visible plan entry without a second flusher. No labels, limited-service bits, RPC fields, or snapshot rewrites were added.
@@ -132,6 +132,6 @@ Phase 148 plans 01 through 04 are implemented. Deleted payloads leave `blocks_by
 - FOUND: packages/open-bitcoin-node/src/network/runtime_authority/prune_flush.rs
 - FOUND: 077bc553
 
----
+***
 *Phase: 148-fjall-payload-unlink-and-have-pruned*
 *Completed: 2026-09-27*

@@ -110,7 +110,7 @@ The plan's Task 1 action requires the implementation and Task 2 tests in one hoo
 - **Verification:** `cargo clippy -p open-bitcoin-node --all-targets --all-features -- -D warnings` exited 0
 - **Committed in:** `00982369`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 plan-prescribed combined commit, 1 blocking lint)
 **Impact on plan:** The empty lock slice and the repair refusal stay as specified. No cache eviction, label, RPC, or reindex scope was added.
@@ -133,6 +133,6 @@ Ready for 148-04. Restart finishes the interrupted height or refuses closed befo
 - FOUND: packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs
 - FOUND: 00982369
 
----
+***
 *Phase: 148-fjall-payload-unlink-and-have-pruned*
 *Completed: 2026-09-27*

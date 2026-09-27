@@ -125,7 +125,7 @@ The plan's Task 1 action requires tests, implementation, and Task 2 breadcrumbs 
 - **Verification:** The pre-commit verifier completed in 20m 48s
 - **Committed in:** `db94645c`
 
----
+***
 
 **Total deviations:** 3 auto-fixed (1 blocking, 1 missing critical, 1 plan-prescribed combined commit)
 **Impact on plan:** The dead-code allow is temporary until Plan 148-02. The extra intent test closes the threat register. No flush, label, RPC, or reindex scope was added.
@@ -148,6 +148,6 @@ Ready for 148-02. `commit_paired_delete`, `has_undo`, `load_have_pruned`, and `m
 - FOUND: packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_unlink.rs
 - FOUND: db94645c
 
----
+***
 *Phase: 148-fjall-payload-unlink-and-have-pruned*
 *Completed: 2026-09-27*

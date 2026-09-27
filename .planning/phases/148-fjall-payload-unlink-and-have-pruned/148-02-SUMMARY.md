@@ -118,7 +118,7 @@ Each task landed tests and implementation in one hook-passing commit because pre
 - **Verification:** Task 1 pre-commit verifier completed in 19m 41s. Task 2 completed in 21m 47s.
 - **Committed in:** `ae7c4233`, `f8edcd9f`
 
----
+***
 
 **Total deviations:** 2 auto-fixed (1 blocking, 1 plan-prescribed combined commit)
 **Impact on plan:** The public outcome enum is required for the existing public flush trait. No resume, cache-eviction, label, RPC, or reindex scope was added.
@@ -141,6 +141,6 @@ Ready for 148-03. The flush owner can apply a supplied plan, re-check locks and 
 - FOUND: ae7c4233
 - FOUND: f8edcd9f
 
----
+***
 *Phase: 148-fjall-payload-unlink-and-have-pruned*
 *Completed: 2026-09-27*
