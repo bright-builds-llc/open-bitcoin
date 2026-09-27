@@ -2,7 +2,7 @@
 generated_by: gsd-discuss-phase
 lifecycle_mode: yolo
 phase_lifecycle_id: 148-2026-09-27T02-46-06
-generated_at: 2026-09-27T02:47:11.140Z
+generated_at: 2026-09-27T14:46:28.789Z
 ---
 
 # Phase 148: Fjall Payload Unlink and Have-Pruned - Context
@@ -10,6 +10,7 @@ generated_at: 2026-09-27T02:47:11.140Z
 **Gathered:** 2026-09-27
 **Status:** Ready for planning
 **Mode:** Yolo
+**Gap update:** 2026-09-27 — error-path cache eviction only. D-01 through D-17 are unchanged.
 
 <domain>
 ## Phase Boundary
@@ -113,6 +114,23 @@ dashboard prune commands. Those belong to Phases 149–151.
 - **D-17:** Verification remains `bash scripts/verify.sh`. Default
   verification stays deterministic and public-network-free. No new
   production crate or third-party library.
+
+### Error-path cache eviction
+
+- **D-18:** If a paired delete has already committed and the flush then
+  returns an error, those hashes are removed from the in-memory block
+  cache before the caller observes the error. Success-path eviction is
+  not enough. Inventory treats cache presence as payload presence, so a
+  committed delete that stays cached is still servable for the rest of
+  the process.
+- **D-19:** The call that committed the delete is the eviction. A later
+  attempt that finds both mates already absent does not report those
+  hashes as deleted and must not put the cache entry back. Do not treat
+  that later attempt as a second chance to evict, and do not undo the
+  committed delete to clear the cache.
+- **D-20:** This gap does not reopen disk pairing, have-pruned timing,
+  restart finish-or-refuse, lock-buffer skips, or the keep window.
+  Labels, `NODE_NETWORK_LIMITED`, and operator commands stay deferred.
 
 ### Claude's Discretion
 

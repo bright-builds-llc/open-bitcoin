@@ -88,3 +88,30 @@
 - Operator prune surfaces and lock setters (Phase 150).
 - Parity roots and no-claim guardrails (Phase 151).
 - `-pruneduringinit` (FUT-27) and automatic reindex (FUT-23).
+
+---
+
+# Gap update — 2026-09-27T14:46:28.789Z
+
+**Mode:** Yolo
+**Scope:** `--gaps-only`. D-01 through D-17 were not reopened.
+**Areas discussed:** Error-path cache eviction
+
+## Error-path cache eviction
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Leave the cache until restart | A committed delete that then errors stays in `blocks_by_hash` | |
+| Evict before the error returns | Remove hashes whose paired delete already committed before the caller sees the error | ✓ |
+| Undo the committed delete | Roll the payload keys back so the cache and disk match by restoring bytes | |
+
+**User's choice:** Evict before the error returns (recommended default)
+**Notes:** D-18. Inventory treats cache presence as payload presence. Success-path eviction does not cover this flush error.
+
+| Option | Description | Selected |
+|--------|-------------|----------|
+| Evict again on AlreadyAbsent | Use the retry as a second chance to drop the cache entry | |
+| Evict on the committing call | The later already-absent attempt must not put the entry back and is not the eviction | ✓ |
+
+**User's choice:** Evict on the committing call (recommended default)
+**Notes:** D-19. Do not undo the durable delete. D-20 keeps disk pairing, have-pruned, restart, locks, labels, and operator commands unchanged.
