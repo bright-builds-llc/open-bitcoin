@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: verifying
-stopped_at: Completed 148-05-PLAN.md
-last_updated: "2026-09-27T18:16:40.232Z"
+status: ready
+stopped_at: Phase 148 verified
+last_updated: "2026-09-27T19:21:51.103Z"
 last_activity: 2026-09-27
 progress:
   total_phases: 6
@@ -21,25 +21,25 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 148 — fjall-payload-unlink-and-have-pruned
+**Current focus:** Phase 149 — limited-serving-and-honest-pruned-labels
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 148 (fjall-payload-unlink-and-have-pruned) — EXECUTING
-Plan: 5 of 5
-Status: Phase complete — ready for verification
+Phase: 149
+Plan: Not started
+Status: Phase 148 verified
 Last activity: 2026-09-27
 
 Progress: [██████████] 100%
 
-Next action: `/gsd-verify-work 148`
+Next action: `/gsd-discuss-phase 149`
 
 ## Performance Metrics
 
 **Archived milestone (v2.3):**
 
-- Total plans completed: 35
+- Total plans completed: 40
 - Counted summary tasks: 62
 
 **Previous milestone (v2.2 archive):**
@@ -70,6 +70,7 @@ Next action: `/gsd-verify-work 148`
 | 145 | 4 | - | - |
 | 146 | 3 | - | - |
 | 147 | 3 | - | - |
+| 148 | 5 | - | - |
 
 ### Plan Execution History
 
@@ -500,6 +501,7 @@ Next action: `/gsd-verify-work 148`
 - [Phase 148]: Combined 148-05 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh and the plan includes both tests in that commit
 - [Phase 148]: FlushApplyError carries hashes already passed to forget_undo so cache removal runs before the mutate closure returns the storage error
 - [Phase 148]: Leave UNLK-01 Pending until lifecycle-valid Phase 148 verification — Active-milestone verification traceability rejects Complete flips before phase verification exists. Plan 148-05 closes the error-path cache gap but does not close the phase.
+- [Phase 148]: Verification passed 9/9 and UNLK-01, UNLK-02, and UNLK-03 are Complete — 148-VERIFICATION.md status is passed. Summaries 01 and 03 list those ids in requirements-completed.
 
 ### Pending Todos
 

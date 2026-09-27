@@ -20,9 +20,9 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Unlink
 
-- [ ] **UNLK-01**: A prune of a height removes that height's block payload and undo together.
-- [ ] **UNLK-02**: The node records have-pruned only after that delete is durable.
-- [ ] **UNLK-03**: Restart after an interrupted prune finishes or refuses the partial delete without inventing blocks or reindexing.
+- [x] **UNLK-01**: A prune of a height removes that height's block payload and undo together.
+- [x] **UNLK-02**: The node records have-pruned only after that delete is durable.
+- [x] **UNLK-03**: Restart after an interrupted prune finishes or refuses the partial delete without inventing blocks or reindexing.
 
 ### Locks
 
@@ -99,9 +99,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | PRUN-02 | Phase 147 | Complete |
 | PRUN-03 | Phase 147 | Complete |
 | LOCK-01 | Phase 147 | Complete |
-| UNLK-01 | Phase 148 | Pending |
-| UNLK-02 | Phase 148 | Pending |
-| UNLK-03 | Phase 148 | Pending |
+| UNLK-01 | Phase 148 | Complete |
+| UNLK-02 | Phase 148 | Complete |
+| UNLK-03 | Phase 148 | Complete |
 | SERV-01 | Phase 149 | Pending |
 | SERV-02 | Phase 149 | Pending |
 | SERV-03 | Phase 149 | Pending |

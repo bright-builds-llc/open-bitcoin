@@ -143,9 +143,9 @@ Plans:
 | PRUN-02 | Phase 147 | Complete |
 | PRUN-03 | Phase 147 | Complete |
 | LOCK-01 | Phase 147 | Complete |
-| UNLK-01 | Phase 148 | Pending |
-| UNLK-02 | Phase 148 | Pending |
-| UNLK-03 | Phase 148 | Pending |
+| UNLK-01 | Phase 148 | Complete |
+| UNLK-02 | Phase 148 | Complete |
+| UNLK-03 | Phase 148 | Complete |
 | SERV-01 | Phase 149 | Pending |
 | SERV-02 | Phase 149 | Pending |
 | SERV-03 | Phase 149 | Pending |
@@ -174,7 +174,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | --- | --- | --- | --- |
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
-| 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete   | 2026-09-27 |
+| 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
 | 149. Limited Serving and Honest Pruned Labels | 0/TBD | Not started | - |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |

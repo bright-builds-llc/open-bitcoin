@@ -37,7 +37,7 @@ patterns-established:
   - "Refuse-closed resume returns StorageError::Corruption with StorageRecoveryAction::Repair and a detail that says the node stopped closed and did not reindex"
   - "have_pruned is still inserted only by commit_paired_delete when a live mate existed"
 
-requirements-completed: []
+requirements-completed: [UNLK-03]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 148-2026-09-27T02-46-06
@@ -88,7 +88,7 @@ The plan's Task 1 action requires the implementation and Task 2 tests in one hoo
 
 - Startup passes `&[]` into `resume_prune_intent`. Prune locks are not durable until Phase 150, so `initialize` gains no lock argument. The in-process flush path still re-checks caller-supplied locks.
 - Have-pruned stays exclusive to the live-mate delete batch. Clearing an intent whose mates are already gone does not insert the marker.
-- UNLK-03 stays Pending. Listing it in `requirements-completed` would activate it before Phase 148 verification exists.
+- UNLK-03 is listed in `requirements-completed` because `148-VERIFICATION.md` is `passed`.
 
 ## Deviations from Plan
 

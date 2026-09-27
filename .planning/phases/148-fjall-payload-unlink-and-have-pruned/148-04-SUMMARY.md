@@ -88,7 +88,7 @@ The plan requires Task 2's tests in the same hook-passing commit as Task 1, beca
 
 - The handle method lives in `prune_flush.rs` rather than a parent one-line delegate. The child impl is the method, and the parent stays at 619 lines.
 - `flush_and_evict_pruned_blocks` bounds the store on `ChainstateStore` as well as `FlushPersistSink`, because `chainstate_mut` is implemented for `ChainstateStore`.
-- UNLK-01 stays Pending. Listing it in `requirements-completed` would activate it before Phase 148 verification exists.
+- UNLK-01 is activated in `148-01-SUMMARY.md` because `148-VERIFICATION.md` is `passed`. This summary keeps an empty `requirements-completed` list.
 
 ## Deviations from Plan
 

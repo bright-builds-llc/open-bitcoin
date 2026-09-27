@@ -96,7 +96,7 @@ Each task landed tests and implementation in one hook-passing commit because pre
 
 - Empty `PrunePlan` values keep the current `FlushDecision::None` and `RefuseDiskSpace` returns, so they never call `commit_paired_unlink`.
 - `PairedDeleteOutcome` is `pub` because `FlushPersistSink` is public and its new method returns that enum. A crate-private return type failed `private_interfaces`.
-- UNLK-01 and UNLK-02 stay Pending. Listing them in `requirements-completed` would activate them before Phase 148 verification exists.
+- UNLK-01 and UNLK-02 are activated in `148-01-SUMMARY.md` because `148-VERIFICATION.md` is `passed`. This summary keeps an empty `requirements-completed` list.
 
 ## Deviations from Plan
 

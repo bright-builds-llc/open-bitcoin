@@ -86,7 +86,7 @@ The plan requires Task 2's test in the same hook-passing commit as Task 1, becau
 
 - `FlushApplyError` is the crate-visible carrier for hashes whose paired delete already committed. `flush_with_mode` maps `failure.error` back to `StorageError`. Production coins mutation stays `#[cfg(test)]` behind `insert_overlay_coin_for_test`.
 - `AlreadyAbsent` stays out of `deleted_block_hashes`. The failing flush is the eviction. The retry must not restore the cache entry.
-- UNLK-01 stays Pending. Listing it in `requirements-completed` would activate it before Phase 148 verification exists.
+- UNLK-01 is activated in `148-01-SUMMARY.md` because `148-VERIFICATION.md` is `passed`. This summary keeps an empty `requirements-completed` list.
 
 ## Deviations from Plan
 

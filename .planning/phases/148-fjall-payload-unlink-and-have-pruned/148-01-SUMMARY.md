@@ -42,7 +42,7 @@ patterns-established:
   - "have_pruned is inserted only beside the block and undo tombstones, which is stricter than Knots setting m_have_pruned before UnlinkPrunedFiles"
   - "node-fjall-prune-unlink cites validation.cpp, node/blockstorage.cpp, node/blockstorage.h, and validation.h"
 
-requirements-completed: []
+requirements-completed: [UNLK-01, UNLK-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 148-2026-09-27T02-46-06
@@ -95,7 +95,7 @@ The plan's Task 1 action requires tests, implementation, and Task 2 breadcrumbs 
 
 - Have-pruned is inserted in the delete batch, which is stricter than Knots setting `m_have_pruned` before `UnlinkPrunedFiles`.
 - A truncated `prune_intent` decodes as `StorageError::Corruption` with `StorageRecoveryAction::Repair`.
-- UNLK-01 and UNLK-02 stay Pending. Listing them in `requirements-completed` would activate them before Phase 148 verification exists.
+- UNLK-01 and UNLK-02 are listed in `requirements-completed` because `148-VERIFICATION.md` is `passed`.
 
 ## Deviations from Plan
 
