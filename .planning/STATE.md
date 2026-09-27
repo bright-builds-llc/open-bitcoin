@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: executing
-stopped_at: Completed 148-03-PLAN.md
-last_updated: "2026-09-27T07:54:41.800Z"
+status: verifying
+stopped_at: Completed 148-04-PLAN.md
+last_updated: "2026-09-27T09:04:40.426Z"
 last_activity: 2026-09-27
 progress:
   total_phases: 6
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 10
-  completed_plans: 9
-  percent: 90
+  completed_plans: 10
+  percent: 100
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 148 (fjall-payload-unlink-and-have-pruned) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-27
 
 Progress: [███░░░░░░░] 33%
 
-Next action: `/gsd-discuss-phase 148`
+Next action: `/gsd-verify-work 148`
 
 ## Performance Metrics
 
@@ -156,6 +156,7 @@ Next action: `/gsd-discuss-phase 148`
 | Phase 148 P01 | 41 min | 2 tasks | 7 files |
 | Phase 148 P02 | 59 min | 2 tasks | 14 files |
 | Phase 148 P03 | 31 min | 2 tasks | 5 files |
+| Phase 148 P04 | 29 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -491,6 +492,10 @@ Next action: `/gsd-discuss-phase 148`
 - [Phase 148]: Combined 148-03 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh — The plan ships the resume implementation and seam tests together. A RED-only commit fails bash scripts/verify.sh.
 - [Phase 148]: Startup resume passes an empty lock slice because prune locks are not durable until Phase 150 — initialize keeps its existing parameter list. The in-process flush path still re-checks caller-supplied locks.
 - [Phase 148]: Leave UNLK-03 Pending until lifecycle-valid Phase 148 verification — Active-milestone verification traceability rejects Complete flips before phase verification exists. Plan 148-03 resumes prune_intent but does not close the phase.
+- [Phase 148]: Combined 148-04 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh and the plan includes both tests in that commit
+- [Phase 148]: flush_applying_prune_plan lives in prune_flush.rs so runtime_authority.rs stays under 628 lines
+- [Phase 148]: Non-test builds allow dead_code on flush_applying_prune_plan because flush_coins still passes an empty plan
+- [Phase 148]: Leave UNLK-01 Pending until lifecycle-valid Phase 148 verification — Plan 148-04 evicts deleted hashes from the block cache but does not close the phase.
 
 ### Pending Todos
 
@@ -518,6 +523,6 @@ Next action: `/gsd-discuss-phase 148`
 
 ## Session Continuity
 
-Last session: 2026-09-27T07:54:34.298Z
-Stopped at: Completed 148-03-PLAN.md
+Last session: 2026-09-27T09:04:40.422Z
+Stopped at: Completed 148-04-PLAN.md
 Resume file: None
