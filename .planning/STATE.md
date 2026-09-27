@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 148-02-PLAN.md
-last_updated: "2026-09-27T06:59:50.022Z"
+stopped_at: Completed 148-03-PLAN.md
+last_updated: "2026-09-27T07:54:41.800Z"
 last_activity: 2026-09-27
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 10
-  completed_plans: 8
-  percent: 80
+  completed_plans: 9
+  percent: 90
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 148 (fjall-payload-unlink-and-have-pruned) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-27
 
@@ -155,6 +155,7 @@ Next action: `/gsd-discuss-phase 148`
 | Phase 147 P03 | 62 min | 1 tasks | 7 files |
 | Phase 148 P01 | 41 min | 2 tasks | 7 files |
 | Phase 148 P02 | 59 min | 2 tasks | 14 files |
+| Phase 148 P03 | 31 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -487,6 +488,9 @@ Next action: `/gsd-discuss-phase 148`
 - [Phase 148]: Empty prune plans keep the existing flush early return and do not unlink or set have-pruned — D-06 requires an empty PrunePlan to succeed without a delete. FlushDecision::None and RefuseDiskSpace still return before the prefix when the plan has no heights.
 - [Phase 148]: PairedDeleteOutcome is public because FlushPersistSink is a public trait — commit_paired_unlink lives on the public flush sink. A crate-private return type failed private_interfaces under -D warnings.
 - [Phase 148]: Leave UNLK-01 and UNLK-02 Pending until lifecycle-valid Phase 148 verification — Active-milestone verification traceability rejects Complete flips before phase verification exists. Plan 148-02 wires the flush owner but does not close the phase.
+- [Phase 148]: Combined 148-03 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh — The plan ships the resume implementation and seam tests together. A RED-only commit fails bash scripts/verify.sh.
+- [Phase 148]: Startup resume passes an empty lock slice because prune locks are not durable until Phase 150 — initialize keeps its existing parameter list. The in-process flush path still re-checks caller-supplied locks.
+- [Phase 148]: Leave UNLK-03 Pending until lifecycle-valid Phase 148 verification — Active-milestone verification traceability rejects Complete flips before phase verification exists. Plan 148-03 resumes prune_intent but does not close the phase.
 
 ### Pending Todos
 
@@ -514,6 +518,6 @@ Next action: `/gsd-discuss-phase 148`
 
 ## Session Continuity
 
-Last session: 2026-09-27T06:59:38.251Z
-Stopped at: Completed 148-02-PLAN.md
+Last session: 2026-09-27T07:54:34.298Z
+Stopped at: Completed 148-03-PLAN.md
 Resume file: None
