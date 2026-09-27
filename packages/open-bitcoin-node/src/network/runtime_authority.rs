@@ -10,7 +10,7 @@ use std::{
 use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, CoinsView, FlushMode,
-        FlushPolicyTime, MemoryCoinsView,
+        FlushPolicyTime, MemoryCoinsView, PrunePlan,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
@@ -48,6 +48,7 @@ pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_c
 mod local_package;
 mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
+mod prune_flush;
 mod recovery;
 
 pub type MemoryNetworkHandle = ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView>;
@@ -521,8 +522,24 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     #[rustfmt::skip]
     pub fn prepare_block_announcements(&self, block: &Block, outboxes: &[PeerOutboxSnapshot]) -> Result<Vec<AnnouncementPreparationOutcome>, ManagedNetworkAuthorityError> { let compact_nonces = super::announcement_transport::compact_nonces(outboxes); self.mutate(|network| network.prepare_block_announcements(block, outboxes, &compact_nonces)) }
 
-    #[rustfmt::skip]
-    pub fn flush_coins(&self, mode: FlushMode, now: FlushPolicyTime, disk_free_bytes: u64) -> Result<crate::chainstate::FlushExecution, ManagedNetworkAuthorityError> { self.mutate(|network| network.chainstate_mut().flush_with_mode(mode, now, disk_free_bytes))?.map_err(|error| ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())) }
+    pub fn flush_coins(
+        &self,
+        mode: FlushMode,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+    ) -> Result<crate::chainstate::FlushExecution, ManagedNetworkAuthorityError> {
+        self.mutate(|network| {
+            prune_flush::flush_and_evict_pruned_blocks(
+                network,
+                mode,
+                now,
+                disk_free_bytes,
+                &PrunePlan::default(),
+                &[],
+            )
+        })?
+        .map_err(|error| ManagedNetworkAuthorityError::LifecycleEffect(error.to_string()))
+    }
 
     #[rustfmt::skip]
     pub fn set_coins_next_write(&self, next_write: FlushPolicyTime) -> Result<(), ManagedNetworkAuthorityError> { self.mutate(|network| network.chainstate_mut().flush_lifecycle.set_next_write(next_write)) }

@@ -1,17 +1,29 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/node/context.h
 
+use std::{
+    collections::HashMap,
+    fs, io,
+    path::{Path, PathBuf},
+    time::{SystemTime, UNIX_EPOCH},
+};
+
 use open_bitcoin_core::{
-    consensus::{ConsensusParams, ScriptVerifyFlags},
+    chainstate::{
+        BlockUndo, ChainPosition, Chainstate, ChainstateSnapshot, FlushMode, FlushPolicyTime,
+        PrunePlan,
+    },
+    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{
-        Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,
-        TransactionOutput, Txid,
+        Amount, Block, BlockHash, BlockHeader, MerkleRoot, OutPoint, ScriptBuf, ScriptWitness,
+        Transaction, TransactionInput, TransactionOutput, Txid,
     },
 };
 use open_bitcoin_mempool::{MempoolOutcome, PolicyConfig, PolicyTime, RelayIntent};
 use open_bitcoin_network::LocalPeerConfig;
 
-use crate::{ManagedPeerNetwork, MemoryChainstateStore};
+use crate::storage::{FjallNodeStore, PersistMode};
+use crate::{FjallChainstateStore, ManagedPeerNetwork, MemoryChainstateStore};
 
 use super::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
@@ -126,4 +138,163 @@ fn expire_mempool_flows_through_the_shared_authority() {
 
     // Assert
     assert!(delta.is_empty());
+}
+
+#[test]
+fn flush_applying_prune_plan_drops_only_the_deleted_hash() {
+    // Arrange
+    let (path, store) = open_temp_store("cache-evict");
+    let (eligible, eligible_block) = plant_payload(&store, 1, 11);
+    let tip = ChainPosition::new(
+        test_header(eligible.block_hash, 22),
+        400,
+        400,
+        1_700_000_000,
+    );
+    let kept_header = test_header(BlockHash::from_byte_array([9_u8; 32]), 33);
+    let kept_hash = block_hash(&kept_header);
+    let kept_block = Block {
+        header: kept_header,
+        transactions: Vec::new(),
+    };
+    let mut undo_by_block = HashMap::new();
+    undo_by_block.insert(eligible.block_hash, BlockUndo::default());
+    let mut network = ManagedPeerNetwork::new(
+        FjallChainstateStore::from_store(store),
+        LocalPeerConfig::default(),
+        PolicyConfig::default(),
+    );
+    network
+        .chainstate_mut()
+        .install_chainstate_for_test(Chainstate::from_snapshot(ChainstateSnapshot::new(
+            vec![eligible.clone(), tip],
+            HashMap::new(),
+            undo_by_block,
+        )));
+    network
+        .blocks_by_hash
+        .insert(eligible.block_hash, eligible_block);
+    network.blocks_by_hash.insert(kept_hash, kept_block);
+    let handle = ManagedNetworkHandle::new(network);
+    let plan = PrunePlan { heights: vec![1] };
+
+    // Act
+    let execution = handle
+        .flush_applying_prune_plan(
+            FlushMode::Always,
+            FlushPolicyTime::from_unix_seconds(1_700_000_000),
+            u64::MAX,
+            &plan,
+            &[],
+        )
+        .expect("prune flush should apply the plan");
+
+    // Assert
+    assert_eq!(execution.deleted_block_hashes, vec![eligible.block_hash]);
+    let network = handle.authority.lock().expect("test authority should lock");
+    assert!(!network.blocks_by_hash.contains_key(&eligible.block_hash));
+    assert!(network.blocks_by_hash.contains_key(&kept_hash));
+    let payload_present = network
+        .chainstate()
+        .store()
+        .inner()
+        .has_block(eligible.block_hash)
+        .expect("payload probe");
+    let undo_present = network
+        .chainstate()
+        .store()
+        .inner()
+        .has_undo(eligible.block_hash)
+        .expect("undo probe");
+    assert!(!payload_present);
+    assert!(!undo_present);
+    drop(network);
+    drop(handle);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn flush_coins_empty_plan_keeps_unrelated_cached_hash() {
+    // Arrange
+    let handle = test_handle();
+    let kept_header = test_header(BlockHash::from_byte_array([4_u8; 32]), 8);
+    let kept_hash = block_hash(&kept_header);
+    let kept_block = Block {
+        header: kept_header,
+        transactions: Vec::new(),
+    };
+    handle
+        .authority
+        .lock()
+        .expect("test authority should lock")
+        .blocks_by_hash
+        .insert(kept_hash, kept_block);
+
+    // Act
+    let execution = handle
+        .flush_coins(
+            FlushMode::Always,
+            FlushPolicyTime::from_unix_seconds(1_700_000_000),
+            u64::MAX,
+        )
+        .expect("empty plan flush should succeed");
+
+    // Assert
+    assert!(execution.deleted_block_hashes.is_empty());
+    let network = handle.authority.lock().expect("test authority should lock");
+    assert!(network.blocks_by_hash.contains_key(&kept_hash));
+}
+
+fn open_temp_store(test_name: &str) -> (PathBuf, FjallNodeStore) {
+    let timestamp = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system time after unix epoch")
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!(
+        "open-bitcoin-prune-cache-{test_name}-{}-{timestamp}",
+        std::process::id()
+    ));
+    remove_dir_if_exists(&path);
+    let store = FjallNodeStore::open(&path).expect("open temp store");
+    (path, store)
+}
+
+fn remove_dir_if_exists(path: &Path) {
+    match fs::remove_dir_all(path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => panic!("failed to remove {}: {error}", path.display()),
+    }
+}
+
+fn test_header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
+    BlockHeader {
+        version: 1,
+        previous_block_hash,
+        merkle_root: MerkleRoot::from_byte_array([nonce as u8; 32]),
+        time: 1_700_000_000 + nonce,
+        bits: 0x207f_ffff,
+        nonce,
+    }
+}
+
+fn plant_payload(store: &FjallNodeStore, height: u32, nonce: u32) -> (ChainPosition, Block) {
+    let header = test_header(BlockHash::from_byte_array([0_u8; 32]), nonce);
+    let position = ChainPosition::new(header.clone(), height, u128::from(height), 1_700_000_000);
+    let body = Block {
+        header,
+        transactions: Vec::new(),
+    };
+    let saved = store
+        .save_block(&body, PersistMode::Sync)
+        .expect("save payload");
+    assert_eq!(saved, position.block_hash);
+    store
+        .save_undo(
+            position.block_hash,
+            &BlockUndo::default(),
+            PersistMode::Sync,
+        )
+        .expect("save undo");
+    (position, body)
 }

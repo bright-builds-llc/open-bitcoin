@@ -1640,6 +1640,7 @@
         "packages/open-bitcoin-node/src/network/runtime_authority.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/error.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/local_package.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/prune_flush.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/recovery.rs",
         "packages/open-bitcoin-node/src/network/runtime_authority/tests.rs"
       ],
