@@ -276,6 +276,25 @@ fn assert_active_tip(chainstate: &Chainstate, expected: &ChainPosition) {
     assert_eq!(chainstate.tip(), Some(expected));
 }
 
+#[test]
+fn forget_undo_removes_only_the_named_hash() {
+    // Arrange
+    let kept = BlockHash::from_byte_array([1_u8; 32]);
+    let dropped = BlockHash::from_byte_array([2_u8; 32]);
+    let mut undo_by_block = HashMap::new();
+    undo_by_block.insert(kept, BlockUndo::default());
+    undo_by_block.insert(dropped, BlockUndo::default());
+    let mut chainstate =
+        Chainstate::from_parent(MemoryCoinsView::default(), Vec::new(), undo_by_block, None);
+
+    // Act
+    chainstate.forget_undo(dropped);
+
+    // Assert
+    assert!(!chainstate.undo_by_block().contains_key(&dropped));
+    assert!(chainstate.undo_by_block().contains_key(&kept));
+}
+
 mod apply_non_coinbase_transaction_returns_fee_and_records_undo;
 mod derives_contexts_from_chainstate_metadata;
 mod disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_out;

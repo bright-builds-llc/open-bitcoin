@@ -10,7 +10,7 @@ use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, BlockUndo, ChainPosition, ChainTransition, Chainstate, ChainstateError,
         ChainstateSnapshot, Coin, CoinsBatch, CoinsView, FlushMode, FlushPolicyTime,
-        MemoryCoinsView, StagedChainstateConnect, StagedChainstateReorg,
+        MemoryCoinsView, PruneLockInfo, PrunePlan, StagedChainstateConnect, StagedChainstateReorg,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     primitives::{Block, BlockHash, OutPoint},
@@ -397,8 +397,23 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     where
         S: FlushPersistSink,
     {
+        self.flush_applying_plan(mode, now, disk_free_bytes, &PrunePlan::default(), &[])
+    }
+
+    pub(crate) fn flush_applying_plan(
+        &mut self,
+        mode: FlushMode,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+        plan: &PrunePlan,
+        locks: &[PruneLockInfo],
+    ) -> Result<FlushExecution, StorageError>
+    where
+        S: FlushPersistSink,
+    {
         let (undo_window, block_payloads, active_chain) = self.flush_window();
-        self.flush_lifecycle.execute_flush(
+        let mut deleted = Vec::new();
+        let result = self.flush_lifecycle.execute_flush_applying_plan(
             &mut self.store,
             self.chainstate.coins_mut(),
             mode,
@@ -408,7 +423,20 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             &[],
             &block_payloads,
             &active_chain,
-        )
+            plan,
+            locks,
+            &mut |hash| deleted.push(hash),
+        );
+        for hash in &deleted {
+            self.chainstate.forget_undo(*hash);
+        }
+        result
+    }
+
+    #[cfg(test)]
+    #[allow(dead_code)] // Task 2 plants an active chain through this seam.
+    pub(crate) fn install_chainstate_for_test(&mut self, chainstate: Chainstate<V>) {
+        self.chainstate = chainstate;
     }
 
     fn persist(&mut self) -> Result<(), StorageError>

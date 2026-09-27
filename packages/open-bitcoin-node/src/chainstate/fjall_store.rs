@@ -103,6 +103,14 @@ impl FlushPersistSink for FjallChainstateStore {
     fn disk_free_bytes(&self) -> u64 {
         FlushPersistSink::disk_free_bytes(&self.store)
     }
+
+    fn commit_paired_unlink(
+        &mut self,
+        height: u32,
+        block_hash: BlockHash,
+    ) -> Result<crate::storage::fjall_store::PairedDeleteOutcome, StorageError> {
+        FlushPersistSink::commit_paired_unlink(&mut self.store, height, block_hash)
+    }
 }
 
 fn map_fjall(error: StorageError) -> ChainstateError {

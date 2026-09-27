@@ -30,7 +30,7 @@ const PRUNE_INTENT_LEN: usize = 36;
 
 /// Outcome of one paired payload delete.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PairedDeleteOutcome {
+pub enum PairedDeleteOutcome {
     /// At least one mate was present, and both keys are absent after the batch.
     DeletedLiveMate,
     /// Both mates were already absent, so nothing was written.

@@ -10,7 +10,8 @@ use std::path::Path;
 use open_bitcoin_core::{
     chainstate::{
         BlockUndo, ChainPosition, ChainstateError, CoinsCache, CoinsView, FlushDecision, FlushMode,
-        FlushPolicyInput, FlushPolicyTime, RecoveryDecision, decide_flush, decide_recovery,
+        FlushPolicyInput, FlushPolicyTime, PruneLockInfo, PrunePlan, RecoveryDecision,
+        decide_flush, decide_recovery,
     },
     primitives::{Block, BlockHash},
 };
@@ -23,11 +24,15 @@ use crate::status::{
 };
 use crate::storage::{
     FjallNodeStore, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
-    coins_view::FjallCoinsView,
+    coins_view::FjallCoinsView, fjall_store::PairedDeleteOutcome,
 };
 
 #[cfg(test)]
 mod tests;
+
+mod prune_apply;
+
+use prune_apply::apply_prune_plan;
 
 /// Knots default `-dbcache` kernel budget (450 MiB).
 pub const DEFAULT_KERNEL_CACHE_BYTES: u64 = 450 * 1024 * 1024;
@@ -70,6 +75,7 @@ pub struct FlushLifecycle {
 pub struct FlushExecution {
     pub decision: FlushDecision,
     pub wrote_coins: bool,
+    pub deleted_block_hashes: Vec<BlockHash>,
 }
 
 /// Injected persist sink so undo/index abort tests do not chmod a Fjall datadir.
@@ -80,6 +86,15 @@ pub trait FlushPersistSink {
     fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError>;
     fn disk_free_bytes(&self) -> u64 {
         u64::MAX
+    }
+
+    fn commit_paired_unlink(
+        &mut self,
+        height: u32,
+        block_hash: BlockHash,
+    ) -> Result<PairedDeleteOutcome, StorageError> {
+        let _ = (height, block_hash);
+        Ok(PairedDeleteOutcome::AlreadyAbsent)
     }
 }
 
@@ -105,6 +120,14 @@ impl FlushPersistSink for FjallNodeStore {
 
     fn disk_free_bytes(&self) -> u64 {
         probe_disk_free_bytes(self.datadir())
+    }
+
+    fn commit_paired_unlink(
+        &mut self,
+        height: u32,
+        block_hash: BlockHash,
+    ) -> Result<PairedDeleteOutcome, StorageError> {
+        self.commit_paired_delete(height, block_hash)
     }
 }
 
@@ -227,6 +250,39 @@ impl FlushLifecycle {
         block_payloads: &[Block],
         active_chain: &[ChainPosition],
     ) -> Result<FlushExecution, StorageError> {
+        self.execute_flush_applying_plan(
+            sink,
+            cache,
+            mode,
+            now,
+            disk_free_bytes,
+            undo_window,
+            header_entries,
+            block_payloads,
+            active_chain,
+            &PrunePlan::default(),
+            &[],
+            &mut |_hash| {},
+        )
+    }
+
+    /// Prefix, then eligible paired deletes, then coins. An empty plan skips deletes.
+    #[allow(clippy::too_many_arguments)]
+    pub fn execute_flush_applying_plan<V: CoinsView, S: FlushPersistSink>(
+        &mut self,
+        sink: &mut S,
+        cache: &mut CoinsCache<V>,
+        mode: FlushMode,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+        undo_window: &[(BlockHash, BlockUndo)],
+        header_entries: &[HeaderEntry],
+        block_payloads: &[Block],
+        active_chain: &[ChainPosition],
+        plan: &PrunePlan,
+        locks: &[PruneLockInfo],
+        on_deleted: &mut dyn FnMut(BlockHash),
+    ) -> Result<FlushExecution, StorageError> {
         if self.readiness != ManagerReadiness::ReadyToFlush {
             return Err(coins_corruption("flush before ready"));
         }
@@ -245,26 +301,25 @@ impl FlushLifecycle {
         if mode != FlushMode::None {
             self.maybe_last_write_decision = Some(decision);
         }
-        let Some(write_kind) = coins_write_kind(decision) else {
+
+        if plan.heights.is_empty() && coins_write_kind(decision).is_none() {
             if matches!(decision, FlushDecision::RefuseDiskSpace(_)) {
                 return Err(refuse_disk_space());
             }
             return Ok(FlushExecution {
                 decision,
                 wrote_coins: false,
+                deleted_block_hashes: Vec::new(),
             });
-        };
+        }
 
         persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?;
-        match write_kind {
-            CoinsWriteKind::Flush => cache.flush().map_err(map_chainstate)?,
-            CoinsWriteKind::Sync => cache.sync().map_err(map_chainstate)?,
-        }
-        sink.persist_chain_meta(active_chain)?;
-        Ok(FlushExecution {
-            decision,
-            wrote_coins: true,
-        })
+        let deleted_block_hashes = if plan.heights.is_empty() {
+            Vec::new()
+        } else {
+            apply_prune_plan(sink, plan, locks, active_chain, on_deleted)?
+        };
+        complete_coins_write(sink, cache, decision, active_chain, deleted_block_hashes)
     }
 
     #[cfg(test)]
@@ -391,6 +446,35 @@ const fn coins_write_kind(decision: FlushDecision) -> Option<CoinsWriteKind> {
         FlushDecision::Sync(_) => Some(CoinsWriteKind::Sync),
         FlushDecision::None(_) | FlushDecision::RefuseDiskSpace(_) => None,
     }
+}
+
+fn complete_coins_write<V: CoinsView, S: FlushPersistSink>(
+    sink: &mut S,
+    cache: &mut CoinsCache<V>,
+    decision: FlushDecision,
+    active_chain: &[ChainPosition],
+    deleted_block_hashes: Vec<BlockHash>,
+) -> Result<FlushExecution, StorageError> {
+    let Some(write_kind) = coins_write_kind(decision) else {
+        if matches!(decision, FlushDecision::RefuseDiskSpace(_)) {
+            return Err(refuse_disk_space());
+        }
+        return Ok(FlushExecution {
+            decision,
+            wrote_coins: false,
+            deleted_block_hashes,
+        });
+    };
+    match write_kind {
+        CoinsWriteKind::Flush => cache.flush().map_err(map_chainstate)?,
+        CoinsWriteKind::Sync => cache.sync().map_err(map_chainstate)?,
+    }
+    sink.persist_chain_meta(active_chain)?;
+    Ok(FlushExecution {
+        decision,
+        wrote_coins: true,
+        deleted_block_hashes,
+    })
 }
 
 fn persist_ordered_prefix<S: FlushPersistSink>(

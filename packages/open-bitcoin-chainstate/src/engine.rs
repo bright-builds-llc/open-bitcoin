@@ -166,6 +166,11 @@ impl<V: CoinsView> Chainstate<V> {
         &self.undo_by_block
     }
 
+    /// Drops one undo so a later flush cannot write that key back.
+    pub fn forget_undo(&mut self, block_hash: BlockHash) {
+        self.undo_by_block.remove(&block_hash);
+    }
+
     pub fn admission_snapshot(&self) -> Result<ChainstateSnapshot, ChainstateError> {
         let mut snapshot = ChainstateSnapshot::new(
             self.active_chain.clone(),
