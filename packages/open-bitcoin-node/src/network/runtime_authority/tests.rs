@@ -10,7 +10,7 @@ use std::{
 
 use open_bitcoin_core::{
     chainstate::{
-        BlockUndo, ChainPosition, Chainstate, ChainstateSnapshot, FlushMode, FlushPolicyTime,
+        BlockUndo, ChainPosition, Chainstate, ChainstateSnapshot, Coin, FlushMode, FlushPolicyTime,
         PrunePlan,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
@@ -208,6 +208,125 @@ fn flush_applying_prune_plan_drops_only_the_deleted_hash() {
         .expect("undo probe");
     assert!(!payload_present);
     assert!(!undo_present);
+    drop(network);
+    drop(handle);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn error_after_unlink_drops_deleted_hash_and_retry_leaves_it_gone() {
+    // Arrange
+    let (path, store) = open_temp_store("cache-evict-error");
+    let (eligible, eligible_block) = plant_payload(&store, 1, 11);
+    let tip = ChainPosition::new(
+        test_header(eligible.block_hash, 22),
+        400,
+        400,
+        1_700_000_000,
+    );
+    let kept_header = test_header(BlockHash::from_byte_array([9_u8; 32]), 33);
+    let kept_hash = block_hash(&kept_header);
+    let kept_block = Block {
+        header: kept_header,
+        transactions: Vec::new(),
+    };
+    let mut undo_by_block = HashMap::new();
+    undo_by_block.insert(eligible.block_hash, BlockUndo::default());
+    let mut network = ManagedPeerNetwork::new(
+        FjallChainstateStore::from_store(store),
+        LocalPeerConfig::default(),
+        PolicyConfig::default(),
+    );
+    network
+        .chainstate_mut()
+        .install_chainstate_for_test(Chainstate::from_snapshot(ChainstateSnapshot::new(
+            vec![eligible.clone(), tip],
+            HashMap::new(),
+            undo_by_block,
+        )));
+    network
+        .chainstate_mut()
+        .insert_overlay_coin_for_test(
+            OutPoint {
+                txid: Txid::from_byte_array([0x11; 32]),
+                vout: 0,
+            },
+            Coin {
+                output: TransactionOutput {
+                    value: Amount::from_sats(50).expect("valid amount"),
+                    script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("valid script"),
+                },
+                is_coinbase: false,
+                created_height: 1,
+                created_median_time_past: 1_700_000_001,
+            },
+        )
+        .expect("overlay coin");
+    assert_eq!(
+        network
+            .chainstate()
+            .chainstate()
+            .coins()
+            .cache_entry_count(),
+        1
+    );
+    network
+        .blocks_by_hash
+        .insert(eligible.block_hash, eligible_block);
+    network.blocks_by_hash.insert(kept_hash, kept_block);
+    let handle = ManagedNetworkHandle::new(network);
+    let plan = PrunePlan { heights: vec![1] };
+
+    // Act
+    let refused = handle.flush_applying_prune_plan(
+        FlushMode::Always,
+        FlushPolicyTime::from_unix_seconds(1_700_000_000),
+        0,
+        &plan,
+        &[],
+    );
+
+    // Assert
+    let Err(ManagedNetworkAuthorityError::LifecycleEffect(message)) = refused else {
+        panic!("expected disk-space refusal, got {refused:?}");
+    };
+    assert!(message.contains("refuse disk space"));
+    {
+        let network = handle.authority.lock().expect("test authority should lock");
+        assert!(!network.blocks_by_hash.contains_key(&eligible.block_hash));
+        assert!(network.blocks_by_hash.contains_key(&kept_hash));
+        let payload_present = network
+            .chainstate()
+            .store()
+            .inner()
+            .has_block(eligible.block_hash)
+            .expect("payload probe");
+        let undo_present = network
+            .chainstate()
+            .store()
+            .inner()
+            .has_undo(eligible.block_hash)
+            .expect("undo probe");
+        assert!(!payload_present);
+        assert!(!undo_present);
+    }
+
+    // Act
+    let retry = handle
+        .flush_applying_prune_plan(
+            FlushMode::Always,
+            FlushPolicyTime::from_unix_seconds(1_700_000_000),
+            u64::MAX,
+            &plan,
+            &[],
+        )
+        .expect("retry of an already-absent height should succeed");
+
+    // Assert
+    assert!(retry.deleted_block_hashes.is_empty());
+    let network = handle.authority.lock().expect("test authority should lock");
+    assert!(!network.blocks_by_hash.contains_key(&eligible.block_hash));
+    assert!(network.blocks_by_hash.contains_key(&kept_hash));
     drop(network);
     drop(handle);
     remove_dir_if_exists(&path);

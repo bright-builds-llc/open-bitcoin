@@ -24,14 +24,18 @@ where
     S: ChainstateStore + FlushPersistSink,
     V: CoinsView,
 {
-    let execution =
+    let outcome =
         network
             .chainstate_mut()
-            .flush_applying_plan(mode, now, disk_free_bytes, plan, locks)?;
-    for hash in &execution.deleted_block_hashes {
+            .flush_applying_plan(mode, now, disk_free_bytes, plan, locks);
+    let deleted = match &outcome {
+        Ok(execution) => execution.deleted_block_hashes.clone(),
+        Err(failure) => failure.deleted_block_hashes.clone(),
+    };
+    for hash in &deleted {
         network.blocks_by_hash.remove(hash);
     }
-    Ok(execution)
+    outcome.map_err(|failure| failure.error)
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {

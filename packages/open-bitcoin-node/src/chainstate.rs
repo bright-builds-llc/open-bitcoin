@@ -19,6 +19,13 @@ use open_bitcoin_network::HeaderEntry;
 
 use crate::storage::StorageError;
 
+/// Flush failure that still names hashes whose paired delete already committed.
+#[derive(Debug)]
+pub(crate) struct FlushApplyError {
+    pub(crate) error: StorageError,
+    pub(crate) deleted_block_hashes: Vec<BlockHash>,
+}
+
 pub trait ChainstateStore: FlushPersistSink {
     fn load_snapshot(&self) -> Option<ChainstateSnapshot>;
     fn save_snapshot(&mut self, snapshot: ChainstateSnapshot);
@@ -398,6 +405,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         S: FlushPersistSink,
     {
         self.flush_applying_plan(mode, now, disk_free_bytes, &PrunePlan::default(), &[])
+            .map_err(|failure| failure.error)
     }
 
     pub(crate) fn flush_applying_plan(
@@ -407,7 +415,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         disk_free_bytes: u64,
         plan: &PrunePlan,
         locks: &[PruneLockInfo],
-    ) -> Result<FlushExecution, StorageError>
+    ) -> Result<FlushExecution, FlushApplyError>
     where
         S: FlushPersistSink,
     {
@@ -430,12 +438,24 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         for hash in &deleted {
             self.chainstate.forget_undo(*hash);
         }
-        result
+        result.map_err(|error| FlushApplyError {
+            error,
+            deleted_block_hashes: deleted,
+        })
     }
 
     #[cfg(test)]
     pub(crate) fn install_chainstate_for_test(&mut self, chainstate: Chainstate<V>) {
         self.chainstate = chainstate;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn insert_overlay_coin_for_test(
+        &mut self,
+        outpoint: OutPoint,
+        coin: Coin,
+    ) -> Result<(), ChainstateError> {
+        self.chainstate.coins_mut().add_coin(outpoint, coin, true)
     }
 
     fn persist(&mut self) -> Result<(), StorageError>
