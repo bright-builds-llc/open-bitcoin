@@ -80,8 +80,10 @@ pub enum BlockServingValidationState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BlockServingDataAvailability {
     Available,
-    /// Reserved for a future prune-mode delete when prune mode actually deleted files.
-    /// Missing payload is Unavailable; this variant is not a prune-mode product signal.
+    /// Earned only when durable have_pruned is true and this block's payload is absent.
+    /// Production sets this variant only from that missing-payload arm.
+    /// A missing payload with have_pruned false stays Unavailable.
+    /// Classifier tests may inject this variant directly.
     Pruned,
     Unavailable,
     Unknown,
@@ -108,8 +110,10 @@ pub enum BlockServingStatusLabel {
     Available,
     Stale,
     SideChain,
-    /// Reserved for a future prune-mode delete when prune mode actually deleted files.
-    /// Missing payload is Unavailable; this variant is not a prune-mode product signal.
+    /// Earned only when durable have_pruned is true and this block's payload is absent.
+    /// Production sets this variant only from that missing-payload arm.
+    /// A missing payload with have_pruned false stays Unavailable.
+    /// Classifier tests may inject this variant directly.
     Pruned,
     Unavailable,
     Unvalidated,
