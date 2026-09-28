@@ -6,7 +6,10 @@
 **Date:** 2026-09-28
 **Phase:** 150-operator-prune-surfaces-and-evidence
 **Mode:** Yolo
+**Lifecycle:** 150-2026-09-28T17-08-23
 **Areas discussed:** Prune status fields, Config integer, Manual prune request, Prune locks, Sanitized support evidence
+
+This `--yolo --chain` run reaffirmed the same recommended answers already captured for Phase 150. No decision changed. The lifecycle id was refreshed so planning and execution share this attempt.
 
 ---
 
