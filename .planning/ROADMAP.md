@@ -127,7 +127,16 @@ Plans:
   2. Operator can request a manual prune when prune mode is on and observe the refusal or height outcome.
   3. Operator can list and set prune locks through the operator surface.
   4. Support evidence reports prune counts and last prune height without raw storage paths.
-**Plans**: TBD
+**Plans:** 6 plans
+
+Plans:
+- [ ] 150-01-PLAN.md — Pure GetPruneHeight, quartet projection, and timestamp pre-step
+- [ ] 150-02-PLAN.md — JSONC prune integer and startup prune mode
+- [ ] 150-03-PLAN.md — Durable prune locks, support counters, and resume
+- [ ] 150-04-PLAN.md — getblockchaininfo quartet and status snapshot facts
+- [ ] 150-05-PLAN.md — pruneblockchain, lock RPC, and CLI prune commands
+- [ ] 150-06-PLAN.md — Read-only dashboard, CLI status, and sanitized support evidence
+
 **UI hint**: yes
 
 ### Phase 151: Parity Roots and No-Claim Guardrails
@@ -182,12 +191,12 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
 | 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
-| 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
+| 150. Operator Prune Surfaces and Evidence | 0/6 | Not started | - |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
 
-Run `/gsd-discuss-phase 150` to expose prune status, manual prune, prune locks, and sanitized support evidence.
+Run `/gsd-execute-phase 150` to expose prune status, manual prune, prune locks, and sanitized support evidence.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*
