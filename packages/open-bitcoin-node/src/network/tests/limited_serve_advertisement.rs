@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/init.cpp
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use open_bitcoin_core::chainstate::PruneMode;
 use open_bitcoin_network::{PeerAction, advertised_service_flags};

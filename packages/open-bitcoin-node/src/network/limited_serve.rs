@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/init.cpp
 // - packages/bitcoin-knots/src/protocol.h
 // - packages/bitcoin-knots/src/net_processing.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 //! Version-message services chosen from prune mode.
 

@@ -983,12 +983,14 @@
       "files": [
         "packages/open-bitcoin-node/src/network/limited_serve.rs",
         "packages/open-bitcoin-node/src/network/tests/limited_serve_advertisement.rs",
-        "packages/open-bitcoin-node/src/network/tests/block_serving/limited_window.rs"
+        "packages/open-bitcoin-node/src/network/tests/block_serving/limited_window.rs",
+        "packages/open-bitcoin-node/src/network/tests/pruned_label.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/init.cpp",
         "packages/bitcoin-knots/src/protocol.h",
-        "packages/bitcoin-knots/src/net_processing.cpp"
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
       ]
     },
     {

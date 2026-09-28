@@ -532,6 +532,7 @@ mod block_serving;
 mod compact_announcement;
 mod inbound_capacity;
 mod inbound_observation;
+mod pruned_label;
 mod resource_governance;
 mod runtime_projection;
 mod transaction_relay;
