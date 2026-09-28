@@ -47,7 +47,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
 - [x] **Phase 146: Wallet Leftover-Snapshot Cutover** — Cut wallet rescan off leftover snapshot bytes so prune cannot resurrect snapshot-as-truth. (completed 2026-09-22)
 - [x] **Phase 147: Pure Prune Policy and Lock Windows** — Encode height windows, 550 MiB target, 288-block keep, and 10-block lock buffer as I/O-free decisions. (completed 2026-09-22)
 - [x] **Phase 148: Fjall Payload Unlink and Have-Pruned** — Delete paired block and undo keys durably, record have-pruned only after success, and fail closed on interrupted prune. (completed 2026-09-27)
-- [ ] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned.
+- [x] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned. (completed 2026-09-28)
 - [ ] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces.
 - [ ] **Phase 151: Parity Roots and No-Claim Guardrails** — Cite Knots prune anchors including the Fjall-versus-`blk`/`rev` difference and keep deferred claims out.
 
@@ -110,13 +110,13 @@ Plans:
   2. A peer request for a block older than the limited serve window is refused.
   3. A peer request for a block whose payload prune removed is not served.
   4. Status and RPC report `Pruned` only when have-pruned is set and the payload is gone; a missing payload without prune stays `Unavailable`.
-**Plans:** 3/4 plans executed
+**Plans:** 4/4 plans complete
 
 Plans:
 - [x] 149-01-PLAN.md — Pure NETWORK_LIMITED bit and limited-serve window predicates
 - [x] 149-02-PLAN.md — Advertise limited service from PruneMode on the version message
 - [x] 149-03-PLAN.md — Refuse out-of-window and pruned block bodies
-- [ ] 149-04-PLAN.md — Project honest Pruned status only after have-pruned
+- [x] 149-04-PLAN.md — Project honest Pruned status only after have-pruned
 
 ### Phase 150: Operator Prune Surfaces and Evidence
 **Goal**: Operators can inspect prune state, request manual prune, manage prune locks, and read sanitized support evidence.
@@ -181,7 +181,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
-| 149. Limited Serving and Honest Pruned Labels | 3/4 | In Progress|  |
+| 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete   | 2026-09-28 |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 

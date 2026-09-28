@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: executing
-stopped_at: Completed 149-03-PLAN.md
-last_updated: "2026-09-28T02:47:30.500Z"
+status: verifying
+stopped_at: Completed 149-04-PLAN.md
+last_updated: "2026-09-28T04:09:37.556Z"
 last_activity: 2026-09-28
 progress:
   total_phases: 6
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 14
-  percent: 93
+  completed_plans: 15
+  percent: 100
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 149
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-28
 
-Progress: [█████████░] 87%
+Progress: [██████████] 100%
 
-Next action: /gsd-execute-phase 149
+Next action: /gsd-verify-work 149
 
 ## Performance Metrics
 
@@ -162,6 +162,7 @@ Next action: /gsd-execute-phase 149
 | Phase 149 P01 | 27 min | 2 tasks | 5 files |
 | Phase 149 P02 | 58 min | 2 tasks | 12 files |
 | Phase 149 P03 | 1h 14m | 3 tasks | 16 files |
+| Phase 149 P04 | 1h 1m | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -513,6 +514,9 @@ Next action: /gsd-execute-phase 149
 - [Phase 149]: Combined 149-03 tasks into one hook-passing feat commit because pre-commit runs verify.sh — A RED-only commit fails bash scripts/verify.sh, and new tests need breadcrumbs.
 - [Phase 149]: Leave SERV-02 and SERV-03 Pending until lifecycle-valid Phase 149 verification — Active-milestone verification traceability rejects Complete flips before 149-VERIFICATION.md exists.
 - [Phase 149]: noban expands to the download effect, so MisbehaviorPolicyProtected is not a window exemption — PeerPermissionToken::NoBan also inserts Download, so absence of DownloadServingPolicyInput alone would keep a noban peer.
+- [Phase 149]: Leave LABL-01 Pending until lifecycle-valid Phase 149 verification — Active-milestone verification traceability rejects Complete flips before 149-VERIFICATION.md exists. This plan forbids flipping LABL-01.
+- [Phase 149]: The projection stays the existing pruned_count increment — No durability, getblockchaininfo, CLI, dashboard, or support-bundle prune fields. Phase 150 owns operator surfaces.
+- [Phase 149]: Cite blockstorage.cpp on the whole node-limited-serve breadcrumb group — IsBlockPruned is m_have_pruned plus missing block data. The checker requires every file in the group to share that header.
 
 ### Pending Todos
 
@@ -540,6 +544,6 @@ Next action: /gsd-execute-phase 149
 
 ## Session Continuity
 
-Last session: 2026-09-28T02:46:40.536Z
-Stopped at: Completed 149-03-PLAN.md
+Last session: 2026-09-28T04:09:06.378Z
+Stopped at: Completed 149-04-PLAN.md
 Resume file: None
