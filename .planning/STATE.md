@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 149-02-PLAN.md
-last_updated: "2026-09-27T23:36:43.865Z"
-last_activity: 2026-09-27
+stopped_at: Completed 149-03-PLAN.md
+last_updated: "2026-09-28T02:47:30.500Z"
+last_activity: 2026-09-28
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -27,9 +27,9 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 149
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
-Last activity: 2026-09-27
+Last activity: 2026-09-28
 
 Progress: [█████████░] 87%
 
@@ -161,6 +161,7 @@ Next action: /gsd-execute-phase 149
 | Phase 148 P05 | 27 min | 2 tasks | 4 files |
 | Phase 149 P01 | 27 min | 2 tasks | 5 files |
 | Phase 149 P02 | 58 min | 2 tasks | 12 files |
+| Phase 149 P03 | 1h 14m | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -509,6 +510,9 @@ Next action: /gsd-execute-phase 149
 - [Phase 149]: Limited-serve window is tip distance greater than MIN_BLOCKS_TO_KEEP plus 2; deletion still keeps 288 — D-05. Distance 290 stays inside and 291 is outside. height_inside_keep_window was not edited.
 - [Phase 149]: Clone copies prune_mode and serving_have_pruned so advertisement stays paired with the copied local config
 - [Phase 149]: Leave SERV-01 Pending until lifecycle-valid Phase 149 verification
+- [Phase 149]: Combined 149-03 tasks into one hook-passing feat commit because pre-commit runs verify.sh — A RED-only commit fails bash scripts/verify.sh, and new tests need breadcrumbs.
+- [Phase 149]: Leave SERV-02 and SERV-03 Pending until lifecycle-valid Phase 149 verification — Active-milestone verification traceability rejects Complete flips before 149-VERIFICATION.md exists.
+- [Phase 149]: noban expands to the download effect, so MisbehaviorPolicyProtected is not a window exemption — PeerPermissionToken::NoBan also inserts Download, so absence of DownloadServingPolicyInput alone would keep a noban peer.
 
 ### Pending Todos
 
@@ -536,6 +540,6 @@ Next action: /gsd-execute-phase 149
 
 ## Session Continuity
 
-Last session: 2026-09-27T23:36:43.860Z
-Stopped at: Completed 149-02-PLAN.md
+Last session: 2026-09-28T02:46:40.536Z
+Stopped at: Completed 149-03-PLAN.md
 Resume file: None
