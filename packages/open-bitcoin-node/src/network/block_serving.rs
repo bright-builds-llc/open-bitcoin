@@ -35,6 +35,7 @@ pub(super) struct ManagedBlockServeInput {
     pub data_availability: BlockServingDataAvailability,
     pub suppressed: bool,
     pub presence: BlockServingPresenceFacts,
+    pub limited_window_refused: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -268,6 +269,22 @@ pub(super) fn gate_managed_block_request(
         data_availability: input.data_availability,
         suppressed: input.suppressed,
     });
+    if input.limited_window_refused {
+        let eligibility = classify_block_serving_eligibility(&BlockServingEligibilityInput {
+            activation: input.activation,
+            inbound_serving_enabled: input.inbound_serving_enabled,
+            connection_class: input.connection_class,
+            active_permission_effects: input.active_permission_effects.clone(),
+            inactive_permission_effects: input.inactive_permission_effects.clone(),
+            status_available: status.may_serve_block,
+        });
+        return ManagedBlockServeGateDecision::Deny(missing(
+            BlockServingOutcomeLabel::BlockStatusUnavailable,
+            status.label,
+            eligibility.reason,
+            input.presence,
+        ));
+    }
     let eligibility = classify_block_serving_eligibility(&BlockServingEligibilityInput {
         activation: input.activation,
         inbound_serving_enabled: input.inbound_serving_enabled,

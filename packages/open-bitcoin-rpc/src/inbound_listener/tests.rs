@@ -77,6 +77,10 @@ impl DurableBlockSource for ScriptedDurableBlockSource {
         Ok(true)
     }
 
+    fn load_have_pruned(&self) -> Result<bool, StorageError> {
+        Ok(false)
+    }
+
     fn load_block(&self, _block_hash: BlockHash) -> Result<Option<Block>, StorageError> {
         Err(match self.failure {
             ScriptedDurableBlockFailure::Corruption => StorageError::Corruption {

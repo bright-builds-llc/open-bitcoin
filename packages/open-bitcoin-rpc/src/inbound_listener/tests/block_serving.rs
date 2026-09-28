@@ -2,6 +2,9 @@
 // - packages/bitcoin-knots/src/net.cpp
 // - packages/bitcoin-knots/src/net_processing.cpp
 
+use open_bitcoin_node::core::chainstate::PruneMode;
+
+use super::listener_fixtures::*;
 use super::*;
 
 #[tokio::test]
@@ -303,4 +306,137 @@ async fn phase123_inbound_encoding_failure_does_not_increment_served() {
     // Assert
     assert!(result.is_err());
     assert_eq!(served_count, 0);
+}
+
+fn window_script_num(value: u32) -> Vec<u8> {
+    if value == 0 {
+        return vec![0x00];
+    }
+    let mut magnitude = u64::from(value);
+    let mut encoded = Vec::new();
+    while magnitude > 0 {
+        encoded.push((magnitude & 0xff) as u8);
+        magnitude >>= 8;
+    }
+    if encoded.last().is_some_and(|byte| byte & 0x80 != 0) {
+        encoded.push(0x00);
+    }
+    let mut script = Vec::with_capacity(encoded.len() + 1);
+    script.push(encoded.len() as u8);
+    script.extend(encoded);
+    script.push(0x51);
+    script
+}
+
+fn mined_window_block(previous_block_hash: BlockHash, height: u32) -> Block {
+    let mut script_sig_bytes = window_script_num(height);
+    script_sig_bytes.push(0x51);
+    let script_sig = ScriptBuf::from_bytes(script_sig_bytes).expect("coinbase script");
+    let script_pubkey = ScriptBuf::from_bytes(vec![0x51]).expect("output script");
+    let transaction = Transaction {
+        version: 1,
+        inputs: vec![TransactionInput {
+            previous_output: OutPoint::null(),
+            script_sig,
+            sequence: TransactionInput::SEQUENCE_FINAL,
+            witness: ScriptWitness::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(5_000_000_000).expect("coinbase amount"),
+            script_pubkey,
+        }],
+        lock_time: 0,
+    };
+    let (merkle_root, maybe_mutated) =
+        block_merkle_root(core::slice::from_ref(&transaction)).expect("coinbase merkle root");
+    assert!(!maybe_mutated);
+    let mut block = Block {
+        header: BlockHeader {
+            version: 1,
+            previous_block_hash,
+            merkle_root,
+            time: 1_231_006_500 + height,
+            bits: PHASE123_EASY_BITS,
+            nonce: 0,
+        },
+        transactions: vec![transaction],
+    };
+    block.header.nonce = (0..=u32::MAX)
+        .find(|nonce| {
+            block.header.nonce = *nonce;
+            check_block_header(&block.header).is_ok()
+        })
+        .expect("mined nonce");
+    block
+}
+
+#[tokio::test]
+async fn out_of_window_notfound_closes_the_inbound_socket() {
+    // Arrange
+    let runtime = RuntimeConfig {
+        inbound: loopback_config(2),
+        block_serving: BlockRelayActivationPolicy {
+            block_serving: BlockServingActivationConfig { enabled: true },
+            compact_relay: CompactRelayActivationConfig::default(),
+        },
+        ..RuntimeConfig::default()
+    };
+    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    context
+        .set_prune_mode(PruneMode::ManualOnly)
+        .expect("manual prune mode");
+    let mut previous = BlockHash::default();
+    let mut height_zero = Block::default();
+    for height in 0..=291 {
+        let block = mined_window_block(previous, height);
+        context
+            .connect_local_block(&block)
+            .expect("connect limited-window block");
+        if height == 0 {
+            height_zero = block.clone();
+        }
+        previous = block_hash(&block.header);
+    }
+    let context = Arc::new(tokio::sync::Mutex::new(context));
+    let activation = activate_inbound_listener(&runtime.inbound).await;
+    let endpoint = activation
+        .bound_endpoints()
+        .first()
+        .expect("bound loopback endpoint")
+        .bound_endpoint
+        .clone();
+    let worker = start_inbound_accept_loop(activation, Arc::clone(&context))
+        .expect("listener worker should start");
+    let stream = TcpStream::connect(&endpoint)
+        .await
+        .expect("connect limited-window peer");
+    send_message(
+        &stream,
+        WireNetworkMessage::Version(VersionMessage {
+            nonce: 149_312,
+            ..VersionMessage::default()
+        }),
+    )
+    .await;
+    for _ in 0..4 {
+        let _ = receive_message(&stream).await;
+    }
+    send_message(&stream, WireNetworkMessage::Verack).await;
+
+    // Act
+    send_message(&stream, phase123_block_request(&height_zero)).await;
+    let response = tokio::time::timeout(Duration::from_secs(2), receive_any_message(&stream))
+        .await
+        .expect("out-of-window response should arrive");
+    stream
+        .readable()
+        .await
+        .expect("socket should become readable after NotFound");
+    let mut leftover = [0_u8; 64];
+    let read = stream.try_read(&mut leftover);
+
+    // Assert
+    assert!(matches!(response, WireNetworkMessage::NotFound(_)));
+    assert!(matches!(read, Ok(0)));
+    worker.shutdown().await;
 }

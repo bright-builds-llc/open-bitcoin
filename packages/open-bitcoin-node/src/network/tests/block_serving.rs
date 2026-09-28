@@ -20,6 +20,7 @@ use crate::network::block_serving::serve_managed_block_request;
 use crate::status::FieldAvailability;
 
 mod getdata_serving;
+mod limited_window;
 
 #[test]
 fn phase111_side_chain_cached_block_is_not_served() {
@@ -410,17 +411,19 @@ fn durable_cache_miss_store_hit_is_payload_present() {
 }
 
 #[test]
-fn production_inventory_source_does_not_inject_pruned() {
+fn production_inventory_source_assigns_pruned_only_for_a_have_pruned_gap() {
     // Arrange
     let inventory_source = include_str!("../inventory.rs");
 
     // Act
-    let injects_pruned = inventory_source.contains("BlockServingDataAvailability::Pruned");
+    let gated_assignment = inventory_source.contains(
+        "else if self.serving_have_pruned && validated_on_active_chain {\n            BlockServingDataAvailability::Pruned",
+    );
 
     // Assert
     assert!(
-        !injects_pruned,
-        "production inventory assembly must not inject BlockServingDataAvailability::Pruned"
+        gated_assignment,
+        "Pruned is assigned only for a have-pruned active-chain gap"
     );
 }
 

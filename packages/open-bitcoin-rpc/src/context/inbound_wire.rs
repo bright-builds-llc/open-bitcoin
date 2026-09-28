@@ -59,6 +59,8 @@ pub(crate) trait DurableBlockSource: Send + Sync {
         &self,
         block_hash: open_bitcoin_node::core::primitives::BlockHash,
     ) -> Result<Option<open_bitcoin_node::core::primitives::Block>, open_bitcoin_node::StorageError>;
+
+    fn load_have_pruned(&self) -> Result<bool, open_bitcoin_node::StorageError>;
 }
 
 impl DurableBlockSource for FjallNodeStore {
@@ -75,6 +77,10 @@ impl DurableBlockSource for FjallNodeStore {
     ) -> Result<Option<open_bitcoin_node::core::primitives::Block>, open_bitcoin_node::StorageError>
     {
         FjallNodeStore::load_block(self, block_hash)
+    }
+
+    fn load_have_pruned(&self) -> Result<bool, open_bitcoin_node::StorageError> {
+        FjallNodeStore::load_have_pruned(self)
     }
 }
 

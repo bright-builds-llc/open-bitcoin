@@ -30,6 +30,7 @@ use super::{
         ManagedCompactBlockTxnServeDecision, serve_managed_compact_block_transactions,
     },
     inventory,
+    limited_serve::disconnect_for_limited_window_request,
 };
 
 pub(super) enum InventoryServingMode<F> {
@@ -225,10 +226,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                                 peer_id,
                                 requests,
                                 payload_present,
-                            ));
+                            )?);
                             (Vec::new(), Vec::new())
                         }
-                        InventoryServingMode::Immediate => self.serve_inventory(peer_id, requests),
+                        InventoryServingMode::Immediate => {
+                            self.serve_inventory(peer_id, requests)?
+                        }
                     };
                     outbound.extend(messages);
                     if !missing.is_empty() {
@@ -247,11 +250,22 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                         false,
                         false,
                     );
+                    let refuse_disconnect = disconnect_for_limited_window_request(
+                        input.limited_window_refused,
+                        &input.active_permission_effects,
+                    );
                     let decision =
                         serve_managed_compact_block_transactions(input, &request.indexes, |hash| {
                             self.blocks_by_hash.get(&hash).cloned()
                         });
                     self.record_compact_block_txn_serve_outcome(decision.outcome());
+                    if refuse_disconnect {
+                        outbound.push(WireNetworkMessage::NotFound(InventoryList::new(vec![
+                            inventory,
+                        ])));
+                        self.disconnect_peer(peer_id)?;
+                        continue;
+                    }
                     match decision {
                         ManagedCompactBlockTxnServeDecision::Served(response) => {
                             outbound.push(WireNetworkMessage::BlockTxn(response));

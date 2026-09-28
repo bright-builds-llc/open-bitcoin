@@ -982,7 +982,8 @@
       "label": "node-limited-serve",
       "files": [
         "packages/open-bitcoin-node/src/network/limited_serve.rs",
-        "packages/open-bitcoin-node/src/network/tests/limited_serve_advertisement.rs"
+        "packages/open-bitcoin-node/src/network/tests/limited_serve_advertisement.rs",
+        "packages/open-bitcoin-node/src/network/tests/block_serving/limited_window.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/init.cpp",

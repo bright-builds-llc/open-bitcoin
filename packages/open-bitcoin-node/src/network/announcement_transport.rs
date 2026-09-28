@@ -485,12 +485,18 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             .compact_announcements
             .contains(&block.header.previous_block_hash);
         let peer_has_current_header = peer.compact_announcements.contains(&block_hash);
-        let (status, gate) = self.announcement_status_and_gate(
+        let (status, gate, limited_window_refused) = self.announcement_status_and_gate(
             peer_id,
             block_hash,
             outbox,
             aggregate_queued_messages,
         );
+        if limited_window_refused {
+            return AnnouncementPreparationOutcome::Suppressed {
+                peer_id,
+                reason: CompactAnnouncementReason::CompactBlockUnavailable,
+            };
+        }
         let decision = match self.peer_manager.decide_compact_announcement_for_peer(
             peer_id,
             PeerCompactAnnouncementInput {
@@ -540,18 +546,23 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     ) -> (
         open_bitcoin_network::BlockServingStatusDecision,
         open_bitcoin_network::BlockServingResourceGateDecision,
+        bool,
     ) {
         let request = InventoryVector {
             inventory_type: InventoryType::Block,
             object_hash: block_hash.into(),
         };
         let input = self.managed_block_serve_input(peer_id, &request, block_hash, false, false);
-        let status = classify_block_serving_status(&BlockServingStatusFacts {
+        let mut status = classify_block_serving_status(&BlockServingStatusFacts {
             chain_position: input.chain_position,
             validation_state: input.validation_state,
             data_availability: input.data_availability,
             suppressed: input.suppressed,
         });
+        if input.limited_window_refused {
+            status.may_serve_block = false;
+            status.allow_storage_read = false;
+        }
         let eligibility = classify_block_serving_eligibility(&BlockServingEligibilityInput {
             activation: input.activation,
             inbound_serving_enabled: input.inbound_serving_enabled,
@@ -587,6 +598,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 maybe_cleanup: None,
             },
         );
-        (status, gate)
+        (status, gate, input.limited_window_refused)
     }
 }

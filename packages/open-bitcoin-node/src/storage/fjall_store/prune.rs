@@ -53,7 +53,7 @@ pub(crate) struct PruneIntent {
 
 impl FjallNodeStore {
     /// Returns whether a prior paired delete committed `have_pruned`.
-    pub(crate) fn load_have_pruned(&self) -> Result<bool, StorageError> {
+    pub fn load_have_pruned(&self) -> Result<bool, StorageError> {
         self.block_index
             .contains_key(HAVE_PRUNED_KEY)
             .map_err(|error| backend_failure(StorageNamespace::BlockIndex, error))

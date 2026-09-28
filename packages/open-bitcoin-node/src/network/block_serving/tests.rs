@@ -39,6 +39,7 @@ fn enabled_input() -> ManagedBlockServeInput {
         validation_state: BlockServingValidationState::Validated,
         data_availability: BlockServingDataAvailability::Available,
         suppressed: false,
+        limited_window_refused: false,
         presence: BlockServingPresenceFacts {
             payload_present: true,
             index_known: true,

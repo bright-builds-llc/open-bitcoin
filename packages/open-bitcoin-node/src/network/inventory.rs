@@ -12,7 +12,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
-use open_bitcoin_core::chainstate::CoinsView;
+use open_bitcoin_core::chainstate::{CoinsView, PruneMode};
 #[cfg(test)]
 use open_bitcoin_core::primitives::{Txid, Wtxid};
 use open_bitcoin_core::{
@@ -32,6 +32,7 @@ use super::block_serving::{
     gate_managed_block_request, serve_managed_block_request,
 };
 use super::lifecycle_projection::PreparedServingProjection;
+use super::limited_serve::disconnect_for_limited_window_request;
 use super::{
     ManagedInboundResponsePlanItem, ManagedNetworkError, ManagedPeerNetwork,
     ManagedSyncMessageResult, PeerEmission,
@@ -88,9 +89,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         &mut self,
         peer_id: PeerId,
         requests: Vec<InventoryVector>,
-    ) -> (Vec<WireNetworkMessage>, Vec<InventoryVector>) {
+    ) -> Result<(Vec<WireNetworkMessage>, Vec<InventoryVector>), ManagedNetworkError> {
         let mut messages = Vec::new();
         let mut missing = Vec::new();
+        let mut disconnect_after_not_found = false;
         let (peer_mode, relay_eligibility) = self.relay_serving_context_for_peer(peer_id);
         self.relay_serving.clear_latest_outcomes();
 
@@ -100,12 +102,19 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     let block_hash = BlockHash::from(request.object_hash);
                     let input =
                         self.managed_block_serve_input(peer_id, &request, block_hash, false, false);
+                    let refuse_disconnect = disconnect_for_limited_window_request(
+                        input.limited_window_refused,
+                        &input.active_permission_effects,
+                    );
                     let decision = serve_managed_block_request(input, |hash| {
                         self.blocks_by_hash.get(&hash).cloned()
                     });
                     self.record_block_serving_evidence(request.inventory_type, &decision);
                     let Some(block) = decision.maybe_block else {
                         missing.push(request);
+                        if refuse_disconnect {
+                            disconnect_after_not_found = true;
+                        }
                         continue;
                     };
                     if decision.missing_inventory {
@@ -118,11 +127,18 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     let block_hash = BlockHash::from(request.object_hash);
                     let input =
                         self.managed_block_serve_input(peer_id, &request, block_hash, true, false);
+                    let refuse_disconnect = disconnect_for_limited_window_request(
+                        input.limited_window_refused,
+                        &input.active_permission_effects,
+                    );
                     let decision = serve_managed_block_request(input, |hash| {
                         self.blocks_by_hash.get(&hash).cloned()
                     });
                     self.record_block_serving_evidence(request.inventory_type, &decision);
                     missing.push(request);
+                    if refuse_disconnect {
+                        disconnect_after_not_found = true;
+                    }
                 }
                 InventoryType::Transaction | InventoryType::WitnessTransaction => {
                     let decision = self.relay_serving.classify_request(
@@ -144,7 +160,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             }
         }
 
-        (messages, missing)
+        if disconnect_after_not_found {
+            self.disconnect_peer(peer_id)?;
+        }
+        Ok((messages, missing))
     }
 
     pub(super) fn gate_inventory_for_durable_serving(
@@ -152,8 +171,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         peer_id: PeerId,
         requests: Vec<InventoryVector>,
         durable_payload_present: impl Fn(BlockHash) -> bool,
-    ) -> Vec<ManagedInboundResponsePlanItem> {
+    ) -> Result<Vec<ManagedInboundResponsePlanItem>, ManagedNetworkError> {
         let mut response_plan = Vec::new();
+        let mut disconnect_after_not_found = false;
         let mut requests = requests.into_iter().peekable();
         let (peer_mode, relay_eligibility) = self.relay_serving_context_for_peer(peer_id);
         self.relay_serving.clear_latest_outcomes();
@@ -200,6 +220,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                             false,
                             durable_payload_present(block_hash),
                         );
+                        let refuse_disconnect = disconnect_for_limited_window_request(
+                            input.limited_window_refused,
+                            &input.active_permission_effects,
+                        );
                         match gate_managed_block_request(input) {
                             ManagedBlockServeGateDecision::Serve(intent) => {
                                 response_plan
@@ -215,6 +239,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                                         open_bitcoin_network::InventoryList::new(vec![request]),
                                     ),
                                 ));
+                                if refuse_disconnect {
+                                    disconnect_after_not_found = true;
+                                }
                             }
                         }
                     }
@@ -236,7 +263,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             }
         }
 
-        response_plan
+        if disconnect_after_not_found {
+            self.disconnect_peer(peer_id)?;
+        }
+        Ok(response_plan)
     }
 
     fn try_prepare_tx_response_item(
@@ -286,6 +316,15 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         let payload_present = cache_present || durable_payload_present;
         let index_known = self.peer_manager.header_store().contains(&block_hash);
         let validated_on_active_chain = maybe_active_index.is_some();
+        let limited_window_refused = !matches!(self.prune_mode, PruneMode::Disabled)
+            && maybe_active_index.is_some_and(|index| {
+                active_chain.last().is_some_and(|tip| {
+                    open_bitcoin_network::block_request_exceeds_limited_serve_window(
+                        tip.height,
+                        active_chain[index].height,
+                    )
+                })
+            });
         let is_active = validated_on_active_chain;
         let chain_position = if is_active {
             BlockServingChainPosition::Active
@@ -301,6 +340,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         };
         let data_availability = if payload_present {
             BlockServingDataAvailability::Available
+        } else if self.serving_have_pruned && validated_on_active_chain {
+            BlockServingDataAvailability::Pruned
         } else {
             BlockServingDataAvailability::Unavailable
         };
@@ -334,6 +375,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             data_availability,
             suppressed,
             presence,
+            limited_window_refused,
         }
     }
 

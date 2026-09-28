@@ -303,6 +303,22 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
         self.maybe_block_source = Some(source);
     }
 
+    #[cfg(test)]
+    pub(crate) fn set_prune_mode(
+        &mut self,
+        mode: open_bitcoin_node::core::chainstate::PruneMode,
+    ) -> Result<(), open_bitcoin_node::ManagedNetworkAuthorityError> {
+        self.network.set_prune_mode(mode)
+    }
+
+    pub(crate) fn admitted_peer_present(
+        &self,
+        peer_id: u64,
+    ) -> Result<bool, open_bitcoin_node::ManagedNetworkAuthorityError> {
+        let manager = self.network.peer_manager_snapshot()?;
+        Ok(manager.peer_state(peer_id).is_some())
+    }
+
     pub(crate) fn prepare_inbound_wire_message(
         &mut self,
         peer_id: u64,
@@ -310,6 +326,11 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
         timestamp: i64,
     ) -> Result<InboundWireResponsePlan, open_bitcoin_node::ManagedNetworkAuthorityError> {
         let maybe_source = self.maybe_block_source.clone();
+        let have_pruned = match maybe_source.as_ref() {
+            Some(source) => source.load_have_pruned().unwrap_or(false),
+            None => false,
+        };
+        self.network.set_serving_have_pruned(have_pruned)?;
         let result = self.network.receive_message_for_durable_serving(
             peer_id,
             message,

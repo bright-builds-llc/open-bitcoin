@@ -6,7 +6,7 @@
 //! Version-message services chosen from prune mode.
 
 use open_bitcoin_core::chainstate::{CoinsView, PruneMode};
-use open_bitcoin_network::{ServiceFlags, advertised_service_flags};
+use open_bitcoin_network::{PermissionEffectLabel, ServiceFlags, advertised_service_flags};
 
 use super::ManagedPeerNetwork;
 use crate::ChainstateStore;
@@ -34,4 +34,18 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn local_services(&self) -> ServiceFlags {
         self.local_config.services
     }
+}
+
+/// Ordinary peers that request a historical block body are removed.
+///
+/// The download permission is the only exemption. `noban` does not keep
+/// the peer.
+pub(super) fn disconnect_for_limited_window_request(
+    limited_window_refused: bool,
+    active_permission_effects: &[PermissionEffectLabel],
+) -> bool {
+    limited_window_refused
+        && (!active_permission_effects.contains(&PermissionEffectLabel::DownloadServingPolicyInput)
+            || active_permission_effects
+                .contains(&PermissionEffectLabel::MisbehaviorPolicyProtected))
 }

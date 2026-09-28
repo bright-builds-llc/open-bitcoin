@@ -2,7 +2,7 @@
 // - packages/bitcoin-knots/src/node/context.h
 
 use open_bitcoin_core::chainstate::{
-    CoinsView, FlushMode, FlushPolicyTime, PruneLockInfo, PrunePlan,
+    CoinsView, FlushMode, FlushPolicyTime, PruneLockInfo, PruneMode, PrunePlan,
 };
 
 use super::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
@@ -55,5 +55,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
             flush_and_evict_pruned_blocks(network, mode, now, disk_free_bytes, plan, locks)
         })?
         .map_err(|error| ManagedNetworkAuthorityError::LifecycleEffect(error.to_string()))
+    }
+
+    /// Stores prune mode so version-message services follow the mode.
+    pub fn set_prune_mode(&mut self, mode: PruneMode) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.set_prune_mode(mode))
     }
 }

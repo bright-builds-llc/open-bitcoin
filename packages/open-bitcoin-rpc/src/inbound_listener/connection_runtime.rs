@@ -265,6 +265,12 @@ pub(super) async fn handle_inbound_stream<S, V>(
                 }
             }
         }
+        if matches!(
+            context.lock().await.admitted_peer_present(peer_id),
+            Ok(false)
+        ) {
+            break 'message_loop;
+        }
         if !drain_inbound_announcements(
             maybe_announcement_transport.as_ref(),
             peer_id,
