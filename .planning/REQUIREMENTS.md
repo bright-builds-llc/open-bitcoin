@@ -31,13 +31,13 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Serving
 
-- [ ] **SERV-01**: Prune mode advertises `NODE_NETWORK_LIMITED` and does not advertise full `NODE_NETWORK`.
-- [ ] **SERV-02**: A request for a block older than the limited serve window is refused.
-- [ ] **SERV-03**: A request for a block whose payload prune removed is not served.
+- [x] **SERV-01**: Prune mode advertises `NODE_NETWORK_LIMITED` and does not advertise full `NODE_NETWORK`.
+- [x] **SERV-02**: A request for a block older than the limited serve window is refused.
+- [x] **SERV-03**: A request for a block whose payload prune removed is not served.
 
 ### Labels
 
-- [ ] **LABL-01**: Status and RPC report `Pruned` only when have-pruned is set and the payload is gone; a missing payload without prune stays `Unavailable`.
+- [x] **LABL-01**: Status and RPC report `Pruned` only when have-pruned is set and the payload is gone; a missing payload without prune stays `Unavailable`.
 
 ### Operator Evidence
 
@@ -102,10 +102,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UNLK-01 | Phase 148 | Complete |
 | UNLK-02 | Phase 148 | Complete |
 | UNLK-03 | Phase 148 | Complete |
-| SERV-01 | Phase 149 | Pending |
-| SERV-02 | Phase 149 | Pending |
-| SERV-03 | Phase 149 | Pending |
-| LABL-01 | Phase 149 | Pending |
+| SERV-01 | Phase 149 | Complete |
+| SERV-02 | Phase 149 | Complete |
+| SERV-03 | Phase 149 | Complete |
+| LABL-01 | Phase 149 | Complete |
 | OPER-01 | Phase 150 | Pending |
 | OPER-02 | Phase 150 | Pending |
 | OPER-03 | Phase 150 | Pending |

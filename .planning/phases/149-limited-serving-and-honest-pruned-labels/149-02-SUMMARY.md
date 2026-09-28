@@ -32,7 +32,7 @@ key-files:
 
 key-decisions:
   - "Clone copies prune_mode and serving_have_pruned with the rest of the network so advertisement stays paired with the copied local config"
-  - "Leave SERV-01 Pending until lifecycle-valid Phase 149 verification"
+  - "SERV-01 is listed in requirements-completed because 149-VERIFICATION.md is passed"
   - "Combined 149-02 tasks into one hook-passing feat commit because pre-commit verify.sh requires breadcrumbs and covered lines"
 
 patterns-established:
@@ -40,7 +40,7 @@ patterns-established:
   - "Disabled production constructors call advertised_service_flags(PruneMode::Disabled), which is still NETWORK | WITNESS"
   - "node-limited-serve cites init.cpp, protocol.h, and net_processing.cpp"
 
-requirements-completed: []
+requirements-completed: [SERV-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 149-2026-09-27T19-48-11
@@ -96,7 +96,7 @@ _Note: Task 1 action 7 lands the tests and implementation in the same commit as 
 ## Decisions Made
 
 - Clone copies `prune_mode` and `serving_have_pruned`. Resetting them to disabled while still cloning `local_config` and `PeerManager` would split the advertisement from the stored mode.
-- SERV-01 stays Pending. This plan does not flip requirement rows before lifecycle-valid phase verification.
+- SERV-01 is listed in `requirements-completed` because `149-VERIFICATION.md` is passed.
 - Production advertisement changes are the two constructors the plan named: `transient_runtime` and `progress::local_peer_config`. Both call `advertised_service_flags(PruneMode::Disabled)`.
 
 ## Deviations from Plan

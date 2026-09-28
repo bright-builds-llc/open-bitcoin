@@ -29,7 +29,7 @@ key-files:
     - docs/parity/source-breadcrumbs.json
 
 key-decisions:
-  - "Leave LABL-01 Pending until lifecycle-valid Phase 149 verification"
+  - "LABL-01 is listed in requirements-completed because 149-VERIFICATION.md is passed"
   - "Keep operator prune fields out; pruned_count is the only projection"
   - "Cite blockstorage.cpp on the whole node-limited-serve breadcrumb group"
 
@@ -37,7 +37,7 @@ patterns-established:
   - "A missing payload with have_pruned false stays Unavailable even in manual prune mode"
   - "A present payload stays Available when have_pruned is already true"
 
-requirements-completed: []
+requirements-completed: [LABL-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 149-2026-09-27T19-48-11
@@ -89,7 +89,7 @@ _Note: Task 2 is TDD coverage of the Plan 03 production label. The tests passed 
 
 ## Decisions Made
 
-- LABL-01 stays Pending. This plan forbids flipping it, and active-milestone verification traceability rejects Complete before `149-VERIFICATION.md` exists.
+- LABL-01 is listed in `requirements-completed` because `149-VERIFICATION.md` is passed.
 - The projection is the existing `pruned_count` increment. Phase 150 owns operator prune fields.
 - `node-limited-serve` cites `packages/bitcoin-knots/src/node/blockstorage.cpp` because Knots `IsBlockPruned` is `m_have_pruned` plus missing block data. Every file in that group carries the same header.
 
@@ -105,8 +105,6 @@ _Note: Task 2 is TDD coverage of the Plan 03 production label. The tests passed 
 - **Verification:** `bun scripts/check-parity-breadcrumbs.ts` exited 0.
 - **Committed in:** `fddea08e` (task commit)
 
----
-
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** The header sync is required for the breadcrumb checker. No operator prune surface was added.
 
@@ -120,7 +118,7 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-Phase 149 plan work is complete. `Pruned` is counted only for an earned active-chain gap. Phase 150 owns operator prune fields. Phase 151 owns the parity-doc pass. LABL-01 stays Pending until lifecycle-valid phase verification.
+Phase 149 plan work is complete. `Pruned` is counted only for an earned active-chain gap. Phase 150 owns operator prune fields. Phase 151 owns the parity-doc pass. LABL-01 is activated in this summary because phase verification passed.
 
 ## Self-Check: PASSED
 

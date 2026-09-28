@@ -38,7 +38,7 @@ key-files:
 
 key-decisions:
   - "Combined 149-03 tasks into one hook-passing feat commit because pre-commit runs verify.sh"
-  - "Leave SERV-02 and SERV-03 Pending until lifecycle-valid Phase 149 verification"
+  - "SERV-02 and SERV-03 are listed in requirements-completed because 149-VERIFICATION.md is passed"
   - "noban expands to the download effect, so MisbehaviorPolicyProtected is not a window exemption"
   - "Inbound permission fixtures include the in direction because the parser requires it"
 
@@ -46,7 +46,7 @@ patterns-established:
   - "limited_window_refused denies the gate before lookup even when the payload is cached"
   - "Out-of-window announcements return Suppressed before the disabled-compact Inv fallback"
 
-requirements-completed: []
+requirements-completed: [SERV-02, SERV-03]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 149-2026-09-27T19-48-11
@@ -103,7 +103,7 @@ _Note: Tasks 1–3 landed in one hook-passing feat commit so pre-commit `verify.
 
 - `noban` expands to the download permission in the existing parser. The disconnect predicate still removes a peer whose effects include `MisbehaviorPolicyProtected`, so noban is not a window exemption. Explicit download without that effect stays connected.
 - Inbound permission fixtures include `in` because a class without that direction fails to parse. The download and noban effects are unchanged.
-- SERV-02 and SERV-03 stay Pending. This plan does not flip requirement rows before lifecycle-valid phase verification.
+- SERV-02 and SERV-03 are listed in `requirements-completed` because `149-VERIFICATION.md` is passed.
 - The Phase 143 source scan that forbade any `Pruned` assignment now requires the have-pruned active-chain gate.
 
 ## Deviations from Plan
@@ -149,8 +149,6 @@ _Note: Tasks 1–3 landed in one hook-passing feat commit so pre-commit `verify.
 - **Files modified:** `packages/open-bitcoin-node/src/network/tests/block_serving.rs`
 - **Verification:** `production_inventory_source_assigns_pruned_only_for_a_have_pruned_gap` passed.
 - **Committed in:** `1b15bac0` (task commit)
-
----
 
 **Total deviations:** 5 auto-fixed (3 bug, 2 blocking)
 **Impact on plan:** The fixes keep the window, noban, and Pruned contracts true and let the verifier pass. No serving surface beyond this plan.

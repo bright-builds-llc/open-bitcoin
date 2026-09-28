@@ -32,7 +32,7 @@ key-files:
 
 key-decisions:
   - "Combined 149-01 Task 1 and Task 2 into one hook-passing feat commit because pre-commit runs verify.sh and new Rust paths require breadcrumbs"
-  - "Leave SERV-01 Pending until lifecycle-valid Phase 149 verification"
+  - "SERV-01 is activated in 149-02-SUMMARY.md because 149-VERIFICATION.md is passed"
   - "A block is outside the limited serve window only when tip distance is greater than MIN_BLOCKS_TO_KEEP + 2; deletion still keeps 288"
 
 patterns-established:
@@ -91,7 +91,7 @@ _Note: Task 1 action 6 lands the tests and implementation in the same commit as 
 - Disabled advertisement stays `NETWORK | WITNESS`. `LocalPeerConfig::default` and `VersionMessage::default` were left unchanged.
 - Manual and automatic prune share `NETWORK_LIMITED | WITNESS` and omit `NETWORK`. The function takes only `PruneMode`.
 - The window comparison is greater-than against `MIN_BLOCKS_TO_KEEP + LIMITED_SERVE_RACE_BUFFER` (`288 + 2`). `height_inside_keep_window` and the keep constant were not edited.
-- SERV-01 stays Pending. Plan 01 does not flip SERV-01, SERV-02, SERV-03, or LABL-01 before lifecycle-valid phase verification.
+- SERV-01 is activated in `149-02-SUMMARY.md` because `149-VERIFICATION.md` is passed.
 
 ## Deviations from Plan
 

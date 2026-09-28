@@ -152,10 +152,10 @@ Plans:
 | UNLK-01 | Phase 148 | Complete |
 | UNLK-02 | Phase 148 | Complete |
 | UNLK-03 | Phase 148 | Complete |
-| SERV-01 | Phase 149 | Pending |
-| SERV-02 | Phase 149 | Pending |
-| SERV-03 | Phase 149 | Pending |
-| LABL-01 | Phase 149 | Pending |
+| SERV-01 | Phase 149 | Complete |
+| SERV-02 | Phase 149 | Complete |
+| SERV-03 | Phase 149 | Complete |
+| LABL-01 | Phase 149 | Complete |
 | OPER-01 | Phase 150 | Pending |
 | OPER-02 | Phase 150 | Pending |
 | OPER-03 | Phase 150 | Pending |
@@ -181,13 +181,13 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 146. Wallet Leftover-Snapshot Cutover | 3/3 | Complete    | 2026-09-22 |
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
-| 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete   | 2026-09-28 |
+| 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
 | 150. Operator Prune Surfaces and Evidence | 0/TBD | Not started | - |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step
 
-Run `/gsd-execute-phase 148` to delete paired Fjall payloads and record have-pruned only after that delete is durable.
+Run `/gsd-discuss-phase 150` to expose prune status, manual prune, prune locks, and sanitized support evidence.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*
