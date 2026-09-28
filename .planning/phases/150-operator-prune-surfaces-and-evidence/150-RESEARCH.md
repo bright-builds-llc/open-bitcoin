@@ -490,17 +490,19 @@ CLI dashboard and support files that only render an Open Bitcoin snapshot keep t
 | A3 | Unix timestamps above `1_000_000_000` are in scope for `pruneblockchain` | Quoted Knots `pruneblockchain` | D-09 says `<height>`. The quoted function also accepts a timestamp. Omitting it is an operator-visible difference Phase 151 would have to record. Implementing it as a pure pre-step matches the quoted RPC. |
 | A4 | Probe-only support should mark prune evidence unavailable instead of emitting loaded-zero | Pattern 6 | D-16's zero is for "no successful delete," which requires a read. Emitting zero without a read under-reports. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Where the live collector reads lock rows and counters**
+1. **Where the live collector reads lock rows and counters** — RESOLVED
    - What we know: Live CLI status does not open Fjall. `getblockchaininfo` is the live blockchain read. Locks have their own Knots RPC.
    - What's unclear: Whether counters ride on `getblockchaininfo` (they must not: that object is the quartet only) or on a dedicated read the collector already performs.
    - Recommendation: Keep counters off `getblockchaininfo`. Have the live collector call `listprunelocks` for the dashboard list and read the summary from the node through whatever status RPC already returns `OpenBitcoinStatusSnapshot` fields. Stopped collector uses JSONC for mode only.
+   - Resolution: Live locks and counters ride on the status snapshot, not on `getblockchaininfo` and not on a CLI Fjall open. Plan 04 fills `OpenBitcoinNetworkStatusResponse.prune` from `load_prune_locks` and `load_prune_support_summary`, and the live collector copies that object onto the snapshot. The stopped collector reads JSONC mode only and marks height, locks, manual prune, and support counts Unavailable. `getblockchaininfo` stays the quartet.
 
-2. **Summary-record crash window**
+2. **Summary-record crash window** — RESOLVED
    - What we know: Deletes commit per height inside `commit_paired_delete`. A plan is many heights.
    - What's unclear: Whether one Fjall batch can carry the last height's delete and the summary.
    - Recommendation: Prefer one sync batch. If the API cannot do that, sync the summary before RPC returns and test a crash between delete and summary as under-count, not as a second delete.
+   - Resolution: The summary is a separate write after `DeletedLiveMate` heights, before flush returns. A crash in between under-counts and must not delete again. Plan 03 calls `record_successful_prune_batch` once after those per-height deletes. A later finish of the same heights is `AlreadyAbsent` and does not increment the batch or height counters again.
 
 ## Environment Availability
 

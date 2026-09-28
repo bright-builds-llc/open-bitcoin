@@ -127,15 +127,16 @@ Plans:
   2. Operator can request a manual prune when prune mode is on and observe the refusal or height outcome.
   3. Operator can list and set prune locks through the operator surface.
   4. Support evidence reports prune counts and last prune height without raw storage paths.
-**Plans:** 6 plans
+**Plans:** 7 plans
 
 Plans:
 - [ ] 150-01-PLAN.md — Pure GetPruneHeight, quartet projection, and timestamp pre-step
 - [ ] 150-02-PLAN.md — JSONC prune integer and startup prune mode
 - [ ] 150-03-PLAN.md — Durable prune locks, support counters, and resume
 - [ ] 150-04-PLAN.md — getblockchaininfo quartet and status snapshot facts
-- [ ] 150-05-PLAN.md — pruneblockchain, lock RPC, and CLI prune commands
+- [ ] 150-05-PLAN.md — pruneblockchain and lock RPC
 - [ ] 150-06-PLAN.md — Read-only dashboard, CLI status, and sanitized support evidence
+- [ ] 150-07-PLAN.md — CLI prune run and prune lock routing
 
 **UI hint**: yes
 
