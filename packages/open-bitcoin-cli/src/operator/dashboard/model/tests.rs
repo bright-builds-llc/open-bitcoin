@@ -335,5 +335,6 @@ fn phase77_recovery_evidence() -> RecoveryEvidenceSnapshot {
 
 mod mempool_policy;
 mod projection;
+mod prune;
 mod recovery_unavailable;
 mod sync_and_recovery;

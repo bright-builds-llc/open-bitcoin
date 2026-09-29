@@ -339,6 +339,7 @@
         "packages/open-bitcoin-cli/src/operator/status/render/block_relay.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/progress_guarantee.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/prune.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/relay.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
         "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
@@ -443,6 +444,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/model/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/metric_labels.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/metrics.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/prune_section.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/relay.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/recovery.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/resource_bounds.rs",
@@ -450,6 +452,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/projection.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/prune.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/recovery_unavailable.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/sync_and_recovery.rs"
       ],

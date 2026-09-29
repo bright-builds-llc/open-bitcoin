@@ -24,7 +24,8 @@ fn dashboard_projection_includes_required_sections_and_charts() {
             "Sync and Peers",
             "Mempool and Wallet",
             "Service",
-            "Logs and Health"
+            "Logs and Health",
+            "Prune",
         ]
     );
     assert_eq!(state.charts.len(), DASHBOARD_METRIC_KINDS.len());
@@ -585,7 +586,31 @@ fn dashboard_sections_remain_five_with_353530_split_unchanged() {
             "Mempool and Wallet",
             "Service",
             "Logs and Health",
+            "Prune",
         ]
     );
-    assert_eq!(state.sections.len(), 5);
+    assert_eq!(state.sections.len(), 6);
+    assert_eq!(state.sections[2].title, "Mempool and Wallet");
+    assert_eq!(state.sections[5].title, "Prune");
+    let durability = state.sections[2]
+        .rows
+        .iter()
+        .filter(|row| {
+            matches!(
+                row.label.as_str(),
+                "Chainstate durability"
+                    | "Cache occupancy"
+                    | "Coins best-block"
+                    | "Coins recovery"
+                    | "Have-bytes"
+                    | "Have-bytes counts"
+            )
+        })
+        .map(|row| format!("{} {}", row.label, row.value))
+        .collect::<Vec<_>>()
+        .join("\n");
+    assert!(
+        !durability.contains("pruned"),
+        "durability rows leaked pruned"
+    );
 }

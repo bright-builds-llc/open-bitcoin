@@ -370,5 +370,82 @@ fn inbound_peer_serving_status() -> InboundPeerServingStatus {
     }
 }
 
+#[test]
+fn human_status_inserts_disabled_prune_lines_immediately_before_wallet() {
+    // Arrange
+    let snapshot = shared_sync_truth_snapshot();
+
+    // Act
+    let human = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    let lines = human.lines().collect::<Vec<_>>();
+    let durability = lines
+        .iter()
+        .position(|line| line.starts_with("Have-bytes counts:"))
+        .expect("durability line");
+    let wallet = lines
+        .iter()
+        .position(|line| line.starts_with("Wallet:"))
+        .expect("wallet line");
+
+    // Assert
+    assert_eq!(
+        &lines[durability + 1..=wallet],
+        &[
+            "Prune mode: false",
+            "Prune locks: Unavailable: not collected",
+            "Manual prune: Unavailable: not collected",
+            "Wallet: Unavailable: wallet unavailable",
+        ][..]
+    );
+}
+
+#[test]
+fn human_status_shows_keep_window_refusal_and_negative_manual_height() {
+    // Arrange
+    let mut snapshot = shared_sync_truth_snapshot();
+    snapshot.prune = open_bitcoin_node::status::PruneOperatorStatus {
+        pruned: true,
+        maybe_automatic_pruning: Some(false),
+        maybe_prune_target_size: None,
+        pruneheight: FieldAvailability::available(Some(0)),
+        locks: FieldAvailability::available(Vec::new()),
+        manual_prune: FieldAvailability::available(
+            open_bitcoin_node::status::ManualPruneSurface::Refused {
+                reason: open_bitcoin_node::status::ManualPruneRefusalCode::KeepWindow,
+            },
+        ),
+        support_counts: FieldAvailability::available(
+            open_bitcoin_node::status::PruneSupportCounts {
+                successful_batch_count: 0,
+                pruned_height_count: 0,
+                maybe_last_prune_height: None,
+            },
+        ),
+    };
+
+    // Act
+    let refused = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+
+    // Assert
+    assert!(refused.contains("Manual prune: refused target is inside the 288-block keep window"));
+    assert!(!refused.contains("clamp"));
+    let manual_index = refused
+        .lines()
+        .position(|line| line.starts_with("Manual prune:"))
+        .expect("manual prune");
+    let wallet_index = refused
+        .lines()
+        .position(|line| line.starts_with("Wallet:"))
+        .expect("wallet");
+    assert_eq!(wallet_index, manual_index + 1);
+
+    snapshot.prune.manual_prune =
+        FieldAvailability::available(open_bitcoin_node::status::ManualPruneSurface::Height {
+            height: -1,
+        });
+    let success = render_status(&snapshot, StatusRenderMode::Human).expect("human status");
+    assert!(success.contains("Manual prune: height=-1"));
+}
+
 mod inbound_and_sync;
 mod service;

@@ -9,6 +9,7 @@ mod inbound;
 mod labels;
 mod mempool_policy;
 mod progress_guarantee;
+mod prune;
 mod relay;
 use open_bitcoin_node::{
     MetricsStatus, RecoveryEvidenceSnapshot,
@@ -33,6 +34,7 @@ use labels::{
 };
 pub(crate) use mempool_policy::{mempool_policy_entries, mempool_policy_lines};
 use progress_guarantee::progress_guarantee_lines;
+use prune::prune_status_lines;
 use relay::relay_evidence_lines;
 
 use crate::operator::sync_truth_render::{
@@ -196,6 +198,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.extend(relay_evidence_lines(&snapshot.mempool));
     lines.extend(block_relay_evidence_lines(&snapshot.block_relay));
     lines.extend(chainstate_durability_lines(&snapshot.chainstate_durability));
+    lines.extend(prune_status_lines(&snapshot.prune));
     lines.push(format!(
         "Wallet: {}",
         u64_availability(&snapshot.wallet.trusted_balance_sats, "trusted sats")

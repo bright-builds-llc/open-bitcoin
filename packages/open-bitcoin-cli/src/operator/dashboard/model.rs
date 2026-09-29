@@ -20,6 +20,7 @@ mod block_relay;
 mod chainstate_durability;
 mod metric_labels;
 mod metrics;
+pub(crate) mod prune_section;
 mod recovery;
 mod relay;
 mod resource_bounds;
@@ -29,6 +30,7 @@ mod tests;
 
 use block_relay::block_relay_rows;
 use chainstate_durability::chainstate_durability_rows;
+use prune_section::prune_section;
 use recovery::recovery_category;
 use relay::mempool_and_wallet_rows;
 use sync_section::sync_and_peers_section;
@@ -146,6 +148,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
                 row("Health", health_summary(&snapshot.health_signals)),
             ],
         },
+        prune_section(&snapshot.prune),
     ]
 }
 

@@ -442,7 +442,16 @@ fn operator_status_chainstate_durability_maps_shared_contract_and_human_lines() 
         maybe_block_relay.map(|index| index + 1),
         Some(durability_start)
     );
-    assert_eq!(maybe_wallet, Some(durability_start + 6));
+    assert_eq!(maybe_wallet, Some(durability_start + 9));
+    assert_eq!(lines[durability_start + 6], "Prune mode: false");
+    assert_eq!(
+        lines[durability_start + 7],
+        "Prune locks: Unavailable: not collected"
+    );
+    assert_eq!(
+        lines[durability_start + 8],
+        "Manual prune: Unavailable: not collected"
+    );
     assert_eq!(
         lines[durability_start],
         "Chainstate durability: cache_size=OK last_flush_reason=periodic write_kind=sync readiness=ready_to_flush"
