@@ -127,12 +127,12 @@ Plans:
   2. Operator can request a manual prune when prune mode is on and observe the refusal or height outcome.
   3. Operator can list and set prune locks through the operator surface.
   4. Support evidence reports prune counts and last prune height without raw storage paths.
-**Plans:** 2/8 plans executed
+**Plans:** 3/8 plans executed
 
 Plans:
 - [x] 150-01-PLAN.md — Pure GetPruneHeight, quartet projection, and timestamp pre-step
 - [x] 150-02-PLAN.md — JSONC prune integer and startup prune mode
-- [ ] 150-03-PLAN.md — Durable prune locks, support counters, and resume
+- [x] 150-03-PLAN.md — Durable prune locks, support counters, and resume
 - [ ] 150-04-PLAN.md — getblockchaininfo quartet and status snapshot facts
 - [ ] 150-05-PLAN.md — pruneblockchain and lock RPC
 - [ ] 150-06-PLAN.md — Read-only dashboard and CLI status
@@ -193,7 +193,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
 | 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
-| 150. Operator Prune Surfaces and Evidence | 2/8 | In Progress|  |
+| 150. Operator Prune Surfaces and Evidence | 3/8 | In Progress|  |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step

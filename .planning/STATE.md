@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 150-02-PLAN.md
-last_updated: "2026-09-29T07:48:37.216Z"
+stopped_at: Completed 150-03-PLAN.md
+last_updated: "2026-09-29T09:27:27.150Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 17
-  percent: 74
+  completed_plans: 18
+  percent: 78
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 150
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-09-29
 
-Progress: [███████░░░] 70%
+Progress: [████████░░] 78%
 
-Next action: Execute 150-02-PLAN.md
+Next action: Execute 150-04-PLAN.md
 
 ## Performance Metrics
 
@@ -166,6 +166,7 @@ Next action: Execute 150-02-PLAN.md
 | Phase 149 P04 | 1h 1m | 2 tasks | 8 files |
 | Phase 150 P01 | 1h 17m | 1 tasks | 6 files |
 | Phase 150 P02 | 1h 13m | 2 tasks | 9 files |
+| Phase 150 P03 | 1h 16m | 2 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -527,6 +528,10 @@ Next action: Execute 150-02-PLAN.md
 - [Phase 150]: Missing JSONC uses prune 0 through a rustfmt-skipped one-line binding so loader.rs stays at 628 lines
 - [Phase 150]: Startup mode is checked through advertised service bits because PruneMode has no public getter
 - [Phase 150]: OPER-01 stays pending until lifecycle-valid Phase 150 verification
+- [Phase 150]: Tests and implementation ship in one hook-passing feat commit per task because pre-commit runs verify.sh — Pre-commit always runs bash scripts/verify.sh, so a RED-only commit cannot pass.
+- [Phase 150]: Support counters move only for DeletedLiveMate heights; a crash before the summary write under-counts and a later AlreadyAbsent finish does not increment — Operators will trust the counts. AlreadyAbsent and skipped heights must not move them, and a crash between the delete batch and the summary write must not delete again to repair the count.
+- [Phase 150]: FjallChainstateStore delegates the summary write because the live flush sink is that wrapper — apply_prune_plan records through FlushPersistSink. Production flush uses FjallChainstateStore, so the default no-op would drop live-delete counts.
+- [Phase 150]: LOCK-02 and OPER-03 stay pending until lifecycle-valid Phase 150 verification — This plan persists locks and counts but does not add RPC. Traceability rejects Complete flips before 150-VERIFICATION.md exists.
 
 ### Pending Todos
 
@@ -554,6 +559,6 @@ Next action: Execute 150-02-PLAN.md
 
 ## Session Continuity
 
-Last session: 2026-09-29T07:48:37.211Z
-Stopped at: Completed 150-02-PLAN.md
+Last session: 2026-09-29T09:27:13.336Z
+Stopped at: Completed 150-03-PLAN.md
 Resume file: None
