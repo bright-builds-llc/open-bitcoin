@@ -12,9 +12,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use open_bitcoin_node::core::{
+    chainstate::{ChainstateSnapshot, PruneMode, get_prune_height, project_prune_status},
     codec::parse_transaction,
     mempool::{MempoolError, MempoolOutcome},
-    primitives::{OutPoint, Transaction},
+    primitives::{BlockHash, OutPoint, Transaction},
     wallet::SingleKeyDescriptor,
 };
 use open_bitcoin_node::status::{
@@ -59,6 +60,13 @@ where
     let maybe_tip = context
         .maybe_chain_tip()
         .map_err(network_authority_error_to_failure)?;
+    let prune_mode = context
+        .prune_mode()
+        .map_err(network_authority_error_to_failure)?;
+    let projection = project_prune_status(
+        prune_mode,
+        configured_last_pruned_height(context, prune_mode)?,
+    );
     Ok(GetBlockchainInfoResponse {
         chain: context.chain_name().to_string(),
         blocks: maybe_tip.as_ref().map_or(0, |tip| tip.height),
@@ -69,6 +77,10 @@ where
         maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
         verificationprogress: if maybe_tip.is_some() { 1.0 } else { 0.0 },
         initialblockdownload: false,
+        pruned: projection.pruned,
+        maybe_pruneheight: projection.maybe_pruneheight,
+        maybe_automatic_pruning: projection.maybe_automatic_pruning,
+        maybe_prune_target_size: projection.maybe_prune_target_size,
         warnings: Vec::new(),
     })
 }
@@ -94,6 +106,13 @@ where
         FieldAvailability::Available(value) => Some(value),
         FieldAvailability::Unavailable { .. } => None,
     };
+    let prune_mode = context
+        .prune_mode()
+        .map_err(network_authority_error_to_failure)?;
+    let projection = project_prune_status(
+        prune_mode,
+        configured_last_pruned_height(context, prune_mode)?,
+    );
 
     Ok(GetBlockchainInfoResponse {
         chain: context.chain_name().to_string(),
@@ -105,8 +124,92 @@ where
         maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
         verificationprogress: durable_verification_progress(maybe_sync_progress),
         initialblockdownload: durable_initial_block_download(headers, blocks, lifecycle),
+        pruned: projection.pruned,
+        maybe_pruneheight: projection.maybe_pruneheight,
+        maybe_automatic_pruning: projection.maybe_automatic_pruning,
+        maybe_prune_target_size: projection.maybe_prune_target_size,
         warnings: durable_warnings(durable_sync_state),
     })
+}
+
+const PRUNE_HEIGHT_PRESENCE_UNAVAILABLE: &str = "prune height block presence is unavailable";
+
+/// Last pruned height for an enabled mode. Disabled skips the chain walk.
+fn configured_last_pruned_height<S, V>(
+    context: &ManagedRpcContext<S, V>,
+    mode: PruneMode,
+) -> Result<Option<u32>, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
+    if matches!(mode, PruneMode::Disabled) {
+        return Ok(None);
+    }
+
+    let maybe_tip = context
+        .maybe_chain_tip()
+        .map_err(network_authority_error_to_failure)?;
+    let Some(tip) = maybe_tip else {
+        return Ok(get_prune_height(0, &[]));
+    };
+    if tip.height == 0 {
+        return Ok(get_prune_height(0, &[]));
+    }
+
+    let snapshot = context
+        .blockchain_snapshot()
+        .map_err(network_authority_error_to_failure)?;
+    let mut complete_from_height_one = vec![false; tip.height as usize];
+    for position in snapshot
+        .active_chain
+        .iter()
+        .filter(|position| position.height >= 1 && position.height <= tip.height)
+    {
+        let index = (position.height - 1) as usize;
+        complete_from_height_one[index] =
+            block_payload_and_undo_present(context, position.block_hash, &snapshot)?;
+    }
+    Ok(get_prune_height(tip.height, &complete_from_height_one))
+}
+
+fn block_payload_and_undo_present<S, V>(
+    context: &ManagedRpcContext<S, V>,
+    block_hash: BlockHash,
+    snapshot: &ChainstateSnapshot,
+) -> Result<bool, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
+    if !block_payload_present(context, block_hash)? {
+        return Ok(false);
+    }
+    if snapshot.undo_by_block.contains_key(&block_hash) {
+        return Ok(true);
+    }
+    context
+        .durable_undo_present(block_hash)
+        .map_err(|_| RpcFailure::internal_error(PRUNE_HEIGHT_PRESENCE_UNAVAILABLE))
+}
+
+fn block_payload_present<S, V>(
+    context: &ManagedRpcContext<S, V>,
+    block_hash: BlockHash,
+) -> Result<bool, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
+    if context
+        .cached_block_present(block_hash)
+        .map_err(network_authority_error_to_failure)?
+    {
+        return Ok(true);
+    }
+    context
+        .durable_block_present(block_hash)
+        .map_err(|_| RpcFailure::internal_error(PRUNE_HEIGHT_PRESENCE_UNAVAILABLE))
 }
 
 pub(super) fn get_mempool_info<S, V>(
@@ -439,4 +542,75 @@ fn missing_input_outpoint(
 
 fn mempool_outcome_failure(error: MempoolError) -> RpcFailure {
     RpcFailure::verify_rejected(error.to_string())
+}
+
+#[cfg(test)]
+mod phase150_blockchaininfo {
+    use open_bitcoin_node::core::{
+        chainstate::PruneMode, consensus::block_hash, primitives::BlockHash,
+    };
+    use serde_json::{Value, json};
+
+    use super::get_blockchain_info;
+    use crate::dispatch::tests::chain_fixtures::{build_block, empty_context, p2sh_script};
+
+    fn blockchain_info_json(context: &crate::ManagedRpcContext) -> Value {
+        serde_json::to_value(get_blockchain_info(context).expect("blockchain info")).expect("json")
+    }
+
+    #[test]
+    fn phase150_blockchaininfo_manual_only_emits_pruneheight_zero() {
+        let mut context = empty_context();
+        context
+            .set_prune_mode(PruneMode::ManualOnly)
+            .expect("manual mode");
+
+        let info = blockchain_info_json(&context);
+
+        assert_eq!(info["pruned"], json!(true));
+        assert_eq!(info["pruneheight"], json!(0));
+        assert_eq!(info["automatic_pruning"], json!(false));
+        assert!(info.get("prune_target_size").is_none());
+    }
+
+    #[test]
+    fn phase150_blockchaininfo_automatic_550_emits_576716800() {
+        let mut context = empty_context();
+        context
+            .set_prune_mode(PruneMode::Automatic { target_mib: 550 })
+            .expect("automatic mode");
+
+        let info = blockchain_info_json(&context);
+
+        assert_eq!(info["pruned"], json!(true));
+        assert_eq!(info["automatic_pruning"], json!(true));
+        assert_eq!(info["prune_target_size"], json!(576_716_800));
+        assert_eq!(info["pruneheight"], json!(0));
+    }
+
+    #[test]
+    fn phase150_blockchaininfo_hole_emits_first_complete_height() {
+        let mut context = empty_context();
+        context
+            .set_prune_mode(PruneMode::ManualOnly)
+            .expect("manual mode");
+        let script = p2sh_script();
+        let mut previous = BlockHash::from_byte_array([0_u8; 32]);
+        let mut height_11 = BlockHash::from_byte_array([0_u8; 32]);
+        for height in 0..=12 {
+            let block = build_block(previous, height, 500_000_000, script.clone());
+            if height == 11 {
+                height_11 = block_hash(&block.header);
+            }
+            context.connect_local_block(&block).expect("connect");
+            previous = block_hash(&block.header);
+        }
+        context
+            .forget_block_payload_and_undo_for_test(height_11)
+            .expect("drop height 11");
+
+        let info = blockchain_info_json(&context);
+
+        assert_eq!(info["pruneheight"], json!(12));
+    }
 }

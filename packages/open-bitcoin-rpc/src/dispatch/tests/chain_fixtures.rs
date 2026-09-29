@@ -19,7 +19,7 @@ pub(super) fn redeem_script() -> ScriptBuf {
     script(&[0x51])
 }
 
-pub(super) fn p2sh_script() -> ScriptBuf {
+pub(crate) fn p2sh_script() -> ScriptBuf {
     let redeem_hash = hash160(redeem_script().as_bytes());
     let mut bytes = vec![0xa9, 20];
     bytes.extend_from_slice(&redeem_hash);
@@ -138,7 +138,7 @@ pub(super) fn mine_header(block: &mut Block) {
         .expect("nonce");
 }
 
-pub(super) fn build_block(
+pub(crate) fn build_block(
     previous_block_hash: BlockHash,
     height: u32,
     value: i64,
@@ -234,7 +234,7 @@ pub(super) fn decode_hex(text: &str) -> Vec<u8> {
         .collect()
 }
 
-pub(super) fn empty_context() -> ManagedRpcContext {
+pub(crate) fn empty_context() -> ManagedRpcContext {
     ManagedRpcContext::from_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         wallet: WalletRuntimeConfig {

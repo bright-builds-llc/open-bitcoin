@@ -34,6 +34,32 @@ pub struct GetBlockchainInfoResponse {
     pub maybe_median_time_past: Option<i64>,
     pub verificationprogress: f64,
     pub initialblockdownload: bool,
+    /// Configured prune mode is on. Always present. Disabled is `false`.
+    #[serde(default)]
+    pub pruned: bool,
+    /// Knots info height: lowest complete stored height, or `0` when nothing is pruned.
+    ///
+    /// Absent when prune mode is disabled.
+    #[serde(
+        rename = "pruneheight",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub maybe_pruneheight: Option<u32>,
+    /// `true` only for automatic prune mode. Absent when prune mode is disabled.
+    #[serde(
+        rename = "automatic_pruning",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub maybe_automatic_pruning: Option<bool>,
+    /// Automatic target in bytes. Absent unless automatic pruning is on.
+    #[serde(
+        rename = "prune_target_size",
+        default,
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub maybe_prune_target_size: Option<u64>,
     pub warnings: Vec<String>,
 }
 

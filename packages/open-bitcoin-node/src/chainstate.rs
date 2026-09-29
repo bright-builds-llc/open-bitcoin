@@ -449,6 +449,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         self.chainstate = chainstate;
     }
 
+    /// Drops undo for one hash so a prune-height walk sees that height as incomplete.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub(crate) fn forget_undo_for_test(&mut self, block_hash: BlockHash) {
+        self.chainstate.forget_undo(block_hash);
+    }
+
     #[cfg(test)]
     pub(crate) fn insert_overlay_coin_for_test(
         &mut self,

@@ -17,6 +17,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     ///
     /// Manual and automatic mode advertise limited service even when no block
     /// data has been deleted. Disabled mode advertises full history.
+    pub fn prune_mode(&self) -> PruneMode {
+        self.prune_mode
+    }
+
     pub fn set_prune_mode(&mut self, mode: PruneMode) {
         self.prune_mode = mode;
         let services = advertised_service_flags(mode);

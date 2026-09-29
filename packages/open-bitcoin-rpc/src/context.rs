@@ -311,6 +311,51 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
         self.network.set_prune_mode(mode)
     }
 
+    pub(crate) fn prune_mode(
+        &self,
+    ) -> Result<
+        open_bitcoin_node::core::chainstate::PruneMode,
+        open_bitcoin_node::ManagedNetworkAuthorityError,
+    > {
+        self.network.prune_mode()
+    }
+
+    pub(crate) fn cached_block_present(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::ManagedNetworkAuthorityError> {
+        self.network.cached_block_present(block_hash)
+    }
+
+    pub(crate) fn durable_block_present(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::StorageError> {
+        let Some(source) = self.maybe_block_source.as_ref() else {
+            return Ok(false);
+        };
+        source.has_block(block_hash)
+    }
+
+    pub(crate) fn durable_undo_present(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::StorageError> {
+        let Some(source) = self.maybe_block_source.as_ref() else {
+            return Ok(false);
+        };
+        source.has_undo(block_hash)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn forget_block_payload_and_undo_for_test(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<(), open_bitcoin_node::ManagedNetworkAuthorityError> {
+        self.network
+            .forget_block_payload_and_undo_for_test(block_hash)
+    }
+
     pub(crate) fn admitted_peer_present(
         &self,
         peer_id: u64,

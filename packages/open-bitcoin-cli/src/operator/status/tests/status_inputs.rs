@@ -343,6 +343,10 @@ impl StatusRpcClient for FakeStatusRpcClient {
             maybe_median_time_past: Some(1_777_225_000),
             verificationprogress: 0.96,
             initialblockdownload: false,
+            pruned: false,
+            maybe_pruneheight: None,
+            maybe_automatic_pruning: None,
+            maybe_prune_target_size: None,
             warnings: vec!["chain warning".to_string()],
         })
     }

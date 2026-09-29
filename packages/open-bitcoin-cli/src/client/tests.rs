@@ -307,6 +307,7 @@ fn getinfo_json_mode_is_stable_for_automation() {
     "mediantime": 1714007000,
     "verificationprogress": 0.995,
     "initialblockdownload": false,
+    "pruned": false,
     "warnings": []
   },
   "wallet": {

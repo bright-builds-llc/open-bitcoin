@@ -250,6 +250,10 @@ impl RunningStatusRpcClient {
                 maybe_median_time_past: Some(1_700_000_120),
                 verificationprogress: 1.0,
                 initialblockdownload: false,
+                pruned: false,
+                maybe_pruneheight: None,
+                maybe_automatic_pruning: None,
+                maybe_prune_target_size: None,
                 warnings: vec![],
             },
             mempool_info: GetMempoolInfoResponse {

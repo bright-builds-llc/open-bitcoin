@@ -4,6 +4,7 @@
 use open_bitcoin_core::chainstate::{
     CoinsView, FlushMode, FlushPolicyTime, PruneLockInfo, PruneMode, PrunePlan,
 };
+use open_bitcoin_core::primitives::BlockHash;
 
 use super::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 use crate::ChainstateStore;
@@ -60,5 +61,33 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     /// Stores prune mode so version-message services follow the mode.
     pub fn set_prune_mode(&mut self, mode: PruneMode) -> Result<(), ManagedNetworkAuthorityError> {
         self.mutate(|network| network.set_prune_mode(mode))
+    }
+
+    /// Reads the prune mode Plan 02 stored on this handle.
+    pub fn prune_mode(&self) -> Result<PruneMode, ManagedNetworkAuthorityError> {
+        self.read(|network| network.prune_mode())
+    }
+
+    /// Whether the in-memory block cache still holds `block_hash`.
+    pub fn cached_block_present(
+        &self,
+        block_hash: BlockHash,
+    ) -> Result<bool, ManagedNetworkAuthorityError> {
+        self.read(|network| network.blocks_by_hash.contains_key(&block_hash))
+    }
+
+    /// Drops one connected block's payload and undo while leaving the chain position.
+    ///
+    /// RPC tests call this. A non-test build keeps it so the dependent crate can
+    /// see the method; production callers do not use it.
+    #[cfg_attr(not(test), allow(dead_code))]
+    pub fn forget_block_payload_and_undo_for_test(
+        &self,
+        block_hash: BlockHash,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| {
+            network.blocks_by_hash.remove(&block_hash);
+            network.chainstate_mut().forget_undo_for_test(block_hash);
+        })
     }
 }

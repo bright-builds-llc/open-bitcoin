@@ -95,6 +95,10 @@ fn getinfo_json_mode_is_stable_for_automation() {
             maybe_median_time_past: Some(1_714_007_000),
             verificationprogress: 0.995,
             initialblockdownload: false,
+            pruned: false,
+            maybe_pruneheight: None,
+            maybe_automatic_pruning: None,
+            maybe_prune_target_size: None,
             warnings: Vec::new(),
         },
         maybe_wallet: Some(GetWalletInfoResponse {
@@ -145,6 +149,7 @@ fn getinfo_json_mode_is_stable_for_automation() {
     "mediantime": 1714007000,
     "verificationprogress": 0.995,
     "initialblockdownload": false,
+    "pruned": false,
     "warnings": []
   },
   "wallet": {

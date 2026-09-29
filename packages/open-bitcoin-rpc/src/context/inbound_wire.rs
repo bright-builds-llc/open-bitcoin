@@ -61,6 +61,17 @@ pub(crate) trait DurableBlockSource: Send + Sync {
     ) -> Result<Option<open_bitcoin_node::core::primitives::Block>, open_bitcoin_node::StorageError>;
 
     fn load_have_pruned(&self) -> Result<bool, open_bitcoin_node::StorageError>;
+
+    /// Whether durable undo exists for `block_hash`.
+    ///
+    /// The default is false so in-memory callers that do not store undo stay
+    /// incomplete until a store override answers.
+    fn has_undo(
+        &self,
+        _block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::StorageError> {
+        Ok(false)
+    }
 }
 
 impl DurableBlockSource for FjallNodeStore {
@@ -81,6 +92,13 @@ impl DurableBlockSource for FjallNodeStore {
 
     fn load_have_pruned(&self) -> Result<bool, open_bitcoin_node::StorageError> {
         FjallNodeStore::load_have_pruned(self)
+    }
+
+    fn has_undo(
+        &self,
+        block_hash: open_bitcoin_node::core::primitives::BlockHash,
+    ) -> Result<bool, open_bitcoin_node::StorageError> {
+        FjallNodeStore::has_undo(self, block_hash)
     }
 }
 
