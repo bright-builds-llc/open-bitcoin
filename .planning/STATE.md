@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 150-05-PLAN.md
-last_updated: "2026-09-29T14:04:43.572Z"
+stopped_at: Completed 150-06-PLAN.md
+last_updated: "2026-09-29T15:18:21.701Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 20
-  percent: 87
+  completed_plans: 21
+  percent: 91
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 150
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-09-29
 
-Progress: [█████████░] 87%
+Progress: [█████████░] 91%
 
-Next action: Execute 150-06-PLAN.md
+Next action: Execute 150-07-PLAN.md
 
 ## Performance Metrics
 
@@ -169,6 +169,7 @@ Next action: Execute 150-06-PLAN.md
 | Phase 150 P03 | 1h 16m | 2 tasks | 11 files |
 | Phase 150 P04 | 2h 16m | 2 tasks | 40 files |
 | Phase 150 P05 | 1h 37m | 2 tasks | 21 files |
+| Phase 150 P06 | 49min | 1 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -542,6 +543,9 @@ Next action: Execute 150-06-PLAN.md
 - [Phase 150]: Disabled pruneblockchain is refused before height zero, matching Knots order
 - [Phase 150]: A legal prune on the memory chainstate fixture returns -1 because AlreadyAbsent leaves GetPruneHeight empty
 - [Phase 150]: OPER-02 and LOCK-02 stay pending until lifecycle-valid Phase 150 verification
+- [Phase 150]: Human status formats dashboard prune rows so mode, locks, and manual-prune copy stay the same
+- [Phase 150]: Disabled unread status shows Prune mode false and omits height, automatic pruning, and target while still listing unavailable locks
+- [Phase 150]: OPER-01, OPER-02, and LOCK-02 stay pending until lifecycle-valid Phase 150 verification
 
 ### Pending Todos
 
@@ -569,6 +573,6 @@ Next action: Execute 150-06-PLAN.md
 
 ## Session Continuity
 
-Last session: 2026-09-29T14:04:43.568Z
-Stopped at: Completed 150-05-PLAN.md
+Last session: 2026-09-29T15:18:21.697Z
+Stopped at: Completed 150-06-PLAN.md
 Resume file: None
