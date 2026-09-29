@@ -213,6 +213,17 @@
       ]
     },
     {
+      "label": "operator-prune-projection",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/prune/status.rs",
+        "packages/open-bitcoin-chainstate/src/prune/tests/status.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/chain.h"
+      ]
+    },
+    {
       "label": "chainstate-support",
       "files": [
         "packages/open-bitcoin-chainstate/src/error.rs",

@@ -10,3 +10,4 @@ mod locks;
 mod manual;
 mod mode;
 mod range;
+mod status;
