@@ -621,17 +621,19 @@ Copy Phase 145 `checkHistoricalPhasePaths`. It scans `scripts/verify.sh` and eve
 
 All other factual claims in this research were checked against the repo in this session.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should `setprunelock` UAT show Knots' JSON desc payload or the Phase 150 CLI flags?**
    - What we know: The shipped operator CLI is `prune lock set --name --height-first --height-last`. Knots' help example passes a JSON object with `desc` and `height`. `clearprunelock` is an Open Bitcoin extension.
    - What's unclear: Nothing about the shipped argv. The question is only how much Knots help text to quote.
    - Recommendation: Freeze the CLI flag form in UAT. Mention the RPC method names. Do not copy the Knots JSON help example as the required command string.
+   - RESOLVED: Freeze the CLI flag form in `151-UAT.md`. Plan 03 lists those flag forms and the RPC method names, and it does not copy the Knots JSON help example as a required command.
 
 2. **Does any v2.4 surface already exist under a different id?**
    - What we know: `rg` for `v2-4-` in `docs/parity/index.json` returned no matches. Checklist grep for v2.4 requirement ids found only the v2.3 closeout row in the sampled area; the requirement ids SNAP-01 through GRD-01 are not surface owners in the checklist yet.
    - What's unclear: None that blocks planning. A planner who adds a second id for the same requirement will fail the exactly-once check.
    - Recommendation: Use the six D-03 ids and no others.
+   - RESOLVED: Use the six D-03 ids and no others. Plan 01 adds those six surfaces and no alternate v2.4 ids.
 
 ## Environment Availability
 
