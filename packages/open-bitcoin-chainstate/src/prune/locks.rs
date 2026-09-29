@@ -8,10 +8,10 @@
 /// Knots `PRUNE_LOCK_BUFFER` — blocks expanded around a lock range.
 pub const PRUNE_LOCK_BUFFER: u32 = 10;
 
-/// Injected inclusive prune lock. Persistence and list/set APIs are out of scope.
+/// Durable operator prune lock. The name and inclusive heights persist.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PruneLockInfo {
-    /// Caller-supplied identifier; not persisted in this phase.
+    /// Durable operator lock name stored with the inclusive heights.
     pub name: String,
     /// Inclusive first locked height.
     pub height_first: u32,

@@ -1903,6 +1903,17 @@
       ]
     },
     {
+      "label": "node-prune-records",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/prune/records.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_records.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.h"
+      ]
+    },
+    {
       "label": "node-fjall-prune-unlink",
       "files": [
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/prune_apply.rs",

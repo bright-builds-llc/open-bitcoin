@@ -26,6 +26,11 @@ use super::{
 };
 use crate::storage::coins_view::FjallCoinsView;
 
+mod records;
+
+#[cfg(test)]
+pub(in crate::storage::fjall_store) use records::{PRUNE_LOCKS_KEY, PRUNE_SUMMARY_KEY};
+
 /// Block-index key recorded only inside a committed non-empty paired delete.
 pub(crate) const HAVE_PRUNED_KEY: &str = "have_pruned";
 
