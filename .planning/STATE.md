@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 150-04-PLAN.md
-last_updated: "2026-09-29T12:05:59.577Z"
+stopped_at: Completed 150-05-PLAN.md
+last_updated: "2026-09-29T14:04:43.572Z"
 last_activity: 2026-09-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 19
-  percent: 83
+  completed_plans: 20
+  percent: 87
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 150
-Plan: 5 of 8
+Plan: 6 of 8
 Status: Ready to execute
 Last activity: 2026-09-29
 
-Progress: [████████░░] 78%
+Progress: [█████████░] 87%
 
-Next action: Execute 150-04-PLAN.md
+Next action: Execute 150-06-PLAN.md
 
 ## Performance Metrics
 
@@ -168,6 +168,7 @@ Next action: Execute 150-04-PLAN.md
 | Phase 150 P02 | 1h 13m | 2 tasks | 9 files |
 | Phase 150 P03 | 1h 16m | 2 tasks | 11 files |
 | Phase 150 P04 | 2h 16m | 2 tasks | 40 files |
+| Phase 150 P05 | 1h 37m | 2 tasks | 21 files |
 
 ## Accumulated Context
 
@@ -537,6 +538,10 @@ Next action: Execute 150-04-PLAN.md
 - [Phase 150]: Disabled getblockchaininfo skips the completeness walk because the projection discards the height
 - [Phase 150]: The active-chain walk lives under dispatch/prune/status.rs so it can cite blockchain.cpp without duplicating the rpc-surface breadcrumb pattern
 - [Phase 150]: OPER-01 stays pending until lifecycle-valid Phase 150 verification
+- [Phase 150]: Tests and implementation ship in one hook-passing feat commit per task because pre-commit runs verify.sh
+- [Phase 150]: Disabled pruneblockchain is refused before height zero, matching Knots order
+- [Phase 150]: A legal prune on the memory chainstate fixture returns -1 because AlreadyAbsent leaves GetPruneHeight empty
+- [Phase 150]: OPER-02 and LOCK-02 stay pending until lifecycle-valid Phase 150 verification
 
 ### Pending Todos
 
@@ -564,6 +569,6 @@ Next action: Execute 150-04-PLAN.md
 
 ## Session Continuity
 
-Last session: 2026-09-29T12:05:59.573Z
-Stopped at: Completed 150-04-PLAN.md
+Last session: 2026-09-29T14:04:43.568Z
+Stopped at: Completed 150-05-PLAN.md
 Resume file: None
