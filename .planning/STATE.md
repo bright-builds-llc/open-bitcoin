@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Phase 150 context gathered
-last_updated: "2026-09-29T04:27:39.342Z"
-last_activity: 2026-09-29 -- Phase 150 planning complete
+stopped_at: Completed 150-01-PLAN.md
+last_updated: "2026-09-29T06:10:28.274Z"
+last_activity: 2026-09-29
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 23
-  completed_plans: 15
-  percent: 65
+  completed_plans: 16
+  percent: 70
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 149 — limited-serving-and-honest-pruned-labels
+**Current focus:** Phase 150 — operator prune surfaces and evidence
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 150
-Plan: Not started
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-09-29 -- Phase 150 planning complete
+Last activity: 2026-09-29
 
-Progress: [██████████] 100%
+Progress: [███████░░░] 70%
 
-Next action: /gsd-verify-work 149
+Next action: Execute 150-02-PLAN.md
 
 ## Performance Metrics
 
@@ -164,6 +164,7 @@ Next action: /gsd-verify-work 149
 | Phase 149 P02 | 58 min | 2 tasks | 12 files |
 | Phase 149 P03 | 1h 14m | 3 tasks | 16 files |
 | Phase 149 P04 | 1h 1m | 2 tasks | 8 files |
+| Phase 150 P01 | 1h 17m | 1 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -518,6 +519,9 @@ Next action: /gsd-verify-work 149
 - [Phase 149]: Leave LABL-01 Pending until lifecycle-valid Phase 149 verification — Active-milestone verification traceability rejects Complete flips before 149-VERIFICATION.md exists. This plan forbids flipping LABL-01.
 - [Phase 149]: The projection stays the existing pruned_count increment — No durability, getblockchaininfo, CLI, dashboard, or support-bundle prune fields. Phase 150 owns operator surfaces.
 - [Phase 149]: Cite blockstorage.cpp on the whole node-limited-serve breadcrumb group — IsBlockPruned is m_have_pruned plus missing block data. The checker requires every file in the group to share that header.
+- [Phase 150]: Tests and implementation ship in one hook-passing feat commit because pre-commit runs verify.sh — A RED-only commit cannot pass pre-commit verify.sh
+- [Phase 150]: Timestamp-window underflow returns i64::MAX so the header search fails closed — Coverage requires the checked_sub failure arm, and i64::MAX makes that arm find no header
+- [Phase 150]: OPER-01 stays pending until lifecycle-valid Phase 150 verification — This plan only projects the quartet. Traceability rejects Complete flips before 150-VERIFICATION.md exists
 
 ### Pending Todos
 
@@ -545,6 +549,6 @@ Next action: /gsd-verify-work 149
 
 ## Session Continuity
 
-Last session: 2026-09-28T17:34:40.154Z
-Stopped at: Phase 150 context gathered
-Resume file: .planning/phases/150-operator-prune-surfaces-and-evidence/150-CONTEXT.md
+Last session: 2026-09-29T06:09:40.516Z
+Stopped at: Completed 150-01-PLAN.md
+Resume file: None
