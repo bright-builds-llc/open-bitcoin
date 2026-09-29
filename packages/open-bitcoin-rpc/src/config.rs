@@ -16,11 +16,12 @@ use open_bitcoin_network::{
 };
 use open_bitcoin_node::{
     SyncNetwork, SyncRuntimeConfig,
-    core::{consensus::ConsensusParams, wallet::AddressNetwork},
+    core::{chainstate::PruneMode, consensus::ConsensusParams, wallet::AddressNetwork},
 };
 
 mod loader;
 mod open_bitcoin;
+mod prune;
 
 pub use open_bitcoin::{
     BlockServingConfig, ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS,
@@ -221,6 +222,7 @@ pub struct RuntimeConfig {
     pub relay: RelayActivationConfig,
     pub block_serving: BlockRelayActivationPolicy,
     pub inbound_permission_validation_failures: u32,
+    pub prune_mode: PruneMode,
 }
 
 impl Default for RuntimeConfig {
@@ -237,6 +239,7 @@ impl Default for RuntimeConfig {
             relay: open_bitcoin_defaults.relay.to_activation_config(),
             block_serving: open_bitcoin_defaults.block_serving.to_activation_policy(),
             inbound_permission_validation_failures: 0,
+            prune_mode: PruneMode::Disabled,
         }
     }
 }

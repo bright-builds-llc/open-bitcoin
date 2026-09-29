@@ -34,6 +34,7 @@ pub struct OpenBitcoinConfig {
     pub inbound: InboundConfig,
     pub relay: RelayConfig,
     pub block_serving: BlockServingConfig,
+    pub prune: i64,
 }
 
 impl Default for OpenBitcoinConfig {
@@ -51,6 +52,7 @@ impl Default for OpenBitcoinConfig {
             inbound: InboundConfig::default(),
             relay: RelayConfig::default(),
             block_serving: BlockServingConfig::default(),
+            prune: 0,
         }
     }
 }

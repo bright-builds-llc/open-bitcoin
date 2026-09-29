@@ -2125,6 +2125,16 @@
       ]
     },
     {
+      "label": "rpc-prune-config",
+      "files": [
+        "packages/open-bitcoin-rpc/src/config/prune.rs",
+        "packages/open-bitcoin-rpc/src/config/tests/prune_config.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockmanager_args.cpp"
+      ]
+    },
+    {
       "label": "rpc-inbound-listener",
       "files": [
         "packages/open-bitcoin-rpc/src/inbound_listener.rs",

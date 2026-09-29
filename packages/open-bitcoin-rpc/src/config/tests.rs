@@ -65,5 +65,6 @@ mod baseline_and_auth;
 mod inbound_cli;
 mod inbound_jsonc;
 mod precedence_and_scope;
+mod prune_config;
 mod runtime_activation;
 mod sync_configuration;

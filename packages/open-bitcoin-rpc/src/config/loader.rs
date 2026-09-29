@@ -173,6 +173,8 @@ pub(super) fn load_runtime_config_for_args(
         .maybe_server
         .or(file_settings.maybe_server)
         .unwrap_or(true);
+    #[rustfmt::skip]
+    let prune = maybe_open_bitcoin_config.as_ref().map_or(0, |config| config.prune);
 
     Ok(RuntimeConfig {
         chain,
@@ -196,6 +198,7 @@ pub(super) fn load_runtime_config_for_args(
         relay,
         block_serving,
         inbound_permission_validation_failures,
+        prune_mode: super::prune::resolve_prune_mode(prune)?,
     })
 }
 
