@@ -1,7 +1,8 @@
 ---
 phase: 150
 slug: operator-prune-surfaces-and-evidence
-status: draft
+status: approved
+reviewed_at: 2026-09-28T18:55:00Z
 shadcn_initialized: false
 preset: none
 generated_by: gsd-ui-researcher
