@@ -81,7 +81,14 @@ pub(crate) fn support_status_for_bundle(
     redact_inbound_address_evidence(&mut status.peers.inbound);
     redact_inbound_peer_policy_evidence(&mut status.peers.inbound);
     redact_inbound_resource_governance_evidence(&mut status.peers.inbound);
+    clear_support_prune_locks(&mut status);
     status
+}
+
+fn clear_support_prune_locks(status: &mut OpenBitcoinStatusSnapshot) {
+    if matches!(status.prune.locks, FieldAvailability::Available(_)) {
+        status.prune.locks = FieldAvailability::available(Vec::new());
+    }
 }
 
 fn redact_mempool_policy_groups(mempool: &mut MempoolStatus) {

@@ -1,7 +1,13 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
+use open_bitcoin_node::status::{PruneLockRow, PruneSupportCounts};
+
 use super::*;
+
+const SUPPORT_PRUNE_DATADIR: &str = "/tmp/phase150-secret-datadir";
+const SUPPORT_PRUNE_HASH: &str = "abababababababababababababababababababababababababababababababab";
+const SUPPORT_PRUNE_NEXT_ACTION: &str = "- Next action: Read prune batch counts and the last deleted height as local operator evidence. Request a manual prune or a lock change from RPC or the CLI.";
 
 #[test]
 fn support_bundle_redacts_sensitive_block_relay_reasons_in_json_and_markdown() {
@@ -534,4 +540,88 @@ fn support_bundle_chainstate_durability_forbids_prune_and_getblock_copy() {
             assert_absent(rendered, forbidden);
         }
     }
+}
+
+fn support_prune_section(status: OpenBitcoinStatusSnapshot) -> String {
+    let temp = TestDirectory::new("phase150-support-prune");
+    let bundle = phase77_support_bundle_with_status(temp.path(), status);
+    render::render_support_markdown(&bundle)
+        .split("## Prune")
+        .nth(1)
+        .and_then(|section| section.split("## Inbound Serving").next())
+        .expect("prune markdown section")
+        .to_string()
+}
+
+fn support_counts(batches: u64, heights: u64, maybe_last: Option<u32>) -> PruneSupportCounts {
+    PruneSupportCounts {
+        successful_batch_count: batches,
+        pruned_height_count: heights,
+        maybe_last_prune_height: maybe_last,
+    }
+}
+
+#[test]
+fn support_prune_section_reports_counts_and_omits_lock_datadir_and_hash() {
+    // Arrange
+    let temp = TestDirectory::new("phase150-support-prune-json");
+    let mut dashboard = phase72_status();
+    dashboard.prune.locks = FieldAvailability::available(
+        ["secret-lock", SUPPORT_PRUNE_DATADIR, SUPPORT_PRUNE_HASH]
+            .into_iter()
+            .enumerate()
+            .map(|(index, name)| PruneLockRow {
+                name: name.to_string(),
+                height_first: u32::try_from(index).expect("lock index"),
+                height_last: u32::try_from(index).expect("lock index") + 1,
+            })
+            .collect(),
+    );
+    dashboard.prune.support_counts = FieldAvailability::available(support_counts(0, 0, None));
+
+    // Act
+    let bundle = phase77_support_bundle_with_status(temp.path(), dashboard.clone());
+    let json_text = serde_json::to_string_pretty(&bundle).expect("support json");
+    let section = support_prune_section(dashboard.clone());
+
+    // Assert
+    let FieldAvailability::Available(locks) = &dashboard.prune.locks else {
+        panic!("dashboard still lists secret-lock");
+    };
+    assert!(locks.iter().any(|lock| lock.name == "secret-lock"));
+    for rendered in [&json_text, section.as_str()] {
+        for forbidden in [
+            "secret-lock",
+            SUPPORT_PRUNE_DATADIR,
+            SUPPORT_PRUNE_HASH,
+            "prune_locks",
+            "prune_summary",
+        ] {
+            assert_absent(rendered, forbidden);
+        }
+    }
+    assert!(json_text.contains("successful_batch_count"));
+    assert!(json_text.contains("pruned_height_count"));
+    assert_absent(&json_text, "last_prune_height");
+    assert!(section.contains("- Prune batches: 0\n"));
+    assert!(section.contains("- Pruned heights: 0\n"));
+    assert!(!section.contains("Last prune height"));
+    assert!(section.contains(SUPPORT_PRUNE_NEXT_ACTION));
+
+    let mut with_height = dashboard;
+    with_height.prune.support_counts = FieldAvailability::available(support_counts(2, 5, Some(40)));
+    let loaded = support_prune_section(with_height);
+    let heights_at = loaded.find("- Pruned heights: 5").expect("height count");
+    let last_at = loaded.find("- Last prune height: 40").expect("last height");
+    let next_at = loaded.find("- Next action:").expect("next action");
+    assert!(heights_at < last_at && last_at < next_at);
+
+    let mut unread = phase72_status();
+    unread.prune.support_counts = FieldAvailability::unavailable("probe-only");
+    let unavailable = support_prune_section(unread);
+    for label in ["Prune batches", "Pruned heights", "Last prune height"] {
+        assert!(unavailable.contains(&format!("- {label}: Unavailable: probe-only\n")));
+    }
+    assert!(unavailable.contains(SUPPORT_PRUNE_NEXT_ACTION));
+    assert!(!unavailable.contains("- Prune batches: 0"));
 }

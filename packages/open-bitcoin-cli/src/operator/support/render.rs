@@ -6,6 +6,7 @@
 mod block_relay;
 mod chainstate_durability;
 mod inbound;
+mod prune;
 mod relay;
 mod text;
 
@@ -98,6 +99,7 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         &mut output,
         &bundle.status.chainstate_durability,
     );
+    prune::push_prune(&mut output, &bundle.status.prune);
     inbound::push_inbound_serving(&mut output, &bundle.status.peers.inbound);
     output.push_str("\n## Recovery Evidence\n\n");
     push_recovery_evidence(&mut output, &bundle.recovery_evidence);
