@@ -48,7 +48,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
 - [x] **Phase 147: Pure Prune Policy and Lock Windows** — Encode height windows, 550 MiB target, 288-block keep, and 10-block lock buffer as I/O-free decisions. (completed 2026-09-22)
 - [x] **Phase 148: Fjall Payload Unlink and Have-Pruned** — Delete paired block and undo keys durably, record have-pruned only after success, and fail closed on interrupted prune. (completed 2026-09-27)
 - [x] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned. (completed 2026-09-28)
-- [ ] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces.
+- [x] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces. (completed 2026-09-29)
 - [ ] **Phase 151: Parity Roots and No-Claim Guardrails** — Cite Knots prune anchors including the Fjall-versus-`blk`/`rev` difference and keep deferred claims out.
 
 ## Phase Details
@@ -127,7 +127,7 @@ Plans:
   2. Operator can request a manual prune when prune mode is on and observe the refusal or height outcome.
   3. Operator can list and set prune locks through the operator surface.
   4. Support evidence reports prune counts and last prune height without raw storage paths.
-**Plans:** 8/8 plans executed
+**Plans:** 8/8 plans complete
 
 Plans:
 - [x] 150-01-PLAN.md — Pure GetPruneHeight, quartet projection, and timestamp pre-step
@@ -193,7 +193,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 147. Pure Prune Policy and Lock Windows | 3/3 | Complete    | 2026-09-22 |
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
 | 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
-| 150. Operator Prune Surfaces and Evidence | 8/8 | In Progress|  |
+| 150. Operator Prune Surfaces and Evidence | 8/8 | Complete    | 2026-09-29 |
 | 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
 
 ## Next Step

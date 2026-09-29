@@ -111,7 +111,6 @@ Each task was committed atomically:
 - **Verification:** `wc -l` prints 628, and the missing-file test loads `Disabled`.
 - **Committed in:** `3cf8fc0e`
 
----
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** The integer still goes through `parse_prune_arg`. The extra binding exists so the loader file-length gate stays green.

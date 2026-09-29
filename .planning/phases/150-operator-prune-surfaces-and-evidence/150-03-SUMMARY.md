@@ -114,7 +114,6 @@ Each task was committed atomically:
 - **Verification:** `flush_lifecycle::tests` including the applying-plan cases passed.
 - **Committed in:** `8b41d8bc` (Task 2 commit)
 
----
 
 **Total deviations:** 1 auto-fixed (1 missing critical)
 **Impact on plan:** The delegation is required so in-process prune counts the same live deletes that startup resume counts. No RPC or lock-formula change.

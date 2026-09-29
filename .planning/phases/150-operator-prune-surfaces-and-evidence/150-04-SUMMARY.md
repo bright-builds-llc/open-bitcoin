@@ -142,7 +142,6 @@ Each task was committed atomically:
 - **Files modified:** `packages/open-bitcoin-cli/src/operator/status/tests/prune_snapshot.rs`, `packages/open-bitcoin-cli/src/operator/status/tests.rs`
 - **Committed in:** `dc2a717d`
 
----
 
 **Total deviations:** 5 auto-fixed (4 blocking, 1 bug)
 **Impact on plan:** The quartet and the stopped 550 MiB rule are unchanged. The extra files exist so breadcrumbs and the 628-line gate stay green.

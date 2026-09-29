@@ -27,7 +27,7 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 ### Locks
 
 - [x] **LOCK-01**: A prune lock keeps the locked height range, plus a 10-block buffer, from deletion.
-- [ ] **LOCK-02**: Operator can list and set prune locks.
+- [x] **LOCK-02**: Operator can list and set prune locks.
 
 ### Serving
 
@@ -41,9 +41,9 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Operator Evidence
 
-- [ ] **OPER-01**: Operator can read pruned, prune height, automatic pruning, and prune target from RPC, CLI, and dashboard.
-- [ ] **OPER-02**: Operator can request a manual prune when prune mode is on.
-- [ ] **OPER-03**: Support evidence reports prune counts and the last prune height without raw storage paths.
+- [x] **OPER-01**: Operator can read pruned, prune height, automatic pruning, and prune target from RPC, CLI, and dashboard.
+- [x] **OPER-02**: Operator can request a manual prune when prune mode is on.
+- [x] **OPER-03**: Support evidence reports prune counts and the last prune height without raw storage paths.
 
 ### Guardrails
 
@@ -106,10 +106,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SERV-02 | Phase 149 | Complete |
 | SERV-03 | Phase 149 | Complete |
 | LABL-01 | Phase 149 | Complete |
-| OPER-01 | Phase 150 | Pending |
-| OPER-02 | Phase 150 | Pending |
-| OPER-03 | Phase 150 | Pending |
-| LOCK-02 | Phase 150 | Pending |
+| OPER-01 | Phase 150 | Complete |
+| OPER-02 | Phase 150 | Complete |
+| OPER-03 | Phase 150 | Complete |
+| LOCK-02 | Phase 150 | Complete |
 | GRD-01 | Phase 151 | Pending |
 
 **Coverage:**

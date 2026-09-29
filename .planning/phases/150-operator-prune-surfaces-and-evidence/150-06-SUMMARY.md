@@ -40,7 +40,7 @@ patterns-established:
   - "A stopped automatic snapshot shows the byte target and Unavailable height, never 0 or the last deleted height"
   - "Lock rows are labels. The dashboard action bar stays r, s, t, o, x, i, u, e, d, and q"
 
-requirements-completed: []
+requirements-completed: [OPER-01]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 150-2026-09-28T17-08-23
@@ -115,7 +115,6 @@ Each task was committed atomically:
 - **Verification:** `operator_status_chainstate_durability_maps_shared_contract_and_human_lines` passed
 - **Committed in:** `cb5afcef`
 
----
 
 **Total deviations:** 2 auto-fixed (2 blocking)
 **Impact on plan:** The section, the copy, and the missing delete control are unchanged. The extra test file and the wallet-anchor update keep the line limit and the existing durability cluster test green.

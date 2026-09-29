@@ -110,7 +110,6 @@ Each task was committed atomically:
 - **Verification:** Package clippy with `-D warnings` passed, and the status coverage report no longer lists this file.
 - **Committed in:** `d0e9d510`
 
----
 
 **Total deviations:** 2 auto-fixed (1 missing critical, 1 bug)
 **Impact on plan:** Both stay inside the planned checked arithmetic. Timestamp arguments above the threshold still subtract 7200 seconds. Height overflow still omits pruneheight.

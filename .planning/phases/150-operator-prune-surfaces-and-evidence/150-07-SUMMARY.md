@@ -42,7 +42,7 @@ patterns-established:
   - "Pruned height prints the JSON number from pruneblockchain, including -1"
   - "--format json prints the RPC result; the default human format uses the locked success lines"
 
-requirements-completed: []
+requirements-completed: [OPER-02, LOCK-02]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 150-2026-09-28T17-08-23
@@ -107,7 +107,6 @@ Each task was committed atomically:
 - **Verification:** 34 routing tests passed, including the four parses and the human success lines
 - **Committed in:** `4a3e53f8`
 
----
 
 **Total deviations:** 1 auto-fixed (1 blocking)
 **Impact on plan:** The commands, RPC method names, human lines, and the missing dashboard delete control are unchanged. The extra test module keeps `routing.rs` under the line limit.

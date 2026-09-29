@@ -40,7 +40,7 @@ patterns-established:
   - "Last prune height is rendered only when maybe_last_prune_height is Some"
   - "A probe-only unavailable support_counts field stays Unavailable and is not coerced to 0"
 
-requirements-completed: []
+requirements-completed: [OPER-03]
 generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 150-2026-09-28T17-08-23

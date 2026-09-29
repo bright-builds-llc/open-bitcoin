@@ -145,7 +145,6 @@ Each task was committed atomically:
 - **Files modified:** `packages/open-bitcoin-rpc/src/context.rs`, `packages/open-bitcoin-rpc/src/context/network.rs`, `packages/open-bitcoin-rpc/src/dispatch/prune/status.rs`
 - **Committed in:** `f1f6c7fe`
 
----
 
 **Total deviations:** 6 auto-fixed (4 blocking, 1 missing critical, 1 bug)
 **Impact on plan:** Lock replace, clear-by-name, and the manual-prune refusals are unchanged. The extra catalog and client arms keep the existing exhaustive RPC registry compiling.
