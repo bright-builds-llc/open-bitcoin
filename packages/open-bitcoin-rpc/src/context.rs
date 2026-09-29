@@ -39,6 +39,7 @@ mod inbound_wire;
 mod mempool_recovery;
 mod network;
 mod peer_policy;
+mod prune;
 mod rescan;
 mod resource_governance;
 #[cfg(test)]

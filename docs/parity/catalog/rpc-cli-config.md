@@ -14,15 +14,15 @@ adapters can back honestly.
   `-rpcconnect`, `-rpcport`, `-rpcuser`, `-rpcpassword`, `-rpccookiefile`,
   `-getinfo`, and `-color`
 - supported baseline-backed RPC methods:
-  `getblockchaininfo`, `getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`,
-  `testmempoolaccept`, `submitpackage`,
+  `getblockchaininfo`, `listprunelocks`, `setprunelock`, `getmempoolinfo`,
+  `getnetworkinfo`, `sendrawtransaction`, `testmempoolaccept`, `submitpackage`,
   `deriveaddresses`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
   `listdescriptors`, `getwalletinfo`, `getbalances`, `listunspent`,
   `importdescriptors`, and `rescanblockchain`
 - supported Open Bitcoin extension RPC methods:
   `openbitcoinnetworkstatus`, `openbitcoinsyncstatus`,
   `openbitcoinsyncpause`, `openbitcoinsyncresume`, `openbitcoinpackage`,
-  `buildtransaction`, and `buildandsigntransaction`
+  `buildtransaction`, `buildandsigntransaction`, and `clearprunelock`
 - deterministic machine-readable CLI output for `-getinfo --json` and JSON
   result rendering for object or array RPC responses
 - hermetic single-wallet operator workflow:

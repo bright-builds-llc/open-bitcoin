@@ -204,6 +204,9 @@ fn canonical_params(
 fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
     match call {
         MethodCall::GetBlockchainInfo(request) => to_json_value(request),
+        MethodCall::ListPruneLocks(request) => to_json_value(request),
+        MethodCall::SetPruneLock(request) => to_json_value(request),
+        MethodCall::ClearPruneLock(request) => to_json_value(request),
         MethodCall::GetMempoolInfo(request) => to_json_value(request),
         MethodCall::GetNetworkInfo(request) => to_json_value(request),
         MethodCall::OpenBitcoinNetworkStatus(request) => to_json_value(request),

@@ -17,12 +17,14 @@ use crate::error::RpcFailure;
 mod node;
 mod normalize;
 mod package;
+mod prune;
 #[cfg(test)]
 mod tests;
 mod wallet;
 
 pub use node::*;
 pub use package::*;
+pub use prune::*;
 pub use wallet::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,6 +43,12 @@ pub enum MethodScope {
 pub enum SupportedMethod {
     #[serde(rename = "getblockchaininfo")]
     GetBlockchainInfo,
+    #[serde(rename = "listprunelocks")]
+    ListPruneLocks,
+    #[serde(rename = "setprunelock")]
+    SetPruneLock,
+    #[serde(rename = "clearprunelock")]
+    ClearPruneLock,
     #[serde(rename = "getmempoolinfo")]
     GetMempoolInfo,
     #[serde(rename = "getnetworkinfo")]
@@ -91,6 +99,9 @@ impl SupportedMethod {
     pub const fn all() -> &'static [Self] {
         &[
             Self::GetBlockchainInfo,
+            Self::ListPruneLocks,
+            Self::SetPruneLock,
+            Self::ClearPruneLock,
             Self::GetMempoolInfo,
             Self::GetNetworkInfo,
             Self::OpenBitcoinNetworkStatus,
@@ -119,6 +130,9 @@ impl SupportedMethod {
     pub const fn name(self) -> &'static str {
         match self {
             Self::GetBlockchainInfo => "getblockchaininfo",
+            Self::ListPruneLocks => "listprunelocks",
+            Self::SetPruneLock => "setprunelock",
+            Self::ClearPruneLock => "clearprunelock",
             Self::GetMempoolInfo => "getmempoolinfo",
             Self::GetNetworkInfo => "getnetworkinfo",
             Self::OpenBitcoinNetworkStatus => "openbitcoinnetworkstatus",
@@ -152,7 +166,8 @@ impl SupportedMethod {
             | Self::OpenBitcoinSyncResume
             | Self::OpenBitcoinPackage
             | Self::BuildTransaction
-            | Self::BuildAndSignTransaction => MethodOrigin::OpenBitcoinExtension,
+            | Self::BuildAndSignTransaction
+            | Self::ClearPruneLock => MethodOrigin::OpenBitcoinExtension,
             _ => MethodOrigin::BaselineParity,
         }
     }
@@ -181,7 +196,10 @@ impl SupportedMethod {
             | Self::TestMempoolAccept
             | Self::SubmitPackage
             | Self::OpenBitcoinPackage
-            | Self::DeriveAddresses => MethodScope::Node,
+            | Self::DeriveAddresses
+            | Self::ListPruneLocks
+            | Self::SetPruneLock
+            | Self::ClearPruneLock => MethodScope::Node,
         }
     }
 
@@ -218,6 +236,9 @@ impl RequestParameters {
 #[derive(Debug, Clone, PartialEq)]
 pub enum MethodCall {
     GetBlockchainInfo(GetBlockchainInfoRequest),
+    ListPruneLocks(ListPruneLocksRequest),
+    SetPruneLock(SetPruneLockRequest),
+    ClearPruneLock(ClearPruneLockRequest),
     GetMempoolInfo(GetMempoolInfoRequest),
     GetNetworkInfo(GetNetworkInfoRequest),
     OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest),
@@ -267,7 +288,10 @@ impl MethodCall {
             | Self::TestMempoolAccept(_)
             | Self::SubmitPackage(_)
             | Self::OpenBitcoinPackage(_)
-            | Self::DeriveAddresses(_) => MethodScope::Node,
+            | Self::DeriveAddresses(_)
+            | Self::ListPruneLocks(_)
+            | Self::SetPruneLock(_)
+            | Self::ClearPruneLock(_) => MethodScope::Node,
         }
     }
 }
@@ -284,6 +308,19 @@ pub fn normalize_method_call(
         SupportedMethod::GetBlockchainInfo => {
             normalize::normalize_request::<GetBlockchainInfoRequest>(&[], params)
                 .map(MethodCall::GetBlockchainInfo)
+        }
+        SupportedMethod::ListPruneLocks => {
+            normalize::normalize_request::<ListPruneLocksRequest>(&[], params)
+                .map(MethodCall::ListPruneLocks)
+        }
+        SupportedMethod::SetPruneLock => normalize::normalize_request::<SetPruneLockRequest>(
+            &["name", "height_first", "height_last"],
+            params,
+        )
+        .map(MethodCall::SetPruneLock),
+        SupportedMethod::ClearPruneLock => {
+            normalize::normalize_request::<ClearPruneLockRequest>(&["name"], params)
+                .map(MethodCall::ClearPruneLock)
         }
         SupportedMethod::GetMempoolInfo => {
             normalize::normalize_request::<GetMempoolInfoRequest>(&[], params)

@@ -40,6 +40,9 @@ where
     V: open_bitcoin_node::core::chainstate::CoinsView,
 {
     match call {
+        call @ (MethodCall::ListPruneLocks(_)
+        | MethodCall::SetPruneLock(_)
+        | MethodCall::ClearPruneLock(_)) => prune::dispatch_prune(context, call),
         MethodCall::GetBlockchainInfo(_request) => {
             serde_json::to_value(node::get_blockchain_info(context)?)
                 .map_err(|error| RpcFailure::internal_error(error.to_string()))

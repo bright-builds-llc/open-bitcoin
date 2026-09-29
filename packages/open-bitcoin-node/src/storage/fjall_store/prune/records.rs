@@ -44,7 +44,7 @@ impl FjallNodeStore {
     /// Replaces the durable lock map in one SyncAll batch.
     ///
     /// The lock name stays inside the value. An empty slice writes an empty map.
-    pub(crate) fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
+    pub fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
         let bytes = encode_prune_locks(locks)?;
         self.sync_block_index_value(PRUNE_LOCKS_KEY, bytes)
     }

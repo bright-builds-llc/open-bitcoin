@@ -24,6 +24,7 @@ const EXTENSION_METHODS = new Set([
   "openbitcoinpackage",
   "buildtransaction",
   "buildandsigntransaction",
+  "clearprunelock",
 ]);
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
@@ -315,8 +316,8 @@ function verifyCatalogMethodSet(corpus: Corpus, failures: string[]): void {
   );
   const catalogMethods = new Set([...baselineMethods, ...extensionMethods]);
 
-  if (rustMethods.size !== 23) {
-    failures.push(`SupportedMethod enum must expose exactly 23 serde names (found ${rustMethods.size})`);
+  if (rustMethods.size !== 26) {
+    failures.push(`SupportedMethod enum must expose exactly 26 serde names (found ${rustMethods.size})`);
   }
   reportSetDifference(rustMethods, catalogMethods, "missing", failures);
   reportSetDifference(catalogMethods, rustMethods, "extra", failures);

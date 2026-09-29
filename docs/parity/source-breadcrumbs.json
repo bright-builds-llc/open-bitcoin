@@ -2306,6 +2306,17 @@
       ]
     },
     {
+      "label": "rpc-prune-commands",
+      "files": [
+        "packages/open-bitcoin-rpc/src/context/prune.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.h"
+      ]
+    },
+    {
       "label": "rpc-package-projection",
       "files": [
         "packages/open-bitcoin-rpc/src/package_projection.rs",

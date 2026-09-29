@@ -338,13 +338,13 @@ source install. See
 for the current audit matrix and explicit Phase 21 boundaries.
 
 Supported baseline-backed RPC methods currently include `getblockchaininfo`,
-`getmempoolinfo`, `getnetworkinfo`, `sendrawtransaction`, `testmempoolaccept`,
-`submitpackage`, `deriveaddresses`,
+`listprunelocks`, `setprunelock`, `getmempoolinfo`, `getnetworkinfo`,
+`sendrawtransaction`, `testmempoolaccept`, `submitpackage`, `deriveaddresses`,
 `getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`,
 `rescanblockchain`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
 and `listdescriptors`. Open Bitcoin also exposes deterministic extension methods
-`buildtransaction`, `buildandsigntransaction`, and `openbitcoinpackage` for the
-current wallet and package adapter slice. Wallet-scoped methods honor
+`buildtransaction`, `buildandsigntransaction`, `openbitcoinpackage`, and
+`clearprunelock` for the current wallet and package adapter slice. Wallet-scoped methods honor
 `-rpcwallet` and `/wallet/<name>` for the implemented subset. Local package
 `dry-run` and `submit` stay on `open-bitcoin package`; they report local
 admission only and do not enable public or default relay.
