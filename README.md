@@ -338,7 +338,8 @@ source install. See
 for the current audit matrix and explicit Phase 21 boundaries.
 
 Supported baseline-backed RPC methods currently include `getblockchaininfo`,
-`listprunelocks`, `setprunelock`, `getmempoolinfo`, `getnetworkinfo`,
+`listprunelocks`, `setprunelock`, `pruneblockchain`, `getmempoolinfo`,
+`getnetworkinfo`,
 `sendrawtransaction`, `testmempoolaccept`, `submitpackage`, `deriveaddresses`,
 `getwalletinfo`, `getbalances`, `listunspent`, `importdescriptors`,
 `rescanblockchain`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,

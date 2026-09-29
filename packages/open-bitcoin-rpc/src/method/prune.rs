@@ -32,6 +32,13 @@ pub struct ClearPruneLockRequest {
     pub name: String,
 }
 
+/// `pruneblockchain` takes one height or Unix timestamp.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PruneBlockchainRequest {
+    pub height: i64,
+}
+
 /// One durable prune lock row: name and inclusive heights.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PruneLockEntry {

@@ -42,9 +42,9 @@ where
 impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     /// Applies `plan` on the same cache-evicting flush `flush_coins` uses.
     ///
-    /// Production callers still pass an empty plan through `flush_coins`.
-    #[cfg_attr(not(test), allow(dead_code))]
-    pub(crate) fn flush_applying_prune_plan(
+    /// `pruneblockchain` calls this after a legal manual plan. `flush_coins`
+    /// still passes an empty plan.
+    pub fn flush_applying_prune_plan(
         &self,
         mode: FlushMode,
         now: FlushPolicyTime,

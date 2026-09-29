@@ -5,8 +5,14 @@
 //! Durable prune-lock reads and writes for RPC.
 
 use std::collections::BTreeMap;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use open_bitcoin_node::core::chainstate::{PRUNE_LOCK_BUFFER, PruneLockInfo};
+use open_bitcoin_node::chainstate::probe_disk_free_bytes;
+use open_bitcoin_node::core::chainstate::{
+    FlushMode, FlushPolicyTime, PRUNE_LOCK_BUFFER, PruneLockInfo, PrunePlan,
+};
+use open_bitcoin_node::core::wallet::AddressNetwork;
+use open_bitcoin_node::status::ManualPruneSurface;
 
 use super::ManagedRpcContext;
 use crate::RpcFailure;
@@ -97,4 +103,49 @@ where
             .map_err(|_| RpcFailure::internal_error(PRUNE_LOCKS_UNAVAILABLE))?;
         Ok(true)
     }
+
+    pub(crate) fn manual_prune_surface(&self) -> ManualPruneSurface {
+        self.manual_prune.clone()
+    }
+
+    pub(crate) fn record_manual_prune(&mut self, surface: ManualPruneSurface) {
+        self.manual_prune = surface;
+    }
+
+    /// Knots `PruneAfterHeight`: mainnet 100000, every other chain 1000.
+    pub(crate) fn prune_after_height(&self) -> u32 {
+        match self.chain {
+            AddressNetwork::Mainnet => 100_000,
+            AddressNetwork::Testnet | AddressNetwork::Signet | AddressNetwork::Regtest => 1_000,
+        }
+    }
+
+    /// Flushes a legal manual plan. Callers refuse before this when the plan errs.
+    pub(crate) fn flush_applying_prune_plan(
+        &self,
+        plan: &PrunePlan,
+        locks: &[PruneLockInfo],
+    ) -> Result<(), open_bitcoin_node::ManagedNetworkAuthorityError> {
+        let disk_free_bytes = match self.maybe_metrics_store.as_ref() {
+            Some(store) => probe_disk_free_bytes(store.datadir()),
+            None => u64::MAX,
+        };
+        self.network
+            .flush_applying_prune_plan(
+                FlushMode::Always,
+                flush_policy_now(),
+                disk_free_bytes,
+                plan,
+                locks,
+            )
+            .map(|_| ())
+    }
+}
+
+fn flush_policy_now() -> FlushPolicyTime {
+    let seconds = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or(u64::MAX);
+    FlushPolicyTime::from_unix_seconds(seconds)
 }

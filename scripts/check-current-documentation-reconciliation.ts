@@ -316,8 +316,8 @@ function verifyCatalogMethodSet(corpus: Corpus, failures: string[]): void {
   );
   const catalogMethods = new Set([...baselineMethods, ...extensionMethods]);
 
-  if (rustMethods.size !== 26) {
-    failures.push(`SupportedMethod enum must expose exactly 26 serde names (found ${rustMethods.size})`);
+  if (rustMethods.size !== 27) {
+    failures.push(`SupportedMethod enum must expose exactly 27 serde names (found ${rustMethods.size})`);
   }
   reportSetDifference(rustMethods, catalogMethods, "missing", failures);
   reportSetDifference(catalogMethods, rustMethods, "extra", failures);

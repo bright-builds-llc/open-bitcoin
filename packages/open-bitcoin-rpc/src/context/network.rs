@@ -70,6 +70,7 @@ impl ManagedRpcContext {
             maybe_metrics_store: None,
             maybe_runtime_metadata_source: None,
             maybe_daemon_sync_control: None,
+            manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
         }
     }
@@ -166,6 +167,7 @@ impl ManagedRpcContext {
             maybe_metrics_store: effective_store.clone(),
             maybe_runtime_metadata_source: effective_store,
             maybe_daemon_sync_control: None,
+            manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
             wallet_state,
         })
     }
@@ -229,6 +231,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
             maybe_metrics_store: effective_store.clone(),
             maybe_runtime_metadata_source: effective_store,
             maybe_daemon_sync_control: None,
+            manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
             wallet_state,
         })
     }

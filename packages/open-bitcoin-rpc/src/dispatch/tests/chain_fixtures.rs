@@ -98,6 +98,9 @@ pub(super) fn serialized_script_num(value: i64) -> Vec<u8> {
         encoded.push((magnitude & 0xff) as u8);
         magnitude >>= 8;
     }
+    if encoded.last().is_some_and(|byte| byte & 0x80 != 0) {
+        encoded.push(0x00);
+    }
 
     let mut script = Vec::with_capacity(encoded.len() + 2);
     script.push(encoded.len() as u8);

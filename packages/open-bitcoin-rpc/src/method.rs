@@ -47,6 +47,8 @@ pub enum SupportedMethod {
     ListPruneLocks,
     #[serde(rename = "setprunelock")]
     SetPruneLock,
+    #[serde(rename = "pruneblockchain")]
+    PruneBlockchain,
     #[serde(rename = "clearprunelock")]
     ClearPruneLock,
     #[serde(rename = "getmempoolinfo")]
@@ -101,6 +103,7 @@ impl SupportedMethod {
             Self::GetBlockchainInfo,
             Self::ListPruneLocks,
             Self::SetPruneLock,
+            Self::PruneBlockchain,
             Self::ClearPruneLock,
             Self::GetMempoolInfo,
             Self::GetNetworkInfo,
@@ -132,6 +135,7 @@ impl SupportedMethod {
             Self::GetBlockchainInfo => "getblockchaininfo",
             Self::ListPruneLocks => "listprunelocks",
             Self::SetPruneLock => "setprunelock",
+            Self::PruneBlockchain => "pruneblockchain",
             Self::ClearPruneLock => "clearprunelock",
             Self::GetMempoolInfo => "getmempoolinfo",
             Self::GetNetworkInfo => "getnetworkinfo",
@@ -199,6 +203,7 @@ impl SupportedMethod {
             | Self::DeriveAddresses
             | Self::ListPruneLocks
             | Self::SetPruneLock
+            | Self::PruneBlockchain
             | Self::ClearPruneLock => MethodScope::Node,
         }
     }
@@ -238,6 +243,7 @@ pub enum MethodCall {
     GetBlockchainInfo(GetBlockchainInfoRequest),
     ListPruneLocks(ListPruneLocksRequest),
     SetPruneLock(SetPruneLockRequest),
+    PruneBlockchain(PruneBlockchainRequest),
     ClearPruneLock(ClearPruneLockRequest),
     GetMempoolInfo(GetMempoolInfoRequest),
     GetNetworkInfo(GetNetworkInfoRequest),
@@ -291,6 +297,7 @@ impl MethodCall {
             | Self::DeriveAddresses(_)
             | Self::ListPruneLocks(_)
             | Self::SetPruneLock(_)
+            | Self::PruneBlockchain(_)
             | Self::ClearPruneLock(_) => MethodScope::Node,
         }
     }
@@ -318,6 +325,10 @@ pub fn normalize_method_call(
             params,
         )
         .map(MethodCall::SetPruneLock),
+        SupportedMethod::PruneBlockchain => {
+            normalize::normalize_request::<PruneBlockchainRequest>(&["height"], params)
+                .map(MethodCall::PruneBlockchain)
+        }
         SupportedMethod::ClearPruneLock => {
             normalize::normalize_request::<ClearPruneLockRequest>(&["name"], params)
                 .map(MethodCall::ClearPruneLock)

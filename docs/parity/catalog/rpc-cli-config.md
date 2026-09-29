@@ -14,7 +14,8 @@ adapters can back honestly.
   `-rpcconnect`, `-rpcport`, `-rpcuser`, `-rpcpassword`, `-rpccookiefile`,
   `-getinfo`, and `-color`
 - supported baseline-backed RPC methods:
-  `getblockchaininfo`, `listprunelocks`, `setprunelock`, `getmempoolinfo`,
+  `getblockchaininfo`, `listprunelocks`, `setprunelock`, `pruneblockchain`,
+  `getmempoolinfo`,
   `getnetworkinfo`, `sendrawtransaction`, `testmempoolaccept`, `submitpackage`,
   `deriveaddresses`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
   `listdescriptors`, `getwalletinfo`, `getbalances`, `listunspent`,

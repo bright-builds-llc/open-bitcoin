@@ -25,6 +25,7 @@ use std::{
 };
 
 use open_bitcoin_node::core::chainstate::{CoinsView, MemoryCoinsView};
+use open_bitcoin_node::status::ManualPruneSurface;
 use open_bitcoin_node::{
     ChainstateStore, FjallNodeStore, ManagedNetworkHandle, MemoryChainstateStore, PersistMode,
     RuntimeMetadata,
@@ -70,6 +71,7 @@ pub struct ManagedRpcContext<S = MemoryChainstateStore, V: CoinsView = MemoryCoi
     maybe_metrics_store: Option<FjallNodeStore>,
     maybe_runtime_metadata_source: Option<FjallNodeStore>,
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
+    manual_prune: ManualPruneSurface,
     wallet_state: WalletState,
 }
 

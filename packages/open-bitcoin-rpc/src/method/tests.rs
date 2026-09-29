@@ -32,6 +32,7 @@ fn supported_http_methods_match_phase_20_wallet_surface() {
         "getblockchaininfo",
         "listprunelocks",
         "setprunelock",
+        "pruneblockchain",
         "clearprunelock",
         "getmempoolinfo",
         "getnetworkinfo",

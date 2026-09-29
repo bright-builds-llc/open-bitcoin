@@ -42,6 +42,7 @@ where
     match call {
         call @ (MethodCall::ListPruneLocks(_)
         | MethodCall::SetPruneLock(_)
+        | MethodCall::PruneBlockchain(_)
         | MethodCall::ClearPruneLock(_)) => prune::dispatch_prune(context, call),
         MethodCall::GetBlockchainInfo(_request) => {
             serde_json::to_value(node::get_blockchain_info(context)?)

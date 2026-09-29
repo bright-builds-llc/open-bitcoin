@@ -7,9 +7,7 @@ use open_bitcoin_node::core::{
     chainstate::{ChainstateSnapshot, PruneMode, get_prune_height, project_prune_status},
     primitives::BlockHash,
 };
-use open_bitcoin_node::status::{
-    FieldAvailability, ManualPruneSurface, PruneLockRow, PruneOperatorStatus,
-};
+use open_bitcoin_node::status::{FieldAvailability, PruneLockRow, PruneOperatorStatus};
 
 use super::super::{ManagedRpcContext, RpcFailure, network_authority_error_to_failure};
 
@@ -56,7 +54,7 @@ where
     Ok(get_prune_height(tip.height, &complete_from_height_one))
 }
 
-/// Live operator prune facts. Manual outcome stays none until Plan 05 stores one.
+/// Live operator prune facts. The manual outcome is the last `pruneblockchain` result.
 pub(in crate::dispatch) fn operator_prune_status<S, V>(
     context: &ManagedRpcContext<S, V>,
 ) -> Result<PruneOperatorStatus, RpcFailure>
@@ -94,7 +92,7 @@ where
         projection,
         pruneheight,
         locks,
-        FieldAvailability::available(ManualPruneSurface::None),
+        FieldAvailability::available(context.manual_prune_surface()),
         support_counts,
     ))
 }
