@@ -18,6 +18,7 @@ pub mod detect;
 pub mod migration;
 pub mod onboarding;
 pub mod package;
+pub mod prune;
 pub mod runtime;
 pub mod service;
 pub mod soak;
@@ -28,6 +29,7 @@ pub mod wallet;
 pub(crate) mod wallet_support;
 
 pub use package::{PackageArgs, PackageCommand, PackageHexArgs, PackageRenderMode};
+pub use prune::{PruneArgs, PruneCommand, PruneLockArgs, PruneLockCommand};
 
 /// First-party Open Bitcoin operator CLI contract.
 #[derive(Debug, Clone, PartialEq, Eq, Parser)]
@@ -63,6 +65,8 @@ pub enum OperatorCommand {
     Wallet(WalletArgs),
     Support(SupportArgs),
     Package(PackageArgs),
+    /// Request a manual prune or manage prune locks.
+    Prune(PruneArgs),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Args)]

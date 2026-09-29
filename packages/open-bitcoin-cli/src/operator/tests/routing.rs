@@ -5,6 +5,8 @@
 
 use super::*;
 
+mod prune;
+
 #[test]
 fn status_command_parses_json_output() {
     // Arrange

@@ -264,6 +264,9 @@ fn execute_operator_cli_inner(
         OperatorCommand::Package(args) => {
             execute_package_command(args, &cli, &config_resolution, &default_data_dir)
         }
+        OperatorCommand::Prune(args) => {
+            super::prune::execute_prune_command(args, &cli, &config_resolution, &default_data_dir)
+        }
     }
 }
 
@@ -370,7 +373,8 @@ fn command_detections(
         | OperatorCommand::Dashboard(_)
         | OperatorCommand::Wallet(_)
         | OperatorCommand::Support(_)
-        | OperatorCommand::Package(_) => {
+        | OperatorCommand::Package(_)
+        | OperatorCommand::Prune(_) => {
             detect_existing_installations(&detection_roots(config_resolution))
         }
     }

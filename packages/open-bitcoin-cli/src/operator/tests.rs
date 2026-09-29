@@ -16,9 +16,9 @@ use serde_json::Value;
 
 use super::{
     CliRoute, ConfigCommand, DashboardArgs, MigrationCommand, NetworkSelection, OperatorCli,
-    OperatorCommand, OperatorOutputFormat, PackageCommand, ServiceCommand, SoakCommand,
-    SoakPeerPolicyArg, SoakStopConditionArg, SoakStopReasonArg, StatusArgs, SupportCommand,
-    SyncCommand,
+    OperatorCommand, OperatorOutputFormat, PackageCommand, PruneCommand, PruneLockArgs,
+    PruneLockCommand, ServiceCommand, SoakCommand, SoakPeerPolicyArg, SoakStopConditionArg,
+    SoakStopReasonArg, StatusArgs, SupportCommand, SyncCommand,
     config::OperatorConfigSource,
     onboarding::{OnboardingWriteDecision, ProposedConfigWrite},
     route_cli_invocation, runtime,

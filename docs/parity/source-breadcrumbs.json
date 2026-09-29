@@ -298,6 +298,16 @@
       ]
     },
     {
+      "label": "cli-operator-prune",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/prune.rs",
+        "packages/open-bitcoin-cli/src/operator/tests/routing/prune.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp"
+      ]
+    },
+    {
       "label": "cli-operator-config-contracts",
       "files": [
         "packages/open-bitcoin-cli/src/operator/config.rs",
