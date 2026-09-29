@@ -308,6 +308,7 @@ impl StatusRpcClient for RunningStatusRpcClient {
                 PROBE_ONLY_METRICS_UNAVAILABLE,
             ),
             mempool: MempoolStatus::default(),
+            prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
         })
     }
 

@@ -217,6 +217,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
             message: "ok".to_string(),
         }],
         build: BuildProvenance::unavailable(),
+        prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
     }
 }
 

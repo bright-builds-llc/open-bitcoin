@@ -67,6 +67,7 @@ fn authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_clas
         chainstate_durability: status.chainstate_durability,
         metrics: status.metrics,
         mempool: status.mempool,
+        prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
     };
     let rpc = Phase127SensitiveStatusRpc { network_status };
     let input = phase127_status_collector_input(temp.path());

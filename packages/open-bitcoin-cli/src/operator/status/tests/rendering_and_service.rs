@@ -163,6 +163,7 @@ fn human_and_json_renderers_surface_wallet_freshness_and_scan_reasons() {
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
+        prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
     };
 
     // Act

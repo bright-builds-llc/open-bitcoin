@@ -34,7 +34,7 @@ pub(crate) struct PruneSupportSummary {
 
 impl FjallNodeStore {
     /// Loads the durable lock map. An absent key is an empty list.
-    pub(crate) fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
+    pub fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
         let Some(bytes) = self.block_index_bytes(PRUNE_LOCKS_KEY)? else {
             return Ok(Vec::new());
         };
@@ -59,6 +59,18 @@ impl FjallNodeStore {
             });
         };
         decode_prune_summary(&bytes)
+    }
+
+    /// Operator support counts. An absent summary is zeros and no last height.
+    pub fn load_operator_support_counts(
+        &self,
+    ) -> Result<crate::status::PruneSupportCounts, StorageError> {
+        let summary = self.load_prune_support_summary()?;
+        Ok(crate::status::PruneSupportCounts {
+            successful_batch_count: summary.successful_batch_count,
+            pruned_height_count: summary.pruned_height_count,
+            maybe_last_prune_height: summary.maybe_last_prune_height,
+        })
     }
 
     /// Records one successful batch of live deleted heights.

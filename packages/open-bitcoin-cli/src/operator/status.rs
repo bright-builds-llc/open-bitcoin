@@ -15,8 +15,8 @@ use open_bitcoin_node::{
     status::{
         BlockRelayEvidenceStatus, BuildProvenance, ConfigStatus, FieldAvailability, HealthSignal,
         HealthSignalLevel, INBOUND_STATUS_UNAVAILABLE_REASON, MempoolStatus, NodeRuntimeState,
-        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, WalletStatus,
-        relay_evidence::RelayEvidenceStatus,
+        NodeStatus, OpenBitcoinStatusSnapshot, PeerCounts, PeerStatus, PruneOperatorStatus,
+        WalletStatus, relay_evidence::RelayEvidenceStatus,
     },
 };
 use open_bitcoin_rpc::method::{
@@ -235,6 +235,7 @@ fn collect_live_status_snapshot(
     let block_relay = network_status.block_relay;
     let chainstate_durability = network_status.chainstate_durability;
     let metrics = network_status.metrics;
+    let prune = network_status.prune.clone();
 
     OpenBitcoinStatusSnapshot {
         node: NodeStatus {
@@ -262,6 +263,7 @@ fn collect_live_status_snapshot(
         resource_bounds: collect_resource_bounds(&input.config_resolution, None),
         health_signals,
         build: current_build_provenance(),
+        prune,
     }
 }
 
@@ -271,6 +273,12 @@ fn stopped_status_snapshot(
     reason: impl Into<String>,
 ) -> OpenBitcoinStatusSnapshot {
     let reason = reason.into();
+    let maybe_prune = input
+        .config_resolution
+        .maybe_open_bitcoin_config
+        .as_ref()
+        .map(|config| config.prune);
+    let prune = PruneOperatorStatus::from_stopped_config(maybe_prune, &reason);
     let service = collect_service_status(input);
     let recovery_evidence = collect_status_recovery_evidence(
         input,
@@ -317,6 +325,7 @@ fn stopped_status_snapshot(
         resource_bounds: collect_resource_bounds(&input.config_resolution, None),
         health_signals,
         build: current_build_provenance(),
+        prune,
     }
 }
 
@@ -362,6 +371,7 @@ fn collect_open_bitcoin_network_status(
             ),
             metrics: metrics_status(),
             mempool: MempoolStatus::default(),
+            prune: PruneOperatorStatus::unread_disabled(&inbound_status_unavailable_reason(&error)),
         },
     }
 }

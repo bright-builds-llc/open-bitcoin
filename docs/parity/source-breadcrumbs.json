@@ -354,6 +354,7 @@
         "packages/open-bitcoin-cli/src/operator/status/tests/restart_resume.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/service_manager.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/snapshot.rs",
+        "packages/open-bitcoin-cli/src/operator/status/tests/prune_snapshot.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/status_inputs.rs",
         "packages/open-bitcoin-cli/tests/operator_binary/compatibility_wallet.rs",
         "packages/open-bitcoin-cli/tests/operator_binary/dashboard_migration_support.rs",
@@ -2011,6 +2012,8 @@
         "packages/open-bitcoin-node/src/recovery.rs",
         "packages/open-bitcoin-node/src/recovery/tests.rs",
         "packages/open-bitcoin-node/src/status.rs",
+        "packages/open-bitcoin-node/src/status/prune_operator.rs",
+        "packages/open-bitcoin-node/src/status/wallet_freshness.rs",
         "packages/open-bitcoin-node/src/status/block_relay_evidence.rs",
         "packages/open-bitcoin-node/src/status/block_relay_evidence/tests.rs",
         "packages/open-bitcoin-node/src/status/chainstate_durability.rs",
@@ -2291,6 +2294,15 @@
         "packages/bitcoin-knots/src/rpc/net.cpp",
         "packages/bitcoin-knots/src/rpc/rawtransaction.cpp",
         "packages/bitcoin-knots/test/functional/interface_rpc.py"
+      ]
+    },
+    {
+      "label": "rpc-prune-status",
+      "files": [
+        "packages/open-bitcoin-rpc/src/dispatch/prune/status.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp"
       ]
     },
     {

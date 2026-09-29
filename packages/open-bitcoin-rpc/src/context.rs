@@ -347,6 +347,32 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
         source.has_undo(block_hash)
     }
 
+    pub(crate) fn load_prune_locks(
+        &self,
+    ) -> Result<
+        Vec<open_bitcoin_node::core::chainstate::PruneLockInfo>,
+        open_bitcoin_node::StorageError,
+    > {
+        let Some(store) = self.maybe_metrics_store.as_ref() else {
+            return Ok(Vec::new());
+        };
+        store.load_prune_locks()
+    }
+
+    pub(crate) fn load_prune_support_counts(
+        &self,
+    ) -> Result<open_bitcoin_node::status::PruneSupportCounts, open_bitcoin_node::StorageError>
+    {
+        let Some(store) = self.maybe_metrics_store.as_ref() else {
+            return Ok(open_bitcoin_node::status::PruneSupportCounts {
+                successful_batch_count: 0,
+                pruned_height_count: 0,
+                maybe_last_prune_height: None,
+            });
+        };
+        store.load_operator_support_counts()
+    }
+
     #[cfg(test)]
     pub(crate) fn forget_block_payload_and_undo_for_test(
         &self,

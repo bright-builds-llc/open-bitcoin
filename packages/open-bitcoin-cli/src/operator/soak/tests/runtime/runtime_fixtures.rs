@@ -455,6 +455,7 @@ pub(super) fn base_status_snapshot(datadir: &Path) -> OpenBitcoinStatusSnapshot 
         resource_bounds: FieldAvailability::available(normal_resource_bounds()),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
+        prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
     }
 }
 

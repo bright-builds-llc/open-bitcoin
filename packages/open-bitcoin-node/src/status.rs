@@ -9,9 +9,11 @@ mod inbound;
 mod mempool_groups;
 mod observability;
 mod progress_guarantee;
+mod prune_operator;
 mod recovery;
 pub mod relay_evidence;
 mod resource_bounds;
+mod wallet_freshness;
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
 pub use block_relay_evidence::*;
 pub use block_serving::*;
@@ -26,9 +28,11 @@ pub use mempool_groups::{
 };
 pub use observability::*;
 pub use progress_guarantee::*;
+pub use prune_operator::*;
 pub use recovery::SyncRecoveryCategory;
 pub use resource_bounds::*;
 use serde::{Deserialize, Serialize};
+pub use wallet_freshness::*;
 /// Explicit availability wrapper for status fields that may not be collectible.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "state", content = "value")]
@@ -562,23 +566,6 @@ pub struct WalletStatus {
     pub scan_progress: FieldAvailability<WalletScanProgress>,
 }
 
-/// Wallet completeness state relative to the durable node tip.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum WalletFreshness {
-    Fresh,
-    Stale,
-    Partial,
-    Scanning,
-}
-
-/// Wallet rescan progress surfaced to operator status consumers.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WalletScanProgress {
-    pub scanned_through_height: u32,
-    pub target_tip_height: u32,
-}
-
 /// Durable daemon-sync truth shared between status, dashboard, CLI controls, and RPC.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DurableSyncState {
@@ -616,6 +603,8 @@ pub struct OpenBitcoinStatusSnapshot {
     pub resource_bounds: FieldAvailability<ResourceBoundSnapshot>,
     pub health_signals: Vec<HealthSignal>,
     pub build: BuildProvenance,
+    #[serde(default)]
+    pub prune: PruneOperatorStatus,
 }
 
 #[cfg(test)]

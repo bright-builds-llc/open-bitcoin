@@ -430,6 +430,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
             "inbound",
             "mempool",
             "metrics",
+            "prune",
             "relay",
         ]
     );

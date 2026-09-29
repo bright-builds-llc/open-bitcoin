@@ -129,6 +129,7 @@ fn authoritative_operator_snapshot_preserves_network_status_schema_and_provenanc
             "inbound",
             "mempool",
             "metrics",
+            "prune",
             "relay",
         ]
     );
@@ -217,6 +218,7 @@ fn open_bitcoin_network_status_exact_keys_include_chainstate_durability() {
             "inbound",
             "mempool",
             "metrics",
+            "prune",
             "relay",
         ]
     );

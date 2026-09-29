@@ -120,6 +120,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         resource_bounds: FieldAvailability::unavailable("resource bounds unavailable"),
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
+        prune: crate::status::PruneOperatorStatus::unread_disabled("not collected"),
     }
 }
 

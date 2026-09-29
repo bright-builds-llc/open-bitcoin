@@ -229,6 +229,9 @@ impl FakeStatusRpcClient {
                 chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
                 metrics: MetricsStatus::default(),
                 mempool: MempoolStatus::default(),
+                prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled(
+                    "not collected",
+                ),
             }),
             maybe_wallet_error: None,
         }
@@ -271,6 +274,9 @@ impl FakeStatusRpcClient {
                 chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
                 metrics: MetricsStatus::default(),
                 mempool: MempoolStatus::default(),
+                prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled(
+                    "not collected",
+                ),
             }),
             maybe_wallet_error: Some(error),
         }
@@ -330,6 +336,9 @@ impl StatusRpcClient for FakeStatusRpcClient {
                 chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
                 metrics: MetricsStatus::default(),
                 mempool: MempoolStatus::default(),
+                prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled(
+                    "not collected",
+                ),
             }))
     }
 
@@ -514,5 +523,6 @@ pub(super) fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
         chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
         metrics: MetricsStatus::default(),
         mempool: MempoolStatus::default(),
+        prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
     }
 }

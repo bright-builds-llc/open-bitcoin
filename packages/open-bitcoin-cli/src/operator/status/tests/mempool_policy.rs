@@ -90,6 +90,7 @@ fn live_rpc_with_policy_mempool() -> FakeStatusRpcClient {
             chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::default(),
             mempool: available_policy_mempool(),
+            prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
         }),
         ..FakeStatusRpcClient::running()
     }

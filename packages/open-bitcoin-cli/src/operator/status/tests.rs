@@ -65,6 +65,7 @@ mod relay_and_filesystem_fixtures;
 use relay_and_filesystem_fixtures::*;
 mod inbound_recovery_wallet;
 mod mempool_policy;
+mod prune_snapshot;
 mod rendering_and_service;
 mod restart_resume;
 mod service_manager;

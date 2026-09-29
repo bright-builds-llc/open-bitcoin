@@ -164,6 +164,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
             message: "node healthy".to_string(),
         }],
         build: BuildProvenance::unavailable(),
+        prune: crate::status::PruneOperatorStatus::unread_disabled("not collected"),
     };
 
     // Act

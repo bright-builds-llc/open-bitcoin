@@ -26,6 +26,7 @@ use crate::{
 mod decode;
 mod node;
 mod package;
+mod prune;
 #[cfg(test)]
 mod tests;
 mod wallet;

@@ -163,6 +163,7 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
                 )],
             ),
             mempool: MempoolStatus::default(),
+            prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
         }),
         ..FakeStatusRpcClient::running()
     };
@@ -193,6 +194,7 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
             chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::default(),
             mempool: MempoolStatus::default(),
+            prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
         }),
         ..FakeStatusRpcClient::running()
     };
@@ -286,6 +288,7 @@ fn operator_status_block_relay_maps_shared_contract_and_human_lines() {
             chainstate_durability: ChainstateDurabilityEvidence::default_unavailable(),
             metrics: MetricsStatus::default(),
             mempool: MempoolStatus::default(),
+            prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
         }),
         ..FakeStatusRpcClient::running()
     };
@@ -406,6 +409,7 @@ fn live_rpc_with_chainstate_durability() -> FakeStatusRpcClient {
             chainstate_durability: available_chainstate_durability(),
             metrics: MetricsStatus::default(),
             mempool: MempoolStatus::default(),
+            prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
         }),
         ..FakeStatusRpcClient::running()
     }
