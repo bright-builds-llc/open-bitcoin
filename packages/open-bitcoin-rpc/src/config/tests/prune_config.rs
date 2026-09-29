@@ -1,7 +1,14 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/node/blockmanager_args.cpp
 
+use open_bitcoin_network::advertised_service_flags;
 use open_bitcoin_node::core::chainstate::PruneMode;
+use open_bitcoin_node::core::mempool::PolicyConfig;
+use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags};
+use open_bitcoin_node::core::primitives::{NetworkAddress, NetworkMagic};
+use open_bitcoin_node::{ManagedNetworkHandle, ManagedPeerNetwork, MemoryChainstateStore};
+
+use crate::ManagedRpcContext;
 
 use super::{
     OpenBitcoinConfig, RuntimeConfig, TestDirectory, cli_arg, fs, load_runtime_config_for_args,
@@ -128,4 +135,111 @@ fn unknown_jsonc_key_still_fails() {
 
     // Assert
     assert!(error.to_string().contains("unknown field"));
+}
+
+fn startup_service_bits(context: &ManagedRpcContext) -> u64 {
+    context
+        .network_info()
+        .expect("network info")
+        .local_services_bits
+}
+
+fn fresh_network_handle() -> ManagedNetworkHandle {
+    let local_config = LocalPeerConfig {
+        magic: NetworkMagic::MAINNET,
+        services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
+        address: NetworkAddress {
+            services: 0,
+            address_bytes: [0_u8; 16],
+            port: 18_444,
+        },
+        nonce: 0,
+        relay: true,
+        user_agent: "/open-bitcoin:prune-config/".to_string(),
+    };
+    ManagedNetworkHandle::from_network_fixture(ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config,
+        PolicyConfig::default(),
+    ))
+}
+
+#[test]
+fn startup_store_applies_manual_only_prune_mode() {
+    // Arrange
+    let config = RuntimeConfig {
+        prune_mode: PruneMode::ManualOnly,
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let context =
+        ManagedRpcContext::from_runtime_config_with_store(&config, None).expect("startup context");
+
+    // Assert
+    assert_eq!(
+        startup_service_bits(&context),
+        advertised_service_flags(PruneMode::ManualOnly).bits()
+    );
+}
+
+#[test]
+fn startup_store_default_stays_disabled() {
+    // Arrange
+    let config = RuntimeConfig::default();
+
+    // Act
+    let context =
+        ManagedRpcContext::from_runtime_config_with_store(&config, None).expect("startup context");
+
+    // Assert
+    assert_eq!(
+        startup_service_bits(&context),
+        advertised_service_flags(PruneMode::Disabled).bits()
+    );
+}
+
+#[test]
+fn startup_network_handle_applies_manual_only_prune_mode() {
+    // Arrange
+    let config = RuntimeConfig {
+        prune_mode: PruneMode::ManualOnly,
+        ..RuntimeConfig::default()
+    };
+
+    // Act
+    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+        &config,
+        fresh_network_handle(),
+        None,
+    )
+    .expect("startup context");
+
+    // Assert
+    assert_eq!(
+        startup_service_bits(&context),
+        advertised_service_flags(PruneMode::ManualOnly).bits()
+    );
+}
+
+#[test]
+fn later_set_prune_mode_overrides_startup_mode() {
+    // Arrange
+    let config = RuntimeConfig {
+        prune_mode: PruneMode::ManualOnly,
+        ..RuntimeConfig::default()
+    };
+    let mut context =
+        ManagedRpcContext::from_runtime_config_with_store(&config, None).expect("startup context");
+
+    // Act
+    context
+        .set_prune_mode(PruneMode::Disabled)
+        .expect("override startup mode");
+
+    // Assert
+    assert_eq!(
+        startup_service_bits(&context),
+        advertised_service_flags(PruneMode::Disabled).bits()
+    );
 }

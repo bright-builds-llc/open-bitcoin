@@ -137,7 +137,10 @@ impl ManagedRpcContext {
             config.inbound.max_peers,
             config.inbound.reserved_slots,
         ));
-        let network = ManagedNetworkHandle::from_network_fixture(managed_network);
+        let mut network = ManagedNetworkHandle::from_network_fixture(managed_network);
+        network
+            .set_prune_mode(config.prune_mode)
+            .expect("fresh startup authority accepts the resolved prune mode");
         recover_mempool_snapshot_from_store_handle(
             config,
             effective_store.as_ref(),
@@ -180,9 +183,10 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 {
     pub fn from_runtime_config_with_network_handle(
         config: &RuntimeConfig,
-        network: ManagedNetworkHandle<S, V>,
+        mut network: ManagedNetworkHandle<S, V>,
         maybe_store: Option<FjallNodeStore>,
     ) -> Result<Self, ManagedNetworkAuthorityError> {
+        network.set_prune_mode(config.prune_mode)?;
         network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
             config.inbound.max_peers,
             config.inbound.reserved_slots,
