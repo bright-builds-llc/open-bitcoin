@@ -402,3 +402,106 @@ fn initialize_intent_on_empty_chain_refuses_repair() {
     assert!(store.maybe_prune_intent().expect("intent").is_some());
     remove_dir_if_exists(&path);
 }
+
+#[test]
+fn initialize_saved_lock_forbids_resume_and_keeps_the_payload() {
+    // Arrange
+    let chain = open_resume_chain("resume-saved-lock", 5, 400);
+    plant_block(&chain);
+    plant_undo(&chain);
+    plant_best_block(&chain.store, chain.tip.block_hash);
+    record_intent(&chain, chain.eligible.block_hash);
+    chain
+        .store
+        .sync_prune_locks(&[PruneLockInfo {
+            name: "rescan".to_string(),
+            height_first: 5,
+            height_last: 5,
+        }])
+        .expect("sync saved lock");
+
+    // Act
+    let error = refuse_initialize(&chain.store);
+
+    // Assert
+    assert_repair_refusal(&error);
+    assert!(
+        error
+            .to_string()
+            .contains("prune_intent height is forbidden by a prune lock"),
+        "{error}"
+    );
+    assert_mates_remain(&chain.store, chain.eligible.block_hash);
+    assert!(chain.store.maybe_prune_intent().expect("intent").is_some());
+    assert_eq!(support_batch_count(&chain.store), 0);
+    remove_dir_if_exists(&chain.path);
+}
+
+#[test]
+fn initialize_absent_lock_record_still_resumes_and_counts_the_live_delete() {
+    // Arrange
+    let chain = open_resume_chain("resume-absent-locks", 1, 300);
+    plant_block(&chain);
+    plant_undo(&chain);
+    plant_best_block(&chain.store, chain.tip.block_hash);
+    record_intent(&chain, chain.eligible.block_hash);
+    assert!(chain.store.load_prune_locks().expect("locks").is_empty());
+
+    // Act
+    let (lifecycle, _view, _cache) = initialize_ready(&chain.store);
+
+    // Assert
+    assert_eq!(lifecycle.readiness(), ManagerReadiness::ReadyToFlush);
+    assert_both_mates_absent(&chain.store, chain.eligible.block_hash);
+    assert_eq!(support_batch_count(&chain.store), 1);
+    assert_eq!(support_height_count(&chain.store), 1);
+    assert_eq!(
+        support_last_height(&chain.store),
+        Some(chain.eligible.height)
+    );
+    remove_dir_if_exists(&chain.path);
+}
+
+#[test]
+fn later_already_absent_finish_does_not_increment_the_summary_again() {
+    // Arrange
+    let chain = open_resume_chain("resume-already-absent-again", 1, 300);
+    plant_block(&chain);
+    plant_undo(&chain);
+    plant_best_block(&chain.store, chain.tip.block_hash);
+    record_intent(&chain, chain.eligible.block_hash);
+    let (lifecycle, _view, _cache) = initialize_ready(&chain.store);
+    assert_eq!(lifecycle.readiness(), ManagerReadiness::ReadyToFlush);
+    record_intent(&chain, chain.eligible.block_hash);
+
+    // Act
+    let (again, _view, _cache) = initialize_ready(&chain.store);
+
+    // Assert
+    assert_eq!(again.readiness(), ManagerReadiness::ReadyToFlush);
+    assert_intent_absent(&chain.store);
+    assert_eq!(support_batch_count(&chain.store), 1);
+    assert_eq!(support_height_count(&chain.store), 1);
+    remove_dir_if_exists(&chain.path);
+}
+
+fn support_batch_count(store: &FjallNodeStore) -> u64 {
+    store
+        .load_prune_support_summary()
+        .expect("summary")
+        .successful_batch_count
+}
+
+fn support_height_count(store: &FjallNodeStore) -> u64 {
+    store
+        .load_prune_support_summary()
+        .expect("summary")
+        .pruned_height_count
+}
+
+fn support_last_height(store: &FjallNodeStore) -> Option<u32> {
+    store
+        .load_prune_support_summary()
+        .expect("summary")
+        .maybe_last_prune_height
+}

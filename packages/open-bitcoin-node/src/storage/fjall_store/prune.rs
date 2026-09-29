@@ -211,6 +211,9 @@ fn finish_intent(store: &FjallNodeStore, intent: PruneIntent) -> Result<(), Stor
     if block_still_present || undo_still_present {
         return Err(fail_closed("paired delete left a block or undo key"));
     }
+    if outcome == PairedDeleteOutcome::DeletedLiveMate {
+        store.record_successful_prune_batch(&[intent.height])?;
+    }
     Ok(())
 }
 

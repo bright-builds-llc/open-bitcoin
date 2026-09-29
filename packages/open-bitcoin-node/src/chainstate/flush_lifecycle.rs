@@ -97,6 +97,13 @@ pub trait FlushPersistSink {
         let _ = (height, block_hash);
         Ok(PairedDeleteOutcome::AlreadyAbsent)
     }
+
+    fn record_successful_prune_batch(
+        &mut self,
+        _deleted_heights: &[u32],
+    ) -> Result<(), StorageError> {
+        Ok(())
+    }
 }
 
 impl FlushPersistSink for FjallNodeStore {
@@ -129,6 +136,13 @@ impl FlushPersistSink for FjallNodeStore {
         block_hash: BlockHash,
     ) -> Result<PairedDeleteOutcome, StorageError> {
         self.commit_paired_delete(height, block_hash)
+    }
+
+    fn record_successful_prune_batch(
+        &mut self,
+        deleted_heights: &[u32],
+    ) -> Result<(), StorageError> {
+        FjallNodeStore::record_successful_prune_batch(self, deleted_heights)
     }
 }
 
@@ -166,8 +180,8 @@ pub fn initialize(
         decision,
         maybe_best_block,
     )?);
-    // Locks are not durable until Phase 150, so startup resumes with none.
-    resume_prune_intent(store, &[])?;
+    let locks = store.load_prune_locks()?;
+    resume_prune_intent(store, &locks)?;
     lifecycle.readiness = ManagerReadiness::ReadyToFlush;
     let cache = CoinsCache::from_parent(recovered);
     Ok((lifecycle, FjallCoinsView::from_store(store), cache))

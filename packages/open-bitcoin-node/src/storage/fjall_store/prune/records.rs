@@ -23,7 +23,7 @@ const MAX_LOCK_NAME_BYTES: usize = 1024;
 
 /// Counts of successful prune batches and the last batch's maximum height.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(in crate::storage::fjall_store) struct PruneSupportSummary {
+pub(crate) struct PruneSupportSummary {
     /// Successful batches that recorded at least one live deleted height.
     pub successful_batch_count: u64,
     /// Heights whose live payload was deleted across those batches.
@@ -50,9 +50,7 @@ impl FjallNodeStore {
     }
 
     /// Loads the support summary. An absent key is zeros and no last height.
-    pub(in crate::storage::fjall_store) fn load_prune_support_summary(
-        &self,
-    ) -> Result<PruneSupportSummary, StorageError> {
+    pub(crate) fn load_prune_support_summary(&self) -> Result<PruneSupportSummary, StorageError> {
         let Some(bytes) = self.block_index_bytes(PRUNE_SUMMARY_KEY)? else {
             return Ok(PruneSupportSummary {
                 successful_batch_count: 0,

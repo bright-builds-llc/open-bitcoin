@@ -111,6 +111,13 @@ impl FlushPersistSink for FjallChainstateStore {
     ) -> Result<crate::storage::fjall_store::PairedDeleteOutcome, StorageError> {
         FlushPersistSink::commit_paired_unlink(&mut self.store, height, block_hash)
     }
+
+    fn record_successful_prune_batch(
+        &mut self,
+        deleted_heights: &[u32],
+    ) -> Result<(), StorageError> {
+        FlushPersistSink::record_successful_prune_batch(&mut self.store, deleted_heights)
+    }
 }
 
 fn map_fjall(error: StorageError) -> ChainstateError {

@@ -74,13 +74,20 @@ pub(super) fn apply_prune_plan<S: FlushPersistSink>(
     on_deleted: &mut dyn FnMut(BlockHash),
 ) -> Result<Vec<BlockHash>, StorageError> {
     let mut deleted_block_hashes = Vec::new();
+    let mut deleted_heights = Vec::new();
     for height in &plan.heights {
         let outcome = unlink_classified_height(sink, *height, active_chain, locks)?;
-        if let HeightPruneOutcome::DeletedLiveMate { block_hash, .. } = outcome {
+        if let HeightPruneOutcome::DeletedLiveMate {
+            height: deleted_height,
+            block_hash,
+        } = outcome
+        {
+            deleted_heights.push(deleted_height);
             deleted_block_hashes.push(block_hash);
             on_deleted(block_hash);
         }
     }
+    sink.record_successful_prune_batch(&deleted_heights)?;
     Ok(deleted_block_hashes)
 }
 
