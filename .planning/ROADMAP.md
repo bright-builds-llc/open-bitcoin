@@ -149,7 +149,13 @@ Plans:
   1. Parity docs cite pinned Knots prune anchors and document the intentional Fjall key versus `blk`/`rev` file difference.
   2. Deterministic checkers still reject archive serving, assumeutxo, BIP37, public defaults, and production-readiness claims.
   3. Default `bash scripts/verify.sh` stays deterministic, and historical `.planning/phases/` directories remain tracked.
-**Plans**: TBD
+**Plans:** 4 plans
+
+Plans:
+- [ ] 151-01-PLAN.md — Backfill v2.4 parity surfaces and catalog anchors
+- [ ] 151-02-PLAN.md — Add the Phase 151 no-claim checker and fixtures
+- [ ] 151-03-PLAN.md — Publish the scoped claim, UAT package, and verifier wiring
+- [ ] 151-04-PLAN.md — Flip leftover Pending rows without archiving v2.4
 
 ## Requirement Coverage
 
@@ -194,11 +200,11 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 148. Fjall Payload Unlink and Have-Pruned | 5/5 | Complete    | 2026-09-27 |
 | 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
 | 150. Operator Prune Surfaces and Evidence | 8/8 | Complete    | 2026-09-29 |
-| 151. Parity Roots and No-Claim Guardrails | 0/TBD | Not started | - |
+| 151. Parity Roots and No-Claim Guardrails | 0/4 | Not started | - |
 
 ## Next Step
 
-Run `/gsd-verify-work 150` to verify operator prune surfaces. Phase 151 remains unplanned.
+Execute `/gsd-execute-phase 151`. Plan 04 replaces this line after closeout evidence is current.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*
