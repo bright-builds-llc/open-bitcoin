@@ -25,8 +25,10 @@ key-files:
     - .planning/phases/151-parity-roots-and-no-claim-guardrails/151-VERIFICATION.md
     - .planning/phases/151-parity-roots-and-no-claim-guardrails/151-04-SUMMARY.md
   modified:
+    - .planning/PROJECT.md
     - .planning/REQUIREMENTS.md
     - .planning/ROADMAP.md
+    - .planning/STATE.md
     - scripts/check-phase151-parity-uat-release-boundary/constants.ts
     - scripts/check-phase151-parity-uat-release-boundary/checks.ts
     - scripts/check-phase151-parity-uat-release-boundary/test-fixtures.ts
@@ -48,7 +50,7 @@ lifecycle_mode: yolo
 phase_lifecycle_id: 151-2026-09-29T21-06-33
 generated_at: 2026-09-30T06:05:00Z
 
-duration: in progress
+duration: 1h 48m
 completed: 2026-09-30
 ---
 
@@ -58,11 +60,11 @@ completed: 2026-09-30
 
 ## Performance
 
-- **Duration:** in progress
+- **Duration:** 1h 48m
 - **Started:** 2026-09-30T05:42:44Z
-- **Completed:** 2026-09-30T06:05:00Z
-- **Tasks:** 1 of 3 in this commit
-- **Files modified:** 9
+- **Completed:** 2026-09-30T07:30:57Z
+- **Tasks:** 3
+- **Files modified:** 11
 
 ## Accomplishments
 
@@ -75,11 +77,17 @@ completed: 2026-09-30
 
 Each task was committed atomically:
 
-1. **Task 1: Mark GRD-01 complete and pin the checker in one commit** - recorded in this commit (feat)
+1. **Task 1: Mark GRD-01 complete and pin the checker in one commit** - `8a4d171c` (feat)
+2. **Task 2: Reconcile PROJECT wording without archiving v2.4** - `c3ee31ce` (docs)
+3. **Task 3: Reconcile STATE and the phase summary without archiving v2.4** - recorded in this commit (docs)
+
+**Plan metadata:** recorded in the docs commit for this summary.
 
 ## Files Created/Modified
 
+- `.planning/PROJECT.md` - Current milestone goal says Fjall key deletion, Phase 150 is complete, and v2.4 is not archived.
 - `.planning/REQUIREMENTS.md` - GRD-01 checkbox and traceability row are Complete.
+- `.planning/STATE.md` - Resume file is `.planning/ROADMAP.md`.
 - `.planning/ROADMAP.md` - Five leftover Pending coverage rows are Complete, and the next-step paragraph records closeout evidence without archival.
 - `.planning/phases/151-parity-roots-and-no-claim-guardrails/151-VERIFICATION.md` - Passed, lifecycle-valid Phase 151 verification naming GRD-01 and the six v2.4 surfaces.
 - `scripts/check-phase151-parity-uat-release-boundary/constants.ts` - `GRD01_CHECKBOX` is `- [x] **GRD-01**`, and the corpus includes `.planning/ROADMAP.md`.
@@ -130,7 +138,7 @@ None - no external service configuration required.
 
 ## Next Phase Readiness
 
-PROJECT wording and STATE session continuity are reconciled in the following commits of this plan. Milestone archival remains `/gsd-complete-milestone v2.4` after this phase passes. No `blk`/`rev` store or runtime prune change was added.
+Phase 151 plans are complete. ROADMAP, REQUIREMENTS, PROJECT, and STATE agree that v2.4 closeout evidence exists. Milestone archival remains `/gsd-complete-milestone v2.4` after this phase passes. No `blk`/`rev` store or runtime prune change was added.
 
 ## Self-Check: PASSED
 
@@ -138,6 +146,10 @@ PROJECT wording and STATE session continuity are reconciled in the following com
 - FOUND: `.planning/REQUIREMENTS.md` traceability row `| GRD-01 | Phase 151 | Complete |`
 - FOUND: `.planning/ROADMAP.md` Complete rows for OPER-01, OPER-02, OPER-03, LOCK-02, and GRD-01
 - FOUND: `151-VERIFICATION.md` status passed and lifecycle identity `151-2026-09-29T21-06-33`
+- FOUND: `8a4d171c`
+- FOUND: `c3ee31ce`
+- FOUND: `.planning/STATE.md` Resume file is `.planning/ROADMAP.md`
+- FOUND: `.planning/PROJECT.md` contains `removing Fjall keys` and `Phase 151 records the scoped prune claim`
 - FOUND: no `.planning/milestones/v2.4-ROADMAP.md`
 
 ---
