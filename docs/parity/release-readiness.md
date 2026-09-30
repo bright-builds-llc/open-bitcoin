@@ -32,6 +32,12 @@ Default verification stays hermetic. `bash scripts/verify.sh` remains the determ
 
 v2.3 does not add prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, production full-node readiness, production service operation, production-funds wallet safety, LevelDB `chainstate/` live import/export, or automatic destructive reindex or coins repair. FUT-18 through FUT-26 remain deferred.
 
+## v2.4 prune release-review handoff
+
+Knots-aligned prune on the single active chainstate deletes old block and undo payloads inside a height window by removing Fjall keys, advertises NODE_NETWORK_LIMITED, and reports Pruned only after a durable delete. Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store.
+
+bash scripts/verify.sh remains the release contract.
+
 ## Readiness Verdict
 
 The v1.3 readiness claim remains historical: a source-built, opt-in,

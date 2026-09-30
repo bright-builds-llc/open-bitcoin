@@ -26,6 +26,8 @@ automatic support upload also remain deferred or unsupported.
 
 v2.3 does not add prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, production full-node readiness, production service operation, production-funds wallet safety, LevelDB `chainstate/` live import/export, or automatic destructive reindex or coins repair. Those D-16 surfaces remain deferred.
 
+v2.4 adds the scoped height-window Fjall prune sentence and does not add archive-node serving, assumeutxo, BIP37 bloom serving, public serving or relay by default, or production full-node readiness.
+
 For release review, use the v1.8 release-readiness checklist in
 [`release-readiness.md`](release-readiness.md#v18-release-readiness-checklist).
 It maps this boundary and the other current v1.8 requirements to canonical

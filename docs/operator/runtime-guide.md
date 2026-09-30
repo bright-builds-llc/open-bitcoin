@@ -950,6 +950,12 @@ bash scripts/verify.sh
 
 The allowed scoped v2.3 wording is disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present.
 
+## Phase 151 Parity Roots And No-Claim Guardrails Review
+
+Knots-aligned prune on the single active chainstate deletes old block and undo payloads inside a height window by removing Fjall keys, advertises NODE_NETWORK_LIMITED, and reports Pruned only after a durable delete. Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store. Companion allowed wording includes the 288-block keep, the 550 MiB minimum automatic target, the 10-block lock buffer, manual-prune refusal inside the keep window, have-pruned only after a durable delete, fail-closed interrupted prune, sanitized prune support evidence, and hermetic default verification.
+
+## Phase 145 Parity Roots And No-Claim Guardrails Review
+
 Companion allowed wording includes sanitized operator flush/recovery/cache-size/have-bytes evidence, leftover snapshot non-authority after one-way migration, restart from durable coins best-block, and hermetic default verification. Required UAT stays deterministic. Optional public-network review is never a default, CI, or release gate.
 
 Inspect shared operator status through both repo-local command forms:
