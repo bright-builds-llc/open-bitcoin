@@ -10,7 +10,7 @@ The live v2.3 claim is disk-backed per-outpoint coins, typed cache-flush policy,
 
 Leftover snapshot blobs are non-authoritative after the schema 1→2 one-way
 migration. Restart tip and UTXO view come from durable coins best-block.
-`Pruned` stays reserved. First-party overlay occupancy is not C++ allocator /
+In the v2.3 claim, the label Pruned stayed reserved. First-party overlay occupancy is not C++ allocator /
 LevelDB SizeEstimate. Fjall per-outpoint coins replace LevelDB `chainstate/`.
 Disk-space probe may stay fail-open at `u64::MAX` where the node crate forbids
 unsafe `statvfs`. Phase 144 `chainstate_durability` is the shared operator
@@ -21,6 +21,24 @@ Pinned Knots symbols for this claim include `FlushStateToDisk` and
 `node/chainstate.cpp` and `validation.cpp`, and `CheckBlockDataAvailability`
 in `node/blockstorage.cpp`. The locked discussion name `HaveBlockData` is not
 a pinned-tree symbol; the serve-path root is `CheckBlockDataAvailability`.
+
+## Current v2.4 claim
+
+The current v2.4 claim is height-window prune on Fjall keys for the single active chainstate.
+Status and RPC report Pruned only when have-pruned is set and the payload is gone.
+A missing payload without prune stays Unavailable.
+The keep window is 288 blocks (MIN_BLOCKS_TO_KEEP).
+The automatic prune target floor is 550 MiB (MIN_DISK_SPACE_FOR_BLOCK_FILES).
+The prune-lock buffer is 10 blocks (PRUNE_LOCK_BUFFER).
+Manual prune refuses a target inside the keep window.
+Have-pruned is recorded only after a durable delete.
+An interrupted prune fails closed.
+Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store.
+Knots UnlinkPrunedFiles deletes blk and rev flat files.
+Open Bitcoin does not do that delete.
+ChainstateManager::GetPruneRange max_prune is tip height minus MIN_BLOCKS_TO_KEEP.
+The Knots m_snapshot_chainstate prune_start branch stays out of scope.
+Pinned spellings in this claim are ParsePruneOption, PruneLockInfo, DoPruneLocksForbidPruning, FindFilesToPrune, FindFilesToPruneManual, m_have_pruned, and IsBlockPruned.
 
 ## Historical Phase 4 snapshot-engine coverage
 

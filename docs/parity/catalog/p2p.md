@@ -1216,6 +1216,14 @@ full-node readiness, or production-funds wallet use. Public-network
 block-serving or compact-relay review remains opt-in UAT guidance only and is
 outside `bash scripts/verify.sh`.
 
+## Current v2.4 limited serving
+
+In prune mode the node advertises NODE_NETWORK_LIMITED.
+It does not advertise full NODE_NETWORK.
+NODE_NETWORK_LIMITED is (1 left-shift 10) in packages/bitcoin-knots/src/protocol.h.
+NODE_NETWORK_LIMITED_MIN_BLOCKS is 288 in packages/bitcoin-knots/src/net_processing.cpp.
+The limited serve window is tip distance greater than MIN_BLOCKS_TO_KEEP plus 2.
+
 ## Phase 111 full block-serving request path
 
 Phase 111 adds the bounded, opt-in `v2-1-full-block-serving-request-path` surface for
@@ -1247,8 +1255,8 @@ inventory, side-chain cached blocks, missing active-tip payloads, stale facts,
 and request-cap pressure stay bounded to notfound or disconnect outcomes.
 Active-chain blocks whose payload bytes are missing, including non-tip hashes,
 return `WireNetworkMessage::NotFound` with `block_status_unavailable`. The
-label `block_status_pruned` remains reserved for a future prune-mode delete
-when prune mode actually deleted files and is not emitted on production paths.
+label `block_status_pruned` is emitted only when have-pruned is set and the payload is gone.
+A missing payload without prune stays `block_status_unavailable`.
 The pinned Knots serve-path symbol is `BlockManager::CheckBlockDataAvailability`
 in `packages/bitcoin-knots/src/node/blockstorage.cpp`; `HaveBlockData` is the
 locked discussion name only, and

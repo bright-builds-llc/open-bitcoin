@@ -794,6 +794,30 @@
     {
       "name": "v2-3-parity-roots-and-no-claim-guardrails",
       "status": "done"
+    },
+    {
+      "name": "v2-4-wallet-leftover-snapshot-cutover",
+      "status": "done"
+    },
+    {
+      "name": "v2-4-pure-prune-policy-and-lock-windows",
+      "status": "done"
+    },
+    {
+      "name": "v2-4-fjall-payload-unlink-and-have-pruned",
+      "status": "done"
+    },
+    {
+      "name": "v2-4-limited-serving-and-honest-pruned-labels",
+      "status": "done"
+    },
+    {
+      "name": "v2-4-operator-prune-surfaces-and-evidence",
+      "status": "done"
+    },
+    {
+      "name": "v2-4-parity-roots-and-no-claim-guardrails",
+      "status": "done"
     }
   ],
   "checklist": {
@@ -3885,6 +3909,192 @@
         ],
         "suspected_unknowns": [
           "Milestone archival remains /gsd-complete-milestone v2.3 after this phase passes."
+        ]
+      },
+      {
+        "id": "v2-4-wallet-leftover-snapshot-cutover",
+        "title": "v2.4 Wallet Leftover-Snapshot Cutover",
+        "status": "done",
+        "requirements": [
+          "SNAP-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          ".planning/phases/146-wallet-leftover-snapshot-cutover/146-VERIFICATION.md"
+        ],
+        "rationale": "Phase 146 uniquely owns SNAP-01.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.cpp"
+          ],
+          "tests": []
+        },
+        "known_gaps": [
+          "Leftover snapshot bytes stay non-authoritative."
+        ],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "v2-4-pure-prune-policy-and-lock-windows",
+        "title": "v2.4 Pure Prune Policy and Lock Windows",
+        "status": "done",
+        "requirements": [
+          "PRUN-01",
+          "PRUN-02",
+          "PRUN-03",
+          "LOCK-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          ".planning/phases/147-pure-prune-policy-and-lock-windows/147-VERIFICATION.md"
+        ],
+        "rationale": "Phase 147 uniquely owns PRUN-01, PRUN-02, PRUN-03, and LOCK-01.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.h",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockmanager_args.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.h",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/feature_pruning.py"
+          ]
+        },
+        "known_gaps": [
+          "Manual prune inside the 288-block keep window is refused rather than clamped."
+        ],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "v2-4-fjall-payload-unlink-and-have-pruned",
+        "title": "v2.4 Fjall Payload Unlink and Have-Pruned",
+        "status": "done",
+        "requirements": [
+          "UNLK-01",
+          "UNLK-02",
+          "UNLK-03"
+        ],
+        "evidence": [
+          "docs/parity/catalog/chainstate.md",
+          ".planning/phases/148-fjall-payload-unlink-and-have-pruned/148-VERIFICATION.md"
+        ],
+        "rationale": "Phase 148 uniquely owns UNLK-01, UNLK-02, and UNLK-03.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/node/blockstorage.cpp",
+            "packages/bitcoin-knots/src/validation.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockmanager_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store."
+        ],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "v2-4-limited-serving-and-honest-pruned-labels",
+        "title": "v2.4 Limited Serving and Honest Pruned Labels",
+        "status": "done",
+        "requirements": [
+          "SERV-01",
+          "SERV-02",
+          "SERV-03",
+          "LABL-01"
+        ],
+        "evidence": [
+          "docs/parity/catalog/p2p.md",
+          "docs/parity/catalog/chainstate.md",
+          ".planning/phases/149-limited-serving-and-honest-pruned-labels/149-VERIFICATION.md"
+        ],
+        "rationale": "Phase 149 uniquely owns SERV-01, SERV-02, SERV-03, and LABL-01.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockmanager_tests.cpp"
+          ]
+        },
+        "known_gaps": [
+          "Pruned is reported only when have-pruned is set and the payload is gone. A missing payload without prune stays Unavailable."
+        ],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "v2-4-operator-prune-surfaces-and-evidence",
+        "title": "v2.4 Operator Prune Surfaces and Evidence",
+        "status": "done",
+        "requirements": [
+          "OPER-01",
+          "OPER-02",
+          "OPER-03",
+          "LOCK-02"
+        ],
+        "evidence": [
+          "docs/parity/catalog/rpc-cli-config.md",
+          ".planning/phases/150-operator-prune-surfaces-and-evidence/150-VERIFICATION.md"
+        ],
+        "rationale": "Phase 150 uniquely owns OPER-01, OPER-02, OPER-03, and LOCK-02.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/bitcoin-cli.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/feature_pruning.py"
+          ]
+        },
+        "known_gaps": [
+          "clearprunelock is an Open Bitcoin extension already shipped in Phase 150."
+        ],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "v2-4-parity-roots-and-no-claim-guardrails",
+        "title": "v2.4 Parity Roots and No-Claim Guardrails",
+        "status": "done",
+        "requirements": [
+          "GRD-01"
+        ],
+        "evidence": [
+          ".planning/phases/151-parity-roots-and-no-claim-guardrails/151-UAT.md",
+          "scripts/check-phase151-parity-uat-release-boundary.ts",
+          "docs/parity/release-readiness.md",
+          "docs/parity/catalog/chainstate.md",
+          "docs/parity/index.json"
+        ],
+        "rationale": "Phase 151 uniquely owns GRD-01. It does not absorb SNAP, PRUN, LOCK, UNLK, SERV, LABL, or OPER ownership.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.h",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/blockmanager_args.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.h",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp",
+            "packages/bitcoin-knots/src/protocol.h",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockmanager_tests.cpp",
+            "packages/bitcoin-knots/test/functional/feature_pruning.py"
+          ]
+        },
+        "known_gaps": [
+          "Phase 151 owns only GRD-01.",
+          "FUT-19 through FUT-27 remain deferred: archive-node or production-scale historical serving, compact-filter or BIP37 serving, assumeutxo, assumevalid, or a second chainstate, LevelDB chainstate/ live import or export, automatic destructive reindex, public serving or relay by default, public-network CI as a release gate, production full-node readiness, production service operation, production-funds wallet safety, txindex combined with prune, and -pruneduringinit.",
+          "Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store.",
+          "Required UAT stays deterministic. Public-network review is not run and is never a default, CI, or release gate."
+        ],
+        "suspected_unknowns": [
+          "Milestone archival remains /gsd-complete-milestone v2.4 after this phase passes."
         ]
       }
     ]

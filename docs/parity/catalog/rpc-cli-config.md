@@ -30,6 +30,15 @@ adapters can back honestly.
   `importdescriptors` -> `rescanblockchain` -> `getbalances` ->
   `listunspent` -> `buildandsigntransaction` -> `sendrawtransaction`
 
+## Current v2.4 operator prune
+
+The current v2.4 operator prune surface names pruneblockchain.
+getblockchaininfo reports the fields pruned, pruneheight, automatic_pruning, and prune_target_size.
+The same surface names listprunelocks and setprunelock.
+clearprunelock is an Open Bitcoin extension.
+The Knots anchor is packages/bitcoin-knots/src/rpc/blockchain.cpp.
+GetPruneHeight is the last pruned height, and the info field pruneheight is that value plus one, or 0.
+
 ## Knots sources
 
 - [`packages/bitcoin-knots/src/bitcoin-cli.cpp`](../../../packages/bitcoin-knots/src/bitcoin-cli.cpp)
