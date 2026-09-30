@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 151-01-PLAN.md
-last_updated: "2026-09-30T01:31:08.828Z"
+stopped_at: Completed 151-02-PLAN.md
+last_updated: "2026-09-30T03:01:13.748Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 27
-  completed_plans: 24
-  percent: 89
+  completed_plans: 25
+  percent: 93
 ---
 
 # Project State
@@ -27,7 +27,7 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 151 (parity-roots-and-no-claim-guardrails) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-09-30
 
@@ -174,6 +174,7 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 | Phase 150 P08 | 33 min | 1 tasks | 6 files |
 | Phase 150 P07 | 32min | 1 tasks | 8 files |
 | Phase 151 P01 | 53 min | 3 tasks | 9 files |
+| Phase 151 P02 | 1h 2m | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -560,6 +561,9 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 - [Phase 151]: Combined the six v2.4 surfaces and the catalog claim refresh into one hook-passing commit because pre-commit runs verify.sh. — Pre-commit runs bash scripts/verify.sh, and the plan requires the catalog edit in the same commit as the new surfaces.
 - [Phase 151]: Refreshed cli-operator-prune source comments so they cite rpc/blockchain.cpp with the JSON group. — The breadcrumb checker treats a JSON group change as a stale in-source comment.
 - [Phase 151]: Left requirements-completed empty so GRD-01 stays unchecked until a later checker can name the evidence. — T-151-05 and the plan keep the GRD-01 checkbox for a later plan after the checker exists.
+- [Phase 151]: Keep the Phase 151 checker out of scripts/verify.sh. — Plan 151-03 owns the verifier insertion. Wiring the checker before README and UAT exist would fail default verify.
+- [Phase 151]: Leave requirements-completed empty so GRD-01 stays unchecked. — Plan 04 flips the GRD-01 checkbox after the checker can name the evidence.
+- [Phase 151]: Commit the Phase 151 checker and its fixture tests as two green hook-passing commits. — A RED-only commit cannot pass the pre-commit verifier, so each task ships only after its checks are green.
 
 ### Pending Todos
 
@@ -587,6 +591,6 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 
 ## Session Continuity
 
-Last session: 2026-09-30T01:30:22.399Z
-Stopped at: Completed 151-01-PLAN.md
-Resume file: .planning/phases/151-parity-roots-and-no-claim-guardrails/151-02-PLAN.md
+Last session: 2026-09-30T03:00:59.341Z
+Stopped at: Completed 151-02-PLAN.md
+Resume file: .planning/phases/151-parity-roots-and-no-claim-guardrails/151-03-PLAN.md
