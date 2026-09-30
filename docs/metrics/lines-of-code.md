@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,260 |
-| Total lines | 349,749 |
-| Code/content lines | 303,538 |
-| Comment-only lines | 16,689 |
-| Blank lines | 29,522 |
+| Total lines | 349,815 |
+| Code/content lines | 303,589 |
+| Comment-only lines | 16,695 |
+| Blank lines | 29,531 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 486 | 136,981 | 115,721 | 10,107 | 11,153 |
 | Rust production | 421 | 117,584 | 101,953 | 4,618 | 11,013 |
-| TypeScript/Bun scripts | 283 | 78,300 | 69,922 | 1,881 | 6,497 |
+| TypeScript/Bun scripts | 283 | 78,366 | 69,973 | 1,887 | 6,506 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 23 | 4,518 | 4,040 | 69 | 409 |
 | TOML/config | 16 | 3,468 | 3,102 | 0 | 366 |
@@ -218,12 +218,12 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase145-parity-uat-release-boundary/constants.ts | 196 |
 | scripts/check-phase145-parity-uat-release-boundary/test-fixtures.ts | 185 |
 | scripts/check-phase145-parity-uat-release-boundary/verifier.ts | 142 |
-| scripts/check-phase151-parity-uat-release-boundary.test.ts | 398 |
+| scripts/check-phase151-parity-uat-release-boundary.test.ts | 436 |
 | scripts/check-phase151-parity-uat-release-boundary.ts | 14 |
-| scripts/check-phase151-parity-uat-release-boundary/checks.ts | 220 |
+| scripts/check-phase151-parity-uat-release-boundary/checks.ts | 234 |
 | scripts/check-phase151-parity-uat-release-boundary/claims.ts | 111 |
-| scripts/check-phase151-parity-uat-release-boundary/constants.ts | 227 |
-| scripts/check-phase151-parity-uat-release-boundary/test-fixtures.ts | 172 |
+| scripts/check-phase151-parity-uat-release-boundary/constants.ts | 229 |
+| scripts/check-phase151-parity-uat-release-boundary/test-fixtures.ts | 184 |
 | scripts/check-phase151-parity-uat-release-boundary/verifier.ts | 149 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
@@ -364,7 +364,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 13d7c806bd6090dbc1601c06b12cfc4b7c7164e4c291c361e374d52a197aec87 |
+| Input fingerprint | b2443ffa7930e31cc8b1c06cf9d4e7022ec45e561d12069b47ebe18877bc8dec |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

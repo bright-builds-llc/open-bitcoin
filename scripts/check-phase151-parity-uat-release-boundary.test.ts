@@ -14,6 +14,8 @@ import {
   PHASE151_CHECK_STEP,
   PHASE151_TEST_STEP,
   REQUIREMENTS_BY_SURFACE,
+  REQUIREMENTS_FILE,
+  ROADMAP_FILE,
   UAT_PACKAGE,
   V23_D14_SENTENCE,
   V24_PRUNE_SENTENCE,
@@ -359,6 +361,42 @@ test("fails_when_a_forbidden_run_step_token_is_added", () => {
 
   // Assert
   expect(failures).toContain("run-live-mainnet-smoke");
+});
+
+test("fails_when_grd01_checkbox_is_unchecked", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(files, REQUIREMENTS_FILE, "- [x] **GRD-01**", "- [ ] **GRD-01**");
+    },
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("GRD-01");
+});
+
+test("fails_when_grd01_roadmap_row_is_pending", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        ROADMAP_FILE,
+        "| GRD-01 | Phase 151 | Complete |",
+        "| GRD-01 | Phase 151 | Pending |",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("GRD-01");
+  expect(failures).toContain("Complete");
 });
 
 test("checker_source_pins_the_v24_contract_and_stays_filesystem_only", () => {

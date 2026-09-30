@@ -47,7 +47,7 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Guardrails
 
-- [ ] **GRD-01**: Parity docs cite the pinned Knots prune anchors, including the Fjall key versus `blk`/`rev` file difference, and checkers still reject archive serving, assumeutxo, BIP37, public defaults, and production-readiness claims.
+- [x] **GRD-01**: Parity docs cite the pinned Knots prune anchors, including the Fjall key versus `blk`/`rev` file difference, and checkers still reject archive serving, assumeutxo, BIP37, public defaults, and production-readiness claims.
 
 ## Future Requirements
 
@@ -110,7 +110,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | OPER-02 | Phase 150 | Complete |
 | OPER-03 | Phase 150 | Complete |
 | LOCK-02 | Phase 150 | Complete |
-| GRD-01 | Phase 151 | Pending |
+| GRD-01 | Phase 151 | Complete |
 
 **Coverage:**
 - v2.4 requirements: 17 total

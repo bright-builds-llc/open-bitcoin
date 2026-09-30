@@ -28,6 +28,7 @@ import {
   REQUIRED_UAT_COMMANDS,
   REQUIREMENTS_BY_SURFACE,
   REQUIREMENTS_FILE,
+  ROADMAP_FILE,
   UAT_PACKAGE,
   V23_D14_SENTENCE,
   V24_PRUNE_SENTENCE,
@@ -75,6 +76,7 @@ export function createFixture(options: FixtureOptions = {}): string {
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
   files.set(UAT_PACKAGE, createUatPackage());
   files.set(REQUIREMENTS_FILE, createRequirements());
+  files.set(ROADMAP_FILE, createRoadmap());
   files.set("scripts/verify.sh", createVerifyScript());
   files.set(
     "scripts/check-phase151-parity-uat-release-boundary.ts",
@@ -109,6 +111,16 @@ export function createParityIndex(): FixtureIndex {
 
 export function createRequirements(): string {
   return [...checkedV24RequirementIds().map((id) => `- [x] **${id}**`), GRD01_CHECKBOX].join("\n");
+}
+
+export function createRoadmap(): string {
+  return [
+    "| OPER-01 | Phase 150 | Complete |",
+    "| OPER-02 | Phase 150 | Complete |",
+    "| OPER-03 | Phase 150 | Complete |",
+    "| LOCK-02 | Phase 150 | Complete |",
+    "| GRD-01 | Phase 151 | Complete |",
+  ].join("\n");
 }
 
 export function createBreadcrumbs(): string {

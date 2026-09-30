@@ -173,11 +173,11 @@ Plans:
 | SERV-02 | Phase 149 | Complete |
 | SERV-03 | Phase 149 | Complete |
 | LABL-01 | Phase 149 | Complete |
-| OPER-01 | Phase 150 | Pending |
-| OPER-02 | Phase 150 | Pending |
-| OPER-03 | Phase 150 | Pending |
-| LOCK-02 | Phase 150 | Pending |
-| GRD-01 | Phase 151 | Pending |
+| OPER-01 | Phase 150 | Complete |
+| OPER-02 | Phase 150 | Complete |
+| OPER-03 | Phase 150 | Complete |
+| LOCK-02 | Phase 150 | Complete |
+| GRD-01 | Phase 151 | Complete |
 
 **Coverage:** 17/17 v2.4 requirements mapped. No orphans. No duplicates.
 
@@ -204,7 +204,7 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 
 ## Next Step
 
-Execute `/gsd-execute-phase 151`. Plan 04 replaces this line after closeout evidence is current.
+v2.4 implementation and closeout evidence are complete. Milestone archival remains /gsd-complete-milestone v2.4 after this phase passes.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*

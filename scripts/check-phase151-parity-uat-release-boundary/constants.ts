@@ -16,7 +16,7 @@ export const D14_REQUIRED_FILES = ["README.md", "docs/operator/runtime-guide.md"
 export const CLOSEOUT_SURFACE = "v2-4-parity-roots-and-no-claim-guardrails";
 export const WALLET_LEFTOVER_SURFACE = "v2-4-wallet-leftover-snapshot-cutover";
 export const GRD01_ID = "GRD-01";
-export const GRD01_CHECKBOX = "- [ ] **GRD-01**";
+export const GRD01_CHECKBOX = "- [x] **GRD-01**";
 
 export const PHASE138_CHECK = "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
 export const PHASE145_TEST = "bun test scripts/check-phase145-parity-uat-release-boundary.test.ts";
@@ -75,6 +75,7 @@ export const CATALOG_FILES = [
 ] as const;
 
 export const REQUIREMENTS_FILE = ".planning/REQUIREMENTS.md";
+export const ROADMAP_FILE = ".planning/ROADMAP.md";
 
 export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,
@@ -83,6 +84,7 @@ export const REQUIRED_DOC_FILES = [
   "scripts/verify.sh",
   UAT_PACKAGE,
   REQUIREMENTS_FILE,
+  ROADMAP_FILE,
 ] as const;
 
 export function allV24RequirementIds(): string[] {

@@ -12,6 +12,7 @@ import {
   GRD01_CHECKBOX,
   GRD01_ID,
   REQUIRED_CLOSEOUT_SOURCES,
+  ROADMAP_FILE,
   REQUIRED_DOC_FILES,
   REQUIRED_KNOTS_SYMBOLS,
   REQUIRED_TOP_LEVEL_NAMES,
@@ -44,6 +45,7 @@ export function checkPhase151ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   const maybeIndex = parseParityIndex(texts.get("docs/parity/index.json") ?? "", failures);
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
   checkRequirementCheckboxes(texts.get(REQUIREMENTS_FILE) ?? "", failures);
+  checkRoadmapCoverage(texts.get(ROADMAP_FILE) ?? "", failures);
   checkBreadcrumbGroup(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkKnotsSymbols(texts, failures);
   checkClaims(texts, failures);
@@ -179,13 +181,25 @@ function checkRequirementCheckboxes(requirementsText: string, failures: string[]
     }
   }
 
-  const uncheckedGrd = requirementsText.split(GRD01_CHECKBOX).length - 1;
-  if (uncheckedGrd !== 1) {
+  const checkboxCount = requirementsText.split(GRD01_CHECKBOX).length - 1;
+  if (checkboxCount !== 1) {
     failures.push(`v2.4 requirement ${GRD01_ID} must include ${GRD01_CHECKBOX} exactly once`);
   }
-  const checkedGrd = (requirementsText.match(/- \[x\] \*\*GRD-01\*\*/g) ?? []).length;
-  if (checkedGrd !== 0) {
-    failures.push(`v2.4 requirement ${GRD01_ID} must remain ${GRD01_CHECKBOX}`);
+}
+
+const ROADMAP_COMPLETE_ROWS = [
+  "| OPER-01 | Phase 150 | Complete |",
+  "| OPER-02 | Phase 150 | Complete |",
+  "| OPER-03 | Phase 150 | Complete |",
+  "| LOCK-02 | Phase 150 | Complete |",
+  "| GRD-01 | Phase 151 | Complete |",
+] as const;
+
+function checkRoadmapCoverage(roadmapText: string, failures: string[]): void {
+  for (const row of ROADMAP_COMPLETE_ROWS) {
+    if (roadmapText.includes(row)) continue;
+    const requirementId = row.split("|")[1]?.trim() ?? row;
+    failures.push(`ROADMAP coverage row ${requirementId} must be Complete`);
   }
 }
 
