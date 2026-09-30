@@ -16,18 +16,18 @@ v2.3 Chainstate Durability and Historical Serving shipped and was archived on 20
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
 
-v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Phase 147 is complete: `open-bitcoin-chainstate` decides prune mode (disabled, manual-only, or an automatic target of at least 550 MiB), keeps the last 288 blocks, waits for the network prune-after height, refuses a manual target inside that keep window, and protects a prune-lock range plus a 10-block buffer. Phase 148 is complete: a height's block payload and undo are removed together in one durable Fjall batch, have-pruned is recorded only after that delete commits, restart finishes the interrupted height or refuses closed, and a committed delete leaves the block cache even when the flush then errors. Phase 149 is complete: prune mode advertises `NODE_NETWORK_LIMITED` without full `NODE_NETWORK`, block bodies outside the 288+2 window are refused, a removed payload is not served, and `Pruned` is reported only when have-pruned is set and that payload is gone. Operator prune surfaces remain Phase 150. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
+v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Phase 147 is complete: `open-bitcoin-chainstate` decides prune mode (disabled, manual-only, or an automatic target of at least 550 MiB), keeps the last 288 blocks, waits for the network prune-after height, refuses a manual target inside that keep window, and protects a prune-lock range plus a 10-block buffer. Phase 148 is complete: a height's block payload and undo are removed together in one durable Fjall batch, have-pruned is recorded only after that delete commits, restart finishes the interrupted height or refuses closed, and a committed delete leaves the block cache even when the flush then errors. Phase 149 is complete: prune mode advertises `NODE_NETWORK_LIMITED` without full `NODE_NETWORK`, block bodies outside the 288+2 window are refused, a removed payload is not served, and `Pruned` is reported only when have-pruned is set and that payload is gone. Phase 150 is complete: operator prune status, manual prune, prune locks, and sanitized support evidence are shipped. Phase 151 records the scoped prune claim and the Fjall key versus blk/rev file difference. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
 
 ## Current Milestone: v2.4 Prune-Mode Product Behavior
 
-**Goal:** Add Knots-aligned prune product behavior for the single active chainstate, so the node can delete old block files inside a height window and still tell the truth about what remains.
+**Goal:** Add Knots-aligned prune product behavior for the single active chainstate, so the node can delete old block and undo payloads by removing Fjall keys inside a height window and still tell the truth about what remains.
 
 Initialized through `/gsd-new-milestone` after the archived v2.3 closeout.
 
 **Target features:**
 - Height windows, file unlinking, `m_have_pruned`, and prune locks
 - `NODE_NETWORK_LIMITED` serving limits for the pruned window
-- Emit `Pruned` only after prune actually deleted files; keep `Unavailable` for a missing payload when prune did not delete it
+- Emit `Pruned` only after prune actually a durable delete; keep `Unavailable` for a missing payload when prune did not delete it
 - Cut wallet rescan off leftover snapshot bytes in the first phase, so prune cannot resurrect snapshot-as-truth
 
 ## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
@@ -142,8 +142,8 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 
-- [ ] Height windows, file unlinking, `m_have_pruned`, and prune locks for the single active chainstate
-- [ ] Operator prune status, manual prune, prune locks, and sanitized support evidence
+- [x] Height windows, file unlinking, `m_have_pruned`, and prune locks for the single active chainstate
+- [x] Operator prune status, manual prune, prune locks, and sanitized support evidence
 
 ### Out of Scope
 
@@ -263,4 +263,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-28 after Phase 149 limited serving and honest pruned labels*
+*Last updated: 2026-09-29 after Phase 151 parity roots and no-claim guardrails*
