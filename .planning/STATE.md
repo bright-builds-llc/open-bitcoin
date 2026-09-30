@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Completed 151-02-PLAN.md
-last_updated: "2026-09-30T03:01:13.748Z"
+stopped_at: Completed 151-03-PLAN.md
+last_updated: "2026-09-30T04:49:18.240Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 27
-  completed_plans: 25
-  percent: 93
+  completed_plans: 26
+  percent: 96
 ---
 
 # Project State
@@ -27,11 +27,11 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 151 (parity-roots-and-no-claim-guardrails) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-09-30
 
-Progress: [█████████░] 89%
+Progress: [██████████] 96%
 
 Next action: Verify phase 150 with `/gsd-verify-work 150`
 
@@ -175,6 +175,7 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 | Phase 150 P07 | 32min | 1 tasks | 8 files |
 | Phase 151 P01 | 53 min | 3 tasks | 9 files |
 | Phase 151 P02 | 1h 2m | 2 tasks | 8 files |
+| Phase 151 P03 | 1h 23m | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -564,6 +565,9 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 - [Phase 151]: Keep the Phase 151 checker out of scripts/verify.sh. — Plan 151-03 owns the verifier insertion. Wiring the checker before README and UAT exist would fail default verify.
 - [Phase 151]: Leave requirements-completed empty so GRD-01 stays unchecked. — Plan 04 flips the GRD-01 checkbox after the checker can name the evidence.
 - [Phase 151]: Commit the Phase 151 checker and its fixture tests as two green hook-passing commits. — A RED-only commit cannot pass the pre-commit verifier, so each task ships only after its checks are green.
+- [Phase 151]: Skip Phase 145 prune-mode only when the original clause contains the exact v2.4 prune sentence or the exact Fjall difference sentence.
+- [Phase 151]: Do not add a Fjall difference fixture because the existing does not marker already skips that paragraph.
+- [Phase 151]: Leave requirements-completed empty so GRD-01 stays unchecked until Plan 04.
 
 ### Pending Todos
 
@@ -591,6 +595,6 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 
 ## Session Continuity
 
-Last session: 2026-09-30T03:00:59.341Z
-Stopped at: Completed 151-02-PLAN.md
-Resume file: .planning/phases/151-parity-roots-and-no-claim-guardrails/151-03-PLAN.md
+Last session: 2026-09-30T04:49:18.236Z
+Stopped at: Completed 151-03-PLAN.md
+Resume file: None
