@@ -1,5 +1,6 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/bitcoin-cli.cpp
+// - packages/bitcoin-knots/src/rpc/blockchain.cpp
 
 use serde_json::{Value, json};
 

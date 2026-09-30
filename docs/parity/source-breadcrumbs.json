@@ -304,7 +304,8 @@
         "packages/open-bitcoin-cli/src/operator/tests/routing/prune.rs"
       ],
       "breadcrumbs": [
-        "packages/bitcoin-knots/src/bitcoin-cli.cpp"
+        "packages/bitcoin-knots/src/bitcoin-cli.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp"
       ]
     },
     {

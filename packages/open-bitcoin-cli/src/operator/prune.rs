@@ -1,5 +1,6 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/bitcoin-cli.cpp
+// - packages/bitcoin-knots/src/rpc/blockchain.cpp
 
 //! `open-bitcoin prune run` and `open-bitcoin prune lock` commands.
 //!
