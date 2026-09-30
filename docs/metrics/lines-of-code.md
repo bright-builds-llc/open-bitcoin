@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,253 |
-| Total lines | 348,409 |
-| Code/content lines | 302,437 |
-| Comment-only lines | 16,608 |
-| Blank lines | 29,364 |
+| Included files | 1,258 |
+| Total lines | 349,130 |
+| Code/content lines | 303,074 |
+| Comment-only lines | 16,621 |
+| Blank lines | 29,435 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 486 | 136,981 | 115,721 | 10,107 | 11,153 |
 | Rust production | 421 | 117,584 | 101,953 | 4,618 | 11,013 |
-| TypeScript/Bun scripts | 276 | 76,964 | 68,825 | 1,800 | 6,339 |
+| TypeScript/Bun scripts | 281 | 77,685 | 69,462 | 1,813 | 6,410 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
 | Shell scripts | 23 | 4,514 | 4,036 | 69 | 409 |
 | TOML/config | 16 | 3,468 | 3,102 | 0 | 366 |
@@ -218,6 +218,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase145-parity-uat-release-boundary/constants.ts | 190 |
 | scripts/check-phase145-parity-uat-release-boundary/test-fixtures.ts | 185 |
 | scripts/check-phase145-parity-uat-release-boundary/verifier.ts | 142 |
+| scripts/check-phase151-parity-uat-release-boundary.ts | 14 |
+| scripts/check-phase151-parity-uat-release-boundary/checks.ts | 220 |
+| scripts/check-phase151-parity-uat-release-boundary/claims.ts | 111 |
+| scripts/check-phase151-parity-uat-release-boundary/constants.ts | 227 |
+| scripts/check-phase151-parity-uat-release-boundary/verifier.ts | 149 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -357,7 +362,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | d836c51fc1add619829a6c36a1332aa950ec19b508f92bca2381be08d42182c8 |
+| Input fingerprint | de738d0c1f6cdef7db9c8b86b59232f7521c5b10e59f6fa2eedd98e1694efb1f |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
