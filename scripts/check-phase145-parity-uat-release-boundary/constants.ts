@@ -5,6 +5,12 @@ export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
 export const D14_SENTENCE =
   "disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present";
 
+export const V24_PRUNE_SENTENCE =
+  "Knots-aligned prune on the single active chainstate deletes old block and undo payloads inside a height window by removing Fjall keys, advertises NODE_NETWORK_LIMITED, and reports Pruned only after a durable delete.";
+
+export const FJALL_DIFFERENCE_SENTENCE =
+  "Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store.";
+
 export const D14_REQUIRED_FILES = ["README.md", "docs/operator/runtime-guide.md"] as const;
 
 export const CLOSEOUT_SURFACE = "v2-3-parity-roots-and-no-claim-guardrails";

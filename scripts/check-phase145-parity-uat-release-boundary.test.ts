@@ -16,6 +16,7 @@ import {
   REQUIRED_KNOTS_ANCHORS,
   REQUIREMENTS_FILE,
   STORED_BLOCK_PRESENCE_GROUP,
+  V24_PRUNE_SENTENCE,
 } from "./check-phase145-parity-uat-release-boundary/constants.ts";
 import {
   append,
@@ -198,7 +199,37 @@ test("fails_when_docs_claim_prune_mode_product_behavior", () => {
   const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
 
   // Assert
-  expect(failures).toContain("prune-mode");
+  expect(failures).toContain("forbidden positive Phase 145 claim: prune-mode");
+});
+
+test("accepts_prune_mode_inside_the_exact_v2_4_prune_sentence", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      append(files, "README.md", `${V24_PRUNE_SENTENCE}provides prune-mode product behavior`);
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).not.toContain("prune-mode");
+});
+
+test("rejects_archive_node_inside_the_exact_v2_4_prune_sentence", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      append(files, "README.md", `${V24_PRUNE_SENTENCE}provides archive-node serving`);
+    },
+  });
+
+  // Act
+  const failures = checkPhase145ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("archive-node");
 });
 
 test("fails_when_docs_claim_archive_node_or_production_scale_historical_serving", () => {
