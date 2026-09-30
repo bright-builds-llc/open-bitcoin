@@ -3,15 +3,15 @@ gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: executing
-stopped_at: Phase 151 context gathered
-last_updated: "2026-09-30T00:11:31.214Z"
-last_activity: 2026-09-30 -- Phase 151 planning complete
+stopped_at: Completed 151-01-PLAN.md
+last_updated: "2026-09-30T01:31:08.828Z"
+last_activity: 2026-09-30
 progress:
   total_phases: 6
   completed_phases: 5
   total_plans: 27
-  completed_plans: 23
-  percent: 85
+  completed_plans: 24
+  percent: 89
 ---
 
 # Project State
@@ -21,17 +21,17 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 150 — operator prune surfaces and evidence
+**Current focus:** Phase 151 — parity-roots-and-no-claim-guardrails
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 151
-Plan: Not started
+Phase: 151 (parity-roots-and-no-claim-guardrails) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-09-30 -- Phase 151 planning complete
+Last activity: 2026-09-30
 
-Progress: [██████████] 100%
+Progress: [█████████░] 89%
 
 Next action: Verify phase 150 with `/gsd-verify-work 150`
 
@@ -173,6 +173,7 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 | Phase 150 P06 | 49min | 1 tasks | 11 files |
 | Phase 150 P08 | 33 min | 1 tasks | 6 files |
 | Phase 150 P07 | 32min | 1 tasks | 8 files |
+| Phase 151 P01 | 53 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -556,6 +557,9 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 - [Phase 150]: Parse and human-line tests live under operator::tests::routing::prune so the cargo filter covers them while routing.rs stays under 628 lines
 - [Phase 150]: A clear that returns success false prints Prune lock clear: success=false and exits success
 - [Phase 150]: OPER-02 and LOCK-02 stay pending until lifecycle-valid Phase 150 verification
+- [Phase 151]: Combined the six v2.4 surfaces and the catalog claim refresh into one hook-passing commit because pre-commit runs verify.sh. — Pre-commit runs bash scripts/verify.sh, and the plan requires the catalog edit in the same commit as the new surfaces.
+- [Phase 151]: Refreshed cli-operator-prune source comments so they cite rpc/blockchain.cpp with the JSON group. — The breadcrumb checker treats a JSON group change as a stale in-source comment.
+- [Phase 151]: Left requirements-completed empty so GRD-01 stays unchecked until a later checker can name the evidence. — T-151-05 and the plan keep the GRD-01 checkbox for a later plan after the checker exists.
 
 ### Pending Todos
 
@@ -583,6 +587,6 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 
 ## Session Continuity
 
-Last session: 2026-09-29T21:34:06.571Z
-Stopped at: Phase 151 context gathered
-Resume file: .planning/phases/151-parity-roots-and-no-claim-guardrails/151-CONTEXT.md
+Last session: 2026-09-30T01:30:22.399Z
+Stopped at: Completed 151-01-PLAN.md
+Resume file: .planning/phases/151-parity-roots-and-no-claim-guardrails/151-02-PLAN.md
