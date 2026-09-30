@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: executing
-stopped_at: Phase 151 closeout evidence recorded
-last_updated: "2026-09-30T07:30:49.729Z"
+status: verifying
+stopped_at: Completed 151-04-PLAN.md
+last_updated: "2026-09-30T07:58:24.209Z"
 last_activity: 2026-09-30
 progress:
   total_phases: 6
@@ -28,12 +28,12 @@ See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 Milestone: v2.4 Prune-Mode Product Behavior
 Phase: 151 (parity-roots-and-no-claim-guardrails) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-09-30
 
-Progress: [██████████] 96%
+Progress: [██████████] 100%
 
-Next action: Verify phase 150 with `/gsd-verify-work 150`
+Next action: Verify phase 151 with `/gsd-verify-work 151`. Milestone archival remains `/gsd-complete-milestone v2.4`.
 
 ## Performance Metrics
 
@@ -176,6 +176,7 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 | Phase 151 P01 | 53 min | 3 tasks | 9 files |
 | Phase 151 P02 | 1h 2m | 2 tasks | 8 files |
 | Phase 151 P03 | 1h 23m | 3 tasks | 11 files |
+| Phase 151 P04 | 2h 14m | 3 tasks | 11 files |
 
 ## Accumulated Context
 
@@ -568,6 +569,9 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 - [Phase 151]: Skip Phase 145 prune-mode only when the original clause contains the exact v2.4 prune sentence or the exact Fjall difference sentence.
 - [Phase 151]: Do not add a Fjall difference fixture because the existing does not marker already skips that paragraph.
 - [Phase 151]: Leave requirements-completed empty so GRD-01 stays unchecked until Plan 04.
+- [Phase 151]: Activate GRD-01 in the same commit as the checkbox because the live traceability checker rejects a completed requirement with no summary activation.
+- [Phase 151]: Keep v2.4 archival as a later /gsd-complete-milestone v2.4 command.
+- [Phase 151]: Ship the GRD-01 checker tests and pin in one hook-passing commit because pre-commit runs verify.sh.
 
 ### Pending Todos
 
@@ -595,6 +599,6 @@ Next action: Verify phase 150 with `/gsd-verify-work 150`
 
 ## Session Continuity
 
-Last session: 2026-09-30T07:30:49.722Z
-Stopped at: Phase 151 closeout evidence recorded
+Last session: 2026-09-30T07:57:13.425Z
+Stopped at: Completed 151-04-PLAN.md
 Resume file: .planning/ROADMAP.md
