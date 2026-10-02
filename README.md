@@ -25,6 +25,7 @@ auditable, and modular.
 > The v2.3 milestone audit passed at 15/15 requirements, 7/7 phases, 8/8
 > integration seams, and 8/8 end-to-end flows. v2.3 shipped and was archived on 2026-09-20.
 > The archived v2.3 closeout routed later work through `/gsd-new-milestone`.
+> v2.4 audit gap closure is active: Phase 152 repairs post-prune wallet rescan eligibility, then Phase 153 connects automatic retention to the durable lifecycle. Three requirements remain pending; detailed planning starts with `/gsd-plan-phase 152`. See the [audit](./.planning/v2.4-MILESTONE-AUDIT.md) and [roadmap](./.planning/ROADMAP.md).
 > Canonical evidence lives in
 > [`docs/parity/index.json`](./docs/parity/index.json),
 > [`docs/parity/checklist.md`](./docs/parity/checklist.md),

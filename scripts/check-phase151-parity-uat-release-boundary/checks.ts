@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 import { checkClaims } from "./claims.ts";
+import { checkGapClosureCompletion, pendingGapClosureRequirements } from "./gap-closure.ts";
 import {
   BREADCRUMB_ANCHOR,
   BREADCRUMB_GROUP,
@@ -44,7 +45,12 @@ export function checkPhase151ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   const texts = loadCorpus(repoRoot, failures);
   const maybeIndex = parseParityIndex(texts.get("docs/parity/index.json") ?? "", failures);
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
-  checkRequirementCheckboxes(texts.get(REQUIREMENTS_FILE) ?? "", failures);
+  const requirements = texts.get(REQUIREMENTS_FILE) ?? "";
+  const pendingClosures = pendingGapClosureRequirements(
+    repoRoot, requirements, texts.get(ROADMAP_FILE) ?? "", failures,
+  );
+  checkRequirementCheckboxes(requirements, pendingClosures, failures);
+  checkGapClosureCompletion(repoRoot, requirements, texts.get(ROADMAP_FILE) ?? "", failures);
   checkRoadmapCoverage(texts.get(ROADMAP_FILE) ?? "", failures);
   checkBreadcrumbGroup(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkKnotsSymbols(texts, failures);
@@ -172,13 +178,19 @@ function checkKnotsSymbols(texts: Map<string, string>, failures: string[]): void
   }
 }
 
-function checkRequirementCheckboxes(requirementsText: string, failures: string[]): void {
+function checkRequirementCheckboxes(
+  requirementsText: string,
+  pendingClosures: Set<string>,
+  failures: string[],
+): void {
   for (const id of checkedV24RequirementIds()) {
     const checked = (requirementsText.match(new RegExp(`- \\[x\\] \\*\\*${id}\\*\\*`, "g")) ?? [])
       .length;
-    if (checked !== 1) {
-      failures.push(`v2.4 requirement ${id} must be checked [x] exactly once`);
-    }
+    const unchecked = (requirementsText.match(new RegExp(`- \\[ \\] \\*\\*${id}\\*\\*`, "g")) ?? [])
+      .length;
+    if (checked === 1 && unchecked === 0) continue;
+    if (checked === 0 && unchecked === 1 && pendingClosures.has(id)) continue;
+    failures.push(`v2.4 requirement ${id} must be checked [x] exactly once`);
   }
 
   const checkboxCount = requirementsText.split(GRD01_CHECKBOX).length - 1;

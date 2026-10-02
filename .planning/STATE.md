@@ -2,16 +2,16 @@
 gsd_state_version: 1.0
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: verifying
-stopped_at: Completed 151-04-PLAN.md
-last_updated: "2026-09-30T07:58:24.209Z"
-last_activity: 2026-09-30
+status: planning
+stopped_at: Created approved gap closure Phases 152 and 153
+last_updated: "2026-10-02T22:54:00Z"
+last_activity: 2026-10-02
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 6
   total_plans: 27
   completed_plans: 27
-  percent: 100
+  percent: 75
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 151 — parity-roots-and-no-claim-guardrails
+**Current focus:** Phase 152 — post-prune-wallet-rescan-eligibility
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 151 (parity-roots-and-no-claim-guardrails) — EXECUTING
-Plan: 4 of 4
-Status: Phase complete — ready for verification
-Last activity: 2026-09-30
+Phase: 152 (post-prune-wallet-rescan-eligibility) — PENDING PLANNING
+Plan: 0 of 0; execution plans not created yet
+Status: Audit gap closure approved; 14 requirements Complete, three Pending
+Last activity: 2026-10-02
 
-Progress: [██████████] 100%
+Phase progress: [███████░░░] 75% (6/8 phases). The 27 original plans are complete; closure plans remain to be created.
 
-Next action: Verify phase 151 with `/gsd-verify-work 151`. Milestone archival remains `/gsd-complete-milestone v2.4`.
+Next action: `/gsd-plan-phase 152`, then Phase 153 after wallet eligibility closes. Re-audit after both phases pass before `/gsd-complete-milestone v2.4`.
 
 ## Performance Metrics
 
@@ -185,6 +185,7 @@ Next action: Verify phase 151 with `/gsd-verify-work 151`. Milestone archival re
 - Phase 133.1 inserted after Phase 133: Bright Builds Verification Baseline Cleanup (URGENT)
 - v2.3 roadmap continues numbering after Phase 138; Phases 139–145 own the 15 v2.3 requirements.
 - v2.4 roadmap continues numbering after Phase 145; Phases 146–151 own the 17 v2.4 requirements.
+- 2026-10-02 audit closure adds Phases 152–153: SNAP-01 moves to 152; PRUN-01/PRUN-02 move to 153. Original phase evidence remains historical; all three affected requirements are reopened Pending.
 
 ### Decisions
 
@@ -583,6 +584,8 @@ Next action: Verify phase 151 with `/gsd-verify-work 151`. Milestone archival re
 ### Blockers/Concerns
 
 - No open v2.3 blockers remain after the passed milestone audit.
+- v2.4 INT-02: creating-payload eligibility is missing for entries outside a rescan's requested range; Phase 152 owns closure.
+- v2.4 INT-01: the automatic prune planner has no production lifecycle caller; Phase 153 owns closure after Phase 152.
 - Historical Phase 139–145 planning notes remain in `.planning/phases/` because repository verifiers consume selected evidence.
 
 ### Quick Tasks Completed
@@ -599,6 +602,6 @@ Next action: Verify phase 151 with `/gsd-verify-work 151`. Milestone archival re
 
 ## Session Continuity
 
-Last session: 2026-09-30T07:57:13.425Z
-Stopped at: Completed 151-04-PLAN.md
+Last session: 2026-10-02T22:54:00Z
+Stopped at: Gap closure phases created; Phase 152 awaits detailed planning
 Resume file: .planning/ROADMAP.md

@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import "./check-phase151-parity-uat-release-boundary/gap-closure.test.ts";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -36,6 +37,7 @@ const CHECKER_SOURCES = [
   "scripts/check-phase151-parity-uat-release-boundary/constants.ts",
   "scripts/check-phase151-parity-uat-release-boundary/claims.ts",
   "scripts/check-phase151-parity-uat-release-boundary/verifier.ts",
+  "scripts/check-phase151-parity-uat-release-boundary/gap-closure.ts",
 ];
 
 test("passes_on_a_complete_fixture", () => {

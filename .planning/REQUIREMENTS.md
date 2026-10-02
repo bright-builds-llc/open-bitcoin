@@ -10,12 +10,12 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Wallet Cutover
 
-- [x] **SNAP-01**: Wallet rescan reads durable coins and payload-present blocks, and does not treat leftover snapshot bytes as chain truth.
+- [ ] **SNAP-01**: Wallet rescan reads durable coins and payload-present blocks, and does not treat leftover snapshot bytes as chain truth.
 
 ### Prune Policy
 
-- [x] **PRUN-01**: Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB.
-- [x] **PRUN-02**: Automatic prune keeps the last 288 blocks and does not start before the network prune-after height.
+- [ ] **PRUN-01**: Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB.
+- [ ] **PRUN-02**: Automatic prune keeps the last 288 blocks and does not start before the network prune-after height.
 - [x] **PRUN-03**: Manual prune refuses a target inside the 288-block keep window.
 
 ### Unlink
@@ -94,9 +94,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| SNAP-01 | Phase 146 | Complete |
-| PRUN-01 | Phase 147 | Complete |
-| PRUN-02 | Phase 147 | Complete |
+| SNAP-01 | Phase 152 | Pending |
+| PRUN-01 | Phase 153 | Pending |
+| PRUN-02 | Phase 153 | Pending |
 | PRUN-03 | Phase 147 | Complete |
 | LOCK-01 | Phase 147 | Complete |
 | UNLK-01 | Phase 148 | Complete |
@@ -116,7 +116,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v2.4 requirements: 17 total
 - Mapped to phases: 17
 - Unmapped: 0
+- Audit closure: 14 Complete, three Pending; SNAP-01 closes in Phase 152 and PRUN-01/PRUN-02 close in Phase 153.
 
 ---
 *Requirements defined: 2026-09-21*
-*Last updated: 2026-09-21 after v2.4 roadmap creation*
+*Last updated: 2026-10-02 after approved v2.4 audit gap-closure planning*

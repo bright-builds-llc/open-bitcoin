@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase numbering continues at 146 after v2.3 Phase 145. All 17 requirements are mapped exactly once. Historical `.planning/phases/` directories stay tracked.
+v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146–151 delivered their original plans; the 2026-10-02 audit reopened three requirements for gap closure in Phases 152–153. All 17 requirements are mapped exactly once: 14 Complete, three Pending. Historical `.planning/phases/` directories stay tracked.
 
 ## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -34,7 +34,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
 - ✅ **v2.1 Block Serving and Compact Block Relay Boundary** — Phases 110–129 (shipped 2026-07-22). Archive: [v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)
 - ✅ **v2.2 Package Relay and Long-Lived Mempool Policy** — Phases 130–138, including inserted 133.1 (shipped 2026-08-22). Archive: [v2.2-ROADMAP.md](milestones/v2.2-ROADMAP.md)
 - ✅ **v2.3 Chainstate Durability and Historical Serving** — Phases 139–145 (shipped 2026-09-20). Archive: [v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
-- 🚧 **v2.4 Prune-Mode Product Behavior** — Phases 146–151 (in progress)
+- 🚧 **v2.4 Prune-Mode Product Behavior** — Phases 146–153 (gap closure in progress)
 
 ## Active Milestone: v2.4 Prune-Mode Product Behavior
 
@@ -50,13 +50,15 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–151. Phase number
 - [x] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned. (completed 2026-09-28)
 - [x] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces. (completed 2026-09-29)
 - [x] **Phase 151: Parity Roots and No-Claim Guardrails** — Cite Knots prune anchors including the Fjall-versus-`blk`/`rev` difference and keep deferred claims out. (completed 2026-09-30)
+- [ ] **Phase 152: Post-Prune Wallet Rescan Eligibility** — Enforce creating-payload eligibility after real pruning in both scan adapters.
+- [ ] **Phase 153: Automatic Prune Retention Integration** — Wire measured retained payloads and the automatic target through the existing planner and durable owner.
 
 ## Phase Details
 
 ### Phase 146: Wallet Leftover-Snapshot Cutover
 **Goal**: Wallet rescan treats durable coins and payload-present blocks as chain truth, never leftover snapshot bytes.
 **Depends on**: Phase 145
-**Requirements**: SNAP-01
+**Historical Requirements**: SNAP-01; current closure ownership is Phase 152.
 **Success Criteria** (what must be TRUE):
   1. Wallet rescan reads coins best-block and payload-present blocks; leftover snapshot blobs are non-authoritative on the wallet path.
   2. After same-datadir reopen with a leftover snapshot present, rescan does not rebuild balances or history from that snapshot.
@@ -71,7 +73,8 @@ Plans:
 ### Phase 147: Pure Prune Policy and Lock Windows
 **Goal**: Operators and later unlink get Knots-aligned prune mode, height-window, and lock-buffer decisions without any disk I/O in core.
 **Depends on**: Phase 146
-**Requirements**: PRUN-01, PRUN-02, PRUN-03, LOCK-01
+**Requirements**: PRUN-03, LOCK-01
+**Historical Requirements**: PRUN-01, PRUN-02; current closure ownership is Phase 153.
 **Success Criteria** (what must be TRUE):
   1. Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB through typed config/policy shapes.
   2. Automatic prune plans keep the last 288 blocks and do not start before the network prune-after height.
@@ -157,13 +160,49 @@ Plans:
 - [x] 151-03-PLAN.md — Publish the scoped claim, UAT package, and verifier wiring
 - [x] 151-04-PLAN.md — Flip leftover Pending rows without archiving v2.4
 
+### Phase 152: Post-Prune Wallet Rescan Eligibility
+**Goal**: Node and durable RPC wallet rescans admit entries only when their creating payloads are present, including midrange scans and chunk resume after actual pruning; leftover snapshots remain non-authoritative.
+**Depends on**: Phase 151
+**Requirements**: SNAP-01
+**Gap Closure**: INT-02; closes the real-prune → midrange-rescan flow in [the v2.4 audit](v2.4-MILESTONE-AUDIT.md).
+**Success Criteria** (what must be TRUE):
+  1. Both scan paths enforce eligibility for every entry admitted to a full replacement, including creating heights before the requested start.
+  2. A post-prune midrange scan cannot silently replace the wallet with entries whose creating payload is absent; refusal preserves prior wallet state.
+  3. Chunk resume and same-datadir reopen preserve the same rule and reject leftover snapshot authority.
+  4. Runtime regressions using real paired deletion and the default verifier pass; source-string assertions alone do not prove the flow.
+**Planning Tasks**:
+  1. Define one full-replacement eligibility contract grounded in Phase 146 D-04/D-08, keeping I/O in the shell.
+  2. Enforce it in node chunk/resume and durable RPC range adapters, including durable refusal evidence.
+  3. Cover deleted creating heights outside the requested range, resume/reopen, missing in-range payloads, and retained-payload controls.
+  4. Record lifecycle-valid SNAP-01 evidence, parity breadcrumbs, and relevant docs after repo-native verification.
+**Plans:** 0 plans; run `/gsd-plan-phase 152`.
+**UI hint**: no
+
+### Phase 153: Automatic Prune Retention Integration
+**Goal**: A configured automatic target drives retention in the running durable lifecycle through the existing pure planner and paired-unlink owner, preserving keep-window, prune-after, locks, recovery, and cache consistency.
+**Depends on**: Phase 152
+**Requirements**: PRUN-01, PRUN-02
+**Gap Closure**: INT-01; closes the automatic-target → ongoing-retention flow in [the v2.4 audit](v2.4-MILESTONE-AUDIT.md).
+**Success Criteria** (what must be TRUE):
+  1. An automatic target of at least 550 MiB has a production planner caller using measured retained block/undo payload facts.
+  2. Ordinary lifecycle activity can durably delete eligible paired payloads above the target without a manual RPC request.
+  3. The 288-block window, network prune-after height, durable lock buffers, and disabled/manual-only behavior remain protected.
+  4. Real-delete labels, cache/undo consistency, restart finish-or-refuse, and Phase 152 wallet eligibility remain correct under runtime tests and full verification.
+**Planning Tasks**:
+  1. Assemble authoritative per-height usage, target, chain parameters, tip, and current durable locks in the shell.
+  2. Invoke the existing automatic planner from production retention/flush and apply through the durable owner with callback-based cache/undo cleanup.
+  3. Cover target exceedance, no-op gates, lock/window protection, later-flush error, and reopen using real storage and the production lifecycle.
+  4. Verify operator/support/wallet regressions, refresh parity/product evidence, and re-audit the milestone after closure.
+**Plans:** 0 plans; run `/gsd-plan-phase 153` after Phase 152.
+**UI hint**: no
+
 ## Requirement Coverage
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| SNAP-01 | Phase 146 | Complete |
-| PRUN-01 | Phase 147 | Complete |
-| PRUN-02 | Phase 147 | Complete |
+| SNAP-01 | Phase 152 | Pending |
+| PRUN-01 | Phase 153 | Pending |
+| PRUN-02 | Phase 153 | Pending |
 | PRUN-03 | Phase 147 | Complete |
 | LOCK-01 | Phase 147 | Complete |
 | UNLK-01 | Phase 148 | Complete |
@@ -179,7 +218,7 @@ Plans:
 | LOCK-02 | Phase 150 | Complete |
 | GRD-01 | Phase 151 | Complete |
 
-**Coverage:** 17/17 v2.4 requirements mapped. No orphans. No duplicates.
+**Coverage:** 17/17 v2.4 requirements mapped; 14 Complete, three Pending. No orphans. No duplicates.
 
 ## Research Flags for Planning
 
@@ -187,11 +226,13 @@ These are planning inputs, not extra phases:
 
 - **Phase 148:** Exact Fjall delete-batch atomicity, height-to-key candidate indexing, and crash seams after index clear / after unlink / after coins.
 - **Phase 149:** Precise inventory and block-serve fact wiring for limited-only advertisement, including Knots getdata edge cases.
+- **Phase 152:** Full replacement versus incremental eligibility, probes outside requested ranges, and refusal without changing prior wallet state.
+- **Phase 153:** Fjall block/undo byte accounting and retention cadence; reuse the owner and keep the temporary IBD target deferred.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
+Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151 → 152 → 153. Wallet eligibility closes before routine automatic deletion is enabled.
 
 | Phase | Plans Complete | Status | Completed |
 | --- | --- | --- | --- |
@@ -201,10 +242,12 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151
 | 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
 | 150. Operator Prune Surfaces and Evidence | 8/8 | Complete    | 2026-09-29 |
 | 151. Parity Roots and No-Claim Guardrails | 4/4 | Complete   | 2026-09-30 |
+| 152. Post-Prune Wallet Rescan Eligibility | 0/0 | Pending planning | - |
+| 153. Automatic Prune Retention Integration | 0/0 | Pending planning | - |
 
 ## Next Step
 
-v2.4 implementation and closeout evidence are complete. Milestone archival remains /gsd-complete-milestone v2.4 after this phase passes.
+Run `/gsd-plan-phase 152` to plan the first closure phase. After Phases 152 and 153 pass, rerun `/gsd-audit-milestone`. Milestone archival remains `/gsd-complete-milestone v2.4` only after re-audit establishes closure.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*
