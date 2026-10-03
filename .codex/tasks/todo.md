@@ -108,7 +108,7 @@ to satisfy tracked-file discovery; no commit has been created.
 - [x] Verify scoped readiness, collect summary/task/Git statistics, and retain audit advisories.
 - [x] Add archive-aware resolution to the affected Phase 151 guard with regressions.
 - [x] Archive roadmap, requirements and audit; evolve project, milestone, retrospective and current docs.
-- [ ] Verify archive links, scope, metadata, and all repo-native checks; safety-commit archives before removing active requirements.
-- [ ] Finalize closeout, create annotated v2.4 tag, and push current main plus the version tag.
+- [x] Verify archive links, scope, metadata, and all repo-native checks; safety-commit archives before removing active requirements.
+- [x] Prepare final closeout, annotated v2.4 tagging and current-main/tag publication under the required hook; final evidence is derived from Git refs.
 
-Completion review: Pending. Preserve historical phase directories and deferred claims; next milestone is not selected. Git evidence is derived from saved commits and remote refs.
+Completion review: Archived 8 phases, 34 plans, 69 normalized completed task entries and all 17 requirements, preserving historical phase directories and the three accepted audit advisories. Updated project/current docs, decision outcomes, milestones and retrospective; next milestone remains unselected and starts with fresh requirements at phase 154. The archive-aware Phase 151 guard passed 58 positive/negative tests; documentation/traceability/integration checks pass. Safety commit `759abdbd` saved all archive controls before active requirements were removed and passed default native verification in 1h04m10.859s. Final hook, annotated tag and upstream publication evidence are derived from the saving commit/tag and remote refs rather than predicted hashes or outcomes. Repo-local/Bright Builds guidance and the existing native formatter/hook contract informed the closeout.
