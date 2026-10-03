@@ -1,381 +1,299 @@
 # Pitfalls Research
 
-**Domain:** Adding Knots-aligned prune-mode onto Open Bitcoin's v2.3 honest-availability and durable-coins node
-**Milestone:** Open Bitcoin v2.4 Prune-Mode Product Behavior
-**Baseline:** Bitcoin Knots `29.3.knots20260210`
-**Researched:** 2026-09-21
-**Confidence:** HIGH for current Open Bitcoin availability, wallet-rescan, and flush-order seams plus pinned Knots prune locks / `m_have_pruned` / `MIN_BLOCKS_TO_KEEP` / `NODE_NETWORK_LIMITED` behavior
+**Project:** Open Bitcoin — v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
+**Domain:** BASIC compact-filter generation, durable indexing and bounded serving on the shipped single prunable chainstate
+**Researched:** 2026-10-03
+**Confidence:** HIGH for source-confirmed hazards/protocol; MEDIUM for proposed Fjall recovery contract until implemented
+
+## Scope and Evidence
+
+This document concerns new v2.5 filter behavior. Existing v2.4 wallet/prune capabilities remain shipped; their accepted advisories matter only at new index seams. Source truth is local Knots `29.3.knots20260210`, submodule commit `a9aee730466ac67d35a3c03ee24676be5e045878`, plus inspected first-party source. Official BIP157/158 specifications were checked on 2026-10-03; both were assigned 2017-05-24 and are deployed specifications. Local guidance, Bright Builds architecture/verification rules, complete active lessons, PROJECT, [FEATURES](FEATURES.md) and [archived v2.4 audit](../milestones/v2.4-MILESTONE-AUDIT.md) informed these findings. Work remains inside the GSD new-milestone workflow.
+
+The highest-risk boundary is startup recovery before resumed deletion. First-party `DurableSyncRuntime::open_with_runtime_activation` calls `initialize` before constructing the manager; `initialize` loads locks and resumes a prune intent. Restoring index protection later in the manager would miss that deletion boundary. [N1, N2]
+
+Phase names below are recommended work packages, not invented canonical phase numbers: **Core** (BASIC generation/codecs), **Index** (activation/persistence/recovery), **Prune** (index-owned deletion coordination), **Serving** (peer/RPC production wiring), **Evidence** (operator projection and final parity/verification). Index recovery and initial protection must precede enabling the Prune/Serving consumers.
 
 ## Critical Pitfalls
 
-### Pitfall 1: Wallet Rescan Still Treats Leftover Snapshot Bytes as Chain Truth
+### Pitfall 1: Internally Consistent but Noncompatible GCS Bytes
 
-**What goes wrong:**
-Prune deletes historical block payloads from Fjall, but wallet rescan still hydrates a `ChainstateSnapshot` from the leftover `SNAPSHOT_KEY` blob and walks `active_chain` / `undo_by_block` from that blob. Rescan then "sees" heights the node no longer stores, credits wallet progress through deleted history, or fails closed on a snapshot that chainstate restart already treats as non-authoritative. The honesty contract survives on the serve path and breaks on the wallet path.
+**What goes wrong:** Filters and headers agree with the new implementation but differ from Knots, so clients cannot validate them against other peers.
 
-**Why it happens:**
-v2.3 made leftover snapshots non-authoritative for chainstate open (`hydrate_chainstate_for_open` / schema-2 leftover checks in `packages/open-bitcoin-node/src/storage/fjall_store/coins.rs`), but `WalletRescanRuntime::required_chainstate_snapshot` still calls `store.load_chainstate_snapshot()` in `packages/open-bitcoin-node/src/sync/wallet_rescan.rs`. The NEXT-MILESTONE note names this as explicit leftover debt. A prune implementation that only unlinks blocks leaves that reader intact.
+**Why it happens:** Reusing displayed big-endian hash strings for the SipHash key; modulo reduction instead of the high half of a 128-bit product; wrong SipHash variant, P/M, unary/bit order, count prefix or final padding; deduplicating hash collisions instead of raw scripts. Self-roundtrip tests reproduce the same bug in producer and consumer.
 
-**How to avoid:**
-Cut wallet rescan off leftover snapshot bytes before any unlink ships. Drive rescan from durable coins best-block, header/chain meta, and payload-present block reads (or fail closed when the height window lacks bytes). Do not invent a second truth by decoding `SNAPSHOT_KEY` after prune. Keep leftover blobs unread on both restart and rescan.
+**How to avoid:** Implement type 0, SipHash-2-4, P=19/M=784931, first 16 little-endian block-hash bytes as key, multiply-high reduction, raw-script set semantics, sorted hash values, delta Golomb-Rice coding and CompactSize count. Empty bytes are `00`. Hash/filter-header operations must use hash bytes rather than displayed hex. Use the pinned independent vectors and explicit collision/empty/count-boundary cases. [K1, K2, K8; BIP158]
 
-**Warning signs:**
+**Warning signs:** Only roundtrip or same-code expected-value tests; generator samples omit known Knots hex; tests reverse hash bytes until an example passes; `hash % range` or a set of reduced hashes in production code.
 
-- `wallet_rescan.rs` still contains `load_chainstate_snapshot` after the first v2.4 phase.
-- Rescan succeeds through heights that `has_block` reports false.
-- Tests plant a leftover snapshot with fake `active_chain` entries and assert wallet progress without writing matching block keys.
-- Operator status shows coins best-block tip while a rescan job advances on snapshot-only heights.
+**Phase to address:** Core; independently verify before any durable records are written.
 
-**Phase to address:**
-snapshot cutover phase (first; before any delete)
+### Pitfall 2: Incomplete or Invented Spent-Script Inputs
 
----
+**What goes wrong:** Filters omit relevant spends, causing false negatives; a wallet might miss activity even though a filter appears validly encoded.
 
-### Pitfall 2: Emitting `Pruned` for Any Missing Payload
+**Why it happens:** Reading only outputs/current UTXOs; reading coins after connect has removed spends; replacing unavailable undo with an empty list; blanket OP_RETURN exclusion across all element sources; treating a wallet snapshot as historical authority.
 
-**What goes wrong:**
-A missing payload, failed read, or index-without-bytes case is labeled `Pruned` / `block_status_pruned`. Operators and peers treat that as "this node ran prune," which is a lie when prune never deleted anything. The v2.3 honesty contract collapses: `Unavailable` and `Pruned` become synonyms again.
+**How to avoid:** Build from validated block plus complete historical spent-output evidence. Knots uses block undo for every non-genesis block; genesis uses no undo. Exclude empty scripts and outputs beginning OP_RETURN, but mirror the distinct undo-script rules. Include same-block-created-and-spent scripts. Validate input/undo correspondence rather than accepting mere undo-key presence. Missing history refuses indexing, never becomes a coinbase-only filter. [K1, K3]
 
-**Why it happens:**
-v2.3 reserved `BlockServingDataAvailability::Pruned` and `BlockServingStatusLabel::Pruned` in `packages/open-bitcoin-network/src/block_serving.rs` and currently forces missing payloads to `Unavailable` in `packages/open-bitcoin-node/src/network/inventory.rs`. Production inventory tests forbid injecting `::Pruned`. The reserved enum is one match-arm away from reuse. Knots `IsBlockPruned` requires `m_have_pruned && !(BLOCK_HAVE_DATA) && nTx > 0` (`packages/bitcoin-knots/src/node/blockstorage.cpp`); missing-without-prune is not pruned.
+**Warning signs:** Generator takes only `Block`; non-genesis append succeeds with absent undo; prevout lookup consults only current coins; fixture transactions never spend anything.
 
-**How to avoid:**
-Gate `Pruned` on a durable have-pruned fact set only after a real delete batch. Keep inventory assembly on `Available` vs `Unavailable` until that fact exists. Map Knots' three-part predicate explicitly; do not treat "payload_present == false" as pruned. Refuse remains refuse either way; the label is the claim.
+**Phase to address:** Core input contract and Index activation/append validation.
 
-**Warning signs:**
+### Pitfall 3: Enabling a Complete-Looking Index After History Is Gone
 
-- `inventory.rs` or serve adapters assign `BlockServingDataAvailability::Pruned` without reading a have-pruned flag.
-- Docs or status say "pruned" for corruption, never-downloaded, or side-chain misses.
-- Tests assert `block_status_pruned` on a node that never unlinked a key.
-- `m_have_pruned` / equivalent is set at prune-config parse time, not after unlink.
+**What goes wrong:** Enabling BASIC after pruning produces a suffix whose zero predecessor falsely looks like a complete genesis index, or an old index resumes past a gap.
 
-**Phase to address:**
-label phase (after unlink proves a delete happened)
+**Why it happens:** Assuming all pruned datadirs are indexable; starting at prune height; trusting an old synced flag; treating current coins or borrowed peer filter headers as sufficient provenance.
 
----
+**How to avoid:** Preflight required body/undo history from the valid prefix/common-ancestor boundary. New index plus missing history refuses startup; disabled index overtaken by prune also refuses reactivation. Existing complete prefix plus present required suffix can resume even if older already-indexed bodies are gone. Preserve valid records on refusal. No implicit download, destructive reindex, prefix erasure or repair. Knots startup body gate and functional prune/index test provide the baseline; undo preflight is an explicit earlier diagnostic difference. [K3, K4, K9]
 
-### Pitfall 3: Setting Have-Pruned Before Files Are Actually Deleted
+**Warning signs:** Fresh index best height immediately equals prune height; “synced” only checks best>=tip; startup catches missing-history errors and continues; config enablement starts network fetch/repair.
 
-**What goes wrong:**
-Config enables `-prune`, or a candidate set is computed, and the node flips `m_have_pruned` / writes a `prunedblockfiles` flag before any payload is gone. Restart then reports pruned history for bytes still on disk, or advertises limited-network behavior while still holding full history. The opposite failure also hurts: files are unlinked but the durable flag is never set, so labels stay `Unavailable` forever and peers cannot distinguish intentional prune from corruption.
+**Phase to address:** Index activation before peer serving or new prune integration.
 
-**Why it happens:**
-Knots sets `m_have_pruned` inside `FlushStateToDisk` only when `setFilesToPrune` is non-empty, writing the block-tree flag then unlinking after index flush (`packages/bitcoin-knots/src/validation.cpp`). Open Bitcoin has no have-pruned store yet. It is easy to "prepare" the flag in a prune-policy phase because the enum already exists.
+### Pitfall 4: Manager-Level Recovery Arrives After Startup Deletion
 
-**How to avoid:**
-Set have-pruned only after a non-empty delete batch is committed through the ordered flush path (index updates that clear have-data, then unlink). Persist the flag with the same durability as block-index mutations. On restart, load the flag the way Knots loads `prunedblockfiles`; never infer it from "payload missing."
+**What goes wrong:** A persisted prune intent deletes body/undo required by the filter index before the newly constructed runtime restores its protection.
 
-**Warning signs:**
+**Why it happens:** Index recovery is placed beside network/manager construction rather than before existing initialization effects. The current durable open calls initialize at line 38; initialize resumes prune intent at lines 235–236; manager construction follows. The daemon applies runtime prune mode only after that open. [N1, N2, N6]
 
-- Have-pruned becomes true when prune target is configured or when height is below tip − 288 with no unlink.
-- Label tests pass by stubbing have-pruned true without calling a delete helper.
-- Restart after a failed unlink still claims pruned.
-- Status exposes "prune mode on" as if it were "have pruned."
+**How to avoid:** Make index metadata/protection validation an explicit pre-resume prerequisite. Recover coins authority as required, validate index branch/cursor/protection, then authorize resumed prune deletion, then expose ready manager/serving. Include enabled-on-open configuration in this early contract; do not rely on later `set_prune_mode`. Corrupt/absent/unverifiable protection must block affected deletion or refuse startup. Do not construct a second ad-hoc recovery owner.
 
-**Phase to address:**
-unlink phase (have-pruned is a side effect of successful delete, not of policy alone)
+**Warning signs:** New index recovery is called only after `initialize`; test creates runtime then installs a lock; no crash fixture contains both lagging index and live prune intent; disabled-index-to-enabled transition ignores startup deletion.
 
----
+**Phase to address:** Index storage/recovery design first; Prune phase must prove a real production reopen with pending intent.
 
-### Pitfall 4: Deleting Inside the Undo / Reorg Keep Window
+### Pitfall 5: Pruning Races Ahead of Filter Durability
 
-**What goes wrong:**
-Payloads or undo for heights within `MIN_BLOCKS_TO_KEEP` (288) of tip are removed. A reorg, interrupted-flush replay, or disconnect then needs undo or block bytes that no longer exist. Coins tip and index tip diverge; replay fails closed; reconnect cannot rebuild the trailing window. Knots refuses to prune above `Height() - 288` via `GetPruneRange` (`packages/bitcoin-knots/src/validation.h`, `validation.cpp`).
+**What goes wrong:** A worker reads/encodes a filter, advances a watermark, then deletion removes the only body/undo before filter bytes and safe recovery progress are durable.
 
-**Why it happens:**
-Open Bitcoin stores per-hash block keys and separate undo records (`save_block` / `save_undo` in `packages/open-bitcoin-node/src/storage/fjall_store.rs` and `coins.rs`), not Knots blk/rev file pairs. A naive "delete oldest N hashes" or "delete until disk target" ignores file-span height windows and the tip-relative keep band. Interrupted replay in `packages/open-bitcoin-node/src/chainstate/replay.rs` still loads blocks and undo by hash.
+**Why it happens:** Presence probes, append, cursor write, lock movement and prune application are treated as independent successful steps; the existing owner serializes prune but the new index uses another authority or releases it between unsafe steps.
 
-**How to avoid:**
-Encode tip − 288 as a hard prune ceiling before any candidate selection. Retain undo for the same window as block payloads. Prefer height-window policy first; size targets only choose among candidates already inside the safe range. Never delete the tip window to "make room."
+**How to avoid:** Define one safe deletion watermark backed by durable filter bytes/hash/header and a recoverable branch-aware cursor. Protect required bodies/undo until that contract is committed. Re-check current protection in both manual and automatic application, not just planning. If generation is outside the owner, guard its input identity and verify authority/progress again before publication. Errors preserve protection and stop false progress. Test every append/commit/lock-write/deletion interruption point. Knots flushes filter files before index metadata and publishes best block after lock updates. [K3, K5; N3, N4]
 
-**Warning signs:**
+**Warning signs:** Lock moves using processed_count; pruning follows an asynchronous queue acknowledgment; full verifier only exercises successful commits; automatic measurement reuse ignores changed index protection.
 
-- Prune helpers take a byte budget without a `last_block_can_prune` argument.
-- Tests prune height `tip - 10` and call it success.
-- Replay or disconnect fixtures start failing only after prune is enabled.
-- Undo keys disappear while header meta still lists those heights as recent active history.
+**Phase to address:** Index durability contract, then Prune integration; required before real deletion with indexing enabled.
 
-**Phase to address:**
-prune policy phase
+### Pitfall 6: Operator Lock CRUD Weakens Internal Protection
 
----
+**What goes wrong:** An operator clears or replaces the index-owned lock and the next legal prune deletes catch-up inputs.
 
-### Pitfall 5: Unlinking While a Peer, Wallet, Index, or Rescan Holds a Prune Lock
+**Why it happens:** Reusing a normal user-managed lock name without ownership policy. Current `replace_prune_lock`/`clear_prune_lock` mutate arbitrary named records under the owner. Serialization alone does not distinguish internal from operator authority. [N3]
 
-**What goes wrong:**
-A block file / height range under a Knots-shaped prune lock is deleted. Wallet rescan, an index builder, or a temporary RPC lock expected those bytes. Rescan fails mid-chunk, peers stall on NotFound for heights they were told were available, or locks silently no-op because Open Bitcoin never consulted them.
+**How to avoid:** Reserve/protect internal identity at both CRUD and deletion boundaries, or enforce index watermark independently of user locks. Reject weakening an active index guarantee; list internal protection truthfully without offering unsupported editing. Restore this invariant during pending-intent recovery too. Keep the existing buffered lock rule and soft target; missing bytes cannot be restored by adding a lock later. [K5, K6; N2, N3]
 
-**Why it happens:**
-Knots `DoPruneLocksForbidPruning` skips whole files overlapping `height_first`/`height_last` with `PRUNE_LOCK_BUFFER` (10) (`packages/bitcoin-knots/src/node/blockstorage.cpp`). Locks are updated through `UpdatePruneLock` and used by indexes and RPC. Open Bitcoin has wallet rescan jobs and block serving, but no prune-lock table. Implementing unlink without locks copies only the delete half of Knots.
+**Warning signs:** Test updates the index lock through public replace; clear returns true for reserved identity; protection exists only in a UI disable state; direct store/resume path bypasses owner policy.
 
-**How to avoid:**
-Add named prune locks before production unlink. Hold locks across wallet rescan height ranges and any in-flight serve/read that promised bytes. Skip candidates that intersect locks (including the buffer). Temporary locks must clear; durable locks must restart. Do not treat "default-off serving" as permission to delete under an active rescan.
+**Phase to address:** Index ownership policy and Prune/operator integration.
 
-**Warning signs:**
+### Pitfall 7: Cursor Commits Ahead of Recoverable Chainstate
 
-- Unlink API exists with no lock registry.
-- Rescan and prune can run concurrently with no shared height fence.
-- Manual prune RPC lands without a lockid surface.
-- Logs show deletes for heights a pending `WalletRescanJob` still targets.
+**What goes wrong:** After a crash, filter progress claims a chain tip that durable coins/chain metadata do not establish, or a reorg checkpoint claims the replacement branch while durable authority still names the old one.
 
-**Phase to address:**
-unlink phase (locks gate candidates; policy alone is insufficient)
+**Why it happens:** Assuming an atomic filter batch also commits coins/chain metadata; equating stored record existence or announced tip with an authoritative restart checkpoint.
 
----
+**How to avoid:** Separate computed records from safely resumable progress. Persist branch identity and verify it against recoverable coins/chain metadata; clamp/rewind only through a verified replay contract, otherwise refuse. Extra unclaimed records can remain by hash, but cannot authorize deleted history or synced status. Knots Rewind explicitly avoids a commit that would run ahead of flushed chainstate, and ChainStateFlushed validates ancestry before committing. Treat Fjall coordination as its own documented design, not a copied Knots transaction guarantee. [K5; N1, N2]
 
-### Pitfall 6: Advertising `NODE_NETWORK` After Prune, or `NODE_NETWORK_LIMITED` Without Enforcing the Window
+**Warning signs:** Cursor advances in every append regardless of chain flush; test compares heights without hashes; restart trusts index metadata before recovered coins best-block; only clean shutdown is exercised.
 
-**What goes wrong:**
-Two failure modes:
+**Phase to address:** Index checkpoint/recovery phase; verify again across actual reorg and interrupted prune.
 
-1. After have-pruned, the node still advertises `ServiceFlags::NETWORK` (full history). Peers expect old blocks; requests fail or disconnect; the node looks like a lying full node.
-2. The node advertises limited service but still serves (or refuses inconsistently) outside the last 288 (+ race buffer) blocks, or continues advertising `NETWORK` alongside limited in a way that claims full service.
+### Pitfall 8: Active Heights Leak into Stale-Branch Responses
 
-**Why it happens:**
-Open Bitcoin hard-codes `ServiceFlags::NETWORK | ServiceFlags::WITNESS` in local peer config / runtime authority paths and does not define `NETWORK_LIMITED` (`1 << 10`) in `packages/open-bitcoin-network/src/message.rs`. Knots defaults local services to `NODE_NETWORK_LIMITED | NODE_WITNESS`, clears full `NODE_NETWORK` when pruned, and refuses requests deeper than `NODE_NETWORK_LIMITED_MIN_BLOCKS + 2` when advertising limited-only (`packages/bitcoin-knots/src/init.cpp`, `net_processing.cpp`, `protocol.h`).
+**What goes wrong:** getblockfilter for an old connected block returns a replacement filter; cfheaders/cfilters/checkpoints silently combine different branch commitments.
 
-**How to avoid:**
-Add `NETWORK_LIMITED`, flip advertised services when have-pruned is durable, and enforce the serve-depth gate on the request path independently of payload presence. Keep payload honesty: limited window still requires `has_block` / payload-present. Do not advertise both full `NETWORK` and "we pruned" in operator copy.
+**Why it happens:** Storing only height-keyed data; deleting displaced filters; retaining cached headers keyed by height; starting replacement headers from old tip rather than common ancestor; assembling response while chain identity changes.
 
-**Warning signs:**
+**How to avoid:** Index records by block identity, map active height to hash, retain displaced indexed records by hash and anchor every range to stop-hash ancestry. Rewind header/progress/protection to common ancestor. Pin request ancestry/view for assembly and guard changed authority before effects. Apply Knots stale-chain eligibility, not every known header and not blanket active-only rejection. Previously connected stale differs from never connected. [K3, K7, K10]
 
-- Prune ships without a `ServiceFlags` bit for limited network.
-- Version handshake still always ORs `NETWORK` after have-pruned.
-- Serve path only checks payload presence, never tip-relative depth under limited services.
-- Tests cover labels but not advertised service bits.
+**Warning signs:** Only linear chain fixtures; cache keyed `height`; stale RPC rejected as unconnected; response uses current tip for a stale stop hash; checkpoints match a different fork.
 
-**Phase to address:**
-serving-flag phase
+**Phase to address:** Index reorg plus Serving range lookup; continuous validated fork proof required.
 
----
+### Pitfall 9: Corruption or Backend Failure Becomes an Empty Filter
 
-### Pitfall 7: Unlink Order Breaks the Block / Undo → Index → Coins Flush Contract
+**What goes wrong:** Missing/corrupt bytes become legitimate `00`, ready progress or empty successful range, permanently lying to clients.
 
-**What goes wrong:**
-Deletes run before index rows clear have-data, or coins advance past heights whose undo was already removed, or payload keys are removed while index still implies presence. Crash mid-prune leaves index, undo, and Fjall block keys disagreeing. Restart then serves lies, fails replay, or treats missing payloads as ordinary `Unavailable` without have-pruned.
+**Why it happens:** `unwrap_or_default`, broad catch/fallback, assuming any failed metadata read means a missing key, or treating absent-after-ready the same as initial catch-up.
 
-**Why it happens:**
-Knots flush order for prune is: find candidates → (on non-empty set) set have-pruned → flush block/undo files → write block index → **unlink** → flush/sync coins (`packages/bitcoin-knots/src/validation.cpp`). Open Bitcoin already has `persist_ordered_prefix`: block payloads → undo → header/index entries, then coins (`packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs`). There is no unlink step yet. Bolting `remove_bytes` onto the front or the coins success path skips the Knots seam.
+**How to avoid:** Preserve distinct NotEnabled, UnknownBlock, NeverConnected, CatchingUp, MissingRequiredHistory, Corruption and backend failure facts. Validate stored block identity/hash/header and prefix continuity; bounds-check decoded records. Knots CustomInit distinguishes absent position metadata from read failure; ReadFilterFromDisk checks checksum; getblockfilter distinguishes indexing from corruption. Propagate storage faults and preserve protection; do not silently clear index data. [K3, K11]
 
-**How to avoid:**
-Extend the single flush owner: persist any pending block/undo/index mutations first, clear have-data / presence metadata in the index write, unlink payload (and matching undo) keys only after that index write succeeds, then coins. Failed unlink after index clear must still yield honest `Unavailable`/`Pruned` based on have-pruned, not a half-deleted store. Do not add a second prune flusher beside `FlushLifecycle`.
+**Warning signs:** All errors mapped to None; an unavailable record yields one-byte zero filter; restart erases metadata and “rebuilds”; counters advance despite failed durable writes.
 
-**Warning signs:**
+**Phase to address:** Index parsing/recovery and RPC/Serving taxonomy.
 
-- A standalone `prune_now()` deletes keys without going through flush lifecycle.
-- Index still reports presence after keys are gone (or the reverse).
-- Coins best-block moves in the same batch that deletes undo for that height.
-- Tests mock unlink without asserting index and have-pruned durability order.
+### Pitfall 10: Protocol Limits Are Mistaken for Total Resource Bounds
 
-**Phase to address:**
-unlink phase (ordered with existing flush lifecycle)
+**What goes wrong:** Legal requests exhaust memory/I/O or block progress, despite correct 1,000-filter and 2,000-hash range checks.
 
----
+**Why it happens:** Tiny tests; count limits without encoded-byte accounting; unbounded queued request batches; whole-index reloads; applying a filters cap to checkpoints whose response scales with stop height.
 
-### Pitfall 8: Deleting Block Payloads While Leaving Undo (or the Reverse)
+**How to avoid:** Match inclusive legal maxima and reject before subtraction/allocation when start>stop or stop/type invalid. Bound bytes, pending work, queue slots and decoded allocation as well as counts. Keep persisted lookup, bounded catch-up and bounded optional cache. getcfcheckpt emits all positive multiples of 1,000 through stop, so derive its resource cost from chain height/transport limits; document any local backpressure differences. Never compute filters from bodies on request. [K7; BIP157]
 
-**What goes wrong:**
-Open Bitcoin stores block bodies under `block:<hash>` in the block-index namespace and undo under separate chainstate undo keys. Prune removes one and not the other. Reorg/replay finds undo without a block or a block without undo. Disk savings look real; consistency is not.
+**Warning signs:** Per-request legal checks but no queue budget; Vector capacity comes from untrusted count; stop-start underflows; checkpoint path reuses 2,000 range cap; catch-up holds authority for all history.
 
-**Why it happens:**
-Knots prune clears `BLOCK_HAVE_DATA` and `BLOCK_HAVE_UNDO` together in `PruneOneBlockFile` and unlinks both blk and rev files. Open Bitcoin's natural delete API is per-key. A size-target loop that only counts block payload bytes will prefer deleting blocks and forget undo.
+**Phase to address:** Core boundary codecs, Serving governance and Index bounded work.
 
-**How to avoid:**
-Treat block payload + undo for a pruned height as one atomic prune unit in the candidate model, even though storage keys differ. Clear both presence facts in the same index/metadata update. Size accounting must include undo bytes.
+### Pitfall 11: Configuration, Completeness and Body Availability Collapse
 
-**Warning signs:**
+**What goes wrong:** The bit is delayed until full sync against selected Knots semantics, or configured bit/synced is reported as proof of complete current coverage; pruned nodes are unable to serve retained filters because body gates are reused.
 
-- Delete helper only calls remove on `block_key`.
-- Disk metrics drop block namespace usage but undo prefix usage stays flat.
-- Replay tests fail only when prune is enabled.
-- `has_block` is false while `load_undo` still returns `Some`.
+**Why it happens:** One ready boolean controls configuration, initial catch-up, durable cursor, per-request availability and body service; inert per-peer permission gains global effect accidentally.
 
-**Phase to address:**
-unlink phase
+**How to avoid:** Match Knots configured NODE_COMPACT_FILTERS and available complete-range serving during catch-up. Keep initial synced, current lag/branch identity, durable progress, request availability and body availability distinct. A lookup gap produces no P2P response, not a fabricated empty/truncated success; invalid type/hash/range follows Knots disconnect policy. The BASIC bit may coexist with NODE_NETWORK_LIMITED. Permission-only enabling stays per peer. Do not change getindexinfo baseline meaning to instantaneous tip equality. [K4, K5, K7, K11]
 
----
+**Warning signs:** Service flag derives from current cursor==tip; bits imply archive history; status says complete because option is true; old-body prune window rejects cfilters; test only checks a configured struct, not version bytes.
 
-### Pitfall 9: Snapshot or Cache Bytes Resurrect History After Unlink
+**Phase to address:** Index status model and Serving activation/projectors.
 
-**What goes wrong:**
-Prune removes durable block keys, but an in-memory `blocks_by_hash` cache, a leftover chainstate snapshot, mempool/package admission snapshot export, or wallet partial snapshot still contains the body or UTXO history. Serve path reports `payload_present` true from cache (`inventory.rs` ORs cache with durable presence). Wallet or RPC reconstructs "available" history the disk no longer owns.
+### Pitfall 12: Helper Success Has No Ordinary Production Consumer
 
-**Why it happens:**
-v2.3 honesty is durable-payload oriented, but cache short-circuits presence. Leftover `SNAPSHOT_KEY` remains on disk for migration/compat. Package/admission paths still call `export_chainstate_snapshot()` in places. After prune, any reader of those surfaces becomes a resurrection channel.
+**What goes wrong:** Generator/index/prune/network helper tests pass while daemon catch-up never runs, ordinary connects never append, authenticated RPC uses a detached in-memory index, or peer responses never reach the socket.
 
-**How to avoid:**
-After unlink, drop matching cache entries. Keep snapshot cutover first so leftover blobs cannot refill history. Do not re-save full snapshots as a prune side effect. Presence probes for serving must not treat cache as stronger than the have-pruned + durable absence contract once prune deleted the key—evict then probe.
+**Why it happens:** Static wiring or direct helper fixtures substitute for the actual chain lifecycle; a response plan/enqueue is credited as served. v2.4 previously had phase-level passes while audit found missing ordinary automatic retention and wallet integration. Its closure evidence is historical precedent, not proof new filters are wired. [A1]
 
-**Warning signs:**
+**How to avoid:** Trace config through durable open, ordinary connect/flush, catch-up, pending-prune recovery, RPC shared context, request dispatch and real local transport. Use one authoritative index projection. Extend consuming success/failure receipts; successful `write_all` earns local transport completion, not proof a remote client received/validated bytes. Test failed write/queued suffix cleanup/replayed receipt. Reopen actual production Fjall, validate filters across real prune and fork, and inspect actual callers beyond helpers. [N1, N4–N7]
 
-- Serve succeeds for a hash after `has_block` is false because cache still holds it.
-- Prune does not invalidate `blocks_by_hash`.
-- Leftover snapshot rewrite appears in persist_progress after prune work.
-- Tests delete store keys but leave runtime cache populated and assert Available.
+**Warning signs:** Only MemoryCoinsView/in-memory index fixtures; direct `append` bypasses daemon; fresh feature has no production call-site; served count increases on prepare; UAT names an installed alias without repo-local commands.
 
-**Phase to address:**
-snapshot cutover phase first; re-verify during unlink phase
-
----
-
-### Pitfall 10: Claim Creep Into Archive, Assumeutxo, BIP37, LevelDB Import, Auto-Reindex, or Production Readiness
-
-**What goes wrong:**
-Docs, checkers, or status copy pitch prune as "full historical serving when not pruned," assumeutxo-friendly storage, LevelDB datadir compatibility, automatic reindex repair after prune inconsistency, public defaults, or production-ready pruned full node. The milestone's no-claim boundary erodes the same way earlier milestones guarded D-14/D-16 style overclaims.
-
-**Why it happens:**
-Prune sits next to attractive neighbors: archive is the opposite operator story; assumeutxo wants dual chainstate (v2.3 refused); recovery enums already mention `StorageRecoveryAction::Reindex`; v1.8 production gates remain unmet. Phase 145 checkers currently **fail** docs that claim prune/archive/assumeutxo product behavior—those guards must be rewritten carefully to allow scoped prune claims without opening the rest.
-
-**How to avoid:**
-Keep a dedicated no-claim guardrail phase: allow only evidenced prune-mode product behavior; keep archive, assumeutxo, BIP37, LevelDB live import/export, automatic destructive reindex, public defaults, and production-funds/production-readiness deferred. Fail closed on inconsistent prune state with operator diagnosis; do not auto-reindex. Single active chainstate stays single.
-
-**Warning signs:**
-
-- README says "archive when prune is off."
-- Recovery path spawns reindex without an explicit future milestone.
-- Dual-chainstate or assumeutxo types appear in prune PRs.
-- Claim checkers are deleted instead of retargeted.
-- Status equates have-pruned with production-ready disk management.
-
-**Phase to address:**
-no-claim guardrail phase (late; retarget checkers, do not gut them)
-
----
+**Phase to address:** Each component's production wiring; Evidence phase verifies complete ordinary flows before completion.
 
 ## Technical Debt Patterns
 
-Shortcuts that seem reasonable but create long-term problems.
-
 | Shortcut | Immediate Benefit | Long-term Cost | When Acceptable |
 |----------|-------------------|----------------|-----------------|
-| Reuse `Pruned` for all missing payloads | One label, fewer match arms | Destroys v2.3 honesty; peers cannot tell corruption from prune | Never |
-| Set have-pruned at config parse | Easy status bit | Lies after crash before first delete; wrong service flags | Never |
-| Delete per-hash without height window | Fast disk reclaim | Breaks reorg/undo and Knots observable window | Never |
-| Skip prune locks until "later" | Ships unlink sooner | Wallet/index races; hard to retrofit safely | Never for any unlink that can run beside rescan/serve |
-| Keep advertising `NETWORK` after prune | Avoids service-flag work | Peer mis-expectation and stall/disconnect behavior | Never once have-pruned is true |
-| Auto-reindex on prune inconsistency | Looks self-healing | Hidden destructive datadir mutation; claim-boundary violation | Never in v2.4 |
-| Treat leftover snapshot as rescan input until cutover "someday" | Avoids wallet work | Prune resurrects snapshot-as-truth | Never; cutover is first phase |
-| Count only block payload bytes toward prune target | Simpler metrics | Undo retained forever; disk target never met honestly | Only in throwaway prototypes, not milestone code |
+| Height-only filter index | Easy linear lookup | Loses branch identity and stale parity | Never for durable production path |
+| Best-effort internal lock movement | Keeps progress moving on error | Deletes irrecoverable catch-up input | Never |
+| Restore protection after manager open | Minimal code change | Startup prune recovery runs first | Never |
+| Current coins as historical script source | Reuses adapter | Filters omit spends | Never |
+| Fixed oversized filter cache | Fast repeated lookup | Unsupported memory bound | Only explicitly bounded measured cache |
+| No checkpoint cache initially | Fewer moving parts | More reads for repeated checkpoint requests | Acceptable with existing work/byte/queue limits and measurements |
+| Retain unclaimed records by hash | Safer interrupted append/reorg recovery | Extra index storage | Acceptable if identity/integrity verified; no progress or disk-bound claim |
+| Sparse codec-valid pruning fixture | Cheap legal deletion setup | Does not prove valid spends/continuous ancestry | Supplement real validated-chain tests, never replace them |
 
 ## Integration Gotchas
 
-Common mistakes when connecting prune to existing Open Bitcoin seams and Knots observables.
-
 | Integration | Common Mistake | Correct Approach |
 |-------------|----------------|------------------|
-| Block serving (`inventory.rs` + `block_serving.rs`) | Inject `Pruned` whenever `payload_present` is false | Keep `Unavailable` until have-pruned ∧ intentional delete facts; both labels still refuse serve |
-| Durable presence (`has_block`) | Delete keys but leave index/cache implying presence | Clear presence metadata, evict cache, then unlink; probe durable keys on serve |
-| Wallet rescan (`wallet_rescan.rs`) | Continue `load_chainstate_snapshot` after prune | Cut over to coins/headers/payload reads before unlink |
-| Flush lifecycle (`persist_ordered_prefix`) | Unlink outside ordered flush | Block/undo → index → unlink → coins, one owner |
-| Service flags (`ServiceFlags`) | Leave `NETWORK \| WITNESS` forever | Add `NETWORK_LIMITED`; advertise limited after have-pruned; enforce depth gate |
-| Knots parity docs | Cite `-prune` without `m_have_pruned` / locks / limited serve | Breadcrumb `blockstorage.cpp`, `validation.cpp` flush prune path, `net_processing.cpp` limited threshold |
-| Claim checkers (Phase 145 style) | Delete prune bans wholesale | Retarget: allow scoped prune claims; keep archive/assumeutxo/auto-reindex/production bans |
-| Fjall key layout vs Knots blk/rev files | Pretend file-number prune maps 1:1 | Preserve height windows, locks, have-pruned, and atomic payload+undo units; adapt storage granularity |
+| Durable open -> initialize -> prune resume | Index validation added only to later manager | Validate enabled index protection before any resumed deletion. [N1, N2] |
+| Operator locks -> prune owner | Reserve name only in CLI | Enforce in authoritative CRUD, application and resume. [N2, N3] |
+| Automatic measurement memoization | Index protection changes but cached measurement stays reusable | Include/reload effective index protection under owner. [N4] |
+| Pending prune -> cache cleanup | Filter availability inferred from body cache | Independent durable filter lookup; retain receipt-owned body/undo eviction. [N3, N4] |
+| RPC and daemon contexts | Construct a separate ephemeral index | One shared authority/projection across durable runtime and authenticated RPC |
+| Inbound/outbound transport | Add codecs with no request dispatch/send caller | Extend live local sessions, failures/receipts and completion facts. [N5, N7] |
+| Knots options | Pretend v0 is an unknown Knots type | Explicit BASIC-only exclusion; truly unknown versus deferred type distinction. [K1, K4] |
 
 ## Performance Traps
 
-Patterns that work on short chains but fail as mainnet history grows.
+Thresholds here are concrete triggers, not guessed production-scale capacity claims.
 
 | Trap | Symptoms | Prevention | When It Breaks |
 |------|----------|------------|----------------|
-| Scanning every block hash to pick prune candidates each flush | Flush latency spikes; IBD stalls | Maintain height-ordered candidate metadata; prune on policy triggers like Knots `m_check_for_pruning` | Chains with hundreds of thousands of stored payloads |
-| Pruning one hash at a time toward a byte target every block | Constant unlink churn; write amplification | Batch candidates; avoid re-prune storms (Knots buffers under target, especially in IBD) | Sustained IBD with tight prune target |
-| Loading full leftover snapshots to decide what to delete | Memory spikes; resurrection risk | Never read leftover snapshot for prune or rescan after cutover | Any datadir that still has a large `SNAPSHOT_KEY` |
-| Serving-depth checks that walk full active chain each request | CPU burn on getdata | Compare tip height vs request height with the limited-window constant | Busy pruned peers |
+| Generate for each peer | CPU and body reads grow per request | Persist once, lookup only | First repeated request for large block |
+| Count-only queue bound | Memory grows despite legal 1,000-block ranges | Account encoded bytes and pending request work | Several simultaneous maximal requests |
+| Whole-history catch-up under owner | Prune/RPC/peer progress stalls | Bounded batches and publication points | First large pre-existing history |
+| Whole-index reload on reopen | Memory/startup work scales with filter history | Metadata/prefix validation and bounded reads | History exceeds small fixtures |
+| Unbounded checkpoint cache/vector | Legal height drives excessive allocation | Derive count/encoded size and bounded cache | High stop height or repeated distinct branches |
+| Assume prune target covers filters | Reported target fits while physical usage grows | Separate index accounting; preserve soft logical payload contract | Filters retained after repeated body deletion |
 
 ## Security Mistakes
 
-Domain-specific integrity and peer-safety issues for pruned nodes.
-
 | Mistake | Risk | Prevention |
 |---------|------|------------|
-| Serving below limited threshold while advertising limited-only | Peer stall attacks / unexpected disconnects; prune-height leakage patterns Knots avoids | Enforce `NODE_NETWORK_LIMITED_MIN_BLOCKS + 2` style depth gate before read |
-| Advertising full `NETWORK` after deletes | Peers rely on absent history; eclipse/stall surface | Flip services with have-pruned |
-| Deleting under an active wallet rescan without locks | Wallet state corruption or false balances from partial history | Prune locks across rescan ranges |
-| Auto-reindex / silent datadir repair after prune inconsistency | Destructive mutation of operator data | Fail closed; diagnose; explicit future repair milestone only |
-| Treating index membership as proof after prune | Serve path lies; validation/replay confusion | Payload-present remains the serve gate; have-pruned only changes the label |
+| Falsely complete index across missing history | HIGH: clients accept incomplete coverage | Genesis prefix, strict activation refusal, no skipped history |
+| Public lock operations weaken internal guarantee | HIGH: permanent history loss | Owned protection enforced below UI/API |
+| Decode arithmetic/allocation from unchecked fields | HIGH: panic or resource exhaustion | Cheap-first parse, checked arithmetic, byte/count/work limits |
+| Dynamic filter generation on peer request | HIGH: computation/I/O amplification | Indexed lookup only |
+| Known header accepted as validated branch | HIGH: serving unvalidated/incoherent data | Pinned connected/stale eligibility and identity checks |
+| Implicit repair or peer filter import | HIGH: unauthorized mutation/unverified provenance | Fail closed; future explicit workflow |
+| Per-peer permission activates global/public serving | MEDIUM: scope escalation | Resolved peer-local capability and BASIC prerequisite |
+| Support evidence includes raw paths/peer identifiers/scripts | MEDIUM: data exposure | Existing sanitization; categories/counters/bounded heights only |
 
 ## UX Pitfalls
 
-Operator-facing mistakes specific to adding prune on an honesty-first node.
-
 | Pitfall | User Impact | Better Approach |
 |---------|-------------|-----------------|
-| Status says "pruned" when bytes were never deleted | Operator misdiagnoses corruption as intentional prune | Reserve pruned for have-pruned deletes; keep unavailable otherwise |
-| "Prune enabled" conflated with "have pruned" | Expectation that old blocks are already gone | Separate config/mode from durable have-pruned evidence |
-| No tip-relative keep-window explanation | Operator sets aggressive prune and breaks reorg | Document 288-block keep window and locks in operator copy |
-| Implying archive completeness when prune is off | Overclaim vs v2.3 honesty-only serving | "We serve what we store" ≠ archive product mode |
-| Suggesting automatic reindex to "fix" prune | Encourages destructive recovery | Point to fail-closed diagnosis and safe retry / free-disk actions |
+| Enabled labeled complete | Operator misreads capability | Show configured, initial catch-up, current lag and durable progress separately |
+| Missing undo called not synced forever | Operator waits for impossible progress | Actionable missing-history refusal category; no implicit repair |
+| Full prune target promise | Operator assumes total disk bound | Explain soft payload target, retained index and stalled protection |
+| Serving filters implies serving matching old blocks | Light client retries impossible body request | Keep filter/body availability independent; another peer may hold body |
+| Baseline RPC shape gains custom diagnostics | Breaks clients/parity | Preserve getblockfilter/getindexinfo; use existing Open Bitcoin status/support |
+| UAT uses installed alias only | Contributor cannot reproduce checkout | Copy-pasteable Cargo/Bazel repo-local commands per AGENTS |
 
 ## "Looks Done But Isn't" Checklist
 
-Things that appear complete but are missing critical pieces.
-
-- [ ] **Snapshot cutover:** Wallet rescan no longer calls `load_chainstate_snapshot` — verify `wallet_rescan.rs` and tests fail if leftover snapshot is the only history source
-- [ ] **Height window:** Candidates respect tip − 288 and retain undo — verify policy unit tests reject in-window deletes
-- [ ] **Prune locks:** Unlink skips locked ranges (with buffer) — verify rescan/serve lock fixtures
-- [ ] **Have-pruned:** Flag flips only after non-empty durable delete — verify restart loads flag; config-only does not set it
-- [ ] **Labels:** Missing-without-prune stays `Unavailable`; post-delete uses `Pruned` — verify inventory never injects `Pruned` without have-pruned
-- [ ] **Service flags:** `NETWORK_LIMITED` advertised and depth-enforced — verify handshake bits and getdata depth cases
-- [ ] **Flush order:** Unlink sits after index write and before/with coins correctly — verify crash fixtures at each seam
-- [ ] **Cache eviction:** In-memory bodies cannot resurrect deleted hashes — verify serve after unlink with warm cache
-- [ ] **No-claim guards:** Archive, assumeutxo, BIP37, LevelDB import, auto-reindex, production readiness still banned — verify retargeted checkers
-- [ ] **Atomic payload+undo:** Both keys cleared together — verify size accounting and load APIs
+- [ ] **Generator:** Independent pinned vectors, not just self-roundtrip, prove exact bytes/hash/header.
+- [ ] **Spent scripts:** Continuous validated spends, including same-block spends, prove undo inputs; absence refuses.
+- [ ] **Activation:** First enable after prune and disabled-index overtaken cases fail without prefix deletion or mutation.
+- [ ] **Catch-up:** Actual daemon startup/ordinary connect consumes bounded index work; existing records can serve while incomplete.
+- [ ] **Recovery:** Index protection is valid before initialize resumes a real pending prune intent.
+- [ ] **Durability:** Fault points between bytes/cursor/chain checkpoint/lock movement cannot release unsafe history.
+- [ ] **Internal lock:** Actual authenticated replace/clear cannot weaken active index-owned protection.
+- [ ] **Pruning:** Both ordinary automatic and manual concrete Fjall paths retain required inputs and preserve indexed filters.
+- [ ] **Reorg:** Replacement and indexed stale RPC/P2P ranges/checkpoints follow their own ancestry after reopen.
+- [ ] **Serving:** 1,000/1,001 and 2,000/2,001 boundaries, checkpoint heights, invalid disconnects and missing no-reply cases tested.
+- [ ] **Resources:** Legal requests remain bounded by bytes/work/queue, not just range count.
+- [ ] **Transport:** Real local send success/failure and partial-prefix failure earn only correct achieved effects.
+- [ ] **Status:** Baseline fields remain Knots-shaped; shared operator evidence distinguishes capability/progress/body presence.
+- [ ] **Claims:** No BIP37, V0 support, archive-scale, assumeutxo, public defaults/network CI, implicit repair or production/funds claims.
 
 ## Recovery Strategies
 
-When pitfalls occur despite prevention, how to recover. Do **not** treat automatic destructive reindex as the default recovery path.
-
 | Pitfall | Recovery Cost | Recovery Steps |
 |---------|---------------|----------------|
-| Rescan read leftover snapshot after prune | MEDIUM | Stop using snapshot; fail closed pending jobs; rerun rescan from coins/headers/payload-present sources only |
-| Labeled Pruned without have-pruned | LOW | Revert label mapping; keep refuse-as-Unavailable; add regression test |
-| Deleted inside keep window | HIGH | Fail closed on replay/disconnect; restore from backup if available; do not auto-reindex; operator restores datadir or resyncs explicitly |
-| Unlink vs index disagreement | HIGH | Diagnose which store advanced; refuse serve/progress; operator restores backup or plans explicit repair milestone—no silent rewrite |
-| Wrong service flags | LOW–MEDIUM | Correct advertised flags; disconnect mis-served peers; document temporary peer churn |
-| Claim creep in docs/checkers | LOW | Retarget wording; restore deferred bans; do not widen checkers to "anything storage" |
-| Cache resurrected bodies | LOW | Evict cache entries for unlinked hashes; re-probe `has_block` |
+| Wrong encoding before public serving/prune | MEDIUM | Disable affected serving, preserve evidence, fix generator and validate pinned vectors; rebuild only through deliberate authorized scope |
+| Missing body/undo for required prefix/suffix | HIGH | Refuse index activation and explain required history; no mutation/download; plan explicit recovery separately |
+| Interrupted index/protection checkpoint | MEDIUM/HIGH | Restore verified conservative protection and replay only available validated inputs; otherwise refuse before prune resume |
+| Cursor ahead of recovered authority | HIGH | Validate ancestry and replay/rewind contract; retain unclaimed records by identity; refuse if history is absent |
+| Corrupt filter/index read | HIGH | Surface corruption/backend failure; preserve protection/data; no automatic empty filter or reset |
+| Reorg deeper than retained body/undo | HIGH | Stop/refuse affected indexing safely; explicit future recovery required; no hidden redownload |
+| Queue/write failure | LOW | Abort unwritten suffix, release pending budgets/capabilities, record only local successful prefix effects; no fabricated receipt |
+
+Recovery recommendations require phase-specific implementation proof. No new destructive operation is authorized by this research.
 
 ## Pitfall-to-Phase Mapping
 
-How roadmap phases should address these pitfalls. Phase numbers continue at 146; roles below are the planning handles.
-
 | Pitfall | Prevention Phase | Verification |
 |---------|------------------|--------------|
-| Wallet rescan leftover snapshot as truth | snapshot cutover phase | Rescan fixtures with leftover `SNAPSHOT_KEY` present and block keys absent must not invent history |
-| Emitting `Pruned` for any miss | label phase | Inventory/serve tests: missing-without-have-pruned → `Unavailable`; after delete → `Pruned` |
-| Have-pruned before real delete | unlink phase | Flag false after config-only; true only after durable non-empty unlink + restart |
-| Delete inside undo/reorg window | prune policy phase | Policy rejects tip − &lt;288; undo retained for window |
-| Unlink under active locks | unlink phase | Locked height ranges survive prune candidate selection |
-| `NETWORK` / `NETWORK_LIMITED` mistakes | serving-flag phase | Handshake bits + depth-gate tests match Knots limited window (+ race buffer) |
-| Flush-order / index disagreement | unlink phase | Crash seams: after index clear, after unlink, after coins—each honest and restartable without auto-reindex |
-| Block without undo (or reverse) | unlink phase | Paired delete tests; both `has_block` and undo absence |
-| Cache/snapshot resurrection | snapshot cutover phase + unlink phase | Warm-cache serve after unlink is not Available; leftover snapshot unread |
-| Archive / assumeutxo / auto-reindex claim creep | no-claim guardrail phase | Retargeted checkers allow scoped prune only; deferred surfaces still fail |
-
-**Suggested phase order (dependency):**
-1. snapshot cutover phase
-2. prune policy phase
-3. unlink phase (locks + ordered delete + have-pruned)
-4. label phase
-5. serving-flag phase
-6. no-claim guardrail phase
+| 1 Encoding | Core | Independent vectors plus byte-order/collision/empty boundaries |
+| 2 Script inputs | Core + Index | Validated spends/same-block spends; missing/corrupt undo refusal |
+| 3 Missing history | Index | Fresh after prune and disabled-prefix overtaken; no mutation |
+| 4 Startup deletion ordering | Index before Prune | Production reopen containing incomplete index and live prune intent |
+| 5 Durability/deletion race | Index + Prune | Append/checkpoint/protection/delete fault matrix in real Fjall |
+| 6 Operator weakening | Prune + operator integration | Actual RPC lock CRUD cannot bypass owner/recovery gate |
+| 7 Ahead-of-authority cursor | Index | Dirty shutdown/reorg with coins/metadata checkpoint lag |
+| 8 Branch mixing | Index + Serving | Active/stale ranges/checkpoints under reorg and reopen |
+| 9 Read/corruption fallback | Index + RPC/Serving | Error taxonomy and no fabricated empty success |
+| 10 Resource exhaustion | Core + Serving | Boundary arithmetic, maximal/repeated requests and backpressure |
+| 11 Collapsed readiness | Index + Serving/Evidence | Wire bit during catch-up, available-range success, gap no reply |
+| 12 Missing production caller | Every owning phase + Evidence | Actual startup/connect/prune/reopen/RPC/local socket complete flows |
 
 ## Sources
 
-- Open Bitcoin availability and reserved prune labels: `packages/open-bitcoin-network/src/block_serving.rs`, `packages/open-bitcoin-node/src/network/inventory.rs`, `packages/open-bitcoin-node/src/network/tests/block_serving.rs`, `docs/parity/catalog/p2p.md`
-- Open Bitcoin durable presence probe: `packages/open-bitcoin-node/src/storage/fjall_store/blocks.rs` (`has_block`)
-- Open Bitcoin flush order: `packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs` (`persist_ordered_prefix`)
-- Open Bitcoin coins leftover non-authority vs wallet rescan snapshot read: `packages/open-bitcoin-node/src/storage/fjall_store/coins.rs`, `packages/open-bitcoin-node/src/sync/wallet_rescan.rs`
-- Open Bitcoin interrupted replay needs blocks/undo: `packages/open-bitcoin-node/src/chainstate/replay.rs`
-- Open Bitcoin service flags today: `packages/open-bitcoin-network/src/message.rs` (no `NETWORK_LIMITED` yet)
-- Milestone scope and dangerous habits: `.planning/PROJECT.md`, `.planning/reports/NEXT-MILESTONE-CANDIDATES.md`
-- Knots keep window and prune range: `packages/bitcoin-knots/src/validation.h` (`MIN_BLOCKS_TO_KEEP = 288`), `packages/bitcoin-knots/src/validation.cpp` (`GetPruneRange`, `FlushStateToDisk` prune/unlink/coins order)
-- Knots have-pruned and IsBlockPruned: `packages/bitcoin-knots/src/node/blockstorage.cpp` / `.h` (`m_have_pruned`, `IsBlockPruned`, `PruneOneBlockFile`, `UnlinkPrunedFiles`)
-- Knots prune locks: `packages/bitcoin-knots/src/node/blockstorage.cpp` (`DoPruneLocksForbidPruning`, `PRUNE_LOCK_BUFFER`, `UpdatePruneLock`)
-- Knots limited network serving: `packages/bitcoin-knots/src/protocol.h` (`NODE_NETWORK_LIMITED`), `packages/bitcoin-knots/src/net_processing.cpp` (`NODE_NETWORK_LIMITED_MIN_BLOCKS`, serve-depth disconnect), `packages/bitcoin-knots/src/init.cpp` (default limited services)
-- Claim-boundary pattern to retarget, not delete: `scripts/check-phase145-parity-uat-release-boundary.test.ts`
+Source-confirmed statements are HIGH confidence. Preventive designs and recovery steps are MEDIUM confidence until their named verification exists. No unverified ecosystem claims are used.
 
----
-*Pitfalls research for: Adding prune-mode onto Open Bitcoin v2.3 honesty + durable coins*
-*Researched: 2026-09-21*
+- **BIP157:** [Official specification](https://github.com/bitcoin/bips/blob/master/bip-0157.mediawiki), New Messages and Node Operation; [rendered specification](https://bips.dev/157/), accessed 2026-10-03.
+- **BIP158:** [Official specification](https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki), GCS/BASIC contents/construction and test vectors; [rendered specification](https://bips.dev/158/), accessed 2026-10-03.
+- **K1:** [Pinned blockfilter.cpp](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/blockfilter.cpp#L21-L103), hashing/encoding/types; [elements/header functions](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/blockfilter.cpp#L190-L282).
+- **K2:** [BASIC constants](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/blockfilter.h#L89-L90).
+- **K3:** [Index initialization/commit/checksum](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/index/blockfilterindex.cpp#L116-L191); [undo append/rewind](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/index/blockfilterindex.cpp#L268-L355); lookup/ancestry lines 358–507.
+- **K4:** [Option/service activation](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/init.cpp#L1075-L1105); explicit permission prerequisite lines 2358–2362; [startup history gate](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/init.cpp#L2456-L2496).
+- **K5:** [Commit/rewind authority warning](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/index/base.cpp#L227-L263); BlockConnected/ChainStateFlushed lines 279–364; synced wait/summary/protection publication lines 367–447.
+- **K6:** [Buffered lock/deletion checks](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/node/blockstorage.cpp#L317-L359), automatic lock check line 445.
+- **K7:** [All peer filter requests](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/net_processing.cpp#L3156-L3320); range constants 153–155; per-peer service permission 1551–1553; BlockRequestAllowed 1865–1871.
+- **K8:** [Pinned filter vectors](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/test/data/blockfilters.json); [generator tests](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/test/blockfilter_tests.cpp).
+- **K9:** [Prune retention/disable/resume/refusal test](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/test/functional/feature_index_prune.py#L66-L154).
+- **K10:** [RPC stale lookup/errors](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/test/functional/rpc_getblockfilter.py#L22-L62); [P2P stale/bounds/disconnect tests](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/test/functional/p2p_blockfilters.py#L140-L273).
+- **K11:** [getblockfilter readiness/corruption distinctions](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/rpc/blockchain.cpp#L3317-L3392); [getindexinfo](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/rpc/node.cpp#L409-L462).
+- **N1:** [Current durable open](../../packages/open-bitcoin-node/src/sync/open_runtime.rs), lines 30–46: initialize before manager; chain metadata/undo hydration follows.
+- **N2:** [Current initialize](../../packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs), lines 201–240: coins recovery, load locks, resume intent, ReadyToFlush; [prune resume](../../packages/open-bitcoin-node/src/storage/fjall_store/prune.rs), lines 154–219: supplied-lock/active-hash/coins-tip checks and delete.
+- **N3:** [Current prune authority/lock CRUD](../../packages/open-bitcoin-node/src/network/runtime_authority/prune_flush.rs), lines 60–116: effective lock reload, named replace/clear; cache eviction lines 18–40.
+- **N4:** [Automatic retention](../../packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune.rs), lines 132–175: durable locks/revision measurement key; [prune apply](../../packages/open-bitcoin-node/src/chainstate/flush_lifecycle/prune_apply.rs), lines 43–124: apply-time lock/keep/active-hash classification and paired unlink.
+- **N5:** [Consuming transport completion](../../packages/open-bitcoin-node/src/sync/session/emission_terminal.rs), lines 22–53: send then acknowledge, abort suffix on failure; [TCP write](../../packages/open-bitcoin-node/src/sync/tcp.rs), lines 74–88: encode/write_all; [served-effect classification](../../packages/open-bitcoin-node/src/network/block_serving.rs), lines 124–126.
+- **N6:** [Daemon authoritative open](../../packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs), lines 300–330: runtime open before prune network/mode configuration.
+- **N7:** [Inbound block-serving completion](../../packages/open-bitcoin-rpc/src/context/inbound_wire.rs), Written outcome around line 331; extend the actual caller rather than only pure request helpers.
+- **A1:** [Archived v2.4 audit](../milestones/v2.4-MILESTONE-AUDIT.md), original integration gaps, closure evidence, accepted stale-metadata/generic-sink/counter advisories and fixture limits; [feature decisions](FEATURES.md).
+
+*Pitfalls research for: v2.5 Prune-Aware Compact-Filter Serving*
+*Researched: 2026-10-03*
