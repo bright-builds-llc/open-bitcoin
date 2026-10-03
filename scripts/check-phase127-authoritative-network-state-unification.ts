@@ -466,7 +466,14 @@ function productionDaemonHelperSources(repoRoot: string): string[] {
   );
   if (!existsSync(helperRoot)) return [];
   return rustSourcePaths(helperRoot)
-    .filter((sourcePath) => path.basename(sourcePath) !== "tests.rs")
+    .filter(
+      (sourcePath) =>
+        path.basename(sourcePath) !== "tests.rs" &&
+        !path
+          .relative(helperRoot, path.dirname(sourcePath))
+          .split(path.sep)
+          .includes("tests"),
+    )
     .map((sourcePath) => readFileSync(sourcePath, "utf8"));
 }
 

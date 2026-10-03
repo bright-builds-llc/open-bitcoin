@@ -8,12 +8,16 @@
 use std::fmt;
 
 use open_bitcoin_core::{
-    chainstate::{BlockUndo, ChainstateError, ChainstateSnapshot, Coin, CoinsBatch, CoinsView},
+    chainstate::{
+        BlockUndo, ChainPosition, ChainstateError, ChainstateSnapshot, Coin, CoinsBatch, CoinsView,
+        PruneLockInfo,
+    },
     primitives::{Block, BlockHash, OutPoint},
 };
 use open_bitcoin_network::HeaderEntry;
 
 use super::{ChainstateStore, FlushPersistSink};
+use crate::storage::fjall_store::{PayloadUsageRevision, RetainedPayloadUsage};
 use crate::storage::{FjallNodeStore, PersistMode, StorageError, coins_view::FjallCoinsView};
 
 /// Production chainstate store. Leftover snapshot blobs stay unread.
@@ -81,6 +85,25 @@ impl ChainstateStore for FjallChainstateStore {
 }
 
 impl FlushPersistSink for FjallChainstateStore {
+    fn retained_payload_usage(
+        &self,
+        active_chain: &[ChainPosition],
+    ) -> Result<RetainedPayloadUsage, StorageError> {
+        self.store.retained_payload_usage(active_chain)
+    }
+
+    fn payload_usage_revision(&self) -> Result<PayloadUsageRevision, StorageError> {
+        self.store.payload_usage_revision()
+    }
+
+    fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
+        self.store.load_prune_locks()
+    }
+
+    fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
+        self.store.sync_prune_locks(locks)
+    }
+
     fn persist_block(&mut self, block: &Block) -> Result<(), StorageError> {
         FlushPersistSink::persist_block(&mut self.store, block)
     }

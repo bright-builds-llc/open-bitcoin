@@ -25,7 +25,9 @@ use crate::status::{
 use crate::storage::{
     FjallNodeStore, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction,
     coins_view::FjallCoinsView,
-    fjall_store::{PairedDeleteOutcome, resume_prune_intent},
+    fjall_store::{
+        PairedDeleteOutcome, PayloadUsageRevision, RetainedPayloadUsage, resume_prune_intent,
+    },
 };
 
 #[cfg(test)]
@@ -89,6 +91,37 @@ pub trait FlushPersistSink {
         u64::MAX
     }
 
+    /// Exact accounting is required for automatic retention; unsupported sinks refuse.
+    fn retained_payload_usage(
+        &self,
+        _active_chain: &[ChainPosition],
+    ) -> Result<RetainedPayloadUsage, StorageError> {
+        Err(StorageError::UnavailableNamespace {
+            namespace: StorageNamespace::BlockIndex,
+        })
+    }
+
+    /// Observes completed payload writers before any idle accounting reuse.
+    fn payload_usage_revision(&self) -> Result<PayloadUsageRevision, StorageError> {
+        Err(StorageError::UnavailableNamespace {
+            namespace: StorageNamespace::BlockIndex,
+        })
+    }
+
+    /// Loads the current durable protection ranges.
+    fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
+        Err(StorageError::UnavailableNamespace {
+            namespace: StorageNamespace::BlockIndex,
+        })
+    }
+
+    /// Publishes protection ranges durably under the caller's authority.
+    fn sync_prune_locks(&self, _locks: &[PruneLockInfo]) -> Result<(), StorageError> {
+        Err(StorageError::UnavailableNamespace {
+            namespace: StorageNamespace::BlockIndex,
+        })
+    }
+
     fn commit_paired_unlink(
         &mut self,
         height: u32,
@@ -107,6 +140,25 @@ pub trait FlushPersistSink {
 }
 
 impl FlushPersistSink for FjallNodeStore {
+    fn retained_payload_usage(
+        &self,
+        active_chain: &[ChainPosition],
+    ) -> Result<RetainedPayloadUsage, StorageError> {
+        FjallNodeStore::retained_payload_usage(self, active_chain)
+    }
+
+    fn payload_usage_revision(&self) -> Result<PayloadUsageRevision, StorageError> {
+        FjallNodeStore::payload_usage_revision(self)
+    }
+
+    fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
+        FjallNodeStore::load_prune_locks(self)
+    }
+
+    fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
+        FjallNodeStore::sync_prune_locks(self, locks)
+    }
+
     fn persist_block(&mut self, block: &Block) -> Result<(), StorageError> {
         FjallNodeStore::save_block(self, block, PersistMode::Flush).map(|_| ())
     }
@@ -482,6 +534,11 @@ fn complete_coins_write<V: CoinsView, S: FlushPersistSink>(
             deleted_block_hashes,
         });
     };
+    // An opened or previously flushed cache has no staged tip. Carry current
+    // coins authority into the write without changing a newer overlay tip.
+    if let Some(best_block) = cache.best_block().map_err(map_chainstate)? {
+        cache.set_best_block(best_block);
+    }
     match write_kind {
         CoinsWriteKind::Flush => cache.flush().map_err(map_chainstate)?,
         CoinsWriteKind::Sync => cache.sync().map_err(map_chainstate)?,

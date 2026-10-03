@@ -43,7 +43,7 @@ use super::{
     start_inbound_listener_for_runtime_with_context, start_inbound_metrics_worker,
 };
 
-fn temp_store_path(label: &str) -> PathBuf {
+pub(super) fn temp_store_path(label: &str) -> PathBuf {
     let timestamp = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("system time after unix epoch")
@@ -55,7 +55,7 @@ fn temp_store_path(label: &str) -> PathBuf {
     ))
 }
 
-fn remove_dir_if_exists(path: &Path) {
+pub(super) fn remove_dir_if_exists(path: &Path) {
     match fs::remove_dir_all(path) {
         Ok(()) => {}
         Err(error) if error.kind() == io::ErrorKind::NotFound => {}
@@ -148,6 +148,8 @@ fn silent_peer_sync_runtime(label: &str) -> DurableSyncRuntime {
     .expect("silent-peer sync runtime")
 }
 
+#[path = "tests/automatic_prune.rs"]
+mod automatic_prune;
 #[path = "tests/checkpoint.rs"]
 mod checkpoint;
 #[path = "tests/daemon_sync.rs"]

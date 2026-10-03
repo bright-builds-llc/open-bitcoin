@@ -66,3 +66,38 @@ are reconciled. Residual scope: Phase 153 automatic retention remains
 pending, and completed-prune/resume eligibility does not claim global
 atomicity for concurrent direct-library callers. Final Git evidence is
 derived as described above.
+
+## task-phase153-automatic-retention | 2026-10-02 23:01 CDT | Automatic Prune Retention Integration
+
+- [x] Capture yolo discussion decisions and lifecycle provenance for Phase 153.
+- [x] Research authoritative payload accounting and production flush integration; create and check execution plans.
+- [x] Execute plans with measured usage, automatic planner invocation, paired deletion, and cache cleanup.
+- [x] Validate target/gate/lock/window/error/reopen behavior and operator/wallet regressions.
+- [x] Review code, simplify touched seams, refresh parity and contributor evidence.
+- [x] Run default `bash scripts/verify.sh`, verify phase/lifecycle, and prepare deterministic current-`main` finalization under the required commit hook.
+
+### Completion Review
+
+Phase 153 passed 22/22 formal truths and the full native contract in
+45m47.953s, including 3,114 workspace/doc-test passes, the genuine legal
+target, benchmark smoke, six Bazel targets and pure-core coverage. Review
+is clean; all 14 declared threats are closed. The milestone re-audit has
+17/17 requirements, 8/8 phases, 34/34 plans, 20/20 seams and 10/10 flows
+with no blocker. Residual limits are the three inherited advisories,
+logical-versus-physical accounting, sparse codec-valid fixture scope and
+nontransactional wallet probe/save. Milestone archival is separate.
+Git finalization evidence is derived from the saving commit and upstream
+refs, avoiding a self-referential stored commit hash.
+
+Progress: All four Phase 153 plans are complete. The genuine legal-target
+scenario passed with 578,359,864 measured initial bytes and real paired
+deletion, protected survivors, wallet/serving/operator checks, error cleanup
+and reopen. Related storage, owner, flush, RPC and wallet suites plus scoped
+strict Clippy passed. The default native verifier exited 0 in 45m47.953s
+with benchmark, Bazel and pure-core coverage; source review is clean and
+all 14 declared threats are closed. Static integration passed 20/20 seams
+and 10/10 flows. Formal lifecycle, canonical activation, current-document
+freshness and final audit aggregation are complete. The required hook
+and upstream refs provide final Git evidence.
+Source paths use root-owned intent-to-add entries only
+to satisfy tracked-file discovery; no commit has been created.

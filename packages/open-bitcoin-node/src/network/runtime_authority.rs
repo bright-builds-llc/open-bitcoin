@@ -10,7 +10,7 @@ use std::{
 use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, CoinsView, FlushMode,
-        FlushPolicyTime, MemoryCoinsView, PruneMode, PrunePlan,
+        FlushPolicyTime, MemoryCoinsView, PruneMode,
     },
     consensus::{ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
@@ -48,6 +48,7 @@ pub(in crate::network) use lifecycle::{LifecycleCommandResult, apply_lifecycle_c
 mod local_package;
 mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
+mod automatic_prune;
 mod prune_flush;
 mod recovery;
 
@@ -63,12 +64,14 @@ pub enum ManagedNetworkAuthorityError {
 
 pub struct ManagedNetworkHandle<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView> {
     authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>,
+    automatic_prune: Arc<Mutex<automatic_prune::AutomaticPruneState>>,
 }
 
 impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
     fn clone(&self) -> Self {
         Self {
             authority: Arc::clone(&self.authority),
+            automatic_prune: Arc::clone(&self.automatic_prune),
         }
     }
 }
@@ -84,6 +87,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         network.install_authority_incarnation();
         Self {
             authority: Arc::new(Mutex::new(network)),
+            automatic_prune: Arc::new(Mutex::new(automatic_prune::AutomaticPruneState::default())),
         }
     }
 
@@ -536,14 +540,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         disk_free_bytes: u64,
     ) -> Result<crate::chainstate::FlushExecution, ManagedNetworkAuthorityError> {
         self.mutate(|network| {
-            prune_flush::flush_and_evict_pruned_blocks(
-                network,
-                mode,
-                now,
-                disk_free_bytes,
-                &PrunePlan::default(),
-                &[],
-            )
+            automatic_prune::flush(network, &self.automatic_prune, mode, now, disk_free_bytes)
         })?
         .map_err(|error| ManagedNetworkAuthorityError::LifecycleEffect(error.to_string()))
     }

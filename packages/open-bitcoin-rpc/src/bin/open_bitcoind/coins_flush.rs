@@ -155,9 +155,20 @@ where
 {
     let now = current_flush_policy_time();
     let disk_free_bytes = probe_disk_free_bytes(store.datadir());
-    handle
-        .flush_coins(mode, now, disk_free_bytes)
-        .map_err(CoinsFlushError::from)
+    flush_cycle(handle, mode, now, disk_free_bytes).map_err(CoinsFlushError::from)
+}
+
+pub(super) fn flush_cycle<S, V>(
+    handle: &ManagedNetworkHandle<S, V>,
+    mode: FlushMode,
+    now: FlushPolicyTime,
+    disk_free_bytes: u64,
+) -> Result<FlushExecution, ManagedNetworkAuthorityError>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
+    handle.flush_coins(mode, now, disk_free_bytes)
 }
 
 fn resample_after_periodic_write<S, V>(

@@ -184,6 +184,48 @@ test("fails_when_a_daemon_helper_constructs_a_duplicate_network_authority", () =
   );
 });
 
+test("allows_duplicate_authority_constructors_in_nested_daemon_test_fixtures", () => {
+  // Arrange
+  const root = createFixture();
+  const fixture = path.join(
+    root,
+    "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs",
+  );
+  mkdirSync(path.dirname(fixture), { recursive: true });
+  writeFileSync(
+    fixture,
+    "fn fixture() { ManagedPeerNetwork::new(store, config, policy); ManagedNetworkHandle::from_network_fixture(network); }",
+  );
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("rejects_duplicate_authority_constructors_in_production_files_named_fixtures", () => {
+  // Arrange
+  const root = createFixture();
+  const fixture = path.join(
+    root,
+    "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests_support/fixtures.rs",
+  );
+  mkdirSync(path.dirname(fixture), { recursive: true });
+  writeFileSync(
+    fixture,
+    "fn fixture() { ManagedPeerNetwork::new(store, config, policy); ManagedNetworkHandle::from_network_fixture(network); }",
+  );
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toContain(
+    "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime",
+  );
+});
+
 test("fails_when_dead_context_anchor_hides_aliased_helper_authority", () => {
   // Arrange
   const root = createFixture({

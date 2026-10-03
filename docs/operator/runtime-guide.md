@@ -954,6 +954,72 @@ The allowed scoped v2.3 wording is disk-backed per-outpoint coins, typed cache-f
 
 Knots-aligned prune on the single active chainstate deletes old block and undo payloads inside a height window by removing Fjall keys, advertises NODE_NETWORK_LIMITED, and reports Pruned only after a durable delete. Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store. Companion allowed wording includes the 288-block keep, the 550 MiB minimum automatic target, the 10-block lock buffer, manual-prune refusal inside the keep window, have-pruned only after a durable delete, fail-closed interrupted prune, sanitized prune support evidence, and hermetic default verification.
 
+## Phase 153 Automatic Retention Review
+
+Explicit prune configuration with a datadir selects the existing durable
+runtime and completes recovery before readiness even with sync and inbound
+activation disabled. The existing JSONC `prune` integer remains `0` for
+disabled, `1` for manual-only, or at least `550` for an automatic MiB target.
+Pruning does not activate networking. Without a datadir, runtime selection
+remains transient. Configured network supplies the existing prune-after
+threshold: mainnet 100000, other supported networks 1000.
+
+The existing Periodic worker ticks every second. Changed Periodic inputs
+coalesce exact accounting for 60 seconds independently of coins-write
+deadlines; first eligible activity and shutdown Always measure immediately.
+Unchanged reusable input skips non-Always scans. A deferred cycle applies no
+cached plan. A nonempty automatic plan uses the existing full coins and
+chain-metadata checkpoint even when a coins write was not due. Current
+durable prune locks and status reads share the serialized authority; the
+288-block keep window and ten-block lock buffer still protect history.
+None, disabled/manual-only, short-chain, under-target and fully protected
+cases do not delete.
+
+The automatic target compares actual logical live block and encoded-undo
+Fjall value bytes. Recent, locked and nonactive payloads count in total;
+only active height/hash candidates may be deleted. Protected bytes can keep
+usage above the soft target. This differs from Knots flat-file/chunk
+accounting and does not measure physical disk allocation or guarantee
+immediate space reclamation. Accounting failures refuse without invented
+sizes; existing committed-delete receipts control have-pruned, counters,
+cache eviction and undo cleanup even if a later checkpoint fails.
+
+Inspect the existing local operator status and collect sanitized support
+evidence using the repo-local command forms:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format human
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format human
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-prune-support
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- support bundle --output-dir=/tmp/open-bitcoin-prune-support
+```
+
+Review configured mode/target, have-pruned, successful batch count, deleted
+height count and last deleted height. Preserve bounded error categories;
+exclude raw backend paths, keys, payloads and credentials from issue evidence.
+After automatic deletion, absent retained-history payloads are not served;
+the tested Pruned result is distinct from Unknown and injected Unavailable.
+Both wallet adapters refuse full replacement when a matching creating
+payload is gone, including before a requested start, while preserving the
+saved wallet/checkpoint and recording safe Failed evidence. Reopen uses
+durable authority; leftover snapshots cannot restore deleted history.
+
+The [Phase 153 evidence](../parity/catalog/chainstate.md#phase-153-automatic-prune-retention-integration)
+records actual ordinary deletion above a legal 550 MiB target, protected
+survivors, production checkpoint/reopen and a separate delegated metadata
+fault fixture. PRUN-01/PRUN-02 are Complete after the default full native
+verifier passed and [formal Phase 153 verification](../../.planning/phases/153-automatic-prune-retention-integration/153-VERIFICATION.md)
+passed 22/22 must-haves with validated lifecycle evidence. The
+[integration re-audit](../../.planning/phases/153-automatic-prune-retention-integration/153-INTEGRATION.md)
+connects 20/20 selected seams and traces 10/10 scoped flows, with no blocking
+integration gap and three retained advisory items. Codec-valid
+sparse fixtures and controlled effects do not establish full consensus-chain
+validation, hardware resilience or public-network behavior. Archive serving,
+assumeutxo, BIP37, temporary IBD targets, public defaults and production-funds
+wallet claims remain deferred.
+
 ## Phase 145 Parity Roots And No-Claim Guardrails Review
 
 Companion allowed wording includes sanitized operator flush/recovery/cache-size/have-bytes evidence, leftover snapshot non-authority after one-way migration, restart from durable coins best-block, and hermetic default verification. Required UAT stays deterministic. Optional public-network review is never a default, CI, or release gate.

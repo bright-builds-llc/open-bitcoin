@@ -315,9 +315,20 @@ fn open_authoritative_network_runtime(
                 "open-bitcoind failed to construct authoritative network runtime: {error}"
             ))
         })?;
+        let mut network = sync_runtime.network_handle();
+        network
+            .set_prune_network(runtime.sync.runtime.network)
+            .map_err(|error| {
+                DaemonSyncPreflightError::new(format!("failed to configure prune network: {error}"))
+            })?;
+        network
+            .set_prune_mode(runtime.prune_mode)
+            .map_err(|error| {
+                DaemonSyncPreflightError::new(format!("failed to configure prune mode: {error}"))
+            })?;
         return Ok(OpenedAuthoritativeRuntime::Durable(
             AuthoritativeNetworkRuntime {
-                network: sync_runtime.network_handle(),
+                network,
                 peer_identity_authority: sync_runtime.peer_identity_authority(),
                 announcement_outboxes: sync_runtime.announcement_outboxes(),
                 maybe_sync_runtime: Some(sync_runtime),
@@ -350,7 +361,10 @@ fn open_authoritative_network_runtime(
 fn open_runtime_store(
     runtime: &RuntimeConfig,
 ) -> Result<Option<FjallNodeStore>, DaemonSyncPreflightError> {
-    if !runtime.sync.is_enabled() && !runtime.inbound.enabled {
+    if !runtime.sync.is_enabled()
+        && !runtime.inbound.enabled
+        && runtime.prune_mode == open_bitcoin_node::core::chainstate::PruneMode::Disabled
+    {
         return Ok(None);
     }
 

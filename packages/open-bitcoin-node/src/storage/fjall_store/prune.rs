@@ -100,6 +100,14 @@ impl FjallNodeStore {
         height: u32,
         block_hash: BlockHash,
     ) -> Result<PairedDeleteOutcome, StorageError> {
+        self.with_payload_mutation(|| self.commit_paired_delete_inner(height, block_hash))
+    }
+
+    fn commit_paired_delete_inner(
+        &self,
+        height: u32,
+        block_hash: BlockHash,
+    ) -> Result<PairedDeleteOutcome, StorageError> {
         let block_present = self.has_block(block_hash)?;
         let undo_present = self.has_undo(block_hash)?;
         if !block_present && !undo_present {

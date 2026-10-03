@@ -2,16 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-status: planning
-stopped_at: Phase 152 verified; Phase 153 awaits discussion and planning
-last_updated: "2026-10-03T02:32:27Z"
+current_phase: "153"
+current_phase_name: automatic-prune-retention-integration
+current_plan: "4"
+status: completed
+stopped_at: Phase 153 complete; v2.4 re-audited; Git evidence derived from saving commit
+last_updated: "2026-10-03T08:02:15.078Z"
 last_activity: "2026-10-03"
 progress:
   total_phases: 8
-  completed_phases: 7
-  total_plans: 30
-  completed_plans: 30
-  percent: 88
+  completed_phases: 8
+  total_plans: 34
+  completed_plans: 34
+  percent: 100
 ---
 
 # Project State
@@ -21,19 +24,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 153 — automatic-prune-retention-integration
+**Current focus:** v2.4 prune scope verified and re-audited; archival remains separate
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 153 (automatic-prune-retention-integration) — PENDING PLANNING
-Plan: 0 of 0; execution plans not created yet
-Status: Phase 152 verified; 15 requirements Complete, two Pending
+Current Phase: 153
+Current Phase Name: automatic-prune-retention-integration
+Current Plan: 4
+Total Plans in Phase: 4
+Status: Phase 153 complete
 Last activity: 2026-10-03
+Last Activity Description: Phase 153 passed formal verification and full native checks
 
-Phase progress: [█████████░] 88% (7/8 phases). All 30 existing plans are complete; Phase 153 closure plans remain to be created.
+Phase progress: [██████████] 100% (8/8 phases). All 34 plans are complete.
 
-Next action: `/gsd-discuss-phase 153` or `/gsd-plan-phase 153`. Re-audit after Phase 153 passes before `/gsd-complete-milestone v2.4`.
+Next action: Review the milestone audit and its three advisories before a separate /gsd-complete-milestone v2.4 request. Git finalization evidence is derived from the saving commit and upstream refs.
 
 ## Performance Metrics
 
@@ -74,6 +80,7 @@ Next action: `/gsd-discuss-phase 153` or `/gsd-plan-phase 153`. Re-audit after P
 | 149 | 4 | - | - |
 | 150 | 8 | - | - |
 | 152 | 3 | - | - |
+| 153 | 4 | - | - |
 
 ### Plan Execution History
 
@@ -603,6 +610,6 @@ Next action: `/gsd-discuss-phase 153` or `/gsd-plan-phase 153`. Re-audit after P
 
 ## Session Continuity
 
-Last session: 2026-10-03T02:32:27Z
-Stopped at: Phase 152 verified; Phase 153 awaits discussion and planning
-Resume file: .planning/ROADMAP.md
+Last session: 2026-10-03T08:02:15.074Z
+Stopped at: Phase 153 complete; v2.4 re-audited; Git evidence derived from saving commit
+Resume file: .planning/v2.4-MILESTONE-AUDIT.md

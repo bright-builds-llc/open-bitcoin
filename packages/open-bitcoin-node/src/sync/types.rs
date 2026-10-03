@@ -77,6 +77,14 @@ pub enum SyncNetwork {
 }
 
 impl SyncNetwork {
+    /// Knots chain parameters permit automatic pruning after this height.
+    pub const fn prune_after_height(self) -> u32 {
+        match self {
+            Self::Mainnet => 100_000,
+            Self::Testnet | Self::Signet | Self::Regtest => 1_000,
+        }
+    }
+
     pub const fn as_str(self) -> &'static str {
         match self {
             Self::Mainnet => "mainnet",

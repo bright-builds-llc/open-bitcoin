@@ -40,6 +40,120 @@ ChainstateManager::GetPruneRange max_prune is tip height minus MIN_BLOCKS_TO_KEE
 The Knots m_snapshot_chainstate prune_start branch stays out of scope.
 Pinned spellings in this claim are ParsePruneOption, PruneLockInfo, DoPruneLocksForbidPruning, FindFilesToPrune, FindFilesToPruneManual, m_have_pruned, and IsBlockPruned.
 
+## Phase 153 automatic prune retention integration
+
+The stable `v2-4-pure-prune-policy-and-lock-windows` surface retains
+[Phase 147 verification](../../../.planning/phases/147-pure-prune-policy-and-lock-windows/147-VERIFICATION.md)
+as its pure policy, PRUN-03 and LOCK-01 foundation. Phase 153 **Automatic
+Prune Retention Integration** supplies the production consumer for audit gap
+INT-01 and current PRUN-01/PRUN-02 closure. These two requirements are
+Complete after the default full native verifier passed and
+[formal Phase 153 verification](../../../.planning/phases/153-automatic-prune-retention-integration/153-VERIFICATION.md)
+passed 22/22 must-haves with `lifecycle_validated: true` for lifecycle
+`153-2026-10-03T04-01-54`. The [integration re-audit](../../../.planning/phases/153-automatic-prune-retention-integration/153-INTEGRATION.md)
+connects 20/20 selected seams and traces 10/10 scoped flows, with no blocking
+integration gap and three retained advisory items. These counts describe the
+selected static production trace and recorded runtime evidence. Implementation and observed checks
+are recorded in the [accounting summary](../../../.planning/phases/153-automatic-prune-retention-integration/153-01-SUMMARY.md),
+[owner summary](../../../.planning/phases/153-automatic-prune-retention-integration/153-02-SUMMARY.md)
+and [runtime evidence summary](../../../.planning/phases/153-automatic-prune-retention-integration/153-03-SUMMARY.md).
+
+The [Fjall accounting adapter](../../../packages/open-bitcoin-node/src/storage/fjall_store/payload_usage.rs)
+uses one guarded snapshot to sum actual block and encoded-undo value lengths
+across both complete payload prefixes. Protected, recent and nonactive
+payloads count in total; candidates refer only to current active height/hash
+pairs. Either present mate counts, and both-absent pairs are omitted. Coins,
+metadata, support records and leftover snapshot sizes are excluded. Checked
+arithmetic and accounting errors refuse without inventing facts. Clone-shared
+mutation guards invalidate measured revisions for complete write attempts,
+including equal-size replacements and errors.
+
+The [ordinary serialized owner](../../../packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune.rs)
+passes these facts, configured mode, current tip, network prune-after height
+and current durable locks to the unchanged pure planner. It preserves the
+288-block keep window, ten-block lock buffer and legal 550 MiB minimum.
+The target is soft: protected/nonactive usage may keep retained bytes above
+target and never permits protected deletion. Lock read-modify-persist and
+operator-status reads share the authority. Acquisition order is authority,
+automatic state, then storage payload guard; nested flush effects run after
+the storage guard is released.
+
+The existing daemon Periodic worker ticks every second; exact measurement of
+changed Periodic inputs coalesces for 60 seconds independently of coins-write
+deadlines. First eligible activity and Always measure immediately. Equal
+reusable revisions with unchanged tip/mode/locks skip non-Always scans; no
+cached deletion plan is applied by a deferred cycle. None, disabled,
+manual-only, under-target, short-chain and fully protected cases do not
+delete. A nonempty automatic plan requests the existing full Always coins
+and chain-metadata checkpoint, even when no coins write was due. Idle full
+checkpoints carry current coins best-block without replacing a newer overlay
+tip. Existing paired-unlink receipts own cache/undo cleanup on success and
+later failure; counters and have-pruned remain earned by committed deletes.
+
+Pinned Knots [blockstorage.cpp](../../../packages/bitcoin-knots/src/node/blockstorage.cpp)
+roots are `CalculateCurrentUsage` (line 885) and `FindFilesToPrune` (line
+387); [validation.cpp](../../../packages/bitcoin-knots/src/validation.cpp)
+`FlushStateToDisk` (line 3070) forces writing for `fFlushForPrune`. Intentional
+accounting difference: Knots sums file-info `nSize + nUndoSize` and applies
+flat-file chunk/IBD buffering, while Open Bitcoin measures logical live Fjall
+payload values per hash through its existing planner. The measurement is
+neither physical disk allocation nor a promise of immediate space reclamation.
+No temporary IBD target, flat-file layout or new budget rule is introduced.
+
+The default-suite [genuine runtime regression](../../../packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs)
+`automatic_prune_genuine_ordinary_retention_and_reopen` invokes the same
+ordinary cycle helper as the daemon against its production offline durable
+owner. It uses codec-valid sparse history, 235 large nonactive block/undo
+pairs and six small active pairs, with actual serialized accounting:
+
+| Observation | Result |
+| --- | --- |
+| Automatic target | 550 MiB = 576,716,800 bytes |
+| Initial retained logical bytes | 578,359,864; nonactive 578,358,970 and active 894 |
+| First ordinary committed deletes | Heights 1, 500 and 713; 447 bytes |
+| Protected active survivors | Heights 510, 714 and 1001 |
+| First retained total after deletion | 578,359,417; still above the soft target |
+| Initial earned counters | One batch, three heights, last height 713 |
+| Final genuine scenario duration | 17.891221375 seconds; harness 18.08 seconds |
+
+At tip 1001, height 713 is eligible while 714 is recent; a committed lock at
+520 protects 510 through its buffer. Nonactive retained bytes keep the
+target unreachable. Repeated activity earns no duplicate counters. Both
+wallet adapters succeed with retained creating payloads, then refuse older
+creating payloads after automatic deletion while preserving saved wallets
+and truthful Failed/checkpoint evidence. In-memory serving and operator
+dispatch corroborate actual Pruned, Unknown and explicitly injected
+Unavailable outcomes, configured target and earned counters without sockets.
+
+The first stage proves successful production durable checkpoints and reopen;
+a conflicting leftover snapshot cannot resurrect undo or replace durable
+truth. A later, separate fixture uses `MetadataFaultStore` to delegate real
+Fjall accounting, locks, writes, paired unlink and counters, but refuses only
+metadata persistence and uses a fixture owner with `MemoryCoinsView`.
+Replenishing height 1 earns one more actual delete before this injected error;
+retry and final production reopen retain absence with two batches/four height
+deletions. This later stage is effect injection, not a hardware fault or a
+second production durable-coins checkpoint proof.
+
+Repeat the genuine and small owner regressions sequentially from the repo root:
+
+```bash
+bun run scripts/command-timings.ts run --key phase153-genuine-retention -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind automatic_prune_genuine_ordinary_retention_and_reopen --all-features -- --test-threads=1 --nocapture
+bun run scripts/command-timings.ts run --key phase153-owner-regressions -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib automatic_prune --all-features -- --test-threads=1
+bash scripts/verify.sh
+```
+
+Related lifecycle, daemon, RPC, wallet and strict affected Clippy checks
+passed in the linked summaries. The default full verifier then passed with
+exit 0 in 45m47.953s, including the genuine default-suite regression, strict
+workspace lint/build/tests, benchmark smoke, Bazel and pure-core coverage.
+[Plan 04 evidence](../../../.planning/phases/153-automatic-prune-retention-integration/153-04-SUMMARY.md)
+records the earlier failures and final pass. Sparse codec-valid history does not prove consensus validation
+of a continuous chain, hardware resilience, public-network behavior or
+production readiness. Concurrent direct-library wallet probe/save atomicity,
+archive serving, assumeutxo, BIP37, public defaults and production-funds
+wallet claims remain outside this evidence.
+
 ## Phase 152 post-prune wallet rescan eligibility
 
 The stable `v2-4-wallet-leftover-snapshot-cutover` surface owns SNAP-01.
@@ -131,13 +245,15 @@ bash scripts/verify.sh
 ```
 
 The owner trace shows HTTP RPC dispatch serializes through the context
-mutex; manual prune uses the network authority mutation mutex, and current
-automatic `flush_coins` supplies an empty prune plan. Separately exported
+mutex; manual prune uses the network authority mutation mutex. At Phase 152
+verification, automatic `flush_coins` supplied an empty prune plan; the
+Phase 153 ordinary consumer is described above. Separately exported
 node/store callers share no atomic rescan probe/save transaction. This
 evidence proves eligibility after completed pruning and fresh resume/reopen
 probes; it does not guarantee payload presence at save under arbitrary
 concurrent direct-library pruning. A new concurrent owner or stronger claim
-requires replanning. Phase 153 automatic retention remains pending.
+requires replanning. Phase 153 requirement closure is Complete under the
+formal report linked above; it does not expand this concurrency contract.
 Incremental wallet scanning, snapshot deletion, repair, archive serving,
 assumeutxo, public defaults and production-funds claims remain deferred.
 

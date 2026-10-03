@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146–151 delivered their original plans; the 2026-10-02 audit reopened three requirements for gap closure. Phase 152 now closes SNAP-01 with passing runtime and lifecycle evidence. All 17 requirements are mapped exactly once: 15 Complete, two Pending in Phase 153. Historical `.planning/phases/` directories stay tracked.
+v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146–151 delivered their original plans; the 2026-10-02 audit reopened three requirements for gap closure. Phase 152 now closes SNAP-01 with passing runtime and lifecycle evidence. All 17 requirements are mapped exactly once and Complete after lifecycle-valid Phase 153 verification and full native checks. Historical `.planning/phases/` directories stay tracked.
 
 ## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -51,7 +51,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146�
 - [x] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces. (completed 2026-09-29)
 - [x] **Phase 151: Parity Roots and No-Claim Guardrails** — Cite Knots prune anchors including the Fjall-versus-`blk`/`rev` difference and keep deferred claims out. (completed 2026-09-30)
 - [x] **Phase 152: Post-Prune Wallet Rescan Eligibility** — Enforce creating-payload eligibility after real pruning in both scan adapters. (completed 2026-10-03)
-- [ ] **Phase 153: Automatic Prune Retention Integration** — Wire measured retained payloads and the automatic target through the existing planner and durable owner.
+- [x] **Phase 153: Automatic Prune Retention Integration** — Wire measured retained payloads and the automatic target through the existing planner and durable owner. (completed 2026-10-03)
 
 ## Phase Details
 
@@ -198,7 +198,7 @@ Plans:
   2. Invoke the existing automatic planner from production retention/flush and apply through the durable owner with callback-based cache/undo cleanup.
   3. Cover target exceedance, no-op gates, lock/window protection, later-flush error, and reopen using real storage and the production lifecycle.
   4. Verify operator/support/wallet regressions, refresh parity/product evidence, and re-audit the milestone after closure.
-**Plans:** 0 plans; run `/gsd-plan-phase 153` after Phase 152.
+**Plans:** 4/4 plans complete
 **UI hint**: no
 
 ## Requirement Coverage
@@ -206,8 +206,8 @@ Plans:
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | SNAP-01 | Phase 152 | Complete |
-| PRUN-01 | Phase 153 | Pending |
-| PRUN-02 | Phase 153 | Pending |
+| PRUN-01 | Phase 153 | Complete |
+| PRUN-02 | Phase 153 | Complete |
 | PRUN-03 | Phase 147 | Complete |
 | LOCK-01 | Phase 147 | Complete |
 | UNLK-01 | Phase 148 | Complete |
@@ -248,11 +248,11 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151 →
 | 150. Operator Prune Surfaces and Evidence | 8/8 | Complete    | 2026-09-29 |
 | 151. Parity Roots and No-Claim Guardrails | 4/4 | Complete   | 2026-09-30 |
 | 152. Post-Prune Wallet Rescan Eligibility | 3/3 | Complete    | 2026-10-03 |
-| 153. Automatic Prune Retention Integration | 0/0 | Pending planning | - |
+| 153. Automatic Prune Retention Integration | 4/4 | Complete    | 2026-10-03 |
 
 ## Next Step
 
-Run `/gsd-discuss-phase 153` or `/gsd-plan-phase 153` for automatic retention. Phase 152 passed; after Phase 153 passes, rerun `/gsd-audit-milestone`. Milestone archival remains `/gsd-complete-milestone v2.4` only after re-audit establishes closure.
+All eight phases and 34 plans are complete. Phase 153 passed 22/22 formal truths, full native verification and lifecycle validation. Review the refreshed v2.4 milestone audit and its three nonblocking advisories before a separate `/gsd-complete-milestone v2.4` request.
 
----
+***
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*

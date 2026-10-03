@@ -14,8 +14,8 @@ Requirements for Knots-aligned prune on the single active chainstate. Block and 
 
 ### Prune Policy
 
-- [ ] **PRUN-01**: Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB.
-- [ ] **PRUN-02**: Automatic prune keeps the last 288 blocks and does not start before the network prune-after height.
+- [x] **PRUN-01**: Operator can disable prune, select manual-only prune, or set an automatic target of at least 550 MiB.
+- [x] **PRUN-02**: Automatic prune keeps the last 288 blocks and does not start before the network prune-after height.
 - [x] **PRUN-03**: Manual prune refuses a target inside the 288-block keep window.
 
 ### Unlink
@@ -95,8 +95,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | Requirement | Phase | Status |
 | --- | --- | --- |
 | SNAP-01 | Phase 152 | Complete |
-| PRUN-01 | Phase 153 | Pending |
-| PRUN-02 | Phase 153 | Pending |
+| PRUN-01 | Phase 153 | Complete |
+| PRUN-02 | Phase 153 | Complete |
 | PRUN-03 | Phase 147 | Complete |
 | LOCK-01 | Phase 147 | Complete |
 | UNLK-01 | Phase 148 | Complete |
@@ -116,8 +116,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - v2.4 requirements: 17 total
 - Mapped to phases: 17
 - Unmapped: 0
-- Audit closure: 15 Complete, two Pending; Phase 152 closed SNAP-01 with lifecycle-valid verification. PRUN-01/PRUN-02 remain in Phase 153.
+- Audit closure: all 17 requirements Complete. Phase 152 owns SNAP-01; lifecycle-valid Phase 153 verification and full native checks close PRUN-01/PRUN-02. The refreshed milestone audit retains three nonblocking advisories.
 
----
+***
 *Requirements defined: 2026-09-21*
-*Last updated: 2026-10-03 after verified Phase 152 closure*
+*Last updated: 2026-10-03 after verified Phase 153 closure*

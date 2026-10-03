@@ -3956,9 +3956,18 @@
         ],
         "evidence": [
           "docs/parity/catalog/chainstate.md",
-          ".planning/phases/147-pure-prune-policy-and-lock-windows/147-VERIFICATION.md"
+          ".planning/phases/147-pure-prune-policy-and-lock-windows/147-VERIFICATION.md",
+          ".planning/phases/153-automatic-prune-retention-integration/153-01-SUMMARY.md",
+          ".planning/phases/153-automatic-prune-retention-integration/153-02-SUMMARY.md",
+          ".planning/phases/153-automatic-prune-retention-integration/153-03-SUMMARY.md",
+          ".planning/phases/153-automatic-prune-retention-integration/153-04-SUMMARY.md",
+          ".planning/phases/153-automatic-prune-retention-integration/153-VERIFICATION.md",
+          ".planning/phases/153-automatic-prune-retention-integration/153-INTEGRATION.md",
+          "packages/open-bitcoin-node/src/storage/fjall_store/payload_usage.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs"
         ],
-        "rationale": "Phase 147 uniquely owns PRUN-01, PRUN-02, PRUN-03, and LOCK-01.",
+        "rationale": "This unique stable surface retains Phase 147 pure foundations and PRUN-03/LOCK-01 evidence. Phase 153 Automatic Prune Retention Integration supplies the ordinary production consumer for INT-01; canonical PRUN-01/PRUN-02 are Complete after default full native success and formal lifecycle-valid Phase 153 verification (22/22). Integration re-audit connects 20/20 selected seams and traces 10/10 scoped flows, with zero blocking gaps and three retained advisory items.",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/validation.h",
@@ -3972,7 +3981,10 @@
           ]
         },
         "known_gaps": [
-          "Manual prune inside the 288-block keep window is refused rather than clamped."
+          "Manual prune inside the 288-block keep window is refused rather than clamped.",
+          "Intentional accounting difference: retained logical Fjall block and encoded-undo value bytes include all protected/nonactive payloads, with active-only candidates; Knots CalculateCurrentUsage sums flat-file nSize+nUndoSize and FindFilesToPrune applies chunk/IBD buffers. Logical retained bytes do not measure physical disk allocation or immediate reclamation. Protected bytes may keep the soft target unreachable.",
+          "The default-suite genuine ordinary fixture measures 578359864 bytes above legal 550 MiB (576716800 bytes), commits deletion of heights 1/500/713, retains 510/714/1001 and reopens production durable checkpoints. Its later metadata-persistence refusal delegates actual Fjall accounting/unlink/counters through a fixture owner with MemoryCoinsView; it is effect injection, not hardware failure or a second production durable-coins proof.",
+          "Phase 153 default full native verification passes with genuine retention, strict workspace lint/build/tests, benchmark smoke, Bazel and pure-core coverage. Formal verification is lifecycle-valid and passed 22/22; the integration trace retains three advisory items. Sparse codec-valid retention fixtures do not prove continuous consensus-chain validation, physical storage caps, archive serving, assumeutxo, temporary IBD targets, public-network behavior or production readiness."
         ],
         "suspected_unknowns": []
       },

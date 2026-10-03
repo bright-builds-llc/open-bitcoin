@@ -12,6 +12,42 @@
   },
   "groups": [
     {
+      "label": "daemon-automatic-prune-retention",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "node-automatic-prune-owner",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune/tests/fixtures.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune/tests/writers.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "node-retained-payload-usage",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/payload_usage.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/payload_usage/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "rpc-wallet-rescan-eligibility",
       "files": [
         "packages/open-bitcoin-rpc/src/context/rescan.rs",

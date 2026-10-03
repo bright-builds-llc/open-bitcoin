@@ -12,6 +12,106 @@ use crate::storage::coins_codec::{encode_best_block_key, encode_best_block_value
 use crate::storage::fjall_store::{HAVE_PRUNED_KEY, PruneIntent, resume_prune_intent};
 
 #[test]
+fn initialize_recovered_tip_supports_repeated_idle_flush_and_preserves_staged_tip() {
+    for staged in [false, true] {
+        // Arrange
+        let (path, store) = open_temp_store("idle-best-block");
+        let tip = BlockHash::from_byte_array([7; 32]);
+        let newer = BlockHash::from_byte_array([8; 32]);
+        let mut planted = FjallCoinsView::from_store(&store);
+        planted
+            .batch_write(
+                CoinsBatch {
+                    entries: HashMap::new(),
+                },
+                Some(tip),
+            )
+            .expect("known durable tip");
+        let (mut lifecycle, view, mut cache) = initialize_ready(&store);
+        assert_eq!(cache.cache_entry_count(), 0);
+        if staged {
+            cache.set_best_block(newer);
+        }
+        let expected = if staged { newer } else { tip };
+
+        // Act
+        for _ in 0..2 {
+            let execution = lifecycle
+                .execute_flush(
+                    &mut SucceedingSink,
+                    &mut cache,
+                    FlushMode::Always,
+                    policy_now(),
+                    u64::MAX,
+                    &[],
+                    &[],
+                    &[],
+                    &[],
+                )
+                .expect("idle full checkpoint");
+            assert!(execution.wrote_coins);
+        }
+
+        // Assert
+        assert_eq!(view.best_block().expect("current tip"), Some(expected));
+        assert_eq!(cache.cache_entry_count(), 0);
+        drop(cache);
+        drop(view);
+        drop(planted);
+        drop(store);
+        let reopened = FjallNodeStore::open(&path).expect("reopen checkpoint");
+        assert_eq!(
+            FjallCoinsView::from_store(&reopened)
+                .best_block()
+                .expect("durable best"),
+            Some(expected)
+        );
+        drop(reopened);
+        remove_dir_if_exists(&path);
+    }
+}
+
+#[test]
+fn initialize_idle_flush_propagates_current_best_block_read_error() {
+    // Arrange
+    let (path, store) = open_temp_store("idle-best-read-error");
+    let (mut lifecycle, view, mut cache) = initialize_ready(&store);
+    let key = encode_best_block_key();
+    view.write_raw_bytes(&key, vec![1, 2, 3])
+        .expect("injected malformed best metadata");
+
+    // Act
+    let outcome = lifecycle.execute_flush(
+        &mut SucceedingSink,
+        &mut cache,
+        FlushMode::Always,
+        policy_now(),
+        u64::MAX,
+        &[],
+        &[],
+        &[],
+        &[],
+    );
+
+    // Assert
+    assert!(matches!(
+        outcome,
+        Err(StorageError::Corruption {
+            namespace: StorageNamespace::Coins,
+            ..
+        })
+    ));
+    assert_eq!(
+        view.read_raw_bytes(&key).expect("metadata unchanged"),
+        Some(vec![1, 2, 3])
+    );
+    drop(cache);
+    drop(view);
+    drop(store);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
 fn default_coins_cache_byte_limit_is_442_mib() {
     // Arrange
     let flush_src = include_str!("../../../../../open-bitcoin-chainstate/src/coins/flush.rs");

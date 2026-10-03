@@ -5,11 +5,14 @@
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use open_bitcoin_node::FjallNodeStore;
+use open_bitcoin_node::core::chainstate::CoinsView;
 use open_bitcoin_node::core::chainstate::PruneMode;
 use open_bitcoin_node::core::consensus::block_hash;
 use open_bitcoin_node::core::primitives::BlockHash;
 use open_bitcoin_node::status::{FieldAvailability, ManualPruneRefusalCode, ManualPruneSurface};
+use open_bitcoin_node::{
+    ChainstateStore, FjallChainstateStore, FjallNodeStore, ManagedNetworkHandle, ManagedPeerNetwork,
+};
 use serde_json::{Value, json};
 
 use super::super::dispatch;
@@ -51,14 +54,73 @@ impl Drop for TempStore {
     }
 }
 
-fn context_with_store(path: &Path) -> ManagedRpcContext {
+fn context_with_store(path: &Path) -> ManagedRpcContext<FjallChainstateStore> {
     let store = FjallNodeStore::open(path).expect("open prune lock store");
-    let mut context = empty_context();
-    context.set_metrics_store(store);
-    context
+    let network = ManagedPeerNetwork::new(
+        FjallChainstateStore::from_store(store.clone()),
+        Default::default(),
+        Default::default(),
+    );
+    let config = crate::config::RuntimeConfig {
+        chain: open_bitcoin_node::core::wallet::AddressNetwork::Regtest,
+        wallet: crate::config::WalletRuntimeConfig {
+            coinbase_maturity: 1,
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    ManagedRpcContext::from_runtime_config_with_network_handle(
+        &config,
+        ManagedNetworkHandle::from_network_fixture(network),
+        Some(store),
+    )
+    .expect("durable authority context")
 }
 
-fn list_locks(context: &mut ManagedRpcContext) -> Value {
+#[test]
+fn metrics_store_does_not_grant_a_transient_authority_lock_write() {
+    // Arrange
+    let temp = TempStore::new("metrics-only-lock");
+    let mut context = empty_context();
+    context.set_metrics_store(FjallNodeStore::open(temp.path()).expect("metrics store"));
+
+    // Act
+    let result = set_lock(&mut context, "wallet", 10, 20);
+    drop(context);
+    let durable = FjallNodeStore::open(temp.path())
+        .expect("reopen metrics")
+        .load_prune_locks()
+        .expect("durable locks");
+
+    // Assert
+    assert!(result.is_err());
+    assert!(durable.is_empty());
+}
+
+#[test]
+fn operator_status_reads_locks_from_the_prune_authority() {
+    // Arrange
+    let authority_temp = TempStore::new("authority-status-lock");
+    let metrics_temp = TempStore::new("different-metrics-status-lock");
+    let mut context = context_with_store(authority_temp.path());
+    context.set_metrics_store(FjallNodeStore::open(metrics_temp.path()).expect("separate metrics"));
+    set_lock(&mut context, "wallet", 10, 20).expect("authority lock");
+
+    // Act
+    let status = operator_prune_status(&context).expect("status");
+
+    // Assert
+    assert_eq!(
+        status.locks,
+        FieldAvailability::available(vec![open_bitcoin_node::status::PruneLockRow {
+            name: "wallet".into(),
+            height_first: 10,
+            height_last: 20,
+        }])
+    );
+}
+
+fn list_locks<S: ChainstateStore, V: CoinsView>(context: &mut ManagedRpcContext<S, V>) -> Value {
     dispatch(
         context,
         MethodCall::ListPruneLocks(ListPruneLocksRequest {}),
@@ -66,8 +128,8 @@ fn list_locks(context: &mut ManagedRpcContext) -> Value {
     .expect("list prune locks")
 }
 
-fn set_lock(
-    context: &mut ManagedRpcContext,
+fn set_lock<S: ChainstateStore, V: CoinsView>(
+    context: &mut ManagedRpcContext<S, V>,
     name: &str,
     height_first: u32,
     height_last: u32,
@@ -82,7 +144,10 @@ fn set_lock(
     )
 }
 
-fn clear_lock(context: &mut ManagedRpcContext, name: &str) -> Value {
+fn clear_lock<S: ChainstateStore, V: CoinsView>(
+    context: &mut ManagedRpcContext<S, V>,
+    name: &str,
+) -> Value {
     dispatch(
         context,
         MethodCall::ClearPruneLock(ClearPruneLockRequest {
@@ -214,7 +279,10 @@ fn invalid_ranges_return_invalid_parameter_and_do_not_write() {
     assert_eq!(durable[0].name, "keep");
 }
 
-fn prune(context: &mut ManagedRpcContext, height: i64) -> Result<Value, crate::RpcFailure> {
+fn prune<S: ChainstateStore, V: CoinsView>(
+    context: &mut ManagedRpcContext<S, V>,
+    height: i64,
+) -> Result<Value, crate::RpcFailure> {
     dispatch(
         context,
         MethodCall::PruneBlockchain(PruneBlockchainRequest { height }),

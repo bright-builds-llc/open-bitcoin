@@ -3,7 +3,10 @@
 
 //! Fjall-backed durable storage adapter for node-owned runtime state.
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::{Arc, Mutex},
+};
 
 use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode as FjallPersistMode};
 use open_bitcoin_core::{
@@ -38,11 +41,14 @@ mod blocks;
 mod coins;
 mod coins_access;
 mod mempool;
+mod payload_usage;
 mod prune;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
+pub use payload_usage::{PayloadUsageRevision, RetainedPayloadUsage};
+pub use prune::PairedDeleteOutcome;
+pub(crate) use prune::resume_prune_intent;
 #[cfg(test)]
 pub(crate) use prune::{HAVE_PRUNED_KEY, PruneIntent};
-pub(crate) use prune::{PairedDeleteOutcome, resume_prune_intent};
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";
@@ -64,6 +70,7 @@ pub struct FjallNodeStore {
     mempool: Keyspace,
     runtime: Keyspace,
     schema: Keyspace,
+    payload_usage: Arc<Mutex<payload_usage::PayloadUsageState>>,
 }
 
 impl FjallNodeStore {
@@ -74,6 +81,7 @@ impl FjallNodeStore {
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
 
         let store = Self {
+            payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
             path: path.as_ref().to_path_buf(),
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
@@ -430,19 +438,6 @@ impl FjallNodeStore {
         self.ensure_schema_and_migrate_coins()
     }
 
-    fn put_bytes(
-        &self,
-        namespace: StorageNamespace,
-        key: &str,
-        bytes: Vec<u8>,
-        mode: PersistMode,
-    ) -> Result<(), StorageError> {
-        self.keyspace(namespace)
-            .insert(key, bytes)
-            .map_err(|error| backend_failure(namespace, error))?;
-        self.persist(namespace, mode)
-    }
-
     fn get_bytes(
         &self,
         namespace: StorageNamespace,
@@ -468,18 +463,6 @@ impl FjallNodeStore {
                     .map_err(|error| backend_failure(namespace, error))
             })
             .collect()
-    }
-
-    fn remove_bytes(
-        &self,
-        namespace: StorageNamespace,
-        key: &str,
-        mode: PersistMode,
-    ) -> Result<(), StorageError> {
-        self.keyspace(namespace)
-            .remove(key)
-            .map_err(|error| backend_failure(namespace, error))?;
-        self.persist(namespace, mode)
     }
 
     fn persist(&self, namespace: StorageNamespace, mode: PersistMode) -> Result<(), StorageError> {
@@ -534,6 +517,7 @@ impl FjallNodeStore {
             .open()
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
         Ok(Self {
+            payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
             path: path.as_ref().to_path_buf(),
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
