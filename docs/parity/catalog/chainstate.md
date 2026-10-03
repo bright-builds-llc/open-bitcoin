@@ -40,6 +40,107 @@ ChainstateManager::GetPruneRange max_prune is tip height minus MIN_BLOCKS_TO_KEE
 The Knots m_snapshot_chainstate prune_start branch stays out of scope.
 Pinned spellings in this claim are ParsePruneOption, PruneLockInfo, DoPruneLocksForbidPruning, FindFilesToPrune, FindFilesToPruneManual, m_have_pruned, and IsBlockPruned.
 
+## Phase 152 post-prune wallet rescan eligibility
+
+The stable `v2-4-wallet-leftover-snapshot-cutover` surface owns SNAP-01.
+[Phase 146 verification](../../../.planning/phases/146-wallet-leftover-snapshot-cutover/146-VERIFICATION.md)
+is its historical durable-coins/leftover-cutover foundation. Phase 152
+**Post-Prune Wallet Rescan Eligibility** owns audit gap INT-02 closure.
+Implementation and targeted node/RPC tests are recorded in the
+[node summary](../../../.planning/phases/152-post-prune-wallet-rescan-eligibility/152-01-SUMMARY.md)
+and [RPC summary](../../../.planning/phases/152-post-prune-wallet-rescan-eligibility/152-02-SUMMARY.md).
+SNAP-01 is Complete after the full default native verifier passed and
+[Phase 152 verification](../../../.planning/phases/152-post-prune-wallet-rescan-eligibility/152-VERIFICATION.md)
+verified 11/11 must-haves with `status: passed` and
+`lifecycle_validated: true` for lifecycle `152-2026-10-03T00-26-52`.
+Historical Phase 146 evidence is retained alongside this new closure proof.
+
+Open Bitcoin stages its existing pure full UTXO replacement on a copy of the
+saved wallet. The requested start/chunk controls progress and stop height;
+it does not exclude older matching coins from the replacement. The shared
+[eligibility helper](../../../packages/open-bitcoin-node/src/wallet_registry/rescan.rs)
+checks requested heights and every selected candidate's creating height,
+including heights before start, before the adapter saves a replacement.
+It resolves each required height explicitly, probes distinct hashes once,
+excludes entries above the replacement height, and does not require
+unrelated old coins' payloads. Node/store authority uses guarded durable
+coins and best-block; live RPC authority retains the manager admission
+view of durable parent coins plus pending overlay updates, with a separate
+durable head-marker check. Leftover snapshot bytes supply neither authority
+nor fallback, even when still present after reopen.
+
+This stricter gate is the project full-replacement contract. Pinned Knots
+[transactions.cpp::rescanblockchain](../../../packages/bitcoin-knots/src/wallet/rpc/transactions.cpp)
+checks `hasBlocks` over its requested range (line 922), then calls
+[wallet.cpp::ScanForWalletTransactions](../../../packages/bitcoin-knots/src/wallet/wallet.cpp)
+(line 2000), which scans and updates transactions incrementally. Knots does
+not implement Open Bitcoin's full UTXO replacement algorithm.
+
+Missing active-chain metadata, absent requested/creating payloads and
+payload read errors refuse before replacement persistence. The saved wallet
+balances, UTXOs, tip and MTP, and the job's actual successful checkpoint and
+next height are preserved. A requested start never fabricates progress;
+missing stop metadata never fabricates a target hash. An identified job
+records Failed with safe boundary/category and known height/hash, excluding
+raw backend paths and snapshot contents. Failure-save errors propagate
+visibly. Pending freshness reflects the actual checkpoint relative to its
+target: Partial below the target, Fresh when already scanned through it,
+and Scanning when the checkpoint is unknown. The changed-target Failed-save
+regression proves the persisted Pending job remains Partial if recording
+Failed itself errors; refusal never changes the saved wallet/checkpoint.
+
+Each resumed node chunk and later durable RPC request reevaluates
+eligibility. A previously successful scan is not permanent permission after
+pruning. A refused later scan preserves the last successful wallet. Durable
+`rescan_wallet(snapshot)` delegates to the same guarded range path, so a
+caller-supplied snapshot cannot bypass eligibility; local fixture behavior
+continues to use its supplied snapshot.
+
+| Executable evidence | Behavior and fixture |
+| --- | --- |
+| [Shared helper tests](../../../packages/open-bitcoin-node/src/wallet_registry/rescan/tests.rs) | Eight tests cover older creating heights, unrelated coins, absent requested/creating metadata, safe probe errors, deduplication and replacement-height filtering. |
+| [Node runtime eligibility tests](../../../packages/open-bitcoin-node/src/sync/tests/wallet_rescan_runtime/eligibility.rs) | Real paired deletion with retained coins/best-block and have-pruned; midrange and in-range refusal; successful first chunk then prune/resume after dropping and reopening stores; conflicting leftover retained but ignored; retained-payload and unrelated-old-coin success controls. Literal H=[new,old] with missing B proves interrupted authority refusal; private callbacks exercise probe and Failed-save errors. |
+| [Durable RPC eligibility tests](../../../packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs) and [fixtures](../../../packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs) | `FlushPersistSink::commit_paired_unlink` really removes both payload mates from the RPC store, leaves durable coins/best-block, sets have-pruned and retains other mates. Full wallet equality, saved checkpoint, later request/reopen and conflicting leftover assertions cover refusal and retained/unrelated controls. Missing-target and direct-helper tests close invented metadata and snapshot bypasses. RPC authority/read failures are privately injected typed errors through the real refusal/persistence handler; they are not physical H/B fixtures. |
+
+The node executor observed a real pre-change RED: pruning the older matching
+creating block still returned Complete/Fresh through height 3. Shared helper
+tests passed 8/8, final node eligibility passed 10/10, coins migration passed
+15/15 and node Clippy passed. The RPC executor observed its real durable RED:
+the old adapter accepted start=3/stop=3 after paired deletion at creating
+height 1. The final RPC matrix passed 19/19, including changed-target
+Failed-save Pending/Partial readback, unknown-checkpoint Scanning, and a
+real prune/refusal whose checkpoint already meets the target and correctly
+remains Fresh. Freshness compatibility passed 4/4; construction passed 5/5,
+range dispatch 1/1, node wallet tests 39/39 and final review-fix RPC Clippy
+passed. The full default `bash scripts/verify.sh` then passed with exit 0 in
+34m46.545s, including ordered workspace verification, coverage, benchmarks
+and Bazel smoke. The linked lifecycle-valid report corroborates runtime
+requested/creating-height checks and all three truthful freshness branches.
+Historical source-string checks do not substitute for these runtime assertions.
+
+From the repository root, require Bun on PATH to match `.bun-version`
+(1.3.9), then use the timing wrapper to repeat the behavioral checks
+sequentially; do not overlap Cargo jobs:
+
+```bash
+bun --version # must match .bun-version (1.3.9)
+bun run scripts/command-timings.ts run --key phase152-node-wallet-rescan -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib wallet_rescan_runtime::eligibility --all-features
+bun run scripts/command-timings.ts run --key phase152-node-shared-eligibility -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib wallet_registry::rescan --all-features
+bun run scripts/command-timings.ts run --key phase152-rpc-post-prune -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --lib context::tests::rescan_eligibility --all-features
+bash scripts/verify.sh
+```
+
+The owner trace shows HTTP RPC dispatch serializes through the context
+mutex; manual prune uses the network authority mutation mutex, and current
+automatic `flush_coins` supplies an empty prune plan. Separately exported
+node/store callers share no atomic rescan probe/save transaction. This
+evidence proves eligibility after completed pruning and fresh resume/reopen
+probes; it does not guarantee payload presence at save under arbitrary
+concurrent direct-library pruning. A new concurrent owner or stronger claim
+requires replanning. Phase 153 automatic retention remains pending.
+Incremental wallet scanning, snapshot deletion, repair, archive serving,
+assumeutxo, public defaults and production-funds claims remain deferred.
+
 ## Historical Phase 4 snapshot-engine coverage
 
 The following bullets are historical Phase 4 snapshot-engine coverage, not live v2.3 coin truth.

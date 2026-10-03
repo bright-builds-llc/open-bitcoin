@@ -21,3 +21,48 @@ Completion review (2026-10-02 17:34 CDT): `gaps_found`, with 14/17 requirements 
 Proposal: `.planning/reports/v2.4-GAP-CLOSURE-PROPOSAL.md`. Current state: approved, created, and checked. The Phase 151 gate permits only audited/mapped Pending closure and requires new-owner lifecycle evidence before Complete. The full repo-native verifier remains the mandatory commit gate; Git history records finalization.
 
 Completion review: Phases 152 and 153 have goals, dependencies, four planning tasks each, success criteria, and tracked directories. All three affected requirements are Pending under their new owners. The 82 affected checker/documentation tests, live checkers, Bright Builds checks, and ordered Rust format/Clippy/build/test checks passed. No execution plans or product fixes were created; INT-02 and INT-01 remain the work of the new phases. Next: `/gsd-plan-phase 152`, then re-audit after both closure phases pass.
+
+## task-phase152-wallet-eligibility | 2026-10-02 19:28 CDT | Close post-prune wallet rescan eligibility
+
+- [x] Load active lessons and standards, sync remote state, and resolve Phase 152.
+- [x] Capture yolo decisions with lifecycle provenance and scope boundaries.
+- [x] Research and check executable plans for SNAP-01 and INT-02.
+- [x] Implement shared replacement eligibility and node chunk/resume refusal handling.
+- [x] Apply the same replacement eligibility contract to durable RPC entry points.
+- [x] Prove real paired-prune refusal, retained controls, resume/reopen, and preserved wallet state.
+- [x] Review/simplify changes, refresh parity/docs, and pass default repo verification.
+- [x] Record lifecycle-valid phase verification and progress.
+- [x] Review and stage the verified change set for commit and push on main.
+
+Workflow: `/gsd-yolo-discuss-plan-execute-commit-and-push` (no arguments;
+selected Phase 152). Lifecycle: `152-2026-10-03T00-26-52`.
+Planning, implementation and finalization follow the strict clean-verification
+gate; no commits until that gate passes. Phase 153 stays pending.
+
+Git finalization is confirmed by the phase-scoped commit and current
+branch/upstream synchronization. It is derived from Git evidence rather
+than a self-updating push checkbox that would need another commit solely
+to record its own push.
+
+Failure signal: The real paired-prune node regression
+`post_prune_midrange_rescan_preserves_wallet_and_fails_job` failed against
+the unchanged adapter (exit 101): deleting creating height 1 while retaining
+the coin still let a scan starting at height 2 return Complete/Fresh through
+height 3. This establishes INT-02 behavior before the shared gate change.
+
+RPC failure signal: With the durable registry variant asserted and real
+height-1 paired deletion, have-pruned and surviving coins confirmed, the
+unchanged range adapter returned Fresh through height 3 for start/stop 3.
+The refusal regression failed (exit 101); the retained-payload control
+passed. The earlier local-adapter fixture run is excluded from this evidence.
+
+Completion review (2026-10-03 UTC): Phase 152 passed 11/11 goal checks and
+the required lifecycle validator. The full native verifier exited 0 in
+34m 46.545s, including lint, build, tests, benchmark smoke, coverage and
+Bazel; all 37 new shared/node/RPC cases passed. Review found and resolved
+the reused-job freshness bug; the final review is clean and all 17 planned
+threat dispositions are closed. Parity/docs and canonical SNAP-01 ownership
+are reconciled. Residual scope: Phase 153 automatic retention remains
+pending, and completed-prune/resume eligibility does not claim global
+atomicity for concurrent direct-library callers. Final Git evidence is
+derived as described above.

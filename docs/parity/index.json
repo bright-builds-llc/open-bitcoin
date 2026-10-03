@@ -3913,24 +3913,34 @@
       },
       {
         "id": "v2-4-wallet-leftover-snapshot-cutover",
-        "title": "v2.4 Wallet Leftover-Snapshot Cutover",
+        "title": "v2.4 Wallet Leftover-Snapshot Cutover / Post-Prune Wallet Rescan Eligibility",
         "status": "done",
         "requirements": [
           "SNAP-01"
         ],
         "evidence": [
           "docs/parity/catalog/chainstate.md",
-          ".planning/phases/146-wallet-leftover-snapshot-cutover/146-VERIFICATION.md"
+          ".planning/phases/146-wallet-leftover-snapshot-cutover/146-VERIFICATION.md",
+          ".planning/phases/152-post-prune-wallet-rescan-eligibility/152-01-SUMMARY.md",
+          ".planning/phases/152-post-prune-wallet-rescan-eligibility/152-02-SUMMARY.md",
+          ".planning/phases/152-post-prune-wallet-rescan-eligibility/152-VERIFICATION.md",
+          "packages/open-bitcoin-node/src/wallet_registry/rescan/tests.rs",
+          "packages/open-bitcoin-node/src/sync/tests/wallet_rescan_runtime/eligibility.rs",
+          "packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs",
+          "packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs"
         ],
-        "rationale": "Phase 146 uniquely owns SNAP-01.",
+        "rationale": "This stable surface uniquely owns SNAP-01, Complete after passing full default native verification and lifecycle-valid Phase 152 Post-Prune Wallet Rescan Eligibility verification. Phase 146 foundations remain historical evidence. Phase 152 owns INT-02 closure: shared staged full replacement checks requested heights and every matching candidate's creating payload, including heights before start, before saving; saved checkpoints, targets and freshness stay truthful on refusal. Knots rescanblockchain checks its requested range and incrementally scans transactions; Open Bitcoin's stronger full-replacement gate is the project contract, not the Knots algorithm.",
         "upstream": {
           "sources": [
-            "packages/bitcoin-knots/src/validation.cpp"
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/wallet/wallet.cpp",
+            "packages/bitcoin-knots/src/wallet/rpc/transactions.cpp"
           ],
           "tests": []
         },
         "known_gaps": [
-          "Leftover snapshot bytes stay non-authoritative."
+          "Leftover snapshot bytes stay non-authoritative. Missing metadata, payload absence and read errors preserve the prior wallet/checkpoint and record safe Failed evidence when a job is identified; failure-save errors propagate visibly.",
+          "Eligibility is rechecked on resumed chunks and after reopen. Completed-prune tests do not establish an atomic probe/save guarantee for concurrent direct-library callers. Automatic retention remains Phase 153; incremental scanning, snapshot deletion, repair, archive serving, assumeutxo, public defaults and production-funds claims remain deferred."
         ],
         "suspected_unknowns": []
       },

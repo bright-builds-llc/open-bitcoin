@@ -12,6 +12,21 @@
   },
   "groups": [
     {
+      "label": "rpc-wallet-rescan-eligibility",
+      "files": [
+        "packages/open-bitcoin-rpc/src/context/rescan.rs",
+        "packages/open-bitcoin-rpc/src/context/wallet_state.rs",
+        "packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs",
+        "packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/wallet.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/transactions.cpp",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
       "label": "bench-consensus-script",
       "files": [
         "packages/open-bitcoin-bench/src/cases/consensus.rs"
@@ -2261,11 +2276,9 @@
         "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
         "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
         "packages/open-bitcoin-rpc/src/context/network.rs",
-        "packages/open-bitcoin-rpc/src/context/rescan.rs",
         "packages/open-bitcoin-rpc/src/context/resource_governance.rs",
         "packages/open-bitcoin-rpc/src/context/tests.rs",
         "packages/open-bitcoin-rpc/src/context/tests/construction.rs",
-        "packages/open-bitcoin-rpc/src/context/wallet_state.rs",
         "packages/open-bitcoin-rpc/src/dispatch.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
         "packages/open-bitcoin-rpc/src/envelope.rs",
@@ -2437,6 +2450,19 @@
         "packages/open-bitcoin-cli/src/operator/service/tests/templates_and_errors.rs"
       ],
       "breadcrumbs": []
+    },
+    {
+      "label": "node-wallet-rescan-eligibility",
+      "files": [
+        "packages/open-bitcoin-node/src/wallet_registry/rescan.rs",
+        "packages/open-bitcoin-node/src/wallet_registry/rescan/tests.rs",
+        "packages/open-bitcoin-node/src/sync/tests/wallet_rescan_runtime/eligibility.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/wallet.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/transactions.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
     }
   ]
 }

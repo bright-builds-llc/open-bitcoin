@@ -18,6 +18,8 @@ use crate::{
     sync::WalletRescanRuntime,
 };
 
+mod eligibility;
+
 fn tip(height: u32) -> ChainPosition {
     ChainPosition::new(
         BlockHeader {
@@ -296,7 +298,10 @@ fn missing_block_payload_fails_chunk_closed() {
     assert_eq!(job.state, WalletRescanJobState::Failed);
     assert_ne!(job.freshness, WalletRescanFreshness::Fresh);
     let error = job.maybe_error.expect("failed job error");
-    assert!(error.contains("missing block payload"), "error was {error}");
+    assert!(
+        error.contains("requested") && error.contains("height 2"),
+        "error was {error}"
+    );
 
     remove_dir_if_exists(&path);
 }

@@ -17,6 +17,8 @@ use open_bitcoin_wallet::wallet::WalletRescanState;
 
 use crate::{FjallNodeStore, PersistMode, StorageError, StorageNamespace, StorageRecoveryAction};
 
+pub mod rescan;
+
 const MISSING_SELECTED_WALLET_DETAIL: &str = "selected wallet metadata missing";
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]

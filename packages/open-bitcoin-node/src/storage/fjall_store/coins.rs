@@ -115,6 +115,7 @@ impl FjallNodeStore {
     pub fn wallet_scan_chainstate_snapshot(
         &self,
     ) -> Result<Option<ChainstateSnapshot>, StorageError> {
+        self.check_wallet_scan_authority()?;
         if self.coins_keyspace_is_empty()? {
             return Ok(None);
         }
@@ -141,6 +142,19 @@ impl FjallNodeStore {
         let mut snapshot = ChainstateSnapshot::new(active_chain, utxos, undo_by_block);
         snapshot.maybe_confirmed_txid_counts = maybe_confirmed_txid_counts;
         Ok(Some(snapshot))
+    }
+
+    pub(crate) fn check_wallet_scan_authority(&self) -> Result<(), StorageError> {
+        let heads = FjallCoinsView::from_store(self)
+            .head_blocks()
+            .map_err(map_heads_error)?;
+        if matches!(
+            decide_recovery(heads.len()),
+            RecoveryDecision::InterruptedTwoHeads
+        ) {
+            return Err(interrupted_coins_write());
+        }
+        Ok(())
     }
 
     pub(crate) fn ensure_schema_and_migrate_coins(&self) -> Result<(), StorageError> {

@@ -18,7 +18,7 @@ The repository now includes durable Fjall-backed runtime storage, disk-backed pe
 
 v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Phase 147 is complete: `open-bitcoin-chainstate` decides prune mode (disabled, manual-only, or an automatic target of at least 550 MiB), keeps the last 288 blocks, waits for the network prune-after height, refuses a manual target inside that keep window, and protects a prune-lock range plus a 10-block buffer. Phase 148 is complete: a height's block payload and undo are removed together in one durable Fjall batch, have-pruned is recorded only after that delete commits, restart finishes the interrupted height or refuses closed, and a committed delete leaves the block cache even when the flush then errors. Phase 149 is complete: prune mode advertises `NODE_NETWORK_LIMITED` without full `NODE_NETWORK`, block bodies outside the 288+2 window are refused, a removed payload is not served, and `Pruned` is reported only when have-pruned is set and that payload is gone. Phase 150 is complete: operator prune status, manual prune, prune locks, and sanitized support evidence are shipped. Phase 151 records the scoped prune claim and the Fjall key versus blk/rev file difference. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
 
-The 2026-10-02 [milestone audit](v2.4-MILESTONE-AUDIT.md) found two product integration gaps despite the original phase reports passing. Phase 152 closes post-prune wallet creating-payload eligibility (SNAP-01); Phase 153 then connects automatic retained-payload usage and the existing planner to the production lifecycle (PRUN-01/PRUN-02). Those three requirements are Pending; the other 14 remain Complete. The next action is `/gsd-plan-phase 152`, with re-audit required before archival.
+The 2026-10-02 [milestone audit](v2.4-MILESTONE-AUDIT.md) found two product integration gaps despite the original phase reports passing. Phase 152 closed post-prune wallet creating-payload eligibility (SNAP-01) with real paired-deletion, resume/reopen and truthful refusal evidence; its [verification](phases/152-post-prune-wallet-rescan-eligibility/152-VERIFICATION.md) and default native verifier passed. Phase 153 still needs to connect automatic retained-payload usage and the existing planner to the production lifecycle (PRUN-01/PRUN-02). Fifteen requirements are Complete and two remain Pending. The next action is `/gsd-discuss-phase 153` or `/gsd-plan-phase 153`, with re-audit required before archival.
 
 ## Current Milestone: v2.4 Prune-Mode Product Behavior
 
@@ -138,7 +138,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 - ✓ v2.1 validated all 39 block-serving and compact-relay requirements across explicit activation, validated durable serving, BIP152 codecs and negotiation, reconstruction and fallback, authoritative runtime state, production announcement transport, sanitized operator evidence, parity roots, UAT, and deterministic no-claim/integration guardrails. Archive: `.planning/milestones/v2.1-REQUIREMENTS.md`
 - ✓ v2.2 validated all 40 package-relay and long-lived mempool-policy requirements across resource/fee primitives, pressure and expiry, typed package admission, same-peer 1P1C, authoritative lifecycle projection, snapshot recovery, initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails. Archive: `.planning/milestones/v2.2-REQUIREMENTS.md`
 - ✓ v2.3 validated all 15 chainstate-durability and honest-availability requirements across coins overlay/cache, typed flush policy, durable Fjall coins, manager flush/restart, payload-byte serving, sanitized operator evidence, and last-gate no-claim guardrails. Archive: `.planning/milestones/v2.3-REQUIREMENTS.md`
-- ✓ SNAP-01 validated in Phase 146: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are not chain truth.
+- ✓ SNAP-01 validated in Phase 152 after the Phase 146 foundations: both durable rescan adapters check every replacement entry's creating payload, preserve prior wallet/checkpoint state on refusal and ignore leftover snapshot authority.
 - ✓ UNLK-01, UNLK-02, and UNLK-03 validated in Phase 148: paired Fjall unlink, have-pruned only after a durable delete, and finish-or-refuse restart.
 - ✓ SERV-01, SERV-02, SERV-03, and LABL-01 validated in Phase 149: limited-service advertisement, out-of-window and removed-payload refusal, and an earned `Pruned` label.
 
@@ -146,6 +146,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - [x] Height windows, file unlinking, `m_have_pruned`, and prune locks for the single active chainstate
 - [x] Operator prune status, manual prune, prune locks, and sanitized support evidence
+- [ ] Automatic target drives ongoing durable retention (PRUN-01/PRUN-02; Phase 153)
 
 ### Out of Scope
 
@@ -265,4 +266,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-09-29 after Phase 151 parity roots and no-claim guardrails*
+*Last updated: 2026-10-03 after verified Phase 152 post-prune wallet eligibility closure*

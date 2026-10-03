@@ -1,17 +1,17 @@
 ---
-gsd_state_version: 1.0
+gsd_state_version: "1.0"
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
 status: planning
-stopped_at: Created approved gap closure Phases 152 and 153
-last_updated: "2026-10-02T22:54:00Z"
-last_activity: 2026-10-02
+stopped_at: Phase 152 verified; Phase 153 awaits discussion and planning
+last_updated: "2026-10-03T02:32:27Z"
+last_activity: "2026-10-03"
 progress:
   total_phases: 8
-  completed_phases: 6
-  total_plans: 27
-  completed_plans: 27
-  percent: 75
+  completed_phases: 7
+  total_plans: 30
+  completed_plans: 30
+  percent: 88
 ---
 
 # Project State
@@ -21,19 +21,19 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 152 — post-prune-wallet-rescan-eligibility
+**Current focus:** Phase 153 — automatic-prune-retention-integration
 
 ## Current Position
 
 Milestone: v2.4 Prune-Mode Product Behavior
-Phase: 152 (post-prune-wallet-rescan-eligibility) — PENDING PLANNING
+Phase: 153 (automatic-prune-retention-integration) — PENDING PLANNING
 Plan: 0 of 0; execution plans not created yet
-Status: Audit gap closure approved; 14 requirements Complete, three Pending
-Last activity: 2026-10-02
+Status: Phase 152 verified; 15 requirements Complete, two Pending
+Last activity: 2026-10-03
 
-Phase progress: [███████░░░] 75% (6/8 phases). The 27 original plans are complete; closure plans remain to be created.
+Phase progress: [█████████░] 88% (7/8 phases). All 30 existing plans are complete; Phase 153 closure plans remain to be created.
 
-Next action: `/gsd-plan-phase 152`, then Phase 153 after wallet eligibility closes. Re-audit after both phases pass before `/gsd-complete-milestone v2.4`.
+Next action: `/gsd-discuss-phase 153` or `/gsd-plan-phase 153`. Re-audit after Phase 153 passes before `/gsd-complete-milestone v2.4`.
 
 ## Performance Metrics
 
@@ -73,6 +73,7 @@ Next action: `/gsd-plan-phase 152`, then Phase 153 after wallet eligibility clos
 | 148 | 5 | - | - |
 | 149 | 4 | - | - |
 | 150 | 8 | - | - |
+| 152 | 3 | - | - |
 
 ### Plan Execution History
 
@@ -602,6 +603,6 @@ Next action: `/gsd-plan-phase 152`, then Phase 153 after wallet eligibility clos
 
 ## Session Continuity
 
-Last session: 2026-10-02T22:54:00Z
-Stopped at: Gap closure phases created; Phase 152 awaits detailed planning
+Last session: 2026-10-03T02:32:27Z
+Stopped at: Phase 152 verified; Phase 153 awaits discussion and planning
 Resume file: .planning/ROADMAP.md

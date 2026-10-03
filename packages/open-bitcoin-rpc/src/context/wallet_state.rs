@@ -1,13 +1,8 @@
 // Parity breadcrumbs:
-// - packages/bitcoin-knots/src/bitcoind.cpp
-// - packages/bitcoin-knots/src/rpc/protocol.h
-// - packages/bitcoin-knots/src/rpc/request.cpp
-// - packages/bitcoin-knots/src/rpc/server.cpp
-// - packages/bitcoin-knots/src/rpc/blockchain.cpp
-// - packages/bitcoin-knots/src/rpc/mempool.cpp
-// - packages/bitcoin-knots/src/rpc/net.cpp
-// - packages/bitcoin-knots/src/rpc/rawtransaction.cpp
-// - packages/bitcoin-knots/test/functional/interface_rpc.py
+// - packages/bitcoin-knots/src/wallet/wallet.cpp
+// - packages/bitcoin-knots/src/wallet/rpc/transactions.cpp
+// - packages/bitcoin-knots/src/coins.cpp
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use open_bitcoin_node::core::primitives::Transaction;
 use open_bitcoin_node::core::wallet::{
@@ -223,22 +218,8 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
             WalletState::Local(wallet) => wallet
                 .rescan_chainstate(snapshot)
                 .map_err(wallet_error_to_failure),
-            WalletState::DurableNamedRegistry {
-                store,
-                maybe_request_wallet_name,
-            } => {
-                let mut registry = load_wallet_registry(store)?;
-                let wallet_name =
-                    resolve_selected_wallet_name(maybe_request_wallet_name.as_deref(), &registry)?;
-                let mut wallet = registry
-                    .wallet(&wallet_name)
-                    .map_err(wallet_registry_error_to_failure)?;
-                wallet
-                    .rescan_chainstate(snapshot)
-                    .map_err(wallet_error_to_failure)?;
-                registry
-                    .save_wallet(store, &wallet_name, &wallet, PersistMode::Sync)
-                    .map_err(wallet_registry_error_to_failure)
+            WalletState::DurableNamedRegistry { .. } => {
+                self.rescan_wallet_range(Some(0), None).map(|_| ())
             }
         }
     }

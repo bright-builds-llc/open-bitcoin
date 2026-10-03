@@ -5,8 +5,10 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-use std::collections::BTreeSet;
-
+use crate::wallet_registry::rescan::{
+    PreparedWalletRescan, WalletRescanEligibilityFailure, prepare_durable_wallet_rescan,
+};
+use open_bitcoin_core::{chainstate::ChainstateSnapshot, wallet::Wallet};
 use open_bitcoin_wallet::wallet::WalletRescanState;
 
 use crate::{
@@ -106,7 +108,29 @@ impl WalletRescanRuntime {
         &self,
         wallet_name: &str,
     ) -> Result<WalletRescanJob, WalletRegistryError> {
-        let chainstate = self.required_chainstate_snapshot()?;
+        self.advance_with_preparation(
+            wallet_name,
+            |wallet, authority, start, through| {
+                prepare_durable_wallet_rescan(&self.store, wallet, authority, start, through)
+            },
+            |registry, job| registry.save_rescan_job(&self.store, job, self.persist_mode),
+        )
+    }
+
+    fn advance_with_preparation(
+        &self,
+        wallet_name: &str,
+        prepare: impl FnOnce(
+            &Wallet,
+            &ChainstateSnapshot,
+            u32,
+            u32,
+        ) -> Result<PreparedWalletRescan, WalletRescanEligibilityFailure>,
+        save_failure: impl FnOnce(
+            &mut WalletRegistry,
+            WalletRescanJob,
+        ) -> Result<(), WalletRegistryError>,
+    ) -> Result<WalletRescanJob, WalletRegistryError> {
         let mut registry = WalletRegistry::load(&self.store)?;
         let mut job = registry
             .rescan_job(wallet_name)
@@ -115,38 +139,55 @@ impl WalletRescanRuntime {
         if !job.requires_resume() {
             return Ok(job);
         }
-
-        let chunk_end_height =
-            chunk_end_height(job.next_height, job.target_tip_height, self.chunk_size);
-        for position in chainstate.active_chain.iter().filter(|position| {
-            position.height >= job.next_height && position.height <= chunk_end_height
-        }) {
-            if !self.store.has_block(position.block_hash)? {
-                job.mark_failed(format!(
-                    "missing block payload at height {} hash {:?}",
-                    position.height, position.block_hash
-                ));
-                registry.save_rescan_job(&self.store, job.clone(), self.persist_mode)?;
-                return Err(WalletRegistryError::Storage(
-                    StorageError::UnavailableNamespace {
-                        namespace: StorageNamespace::BlockIndex,
-                    },
-                ));
+        let through = chunk_end_height(job.next_height, job.target_tip_height, self.chunk_size);
+        let result = (|| {
+            let authority = self
+                .required_chainstate_snapshot()
+                .map_err(WalletRescanEligibilityFailure::authority)?;
+            let wallet = registry
+                .wallet(wallet_name)
+                .map_err(WalletRescanEligibilityFailure::authority)?;
+            prepare(&wallet, &authority, job.next_height, through)
+        })();
+        let prepared = match result {
+            Ok(prepared) => prepared,
+            Err(failure) => {
+                job.mark_failed(failure.safe_detail());
+                save_failure(&mut registry, job)?;
+                return Err(failure.error);
             }
-        }
-        let partial_snapshot = partial_chainstate_snapshot(&chainstate, chunk_end_height);
-        let maybe_tip_median_time_past = partial_snapshot.tip().map(|tip| tip.median_time_past);
-        let mut wallet = registry.wallet(wallet_name)?;
-        if let Err(error) = wallet.rescan_chainstate(&partial_snapshot) {
-            job.mark_failed(error.to_string());
-            registry.save_rescan_job(&self.store, job.clone(), self.persist_mode)?;
-            return Err(error.into());
-        }
-
-        registry.save_wallet(&self.store, wallet_name, &wallet, self.persist_mode)?;
-        job.mark_chunk_progress(chunk_end_height, maybe_tip_median_time_past);
+        };
+        registry.save_wallet(
+            &self.store,
+            wallet_name,
+            &prepared.wallet,
+            self.persist_mode,
+        )?;
+        job.mark_chunk_progress(prepared.through_height, prepared.maybe_tip_median_time_past);
         registry.save_rescan_job(&self.store, job.clone(), self.persist_mode)?;
         Ok(job)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn advance_with_probe_and_failure_save(
+        &self,
+        wallet_name: &str,
+        probe: impl FnMut(open_bitcoin_core::primitives::BlockHash) -> Result<bool, StorageError>,
+        save_failure: impl FnOnce(
+            &mut WalletRegistry,
+            WalletRescanJob,
+        ) -> Result<(), WalletRegistryError>,
+    ) -> Result<WalletRescanJob, WalletRegistryError> {
+        self.advance_with_preparation(
+            wallet_name,
+            |wallet, authority, start, through| {
+                crate::wallet_registry::rescan::guard_durable_wallet_rescan_authority(&self.store)?;
+                crate::wallet_registry::rescan::prepare_wallet_rescan_with_probe(
+                    wallet, authority, start, through, probe,
+                )
+            },
+            save_failure,
+        )
     }
 
     fn required_chainstate_snapshot(
@@ -164,34 +205,4 @@ fn chunk_end_height(next_height: u32, target_tip_height: u32, chunk_size: u32) -
     next_height
         .saturating_add(chunk_size.saturating_sub(1))
         .min(target_tip_height)
-}
-
-fn partial_chainstate_snapshot(
-    snapshot: &open_bitcoin_core::chainstate::ChainstateSnapshot,
-    through_height: u32,
-) -> open_bitcoin_core::chainstate::ChainstateSnapshot {
-    let active_chain = snapshot
-        .active_chain
-        .iter()
-        .filter(|position| position.height <= through_height)
-        .cloned()
-        .collect::<Vec<_>>();
-    let active_hashes = active_chain
-        .iter()
-        .map(|position| position.block_hash)
-        .collect::<BTreeSet<_>>();
-    let utxos = snapshot
-        .utxos
-        .iter()
-        .filter(|(_, coin)| coin.created_height <= through_height)
-        .map(|(outpoint, coin)| (outpoint.clone(), coin.clone()))
-        .collect();
-    let undo_by_block = snapshot
-        .undo_by_block
-        .iter()
-        .filter(|(block_hash, _)| active_hashes.contains(block_hash))
-        .map(|(block_hash, undo)| (*block_hash, undo.clone()))
-        .collect();
-
-    open_bitcoin_core::chainstate::ChainstateSnapshot::new(active_chain, utxos, undo_by_block)
 }

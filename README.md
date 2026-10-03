@@ -25,7 +25,7 @@ auditable, and modular.
 > The v2.3 milestone audit passed at 15/15 requirements, 7/7 phases, 8/8
 > integration seams, and 8/8 end-to-end flows. v2.3 shipped and was archived on 2026-09-20.
 > The archived v2.3 closeout routed later work through `/gsd-new-milestone`.
-> v2.4 audit gap closure is active: Phase 152 repairs post-prune wallet rescan eligibility, then Phase 153 connects automatic retention to the durable lifecycle. Three requirements remain pending; detailed planning starts with `/gsd-plan-phase 152`. See the [audit](./.planning/v2.4-MILESTONE-AUDIT.md) and [roadmap](./.planning/ROADMAP.md).
+> v2.4 audit gap closure is active: Phase 152 verified shared post-prune wallet rescan eligibility in node and durable RPC adapters; the full default verifier passed and [lifecycle-valid Phase 152 verification](./.planning/phases/152-post-prune-wallet-rescan-eligibility/152-VERIFICATION.md) closes SNAP-01 as Complete. The [eligibility contract and runtime evidence](./docs/parity/catalog/chainstate.md#phase-152-post-prune-wallet-rescan-eligibility), [node summary](./.planning/phases/152-post-prune-wallet-rescan-eligibility/152-01-SUMMARY.md), and [RPC summary](./.planning/phases/152-post-prune-wallet-rescan-eligibility/152-02-SUMMARY.md) preserve the Phase 146 foundations. Phase 153 automatic retention is next; PRUN-01 and PRUN-02 remain Pending. See the [audit](./.planning/v2.4-MILESTONE-AUDIT.md) and [roadmap](./.planning/ROADMAP.md).
 > Canonical evidence lives in
 > [`docs/parity/index.json`](./docs/parity/index.json),
 > [`docs/parity/checklist.md`](./docs/parity/checklist.md),

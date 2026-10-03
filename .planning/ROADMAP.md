@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146–151 delivered their original plans; the 2026-10-02 audit reopened three requirements for gap closure in Phases 152–153. All 17 requirements are mapped exactly once: 14 Complete, three Pending. Historical `.planning/phases/` directories stay tracked.
+v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146–151 delivered their original plans; the 2026-10-02 audit reopened three requirements for gap closure. Phase 152 now closes SNAP-01 with passing runtime and lifecycle evidence. All 17 requirements are mapped exactly once: 15 Complete, two Pending in Phase 153. Historical `.planning/phases/` directories stay tracked.
 
 ## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
 
@@ -50,7 +50,7 @@ v2.4 Prune-Mode Product Behavior is active across Phases 146–153. Phases 146�
 - [x] **Phase 149: Limited Serving and Honest Pruned Labels** — Advertise `NODE_NETWORK_LIMITED`, refuse out-of-window and removed payloads, and emit `Pruned` only when earned. (completed 2026-09-28)
 - [x] **Phase 150: Operator Prune Surfaces and Evidence** — Expose prune status, manual prune, prune locks, and sanitized support evidence on operator surfaces. (completed 2026-09-29)
 - [x] **Phase 151: Parity Roots and No-Claim Guardrails** — Cite Knots prune anchors including the Fjall-versus-`blk`/`rev` difference and keep deferred claims out. (completed 2026-09-30)
-- [ ] **Phase 152: Post-Prune Wallet Rescan Eligibility** — Enforce creating-payload eligibility after real pruning in both scan adapters.
+- [x] **Phase 152: Post-Prune Wallet Rescan Eligibility** — Enforce creating-payload eligibility after real pruning in both scan adapters. (completed 2026-10-03)
 - [ ] **Phase 153: Automatic Prune Retention Integration** — Wire measured retained payloads and the automatic target through the existing planner and durable owner.
 
 ## Phase Details
@@ -175,7 +175,12 @@ Plans:
   2. Enforce it in node chunk/resume and durable RPC range adapters, including durable refusal evidence.
   3. Cover deleted creating heights outside the requested range, resume/reopen, missing in-range payloads, and retained-payload controls.
   4. Record lifecycle-valid SNAP-01 evidence, parity breadcrumbs, and relevant docs after repo-native verification.
-**Plans:** 0 plans; run `/gsd-plan-phase 152`.
+**Plans:** 3/3 plans complete
+
+Plans:
+- [x] 152-01-PLAN.md — Shared full-replacement eligibility, node authority and real prune/resume regressions
+- [x] 152-02-PLAN.md — Durable RPC integration and real prune/reopen regressions
+- [x] 152-03-PLAN.md — Scoped parity, README status and closure evidence
 **UI hint**: no
 
 ### Phase 153: Automatic Prune Retention Integration
@@ -200,7 +205,7 @@ Plans:
 
 | Requirement | Phase | Status |
 | --- | --- | --- |
-| SNAP-01 | Phase 152 | Pending |
+| SNAP-01 | Phase 152 | Complete |
 | PRUN-01 | Phase 153 | Pending |
 | PRUN-02 | Phase 153 | Pending |
 | PRUN-03 | Phase 147 | Complete |
@@ -218,7 +223,7 @@ Plans:
 | LOCK-02 | Phase 150 | Complete |
 | GRD-01 | Phase 151 | Complete |
 
-**Coverage:** 17/17 v2.4 requirements mapped; 14 Complete, three Pending. No orphans. No duplicates.
+**Coverage:** 17/17 v2.4 requirements mapped; 15 Complete, two Pending. No orphans. No duplicates.
 
 ## Research Flags for Planning
 
@@ -242,12 +247,12 @@ Phases execute in numeric order: 146 → 147 → 148 → 149 → 150 → 151 →
 | 149. Limited Serving and Honest Pruned Labels | 4/4 | Complete    | 2026-09-28 |
 | 150. Operator Prune Surfaces and Evidence | 8/8 | Complete    | 2026-09-29 |
 | 151. Parity Roots and No-Claim Guardrails | 4/4 | Complete   | 2026-09-30 |
-| 152. Post-Prune Wallet Rescan Eligibility | 0/0 | Pending planning | - |
+| 152. Post-Prune Wallet Rescan Eligibility | 3/3 | Complete    | 2026-10-03 |
 | 153. Automatic Prune Retention Integration | 0/0 | Pending planning | - |
 
 ## Next Step
 
-Run `/gsd-plan-phase 152` to plan the first closure phase. After Phases 152 and 153 pass, rerun `/gsd-audit-milestone`. Milestone archival remains `/gsd-complete-milestone v2.4` only after re-audit establishes closure.
+Run `/gsd-discuss-phase 153` or `/gsd-plan-phase 153` for automatic retention. Phase 152 passed; after Phase 153 passes, rerun `/gsd-audit-milestone`. Milestone archival remains `/gsd-complete-milestone v2.4` only after re-audit establishes closure.
 
 ---
 *Roadmap created: 2026-09-21 for milestone v2.4. Phase numbering continues from v2.3 Phase 145.*

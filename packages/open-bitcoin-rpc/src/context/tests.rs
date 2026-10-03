@@ -37,6 +37,7 @@ use super::ManagedRpcContext;
 static NEXT_TEMP_DIR: AtomicU64 = AtomicU64::new(0);
 
 mod construction;
+mod rescan_eligibility;
 
 #[test]
 fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
