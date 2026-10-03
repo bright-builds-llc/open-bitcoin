@@ -18,7 +18,7 @@ consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
 configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
-> Current release: v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03: 17/17 requirements, 8/8 phases and 34/34 plans complete. The audit records 20/20 connected seams, 10/10 scoped flows and three accepted nonblocking advisories. Next milestone scope is not selected.
+> Current release: v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03: 17/17 requirements, 8/8 phases and 34/34 plans complete. The audit records 20/20 connected seams, 10/10 scoped flows and three accepted nonblocking advisories. The active v2.5 milestone plans Prune-Aware Compact-Filter Serving (BIP157/158); compact-filter serving is not yet a shipped capability.
 > Status: Open Bitcoin v2.2 provides bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
 > The v2.2 milestone audit passed at 40/40 requirements, 10/10 phases, 8/8
 > integration seams, and 8/8 end-to-end flows. v2.2 shipped and was archived on 2026-08-22.

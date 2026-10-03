@@ -1,38 +1,40 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.4
-milestone_name: Prune-Mode Product Behavior
-status: completed
-stopped_at: v2.4 archived; next milestone definition
-last_updated: "2026-10-03T17:51:56.147Z"
+milestone: v2.5
+milestone_name: Prune-Aware Compact-Filter Serving (BIP157/158)
+status: planning
+stopped_at: v2.5 started; researching requirements
+last_updated: "2026-10-03T20:19:31Z"
 last_activity: "2026-10-03"
 progress:
-  total_phases: 8
-  completed_phases: 8
-  total_plans: 34
-  completed_plans: 34
-  percent: 100
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-03 — v2.4 archive).
+See: `.planning/PROJECT.md` (updated 2026-10-03 — v2.5 start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Next milestone definition; v2.4 is shipped and archived
+**Current focus:** Define v2.5 requirements and roadmap; v2.4 is shipped and archived
 
 ## Current Position
 
-Milestone: v2.4 Prune-Mode Product Behavior — SHIPPED / ARCHIVED
-Status: v2.4 milestone complete
+Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
+Phase: Not started (defining requirements; numbering continues at 154)
+Plan: —
+Status: Defining requirements
 Last activity: 2026-10-03
-Last Activity Description: Archived eight phases, 34 plans and all 17 requirements
+Last Activity Description: Started v2.5 from accepted compact-filter milestone recommendation
 
-Archived milestone progress: [██████████] 100% (8/8 phases, 34/34 plans).
+Milestone progress: [░░░░░░░░░░] 0% (requirements and roadmap in progress).
 
-Next action: `/gsd-new-milestone` — define fresh requirements; next phase number is 154. Git evidence is derived from the saving commits and remote tag/ref verification.
+Next action: Complete new-milestone research, requirements and roadmap, then discuss or plan Phase 154.
 
 ## Performance Metrics
 
@@ -585,8 +587,8 @@ Next action: `/gsd-new-milestone` — define fresh requirements; next phase numb
 ### Blockers/Concerns
 
 - No open v2.3 blockers remain after the passed milestone audit.
-- v2.4 INT-02: creating-payload eligibility is missing for entries outside a rescan's requested range; Phase 152 owns closure.
-- v2.4 INT-01: the automatic prune planner has no production lifecycle caller; Phase 153 owns closure after Phase 152.
+- v2.4 INT-02 was closed by Phase 152 creating-payload eligibility; the archived final audit confirms closure.
+- v2.4 INT-01 was closed by Phase 153 ordinary automatic retention integration; the archived final audit confirms closure.
 - Historical Phase 139–145 planning notes remain in `.planning/phases/` because repository verifiers consume selected evidence.
 
 ### Quick Tasks Completed
@@ -597,12 +599,12 @@ Next action: `/gsd-new-milestone` — define fresh requirements; next phase numb
 
 ## Latest Milestone Archive
 
-- Roadmap: `.planning/milestones/v2.3-ROADMAP.md`
-- Requirements: `.planning/milestones/v2.3-REQUIREMENTS.md`
-- Audit: `.planning/milestones/v2.3-MILESTONE-AUDIT.md`
+- Roadmap: `.planning/milestones/v2.4-ROADMAP.md`
+- Requirements: `.planning/milestones/v2.4-REQUIREMENTS.md`
+- Audit: `.planning/milestones/v2.4-MILESTONE-AUDIT.md`
 
 ## Session Continuity
 
-Last session: 2026-10-03T08:02:15.074Z
-Stopped at: Phase 153 complete; v2.4 re-audited; Git evidence derived from saving commit
-Resume file: .planning/v2.4-MILESTONE-AUDIT.md
+Last session: 2026-10-03T20:19:31Z
+Stopped at: v2.5 initialized; researching requirements and roadmap
+Resume file: .planning/PROJECT.md

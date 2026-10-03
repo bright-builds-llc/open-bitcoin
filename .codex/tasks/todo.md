@@ -112,3 +112,13 @@ to satisfy tracked-file discovery; no commit has been created.
 - [x] Prepare final closeout, annotated v2.4 tagging and current-main/tag publication under the required hook; final evidence is derived from Git refs.
 
 Completion review: Archived 8 phases, 34 plans, 69 normalized completed task entries and all 17 requirements, preserving historical phase directories and the three accepted audit advisories. Updated project/current docs, decision outcomes, milestones and retrospective; next milestone remains unselected and starts with fresh requirements at phase 154. The archive-aware Phase 151 guard passed 58 positive/negative tests; documentation/traceability/integration checks pass. Safety commit `759abdbd` saved all archive controls before active requirements were removed and passed default native verification in 1h04m10.859s. Final hook, annotated tag and upstream publication evidence are derived from the saving commit/tag and remote refs rather than predicted hashes or outcomes. Repo-local/Bright Builds guidance and the existing native formatter/hook contract informed the closeout.
+
+## task-v25-new-milestone | 2026-10-03 | Define v2.5 Prune-Aware Compact-Filter Serving
+
+- [x] Record accepted scope in PROJECT and reset STATE without clearing historical evidence.
+- [ ] Research stack, features, architecture and pitfalls against pinned Knots and BIP157/158; synthesize findings.
+- [ ] Define atomic testable requirements, explicit missing-history behavior and retained exclusions.
+- [ ] Create roadmap from Phase 154 with every requirement mapped exactly once and observable success criteria.
+- [ ] Validate planning metadata, links, claim boundaries and native checks; commit each workflow artifact stage under mandatory hooks.
+
+Verification includes active-milestone traceability, current-document truth, Phase 151 archive fallback, managed standards checks, scoped diff review and the full repo-native pre-commit contract. Completion evidence is derived from actual commands and saving commits. No phase implementation or public-network action is authorized by this initialization alone.

@@ -24,9 +24,19 @@ The accepted advisories are stale durable metadata causing permitted finish-or-R
 
 Historical phase directories remain tracked because repository verifiers reference selected evidence. The [archived roadmap](milestones/v2.4-ROADMAP.md) and [requirements](milestones/v2.4-REQUIREMENTS.md) preserve the completed scope.
 
-## Next Milestone Goals
+## Current Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
 
-No next milestone has been selected. Use `/gsd-new-milestone` to discuss scope and define fresh requirements; continue phase numbering at 154 because earlier directories remain tracked. Deferred capabilities and the three accepted advisories are inputs to that discussion, not automatically selected features.
+**Goal:** Let lightweight clients fetch Knots-compatible basic compact filters from an explicitly enabled node, with durable indexing that remains correct across pruning, restart and reorgs.
+
+**Target features:**
+- Deterministic BIP158 basic filters, filter hashes and BIP157 filter headers with pinned Knots parity evidence
+- Durable filter indexing, catch-up, restart and reorg handling coordinated with the existing single-chainstate prune owner and locks
+- Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
+- Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
+
+Start at Phase 154 and preserve earlier phase directories required by repository verifiers. Research must settle enabling an index after historical payloads have already been pruned. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+
+FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
 
 ## Latest Completed Milestone: v2.4 Prune-Mode Product Behavior
 
@@ -168,11 +178,16 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 
-None. All v2.4 requirements moved to Validated; the next milestone awaits scope selection.
+- [ ] Knots-compatible basic compact filters and header commitments
+- [ ] Prune-aware durable indexing with catch-up, restart and reorg correctness
+- [ ] Explicit bounded P2P filter serving with truthful readiness and availability
+- [ ] Operator evidence and deterministic end-to-end parity verification
+
+Detailed v2.5 requirement IDs and traceability are defined through the current new-milestone workflow; all v2.4 requirements remain Validated.
 
 ### Out of Scope
 
-The boundary keeps archive-node product modes, assumeutxo and IBD snapshot shortcuts, compact-filter and BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred beyond the v2.4 prune scope. Prune-mode product behavior is in scope for v2.4.
+The v2.5 boundary selects compact-filter serving while keeping archive-node product modes, assumeutxo and IBD snapshot shortcuts, BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred. The shipped v2.4 prune contract remains the foundation.
 
 - Faithful Qt GUI parity or porting the upstream GUI code - shipped milestones remain terminal-first and headless.
 - Windows service integration - still deferred until a later milestone.
@@ -296,4 +311,4 @@ This document evolves at phase transitions and milestone boundaries.
 </details>
 
 ***
-*Last updated: 2026-10-03 after v2.4 milestone archive and full evolution review*
+*Last updated: 2026-10-03 after starting v2.5 Prune-Aware Compact-Filter Serving*
