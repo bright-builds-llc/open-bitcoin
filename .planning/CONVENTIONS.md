@@ -1,8 +1,8 @@
 # Open Bitcoin Conventions
 
-Last updated: 2026-09-20
+Last updated: 2026-10-03
 
-Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Future milestone
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Open Bitcoin v2.4 shipped and was archived on 2026-10-03. Future milestone
 work starts with `/gsd-new-milestone`.
 
 ## Parity And Evidence
@@ -13,6 +13,10 @@ work starts with `/gsd-new-milestone`.
   relevant companion catalog page under `docs/parity/`.
 - Keep parity claims evidence-based. Prefer links to verification reports,
   catalog entries, tests, scripts, or checked-in docs over broad prose claims.
+- Describe v2.4 pruning as paired Fjall key deletion with a soft logical
+  retention target. Preserve the flat-file difference, protected/nonactive
+  accounting, fixture limits, separate wallet probe/save effects and accepted
+  advisories recorded in the [archived audit](milestones/v2.4-MILESTONE-AUDIT.md).
 
 ## Code Shape
 
@@ -56,6 +60,9 @@ work starts with `/gsd-new-milestone`.
 - `.planning/phases/` contains active phase execution artifacts plus historical
   phase artifacts that verifier scripts still reference. New milestone phases
   should continue numbering to avoid collisions with retained directories.
+- v2.4 roadmap, requirements and audit are archived under
+  `.planning/milestones/v2.4-*`; next milestone scope remains unselected and
+  new phases continue at 154.
 - v1.1 raw phase history is archived under
   `.planning/milestones/v1.1-phases/`.
 - v1.2 raw phase history is archived under

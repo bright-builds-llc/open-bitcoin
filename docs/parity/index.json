@@ -4116,7 +4116,7 @@
           "Required UAT stays deterministic. Public-network review is not run and is never a default, CI, or release gate."
         ],
         "suspected_unknowns": [
-          "Milestone archival remains /gsd-complete-milestone v2.4 after this phase passes."
+          "v2.4 shipped and was archived on 2026-10-03; .planning/milestones/v2.4-MILESTONE-AUDIT.md preserves 17/17 requirements, 20/20 seams, 10/10 flows and three accepted nonblocking advisories."
         ]
       }
     ]

@@ -1,8 +1,8 @@
 # Open Bitcoin Architecture
 
-Last updated: 2026-09-20
+Last updated: 2026-10-03
 
-Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Future milestone
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Open Bitcoin v2.4 shipped and was archived on 2026-10-03. Future milestone
 work starts with `/gsd-new-milestone`.
 
 ## Architectural Shape
@@ -54,6 +54,17 @@ settings stay in `open-bitcoin.jsonc`.
 The v1.1 storage decision is Fjall. Concrete storage effects are contained in
 node-shell adapters, while storage contracts and recovery actions stay typed and
 auditable.
+
+The shipped v2.4 prune surface keeps height/window/lock decisions in the pure
+chainstate crate and logical payload accounting, paired Fjall deletion and
+recovery in node adapters. Ordinary automatic flush activity and manual prune
+share the existing serialized authority; nonempty automatic plans force the
+full coins/chain-metadata checkpoint. Explicit prune mode with a datadir opens
+recovered durable storage without activating networking. Retention targets are
+soft logical value-byte targets, not physical disk bounds. Shared wallet
+replacement eligibility checks requested and selected creating payloads;
+probing and saving remain separate effects. The [archived audit](milestones/v2.4-MILESTONE-AUDIT.md)
+preserves the three accepted recovery/sink/counter advisories and fixture limits.
 
 ## Sync Boundary
 

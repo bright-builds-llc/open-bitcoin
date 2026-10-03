@@ -23,6 +23,11 @@ import {
   checkedV24RequirementIds,
 } from "./constants.ts";
 import { checkUatCommands, checkVerifier } from "./verifier.ts";
+import {
+  checkArchivedAudit,
+  checkPlanningSourceIdentity,
+  resolvePlanningSource,
+} from "./planning-sources.ts";
 
 type ParitySurface = {
   id?: unknown;
@@ -46,11 +51,13 @@ export function checkPhase151ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   const maybeIndex = parseParityIndex(texts.get("docs/parity/index.json") ?? "", failures);
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
   const requirements = texts.get(REQUIREMENTS_FILE) ?? "";
-  const pendingClosures = pendingGapClosureRequirements(
+  const archived = resolvePlanningSource(repoRoot, REQUIREMENTS_FILE) !== REQUIREMENTS_FILE;
+  if (archived) checkArchivedAudit(repoRoot, failures);
+  const pendingClosures = archived ? new Set<string>() : pendingGapClosureRequirements(
     repoRoot, requirements, texts.get(ROADMAP_FILE) ?? "", failures,
   );
   checkRequirementCheckboxes(requirements, pendingClosures, failures);
-  checkGapClosureCompletion(repoRoot, requirements, texts.get(ROADMAP_FILE) ?? "", failures);
+  checkGapClosureCompletion(repoRoot, requirements, texts.get(ROADMAP_FILE) ?? "", failures, archived);
   checkRoadmapCoverage(texts.get(ROADMAP_FILE) ?? "", failures);
   checkBreadcrumbGroup(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkKnotsSymbols(texts, failures);
@@ -64,19 +71,22 @@ function loadCorpus(repoRoot: string, failures: string[]): Map<string, string> {
   const texts = new Map<string, string>();
   const resolvedRoot = path.resolve(repoRoot);
   for (const file of REQUIRED_DOC_FILES) {
-    const absolutePath = path.resolve(resolvedRoot, file);
+    const sourceFile = resolvePlanningSource(resolvedRoot, file);
+    const absolutePath = path.resolve(resolvedRoot, sourceFile);
     if (!isInsideRepo(resolvedRoot, absolutePath)) {
       failures.push(`path escapes repo root: ${file}`);
       texts.set(file, "");
       continue;
     }
     if (!existsSync(absolutePath)) {
-      failures.push(`missing target file ${file}`);
+      failures.push(`missing target file ${sourceFile}`);
       texts.set(file, "");
       continue;
     }
     try {
-      texts.set(file, readFileSync(absolutePath, "utf8"));
+      const text = readFileSync(absolutePath, "utf8");
+      texts.set(file, text);
+      checkPlanningSourceIdentity(file, text, failures);
     } catch {
       failures.push(`unreadable target file ${file}`);
       texts.set(file, "");

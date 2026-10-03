@@ -76,6 +76,11 @@ export const CATALOG_FILES = [
 
 export const REQUIREMENTS_FILE = ".planning/REQUIREMENTS.md";
 export const ROADMAP_FILE = ".planning/ROADMAP.md";
+export const ARCHIVED_V24_REQUIREMENTS = ".planning/milestones/v2.4-REQUIREMENTS.md";
+export const ARCHIVED_V24_ROADMAP = ".planning/milestones/v2.4-ROADMAP.md";
+export const V24_REQUIREMENTS_MILESTONE_NEEDLE = "**Milestone:** v2.4 ";
+export const AUDIT_FILE = ".planning/v2.4-MILESTONE-AUDIT.md";
+export const ARCHIVED_V24_AUDIT = ".planning/milestones/v2.4-MILESTONE-AUDIT.md";
 
 export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,

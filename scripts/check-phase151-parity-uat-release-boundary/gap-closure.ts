@@ -1,12 +1,12 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { resolveGapAuditSource } from "./planning-sources.ts";
 import { loadPhaseCorpora } from "../check-active-milestone-verification-traceability/filesystem.ts";
 import {
   activatedRequirementIds,
   lifecycleValidCoverage,
 } from "../check-active-milestone-verification-traceability/lifecycle.ts";
 
-const AUDIT_FILE = ".planning/v2.4-MILESTONE-AUDIT.md";
 const CLOSURES = {
   "SNAP-01": {
     phase: 152,
@@ -78,8 +78,10 @@ export function checkGapClosureCompletion(
   requirements: string,
   roadmap: string,
   failures: string[],
+  requireClosureEvidence = false,
 ): void {
-  const hasClosureMetadata = existsSync(path.join(repoRoot, AUDIT_FILE)) ||
+  const hasClosureMetadata = requireClosureEvidence ||
+    existsSync(path.join(repoRoot, resolveGapAuditSource(repoRoot))) ||
     Object.values(CLOSURES).some((closure) =>
       roadmap.includes(`### Phase ${closure.phase}: ${closure.title}`),
     );
@@ -101,7 +103,7 @@ export function checkGapClosureCompletion(
 }
 
 function maybeReadGapAudit(repoRoot: string, failures: string[]): GapAudit | null {
-  const auditPath = path.join(repoRoot, AUDIT_FILE);
+  const auditPath = path.join(repoRoot, resolveGapAuditSource(repoRoot));
   if (!existsSync(auditPath)) return null;
   try {
     const text = readFileSync(auditPath, "utf8");

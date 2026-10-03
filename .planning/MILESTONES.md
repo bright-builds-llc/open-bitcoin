@@ -1,5 +1,43 @@
 # Milestones: Open Bitcoin
 
+## v2.4 Prune-Mode Product Behavior (Shipped: 2026-10-03)
+
+**Delivered:** Knots-aligned height-window pruning, durable paired deletion, limited serving and honest labels, post-prune wallet eligibility, automatic retention and operator controls on the single active Fjall chainstate.
+
+**Phases completed:** 8 phases, 34 plans, 69 completed task entries
+
+**Key accomplishments:**
+
+- Cut node and durable RPC wallet replacement off leftover snapshots and require every admitted entry’s creating payload, preserving saved state and Failed evidence on refusal.
+- Added pure disabled/manual/automatic prune policy with a legal 550 MiB minimum, a 288-block keep window, network prune-after gates and buffered locks.
+- Removed paired Fjall block/undo keys durably, earned have-pruned and counters only after deletion, and retained finish-or-refuse recovery plus cache/undo cleanup on late errors.
+- Advertised NODE_NETWORK_LIMITED, refused out-of-window or deleted bodies, and distinguished earned Pruned labels from Unknown and Unavailable.
+- Exposed prune status, manual requests, named lock management and sanitized evidence across RPC, CLI, dashboard and support surfaces.
+- Connected exact guarded payload accounting to ordinary Periodic/Always retention, offline durable startup and full checkpoints, with a genuine legal-target fixture and scoped parity/no-claim guards.
+
+**Stats:**
+
+- 17/17 requirements, 8 verified phases (146–153), 34 completed plans and 69 completed task entries.
+- The installed archive CLI counts 55 legacy summary tasks; normalized summary task fields plus the two explicit 152-03 task records corroborate all 69 plan task tags.
+- Pre-archive tracked first-party total: 355,534 lines, including 308,584 code/content lines; production Rust: 118,495 physical / 102,749 code lines.
+- Post-v2.3 delivery range: 125 commits, 336 changed files, 46,543 insertions and 6,372 deletions before archive closeout.
+- Git range: `44845ea1` → `311fb708`, with milestone initialization at `ba561a8c`.
+- Timeline: 2026-09-21 through 2026-10-03 (12 elapsed calendar days).
+- Audit: `tech_debt`, zero blockers; 20/20 integration seams and 10/10 flows, with three retained advisories.
+- Full native verification passed in 45m47.953s, and the phase-finalization commit hook passed in 37m21.068s. Archive commits retain the same mandatory native hook.
+
+**Archived artifacts:**
+
+- [v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
+- [v2.4-REQUIREMENTS.md](milestones/v2.4-REQUIREMENTS.md)
+- [v2.4-MILESTONE-AUDIT.md](milestones/v2.4-MILESTONE-AUDIT.md)
+
+**Accepted advisories and scope:** Three accepted advisories remain: stale durable metadata can require explicit Repair; the generic unlink sink default is a no-op unless overridden (production Fjall overrides it); and interruption before separate support-summary persistence can undercount deletes. Logical payload bytes are not physical disk allocation, and completed-prune/resume wallet eligibility is not transactional probe/save atomicity. Archive serving, assumeutxo, BIP37, public defaults, production readiness and production-funds wallet claims remain deferred.
+
+**What's next:** Define the next milestone with `/gsd-new-milestone`; continue phase numbering at 154. No new scope is selected by this archive.
+
+***
+
 ## v2.3 Chainstate Durability and Historical Serving (Shipped: 2026-09-20)
 
 **Delivered:** Disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. The milestone does not claim prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo/assumevalid/IBD snapshot shortcuts, compact-filter or BIP37 serving, public serving or relay by default, public-network CI, production service operation, production full-node readiness, or production-funds wallet safety.
@@ -46,7 +84,6 @@ Prune-mode product behavior, archive-node or production-scale historical serving
 **What's next:** Ranked post-v2.3 candidates live in [reports/NEXT-MILESTONE-CANDIDATES.md](reports/NEXT-MILESTONE-CANDIDATES.md). Start the next milestone with `/gsd-new-milestone`.
 
 ***
-
 
 ## v2.2 Package Relay and Long-Lived Mempool Policy (Shipped: 2026-08-22)
 

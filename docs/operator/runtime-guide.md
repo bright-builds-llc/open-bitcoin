@@ -1006,6 +1006,11 @@ payload is gone, including before a requested start, while preserving the
 saved wallet/checkpoint and recording safe Failed evidence. Reopen uses
 durable authority; leftover snapshots cannot restore deleted history.
 
+v2.4 shipped and was archived on 2026-10-03; the [archived milestone audit](../../.planning/milestones/v2.4-MILESTONE-AUDIT.md)
+preserves all 17 completed requirements and the three accepted nonblocking
+recovery/sink/counter advisories. The operator scope and evidence limits below
+continue to apply.
+
 The [Phase 153 evidence](../parity/catalog/chainstate.md#phase-153-automatic-prune-retention-integration)
 records actual ordinary deletion above a legal 550 MiB target, protected
 survivors, production checkpoint/reopen and a separate delegated metadata

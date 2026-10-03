@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. Through the shipped v2.3 milestone, the project includes a headless parity baseline, a terminal-first operator surface, opt-in public-mainnet sync and inbound serving, bounded transaction relay, default-off block serving and compact-block relay, the scoped v2.2 package and long-lived mempool surface, and the scoped v2.3 durability surface: disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. v2.3 does not imply prune-mode product behavior, archive-node or production-scale historical serving, assumeutxo, public/default relay, public-network CI, production service operation, production-funds wallet use, or production full-node readiness.
+Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. Through the shipped v2.4 milestone, the project includes a headless parity baseline, a terminal-first operator surface, opt-in public-mainnet sync and inbound serving, bounded transaction relay, default-off block serving and compact-block relay, the scoped v2.2 package and long-lived mempool surface, and the scoped v2.3 durability surface: disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. v2.4 adds single-chainstate height-window pruning of paired Fjall block/undo keys, ordinary automatic retention, limited serving, earned Pruned labels, durable locks, post-prune wallet eligibility, and sanitized operator evidence. The automatic target is a soft logical payload-retention target, not a physical disk-capacity guarantee. Archive-node or production-scale historical serving, assumeutxo, public/default relay, public-network CI, production service operation, production-funds wallet use, and production full-node readiness remain deferred.
 
 It is for contributors and operators who want a reference-grade node with a cleaner, more type-safe internal architecture, auditable parity, and a strict separation between pure domain logic and effectful adapters.
 
@@ -12,27 +12,44 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-v2.3 Chainstate Durability and Historical Serving shipped and was archived on 2026-09-20 after Phases 139–145 completed 29/29 plans and all 15 requirements. The final audit passed with 8/8 production seams, 8/8 end-to-end flows, and no blocking gaps.
+v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03 after Phases 146–153 completed 34/34 plans and all 17 requirements. The [archived audit](milestones/v2.4-MILESTONE-AUDIT.md) records 20/20 connected seams, 10/10 scoped flows, zero blocking gaps and three accepted nonblocking advisories. Its `tech_debt` status preserves those advisories rather than claiming they were fixed.
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
 
-v2.4 Prune-Mode Product Behavior is the active milestone. Phase 146 is complete: wallet rescan reads durable coins and payload-present blocks, and leftover snapshot bytes are non-authoritative on that path. Phase 147 is complete: `open-bitcoin-chainstate` decides prune mode (disabled, manual-only, or an automatic target of at least 550 MiB), keeps the last 288 blocks, waits for the network prune-after height, refuses a manual target inside that keep window, and protects a prune-lock range plus a 10-block buffer. Phase 148 is complete: a height's block payload and undo are removed together in one durable Fjall batch, have-pruned is recorded only after that delete commits, restart finishes the interrupted height or refuses closed, and a committed delete leaves the block cache even when the flush then errors. Phase 149 is complete: prune mode advertises `NODE_NETWORK_LIMITED` without full `NODE_NETWORK`, block bodies outside the 288+2 window are refused, a removed payload is not served, and `Pruned` is reported only when have-pruned is set and that payload is gone. Phase 150 is complete: operator prune status, manual prune, prune locks, and sanitized support evidence are shipped. Phase 151 records the scoped prune claim and the Fjall key versus blk/rev file difference. Historical phase directories remain tracked because repository verifiers reference selected evidence. The candidate note that selected this scope is [`.planning/reports/NEXT-MILESTONE-CANDIDATES.md`](reports/NEXT-MILESTONE-CANDIDATES.md).
+The shipped prune surface selects disabled, manual-only or automatic mode with a minimum 550 MiB target; preserves the last 288 blocks, network prune-after threshold and ten-block lock buffer; and applies paired durable deletes through one serialized owner. Nonempty automatic plans force the existing full coins/chain-metadata checkpoint. Explicit prune configuration with a datadir selects recovered durable storage without activating networking. `NODE_NETWORK_LIMITED` advertisement and the 288+2 serving window keep removed bodies unavailable, while `Pruned` requires durable have-pruned plus absent payload bytes. Wallet replacements check requested and selected creating payloads before persistence and preserve prior wallet/checkpoint state on refusal.
 
-The 2026-10-02 audit found two product integration gaps despite the original phase reports passing; its [historical report](reports/v2.4-MILESTONE-AUDIT-2026-10-02-073cf664.md) is preserved. Phase 152 closed post-prune wallet creating-payload eligibility (SNAP-01). Phase 153 connected exact retained-payload accounting and the automatic planner to ordinary durable lifecycle activity, including offline prune configuration, serialized locks, full checkpoints and error-path cache/undo cleanup. Its [verification](phases/153-automatic-prune-retention-integration/153-VERIFICATION.md) passed 22/22 truths and the default full native verifier passed. All 17 requirements, eight phases and 34 plans are complete. The refreshed [milestone audit](v2.4-MILESTONE-AUDIT.md) records 20/20 connected seams and 10/10 flows with three nonblocking advisories. Finish verified Git finalization and review those advisories before a separate `/gsd-complete-milestone v2.4` request; v2.4 is not yet archived or tagged.
+The 2026-10-02 audit found two product integration gaps despite the original phase reports passing; its [historical report](reports/v2.4-MILESTONE-AUDIT-2026-10-02-073cf664.md) is preserved. Phase 152 closed post-prune wallet creating-payload eligibility (SNAP-01). Phase 153 closed ordinary automatic retention (PRUN-01/PRUN-02); its [verification](phases/153-automatic-prune-retention-integration/153-VERIFICATION.md) passed 22/22 truths. The default full native verifier passed in 45m47.953s and the feature-finalization commit hook passed in 37m21.068s. Independent source review was clean across 26 files and all 14 declared security mitigations closed. These are recorded local results, not new public-network or CI evidence.
 
-## Current Milestone: v2.4 Prune-Mode Product Behavior
+The accepted advisories are stale durable metadata causing permitted finish-or-Repair refusal after interrupted pruning, the generic paired-unlink sink's no-op default despite concrete Fjall overrides, and support counters undercounting a crash between unlink and summary persistence. Logical accounting includes protected and nonactive payloads while only active heights are deletion candidates. Wallet probes and persistence remain separate effects; there is no atomic presence-at-save guarantee for concurrent callers, including automatic maintenance. Sparse codec-valid fixtures and a later metadata-fault fixture with `MemoryCoinsView` do not prove continuous consensus-chain acceptance, hardware resilience or a second production durable-coins fault checkpoint.
+
+Historical phase directories remain tracked because repository verifiers reference selected evidence. The [archived roadmap](milestones/v2.4-ROADMAP.md) and [requirements](milestones/v2.4-REQUIREMENTS.md) preserve the completed scope.
+
+## Next Milestone Goals
+
+No next milestone has been selected. Use `/gsd-new-milestone` to discuss scope and define fresh requirements; continue phase numbering at 154 because earlier directories remain tracked. Deferred capabilities and the three accepted advisories are inputs to that discussion, not automatically selected features.
+
+## Latest Completed Milestone: v2.4 Prune-Mode Product Behavior
+
+**Status:** Shipped and archived on 2026-10-03 after both audit integration gaps closed.
 
 **Goal:** Add Knots-aligned prune product behavior for the single active chainstate, so the node can delete old block and undo payloads by removing Fjall keys inside a height window and still tell the truth about what remains.
 
-Initialized through `/gsd-new-milestone` after the archived v2.3 closeout.
+Initialized through `/gsd-new-milestone` after the archived v2.3 closeout; all 17 scoped requirements are now validated.
 
-**Target features:**
-- Height windows, file unlinking, `m_have_pruned`, and prune locks
+**Shipped features:**
+- Height windows, paired Fjall key unlinking, `m_have_pruned`, and durable prune locks
 - `NODE_NETWORK_LIMITED` serving limits for the pruned window
-- Emit `Pruned` only after prune actually a durable delete; keep `Unavailable` for a missing payload when prune did not delete it
-- Cut wallet rescan off leftover snapshot bytes in the first phase, so prune cannot resurrect snapshot-as-truth
+- Emit `Pruned` only after a durable delete; keep `Unavailable` for a missing payload without have-pruned
+- Coins-backed staged wallet replacement with requested/creating-payload eligibility and truthful refusal checkpoints
+- Exact logical payload accounting, ordinary automatic retention, full checkpoint/reopen and receipt-owned cache/undo cleanup
+- RPC, CLI, read-only dashboard and redacted support evidence with pinned parity and no-claim guardrails
 
-## Latest Completed Milestone: v2.3 Chainstate Durability and Historical Serving
+<details>
+<summary>Previous shipped milestone: v2.3 Chainstate Durability and Historical Serving</summary>
+
+## Completed Milestone: v2.3 Chainstate Durability and Historical Serving
+
+v2.3 Chainstate Durability and Historical Serving shipped and was archived on 2026-09-20 after Phases 139–145 completed 29/29 plans and all 15 requirements. The final audit passed with 8/8 production seams, 8/8 end-to-end flows, and no blocking gaps.
 
 **Status:** Shipped and archived on 2026-09-20 after Phase 145 closed parity, UAT, and no-claim guardrails.
 
@@ -46,6 +63,8 @@ Initialized through `/gsd-new-milestone` after the archived v2.3 closeout.
 - Same-datadir restart from durable coins best-block, with interrupted-flush replay or fail-closed recovery.
 - Payload-byte honest availability: Available only when bytes are present; missing payloads refuse as Unavailable.
 - Sanitized flush, recovery, cache-size, and have-bytes versus do-not evidence plus a last-gate D-14/D-16 claim checker.
+
+</details>
 
 ## Completed Milestone: v2.2 Package Relay and Long-Lived Mempool Policy
 
@@ -138,15 +157,18 @@ v2.1 does not imply public relay defaults, production service operation, product
 - ✓ v2.1 validated all 39 block-serving and compact-relay requirements across explicit activation, validated durable serving, BIP152 codecs and negotiation, reconstruction and fallback, authoritative runtime state, production announcement transport, sanitized operator evidence, parity roots, UAT, and deterministic no-claim/integration guardrails. Archive: `.planning/milestones/v2.1-REQUIREMENTS.md`
 - ✓ v2.2 validated all 40 package-relay and long-lived mempool-policy requirements across resource/fee primitives, pressure and expiry, typed package admission, same-peer 1P1C, authoritative lifecycle projection, snapshot recovery, initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails. Archive: `.planning/milestones/v2.2-REQUIREMENTS.md`
 - ✓ v2.3 validated all 15 chainstate-durability and honest-availability requirements across coins overlay/cache, typed flush policy, durable Fjall coins, manager flush/restart, payload-byte serving, sanitized operator evidence, and last-gate no-claim guardrails. Archive: `.planning/milestones/v2.3-REQUIREMENTS.md`
+- ✓ v2.4 validated all 17 prune requirements across wallet eligibility, mode/automatic/manual policy, paired durable unlink/recovery, buffered durable locks, limited serving, honest labels, operator/support evidence and claim guardrails. Archive: `.planning/milestones/v2.4-REQUIREMENTS.md`
+- ✓ PRUN-01/PRUN-02 validated in Phase 153 after the Phase 147 foundations: configured mode drives measured ordinary durable retention, honors keep/lock/network thresholds and forces a full checkpoint for nonempty plans.
+- ✓ PRUN-03/LOCK-01 validated in Phase 147: manual keep-window refusal and ten-block buffered lock protection.
+- ✓ OPER-01/OPER-02/OPER-03/LOCK-02 validated in Phase 150: shared status, manual requests, durable lock CRUD and sanitized support counts.
+- ✓ GRD-01 validated in Phase 151: pinned prune anchors, Fjall-versus-flat-file difference and deterministic no-claim guardrails.
 - ✓ SNAP-01 validated in Phase 152 after the Phase 146 foundations: both durable rescan adapters check every replacement entry's creating payload, preserve prior wallet/checkpoint state on refusal and ignore leftover snapshot authority.
 - ✓ UNLK-01, UNLK-02, and UNLK-03 validated in Phase 148: paired Fjall unlink, have-pruned only after a durable delete, and finish-or-refuse restart.
 - ✓ SERV-01, SERV-02, SERV-03, and LABL-01 validated in Phase 149: limited-service advertisement, out-of-window and removed-payload refusal, and an earned `Pruned` label.
 
 ### Active
 
-- [x] Height windows, file unlinking, `m_have_pruned`, and prune locks for the single active chainstate
-- [x] Operator prune status, manual prune, prune locks, and sanitized support evidence
-- [x] Automatic target drives ongoing durable retention (PRUN-01/PRUN-02; Phase 153)
+None. All v2.4 requirements moved to Validated; the next milestone awaits scope selection.
 
 ### Out of Scope
 
@@ -171,7 +193,7 @@ The boundary keeps archive-node product modes, assumeutxo and IBD snapshot short
 
 - The repository has first-party pure-core domain and codec crates under `packages/`, plus parity catalog artifacts under `docs/parity/`.
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
-- The current codebase totals 339,149 tracked first-party lines in the v2.3 archive-time LOC report, including 295,288 code/content lines.
+- The pre-archive v2.4 LOC report totals 355,534 tracked first-party lines, including 308,584 code/content lines; production Rust is 118,495 physical / 102,749 code lines, and test Rust is 141,316 physical / 119,570 code lines. The tracked report refreshes during verification.
 - Repo-native verification remains centered on `bash scripts/verify.sh`, including Rust checks, parity breadcrumbs, benchmark smoke and report validation, and Bazel smoke builds.
 - Bun is a pinned runtime for repo-owned TypeScript automation, not a package-install surface; there is no `package.json` or `bun install` bootstrap step.
 - Operator-facing surfaces should stay quiet, information-dense, and work-focused: terminal dashboard controls, status output, onboarding copy, service actions, and migration guidance should help operators make decisions without marketing language.
@@ -223,7 +245,14 @@ The boundary keeps archive-node product modes, assumeutxo and IBD snapshot short
 | Scope v2.1 to block serving and compact block relay boundaries | v2.0 shipped bounded transaction relay and mempool participation, so the next safe node-participation expansion is serving validated blocks and compact-block relay before package relay, public defaults, or production full-node readiness | Shipped and archived on 2026-07-22 with 39/39 requirements, 13/13 integration links, and 11/11 flows passing |
 | Scope v2.2 to package relay and long-lived mempool policy | v2.0 established bounded mempool and transaction relay while v2.1 supplied authoritative peer transport and observability, making package policy, rolling fees, rebroadcast, and sustained-pressure behavior the next coherent parity boundary | Shipped and archived on 2026-08-22 with 40/40 requirements, 8/8 seams, and 8/8 flows passing |
 | Scope v2.3 to chainstate durability and honest historical availability | After v2.2, disk-backed coins, cache-flush policy, and fuller chainstate-manager behavior are the missing foundation; prune/archive modes, assumeutxo, compact filters, and production claims stay later | Shipped and archived on 2026-09-20 with 15/15 requirements, 8/8 seams, and 8/8 flows passing |
-| Scope v2.4 to prune-mode product behavior | v2.3 shipped honest availability and durable coins so files can be deleted without lying about payload presence; archive serving, assumeutxo, public defaults, and production claims stay later | — Pending |
+| Scope v2.4 to prune-mode product behavior | v2.3 shipped honest availability and durable coins so paired keys can be deleted without lying about payload presence; archive serving, assumeutxo, public defaults, and production claims stay later | ✓ Good: shipped and archived on 2026-10-03 with 17/17 requirements, 20/20 seams and 10/10 flows; three nonblocking advisories accepted |
+| Keep prune policy pure and concrete deletion in Fjall adapters | Typed height/lock decisions reuse one owner; paired SyncAll deletion earns have-pruned and cleanup receipts | ✓ Good: real deletion, error cleanup and reopen verified; generic no-op sink default remains an accepted advisory |
+| Refuse manual targets inside the keep window instead of Knots RPC clamping | Explicit refusal preserves the documented operator contract and recent history | ✓ Good: PRUN-03 validated and intentional difference recorded |
+| Stage full wallet replacements and gate requested plus creating payloads | Existing full UTXO replacement needs older matching creating data; leftover snapshots must not restore missing history | ✓ Good: SNAP-01 closed after real prune/resume/reopen; atomic probe/save remains outside the guarantee |
+| Measure complete logical payload usage and select only active candidates | Protected/nonactive bytes must count without becoming eligible history; snapshots and metadata are not payload usage | ✓ Good: legal 550 MiB fixture measured 578,359,864 bytes and proved actual ordinary deletion; target remains soft |
+| Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
+| Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
+| Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
 
 ## Evolution
 
@@ -261,9 +290,10 @@ This document evolves at phase transitions and milestone boundaries.
 - v2.1 archive: `.planning/milestones/v2.1-ROADMAP.md`, `.planning/milestones/v2.1-REQUIREMENTS.md`, `.planning/milestones/v2.1-MILESTONE-AUDIT.md`
 - v2.2 archive: `.planning/milestones/v2.2-ROADMAP.md`, `.planning/milestones/v2.2-REQUIREMENTS.md`, `.planning/milestones/v2.2-MILESTONE-AUDIT.md`
 - v2.3 archive: `.planning/milestones/v2.3-ROADMAP.md`, `.planning/milestones/v2.3-REQUIREMENTS.md`, `.planning/milestones/v2.3-MILESTONE-AUDIT.md`
+- v2.4 archive: `.planning/milestones/v2.4-ROADMAP.md`, `.planning/milestones/v2.4-REQUIREMENTS.md`, `.planning/milestones/v2.4-MILESTONE-AUDIT.md`
 - Active phase execution directories are created under `.planning/phases/` during an active milestone. Historical phase directories remain tracked when verifier scripts depend on them. Archived roadmap, requirements, audit, and the v1.1/v1.2 raw phase archives remain under `.planning/milestones/`.
 
 </details>
 
 ***
-*Last updated: 2026-10-03 after verified Phase 152 post-prune wallet eligibility closure*
+*Last updated: 2026-10-03 after v2.4 milestone archive and full evolution review*

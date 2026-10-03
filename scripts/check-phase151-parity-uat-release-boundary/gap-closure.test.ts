@@ -2,6 +2,11 @@ import { expect, test } from "bun:test";
 
 import { checkPhase151ParityUatReleaseBoundary } from "../check-phase151-parity-uat-release-boundary.ts";
 import { append, createFixture, replace } from "./test-fixtures.ts";
+import {
+  ARCHIVED_V24_AUDIT,
+  ARCHIVED_V24_REQUIREMENTS,
+  ARCHIVED_V24_ROADMAP,
+} from "./constants.ts";
 
 const AUDIT = ".planning/v2.4-MILESTONE-AUDIT.md";
 const REQUIREMENTS = ".planning/REQUIREMENTS.md";
@@ -260,5 +265,213 @@ for (const variant of ["missing", "historical", "duplicate"] as const) {
 
     // Assert
     expect(failures).toContain("SNAP-01 closure completion must map uniquely to Phase 152");
+  });
+}
+
+function completedFixture(maybeMutate?: (files: Map<string, string>) => void): string {
+  return pendingFixture((files) => {
+    completeWalletClosure(files);
+    walletClosureEvidence(files, 152);
+    for (const id of ["PRUN-01", "PRUN-02"]) {
+      replace(files, REQUIREMENTS, `- [ ] **${id}**`, `- [x] **${id}**`);
+      for (const file of [REQUIREMENTS, ROADMAP]) {
+        replace(files, file, `| ${id} | Phase 153 | Pending |`, `| ${id} | Phase 153 | Complete |`);
+      }
+    }
+    replace(files, ROADMAP, "- [ ] **Phase 153:", "- [x] **Phase 153:");
+    const directory = ".planning/phases/153-automatic-prune-retention-integration";
+    const lifecycle = "lifecycle_mode: yolo\nphase_lifecycle_id: fixture-prune-closure";
+    files.set(`${directory}/153-CONTEXT.md`, `---\n${lifecycle}\n---\n`);
+    files.set(`${directory}/153-01-SUMMARY.md`, `---\n${lifecycle}\nrequirements-completed: [PRUN-01, PRUN-02]\n---\n`);
+    files.set(`${directory}/153-VERIFICATION.md`, `---\n${lifecycle}\nstatus: passed\nlifecycle_validated: true\n---\nVerified PRUN-01 and PRUN-02.\n`);
+    files.set(AUDIT, "---\nmilestone: v2.4\nstatus: tech_debt\ngaps:\n  requirements: []\n  integration: []\n---\n");
+    maybeMutate?.(files);
+  });
+}
+
+function archiveV24(files: Map<string, string>): void {
+  for (const [live, archive] of [
+    [REQUIREMENTS, ARCHIVED_V24_REQUIREMENTS],
+    [ROADMAP, ARCHIVED_V24_ROADMAP],
+    [AUDIT, ARCHIVED_V24_AUDIT],
+  ]) {
+    const maybeText = files.get(live);
+    if (maybeText === undefined) throw new Error(`missing fixture control ${live}`);
+    files.set(archive, maybeText);
+    files.delete(live);
+  }
+}
+
+test("accepts active v2.4 completion backed by both current closure owners", () => {
+  // Arrange
+  const root = completedFixture();
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("accepts archived-only v2.4 completion with retained phase lifecycles", () => {
+  // Arrange
+  const root = completedFixture(archiveV24);
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("later active milestone controls cannot override archived v2.4 evidence", () => {
+  // Arrange
+  const root = completedFixture((files) => {
+    archiveV24(files);
+    files.set(REQUIREMENTS, "**Milestone:** v2.5 Future Work\n- [ ] **FUT-01**");
+    files.set(ROADMAP, "## Active Milestone: v2.5 Future Work\n| FUT-01 | Phase 154 | Pending |");
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+for (const archive of [ARCHIVED_V24_REQUIREMENTS, ARCHIVED_V24_ROADMAP, ARCHIVED_V24_AUDIT]) {
+  test(`rejects missing archived v2.4 control ${archive}`, () => {
+    // Arrange
+    const root = completedFixture((files) => {
+      archiveV24(files);
+      files.delete(archive);
+    });
+
+    // Act
+    const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+    // Assert
+    expect(failures).toContain("missing target file");
+  });
+}
+
+test("later active controls cannot mask incomplete archived v2.4 requirements", () => {
+  // Arrange
+  const root = completedFixture((files) => {
+    archiveV24(files);
+    replace(files, ARCHIVED_V24_REQUIREMENTS, "- [x] **PRUN-03**", "- [ ] **PRUN-03**");
+    files.set(REQUIREMENTS, "**Milestone:** v2.5 Future Work\n- [x] **PRUN-03**");
+    files.set(ROADMAP, "## Active Milestone: v2.5 Future Work");
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("PRUN-03 must be checked");
+});
+
+for (const phase of [152, 153]) {
+  test(`archived v2.4 still requires current Phase ${phase} verification`, () => {
+    // Arrange
+    const root = completedFixture((files) => {
+      archiveV24(files);
+      const directory = phase === 152
+        ? "152-post-prune-wallet-rescan-eligibility"
+        : "153-automatic-prune-retention-integration";
+      files.delete(`.planning/phases/${directory}/${phase}-VERIFICATION.md`);
+      walletClosureEvidence(files, 146);
+    });
+
+    // Act
+    const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+    // Assert
+    expect(failures).toContain(`closure requires Phase ${phase} summary and lifecycle-valid verification`);
+  });
+}
+
+test("archived v2.4 rejects mismatched current-owner lifecycle evidence", () => {
+  // Arrange
+  const root = completedFixture((files) => {
+    archiveV24(files);
+    replace(files, ".planning/phases/153-automatic-prune-retention-integration/153-VERIFICATION.md", "fixture-prune-closure", "other-lifecycle");
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("Phase 153 summary and lifecycle-valid verification");
+});
+
+test("archived pending gap audit cannot excuse unchecked closure requirements", () => {
+  // Arrange
+  const root = pendingFixture(archiveV24);
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("archived audit must identify completed v2.4");
+  expect(failures).toContain("SNAP-01 must be checked");
+});
+
+test("resolves an archived pending audit while v2.4 controls remain active", () => {
+  // Arrange
+  const root = pendingFixture((files) => {
+    files.set(ARCHIVED_V24_AUDIT, AUDIT_TEXT);
+    files.delete(AUDIT);
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("matching active v2.4 controls take precedence over an older archive", () => {
+  // Arrange
+  const root = completedFixture((files) => {
+    files.set(ARCHIVED_V24_REQUIREMENTS, "**Milestone:** v2.4 Old Copy\n- [ ] **GRD-01**");
+    files.set(ARCHIVED_V24_ROADMAP, "# Milestone v2.4: Old Copy");
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("archived roadmap completion rows remain required", () => {
+  // Arrange
+  const root = completedFixture((files) => {
+    archiveV24(files);
+    replace(files, ARCHIVED_V24_ROADMAP, "| GRD-01 | Phase 151 | Complete |", "| GRD-01 | Phase 151 | Pending |");
+  });
+
+  // Act
+  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+  // Assert
+  expect(failures).toContain("ROADMAP coverage row GRD-01 must be Complete");
+});
+
+for (const archive of [ARCHIVED_V24_REQUIREMENTS, ARCHIVED_V24_ROADMAP, ARCHIVED_V24_AUDIT]) {
+  test(`rejects unrelated milestone content in versioned archive ${archive}`, () => {
+    // Arrange
+    const root = completedFixture((files) => {
+      archiveV24(files);
+      files.set(archive, (files.get(archive) ?? "").replaceAll("v2.4", "v2.5"));
+    });
+
+    // Act
+    const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
+
+    // Assert
+    expect(failures).toContain("identify");
+    expect(failures).toContain("v2.4");
   });
 }

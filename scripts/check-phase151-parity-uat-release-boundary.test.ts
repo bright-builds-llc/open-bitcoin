@@ -38,6 +38,7 @@ const CHECKER_SOURCES = [
   "scripts/check-phase151-parity-uat-release-boundary/claims.ts",
   "scripts/check-phase151-parity-uat-release-boundary/verifier.ts",
   "scripts/check-phase151-parity-uat-release-boundary/gap-closure.ts",
+  "scripts/check-phase151-parity-uat-release-boundary/planning-sources.ts",
 ];
 
 test("passes_on_a_complete_fixture", () => {
@@ -434,5 +435,5 @@ test("checker_source_pins_the_v24_contract_and_stays_filesystem_only", () => {
   expect(source).not.toContain("fetch(");
   expect(source).not.toContain("Bun.spawn");
   expect(source).not.toContain("node:child_process");
-  expect(source).not.toContain("resolvePlanningRequirementsSource");
+  expect(source).toContain("resolvePlanningRequirementsSource");
 });

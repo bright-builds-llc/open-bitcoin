@@ -110,11 +110,12 @@ export function createParityIndex(): FixtureIndex {
 }
 
 export function createRequirements(): string {
-  return [...checkedV24RequirementIds().map((id) => `- [x] **${id}**`), GRD01_CHECKBOX].join("\n");
+  return ["**Milestone:** v2.4 Prune-Mode Product Behavior", ...checkedV24RequirementIds().map((id) => `- [x] **${id}**`), GRD01_CHECKBOX].join("\n");
 }
 
 export function createRoadmap(): string {
   return [
+    "## Active Milestone: v2.4 Prune-Mode Product Behavior",
     "| OPER-01 | Phase 150 | Complete |",
     "| OPER-02 | Phase 150 | Complete |",
     "| OPER-03 | Phase 150 | Complete |",

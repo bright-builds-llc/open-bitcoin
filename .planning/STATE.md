@@ -2,12 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v2.4
 milestone_name: Prune-Mode Product Behavior
-current_phase: "153"
-current_phase_name: automatic-prune-retention-integration
-current_plan: "4"
 status: completed
-stopped_at: Phase 153 complete; v2.4 re-audited; Git evidence derived from saving commit
-last_updated: "2026-10-03T08:02:15.078Z"
+stopped_at: v2.4 archived; next milestone definition
+last_updated: "2026-10-03T17:51:56.147Z"
 last_activity: "2026-10-03"
 progress:
   total_phases: 8
@@ -21,25 +18,21 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-09-21 — milestone v2.4 started).
+See: `.planning/PROJECT.md` (updated 2026-10-03 — v2.4 archive).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v2.4 prune scope verified and re-audited; archival remains separate
+**Current focus:** Next milestone definition; v2.4 is shipped and archived
 
 ## Current Position
 
-Milestone: v2.4 Prune-Mode Product Behavior
-Current Phase: 153
-Current Phase Name: automatic-prune-retention-integration
-Current Plan: 4
-Total Plans in Phase: 4
-Status: Phase 153 complete
+Milestone: v2.4 Prune-Mode Product Behavior — SHIPPED / ARCHIVED
+Status: v2.4 milestone complete
 Last activity: 2026-10-03
-Last Activity Description: Phase 153 passed formal verification and full native checks
+Last Activity Description: Archived eight phases, 34 plans and all 17 requirements
 
-Phase progress: [██████████] 100% (8/8 phases). All 34 plans are complete.
+Archived milestone progress: [██████████] 100% (8/8 phases, 34/34 plans).
 
-Next action: Review the milestone audit and its three advisories before a separate /gsd-complete-milestone v2.4 request. Git finalization evidence is derived from the saving commit and upstream refs.
+Next action: `/gsd-new-milestone` — define fresh requirements; next phase number is 154. Git evidence is derived from the saving commits and remote tag/ref verification.
 
 ## Performance Metrics
 

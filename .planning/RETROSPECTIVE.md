@@ -560,6 +560,64 @@
 
 ***
 
+## Milestone: v2.4 - Prune-Mode Product Behavior
+
+**Shipped:** 2026-10-03
+**Phases:** 8
+**Plans:** 34
+**Tasks:** 69 completed planned task entries
+
+### What Was Built
+
+- Coins-backed staged wallet replacements with requested and matching creating-payload eligibility, truthful saved checkpoints and sanitized Failed evidence after real prune/resume/reopen.
+- Pure disabled/manual/automatic prune policy, legal 550 MiB floor, 288-block keep window, network prune-after threshold and ten-block buffered durable locks.
+- Paired SyncAll Fjall block/undo deletion, earned have-pruned, interrupted finish-or-refuse recovery and cache/undo cleanup from committed-delete receipts on success and later failure.
+- Limited service advertisement, the 288+2 serving window and earned Pruned labels that do not resurrect removed bodies.
+- RPC/CLI/manual/lock workflows, read-only dashboard status and sanitized support counts with pinned parity roots and deterministic no-claim guardrails.
+- Actual logical payload accounting and ordinary automatic retention under the existing serialized authority, forced full checkpoints for nonempty plans and offline explicit prune-with-datadir durability.
+
+### What Worked
+
+- Honest availability and durable coins from v2.3 supplied the deletion foundation; policy remained I/O-free and concrete effects stayed in Fjall shell adapters.
+- The milestone audit traced production consumers rather than accepting isolated pure-policy tests. Gap phases 152 and 153 closed both discovered integration blockers before archival.
+- The genuine legal-target fixture measured 578,359,864 retained bytes, with 235 nonactive pairs contributing most of the total. Actual active deletes and protected survivors proved ordinary retention while honestly leaving usage above the soft target.
+- Independent Phase 153 verification passed 22/22 truths; source review was clean across 26 files, all 14 security mitigations closed, and integration traced 20/20 seams plus 10/10 flows.
+
+### What Was Inefficient
+
+- The original six phases passed while automatic policy lacked an ordinary production consumer and wallet full replacement could still accept older pruned creating payloads. Two additional gap-closure phases were required.
+- Multiple early commits repeated lengthy full hooks for formatting, coverage, breadcrumb and fixture mistakes. Later implementation kept related source/test/manifest changes together under the same green gate.
+- Default Phase 153 verification first stopped on stale tracked LOC, then on a production scanner that included nested daemon test directories. The exact test-directory boundary and positive/negative scanner regressions resolved the failure without weakening production authority checks.
+- Legacy summary task counting reported 55 because newer plain task records were omitted. The closeout reconciled 69 planned XML task entries with summary task records instead of treating that legacy count as complete.
+
+### Patterns Established
+
+- Complete logical block/encoded-undo accounting includes protected/nonactive usage; candidate deletion stays active-chain-only and a target is soft rather than a physical capacity guarantee.
+- Ordinary measured retention reuses the existing flush owner, current durable lock authority and receipt cleanup. Nonempty plans force the existing full coins/metadata checkpoint; no second retention worker is introduced.
+- Wallet full replacement stages selection and checks creating payloads through one shared helper before either durable adapter persists. Concurrent probe/save atomicity remains outside the guarantee.
+- Distinguish production durable checkpoint/reopen proof from a later delegated metadata-fault fixture using `MemoryCoinsView`; sparse codec-valid history is retention evidence, not continuous consensus-chain or hardware proof.
+- Historical phase directories stay tracked and current consumers resolve the versioned requirements/roadmap/audit archive when the live requirements file retires.
+
+### Key Lessons
+
+1. Verify that every pure policy has an ordinary reachable production consumer before closing its requirement.
+2. A requested wallet range is insufficient when the adapter replaces a full wallet UTXO view; gate every selected creating payload and preserve the prior checkpoint on refusal.
+3. Use actual stored-byte evidence above a legal target, then state protected survivors and unreachable-target behavior explicitly.
+4. Keep successful deletes visible through later errors and restart; separate support counters can undercount a crash without invalidating payload absence.
+5. Retain accepted advisories as named debt: stale metadata can cause permitted Repair refusal, a future generic sink can silently omit unlink, and separate summary persistence has a crash undercount window.
+6. Archive-aware checks and exact required claim sentences preserve historical evidence while current milestone status changes.
+
+### Cost Observations
+
+- Model mix: not measured in repo artifacts.
+- Sessions: not measured in repo artifacts.
+- Notable: 8 phases, 34 plans and 69 completed planned task entries. The normalized count reconciles 67 tasks counted from summary task fields plus two explicit Phase 152-03 task records; the legacy CLI counted only 55.
+- Pre-archive Git range: `v2.3..311fb708`, beginning at `44845ea1` on 2026-09-21; 125 commits, 336 changed files, 46,543 insertions and 6,372 deletions over 12 elapsed calendar days. These figures exclude archive commits.
+- Pre-archive LOC: 355,534 tracked first-party lines / 308,584 code/content lines; production Rust 118,495 physical / 102,749 code, test Rust 141,316 physical / 119,570 code. Verification may refresh the tracked report after closeout edits.
+- Recorded full default native success: 45m47.953s, actual exit zero; feature-finalization commit hook: 37m21.068s. Earlier failed attempts remain recorded and are not relabeled as successes. The current closeout gates are recorded separately by the archive task.
+
+***
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -580,6 +638,7 @@
 | v2.1 | 20 | Added bounded block serving and compact-block relay, BIP152 reconstruction, authoritative runtime state, real post-write announcement evidence, operator observability, and archive-aware integration guardrails. |
 | v2.2 | 10 | Added bounded local-package admission, same-peer 1P1C assembly, accounted long-lived pressure, durable mempool recovery, initial-broadcast retry, and last-gate D-21 claim guardrails. |
 | v2.3 | 7 | Added disk-backed per-outpoint coins, typed cache-flush policy, single-chainstate manager restart, honest stored-block availability, sanitized durability evidence, and last-gate D-14 claim guardrails. |
+| v2.4 | 8 | Added paired Fjall prune, limited serving, durable locks and operator evidence; production-consumer audit gaps led to shared post-prune wallet eligibility and measured ordinary automatic retention before archival. |
 
 ### Cumulative Quality
 
@@ -599,6 +658,7 @@
 | v2.1 | 39/39 complete | Passed with zero requirement, integration, or flow gaps after Phase 129 reconciliation | Repo-native `scripts/verify.sh`, Phase 110-129 deterministic checkers, lifecycle-valid requirement traceability, production composition tests, and 13/13 integration plus 11/11 flow audit checks. |
 | v2.2 | 40/40 complete | Passed with zero requirement, integration, or flow gaps after Phase 138 closeout | Repo-native `scripts/verify.sh`, Phase 130-138 deterministic checkers, last-gate D-21/D-22 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 | v2.3 | 15/15 complete | Passed with zero requirement, integration, or flow gaps after Phase 145 closeout | Repo-native `scripts/verify.sh`, Phase 139-145 deterministic checkers, last-gate D-14/D-16 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
+| v2.4 | 17/17 complete | Tech-debt audit with zero requirement, integration or flow blockers; three nonblocking advisories accepted | Full default native verification, genuine legal-target ordinary deletion/reopen, lifecycle-valid Phase 152/153 evidence, 26-file clean review, 14 closed security mitigations, no-claim/archive-aware checks and 20/20 seams plus 10/10 scoped flows. |
 
 ### Top Lessons
 
@@ -611,3 +671,4 @@
 7. Verification reports should name the requirement IDs they satisfy; prose-only evidence creates avoidable audit ambiguity.
 8. Production-adjacent docs need deterministic guardrails as soon as the project introduces terms that sound stronger than the evidence actually supports.
 9. Historical verification must resolve versioned milestone archives after active control files are retired.
+10. Pure-policy and isolated adapter success do not prove ordinary production integration; verify the consumer, effects and durable reopen before claiming completion.

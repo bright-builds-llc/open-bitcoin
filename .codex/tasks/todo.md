@@ -101,3 +101,14 @@ freshness and final audit aggregation are complete. The required hook
 and upstream refs provide final Git evidence.
 Source paths use root-owned intent-to-add entries only
 to satisfy tracked-file discovery; no commit has been created.
+
+
+## task-v24-archive-push | 2026-10-03 12:35 CDT | Archive v2.4 and push all
+
+- [x] Verify scoped readiness, collect summary/task/Git statistics, and retain audit advisories.
+- [x] Add archive-aware resolution to the affected Phase 151 guard with regressions.
+- [x] Archive roadmap, requirements and audit; evolve project, milestone, retrospective and current docs.
+- [ ] Verify archive links, scope, metadata, and all repo-native checks; safety-commit archives before removing active requirements.
+- [ ] Finalize closeout, create annotated v2.4 tag, and push current main plus the version tag.
+
+Completion review: Pending. Preserve historical phase directories and deferred claims; next milestone is not selected. Git evidence is derived from saved commits and remote refs.

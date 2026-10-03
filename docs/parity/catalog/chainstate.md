@@ -24,6 +24,12 @@ a pinned-tree symbol; the serve-path root is `CheckBlockDataAvailability`.
 
 ## Current v2.4 claim
 
+v2.4 shipped and was archived on 2026-10-03. The [archived audit](../../../.planning/milestones/v2.4-MILESTONE-AUDIT.md)
+records 17/17 requirements, 20/20 connected seams and 10/10 scoped flows,
+with three accepted nonblocking recovery/sink/counter advisories. The
+[archived roadmap](../../../.planning/milestones/v2.4-ROADMAP.md) and
+[requirements](../../../.planning/milestones/v2.4-REQUIREMENTS.md) preserve the completed scope.
+
 The current v2.4 claim is height-window prune on Fjall keys for the single active chainstate.
 Status and RPC report Pruned only when have-pruned is set and the payload is gone.
 A missing payload without prune stays Unavailable.
