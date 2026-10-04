@@ -12,6 +12,38 @@
   },
   "groups": [
     {
+      "label": "basic-filter-index-startup-protection",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/recovery.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/faults.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/startup.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/startup/faults.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/startup/recovery.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "basic-filter-index-durable-storage",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/filter_index.rs",
+        "packages/open-bitcoin-node/src/storage/filter_index/tests.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/publication.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/faults.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/blockfilter.cpp"
+      ]
+    },
+    {
       "label": "basic-block-filter-independent-parity",
       "files": [
         "packages/open-bitcoin-consensus/tests/basic_filter.rs"
@@ -42,13 +74,29 @@
       "label": "basic-block-filter-codec",
       "files": [
         "packages/open-bitcoin-codec/src/block_filter.rs",
-        "packages/open-bitcoin-codec/src/block_filter/tests.rs"
+        "packages/open-bitcoin-codec/src/block_filter/tests.rs",
+        "packages/open-bitcoin-codec/src/block_filter/validation.rs",
+        "packages/open-bitcoin-codec/src/block_filter/validation/tests.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/blockfilter.cpp",
         "packages/bitcoin-knots/src/util/golombrice.h",
         "packages/bitcoin-knots/src/streams.h",
         "packages/bitcoin-knots/src/serialize.h"
+      ]
+    },
+    {
+      "label": "basic-filter-index-recovery",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/filter_index.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/recovery.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/tests.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/tests/commitments.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
       ]
     },
     {

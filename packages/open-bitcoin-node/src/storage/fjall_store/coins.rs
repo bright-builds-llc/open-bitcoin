@@ -38,6 +38,8 @@ impl FjallNodeStore {
         active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
         mode: PersistMode,
     ) -> Result<(), StorageError> {
+        #[cfg(test)]
+        self.check_basic_filter_chain_meta_fault()?;
         let meta_bytes = encode_chain_meta(active_chain, None)?;
         self.put_bytes(
             StorageNamespace::Chainstate,

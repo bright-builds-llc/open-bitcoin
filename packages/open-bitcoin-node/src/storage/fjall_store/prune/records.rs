@@ -45,6 +45,7 @@ impl FjallNodeStore {
     ///
     /// The lock name stays inside the value. An empty slice writes an empty map.
     pub fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
+        let _control = self.filter_publication_guard()?;
         let bytes = encode_prune_locks(locks)?;
         self.sync_block_index_value(PRUNE_LOCKS_KEY, bytes)
     }
@@ -115,7 +116,9 @@ impl FjallNodeStore {
     }
 }
 
-fn encode_prune_locks(locks: &[PruneLockInfo]) -> Result<Vec<u8>, StorageError> {
+pub(in crate::storage::fjall_store) fn encode_prune_locks(
+    locks: &[PruneLockInfo],
+) -> Result<Vec<u8>, StorageError> {
     refuse_duplicate_names(locks)?;
     let count = u32::try_from(locks.len())
         .map_err(|_| block_index_corruption("prune lock count overflowed"))?;

@@ -232,6 +232,7 @@ pub fn initialize(
         decision,
         maybe_best_block,
     )?);
+    store.recover_basic_filter_index_before_prune(maybe_best_block)?;
     let locks = store.load_prune_locks()?;
     resume_prune_intent(store, &locks)?;
     lifecycle.readiness = ManagerReadiness::ReadyToFlush;

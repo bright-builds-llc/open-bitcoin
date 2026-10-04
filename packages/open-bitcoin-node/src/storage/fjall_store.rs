@@ -40,6 +40,7 @@ use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 mod blocks;
 mod coins;
 mod coins_access;
+pub(crate) mod filters;
 mod mempool;
 mod payload_usage;
 mod prune;
@@ -71,6 +72,9 @@ pub struct FjallNodeStore {
     runtime: Keyspace,
     schema: Keyspace,
     payload_usage: Arc<Mutex<payload_usage::PayloadUsageState>>,
+    filter_publication: Arc<Mutex<filters::PublicationControl>>,
+    #[cfg(test)]
+    filter_integrity_reads: Arc<std::sync::atomic::AtomicUsize>,
 }
 
 impl FjallNodeStore {
@@ -82,6 +86,9 @@ impl FjallNodeStore {
 
         let store = Self {
             payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
+            filter_publication: Arc::new(Mutex::new(filters::PublicationControl::default())),
+            #[cfg(test)]
+            filter_integrity_reads: Arc::default(),
             path: path.as_ref().to_path_buf(),
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
@@ -443,6 +450,8 @@ impl FjallNodeStore {
         namespace: StorageNamespace,
         key: &str,
     ) -> Result<Option<Vec<u8>>, StorageError> {
+        #[cfg(test)]
+        self.count_filter_index_point_read(namespace, key);
         self.keyspace(namespace)
             .get(key)
             .map(|maybe_bytes| maybe_bytes.map(|bytes| bytes.as_ref().to_vec()))
@@ -518,6 +527,9 @@ impl FjallNodeStore {
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
         Ok(Self {
             payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
+            filter_publication: Arc::new(Mutex::new(filters::PublicationControl::default())),
+            #[cfg(test)]
+            filter_integrity_reads: Arc::default(),
             path: path.as_ref().to_path_buf(),
             headers: open_keyspace(&db, StorageNamespace::Headers)?,
             block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,

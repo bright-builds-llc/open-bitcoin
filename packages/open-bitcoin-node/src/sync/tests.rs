@@ -86,6 +86,7 @@ mod block_requests;
 mod bounded_unattended_runtime;
 mod durable_tip;
 mod errors_and_live;
+mod filter_index;
 mod inflight_failures;
 mod metrics_persistence;
 mod no_progress_diagnosis;

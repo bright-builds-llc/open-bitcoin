@@ -20,6 +20,7 @@ pub mod block_filter;
 pub mod coins;
 pub mod engine;
 pub mod error;
+pub mod filter_index;
 pub mod prune;
 pub mod types;
 
@@ -38,6 +39,11 @@ pub use engine::{
     prefer_candidate_tip,
 };
 pub use error::ChainstateError;
+pub use filter_index::{
+    BASIC_INDEX_PRUNE_LOCK, FilterCheckpoint, FilterIndexError, FilterRecordIdentity,
+    FilterRecoveryPlan, FilterRecoveryScan, IndexInputProtection, IndexPrefix,
+    VerifiedChainstateFence,
+};
 pub use prune::{
     AutomaticPruneInput, MIN_BLOCKS_TO_KEEP, MIN_DISK_SPACE_FOR_BLOCK_FILES_MIB,
     ManualPruneArgument, ManualPruneArgumentError, ManualPruneInput, ManualPruneRefusal,

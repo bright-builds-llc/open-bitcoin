@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phase 154 completed four plans and CFIL-01/02 after full native verification on 2026-10-04. One of nine phases is complete; 20 requirements remain pending, and Phase 155 is ready for context. BASIC construction and commitments are implemented; indexing and serving remain planned scope, and v2.5 is not a shipped capability. v2.4 remains archived with three nonblocking advisories, and all historical phase directories remain tracked for verifier evidence.
+v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–155 completed eight plans and five requirements after full native verification on 2026-10-04. Two of nine phases are complete; 17 requirements remain pending, and Phase 156 is ready for context. BASIC construction, recoverable immutable storage and pre-prune startup protection are implemented; activation and serving remain planned scope, and v2.5 is not a shipped capability. v2.4 remains archived with three nonblocking advisories, and all historical phase directories remain tracked for verifier evidence.
 
 ## Milestones
 
@@ -34,7 +34,7 @@ Material guidance: repo-local `AGENTS.md`, `AGENTS.bright-builds.md`, placeholde
 Integer phases continue from archived Phase 153; decimal phases remain available for urgent insertions. Fine granularity preserves nine coherent delivery boundaries. All requirements are Pending until implementation and lifecycle-valid verification are committed.
 
 - [x] **Phase 154: BASIC Generation and Commitment Parity** — Produce exact BASIC bytes and ancestry-dependent commitments from validated script history. (completed 2026-10-04)
-- [ ] **Phase 155: Recoverable Index and Pre-Prune Startup Protection** — Recover concrete Fjall records and validate protection before interrupted pruning can resume.
+- [x] **Phase 155: Recoverable Index and Pre-Prune Startup Protection** — Recover concrete Fjall records and validate protection before interrupted pruning can resume. (completed 2026-10-04)
 - [ ] **Phase 156: Index-Owned Manual and Automatic Prune Coordination** — Make required input protection enforceable through the actual deletion and lock owners.
 - [ ] **Phase 157: Safe Activation and Scheduled Index Catch-Up** — Enable indexing only with retained inputs, then advance through real startup and ordinary maintenance.
 - [ ] **Phase 158: Validated Reorg and Retained Branch Identity** — Replace active commitments while retaining indexed displaced blocks and refusing lost reorg inputs.
@@ -77,7 +77,13 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 1. A production durable-runtime reopen with a live interrupted prune intent validates index-owned protection before initialize can call resume_prune_intent; required bodies and undo survive, or startup refuses before unsafe deletion. (CFPR-03)
 1. Faults in record, checkpoint or protection persistence leave conservative protection and explicit failure evidence; stored filter records alone never authorize a cursor ahead of recoverable chainstate. (CFIX-02, CFIX-04, CFPR-03)
 
-**Plans**: TBD
+**Plans**: 4/4 complete; full native verification passed
+
+Plans:
+- [x] `155-01-PLAN.md` — Bounded BASIC validation and pure fenced recovery/protection contracts
+- [x] `155-02-PLAN.md` — Additive immutable Fjall records, atomic publication and reopen fault proof
+- [x] `155-03-PLAN.md` — Mandatory initialize pre-prune guard and production durable-runtime reopen
+- [x] `155-04-PLAN.md` — Cross-boundary recovery matrix, parity/docs and native guard wiring
 
 ### Phase 156: Index-Owned Manual and Automatic Prune Coordination
 
@@ -209,7 +215,7 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | Phase | Plans Complete | Status | Completed |
 | -- | -- | -- | -- |
 | 154. BASIC Generation and Commitment Parity | 4/4 | Complete | 2026-10-04 |
-| 155. Recoverable Index and Pre-Prune Startup Protection | 0/TBD | Not started | - |
+| 155. Recoverable Index and Pre-Prune Startup Protection | 4/4 | Complete | 2026-10-04 |
 | 156. Index-Owned Manual and Automatic Prune Coordination | 0/TBD | Not started | - |
 | 157. Safe Activation and Scheduled Index Catch-Up | 0/TBD | Not started | - |
 | 158. Validated Reorg and Retained Branch Identity | 0/TBD | Not started | - |
@@ -220,4 +226,4 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 
 ## Coverage
 
-22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 1/9 verified phases and 4/4 created plans. CFIL-01/02 are Complete; the remaining 20 requirements are Pending.
+22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 2/9 verified phases and 8/8 created plans. CFIL-01/02, CFIX-02/04 and CFPR-03 are Complete; the remaining 17 requirements are Pending.

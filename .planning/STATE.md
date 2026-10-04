@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
 status: planning
-stopped_at: Phase 154 verified complete; ready for Phase 155 context
-last_updated: "2026-10-04T07:57:30.883Z"
+stopped_at: Phase 155 verified complete; ready for Phase 156 context
+last_updated: "2026-10-04T19:31:16.893Z"
 last_activity: "2026-10-04"
 progress:
   total_phases: 9
-  completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  completed_phases: 2
+  total_plans: 8
+  completed_plans: 8
   percent: 100
 ---
 
@@ -21,20 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-03 — v2.5 start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 155 — Recoverable Index and Pre-Prune Startup Protection; ready for context
+**Current focus:** Phase 156 — Index-Owned Manual and Automatic Prune Coordination; ready for context
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 155 of 162 — Recoverable Index and Pre-Prune Startup Protection (2 of 9 in v2.5; ready for context)
+Phase: 156 of 162 — Index-Owned Manual and Automatic Prune Coordination (3 of 9 in v2.5; ready for context)
 Plan: Not started
-Status: Planning — ready for Phase 155 context
+Status: Planning — ready for Phase 156 context
 Last activity: 2026-10-04
-Last Activity Description: Phase 154 complete, transitioned to Phase 155
+Last Activity Description: Phase 155 complete, transitioned to Phase 156
 
-Milestone progress: [█░░░░░░░░░] 11% (1/9 active v2.5 phases complete; 4/4 created plans complete).
+Milestone progress: [██░░░░░░░░] 22% (2/9 active v2.5 phases complete; 8/8 created plans complete).
 
-Next action: /gsd-discuss-phase 155 — gather context for recoverable index and pre-prune startup protection.
+Next action: /gsd-discuss-phase 156 — gather context for index-owned manual and automatic prune coordination.
 
 ## Performance Metrics
 
@@ -77,6 +77,7 @@ Next action: /gsd-discuss-phase 155 — gather context for recoverable index and
 | 152 | 3 | - | - |
 | 153 | 4 | - | - |
 | 154 | 4 | - | - |
+| 155 | 4 | - | - |
 
 ### Plan Execution History
 
@@ -606,6 +607,6 @@ Next action: /gsd-discuss-phase 155 — gather context for recoverable index and
 
 ## Session Continuity
 
-Last session: 2026-10-04T07:57:30.877Z
-Stopped at: Phase 154 verified complete; ready for Phase 155 context
-Resume file: .planning/phases/154-basic-generation-and-commitment-parity/154-VERIFICATION.md
+Last session: 2026-10-04T19:31:16.888Z
+Stopped at: Phase 155 verified complete; ready for Phase 156 context
+Resume file: None

@@ -55,7 +55,7 @@ The automatic target is a soft logical block/undo retention target: protected an
 Phase 154 provides pure BASIC-only generation and commitments with independent
 pinned-corpus and validated historical-spend evidence. See the
 [BASIC parity catalog](./docs/parity/catalog/basic-compact-filters.md).
-Filter index activation/storage, filter prune retention, RPC serving, peer
+Filter index activation, ordinary filter prune retention, RPC serving, peer
 serving, catch-up, V0, BIP37, GUI, production readiness and production-funds claims
 remain deferred. Full phase verification remains a root execution gate.
 
@@ -65,6 +65,24 @@ From the repository root, reproduce the exact independent comparisons:
 bun run scripts/generate-basic-filter-vectors.ts --check
 bun run scripts/command-timings.ts run --key phase154-independent-basic-parity -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-consensus --test basic_filter
 bun run scripts/command-timings.ts run --key phase154-historical-basic-parity -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-chainstate block_filter
+```
+
+Phase 155 adds internal recoverable BASIC storage and a mandatory pre-prune
+startup guard. Immutable ahead/displaced rows are retained while recovered coins
+B plus compatible durable metadata fence the visible cursor; uncertainty stops
+startup before deleting required input. The v2.5 milestone remains pending:
+activation and scheduled catch-up (157), prune ownership/disable (156), runtime
+reorg (158), and RPC/peer/operator serving and integrated retained-client proof
+(159–162) remain deferred. Software fault/reopen tests do not establish hardware
+power-loss behavior, archive-scale performance, or production-funds safety.
+
+Phase 155's [formal verification](./.planning/phases/155-recoverable-index-and-pre-prune-startup-protection/155-VERIFICATION.md) passed 10/10 distinct truths after full native verification, with a clean source review and all 17 declared threats closed. CFIX-02, CFIX-04 and CFPR-03 are Complete; the rest of v2.5 remains planned scope.
+
+```bash
+bun run scripts/command-timings.ts run --key phase155-production-recovery-matrix -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib filter_index
+bun test ./scripts/check-phase155-filter-index.test.ts
+bun run scripts/check-phase155-filter-index.ts
+bash scripts/verify.sh
 ```
 
 ## Parity At A Glance

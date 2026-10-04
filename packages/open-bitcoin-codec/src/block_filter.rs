@@ -10,6 +10,8 @@ use core::fmt;
 
 use crate::{CodecError, MAX_SIZE, write_compact_size};
 
+pub mod validation;
+
 /// BASIC Golomb-Rice remainder width.
 pub const BASIC_FILTER_P: u32 = 19;
 /// BASIC range multiplier for each distinct raw script.

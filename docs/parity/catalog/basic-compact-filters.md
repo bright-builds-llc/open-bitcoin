@@ -6,8 +6,8 @@ CFIL-02 against Bitcoin Knots `29.3.knots20260210`, exact commit
 passed all 11 must-haves and three roadmap criteria; the full native verifier,
 including coverage and Bazel smoke, passed on 2026-10-04.
 
-This scope is BASIC-only: V0 and BIP37 serving are excluded. Filter index storage
-and activation, prune retention of filters, RPC serving, peer serving, catch-up,
+This scope is BASIC-only: V0 and BIP37 serving are excluded. Filter index
+activation, ordinary prune retention of filters, RPC serving, peer serving, catch-up,
 GUI, production readiness and production-funds claims remain deferred.
 
 ## Algorithm and inputs
@@ -95,3 +95,64 @@ upstream agreements. The default `bash scripts/verify.sh` runs checker tests,
 the structural claim/provenance checker and oracle check before Rust checks.
 Structural checks supplement exact behavioral tests; they do not prove parity
 alone. Full coverage, native verification and Bazel smoke passed as Phase 154 gates.
+
+## Recoverable internal index and pre-prune startup protection
+
+Phase 155 addresses CFIX-02, CFIX-04 and CFPR-03 through existing-crate internal
+storage and startup foundations. Its formal phase/full native gate remains
+pending; the v2.5 milestone is not complete. The unique parity owner is
+`v2-5-recoverable-basic-index-and-startup-protection` in
+[index.json](../index.json).
+
+Pinned [index/base.cpp](../../../packages/bitcoin-knots/src/index/base.cpp)
+anchors `Commit`, `Rewind`, `ChainStateFlushed` and prune-lock ordering.
+[index/blockfilterindex.cpp](../../../packages/bitcoin-knots/src/index/blockfilterindex.cpp)
+anchors `CustomCommit`/`CustomRewind`, contextual commitments and retained branch
+records. [node/blockstorage.cpp](../../../packages/bitcoin-knots/src/node/blockstorage.cpp)
+anchors buffered protection and interrupted deletion behavior.
+
+Open Bitcoin uses additive versioned BASIC envelopes in Fjall's existing
+schema-2 BlockIndex namespace instead of Knots flat files/LevelDB. Immutable
+block-hash rows are separate from checkpoint-visible projection and saved
+progress. SyncAll batches publish records/projection/checkpoint/protection
+together; record-only commits cannot advance authority. Saved higher fences
+record historical publication provenance, not current authority. Recovered coins
+B and independently compatible contiguous durable metadata decide safe progress;
+same-height saved fence/endpoint conflicts refuse. B/meta disagreement after
+coins H/B replay conservatively refuses before prune resume. Missing/corrupt/weak
+reserved protection is never silently recreated. The direct startup input guard
+also protects heights 0/1, beyond the existing ordinary buffered helper.
+
+Real Fjall close/reopen tests use actual validated historical and same-block
+spends and alternative branches, retaining immutable rows after deferred/failed
+coins/meta persistence. They separately inspect cursor, fence, projection,
+protection, bodies, non-genesis undo and live intent. Sparse codec-valid long
+history fixtures serve deletion-order proof only and do not claim consensus
+validation. Before-record/checkpoint/protection and after-commit software faults
+exercise the real store and production runtime. A concrete metadata fault stops
+the actual flush adapter after successful coins B publication; compatible H/B
+replay succeeds while stale metadata stops startup and preserves required input.
+
+The full startup integrity scan performs linear retained-history work with
+bounded additional record memory. The deterministic 256-record/256-projection
+corpus measures exactly 1,023 key/prefix reads (`4N - 1`), without per-row ancestor
+walks or a full index cache. This is not a total runtime/memory cap, latency
+promise, archive-scale benchmark or hardware power-loss simulation. Category-only
+failures do not dump filter/script payloads. No implicit repair or download occurs.
+
+Phase 156 owns ordinary prune ownership, lock CRUD and disable/re-enable;
+157 owns activation and scheduled catch-up; 158 owns validated runtime reorg;
+159–162 own RPC/peer/operator serving and integrated retained-client proof. These
+product surfaces, GUI, production readiness and production-funds claims remain deferred.
+
+```bash
+bun run scripts/command-timings.ts run --key phase155-production-recovery-matrix -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib filter_index
+bun test ./scripts/check-phase155-filter-index.test.ts
+bun run scripts/check-phase155-filter-index.ts
+bash scripts/verify.sh
+```
+
+The native checker validates source/manifest/parity links and guard ordering;
+its mutation tests supplement actual durable Rust evidence. The default native
+workflow includes the existing Bazel smoke; run Cargo/Bazel work through the
+repo timing wrapper and serialize builds. No public-network run is required.

@@ -137,3 +137,21 @@ Completion review: Defined 22 Pending requirements and nine phases (154–162), 
 - [x] Prepare verified tracking and changes for commit/push; derive final transport evidence from Git history and remote sync.
 
 Completion review: four plans implemented; 11/11 must-haves and all three roadmap criteria passed, source review is clean, and 15/15 declared threats are closed. Full default native verification passed in 31m 19.275s, including Rust, benchmark, Bazel/provenance and pure-core coverage gates. Git history and remote synchronization are the authoritative commit/push record for this pre-commit snapshot. Residual boundary: index/storage, activation, RPC, peers and production claims remain later scope.
+
+## task-phase155-recoverable-index | 2026-10-04 11:01 CDT | Recoverable Index and Pre-Prune Startup Protection
+
+- [x] Resolve Phase 155, sync main/submodule and load active lessons plus repo standards.
+- [x] Capture yolo storage, durable-fence and pre-prune startup decisions.
+- [x] Research concrete recovery/fault seams for CFIX-02, CFIX-04 and CFPR-03.
+- [x] Check executable plans and threat models before implementation.
+- [x] Implement bounded BASIC validation and pure recovery/protection contracts (155-01).
+- [x] Implement additive immutable Fjall records and atomic publication (155-02).
+- [x] Integrate pre-prune startup protection in production reopen (155-03).
+- [x] Complete recovery/fault evidence and native parity guardrails (155-04).
+- [x] Prove real Fjall faults/reopen and production interrupted-prune refusal/safety.
+- [x] Review source and simplification opportunities; independent review is clean across 36 files.
+- [x] Close the final security disposition with full native evidence (17/17 closed).
+- [x] Run full native verification, Bright Builds checks and lifecycle validation.
+- [x] Prepare verified changes for commit/push; derive actual finalization from Git history and remote synchronization.
+
+Completion review: four plans implemented; formal verification passed 10/10 distinct truths and all four roadmap criteria, independent source review is clean across 36 files, and 17/17 security dispositions are closed. The full default native verifier passed in 50m 23.935s with Bun 1.3.9 and Rust 1.94.1, including integration, benchmark, Bazel/provenance and zero-uncovered-lines pure-core coverage. CFIX-02/04 and CFPR-03 are Complete. This is the verified pre-commit snapshot; Git history and remote synchronization record the actual consolidated commit/push. Residual boundary: ordinary index-owned prune coordination, activation/catch-up, runtime reorg and serving/operator/integrated-client scope remain Phases 156–162; accepted historical-fence provenance and linear startup work do not claim hardware durability or archive-scale performance.

@@ -6,7 +6,7 @@
 
 ## v2.5 Requirements
 
-Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` is the behavioral baseline. All requirements are pending; planned scope does not claim shipped compact-filter support. Each requirement receives exactly one owning roadmap phase.
+Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` is the behavioral baseline. Five requirements are complete through Phases 154–155; remaining planned scope does not claim shipped compact-filter serving. Each requirement receives exactly one owning roadmap phase.
 
 ### Filter Construction
 
@@ -21,15 +21,15 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 ### Durable Index Lifecycle
 
 - [ ] **CFIX-01**: An operator can observe ordered, bounded catch-up from retained history and ongoing indexing from ordinary validated connects; scheduled catch-up progresses without another peer message and incomplete work never reports a complete index.
-- [ ] **CFIX-02**: An operator can reopen the real Fjall datadir after successful or interrupted index writes and recover valid filter records and safe progress, or receive a fail-closed diagnostic without phantom cursor advancement.
+- [x] **CFIX-02**: An operator can reopen the real Fjall datadir after successful or interrupted index writes and recover valid filter records and safe progress, or receive a fail-closed diagnostic without phantom cursor advancement.
 - [ ] **CFIX-03**: A client gets branch-correct replacement filters and headers after a validated reorg and can retrieve already-indexed displaced blocks by hash; missing deep-reorg inputs cause explicit refusal rather than invented history.
-- [ ] **CFIX-04**: An operator can restart after index work runs ahead of a coins/chain-metadata flush without trusting a resume cursor beyond the recovered durable chainstate checkpoint; immutable filter records and active progress are reconciled to the recovered branch.
+- [x] **CFIX-04**: An operator can restart after index work runs ahead of a coins/chain-metadata flush without trusting a resume cursor beyond the recovered durable chainstate checkpoint; immutable filter records and active progress are reconciled to the recovered branch.
 
 ### Prune Coordination
 
 - [ ] **CFPR-01**: An active index protects all required body/undo inputs from both manual and ordinary automatic pruning until its safe durable checkpoint permits release; operator lock set/clear cannot weaken index-owned protection, and disable/re-enable has an explicit ownership transition.
 - [ ] **CFPR-02**: A client can retrieve previously indexed filters, headers and checkpoints after real paired body/undo deletion and datadir reopen, while ordinary block serving and wallet eligibility retain the shipped pruned-body restrictions.
-- [ ] **CFPR-03**: An operator can reopen a datadir with interrupted prune intent without recovery deleting inputs required by the index: index protection is validated before resumed deletion, and unsafe combinations retain protection or refuse with a diagnostic.
+- [x] **CFPR-03**: An operator can reopen a datadir with interrupted prune intent without recovery deleting inputs required by the index: index protection is validated before resumed deletion, and unsafe combinations retain protection or refuse with a diagnostic.
 
 ### Peer Serving
 
@@ -85,15 +85,15 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01 and CFIL-02 are Complete after Phase 154's lifecycle-valid verification and full native pass; the remaining 20 requirements are Pending.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-02/04 and CFPR-03 are Complete after Phases 154–155's lifecycle-valid verification and full native passes; the remaining 17 requirements are Pending.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
 | CFIL-01 | Phase 154 | Complete |
 | CFIL-02 | Phase 154 | Complete |
-| CFIX-02 | Phase 155 | Pending |
-| CFIX-04 | Phase 155 | Pending |
-| CFPR-03 | Phase 155 | Pending |
+| CFIX-02 | Phase 155 | Complete |
+| CFIX-04 | Phase 155 | Complete |
+| CFPR-03 | Phase 155 | Complete |
 | CFPR-01 | Phase 156 | Pending |
 | CFAC-01 | Phase 157 | Pending |
 | CFAC-02 | Phase 157 | Pending |
@@ -117,4 +117,4 @@ Coverage: 22/22 requirements mapped; 0 unmapped; 0 duplicate owners.
 ______________________________________________________________________
 
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-03 after v2.5 research-backed scope selection*
+*Last updated: 2026-10-04 after Phase 155 verification*

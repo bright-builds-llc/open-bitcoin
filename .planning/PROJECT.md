@@ -12,7 +12,9 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-Phase 154 completed the v2.5 BASIC construction and commitment foundation on 2026-10-04: exact pinned bytes/hash/header, complete body-bound historical inputs and independent corpus/edge/validated-chain proof. [Verification](phases/154-basic-generation-and-commitment-parity/154-VERIFICATION.md) passed 11/11 must-haves and all three roadmap criteria; the full default native verifier passed in 31m 19.275s, source review is clean, and all 15 declared threats are closed. CFIL-01/02 are Complete. Phase 155 is ready for context; durable indexing, activation, RPC/peer serving and the rest of v2.5 remain pending.
+Phase 155 completed recoverable immutable BASIC storage and pre-prune startup protection on 2026-10-04. [Verification](phases/155-recoverable-index-and-pre-prune-startup-protection/155-VERIFICATION.md) passed 10/10 distinct truths and all four roadmap criteria; the full default native verifier passed in 50m 23.935s with pinned Bun 1.3.9 and Rust 1.94.1. Source review is clean across 36 files and all 17 declared threats are closed. CFIX-02/04 and CFPR-03 are Complete. Real Fjall/runtime reopen, validated spend/fork and coins/metadata failure tests prove conservative progress and protection. Phase 156 is ready for context; activation, ordinary prune ownership, runtime reorg, RPC/peer serving and the rest of v2.5 remain pending.
+
+Phase 154 completed the v2.5 BASIC construction and commitment foundation: exact pinned bytes/hash/header, complete body-bound historical inputs and independent corpus/edge/validated-chain proof. Its [verification](phases/154-basic-generation-and-commitment-parity/154-VERIFICATION.md) passed 11/11 must-haves and all three roadmap criteria; the full default verifier passed in 31m 19.275s and all 15 declared threats are closed. CFIL-01/02 remain Complete.
 
 v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03 after Phases 146–153 completed 34/34 plans and all 17 requirements. The [archived audit](milestones/v2.4-MILESTONE-AUDIT.md) records 20/20 connected seams, 10/10 scoped flows, zero blocking gaps and three accepted nonblocking advisories. Its `tech_debt` status preserves those advisories rather than claiming they were fixed.
 
@@ -37,7 +39,7 @@ Historical phase directories remain tracked because repository verifiers referen
 - Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
 - Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
 
-Continue at Phase 155 and preserve earlier phase directories required by repository verifiers. Research must settle enabling an index after historical payloads have already been pruned. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+Continue at Phase 156 and preserve earlier phase directories required by repository verifiers. Public activation after historical payload loss remains Phase 157 scope. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
 
 FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
 
@@ -160,6 +162,8 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Validated
 
+- ✓ CFIX-02, CFIX-04 and CFPR-03 validated in Phase 155: integrity-checked immutable Fjall records, recovered-coins/ancestry-fenced progress, atomic publication, conservative faults and mandatory protection before startup prune resume; full native verification passed.
+
 - ✓ CFIL-01/02 validated in Phase 154: pinned BASIC bytes, typed hash/header commitments, validated historical/same-block inputs, missing/body-substitution refusal and independent parity vectors; full native verification passed.
 
 - ✓ v1.0 validated all 28 source-of-truth requirements across reference baseline, architecture, verification, consensus, chainstate, mempool, networking, wallet, RPC, CLI, performance, and auditability surfaces. Archive: `.planning/milestones/v1.0-REQUIREMENTS.md`
@@ -209,14 +213,14 @@ v2.1 does not imply public relay defaults, production service operation, product
 ### Active
 
 - [ ] CFAC-01/02: Default-off durable activation and missing-history refusal
-- [ ] CFIX-01 through CFIX-04: Bounded catch-up, restart, reorg and chainstate-fenced safe progress
-- [ ] CFPR-01 through CFPR-03: Reserved prune protection, retained filter service and pre-resume recovery safety
+- [ ] CFIX-01/03: Bounded catch-up and validated runtime reorg handling
+- [ ] CFPR-01/02: Index-owned ordinary prune coordination and retained filter service
 - [ ] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
 - [ ] CFRP-01/02: Authenticated BASIC filter and index-info RPC parity
 - [ ] CFOP-01: Shared sanitized operator evidence and separate filter-growth disclosure
 - [ ] CFGR-01/02: Parity guardrails and continuous validated-chain integrated proof
 
-CFIL-01/02 are Complete and 20 detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
+CFIL-01/02, CFIX-02/04 and CFPR-03 are Complete and 17 detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 
@@ -301,8 +305,8 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
 | Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: CFIL-01/02 Complete in Phase 154; 20 requirements Pending; serving not shipped |
-| Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Planned: safe cursor fenced by durable chainstate, reserved protection and real failure/reopen proof |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: five requirements Complete through Phase 155; 17 Pending; serving not shipped |
+| Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Phase 155 validated fenced cursor and pre-resume protection with real faults/reopen; public activation and ordinary ownership remain later scope |
 | Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Planned: exact BASIC/per-peer behavior plus distinct operator evidence |
 
 ## Evolution
@@ -350,4 +354,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-04 after Phase 154 verification*
+*Last updated: 2026-10-04 after Phase 155 verification*

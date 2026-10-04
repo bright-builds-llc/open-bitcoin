@@ -22,7 +22,7 @@ machine-readable parity ledger.
 
 | Entry | Status | Scope |
 | -- | -- | -- |
-| [`basic-compact-filters.md`](basic-compact-filters.md) | `done` | Pure BASIC-only construction/commitments, ten pinned corpus cases and independent edge/historical fixtures; index, RPC, peer, prune retention, catch-up, V0/BIP37, GUI and production claims remain deferred |
+| [`basic-compact-filters.md`](basic-compact-filters.md) | `in_progress` | Phase 154 pure BASIC construction/commitments plus Phase 155 internal recoverable storage and pre-prune startup guard; full Phase 155 gate pending. Activation, ordinary prune ownership/disable, scheduled catch-up, runtime reorg, RPC/peer/operator serving, integrated retained-client proof, V0/BIP37, GUI and production claims remain deferred |
 | [`core-domain-and-serialization.md`](core-domain-and-serialization.md) | `done` | Amounts, hashes, serialization primitives, scripts, transactions, blocks, and protocol framing reused across the workspace |
 | [`consensus-validation.md`](consensus-validation.md) | `done` | Script execution, proof-of-work, merkle roots, and typed transaction or block validation outcomes |
 | [`chainstate.md`](chainstate.md) | `done` | UTXO state, connect/disconnect, reorg selection, and adapter-owned persistence boundaries |

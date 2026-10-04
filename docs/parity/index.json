@@ -831,6 +831,54 @@
     ],
     "surfaces": [
       {
+        "id": "v2-5-recoverable-basic-index-and-startup-protection",
+        "title": "Recoverable BASIC Index and Pre-Prune Startup Protection",
+        "status": "in_progress",
+        "requirements": ["CFIX-02", "CFIX-04", "CFPR-03"],
+        "evidence": [
+          "packages/open-bitcoin-codec/src/block_filter/validation.rs",
+          "packages/open-bitcoin-chainstate/src/filter_index.rs",
+          "packages/open-bitcoin-chainstate/src/filter_index/recovery.rs",
+          "packages/open-bitcoin-node/src/storage/filter_index.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/publication.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/faults.rs",
+          "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs",
+          "packages/open-bitcoin-node/src/sync/open_runtime.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/startup.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/startup/recovery.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/startup/faults.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/recovery.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/faults.rs",
+          "scripts/check-phase155-filter-index.ts",
+          "scripts/check-phase155-filter-index.test.ts",
+          "scripts/verify.sh",
+          "docs/parity/catalog/basic-compact-filters.md"
+        ],
+        "rationale": "Existing-crate internal schema-2 Fjall recovery foundations: immutable integrity, checkpoint-visible projection fenced by recovered coins B and compatible metadata, and mandatory initialize protection before prune resume. Actual validated spend/fork, H/B partial commit, metadata failure and production close/reopen evidence supplement bounded software fault tests. Formal full native gate remains pending.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/index/base.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": ["packages/bitcoin-knots/test/functional/feature_blockfilterindex.py"]
+        },
+        "intentional_differences": [
+          "Additive versioned Fjall schema-2 envelopes replace Knots flat files/LevelDB; SyncAll publishes checkpoint/protection together.",
+          "B/meta disagreement after replay conservatively refuses; higher saved fences are provenance only and same-height endpoint conflicts refuse.",
+          "The direct startup input guard also protects heights 0/1 independently of the ordinary buffered helper."
+        ],
+        "known_gaps": [
+          "Phase 156 ordinary prune ownership/CRUD/disable, 157 activation/scheduled catch-up, 158 runtime reorg and 159–162 RPC/peer/operator serving and integrated retained-client proof remain deferred.",
+          "Software fault/reopen proof is not hardware power-loss simulation, archive-scale performance evidence, production readiness or production-funds safety.",
+          "Full integrity scan is linear retained-history work with bounded additional record memory, not a total runtime/memory cap; 256 records/projections measure 1023 reads.",
+          "Hash commitments detect corruption without authenticating historical provenance; generated records consume validated complete historical inputs. No implicit repair/download."
+        ],
+        "suspected_unknowns": []
+      },
+      {
         "id": "v2-5-basic-filter-generation-and-commitments",
         "title": "Pure BASIC Filter Generation and Commitments",
         "status": "in_progress",
@@ -866,7 +914,7 @@
         },
         "known_gaps": [
           "BASIC-only; V0 and BIP37 excluded.",
-          "Filter index activation/storage, filter prune retention, RPC serving, peer serving, catch-up, GUI, production readiness and production-funds claims remain deferred.",
+          "Public filter index activation, ordinary filter prune retention, RPC serving, peer serving, catch-up, GUI, production readiness and production-funds claims remain deferred. Internal recovery/storage evidence belongs to the Phase 155 surface.",
           "Historical input construction requires complete authoritative earlier undo and refuses missing history. The encoder is block-bounded.",
           "The independent Python oracle is source-audited and corpus-cross-validated, not a directly linked Knots binary."
         ],
