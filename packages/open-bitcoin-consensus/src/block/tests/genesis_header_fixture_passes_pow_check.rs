@@ -79,9 +79,12 @@ fn check_block_rejects_multiple_coinbases() {
 
 #[test]
 fn check_block_rejects_duplicate_transactions_even_with_matching_root() {
+    // Arrange
     let coinbase = coinbase_transaction();
     let coinbase_txid = crate::crypto::transaction_txid(&coinbase).expect("coinbase txid");
     let spend = spend_transaction(coinbase_txid);
+    let mut duplicate = spend.clone();
+    duplicate.lock_time = 1;
     let mut block = Block {
         header: BlockHeader {
             version: 1,
@@ -91,15 +94,21 @@ fn check_block_rejects_duplicate_transactions_even_with_matching_root() {
             bits: EASY_BITS,
             nonce: 0,
         },
-        transactions: vec![coinbase, spend.clone(), spend],
+        transactions: vec![coinbase, spend, duplicate.clone(), duplicate],
     };
-    let (merkle_root, maybe_mutated) = block_merkle_root(&block.transactions).expect("merkle root");
-    assert!(maybe_mutated);
+    let (merkle_root, _) =
+        block_merkle_root(&block.transactions[..3]).expect("original unmutated merkle root");
     block.header.merkle_root = merkle_root;
     mine_header(&mut block);
 
+    // Act
+    let (mutated_root, maybe_mutated) =
+        block_merkle_root(&block.transactions).expect("mutated merkle root");
     let error = check_block(&block).expect_err("mutated merkle tree must fail");
 
+    // Assert
+    assert!(maybe_mutated);
+    assert_eq!(mutated_root, merkle_root);
     assert_eq!(error.reject_reason, "bad-txns-duplicate");
 }
 

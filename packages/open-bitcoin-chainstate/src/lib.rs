@@ -16,12 +16,16 @@
 
 //! Pure-core chainstate and UTXO domain models for Open Bitcoin.
 
+pub mod block_filter;
 pub mod coins;
 pub mod engine;
 pub mod error;
 pub mod prune;
 pub mod types;
 
+pub use block_filter::{
+    BasicFilterGenerationError, BasicFilterInputError, BasicFilterInputs, HistoricalBlockUndo,
+};
 pub use coins::{
     COIN_WRITE_GUARD_BYTES_PER_ENTRY, CoinsBatch, CoinsCache, CoinsCacheEntry, CoinsCacheFlags,
     CoinsCacheSizeState, CoinsView, ESTIMATED_COIN_ENTRY_OVERHEAD_BYTES, FlushDecision,

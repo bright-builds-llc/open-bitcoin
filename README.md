@@ -50,6 +50,23 @@ Knots-aligned prune on the single active chainstate deletes old block and undo p
 
 The automatic target is a soft logical block/undo retention target: protected and nonactive payloads count in usage while only active candidates may be deleted. It does not guarantee physical disk capacity or immediate reclamation. Wallet eligibility probes and persistence are separate effects. The archived audit preserves the stale-metadata recovery refusal, generic sink no-op default and crash-window support-counter undercount advisories.
 
+## Pure BASIC filter construction
+
+Phase 154 provides pure BASIC-only generation and commitments with independent
+pinned-corpus and validated historical-spend evidence. See the
+[BASIC parity catalog](./docs/parity/catalog/basic-compact-filters.md).
+Filter index activation/storage, filter prune retention, RPC serving, peer
+serving, catch-up, V0, BIP37, GUI, production readiness and production-funds claims
+remain deferred. Full phase verification remains a root execution gate.
+
+From the repository root, reproduce the exact independent comparisons:
+
+```bash
+bun run scripts/generate-basic-filter-vectors.ts --check
+bun run scripts/command-timings.ts run --key phase154-independent-basic-parity -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-consensus --test basic_filter
+bun run scripts/command-timings.ts run --key phase154-historical-basic-parity -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-chainstate block_filter
+```
+
 ## Parity At A Glance
 
 The current status source is the parity ledger:
@@ -75,7 +92,7 @@ docs/parity/release-readiness.md#v18-release-readiness-checklist for legacy
 guardrails.
 
 | Surface | Bitcoin Knots baseline | Open Bitcoin | Evidence | Notes |
-| --- | --- | --- | --- | --- |
+| -- | -- | -- | -- | -- |
 | Reference baseline | `29.3.knots20260210` vendored under `packages/bitcoin-knots/` | ✓ done | [`docs/parity/index.json`](./docs/parity/index.json) | The pinned baseline is the external behavior contract. |
 | Core domain and serialization | Amounts, hashes, scripts, transactions, blocks, and wire framing | ✓ done | [`catalog/core-domain-and-serialization.md`](./docs/parity/catalog/core-domain-and-serialization.md) | Rust types preserve Bitcoin encoding and identity boundaries. |
 | Consensus and validation | Script execution, transaction checks, block checks, PoW, merkle behavior | ✓ done | [`catalog/consensus-validation.md`](./docs/parity/catalog/consensus-validation.md) | Consensus parity includes legacy, segwit-v0, taproot, and parity-closure fixes. |
@@ -92,7 +109,7 @@ guardrails.
 These are Open Bitcoin design choices, not Knots parity claims:
 
 | Capability | Where to inspect |
-| --- | --- |
+| -- | -- |
 | First-party Rust Bitcoin domain types instead of production dependencies on existing Rust Bitcoin libraries | [`packages/`](./packages/) |
 | Functional-core boundaries that keep pure business logic free of direct I/O and runtime effects | [`scripts/check-pure-core-deps.sh`](./scripts/check-pure-core-deps.sh) |
 | Operator runtime contracts for storage, observability, status, CLI routing, and config layering | [`docs/architecture/`](./docs/architecture/) |

@@ -25,7 +25,9 @@ pub mod transaction;
 
 pub use amount::{Amount, AmountError, COIN, MAX_MONEY};
 pub use block::{Block, BlockHeader};
-pub use hash::{BlockHash, Hash32, HashLengthError, MerkleRoot, Txid, Wtxid};
+pub use hash::{
+    BlockHash, FilterHash, FilterHeader, Hash32, HashLengthError, MerkleRoot, Txid, Wtxid,
+};
 pub use network::{
     BLOCK_LOCATOR_DUMMY_VERSION, BlockLocator, InventoryType, InventoryVector, MESSAGE_TYPE_SIZE,
     MessageCommand, MessageCommandError, MessageHeader, NetworkAddress, NetworkMagic,

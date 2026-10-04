@@ -21,7 +21,8 @@ machine-readable parity ledger.
 ## Current entries
 
 | Entry | Status | Scope |
-| --- | --- | --- |
+| -- | -- | -- |
+| [`basic-compact-filters.md`](basic-compact-filters.md) | `done` | Pure BASIC-only construction/commitments, ten pinned corpus cases and independent edge/historical fixtures; index, RPC, peer, prune retention, catch-up, V0/BIP37, GUI and production claims remain deferred |
 | [`core-domain-and-serialization.md`](core-domain-and-serialization.md) | `done` | Amounts, hashes, serialization primitives, scripts, transactions, blocks, and protocol framing reused across the workspace |
 | [`consensus-validation.md`](consensus-validation.md) | `done` | Script execution, proof-of-work, merkle roots, and typed transaction or block validation outcomes |
 | [`chainstate.md`](chainstate.md) | `done` | UTXO state, connect/disconnect, reorg selection, and adapter-owned persistence boundaries |

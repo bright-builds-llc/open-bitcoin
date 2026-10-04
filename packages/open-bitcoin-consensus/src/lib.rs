@@ -17,6 +17,7 @@
 //! Pure-core consensus and validation checks for Open Bitcoin.
 
 pub mod block;
+pub mod block_filter;
 pub mod classify;
 pub mod compact_block_build;
 pub mod context;
@@ -30,6 +31,10 @@ pub mod validation;
 pub use block::{
     check_block, check_block_contextual, check_block_header, check_block_header_contextual,
     validate_block, validate_block_with_context,
+};
+pub use block_filter::{
+    BasicFilter, FilterHeaderError, FilterHeaderPredecessor, compute_filter_header,
+    filter_hash_display_hex, filter_header_display_hex,
 };
 pub use classify::{
     ScriptPubKeyType, classify_script_pubkey, extract_redeem_script, extract_script_sig_pushes,
@@ -47,6 +52,7 @@ pub use crypto::{
     compact_short_id_for_wtxid, compact_short_id_selector, siphash_uint256, transaction_txid,
     transaction_wtxid,
 };
+pub use open_bitcoin_codec::{BasicFilterEncodingError, CodecError};
 pub use script::{
     ScriptError, ScriptInputVerificationContext, count_legacy_sigops, eval_script,
     verify_input_script, verify_script,

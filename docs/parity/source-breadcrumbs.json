@@ -12,6 +12,58 @@
   },
   "groups": [
     {
+      "label": "basic-block-filter-independent-parity",
+      "files": [
+        "packages/open-bitcoin-consensus/tests/basic_filter.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/test/blockfilter_tests.cpp",
+        "packages/bitcoin-knots/src/test/data/blockfilters.json",
+        "packages/bitcoin-knots/src/crypto/siphash.cpp"
+      ]
+    },
+    {
+      "label": "basic-block-filter-historical-inputs",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/block_filter.rs",
+        "packages/open-bitcoin-chainstate/src/block_filter/tests.rs",
+        "packages/open-bitcoin-chainstate/src/block_filter/tests/fixtures.rs",
+        "packages/open-bitcoin-chainstate/src/block_filter/tests/validated.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/blockfilter.h",
+        "packages/bitcoin-knots/src/undo.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "basic-block-filter-codec",
+      "files": [
+        "packages/open-bitcoin-codec/src/block_filter.rs",
+        "packages/open-bitcoin-codec/src/block_filter/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/util/golombrice.h",
+        "packages/bitcoin-knots/src/streams.h",
+        "packages/bitcoin-knots/src/serialize.h"
+      ]
+    },
+    {
+      "label": "basic-block-filter-consensus",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block_filter.rs",
+        "packages/open-bitcoin-consensus/src/block_filter/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/blockfilter.h",
+        "packages/bitcoin-knots/src/crypto/siphash.cpp"
+      ]
+    },
+    {
       "label": "daemon-automatic-prune-retention",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs",
@@ -685,9 +737,24 @@
       ]
     },
     {
+      "label": "consensus-merkle-and-crypto",
+      "files": [
+        "packages/open-bitcoin-consensus/src/crypto.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/hash.h",
+        "packages/bitcoin-knots/src/hash.cpp",
+        "packages/bitcoin-knots/src/crypto/ripemd160.cpp",
+        "packages/bitcoin-knots/src/crypto/sha256.cpp",
+        "packages/bitcoin-knots/src/crypto/siphash.h",
+        "packages/bitcoin-knots/src/crypto/siphash.cpp",
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp"
+      ]
+    },
+    {
       "label": "consensus-crypto",
       "files": [
-        "packages/open-bitcoin-consensus/src/crypto.rs",
         "packages/open-bitcoin-consensus/src/crypto/ripemd160.rs",
         "packages/open-bitcoin-consensus/src/crypto/sha256.rs",
         "packages/open-bitcoin-consensus/src/crypto/siphash.rs"

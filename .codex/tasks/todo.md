@@ -124,3 +124,16 @@ Completion review: Archived 8 phases, 34 plans, 69 normalized completed task ent
 Verification includes active-milestone traceability, current-document truth, Phase 151 archive fallback, managed standards checks, scoped diff review and the full repo-native pre-commit contract. Completion evidence is derived from actual commands and saving commits. No phase implementation or public-network action is authorized by this initialization alone.
 
 Completion review: Defined 22 Pending requirements and nine phases (154–162), with every requirement recognized by the native parser and mapped exactly once. Four topic reports and their synthesis cite pinned Knots/BIP sources; startup protection, chainstate-fenced progress, reserved lock ownership and continuous validated-chain proof drive the order. Kept all 135 historical phase directories. Simplification retained one BASIC index, existing crates/Fjall and no new production dependencies; letters-only CFNET IDs avoid the existing parser's silent omission. Prior workflow commits passed their full native hooks (milestone-start: `c0ffc5ea`; research: `d977742c`; requirements: `6dd46e4d`); final verification is evidenced by the saving roadmap commit. Schema/recovery details, budgets and known V0 outcomes remain phase-specific design work. Phase 154 is ready for context; compact-filter serving is planned, not shipped.
+
+## task-phase154-basic-filters | 2026-10-03 23:40 CDT | BASIC Generation and Commitment Parity
+
+- [x] Resolve Phase 154, synchronize main and submodule, load active lessons and relevant standards.
+- [x] Capture yolo context with complete historical-script and independent parity decisions.
+- [x] Research and check executable plans covering CFIL-01 and CFIL-02.
+- [x] Implement exact BASIC generation, commitments and validated historical-input projection.
+- [x] Prove pinned vectors, edge cases, historical/same-block spends and missing-evidence refusal.
+- [x] Review source, security mitigations and simplification opportunities.
+- [x] Run full `bash scripts/verify.sh`, Bright Builds checks and lifecycle validation.
+- [x] Prepare verified tracking and changes for commit/push; derive final transport evidence from Git history and remote sync.
+
+Completion review: four plans implemented; 11/11 must-haves and all three roadmap criteria passed, source review is clean, and 15/15 declared threats are closed. Full default native verification passed in 31m 19.275s, including Rust, benchmark, Bazel/provenance and pure-core coverage gates. Git history and remote synchronization are the authoritative commit/push record for this pre-commit snapshot. Residual boundary: index/storage, activation, RPC, peers and production claims remain later scope.

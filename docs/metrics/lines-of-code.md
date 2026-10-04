@@ -6,26 +6,26 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,276 |
-| Total lines | 355,832 |
-| Code/content lines | 308,800 |
-| Comment-only lines | 17,126 |
-| Blank lines | 29,906 |
+| Included files | 1,290 |
+| Total lines | 359,607 |
+| Code/content lines | 312,099 |
+| Comment-only lines | 17,431 |
+| Blank lines | 30,077 |
 
 ## Per-Crate Modules
 
 | Module | Files | Production Rust | Test Rust | Manifest/Build | Total | Test/Source |
 | --- | --- | --- | --- | --- | --- | --- |
 | open-bitcoin-bench | 22 | 3,782 | 0 | 85 | 3,867 | 0.0% |
-| open-bitcoin-chainstate | 44 | 3,110 | 5,563 | 26 | 8,699 | 178.9% |
+| open-bitcoin-chainstate | 48 | 3,389 | 6,638 | 26 | 10,053 | 195.9% |
 | open-bitcoin-cli | 154 | 23,116 | 22,483 | 97 | 45,696 | 97.3% |
-| open-bitcoin-codec | 15 | 1,811 | 779 | 28 | 2,621 | 43.0% |
-| open-bitcoin-consensus | 47 | 6,592 | 7,851 | 28 | 14,471 | 119.1% |
+| open-bitcoin-codec | 17 | 1,951 | 921 | 28 | 2,903 | 47.2% |
+| open-bitcoin-consensus | 51 | 7,510 | 8,404 | 28 | 15,942 | 111.9% |
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,799 | 15,647 | 30 | 26,476 | 144.9% |
 | open-bitcoin-network | 125 | 14,740 | 21,170 | 30 | 35,940 | 143.6% |
 | open-bitcoin-node | 312 | 35,623 | 49,523 | 42 | 85,188 | 139.0% |
-| open-bitcoin-primitives | 9 | 877 | 0 | 20 | 897 | 0.0% |
+| open-bitcoin-primitives | 9 | 917 | 0 | 20 | 937 | 0.0% |
 | open-bitcoin-rpc | 108 | 13,815 | 15,791 | 59 | 29,665 | 114.3% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 21 | 3,529 | 2,509 | 34 | 6,072 | 71.1% |
@@ -34,16 +34,16 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 496 | 141,316 | 119,570 | 10,397 | 11,349 |
-| Rust production | 424 | 118,495 | 102,749 | 4,663 | 11,083 |
-| TypeScript/Bun scripts | 286 | 79,137 | 70,539 | 1,983 | 6,615 |
+| Rust tests | 502 | 143,086 | 121,086 | 10,559 | 11,441 |
+| Rust production | 428 | 119,872 | 103,979 | 4,750 | 11,143 |
+| TypeScript/Bun scripts | 289 | 79,669 | 71,006 | 2,039 | 6,624 |
 | Fixture/data | 6 | 8,234 | 8,229 | 5 | 0 |
-| Shell scripts | 23 | 4,518 | 4,040 | 69 | 409 |
+| Shell scripts | 23 | 4,540 | 4,061 | 69 | 410 |
 | TOML/config | 16 | 3,468 | 3,102 | 0 | 366 |
 | Bazel/Starlark | 18 | 415 | 380 | 0 | 35 |
 | YAML | 3 | 184 | 145 | 7 | 32 |
+| Other config | 3 | 101 | 88 | 0 | 13 |
 | CI/templates | 1 | 28 | 17 | 1 | 10 |
-| Other config | 2 | 27 | 23 | 0 | 4 |
 | Hooks | 1 | 10 | 6 | 1 | 3 |
 
 ## Included TypeScript/Bun Scripts
@@ -228,6 +228,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase151-parity-uat-release-boundary/planning-sources.ts | 66 |
 | scripts/check-phase151-parity-uat-release-boundary/test-fixtures.ts | 185 |
 | scripts/check-phase151-parity-uat-release-boundary/verifier.ts | 149 |
+| scripts/check-phase154-basic-filters.test.ts | 218 |
+| scripts/check-phase154-basic-filters.ts | 138 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -320,6 +322,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/command-timings.ts | 607 |
 | scripts/diagnose-rust-test-stall.test.ts | 238 |
 | scripts/diagnose-rust-test-stall.ts | 570 |
+| scripts/generate-basic-filter-vectors.ts | 176 |
 | scripts/generate-loc-report.ts | 571 |
 | scripts/process-liveness.ts | 53 |
 | scripts/run-live-mainnet-smoke.ts | 9 |
@@ -367,7 +370,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 51e26fce168e638a8d7422ce42ddcccb3b1b6e3a741fabdef1ffc59d769961f3 |
+| Input fingerprint | bf763c9cfc9f93e65b2787be273cb46f0848e7158c00ef16f20ff1b3743d699c |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

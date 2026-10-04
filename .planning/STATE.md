@@ -1,17 +1,17 @@
 ---
 gsd_state_version: "1.0"
 milestone: v2.5
-milestone_name: Prune-Aware Compact-Filter Serving (BIP157/158)
+milestone_name: Prune-Aware Compact-Filter Serving
 status: planning
-stopped_at: Phase 154 ready for context; v2.5 roadmap created
-last_updated: "2026-10-03T20:43:57Z"
-last_activity: "2026-10-03"
+stopped_at: Phase 154 verified complete; ready for Phase 155 context
+last_updated: "2026-10-04T07:57:30.883Z"
+last_activity: "2026-10-04"
 progress:
   total_phases: 9
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 4
+  percent: 100
 ---
 
 # Project State
@@ -21,20 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-03 — v2.5 start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 154 — BASIC Generation and Commitment Parity; ready for context
+**Current focus:** Phase 155 — Recoverable Index and Pre-Prune Startup Protection; ready for context
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 154 of 162 — BASIC Generation and Commitment Parity (1 of 9 in v2.5; ready for context)
-Plan: 0 of TBD in current phase
-Status: Planning — ready for Phase 154 context
-Last activity: 2026-10-03
-Last Activity Description: Created nine-phase v2.5 roadmap with 22/22 pending requirements mapped once
+Phase: 155 of 162 — Recoverable Index and Pre-Prune Startup Protection (2 of 9 in v2.5; ready for context)
+Plan: Not started
+Status: Planning — ready for Phase 155 context
+Last activity: 2026-10-04
+Last Activity Description: Phase 154 complete, transitioned to Phase 155
 
-Milestone progress: [░░░░░░░░░░] 0% (0/9 active v2.5 phases complete; 0 plans created or completed).
+Milestone progress: [█░░░░░░░░░] 11% (1/9 active v2.5 phases complete; 4/4 created plans complete).
 
-Next action: /gsd-discuss-phase 154 — gather context before planning BASIC generation and commitment parity.
+Next action: /gsd-discuss-phase 155 — gather context for recoverable index and pre-prune startup protection.
 
 ## Performance Metrics
 
@@ -76,6 +76,7 @@ Next action: /gsd-discuss-phase 154 — gather context before planning BASIC gen
 | 150 | 8 | - | - |
 | 152 | 3 | - | - |
 | 153 | 4 | - | - |
+| 154 | 4 | - | - |
 
 ### Plan Execution History
 
@@ -605,6 +606,6 @@ Next action: /gsd-discuss-phase 154 — gather context before planning BASIC gen
 
 ## Session Continuity
 
-Last session: 2026-10-03T20:43:57Z
-Stopped at: Phase 154 ready for context; v2.5 roadmap created with recovery/protection before activation
-Resume file: .planning/ROADMAP.md
+Last session: 2026-10-04T07:57:30.877Z
+Stopped at: Phase 154 verified complete; ready for Phase 155 context
+Resume file: .planning/phases/154-basic-generation-and-commitment-parity/154-VERIFICATION.md

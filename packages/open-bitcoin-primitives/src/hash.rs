@@ -161,6 +161,14 @@ define_hash_wrapper!(
     /// Merkle-root hash committed into a block header.
     MerkleRoot
 );
+define_hash_wrapper!(
+    /// SHA256d commitment to raw encoded block-filter bytes.
+    FilterHash
+);
+define_hash_wrapper!(
+    /// SHA256d commitment to a filter hash and its predecessor filter header.
+    FilterHeader
+);
 
 #[cfg(test)]
 mod tests {
@@ -208,5 +216,35 @@ mod tests {
             error.to_string(),
             "invalid hash length: expected 32, got 12",
         );
+    }
+
+    #[test]
+    fn filter_hash_preserves_raw_bytes_through_every_conversion() {
+        // Arrange
+        let bytes = core::array::from_fn(|index| index as u8);
+        // Act
+        let hash = super::FilterHash::from_byte_array(bytes);
+        let parsed = super::FilterHash::from_slice(&bytes).expect("32-byte hash");
+        let converted = super::FilterHash::from(Hash32::from(hash));
+        // Assert
+        assert_eq!(hash.as_bytes(), &bytes);
+        assert_eq!(parsed.to_byte_array(), bytes);
+        assert_eq!(converted, hash);
+        assert!(super::FilterHash::from_slice(&bytes[..31]).is_err());
+    }
+
+    #[test]
+    fn filter_header_preserves_raw_bytes_through_every_conversion() {
+        // Arrange
+        let bytes = core::array::from_fn(|index| index as u8);
+        // Act
+        let header = super::FilterHeader::from_byte_array(bytes);
+        let parsed = super::FilterHeader::from_slice(&bytes).expect("32-byte header");
+        let converted = super::FilterHeader::from(Hash32::from(header));
+        // Assert
+        assert_eq!(header.as_bytes(), &bytes);
+        assert_eq!(parsed.to_byte_array(), bytes);
+        assert_eq!(converted, header);
+        assert!(super::FilterHeader::from_slice(&bytes[..31]).is_err());
     }
 }

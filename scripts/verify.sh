@@ -132,6 +132,9 @@ bun test scripts/check-phase145-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase145-parity-uat-release-boundary.ts
 bun test scripts/check-phase151-parity-uat-release-boundary.test.ts
 bun run scripts/check-phase151-parity-uat-release-boundary.ts
+bun test ./scripts/check-phase154-basic-filters.test.ts
+bun run scripts/check-phase154-basic-filters.ts
+bun run scripts/generate-basic-filter-vectors.ts --check
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
@@ -302,6 +305,9 @@ run_step "test Phase 145 parity UAT release boundary checker" bun test scripts/c
 run_step "check Phase 145 parity UAT release boundary" bun run scripts/check-phase145-parity-uat-release-boundary.ts
 run_step "test Phase 151 parity UAT release boundary checker" bun test scripts/check-phase151-parity-uat-release-boundary.test.ts
 run_step "check Phase 151 parity UAT release boundary" bun run scripts/check-phase151-parity-uat-release-boundary.ts
+run_step "test Phase 154 BASIC filter evidence checker" bun test ./scripts/check-phase154-basic-filters.test.ts
+run_step "check Phase 154 BASIC filter evidence" bun run scripts/check-phase154-basic-filters.ts
+run_step "reproduce Phase 154 independent BASIC vectors" bun run scripts/generate-basic-filter-vectors.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts

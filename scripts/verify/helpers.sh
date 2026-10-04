@@ -195,9 +195,9 @@ record_step_timing() {
   step_statuses+=("$status")
 
   if [[ -n "$timing_batch_file" ]]; then
-    timing_key="$(printf '%s' "$label" \
-      | tr '[:upper:]' '[:lower:]' \
-      | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+    timing_key="$(printf '%s' "$label" |
+      tr '[:upper:]' '[:lower:]' |
+      sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
     printf 'verify-step-%s\t%s\t%s\t%s\n' \
       "$timing_key" \
       "$started_at_milliseconds" \
@@ -230,12 +230,28 @@ run_step() {
   local step_end_milliseconds=0
   local step_duration_milliseconds=0
   local status=0
+  local command_args=("$@")
+  local argument_index=0
+
+  if [[ "${command_args[0]:-}" == bun && "${command_args[1]:-}" == test ]]; then
+    for ((argument_index = 2; argument_index < ${#command_args[@]}; argument_index++)); do
+      case "${command_args[$argument_index]}" in
+      -*) break ;;
+      /* | ./* | ../*) continue ;;
+      *.test.ts)
+        if [[ -f "${command_args[$argument_index]}" ]]; then
+          command_args[$argument_index]="./${command_args[$argument_index]}"
+        fi
+        ;;
+      esac
+    done
+  fi
 
   step_start_milliseconds="$(current_time_milliseconds)"
   current_step_label="$label"
   current_step_started_milliseconds="$step_start_milliseconds"
   set +e
-  "$@"
+  "${command_args[@]}"
   status="$?"
   set -e
   step_end_milliseconds="$(current_time_milliseconds)"

@@ -10,8 +10,8 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 ### Filter Construction
 
-- [ ] **CFIL-01**: A client can obtain the exact pinned BASIC filter bytes for a validated block using its output scripts and historical spent-output scripts, including genesis, empty filters, duplicate scripts and OP_RETURN exclusions.
-- [ ] **CFIL-02**: A client can obtain the exact filter hash and ancestry-dependent filter header, including the zero genesis predecessor and replacement-branch commitments.
+- [x] **CFIL-01**: A client can obtain the exact pinned BASIC filter bytes for a validated block using its output scripts and historical spent-output scripts, including genesis, empty filters, duplicate scripts and OP_RETURN exclusions.
+- [x] **CFIL-02**: A client can obtain the exact filter hash and ancestry-dependent filter header, including the zero genesis predecessor and replacement-branch commitments.
 
 ### Index Activation
 
@@ -70,7 +70,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 ## Out of Scope
 
 | Feature | Reason |
-| --- | --- |
+| -- | -- |
 | BIP37 bloom serving | Separate privacy/DoS surface; BASIC compact filters are the selected light-client capability. |
 | Knots V0/type 2 filters | BIP158 BASIC/type 0 is selected; the pinned Knots local V0 extension needs a separate generator/index scope and explicit parity exclusion. |
 | Partial-history index advertised as complete | Historical commitments require a validated genesis prefix; already-pruned gaps must refuse activation. |
@@ -85,12 +85,12 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. All remain Pending until implementation and lifecycle-valid verification are committed.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01 and CFIL-02 are Complete after Phase 154's lifecycle-valid verification and full native pass; the remaining 20 requirements are Pending.
 
 | Requirement | Phase | Status |
-| --- | --- | --- |
-| CFIL-01 | Phase 154 | Pending |
-| CFIL-02 | Phase 154 | Pending |
+| -- | -- | -- |
+| CFIL-01 | Phase 154 | Complete |
+| CFIL-02 | Phase 154 | Complete |
 | CFIX-02 | Phase 155 | Pending |
 | CFIX-04 | Phase 155 | Pending |
 | CFPR-03 | Phase 155 | Pending |
@@ -114,6 +114,7 @@ All 22 current v2.5 requirements map to exactly one owning phase. All remain Pen
 
 Coverage: 22/22 requirements mapped; 0 unmapped; 0 duplicate owners.
 
-***
+______________________________________________________________________
+
 *Requirements defined: 2026-10-03*
 *Last updated: 2026-10-03 after v2.5 research-backed scope selection*

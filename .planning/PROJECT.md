@@ -12,6 +12,8 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
+Phase 154 completed the v2.5 BASIC construction and commitment foundation on 2026-10-04: exact pinned bytes/hash/header, complete body-bound historical inputs and independent corpus/edge/validated-chain proof. [Verification](phases/154-basic-generation-and-commitment-parity/154-VERIFICATION.md) passed 11/11 must-haves and all three roadmap criteria; the full default native verifier passed in 31m 19.275s, source review is clean, and all 15 declared threats are closed. CFIL-01/02 are Complete. Phase 155 is ready for context; durable indexing, activation, RPC/peer serving and the rest of v2.5 remain pending.
+
 v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03 after Phases 146–153 completed 34/34 plans and all 17 requirements. The [archived audit](milestones/v2.4-MILESTONE-AUDIT.md) records 20/20 connected seams, 10/10 scoped flows, zero blocking gaps and three accepted nonblocking advisories. Its `tech_debt` status preserves those advisories rather than claiming they were fixed.
 
 The repository now includes durable Fjall-backed runtime storage, disk-backed per-outpoint coins, typed cache-flush policy, a single-chainstate manager that restarts from coins best-block, honest stored-block availability, the terminal-first operator surface, opt-in inbound serving and transaction relay, validated block serving, compact-block relay, bounded local package admission, same-peer 1P1C assembly, accounted-memory pressure and rolling-fee decay, source-only mempool snapshot recovery, receive-independent initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails.
@@ -29,12 +31,13 @@ Historical phase directories remain tracked because repository verifiers referen
 **Goal:** Let lightweight clients fetch Knots-compatible basic compact filters from an explicitly enabled node, with durable indexing that remains correct across pruning, restart and reorgs.
 
 **Target features:**
+
 - Deterministic BIP158 basic filters, filter hashes and BIP157 filter headers with pinned Knots parity evidence
 - Durable filter indexing, catch-up, restart and reorg handling coordinated with the existing single-chainstate prune owner and locks
 - Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
 - Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
 
-Start at Phase 154 and preserve earlier phase directories required by repository verifiers. Research must settle enabling an index after historical payloads have already been pruned. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+Continue at Phase 155 and preserve earlier phase directories required by repository verifiers. Research must settle enabling an index after historical payloads have already been pruned. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
 
 FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
 
@@ -47,6 +50,7 @@ FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeu
 Initialized through `/gsd-new-milestone` after the archived v2.3 closeout; all 17 scoped requirements are now validated.
 
 **Shipped features:**
+
 - Height windows, paired Fjall key unlinking, `m_have_pruned`, and durable prune locks
 - `NODE_NETWORK_LIMITED` serving limits for the pruned window
 - Emit `Pruned` only after a durable delete; keep `Unavailable` for a missing payload without have-pruned
@@ -116,6 +120,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 **Goal:** Let Open Bitcoin accept and serve inbound peers under explicit admission, permission, address, eviction/ban, and resource-governance rules while keeping relay and production participation claims deferred.
 
 **Shipped features:**
+
 - Opt-in inbound listener and admission path with deterministic limits, handshake lifecycle, and diagnostics.
 - Peer permission and connection-class policy aligned to Knots concepts without granting transaction relay, compact block relay, or mempool propagation by accident.
 - Address advertisement and peer discovery boundaries that distinguish local listener advertising, `getaddr` response behavior, and broader address relay.
@@ -128,6 +133,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 **Goal:** Define and enforce the support, upgrade, service, runbook, release-readiness, and evidence boundaries required before Open Bitcoin may truthfully claim production full-node readiness.
 
 **Target features:**
+
 - Production terminology and support-boundary matrix separating supported, preview, opt-in UAT, unsupported, and deferred surfaces.
 - Upgrade policy for source-built installs, state and schema compatibility, rollback guidance, backup expectations, and operator decision points.
 - Operator runbooks for preflight, long-run operation, service supervision, failure triage, recovery, support bundles, and escalation.
@@ -142,6 +148,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 **Goal:** Make multi-day explicit opt-in full-sync runs diagnosable, bounded, restart-safe, and supportable when they fail or degrade.
 
 **Target features:**
+
 - Multi-day explicit opt-in soak execution with durable run identity, resumable report state, bounded stop conditions, and deterministic synthetic coverage.
 - Disk, storage, cache, queue, log, metric, and support-bundle bounds that remain visible and actionable during long runs.
 - Corruption, schema, partial-write, lock-contention, and stale-lock recovery guidance without hidden datadir mutation.
@@ -153,32 +160,54 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Validated
 
+- ✓ CFIL-01/02 validated in Phase 154: pinned BASIC bytes, typed hash/header commitments, validated historical/same-block inputs, missing/body-substitution refusal and independent parity vectors; full native verification passed.
+
 - ✓ v1.0 validated all 28 source-of-truth requirements across reference baseline, architecture, verification, consensus, chainstate, mempool, networking, wallet, RPC, CLI, performance, and auditability surfaces. Archive: `.planning/milestones/v1.0-REQUIREMENTS.md`
+
 - ✓ v1.1 validated all 44 operator-runtime requirements across observability, dashboard, CLI and onboarding, service lifecycle, durable storage, sync, wallet, migration, benchmark, and documentation surfaces. Archive: `.planning/milestones/v1.1-REQUIREMENTS.md`
+
 - ✓ v1.2 validated all 26 full-mainnet-sync requirements across daemon activation, peer discovery, headers, blocks, restart/resume, observability, docs, live-smoke evidence, and security closeout. Archive: `.planning/milestones/v1.2-REQUIREMENTS.md`
+
 - ✓ v1.3 validated all 22 public-mainnet proof and node-hardening requirements across opt-in live-smoke evidence, peer lifecycle resilience, resource bounds, durable recovery, observability, support evidence, threat modeling, and release-boundary documentation. Archive: `.planning/milestones/v1.3-REQUIREMENTS.md`
+
 - ✓ v1.4 validated all 22 mainnet IBD convergence and peer-compatibility requirements across compatibility diagnosis, header progress, block download/connect progress, same-datadir restart/resume evidence, operator evidence, support redaction, threat modeling, and release-boundary documentation. Archive: `.planning/milestones/v1.4-REQUIREMENTS.md`
+
 - ✓ v1.5 validated all 23 unattended mainnet node operation readiness requirements across unattended loop control, resource/recovery taxonomy, sync truth surfaces, service lifecycle, service restart/resume evidence, support review docs, compatibility wrapper reporting, and deterministic release-boundary documentation. Archive: `.planning/milestones/v1.5-REQUIREMENTS.md`
+
 - ✓ v1.6 validated all 26 mainnet full-sync completion requirements across active-chain validation, tip tracking, stay-current behavior, reorg and peer recovery, resource/restart evidence, observability, support evidence, opt-in UAT, deterministic verification, and release-boundary documentation. Archive: `.planning/milestones/v1.6-REQUIREMENTS.md`
+
 - ✓ v1.7 validated all 24 full-sync soak and recovery hardening requirements across multi-day soak evidence, resource bounds, recovery diagnosis, progress guarantees, support-bundle forensics, opt-in UAT, deterministic verification, parity roots, scoped release-boundary documentation, and Phase 81 audit traceability closure. Archive: `.planning/milestones/v1.7-REQUIREMENTS.md`
+
 - ✓ v1.8 validated all 23 production-readiness boundary requirements across production terminology, support boundaries, upgrade policy, runbooks, service expectations, release-readiness evidence, deterministic claim guardrails, parity roots, and no-claim release boundaries. Archive: `.planning/milestones/v1.8-REQUIREMENTS.md`
+
 - ✓ v1.9 validated all 28 inbound peer serving and network participation boundary requirements across opt-in listener admission, peer permissions, address advertisement, eviction/ban policy, DoS/resource governance, retained inbound metrics, peer-policy runtime evidence, structured logs, traceability closure, and release-boundary no-claim guardrails. Archive: `.planning/milestones/v1.9-REQUIREMENTS.md`
+
 - ✓ v2.0 validated all 32 transaction relay and mempool participation boundary requirements across explicit relay activation, txid/wtxid inventory, bounded download/orphan handling, mempool admission and durable recovery, relay serving/fanout, sanitized operator evidence, parity roots, UAT, and deterministic no-claim guardrails. Archive: `.planning/milestones/v2.0-REQUIREMENTS.md`
+
 - ✓ v2.1 validated all 39 block-serving and compact-relay requirements across explicit activation, validated durable serving, BIP152 codecs and negotiation, reconstruction and fallback, authoritative runtime state, production announcement transport, sanitized operator evidence, parity roots, UAT, and deterministic no-claim/integration guardrails. Archive: `.planning/milestones/v2.1-REQUIREMENTS.md`
+
 - ✓ v2.2 validated all 40 package-relay and long-lived mempool-policy requirements across resource/fee primitives, pressure and expiry, typed package admission, same-peer 1P1C, authoritative lifecycle projection, snapshot recovery, initial-broadcast retry, sanitized operator evidence, and last-gate claim guardrails. Archive: `.planning/milestones/v2.2-REQUIREMENTS.md`
+
 - ✓ v2.3 validated all 15 chainstate-durability and honest-availability requirements across coins overlay/cache, typed flush policy, durable Fjall coins, manager flush/restart, payload-byte serving, sanitized operator evidence, and last-gate no-claim guardrails. Archive: `.planning/milestones/v2.3-REQUIREMENTS.md`
+
 - ✓ v2.4 validated all 17 prune requirements across wallet eligibility, mode/automatic/manual policy, paired durable unlink/recovery, buffered durable locks, limited serving, honest labels, operator/support evidence and claim guardrails. Archive: `.planning/milestones/v2.4-REQUIREMENTS.md`
+
 - ✓ PRUN-01/PRUN-02 validated in Phase 153 after the Phase 147 foundations: configured mode drives measured ordinary durable retention, honors keep/lock/network thresholds and forces a full checkpoint for nonempty plans.
+
 - ✓ PRUN-03/LOCK-01 validated in Phase 147: manual keep-window refusal and ten-block buffered lock protection.
+
 - ✓ OPER-01/OPER-02/OPER-03/LOCK-02 validated in Phase 150: shared status, manual requests, durable lock CRUD and sanitized support counts.
+
 - ✓ GRD-01 validated in Phase 151: pinned prune anchors, Fjall-versus-flat-file difference and deterministic no-claim guardrails.
+
 - ✓ SNAP-01 validated in Phase 152 after the Phase 146 foundations: both durable rescan adapters check every replacement entry's creating payload, preserve prior wallet/checkpoint state on refusal and ignore leftover snapshot authority.
+
 - ✓ UNLK-01, UNLK-02, and UNLK-03 validated in Phase 148: paired Fjall unlink, have-pruned only after a durable delete, and finish-or-refuse restart.
+
 - ✓ SERV-01, SERV-02, SERV-03, and LABL-01 validated in Phase 149: limited-service advertisement, out-of-window and removed-payload refusal, and an earned `Pruned` label.
 
 ### Active
 
-- [ ] CFIL-01/02: Knots-compatible BASIC bytes and header commitments
 - [ ] CFAC-01/02: Default-off durable activation and missing-history refusal
 - [ ] CFIX-01 through CFIX-04: Bounded catch-up, restart, reorg and chainstate-fenced safe progress
 - [ ] CFPR-01 through CFPR-03: Reserved prune protection, retained filter service and pre-resume recovery safety
@@ -187,7 +216,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 - [ ] CFOP-01: Shared sanitized operator evidence and separate filter-growth disclosure
 - [ ] CFGR-01/02: Parity guardrails and continuous validated-chain integrated proof
 
-All 22 detailed requirements are Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
+CFIL-01/02 are Complete and 20 detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 
@@ -242,7 +271,7 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
-|----------|-----------|---------|
+| -- | -- | -- |
 | Use Bitcoin Knots `29.3.knots20260210` as the reference baseline | The project needs one pinned behavioral contract for parity work and regression detection | Implemented and archived in v1.0 |
 | Prioritize behavioral parity over line-by-line source parity | Rust internals should be allowed to become safer and clearer without breaking external behavior | Implemented as the project parity model |
 | Use functional core / imperative shell boundaries throughout first-party code | Strong boundaries improve testability, make illegal states unrepresentable, and prevent I/O drift into the pure core | Enforced by architecture policy and verification |
@@ -272,7 +301,7 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
 | Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | Planned: 22 Pending requirements across Phases 154–162; not shipped |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: CFIL-01/02 Complete in Phase 154; 20 requirements Pending; serving not shipped |
 | Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Planned: safe cursor fenced by durable chainstate, reserved protection and real failure/reopen proof |
 | Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Planned: exact BASIC/per-peer behavior plus distinct operator evidence |
 
@@ -281,17 +310,19 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 This document evolves at phase transitions and milestone boundaries.
 
 **After each phase transition** (via `/gsd-transition`):
+
 1. Requirements invalidated? -> Move to Out of Scope with reason
-2. Requirements validated? -> Move to Validated with phase reference
-3. New requirements emerged? -> Add to Active
-4. Decisions to log? -> Add to Key Decisions
-5. "What This Is" still accurate? -> Update if drifted
+1. Requirements validated? -> Move to Validated with phase reference
+1. New requirements emerged? -> Add to Active
+1. Decisions to log? -> Add to Key Decisions
+1. "What This Is" still accurate? -> Update if drifted
 
 **After each milestone** (via `/gsd-complete-milestone`):
+
 1. Full review of all sections
-2. Core Value check - still the right priority?
-3. Audit Out of Scope - reasons still valid?
-4. Update Context with current state
+1. Core Value check - still the right priority?
+1. Audit Out of Scope - reasons still valid?
+1. Update Context with current state
 
 ## Historical Context
 
@@ -317,5 +348,6 @@ This document evolves at phase transitions and milestone boundaries.
 
 </details>
 
-***
-*Last updated: 2026-10-03 after starting v2.5 Prune-Aware Compact-Filter Serving*
+______________________________________________________________________
+
+*Last updated: 2026-10-04 after Phase 154 verification*

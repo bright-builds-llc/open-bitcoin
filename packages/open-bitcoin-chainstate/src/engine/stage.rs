@@ -5,13 +5,30 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
-use open_bitcoin_primitives::BlockHash;
+use open_bitcoin_primitives::{Block, BlockHash};
 
 use super::{Chainstate, StagedChainstateConnect, StagedChainstateReorg};
 use crate::coins::{CoinsOverlay, CoinsView};
-use crate::{ChainPosition, ChainTransition};
+use crate::{
+    BasicFilterInputError, BasicFilterInputs, ChainPosition, ChainTransition, HistoricalBlockUndo,
+};
 
 impl StagedChainstateConnect {
+    /// Borrow complete filter facts from the undo produced by this validation stage.
+    pub fn basic_filter_inputs<'a>(
+        &'a self,
+        block: &'a Block,
+    ) -> Result<BasicFilterInputs<'a>, BasicFilterInputError> {
+        BasicFilterInputs::from_historical(
+            block,
+            &self.position,
+            Some(HistoricalBlockUndo {
+                block_hash: self.position.block_hash,
+                undo: &self.undo,
+            }),
+        )
+    }
+
     pub const fn position(&self) -> &ChainPosition {
         &self.position
     }

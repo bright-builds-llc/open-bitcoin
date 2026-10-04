@@ -831,6 +831,48 @@
     ],
     "surfaces": [
       {
+        "id": "v2-5-basic-filter-generation-and-commitments",
+        "title": "Pure BASIC Filter Generation and Commitments",
+        "status": "in_progress",
+        "requirements": ["CFIL-01", "CFIL-02"],
+        "evidence": [
+          "packages/open-bitcoin-consensus/src/block_filter.rs",
+          "packages/open-bitcoin-consensus/tests/basic_filter.rs",
+          "packages/open-bitcoin-consensus/testdata/basic_filter_vectors.rs",
+          "packages/open-bitcoin-chainstate/src/block_filter.rs",
+          "packages/open-bitcoin-chainstate/src/block_filter/tests/validated.rs",
+          "scripts/generate-basic-filter-vectors.ts",
+          "scripts/basic-filter-oracle.py",
+          "scripts/check-phase154-basic-filters.ts",
+          "docs/parity/catalog/basic-compact-filters.md"
+        ],
+        "rationale": "Pure BASIC-only construction and raw SHA256d commitments; independent pinned-corpus and actual validated historical/same-block spend evidence. Root full verification remains the completion gate.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/blockfilter.cpp",
+            "packages/bitcoin-knots/src/blockfilter.h",
+            "packages/bitcoin-knots/src/util/golombrice.h",
+            "packages/bitcoin-knots/src/streams.h",
+            "packages/bitcoin-knots/src/serialize.h",
+            "packages/bitcoin-knots/src/undo.h",
+            "packages/bitcoin-knots/src/crypto/siphash.cpp",
+            "packages/bitcoin-knots/test/functional/test_framework/crypto/siphash.py",
+            "packages/bitcoin-knots/test/functional/test_framework/messages.py"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/src/test/blockfilter_tests.cpp",
+            "packages/bitcoin-knots/src/test/data/blockfilters.json"
+          ]
+        },
+        "known_gaps": [
+          "BASIC-only; V0 and BIP37 excluded.",
+          "Filter index activation/storage, filter prune retention, RPC serving, peer serving, catch-up, GUI, production readiness and production-funds claims remain deferred.",
+          "Historical input construction requires complete authoritative earlier undo and refuses missing history. The encoder is block-bounded.",
+          "The independent Python oracle is source-audited and corpus-cross-validated, not a directly linked Knots binary."
+        ],
+        "suspected_unknowns": []
+      },
+      {
         "id": "reference-baseline",
         "title": "Reference Baseline",
         "status": "done",

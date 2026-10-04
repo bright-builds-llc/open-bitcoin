@@ -6,6 +6,7 @@
 // - packages/bitcoin-knots/src/crypto/siphash.h
 // - packages/bitcoin-knots/src/crypto/siphash.cpp
 // - packages/bitcoin-knots/src/blockencodings.cpp
+// - packages/bitcoin-knots/src/consensus/merkle.cpp
 
 mod ripemd160;
 mod sha256;
@@ -21,7 +22,7 @@ use open_bitcoin_primitives::{BlockHash, BlockHeader, MerkleRoot, Transaction, T
 
 pub use ripemd160::Ripemd160;
 pub use sha256::Sha256;
-pub use siphash::siphash_uint256;
+pub use siphash::{siphash_bytes, siphash_uint256};
 
 pub fn compact_short_id_selector(header: &BlockHeader, nonce: u64) -> ShortIdSelector {
     short_id_selector_from_header_and_nonce(header, nonce)
@@ -92,6 +93,12 @@ pub fn block_merkle_root(transactions: &[Transaction]) -> Result<(MerkleRoot, bo
 
     let mut maybe_mutated = false;
     while level.len() > 1 {
+        for pair in level.chunks_exact(2) {
+            if pair[0] == pair[1] {
+                maybe_mutated = true;
+            }
+        }
+
         if level.len() % 2 == 1
             && let Some(last_hash) = level.last().copied()
         {
@@ -100,10 +107,6 @@ pub fn block_merkle_root(transactions: &[Transaction]) -> Result<(MerkleRoot, bo
 
         let mut next_level = Vec::with_capacity(level.len() / 2);
         for pair in level.chunks_exact(2) {
-            if pair[0] == pair[1] {
-                maybe_mutated = true;
-            }
-
             let mut concatenated = [0_u8; 64];
             concatenated[..32].copy_from_slice(&pair[0]);
             concatenated[32..].copy_from_slice(&pair[1]);
@@ -292,6 +295,56 @@ mod tests {
             block_merkle_root(&[transaction.clone(), transaction]).expect("merkle root");
 
         assert_ne!(merkle_root.to_byte_array(), [0_u8; 32]);
+        assert!(maybe_mutated);
+    }
+
+    #[test]
+    fn odd_merkle_levels_do_not_mark_distinct_transactions_mutated() {
+        // Arrange
+        for count in [3, 5] {
+            let transactions: Vec<Transaction> = (0..count)
+                .map(|lock_time| {
+                    let mut transaction = sample_transaction();
+                    transaction.lock_time = lock_time;
+                    transaction
+                })
+                .collect();
+            // Act
+            let (_, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
+            // Assert
+            assert!(!maybe_mutated, "distinct transaction count {count}");
+        }
+    }
+
+    #[test]
+    fn odd_merkle_padding_preserves_the_explicit_duplication_root() {
+        // Arrange
+        let mut transactions: Vec<Transaction> = (0..3)
+            .map(|lock_time| {
+                let mut transaction = sample_transaction();
+                transaction.lock_time = lock_time;
+                transaction
+            })
+            .collect();
+        let last = transactions.last().expect("three transactions").clone();
+        // Act
+        let (root, _) = block_merkle_root(&transactions).expect("odd root");
+        transactions.push(last);
+        let (padded_root, _) = block_merkle_root(&transactions).expect("explicit padded root");
+        // Assert
+        assert_eq!(root, padded_root);
+    }
+
+    #[test]
+    fn repeated_real_merkle_subtrees_are_mutated() {
+        // Arrange
+        let first = sample_transaction();
+        let mut second = sample_transaction();
+        second.lock_time = 1;
+        // Act
+        let (_, maybe_mutated) = block_merkle_root(&[first.clone(), second.clone(), first, second])
+            .expect("repeated subtrees");
+        // Assert
         assert!(maybe_mutated);
     }
 
