@@ -116,9 +116,11 @@ Completion review: Archived 8 phases, 34 plans, 69 normalized completed task ent
 ## task-v25-new-milestone | 2026-10-03 | Define v2.5 Prune-Aware Compact-Filter Serving
 
 - [x] Record accepted scope in PROJECT and reset STATE without clearing historical evidence.
-- [ ] Research stack, features, architecture and pitfalls against pinned Knots and BIP157/158; synthesize findings.
-- [ ] Define atomic testable requirements, explicit missing-history behavior and retained exclusions.
-- [ ] Create roadmap from Phase 154 with every requirement mapped exactly once and observable success criteria.
-- [ ] Validate planning metadata, links, claim boundaries and native checks; commit each workflow artifact stage under mandatory hooks.
+- [x] Research stack, features, architecture and pitfalls against pinned Knots and BIP157/158; synthesize findings.
+- [x] Define atomic testable requirements, explicit missing-history behavior and retained exclusions.
+- [x] Create roadmap from Phase 154 with every requirement mapped exactly once and observable success criteria.
+- [x] Validate planning metadata, links and claim boundaries; prepare the final roadmap commit under the mandatory full native hook.
 
 Verification includes active-milestone traceability, current-document truth, Phase 151 archive fallback, managed standards checks, scoped diff review and the full repo-native pre-commit contract. Completion evidence is derived from actual commands and saving commits. No phase implementation or public-network action is authorized by this initialization alone.
+
+Completion review: Defined 22 Pending requirements and nine phases (154–162), with every requirement recognized by the native parser and mapped exactly once. Four topic reports and their synthesis cite pinned Knots/BIP sources; startup protection, chainstate-fenced progress, reserved lock ownership and continuous validated-chain proof drive the order. Kept all 135 historical phase directories. Simplification retained one BASIC index, existing crates/Fjall and no new production dependencies; letters-only CFNET IDs avoid the existing parser's silent omission. Prior workflow commits passed their full native hooks (milestone-start: `c0ffc5ea`; research: `d977742c`; requirements: `6dd46e4d`); final verification is evidenced by the saving roadmap commit. Schema/recovery details, budgets and known V0 outcomes remain phase-specific design work. Phase 154 is ready for context; compact-filter serving is planned, not shipped.

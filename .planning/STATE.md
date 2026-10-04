@@ -3,11 +3,11 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving (BIP157/158)
 status: planning
-stopped_at: v2.5 started; researching requirements
-last_updated: "2026-10-03T20:19:31Z"
+stopped_at: Phase 154 ready for context; v2.5 roadmap created
+last_updated: "2026-10-03T20:43:57Z"
 last_activity: "2026-10-03"
 progress:
-  total_phases: 0
+  total_phases: 9
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -21,20 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-03 — v2.5 start).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Define v2.5 requirements and roadmap; v2.4 is shipped and archived
+**Current focus:** Phase 154 — BASIC Generation and Commitment Parity; ready for context
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: Not started (defining requirements; numbering continues at 154)
-Plan: —
-Status: Defining requirements
+Phase: 154 of 162 — BASIC Generation and Commitment Parity (1 of 9 in v2.5; ready for context)
+Plan: 0 of TBD in current phase
+Status: Planning — ready for Phase 154 context
 Last activity: 2026-10-03
-Last Activity Description: Started v2.5 from accepted compact-filter milestone recommendation
+Last Activity Description: Created nine-phase v2.5 roadmap with 22/22 pending requirements mapped once
 
-Milestone progress: [░░░░░░░░░░] 0% (requirements and roadmap in progress).
+Milestone progress: [░░░░░░░░░░] 0% (0/9 active v2.5 phases complete; 0 plans created or completed).
 
-Next action: Complete new-milestone research, requirements and roadmap, then discuss or plan Phase 154.
+Next action: /gsd-discuss-phase 154 — gather context before planning BASIC generation and commitment parity.
 
 ## Performance Metrics
 
@@ -605,6 +605,6 @@ Next action: Complete new-milestone research, requirements and roadmap, then dis
 
 ## Session Continuity
 
-Last session: 2026-10-03T20:19:31Z
-Stopped at: v2.5 initialized; researching requirements and roadmap
-Resume file: .planning/PROJECT.md
+Last session: 2026-10-03T20:43:57Z
+Stopped at: Phase 154 ready for context; v2.5 roadmap created with recovery/protection before activation
+Resume file: .planning/ROADMAP.md

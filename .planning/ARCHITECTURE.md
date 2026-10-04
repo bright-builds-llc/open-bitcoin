@@ -2,8 +2,7 @@
 
 Last updated: 2026-10-03
 
-Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Open Bitcoin v2.4 shipped and was archived on 2026-10-03. Future milestone
-work starts with `/gsd-new-milestone`.
+Open Bitcoin v2.1 shipped and was archived on 2026-07-22. Open Bitcoin v2.2 shipped and was archived on 2026-08-22. Open Bitcoin v2.3 shipped and was archived on 2026-09-20. Open Bitcoin v2.4 shipped and was archived on 2026-10-03. v2.5 Prune-Aware Compact-Filter Serving is planned in Phases 154–162; compact-filter support is not yet shipped. Start its first phase with `/gsd-discuss-phase 154`. Use `/gsd-new-milestone` for later milestone cycles.
 
 ## Architectural Shape
 

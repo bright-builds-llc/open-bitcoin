@@ -178,12 +178,16 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 
-- [ ] Knots-compatible basic compact filters and header commitments
-- [ ] Prune-aware durable indexing with catch-up, restart and reorg correctness
-- [ ] Explicit bounded P2P filter serving with truthful readiness and availability
-- [ ] Operator evidence and deterministic end-to-end parity verification
+- [ ] CFIL-01/02: Knots-compatible BASIC bytes and header commitments
+- [ ] CFAC-01/02: Default-off durable activation and missing-history refusal
+- [ ] CFIX-01 through CFIX-04: Bounded catch-up, restart, reorg and chainstate-fenced safe progress
+- [ ] CFPR-01 through CFPR-03: Reserved prune protection, retained filter service and pre-resume recovery safety
+- [ ] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
+- [ ] CFRP-01/02: Authenticated BASIC filter and index-info RPC parity
+- [ ] CFOP-01: Shared sanitized operator evidence and separate filter-growth disclosure
+- [ ] CFGR-01/02: Parity guardrails and continuous validated-chain integrated proof
 
-Detailed v2.5 requirement IDs and traceability are defined through the current new-milestone workflow; all v2.4 requirements remain Validated.
+All 22 detailed requirements are Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 
@@ -268,6 +272,9 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
 | Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | Planned: 22 Pending requirements across Phases 154–162; not shipped |
+| Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Planned: safe cursor fenced by durable chainstate, reserved protection and real failure/reopen proof |
+| Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Planned: exact BASIC/per-peer behavior plus distinct operator evidence |
 
 ## Evolution
 
