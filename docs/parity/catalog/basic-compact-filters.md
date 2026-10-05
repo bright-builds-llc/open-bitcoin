@@ -252,8 +252,8 @@ unsupported protection refusal; the separate support-summary crash undercount
 can lose evidence after a durable delete. No repair, redownload, source datadir
 migration, service/config mutation or secret migration is implied here.
 
-Public configuration/activation and scheduled catch-up (157), runtime reorg (158),
-filter/index RPC (159), peers (160), operator projections (161), complete
+Explicit public configuration/activation and scheduled catch-up were verified in
+Phase 157. Runtime reorg (158), filter/index RPC (159), peers (160), operator projections (161), complete
 client-after-prune proof (162), V0, BIP37, GUI, production readiness and
 production-funds claims remain deferred.
 
@@ -271,3 +271,210 @@ claims are mutation-tested source contracts, not execution or safety proof.
 Default `bash scripts/verify.sh` runs the Phase 156 checker/tests after Phase 155;
 root must complete formatting, strict Clippy, builds/tests/doctests, coverage,
 Bazel/provenance, final source/security/lifecycle review and Git finalization.
+
+## Safe activation and scheduled catch-up (Phase 157)
+
+Phase 157 implements CFAC-01, CFAC-02 and CFIX-01 on the existing single active
+Fjall chainstate. Its scoped ledger is `done` after the full native
+contract passed in 17m22.546s, formal verification passed 34/34 truths and all
+33 declared mitigations closed. Independent source review covers 91 files, and
+the final default guard includes 568 controls. This is scoped indexing evidence;
+runtime reorg, filter/index RPC, peer filter serving/service advertisement,
+operator projections and integrated retained-client proof remain deferred to
+Phases 158–162. v2.5 remains an active milestone.
+
+### Exact pinned option semantics
+
+The [pure resolver](../../../packages/open-bitcoin-rpc/src/config/blockfilter.rs)
+and [real loader tests](../../../packages/open-bitcoin-rpc/src/config/tests/blockfilter.rs)
+follow pinned `init.cpp`, `common/args.cpp` and `common/settings.cpp`.
+Single/double dash, bare and equals CLI forms are the tested subset.
+`-blockfilterindex basic` refuses the separate positional token; use
+`-blockfilterindex=basic`. `bitcoin.conf`, includeconf order, dotted/active
+network sections and repeated values are supported. JSONC has no index field.
+Other dash counts follow existing generic normalization outside this parity
+guarantee. Unknown selected names and Knots V0/type 2 refuse explicitly.
+
+Scalar selection precedes named-list validation: CLI selects its last value
+after the last boolean negation; the active network/config/default source
+selects its first remaining value. Source priority is CLI, active network
+section, default section. Empty/1 enables BASIC and zero disables, bypassing
+stale invalid list entries. Named mode merges CLI, active section and default
+values; lower-priority values can therefore cause refusal. String zero differs
+from the boolean false introduced by `noblockfilterindex`.
+
+| Written source values                          | Selected scalar      | BASIC outcome                    |
+| ---------------------------------------------- | -------------------- | -------------------------------- |
+| Omitted                                        | default zero         | Unspecified/off                  |
+| Bare, empty, 1 or basic alone                  | corresponding scalar | BASIC                            |
+| Zero alone                                     | zero                 | Disabled                         |
+| CLI zero,basic                                 | basic                | Refuse zero in named list        |
+| CLI basic,zero                                 | zero                 | Disabled                         |
+| CLI 1,basic or empty,basic                     | basic                | Refuse 1/empty in named list     |
+| CLI basic,1 or basic,empty                     | 1/empty              | BASIC                            |
+| CLI basic,basic                                | basic                | BASIC once                       |
+| Config zero,basic                              | first zero           | Disabled                         |
+| Config basic,zero or basic,1                   | first basic          | Refuse zero/1 in named list      |
+| Config 1,basic or empty,basic                  | first 1/empty        | BASIC                            |
+| CLI basic plus config zero/unknown             | CLI basic            | Refuse merged config value       |
+| CLI 1 plus config unknown                      | CLI 1                | BASIC; bypass list               |
+| CLI unknown plus config 1                      | CLI unknown          | Refuse unknown                   |
+| CLI noblockfilterindex, or basic then negation | boolean false/zero   | Disabled; reset earlier CLI list |
+| CLI negation then basic, config basic          | basic                | BASIC; config revived            |
+| CLI negation then basic, config zero           | basic                | Refuse revived zero              |
+| CLI noblockfilterindex=0                       | boolean true/1       | BASIC                            |
+| Active section zero, default basic             | section zero         | Disabled                         |
+| Active section basic, default zero             | section basic        | Refuse merged default zero       |
+
+Double negatives use pinned atoi-style integer-prefix interpretation. The
+loader omits the pinned double-negative warning because it has no diagnostic
+sink. This benign diagnostic difference is explicit in the parity ledger.
+Successful selection preserves existing sync, inbound, relay and prune policy.
+
+### Actual startup, refusal and progress
+
+Explicit BASIC or explicit zero with an existing datadir selects recovered
+durable storage independently of sync, inbound and prune. BASIC without an
+existing directory refuses without creating storage. Omission without another
+durable trigger stays transient: no index work/deletion or saved-owner change.
+Any actual durable daemon startup maps omission/zero to Disabled before prune
+resume; BASIC maps to Enabled. The existing authenticated local JSON-RPC server
+is unchanged. BASIC itself does not activate sync, DNS/peers, P2P inbound
+listeners, relay or compact-filter service bit 6.
+
+Configured initialize recovers coins first, applies mandatory index policy,
+loads locks, resumes any legal prune intent, and only then exposes readiness and
+cache-backed runtime. Internal compatibility wrappers retain PreserveSaved
+integrity/recovery and strong pre-prune protection semantics. Enabled fresh and
+saved activation preflight all still-required active inputs before lifecycle,
+reconciliation or protection effects and before any saved Active shortcut.
+The required suffix begins after the recoverable validated checkpoint,
+independently of stronger retained locks; immutable ahead rows cannot shorten
+it. Missing required body and non-genesis undo have separate bounded category
+and height diagnostics. Genesis requires its body and genuine body/merkle
+binding but uses the no-undo special case.
+
+**Deliberate fresh-start difference:** enabled empty storage refuses
+`validated genesis history required`. Existing
+[SyncNetwork/consensus network authority](../../../packages/open-bitcoin-node/src/sync/types.rs)
+identifies genesis, and
+[body-bound historical inputs](../../../packages/open-bitcoin-chainstate/src/block_filter.rs)
+require actual genesis body/merkle identity. Open Bitcoin has no complete canonical
+genesis-body/validated-chainstate bootstrap installer for indexing. Use an
+existing Open Bitcoin datadir with retained validated genesis and subsequent
+required history established through its normal validated history path.
+A Knots datadir is not an import input. No new bootstrap, import, repair,
+reindex, download or fabricated index anchor is supplied.
+
+One configured-open first turn and the existing one-second elapsed maintenance
+advance the same ordered owner without peer receives. Each elapsed body runs
+ordinary Periodic maintenance followed by at most one index turn, then returns
+to wait. Shutdown stops scheduling before Always; no shutdown index turn
+releases protection. A retained idle index error remains an error through
+shutdown while Always cleanup still runs.
+The actual outer shutdown coordinator settles sync, coins, retry and final
+mempool checkpoint callbacks before returning the first failure. A failed
+worker or HTTP serve result withholds the clean marker; successful settlement
+marks clean last. Four targeted
+[shutdown controls](../../../packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/checkpoint.rs)
+and the
+[retained real BASIC error control](../../../packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests/filter_index.rs)
+cover the corrected error path; root regression and independent rereview remain
+part of formal closure.
+
+Complete historical/same-block spent facts are observed at acceptance before
+fallible persistence; a behind owner enlarges its ordered target. Accepted
+target, processed rows, initial synchronization, current lag and safe durable
+checkpoint are distinct internal facts. Reaching the accepted target latches
+initial completion; later accepted growth can create lag. Safe progress
+releases only the exact durable tip. Intermediate work retains its prior safe
+checkpoint and actual stronger covering lock; sustained durable growth while
+behind can prolong retention. Accepted-unflushed loss remains the Phase 142
+software boundary. The index never forces a coins flush or deletes payloads;
+normal Periodic/Always remains the coins/checkpoint/automatic-prune owner.
+
+### Consumed resource policy and measured limits
+
+The [final measurement artifact](../../../.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-TURN-MEASUREMENTS.md)
+records the actual 2026-10-05 20:36:57–20:37:23 UTC command and registered test.
+Production defaults are consumed by the ordinary parameter-free turn:
+
+| Accounted resource             | Normal aggregate | Absolute singleton |
+| ------------------------------ | ---------------: | -----------------: |
+| Blocks                         |         8 blocks |                  1 |
+| Body logical/wire bytes        |            1 MiB |        128,000,000 |
+| Borrowed undo logical bytes    |            4 MiB |            256 MiB |
+| Copy/allocation reservation    |           16 MiB |              1 GiB |
+| Item-work reservation          |       4 Mi units |       128 Mi units |
+| Byte-work reservation          |      32 Mi units |        64 Gi units |
+| Encoded record envelopes       |            1 MiB |         33,554,602 |
+| Record operations              |              512 |                512 |
+| Checkpoint/map/structural work |        1,000,000 |          1,000,000 |
+| Projection operations          |              256 |                256 |
+
+The native body adapter rejects wire rows above 4,000,000 bytes before scanner
+or allocation. Envelope ceilings additionally cap 128 candidates and
+`MAX_SIZE + 128 × 170` aggregate bytes. First-candidate absolute exhaustion
+refuses/pauses; later aggregate exhaustion yields before the next expensive
+decode/generation. The legal 989,871-byte singleton, with 99 additional
+9,985-byte outputs, progressed in one turn under production defaults.
+
+Complete ledger observations at prior prefixes 16/128/512 include eight actual
+body reads/decodes, borrowed undo with zero turn-side undo wire reads, 70 record
+operations, 36 projection operations, 5,415 structural units and 40 actual
+indexed point reads for subsequent eight-block turns. Actual examined inputs
+are 40 scripts/65,568 bytes; actual unique hashed/sorted elements are 16/16.
+Copy reservation is approximately 4.507 MB, item-work 1,936,752 and byte-work
+approximately 17.400 MB. Subsequent observed holds are 8.602–9.461 ms; the
+singleton hold is 43.230 ms including 5.098 ms append completion.
+
+Reservations admit conservative software work; they are not RSS, allocator
+observations, actual comparison counts, filesystem syscall counts or hard
+latency/fsync guarantees. The map reservation is
+`1024 × N × (N+1)/2 + E + N + 1` work and
+`E + N × (4 × size_of(PruneLockInfo) + 1024)` allocation.
+Variable-map exhaustion refuses conservatively without changing operator CRUD.
+Opaque capability acquisition, driver and append share one monotonic ledger;
+each acquisition, selected block and encoded envelope is charged once.
+Live accepted facts strip witnesses while preserving txid fields and genuine
+staged undo, with a 384 MiB retained-allocation cap and one-million raw-script
+item cap. The existing 10,000-byte ScriptBuf representation boundary does not
+cover every otherwise consensus-legal Bitcoin output script. No all-payload
+support claim follows from the concrete legal singleton.
+
+Full startup integrity recovery and required-suffix preflight are chain-wide
+work. Cold reopen means closed Fjall/runtime reopen, not OS cache eviction.
+Generation/publication remains serialized under the authority; measured hold
+time does not promise bounded total startup/storage latency.
+
+### Earned evidence and retained exclusions
+
+[Plan 07](../../../.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-07-SUMMARY.md)
+records 145 filter-index, 36 proof, 35 append and 99 pure-core tests plus final
+measurement and strict Clippy/formatting. Counts overlap.
+[Plan 08](../../../.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-08-SUMMARY.md)
+records nine actual daemon startup, seven idle and 59 inherited daemon tests.
+[Plan 09](../../../.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-09-SUMMARY.md)
+records seven history-loss and fourteen complete store controls, with continuous
+validated active chains, historical/same-block spends, real writer faults and
+actual closed reopen. Fresh/saved refusal compares complete raw BlockIndex,
+Chainstate and Coins values; independent missing mates preserve live intent.
+
+Actual legal-target automatic retention accounts 584 nonactive codec-valid
+volume bodies and 1,002 continuously validated active blocks, achieves 714
+paired active deletes and preserves the last 288 plus every nonactive key.
+Logical bytes fall from 579,107,574 to 578,379,302; surviving volume is compared
+with streamed key/length/SHA256d commitments. Nonactive volume is codec/storage
+evidence, not accepted branch consensus evidence or a physical-space guarantee.
+Fixtures use easy synthetic headers and test-only coinbase maturity one.
+Replacement authority is a seeded software refusal control, not runtime reorg.
+
+Structural checks supplement executed Rust/native proof and do not execute
+Rust or establish performance. The new source/claim guard masks comments,
+literals and test-only modules, checks real ordinary functions and registered
+assertions, and rejects hidden full scans, unearned scope and missing evidence.
+The three v2.4 stale durable metadata refusal, generic paired-unlink no-op and
+support-summary crash undercount advisories remain. No software/reopen result
+proves hardware power loss, public-mainnet, archive-scale, production or funds
+readiness. Reproduction and operator prerequisites are in
+[157-UAT.md](../../../.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-UAT.md).

@@ -215,8 +215,8 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
           files,
           AUTHORITY_FILE,
           "commit_connected_block_lifecycle_transaction",
-          "        self.apply_prepared_lifecycle(dependent);\n        Ok(delta)",
-          "        Ok(delta)",
+          "        self.apply_prepared_lifecycle(dependent);\n        persist_result.map_err(LifecycleProjectionError::from)?;",
+          "        persist_result.map_err(LifecycleProjectionError::from)?;",
         );
       },
     },
@@ -250,6 +250,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
         );
       },
     },
+    ...connectedPersistenceMutations(),
     ...aggregateReachabilityMutations(),
     ...strictReachabilityMutations(),
     ...tokenScannerMutations(),
@@ -384,8 +385,69 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
   ];
 }
 
+function connectedPersistenceMutations(): ApplyHelperMutation[] {
+  const apply = "        self.apply_prepared_lifecycle(dependent);";
+  const propagate = "        persist_result.map_err(LifecycleProjectionError::from)?;";
+  const acceptedTail = [apply, propagate].join("\n");
+  const alternatives = [
+    ["persistence error cannot precede accepted effects", [propagate, apply].join("\n")],
+    ["accepted dependent effects cannot be skipped", propagate],
+    [
+      "accepted dependent effects cannot be conditional",
+      [
+        "        if persist_result.is_ok() {",
+        "            self.apply_prepared_lifecycle(dependent);",
+        "        }",
+        propagate,
+      ].join("\n"),
+    ],
+    ["persistence error propagation cannot be skipped", apply],
+    [
+      "persistence error mapper cannot change",
+      acceptedTail.replace("LifecycleProjectionError::from", "hidden_error_mapper"),
+    ],
+    [
+      "additional map_err is not an accepted Result adapter",
+      "        unrelated_result.map_err(LifecycleProjectionError::from)?;\n" + acceptedTail,
+    ],
+    [
+      "commented accepted effects cannot satisfy ordering",
+      acceptedTail.replace("self.apply_prepared_lifecycle", "// self.apply_prepared_lifecycle"),
+    ],
+    [
+      "commented persistence propagation cannot satisfy adapter",
+      acceptedTail.replace("persist_result.map_err", "// persist_result.map_err"),
+    ],
+  ] as const;
+  return alternatives.map(([name, replacement]) => ({
+    name,
+    mutate: (files) =>
+      replaceInFunction(
+        files,
+        AUTHORITY_FILE,
+        "commit_connected_block_lifecycle_transaction",
+        acceptedTail,
+        replacement,
+      ),
+  }));
+}
+
 export function applyHelperPositiveMutations(): ApplyHelperMutation[] {
   return [
+    {
+      name: "accepts comments and whitespace around the exact accepted persistence adapter",
+      mutate: (files) =>
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "persist_result.map_err(LifecycleProjectionError::from)?;",
+          [
+            "/* accepted effects already applied */ persist_result",
+            "            .map_err( /* exact Result mapper */ LifecycleProjectionError::from ) ? ;",
+          ].join("\n"),
+        ),
+    },
     ...aggregateReachabilityPositiveMutations(),
     ...strictReachabilityPositiveMutations(),
     ...tokenScannerPositiveMutations(),

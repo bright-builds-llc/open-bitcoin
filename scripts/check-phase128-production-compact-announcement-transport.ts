@@ -3,6 +3,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import { hasOrdinaryRuntimeOwner } from "./check-phase128-production-compact-announcement-transport/impl-attributes.ts";
+import {
+  compact,
+  maybeFunction,
+  ordinaryRust,
+} from "./check-phase157-index-catch-up/rust-evidence.ts";
+
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE127_CHECK =
   "bun run scripts/check-phase127-authoritative-network-state-unification.ts";
@@ -146,14 +153,7 @@ function checkPostDurableTrigger(
 ): void {
   const response =
     texts.get("packages/open-bitcoin-node/src/sync/block_response.rs") ?? "";
-  if (
-    !orderedFragments(response, [
-      "self.store.save_block(block, self.config.persist_mode)?;",
-      ".note_local_block_hash(block_hash(&block.header))?;",
-      "if self.block_is_current_best_tip(block)? {",
-      "self.queue_durable_tip_advanced(block.clone());",
-    ])
-  ) {
+  if (!hasDurableSaveBeforeTip(response)) {
     failures.push(
       "P128 durable trigger: accepted best-tip blocks must queue only after durable save",
     );
@@ -197,6 +197,57 @@ function checkPostDurableTrigger(
       "P128 reconciliation trigger: a live multi-block extension must announce only its final durable tip",
     );
   }
+}
+
+function hasDurableSaveBeforeTip(response: string): boolean {
+  const maybeDisposition = maybeFunction(response, "record_block_disposition", true);
+  if (maybeDisposition === undefined) return false;
+  const code = ordinaryRust(response);
+  const scopes: number[] = [];
+  for (let index = 0; index < maybeDisposition.start; index += 1) {
+    if (code[index] === "{") scopes.push(index);
+    if (code[index] === "}") scopes.pop();
+  }
+  const maybeScope = scopes.at(-1);
+  if (maybeScope === undefined) return false;
+  if (!hasOrdinaryRuntimeOwner(code.slice(0, maybeScope))) return false;
+  const body = compact(maybeDisposition.body);
+  const prefix = compact(`
+    match disposition {
+      BlockConnectDisposition::Connected(_) => {
+        if was_requested && is_best_chain {
+          let Some(block) = maybe_block else { return Ok(()); };
+          if let Err(error) = self.store.save_block(block, self.config.persist_mode) {
+  `);
+  if (!body.startsWith(prefix)) return false;
+  let depth = 1;
+  let end = prefix.length;
+  while (end < body.length && depth > 0) {
+    if (body[end] === "{") depth += 1;
+    if (body[end] === "}") depth -= 1;
+    end += 1;
+  }
+  if (depth !== 0) return false;
+  const failure = body.slice(prefix.length, end - 1);
+  const dependentEffects = [
+    "note_local_block_hash(",
+    "record_accepted_block(",
+    "block_is_current_best_tip(",
+    "queue_durable_tip_advanced(",
+  ];
+  if (
+    !failure.endsWith("returnErr(error.into());") ||
+    dependentEffects.some((effect) => failure.includes(effect))
+  ) return false;
+  return body.slice(end).startsWith(compact(`
+    self.network.note_local_block_hash(block_hash(&block.header))?;
+    progress.record_accepted_block();
+    if self.block_is_current_best_tip(block)? {
+      self.queue_durable_tip_advanced(block.clone());
+    }
+    } }
+    BlockConnectDisposition::Duplicate(_)
+  `));
 }
 
 function checkLiveFactsAndBoundedEmissions(

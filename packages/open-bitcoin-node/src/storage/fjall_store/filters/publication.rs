@@ -10,30 +10,108 @@ use super::super::{
     prune::{PRUNE_LOCKS_KEY, encode_prune_locks},
 };
 use super::BasicFilterWorkToken;
+use super::ownership::BasicFilterAppendIdentity;
 use crate::storage::filter_index::{
     self as codec, StoredFilterRecord, StoredFilterState, index_corruption,
 };
 use fjall::PersistMode as FjallPersistMode;
+use open_bitcoin_core::chainstate::filter_index::catch_up::{
+    BASIC_INDEX_MAX_CANDIDATES, BASIC_INDEX_MAX_ENCODED_BYTES,
+    BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES,
+};
 use open_bitcoin_core::chainstate::filter_index::lifecycle::{IndexGeneration, IndexLifecycle};
-use open_bitcoin_core::{
-    chainstate::{
-        BASIC_INDEX_PRUNE_LOCK, CoinsView, FilterCheckpoint, IndexInputProtection, IndexPrefix,
-        VerifiedChainstateFence,
-    },
-    codec::MAX_SIZE,
+use open_bitcoin_core::chainstate::{
+    BASIC_INDEX_PRUNE_LOCK, CoinsView, FilterCheckpoint, IndexInputProtection, IndexPrefix,
+    VerifiedChainstateFence,
 };
 use std::sync::MutexGuard;
 
 #[derive(Default)]
-pub(in crate::storage::fjall_store) struct PublicationControl {
+pub(crate) struct PublicationControl {
     poisoned: bool,
+    pub(in crate::storage::fjall_store) revision: u64,
+    pub(in crate::storage::fjall_store) maybe_append_identity: Option<BasicFilterAppendIdentity>,
+    pub(in crate::storage::fjall_store) maybe_pending_coins: Option<PendingCoinsPublication>,
+    pub(in crate::storage::fjall_store) maybe_completed_metadata:
+        Option<CompletedMetadataPublication>,
     #[cfg(test)]
     maybe_fault: Option<FilterPublicationFault>,
+    #[cfg(test)]
+    maybe_writer_interleave: Option<BasicFilterWriterInterleave>,
+}
+
+#[cfg(test)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BasicFilterWriterInterleave {
+    BeforeCoins,
+    BeforeMetadata,
+    BeforeConfirm,
+    RecreateBeforeConfirm,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::storage::fjall_store) struct PendingCoinsPublication {
+    pub previous: BasicFilterAppendIdentity,
+    pub new_tip: open_bitcoin_core::primitives::BlockHash,
+    pub revision: u64,
+    pub completed: bool,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::storage::fjall_store) struct CompletedMetadataPublication {
+    pub coins: PendingCoinsPublication,
+    pub identity: BasicFilterAppendIdentity,
+}
+
+impl PublicationControl {
+    pub(crate) fn begin_coins_write(
+        &mut self,
+        new_tip: open_bitcoin_core::primitives::BlockHash,
+    ) -> Result<(), StorageError> {
+        #[cfg(test)]
+        fault(self, FilterPublicationFault::BeforeCoins)?;
+        let maybe_identity = self.maybe_append_identity;
+        self.invalidate_append()?;
+        self.maybe_pending_coins = maybe_identity.map(|previous| PendingCoinsPublication {
+            previous,
+            new_tip,
+            revision: self.revision,
+            completed: false,
+        });
+        Ok(())
+    }
+
+    pub(crate) fn complete_coins_write(&mut self) {
+        if let Some(pending) = &mut self.maybe_pending_coins {
+            pending.completed = true;
+        }
+    }
+
+    pub(in crate::storage::fjall_store) fn chain_meta_fault(&mut self) -> Result<(), StorageError> {
+        #[cfg(test)]
+        fault(self, FilterPublicationFault::BeforeChainMeta)?;
+        Ok(())
+    }
+    /// Clear every clone's live authority before any potentially ambiguous write.
+    pub(crate) fn invalidate_append(&mut self) -> Result<(), StorageError> {
+        self.maybe_append_identity = None;
+        self.maybe_pending_coins = None;
+        self.maybe_completed_metadata = None;
+        let Some(revision) = self.revision.checked_add(1) else {
+            self.poisoned = true;
+            return Err(publication_failure("BASIC durable revision exhausted"));
+        };
+        self.revision = revision;
+        Ok(())
+    }
 }
 
 #[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FilterPublicationFault {
+    BeforeBody,
+    BeforeUndo,
+    BeforeCoins,
     BeforeRecords,
     BeforeCheckpoint,
     BeforeProtection,
@@ -76,7 +154,53 @@ pub(super) fn lifecycle_fault(
 }
 
 impl FjallNodeStore {
-    pub(in crate::storage::fjall_store) fn filter_publication_guard(
+    #[cfg(test)]
+    pub(crate) fn set_basic_filter_writer_interleave(&self, point: BasicFilterWriterInterleave) {
+        self.filter_publication
+            .lock()
+            .expect("control")
+            .maybe_writer_interleave = Some(point);
+    }
+
+    /// Invoke an actual raw clone writer outside the guarded production boundary.
+    #[cfg(test)]
+    pub(crate) fn run_basic_filter_writer_interleave(
+        &self,
+        point: BasicFilterWriterInterleave,
+    ) -> Result<(), StorageError> {
+        let maybe_selected = {
+            let mut control = self.filter_publication_guard()?;
+            if control.maybe_writer_interleave == Some(point)
+                || (point == BasicFilterWriterInterleave::BeforeConfirm
+                    && control.maybe_writer_interleave
+                        == Some(BasicFilterWriterInterleave::RecreateBeforeConfirm))
+            {
+                control.maybe_writer_interleave.take()
+            } else {
+                None
+            }
+        };
+        let Some(selected) = maybe_selected else {
+            return Ok(());
+        };
+        let mut clone = self.clone();
+        let best = clone.coins_view().best_block().map_err(index_corruption)?;
+        clone
+            .coins_view()
+            .batch_write(
+                open_bitcoin_core::chainstate::CoinsBatch {
+                    entries: Default::default(),
+                },
+                best,
+            )
+            .map_err(index_corruption)?;
+        if selected == BasicFilterWriterInterleave::RecreateBeforeConfirm {
+            let (positions, _) = clone.load_chain_meta_for_open()?;
+            crate::chainstate::FlushPersistSink::persist_chain_meta(&mut clone, &positions)?;
+        }
+        Ok(())
+    }
+    pub(crate) fn filter_publication_guard(
         &self,
     ) -> Result<MutexGuard<'_, PublicationControl>, StorageError> {
         let guard = self
@@ -97,13 +221,25 @@ impl FjallNodeStore {
             .maybe_fault = Some(fault);
     }
 
-    /// Test-only seam on the concrete metadata writer after a real coins flush.
     #[cfg(test)]
-    pub(in crate::storage::fjall_store) fn check_basic_filter_chain_meta_fault(
+    pub(crate) fn check_basic_filter_payload_fault(
         &self,
+        point: FilterPublicationFault,
     ) -> Result<(), StorageError> {
-        let mut control = self.filter_publication_guard()?;
-        fault(&mut control, FilterPublicationFault::BeforeChainMeta)
+        let mut control = self
+            .filter_publication
+            .lock()
+            .map_err(|_| publication_failure("BASIC publication mutex poisoned"))?;
+        fault(&mut control, point)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn set_basic_filter_revision_for_test(&self, revision: u64) {
+        let mut control = self.filter_publication.lock().expect("control");
+        control.revision = revision;
+        if let Some(identity) = &mut control.maybe_append_identity {
+            identity.revision = revision;
+        }
     }
 
     #[cfg_attr(not(test), allow(dead_code))] // Phase 157 owns explicit activation.
@@ -317,17 +453,24 @@ impl FjallNodeStore {
         &self,
         records: &[StoredFilterRecord],
     ) -> Result<Vec<(String, Vec<u8>)>, StorageError> {
-        if records.len() > 128 {
+        if records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES {
             return Err(index_corruption("BASIC append record count bound"));
         }
         let mut total = 0_usize;
         for record in records {
+            let envelope = record
+                .encoded_bytes()
+                .len()
+                .checked_add(codec::RECORD_OVERHEAD)
+                .ok_or_else(|| index_corruption("BASIC append byte overflow"))?;
+            if envelope as u64 > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES {
+                return Err(index_corruption("BASIC append singleton byte bound"));
+            }
             total = total
-                .checked_add(record.encoded_bytes().len())
-                .and_then(|v| v.checked_add(codec::RECORD_OVERHEAD))
+                .checked_add(envelope)
                 .ok_or_else(|| index_corruption("BASIC append byte overflow"))?;
         }
-        if total > MAX_SIZE as usize + 128 * codec::RECORD_OVERHEAD {
+        if total as u64 > BASIC_INDEX_MAX_ENCODED_BYTES {
             return Err(index_corruption("BASIC append aggregate byte bound"));
         }
         let mut encoded = Vec::with_capacity(records.len());
@@ -404,7 +547,7 @@ impl FjallNodeStore {
                     projection_key,
                     codec::encode_projection(height, position.block_hash),
                 ));
-                if projections.len() > 128 {
+                if projections.len() as u64 > BASIC_INDEX_MAX_CANDIDATES {
                     return Err(index_corruption("BASIC projection append bound"));
                 }
             }
@@ -422,6 +565,7 @@ impl FjallNodeStore {
         batch: fjall::OwnedWriteBatch,
         control: &mut PublicationControl,
     ) -> Result<(), StorageError> {
+        control.invalidate_append()?;
         if let Err(error) = batch.commit() {
             control.poisoned = true;
             return Err(backend_failure(StorageNamespace::BlockIndex, error));
@@ -444,6 +588,8 @@ fn fault(
     point: FilterPublicationFault,
 ) -> Result<(), StorageError> {
     if control.maybe_fault == Some(point) {
+        control.maybe_fault = None;
+        control.invalidate_append()?;
         control.poisoned = true;
         return Err(publication_failure(
             "injected BASIC publication failure; reopen required",
@@ -452,17 +598,17 @@ fn fault(
     Ok(())
 }
 
-fn records_fault(_control: &mut PublicationControl) -> Result<(), StorageError> {
+pub(super) fn records_fault(_control: &mut PublicationControl) -> Result<(), StorageError> {
     #[cfg(test)]
     fault(_control, FilterPublicationFault::BeforeRecords)?;
     Ok(())
 }
-fn checkpoint_fault(_control: &mut PublicationControl) -> Result<(), StorageError> {
+pub(super) fn checkpoint_fault(_control: &mut PublicationControl) -> Result<(), StorageError> {
     #[cfg(test)]
     fault(_control, FilterPublicationFault::BeforeCheckpoint)?;
     Ok(())
 }
-fn protection_fault(_control: &mut PublicationControl) -> Result<(), StorageError> {
+pub(super) fn protection_fault(_control: &mut PublicationControl) -> Result<(), StorageError> {
     #[cfg(test)]
     fault(_control, FilterPublicationFault::BeforeProtection)?;
     Ok(())

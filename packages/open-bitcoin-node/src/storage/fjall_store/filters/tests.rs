@@ -22,6 +22,8 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+mod append;
+mod append_proof;
 mod faults;
 mod lifecycle;
 mod ownership;

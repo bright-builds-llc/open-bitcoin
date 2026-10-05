@@ -35,6 +35,7 @@ enum MarkerState {
 
 /// Disk-backed coins parent. Application consistency is `H` then coins then `B`.
 pub struct FjallCoinsView {
+    filter_store: FjallNodeStore,
     db: fjall::Database,
     coins: fjall::Keyspace,
     #[cfg(test)]
@@ -44,8 +45,12 @@ pub struct FjallCoinsView {
 }
 
 impl FjallCoinsView {
+    pub(crate) fn belongs_to(&self, store: &FjallNodeStore) -> bool {
+        self.filter_store.shares_basic_filter_store(store)
+    }
     pub fn from_store(store: &FjallNodeStore) -> Self {
         Self {
+            filter_store: store.clone(),
             db: store.database().clone(),
             coins: store.coins_keyspace().clone(),
             #[cfg(test)]
@@ -61,6 +66,8 @@ impl FjallCoinsView {
 
     #[cfg(test)]
     pub fn write_raw_bytes(&self, key: &[u8], value: Vec<u8>) -> Result<(), StorageError> {
+        let mut control = self.filter_store.filter_publication_guard()?;
+        control.invalidate_append()?;
         self.coins
             .insert(key, value)
             .map_err(coins_backend_failure)?;
@@ -132,6 +139,8 @@ impl FjallCoinsView {
 
     #[cfg(test)]
     pub fn delete_raw_bytes(&self, key: &[u8]) -> Result<(), StorageError> {
+        let mut control = self.filter_store.filter_publication_guard()?;
+        control.invalidate_append()?;
         self.coins.remove(key).map_err(coins_backend_failure)?;
         self.db
             .persist(FjallPersistMode::SyncAll)
@@ -201,6 +210,16 @@ impl FjallCoinsView {
         cap_bytes: usize,
         allow_existing_heads: bool,
     ) -> Result<(), ChainstateError> {
+        #[cfg(test)]
+        self.filter_store
+            .run_basic_filter_writer_interleave(
+                super::fjall_store::filters::BasicFilterWriterInterleave::BeforeCoins,
+            )
+            .map_err(map_storage)?;
+        let mut control = self
+            .filter_store
+            .filter_publication_guard()
+            .map_err(map_storage)?;
         if !allow_existing_heads
             && self
                 .coins_contains(&encode_head_blocks_key())
@@ -221,6 +240,8 @@ impl FjallCoinsView {
         let heads_key = encode_head_blocks_key();
         let heads_value = encode_head_blocks_value(&[new_tip, old_tip]).map_err(map_storage)?;
         let best_value = encode_best_block_value(new_tip);
+
+        control.begin_coins_write(new_tip).map_err(map_storage)?;
 
         let mut batch = self.db.batch();
         let mut accumulated = 0_usize;
@@ -278,7 +299,9 @@ impl FjallCoinsView {
         batch.insert(&self.coins, best_key.as_slice(), best_value.as_slice());
         accumulated += estimated_encoded_bytes(best_key.as_slice(), Some(best_value.as_slice()));
         let _counted_final_batch_bytes = accumulated;
-        commit_batch(batch, final_mode).map_err(map_storage)
+        commit_batch(batch, final_mode).map_err(map_storage)?;
+        control.complete_coins_write();
+        Ok(())
     }
 }
 

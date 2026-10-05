@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, beforeAll, expect, test } from "bun:test";
 import { rmSync } from "node:fs";
 
 import {
@@ -22,6 +22,7 @@ import {
   assertExactFailure,
   createFixture,
   insertInFunction,
+  REPO_ROOT,
   tempRoots,
 } from "./check-phase134-authoritative-lifecycle.test/fixture";
 import {
@@ -31,6 +32,19 @@ import {
   scopeMutations,
   targetMutations,
 } from "./check-phase134-authoritative-lifecycle.test/mutations";
+
+beforeAll(() => {
+  // Arrange
+  const snapshotRoot = createFixture(APPLY_HELPER_SOURCE_FILES);
+
+  // Act
+  const liveFailures = checkPhase134ApplyBoundaries(REPO_ROOT);
+  const snapshotFailures = checkPhase134ApplyBoundaries(snapshotRoot);
+
+  // Assert
+  expect(liveFailures).toEqual([]);
+  expect(snapshotFailures).toEqual([]);
+});
 
 afterEach(() => {
   for (const root of tempRoots.splice(0)) {

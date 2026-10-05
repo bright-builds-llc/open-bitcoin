@@ -62,6 +62,7 @@ fn os(value: &str) -> OsString {
 }
 
 mod baseline_and_auth;
+mod blockfilter;
 mod inbound_cli;
 mod inbound_jsonc;
 mod precedence_and_scope;

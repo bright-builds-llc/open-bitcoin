@@ -10,6 +10,7 @@ import {
   scanRust,
   strictSyntaxViolations,
 } from "./strict-syntax";
+import { maybeMaskConnectedPersistenceAdapter } from "./aggregate-roots";
 
 export type ExtractedFunction = {
   file: string;
@@ -215,10 +216,13 @@ export function inspectCriticalReachability(
       allowedMutableBorrowTargets,
     );
     const afterTransaction = target.body.slice(statementEnd + 1);
-    const afterPersist = afterTransaction.replace(
-      /^\s*persist_result\.map_err\s*\(\s*LifecycleProjectionError::from\s*\)\s*\?;\s*/,
-      "",
-    );
+    const afterPersist =
+      symbol === roots.connectedBlock
+        ? maybeMaskConnectedPersistenceAdapter(
+            afterTransaction,
+            tools.maskCommentsAndStrings,
+          ) ?? afterTransaction
+        : afterTransaction;
     inspectSource(
       target,
       afterPersist,

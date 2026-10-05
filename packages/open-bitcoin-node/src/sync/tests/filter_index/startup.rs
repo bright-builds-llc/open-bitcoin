@@ -5,6 +5,7 @@
 
 use super::*;
 
+mod configured;
 mod faults;
 mod recovery;
 

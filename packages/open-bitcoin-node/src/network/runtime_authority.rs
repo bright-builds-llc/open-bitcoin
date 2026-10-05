@@ -50,6 +50,7 @@ mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
 mod automatic_prune;
 mod filter_index;
+pub use filter_index::BasicFilterTurnOutcome;
 mod prune_flush;
 mod recovery;
 
@@ -66,6 +67,8 @@ pub enum ManagedNetworkAuthorityError {
 pub struct ManagedNetworkHandle<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView> {
     authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>,
     automatic_prune: Arc<Mutex<automatic_prune::AutomaticPruneState>>,
+    #[cfg(test)]
+    maybe_last_basic_filter_turn: Arc<Mutex<Option<BasicFilterTurnOutcome>>>,
 }
 
 impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
@@ -73,6 +76,8 @@ impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
         Self {
             authority: Arc::clone(&self.authority),
             automatic_prune: Arc::clone(&self.automatic_prune),
+            #[cfg(test)]
+            maybe_last_basic_filter_turn: Arc::clone(&self.maybe_last_basic_filter_turn),
         }
     }
 }
@@ -89,6 +94,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         Self {
             authority: Arc::new(Mutex::new(network)),
             automatic_prune: Arc::new(Mutex::new(automatic_prune::AutomaticPruneState::default())),
+            #[cfg(test)]
+            maybe_last_basic_filter_turn: Arc::default(),
         }
     }
 
@@ -141,17 +148,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         self.read(ManagedPeerNetwork::maybe_chain_tip)
     }
 
-    pub fn header_entries(&self) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> {
-        self.read(ManagedPeerNetwork::header_entries)
-    }
+    #[rustfmt::skip]
+    pub fn header_entries(&self) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> { self.read(ManagedPeerNetwork::header_entries) }
 
-    pub fn best_chain_entries(&self) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> {
-        self.read(ManagedPeerNetwork::best_chain_entries)
-    }
+    #[rustfmt::skip]
+    pub fn best_chain_entries(&self) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> { self.read(ManagedPeerNetwork::best_chain_entries) }
 
-    pub fn peer_manager_snapshot(&self) -> Result<PeerManager, ManagedNetworkAuthorityError> {
-        self.read(|network| network.peer_manager().clone())
-    }
+    #[rustfmt::skip]
+    pub fn peer_manager_snapshot(&self) -> Result<PeerManager, ManagedNetworkAuthorityError> { self.read(|network| network.peer_manager().clone()) }
 
     pub fn network_info(&self) -> Result<ManagedNetworkInfo, ManagedNetworkAuthorityError> {
         self.read(ManagedPeerNetwork::network_info)

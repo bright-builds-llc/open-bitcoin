@@ -58,7 +58,7 @@ mod runtime_control;
 #[path = "open_bitcoind/sync_seed.rs"]
 mod sync_seed;
 
-use checkpoint::{DaemonCheckpointError, start_mempool_checkpoint_worker};
+use checkpoint::{DaemonCheckpointError, settle_daemon_shutdown, start_mempool_checkpoint_worker};
 use coins_flush::start_coins_flush_worker;
 use inbound_metrics::start_inbound_metrics_worker;
 #[cfg(test)]
@@ -122,6 +122,7 @@ async fn serve_authoritative_runtime<S, V>(
 where
     S: ChainstateStore + Send + 'static,
     V: CoinsView + Send + 'static,
+    ManagedNetworkHandle<S, V>: coins_flush::BasicIndexMaintenance,
 {
     if let Some(preflight) =
         preflight_daemon_sync(&runtime, authoritative_runtime.maybe_sync_runtime.as_ref())?
@@ -179,18 +180,18 @@ where
     if let Some(worker) = maybe_inbound_metrics_worker {
         worker.shutdown();
     }
-    if let Some(worker) = maybe_sync_worker {
-        worker.shutdown()?;
-    }
-    if let Some(worker) = maybe_coins_flush_worker {
-        worker.shutdown_always()?;
-    }
-    if let Some(worker) = maybe_checkpoint_worker {
-        worker.shutdown_and_mark_clean()?;
-    }
-    retry_worker.shutdown()?;
-    serve_result?;
-    Ok(())
+    settle_daemon_shutdown(
+        serve_result.map_err(Into::into),
+        || Ok(maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())?),
+        || Ok(maybe_coins_flush_worker.map_or(Ok(()), |worker| worker.shutdown_always())?),
+        || Ok(retry_worker.shutdown()?),
+        || Ok(maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())?),
+        || {
+            maybe_runtime_store.map_or(Ok(()), |store| {
+                store.mark_clean_shutdown(open_bitcoin_node::PersistMode::Sync)
+            })
+        },
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,12 +304,18 @@ fn open_authoritative_network_runtime(
     maybe_store: Option<FjallNodeStore>,
 ) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
     if let Some(store) = maybe_store {
-        let sync_runtime = DurableSyncRuntime::open_with_runtime_activation(
+        let basic_filter_mode = if runtime.block_filter_index.is_enabled() {
+            open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled
+        } else {
+            open_bitcoin_node::chainstate::BasicFilterStartupMode::Disabled
+        };
+        let sync_runtime = DurableSyncRuntime::open_with_configured_runtime_activation(
             store,
             runtime.sync.runtime.clone(),
             runtime.relay,
             runtime.block_serving,
             runtime.inbound.enabled,
+            basic_filter_mode,
         )
         .map_err(|error| {
             DaemonSyncPreflightError::new(format!(
@@ -336,6 +343,11 @@ fn open_authoritative_network_runtime(
         ));
     }
 
+    if runtime.block_filter_index.is_enabled() {
+        return Err(DaemonSyncPreflightError::new(
+            "open-bitcoind BASIC indexing requires an existing datadir and retained validated genesis history; set -datadir=<path> before enabling -blockfilterindex.",
+        ));
+    }
     if runtime.sync.is_enabled() {
         return Err(DaemonSyncPreflightError::new(
             "open-bitcoind mainnet sync activation requires an existing datadir; set -datadir=<path> or create the default Bitcoin datadir before enabling -openbitcoinsync=mainnet-ibd.",
@@ -361,10 +373,20 @@ fn open_authoritative_network_runtime(
 fn open_runtime_store(
     runtime: &RuntimeConfig,
 ) -> Result<Option<FjallNodeStore>, DaemonSyncPreflightError> {
-    if !runtime.sync.is_enabled()
-        && !runtime.inbound.enabled
-        && runtime.prune_mode == open_bitcoin_node::core::chainstate::PruneMode::Disabled
-    {
+    let has_valid_datadir = runtime
+        .maybe_data_dir
+        .as_ref()
+        .is_some_and(|dir| dir.is_dir());
+    if runtime.block_filter_index.is_enabled() && !has_valid_datadir {
+        return Err(DaemonSyncPreflightError::new(
+            "open-bitcoind BASIC indexing requires an existing datadir and retained validated genesis history; set -datadir=<path> before enabling -blockfilterindex.",
+        ));
+    }
+    let has_durable_trigger = runtime.sync.is_enabled()
+        || runtime.inbound.enabled
+        || runtime.prune_mode != open_bitcoin_node::core::chainstate::PruneMode::Disabled
+        || (runtime.block_filter_index.is_explicit() && has_valid_datadir);
+    if !has_durable_trigger {
         return Ok(None);
     }
 

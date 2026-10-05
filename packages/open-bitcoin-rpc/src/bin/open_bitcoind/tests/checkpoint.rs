@@ -379,18 +379,152 @@ fn daemon_shutdown_orders_all_producer_joins_before_checkpoint_settlement() {
     let metrics_join = daemon_source
         .find("worker.shutdown();")
         .expect("metrics join");
+    let coordinator = daemon_source
+        .find("    settle_daemon_shutdown(\n")
+        .expect("actual shutdown coordinator");
     let sync_join = daemon_source
-        .find("worker.shutdown()?;")
-        .expect("sync join");
+        .find("maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())")
+        .expect("sync join callback");
+    let retry_join = daemon_source
+        .find("|| Ok(retry_worker.shutdown()?),")
+        .expect("retry producer join callback");
     let checkpoint_settle = daemon_source
-        .find("worker.shutdown_and_mark_clean()?")
-        .expect("checkpoint settle");
+        .find("maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())")
+        .expect("checkpoint settlement callback");
+    let checkpoint_source = include_str!("../checkpoint.rs");
 
     // Assert
     assert!(http_end < inbound_join);
     assert!(inbound_join < metrics_join);
-    assert!(metrics_join < sync_join);
-    assert!(sync_join < checkpoint_settle);
+    assert!(metrics_join < coordinator);
+    assert!(coordinator < sync_join);
+    assert!(sync_join < retry_join);
+    assert!(retry_join < checkpoint_settle);
+    assert!(
+        checkpoint_source
+            .contains("let results = [sync(), coins(), retry(), checkpoint(), serve_result];")
+    );
+    assert!(
+        checkpoint_source
+            .find("return Err(error);")
+            .expect("failure gate")
+            < checkpoint_source
+                .find("mark_clean().map_err")
+                .expect("clean after success")
+    );
+}
+
+#[test]
+fn phase157_shutdown_attempts_every_settlement_before_returning_first_failure() {
+    // Arrange
+    let calls = std::cell::RefCell::new(Vec::new());
+    let failure = || -> crate::checkpoint::ShutdownResult {
+        Err(Box::new(DaemonCheckpointError::ProducerJoin))
+    };
+    // Act
+    let result = crate::checkpoint::settle_daemon_shutdown(
+        Ok(()),
+        || {
+            calls.borrow_mut().push("sync");
+            failure()
+        },
+        || {
+            calls.borrow_mut().push("coins");
+            Err(Box::new(DaemonCheckpointError::ShutdownCheckpoint))
+        },
+        || {
+            calls.borrow_mut().push("retry");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("checkpoint");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("clean");
+            Ok(())
+        },
+    );
+    // Assert
+    assert_eq!(*calls.borrow(), ["sync", "coins", "retry", "checkpoint"]);
+    assert_eq!(
+        result
+            .expect_err("first failure returned")
+            .downcast_ref::<DaemonCheckpointError>(),
+        Some(&DaemonCheckpointError::ProducerJoin)
+    );
+}
+
+#[test]
+fn phase157_shutdown_http_failure_withholds_clean_marker_after_settlement() {
+    // Arrange
+    let calls = std::cell::RefCell::new(Vec::new());
+    // Act
+    let result = crate::checkpoint::settle_daemon_shutdown(
+        Err(Box::new(std::io::Error::other("serve failed"))),
+        || {
+            calls.borrow_mut().push("sync");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("coins");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("retry");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("checkpoint");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("clean");
+            Ok(())
+        },
+    );
+    // Assert
+    assert_eq!(*calls.borrow(), ["sync", "coins", "retry", "checkpoint"]);
+    assert_eq!(
+        result.expect_err("HTTP failure visible").to_string(),
+        "serve failed"
+    );
+}
+
+#[test]
+fn phase157_shutdown_success_marks_clean_only_after_all_settlement() {
+    // Arrange
+    let calls = std::cell::RefCell::new(Vec::new());
+    // Act
+    crate::checkpoint::settle_daemon_shutdown(
+        Ok(()),
+        || {
+            calls.borrow_mut().push("sync");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("coins");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("retry");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("checkpoint");
+            Ok(())
+        },
+        || {
+            calls.borrow_mut().push("clean");
+            Ok(())
+        },
+    )
+    .expect("clean shutdown");
+    // Assert
+    assert_eq!(
+        *calls.borrow(),
+        ["sync", "coins", "retry", "checkpoint", "clean"]
+    );
 }
 
 fn injected_storage_error(namespace: StorageNamespace) -> StorageError {

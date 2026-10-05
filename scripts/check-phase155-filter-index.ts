@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { compact, hasOrderedCode, maybeRustFunction } from "./check-phase156-prune-coordination/rust-evidence.ts";
 
 const NODE = "packages/open-bitcoin-node/src/";
 const CORE = "packages/open-bitcoin-chainstate/src/";
@@ -25,9 +26,11 @@ const MANIFESTS = ["packages/open-bitcoin-node/Cargo.toml", "packages/open-bitco
   "packages/open-bitcoin-codec/Cargo.toml"];
 export const CHECK_FILES = [...RUST_FILES, ...MANIFESTS, NODE + "storage.rs",
   NODE + "storage/fjall_store.rs", NODE + "chainstate/flush_lifecycle.rs", NODE + "sync/open_runtime.rs",
+  NODE + "storage/fjall_store/filters/lifecycle.rs",
   NODE + "sync/tests.rs", CORE + "lib.rs", "docs/parity/index.json", "docs/parity/source-breadcrumbs.json",
   DOC, "README.md", "docs/parity/catalog/README.md", "scripts/verify.sh",
-  "scripts/check-phase155-filter-index.ts", "scripts/check-phase155-filter-index.test.ts"];
+  "scripts/check-phase155-filter-index.ts", "scripts/check-phase155-filter-index.test.ts",
+  "scripts/check-phase156-prune-coordination/rust-evidence.ts"];
 const DENIED = /\b(?:filter index activation|scheduled catch-up|(?:compact[- ]filter )?(?:rpc|peer|operator) serving|runtime reorg|prune ownership|production readiness|production[- ]funds use|hardware power-loss proof)\s+(?:is|are)\s+(?:enabled|supported|available|active|ready|shipped|safe)\b/i;
 type Surface = { id: string; requirements: string[]; evidence: string[];
   upstream: { sources: string[]; tests: string[] }; known_gaps: string[] };
@@ -55,15 +58,7 @@ export function checkPhase155FilterIndex(maybeRoot?: string): string[] {
       cursor = next;
     }
   };
-  const initialize = text(NODE + "chainstate/flush_lifecycle.rs").split("pub fn initialize(")[1]?.split("impl FlushLifecycle")[0] ?? "";
-  ordered(initialize, ["let recovered = apply_recovery_decision", "recovered.best_block()",
-    "coins_recovery_outcome_after_success(", "store.recover_basic_filter_index_before_prune(maybe_best_block)?;",
-    "resume_prune_intent(store, &locks)?;", "ManagerReadiness::ReadyToFlush", "CoinsCache::from_parent(recovered)"], "startup ordering");
-  if (!/^    store\.recover_basic_filter_index_before_prune\(maybe_best_block\)\?;$/m.test(initialize)) {
-    failures.push("startup ordering: mandatory guard must be an unconditional initialize statement");
-  }
-  ordered(text(NODE + "sync/open_runtime.rs"), ["pub fn open_with_runtime_activation(",
-    "initialize(&store", "Chainstate::from_coins_cache", "ManagedChainstate::from_chainstate"], "runtime constructor");
+  checkStartupRoutes(text, failures);
   const startup = NODE + "storage/fjall_store/filters/startup.rs";
   requireText(startup, ["self.validate_basic_filter_records()?;", "VerifiedChainstateFence::new",
     "FilterRecoveryPlan::Reconcile", "FilterRecoveryPlan::Refuse", ".check_prune_intent(intent.height)",
@@ -71,7 +66,9 @@ export function checkPhase155FilterIndex(maybeRoot?: string): string[] {
   ordered(text(startup), ["self.maybe_prune_intent()?", ".check_prune_intent(intent.height)",
     "self.publish_basic_filter_checkpoint"], "guard ordering");
   requireText(NODE + "storage/fjall_store/filters/publication.rs", ["SyncAll", "control.poisoned = true",
-    "self.verify_basic_filter_fence(fence)?", "PRUNE_LOCKS_KEY", "codec::STATE_KEY", "128"], "atomic publication");
+    "self.verify_basic_filter_fence(fence)?", "PRUNE_LOCKS_KEY", "codec::STATE_KEY",
+    "BASIC_INDEX_MAX_CANDIDATES", "BASIC_INDEX_MAX_ENCODED_BYTES",
+    "BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES"], "atomic publication");
   requireText(NODE + "storage/filter_index.rs", ["basic_filter:v1:record:", "basic_filter:v1:active:",
     "basic_filter:v1:state", "validate_basic_filter_encoding", "double_sha256"], "bounded additive envelopes");
   requireText(NODE + "storage.rs", ["pub const CURRENT: Self = Self(2);"], "schema 2 compatibility");
@@ -129,6 +126,111 @@ export function checkPhase155FilterIndex(maybeRoot?: string): string[] {
     if (!steps.some(line => line.endsWith(command))) failures.push(`default verifier missing executable step: ${command}`);
   }
   return failures;
+}
+
+function checkStartupRoutes(text: (file: string) => string, failures: string[]): void {
+  const body = (file: string, symbol: string, anchors: readonly string[], category: string) => {
+    const maybeFunction = maybeRustFunction(text(file), symbol, true);
+    if (!maybeFunction || compact(maybeFunction.attributes).includes("#[cfg(test)]")
+      || !hasOrderedCode(maybeFunction.body, anchors)) {
+      failures.push(`${category}: missing ordinary production body contract: ${file}:${symbol}`);
+      return "";
+    }
+    return maybeFunction.body;
+  };
+  const flush = NODE + "chainstate/flush_lifecycle.rs";
+  const dispatch = `match basic_filter_mode {
+    BasicFilterStartupMode::PreserveSaved => {
+      store.recover_basic_filter_index_before_prune(maybe_best_block)?
+    }
+    mode => store.configure_basic_filter_index_before_prune(maybe_best_block, mode)?,
+  }`;
+  const initialize = body(flush, "initialize_configured", ["let recovered = apply_recovery_decision",
+    "recovered.best_block()", "coins_recovery_outcome_after_success(", dispatch,
+    "let locks = store.load_prune_locks()?;", "resume_prune_intent(store, &locks)?;",
+    "lifecycle.readiness = ManagerReadiness::ReadyToFlush;", "CoinsCache::from_parent(recovered)"], "startup ordering");
+  if (!isUnconditional(initialize, dispatch)) failures.push("startup ordering: mandatory guard must be an unconditional configured dispatch");
+  body(flush, "initialize", ["initialize_configured(", "BasicFilterStartupMode::PreserveSaved"], "compatibility route");
+  const runtime = NODE + "sync/open_runtime.rs";
+  body(runtime, "open_with_runtime_activation", ["Self::open_with_configured_runtime_activation(",
+    "BasicFilterStartupMode::PreserveSaved"], "compatibility route");
+  body(runtime, "open_configured", ["Self::open_with_configured_runtime_activation(",
+    "basic_filter_mode,"], "configured route");
+  body(runtime, "open_with_configured_runtime_activation", [
+    "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;",
+    "Chainstate::from_coins_cache", "ManagedChainstate::from_recovered_chainstate("], "runtime constructor");
+  const startup = NODE + "storage/fjall_store/filters/startup.rs";
+  body(startup, "recover_basic_filter_index_before_prune", ["self.configure_basic_filter_index_before_prune(",
+    "BasicFilterStartupMode::PreserveSaved"], "PreserveSaved route");
+  body(startup, "configure_basic_filter_index_before_prune", [
+    "self.apply_basic_filter_startup(maybe_recovered_best_block, mode)"], "configured route");
+  body(startup, "apply_basic_filter_startup", [
+    "BasicFilterStartupMode::PreserveSaved => { self.recover_basic_filter_index(maybe_recovered_best_block) }",
+    "BasicFilterStartupMode::Disabled => self.disable_basic_filter_index()",
+    "BasicFilterStartupMode::Enabled => {", "maybe_recovered_best_block.is_none()",
+    "self.load_chain_meta_for_open()?", "VerifiedChainstateFence::new(maybe_recovered_best_block, Some(&positions))",
+    "self.enable_basic_filter_index(&fence)"], "independent startup routes");
+  const recover = body(startup, "recover_basic_filter_index", ["self.validate_basic_filter_records()?;",
+    "self.inspect_basic_filter_recovery(owner, &fence)?;", "self.maybe_prune_intent()?",
+    ".check_prune_intent(intent.height)", "self.materialize_basic_filter_owner_guarded(",
+    "self.publish_basic_filter_checkpoint_guarded("], "PreserveSaved protection");
+  if (statementDepth(recover, "self.inspect_basic_filter_recovery(owner, &fence)?;") !== 0) {
+    failures.push("PreserveSaved protection: required inspection cannot be conditional");
+  }
+  body(startup, "inspect_basic_filter_recovery", ["self.scan_basic_filter_checkpoint(",
+    "FilterRecoveryPlan::Reconcile", "FilterRecoveryPlan::Refuse",
+    ".maybe_effective_protection()", "retained.covers(protection)",
+    "Ok(InspectedBasicFilterRecovery"], "PreserveSaved retained protection");
+  const lifecycle = NODE + "storage/fjall_store/filters/lifecycle.rs";
+  const enable = body(lifecycle, "enable_basic_filter_index", ["self.verify_basic_filter_fence(fence)?;",
+    "let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {",
+    "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;",
+    "self.maybe_prune_intent()?", ".check_prune_intent(intent.height)",
+    "self.initialize_basic_filter_state_guarded(", "return self.install_recovered_basic_filter_append_guarded(",
+    "self.inspect_basic_filter_recovery(owner, fence)?;",
+    "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;",
+    "self.maybe_prune_intent()?", ".check_prune_intent(intent.height)",
+    "if active == owner.lifecycle()", "return self.install_recovered_basic_filter_append_guarded(",
+    "let mut batch = self.db.batch()", "self.finish_basic_filter_batch("], "Enabled suffix preflight");
+  for (const [statement, expectedDepth] of [
+    ["self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;", 1],
+    ["self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;", 0],
+  ] as const) {
+    if (statementDepth(enable, statement) !== expectedDepth) {
+      failures.push("Enabled suffix preflight: mandatory validation cannot be conditional");
+    }
+  }
+  const preflight = body(lifecycle, "preflight_basic_filter_history", ["IndexInputProtection::FromHeight(first)",
+    "for height in first..=fence.tip().height", ".maybe_position(height)",
+    "self.load_block(position.block_hash)?", "if height == 0", "self.load_undo(position.block_hash)?",
+    "BasicFilterInputs::from_historical(&block, position, maybe_history)"], "required suffix validation");
+  for (const [statement, expectedDepth] of [
+    ["for height in first..=fence.tip().height", 0],
+    ["self.load_block(position.block_hash)?", 1],
+    ["self.load_undo(position.block_hash)?", 2],
+    ["BasicFilterInputs::from_historical(&block, position, maybe_history)", 1],
+  ] as const) {
+    if (statementDepth(preflight, statement) !== expectedDepth) {
+      failures.push("required suffix validation: full retained history cannot be conditional");
+    }
+  }
+}
+
+function isUnconditional(body: string, statement: string): boolean {
+  return statementDepth(body, statement) === 0
+    && !/\b(?:return|break|continue)\b/.test(body.slice(0, body.indexOf("match basic_filter_mode")));
+}
+
+function statementDepth(body: string, statement: string): number {
+  const code = compact(body);
+  const start = code.indexOf(compact(statement));
+  if (start < 0) return -1;
+  let depth = 0;
+  for (const char of code.slice(0, start)) {
+    if (char === "{") depth++;
+    if (char === "}") depth--;
+  }
+  return depth;
 }
 
 function checkDependencies(text: (file: string) => string, failures: string[]): void {

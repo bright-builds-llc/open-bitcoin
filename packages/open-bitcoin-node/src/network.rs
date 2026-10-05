@@ -88,9 +88,9 @@ pub use relay_fanout::{
     RebroadcastEvidenceLabel,
 };
 pub use runtime_authority::{
-    CheckpointAbortDispatchError, CheckpointCompletionDispatchError, MaintenanceTickError,
-    MaintenanceTickOutcome, ManagedNetworkAuthorityError, ManagedNetworkHandle,
-    MemoryNetworkHandle,
+    BasicFilterTurnOutcome, CheckpointAbortDispatchError, CheckpointCompletionDispatchError,
+    MaintenanceTickError, MaintenanceTickOutcome, ManagedNetworkAuthorityError,
+    ManagedNetworkHandle, MemoryNetworkHandle,
 };
 pub use types::{
     BlockConnectDisposition, ManagedBlockSerializationMode, ManagedBlockServeCompletionOutcome,

@@ -16,6 +16,11 @@ import {
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
+const BLOCK_RESPONSE = "packages/open-bitcoin-node/src/sync/block_response.rs";
+const SAVE_ERROR = "if let Err(error) = self.store.save_block(block, self.config.persist_mode) {";
+const SAVE_RETURN = "return Err(error.into());";
+const DURABLE_TRIGGER_FAILURE =
+  "P128 durable trigger: accepted best-tip blocks must queue only after durable save";
 type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
 type Mutator = (files: Map<TargetFile, string>) => void;
 const tempRoots: string[] = [];
@@ -36,6 +41,97 @@ test("passes with the complete Phase 128 production transport corpus", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("rejects test-only implementation ownership with an intervening attribute", () => {
+  // Arrange
+  expect(checkPhase128ProductionCompactAnnouncementTransport(createFixture())).toEqual([]);
+  const root = createFixture(replace(
+    BLOCK_RESPONSE,
+    "impl DurableSyncRuntime {",
+    "#[cfg(test)]\n#[allow(dead_code)]\nimpl DurableSyncRuntime {",
+  ));
+
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+
+  // Assert
+  expect(failures).toEqual([DURABLE_TRIGGER_FAILURE]);
+});
+
+test.each([
+  ["test attribute last", "#[allow(dead_code)]\n#[cfg(test)]"],
+  ["test attribute between two ordinary attributes", "#[allow(dead_code)]\n#[cfg(test)]\n#[rustfmt::skip]"],
+  ["test attribute before multiple ordinary attributes", "#[cfg(test)]\n#[allow(dead_code)]\n#[rustfmt::skip]"],
+  ["test attribute after multiple ordinary attributes", "#[rustfmt::skip]\n#[allow(dead_code)]\n#[cfg(test)]"],
+  ["test attribute separated by comment decoys", "#[cfg(test)]\n/* ] ; } impl UnrelatedRuntime { */\n#[allow(dead_code)]"],
+  ["test attribute before bracketed ordinary metadata", "#[cfg(test)]\n#[allow(dead_code, reason = \"[; }] #[cfg(not(test))]\")]"],
+  ["test attribute with token spacing", "# [ cfg ( test ) ]\n#[allow(dead_code)]"],
+] as const)("rejects the %s on the owning implementation", (_label, attributes) => {
+  // Arrange
+  expect(checkPhase128ProductionCompactAnnouncementTransport(createFixture())).toEqual([]);
+  const root = createFixture(replace(
+    BLOCK_RESPONSE,
+    "impl DurableSyncRuntime {",
+    `${attributes}\nimpl DurableSyncRuntime {`,
+  ));
+
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+
+  // Assert
+  expect(failures).toEqual([DURABLE_TRIGGER_FAILURE]);
+});
+
+test.each([
+  ["ordinary lint attribute", "#[allow(dead_code)]"],
+  ["multiple ordinary attributes", "#[rustfmt::skip]\n#[allow(dead_code)]"],
+  ["comment-only test attribute", "/* #[cfg(test)] */\n#[allow(dead_code)]"],
+  ["line-comment test attribute", "// #[cfg(test)]\n#[allow(dead_code)]"],
+  ["literal-only test attribute", '#[doc = "#[cfg(test)] ] ; }"]\n#[allow(dead_code)]'],
+  ["raw-literal-only test attribute", '#[doc = r#"#[cfg(test)] ] ; }"#]\n#[allow(dead_code)]'],
+  ["non-test configuration", "#[cfg(not(test))]\n#[allow(dead_code)]"],
+  ["test attribute on a preceding implementation", "#[cfg(test)]\n#[allow(dead_code)]\nimpl UnrelatedRuntime {}\n#[allow(dead_code)]"],
+  ["test attribute on a preceding declaration", "#[cfg(test)]\nconst TEST_MARKER: usize = 0;\n#[allow(dead_code)]"],
+] as const)("accepts the %s beside the owning implementation", (_label, attributes) => {
+  // Arrange
+  expect(checkPhase128ProductionCompactAnnouncementTransport(createFixture())).toEqual([]);
+  const root = createFixture(replace(
+    BLOCK_RESPONSE,
+    "impl DurableSyncRuntime {",
+    `${attributes}\nimpl DurableSyncRuntime {`,
+  ));
+
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test.each([
+  ["removed durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, "if let Err(error) = Ok::<(), SyncRuntimeError>(()) {")],
+  ["ignored save failure", replace(BLOCK_RESPONSE, SAVE_RETURN, "let _ = error;")],
+  ["accepted progress before error return", replace(BLOCK_RESPONSE, SAVE_RETURN, `progress.record_accepted_block(); ${SAVE_RETURN}`)],
+  ["block hash before error return", replace(BLOCK_RESPONSE, SAVE_RETURN, `self.network.note_local_block_hash(block_hash(&block.header))?; ${SAVE_RETURN}`)],
+  ["queue before error return", replace(BLOCK_RESPONSE, SAVE_RETURN, `self.queue_durable_tip_advanced(block.clone()); ${SAVE_RETURN}`)],
+  ["queue before durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, `self.queue_durable_tip_advanced(block.clone()); ${SAVE_ERROR}`)],
+  ["conditional durable save", compose(replace(BLOCK_RESPONSE, SAVE_ERROR, `if false { ${SAVE_ERROR}`), replace(BLOCK_RESPONSE, "self.network\n                        .note_local_block_hash", "} self.network\n                        .note_local_block_hash"))],
+  ["comment-only durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, `/* ${SAVE_ERROR} */ if let Err(error) = Ok::<(), SyncRuntimeError>(()) {`)],
+  ["literal-only durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, `let _ = r#"${SAVE_ERROR}"#; if let Err(error) = Ok::<(), SyncRuntimeError>(()) {`)],
+  ["test-only block disposition", replace(BLOCK_RESPONSE, "pub(super) fn record_block_disposition(", "#[cfg(test)]\n    pub(super) fn record_block_disposition(")],
+  ["test-module-only block disposition", (files: Map<TargetFile, string>) => files.set(BLOCK_RESPONSE, `#[cfg(test)] mod tests {\n${files.get(BLOCK_RESPONSE)}\n}`)],
+  ["test-only runtime implementation", replace(BLOCK_RESPONSE, "impl DurableSyncRuntime {", "#[cfg(test)]\nimpl DurableSyncRuntime {")],
+  ["unrelated implementation save", replace(BLOCK_RESPONSE, "impl DurableSyncRuntime {", "impl UnrelatedRuntime {")],
+] as const)("rejects the %s independently", (_label, mutate) => {
+  // Arrange
+  const root = createFixture(mutate);
+
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+
+  // Assert
+  expect(failures).toEqual([DURABLE_TRIGGER_FAILURE]);
 });
 
 test.each([
@@ -261,4 +357,10 @@ function replace(
 
 function append(file: TargetFile, value: string): Mutator {
   return (files) => files.set(file, `${files.get(file) ?? ""}\n${value}\n`);
+}
+
+function compose(...mutators: Mutator[]): Mutator {
+  return (files) => {
+    for (const mutate of mutators) mutate(files);
+  };
 }

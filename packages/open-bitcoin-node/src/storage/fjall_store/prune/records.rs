@@ -154,7 +154,9 @@ pub(in crate::storage::fjall_store) fn encode_prune_locks(
     Ok(bytes)
 }
 
-fn decode_prune_locks(bytes: &[u8]) -> Result<Vec<PruneLockInfo>, StorageError> {
+pub(in crate::storage::fjall_store) fn decode_prune_locks(
+    bytes: &[u8],
+) -> Result<Vec<PruneLockInfo>, StorageError> {
     let mut cursor = ByteCursor::new(bytes);
     let count = cursor.u32()?;
     let mut locks = Vec::new();
@@ -225,8 +227,9 @@ fn decode_prune_summary(bytes: &[u8]) -> Result<PruneSupportSummary, StorageErro
 }
 
 fn refuse_duplicate_names(locks: &[PruneLockInfo]) -> Result<(), StorageError> {
-    for (index, lock) in locks.iter().enumerate() {
-        if locks[..index].iter().any(|prior| prior.name == lock.name) {
+    let mut names = std::collections::BTreeSet::new();
+    for lock in locks {
+        if !names.insert(lock.name.as_str()) {
             return Err(block_index_corruption("prune lock name is duplicated"));
         }
     }

@@ -26,6 +26,8 @@ use open_bitcoin_network::{LocalPeerConfig, ServiceFlags};
 
 const EASY_BITS: u32 = 0x207f_ffff;
 
+mod filter_index;
+
 fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
 }

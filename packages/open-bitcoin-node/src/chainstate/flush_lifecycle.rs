@@ -34,6 +34,10 @@ use crate::storage::{
 mod tests;
 
 mod fjall_sink;
+pub use super::fjall_store::CompletedValidatedFlush;
+pub(super) use super::fjall_store::ValidatedChainstateLineage;
+#[cfg(test)]
+pub(super) use fjall_sink::proof_tests::managed_fixture;
 mod prune_apply;
 
 use prune_apply::apply_prune_plan;
@@ -60,6 +64,14 @@ pub const fn default_coins_cache_byte_limit() -> u64 {
 pub enum ManagerReadiness {
     NotReady,
     ReadyToFlush,
+}
+
+/// Explicit operator startup policy, with compatibility for internal saved-state callers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BasicFilterStartupMode {
+    PreserveSaved,
+    Disabled,
+    Enabled,
 }
 
 /// One owner for cache defaults, readiness, and ordered flush execution.
@@ -118,6 +130,14 @@ impl PruneProtectionSnapshot {
 
 /// Injected persist sink so undo/index abort tests do not chmod a Fjall datadir.
 pub trait FlushPersistSink {
+    /// Unsupported sinks cannot mint or refresh index authority.
+    fn confirm_validated_flush(
+        &mut self,
+        completed: CompletedValidatedFlush,
+    ) -> Result<(), StorageError> {
+        let _ = completed;
+        Ok(())
+    }
     fn persist_block(&mut self, block: &Block) -> Result<(), StorageError>;
     fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError>;
     fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError>;
@@ -190,6 +210,28 @@ pub fn initialize(
     memory_pressure: bool,
     _disk_free_bytes: u64,
 ) -> Result<(FlushLifecycle, FjallCoinsView, CoinsCache<FjallCoinsView>), StorageError> {
+    initialize_configured(
+        store,
+        _now,
+        next_write,
+        mempool_leftover_bytes,
+        memory_pressure,
+        _disk_free_bytes,
+        BasicFilterStartupMode::PreserveSaved,
+    )
+}
+
+/// Recover coins and apply configured index authority before any resumed deletion.
+#[allow(clippy::too_many_arguments)]
+pub fn initialize_configured(
+    store: &FjallNodeStore,
+    _now: FlushPolicyTime,
+    next_write: FlushPolicyTime,
+    mempool_leftover_bytes: u64,
+    memory_pressure: bool,
+    _disk_free_bytes: u64,
+    basic_filter_mode: BasicFilterStartupMode,
+) -> Result<(FlushLifecycle, FjallCoinsView, CoinsCache<FjallCoinsView>), StorageError> {
     let mut lifecycle = FlushLifecycle {
         readiness: ManagerReadiness::NotReady,
         cache_byte_limit: default_coins_cache_byte_limit(),
@@ -215,7 +257,12 @@ pub fn initialize(
         decision,
         maybe_best_block,
     )?);
-    store.recover_basic_filter_index_before_prune(maybe_best_block)?;
+    match basic_filter_mode {
+        BasicFilterStartupMode::PreserveSaved => {
+            store.recover_basic_filter_index_before_prune(maybe_best_block)?
+        }
+        mode => store.configure_basic_filter_index_before_prune(maybe_best_block, mode)?,
+    }
     let locks = store.load_prune_locks()?;
     resume_prune_intent(store, &locks)?;
     lifecycle.readiness = ManagerReadiness::ReadyToFlush;

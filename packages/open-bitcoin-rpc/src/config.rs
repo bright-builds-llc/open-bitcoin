@@ -19,9 +19,12 @@ use open_bitcoin_node::{
     core::{chainstate::PruneMode, consensus::ConsensusParams, wallet::AddressNetwork},
 };
 
+mod blockfilter;
 mod loader;
 mod open_bitcoin;
 mod prune;
+
+pub use blockfilter::BasicFilterIndexSetting;
 
 pub use open_bitcoin::{
     BlockServingConfig, ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS,
@@ -223,6 +226,7 @@ pub struct RuntimeConfig {
     pub block_serving: BlockRelayActivationPolicy,
     pub inbound_permission_validation_failures: u32,
     pub prune_mode: PruneMode,
+    pub block_filter_index: BasicFilterIndexSetting,
 }
 
 impl Default for RuntimeConfig {
@@ -240,6 +244,7 @@ impl Default for RuntimeConfig {
             block_serving: open_bitcoin_defaults.block_serving.to_activation_policy(),
             inbound_permission_validation_failures: 0,
             prune_mode: PruneMode::Disabled,
+            block_filter_index: BasicFilterIndexSetting::Unspecified,
         }
     }
 }

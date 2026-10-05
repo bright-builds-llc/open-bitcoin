@@ -5,6 +5,7 @@ import { readText } from "./filesystem.ts";
 import { verifySuccessfulWriteEvidence, verifyPrivateProjection, verifyAuthoritativeRuntime, verifyFocusedTests } from "./evidence.ts";
 import { verifyPhase121Compatibility, verifyParity, verifyBreadcrumbs, verifyVerifierWiring } from "./parity.ts";
 import { normalizeWhitespace, requireContains, requireAbsent, requireOrdered } from "./helpers.ts";
+import { normalizeRust, rustCallArguments, rustFunction } from "../rust-source-invariants.ts";
 
 export function checkPhase123RuntimeTimingEvidenceIntegrity(
   options: CheckOptions = {},
@@ -35,27 +36,44 @@ export function verifyProductionActivation(
   failures: string[],
 ): void {
   const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
-  for (const needle of [
-    "pub fn open_with_block_relay_activation",
-    "block_relay_activation",
-  ]) {
-    requireContains(sync, needle, "P123 sync production activation", failures);
-  }
-  const openRuntime = texts.get("packages/open-bitcoin-node/src/sync/open_runtime.rs") ?? "";
-  for (const needle of [
-    "ManagedPeerNetwork::from_initialized_chainstate",
-    "block_relay_activation",
-    "initialize(",
-  ]) {
-    requireContains(openRuntime, needle, "P123 sync production activation", failures);
-  }
-  const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
-  requireOrdered(
-    daemon,
-    ["DurableSyncRuntime::open_with_runtime_activation(", "runtime.block_serving"],
-    "P123 daemon sync activation wiring",
+  requireContains(
+    normalizeWhitespace(rustFunction(sync, "pub fn open_with_block_relay_activation(")),
+    "Self::open_with_runtime_activation( store, config, RelayActivationConfig::default(), block_relay_activation, false, )",
+    "P123 block-relay compatibility activation",
     failures,
   );
+  const openRuntime = texts.get("packages/open-bitcoin-node/src/sync/open_runtime.rs") ?? "";
+  requireContains(
+    normalizeWhitespace(rustFunction(openRuntime, "pub fn open_with_runtime_activation(")),
+    "Self::open_with_configured_runtime_activation( store, config, relay_activation, block_relay_activation, inbound_enabled, BasicFilterStartupMode::PreserveSaved, )",
+    "P123 runtime compatibility activation",
+    failures,
+  );
+  requireOrdered(
+    normalizeWhitespace(rustFunction(openRuntime, "pub fn open_with_configured_runtime_activation(")),
+    [
+      "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;",
+      "store.load_chain_meta_for_open()?;",
+      "store.load_all_undo_records()?;",
+      "Chainstate::from_coins_cache(cache, active_chain, undo_by_block, maybe_counts)",
+      "ManagedChainstate::from_recovered_chainstate( FjallChainstateStore::from_store(store.clone()), chainstate, lifecycle, )?;",
+      "ManagedPeerNetwork::from_initialized_chainstate( managed, local_config, PolicyConfig::default(), config.max_blocks_in_flight_per_peer, relay_activation, block_relay_activation, inbound_enabled, )",
+    ],
+    "P123 configured sync production activation",
+    failures,
+  );
+  const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+  const daemonCalls = rustCallArguments(
+    rustFunction(daemon, "fn open_authoritative_network_runtime("),
+    "DurableSyncRuntime::open_with_configured_runtime_activation",
+  );
+  const expectedArguments = [
+    "store", "runtime.sync.runtime.clone()", "runtime.relay",
+    "runtime.block_serving", "runtime.inbound.enabled", "basic_filter_mode",
+  ];
+  if (daemonCalls.length !== 1 || daemonCalls[0]?.map(normalizeRust).join("|") !== expectedArguments.join("|")) {
+    failures.push("P123 daemon sync activation wiring must preserve configured activation arguments");
+  }
   for (const file of [
     "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
     "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",

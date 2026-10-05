@@ -154,6 +154,8 @@ mod automatic_prune;
 mod checkpoint;
 #[path = "tests/daemon_sync.rs"]
 mod daemon_sync;
+#[path = "tests/filter_index.rs"]
+pub(crate) mod filter_index;
 #[path = "tests/inbound_runtime.rs"]
 mod inbound_runtime;
 #[path = "tests/retry.rs"]

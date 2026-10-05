@@ -11,11 +11,13 @@ use std::{sync::mpsc, thread, time::Duration};
 
 use open_bitcoin_mempool::PolicyTime;
 use open_bitcoin_node::{
-    FjallNodeStore, ManagedNetworkHandle, PersistMode, StorageError,
+    FjallNodeStore, ManagedNetworkHandle, StorageError,
     network::{MempoolCheckpointCoordinator, MempoolCheckpointError, MempoolCheckpointOutcome},
 };
 
 use super::current_timestamp_unix_seconds;
+#[cfg(test)]
+use open_bitcoin_node::PersistMode;
 
 pub(super) const MEMPOOL_CHECKPOINT_INTERVAL: Duration = Duration::from_secs(300);
 
@@ -61,27 +63,77 @@ impl std::error::Error for DaemonCheckpointError {}
 pub(super) struct MempoolCheckpointWorker {
     shutdown_sender: mpsc::Sender<()>,
     join_handle: thread::JoinHandle<Result<MempoolCheckpointOutcome, MempoolCheckpointError>>,
+    #[cfg(test)]
     store: FjallNodeStore,
 }
 
 impl MempoolCheckpointWorker {
-    pub(super) fn shutdown_and_mark_clean(self) -> Result<(), DaemonCheckpointError> {
-        self.shutdown_sender
+    pub(super) fn shutdown_settle(self) -> Result<(), DaemonCheckpointError> {
+        let signal_result = self
+            .shutdown_sender
             .send(())
-            .map_err(|_| DaemonCheckpointError::WorkerSignal)?;
-        let join_handle = self.join_handle;
-        let store = self.store;
+            .map_err(|_| DaemonCheckpointError::WorkerSignal);
+        let join_result = self
+            .join_handle
+            .join()
+            .map_err(|_| DaemonCheckpointError::WorkerJoin)
+            .and_then(|outcome| {
+                outcome
+                    .map(|_| ())
+                    .map_err(|_| DaemonCheckpointError::ShutdownCheckpoint)
+            });
+        if signal_result.is_err()
+            && let Err(error) = &join_result
+        {
+            eprintln!("open-bitcoind checkpoint settlement also failed: {error}");
+        }
+        signal_result?;
+        join_result
+    }
+
+    #[cfg(test)]
+    pub(super) fn shutdown_and_mark_clean(self) -> Result<(), DaemonCheckpointError> {
+        let store = self.store.clone();
         settle_and_mark_clean(
-            move || {
-                join_handle
-                    .join()
-                    .map_err(|_| DaemonCheckpointError::WorkerJoin)?
-                    .map_err(|_| DaemonCheckpointError::ShutdownCheckpoint)?;
-                Ok(())
-            },
+            move || self.shutdown_settle(),
             move || store.mark_clean_shutdown(PersistMode::Sync),
         )
     }
+}
+
+pub(super) type ShutdownResult = Result<(), Box<dyn std::error::Error>>;
+
+pub(super) fn settle_daemon_shutdown<Sync, Coins, Retry, Checkpoint, Clean>(
+    serve_result: ShutdownResult,
+    sync: Sync,
+    coins: Coins,
+    retry: Retry,
+    checkpoint: Checkpoint,
+    mark_clean: Clean,
+) -> ShutdownResult
+where
+    Sync: FnOnce() -> ShutdownResult,
+    Coins: FnOnce() -> ShutdownResult,
+    Retry: FnOnce() -> ShutdownResult,
+    Checkpoint: FnOnce() -> ShutdownResult,
+    Clean: FnOnce() -> Result<(), StorageError>,
+{
+    // Evaluate every stop/join before propagating errors. Retry is a producer,
+    // so it must quiesce before capturing the final mempool generation.
+    let results = [sync(), coins(), retry(), checkpoint(), serve_result];
+    let mut maybe_error = None;
+    for result in results {
+        if let Err(error) = result {
+            eprintln!("open-bitcoind shutdown settlement failed: {error}");
+            if maybe_error.is_none() {
+                maybe_error = Some(error);
+            }
+        }
+    }
+    if let Some(error) = maybe_error {
+        return Err(error);
+    }
+    mark_clean().map_err(|_| DaemonCheckpointError::CleanMarker.into())
 }
 
 pub(super) fn start_mempool_checkpoint_worker<S, V>(
@@ -110,6 +162,7 @@ where
     Some(MempoolCheckpointWorker {
         shutdown_sender,
         join_handle,
+        #[cfg(test)]
         store,
     })
 }
@@ -165,6 +218,7 @@ where
     }
 }
 
+#[cfg(test)]
 pub(super) fn settle_and_mark_clean<Settle, MarkClean>(
     settle: Settle,
     mark_clean: MarkClean,

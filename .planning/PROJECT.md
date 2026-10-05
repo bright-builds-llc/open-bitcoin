@@ -12,9 +12,11 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-Phase 156 completed internal index-owned manual and automatic prune coordination on 2026-10-05. [Verification](phases/156-index-owned-manual-and-automatic-prune-coordination/156-VERIFICATION.md) passed 28/28 must-haves and all four roadmap criteria; the default full native verifier passed in 32m 37.914s with Bun 1.3.9 and Rust 1.94.1. Source review is clean across 67 files plus two generated locks, and all 27 declared security mitigations are closed. CFPR-01 is Complete. Actual legal-target daemon retention, 714 paired deletes, lifecycle/work fencing, authenticated ownership refusal and real reopen provide scoped software evidence. Large fixtures are codec-valid; small accepted engine histories use custom maturity. Phase 157 is ready for context; public activation/catch-up, runtime reorg, filter/index RPC, peers, operator projections and integrated client proof remain pending.
+Phase 157 completed safe BASIC activation and scheduled catch-up on 2026-10-05. [Verification](phases/157-safe-activation-and-scheduled-index-catch-up/157-VERIFICATION.md) passed 34/34 truths and all four roadmap criteria; the complete default native contract passed in 17m22.546s with Bun 1.3.9/Rust 1.94.1, including 3604 primary Rust tests, benchmarks, Bazel/provenance and zero uncovered pure-core lines. Independent source review is clean across 91 files; all 33 declared mitigations are closed. CFAC-01/02 and CFIX-01 are Complete. Explicit bare/1/basic or zero selects configured durable startup without P2P activation; full required-history preflight precedes prune effects, and actual startup/one-second idle turns share the ordered accepted-state owner. Real paired loss/refusal, persistence faults, immutable retries and normal checkpoint/714 paired-delete evidence preserve conservative progress. Enabled empty storage still requires retained validated genesis/history; exact-tip retention, representation/resource limits and the existing three v2.4 advisories remain. Phase 158 is ready for context; runtime reorg, filter/index RPC, peer serving, operator projections and integrated retained-client proof remain pending.
 
-Phase 155 completed recoverable immutable BASIC storage and pre-prune startup protection on 2026-10-04. [Verification](phases/155-recoverable-index-and-pre-prune-startup-protection/155-VERIFICATION.md) passed 10/10 distinct truths and all four roadmap criteria; the full default native verifier passed in 50m 23.935s with pinned Bun 1.3.9 and Rust 1.94.1. Source review is clean across 36 files and all 17 declared threats are closed. CFIX-02/04 and CFPR-03 are Complete. Real Fjall/runtime reopen, validated spend/fork and coins/metadata failure tests prove conservative progress and protection. Phase 156 subsequently completed internal ordinary prune ownership; public activation, runtime reorg, RPC/peer serving and the rest of v2.5 remain pending.
+Phase 156 completed internal index-owned manual and automatic prune coordination on 2026-10-05. [Verification](phases/156-index-owned-manual-and-automatic-prune-coordination/156-VERIFICATION.md) passed 28/28 must-haves and all four roadmap criteria; the default full native verifier passed in 32m 37.914s with Bun 1.3.9 and Rust 1.94.1. Source review is clean across 67 files plus two generated locks, and all 27 declared security mitigations are closed. CFPR-01 is Complete. Actual legal-target daemon retention, 714 paired deletes, lifecycle/work fencing, authenticated ownership refusal and real reopen provide scoped software evidence. Large fixtures are codec-valid; small accepted engine histories use custom maturity. Phase 157 subsequently completed scoped activation/catch-up; runtime reorg, filter/index RPC, peers, operator projections and integrated client proof remain pending.
+
+Phase 155 completed recoverable immutable BASIC storage and pre-prune startup protection on 2026-10-04. [Verification](phases/155-recoverable-index-and-pre-prune-startup-protection/155-VERIFICATION.md) passed 10/10 distinct truths and all four roadmap criteria; the full default native verifier passed in 50m 23.935s with pinned Bun 1.3.9 and Rust 1.94.1. Source review is clean across 36 files and all 17 declared threats are closed. CFIX-02/04 and CFPR-03 are Complete. Real Fjall/runtime reopen, validated spend/fork and coins/metadata failure tests prove conservative progress and protection. Phases 156–157 subsequently completed ordinary ownership and explicit activation/catch-up; runtime reorg, RPC/peer serving and the rest of v2.5 remain pending.
 
 Phase 154 completed the v2.5 BASIC construction and commitment foundation: exact pinned bytes/hash/header, complete body-bound historical inputs and independent corpus/edge/validated-chain proof. Its [verification](phases/154-basic-generation-and-commitment-parity/154-VERIFICATION.md) passed 11/11 must-haves and all three roadmap criteria; the full default verifier passed in 31m 19.275s and all 15 declared threats are closed. CFIL-01/02 remain Complete.
 
@@ -41,7 +43,7 @@ Historical phase directories remain tracked because repository verifiers referen
 - Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
 - Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
 
-Continue at Phase 157 and preserve earlier phase directories required by repository verifiers. Public activation after historical payload loss remains Phase 157 scope. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+Continue at Phase 158 and preserve earlier phase directories required by repository verifiers. Phase 157 completed explicit activation with missing-history refusal and bounded catch-up. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
 
 FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
 
@@ -214,10 +216,11 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - ✓ CFPR-01 validated in Phase 156: internally owned protection, fresh manual/automatic deletion checks, exact work fencing and ordered disable/re-enable; scoped full native and lifecycle verification passed.
 
+- ✓ CFAC-01/02 and CFIX-01 validated in Phase 157: exact default-off options, configured pre-prune history refusal, actual bounded startup/idle maintenance and accepted-before-persist handoff;34/34 formal truths, full native, source and security verification passed.
+
 ### Active
 
-- [ ] CFAC-01/02: Default-off durable activation and missing-history refusal
-- [ ] CFIX-01/03: Bounded catch-up and validated runtime reorg handling
+- [ ] CFIX-03: Validated runtime reorg handling
 - [ ] CFPR-02: Retained filter service after pruning
 - [ ] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
 - [ ] CFRP-01/02: Authenticated BASIC filter and index-info RPC parity
@@ -309,8 +312,8 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
 | Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: six requirements Complete through Phase 156; 16 Pending; serving not shipped |
-| Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Phase 155 validated fenced cursor and pre-resume protection with real faults/reopen; public activation and ordinary ownership remain later scope |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: nine requirements Complete through Phase 157; 13 Pending; serving not shipped |
+| Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Phases 155–157 verified fenced recovery, pre-prune protection, ordinary ownership and explicit activation/catch-up with real faults/reopen |
 | Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Planned: exact BASIC/per-peer behavior plus distinct operator evidence |
 
 ## Evolution
@@ -358,4 +361,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-05 after Phase 156 verification*
+*Last updated: 2026-10-05 after Phase 157 verification*

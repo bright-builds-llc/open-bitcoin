@@ -12,6 +12,68 @@
   },
   "groups": [
     {
+      "label": "phase157-ordered-index-and-history-evidence",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/filter_index/catch_up.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/catch_up/budget.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/catch_up/tests.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/catch_up/tests/budget.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/catch_up/tests/durability.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/catch_up.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/catch_up/inputs.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/append.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/append.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/append/admission.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/append/fencing.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/append_proof.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/catch_up.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/catch_up/failures.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/catch_up/fixtures.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/catch_up/measurements.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/evidence.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/evidence/accepted_faults.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/evidence/history_loss.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/evidence/retention.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/startup/configured.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/startup/configured/faults.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests/filter_index.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase157-accepted-basic-inputs",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/filter_index.rs",
+        "packages/open-bitcoin-node/src/chainstate/tests/filter_index.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/accepted.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase157-basic-option-resolution",
+      "files": [
+        "packages/open-bitcoin-rpc/src/config/blockfilter.rs",
+        "packages/open-bitcoin-rpc/src/config/loader/blockfilter.rs",
+        "packages/open-bitcoin-rpc/src/config/tests/blockfilter.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/common/args.cpp",
+        "packages/bitcoin-knots/src/common/settings.cpp"
+      ]
+    },
+    {
       "label": "basic-filter-reserved-operator-ownership",
       "files": [
         "packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs",

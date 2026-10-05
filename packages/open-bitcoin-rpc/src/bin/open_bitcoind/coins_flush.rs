@@ -3,18 +3,19 @@
 // - packages/bitcoin-knots/src/bitcoind.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
 
-//! Private daemon ownership for Periodic and Always coins flushes.
+//! One daemon maintenance owner for bounded BASIC turns and ordinary coins flushes.
 
 use core::fmt;
 use std::{sync::mpsc, thread, time::Duration};
 
 use open_bitcoin_node::{
-    FjallNodeStore, ManagedNetworkAuthorityError, ManagedNetworkHandle,
+    BasicFilterTurnOutcome, FjallChainstateStore, FjallCoinsView, FjallNodeStore,
+    ManagedNetworkAuthorityError, ManagedNetworkHandle, MemoryChainstateStore,
     chainstate::{FlushExecution, probe_disk_free_bytes},
-    core::chainstate::{FlushMode, FlushPolicyTime},
+    core::chainstate::{FlushMode, FlushPolicyTime, MemoryCoinsView},
 };
 
-use super::checkpoint::{CheckpointWait, DaemonCheckpointError, settle_and_mark_clean};
+use super::checkpoint::{CheckpointWait, DaemonCheckpointError};
 use super::current_timestamp_unix_seconds;
 
 pub(super) const PERIODIC_WRITE_MIN_SECS: u64 = 50 * 60;
@@ -22,14 +23,20 @@ pub(super) const PERIODIC_WRITE_MAX_SECS: u64 = 70 * 60;
 
 const TICK_SECS: u64 = 1;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug)]
 pub(super) enum CoinsFlushError {
     Authority,
+    BasicFilter(ManagedNetworkAuthorityError),
 }
 
 impl fmt::Display for CoinsFlushError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str("open-bitcoind coins flush failed: authority")
+        match self {
+            Self::Authority => formatter.write_str("open-bitcoind coins flush failed: authority"),
+            Self::BasicFilter(error) => {
+                write!(formatter, "open-bitcoind BASIC maintenance failed: {error}")
+            }
+        }
     }
 }
 
@@ -41,6 +48,25 @@ impl From<ManagedNetworkAuthorityError> for CoinsFlushError {
     }
 }
 
+/// Compile-time adapter: only genuine durable handles can drive the owned index.
+pub(super) trait BasicIndexMaintenance {
+    fn maybe_drive_index_turn(&self) -> Result<Option<BasicFilterTurnOutcome>, CoinsFlushError>;
+}
+
+impl BasicIndexMaintenance for ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
+    fn maybe_drive_index_turn(&self) -> Result<Option<BasicFilterTurnOutcome>, CoinsFlushError> {
+        self.drive_basic_filter_index_turn()
+            .map(Some)
+            .map_err(CoinsFlushError::BasicFilter)
+    }
+}
+
+impl BasicIndexMaintenance for ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
+    fn maybe_drive_index_turn(&self) -> Result<Option<BasicFilterTurnOutcome>, CoinsFlushError> {
+        Ok(None)
+    }
+}
+
 pub(super) struct CoinsFlushWorker {
     shutdown_sender: mpsc::Sender<()>,
     join_handle: thread::JoinHandle<Result<(), CoinsFlushError>>,
@@ -48,20 +74,22 @@ pub(super) struct CoinsFlushWorker {
 
 impl CoinsFlushWorker {
     pub(super) fn shutdown_always(self) -> Result<(), DaemonCheckpointError> {
-        self.shutdown_sender
+        let signal_result = self
+            .shutdown_sender
             .send(())
-            .map_err(|_| DaemonCheckpointError::WorkerSignal)?;
-        let join_handle = self.join_handle;
-        settle_and_mark_clean(
-            move || {
-                join_handle
-                    .join()
-                    .map_err(|_| DaemonCheckpointError::WorkerJoin)?
-                    .map_err(|_| DaemonCheckpointError::ShutdownCheckpoint)?;
-                Ok(())
-            },
-            || Ok(()),
-        )
+            .map_err(|_| DaemonCheckpointError::WorkerSignal);
+        let join_result = self
+            .join_handle
+            .join()
+            .map_err(|_| DaemonCheckpointError::WorkerJoin)
+            .and_then(|outcome| outcome.map_err(|_| DaemonCheckpointError::ShutdownCheckpoint));
+        if signal_result.is_err()
+            && let Err(error) = &join_result
+        {
+            eprintln!("open-bitcoind coins settlement also failed: {error}");
+        }
+        signal_result?;
+        join_result
     }
 }
 
@@ -72,6 +100,7 @@ pub(super) fn start_coins_flush_worker<S, V>(
 where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+    ManagedNetworkHandle<S, V>: BasicIndexMaintenance,
 {
     let store = maybe_store?;
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
@@ -109,13 +138,41 @@ where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
     Wait: FnMut(Duration) -> CheckpointWait,
+    ManagedNetworkHandle<S, V>: BasicIndexMaintenance,
 {
+    let mut maybe_index_error = None;
     loop {
         match wait(Duration::from_secs(TICK_SECS)) {
-            CheckpointWait::Elapsed => drive_periodic(&handle, &store),
-            CheckpointWait::Shutdown => return drive_always(&handle, &store),
+            CheckpointWait::Elapsed => {
+                maybe_index_error = match maybe_drive_elapsed(&handle, &store) {
+                    Ok(_) => None,
+                    Err(error) => {
+                        eprintln!("{error}");
+                        Some(error)
+                    }
+                };
+            }
+            CheckpointWait::Shutdown => {
+                // No further index turn after the stop event. Always retains the
+                // saved Active protection; configured disable owns its release.
+                drive_always(&handle, &store)?;
+                return maybe_index_error.map_or(Ok(()), Err);
+            }
         }
     }
+}
+
+fn maybe_drive_elapsed<S, V>(
+    handle: &ManagedNetworkHandle<S, V>,
+    store: &FjallNodeStore,
+) -> Result<Option<BasicFilterTurnOutcome>, CoinsFlushError>
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+    ManagedNetworkHandle<S, V>: BasicIndexMaintenance,
+{
+    drive_periodic(handle, store);
+    handle.maybe_drive_index_turn()
 }
 
 fn drive_periodic<S, V>(handle: &ManagedNetworkHandle<S, V>, store: &FjallNodeStore)

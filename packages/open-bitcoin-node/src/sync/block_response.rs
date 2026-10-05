@@ -120,7 +120,18 @@ impl DurableSyncRuntime {
                     let Some(block) = maybe_block else {
                         return Ok(());
                     };
-                    self.store.save_block(block, self.config.persist_mode)?;
+                    if let Err(error) = self.store.save_block(block, self.config.persist_mode) {
+                        if let Err(notification) = self.network.note_basic_index_failure(
+                            crate::chainstate::filter_index::AcceptedBasicIndexFailure::RequiredBody,
+                        ) {
+                            return Err(crate::storage::StorageError::BackendFailure {
+                                namespace: crate::storage::StorageNamespace::BlockIndex,
+                                message: format!("{error}; BASIC failure notification: {notification}"),
+                                action: crate::storage::StorageRecoveryAction::Restart,
+                            }.into());
+                        }
+                        return Err(error.into());
+                    }
                     self.network
                         .note_local_block_hash(block_hash(&block.header))?;
                     progress.record_accepted_block();

@@ -13,6 +13,7 @@ use open_bitcoin_primitives::{BlockHash, FilterHash, FilterHeader};
 
 use crate::{ChainPosition, PRUNE_LOCK_BUFFER, PruneLockInfo};
 
+pub mod catch_up;
 pub mod lifecycle;
 pub mod recovery;
 pub use recovery::{FilterRecoveryPlan, FilterRecoveryScan};

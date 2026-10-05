@@ -150,6 +150,8 @@ pub struct ManagedChainstate<S, V: CoinsView = MemoryCoinsView> {
     store: S,
     chainstate: Chainstate<V>,
     pub(crate) flush_lifecycle: FlushLifecycle,
+    maybe_validated_lineage: Option<flush_lifecycle::ValidatedChainstateLineage>,
+    maybe_basic_index_owner: Option<filter_index::AcceptedBasicIndexOwner>,
 }
 
 impl<S: Clone> Clone for ManagedChainstate<S, MemoryCoinsView> {
@@ -158,6 +160,8 @@ impl<S: Clone> Clone for ManagedChainstate<S, MemoryCoinsView> {
             store: self.store.clone(),
             chainstate: Chainstate::from_snapshot(self.chainstate.snapshot()),
             flush_lifecycle: self.flush_lifecycle.clone(),
+            maybe_validated_lineage: None,
+            maybe_basic_index_owner: None,
         }
     }
 }
@@ -187,6 +191,9 @@ impl<S: Eq> Eq for ManagedChainstate<S, MemoryCoinsView> {}
 pub(crate) struct PreparedChainstateConnect {
     staged: StagedChainstateConnect,
     position: ChainPosition,
+    maybe_filter_facts: Option<
+        Result<filter_index::AcceptedBasicFilterFacts, filter_index::AcceptedBasicIndexFailure>,
+    >,
 }
 
 impl PreparedChainstateConnect {
@@ -217,6 +224,8 @@ impl<S: ChainstateStore> ManagedChainstate<S, MemoryCoinsView> {
         Self {
             store,
             chainstate,
+            maybe_validated_lineage: None,
+            maybe_basic_index_owner: None,
             flush_lifecycle: FlushLifecycle::ready(
                 FlushPolicyTime::from_unix_seconds(0),
                 FlushPolicyTime::from_unix_seconds(0),
@@ -233,6 +242,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             store,
             chainstate,
             flush_lifecycle: lifecycle,
+            maybe_validated_lineage: None,
+            maybe_basic_index_owner: None,
         }
     }
 
@@ -268,15 +279,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
-        let position = self.chainstate.connect_block_with_current_time(
+        let prepared = self.prepare_connect_block_with_current_time(
             block,
             chain_work,
             current_time,
             verify_flags,
             consensus_params,
         )?;
-        self.persist().map_err(map_persist)?;
-        Ok(position)
+        self.commit_prepared_connect(prepared)
     }
 
     pub(crate) fn prepare_connect_block(
@@ -311,7 +321,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             consensus_params,
         )?;
         let position = staged.position().clone();
-        Ok(PreparedChainstateConnect { staged, position })
+        let maybe_filter_facts = self.prepare_basic_filter_facts(block, &staged);
+        Ok(PreparedChainstateConnect {
+            staged,
+            position,
+            maybe_filter_facts,
+        })
     }
 
     pub(crate) fn commit_prepared_connect(
@@ -321,7 +336,23 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         // D-18: absorb stays infallible. Persist after absorb can fail; mempool
         // still applies the patch when this closure returns Err.
         let position = self.chainstate.absorb_staged_connect(prepared.staged);
-        self.persist().map_err(map_persist)?;
+        self.observe_validated_lineage(&position);
+        self.observe_basic_filter_acceptance(&position, prepared.maybe_filter_facts);
+        if let Err(error) = self.persist() {
+            self.note_basic_index_failure(filter_index::AcceptedBasicIndexFailure::Persistence);
+            return Err(map_persist(error));
+        }
+        if self.maybe_basic_index_failure().is_some_and(|failure| {
+            matches!(
+                failure,
+                filter_index::AcceptedBasicIndexFailure::FactLimit
+                    | filter_index::AcceptedBasicIndexFailure::InvalidFacts
+            )
+        }) {
+            return Err(ChainstateError::CoinsStorage {
+                detail: "accepted block; BASIC index input capture paused".to_owned(),
+            });
+        }
         Ok(position)
     }
 
@@ -330,6 +361,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         block: &Block,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
         let position = self.chainstate.disconnect_tip(block)?;
+        self.maybe_validated_lineage = None;
+        self.invalidate_basic_index_owner();
         self.persist().map_err(map_persist)?;
 
         Ok(position)
@@ -348,6 +381,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             verify_flags,
             consensus_params,
         )?;
+        self.maybe_validated_lineage = None;
+        self.invalidate_basic_index_owner();
         self.persist().map_err(map_persist)?;
         Ok(transition)
     }
@@ -370,6 +405,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     }
 
     pub(crate) fn install_prepared_reorg_preview(&mut self, prepared: &PreparedChainstateReorg) {
+        self.maybe_validated_lineage = None;
+        self.invalidate_basic_index_owner();
         self.chainstate
             .install_staged_reorg_preview(&prepared.staged);
     }
@@ -379,12 +416,21 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         prepared: PreparedChainstateReorg,
     ) -> Result<ChainTransition, open_bitcoin_core::chainstate::ChainstateError> {
         let transition = self.chainstate.absorb_staged_reorg(prepared.staged);
+        self.maybe_validated_lineage = None;
+        self.invalidate_basic_index_owner();
         self.persist().map_err(map_persist)?;
         Ok(transition)
     }
 
     pub fn into_parts(self) -> (S, Chainstate<V>) {
         (self.store, self.chainstate)
+    }
+
+    fn observe_validated_lineage(&mut self, position: &ChainPosition) {
+        self.maybe_validated_lineage = self
+            .maybe_validated_lineage
+            .take()
+            .and_then(|mut lineage| lineage.observe(position).then_some(lineage));
     }
 
     fn flush_window(&self) -> (Vec<(BlockHash, BlockUndo)>, Vec<Block>, Vec<ChainPosition>) {
@@ -422,9 +468,22 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     where
         S: FlushPersistSink,
     {
+        let maybe_pending = self
+            .maybe_validated_lineage
+            .as_ref()
+            .map(|lineage| lineage.maybe_prepare(self.chainstate.tip()))
+            .transpose()
+            .map_err(|error| {
+                self.note_basic_index_failure(filter_index::AcceptedBasicIndexFailure::Persistence);
+                FlushApplyError {
+                    error,
+                    deleted_block_hashes: Vec::new(),
+                }
+            })?
+            .flatten();
         let (undo_window, block_payloads, active_chain) = self.flush_window();
         let mut deleted = Vec::new();
-        let result = self.flush_lifecycle.execute_flush_applying_plan(
+        let mut result = self.flush_lifecycle.execute_flush_applying_plan(
             &mut self.store,
             self.chainstate.coins_mut(),
             mode,
@@ -438,8 +497,30 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             locks,
             &mut |hash| deleted.push(hash),
         );
+        if let Some(pending) = maybe_pending {
+            if result.as_ref().is_ok_and(|execution| execution.wrote_coins) {
+                result = result.and_then(|execution| {
+                    let completed = pending
+                        .complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?;
+                    self.store.confirm_validated_flush(completed)?;
+                    Ok(execution)
+                });
+            } else if let Err(cleanup) = pending.abort() {
+                result = Err(match result {
+                    Err(original) => StorageError::BackendFailure {
+                        namespace: crate::storage::StorageNamespace::BlockIndex,
+                        message: format!("{original}; BASIC receipt cleanup: {cleanup}"),
+                        action: crate::storage::StorageRecoveryAction::Restart,
+                    },
+                    Ok(_) => cleanup,
+                });
+            }
+        }
         for hash in &deleted {
             self.chainstate.forget_undo(*hash);
+        }
+        if result.is_err() {
+            self.note_basic_index_failure(filter_index::AcceptedBasicIndexFailure::Persistence);
         }
         result.map_err(|error| FlushApplyError {
             error,
@@ -449,6 +530,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
 
     #[cfg(test)]
     pub(crate) fn install_chainstate_for_test(&mut self, chainstate: Chainstate<V>) {
+        self.maybe_validated_lineage = None;
+        self.invalidate_basic_index_owner();
         self.chainstate = chainstate;
     }
 
@@ -497,13 +580,15 @@ impl<S, V: CoinsView> ManagedChainstate<S, V> {
     }
 }
 
+pub(crate) mod filter_index;
 mod fjall_store;
 pub use fjall_store::FjallChainstateStore;
 mod flush_lifecycle;
 pub use flush_lifecycle::{
-    COINS_DB_CACHE_CAP_BYTES, DEFAULT_KERNEL_CACHE_BYTES, FlushExecution, FlushLifecycle,
-    FlushPersistSink, MIN_DBCACHE_BYTES, ManagerReadiness, PruneProtectionSnapshot,
-    default_coins_cache_byte_limit, initialize, probe_disk_free_bytes,
+    BasicFilterStartupMode, COINS_DB_CACHE_CAP_BYTES, CompletedValidatedFlush,
+    DEFAULT_KERNEL_CACHE_BYTES, FlushExecution, FlushLifecycle, FlushPersistSink,
+    MIN_DBCACHE_BYTES, ManagerReadiness, PruneProtectionSnapshot, default_coins_cache_byte_limit,
+    initialize, initialize_configured, probe_disk_free_bytes,
 };
 mod replay;
 pub use replay::replay_interrupted_flush;

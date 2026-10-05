@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { checkPhase123RuntimeTimingEvidenceIntegrity } from "./check-phase123-runtime-timing-evidence-integrity";
+import { readText } from "./check-phase123-runtime-timing-evidence-integrity/filesystem.ts";
 
 const TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/types.rs",
@@ -70,6 +71,73 @@ test("phase123_real_repository_corpus_passes", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("Phase 123 immutable live source snapshot passes", () => {
+  // Arrange
+  const root = writeFixture(liveFiles());
+
+  // Act
+  const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: root });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test.each([
+  ["configured daemon constructor removed", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "DurableSyncRuntime::open_with_configured_runtime_activation(", "DurableSyncRuntime::open_with_runtime_activation("],
+  ["daemon relay policy defaulted", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "runtime.relay,", "RelayActivationConfig::default(),"],
+  ["daemon block-serving policy defaulted", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "runtime.block_serving,", "BlockRelayActivationPolicy::default(),"],
+  ["daemon relay and block-serving arguments reordered", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "runtime.relay,\n            runtime.block_serving,", "runtime.block_serving,\n            runtime.relay,"],
+  ["daemon inbound activation disabled", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "runtime.inbound.enabled,", "false,"],
+  ["daemon index startup policy bypassed", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "            basic_filter_mode,", "            BasicFilterStartupMode::PreserveSaved,"],
+  ["configured initialization removed", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;", "initialize(&store, now, now, 0, false, u64::MAX)?;"],
+  ["configured startup policy bypassed", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "u64::MAX, basic_filter_mode)?;", "u64::MAX, BasicFilterStartupMode::PreserveSaved)?;"],
+  ["configured network relay policy removed", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "            relay_activation,\n            block_relay_activation,\n            inbound_enabled,\n        );", "            RelayActivationConfig::default(),\n            block_relay_activation,\n            inbound_enabled,\n        );"],
+  ["configured network block policy removed", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "            block_relay_activation,\n            inbound_enabled,\n        );", "            BlockRelayActivationPolicy::default(),\n            inbound_enabled,\n        );"],
+  ["configured network inbound activation removed", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "            inbound_enabled,\n        );", "            false,\n        );"],
+  ["compatibility configured delegation removed", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "Self::open_with_configured_runtime_activation(", "Self::open_configured("],
+  ["compatibility saved policy disabled", "packages/open-bitcoin-node/src/sync/open_runtime.rs", "BasicFilterStartupMode::PreserveSaved,", "BasicFilterStartupMode::Disabled,"],
+  ["block-relay compatibility delegation removed", "packages/open-bitcoin-node/src/sync.rs", "Self::open_with_runtime_activation(", "Self::open_configured("],
+] as const)("rejects live snapshot %s", (_label, file, from, to) => {
+  // Arrange
+  const files = liveFiles();
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
+  replaceRequired(files, file, from, to);
+
+  // Act
+  const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
+
+  // Assert
+  expect(failures.some((failure) => /P123 .*activation/.test(failure))).toBe(true);
+});
+
+test("rejects initialization moved after configured network construction", () => {
+  // Arrange
+  const files = liveFiles();
+  const file = "packages/open-bitcoin-node/src/sync/open_runtime.rs";
+  const initialization = "let (lifecycle, _view, cache) =\n            initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;";
+  replaceRequired(files, file, initialization, "");
+  replaceRequired(files, file, "        if let Some(header_store)", `${initialization}\n        if let Some(header_store)`);
+
+  // Act
+  const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
+
+  // Assert
+  expect(failures.some((failure) => failure.startsWith("P123 configured sync production activation"))).toBe(true);
+});
+
+test("commented configured initialization cannot satisfy the production guard", () => {
+  // Arrange
+  const files = liveFiles();
+  const call = "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;";
+  replaceRequired(files, "packages/open-bitcoin-node/src/sync/open_runtime.rs", call, `/* ${call} */ initialize(&store, now, now, 0, false, u64::MAX)?;`);
+
+  // Act
+  const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
+
+  // Assert
+  expect(failures.some((failure) => failure.startsWith("P123 configured sync production activation"))).toBe(true);
 });
 
 test.each([
@@ -286,7 +354,7 @@ test.each([
   ],
   [
     "daemon sync activation removed",
-    "P123 daemon sync activation wiring missing or out of order runtime.block_serving",
+    "P123 daemon sync activation wiring must preserve configured activation arguments",
     mutate(
       "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
       "runtime.block_serving",
@@ -339,16 +407,33 @@ test.each([
 });
 
 function createFixture(maybeMutate?: Mutator): string {
-  const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase123-"));
-  tempRoots.push(root);
   const files = completeFiles();
   maybeMutate?.(files);
+  return writeFixture(files);
+}
+
+function writeFixture(files: Map<TargetFile, string>): string {
+  const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase123-"));
+  tempRoots.push(root);
   for (const [relativePath, contents] of files) {
     const absolutePath = path.join(root, relativePath);
     mkdirSync(path.dirname(absolutePath), { recursive: true });
     writeFileSync(absolutePath, contents);
   }
   return root;
+}
+
+function liveFiles(): Map<TargetFile, string> {
+  const failures: string[] = [];
+  const files = new Map(TARGET_FILES.map((file) => [file, readText(path.resolve(import.meta.dir, ".."), file, failures)]));
+  expect(failures).toEqual([]);
+  return files;
+}
+
+function replaceRequired(files: Map<TargetFile, string>, file: TargetFile, from: string, to: string): void {
+  const source = files.get(file) ?? "";
+  expect(source).toContain(from);
+  files.set(file, source.replace(from, to));
 }
 
 function completeFiles(): Map<TargetFile, string> {
@@ -424,8 +509,8 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
   return new Map<TargetFile, string>([
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
     ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame }"],
-    ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation block_relay_activation maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot()? let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?; self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); pub fn sync_until_idle_with_clock_and_cancel`],
-    ["packages/open-bitcoin-node/src/sync/open_runtime.rs", `ManagedPeerNetwork::from_initialized_chainstate initialize( block_relay_activation`],
+    ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation() { Self::open_with_runtime_activation( store, config, RelayActivationConfig::default(), block_relay_activation, false, ) } maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot()? let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?; self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); pub fn sync_until_idle_with_clock_and_cancel`],
+    ["packages/open-bitcoin-node/src/sync/open_runtime.rs", `pub fn open_with_runtime_activation() { Self::open_with_configured_runtime_activation( store, config, relay_activation, block_relay_activation, inbound_enabled, BasicFilterStartupMode::PreserveSaved, ) } pub fn open_with_configured_runtime_activation() { initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?; store.load_chain_meta_for_open()?; store.load_all_undo_records()?; Chainstate::from_coins_cache(cache, active_chain, undo_by_block, maybe_counts); ManagedChainstate::from_recovered_chainstate( FjallChainstateStore::from_store(store.clone()), chainstate, lifecycle, )?; ManagedPeerNetwork::from_initialized_chainstate( managed, local_config, PolicyConfig::default(), config.max_blocks_in_flight_per_peer, relay_activation, block_relay_activation, inbound_enabled, ) }`],
     ["packages/open-bitcoin-node/src/sync/session.rs", `session.send(message, self.config.network.magic())?; self.network.acknowledge_wire_message_written(message)?; SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = (controls.0)(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) let fallback_block_hashes = targeted block_reconcile::request_tracked_blocks( self.send_all_for_peer(&mut session, peer_id, &outbound)?; if !self.peer_has_pending_download_work(peer_id) self.complete_peer_session_progress(&mut progress, peer_id); return Ok(()); continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); let block_response_was_requested = || self.block_extends_active_tip(block) block_reconcile::release_inflight_for_message(self, &message); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags self.record_block_disposition( let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?; self.record_reconcile_progress(reconcile_progress); self.persist_progress_and_dispatch_tip()?; fn peer_has_pending_download_work .compact_download_peer_state(peer_id) .is_some_and(|state| !state.in_flight.is_empty()) .peer_requested_blocks(peer_id) .any(|block_hash| self.inflight_blocks.contains(block_hash)) pub(super) fn send_all_for_peer self.send_all(session, messages)?; let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;`],
     ["packages/open-bitcoin-node/src/sync/session/emission_terminal.rs", "pub(super) fn send_peer_emissions session.send(&message, network_magic); capability.acknowledge_write();"],
     ["packages/open-bitcoin-node/src/sync/block_reconcile.rs", `pub(super) fn request_tracked_blocks .request_missing_blocks(peer_id, &requested)? .inflight_blocks .insert(BlockHash::from(item.object_hash))`],
@@ -442,7 +527,7 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
     ["packages/open-bitcoin-rpc/src/inbound_listener.rs", ""],
     ["packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", "let was_written = matches!(write_result, Ok(WriteWireMessageOutcome::Written)); .acknowledge_wire_message_written(&response.message)"],
     ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block phase123_disabled_runtime_config_does_not_serve_inbound_block"],
-    ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "DurableSyncRuntime::open_with_runtime_activation( runtime.block_serving set_inbound_metric_status_provider let mut shutdown_latched = false; let mut should_cancel = || daemon_sync_shutdown_requested(&shutdown_receiver) sync_until_idle_with_clock_and_cancel( if shutdown_latched"],
+    ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "fn open_authoritative_network_runtime() { DurableSyncRuntime::open_with_configured_runtime_activation( store, runtime.sync.runtime.clone(), runtime.relay, runtime.block_serving, runtime.inbound.enabled, basic_filter_mode, ) } set_inbound_metric_status_provider let mut shutdown_latched = false; let mut should_cancel = || daemon_sync_shutdown_requested(&shutdown_receiver) sync_until_idle_with_clock_and_cancel( if shutdown_latched"],
     ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "phase123_daemon_shutdown_cancels_live_silent_peer_session"],
     ["packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs", `DurableSyncRuntime::open_with_block_relay_activation( Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${timingTests} outcomes.extend((0..13) WireNetworkMessage::Block( compact_block.clone(), ) summary.peer_outcomes[0].contribution.blocks_received, 1 .load_block(expected_hash)`],
     ["packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs", `Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${writeTests}`],

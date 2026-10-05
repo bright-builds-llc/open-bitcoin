@@ -39,10 +39,10 @@ pub use metrics::{
     mempool_status_from_operator_snapshot, relay_metric_samples,
 };
 pub use network::{
-    ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,
-    ManagedInboundResponsePlanItem, ManagedNetworkAuthorityError, ManagedNetworkError,
-    ManagedNetworkHandle, ManagedNetworkInfo, ManagedNetworkOperatorSnapshot, ManagedPeerNetwork,
-    ManagedPeerPolicyInfo, MemoryNetworkHandle,
+    BasicFilterTurnOutcome, ManagedAddressBoundaryInfo, ManagedInboundAdmissionInfo,
+    ManagedInboundPermissionDecisionInfo, ManagedInboundResponsePlanItem,
+    ManagedNetworkAuthorityError, ManagedNetworkError, ManagedNetworkHandle, ManagedNetworkInfo,
+    ManagedNetworkOperatorSnapshot, ManagedPeerNetwork, ManagedPeerPolicyInfo, MemoryNetworkHandle,
 };
 pub use open_bitcoin_core as core;
 pub use recovery::{

@@ -6,7 +6,7 @@
 
 ## v2.5 Requirements
 
-Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` is the behavioral baseline. Five requirements are complete through Phases 154–155; remaining planned scope does not claim shipped compact-filter serving. Each requirement receives exactly one owning roadmap phase.
+Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` is the behavioral baseline. Nine requirements are complete through Phases 154–157; remaining planned scope does not claim shipped compact-filter serving. Each requirement receives exactly one owning roadmap phase.
 
 ### Filter Construction
 
@@ -15,12 +15,12 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 ### Index Activation
 
-- [ ] **CFAC-01**: An operator can enable BASIC indexing through the supported Knots `blockfilterindex` forms (bare, `1`, or `basic`); omitted or `0` remains disabled, repeated/mixed forms have documented tested semantics, and explicit index activation selects durable storage without implicitly enabling networking.
-- [ ] **CFAC-02**: An operator gets a non-mutating activation refusal when a fresh or saved index needs block bodies or non-genesis undo already removed by pruning; the node preserves any valid saved prefix and does not skip heights, reconstruct history from current coins, or automatically repair/download.
+- [x] **CFAC-01**: An operator can enable BASIC indexing through the supported Knots `blockfilterindex` forms (bare, `1`, or `basic`); omitted or `0` remains disabled, repeated/mixed forms have documented tested semantics, and explicit index activation selects durable storage without implicitly enabling networking.
+- [x] **CFAC-02**: An operator gets a non-mutating activation refusal when a fresh or saved index needs block bodies or non-genesis undo already removed by pruning; the node preserves any valid saved prefix and does not skip heights, reconstruct history from current coins, or automatically repair/download.
 
 ### Durable Index Lifecycle
 
-- [ ] **CFIX-01**: An operator can observe ordered, bounded catch-up from retained history and ongoing indexing from ordinary validated connects; scheduled catch-up progresses without another peer message and incomplete work never reports a complete index.
+- [x] **CFIX-01**: An operator can observe ordered, bounded catch-up from retained history and ongoing indexing from ordinary validated connects; scheduled catch-up progresses without another peer message and incomplete work never reports a complete index.
 - [x] **CFIX-02**: An operator can reopen the real Fjall datadir after successful or interrupted index writes and recover valid filter records and safe progress, or receive a fail-closed diagnostic without phantom cursor advancement.
 - [ ] **CFIX-03**: A client gets branch-correct replacement filters and headers after a validated reorg and can retrieve already-indexed displaced blocks by hash; missing deep-reorg inputs cause explicit refusal rather than invented history.
 - [x] **CFIX-04**: An operator can restart after index work runs ahead of a coins/chain-metadata flush without trusting a resume cursor beyond the recovered durable chainstate checkpoint; immutable filter records and active progress are reconciled to the recovered branch.
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-02/04 and CFPR-01/03 are Complete after Phases 154–156's lifecycle-valid verification and full native passes; the remaining 16 requirements are Pending.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/04, CFAC-01/02 and CFPR-01/03 are Complete after Phases 154–157's lifecycle-valid verification and full native passes; the remaining 13 requirements are Pending.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
@@ -95,9 +95,9 @@ All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CF
 | CFIX-04 | Phase 155 | Complete |
 | CFPR-03 | Phase 155 | Complete |
 | CFPR-01 | Phase 156 | Complete |
-| CFAC-01 | Phase 157 | Pending |
-| CFAC-02 | Phase 157 | Pending |
-| CFIX-01 | Phase 157 | Pending |
+| CFAC-01 | Phase 157 | Complete |
+| CFAC-02 | Phase 157 | Complete |
+| CFIX-01 | Phase 157 | Complete |
 | CFIX-03 | Phase 158 | Pending |
 | CFRP-01 | Phase 159 | Pending |
 | CFRP-02 | Phase 159 | Pending |

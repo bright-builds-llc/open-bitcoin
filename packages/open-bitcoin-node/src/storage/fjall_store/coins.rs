@@ -38,9 +38,19 @@ impl FjallNodeStore {
         active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
         mode: PersistMode,
     ) -> Result<(), StorageError> {
-        #[cfg(test)]
-        self.check_basic_filter_chain_meta_fault()?;
-        let meta_bytes = encode_chain_meta(active_chain, None)?;
+        self.save_unverified_chain_meta(active_chain, None, mode)
+    }
+
+    fn save_unverified_chain_meta(
+        &self,
+        active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+        maybe_counts: Option<&HashMap<open_bitcoin_core::primitives::Txid, u32>>,
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        let mut control = self.filter_publication_guard()?;
+        control.invalidate_append()?;
+        control.chain_meta_fault()?;
+        let meta_bytes = encode_chain_meta(active_chain, maybe_counts)?;
         self.put_bytes(
             StorageNamespace::Chainstate,
             CHAIN_META_KEY,
@@ -49,12 +59,70 @@ impl FjallNodeStore {
         )
     }
 
+    /// Flush-only publication of already validated live ancestry. Full ancestry
+    /// validation belongs to this full metadata writer, never to an index turn.
+    pub(crate) fn save_validated_chain_meta(
+        &self,
+        active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
+        mode: PersistMode,
+    ) -> Result<(), StorageError> {
+        #[cfg(test)]
+        self.run_basic_filter_writer_interleave(
+            super::filters::BasicFilterWriterInterleave::BeforeMetadata,
+        )?;
+        let mut control = self.filter_publication_guard()?;
+        let maybe_pending = control.maybe_pending_coins;
+        control.invalidate_append()?;
+        control.chain_meta_fault()?;
+        let view = self.coins_view();
+        if !view.head_blocks().map_err(map_heads_error)?.is_empty() {
+            return Err(interrupted_coins_write());
+        }
+        let maybe_refresh = match maybe_pending {
+            Some(coins)
+                if coins.completed
+                    && coins.previous.revision.checked_add(1) == Some(coins.revision)
+                    && coins.revision.checked_add(1) == Some(control.revision) =>
+            {
+                let mut identity = coins.previous;
+                let fence = open_bitcoin_core::chainstate::VerifiedChainstateFence::new(
+                    view.best_block().map_err(map_heads_error)?,
+                    Some(active_chain),
+                )
+                .map_err(crate::storage::filter_index::index_corruption)?;
+                if fence.tip().block_hash != coins.new_tip
+                    || fence
+                        .maybe_position(identity.durable_height)
+                        .map(|p| p.block_hash)
+                        != Some(identity.durable_hash)
+                {
+                    return Err(crate::storage::filter_index::index_corruption(
+                        "incompatible BASIC durable metadata publication",
+                    ));
+                }
+                identity.durable_height = fence.tip().height;
+                identity.durable_hash = fence.tip().block_hash;
+                identity.revision = control.revision;
+                Some(super::filters::publication::CompletedMetadataPublication { coins, identity })
+            }
+            _ => None,
+        };
+        let bytes = encode_chain_meta(active_chain, None)?;
+        self.put_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY, bytes, mode)?;
+        // A publicly callable sink cannot confer live authority. Only the actual
+        // managed validated flush owner can confirm these achieved pending facts.
+        control.maybe_completed_metadata = maybe_refresh;
+        Ok(())
+    }
+
     pub fn save_undo(
         &self,
         block_hash: BlockHash,
         undo: &BlockUndo,
         mode: PersistMode,
     ) -> Result<(), StorageError> {
+        #[cfg(test)]
+        self.check_basic_filter_payload_fault(super::filters::FilterPublicationFault::BeforeUndo)?;
         let bytes = encode_block_undo(undo)?;
         self.put_bytes(
             StorageNamespace::Chainstate,
@@ -237,17 +305,13 @@ impl FjallNodeStore {
         &self,
         leftover: &ChainstateSnapshot,
     ) -> Result<(), StorageError> {
+        self.filter_publication_guard()?.invalidate_append()?;
         for (block_hash, undo) in &leftover.undo_by_block {
             self.save_undo(*block_hash, undo, PersistMode::Sync)?;
         }
-        let meta_bytes = encode_chain_meta(
+        self.save_unverified_chain_meta(
             &leftover.active_chain,
             leftover.maybe_confirmed_txid_counts.as_ref(),
-        )?;
-        self.put_bytes(
-            StorageNamespace::Chainstate,
-            CHAIN_META_KEY,
-            meta_bytes,
             PersistMode::Sync,
         )
     }
@@ -282,6 +346,7 @@ impl FjallNodeStore {
         &self,
         snapshot: &ChainstateSnapshot,
     ) -> Result<(), StorageError> {
+        self.filter_publication_guard()?.invalidate_append()?;
         if let Some(tip) = snapshot.active_chain.last() {
             self.write_migrated_coins_with_tip(&snapshot.utxos, tip.block_hash)?;
         } else if snapshot.utxos.is_empty() {
@@ -295,14 +360,9 @@ impl FjallNodeStore {
         for (block_hash, undo) in &snapshot.undo_by_block {
             self.save_undo(*block_hash, undo, PersistMode::Sync)?;
         }
-        let meta_bytes = encode_chain_meta(
+        self.save_unverified_chain_meta(
             &snapshot.active_chain,
             snapshot.maybe_confirmed_txid_counts.as_ref(),
-        )?;
-        self.put_bytes(
-            StorageNamespace::Chainstate,
-            CHAIN_META_KEY,
-            meta_bytes,
             PersistMode::Sync,
         )
     }
@@ -337,6 +397,8 @@ impl FjallNodeStore {
         &self,
         utxos: &HashMap<OutPoint, Coin>,
     ) -> Result<(), StorageError> {
+        let mut control = self.filter_publication_guard()?;
+        control.invalidate_append()?;
         let mut accumulated = 0_usize;
         for (outpoint, coin) in utxos {
             let key = encode_coin_key(outpoint);

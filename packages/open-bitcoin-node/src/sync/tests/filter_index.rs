@@ -16,6 +16,9 @@ use open_bitcoin_core::chainstate::{
     HistoricalBlockUndo, IndexInputProtection, IndexPrefix, VerifiedChainstateFence,
 };
 
+mod accepted;
+mod catch_up;
+mod evidence;
 mod faults;
 mod lifecycle;
 mod prune_coordination;

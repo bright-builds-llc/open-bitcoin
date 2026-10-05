@@ -395,8 +395,8 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.shutdown,
       replace(
         files.daemonCheckpoint,
-        "settle()?;\n    mark_clean()",
-        "mark_clean()?;\n    settle()\n        .and_then(|()| mark_clean())",
+        "let results = [sync(), coins(), retry(), checkpoint(), serve_result];",
+        "mark_clean()?;\n    let results = [sync(), coins(), retry(), checkpoint(), serve_result];",
       ),
     ],
     [
@@ -404,9 +404,31 @@ function contractMutations(): Mutation[] {
       PHASE135_DIAGNOSTICS.shutdown,
       replace(
         files.daemon,
-        "if let Some(worker) = maybe_sync_worker {",
-        "if let Some(worker) = maybe_checkpoint_worker {",
+        "maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())",
+        "maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())",
       ),
+    ],
+    [
+      "coins failure short circuits remaining joins",
+      PHASE135_DIAGNOSTICS.shutdown,
+      replace(files.daemonCheckpoint,
+        "let results = [sync(), coins(), retry(), checkpoint(), serve_result];",
+        "coins()?;\n    let results = [sync(), Ok(()), retry(), checkpoint(), serve_result];"),
+    ],
+    [
+      "retry producer remains unjoined",
+      PHASE135_DIAGNOSTICS.shutdown,
+      replace(files.daemon, "|| Ok(retry_worker.shutdown()?),", "|| Ok(()),"),
+    ],
+    [
+      "clean marker ignores retained failure",
+      PHASE135_DIAGNOSTICS.shutdown,
+      replace(files.daemonCheckpoint, "return Err(error);", "return mark_clean().map_err(Into::into);"),
+    ],
+    [
+      "shutdown coordinator is test only",
+      PHASE135_DIAGNOSTICS.shutdown,
+      replace(files.daemonCheckpoint, "pub(super) fn settle_daemon_shutdown<", "#[cfg(test)]\npub(super) fn settle_daemon_shutdown<"),
     ],
     [
       "parity index status completes",

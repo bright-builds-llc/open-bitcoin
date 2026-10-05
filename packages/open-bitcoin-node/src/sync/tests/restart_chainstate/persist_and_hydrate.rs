@@ -16,7 +16,7 @@ fn open_runtime_does_not_hydrate_leftover_utxos() {
     // Act / Assert
     assert!(open_src.contains("initialize"));
     assert!(open_src.contains("from_coins_cache"));
-    assert!(open_src.contains("from_chainstate"));
+    assert!(open_src.contains("ManagedChainstate::from_recovered_chainstate"));
     assert!(!open_src.contains("hydrate_chainstate_for_open"));
 }
 
@@ -26,9 +26,10 @@ fn open_stores_initialize_lifecycle_and_cache() {
     let open_src = open_runtime_activation_source();
 
     // Act / Assert
-    assert!(open_src.contains("let (lifecycle, _view, cache) = initialize("));
+    assert!(open_src.contains("let (lifecycle, _view, cache)"));
+    assert!(open_src.contains("initialize_configured(&store"));
     assert!(open_src.contains("from_coins_cache(cache"));
-    assert!(open_src.contains("from_chainstate("));
+    assert!(open_src.contains("ManagedChainstate::from_recovered_chainstate("));
     assert!(open_src.contains("lifecycle"));
     assert!(!open_src.contains("from_parent("));
     assert!(!open_src.contains("from_chainstate(store, chainstate)"));

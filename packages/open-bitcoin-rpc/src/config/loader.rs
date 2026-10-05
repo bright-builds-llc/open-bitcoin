@@ -22,6 +22,7 @@ use super::{
 };
 
 mod block_serving;
+mod blockfilter;
 mod chain;
 mod inbound;
 mod open_bitcoin_runtime;
@@ -36,6 +37,7 @@ use rpc_address::parse_rpc_client_address;
 const BITCOIN_CONF_FILE_NAME: &str = "bitcoin.conf";
 #[derive(Debug, Clone, Default)]
 struct CliSettings {
+    block_filter_values: Vec<super::blockfilter::FilterOptionValue>,
     maybe_chain: Option<AddressNetwork>,
     maybe_conf_path: Option<PathBuf>,
     maybe_data_dir: Option<PathBuf>,
@@ -199,6 +201,7 @@ pub(super) fn load_runtime_config_for_args(
         block_serving,
         inbound_permission_validation_failures,
         prune_mode: super::prune::resolve_prune_mode(prune)?,
+        block_filter_index: blockfilter::resolve(&cli.block_filter_values, &config_entries, chain)?,
     })
 }
 
@@ -221,6 +224,9 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
         let (key, negated) = raw_key
             .strip_prefix("no")
             .map_or((raw_key, false), |stripped| (stripped, true));
+        if blockfilter::parse_cli(&mut settings.block_filter_values, key, maybe_value, negated) {
+            continue;
+        }
         if inbound::parse_inbound_cli_arg(&mut settings, key, maybe_value, negated)? {
             continue;
         }
@@ -457,7 +463,7 @@ fn parse_config_file(
                 "Error reading configuration file: conf cannot be set in the configuration file; use includeconf= if you want to include additional config files",
             ));
         }
-        if !supported_config_key(&key) && !supported_chain_key(&key) {
+        if !blockfilter::supported_config_key(&key) && !supported_chain_key(&key) {
             let full_key = maybe_section
                 .as_ref()
                 .map_or_else(|| key.clone(), |section| format!("{section}.{key}"));
@@ -502,21 +508,6 @@ fn interpret_config_key(
     (Some(section.to_string()), key.to_string())
 }
 
-fn supported_config_key(key: &str) -> bool {
-    matches!(
-        key,
-        "server"
-            | "rpcbind"
-            | "rpcport"
-            | "rpcconnect"
-            | "rpcuser"
-            | "rpcpassword"
-            | "rpccookiefile"
-            | "includeconf"
-            | "datadir"
-    )
-}
-
 fn collect_file_settings(
     entries: &[ConfigEntry],
     chain: AddressNetwork,
@@ -542,7 +533,8 @@ fn collect_file_settings(
             "rpcpassword" => settings.maybe_rpc_password = Some(entry.value.clone()),
             "rpccookiefile" => settings.maybe_cookie_file = Some(PathBuf::from(&entry.value)),
             "datadir" => settings.maybe_data_dir = Some(PathBuf::from(&entry.value)),
-            "main" | "test" | "testnet" | "signet" | "regtest" | "includeconf" => {}
+            "main" | "test" | "testnet" | "signet" | "regtest" | "includeconf"
+            | "blockfilterindex" | "noblockfilterindex" => {}
             _ => {
                 return Err(ConfigError::new(format!(
                     "Error reading configuration file: Invalid configuration value {}",

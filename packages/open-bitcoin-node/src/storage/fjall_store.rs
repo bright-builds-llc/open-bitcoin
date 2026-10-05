@@ -163,6 +163,8 @@ impl FjallNodeStore {
 
     /// Persist a downloaded block under its canonical block hash.
     pub fn save_block(&self, block: &Block, mode: PersistMode) -> Result<BlockHash, StorageError> {
+        #[cfg(test)]
+        self.check_basic_filter_payload_fault(filters::FilterPublicationFault::BeforeBody)?;
         let block_hash = block_hash(&block.header);
         let bytes =
             encode_block(block).map_err(|error| corruption(StorageNamespace::BlockIndex, error))?;

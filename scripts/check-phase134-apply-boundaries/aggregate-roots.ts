@@ -189,10 +189,13 @@ export function inspectConnectedBlockRoot(
   }
 
   const afterTransaction = maskedBody.slice(statementEnd + 1);
-  const afterPersist = afterTransaction.replace(
-    /^\s*persist_result\.map_err\s*\(\s*LifecycleProjectionError::from\s*\)\s*\?;\s*/,
-    "",
+  const afterPersist = maybeMaskConnectedPersistenceAdapter(
+    afterTransaction,
+    tools.maskCommentsAndStrings,
   );
+  if (afterPersist === null) {
+    return false;
+  }
   const afterMethods = tools
     .methodCalls(afterPersist)
     .map(({ receiver, name }) => `${receiver}.${name}`);
@@ -200,6 +203,29 @@ export function inspectConnectedBlockRoot(
     afterMethods.length === 1 &&
     afterMethods[0] === "self.apply_prepared_lifecycle" &&
     !isFallibleOrEffectful(afterPersist)
+  );
+}
+
+/** Masks only the connected root's persistence error after unconditional accepted effects. */
+export function maybeMaskConnectedPersistenceAdapter(
+  source: string,
+  maskCommentsAndStrings: (source: string) => string,
+): string | null {
+  const masked = maskCommentsAndStrings(source);
+  const maybeTail = /\bself\s*\.\s*apply_prepared_lifecycle\s*\(\s*dependent\s*\)\s*;\s*(persist_result\s*\.\s*map_err\s*\(\s*LifecycleProjectionError::from\s*\)\s*\?\s*;)\s*Ok\s*\(\s*delta\s*\)\s*$/.exec(masked);
+  if (!maybeTail) {
+    return null;
+  }
+  const adapter = maybeTail[1];
+  if (!adapter) {
+    return null;
+  }
+  const start = maybeTail.index + maybeTail[0].indexOf(adapter);
+  // Keep offsets stable while exempting only the accepted-state Result adapter.
+  return (
+    source.slice(0, start) +
+    " ".repeat(adapter.length) +
+    source.slice(start + adapter.length)
   );
 }
 

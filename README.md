@@ -55,9 +55,10 @@ The automatic target is a soft logical block/undo retention target: protected an
 Phase 154 provides pure BASIC-only generation and commitments with independent
 pinned-corpus and validated historical-spend evidence. See the
 [BASIC parity catalog](./docs/parity/catalog/basic-compact-filters.md).
-Public filter index activation, RPC serving, peer
-serving, catch-up, V0, BIP37, GUI, production readiness and production-funds claims
-remain deferred. Full phase verification remains a root execution gate.
+Phase 157 implements explicit BASIC activation and bounded scheduled catch-up;
+its full phase verification remains a root execution gate. Filter/index RPC,
+peer filter serving, runtime reorg, V0, BIP37, GUI and production/funds products
+remain deferred.
 
 From the repository root, reproduce the exact independent comparisons:
 
@@ -71,9 +72,9 @@ Phase 155 adds internal recoverable BASIC storage and a mandatory pre-prune
 startup guard. Immutable ahead/displaced rows are retained while recovered coins
 B plus compatible durable metadata fence the visible cursor; uncertainty stops
 startup before deleting required input. The v2.5 milestone remains pending:
-activation and scheduled catch-up (157), runtime
-reorg (158), and RPC/peer/operator serving and integrated retained-client proof
-(159–162) remain deferred. Software fault/reopen tests do not establish hardware
+runtime reorg (158), and RPC/peer/operator serving and integrated retained-client
+proof (159–162) remain deferred. Phase 157 activation/catch-up passed full native,
+formal and security verification. Software fault/reopen tests do not establish hardware
 power-loss behavior, archive-scale performance, or production-funds safety.
 
 Phase 155's [formal verification](./.planning/phases/155-recoverable-index-and-pre-prune-startup-protection/155-VERIFICATION.md) passed 10/10 distinct truths after full native verification, with a clean source review and all 17 declared threats closed. CFIX-02, CFIX-04 and CFPR-03 are Complete; the rest of v2.5 remains planned scope.
@@ -102,16 +103,40 @@ spend/fork controls use explicit custom maturity. Evidence for the full native g
 and formal phase/lifecycle proof is recorded in [Phase 156 verification](./.planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-VERIFICATION.md). Software faults do not establish
 hardware power-loss resilience or exhaustive dependency migration safety.
 
-Public activation/options, scheduled catch-up, runtime reorg, filter/index RPC,
-peer serving, operator projections and complete client-after-prune proof remain
-deferred to Phases 157–162. The existing three v2.4 advisories remain recorded.
-No public activation command was added.
+Phase 156 added no public activation command. Phase 157 implements that scoped
+activation/catch-up surface below; runtime reorg, filter/index RPC, peer serving,
+operator projections and complete client-after-prune proof remain deferred to
+Phases 158–162. The existing three v2.4 advisories remain recorded.
 
 ```bash
 bun test ./scripts/check-phase156-prune-coordination.test.ts
 bun run scripts/check-phase156-prune-coordination.ts
 ```
 
+## Safe BASIC activation and scheduled catch-up (Phase 157)
+
+Phase 157 implements default-off bare/1/basic selection, configured full required
+history refusal before prune resume, one bounded startup turn and ordinary
+one-second offline maintenance. Omission without another durable trigger stays
+transient; explicit zero with an existing datadir disables saved ownership at
+durable startup. BASIC requires an existing Open Bitcoin validated datadir;
+empty history refuses instead of installing an invented genesis anchor.
+Existing authenticated local RPC behavior remains unchanged. BASIC does not
+activate sync, P2P listeners/peers, relay or filter service advertisement.
+
+The [exact options and resource catalog](./docs/parity/catalog/basic-compact-filters.md#safe-activation-and-scheduled-catch-up-phase-157),
+[measured turns](./.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-TURN-MEASUREMENTS.md)
+and [repo-local Cargo/Bazel UAT](./.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-UAT.md)
+record eight-block normal turns, separate legal singleton limits, continuous
+validated historical/same-block spends, actual writer failures and 714 achieved
+paired deletes/reopen. Full startup is chain-wide; logical reservations are not
+RSS or storage-latency guarantees. Exact durable-tip release can prolong
+retention. The existing 10,000-byte representation boundary and all three v2.4
+advisories remain explicit. Phase 157 passed 34/34 formal truths, clean source
+review across 91 files, all 33 declared security mitigations and the complete
+full native verifier in 17m22.546s;
+runtime reorg, filter/index RPC, peer serving, operator projections and complete
+client-after-prune proof remain deferred to 158–162, and v2.5 remains pending.
 ## Parity At A Glance
 
 The current status source is the parity ledger:

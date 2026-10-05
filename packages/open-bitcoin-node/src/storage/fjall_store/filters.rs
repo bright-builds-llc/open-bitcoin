@@ -16,16 +16,24 @@ use open_bitcoin_core::{
     primitives::BlockHash,
 };
 
+mod append;
+pub(crate) use append::{BasicFilterAppendOutcome, PreparedBasicFilterAppend};
 mod lifecycle;
 mod ownership;
-mod publication;
+pub(super) mod publication;
 mod startup;
-pub(crate) use ownership::BasicFilterWorkToken;
+mod turn_inputs;
+pub(crate) use ownership::{BasicFilterAppendProof, BasicFilterWorkToken};
+pub(crate) use publication::PublicationControl;
 #[cfg(test)]
-pub(crate) use publication::FilterPublicationFault;
-pub(super) use publication::PublicationControl;
+pub(crate) use publication::{BasicFilterWriterInterleave, FilterPublicationFault};
 
 impl FjallNodeStore {
+    #[cfg(test)]
+    pub(crate) fn basic_filter_point_reads_for_test(&self) -> usize {
+        self.filter_integrity_reads
+            .load(std::sync::atomic::Ordering::Relaxed)
+    }
     pub(crate) fn maybe_basic_filter_state(
         &self,
     ) -> Result<Option<StoredFilterState>, StorageError> {

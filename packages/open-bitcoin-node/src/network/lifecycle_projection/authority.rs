@@ -566,8 +566,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 peer_manager.note_local_position(position);
             })
             .map_err(LifecycleProjectionError::Mempool)?;
-        persist_result.map_err(LifecycleProjectionError::from)?;
         self.apply_prepared_lifecycle(dependent);
+        persist_result.map_err(LifecycleProjectionError::from)?;
         Ok(delta)
     }
 

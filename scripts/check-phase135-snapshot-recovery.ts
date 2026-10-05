@@ -6,9 +6,11 @@ import {
   addFailure,
   body,
   count,
+  directStatementIndex,
   exactStructFields,
   hasAll,
   sameFields,
+  statementHasDisablingAttribute,
 } from "./check-phase135-snapshot-recovery/source";
 import { checkPersistedInputContract } from "./check-phase135-snapshot-recovery/persisted-input";
 import {
@@ -389,7 +391,7 @@ export function checkPhase135SnapshotRecovery(
   const startupContext = get(FILES.startupContext);
   const syncRuntimeConstruction = body(
     get(FILES.syncRuntime),
-    "pub fn open_with_runtime_activation(",
+    "pub fn open_with_configured_runtime_activation(",
   );
   const leftoverMigrate = body(
     get(FILES.coins),
@@ -422,9 +424,9 @@ export function checkPhase135SnapshotRecovery(
     failures,
     !startup.includes("prepare_mempool_recovery_at") ||
       !startup.includes("install_mempool_recovery") ||
-      !syncRuntimeConstruction.includes("initialize(") ||
+      !syncRuntimeConstruction.includes("initialize_configured(") ||
       !syncRuntimeConstruction.includes("Chainstate::from_coins_cache") ||
-      !syncRuntimeConstruction.includes("ManagedChainstate::from_chainstate") ||
+      !syncRuntimeConstruction.includes("ManagedChainstate::from_recovered_chainstate") ||
       !leftoverMigrate.includes(
         "load_chainstate_snapshot_with_confirmation_migration()?",
       ) ||
@@ -449,20 +451,27 @@ export function checkPhase135SnapshotRecovery(
   );
 
   const daemon = get(FILES.daemon);
-  const clean = body(daemonCheckpoint, "pub(super) fn settle_and_mark_clean<");
-  const producerStop = daemon.indexOf(
-    "if let Some(worker) = maybe_sync_worker {",
-  );
-  const finalCheckpoint = daemon.indexOf(
-    "if let Some(worker) = maybe_checkpoint_worker {",
-  );
+  const shutdown = body(daemonCheckpoint, "pub(super) fn settle_daemon_shutdown<");
+  const serve = body(daemon, "async fn serve_authoritative_runtime<");
+  const shutdownCall = directStatementIndex(serve, "settle_daemon_shutdown(");
+  const syncJoin = serve.indexOf("maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())");
+  const retryJoin = serve.indexOf("|| Ok(retry_worker.shutdown()?),");
+  const finalCheckpoint = serve.indexOf("maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())");
+  const settlements = directStatementIndex(shutdown, "let results = [sync(), coins(), retry(), checkpoint(), serve_result];");
+  const failureGate = directStatementIndex(shutdown, "if let Some(error) = maybe_error {");
+  const clean = directStatementIndex(shutdown, "mark_clean().map_err");
   addFailure(
     failures,
-    clean.indexOf("settle()?;") < 0 ||
-      clean.indexOf("mark_clean()") < clean.indexOf("settle()?;") ||
-      producerStop < 0 ||
-      finalCheckpoint < producerStop ||
-      !daemon.includes("worker.shutdown_and_mark_clean()?"),
+    shutdownCall < 0 || syncJoin < shutdownCall || retryJoin < syncJoin ||
+      finalCheckpoint < retryJoin ||
+      !serve.includes("maybe_coins_flush_worker.map_or(Ok(()), |worker| worker.shutdown_always())") ||
+      !serve.includes("store.mark_clean_shutdown(open_bitcoin_node::PersistMode::Sync)") ||
+      settlements < 0 || failureGate < settlements || clean < failureGate ||
+      shutdown.indexOf("mark_clean()") !== clean ||
+      !body(shutdown, "if let Some(error) = maybe_error").includes("return Err(error);") ||
+      !shutdown.includes("for result in results") ||
+      !shutdown.includes("if let Err(error) = result") ||
+      statementHasDisablingAttribute(daemonCheckpoint, daemonCheckpoint.indexOf("pub(super) fn settle_daemon_shutdown<")),
     PHASE135_DIAGNOSTICS.shutdown,
   );
 
