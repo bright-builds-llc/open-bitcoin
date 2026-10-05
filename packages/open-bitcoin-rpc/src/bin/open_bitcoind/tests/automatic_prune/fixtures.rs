@@ -25,7 +25,16 @@ pub(super) struct TempDir(pub(super) PathBuf);
 
 impl TempDir {
     pub(super) fn new(label: &str) -> Self {
-        Self(temp_store_path(label))
+        let base = temp_store_path(label);
+        for suffix in 0_u64.. {
+            let candidate = base.with_extension(suffix.to_string());
+            match fs::create_dir(&candidate) {
+                Ok(()) => return Self(candidate),
+                Err(error) if error.kind() == io::ErrorKind::AlreadyExists => continue,
+                Err(error) => panic!("reserve daemon fixture {}: {error}", candidate.display()),
+            }
+        }
+        panic!("daemon fixture suffix exhausted");
     }
 }
 
@@ -188,8 +197,17 @@ pub(super) fn populate_threshold(store: &FjallNodeStore, truth: &ChainstateSnaps
     )
     .expect("length");
     let undo = BlockUndo::default();
+    let height_one = truth
+        .active_chain
+        .iter()
+        .find(|position| position.height == 1)
+        .expect("undo calibration position");
+    let calibration_body = store
+        .load_block(height_one.block_hash)
+        .expect("calibration body read")
+        .expect("calibration body");
     let small_body_len = u64::try_from(
-        open_bitcoin_codec::encode_block(&small_block(&truth.active_chain[0]))
+        open_bitcoin_codec::encode_block(&calibration_body)
             .expect("small codec")
             .len(),
     )
@@ -345,6 +363,11 @@ impl FlushPersistSink for MetadataFaultStore {
     }
     fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
         self.inner.load_prune_locks()
+    }
+    fn load_prune_protection(
+        &self,
+    ) -> Result<open_bitcoin_node::chainstate::PruneProtectionSnapshot, StorageError> {
+        self.inner.load_prune_protection()
     }
     fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
         self.inner.sync_prune_locks(locks)

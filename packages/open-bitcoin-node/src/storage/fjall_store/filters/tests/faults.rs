@@ -5,6 +5,48 @@
 use super::super::FilterPublicationFault;
 use super::*;
 
+pub(super) fn publish_current(
+    store: &FjallNodeStore,
+    fence: &VerifiedChainstateFence<'_>,
+    checkpoint: FilterCheckpoint,
+    protection: IndexInputProtection,
+    records: &[StoredFilterRecord],
+) -> Result<(), StorageError> {
+    let work = store
+        .maybe_basic_filter_work(fence)?
+        .ok_or_else(|| index_corruption("test requires Active BASIC work"))?;
+    store.publish_basic_filter_checkpoint(&work, fence, checkpoint, protection, records)
+}
+
+pub(super) fn append_current(
+    store: &FjallNodeStore,
+    records: &[StoredFilterRecord],
+) -> Result<(), StorageError> {
+    let positions = store.load_chain_meta_for_open()?.0;
+    let fence = VerifiedChainstateFence::new(
+        store.coins_view().best_block().map_err(index_corruption)?,
+        Some(&positions),
+    )
+    .map_err(index_corruption)?;
+    let work = store
+        .maybe_basic_filter_work(&fence)?
+        .ok_or_else(|| index_corruption("test requires Active BASIC work"))?;
+    store.persist_basic_filter_records(&work, &fence, records)
+}
+
+/// Deliberately orphaned corruption fixture, never a live publication path.
+pub(super) fn seed_orphan_records(store: &FjallNodeStore, records: &[StoredFilterRecord]) {
+    for record in records {
+        store
+            .write_raw_for_test(
+                StorageNamespace::BlockIndex,
+                &codec::record_key(record.identity().block_hash()),
+                codec::encode_record(record),
+            )
+            .expect("orphan row fixture");
+    }
+}
+
 #[test]
 fn filter_index_same_height_saved_fence_conflict_refuses_after_real_reopen() {
     // Arrange
@@ -173,7 +215,7 @@ fn filter_index_after_record_commit_error_reopens_ahead_rows_without_authority_a
     let locks = store.load_prune_locks().expect("locks");
     // Act
     store.set_basic_filter_fault(FilterPublicationFault::AfterCommit);
-    assert!(store.persist_basic_filter_records(&records[1..]).is_err());
+    assert!(append_current(&store, &records[1..]).is_err());
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("actual second open");
     // Assert
@@ -254,13 +296,12 @@ fn checkpoint_fault_reopen(point: FilterPublicationFault) {
     let mut locks = store.load_prune_locks().expect("locks");
     locks.push(operator.clone());
     store.sync_prune_locks(&locks).expect("operator");
-    store
-        .persist_basic_filter_records(&records[1..])
-        .expect("ahead row");
+    append_current(&store, &records[1..]).expect("ahead row");
     let before = store.maybe_basic_filter_state().expect("state");
     // Act
     store.set_basic_filter_fault(point);
-    let result = store.publish_basic_filter_checkpoint(
+    let result = publish_current(
+        &store,
         &fence(&positions),
         checkpoint(&records[1]),
         IndexInputProtection::FromHeight(2),
@@ -268,7 +309,7 @@ fn checkpoint_fault_reopen(point: FilterPublicationFault) {
     );
     assert!(result.is_err());
     assert!(
-        store.persist_basic_filter_records(&records[..1]).is_err(),
+        append_current(&store, &records[..1]).is_err(),
         "poisoned instance refuses retry"
     );
     drop(store);
@@ -354,7 +395,7 @@ fn filter_index_before_records_failure_reopens_old_state_without_ahead_rows() {
     let locks = store.load_prune_locks().expect("locks");
     // Act
     store.set_basic_filter_fault(FilterPublicationFault::BeforeRecords);
-    assert!(store.persist_basic_filter_records(&records[1..]).is_err());
+    assert!(append_current(&store, &records[1..]).is_err());
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("second open");
     // Assert

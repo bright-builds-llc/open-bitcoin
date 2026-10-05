@@ -9,7 +9,7 @@
 use super::{FjallNodeStore, StorageError, index_corruption};
 use open_bitcoin_core::{
     chainstate::{
-        BASIC_INDEX_PRUNE_LOCK, FilterRecoveryPlan, IndexInputProtection, VerifiedChainstateFence,
+        FilterRecoveryPlan, VerifiedChainstateFence, filter_index::lifecycle::IndexLifecycle,
     },
     primitives::BlockHash,
 };
@@ -33,45 +33,29 @@ impl FjallNodeStore {
         &self,
         maybe_recovered_best_block: Option<BlockHash>,
     ) -> Result<(), StorageError> {
-        let maybe_state = self.maybe_basic_filter_state()?;
-        let locks = self.load_prune_locks()?;
-        let maybe_lock = locks
-            .iter()
-            .find(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK);
-        let maybe_protection = maybe_lock
-            .map(IndexInputProtection::from_saved_lock)
-            .transpose()
-            .map_err(index_corruption)?;
-        let Some(state) = maybe_state else {
-            let (records, projections) = self.basic_filter_artifacts()?;
-            return match FilterRecoveryPlan::for_absent_state(
-                records,
-                projections,
-                maybe_protection,
-            ) {
-                FilterRecoveryPlan::LegacyAbsent => Ok(()),
-                FilterRecoveryPlan::Refuse(error) => Err(index_corruption(error)),
-                _ => Err(index_corruption(
-                    "unexpected absent BASIC recovery decision",
-                )),
-            };
+        let mut control = self.filter_publication_guard()?;
+        if self.maybe_basic_filter_state()?.is_some() {
+            self.validate_basic_filter_records()?;
+        }
+        let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {
+            return Ok(());
         };
-
-        self.validate_basic_filter_records()?;
         let Some(checkpoint) = self.maybe_basic_filter_checkpoint()? else {
             return Err(index_corruption("missing BASIC checkpoint"));
         };
-        let protection = match maybe_protection {
-            Some(protection) => protection,
-            None if state.protection == IndexInputProtection::HeightSpaceExhausted => {
-                IndexInputProtection::HeightSpaceExhausted
+        if matches!(owner.lifecycle(), IndexLifecycle::Disabled { .. }) {
+            if let Some(protection) = owner.maybe_effective_protection()
+                && let Some(intent) = self.maybe_prune_intent()?
+            {
+                protection
+                    .check_prune_intent(intent.height)
+                    .map_err(index_corruption)?;
             }
-            None => return Err(index_corruption("missing BASIC reserved protection")),
-        };
-        if !protection.covers(state.protection) || !protection.covers(checkpoint.input_protection())
-        {
-            return Err(index_corruption("weak BASIC reserved protection"));
+            return Ok(());
         }
+        let protection = owner
+            .maybe_effective_protection()
+            .ok_or_else(|| index_corruption("missing BASIC reserved protection"))?;
         let (positions, _) = self.load_chain_meta_for_open()?;
         let fence = VerifiedChainstateFence::new(maybe_recovered_best_block, Some(&positions))
             .map_err(index_corruption)?;
@@ -97,10 +81,19 @@ impl FjallNodeStore {
                 .check_prune_intent(intent.height)
                 .map_err(index_corruption)?;
         }
+        if self.maybe_basic_filter_lifecycle()?.is_none() {
+            self.materialize_basic_filter_owner_guarded(owner.lifecycle(), &mut control)?;
+        }
         if reconcile {
             // The concrete publisher rereads B/metadata and SyncAll-publishes
             // checkpoint and stronger lock together; it never erases suffix rows.
-            self.publish_basic_filter_checkpoint(&fence, checkpoint, protection, &[])?;
+            self.publish_basic_filter_checkpoint_guarded(
+                &fence,
+                checkpoint,
+                protection,
+                &[],
+                &mut control,
+            )?;
         }
         Ok(())
     }

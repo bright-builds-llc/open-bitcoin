@@ -9,7 +9,7 @@
 //! inside the value. It is never a key and never a filesystem path.
 
 use fjall::PersistMode as FjallPersistMode;
-use open_bitcoin_core::chainstate::PruneLockInfo;
+use open_bitcoin_core::chainstate::{BASIC_INDEX_PRUNE_LOCK, PruneLockInfo};
 
 use super::super::{FjallNodeStore, StorageError, StorageNamespace, backend_failure, corruption};
 
@@ -43,10 +43,24 @@ impl FjallNodeStore {
 
     /// Replaces the durable lock map in one SyncAll batch.
     ///
-    /// The lock name stays inside the value. An empty slice writes an empty map.
+    /// Ordinary callers must preserve the exact fresh internally owned BASIC entry.
+    /// The lock name stays inside the value. Index lifecycle batches own changes.
     pub fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
-        let _control = self.filter_publication_guard()?;
+        let control = self.filter_publication_guard()?;
         let bytes = encode_prune_locks(locks)?;
+        self.maybe_basic_filter_owner_guarded(&control)?;
+        let current = self.load_prune_locks()?;
+        let maybe_current = current
+            .iter()
+            .find(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK);
+        let maybe_proposed = locks
+            .iter()
+            .find(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK);
+        if maybe_current != maybe_proposed {
+            return Err(block_index_corruption(
+                "reserved BASIC index prune lock is internally owned",
+            ));
+        }
         self.sync_block_index_value(PRUNE_LOCKS_KEY, bytes)
     }
 

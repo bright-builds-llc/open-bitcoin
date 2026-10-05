@@ -9,7 +9,7 @@ version.workspace = true
 path = "src/lib.rs"
 
 [dependencies]
-fjall = { version = "3.1.4", default-features = false }
+fjall = { git = "https://github.com/fjall-rs/fjall", rev = "aa30dca811399a201e0b9595da93a4582dcb2b57", default-features = false }
 fs4 = "1.1.0"
 getrandom = "0.3.4"
 open-bitcoin-codec = { path = "../open-bitcoin-codec" }

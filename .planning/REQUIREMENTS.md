@@ -27,7 +27,7 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 ### Prune Coordination
 
-- [ ] **CFPR-01**: An active index protects all required body/undo inputs from both manual and ordinary automatic pruning until its safe durable checkpoint permits release; operator lock set/clear cannot weaken index-owned protection, and disable/re-enable has an explicit ownership transition.
+- [x] **CFPR-01**: An active index protects all required body/undo inputs from both manual and ordinary automatic pruning until its safe durable checkpoint permits release; operator lock set/clear cannot weaken index-owned protection, and disable/re-enable has an explicit ownership transition.
 - [ ] **CFPR-02**: A client can retrieve previously indexed filters, headers and checkpoints after real paired body/undo deletion and datadir reopen, while ordinary block serving and wallet eligibility retain the shipped pruned-body restrictions.
 - [x] **CFPR-03**: An operator can reopen a datadir with interrupted prune intent without recovery deleting inputs required by the index: index protection is validated before resumed deletion, and unsafe combinations retain protection or refuse with a diagnostic.
 
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-02/04 and CFPR-03 are Complete after Phases 154–155's lifecycle-valid verification and full native passes; the remaining 17 requirements are Pending.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-02/04 and CFPR-01/03 are Complete after Phases 154–156's lifecycle-valid verification and full native passes; the remaining 16 requirements are Pending.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
@@ -94,7 +94,7 @@ All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CF
 | CFIX-02 | Phase 155 | Complete |
 | CFIX-04 | Phase 155 | Complete |
 | CFPR-03 | Phase 155 | Complete |
-| CFPR-01 | Phase 156 | Pending |
+| CFPR-01 | Phase 156 | Complete |
 | CFAC-01 | Phase 157 | Pending |
 | CFAC-02 | Phase 157 | Pending |
 | CFIX-01 | Phase 157 | Pending |

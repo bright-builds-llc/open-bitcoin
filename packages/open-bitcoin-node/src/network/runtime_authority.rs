@@ -49,6 +49,7 @@ mod local_package;
 mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
 mod automatic_prune;
+mod filter_index;
 mod prune_flush;
 mod recovery;
 

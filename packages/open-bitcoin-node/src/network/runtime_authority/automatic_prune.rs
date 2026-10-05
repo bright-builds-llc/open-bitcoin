@@ -5,7 +5,7 @@
 //! Measured retention on the existing serialized flush owner.
 
 use super::prune_flush::flush_and_evict_pruned_blocks;
-use crate::chainstate::{FlushExecution, FlushPersistSink};
+use crate::chainstate::{FlushExecution, FlushPersistSink, PruneProtectionSnapshot};
 use crate::storage::{
     StorageError, StorageNamespace, StorageRecoveryAction, fjall_store::PayloadUsageRevision,
 };
@@ -28,13 +28,14 @@ struct MeasurementKey {
     tip_height: u32,
     tip_hash: BlockHash,
     mode: PruneMode,
-    locks: Vec<PruneLockInfo>,
+    protection: PruneProtectionSnapshot,
 }
 
 pub(super) struct AutomaticPruneState {
     pub(super) prune_after_height: u32,
     maybe_completed_key: Option<MeasurementKey>,
     maybe_last_measurement_seconds: Option<u64>,
+    maybe_last_measured_protection_identity: Option<PruneProtectionSnapshot>,
 }
 
 impl Default for AutomaticPruneState {
@@ -43,6 +44,7 @@ impl Default for AutomaticPruneState {
             prune_after_height: crate::SyncNetwork::Mainnet.prune_after_height(),
             maybe_completed_key: None,
             maybe_last_measurement_seconds: None,
+            maybe_last_measured_protection_identity: None,
         }
     }
 }
@@ -50,8 +52,13 @@ impl Default for AutomaticPruneState {
 impl AutomaticPruneState {
     pub(super) fn set_network(&mut self, network: crate::SyncNetwork) {
         self.prune_after_height = network.prune_after_height();
+        self.invalidate();
+    }
+
+    fn invalidate(&mut self) {
         self.maybe_completed_key = None;
         self.maybe_last_measurement_seconds = None;
+        self.maybe_last_measured_protection_identity = None;
     }
 }
 
@@ -62,7 +69,7 @@ pub(super) fn flush<S: ChainstateStore, V: CoinsView>(
     now: FlushPolicyTime,
     disk_free_bytes: u64,
 ) -> Result<FlushExecution, StorageError> {
-    // Lock order is authority -> automatic state -> storage payload guard.
+    // Lock order is authority -> automatic state -> publication -> payload.
     // Storage calls release their guard before this invokes the nested flush effects.
     let mut state = state.lock().map_err(|_| state_error())?;
     let active_chain = network.chainstate().chainstate().active_chain();
@@ -77,7 +84,7 @@ pub(super) fn flush<S: ChainstateStore, V: CoinsView>(
     let (plan, locks, maybe_key) = match prepared {
         Ok(prepared) => prepared,
         Err(error) => {
-            state.maybe_completed_key = None;
+            state.invalidate();
             return Err(error);
         }
     };
@@ -89,7 +96,7 @@ pub(super) fn flush<S: ChainstateStore, V: CoinsView>(
     let outcome =
         flush_and_evict_pruned_blocks(network, effective_mode, now, disk_free_bytes, &plan, &locks);
     if outcome.is_err() {
-        state.maybe_completed_key = None;
+        state.invalidate();
         return outcome;
     }
     if let Some(key) = maybe_key {
@@ -98,7 +105,7 @@ pub(super) fn flush<S: ChainstateStore, V: CoinsView>(
             Ok(revision) if revision.is_reusable() && revision == key.revision => Some(key),
             Ok(_) => None,
             Err(error) => {
-                state.maybe_completed_key = None;
+                state.invalidate();
                 return Err(error);
             }
         };
@@ -129,14 +136,25 @@ fn prepare<S: FlushPersistSink>(
     if tip.height <= state.prune_after_height || target_mib.checked_mul(1024 * 1024).is_none() {
         return Ok(empty());
     }
-    let locks = store.load_prune_locks()?;
+    let mut protection = store.load_prune_protection()?;
+    protection.locks.sort_by(|left, right| {
+        (&left.name, left.height_first, left.height_last).cmp(&(
+            &right.name,
+            right.height_first,
+            right.height_last,
+        ))
+    });
+    if state.maybe_last_measured_protection_identity.as_ref() != Some(&protection) {
+        state.invalidate();
+    }
+    let locks = protection.locks().to_vec();
     let revision = store.payload_usage_revision()?;
     let key = MeasurementKey {
         revision,
         tip_height: tip.height,
         tip_hash: tip.block_hash,
         mode: prune_mode,
-        locks: locks.clone(),
+        protection: protection.clone(),
     };
     if mode != FlushMode::Always
         && revision.is_reusable()
@@ -152,8 +170,9 @@ fn prepare<S: FlushPersistSink>(
         return Ok(empty());
     }
     state.maybe_completed_key = None;
-    let usage = store.retained_payload_usage(active_chain)?;
+    let mut usage = store.retained_payload_usage(active_chain)?;
     state.maybe_last_measurement_seconds = Some(now.unix_seconds());
+    state.maybe_last_measured_protection_identity = Some(protection.clone());
     // The snapshot's captured revision is the only identity that belongs to these facts.
     if store.payload_usage_revision()? != usage.revision {
         return Ok(empty());
@@ -162,6 +181,10 @@ fn prepare<S: FlushPersistSink>(
         revision: usage.revision,
         ..key
     };
+    // Required bytes remain in total usage, but cannot pay the deletion budget.
+    usage
+        .height_sizes
+        .retain(|height, _| !protection.protects_height(*height));
     let plan = plan_automatic_prune(&AutomaticPruneInput {
         tip: tip.height,
         prune_after_height: state.prune_after_height,

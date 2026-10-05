@@ -24,6 +24,8 @@ pub(crate) const ACTIVE_PREFIX: &str = "basic_filter:v1:active:";
 pub(crate) const STATE_KEY: &str = "basic_filter:v1:state";
 pub(crate) const RECORD_OVERHEAD: usize = 170;
 
+pub(crate) mod ownership;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct StoredFilterRecord {
     identity: FilterRecordIdentity,
@@ -46,6 +48,24 @@ impl ParsedFilterRecord<'_> {
         verify_filter_record_predecessor(
             self.height,
             self.parent,
+            self.previous,
+            maybe_parent.map(|parent| (parent.height, parent.block, parent.header)),
+        )
+        .map_err(index_corruption)
+    }
+
+    /// Construct a local immutable identity after checking its immediate edge.
+    /// This bounded read is not a complete ancestry or release proof.
+    pub(crate) fn checkpoint_identity(
+        &self,
+        maybe_parent: Option<&Self>,
+    ) -> Result<FilterRecordIdentity, StorageError> {
+        FilterRecordIdentity::new_with_predecessor_facts(
+            self.height,
+            self.block,
+            self.parent,
+            self.hash,
+            self.header,
             self.previous,
             maybe_parent.map(|parent| (parent.height, parent.block, parent.header)),
         )

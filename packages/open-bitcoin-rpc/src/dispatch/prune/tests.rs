@@ -25,6 +25,8 @@ use crate::method::{
     SetPruneLockRequest,
 };
 
+pub(crate) mod ownership;
+
 struct TempStore {
     path: PathBuf,
 }

@@ -16,8 +16,11 @@ use open_bitcoin_core::{
     primitives::BlockHash,
 };
 
+mod lifecycle;
+mod ownership;
 mod publication;
 mod startup;
+pub(crate) use ownership::BasicFilterWorkToken;
 #[cfg(test)]
 pub(crate) use publication::FilterPublicationFault;
 pub(super) use publication::PublicationControl;

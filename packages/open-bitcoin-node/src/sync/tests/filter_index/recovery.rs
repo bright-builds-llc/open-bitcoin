@@ -109,14 +109,14 @@ impl ValidatedHistory {
             .initialize_basic_filter_state(&fence(&self.old.active_chain))
             .expect("empty index");
         let cp = checkpoint(&self.records[endpoint]);
-        store
-            .publish_basic_filter_checkpoint(
-                &fence(&self.old.active_chain),
-                cp,
-                cp.input_protection(),
-                &self.records[..=endpoint],
-            )
-            .expect("old safe checkpoint");
+        publish_current(
+            &store,
+            &fence(&self.old.active_chain),
+            cp,
+            cp.input_protection(),
+            &self.records[..=endpoint],
+        )
+        .expect("old safe checkpoint");
         store
     }
 
@@ -251,9 +251,7 @@ fn filter_index_production_validated_ahead_records_do_not_mint_cursor() {
     // Arrange
     let history = ValidatedHistory::new("filter-validated-ahead", false);
     let store = history.seed(1);
-    store
-        .persist_basic_filter_records(&history.records[2..])
-        .expect("ahead rows before deferred coins flush");
+    append_current(&store, &history.records[2..]).expect("ahead rows before deferred coins flush");
     drop(store);
     let before = snapshot_index(&history.path);
     // Act
@@ -307,19 +305,19 @@ fn filter_index_production_validated_missing_prefix_preserves_history_and_intent
             .seed_coins_from_snapshot(&history.full)
             .expect("current validated authority");
         let cp = checkpoint(&history.records[2]);
-        store
-            .publish_basic_filter_checkpoint(
-                &fence(&history.full.active_chain),
-                cp,
-                cp.input_protection(),
-                &history.records[2..],
-            )
-            .expect("saved complete prefix");
+        publish_current(
+            &store,
+            &fence(&history.full.active_chain),
+            cp,
+            cp.input_protection(),
+            &history.records[2..],
+        )
+        .expect("saved complete prefix");
         let intent = PruneIntent {
             height: 2,
             block_hash: history.full.active_chain[2].block_hash,
         };
-        store.sync_prune_intent(intent).expect("live input intent");
+        seed_raw_prune_intent(&store, intent);
         drop(store);
         raw_index(&history.path, |index| {
             let key = if missing_projection {
@@ -381,18 +379,16 @@ fn filter_index_production_validated_equal_height_fork_retains_common_prefix() {
         .seed_coins_from_snapshot(&original.full)
         .expect("original durable authority");
     let cp = checkpoint(&original.records[2]);
-    store
-        .publish_basic_filter_checkpoint(
-            &fence(&original.full.active_chain),
-            cp,
-            cp.input_protection(),
-            &original.records[2..],
-        )
-        .expect("original branch checkpoint");
+    publish_current(
+        &store,
+        &fence(&original.full.active_chain),
+        cp,
+        cp.input_protection(),
+        &original.records[2..],
+    )
+    .expect("original branch checkpoint");
     replacement.persist_payloads(&store);
-    store
-        .persist_basic_filter_records(&replacement.records[2..])
-        .expect("alternative immutable row");
+    append_current(&store, &replacement.records[2..]).expect("alternative immutable row");
     store
         .seed_coins_from_snapshot(&replacement.full)
         .expect("validated replacement coins/meta");

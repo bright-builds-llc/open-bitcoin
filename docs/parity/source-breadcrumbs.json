@@ -12,10 +12,30 @@
   },
   "groups": [
     {
+      "label": "basic-filter-reserved-operator-ownership",
+      "files": [
+        "packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs",
+        "packages/open-bitcoin-rpc/src/http/tests/prune_ownership.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
       "label": "basic-filter-index-startup-protection",
       "files": [
         "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/lifecycle.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/ownership.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/ownership.rs",
         "packages/open-bitcoin-node/src/sync/tests/filter_index.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/prune_coordination.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/prune_faults.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/lifecycle.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index.rs",
         "packages/open-bitcoin-node/src/sync/tests/filter_index/recovery.rs",
         "packages/open-bitcoin-node/src/sync/tests/filter_index/faults.rs",
         "packages/open-bitcoin-node/src/sync/tests/filter_index/startup.rs",
@@ -32,6 +52,7 @@
       "label": "basic-filter-index-durable-storage",
       "files": [
         "packages/open-bitcoin-node/src/storage/filter_index.rs",
+        "packages/open-bitcoin-node/src/storage/filter_index/ownership.rs",
         "packages/open-bitcoin-node/src/storage/filter_index/tests.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/filters.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/filters/publication.rs",
@@ -89,8 +110,10 @@
       "label": "basic-filter-index-recovery",
       "files": [
         "packages/open-bitcoin-chainstate/src/filter_index.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/lifecycle.rs",
         "packages/open-bitcoin-chainstate/src/filter_index/recovery.rs",
         "packages/open-bitcoin-chainstate/src/filter_index/tests.rs",
+        "packages/open-bitcoin-chainstate/src/filter_index/tests/lifecycle.rs",
         "packages/open-bitcoin-chainstate/src/filter_index/tests/commitments.rs"
       ],
       "breadcrumbs": [
@@ -115,7 +138,8 @@
       "label": "daemon-automatic-prune-retention",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs",
-        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs"
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/index_protection.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/bitcoind.cpp",
@@ -132,6 +156,17 @@
         "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune/tests/writers.rs"
       ],
       "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "node-automatic-prune-protection",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune/tests/protection.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
         "packages/bitcoin-knots/src/node/blockstorage.cpp",
         "packages/bitcoin-knots/src/validation.cpp"
       ]
@@ -1541,6 +1576,7 @@
         "packages/open-bitcoin-node/src/chainstate/replay.rs",
         "packages/open-bitcoin-node/src/chainstate/replay/tests.rs",
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs",
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/fjall_sink.rs",
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests.rs",
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/durability.rs",
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/error_map.rs",
@@ -2099,7 +2135,9 @@
       "label": "node-fjall-prune-unlink",
       "files": [
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/prune_apply.rs",
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/prune_apply/tests.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/prune.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_unlink/protection.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_unlink.rs"
       ],
       "breadcrumbs": [

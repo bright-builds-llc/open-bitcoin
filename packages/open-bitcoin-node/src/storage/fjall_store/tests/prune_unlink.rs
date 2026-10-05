@@ -17,6 +17,148 @@ use super::*;
 use crate::storage::coins_codec::{encode_best_block_key, encode_best_block_value};
 use crate::storage::coins_view::FjallCoinsView;
 
+mod protection;
+
+fn protected_store(
+    test_name: &str,
+) -> (
+    PathBuf,
+    FjallNodeStore,
+    Vec<open_bitcoin_core::chainstate::ChainPosition>,
+) {
+    use open_bitcoin_core::chainstate::{ChainPosition, VerifiedChainstateFence};
+    let (path, store) = open_store(test_name);
+    let mut positions = Vec::new();
+    let mut parent = BlockHash::default();
+    for height in 0..=3 {
+        let body = block(parent, height);
+        let hash = store.save_block(&body, PersistMode::Sync).expect("body");
+        if height != 0 {
+            plant_undo(&store, hash);
+        }
+        positions.push(ChainPosition::new(
+            body.header,
+            height,
+            u128::from(height) + 1,
+            1,
+        ));
+        parent = hash;
+    }
+    store
+        .save_chain_meta(&positions, PersistMode::Sync)
+        .expect("metadata");
+    store
+        .coins_view()
+        .write_raw_bytes(&encode_best_block_key(), encode_best_block_value(parent))
+        .expect("B");
+    let fence = VerifiedChainstateFence::new(Some(parent), Some(&positions)).expect("fence");
+    store.initialize_basic_filter_state(&fence).expect("owner");
+    (path, store, positions)
+}
+
+#[test]
+fn paired_delete_protects_required_genesis_and_height_one_before_accounting() {
+    for height in [0, 1, 3] {
+        // Arrange
+        let (path, store, positions) = protected_store("direct-owned-input");
+        let usage = store.retained_payload_usage(&positions).expect("usage");
+        let hash = positions[height as usize].block_hash;
+
+        // Act
+        let error = store
+            .commit_paired_delete(height, hash)
+            .expect_err("required input");
+
+        // Assert
+        assert_eq!(error.recovery_action(), Some(StorageRecoveryAction::Repair));
+        assert_eq!(
+            store.payload_usage_revision().expect("revision"),
+            usage.revision
+        );
+        assert!(store.has_block(hash).expect("body"));
+        assert_eq!(store.has_undo(hash).expect("undo"), height != 0);
+        assert_eq!(store.maybe_prune_intent().expect("intent"), None);
+        assert!(!store.load_have_pruned().expect("pruned"));
+        drop(store);
+        let reopened = FjallNodeStore::open(&path).expect("reopen");
+        assert!(reopened.has_block(hash).expect("durable body"));
+        assert_eq!(reopened.maybe_prune_intent().expect("durable intent"), None);
+        drop(reopened);
+        remove_dir_if_exists(&path);
+    }
+}
+
+#[test]
+fn standalone_intent_refuses_owned_input_before_writing() {
+    // Arrange
+    let (path, store, positions) = protected_store("intent-owned-input");
+    let intent = PruneIntent {
+        height: 1,
+        block_hash: positions[1].block_hash,
+    };
+
+    // Act
+    let error = store.sync_prune_intent(intent).expect_err("required input");
+
+    // Assert
+    assert_eq!(error.recovery_action(), Some(StorageRecoveryAction::Repair));
+    assert_eq!(store.maybe_prune_intent().expect("intent"), None);
+    assert!(store.has_block(intent.block_hash).expect("body"));
+    drop(store);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn paired_delete_retains_publication_guard_through_effects_against_a_clone() {
+    use std::sync::{TryLockError, mpsc};
+    // Arrange
+    let (path, store) = open_store("delete-shared-guard");
+    let hash = plant_block(&store, 91);
+    plant_undo(&store, hash);
+    let deleting = store.clone();
+    let updating = store.clone();
+    let (checked_tx, checked_rx) = mpsc::channel();
+    let (finish_tx, finish_rx) = mpsc::channel();
+    let (started_tx, started_rx) = mpsc::channel();
+    let deletion = std::thread::spawn(move || {
+        deleting.delete_after_protection_for_test(1, hash, || {
+            checked_tx.send(()).expect("guarded check complete");
+            finish_rx.recv().expect("allow deletion");
+        })
+    });
+    checked_rx.recv().expect("check boundary");
+    let update = std::thread::spawn(move || {
+        started_tx.send(()).expect("clone attempts mutation");
+        updating.sync_prune_locks(&[])
+    });
+    started_rx.recv().expect("clone started");
+
+    // Act / Assert
+    assert!(matches!(
+        store.filter_publication.try_lock(),
+        Err(TryLockError::WouldBlock)
+    ));
+    assert!(store.has_block(hash).expect("body before effects"));
+    finish_tx.send(()).expect("finish guarded deletion");
+    assert_eq!(
+        deletion.join().expect("deletion thread").expect("delete"),
+        PairedDeleteOutcome::DeletedLiveMate
+    );
+    update
+        .join()
+        .expect("update thread")
+        .expect("serialized clone update");
+    assert!(!store.has_block(hash).expect("body after effects"));
+    assert!(!store.has_undo(hash).expect("undo after effects"));
+    assert_eq!(store.maybe_prune_intent().expect("finished intent"), None);
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("actual reopen");
+    assert!(!reopened.has_block(hash).expect("durable deletion"));
+    assert!(reopened.load_have_pruned().expect("durable receipt"));
+    drop(reopened);
+    remove_dir_if_exists(&path);
+}
+
 fn open_store(test_name: &str) -> (PathBuf, FjallNodeStore) {
     let path = temp_store_path(test_name);
     remove_dir_if_exists(&path);
@@ -233,7 +375,8 @@ fn have_pruned_is_inserted_only_in_the_tombstone_batch() {
     assert!(!source.contains("encode_best_block_key"));
     assert!(!source.contains("save_chainstate_snapshot"));
     assert!(!source.contains("RuntimeMetadata"));
-    assert!(!source.contains("prefix("));
+    assert!(!source.contains(".prefix(&"));
+    assert!(!source.contains("validate_basic_filter_records("));
 }
 
 #[test]

@@ -69,19 +69,16 @@ fn filter_index_production_reopen_directly_protects_genesis_and_height_one() {
                     }),
                 )
                 .expect("empty checkpoint");
-            store
-                .sync_prune_locks(&[IndexInputProtection::FromHeight(0)
-                    .maybe_prune_lock()
-                    .expect("lock")])
-                .expect("protection");
+            seed_raw_basic_protection(&store, IndexInputProtection::FromHeight(0));
         }
         if height == u32::MAX {
-            store
-                .sync_prune_intent(PruneIntent {
+            seed_raw_prune_intent(
+                &store,
+                PruneIntent {
                     height,
                     block_hash: fixture.intent.block_hash,
-                })
-                .expect("maximum intent");
+                },
+            );
         }
         drop(store);
         let before = snapshot_index(&fixture.path);

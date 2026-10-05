@@ -55,7 +55,7 @@ The automatic target is a soft logical block/undo retention target: protected an
 Phase 154 provides pure BASIC-only generation and commitments with independent
 pinned-corpus and validated historical-spend evidence. See the
 [BASIC parity catalog](./docs/parity/catalog/basic-compact-filters.md).
-Filter index activation, ordinary filter prune retention, RPC serving, peer
+Public filter index activation, RPC serving, peer
 serving, catch-up, V0, BIP37, GUI, production readiness and production-funds claims
 remain deferred. Full phase verification remains a root execution gate.
 
@@ -71,7 +71,7 @@ Phase 155 adds internal recoverable BASIC storage and a mandatory pre-prune
 startup guard. Immutable ahead/displaced rows are retained while recovered coins
 B plus compatible durable metadata fence the visible cursor; uncertainty stops
 startup before deleting required input. The v2.5 milestone remains pending:
-activation and scheduled catch-up (157), prune ownership/disable (156), runtime
+activation and scheduled catch-up (157), runtime
 reorg (158), and RPC/peer/operator serving and integrated retained-client proof
 (159–162) remain deferred. Software fault/reopen tests do not establish hardware
 power-loss behavior, archive-scale performance, or production-funds safety.
@@ -83,6 +83,33 @@ bun run scripts/command-timings.ts run --key phase155-production-recovery-matrix
 bun test ./scripts/check-phase155-filter-index.test.ts
 bun run scripts/check-phase155-filter-index.ts
 bash scripts/verify.sh
+```
+
+### Internal index-owned prune coordination (Phase 156)
+
+Phase 156 implements the internal CFPR-01 contract: reserved BASIC lock CRUD and
+exact map preservation, fresh manual/automatic/direct deletion protection,
+store-bound generation/frontier work fencing and ordered trusted Rust host
+disable/re-enable. Required bodies and non-genesis undo survive until recoverable
+filter records plus a compatible current coins/metadata checkpoint permit release.
+Same-second ownership changes invalidate automatic reuse and Periodic timing;
+required bytes remain in the logical soft target even when it is unattainable.
+
+The [scoped parity catalog](./docs/parity/catalog/basic-compact-filters.md#index-owned-manual-and-automatic-prune-coordination)
+records targeted production-caller/fault/reopen evidence and exact legal-target
+accounting. Large deletion/daemon fixtures are codec-valid; separate small engine
+spend/fork controls use explicit custom maturity. Evidence for the full native gate
+and formal phase/lifecycle proof is recorded in [Phase 156 verification](./.planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-VERIFICATION.md). Software faults do not establish
+hardware power-loss resilience or exhaustive dependency migration safety.
+
+Public activation/options, scheduled catch-up, runtime reorg, filter/index RPC,
+peer serving, operator projections and complete client-after-prune proof remain
+deferred to Phases 157–162. The existing three v2.4 advisories remain recorded.
+No public activation command was added.
+
+```bash
+bun test ./scripts/check-phase156-prune-coordination.test.ts
+bun run scripts/check-phase156-prune-coordination.ts
 ```
 
 ## Parity At A Glance

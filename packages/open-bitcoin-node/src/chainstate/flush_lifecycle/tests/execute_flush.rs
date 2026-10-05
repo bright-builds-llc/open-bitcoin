@@ -213,6 +213,9 @@ impl OrderingSink {
 }
 
 impl FlushPersistSink for OrderingSink {
+    fn load_prune_protection(&self) -> Result<super::super::PruneProtectionSnapshot, StorageError> {
+        Ok(super::super::PruneProtectionSnapshot::no_index(Vec::new()))
+    }
     fn persist_block(&mut self, _block: &Block) -> Result<(), StorageError> {
         self.record("persist_block");
         Ok(())

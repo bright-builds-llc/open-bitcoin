@@ -16,7 +16,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::HeaderEntry;
 
-use super::{ChainstateStore, FlushPersistSink};
+use super::{ChainstateStore, FlushPersistSink, PruneProtectionSnapshot};
 use crate::storage::fjall_store::{PayloadUsageRevision, RetainedPayloadUsage};
 use crate::storage::{FjallNodeStore, PersistMode, StorageError, coins_view::FjallCoinsView};
 
@@ -98,6 +98,10 @@ impl FlushPersistSink for FjallChainstateStore {
 
     fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
         self.store.load_prune_locks()
+    }
+
+    fn load_prune_protection(&self) -> Result<PruneProtectionSnapshot, StorageError> {
+        self.store.load_prune_protection()
     }
 
     fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {

@@ -7,6 +7,7 @@ use super::*;
 use open_bitcoin_primitives::BlockHeader;
 
 mod commitments;
+mod lifecycle;
 
 fn positions() -> Vec<ChainPosition> {
     let header = BlockHeader {

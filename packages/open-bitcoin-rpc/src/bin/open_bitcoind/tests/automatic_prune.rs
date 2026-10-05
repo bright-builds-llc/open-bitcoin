@@ -9,6 +9,8 @@ use open_bitcoin_node::core::chainstate::PruneMode;
 
 #[path = "automatic_prune/fixtures.rs"]
 mod fixtures;
+#[path = "automatic_prune/index_protection.rs"]
+mod index_protection;
 use crate::coins_flush::flush_cycle;
 use fixtures::*;
 use open_bitcoin_node::core::chainstate::{FlushMode, FlushPolicyTime, PruneLockInfo};

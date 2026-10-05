@@ -16,6 +16,8 @@ pub(super) struct Facts {
     pub(super) deletes: Vec<u32>,
     pub(super) lock_writes: usize,
     pub(super) fail_accounting: bool,
+    pub(super) fail_protection: bool,
+    pub(super) maybe_protection: Option<crate::chainstate::PruneProtectionSnapshot>,
     pub(super) fail_metadata: bool,
     pub(super) change_during_scan: bool,
     pub(super) invalid_revision: bool,
@@ -43,6 +45,24 @@ pub(super) fn revision(generation: u64) -> PayloadUsageRevision {
 }
 
 impl FlushPersistSink for TestStore {
+    fn load_prune_protection(
+        &self,
+    ) -> Result<crate::chainstate::PruneProtectionSnapshot, StorageError> {
+        let facts = self.facts.lock().expect("facts");
+        if facts.fail_protection {
+            return Err(error());
+        }
+        if let Some(store) = facts.maybe_real_store.clone() {
+            drop(facts);
+            return store.load_prune_protection();
+        }
+        if let Some(snapshot) = &facts.maybe_protection {
+            return Ok(snapshot.clone());
+        }
+        Ok(crate::chainstate::PruneProtectionSnapshot::no_index(
+            facts.locks.clone(),
+        ))
+    }
     fn persist_block(&mut self, _block: &Block) -> Result<(), StorageError> {
         Ok(())
     }

@@ -2,7 +2,8 @@
 // - packages/bitcoin-knots/src/node/context.h
 
 use open_bitcoin_core::chainstate::{
-    CoinsView, FlushMode, FlushPolicyTime, PruneLockInfo, PruneMode, PrunePlan,
+    BASIC_INDEX_PRUNE_LOCK, CoinsView, FlushMode, FlushPolicyTime, PruneLockInfo, PruneMode,
+    PrunePlan,
 };
 use open_bitcoin_core::primitives::BlockHash;
 use std::collections::BTreeMap;
@@ -87,6 +88,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         &self,
         record: PruneLockInfo,
     ) -> Result<(), ManagedNetworkAuthorityError> {
+        refuse_reserved_name(&record.name)?;
         self.mutate(|network| {
             let store = network.chainstate().store();
             let mut by_name: BTreeMap<_, _> = store
@@ -102,6 +104,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
 
     /// Clears a named lock; absence performs no durable write.
     pub fn clear_prune_lock(&self, name: &str) -> Result<bool, ManagedNetworkAuthorityError> {
+        refuse_reserved_name(name)?;
         self.mutate(|network| {
             let store = network.chainstate().store();
             let mut locks = store.load_prune_locks()?;
@@ -164,4 +167,13 @@ pub(super) fn current_prune_locks<S: FlushPersistSink>(
 
 fn storage_authority_error(error: StorageError) -> ManagedNetworkAuthorityError {
     ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())
+}
+
+fn refuse_reserved_name(name: &str) -> Result<(), ManagedNetworkAuthorityError> {
+    if name == BASIC_INDEX_PRUNE_LOCK {
+        return Err(ManagedNetworkAuthorityError::LifecycleEffect(
+            "reserved BASIC index prune lock is internally owned".to_owned(),
+        ));
+    }
+    Ok(())
 }

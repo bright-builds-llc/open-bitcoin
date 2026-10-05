@@ -9,10 +9,12 @@ use super::super::{
     FjallNodeStore, StorageError, StorageNamespace, StorageRecoveryAction, backend_failure,
     prune::{PRUNE_LOCKS_KEY, encode_prune_locks},
 };
+use super::BasicFilterWorkToken;
 use crate::storage::filter_index::{
     self as codec, StoredFilterRecord, StoredFilterState, index_corruption,
 };
 use fjall::PersistMode as FjallPersistMode;
+use open_bitcoin_core::chainstate::filter_index::lifecycle::{IndexGeneration, IndexLifecycle};
 use open_bitcoin_core::{
     chainstate::{
         BASIC_INDEX_PRUNE_LOCK, CoinsView, FilterCheckpoint, IndexInputProtection, IndexPrefix,
@@ -37,6 +39,40 @@ pub(crate) enum FilterPublicationFault {
     BeforeProtection,
     AfterCommit,
     BeforeChainMeta,
+    BeforeDisable,
+    AfterDisable,
+    BeforeRelease,
+    AfterRelease,
+    BeforeEnable,
+    AfterEnable,
+}
+
+pub(super) enum LifecyclePublicationPoint {
+    BeforeDisable,
+    AfterDisable,
+    BeforeRelease,
+    AfterRelease,
+    BeforeEnable,
+    AfterEnable,
+}
+
+pub(super) fn lifecycle_fault(
+    _control: &mut PublicationControl,
+    _point: LifecyclePublicationPoint,
+) -> Result<(), StorageError> {
+    #[cfg(test)]
+    fault(
+        _control,
+        match _point {
+            LifecyclePublicationPoint::BeforeDisable => FilterPublicationFault::BeforeDisable,
+            LifecyclePublicationPoint::AfterDisable => FilterPublicationFault::AfterDisable,
+            LifecyclePublicationPoint::BeforeRelease => FilterPublicationFault::BeforeRelease,
+            LifecyclePublicationPoint::AfterRelease => FilterPublicationFault::AfterRelease,
+            LifecyclePublicationPoint::BeforeEnable => FilterPublicationFault::BeforeEnable,
+            LifecyclePublicationPoint::AfterEnable => FilterPublicationFault::AfterEnable,
+        },
+    )?;
+    Ok(())
 }
 
 impl FjallNodeStore {
@@ -76,13 +112,25 @@ impl FjallNodeStore {
         fence: &VerifiedChainstateFence<'_>,
     ) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
+        self.initialize_basic_filter_state_guarded(fence, &mut control)
+    }
+
+    pub(super) fn initialize_basic_filter_state_guarded(
+        &self,
+        fence: &VerifiedChainstateFence<'_>,
+        control: &mut PublicationControl,
+    ) -> Result<(), StorageError> {
         self.verify_basic_filter_fence(fence)?;
         if self.maybe_basic_filter_state()?.is_some() {
             return Err(index_corruption("BASIC state already initialized"));
         }
         let (records, projections) = self.basic_filter_artifacts()?;
         let mut locks = self.load_prune_locks()?;
-        if records || projections || locks.iter().any(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK) {
+        if records
+            || projections
+            || self.maybe_basic_filter_lifecycle()?.is_some()
+            || locks.iter().any(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK)
+        {
             return Err(index_corruption("partial BASIC state cannot initialize"));
         }
         let protection = IndexInputProtection::FromHeight(0);
@@ -101,23 +149,33 @@ impl FjallNodeStore {
             codec::STATE_KEY,
             codec::encode_state(state),
         );
-        checkpoint_fault(&mut control)?;
-        protection_fault(&mut control)?;
+        batch.insert(
+            &self.block_index,
+            codec::ownership::OWNER_KEY,
+            codec::ownership::encode_owner(IndexLifecycle::Active {
+                generation: IndexGeneration::new(0),
+            }),
+        );
+        checkpoint_fault(control)?;
+        protection_fault(control)?;
         batch.insert(
             &self.block_index,
             PRUNE_LOCKS_KEY,
             encode_prune_locks(&locks)?,
         );
-        self.finish_basic_filter_batch(batch, &mut control)
+        self.finish_basic_filter_batch(batch, control)
     }
 
     /// Persist validated immutable candidates without creating or changing authority.
     #[cfg_attr(not(test), allow(dead_code))] // Phase 157 owns scheduled catch-up.
     pub(crate) fn persist_basic_filter_records(
         &self,
+        work: &BasicFilterWorkToken,
+        fence: &VerifiedChainstateFence<'_>,
         records: &[StoredFilterRecord],
     ) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
+        self.check_basic_filter_work_guarded(work, fence, &control)?;
         let encoded = self.prepare_basic_filter_records(records)?;
         records_fault(&mut control)?;
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
@@ -129,37 +187,53 @@ impl FjallNodeStore {
 
     /// Atomically publish immutable rows, changed projection, explicit state and
     /// the complete lock map. Rewinds hide suffix without erasing any immutable row.
+    #[cfg_attr(not(test), allow(dead_code))] // Scheduled workers arrive in Phase 157.
     pub(crate) fn publish_basic_filter_checkpoint(
         &self,
+        work: &BasicFilterWorkToken,
         fence: &VerifiedChainstateFence<'_>,
         checkpoint: FilterCheckpoint,
         protection: IndexInputProtection,
         records: &[StoredFilterRecord],
     ) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
+        self.check_basic_filter_work_guarded(work, fence, &control)?;
+        self.publish_basic_filter_checkpoint_guarded(
+            fence,
+            checkpoint,
+            protection,
+            records,
+            &mut control,
+        )
+    }
+
+    /// Private startup/lifecycle reconciliation; caller holds publication and proves
+    /// exclusive recovery authority. It never serves as a worker completion API.
+    pub(super) fn publish_basic_filter_checkpoint_guarded(
+        &self,
+        fence: &VerifiedChainstateFence<'_>,
+        checkpoint: FilterCheckpoint,
+        protection: IndexInputProtection,
+        records: &[StoredFilterRecord],
+        control: &mut PublicationControl,
+    ) -> Result<(), StorageError> {
         self.verify_basic_filter_fence(fence)?;
-        let Some(saved) = self.maybe_basic_filter_state()? else {
+        let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {
             return Err(index_corruption(
                 "BASIC publication requires explicit state",
             ));
         };
-        let saved_checkpoint = self.checkpoint_from_state(saved)?;
-        let mut locks = self.load_prune_locks()?;
-        let maybe_lock = locks
-            .iter()
-            .find(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK);
-        let saved_protection = match maybe_lock {
-            Some(lock) => IndexInputProtection::from_saved_lock(lock).map_err(index_corruption)?,
-            None if saved.protection == IndexInputProtection::HeightSpaceExhausted => {
-                IndexInputProtection::HeightSpaceExhausted
-            }
-            None => return Err(index_corruption("missing BASIC reserved protection")),
-        };
-        if !saved_protection.covers(saved.protection)
-            || !saved_protection.covers(saved_checkpoint.input_protection())
-        {
-            return Err(index_corruption("weak BASIC reserved protection"));
+        if !matches!(owner.lifecycle(), IndexLifecycle::Active { .. }) {
+            return Err(index_corruption("disabled BASIC checkpoint publication"));
         }
+        self.validate_basic_filter_records()?;
+        let saved_checkpoint = self
+            .maybe_basic_filter_checkpoint()?
+            .ok_or_else(|| index_corruption("missing BASIC checkpoint"))?;
+        let mut locks = self.load_prune_locks()?;
+        let saved_protection = owner
+            .maybe_effective_protection()
+            .ok_or_else(|| index_corruption("missing BASIC reserved protection"))?;
         if let open_bitcoin_core::chainstate::FilterRecoveryPlan::Refuse(error) =
             self.scan_basic_filter_checkpoint(saved_checkpoint, saved_protection, fence)?
         {
@@ -191,19 +265,34 @@ impl FjallNodeStore {
         for (key, bytes) in projections {
             batch.insert(&self.block_index, key, bytes);
         }
-        checkpoint_fault(&mut control)?;
+        checkpoint_fault(control)?;
         batch.insert(
             &self.block_index,
             codec::STATE_KEY,
             codec::encode_state(state),
         );
-        protection_fault(&mut control)?;
+        protection_fault(control)?;
         batch.insert(
             &self.block_index,
             PRUNE_LOCKS_KEY,
             encode_prune_locks(&locks)?,
         );
-        self.finish_basic_filter_batch(batch, &mut control)
+        self.finish_basic_filter_batch(batch, control)
+    }
+
+    pub(super) fn materialize_basic_filter_owner_guarded(
+        &self,
+        owner: IndexLifecycle,
+        control: &mut PublicationControl,
+    ) -> Result<(), StorageError> {
+        let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
+        checkpoint_fault(control)?;
+        batch.insert(
+            &self.block_index,
+            codec::ownership::OWNER_KEY,
+            codec::ownership::encode_owner(owner),
+        );
+        self.finish_basic_filter_batch(batch, control)
     }
 
     pub(crate) fn verify_basic_filter_fence(
@@ -328,7 +417,7 @@ impl FjallNodeStore {
         Ok(projections)
     }
 
-    fn finish_basic_filter_batch(
+    pub(super) fn finish_basic_filter_batch(
         &self,
         batch: fjall::OwnedWriteBatch,
         control: &mut PublicationControl,

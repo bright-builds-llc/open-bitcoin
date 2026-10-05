@@ -14,13 +14,15 @@
 use fjall::PersistMode as FjallPersistMode;
 use open_bitcoin_core::{
     chainstate::{
-        ChainPosition, CoinsView, PruneLockInfo, height_forbidden_by_any_lock,
+        ChainPosition, CoinsView, IndexPrefix, PruneLockInfo, VerifiedChainstateFence,
+        filter_index::lifecycle::EffectiveIndexOwnership, height_forbidden_by_any_lock,
         height_inside_keep_window,
     },
     primitives::BlockHash,
 };
 
 use super::coins::undo_key;
+use super::filters::PublicationControl;
 use super::{
     FjallNodeStore, StorageError, StorageNamespace, backend_failure, block_key, corruption,
 };
@@ -58,6 +60,18 @@ pub(crate) struct PruneIntent {
 }
 
 impl FjallNodeStore {
+    /// Load fresh validated facts for application; this is not deletion authority.
+    pub fn load_prune_protection(
+        &self,
+    ) -> Result<crate::chainstate::PruneProtectionSnapshot, StorageError> {
+        let control = self.filter_publication_guard()?;
+        let maybe_owner = self.maybe_basic_filter_owner_guarded(&control)?;
+        self.maybe_owned_prune_ancestry(maybe_owner)?;
+        Ok(crate::chainstate::PruneProtectionSnapshot {
+            maybe_owner,
+            locks: self.load_prune_locks()?,
+        })
+    }
     /// Returns whether a prior paired delete committed `have_pruned`.
     pub fn load_have_pruned(&self) -> Result<bool, StorageError> {
         self.block_index
@@ -79,6 +93,12 @@ impl FjallNodeStore {
 
     /// Sync-inserts `prune_intent` only. Does not insert `have_pruned`.
     pub(crate) fn sync_prune_intent(&self, intent: PruneIntent) -> Result<(), StorageError> {
+        let control = self.filter_publication_guard()?;
+        self.check_prune_candidate_guarded(&control, intent)?;
+        self.sync_prune_intent_guarded(intent)
+    }
+
+    fn sync_prune_intent_guarded(&self, intent: PruneIntent) -> Result<(), StorageError> {
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
         batch.insert(
             &self.block_index,
@@ -101,10 +121,91 @@ impl FjallNodeStore {
         height: u32,
         block_hash: BlockHash,
     ) -> Result<PairedDeleteOutcome, StorageError> {
-        self.with_payload_mutation(|| self.commit_paired_delete_inner(height, block_hash))
+        self.commit_paired_delete_observing(height, block_hash, || {})
     }
 
-    fn commit_paired_delete_inner(
+    fn commit_paired_delete_observing(
+        &self,
+        height: u32,
+        block_hash: BlockHash,
+        after_check: impl FnOnce(),
+    ) -> Result<PairedDeleteOutcome, StorageError> {
+        let control = self.filter_publication_guard()?;
+        self.check_prune_candidate_guarded(&control, PruneIntent { height, block_hash })?;
+        after_check();
+        self.with_payload_mutation(|| self.commit_paired_delete_guarded(height, block_hash))
+    }
+
+    /// Channel-ordered observation of the actual guarded destructive path.
+    #[cfg(test)]
+    pub(in crate::storage::fjall_store) fn delete_after_protection_for_test(
+        &self,
+        height: u32,
+        block_hash: BlockHash,
+        after_check: impl FnOnce(),
+    ) -> Result<PairedDeleteOutcome, StorageError> {
+        self.commit_paired_delete_observing(height, block_hash, after_check)
+    }
+
+    fn check_prune_candidate_guarded(
+        &self,
+        control: &PublicationControl,
+        intent: PruneIntent,
+    ) -> Result<(), StorageError> {
+        let maybe_owner = self.maybe_basic_filter_owner_guarded(control)?;
+        let maybe_positions = self.maybe_owned_prune_ancestry(maybe_owner)?;
+        check_owned_prune_candidate(maybe_owner, maybe_positions.as_deref(), intent)?;
+        if height_forbidden_by_any_lock(intent.height, &self.load_prune_locks()?) {
+            return Err(fail_closed(
+                "prune height is forbidden by a current prune lock",
+            ));
+        }
+        Ok(())
+    }
+
+    /// Current recovered coins and ancestry must still support the saved release.
+    /// Normal metadata/coins effects are serialized by managed authority; the
+    /// publication guard additionally excludes concurrent lifecycle changes.
+    fn maybe_owned_prune_ancestry(
+        &self,
+        maybe_owner: Option<EffectiveIndexOwnership>,
+    ) -> Result<Option<Vec<ChainPosition>>, StorageError> {
+        let Some(owner) = maybe_owner.filter(|owner| owner.maybe_effective_protection().is_some())
+        else {
+            return Ok(None);
+        };
+        let view = self.coins_view();
+        if !view.head_blocks().map_err(as_coins_fail_closed)?.is_empty() {
+            return Err(fail_closed("unrecovered BASIC coins heads"));
+        }
+        let best = view.best_block().map_err(as_coins_fail_closed)?;
+        let (positions, _) = self.load_chain_meta_for_open()?;
+        let fence = VerifiedChainstateFence::new(best, Some(&positions)).map_err(fail_closed)?;
+        let saved = owner.checkpoint();
+        if fence
+            .maybe_position(saved.fence_height())
+            .is_none_or(|position| position.block_hash != saved.fence_hash())
+        {
+            return Err(fail_closed(
+                "saved BASIC fence is outside current durable ancestry",
+            ));
+        }
+        if let IndexPrefix::Committed(endpoint) = saved.checkpoint().prefix()
+            && !fence
+                .maybe_position(endpoint.height())
+                .is_some_and(|position| {
+                    position.block_hash == endpoint.block_hash()
+                        && position.previous_block_hash() == endpoint.parent_hash()
+                })
+        {
+            return Err(fail_closed(
+                "saved BASIC checkpoint is outside current durable ancestry",
+            ));
+        }
+        Ok(Some(positions))
+    }
+
+    fn commit_paired_delete_guarded(
         &self,
         height: u32,
         block_hash: BlockHash,
@@ -115,7 +216,7 @@ impl FjallNodeStore {
             return Ok(PairedDeleteOutcome::AlreadyAbsent);
         }
 
-        self.sync_prune_intent(PruneIntent { height, block_hash })?;
+        self.sync_prune_intent_guarded(PruneIntent { height, block_hash })?;
 
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
         batch.remove(&self.block_index, block_key(block_hash));
@@ -149,14 +250,27 @@ pub(crate) fn resume_prune_intent(
     store: &FjallNodeStore,
     locks: &[PruneLockInfo],
 ) -> Result<(), StorageError> {
+    let control = store.filter_publication_guard().map_err(as_fail_closed)?;
+    let maybe_owner = store
+        .maybe_basic_filter_owner_guarded(&control)
+        .map_err(as_fail_closed)?;
     let Some(intent) = load_resume_intent(store)? else {
         return Ok(());
     };
-    let (active_chain, _maybe_confirmed_txid_counts) = store.load_chain_meta_for_open()?;
+    let maybe_positions = store
+        .maybe_owned_prune_ancestry(maybe_owner)
+        .map_err(as_fail_closed)?;
+    check_owned_prune_candidate(maybe_owner, maybe_positions.as_deref(), intent)?;
+    let mut current_locks = store.load_prune_locks().map_err(as_fail_closed)?;
+    current_locks.extend_from_slice(locks);
+    let active_chain = match maybe_positions {
+        Some(positions) => positions,
+        None => store.load_chain_meta_for_open()?.0,
+    };
     let Some(tip) = active_chain.last() else {
         return Err(fail_closed("active chain is empty"));
     };
-    ensure_intent_may_finish(store, &intent, &active_chain, tip, locks)?;
+    ensure_intent_may_finish(store, &intent, &active_chain, tip, &current_locks)?;
     finish_intent(store, intent)
 }
 
@@ -209,7 +323,9 @@ fn finish_intent(store: &FjallNodeStore, intent: PruneIntent) -> Result<(), Stor
     }
 
     let outcome = store
-        .commit_paired_delete(intent.height, intent.block_hash)
+        .with_payload_mutation(|| {
+            store.commit_paired_delete_guarded(intent.height, intent.block_hash)
+        })
         .map_err(as_fail_closed)?;
     if outcome == PairedDeleteOutcome::AlreadyAbsent {
         sync_clear_prune_intent(store)?;
@@ -246,6 +362,36 @@ fn as_fail_closed(error: StorageError) -> StorageError {
         StorageError::Corruption { detail, .. } => fail_closed(detail),
         other => other,
     }
+}
+
+fn as_coins_fail_closed(error: open_bitcoin_core::chainstate::ChainstateError) -> StorageError {
+    fail_closed(error)
+}
+
+fn check_owned_prune_candidate(
+    maybe_owner: Option<EffectiveIndexOwnership>,
+    maybe_positions: Option<&[ChainPosition]>,
+    intent: PruneIntent,
+) -> Result<(), StorageError> {
+    let Some(protection) =
+        maybe_owner.and_then(EffectiveIndexOwnership::maybe_effective_protection)
+    else {
+        return Ok(());
+    };
+    if !maybe_positions.is_some_and(|positions| {
+        positions
+            .get(intent.height as usize)
+            .is_some_and(|position| {
+                position.height == intent.height && position.block_hash == intent.block_hash
+            })
+    }) {
+        return Err(fail_closed(
+            "prune height/hash is not current durable ancestry",
+        ));
+    }
+    protection
+        .check_prune_intent(intent.height)
+        .map_err(fail_closed)
 }
 
 fn encode_prune_intent(intent: PruneIntent) -> Vec<u8> {

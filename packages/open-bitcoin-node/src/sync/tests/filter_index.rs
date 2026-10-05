@@ -12,13 +12,29 @@ use crate::storage::{
     fjall_store::PruneIntent,
 };
 use open_bitcoin_core::chainstate::{
-    BASIC_INDEX_PRUNE_LOCK, BasicFilterInputs, BlockUndo, FilterCheckpoint, HistoricalBlockUndo,
-    IndexInputProtection, IndexPrefix, VerifiedChainstateFence,
+    BASIC_INDEX_PRUNE_LOCK, BasicFilterInputs, BlockUndo, CoinsView, FilterCheckpoint,
+    HistoricalBlockUndo, IndexInputProtection, IndexPrefix, VerifiedChainstateFence,
 };
 
 mod faults;
+mod lifecycle;
+mod prune_coordination;
+mod prune_faults;
 mod recovery;
 mod startup;
+
+fn reserved_filter_path(name: &str) -> PathBuf {
+    let base = temp_store_path(name);
+    for suffix in 0_u64.. {
+        let candidate = base.with_extension(suffix.to_string());
+        match fs::create_dir(&candidate) {
+            Ok(()) => return candidate,
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => panic!("reserve filter fixture {}: {error}", candidate.display()),
+        }
+    }
+    panic!("filter fixture suffix exhausted");
+}
 
 struct FilterStartupFixture {
     path: PathBuf,
@@ -29,7 +45,7 @@ struct FilterStartupFixture {
 
 impl FilterStartupFixture {
     fn new(name: &str, intent_height: u32, maybe_endpoint: Option<u32>) -> Self {
-        let path = temp_store_path(name);
+        let path = reserved_filter_path(name);
         let store = FjallNodeStore::open(&path).expect("store");
         let mut positions = Vec::new();
         let mut records: Vec<StoredFilterRecord> = Vec::new();
@@ -77,6 +93,10 @@ impl FilterStartupFixture {
             let checkpoint = checkpoint(&records[endpoint as usize]);
             store
                 .publish_basic_filter_checkpoint(
+                    &store
+                        .maybe_basic_filter_work(&fence(&positions))
+                        .expect("work")
+                        .expect("Active"),
                     &fence(&positions),
                     checkpoint,
                     checkpoint.input_protection(),
@@ -88,7 +108,7 @@ impl FilterStartupFixture {
             height: intent_height,
             block_hash: positions[intent_height as usize].block_hash,
         };
-        store.sync_prune_intent(intent).expect("live intent");
+        seed_raw_prune_intent(&store, intent);
         drop(store);
         Self {
             path,
@@ -161,6 +181,60 @@ fn fence(positions: &[ChainPosition]) -> VerifiedChainstateFence<'_> {
 
 fn checkpoint(record: &StoredFilterRecord) -> FilterCheckpoint {
     FilterCheckpoint::new(IndexPrefix::Committed(record.identity()))
+}
+
+fn append_current(
+    store: &FjallNodeStore,
+    records: &[StoredFilterRecord],
+) -> Result<(), StorageError> {
+    let positions = store.load_chain_meta_for_open()?.0;
+    let fence = VerifiedChainstateFence::new(
+        store
+            .coins_view()
+            .best_block()
+            .map_err(codec::index_corruption)?,
+        Some(&positions),
+    )
+    .map_err(codec::index_corruption)?;
+    let work = store
+        .maybe_basic_filter_work(&fence)?
+        .ok_or_else(|| codec::index_corruption("test requires Active BASIC work"))?;
+    store.persist_basic_filter_records(&work, &fence, records)
+}
+
+fn publish_current(
+    store: &FjallNodeStore,
+    fence: &VerifiedChainstateFence<'_>,
+    checkpoint: FilterCheckpoint,
+    protection: IndexInputProtection,
+    records: &[StoredFilterRecord],
+) -> Result<(), StorageError> {
+    let work = store
+        .maybe_basic_filter_work(fence)?
+        .ok_or_else(|| codec::index_corruption("test requires Active BASIC work"))?;
+    store.publish_basic_filter_checkpoint(&work, fence, checkpoint, protection, records)
+}
+
+/// Deliberately unsafe persisted recovery fixture; never bypass a production guard.
+fn seed_raw_prune_intent(store: &FjallNodeStore, intent: PruneIntent) {
+    let mut bytes = intent.height.to_le_bytes().to_vec();
+    bytes.extend_from_slice(intent.block_hash.as_bytes());
+    store
+        .write_raw_for_test(StorageNamespace::BlockIndex, "prune_intent", bytes)
+        .expect("raw recovered intent fixture");
+}
+
+/// Saved stronger/invalid ownership test facts, independent of operator authority.
+fn seed_raw_basic_protection(store: &FjallNodeStore, protection: IndexInputProtection) {
+    let lock = protection.maybe_prune_lock().expect("test range");
+    let mut bytes = 1_u32.to_le_bytes().to_vec();
+    bytes.extend_from_slice(&u16::try_from(lock.name.len()).expect("name").to_le_bytes());
+    bytes.extend_from_slice(lock.name.as_bytes());
+    bytes.extend_from_slice(&lock.height_first.to_le_bytes());
+    bytes.extend_from_slice(&lock.height_last.to_le_bytes());
+    store
+        .write_raw_for_test(StorageNamespace::BlockIndex, "prune_locks", bytes)
+        .expect("raw recovery protection fixture");
 }
 
 /// Open only after every production store/runtime handle has been dropped.

@@ -256,3 +256,315 @@ fn zero_batch_count_with_a_last_height_is_corruption() {
     ));
     remove_dir_if_exists(&path);
 }
+
+fn index_fixture(store: &FjallNodeStore) -> Vec<ChainPosition> {
+    let mut genesis = block(BlockHash::default(), 0);
+    let mut coinbase = mempool_transaction(0);
+    coinbase.inputs[0].previous_output = OutPoint::null();
+    genesis.transactions.push(coinbase);
+    genesis.header.merkle_root =
+        open_bitcoin_core::consensus::block_merkle_root(&genesis.transactions)
+            .expect("merkle")
+            .0;
+    let position = ChainPosition::new(genesis.header.clone(), 0, 1, i64::from(genesis.header.time));
+    let snapshot = ChainstateSnapshot::new(vec![position], Default::default(), Default::default());
+    store.seed_coins_from_snapshot(&snapshot).expect("coins");
+    store
+        .save_block(&genesis, PersistMode::Sync)
+        .expect("genesis body");
+    let fence = open_bitcoin_core::chainstate::VerifiedChainstateFence::new(
+        Some(snapshot.active_chain[0].block_hash),
+        Some(&snapshot.active_chain),
+    )
+    .expect("fence");
+    store
+        .enable_basic_filter_index(&fence)
+        .expect("internal lifecycle");
+    snapshot.active_chain
+}
+
+fn publish_genesis(store: &FjallNodeStore, positions: &[ChainPosition], first: u32) {
+    use crate::storage::filter_index::StoredFilterRecord;
+    use open_bitcoin_core::chainstate::{
+        BasicFilterInputs, FilterCheckpoint, IndexInputProtection, IndexPrefix,
+        VerifiedChainstateFence,
+    };
+    let genesis = store
+        .load_block(positions[0].block_hash)
+        .expect("body")
+        .expect("genesis");
+    let inputs = BasicFilterInputs::from_historical(&genesis, &positions[0], None).expect("inputs");
+    let record = StoredFilterRecord::generate(&inputs, &positions[0], None).expect("record");
+    let fence = VerifiedChainstateFence::new(Some(positions[0].block_hash), Some(positions))
+        .expect("fence");
+    let work = store
+        .maybe_basic_filter_work(&fence)
+        .expect("work")
+        .expect("active");
+    store
+        .publish_basic_filter_checkpoint(
+            &work,
+            &fence,
+            FilterCheckpoint::new(IndexPrefix::Committed(record.identity())),
+            IndexInputProtection::FromHeight(first),
+            &[record],
+        )
+        .expect("safe progress");
+}
+
+fn index_bytes(store: &FjallNodeStore) -> Vec<(Vec<u8>, Vec<u8>)> {
+    store
+        .block_index
+        .iter()
+        .map(|entry| {
+            let (key, value) = entry.into_inner().expect("entry");
+            (key.to_vec(), value.to_vec())
+        })
+        .collect()
+}
+
+#[test]
+fn prune_map_reserved_creation_without_owner_refuses_without_write() {
+    // Arrange
+    let (path, store) = open_store("prune-forged-owner");
+    let before = index_bytes(&store);
+    let forged = lock(
+        open_bitcoin_core::chainstate::BASIC_INDEX_PRUNE_LOCK,
+        0,
+        100,
+    );
+
+    // Act
+    let result = store.sync_prune_locks(&[forged]);
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(index_bytes(&store), before);
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen");
+    assert_eq!(index_bytes(&reopened), before);
+    drop(reopened);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prune_map_requires_exact_reserved_entry_and_preserves_unrelated_updates() {
+    // Arrange
+    let (path, store) = open_store("prune-exact-owner");
+    index_fixture(&store);
+    let reserved = store.load_prune_locks().expect("locks")[0].clone();
+    let before = index_bytes(&store);
+    let mut changed = reserved.clone();
+    changed.height_first += 1;
+    let mut changed_last = reserved.clone();
+    changed_last.height_last -= 1;
+
+    // Act / Assert: every proposed ownership mutation leaves all durable rows intact.
+    for proposed in [
+        vec![],
+        vec![changed],
+        vec![changed_last],
+        vec![reserved.clone(), reserved.clone()],
+    ] {
+        assert!(store.sync_prune_locks(&proposed).is_err());
+        assert_eq!(index_bytes(&store), before);
+    }
+    let expected = vec![reserved, lock("ordinary", 20, 30)];
+    store
+        .sync_prune_locks(&expected)
+        .expect("exact preservation");
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen");
+    assert_eq!(reopened.load_prune_locks().expect("locks"), expected);
+    drop(reopened);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prune_map_clone_prepared_before_disable_cannot_resurrect_reserved_entry() {
+    // Arrange
+    let (path, store) = open_store("prune-stale-disable");
+    index_fixture(&store);
+    let clone = store.clone();
+    let (prepared_tx, prepared_rx) = std::sync::mpsc::channel();
+    let (apply_tx, apply_rx) = std::sync::mpsc::channel();
+    let thread = std::thread::spawn(move || {
+        let stale = clone.load_prune_locks().expect("prepared map");
+        prepared_tx.send(()).expect("prepared signal");
+        apply_rx.recv().expect("apply signal");
+        clone.sync_prune_locks(&stale)
+    });
+    prepared_rx.recv().expect("prepared");
+    store
+        .disable_basic_filter_index()
+        .expect("authorized disable");
+    let before = index_bytes(&store);
+
+    // Act
+    apply_tx.send(()).expect("apply");
+    let result = thread.join().expect("writer");
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(index_bytes(&store), before);
+    store
+        .sync_prune_locks(&[lock("ordinary", 20, 30)])
+        .expect("disabled ordinary lock");
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen");
+    assert_eq!(
+        reopened.load_prune_locks().expect("locks"),
+        vec![lock("ordinary", 20, 30)]
+    );
+    assert!(matches!(
+        reopened
+            .maybe_basic_filter_lifecycle_for_test()
+            .expect("owner"),
+        Some(
+            open_bitcoin_core::chainstate::filter_index::lifecycle::IndexLifecycle::Disabled { .. }
+        )
+    ));
+    drop(reopened);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prune_map_clone_prepared_before_progress_cannot_replace_fresh_reserved_entry() {
+    // Arrange
+    let (path, store) = open_store("prune-stale-progress");
+    let positions = index_fixture(&store);
+    let clone = store.clone();
+    let (prepared_tx, prepared_rx) = std::sync::mpsc::channel();
+    let (apply_tx, apply_rx) = std::sync::mpsc::channel();
+    let thread = std::thread::spawn(move || {
+        let stale = clone.load_prune_locks().expect("stale map");
+        prepared_tx.send(()).expect("prepared");
+        apply_rx.recv().expect("apply");
+        clone.sync_prune_locks(&stale)
+    });
+    prepared_rx.recv().expect("prepared");
+    publish_genesis(&store, &positions, 1);
+    let before = index_bytes(&store);
+
+    // Act
+    apply_tx.send(()).expect("apply");
+    let result = thread.join().expect("writer");
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(index_bytes(&store), before);
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen");
+    assert_eq!(index_bytes(&reopened), before);
+    assert_eq!(
+        reopened.load_prune_locks().expect("fresh lock")[0].height_first,
+        1
+    );
+    drop(reopened);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prune_map_preserves_stronger_valid_and_disabled_retained_entries_exactly() {
+    use crate::storage::filter_index::ownership::{OWNER_KEY, encode_owner};
+    use open_bitcoin_core::chainstate::filter_index::lifecycle::{IndexGeneration, IndexLifecycle};
+    for disabled in [false, true] {
+        // Arrange: stronger protection than the committed genesis requires.
+        let (path, store) = open_store("prune-strong-owner");
+        let positions = index_fixture(&store);
+        publish_genesis(&store, &positions, 1);
+        let reserved = open_bitcoin_core::chainstate::IndexInputProtection::FromHeight(0)
+            .maybe_prune_lock()
+            .expect("stronger lock");
+        store
+            .write_raw_for_test(
+                StorageNamespace::BlockIndex,
+                PRUNE_LOCKS_KEY,
+                super::super::prune::encode_prune_locks(std::slice::from_ref(&reserved))
+                    .expect("map"),
+            )
+            .expect("stronger persisted recovery protection");
+        if disabled {
+            store
+                .write_raw_for_test(
+                    StorageNamespace::BlockIndex,
+                    OWNER_KEY,
+                    encode_owner(IndexLifecycle::Disabled {
+                        generation: IndexGeneration::new(1),
+                    })
+                    .to_vec(),
+                )
+                .expect("conservative Disabled recovery fixture");
+        }
+        let before = index_bytes(&store);
+        let mut weaker = reserved.clone();
+        weaker.height_first = 1;
+
+        // Act / Assert
+        assert!(store.sync_prune_locks(&[weaker]).is_err());
+        assert!(store.sync_prune_locks(&[]).is_err());
+        assert_eq!(index_bytes(&store), before);
+        store
+            .sync_prune_locks(&[reserved.clone(), lock("ordinary", 20, 30)])
+            .expect("exact stronger preservation");
+        drop(store);
+        let reopened = FjallNodeStore::open(&path).expect("reopen");
+        assert_eq!(
+            reopened.load_prune_locks().expect("locks"),
+            vec![reserved, lock("ordinary", 20, 30)]
+        );
+        drop(reopened);
+        remove_dir_if_exists(&path);
+    }
+}
+
+#[test]
+fn prune_map_validates_legacy_and_corrupt_current_owner_before_unrelated_write() {
+    use crate::storage::filter_index::ownership::OWNER_KEY;
+    for corrupt in [false, true] {
+        // Arrange: raw mutation represents persisted compatibility/corruption only.
+        let (path, store) = open_store("prune-legacy-or-corrupt");
+        index_fixture(&store);
+        if corrupt {
+            store
+                .write_raw_for_test(StorageNamespace::BlockIndex, OWNER_KEY, vec![255])
+                .expect("corrupt owner fixture");
+        } else {
+            store.block_index.remove(OWNER_KEY).expect("legacy fixture");
+            store
+                .db
+                .persist(fjall::PersistMode::SyncAll)
+                .expect("durable legacy");
+        }
+        let original = store.load_prune_locks().expect("locks");
+        let mut proposed = original.clone();
+        proposed.push(lock("ordinary", 20, 30));
+        let before = index_bytes(&store);
+
+        // Act
+        let result = store.sync_prune_locks(&proposed);
+
+        // Assert
+        if corrupt {
+            assert!(result.is_err());
+            assert_eq!(index_bytes(&store), before);
+        } else {
+            result.expect("valid legacy preservation");
+            assert!(
+                store
+                    .maybe_basic_filter_lifecycle_for_test()
+                    .expect("legacy absence")
+                    .is_none()
+            );
+            assert!(store.sync_prune_locks(&[]).is_err());
+        }
+        drop(store);
+        let reopened = FjallNodeStore::open(&path).expect("reopen");
+        assert_eq!(
+            reopened.load_prune_locks().expect("locks"),
+            if corrupt { original } else { proposed }
+        );
+        drop(reopened);
+        remove_dir_if_exists(&path);
+    }
+}

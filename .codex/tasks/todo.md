@@ -155,3 +155,34 @@ Completion review: four plans implemented; 11/11 must-haves and all three roadma
 - [x] Prepare verified changes for commit/push; derive actual finalization from Git history and remote synchronization.
 
 Completion review: four plans implemented; formal verification passed 10/10 distinct truths and all four roadmap criteria, independent source review is clean across 36 files, and 17/17 security dispositions are closed. The full default native verifier passed in 50m 23.935s with Bun 1.3.9 and Rust 1.94.1, including integration, benchmark, Bazel/provenance and zero-uncovered-lines pure-core coverage. CFIX-02/04 and CFPR-03 are Complete. This is the verified pre-commit snapshot; Git history and remote synchronization record the actual consolidated commit/push. Residual boundary: ordinary index-owned prune coordination, activation/catch-up, runtime reorg and serving/operator/integrated-client scope remain Phases 156–162; accepted historical-fence provenance and linear startup work do not claim hardware durability or archive-scale performance.
+
+
+## task-phase156-owned-prune | 2026-10-04 15:28 CDT | Index-Owned Manual and Automatic Prune Coordination
+
+- [x] Select Phase 156, sync main/submodule and load active lessons and applicable standards.
+- [x] Capture yolo reserved-ownership, apply-time protection and disable/re-enable decisions.
+- [x] Research concrete publication, deletion, cache and lifecycle fault seams.
+- [x] Create and independently check executable CFPR-01 plans with threat models.
+- [x] Execute all plans; prove manual/ordinary automatic pruning, owned CRUD, fenced release and disable/re-enable.
+- [x] 156-01: compatible lifecycle/owner codec; focused core 42/42 and codec 13/13 passed.
+- [x] 156-02: guarded publication/startup; core44, node78 and targeted legacy1 passed.
+- [x] 156-03: ordered disable/re-enable; storage39 and filter-index91 passed.
+- [x] 156-04: reserved CRUD/map enforcement; node90 and RPC38 passed.
+- [x] 156-05: concrete39/filter96/flush52/receipt10 passed; inherited fixture collision fixed and default-parallel gate passed20 writer/3 full-control repetitions.
+- [x] 156-06: ownership-aware cache/throttle and protected planning; default-parallel35/35 passed.
+- [x] 156-07: legal daemon1/inherited daemon5/node prune129/RPC prune38 passed; backend repeat30/fullfilter102/Bazel gate closed.
+- [x] 156-08: scoped parity/docs and default native guard; final mutation84/inherited53, live/provenance/managed checks passed.
+- [x] Source67+locks2 review and simplification clean; all 27 security mitigations closed after native proof.
+- [x] Default native verifier passed in 32m 37.914s; managed checks and lifecycle-valid formal verification passed.
+- [x] Prepare verified current docs and staged changes for consolidated commit/push; derive final transport evidence from Git and upstream refs.
+
+Verification: real Fjall/authority paths, checkpoint/protection faults and reopen; stale deletion/work rejection; unchanged ordinary operator locks and default-disabled legacy behavior. Full `bash scripts/verify.sh` remains the pre-commit contract. Strict user-invoked wrapper defers all workflow commits until clean phase verification; git evidence is derived from actual commands.
+
+### Native restart plan
+
+- [x] Apply and independently review the equivalent Clippy predicate simplification.
+- [x] Regenerate and check the LOC source fingerprint after the final source edit.
+- [x] Restart the complete default native contract; preserve prior failed attempts in `156-NATIVE-CHECKS.md`.
+- [x] Close security/lifecycle evidence, reconcile claims, and prepare the mandatory commit hook and derived Git finalization evidence.
+
+Completion review (verified pre-commit snapshot): Phase 156 passed 28/28 must-haves and all four roadmap criteria, with clean 67-file source review plus two generated lockfiles, 27/27 closed security mitigations and the default native verifier exit zero in 32m 37.914s. Workspace tests/doctests recorded 3,382 passes and one existing opt-in public-network ignored case; benchmark, Bazel/provenance and configured zero-missing-lines pure-core coverage passed. CFPR-01 is Complete and Phase 157 is ready for context. Residual scope preserves codec-valid large-fixture limits, custom-maturity small engine evidence, software versus hardware durability, the three v2.4 advisories and deferred activation/catch-up/reorg/serving products. Actual commit/push and mandatory hook success are derived from the saving commit and upstream refs, avoiding a self-referential post-push edit.

@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use open_bitcoin_node::chainstate::probe_disk_free_bytes;
 use open_bitcoin_node::core::chainstate::{
-    FlushMode, FlushPolicyTime, PRUNE_LOCK_BUFFER, PruneLockInfo, PrunePlan,
+    BASIC_INDEX_PRUNE_LOCK, FlushMode, FlushPolicyTime, PRUNE_LOCK_BUFFER, PruneLockInfo, PrunePlan,
 };
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::status::ManualPruneSurface;
@@ -48,6 +48,7 @@ where
         if name.is_empty() {
             return Err(RpcFailure::invalid_parameter("empty prune lock name"));
         }
+        refuse_reserved_name(&name)?;
         if height_last < height_first {
             return Err(RpcFailure::invalid_parameter(
                 "height_last is below height_first",
@@ -72,6 +73,7 @@ where
 
     /// Removes one name. A missing name returns false and does not write.
     pub(crate) fn clear_named_prune_lock(&self, name: &str) -> Result<bool, RpcFailure> {
+        refuse_reserved_name(name)?;
         self.network
             .clear_prune_lock(name)
             .map_err(|_| RpcFailure::internal_error(PRUNE_LOCKS_UNAVAILABLE))
@@ -116,6 +118,15 @@ where
             )
             .map(|_| ())
     }
+}
+
+fn refuse_reserved_name(name: &str) -> Result<(), RpcFailure> {
+    if name == BASIC_INDEX_PRUNE_LOCK {
+        return Err(RpcFailure::invalid_parameter(
+            "reserved BASIC index prune lock is internally owned",
+        ));
+    }
+    Ok(())
 }
 
 fn flush_policy_now() -> FlushPolicyTime {

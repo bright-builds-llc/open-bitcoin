@@ -856,14 +856,14 @@
           "scripts/verify.sh",
           "docs/parity/catalog/basic-compact-filters.md"
         ],
-        "rationale": "Existing-crate internal schema-2 Fjall recovery foundations: immutable integrity, checkpoint-visible projection fenced by recovered coins B and compatible metadata, and mandatory initialize protection before prune resume. Actual validated spend/fork, H/B partial commit, metadata failure and production close/reopen evidence supplement bounded software fault tests. Formal full native gate remains pending.",
+        "rationale": "Existing-crate internal schema-2 Fjall recovery foundations: immutable integrity, checkpoint-visible projection fenced by recovered coins B and compatible metadata, and mandatory initialize protection before prune resume. Actual validated spend/fork, H/B partial commit, metadata failure and production close/reopen evidence supplement bounded software fault tests. Formal Phase 155 verification records 10/10 distinct truths after full native verification; dependent Phase 156 proof remains separate.",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/index/base.cpp",
             "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
             "packages/bitcoin-knots/src/node/blockstorage.cpp"
           ],
-          "tests": ["packages/bitcoin-knots/test/functional/feature_blockfilterindex.py"]
+          "tests": ["packages/bitcoin-knots/test/functional/feature_index_prune.py"]
         },
         "intentional_differences": [
           "Additive versioned Fjall schema-2 envelopes replace Knots flat files/LevelDB; SyncAll publishes checkpoint/protection together.",
@@ -871,7 +871,7 @@
           "The direct startup input guard also protects heights 0/1 independently of the ordinary buffered helper."
         ],
         "known_gaps": [
-          "Phase 156 ordinary prune ownership/CRUD/disable, 157 activation/scheduled catch-up, 158 runtime reorg and 159–162 RPC/peer/operator serving and integrated retained-client proof remain deferred.",
+          "Phase 156 ownership/CRUD/disable has verified scoped software evidence; 157 activation/scheduled catch-up, 158 runtime reorg and 159–162 RPC/peer/operator serving and integrated retained-client proof remain deferred.",
           "Software fault/reopen proof is not hardware power-loss simulation, archive-scale performance evidence, production readiness or production-funds safety.",
           "Full integrity scan is linear retained-history work with bounded additional record memory, not a total runtime/memory cap; 256 records/projections measure 1023 reads.",
           "Hash commitments detect corruption without authenticating historical provenance; generated records consume validated complete historical inputs. No implicit repair/download."
@@ -4208,6 +4208,77 @@
         "suspected_unknowns": [
           "v2.4 shipped and was archived on 2026-10-03; .planning/milestones/v2.4-MILESTONE-AUDIT.md preserves 17/17 requirements, 20/20 seams, 10/10 flows and three accepted nonblocking advisories."
         ]
+      },
+      {
+        "id": "v2-5-index-owned-manual-and-automatic-prune-coordination",
+        "title": "Index-Owned Manual and Automatic Prune Coordination",
+        "status": "done",
+        "requirements": [
+          "CFPR-01"
+        ],
+        "evidence": [
+          "packages/open-bitcoin-node/src/storage/filter_index/ownership.rs",
+          "packages/open-bitcoin-node/src/storage/filter_index/tests.rs",
+          "packages/open-bitcoin-chainstate/src/filter_index/lifecycle.rs",
+          "packages/open-bitcoin-chainstate/src/filter_index/tests/lifecycle.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/publication.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/ownership.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/faults.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/prune_faults.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/filter_index.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/prune_flush.rs",
+          "packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/prune/records.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_records.rs",
+          "packages/open-bitcoin-rpc/src/http.rs",
+          "packages/open-bitcoin-rpc/src/http/tests/prune_ownership.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/prune.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/tests/prune_unlink/protection.rs",
+          "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/prune_apply.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/prune_coordination.rs",
+          "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/prune_apply/tests.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/automatic_prune/tests/protection.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/ownership.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/index_protection.rs",
+          "packages/open-bitcoin-rpc/src/context/prune.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/recovery.rs",
+          "scripts/check-phase156-prune-coordination.ts",
+          "scripts/check-phase156-prune-coordination.test.ts",
+          "scripts/check-phase156-prune-coordination/contracts.ts",
+          "scripts/check-phase156-prune-coordination/rust-evidence.ts",
+          "scripts/verify.sh",
+          "docs/parity/catalog/basic-compact-filters.md",
+          ".planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-07-SUMMARY.md",
+          ".planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-FJALL-SHUTDOWN-FIX.md"
+        ],
+        "rationale": "Internal CFPR-01 reserved CRUD/map ownership, current recovered-coins and durable-ancestry application gates, exact generation/frontier work fencing, ordered disable/re-enable and same-second automatic invalidation. Targeted runtime, authenticated HTTP and actual legal-target offline daemon evidence is recorded; full native gate and formal phase/lifecycle evidence is recorded in .planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-VERIFICATION.md.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/index/base.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/feature_index_prune.py",
+            "packages/bitcoin-knots/test/functional/feature_pruning.py"
+          ]
+        },
+        "intentional_differences": [
+          "Additive 11-byte Active/Disabled generation envelope retains existing v1 filter and schema-2 Fjall storage; paired-key logical accounting differs from Knots file pruning.",
+          "Direct owned-input checks protect heights 0/1 without changing ordinary buffered lock arithmetic.",
+          "Ambiguous software commit/reply failures poison guarded live work and deletion until actual reopen; recovery may retain stronger protection or refuse Repair."
+        ],
+        "known_gaps": [
+          "Public activation/options and scheduled catch-up (157), runtime reorg (158), filter/index RPC (159), peers (160), operator projections (161) and complete client-after-prune proof (162) remain deferred.",
+          "Large daemon/deletion fixtures are codec-valid ancestry/history-correspondence evidence, not consensus-accepted full daemon chains. Separate small engine spend/fork controls use coinbase maturity one and synthetic supplied chain work.",
+          "Software faults and dependency format-marker observations do not establish hardware power-loss resilience, exhaustive migration safety, archive-scale performance, production readiness or production-funds safety.",
+          "The three v2.4 stale-metadata recovery refusal, generic paired-unlink no-op and separate support-summary crash undercount advisories remain."
+        ],
+        "suspected_unknowns": []
       }
     ]
   },

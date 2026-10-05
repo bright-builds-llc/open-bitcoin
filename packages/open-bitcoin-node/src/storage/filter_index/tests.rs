@@ -2,7 +2,11 @@
 // - packages/bitcoin-knots/src/index/blockfilterindex.cpp
 // - packages/bitcoin-knots/src/blockfilter.cpp
 
+use super::ownership::*;
 use super::*;
+use open_bitcoin_core::chainstate::filter_index::lifecycle::{
+    EffectiveIndexOwnership, IndexGeneration, IndexLifecycle,
+};
 
 fn genesis() -> StoredFilterRecord {
     let bytes = vec![0];
@@ -202,4 +206,98 @@ fn projection_binds_key_height_and_hash() {
     assert!(decode_projection(&active_key(13), &bytes).is_err());
     assert!(decode_projection("basic_filter:v1:active:0000000C", &bytes).is_err());
     assert!(decode_projection(&active_key(12), &bytes[..37]).is_err());
+}
+
+#[test]
+fn owner_has_frozen_exact_bytes_for_each_mode_and_generation_boundary() {
+    // Arrange
+    for value in [0, 42, u64::MAX] {
+        for (mode, owner) in [
+            (
+                0,
+                IndexLifecycle::Active {
+                    generation: IndexGeneration::new(value),
+                },
+            ),
+            (
+                1,
+                IndexLifecycle::Disabled {
+                    generation: IndexGeneration::new(value),
+                },
+            ),
+        ] {
+            let mut expected = vec![1, 0, mode];
+            expected.extend_from_slice(&value.to_le_bytes());
+            // Act
+            let bytes = encode_owner(owner);
+            // Assert
+            assert_eq!(bytes.as_slice(), expected);
+            assert_eq!(bytes.len(), 11);
+            assert_eq!(decode_owner(&bytes).expect("owner"), owner);
+        }
+    }
+}
+
+#[test]
+fn owner_refuses_every_truncation_and_trailing_bytes_as_corruption() {
+    // Arrange
+    let bytes = encode_owner(IndexLifecycle::Active {
+        generation: IndexGeneration::new(0),
+    });
+    let mut malformed: Vec<Vec<u8>> = (0..bytes.len()).map(|end| bytes[..end].to_vec()).collect();
+    let mut trailing = bytes.to_vec();
+    trailing.push(0);
+    malformed.push(trailing);
+    // Act / Assert
+    for invalid in malformed {
+        let error = decode_owner(&invalid).expect_err("corruption is not absence");
+        assert_eq!(error.recovery_action(), Some(StorageRecoveryAction::Repair));
+        assert!(matches!(
+            error,
+            StorageError::Corruption {
+                namespace: StorageNamespace::BlockIndex,
+                ..
+            }
+        ));
+    }
+}
+
+#[test]
+fn owner_refuses_unknown_version_type_and_mode() {
+    // Arrange
+    let bytes = encode_owner(IndexLifecycle::Active {
+        generation: IndexGeneration::new(0),
+    });
+    // Act / Assert
+    for (offset, value) in [(0, 2), (1, 1), (2, 2)] {
+        let mut invalid = bytes;
+        invalid[offset] = value;
+        let error = decode_owner(&invalid).expect_err("unsupported owner");
+        assert_eq!(error.recovery_action(), Some(StorageRecoveryAction::Repair));
+    }
+}
+
+#[test]
+fn owner_decoding_cannot_make_missing_state_valid() {
+    // Arrange
+    let bytes = encode_owner(IndexLifecycle::Disabled {
+        generation: IndexGeneration::new(1),
+    });
+    // Act
+    let owner = decode_owner(&bytes).expect("owner envelope");
+    let result =
+        EffectiveIndexOwnership::maybe_from_artifacts(Some(owner), None, None, None, false, false);
+    // Assert
+    assert!(result.is_err());
+}
+
+#[test]
+fn projection_has_frozen_v1_bytes_after_additive_owner_codec() {
+    // Arrange
+    let mut expected = vec![1, 0, 12, 0, 0, 0];
+    expected.extend_from_slice(&[9; 32]);
+    // Act
+    let bytes = encode_projection(12, BlockHash::from_byte_array([9; 32]));
+    // Assert
+    assert_eq!(bytes, expected);
 }

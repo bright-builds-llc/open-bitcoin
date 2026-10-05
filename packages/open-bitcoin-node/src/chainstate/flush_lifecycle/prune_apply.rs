@@ -8,8 +8,8 @@
 
 use open_bitcoin_core::{
     chainstate::{
-        ChainPosition, PruneLockInfo, PrunePlan, height_forbidden_by_any_lock,
-        height_inside_keep_window,
+        ChainPosition, IndexInputProtection, PruneLockInfo, PrunePlan,
+        height_forbidden_by_any_lock, height_inside_keep_window,
     },
     primitives::BlockHash,
 };
@@ -66,6 +66,18 @@ pub(crate) fn classify_prune_height(
     }
 }
 
+fn classify_protected_prune_height(
+    height: u32,
+    active_chain: &[ChainPosition],
+    locks: &[PruneLockInfo],
+    maybe_protection: Option<IndexInputProtection>,
+) -> ClassifiedHeight {
+    if maybe_protection.is_some_and(|protection| protection.check_prune_intent(height).is_err()) {
+        return ClassifiedHeight::SkippedLock { height };
+    }
+    classify_prune_height(height, active_chain, locks)
+}
+
 pub(super) fn apply_prune_plan<S: FlushPersistSink>(
     sink: &mut S,
     plan: &PrunePlan,
@@ -97,7 +109,14 @@ fn unlink_classified_height<S: FlushPersistSink>(
     active_chain: &[ChainPosition],
     locks: &[PruneLockInfo],
 ) -> Result<HeightPruneOutcome, StorageError> {
-    let classified = classify_prune_height(height, active_chain, locks);
+    let current = sink.load_prune_protection()?;
+    let maybe_protection = current
+        .maybe_owner()
+        .and_then(|owner| owner.maybe_effective_protection());
+    let mut current_locks = current.locks().to_vec();
+    current_locks.extend_from_slice(locks);
+    let classified =
+        classify_protected_prune_height(height, active_chain, &current_locks, maybe_protection);
     match classified {
         ClassifiedHeight::SkippedLock { height } => Ok(HeightPruneOutcome::SkippedLock { height }),
         ClassifiedHeight::SkippedKeepWindow { height } => {
@@ -120,93 +139,4 @@ fn unlink_classified_height<S: FlushPersistSink>(
 }
 
 #[cfg(test)]
-mod tests {
-    use open_bitcoin_core::{
-        chainstate::{ChainPosition, PruneLockInfo},
-        primitives::{BlockHash, BlockHeader, MerkleRoot},
-    };
-
-    use super::{ClassifiedHeight, classify_prune_height};
-
-    fn position(height: u32) -> ChainPosition {
-        let header = BlockHeader {
-            version: 1,
-            previous_block_hash: BlockHash::from_byte_array([0; 32]),
-            merkle_root: MerkleRoot::from_byte_array([height as u8; 32]),
-            time: 1_700_000_000,
-            bits: 0x207f_ffff,
-            nonce: height,
-        };
-        ChainPosition::new(header, height, u128::from(height), 1)
-    }
-
-    #[test]
-    fn empty_chain_is_skipped_unresolved() {
-        // Arrange
-        let locks = [];
-
-        // Act
-        let classified = classify_prune_height(4, &[], &locks);
-
-        // Assert
-        assert_eq!(
-            classified,
-            ClassifiedHeight::SkippedUnresolved { height: 4 }
-        );
-    }
-
-    #[test]
-    fn lock_wins_over_keep_window() {
-        // Arrange
-        let tip = position(10);
-        let locks = [PruneLockInfo {
-            name: "rescan".to_string(),
-            height_first: 10,
-            height_last: 10,
-        }];
-
-        // Act
-        let classified = classify_prune_height(10, &[tip], &locks);
-
-        // Assert
-        assert_eq!(classified, ClassifiedHeight::SkippedLock { height: 10 });
-    }
-
-    #[test]
-    fn tip_height_is_inside_the_keep_window() {
-        // Arrange
-        let older = position(1);
-        let tip = position(10);
-
-        // Act
-        let classified = classify_prune_height(10, &[older, tip], &[]);
-
-        // Assert
-        assert_eq!(
-            classified,
-            ClassifiedHeight::SkippedKeepWindow { height: 10 }
-        );
-    }
-
-    #[test]
-    fn ready_uses_the_active_chain_hash() {
-        // Arrange
-        let eligible = position(1);
-        let tip = position(400);
-        let expected_hash = eligible.block_hash;
-        let side_chain_hash = BlockHash::from_byte_array([0xab; 32]);
-
-        // Act
-        let classified = classify_prune_height(1, &[eligible, tip], &[]);
-
-        // Assert
-        assert_eq!(
-            classified,
-            ClassifiedHeight::Ready {
-                height: 1,
-                block_hash: expected_hash,
-            }
-        );
-        assert_ne!(expected_hash, side_chain_hash);
-    }
-}
+mod tests;

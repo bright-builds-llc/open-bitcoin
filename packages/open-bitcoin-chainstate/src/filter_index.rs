@@ -13,6 +13,7 @@ use open_bitcoin_primitives::{BlockHash, FilterHash, FilterHeader};
 
 use crate::{ChainPosition, PRUNE_LOCK_BUFFER, PruneLockInfo};
 
+pub mod lifecycle;
 pub mod recovery;
 pub use recovery::{FilterRecoveryPlan, FilterRecoveryScan};
 
@@ -40,7 +41,7 @@ pub fn verify_filter_record_commitment(
 }
 
 /// Verify one decreasing-height edge without constructing an ancestry identity.
-/// Complete row scans prove every edge; these raw facts cannot mint an identity.
+/// Complete row scans prove ancestry; a local edge alone cannot authorize release.
 pub fn verify_filter_record_predecessor(
     height: u32,
     parent_hash: BlockHash,
@@ -87,13 +88,30 @@ impl FilterRecordIdentity {
         previous_header: FilterHeader,
         maybe_predecessor: Option<&Self>,
     ) -> Result<Self, FilterIndexError> {
-        verify_filter_record_predecessor(
+        Self::new_with_predecessor_facts(
             height,
+            block_hash,
             parent_hash,
+            filter_hash,
+            filter_header,
             previous_header,
             maybe_predecessor
                 .map(|previous| (previous.height, previous.block_hash, previous.filter_header)),
-        )?;
+        )
+    }
+
+    /// Validate local commitments and the direct parent edge without proving ancestry.
+    /// Storage must separately prove complete rows/projection before any release.
+    pub fn new_with_predecessor_facts(
+        height: u32,
+        block_hash: BlockHash,
+        parent_hash: BlockHash,
+        filter_hash: FilterHash,
+        filter_header: FilterHeader,
+        previous_header: FilterHeader,
+        maybe_predecessor: Option<(u32, BlockHash, FilterHeader)>,
+    ) -> Result<Self, FilterIndexError> {
+        verify_filter_record_predecessor(height, parent_hash, previous_header, maybe_predecessor)?;
         verify_filter_record_commitment(
             height,
             parent_hash,

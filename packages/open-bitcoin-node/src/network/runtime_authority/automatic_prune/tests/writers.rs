@@ -18,10 +18,25 @@ impl TempStore {
             .duration_since(UNIX_EPOCH)
             .expect("clock")
             .as_nanos();
-        Self(std::env::temp_dir().join(format!(
-            "automatic-prune-writers-{}-{nanos}",
-            std::process::id()
-        )))
+        Self::at_nanos(nanos)
+    }
+
+    fn at_nanos(nanos: u128) -> Self {
+        let mut attempt = 0_u64;
+        loop {
+            let path = std::env::temp_dir().join(format!(
+                "automatic-prune-writers-{}-{nanos}-{attempt}",
+                std::process::id()
+            ));
+            // Wall-clock resolution cannot establish exclusive fixture ownership.
+            match std::fs::create_dir(&path) {
+                Ok(()) => return Self(path),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    attempt = attempt.checked_add(1).expect("fixture suffix exhausted");
+                }
+                Err(error) => panic!("reserve test store {}: {error}", path.display()),
+            }
+        }
     }
 }
 
@@ -37,7 +52,17 @@ fn real_fixture() -> (
     Arc<Mutex<Facts>>,
     crate::FjallNodeStore,
 ) {
-    let temp = TempStore::new();
+    real_fixture_in(TempStore::new())
+}
+
+fn real_fixture_in(
+    temp: TempStore,
+) -> (
+    TempStore,
+    ManagedNetworkHandle<TestStore>,
+    Arc<Mutex<Facts>>,
+    crate::FjallNodeStore,
+) {
     let store = crate::FjallNodeStore::open(&temp.0).expect("real store");
     store
         .mutate_payload_for_test(position(10).block_hash, vec![1, 2, 3], || {}, None)
@@ -45,6 +70,41 @@ fn real_fixture() -> (
     let (handle, facts) = fixture(PruneMode::Automatic { target_mib: 550 }, 0);
     facts.lock().expect("facts").maybe_real_store = Some(store.clone());
     (temp, handle, facts, store)
+}
+
+#[test]
+fn automatic_prune_equal_clock_fixture_cleanup_preserves_live_store() {
+    // Arrange
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock")
+        .as_nanos();
+    let (temp, _handle, _facts, store) = real_fixture_in(TempStore::at_nanos(nanos));
+
+    // Act
+    let closed_path = thread::spawn(move || {
+        let (temp, handle, facts, store) = real_fixture_in(TempStore::at_nanos(nanos));
+        let path = temp.0.clone();
+        drop(store);
+        drop(facts);
+        drop(handle);
+        drop(temp);
+        path
+    })
+    .join()
+    .expect("equal-clock fixture opens and closes independently");
+
+    // Assert
+    assert_ne!(closed_path, temp.0);
+    assert!(!closed_path.exists());
+    assert!(temp.0.is_dir());
+    assert_eq!(
+        store
+            .retained_payload_usage(&[position(10)])
+            .expect("surviving fixture remains usable")
+            .current_usage_bytes,
+        3
+    );
 }
 
 fn paused_clone_writer(fail_after_insert: bool) {

@@ -131,11 +131,7 @@ fn filter_index_production_reopen_preserves_stronger_saved_protection() {
     // Arrange
     let fixture = FilterStartupFixture::new("filter-stronger-protection", 1, Some(16));
     let store = FjallNodeStore::open(&fixture.path).expect("store");
-    store
-        .sync_prune_locks(&[IndexInputProtection::FromHeight(0)
-            .maybe_prune_lock()
-            .expect("lock")])
-        .expect("stronger saved protection");
+    seed_raw_basic_protection(&store, IndexInputProtection::FromHeight(0));
     drop(store);
     let before = snapshot_index(&fixture.path);
     // Act

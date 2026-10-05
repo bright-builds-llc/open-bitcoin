@@ -28,6 +28,8 @@ mod node;
 mod package;
 mod prune;
 #[cfg(test)]
+pub(crate) use prune::tests::ownership::durable_context;
+#[cfg(test)]
 mod tests;
 mod wallet;
 

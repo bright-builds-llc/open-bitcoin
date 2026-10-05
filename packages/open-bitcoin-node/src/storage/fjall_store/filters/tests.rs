@@ -23,6 +23,9 @@ use std::{
 };
 
 mod faults;
+mod lifecycle;
+mod ownership;
+use faults::{append_current, publish_current, seed_orphan_records};
 
 fn temp_path(name: &str) -> PathBuf {
     std::env::temp_dir().join(format!(
@@ -121,14 +124,14 @@ fn checkpoint(record: &StoredFilterRecord) -> FilterCheckpoint {
 }
 fn publish(store: &FjallNodeStore, positions: &[ChainPosition], records: &[StoredFilterRecord]) {
     let checkpoint = checkpoint(records.last().expect("endpoint"));
-    store
-        .publish_basic_filter_checkpoint(
-            &fence(positions),
-            checkpoint,
-            checkpoint.input_protection(),
-            records,
-        )
-        .expect("publish");
+    publish_current(
+        store,
+        &fence(positions),
+        checkpoint,
+        checkpoint.input_protection(),
+        records,
+    )
+    .expect("publish");
 }
 
 #[test]
@@ -151,9 +154,7 @@ fn filter_index_atomic_publication_and_idempotent_records_survive_real_reopen() 
         .expect("initialize");
     // Act
     publish(&store, &positions, &records);
-    store
-        .persist_basic_filter_records(&records)
-        .expect("idempotent");
+    append_current(&store, &records).expect("idempotent");
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("actual second open");
     // Assert
@@ -200,16 +201,14 @@ fn filter_index_atomic_publication_and_idempotent_records_survive_real_reopen() 
 }
 
 #[test]
-fn filter_index_record_only_success_cannot_create_or_advance_checkpoint() {
+fn filter_index_orphan_record_fixture_cannot_create_or_advance_checkpoint() {
     // Arrange
     let path = temp_path("records-only");
     let (positions, records) = fixtures(3);
     let store = FjallNodeStore::open(&path).expect("open");
     seed(&store, &positions);
     // Act
-    store
-        .persist_basic_filter_records(&records)
-        .expect("records only");
+    seed_orphan_records(&store, &records);
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("second open");
     // Assert
@@ -254,14 +253,14 @@ fn filter_index_rewind_hides_suffix_and_preserves_rows_and_operator_locks() {
     publish(&store, &positions, &records);
     // Act
     seed(&store, &positions[..1]);
-    store
-        .publish_basic_filter_checkpoint(
-            &fence(&positions[..1]),
-            checkpoint(&records[0]),
-            IndexInputProtection::FromHeight(1),
-            &[],
-        )
-        .expect("rewind");
+    publish_current(
+        &store,
+        &fence(&positions[..1]),
+        checkpoint(&records[0]),
+        IndexInputProtection::FromHeight(1),
+        &[],
+    )
+    .expect("rewind");
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("second open");
     // Assert
@@ -306,8 +305,9 @@ fn filter_index_stale_fence_and_oversized_batch_refuse_before_publication() {
         .initialize_basic_filter_state(&fence(&positions[..1]))
         .expect("init");
     // Act
-    let oversized = store.persist_basic_filter_records(&records);
-    let stale = store.publish_basic_filter_checkpoint(
+    let oversized = append_current(&store, &records);
+    let stale = publish_current(
+        &store,
         &fence(&positions),
         checkpoint(&records[0]),
         IndexInputProtection::FromHeight(1),
@@ -332,10 +332,14 @@ fn filter_index_stale_fence_and_oversized_batch_refuse_before_publication() {
 fn filter_index_missing_predecessor_refuses_entire_record_batch() {
     // Arrange
     let path = temp_path("missing-parent");
-    let (_positions, records) = fixtures(2);
+    let (positions, records) = fixtures(2);
     let store = FjallNodeStore::open(&path).expect("open");
+    seed(&store, &positions);
+    store
+        .initialize_basic_filter_state(&fence(&positions))
+        .expect("init");
     // Act
-    let result = store.persist_basic_filter_records(&records[1..]);
+    let result = append_current(&store, &records[1..]);
     // Assert
     assert!(result.is_err());
     assert_eq!(
@@ -350,11 +354,13 @@ fn filter_index_missing_predecessor_refuses_entire_record_batch() {
 fn filter_index_conflicting_immutable_rewrite_refuses_and_retains_existing_bytes_after_reopen() {
     // Arrange
     let path = temp_path("conflict");
-    let (_positions, records) = fixtures(1);
+    let (positions, records) = fixtures(1);
     let store = FjallNodeStore::open(&path).expect("open");
+    seed(&store, &positions);
     store
-        .persist_basic_filter_records(&records)
-        .expect("initial");
+        .initialize_basic_filter_state(&fence(&positions))
+        .expect("init");
+    append_current(&store, &records).expect("initial");
     let key = codec::record_key(records[0].identity().block_hash());
     let mut alternate = codec::encode_record(&records[0]);
     let hash = open_bitcoin_core::primitives::FilterHash::from_byte_array(
@@ -374,9 +380,7 @@ fn filter_index_conflicting_immutable_rewrite_refuses_and_retains_existing_bytes
         .expect("alternate validates")
         .expect("present");
     // Act
-    let error = store
-        .persist_basic_filter_records(&records)
-        .expect_err("immutable conflict");
+    let error = append_current(&store, &records).expect_err("immutable conflict");
     drop(store);
     let reopened = FjallNodeStore::open(&path).expect("second open");
     // Assert
@@ -394,8 +398,10 @@ fn filter_index_conflicting_immutable_rewrite_refuses_and_retains_existing_bytes
         Some(previous)
     );
     assert_eq!(
-        reopened.maybe_basic_filter_checkpoint().expect("no state"),
-        None
+        reopened
+            .maybe_basic_filter_checkpoint()
+            .expect("empty state"),
+        Some(FilterCheckpoint::new(IndexPrefix::Empty))
     );
     drop(reopened);
     std::fs::remove_dir_all(path).expect("cleanup");
@@ -411,9 +417,7 @@ fn malformed_reopen(category: &str) {
         .initialize_basic_filter_state(&fence(&positions))
         .expect("init");
     publish(&store, &positions, &records[..2]);
-    store
-        .persist_basic_filter_records(&records[2..])
-        .expect("suffix");
+    append_current(&store, &records[2..]).expect("suffix");
     let untouched = store
         .get_bytes(
             StorageNamespace::BlockIndex,
@@ -451,12 +455,9 @@ fn malformed_reopen(category: &str) {
     let result = match category {
         "record" => reopened.validate_basic_filter_records(),
         "state" | "projection" => reopened.maybe_basic_filter_checkpoint().map(|_| ()),
-        "protection" => reopened.publish_basic_filter_checkpoint(
-            &fence(&positions),
-            checkpoint(&records[1]),
-            IndexInputProtection::FromHeight(2),
-            &[],
-        ),
+        "protection" => reopened.recover_basic_filter_index_before_prune(Some(
+            positions.last().expect("tip").block_hash,
+        )),
         _ => panic!("unknown fixture"),
     };
     // Assert

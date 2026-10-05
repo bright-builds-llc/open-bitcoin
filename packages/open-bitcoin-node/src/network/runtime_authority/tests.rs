@@ -417,3 +417,160 @@ fn plant_payload(store: &FjallNodeStore, height: u32, nonce: u32) -> (ChainPosit
         .expect("save undo");
     (position, body)
 }
+
+#[test]
+fn prune_reserved_handle_mutations_refuse_even_when_absent() {
+    // Arrange
+    let (path, store) = open_temp_store("reserved-crud");
+    let network = ManagedPeerNetwork::new(
+        FjallChainstateStore::from_store(store.clone()),
+        Default::default(),
+        Default::default(),
+    );
+    let handle = ManagedNetworkHandle::new(network);
+    let reserved = open_bitcoin_core::chainstate::BASIC_INDEX_PRUNE_LOCK;
+
+    // Act
+    let replace = handle.replace_prune_lock(open_bitcoin_core::chainstate::PruneLockInfo {
+        name: reserved.to_owned(),
+        height_first: 0,
+        height_last: 10,
+    });
+    let clear = handle.clear_prune_lock(reserved);
+
+    // Assert
+    for result in [replace, clear.map(|_| ())] {
+        assert!(
+            result
+                .expect_err("reserved refusal")
+                .to_string()
+                .contains("internally owned")
+        );
+    }
+    assert!(
+        !handle
+            .clear_prune_lock("missing")
+            .expect("ordinary absence")
+    );
+    assert!(handle.list_prune_locks().expect("locks").is_empty());
+    drop(handle);
+    drop(store);
+    let reopened = FjallNodeStore::open(&path).expect("reopen");
+    assert!(reopened.load_prune_locks().expect("unchanged").is_empty());
+    drop(reopened);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn prune_reserved_handle_refuses_every_saved_owner_and_preserves_ordinary_crud() {
+    use crate::storage::StorageNamespace;
+    use crate::storage::filter_index::ownership::{OWNER_KEY, encode_owner};
+    use open_bitcoin_core::chainstate::filter_index::lifecycle::{IndexGeneration, IndexLifecycle};
+    use open_bitcoin_core::chainstate::{
+        BASIC_INDEX_PRUNE_LOCK, PruneLockInfo, VerifiedChainstateFence,
+    };
+    for mode in 0..4 {
+        // Arrange: Active, Disabled released/retained, exhausted Active.
+        let (path, store) = open_temp_store("reserved-owner-modes");
+        let position = ChainPosition::new(test_header(BlockHash::default(), 0), 0, 1, 1);
+        let snapshot =
+            ChainstateSnapshot::new(vec![position], Default::default(), Default::default());
+        store
+            .seed_coins_from_snapshot(&snapshot)
+            .expect("durable fence");
+        let fence = VerifiedChainstateFence::new(
+            Some(snapshot.active_chain[0].block_hash),
+            Some(&snapshot.active_chain),
+        )
+        .expect("fence");
+        store
+            .initialize_basic_filter_state(&fence)
+            .expect("internal initialization");
+        match mode {
+            1 => store.disable_basic_filter_index().expect("disable"),
+            2 | 3 => store
+                .write_raw_for_test(
+                    StorageNamespace::BlockIndex,
+                    OWNER_KEY,
+                    encode_owner(if mode == 2 {
+                        IndexLifecycle::Disabled {
+                            generation: IndexGeneration::new(1),
+                        }
+                    } else {
+                        IndexLifecycle::Active {
+                            generation: IndexGeneration::new(u64::MAX),
+                        }
+                    })
+                    .to_vec(),
+                )
+                .expect("explicit recovery fixture"),
+            _ => {}
+        }
+        let original = store.load_prune_locks().expect("locks");
+        let maybe_state = store.maybe_basic_filter_state().expect("state");
+        let maybe_owner = store
+            .maybe_basic_filter_lifecycle_for_test()
+            .expect("owner");
+        let network = ManagedPeerNetwork::new(
+            FjallChainstateStore::from_store(store.clone()),
+            Default::default(),
+            Default::default(),
+        );
+        let handle = ManagedNetworkHandle::new(network);
+
+        // Act / Assert
+        assert!(
+            handle
+                .replace_prune_lock(PruneLockInfo {
+                    name: BASIC_INDEX_PRUNE_LOCK.into(),
+                    height_first: 0,
+                    height_last: 10
+                })
+                .is_err()
+        );
+        assert!(handle.clear_prune_lock(BASIC_INDEX_PRUNE_LOCK).is_err());
+        handle
+            .replace_prune_lock(PruneLockInfo {
+                name: "ordinary".into(),
+                height_first: 20,
+                height_last: 30,
+            })
+            .expect("ordinary set");
+        handle
+            .replace_prune_lock(PruneLockInfo {
+                name: "ordinary".into(),
+                height_first: 21,
+                height_last: 31,
+            })
+            .expect("ordinary replace");
+        assert!(!handle.clear_prune_lock("missing").expect("ordinary absent"));
+        assert!(handle.clear_prune_lock("ordinary").expect("ordinary clear"));
+        assert_eq!(handle.list_prune_locks().expect("owner"), original);
+        assert_eq!(
+            store.maybe_basic_filter_state().expect("state"),
+            maybe_state
+        );
+        assert_eq!(
+            store
+                .maybe_basic_filter_lifecycle_for_test()
+                .expect("owner"),
+            maybe_owner
+        );
+        drop(handle);
+        drop(store);
+        let reopened = FjallNodeStore::open(&path).expect("reopen");
+        assert_eq!(reopened.load_prune_locks().expect("owner"), original);
+        assert_eq!(
+            reopened.maybe_basic_filter_state().expect("state"),
+            maybe_state
+        );
+        assert_eq!(
+            reopened
+                .maybe_basic_filter_lifecycle_for_test()
+                .expect("owner"),
+            maybe_owner
+        );
+        drop(reopened);
+        remove_dir_if_exists(&path);
+    }
+}

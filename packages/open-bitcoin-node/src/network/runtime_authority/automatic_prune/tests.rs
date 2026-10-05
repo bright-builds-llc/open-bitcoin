@@ -23,6 +23,7 @@ use std::{
 };
 
 mod fixtures;
+mod protection;
 mod writers;
 use fixtures::*;
 

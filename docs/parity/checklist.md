@@ -11,7 +11,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 ## Surface Status
 
 | Surface | Status | Requirements | Evidence | Known Gaps | Suspected Unknowns |
-| --- | --- | --- | --- | --- | --- |
+| -- | -- | -- | -- | -- | -- |
 | `reference-baseline` | `done` | `REF-01`, `REF-02` | [Phase 01 baseline](../../.planning/phases/01-workspace-baseline-and-guardrails/01-01-SUMMARY.md), [Phase 01 ledger](../../.planning/phases/01-workspace-baseline-and-guardrails/01-04-SUMMARY.md), [Phase 01 verification](../../.planning/phases/01-workspace-baseline-and-guardrails/01-VERIFICATION.md) | None recorded. | None recorded. |
 | `architecture-workspace` | `done` | `ARCH-01`, `ARCH-02`, `ARCH-03`, `ARCH-04`, `VER-01`, `VER-02` | [Workspace wiring](../../.planning/phases/01-workspace-baseline-and-guardrails/01-02-SUMMARY.md), [guardrails](../../.planning/phases/01-workspace-baseline-and-guardrails/01-03-SUMMARY.md), [verification](../../.planning/phases/01-workspace-baseline-and-guardrails/01-VERIFICATION.md), [verify script](../../scripts/verify.sh) | None recorded. | None recorded. |
 | `core-serialization` | `done` | `REF-03`, `CONS-01`, `ARCH-03` | [Core catalog](catalog/core-domain-and-serialization.md), [Phase 02 verification](../../.planning/phases/02-core-domain-and-serialization-foundations/02-VERIFICATION.md) | None recorded. | Deprecated hex acceptance, serializer parameters, and protocol/address fixture boundaries remain audit watch items. |
@@ -96,11 +96,17 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-4-parity-roots-and-no-claim-guardrails` | `done` | `GRD-01` | [Phase 151 UAT](../../.planning/phases/151-parity-roots-and-no-claim-guardrails/151-UAT.md), [Phase 151 checker](../../scripts/check-phase151-parity-uat-release-boundary.ts), [release readiness](release-readiness.md), [Chainstate catalog](catalog/chainstate.md), [machine index](index.json) | Phase 151 uniquely owns GRD-01. It does not absorb SNAP, PRUN, LOCK, UNLK, SERV, LABL, or OPER ownership. | Phase 151 owns only GRD-01. FUT-19 through FUT-27 remain deferred: archive-node or production-scale historical serving, compact-filter or BIP37 serving, assumeutxo, assumevalid, or a second chainstate, LevelDB chainstate/ live import or export, automatic destructive reindex, public serving or relay by default, public-network CI as a release gate, production full-node readiness, production service operation, production-funds wallet safety, txindex combined with prune, and -pruneduringinit. Open Bitcoin removes paired Fjall block and undo keys for eligible heights and does not introduce a Knots blk/rev flat-file store. Required UAT stays deterministic. Public-network review is not run and is never a default, CI, or release gate. v2.4 shipped and was archived on 2026-10-03; the [archived audit](../../.planning/milestones/v2.4-MILESTONE-AUDIT.md) preserves 17/17 requirements, 20/20 seams, 10/10 flows and three accepted nonblocking advisories. |
 
 | Requirement | Status |
-| --- | --- |
+| -- | -- |
 | MPDUR-01 | Complete |
 | MPDUR-02 | Complete |
 | MPDUR-03 | Complete |
 | MPDUR-04 | Complete |
+
+## Current v2.5 ownership evidence
+
+| Surface ID | Status | Requirements | Evidence | Scope and limits |
+| -- | -- | -- | -- | -- |
+| `v2-5-index-owned-manual-and-automatic-prune-coordination` | `done` | `CFPR-01` | [BASIC ownership catalog](catalog/basic-compact-filters.md#index-owned-manual-and-automatic-prune-coordination), [runtime summary](../../.planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-07-SUMMARY.md), [native guard](../../scripts/check-phase156-prune-coordination.ts), [mutation tests](../../scripts/check-phase156-prune-coordination.test.ts) | Internal reserved ownership, fresh application/deletion protection, exact work fencing, ordered disable/re-enable and automatic identity invalidation have targeted real-store/runtime/authenticated/ordinary daemon evidence. Full native gate and formal phase/lifecycle evidence is recorded in [verification](../../.planning/phases/156-index-owned-manual-and-automatic-prune-coordination/156-VERIFICATION.md). Public activation/catch-up, runtime reorg, filter RPC/peers/operator products and complete client-after-prune proof remain deferred. |
 
 ## Evidence Rules
 

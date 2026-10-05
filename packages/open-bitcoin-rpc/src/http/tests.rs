@@ -30,6 +30,8 @@ use crate::{
     http::{build_http_state, handle_http_request},
 };
 
+mod prune_ownership;
+
 fn auth_headers(username: &str, password: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     let credentials =

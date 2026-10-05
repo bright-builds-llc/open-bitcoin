@@ -14,7 +14,7 @@
 mod status;
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
 
 pub(in crate::dispatch) use status::{configured_last_pruned_height, operator_prune_status};
 

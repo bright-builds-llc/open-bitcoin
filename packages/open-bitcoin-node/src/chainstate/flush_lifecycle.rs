@@ -11,7 +11,7 @@ use open_bitcoin_core::{
     chainstate::{
         BlockUndo, ChainPosition, ChainstateError, CoinsCache, CoinsView, FlushDecision, FlushMode,
         FlushPolicyInput, FlushPolicyTime, PruneLockInfo, PrunePlan, RecoveryDecision,
-        decide_flush, decide_recovery,
+        decide_flush, decide_recovery, filter_index::lifecycle::EffectiveIndexOwnership,
     },
     primitives::{Block, BlockHash},
 };
@@ -33,6 +33,7 @@ use crate::storage::{
 #[cfg(test)]
 mod tests;
 
+mod fjall_sink;
 mod prune_apply;
 
 use prune_apply::apply_prune_plan;
@@ -81,6 +82,40 @@ pub struct FlushExecution {
     pub deleted_block_hashes: Vec<BlockHash>,
 }
 
+/// Read-only current protection facts. This snapshot grants no write authority.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PruneProtectionSnapshot {
+    pub(crate) maybe_owner: Option<EffectiveIndexOwnership>,
+    pub(crate) locks: Vec<PruneLockInfo>,
+}
+
+impl PruneProtectionSnapshot {
+    /// Return bounded validated owner facts; concrete deletion rechecks authority.
+    pub const fn maybe_owner(&self) -> Option<EffectiveIndexOwnership> {
+        self.maybe_owner
+    }
+
+    /// Return current ordinary and internally owned ranges.
+    pub fn locks(&self) -> &[PruneLockInfo] {
+        &self.locks
+    }
+
+    /// Check index-required inputs directly, including heights zero and one.
+    pub fn protects_height(&self, height: u32) -> bool {
+        self.maybe_owner
+            .and_then(EffectiveIndexOwnership::maybe_effective_protection)
+            .is_some_and(|protection| protection.check_prune_intent(height).is_err())
+    }
+
+    /// Explicit contract for known transient stores without an index.
+    pub(crate) fn no_index(locks: Vec<PruneLockInfo>) -> Self {
+        Self {
+            maybe_owner: None,
+            locks,
+        }
+    }
+}
+
 /// Injected persist sink so undo/index abort tests do not chmod a Fjall datadir.
 pub trait FlushPersistSink {
     fn persist_block(&mut self, block: &Block) -> Result<(), StorageError>;
@@ -115,6 +150,13 @@ pub trait FlushPersistSink {
         })
     }
 
+    /// Load validated current protection; unsupported never means no index.
+    fn load_prune_protection(&self) -> Result<PruneProtectionSnapshot, StorageError> {
+        Err(StorageError::UnavailableNamespace {
+            namespace: StorageNamespace::BlockIndex,
+        })
+    }
+
     /// Publishes protection ranges durably under the caller's authority.
     fn sync_prune_locks(&self, _locks: &[PruneLockInfo]) -> Result<(), StorageError> {
         Err(StorageError::UnavailableNamespace {
@@ -136,65 +178,6 @@ pub trait FlushPersistSink {
         _deleted_heights: &[u32],
     ) -> Result<(), StorageError> {
         Ok(())
-    }
-}
-
-impl FlushPersistSink for FjallNodeStore {
-    fn retained_payload_usage(
-        &self,
-        active_chain: &[ChainPosition],
-    ) -> Result<RetainedPayloadUsage, StorageError> {
-        FjallNodeStore::retained_payload_usage(self, active_chain)
-    }
-
-    fn payload_usage_revision(&self) -> Result<PayloadUsageRevision, StorageError> {
-        FjallNodeStore::payload_usage_revision(self)
-    }
-
-    fn load_prune_locks(&self) -> Result<Vec<PruneLockInfo>, StorageError> {
-        FjallNodeStore::load_prune_locks(self)
-    }
-
-    fn sync_prune_locks(&self, locks: &[PruneLockInfo]) -> Result<(), StorageError> {
-        FjallNodeStore::sync_prune_locks(self, locks)
-    }
-
-    fn persist_block(&mut self, block: &Block) -> Result<(), StorageError> {
-        FjallNodeStore::save_block(self, block, PersistMode::Flush).map(|_| ())
-    }
-
-    fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError> {
-        FjallNodeStore::save_undo(self, hash, undo, PersistMode::Flush)
-    }
-
-    fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError> {
-        if entries.is_empty() {
-            return Ok(());
-        }
-        FjallNodeStore::save_header_entries(self, entries, PersistMode::Flush)
-    }
-
-    fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError> {
-        FjallNodeStore::save_chain_meta(self, active_chain, PersistMode::Flush)
-    }
-
-    fn disk_free_bytes(&self) -> u64 {
-        probe_disk_free_bytes(self.datadir())
-    }
-
-    fn commit_paired_unlink(
-        &mut self,
-        height: u32,
-        block_hash: BlockHash,
-    ) -> Result<PairedDeleteOutcome, StorageError> {
-        self.commit_paired_delete(height, block_hash)
-    }
-
-    fn record_successful_prune_batch(
-        &mut self,
-        deleted_heights: &[u32],
-    ) -> Result<(), StorageError> {
-        FjallNodeStore::record_successful_prune_batch(self, deleted_heights)
     }
 }
 

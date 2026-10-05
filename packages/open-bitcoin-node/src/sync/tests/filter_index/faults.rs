@@ -14,7 +14,7 @@ fn filter_index_production_after_record_commit_error_retains_ahead_rows_without_
     let store = history.seed(1);
     store.set_basic_filter_fault(FilterPublicationFault::AfterCommit);
     // Act
-    let result = store.persist_basic_filter_records(&history.records[2..]);
+    let result = append_current(&store, &history.records[2..]);
     assert!(
         result.is_err(),
         "a post-commit error is not proof of rollback"
@@ -61,9 +61,7 @@ fn filter_index_production_validated_partial_coins_replay_precedes_guard() {
         // Arrange
         let history = ValidatedHistory::new("filter-validated-H-B", false);
         let store = history.seed(1);
-        store
-            .persist_basic_filter_records(&history.records[2..])
-            .expect("ahead immutable rows");
+        append_current(&store, &history.records[2..]).expect("ahead immutable rows");
         let mut view = store.coins_view();
         view.set_simulate_crash_after_partial(true);
         let new = history.full.active_chain[2].block_hash;
@@ -87,7 +85,7 @@ fn filter_index_production_validated_partial_coins_replay_precedes_guard() {
             block_hash: new,
         };
         if !compatible_metadata {
-            store.sync_prune_intent(intent).expect("unsafe live intent");
+            seed_raw_prune_intent(&store, intent);
         }
         drop(view);
         drop(store);
@@ -159,9 +157,7 @@ fn filter_index_production_failed_metadata_flush_keeps_rows_and_refuses_cursor()
     // Arrange
     let history = ValidatedHistory::new("filter-validated-meta-fault", false);
     let mut store = history.seed(1);
-    store
-        .persist_basic_filter_records(&history.records[2..])
-        .expect("ahead immutable rows");
+    append_current(&store, &history.records[2..]).expect("ahead immutable rows");
     let now = FlushPolicyTime::from_unix_seconds(1);
     let (mut lifecycle, view, mut cache) =
         initialize(&store, now, now, 0, false, u64::MAX).expect("ready old checkpoint");
@@ -169,9 +165,7 @@ fn filter_index_production_failed_metadata_flush_keeps_rows_and_refuses_cursor()
         height: 2,
         block_hash: history.full.active_chain[2].block_hash,
     };
-    store
-        .sync_prune_intent(intent)
-        .expect("unsafe live intent before flush");
+    seed_raw_prune_intent(&store, intent);
     cache.absorb_batch_write(
         history.spend_batch(),
         Some(history.full.active_chain[2].block_hash),
@@ -253,9 +247,10 @@ fn filter_index_production_reopens_every_record_and_checkpoint_fault_boundary() 
         let cp = checkpoint(&history.records[2]);
         // Act
         let result = if fault == FilterPublicationFault::BeforeRecords {
-            store.persist_basic_filter_records(&history.records[2..])
+            append_current(&store, &history.records[2..])
         } else {
-            store.publish_basic_filter_checkpoint(
+            publish_current(
+                &store,
                 &fence(&history.full.active_chain),
                 cp,
                 cp.input_protection(),
@@ -263,6 +258,12 @@ fn filter_index_production_reopens_every_record_and_checkpoint_fault_boundary() 
             )
         };
         assert!(result.is_err());
+        assert!(
+            store
+                .commit_paired_delete(2, history.full.active_chain[2].block_hash)
+                .is_err()
+        );
+        super::prune_faults::assert_unearned(&store);
         drop(store);
         let runtime = history
             .reopen()
@@ -274,6 +275,20 @@ fn filter_index_production_reopens_every_record_and_checkpoint_fault_boundary() 
             1
         };
         let store = runtime.store();
+        super::prune_faults::assert_unearned(store);
+        assert_eq!(
+            store
+                .maybe_basic_filter_lifecycle_for_test()
+                .expect("durable lifecycle"),
+            Some(
+                open_bitcoin_core::chainstate::filter_index::lifecycle::IndexLifecycle::Active {
+                    generation:
+                        open_bitcoin_core::chainstate::filter_index::lifecycle::IndexGeneration::new(
+                            0
+                        )
+                }
+            )
+        );
         assert_eq!(
             store
                 .maybe_basic_filter_checkpoint()
