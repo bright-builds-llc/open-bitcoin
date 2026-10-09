@@ -154,18 +154,6 @@ fn phase157_turn_prefix_independent_complete_operation_counts() {
             .network
             .drive_basic_filter_index_turn()
             .expect("fixed workload");
-        // Assert
-        assert_eq!(turn.body_reads, 8);
-        assert_eq!(turn.body_decodes, 8);
-        assert_eq!(turn.undo_borrows, 8);
-        assert_eq!(turn.generations, 8);
-        assert_eq!(turn.work.record_operations, 70);
-        assert_eq!(turn.work.projection_operations, 36);
-        assert_eq!(turn.work.checkpoint_operations, 5_415);
-        assert_eq!(turn.indexed_point_reads, 40);
-        assert!(turn.work.body_bytes <= 68_000);
-        assert!(turn.work.cloned_bytes < 5_000_000);
-        assert_eq!(turn.persistence_batches, 1);
         let reads = runtime.store().basic_filter_point_reads_for_test();
         runtime
             .store()
@@ -178,8 +166,25 @@ fn phase157_turn_prefix_independent_complete_operation_counts() {
             )
             .expect("general ancestry control")
             .expect("record");
+        let full_ancestry_reads = runtime.store().basic_filter_point_reads_for_test() - reads;
+        // Assert
+        assert_eq!(turn.body_reads, 8);
+        assert_eq!(turn.body_decodes, 8);
+        assert_eq!(turn.undo_borrows, 8);
+        assert_eq!(turn.generations, 8);
+        assert_eq!(
+            turn.work.record_operations, 98,
+            "turn work: {:?}; indexed point reads: {}; full ancestry reads: {full_ancestry_reads}",
+            turn.work, turn.indexed_point_reads
+        );
+        assert_eq!(turn.work.projection_operations, 44);
+        assert_eq!(turn.work.checkpoint_operations, 7_621);
+        assert_eq!(turn.indexed_point_reads, 56);
+        assert!(turn.work.body_bytes <= 68_000);
+        assert!(turn.work.cloned_bytes < 5_000_000);
+        assert_eq!(turn.persistence_batches, 1);
         assert!(
-            runtime.store().basic_filter_point_reads_for_test() - reads > 40,
+            full_ancestry_reads > turn.indexed_point_reads,
             "the real full ancestry helper would fail the turn bound"
         );
         drop(runtime);

@@ -20,6 +20,8 @@ use open_bitcoin_core::chainstate::{
 use open_bitcoin_core::primitives::BlockHash;
 use std::sync::{Arc, Mutex};
 
+mod proofs;
+
 /// Constant-size facts proved by complete recovery, then maintained by trusted writes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::storage::fjall_store) struct BasicFilterAppendIdentity {
@@ -31,17 +33,43 @@ pub(in crate::storage::fjall_store) struct BasicFilterAppendIdentity {
     pub durable_height: u32,
     pub durable_hash: BlockHash,
     pub revision: u64,
+    pub projection_authority: BasicFilterProjectionAuthority,
+    pub maybe_replacement: Option<BasicFilterReplacementIdentity>,
+}
+
+/// Proven prefix repair is distinct from acceptance of a live replacement.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::storage::fjall_store) enum BasicFilterProjectionAuthority {
+    RecoveredPrefix,
+    ValidatedReorg,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::storage::fjall_store) struct BasicFilterReplacementIdentity {
+    pub maybe_accepted: Option<(u32, BlockHash)>,
+    pub maybe_displaced_fence: Option<(u32, BlockHash)>,
 }
 
 /// Opaque same-store capability. Domain progress or caller-selected tips cannot mint it.
 pub(crate) struct BasicFilterAppendProof {
-    identity: BasicFilterAppendIdentity,
+    pub(super) identity: BasicFilterAppendIdentity,
     publication: Arc<Mutex<PublicationControl>>,
     preparation_work: TurnWork,
     maybe_maximum_work: Option<TurnWork>,
 }
 
 impl BasicFilterAppendProof {
+    pub(super) fn bounded_reorg_copy(&self, maximum_work: TurnWork) -> Result<Self, StorageError> {
+        if !self.preparation_work.fits(maximum_work) {
+            return Err(index_corruption("BASIC reorg preparation work budget"));
+        }
+        Ok(Self {
+            identity: self.identity,
+            publication: Arc::clone(&self.publication),
+            preparation_work: self.preparation_work,
+            maybe_maximum_work: Some(maximum_work),
+        })
+    }
     pub(crate) fn preparation_work(&self) -> TurnWork {
         self.preparation_work
     }
@@ -137,6 +165,11 @@ impl FjallNodeStore {
         #[cfg(test)]
         self.run_basic_filter_writer_interleave(super::BasicFilterWriterInterleave::BeforeConfirm)?;
         let mut control = self.filter_publication_guard()?;
+        if control.maybe_reorg_suspension.is_some() {
+            return Err(index_corruption(
+                "BASIC flush confirmation suspended for reorg preview",
+            ));
+        }
         let result = (|| {
             let work = completed.initial_proof();
             if !completed.belongs_to(self)
@@ -178,7 +211,11 @@ impl FjallNodeStore {
                 return Err(index_corruption("BASIC completed flush source identity"));
             }
             control.maybe_completed_metadata = None;
-            control.maybe_append_identity = Some(pending.identity);
+            let mut identity = pending.identity;
+            if let Some(replacement) = &mut identity.maybe_replacement {
+                replacement.maybe_displaced_fence = None;
+            }
+            control.maybe_append_identity = Some(identity);
             Ok(())
         })();
         let work = completed.initial_proof();
@@ -198,46 +235,14 @@ impl FjallNodeStore {
         }
         result
     }
-    /// Prepare bounded work only after exclusive configured recovery installed authority.
-    pub(crate) fn maybe_basic_filter_append_proof(
-        &self,
-    ) -> Result<Option<BasicFilterAppendProof>, StorageError> {
-        self.maybe_basic_filter_append_proof_with_limits(None)
-    }
-
-    /// Scheduler must reserve metadata and all endpoint work before decoding.
-    pub(crate) fn maybe_basic_filter_append_proof_with_budget(
-        &self,
-        maximum_work: TurnWork,
-    ) -> Result<Option<BasicFilterAppendProof>, StorageError> {
-        self.maybe_basic_filter_append_proof_with_limits(Some(maximum_work))
-    }
-
-    fn maybe_basic_filter_append_proof_with_limits(
-        &self,
-        maybe_maximum_work: Option<TurnWork>,
-    ) -> Result<Option<BasicFilterAppendProof>, StorageError> {
-        let control = self.filter_publication_guard()?;
-        let Some(identity) = control.maybe_append_identity else {
-            return Ok(None);
-        };
-        let mut proof = BasicFilterAppendProof {
-            identity,
-            publication: Arc::clone(&self.filter_publication),
-            preparation_work: TurnWork::default(),
-            maybe_maximum_work,
-        };
-        let mut work = TurnWork::default();
-        self.check_basic_filter_append_proof_guarded_counted(&proof, &control, &mut work)?;
-        proof.preparation_work = work;
-        Ok(Some(proof))
-    }
-
     pub(crate) fn check_basic_filter_append_proof(
         &self,
         proof: &BasicFilterAppendProof,
     ) -> Result<TurnWork, StorageError> {
         let control = self.filter_publication_guard()?;
+        if control.maybe_reorg_suspension.is_some() {
+            return Err(index_corruption("BASIC append suspended for reorg preview"));
+        }
         let mut work = proof.preparation_work();
         self.check_basic_filter_append_proof_guarded_counted(proof, &control, &mut work)?;
         Ok(work)
@@ -332,6 +337,8 @@ impl FjallNodeStore {
             durable_height: fence.tip().height,
             durable_hash: fence.tip().block_hash,
             revision: control.revision,
+            projection_authority: BasicFilterProjectionAuthority::RecoveredPrefix,
+            maybe_replacement: None,
         });
         Ok(())
     }
@@ -345,7 +352,7 @@ impl FjallNodeStore {
         self.maybe_basic_filter_owner_guarded_counted(_control, &mut TurnWork::default(), None)
     }
 
-    fn maybe_basic_filter_owner_guarded_counted(
+    pub(super) fn maybe_basic_filter_owner_guarded_counted(
         &self,
         _control: &PublicationControl,
         work: &mut TurnWork,
@@ -516,6 +523,9 @@ impl FjallNodeStore {
         fence: &VerifiedChainstateFence<'_>,
     ) -> Result<Option<BasicFilterWorkToken>, StorageError> {
         let mut control = self.filter_publication_guard()?;
+        if control.maybe_reorg_suspension.is_some() {
+            return Err(index_corruption("BASIC work suspended for reorg preview"));
+        }
         let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {
             return Ok(None);
         };
@@ -540,6 +550,11 @@ impl FjallNodeStore {
         fence: &VerifiedChainstateFence<'_>,
         control: &PublicationControl,
     ) -> Result<(), StorageError> {
+        if control.maybe_reorg_suspension.is_some() {
+            return Err(index_corruption(
+                "BASIC publication suspended for reorg preview",
+            ));
+        }
         if !Arc::ptr_eq(&work.publication, &self.filter_publication) {
             return Err(index_corruption("foreign BASIC index work"));
         }

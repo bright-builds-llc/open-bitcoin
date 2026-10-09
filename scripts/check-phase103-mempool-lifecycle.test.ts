@@ -57,59 +57,39 @@ test("passes_when_phase103_evidence_is_complete", () => {
   expect(failures).toEqual([]);
 });
 
-test("fails_when_any_phase103_requirement_is_missing", () => {
-  // Arrange
-  const roots = REQUIRED_REQUIREMENTS.map((requirement) =>
-    createFixture({
+for (const requirement of REQUIRED_REQUIREMENTS) {
+  test(`fails_when_phase103_requirement_${requirement}_is_missing`, () => {
+    // Arrange
+    const root = createFixture({
       maybeMutateFiles(files) {
         removeFromAllFiles(files, requirement);
       },
-    }),
-  );
+    });
 
-  // Act
-  const failureMessages = roots.map((root) => checkPhase103MempoolLifecycle(root).join("\n"));
+    // Act
+    const message = checkPhase103MempoolLifecycle(root).join("\n");
 
-  // Assert
-  for (const [index, message] of failureMessages.entries()) {
-    expect(message).toContain(REQUIRED_REQUIREMENTS[index]);
-  }
-});
+    // Assert
+    expect(message).toContain(requirement);
+  });
+}
 
-test("fails_when_lifecycle_or_storage_symbol_is_missing", () => {
-  // Arrange
-  const roots = [
-    createFixture({
+for (const symbol of ["MempoolPressureSummary", "MempoolRemovalCause", "MempoolRemovalRole", "StorageNamespace::Mempool"]) {
+  test(`fails_when_lifecycle_or_storage_symbol_${symbol}_is_missing`, () => {
+    // Arrange
+    const root = createFixture({
       maybeMutateFiles(files) {
-        removeFromAllFiles(files, "MempoolPressureSummary");
+        removeFromAllFiles(files, symbol);
       },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        removeFromAllFiles(files, "MempoolRemovalCause");
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        removeFromAllFiles(files, "MempoolRemovalRole");
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        removeFromAllFiles(files, "StorageNamespace::Mempool");
-      },
-    }),
-  ];
+    });
 
-  // Act
-  const failureMessages = roots.map((root) => checkPhase103MempoolLifecycle(root).join("\n"));
+    // Act
+    const message = checkPhase103MempoolLifecycle(root).join("\n");
 
-  // Assert
-  expect(failureMessages[0]).toContain("required Phase 103 symbol");
-  expect(failureMessages[1]).toContain("required Phase 103 symbol");
-  expect(failureMessages[2]).toContain("required Phase 103 symbol");
-  expect(failureMessages[3]).toContain("required Phase 103 symbol");
-});
+    // Assert
+    expect(message).toContain("required Phase 103 symbol");
+  });
+}
 
 test("fails_when_required_behavior_test_is_missing", () => {
   // Arrange

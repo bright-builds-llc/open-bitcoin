@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
 status: planning
-stopped_at: Phase 157 verified; strict commit/push finalization
-last_updated: "2026-10-05T23:16:52.654Z"
-last_activity: "2026-10-05"
+stopped_at: Phase 158 verified 21/21; strict commit/push finalization
+last_updated: "2026-10-09T04:31:55.542Z"
+last_activity: "2026-10-09"
 progress:
   total_phases: 9
-  completed_phases: 4
-  total_plans: 26
-  completed_plans: 26
+  completed_phases: 5
+  total_plans: 33
+  completed_plans: 33
   percent: 100
 ---
 
@@ -18,23 +18,23 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-05 — Phase 157 completion).
+See: `.planning/PROJECT.md` (updated 2026-10-09 — Phase 158 completion).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 158 — Validated Reorg and Retained Branch Identity (ready for context)
+**Current focus:** Phase 159 — Authenticated BASIC Filter and Index RPCs (ready for context)
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 158 (Validated Reorg and Retained Branch Identity)
+Phase: 159 (Authenticated BASIC Filter and Index RPCs)
 Plan: Not started
-Status: Ready for Phase 158 context
-Last activity: 2026-10-05
-Last Activity Description: Phase 157 verified 34/34; full native passed; strict Git finalization underway
+**Status:** Planning — ready for Phase 159 context
+Last activity: 2026-10-09
+Last Activity Description: Phase 158 verified 21/21; full native passed; strict Git finalization underway
 
-Milestone progress: [████░░░░░░] 44% (4/9 active v2.5 phases complete; 26/26 created plans complete; 13 requirements pending).
+Milestone progress: [██████░░░░] 56% (5/9 active v2.5 phases complete; 33/33 created plans complete; 12 requirements pending).
 
-Next action: /gsd-discuss-phase 158 — gather context after Phase 157 commit/push.
+Next action: /gsd-discuss-phase 159 — gather context after Phase 158 commit/push.
 
 ## Performance Metrics
 
@@ -80,6 +80,7 @@ Next action: /gsd-discuss-phase 158 — gather context after Phase 157 commit/pu
 | 155 | 4 | - | - |
 | 156 | 8 | - | - |
 | 157 | 10 | - | - |
+| 158 | 7 | - | - |
 
 ### Plan Execution History
 
@@ -609,6 +610,6 @@ Next action: /gsd-discuss-phase 158 — gather context after Phase 157 commit/pu
 
 ## Session Continuity
 
-Last session: 2026-10-05T23:16:52.650Z
-Stopped at: Phase 157 verified; strict commit/push finalization
-Resume file: .planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-VERIFICATION.md
+Last session: 2026-10-09T04:29:45.178Z
+Stopped at: Phase 158 verified 21/21; strict commit/push finalization
+Resume file: .planning/phases/158-validated-reorg-and-retained-branch-identity/158-VERIFICATION.md

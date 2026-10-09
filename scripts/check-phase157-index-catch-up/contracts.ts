@@ -48,6 +48,8 @@ export const NEW_RUST = [
 const DRIVER = NODE + "network/runtime_authority/filter_index/catch_up.rs";
 const OWNER = NODE + "storage/fjall_store/filters/ownership.rs";
 const APPEND = NODE + "storage/fjall_store/filters/append.rs";
+const PROOFS = NODE + "storage/fjall_store/filters/ownership/proofs.rs";
+export const PRODUCTION_BUDGET = NODE + "chainstate/filter_reorg/preflight.rs";
 const TEST = NODE + "sync/tests/filter_index/";
 const DAEMON = RPC + "bin/open-bitcoind.rs";
 const TIMER = RPC + "bin/open_bitcoind/coins_flush.rs";
@@ -73,7 +75,9 @@ export const CONTRACTS: Contract[] = [
   row("D-06", OWNER, "check_basic_filter_append_proof_guarded_counted", ["Arc::ptr_eq(&proof.publication, &self.filter_publication)", "control.maybe_append_identity != Some(proof.identity)", "control.revision != proof.identity.revision", "owner != proof.identity.owner", "proof.identity.generation", "proof.identity.safe_checkpoint", "view.head_blocks()", "view.best_block()"], SCANS),
   row("D-14", OWNER, "with_remaining_budget", ["self.maybe_maximum_work", "!maximum_work.fits(previous) || !self.preparation_work.fits(maximum_work)", "self.maybe_maximum_work = Some(maximum_work)"]),
   row("D-14", OWNER, "basic_filter_lock_map_cost", ["checked_mul(", "checked_add(1)", "checked_div(2)", "checkpoint_operations:", "checked_mul(1024)", "cloned_bytes:"]),
-  ...["maybe_basic_filter_append_proof_with_limits", "maybe_basic_filter_owner_guarded_counted", "bounded_basic_filter_checkpoint", "load_basic_filter_append_locks"].map(symbol => row("D-14", OWNER, symbol, [], SCANS)),
+  row("D-14", PROOFS, "maybe_basic_filter_append_proof_with_limits", ["self.filter_publication_guard()?", "control.maybe_reorg_suspension.is_some()", "self.maybe_basic_filter_reorg_proof_guarded("], SCANS),
+  row("D-14", PROOFS, "maybe_basic_filter_reorg_proof_guarded", ["control.maybe_append_identity", "self.check_basic_filter_append_proof_guarded_counted(", "proof.preparation_work = work"], SCANS),
+  ...["maybe_basic_filter_owner_guarded_counted", "bounded_basic_filter_checkpoint", "load_basic_filter_append_locks"].map(symbol => row("D-14", OWNER, symbol, [], SCANS)),
   ...["read_basic_filter_local_identity", "maybe_basic_filter_append_projection", "maybe_bounded_basic_filter_append_row"].map(symbol => row("D-14", APPEND, symbol, [], SCANS)),
   row("D-07", NODE + "chainstate.rs", "commit_prepared_connect", ["absorb_staged_connect(", "self.observe_basic_filter_acceptance(", "if let Err(error) = self.persist()", "note_basic_index_failure("]),
   row("D-07", NODE + "chainstate/filter_index.rs", "observe_basic_filter_acceptance", ["observe_validated_connect(", "Some(Ok(facts)) => owner.maybe_facts = Some(facts)", "Some(Err(failure)) => self.note_basic_index_failure(failure)"]),
@@ -90,7 +94,10 @@ export const CONTRACTS: Contract[] = [
   row("D-14", DRIVER, "choose_work", ["candidate.fits(budget.absolute_singleton())", "work.checked_add(candidate)", "total.fits(*maximum)", "outcome.generations != 0", "total.fits(budget.absolute_singleton())", "outcome.oversized_singleton = true"]),
   row("D-14", NODE + "network/runtime_authority/filter_index/catch_up/inputs.rs", "undo_work", ["charge_metadata(work, transactions, maximum)?", "undo.transactions.iter().try_fold(", "charge_metadata(", "borrowed_undo_work(maybe_undo)"], SCANS),
   row("D-14", NODE + "network/runtime_authority/filter_index/catch_up/inputs.rs", "charge_metadata", ["checked_add(TurnWork", "checkpoint_operations: count", "if !total.fits(maximum)", "*work = total"]),
-  row("D-14", APPEND, "prepare_basic_filter_append", ["check_envelope_bounds(records)?", "proof.maybe_maximum_work()", "self.check_basic_filter_append_proof(&proof)?", "charge_append_work(", "verify_filter_record_predecessor(", "maybe_bounded_basic_filter_append_row(", "earned_basic_filter_safe_checkpoint("], SCANS),
+  row("D-14", APPEND, "prepare_basic_filter_append", ["self.prepare_basic_filter_append_guarded_positions(proof, records, None)"], SCANS),
+  row("D-14", APPEND, "prepare_basic_filter_append_guarded_positions", ["check_envelope_bounds(records)?", "proof.maybe_maximum_work()", "self.check_basic_filter_append_proof(&proof)?", "charge_append_work(", "verify_filter_record_predecessor(", "maybe_bounded_basic_filter_append_row(", "earned_basic_filter_safe_checkpoint("], SCANS),
+  row("D-14", DRIVER, "production_budget", ["crate::chainstate::basic_filter_turn_budget()"]),
+  row("D-14", PRODUCTION_BUDGET, "production_budget", ["BasicIndexTurnBudget::new("]),
   row("D-14", APPEND, "complete_basic_filter_append", ["self.filter_publication_guard()?", "check_basic_filter_append_proof_guarded_counted(", "load_basic_filter_append_locks(", "SyncAll", "self.finish_basic_filter_batch("], SCANS),
   row("D-06", APPEND, "earned_basic_filter_safe_checkpoint", ["prepared.proof.durable_tip()", "processed.height() < height", "maybe_basic_filter_append_projection(", "endpoint.height() != height || endpoint.block_hash() != hash"], SCANS),
   row("D-14", NODE + "storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", ["bytes.len() > 4_000_000", "bytes.len() as u64 > remaining_body_bytes", "if !admit(work)?", "body_work(", "codec::parse_block("], SCANS),
@@ -129,7 +136,7 @@ export const CORPUS = ["rpc_getblockfilter.py", "feature_index_prune.py", "featu
 export const REGISTRATIONS: [string, string[]][] = [
   [CORE + "filter_index.rs", ["pub mod catch_up;"]], [CORE + "filter_index/catch_up.rs", ["mod budget;", "mod tests;"]],
   [CORE + "filter_index/catch_up/tests.rs", ["mod budget;", "mod durability;"]],
-  [NODE + "chainstate.rs", ["mod filter_index;"]], [NODE + "chainstate/tests.rs", ["mod filter_index;"]],
+  [NODE + "chainstate.rs", ["mod filter_index;", "pub(crate) use filter_reorg::preflight::production_budget as basic_filter_turn_budget;"]], [NODE + "chainstate/tests.rs", ["mod filter_index;"]],
   [NODE + "network/runtime_authority/filter_index.rs", ["mod catch_up;"]], [DRIVER, ["mod inputs;"]],
   [NODE + "storage/fjall_store/filters.rs", ["mod append;", "mod turn_inputs;"]],
   [NODE + "storage/fjall_store/filters/tests.rs", ["mod append;", "mod append_proof;"]],

@@ -10,6 +10,7 @@ use open_bitcoin_primitives::{BlockHash, FilterHash, FilterHeader};
 
 mod budget;
 mod durability;
+mod reorg;
 
 fn hash(value: u8) -> BlockHash {
     BlockHash::from_byte_array([value; 32])

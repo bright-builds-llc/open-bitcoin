@@ -303,6 +303,15 @@ pub(super) const fn reorg_lifecycle_context(timestamp: i64) -> ReorgLifecycleCon
 fn reorg_runtime_error(error: ManagedNetworkAuthorityError) -> SyncRuntimeError {
     match error {
         ManagedNetworkAuthorityError::Operation(ManagedNetworkError::Chainstate(
+            ChainstateError::CoinsStorage { detail },
+        )) if detail.contains("BASIC required") || detail.contains("BASIC genuine historical") => {
+            SyncRuntimeError::Storage(StorageError::Corruption {
+                namespace: StorageNamespace::Chainstate,
+                detail,
+                action: StorageRecoveryAction::Repair,
+            })
+        }
+        ManagedNetworkAuthorityError::Operation(ManagedNetworkError::Chainstate(
             ChainstateError::MissingUndo { block_hash },
         )) => SyncRuntimeError::Storage(StorageError::Corruption {
             namespace: StorageNamespace::Chainstate,
@@ -326,5 +335,108 @@ fn reorg_evidence(
         final_active_height: u64::from(final_active_tip.height),
         final_active_hash: tip::block_hash_hex(final_active_tip.block_hash),
         fully_persisted: true,
+    }
+}
+
+#[cfg(test)]
+mod phase158_tests {
+    use super::*;
+    use crate::chainstate::ReorgFixture;
+
+    fn runtime(name: &str) -> (std::path::PathBuf, DurableSyncRuntime, Vec<AnchoredBlock>) {
+        let fixture = ReorgFixture::new(name, 3);
+        let path = fixture.path().to_owned();
+        let (staged, _) = fixture.stage(2);
+        let replacement: Vec<_> = staged
+            .transition()
+            .connected
+            .iter()
+            .map(|position| AnchoredBlock {
+                block: fixture
+                    .store
+                    .load_block(position.block_hash)
+                    .expect("body")
+                    .expect("retained"),
+                chain_work: position.chain_work,
+            })
+            .collect();
+        let positions = fixture
+            .manager
+            .chainstate()
+            .active_chain()
+            .iter()
+            .take(1)
+            .chain(staged.transition().connected.iter());
+        let headers = open_bitcoin_network::HeaderStore::from_entries(positions.map(|position| {
+            open_bitcoin_network::HeaderEntry {
+                block_hash: position.block_hash,
+                header: position.header.clone(),
+                height: position.height,
+                chain_work: position.chain_work,
+            }
+        }))
+        .expect("genuine accepted fork headers");
+        fixture
+            .store
+            .save_header_entries(
+                &headers.entries().cloned().collect::<Vec<_>>(),
+                crate::PersistMode::Sync,
+            )
+            .expect("header store");
+        drop(staged);
+        drop(fixture);
+        let store = crate::FjallNodeStore::open(&path).expect("actual reopen");
+        let mut runtime = DurableSyncRuntime::open_configured(
+            store,
+            super::super::SyncRuntimeConfig {
+                network: super::super::SyncNetwork::Regtest,
+                ..Default::default()
+            },
+            crate::chainstate::BasicFilterStartupMode::Enabled,
+        )
+        .expect("production startup");
+        runtime.consensus_params.coinbase_maturity = 1;
+        (path, runtime, replacement)
+    }
+
+    #[test]
+    fn phase158_preflight_sync_reconcile_uses_production_reorg_and_scheduled_owner() {
+        // Arrange
+        let (path, mut runtime, replacement) = runtime("sync-driver-reorg");
+        // Act
+        let result = reconcile_best_chain(&mut runtime, 2000).expect("actual sync reorg");
+        let turn = runtime
+            .network
+            .drive_basic_filter_index_turn()
+            .expect("idle ordinary turn");
+        // Assert
+        assert!(matches!(result, SyncReconcileProgress::ReorgPersisted(_)));
+        assert_eq!(
+            turn.maybe_accepted_target.expect("accepted").block_hash(),
+            block_hash(&replacement[1].block.header)
+        );
+        assert_eq!(turn.maybe_accepted_lag, Some(0));
+        drop(runtime);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
+
+    #[test]
+    fn phase158_preflight_sync_missing_undo_is_explicit_storage_refusal_before_preview() {
+        // Arrange
+        let (path, mut runtime, _) = runtime("sync-driver-loss");
+        let old = runtime.network.chainstate_snapshot().expect("before");
+        runtime
+            .store
+            .delete_basic_input_for_test(old.active_chain[2].block_hash, true)
+            .expect("actual missing durable mate");
+        // Act
+        let result = reconcile_best_chain(&mut runtime, 2000);
+        // Assert
+        assert!(
+            matches!(result, Err(SyncRuntimeError::Storage(StorageError::Corruption { ref detail, .. })) if detail.contains("required undo"))
+        );
+        assert_eq!(runtime.network.chainstate_snapshot().expect("after"), old);
+        drop(runtime);
+        std::fs::remove_dir_all(path).expect("cleanup");
     }
 }

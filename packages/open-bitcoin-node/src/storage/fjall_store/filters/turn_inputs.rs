@@ -7,6 +7,103 @@
 
 use super::*;
 use open_bitcoin_core::{chainstate::filter_index::catch_up::TurnWork, primitives::Block};
+mod undo;
+
+pub(crate) enum BasicFilterReusableRead {
+    Missing,
+    Deferred,
+    Ready(codec::StoredFilterRecord),
+}
+
+impl BasicFilterReusableRead {
+    pub(crate) fn is_deferred(&self) -> bool {
+        matches!(self, Self::Deferred)
+    }
+    pub(crate) fn maybe_record(self) -> Option<codec::StoredFilterRecord> {
+        match self {
+            Self::Ready(record) => Some(record),
+            Self::Missing | Self::Deferred => None,
+        }
+    }
+}
+
+impl FjallNodeStore {
+    /// Only a bounded exact immutable row can replace filter-generation inputs.
+    pub(crate) fn maybe_basic_filter_reusable_record(
+        &self,
+        position: &open_bitcoin_core::chainstate::ChainPosition,
+        work: &mut TurnWork,
+        maximum: TurnWork,
+        admit: impl FnOnce(&mut TurnWork, TurnWork) -> Result<Option<TurnWork>, StorageError>,
+    ) -> Result<BasicFilterReusableRead, StorageError> {
+        super::append::charge_append_work(
+            work,
+            TurnWork {
+                record_operations: 1,
+                ..Default::default()
+            },
+            Some(maximum),
+        )?;
+        let key = codec::record_key(position.block_hash);
+        #[cfg(test)]
+        self.count_filter_integrity_read();
+        let Some(bytes) = self
+            .block_index
+            .get(&key)
+            .map_err(|error| backend_failure(StorageNamespace::BlockIndex, error))?
+        else {
+            return Ok(BasicFilterReusableRead::Missing);
+        };
+        let Some(maximum) = admit(
+            work,
+            TurnWork {
+                encoded_bytes: bytes.len() as u64,
+                cloned_bytes: (bytes.len() as u64)
+                    .checked_mul(2)
+                    .ok_or_else(|| index_corruption("BASIC reusable row allocation overflow"))?,
+                record_operations: 3,
+                ..Default::default()
+            },
+        )?
+        else {
+            return Ok(BasicFilterReusableRead::Deferred);
+        };
+        let parsed = codec::parse_record_fields(&key, bytes.as_ref())?;
+        if parsed.height != position.height || parsed.parent != position.previous_block_hash() {
+            return Err(index_corruption(
+                "BASIC immutable row differs from accepted position",
+            ));
+        }
+        let maybe_parent = if position.height == 0 {
+            None
+        } else {
+            Some(self.read_basic_filter_local_identity(
+                position.previous_block_hash(),
+                work,
+                Some(maximum),
+            )?)
+        };
+        codec::decode_record(&key, bytes.as_ref(), maybe_parent.as_ref())
+            .map(BasicFilterReusableRead::Ready)
+    }
+
+    #[cfg(test)]
+    pub(crate) fn delete_basic_input_for_test(
+        &self,
+        hash: BlockHash,
+        undo: bool,
+    ) -> Result<(), StorageError> {
+        let (namespace, key) = if undo {
+            (
+                StorageNamespace::Chainstate,
+                super::super::coins::undo_key(hash),
+            )
+        } else {
+            (StorageNamespace::BlockIndex, super::super::block_key(hash))
+        };
+        self.remove_bytes(namespace, &key, crate::storage::PersistMode::Sync)
+    }
+}
 
 impl FjallNodeStore {
     pub(crate) fn maybe_basic_filter_turn_body(

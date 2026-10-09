@@ -11,6 +11,7 @@ use crate::{FjallChainstateStore, storage::FjallCoinsView};
 use open_bitcoin_core::chainstate::{CoinsView, VerifiedChainstateFence};
 
 mod catch_up;
+pub(in crate::network) mod reorg;
 pub use catch_up::BasicFilterTurnOutcome;
 
 #[cfg(test)]
@@ -20,6 +21,80 @@ pub(crate) struct AcceptedBasicFactsTestEvidence {
 }
 
 impl ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
+    #[cfg(test)]
+    pub(crate) fn maybe_basic_index_accepted_target_for_test(
+        &self,
+    ) -> Result<
+        Option<open_bitcoin_core::chainstate::filter_index::catch_up::AcceptedIndexTarget>,
+        ManagedNetworkAuthorityError,
+    > {
+        self.read(|network| network.chainstate().maybe_basic_index_accepted_target())
+    }
+
+    /// Returns storage, source, captured-fact and total work, then drops the stage.
+    /// Elapsed time includes the existing core staging and preparation together.
+    #[cfg(test)]
+    pub(crate) fn measure_reorg_preparation_for_test(
+        &self,
+        disconnect: &[open_bitcoin_core::primitives::Block],
+        replacements: &[open_bitcoin_core::chainstate::AnchoredBlock],
+        flags: open_bitcoin_core::consensus::ScriptVerifyFlags,
+        params: open_bitcoin_core::consensus::ConsensusParams,
+    ) -> Result<
+        (
+            [open_bitcoin_core::chainstate::filter_index::catch_up::TurnWork; 4],
+            std::time::Duration,
+        ),
+        ManagedNetworkAuthorityError,
+    > {
+        self.read(|network| {
+            let start = std::time::Instant::now();
+            let prepared =
+                network
+                    .chainstate()
+                    .prepare_reorg(disconnect, replacements, flags, params)?;
+            let work = prepared
+                .maybe_basic_filter_component_work()
+                .ok_or_else(
+                    || open_bitcoin_core::chainstate::ChainstateError::CoinsStorage {
+                        detail: "absent measured BASIC preparation".to_owned(),
+                    },
+                )?;
+            drop(prepared);
+            Ok((work, start.elapsed()))
+        })?
+        .map_err(|error: open_bitcoin_core::chainstate::ChainstateError| {
+            ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())
+        })
+    }
+
+    /// Exercises the existing mempool seam through the actual reorg caller.
+    #[cfg(test)]
+    pub(crate) fn reorg_with_mempool_failure_for_test(
+        &self,
+        disconnect: &[open_bitcoin_core::primitives::Block],
+        replacements: &[open_bitcoin_core::chainstate::AnchoredBlock],
+        flags: open_bitcoin_core::consensus::ScriptVerifyFlags,
+        params: open_bitcoin_core::consensus::ConsensusParams,
+    ) -> Result<open_bitcoin_core::chainstate::ChainTransition, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            use crate::network::lifecycle_projection::{
+                LifecyclePreparationFailureGuard, LifecyclePreparationFailurePoint,
+            };
+            let _guard =
+                LifecyclePreparationFailureGuard::inject(LifecyclePreparationFailurePoint::Serving);
+            network.reorg_to_branch(
+                disconnect,
+                replacements,
+                open_bitcoin_mempool::ReorgLifecycleContext::new(
+                    open_bitcoin_mempool::PolicyTime::from_unix_seconds(50_000),
+                ),
+                flags,
+                params,
+            )
+        })
+    }
+
     pub(crate) fn note_basic_index_failure(
         &self,
         failure: crate::chainstate::filter_index::AcceptedBasicIndexFailure,

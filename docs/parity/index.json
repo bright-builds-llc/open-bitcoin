@@ -3,15 +3,31 @@
   "deviations": [
     {
       "id": "basic-enabled-empty-history-refusal",
-      "surfaces": ["compact-filter-index", "config"],
+      "surfaces": [
+        "compact-filter-index",
+        "config"
+      ],
       "summary": "Unlike pinned Knots fresh-start indexing, enabled empty Open Bitcoin storage refuses validated genesis history required. Existing SyncNetwork consensus authority identifies network genesis but does not install a complete canonical genesis body/validated chainstate bootstrap for indexing. Actual retained genesis body binding and normal validated history are prerequisites; no fabricated anchor, download, import or repair is introduced.",
-      "evidence": ["packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs", "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs", "packages/open-bitcoin-node/src/sync/types.rs", "packages/open-bitcoin-chainstate/src/block_filter.rs", "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs", "docs/parity/catalog/basic-compact-filters.md"]
+      "evidence": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs",
+        "packages/open-bitcoin-node/src/sync/types.rs",
+        "packages/open-bitcoin-chainstate/src/block_filter.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs",
+        "docs/parity/catalog/basic-compact-filters.md"
+      ]
     },
     {
       "id": "basic-double-negative-warning-omitted",
-      "surfaces": ["config"],
+      "surfaces": [
+        "config"
+      ],
       "summary": "Pinned BASIC double-negative and integer-prefix selection is preserved, but the config loader has no diagnostic sink and omits Knots' double-negative warning. Successful selection and unrelated activation policy remain unchanged.",
-      "evidence": ["packages/open-bitcoin-rpc/src/config/loader/blockfilter.rs", "packages/open-bitcoin-rpc/src/config/tests/blockfilter.rs", "docs/parity/catalog/basic-compact-filters.md"]
+      "evidence": [
+        "packages/open-bitcoin-rpc/src/config/loader/blockfilter.rs",
+        "packages/open-bitcoin-rpc/src/config/tests/blockfilter.rs",
+        "docs/parity/catalog/basic-compact-filters.md"
+      ]
     },
     {
       "id": "mig-jsonc-open-bitcoin-settings",
@@ -891,7 +907,9 @@
           ".planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-VERIFICATION.md",
           ".planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-SECURITY.md",
           ".planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-NATIVE-EVIDENCE.md",
-          ".planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-REVIEW.md"
+          ".planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-REVIEW.md",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/ownership/proofs.rs",
+          "packages/open-bitcoin-node/src/chainstate/filter_reorg/preflight.rs"
         ],
         "rationale": "Phase 157 implements explicit default-off BASIC option resolution, configured pre-prune history refusal and one ordered bounded index owner through actual offline daemon startup, one-second elapsed maintenance and accepted pre-persist handoff. Scoped completion is verified by 34/34 formal truths, 91-file independent source review, all 33 declared mitigations and the complete default native contract in 17m22.546s.",
         "upstream": {
@@ -915,7 +933,7 @@
           "Local software admission and exact durable tip safe-release policy can conservatively refuse resources or prolong stronger retention while behind."
         ],
         "known_gaps": [
-          "Runtime reorg, filter/index RPC, peer serving/service advertisement, operator projections and integrated retained-client proof remain deferred to Phases 158–162; v2.5 is planned scope, not a shipped capability.",
+          "Runtime reorg, filter/index RPC, peer serving/service advertisement, operator projections and integrated retained-client proof remain deferred to Phases 158\u2013162; v2.5 is planned scope, not a shipped capability.",
           "Full recovery/suffix preflight is startup-wide; admitted replay reservations do not promise RSS, every consensus-legal output representation, hardware power-loss or bounded fsync latency.",
           "The three v2.4 stale-metadata recovery refusal, generic paired-unlink no-op and separate support-summary crash undercount advisories remain."
         ],
@@ -925,7 +943,11 @@
         "id": "v2-5-recoverable-basic-index-and-startup-protection",
         "title": "Recoverable BASIC Index and Pre-Prune Startup Protection",
         "status": "in_progress",
-        "requirements": ["CFIX-02", "CFIX-04", "CFPR-03"],
+        "requirements": [
+          "CFIX-02",
+          "CFIX-04",
+          "CFPR-03"
+        ],
         "evidence": [
           "packages/open-bitcoin-codec/src/block_filter/validation.rs",
           "packages/open-bitcoin-chainstate/src/filter_index.rs",
@@ -954,7 +976,9 @@
             "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
             "packages/bitcoin-knots/src/node/blockstorage.cpp"
           ],
-          "tests": ["packages/bitcoin-knots/test/functional/feature_index_prune.py"]
+          "tests": [
+            "packages/bitcoin-knots/test/functional/feature_index_prune.py"
+          ]
         },
         "intentional_differences": [
           "Additive versioned Fjall schema-2 envelopes replace Knots flat files/LevelDB; SyncAll publishes checkpoint/protection together.",
@@ -962,7 +986,7 @@
           "The direct startup input guard also protects heights 0/1 independently of the ordinary buffered helper."
         ],
         "known_gaps": [
-          "Phase 156 ownership/CRUD/disable has verified scoped software evidence; 157 activation/scheduled catch-up, 158 runtime reorg and 159–162 RPC/peer/operator serving and integrated retained-client proof remain deferred.",
+          "Phase 156 ownership/CRUD/disable has verified scoped software evidence; 157 activation/scheduled catch-up, 158 runtime reorg and 159\u2013162 RPC/peer/operator serving and integrated retained-client proof remain deferred.",
           "Software fault/reopen proof is not hardware power-loss simulation, archive-scale performance evidence, production readiness or production-funds safety.",
           "Full integrity scan is linear retained-history work with bounded additional record memory, not a total runtime/memory cap; 256 records/projections measure 1023 reads.",
           "Hash commitments detect corruption without authenticating historical provenance; generated records consume validated complete historical inputs. No implicit repair/download."
@@ -973,7 +997,10 @@
         "id": "v2-5-basic-filter-generation-and-commitments",
         "title": "Pure BASIC Filter Generation and Commitments",
         "status": "in_progress",
-        "requirements": ["CFIL-01", "CFIL-02"],
+        "requirements": [
+          "CFIL-01",
+          "CFIL-02"
+        ],
         "evidence": [
           "packages/open-bitcoin-consensus/src/block_filter.rs",
           "packages/open-bitcoin-consensus/tests/basic_filter.rs",
@@ -4085,7 +4112,7 @@
         "known_gaps": [
           "Phase 145 owns only CSVFY-01 and CSVFY-02.",
           "FUT-18 through FUT-26 remain deferred: prune-mode product behavior, archive-node or production-scale historical serving, compact-filter or BIP37 serving, assumeutxo/assumevalid/IBD snapshot shortcuts, LevelDB chainstate/ live import/export, automatic destructive reindex or coins repair, public serving or relay by default, public-network CI or release-blocking historical-serving/long-chain flush runs, and production full-node readiness, production service operation, or production-funds wallet safety.",
-          "Intentional differences, not missing deliverables: Fjall per-outpoint coins instead of LevelDB chainstate/; first-party overlay occupancy instead of C++ allocator / LevelDB SizeEstimate; leftover snapshot blobs are non-authoritative after the schema 1→2 one-way migration; Pruned stays reserved and is not emitted on production paths; single active chainstate, not assumeutxo dual-chainstate; disk-space probe may stay fail-open at u64::MAX where the node crate forbids unsafe statvfs.",
+          "Intentional differences, not missing deliverables: Fjall per-outpoint coins instead of LevelDB chainstate/; first-party overlay occupancy instead of C++ allocator / LevelDB SizeEstimate; leftover snapshot blobs are non-authoritative after the schema 1\u21922 one-way migration; Pruned stays reserved and is not emitted on production paths; single active chainstate, not assumeutxo dual-chainstate; disk-space probe may stay fail-open at u64::MAX where the node crate forbids unsafe statvfs.",
           "Required UAT stays deterministic; optional public-network review is never a default, CI, or release gate."
         ],
         "suspected_unknowns": [
@@ -4368,6 +4395,77 @@
           "Large daemon/deletion fixtures are codec-valid ancestry/history-correspondence evidence, not consensus-accepted full daemon chains. Separate small engine spend/fork controls use coinbase maturity one and synthetic supplied chain work.",
           "Software faults and dependency format-marker observations do not establish hardware power-loss resilience, exhaustive migration safety, archive-scale performance, production readiness or production-funds safety.",
           "The three v2.4 stale-metadata recovery refusal, generic paired-unlink no-op and separate support-summary crash undercount advisories remain."
+        ],
+        "suspected_unknowns": []
+      },
+      {
+        "id": "v2-5-validated-reorg-and-retained-branch-identity",
+        "title": "Validated Reorg and Retained BASIC Branch Identity",
+        "status": "done",
+        "requirements": [
+          "CFIX-03"
+        ],
+        "evidence": [
+          "docs/parity/v2-5-validated-reorg.md",
+          "packages/open-bitcoin-chainstate/src/engine/stage.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+          "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/reorg.rs",
+          "packages/open-bitcoin-node/src/chainstate.rs",
+          "packages/open-bitcoin-node/src/chainstate/filter_reorg.rs",
+          "packages/open-bitcoin-node/src/chainstate/fjall_store/reorg.rs",
+          "packages/open-bitcoin-node/src/chainstate/filter_index.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/catch_up.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/append.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/reorg.rs",
+          "packages/open-bitcoin-node/src/chainstate/filter_reorg/preflight.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs/undo.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/ownership/proofs.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/ownership.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters.rs",
+          "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs",
+          "packages/open-bitcoin-chainstate/src/filter_index/catch_up/reorg.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/fixtures.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/failures.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/branches.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/retention.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/protection.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/measurements.rs",
+          ".planning/phases/158-validated-reorg-and-retained-branch-identity/158-UAT.md",
+          ".planning/phases/158-validated-reorg-and-retained-branch-identity/158-REORG-MEASUREMENTS.md",
+          "scripts/check-phase158-validated-reorg.ts",
+          "scripts/check-phase158-validated-reorg.test.ts",
+          "packages/open-bitcoin-node/src/chainstate/fjall_store.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/prune.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/prune/records.rs",
+          ".planning/phases/158-validated-reorg-and-retained-branch-identity/158-VERIFICATION.md",
+          ".planning/phases/158-validated-reorg-and-retained-branch-identity/158-NATIVE-EVIDENCE.md",
+          ".planning/phases/158-validated-reorg-and-retained-branch-identity/158-REVIEW.md",
+          ".planning/phases/158-validated-reorg-and-retained-branch-identity/158-SECURITY.md"
+        ],
+        "rationale": "Internal genuine validated absorption, accepted-position publication, exact common-prefix replacement, immutable displaced hash lookup and configured physical-suffix recovery. CFIX-03 is Complete after all seven plans, full native verification in 19m24.571s, clean source review, 25 closed security mitigations and lifecycle-valid 21/21 formal verification.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/index/base.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/undo.h"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/feature_index_prune.py",
+            "packages/bitcoin-knots/test/functional/rpc_getblockfilter.py"
+          ]
+        },
+        "intentional_differences": [
+          "Immutable hash-keyed Fjall records and masked height projections replace the Knots filter flat-file layout.",
+          "Intentional local resource-policy difference: existing independent finite caps can refuse fully retained deep/shared-gap forks before effects; arbitrary retained-fork liveness is not claimed.",
+          "Compact fixtures use explicit maturity one; standard maturity-100 mined-PoW case stays below 150 because runtime halving 210000 differs from Knots regtest 150."
+        ],
+        "known_gaps": [
+          "Filter/index RPC 159, peers 160, operator projections 161 and integrated retained-client proof 162 remain pending and are not shipped.",
+          "Software faults do not establish hardware power-loss resilience, archive-scale performance, whole-runtime constant work/memory, isolated publication latency or production-funds safety.",
+          "Three archived v2.4 advisories remain; no source repair/download or public reorg command is introduced."
         ],
         "suspected_unknowns": []
       }

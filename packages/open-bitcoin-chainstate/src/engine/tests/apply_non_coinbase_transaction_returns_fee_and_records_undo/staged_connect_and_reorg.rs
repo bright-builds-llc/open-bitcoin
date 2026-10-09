@@ -4,6 +4,7 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 // - packages/bitcoin-knots/src/node/chainstate.cpp
+// - packages/bitcoin-knots/src/undo.h
 
 use super::*;
 
@@ -166,4 +167,136 @@ fn absorb_and_preview_staged_reorg_install_replacement_tip() {
     assert_eq!(preview.tip().map(|tip| tip.height), Some(1));
     assert_eq!(chainstate.tip().map(|tip| tip.height), Some(1));
     assert_eq!(preview.snapshot(), chainstate.snapshot());
+}
+
+#[test]
+fn phase158_reorg_preview_then_absorb_preserves_captured_old_ancestor_and_undo() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis = build_block(
+        BlockHash::default(),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    connect_block(&mut chainstate, &genesis, 1);
+    let ancestor = chainstate.tip().expect("genesis").clone();
+    let child = build_block(
+        ancestor.block_hash,
+        1_231_006_600,
+        vec![coinbase_transaction(1, 50)],
+    );
+    connect_block(&mut chainstate, &child, 2);
+    let old = chainstate.tip().expect("old child").clone();
+    let genesis_txid =
+        open_bitcoin_consensus::transaction_txid(&genesis.transactions[0]).expect("genesis txid");
+    let spend = spend_transaction(genesis_txid, 0, 48, TransactionInput::SEQUENCE_FINAL);
+    let same_block_spend = spend_transaction(
+        open_bitcoin_consensus::transaction_txid(&spend).expect("spend txid"),
+        0,
+        47,
+        TransactionInput::SEQUENCE_FINAL,
+    );
+    let replacement = build_block(
+        ancestor.block_hash,
+        1_231_006_601,
+        vec![coinbase_transaction(1, 49), spend, same_block_spend],
+    );
+    let staged = chainstate
+        .stage_reorg(
+            &[child],
+            &[crate::AnchoredBlock {
+                block: replacement.clone(),
+                chain_work: 3,
+            }],
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("genuine fork");
+    let new = staged
+        .maybe_position_at_height(1)
+        .expect("replacement")
+        .clone();
+    let undo = staged
+        .maybe_replacement_undo(new.block_hash)
+        .expect("genuine undo")
+        .clone();
+    assert_eq!(staged.maybe_old_tip(), Some(&old));
+    assert_eq!(staged.maybe_common_ancestor(), Some(&ancestor));
+    assert_eq!(staged.maybe_replacement_undo(ancestor.block_hash), None);
+    assert_eq!(staged.maybe_replacement_undo(old.block_hash), None);
+    assert_eq!(staged.maybe_position_at_height(2), None);
+    let inputs = crate::BasicFilterInputs::from_historical(
+        &replacement,
+        &new,
+        Some(crate::HistoricalBlockUndo {
+            block_hash: new.block_hash,
+            undo: &undo,
+        }),
+    );
+    assert!(inputs.is_ok());
+    assert_eq!(undo.transactions.len(), 2);
+    assert!(undo.transactions[0].restored_inputs[0].is_coinbase);
+    assert_eq!(undo.transactions[0].restored_inputs[0].created_height, 0);
+    assert!(!undo.transactions[1].restored_inputs[0].is_coinbase);
+    assert_eq!(undo.transactions[1].restored_inputs[0].created_height, 1);
+    assert_eq!(
+        inputs
+            .expect("complete historical projection")
+            .spent_scripts()
+            .count(),
+        2
+    );
+    // Act
+    chainstate.install_staged_reorg_preview(&staged);
+    let (transition, accepted) = chainstate.absorb_staged_reorg_with_receipt(staged);
+    // Assert
+    assert_eq!(chainstate.tip(), Some(&new));
+    assert_eq!(chainstate.undo_by_block().get(&new.block_hash), Some(&undo));
+    assert_eq!(transition.disconnected, vec![old.clone()]);
+    assert_eq!(
+        accepted.maybe_old_endpoint(),
+        Some((old.height, old.block_hash))
+    );
+    assert_eq!(
+        accepted.maybe_new_endpoint(),
+        Some((new.height, new.block_hash))
+    );
+    assert_eq!(
+        accepted.maybe_common_ancestor_endpoint(),
+        Some((ancestor.height, ancestor.block_hash))
+    );
+}
+
+#[test]
+fn phase158_reorg_disconnect_to_empty_receipt_has_no_new_endpoint() {
+    // Arrange
+    let mut chainstate = Chainstate::new();
+    let genesis = build_block(
+        BlockHash::default(),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    connect_block(&mut chainstate, &genesis, 1);
+    let old = chainstate.tip().expect("genesis").clone();
+    let staged = chainstate
+        .stage_reorg(
+            &[genesis],
+            &[],
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams::default(),
+        )
+        .expect("disconnect");
+    // Act
+    let (_, accepted) = chainstate.absorb_staged_reorg_with_receipt(staged);
+    // Assert
+    assert_eq!(
+        accepted.maybe_old_endpoint(),
+        Some((old.height, old.block_hash))
+    );
+    assert_eq!(accepted.maybe_new_endpoint(), None);
+    assert_eq!(accepted.maybe_common_ancestor_endpoint(), None);
+    assert_eq!(chainstate.tip(), None);
 }

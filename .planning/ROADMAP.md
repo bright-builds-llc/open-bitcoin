@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–157 completed 26 plans and nine requirements after full native verification through 2026-10-05. Four of nine phases are complete; 13 requirements remain pending, and Phase 158 is ready for context. BASIC construction, recoverable immutable storage, pre-prune protection, index-owned prune coordination and explicit safe activation/bounded catch-up are implemented. Runtime reorg and serving/operator/integrated-client products remain planned scope; v2.5 is not a shipped capability. Phase 157 passed34/34 truths, independent91-file source review, all33 declared security mitigations and the default native contract in17m22.546s. v2.4 remains archived with three nonblocking advisories, and all historical phase directories remain tracked for verifier evidence.
+v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–158 completed 33 plans and ten requirements after full native verification through 2026-10-09. Five of nine phases are complete; 12 requirements remain pending, and Phase 159 is ready for context. BASIC construction, recoverable immutable storage, pre-prune protection, index-owned prune coordination, explicit safe activation/bounded catch-up and internal validated branch replacement are implemented. Serving/operator/integrated-client products remain planned scope; v2.5 is not a shipped capability. Phase 158 passed 21/21 truths, independent source review, all 25 declared security mitigations and the default native contract in 19m24.571s. Existing finite caps can refuse fully retained forks before effects. v2.4 remains archived with three nonblocking advisories, and historical phase directories remain tracked for verifier evidence.
 
 ## Milestones
 
@@ -37,7 +37,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 155: Recoverable Index and Pre-Prune Startup Protection** — Recover concrete Fjall records and validate protection before interrupted pruning can resume. (completed 2026-10-04)
 - [x] **Phase 156: Index-Owned Manual and Automatic Prune Coordination** — Make required input protection enforceable through the actual deletion and lock owners. (completed 2026-10-05)
 - [x] **Phase 157: Safe Activation and Scheduled Index Catch-Up** — Enable indexing only with retained inputs, then advance through real startup and ordinary maintenance. (completed 2026-10-05)
-- [ ] **Phase 158: Validated Reorg and Retained Branch Identity** — Replace active commitments while retaining indexed displaced blocks and refusing lost reorg inputs.
+- [x] **Phase 158: Validated Reorg and Retained Branch Identity** — Replace active commitments while retaining indexed displaced blocks and refusing lost reorg inputs. (completed 2026-10-09)
 - [ ] **Phase 159: Authenticated BASIC Filter and Index RPCs** — Expose pinned lookup results and initial-synchronization semantics through the shared durable authority.
 - [ ] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence.
 - [ ] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers.
@@ -138,14 +138,14 @@ Plans:
 
 **Goal**: Clients obtain branch-correct replacement filters after validated reorgs while previously indexed displaced blocks remain addressable by hash.
 **Depends on**: Phase 157
-**Requirements**: CFIX-03
+**Requirements:** CFIX-03
 **Success Criteria** (what must be TRUE):
 
 1. A continuous validated local fork rewinds the active index to its common ancestor and derives replacement filters and headers from that ancestor, including equal-height replacements. (CFIX-03)
 1. After reorg and real Fjall reopen, previously indexed displaced blocks remain retrievable by block hash while the active height projection identifies the replacement branch. (CFIX-03)
 1. A reorg requiring missing retained body/undo inputs refuses explicitly and preserves conservative progress/protection; it never substitutes current coins, a different branch or hidden redownload. (CFIX-03)
 
-**Plans**: TBD
+**Plans:** 7/7 plans complete
 
 ### Phase 159: Authenticated BASIC Filter and Index RPCs
 
@@ -239,7 +239,7 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | 155. Recoverable Index and Pre-Prune Startup Protection | 4/4 | Complete | 2026-10-04 |
 | 156. Index-Owned Manual and Automatic Prune Coordination | 8/8 | Complete | 2026-10-05 |
 | 157. Safe Activation and Scheduled Index Catch-Up | 10/10 | Complete | 2026-10-05 |
-| 158. Validated Reorg and Retained Branch Identity | 0/TBD | Not started | - |
+| 158. Validated Reorg and Retained Branch Identity | 7/7 | Complete | 2026-10-09 |
 | 159. Authenticated BASIC Filter and Index RPCs | 0/TBD | Not started | - |
 | 160. Explicit Bounded Peer Filter Serving | 0/TBD | Not started | - |
 | 161. Shared Operator Index and Retention Evidence | 0/TBD | Not started | - |
@@ -247,4 +247,4 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 
 ## Coverage
 
-22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 4/9 verified phases and 26/26 created plans. CFIL-01/02, CFIX-01/02/04, CFAC-01/02 and CFPR-01/03 are Complete; the remaining 13 requirements are Pending.
+22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 5/9 verified phases and 33/33 created plans. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02 and CFPR-01/03 are Complete; the remaining 12 requirements are Pending.

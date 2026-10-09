@@ -141,6 +141,8 @@ bun test ./scripts/check-phase156-prune-coordination.test.ts
 bun run scripts/check-phase156-prune-coordination.ts
 bun test ./scripts/check-phase157-index-catch-up.test.ts
 bun run scripts/check-phase157-index-catch-up.ts
+bun test ./scripts/check-phase158-validated-reorg.test.ts
+bun run scripts/check-phase158-validated-reorg.ts
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
@@ -320,6 +322,8 @@ run_step "test Phase 156 prune coordination checker" bun test ./scripts/check-ph
 run_step "check Phase 156 prune coordination evidence" bun run scripts/check-phase156-prune-coordination.ts
 run_step "test Phase 157 index catch-up checker" bun test ./scripts/check-phase157-index-catch-up.test.ts
 run_step "check Phase 157 index catch-up evidence" bun run scripts/check-phase157-index-catch-up.ts
+run_step "test Phase 158 validated reorg checker" bun test ./scripts/check-phase158-validated-reorg.test.ts
+run_step "check Phase 158 validated reorg evidence" bun run scripts/check-phase158-validated-reorg.ts
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts

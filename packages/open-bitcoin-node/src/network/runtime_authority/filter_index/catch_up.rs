@@ -13,6 +13,8 @@ use open_bitcoin_core::chainstate::{
 };
 use std::time::{Duration, Instant};
 mod inputs;
+#[cfg(test)]
+mod tests;
 
 /// Achieved progress and reserved logical work; timings include storage latency.
 #[derive(Debug, Clone, Copy)]
@@ -24,10 +26,14 @@ pub struct BasicFilterTurnOutcome {
     pub body_decodes: u64,
     pub undo_borrows: u64,
     pub generations: u64,
+    pub reused_records: u64,
     pub authority_hold: Duration,
     pub storage_elapsed: Duration,
     pub maybe_progress:
         Option<open_bitcoin_core::chainstate::filter_index::catch_up::BasicIndexProgress>,
+    pub maybe_accepted_target:
+        Option<open_bitcoin_core::chainstate::filter_index::catch_up::AcceptedIndexTarget>,
+    pub maybe_accepted_lag: Option<u64>,
     pub oversized_singleton: bool,
     pub examined_script_items: u64,
     pub examined_script_bytes: u64,
@@ -38,31 +44,7 @@ pub struct BasicFilterTurnOutcome {
 }
 
 pub(super) fn production_budget() -> Result<BasicIndexTurnBudget, StorageError> {
-    let normal = TurnWork {
-        blocks: 8,
-        body_bytes: 1024 * 1024,
-        undo_bytes: 4 * 1024 * 1024,
-        cloned_bytes: 16 * 1024 * 1024,
-        script_items: 4 * 1024 * 1024,
-        script_bytes: 32 * 1024 * 1024,
-        encoded_bytes: 1024 * 1024,
-        record_operations: 512,
-        checkpoint_operations: 1_000_000,
-        projection_operations: 256,
-    };
-    let absolute = TurnWork {
-        blocks: 1,
-        body_bytes: 4_000_000 * 32,
-        undo_bytes: 256 * 1024 * 1024,
-        cloned_bytes: 1024 * 1024 * 1024,
-        script_items: 128 * 1024 * 1024,
-        script_bytes: 64 * 1024 * 1024 * 1024,
-        encoded_bytes: 0x0200_0000 + 170,
-        record_operations: 512,
-        checkpoint_operations: 1_000_000,
-        projection_operations: 256,
-    };
-    BasicIndexTurnBudget::new(normal, absolute).map_err(index_corruption)
+    crate::chainstate::basic_filter_turn_budget()
 }
 
 impl ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
@@ -141,6 +123,12 @@ fn drive_turn(
     budget: BasicIndexTurnBudget,
     failure: &mut crate::chainstate::filter_index::AcceptedBasicIndexFailure,
 ) -> Result<BasicFilterTurnOutcome, StorageError> {
+    *failure = match manager.maybe_basic_index_failure() {
+        Some(crate::chainstate::filter_index::AcceptedBasicIndexFailure::Persistence) => {
+            crate::chainstate::filter_index::AcceptedBasicIndexFailure::Persistence
+        }
+        _ => crate::chainstate::filter_index::AcceptedBasicIndexFailure::Invalidated,
+    };
     let mut outcome = BasicFilterTurnOutcome {
         work: TurnWork::default(),
         batch_bytes: 0,
@@ -149,9 +137,12 @@ fn drive_turn(
         body_decodes: 0,
         undo_borrows: 0,
         generations: 0,
+        reused_records: 0,
         authority_hold: Duration::ZERO,
         storage_elapsed: Duration::ZERO,
         maybe_progress: manager.maybe_basic_index_progress(),
+        maybe_accepted_target: manager.maybe_basic_index_accepted_target(),
+        maybe_accepted_lag: None,
         oversized_singleton: false,
         examined_script_items: 0,
         examined_script_bytes: 0,
@@ -166,8 +157,22 @@ fn drive_turn(
     if progress.state() == BasicIndexState::Disabled {
         return Ok(outcome);
     }
+    let Some(accepted) = outcome.maybe_accepted_target else {
+        return Ok(outcome);
+    };
+    outcome.maybe_accepted_lag = Some(
+        u64::from(accepted.height()) + 1
+            - progress
+                .maybe_processed_endpoint()
+                .map_or(0, |id| u64::from(id.height()) + 1)
+                .min(u64::from(accepted.height()) + 1),
+    );
+    if accepted != progress.accepted_target() {
+        return Err(index_corruption(
+            "BASIC accepted target has pending publication",
+        ));
+    }
     let store = manager.store().inner().clone();
-    *failure = crate::chainstate::filter_index::AcceptedBasicIndexFailure::Invalidated;
     let Some(proof) =
         store.maybe_basic_filter_append_proof_with_budget(inputs::acquisition_limit(budget))?
     else {
@@ -185,6 +190,7 @@ fn drive_turn(
         return Err(index_corruption("stale BASIC ordered owner"));
     }
     let captured_work = proof.preparation_work();
+    *failure = crate::chainstate::filter_index::AcceptedBasicIndexFailure::InvalidFacts;
     let GeneratedRecords {
         records,
         work: total_work,
@@ -228,7 +234,14 @@ fn drive_turn(
             .complete_turn(prepared_progress, &identities)
             .map_err(index_corruption)?;
     }
-    let prepared = store.prepare_basic_filter_append(proof, &records)?;
+    let prepared = if records.is_empty() {
+        // Checkpoint-only promotion has no forward projection; the actual own
+        // coins/metadata fence remains required by the shared append adapter.
+        store.prepare_basic_filter_append(proof, &records)?
+    } else {
+        let positions = manager.authorize_basic_filter_append_positions(&proof, &records)?;
+        store.prepare_basic_filter_replacement_append(proof, positions, &records)?
+    };
     *failure = crate::chainstate::filter_index::AcceptedBasicIndexFailure::Persistence;
     let storage_start = Instant::now();
     let achieved = store.complete_basic_filter_append(prepared)?;
@@ -250,6 +263,13 @@ fn drive_turn(
     outcome.batch_bytes = achieved.batch_bytes;
     outcome.persistence_batches = u64::from(achieved.batch_bytes != 0);
     outcome.maybe_progress = manager.maybe_basic_index_progress();
+    outcome.maybe_accepted_lag = outcome.maybe_progress.map(|progress| {
+        u64::from(accepted.height()) + 1
+            - progress
+                .maybe_processed_endpoint()
+                .map_or(0, |id| u64::from(id.height()) + 1)
+                .min(u64::from(accepted.height()) + 1)
+    });
     Ok(outcome)
 }
 
@@ -287,13 +307,60 @@ fn generate_records(
                 .active_chain()
                 .get(height as usize)
                 .ok_or_else(|| index_corruption("missing BASIC canonical position"))?;
+            let reusable = store.maybe_basic_filter_reusable_record(
+                position,
+                &mut work,
+                maximum,
+                |work, cost| {
+                    Ok(choose_work(work, cost, budget, &mut maximum, outcome)?.then_some(maximum))
+                },
+            )?;
+            if reusable.is_deferred() {
+                break;
+            }
+            if let Some(record) = reusable.maybe_record() {
+                work = work
+                    .checked_add(TurnWork {
+                        blocks: 1,
+                        checkpoint_operations: 3,
+                        ..Default::default()
+                    })
+                    .map_err(index_corruption)?;
+                if !work.fits(maximum) {
+                    return Err(index_corruption("BASIC reuse ancestry budget"));
+                }
+                let id = record.identity();
+                open_bitcoin_core::chainstate::filter_index::verify_filter_record_predecessor(
+                    id.height(),
+                    id.parent_hash(),
+                    id.previous_header(),
+                    maybe_previous.as_ref().map(|previous| {
+                        (
+                            previous.height(),
+                            previous.block_hash(),
+                            previous.filter_header(),
+                        )
+                    }),
+                )
+                .map_err(index_corruption)?;
+                maybe_previous = Some(id);
+                records.push(record);
+                outcome.reused_records += 1;
+                continue;
+            }
             let maybe_facts = manager
                 .maybe_accepted_basic_facts()
                 .filter(|facts| facts.position().height == height);
             let inputs;
             let maybe_body;
             if let Some(facts) = maybe_facts {
-                let mut candidate_work = facts.work();
+                let mut candidate_work = facts
+                    .work()
+                    .checked_add(TurnWork {
+                        checkpoint_operations: 3,
+                        ..Default::default()
+                    })
+                    .map_err(index_corruption)?;
                 let items = candidate_work.script_items;
                 let bytes = candidate_work.script_bytes;
                 maybe_body = None;
@@ -301,6 +368,14 @@ fn generate_records(
                 reserve_generation(&mut candidate_work)?;
                 if !choose_work(&mut work, candidate_work, budget, &mut maximum, outcome)? {
                     break;
+                }
+                if facts.position().block_hash != position.block_hash
+                    || facts.position().height != position.height
+                    || facts.position().previous_block_hash() != position.previous_block_hash()
+                {
+                    return Err(index_corruption(
+                        "BASIC accepted facts differ from canonical position",
+                    ));
                 }
                 examined_items += items;
                 examined_bytes += bytes;
@@ -442,7 +517,7 @@ fn choose_work(
         *work = total;
         return Ok(true);
     }
-    if outcome.generations != 0 {
+    if outcome.generations != 0 || outcome.reused_records != 0 {
         return Ok(false);
     }
     if !total.fits(budget.absolute_singleton()) {

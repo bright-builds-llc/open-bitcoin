@@ -91,10 +91,13 @@ impl FjallNodeStore {
                 )
                 .map_err(crate::storage::filter_index::index_corruption)?;
                 if fence.tip().block_hash != coins.new_tip
-                    || fence
+                    || (!identity.maybe_replacement.is_some_and(|replacement| {
+                        replacement.maybe_displaced_fence
+                            == Some((identity.durable_height, identity.durable_hash))
+                    }) && fence
                         .maybe_position(identity.durable_height)
                         .map(|p| p.block_hash)
-                        != Some(identity.durable_hash)
+                        != Some(identity.durable_hash))
                 {
                     return Err(crate::storage::filter_index::index_corruption(
                         "incompatible BASIC durable metadata publication",

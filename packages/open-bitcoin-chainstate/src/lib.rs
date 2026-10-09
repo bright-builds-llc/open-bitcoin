@@ -35,8 +35,8 @@ pub use coins::{
     RecoveryDecision, decide_flush, decide_recovery,
 };
 pub use engine::{
-    Chainstate, MemoryBackedChainstate, StagedChainstateConnect, StagedChainstateReorg,
-    prefer_candidate_tip,
+    AcceptedChainstateReorg, Chainstate, MemoryBackedChainstate, StagedChainstateConnect,
+    StagedChainstateReorg, prefer_candidate_tip,
 };
 pub use error::ChainstateError;
 pub use filter_index::{

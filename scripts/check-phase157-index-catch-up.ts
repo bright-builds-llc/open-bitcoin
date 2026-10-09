@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONTRACTS, CORPUS, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, REGISTRATIONS, RPC, SOURCES, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
+import { CONTRACTS, CORPUS, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, PRODUCTION_BUDGET, REGISTRATIONS, RPC, SOURCES, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
 import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const GUARDS = ["scripts/check-phase157-index-catch-up.ts", "scripts/check-phase157-index-catch-up.test.ts",
@@ -59,7 +59,7 @@ export function checkPhase157IndexCatchUp(maybeRoot?: string): string[] {
 }
 
 function checkDefaults(text: (file: string) => string, failures: string[]): void {
-  const source = text(NODE + "network/runtime_authority/filter_index/catch_up.rs");
+  const source = text(PRODUCTION_BUDGET);
   const maybeBudget = maybeFunction(source, "production_budget", true);
   const values = ["blocks: 8", "body_bytes: 1024 * 1024", "undo_bytes: 4 * 1024 * 1024", "cloned_bytes: 16 * 1024 * 1024",
     "script_items: 4 * 1024 * 1024", "script_bytes: 32 * 1024 * 1024", "encoded_bytes: 1024 * 1024",
@@ -67,7 +67,7 @@ function checkDefaults(text: (file: string) => string, failures: string[]): void
     "blocks: 1", "body_bytes: 4_000_000 * 32", "undo_bytes: 256 * 1024 * 1024", "cloned_bytes: 1024 * 1024 * 1024",
     "script_items: 128 * 1024 * 1024", "script_bytes: 64 * 1024 * 1024 * 1024", "encoded_bytes: 0x0200_0000 + 170",
     "record_operations: 512", "checkpoint_operations: 1_000_000", "projection_operations: 256",
-    "BasicIndexTurnBudget::new(normal, absolute)"];
+    "BasicIndexTurnBudget::new(normal, absolute,)"];
   if (!maybeBudget || !hasOrderedCode(maybeBudget.body, values)) failures.push("D-14: measured production defaults drift");
   if (!compact(ordinaryRust(text(RPC + "bin/open_bitcoind/coins_flush.rs"))).includes("constTICK_SECS:u64=1;")) failures.push("D-08: ordinary timer default drift");
   const timer = compact(ordinaryRust(text(RPC + "bin/open_bitcoind/coins_flush.rs")));
@@ -76,7 +76,7 @@ function checkDefaults(text: (file: string) => string, failures: string[]): void
   if (!durable.includes("self.drive_basic_filter_index_turn().map(Some).map_err(CoinsFlushError::BasicFilter)")) failures.push("D-08: concrete durable timer adapter missing");
   const owner = ordinaryRust(text(NODE + "storage/fjall_store/filters/ownership.rs"));
   const maybeFields = owner.match(/struct BasicFilterAppendProof\s*\{([^}]+)\}/)?.[1];
-  if (!maybeFields || /\bpub\b/.test(maybeFields)) failures.push("D-06: append capability fields must remain private");
+  if (!maybeFields || /\bpub\b(?!\(super\) identity:)/.test(maybeFields)) failures.push("D-06: append capability fields must remain private");
 }
 
 function checkMeasurements(text: (file: string) => string, failures: string[]): void {

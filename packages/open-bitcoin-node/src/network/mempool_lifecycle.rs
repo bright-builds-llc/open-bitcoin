@@ -143,7 +143,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> ManagedResult<ChainTransition> {
-        let prepared_chainstate = self.chainstate.prepare_reorg(
+        let prepared_chainstate = super::runtime_authority::filter_index::reorg::prepare_reorg(
+            &self.chainstate,
             disconnect_blocks,
             replacement_branch,
             verify_flags,
@@ -151,7 +152,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         )?;
         let transition = prepared_chainstate.transition().clone();
         self.chainstate
-            .install_prepared_reorg_preview(&prepared_chainstate);
+            .install_prepared_reorg_preview(&prepared_chainstate)?;
         self.peer_manager
             .on_active_tip_changed(super::relay_serving::fresh_reject_evidence_tweak());
         for anchored_block in replacement_branch {

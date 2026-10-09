@@ -206,11 +206,20 @@ impl PreparedChainstateConnect {
 pub(crate) struct PreparedChainstateReorg {
     staged: StagedChainstateReorg,
     transition: ChainTransition,
+    maybe_index: Option<filter_reorg::PreparedIndexReorg>,
 }
 
 impl PreparedChainstateReorg {
     pub(crate) const fn transition(&self) -> &ChainTransition {
         &self.transition
+    }
+    #[cfg(test)]
+    pub(crate) fn maybe_basic_filter_preparation_work(
+        &self,
+    ) -> Option<open_bitcoin_core::chainstate::filter_index::catch_up::TurnWork> {
+        self.maybe_index
+            .as_ref()
+            .map(filter_reorg::PreparedIndexReorg::work)
     }
 }
 
@@ -375,16 +384,13 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainTransition, open_bitcoin_core::chainstate::ChainstateError> {
-        let transition = self.chainstate.reorg(
+        let prepared = self.prepare_reorg(
             disconnect_blocks,
             replacement_branch,
             verify_flags,
             consensus_params,
         )?;
-        self.maybe_validated_lineage = None;
-        self.invalidate_basic_index_owner();
-        self.persist().map_err(map_persist)?;
-        Ok(transition)
+        self.commit_prepared_reorg(prepared)
     }
 
     pub(crate) fn prepare_reorg(
@@ -401,24 +407,42 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             consensus_params,
         )?;
         let transition = staged.transition().clone();
-        Ok(PreparedChainstateReorg { staged, transition })
+        let maybe_index = self.prepare_basic_index_reorg(&staged, replacement_branch)?;
+        Ok(PreparedChainstateReorg {
+            staged,
+            transition,
+            maybe_index,
+        })
     }
 
-    pub(crate) fn install_prepared_reorg_preview(&mut self, prepared: &PreparedChainstateReorg) {
-        self.maybe_validated_lineage = None;
-        self.invalidate_basic_index_owner();
+    pub(crate) fn install_prepared_reorg_preview(
+        &mut self,
+        prepared: &PreparedChainstateReorg,
+    ) -> Result<(), ChainstateError> {
+        self.freeze_basic_index_reorg(prepared)
+            .map_err(map_persist)?;
         self.chainstate
             .install_staged_reorg_preview(&prepared.staged);
+        Ok(())
     }
 
     pub(crate) fn commit_prepared_reorg(
         &mut self,
         prepared: PreparedChainstateReorg,
     ) -> Result<ChainTransition, open_bitcoin_core::chainstate::ChainstateError> {
-        let transition = self.chainstate.absorb_staged_reorg(prepared.staged);
-        self.maybe_validated_lineage = None;
-        self.invalidate_basic_index_owner();
-        self.persist().map_err(map_persist)?;
+        self.check_basic_index_reorg(&prepared)
+            .map_err(map_persist)?;
+        let (transition, accepted) = self
+            .chainstate
+            .absorb_staged_reorg_with_receipt(prepared.staged);
+        if let Err(error) = self.accept_basic_index_reorg(accepted, prepared.maybe_index) {
+            self.note_basic_index_failure(filter_index::AcceptedBasicIndexFailure::Persistence);
+            return Err(map_persist(error));
+        }
+        if let Err(error) = self.persist() {
+            self.note_basic_index_failure(filter_index::AcceptedBasicIndexFailure::Persistence);
+            return Err(map_persist(error));
+        }
         Ok(transition)
     }
 
@@ -503,6 +527,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
                     let completed = pending
                         .complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?;
                     self.store.confirm_validated_flush(completed)?;
+                    self.note_basic_index_reorg_durable();
                     Ok(execution)
                 });
             } else if let Err(cleanup) = pending.abort() {
@@ -581,8 +606,13 @@ impl<S, V: CoinsView> ManagedChainstate<S, V> {
 }
 
 pub(crate) mod filter_index;
+mod filter_reorg;
+pub(crate) use filter_reorg::preflight::production_budget as basic_filter_turn_budget;
 mod fjall_store;
 pub use fjall_store::FjallChainstateStore;
+#[cfg(test)]
+pub(crate) use fjall_store::proof_tests::ReorgFixture;
+pub(crate) use fjall_store::{ValidatedBasicFilterAppendPositions, ValidatedBasicFilterReorg};
 mod flush_lifecycle;
 pub use flush_lifecycle::{
     BasicFilterStartupMode, COINS_DB_CACHE_CAP_BYTES, CompletedValidatedFlush,

@@ -6,11 +6,13 @@
 //! Ordered progress and admission facts; these values confer no storage authority.
 
 mod budget;
+mod reorg;
 pub use budget::{
     BASIC_INDEX_MAX_CANDIDATES, BASIC_INDEX_MAX_ENCODED_BYTES,
     BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES, BasicIndexTurnBudget, TurnAdmission, TurnBudgetError,
     TurnWork,
 };
+pub use reorg::BasicIndexReplacementFacts;
 
 use core::fmt;
 use open_bitcoin_primitives::BlockHash;

@@ -9,7 +9,9 @@ use std::fmt;
 
 use super::{FlushLifecycle, ManagedChainstate};
 use crate::storage::fjall_store::filters::BasicFilterAppendProof;
+use crate::storage::fjall_store::filters::{CompletedBasicFilterReorg, PreparedBasicFilterReorg};
 use crate::storage::{StorageNamespace, StorageRecoveryAction};
+use open_bitcoin_core::chainstate::AcceptedChainstateReorg;
 use open_bitcoin_core::chainstate::{Chainstate, filter_index::lifecycle::IndexGeneration};
 
 /// Opaque achieved completion; only a tracked manager's own successful flush creates it.
@@ -28,8 +30,14 @@ pub(in crate::chainstate) struct ValidatedChainstateLineage {
     store: FjallNodeStore,
     generation: IndexGeneration,
     branch: BlockHash,
-    accepted: (u32, BlockHash),
+    maybe_accepted: Option<(u32, BlockHash)>,
+    maybe_pending_reorg: Option<PendingBasicFilterReorg>,
+    preview_frozen: bool,
 }
+
+mod reorg;
+use reorg::PendingBasicFilterReorg;
+pub(crate) use reorg::{ValidatedBasicFilterAppendPositions, ValidatedBasicFilterReorg};
 
 fn receipt_error(detail: &str) -> StorageError {
     StorageError::Corruption {
@@ -41,12 +49,17 @@ fn receipt_error(detail: &str) -> StorageError {
 
 impl ValidatedChainstateLineage {
     pub(in crate::chainstate) fn observe(&mut self, position: &ChainPosition) -> bool {
-        if self.accepted.0.checked_add(1) != Some(position.height)
-            || self.accepted.1 != position.previous_block_hash()
+        let Some(accepted) = self.maybe_accepted else {
+            return false;
+        };
+        if self.preview_frozen
+            || self.maybe_pending_reorg.is_some()
+            || accepted.0.checked_add(1) != Some(position.height)
+            || accepted.1 != position.previous_block_hash()
         {
             return false;
         }
-        self.accepted = (position.height, position.block_hash);
+        self.maybe_accepted = Some((position.height, position.block_hash));
         true
     }
 
@@ -54,9 +67,15 @@ impl ValidatedChainstateLineage {
         &self,
         maybe_tip: Option<&ChainPosition>,
     ) -> Result<Option<PendingValidatedFlush>, StorageError> {
-        if maybe_tip.map(|p| (p.height, p.block_hash)) != Some(self.accepted) {
+        if self.preview_frozen
+            || self.maybe_pending_reorg.is_some()
+            || maybe_tip.map(|p| (p.height, p.block_hash)) != self.maybe_accepted
+        {
             return Err(receipt_error("untracked BASIC live flush endpoint"));
         }
+        let Some(accepted) = self.maybe_accepted else {
+            return Ok(None);
+        };
         let Some(proof) = self.store.maybe_basic_filter_append_proof()? else {
             return Ok(None);
         };
@@ -70,7 +89,7 @@ impl ValidatedChainstateLineage {
         Ok(Some(PendingValidatedFlush {
             store: self.store.clone(),
             proof,
-            accepted: self.accepted,
+            accepted,
             metadata_revision,
         }))
     }
@@ -86,7 +105,9 @@ impl PendingValidatedFlush {
             return Err(self.reject("lost BASIC validated lineage"));
         };
         if !self.store.shares_basic_filter_store(&lineage.store)
-            || self.accepted != lineage.accepted
+            || Some(self.accepted) != lineage.maybe_accepted
+            || lineage.maybe_pending_reorg.is_some()
+            || lineage.preview_frozen
             || maybe_tip.map(|p| (p.height, p.block_hash)) != Some(self.accepted)
             || self.proof.generation() != lineage.generation
             || self.proof.branch_identity() != lineage.branch
@@ -146,7 +167,9 @@ impl ManagedChainstate<FjallChainstateStore, FjallCoinsView> {
                     store: store.inner().clone(),
                     generation: proof.generation(),
                     branch: proof.branch_identity(),
-                    accepted: (tip.height, tip.block_hash),
+                    maybe_accepted: Some((tip.height, tip.block_hash)),
+                    maybe_pending_reorg: None,
+                    preview_frozen: false,
                 })
             })
             .transpose()?;
@@ -318,234 +341,5 @@ fn map_fjall(error: StorageError) -> ChainstateError {
 }
 
 #[cfg(test)]
-mod proof_tests {
-    use super::super::flush_lifecycle::managed_fixture;
-    use super::*;
-    use open_bitcoin_core::chainstate::{CoinsCache, FlushMode, FlushPolicyTime};
-
-    fn flush(manager: &mut ManagedChainstate<FjallChainstateStore, FjallCoinsView>) {
-        manager
-            .flush_with_mode(
-                FlushMode::Always,
-                FlushPolicyTime::from_unix_seconds(10),
-                u64::MAX,
-            )
-            .expect("real managed flush");
-    }
-
-    #[test]
-    fn phase157_proof_replayed_old_completion_cannot_advance_live_authority() {
-        // Arrange
-        let (path, store, mut manager, _) = managed_fixture("proof-replayed");
-        let pending = manager
-            .maybe_validated_lineage
-            .as_ref()
-            .expect("tracked")
-            .maybe_prepare(manager.chainstate.tip())
-            .expect("receipt")
-            .expect("live proof");
-        flush(&mut manager);
-        let current = store
-            .maybe_basic_filter_append_proof()
-            .expect("proof")
-            .expect("live");
-        let completed = pending
-            .complete(
-                manager.maybe_validated_lineage.as_ref(),
-                manager.chainstate.tip(),
-            )
-            .expect("deliberately stale sealed receipt");
-        // Act
-        assert!(FlushPersistSink::confirm_validated_flush(&mut store.clone(), completed).is_err());
-        // Assert
-        store
-            .check_basic_filter_append_proof(&current)
-            .expect("current authority unchanged");
-        drop(current);
-        drop(manager);
-        drop(store);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase157_proof_foreign_completion_refuses_identical_public_facts() {
-        // Arrange
-        let (first_path, first, first_manager, _) = managed_fixture("proof-completion-first");
-        let (second_path, second, second_manager, _) = managed_fixture("proof-completion-second");
-        let pending = first_manager
-            .maybe_validated_lineage
-            .as_ref()
-            .expect("tracked")
-            .maybe_prepare(first_manager.chainstate.tip())
-            .expect("receipt")
-            .expect("live");
-        let completed = pending
-            .complete(
-                first_manager.maybe_validated_lineage.as_ref(),
-                first_manager.chainstate.tip(),
-            )
-            .expect("foreign test receipt");
-        let current = second
-            .maybe_basic_filter_append_proof()
-            .expect("proof")
-            .expect("live");
-        // Act
-        assert!(FlushPersistSink::confirm_validated_flush(&mut second.clone(), completed).is_err());
-        // Assert
-        second
-            .check_basic_filter_append_proof(&current)
-            .expect("second authority unchanged");
-        drop(current);
-        drop(first_manager);
-        drop(second_manager);
-        drop(first);
-        drop(second);
-        std::fs::remove_dir_all(first_path).expect("cleanup");
-        std::fs::remove_dir_all(second_path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase157_proof_reconstruction_never_inherits_private_lineage() {
-        // Arrange
-        let (path, store, manager, _) = managed_fixture("proof-reconstruction");
-        let lifecycle = manager.flush_lifecycle.clone();
-        let (sink, state) = manager.into_parts();
-        // Act
-        let mut reconstructed = ManagedChainstate::from_chainstate(sink, state, lifecycle);
-        assert!(reconstructed.maybe_validated_lineage.is_none());
-        flush(&mut reconstructed);
-        // Assert
-        assert!(
-            store
-                .maybe_basic_filter_append_proof()
-                .expect("no inherited authority")
-                .is_none()
-        );
-        drop(reconstructed);
-        drop(store);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase157_proof_identical_test_replacement_clears_provenance() {
-        // Arrange
-        let (path, store, mut manager, _) = managed_fixture("proof-replacement");
-        let (positions, counts) = store.load_chain_meta_for_open().expect("metadata");
-        let replacement = Chainstate::from_coins_cache(
-            CoinsCache::from_parent(store.coins_view()),
-            positions,
-            Default::default(),
-            counts,
-        );
-        // Act
-        manager.install_chainstate_for_test(replacement);
-        assert!(manager.maybe_validated_lineage.is_none());
-        flush(&mut manager);
-        // Assert
-        assert!(
-            store
-                .maybe_basic_filter_append_proof()
-                .expect("no reseeding")
-                .is_none()
-        );
-        drop(manager);
-        drop(store);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase157_proof_memory_clone_drops_even_test_injected_lineage() {
-        // Arrange
-        let (path, store, mut manager, _) = managed_fixture("proof-clone");
-        let mut memory =
-            ManagedChainstate::from_store(super::super::MemoryChainstateStore::default());
-        memory.maybe_validated_lineage = manager.maybe_validated_lineage.take();
-        // Act
-        let cloned = memory.clone();
-        // Assert
-        assert!(memory.maybe_validated_lineage.is_some());
-        assert!(cloned.maybe_validated_lineage.is_none());
-        drop(cloned);
-        drop(memory);
-        drop(manager);
-        drop(store);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase157_proof_old_manager_cannot_follow_reenabled_generation() {
-        // Arrange
-        let (path, store, mut manager, _) = managed_fixture("proof-generation");
-        store.disable_basic_filter_index().expect("disable");
-        let positions = store.load_chain_meta_for_open().expect("metadata").0;
-        let fence = open_bitcoin_core::chainstate::VerifiedChainstateFence::new(
-            store.coins_view().best_block().expect("B"),
-            Some(&positions),
-        )
-        .expect("full recovered fence");
-        store
-            .enable_basic_filter_index(&fence)
-            .expect("complete enable/preflight");
-        let current = store
-            .maybe_basic_filter_append_proof()
-            .expect("proof")
-            .expect("new generation");
-        // Act
-        assert!(
-            manager
-                .flush_with_mode(
-                    FlushMode::Always,
-                    FlushPolicyTime::from_unix_seconds(10),
-                    u64::MAX
-                )
-                .is_err()
-        );
-        // Assert
-        store
-            .check_basic_filter_append_proof(&current)
-            .expect("new authority unchanged");
-        drop(current);
-        drop(manager);
-        drop(store);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase157_proof_raw_snapshot_seed_cannot_refresh_any_clone() {
-        // Arrange
-        let (path, store, manager, _) = managed_fixture("proof-raw-seed");
-        let old = store
-            .maybe_basic_filter_append_proof()
-            .expect("proof")
-            .expect("live");
-        let snapshot = store
-            .wallet_scan_chainstate_snapshot()
-            .expect("snapshot")
-            .expect("present");
-        let before = store.maybe_basic_filter_state().expect("safe state");
-        // Act
-        store
-            .clone()
-            .seed_coins_from_snapshot(&snapshot)
-            .expect("raw seed publication");
-        // Assert
-        assert!(store.check_basic_filter_append_proof(&old).is_err());
-        assert!(
-            store
-                .clone()
-                .maybe_basic_filter_append_proof()
-                .expect("no authority")
-                .is_none()
-        );
-        assert_eq!(
-            store
-                .maybe_basic_filter_state()
-                .expect("safe state unchanged"),
-            before
-        );
-        drop(old);
-        drop(manager);
-        drop(store);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-}
+#[path = "fjall_store/tests.rs"]
+pub(crate) mod proof_tests;

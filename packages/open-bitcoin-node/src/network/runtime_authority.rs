@@ -49,7 +49,7 @@ mod local_package;
 mod maintenance;
 pub use maintenance::{MaintenanceTickError, MaintenanceTickOutcome};
 mod automatic_prune;
-mod filter_index;
+pub(in crate::network) mod filter_index;
 pub use filter_index::BasicFilterTurnOutcome;
 mod prune_flush;
 mod recovery;

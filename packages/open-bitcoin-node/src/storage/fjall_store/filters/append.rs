@@ -45,6 +45,24 @@ impl FjallNodeStore {
         proof: BasicFilterAppendProof,
         records: &[codec::StoredFilterRecord],
     ) -> Result<super::PreparedBasicFilterAppend, StorageError> {
+        self.prepare_basic_filter_append_guarded_positions(proof, records, None)
+    }
+
+    pub(crate) fn prepare_basic_filter_replacement_append(
+        &self,
+        proof: BasicFilterAppendProof,
+        positions: crate::chainstate::ValidatedBasicFilterAppendPositions<'_>,
+        records: &[codec::StoredFilterRecord],
+    ) -> Result<PreparedBasicFilterAppend, StorageError> {
+        self.prepare_basic_filter_append_guarded_positions(proof, records, Some(positions))
+    }
+
+    fn prepare_basic_filter_append_guarded_positions(
+        &self,
+        proof: BasicFilterAppendProof,
+        records: &[codec::StoredFilterRecord],
+        maybe_positions: Option<crate::chainstate::ValidatedBasicFilterAppendPositions<'_>>,
+    ) -> Result<PreparedBasicFilterAppend, StorageError> {
         check_envelope_bounds(records)?;
         let Some(maximum_work) = proof.maybe_maximum_work() else {
             return Err(index_corruption(
@@ -52,6 +70,26 @@ impl FjallNodeStore {
             ));
         };
         let mut work = self.check_basic_filter_append_proof(&proof)?;
+        let replacement = maybe_positions.is_some();
+        if proof.identity.projection_authority
+            == super::ownership::BasicFilterProjectionAuthority::ValidatedReorg
+            && !replacement
+            && records
+                .iter()
+                .any(|record| match proof.processed().prefix() {
+                    IndexPrefix::Empty => true,
+                    IndexPrefix::Committed(id) => record.identity().height() > id.height(),
+                })
+        {
+            return Err(index_corruption(
+                "BASIC replacement requires accepted positions",
+            ));
+        }
+        if let Some(positions) = maybe_positions {
+            let cost = positions.work();
+            charge_append_work(&mut work, cost, Some(maximum_work))?;
+            positions.validate_for(self, &proof, records)?;
+        }
         if !work.fits(maximum_work) {
             return Err(index_corruption("BASIC append work budget"));
         }
@@ -146,29 +184,37 @@ impl FjallNodeStore {
                 &mut work,
                 Some(maximum_work),
             )?;
-            match maybe_projection {
-                Some(hash) if hash != id.block_hash() => {
-                    return Err(index_corruption("conflicting BASIC suffix projection"));
-                }
-                None if maybe_next != Some(id.height()) => {
-                    return Err(index_corruption("missing BASIC retry projection"));
-                }
-                None => {
-                    charge_append_work(
-                        &mut work,
-                        TurnWork {
-                            projection_operations: 1,
-                            cloned_bytes: 38,
-                            ..TurnWork::default()
-                        },
-                        Some(maximum_work),
-                    )?;
-                    prepared.projections.push((
-                        projection_key,
-                        codec::encode_projection(id.height(), id.block_hash()),
-                    ));
-                }
-                Some(_) => {}
+            if !replacement
+                && proof_identity_is_recovered(&prepared.proof)
+                && maybe_projection.is_some()
+                && maybe_next == Some(id.height())
+            {
+                return Err(index_corruption(
+                    "BASIC recovered projection advance requires accepted positions",
+                ));
+            }
+            if maybe_projection.is_some_and(|hash| hash != id.block_hash())
+                && !(replacement && maybe_next == Some(id.height()))
+            {
+                return Err(index_corruption("conflicting BASIC suffix projection"));
+            }
+            if maybe_projection.is_none() && maybe_next != Some(id.height()) {
+                return Err(index_corruption("missing BASIC retry projection"));
+            }
+            if maybe_projection != Some(id.block_hash()) {
+                charge_append_work(
+                    &mut work,
+                    TurnWork {
+                        projection_operations: 1,
+                        cloned_bytes: 38,
+                        ..TurnWork::default()
+                    },
+                    Some(maximum_work),
+                )?;
+                prepared.projections.push((
+                    projection_key,
+                    codec::encode_projection(id.height(), id.block_hash()),
+                ));
             }
             if maybe_next == Some(id.height()) {
                 prepared.processed = FilterCheckpoint::new(IndexPrefix::Committed(id));
@@ -187,6 +233,9 @@ impl FjallNodeStore {
         mut prepared: PreparedBasicFilterAppend,
     ) -> Result<super::BasicFilterAppendOutcome, StorageError> {
         let mut control = self.filter_publication_guard()?;
+        if control.maybe_reorg_suspension.is_some() {
+            return Err(index_corruption("BASIC append suspended for reorg preview"));
+        }
         let mut identity = self.check_basic_filter_append_proof_guarded_counted(
             &prepared.proof,
             &control,
@@ -319,6 +368,9 @@ impl FjallNodeStore {
         work: &mut TurnWork,
     ) -> Result<FilterCheckpoint, StorageError> {
         let (height, hash) = prepared.proof.durable_tip();
+        if prepared.proof.durable_displaced() {
+            return Ok(prepared.safe_checkpoint);
+        }
         let IndexPrefix::Committed(processed) = prepared.processed.prefix() else {
             return Ok(prepared.safe_checkpoint);
         };
@@ -485,6 +537,11 @@ impl FjallNodeStore {
     }
 }
 
+fn proof_identity_is_recovered(proof: &BasicFilterAppendProof) -> bool {
+    proof.identity.projection_authority
+        == super::ownership::BasicFilterProjectionAuthority::RecoveredPrefix
+}
+
 pub(super) fn charge_append_work(
     work: &mut TurnWork,
     cost: TurnWork,
@@ -527,4 +584,24 @@ fn check_envelope_bounds(records: &[codec::StoredFilterRecord]) -> Result<(), St
         }
     }
     Ok(())
+}
+
+impl BasicFilterAppendProof {
+    pub(super) fn durable_displaced(&self) -> bool {
+        self.identity.maybe_replacement.is_some_and(|replacement| {
+            replacement.maybe_displaced_fence == Some(self.durable_tip())
+        })
+    }
+}
+
+impl BasicFilterAppendProof {
+    pub(crate) fn admit_work(&self, work: TurnWork) -> Result<(), StorageError> {
+        if self
+            .maybe_maximum_work()
+            .is_none_or(|maximum| !work.fits(maximum))
+        {
+            return Err(index_corruption("BASIC accepted-position work budget"));
+        }
+        Ok(())
+    }
 }

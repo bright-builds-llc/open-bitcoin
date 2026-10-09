@@ -19,6 +19,25 @@ use open_bitcoin_core::{
 };
 
 impl ManagedChainstate<crate::FjallChainstateStore, crate::storage::FjallCoinsView> {
+    /// Seal a bounded borrowed next-height range; public snapshots carry no authority.
+    pub(crate) fn authorize_basic_filter_append_positions<'a>(
+        &'a self,
+        proof: &crate::storage::fjall_store::filters::BasicFilterAppendProof,
+        records: &[crate::storage::filter_index::StoredFilterRecord],
+    ) -> Result<super::fjall_store::ValidatedBasicFilterAppendPositions<'a>, crate::StorageError>
+    {
+        let lineage = self.maybe_validated_lineage.as_ref().ok_or_else(|| {
+            crate::storage::filter_index::index_corruption("missing BASIC validated append lineage")
+        })?;
+        let positions = lineage.authorize_append_positions(
+            proof,
+            self.chainstate.active_chain(),
+            records.len(),
+        )?;
+        proof.admit_work(positions.work())?;
+        positions.validate_for(self.store.inner(), proof, records)?;
+        Ok(positions)
+    }
     /// Attach only to the sealed recovered manager and its genuine current store proof.
     pub(crate) fn initialize_basic_index_owner(
         &mut self,
@@ -79,9 +98,10 @@ pub(crate) enum AcceptedBasicIndexFailure {
 }
 
 pub(super) struct AcceptedBasicIndexOwner {
-    progress: BasicIndexProgress,
-    maybe_facts: Option<AcceptedBasicFilterFacts>,
-    maybe_failure: Option<AcceptedBasicIndexFailure>,
+    pub(super) progress: BasicIndexProgress,
+    pub(super) maybe_facts: Option<AcceptedBasicFilterFacts>,
+    pub(super) maybe_failure: Option<AcceptedBasicIndexFailure>,
+    pub(super) reorg_state: super::filter_reorg::BasicIndexReorgState,
 }
 
 /// One next-height block, with complete undo copied from genuine staging.
@@ -94,6 +114,28 @@ pub(crate) struct AcceptedBasicFilterFacts {
 }
 
 impl AcceptedBasicFilterFacts {
+    pub(super) fn capture_reorg(
+        block: &Block,
+        position: &ChainPosition,
+        undo: &BlockUndo,
+    ) -> Result<Self, AcceptedBasicIndexFailure> {
+        let work = fact_work(block, undo)?;
+        BasicFilterInputs::from_historical(
+            block,
+            position,
+            Some(HistoricalBlockUndo {
+                block_hash: position.block_hash,
+                undo,
+            }),
+        )
+        .map_err(|_| AcceptedBasicIndexFailure::InvalidFacts)?;
+        Ok(Self {
+            block: clone_basic_body(block),
+            undo: undo.clone(),
+            position: position.clone(),
+            work,
+        })
+    }
     pub(crate) fn position(&self) -> &ChainPosition {
         &self.position
     }
@@ -162,6 +204,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         let Some(owner) = self.maybe_basic_index_owner.as_mut() else {
             return Err(BasicIndexCatchUpError::NotActive);
         };
+        if owner.reorg_state == super::filter_reorg::BasicIndexReorgState::PreviewFrozen
+            || self
+                .maybe_validated_lineage
+                .as_ref()
+                .is_some_and(|lineage| lineage.reorg_is_pending())
+        {
+            return Err(BasicIndexCatchUpError::StaleWork);
+        }
         owner.progress.resume(generation, branch)?;
         owner.maybe_failure = None;
         Ok(())
@@ -184,6 +234,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             progress,
             maybe_facts: None,
             maybe_failure: None,
+            reorg_state: super::filter_reorg::BasicIndexReorgState::Ordinary,
         });
         Ok(())
     }
@@ -197,6 +248,20 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         self.maybe_basic_index_owner
             .as_ref()
             .and_then(|owner| owner.maybe_failure)
+    }
+    /// Acceptance is visible independently of achieved publication and durable progress.
+    pub(crate) fn maybe_basic_index_accepted_target(&self) -> Option<AcceptedIndexTarget> {
+        let owner = self.maybe_basic_index_owner.as_ref()?;
+        match owner.reorg_state {
+            super::filter_reorg::BasicIndexReorgState::Ordinary
+            | super::filter_reorg::BasicIndexReorgState::PreviewFrozen => {
+                Some(owner.progress.accepted_target())
+            }
+            super::filter_reorg::BasicIndexReorgState::AcceptedReplacement { maybe_target }
+            | super::filter_reorg::BasicIndexReorgState::DurablyFencedReplacement {
+                maybe_target,
+            } => maybe_target.map(|(height, hash)| AcceptedIndexTarget::new(height, hash)),
+        }
     }
     pub(crate) fn maybe_accepted_basic_facts(&self) -> Option<&AcceptedBasicFilterFacts> {
         self.maybe_basic_index_owner
@@ -268,6 +333,15 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         let Some(owner) = self.maybe_basic_index_owner.as_mut() else {
             return;
         };
+        if matches!(
+            owner.reorg_state,
+            super::filter_reorg::BasicIndexReorgState::AcceptedReplacement { .. }
+                | super::filter_reorg::BasicIndexReorgState::DurablyFencedReplacement { .. }
+        ) {
+            owner.reorg_state = super::filter_reorg::BasicIndexReorgState::AcceptedReplacement {
+                maybe_target: Some((position.height, position.block_hash)),
+            };
+        }
         if owner
             .progress
             .observe_validated_connect(

@@ -29,6 +29,7 @@ use std::sync::MutexGuard;
 #[derive(Default)]
 pub(crate) struct PublicationControl {
     poisoned: bool,
+    pub(super) maybe_reorg_suspension: Option<super::reorg::BasicFilterReorgSuspension>,
     pub(in crate::storage::fjall_store) revision: u64,
     pub(in crate::storage::fjall_store) maybe_append_identity: Option<BasicFilterAppendIdentity>,
     pub(in crate::storage::fjall_store) maybe_pending_coins: Option<PendingCoinsPublication>,

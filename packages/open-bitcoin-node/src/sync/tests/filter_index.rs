@@ -24,6 +24,7 @@ mod lifecycle;
 mod prune_coordination;
 mod prune_faults;
 mod recovery;
+pub(super) mod reorg;
 mod startup;
 
 fn reserved_filter_path(name: &str) -> PathBuf {

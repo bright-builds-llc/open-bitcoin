@@ -19,6 +19,8 @@ use open_bitcoin_core::{
 mod append;
 pub(crate) use append::{BasicFilterAppendOutcome, PreparedBasicFilterAppend};
 mod lifecycle;
+mod reorg;
+pub(crate) use reorg::{CompletedBasicFilterReorg, PreparedBasicFilterReorg};
 mod ownership;
 pub(super) mod publication;
 mod startup;

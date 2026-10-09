@@ -40,3 +40,21 @@ fanout, Phase 137 operator surfaces, Phase 138 release proof, general package
 wire relay, whole-mempool rebroadcast, arbitrary multi-parent peer assembly,
 public or default relay, guaranteed propagation, public-network CI or release
 gates, and production readiness remain deferred.
+
+Phase 158 implements internal validated BASIC branch replacement in the pure
+chainstate and serialized node adapters. Genuine accepted receipts and live
+accepted-position capabilities gate every nonempty turn; recovered coins plus
+compatible metadata fence safe progress and reserved prune protection. Immutable
+hash-keyed displaced records survive actual configured reopen. Missing required
+body/undo and finite resource exhaustion refuse before preview/effects; existing
+caps can refuse fully retained forks.
+
+See the [scoped parity page](../docs/parity/v2-5-validated-reorg.md),
+[current measurements](../.planning/phases/158-validated-reorg-and-retained-branch-identity/158-REORG-MEASUREMENTS.md)
+and [Cargo/Bazel UAT](../.planning/phases/158-validated-reorg-and-retained-branch-identity/158-UAT.md).
+CFIX-03 is Complete after full native, independent source/security and formal
+lifecycle verification passed; all 21 truths and 25 mitigations are closed. Filter/index RPC 159, peers 160, operator
+projections 161 and integrated retained-client proof 162 remain pending and are
+not shipped. Compact maturity-one fixtures and the separate unchanged
+maturity-100 case do not establish full regtest parameter parity, archive-scale
+performance, hardware crash guarantees or production/funds safety.

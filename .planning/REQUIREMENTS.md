@@ -22,7 +22,7 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 - [x] **CFIX-01**: An operator can observe ordered, bounded catch-up from retained history and ongoing indexing from ordinary validated connects; scheduled catch-up progresses without another peer message and incomplete work never reports a complete index.
 - [x] **CFIX-02**: An operator can reopen the real Fjall datadir after successful or interrupted index writes and recover valid filter records and safe progress, or receive a fail-closed diagnostic without phantom cursor advancement.
-- [ ] **CFIX-03**: A client gets branch-correct replacement filters and headers after a validated reorg and can retrieve already-indexed displaced blocks by hash; missing deep-reorg inputs cause explicit refusal rather than invented history.
+- [x] **CFIX-03**: A client gets branch-correct replacement filters and headers after a validated reorg and can retrieve already-indexed displaced blocks by hash; missing deep-reorg inputs cause explicit refusal rather than invented history.
 - [x] **CFIX-04**: An operator can restart after index work runs ahead of a coins/chain-metadata flush without trusting a resume cursor beyond the recovered durable chainstate checkpoint; immutable filter records and active progress are reconciled to the recovered branch.
 
 ### Prune Coordination
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/04, CFAC-01/02 and CFPR-01/03 are Complete after Phases 154–157's lifecycle-valid verification and full native passes; the remaining 13 requirements are Pending.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02 and CFPR-01/03 are Complete after Phases 154–158's lifecycle-valid verification and full native passes; the remaining 12 requirements are Pending.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
@@ -98,7 +98,7 @@ All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CF
 | CFAC-01 | Phase 157 | Complete |
 | CFAC-02 | Phase 157 | Complete |
 | CFIX-01 | Phase 157 | Complete |
-| CFIX-03 | Phase 158 | Pending |
+| CFIX-03 | Phase 158 | Complete |
 | CFRP-01 | Phase 159 | Pending |
 | CFRP-02 | Phase 159 | Pending |
 | CFNET-01 | Phase 160 | Pending |
@@ -117,4 +117,4 @@ Coverage: 22/22 requirements mapped; 0 unmapped; 0 duplicate owners.
 ______________________________________________________________________
 
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-04 after Phase 155 verification*
+*Last updated: 2026-10-09 after Phase 158 verification*

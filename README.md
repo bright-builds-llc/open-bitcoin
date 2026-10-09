@@ -56,9 +56,9 @@ Phase 154 provides pure BASIC-only generation and commitments with independent
 pinned-corpus and validated historical-spend evidence. See the
 [BASIC parity catalog](./docs/parity/catalog/basic-compact-filters.md).
 Phase 157 implements explicit BASIC activation and bounded scheduled catch-up;
-its full phase verification remains a root execution gate. Filter/index RPC,
-peer filter serving, runtime reorg, V0, BIP37, GUI and production/funds products
-remain deferred.
+its full phase verification passed. Phase 158 adds internal validated branch
+replacement; Filter/index RPC, peer filter serving, V0, BIP37, GUI and
+production/funds products remain deferred.
 
 From the repository root, reproduce the exact independent comparisons:
 
@@ -72,8 +72,8 @@ Phase 155 adds internal recoverable BASIC storage and a mandatory pre-prune
 startup guard. Immutable ahead/displaced rows are retained while recovered coins
 B plus compatible durable metadata fence the visible cursor; uncertainty stops
 startup before deleting required input. The v2.5 milestone remains pending:
-runtime reorg (158), and RPC/peer/operator serving and integrated retained-client
-proof (159–162) remain deferred. Phase 157 activation/catch-up passed full native,
+internal validated reorg (158) passed its final phase gates, while RPC/peer/operator
+serving and integrated retained-client proof (159–162) remain deferred. Phase 157 activation/catch-up passed full native,
 formal and security verification. Software fault/reopen tests do not establish hardware
 power-loss behavior, archive-scale performance, or production-funds safety.
 
@@ -104,9 +104,10 @@ and formal phase/lifecycle proof is recorded in [Phase 156 verification](./.plan
 hardware power-loss resilience or exhaustive dependency migration safety.
 
 Phase 156 added no public activation command. Phase 157 implements that scoped
-activation/catch-up surface below; runtime reorg, filter/index RPC, peer serving,
-operator projections and complete client-after-prune proof remain deferred to
-Phases 158–162. The existing three v2.4 advisories remain recorded.
+activation/catch-up surface below. Internal validated reorg implementation is
+described below; filter/index RPC, peer serving, operator projections and complete
+client-after-prune proof remain deferred to Phases 159–162. The existing three
+v2.4 advisories remain recorded.
 
 ```bash
 bun test ./scripts/check-phase156-prune-coordination.test.ts
@@ -135,8 +136,31 @@ retention. The existing 10,000-byte representation boundary and all three v2.4
 advisories remain explicit. Phase 157 passed 34/34 formal truths, clean source
 review across 91 files, all 33 declared security mitigations and the complete
 full native verifier in 17m22.546s;
-runtime reorg, filter/index RPC, peer serving, operator projections and complete
-client-after-prune proof remain deferred to 158–162, and v2.5 remains pending.
+filter/index RPC, peer serving, operator projections and complete
+client-after-prune proof remain deferred to 159–162, and v2.5 remains pending.
+
+## Internal validated BASIC branch replacement (Phase 158)
+
+The production manager now tracks genuine accepted reorg receipts, exact common
+ancestors, equal-height/longer/lagged replacements and repeated branches with a
+subsequent normal validated connect. Immutable displaced hash lookup survives
+actual configured reopen; missing required body/undo refuses before preview.
+Accepted, processed and safe durable progress remain separate, and ordinary own
+coins/metadata writes earn the safe fence without index-specific forced flushes.
+
+The [scoped parity page](./docs/parity/v2-5-validated-reorg.md),
+[54-configuration/149-turn measurements](./.planning/phases/158-validated-reorg-and-retained-branch-identity/158-REORG-MEASUREMENTS.md)
+and [repo-local Cargo/Bazel UAT](./.planning/phases/158-validated-reorg-and-retained-branch-identity/158-UAT.md)
+record genuine spending forks, physical suffix recovery, prune protection and
+finite resource refusals. Existing caps can refuse fully retained deep/shared-gap
+forks. The maturity-100 fixture stays below the regtest halving difference;
+compact fixtures explicitly use maturity one. Whole-runtime constant memory/work,
+isolated publication latency and hardware crash guarantees are not claimed.
+CFIX-03 is Complete after full native, independent source/security and formal
+lifecycle verification passed; all 21 truths and 25 mitigations are closed. Filter/index RPC 159, peers 160, operator
+projections 161 and integrated retained-client proof 162 remain pending and are
+not shipped. No public reorg CLI/RPC is added.
+
 ## Parity At A Glance
 
 The current status source is the parity ledger:

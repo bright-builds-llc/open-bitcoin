@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { CHECK_FILES, checkPhase157IndexCatchUp } from "./check-phase157-index-catch-up.ts";
-import { CONTRACTS, CORPUS, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, REGISTRATIONS, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
+import { CONTRACTS, CORPUS, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, PRODUCTION_BUDGET, REGISTRATIONS, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
 import { maybeFunction, ordinaryRust } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const REPO = resolve(import.meta.dir, "..");
@@ -162,7 +162,7 @@ for (const anchor of ["blocks: 8", "body_bytes: 1024 * 1024", "undo_bytes: 4 * 1
   test(`consumed measured budget mutation: ${anchor}`, () => {
     // Arrange
     const root = fixture();
-    mutateFunction(root, NODE + "network/runtime_authority/filter_index/catch_up.rs", "production_budget", body => body.replace(pattern(anchor), "removed_budget: 999"));
+    mutateFunction(root, PRODUCTION_BUDGET, "production_budget", body => body.replace(pattern(anchor), "removed_budget: 999"));
     // Act
     const failures = checkPhase157IndexCatchUp(root);
     // Assert
