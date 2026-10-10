@@ -46,10 +46,13 @@ impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
         command: LifecycleCommand,
     ) -> Result<LifecycleCommandResult, LifecycleProjectionError> {
         let mut network = self
-            .authority
-            .lock()
+            .lock_authority()
             .map_err(|_| LifecycleProjectionError::AuthorityUnavailable)?;
-        apply_lifecycle_command(&mut network, command)
+        let outcome = apply_lifecycle_command(&mut network, command);
+        let wakes = self.collect_basic_filter_wakes(&network);
+        drop(network);
+        super::filter_index::readiness::wake_all(wakes);
+        outcome
     }
 
     pub(super) fn dispatch_checkpoint_completion(
@@ -62,7 +65,7 @@ impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
                 Box::new(receipt),
             ));
         }
-        let mut network = match self.authority.lock() {
+        let mut network = match self.lock_authority() {
             Ok(network) => network,
             Err(_) => {
                 return Err((
@@ -81,7 +84,7 @@ impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
         &self,
         abort: SnapshotWriteAbort,
     ) -> Result<EffectAbort, (LifecycleProjectionError, Box<SnapshotWriteAbort>)> {
-        let mut network = match self.authority.lock() {
+        let mut network = match self.lock_authority() {
             Ok(network) => network,
             Err(_) => {
                 return Err((

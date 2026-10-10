@@ -14,6 +14,7 @@ adapters can back honestly.
   `-rpcconnect`, `-rpcport`, `-rpcuser`, `-rpcpassword`, `-rpccookiefile`,
   `-getinfo`, and `-color`
 - supported baseline-backed RPC methods:
+  `getblockfilter`, `getindexinfo`,
   `getblockchaininfo`, `listprunelocks`, `setprunelock`, `pruneblockchain`,
   `getmempoolinfo`,
   `getnetworkinfo`, `sendrawtransaction`, `testmempoolaccept`, `submitpackage`,
@@ -29,6 +30,10 @@ adapters can back honestly.
 - hermetic single-wallet operator workflow:
   `importdescriptors` -> `rescanblockchain` -> `getbalances` ->
   `listunspent` -> `buildandsigntransaction` -> `sendrawtransaction`
+
+The current registry contains 29 methods: 21 baseline-backed methods and eight
+Open Bitcoin extension methods. The two Phase 159 additions are baseline-backed;
+the extension set is unchanged.
 
 ## Current v2.4 operator prune
 
@@ -94,6 +99,19 @@ GetPruneHeight is the last pruned height, and the info field pruneheight is that
 - open-stdin regression coverage proves a normal CLI invocation without stdin flags does not wait on an open stdin pipe.
 - cookie-auth creation uses a generated `__cookie__:<64 lowercase hex chars>`
   secret and owner-only Unix file mode for newly created cookie files.
+- `getblockfilter` and `getindexinfo` use the configured daemon's existing
+  authenticated node authority. BASIC lookup returns exactly lowercase `filter`
+  and `header`; index summary exposes only `basic block filter index` with
+  `synced` and `best_block_height`. The initial-sync latch, processed height and
+  captured-frontier readiness remain distinct. Valid retained rows still serve;
+  legacy-unknown missing rows fail closed. See the
+  [scoped Phase 159 query contract and repo-local commands](basic-compact-filters.md#authenticated-basic-queries-phase-159)
+  for exact normalization/errors, numeric limits, genuine prune/reopen evidence
+  and explicit compatibility limitations. Default-off activation and production
+  dependencies are unchanged; full native/source/security/lifecycle gates passed
+  and CFRP-01/02 are Complete. This adds no V0 generation, peer serving, operator
+  expansion, CFPR-02/CFNET/CFOP/CFGR or v2.5 completion, public defaults or
+  production/funds claim.
 
 ## Phase 105 relay evidence classification
 

@@ -41,6 +41,7 @@ mod relay_fanout;
 mod relay_serving;
 mod runtime_authority;
 mod types;
+pub(crate) mod validation_history;
 
 pub use announcement_transport::{
     AnnouncementPreparationOutcome, PeerEmission, PeerEmissionReceipt, PeerEmissionWriteCapability,
@@ -86,6 +87,13 @@ pub use recovery::{ManagedMempoolRecoverySummary, PreparedMempoolRecovery};
 pub use relay_fanout::{
     LocalRelaySubmissionEvidence, LocalRelaySubmissionLabel, ManagedRelayFanoutInfo,
     RebroadcastEvidenceLabel,
+};
+pub use runtime_authority::filter_index::{
+    BASIC_FILTER_QUERY_MAX_HEX_BYTES, BASIC_FILTER_QUERY_MAX_READ_BYTES,
+    BASIC_FILTER_QUERY_MAX_RECORD_BYTES, BasicBlockValidationProvenance, BasicFilterQuery,
+    BasicFilterQueryError, BasicFilterQueryWork, BasicFilterReadBarrier, BasicFilterReadCompletion,
+    BasicFilterReadFailure, BasicFilterReadFrontier, BasicFilterRecordView, BasicIndexSummary,
+    MAX_BASIC_FILTER_WAITERS,
 };
 pub use runtime_authority::{
     BasicFilterTurnOutcome, CheckpointAbortDispatchError, CheckpointCompletionDispatchError,
@@ -590,17 +598,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         timestamp: i64,
         consensus_params: ConsensusParams,
     ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
-        self.peer_manager
-            .handle_headers_with_policy(
-                peer_id,
-                headers_message,
-                HeaderSyncPolicy::HeadersOnly,
-                |header_store, header| {
-                    validate_header_for_sync(header_store, header, timestamp, consensus_params)?;
-                    header_store.insert_header(header.clone())
-                },
-            )
-            .map_err(ManagedNetworkError::from)
+        self.handle_validated_headers(peer_id, headers_message, timestamp, consensus_params)
     }
 }
 

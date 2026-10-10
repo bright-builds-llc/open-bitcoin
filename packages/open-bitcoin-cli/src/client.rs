@@ -12,7 +12,10 @@ use open_bitcoin_cli::{
 };
 use open_bitcoin_rpc::{
     JsonRpcId, JsonRpcVersion, RpcAuthConfig, RpcErrorDetail, RpcRequestEnvelope,
-    method::{MethodCall, MethodScope, RequestParameters, SupportedMethod, normalize_method_call},
+    method::{
+        BlockFilterSelection, MethodCall, MethodScope, RequestParameters, SupportedMethod,
+        normalize_method_call,
+    },
 };
 use serde::Serialize;
 use serde_json::Value;
@@ -203,6 +206,24 @@ fn canonical_params(
 
 fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
     match call {
+        MethodCall::GetBlockFilter(request) => {
+            let blockhash = request
+                .block_hash
+                .as_bytes()
+                .iter()
+                .rev()
+                .map(|byte| format!("{byte:02x}"))
+                .collect::<String>();
+            let filtertype = match request.filter_type {
+                BlockFilterSelection::Basic => "basic",
+                BlockFilterSelection::V0 => "v0",
+            };
+            Ok(serde_json::json!({"blockhash": blockhash, "filtertype": filtertype}))
+        }
+        MethodCall::GetIndexInfo(request) => Ok(match request.maybe_index_name {
+            Some(name) => serde_json::json!({"index_name": name}),
+            None => serde_json::json!({}),
+        }),
         MethodCall::GetBlockchainInfo(request) => to_json_value(request),
         MethodCall::ListPruneLocks(request) => to_json_value(request),
         MethodCall::SetPruneLock(request) => to_json_value(request),

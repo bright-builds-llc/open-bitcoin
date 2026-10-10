@@ -367,13 +367,22 @@ fn phase157_append_wrong_previous_header_in_saved_row_refuses_local_edge() {
         previous,
     );
     bytes[134..166].copy_from_slice(header.as_bytes());
+    // Deliberately bypass raw publication to test local edge validation with a
+    // live proof. Raw clone invalidation and real recovery have separate coverage.
     store
-        .write_raw_for_test(StorageNamespace::BlockIndex, &key, bytes)
+        .block_index
+        .insert(&key, bytes)
         .expect("own commitment valid, local edge wrong");
     // Act
     let result = store.maybe_basic_filter_append_proof_with_budget(budget());
     // Assert
-    assert!(result.is_err());
+    assert!(
+        result
+            .err()
+            .expect("local edge must fail")
+            .to_string()
+            .contains("predecessor")
+    );
     assert!(
         store
             .get_bytes(

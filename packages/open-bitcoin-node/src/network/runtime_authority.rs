@@ -53,7 +53,7 @@ pub(in crate::network) mod filter_index;
 pub use filter_index::BasicFilterTurnOutcome;
 mod prune_flush;
 mod recovery;
-
+mod validation_history;
 pub type MemoryNetworkHandle = ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView>;
 
 #[derive(Debug)]
@@ -67,6 +67,7 @@ pub enum ManagedNetworkAuthorityError {
 pub struct ManagedNetworkHandle<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView> {
     authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>,
     automatic_prune: Arc<Mutex<automatic_prune::AutomaticPruneState>>,
+    basic_filter_readiness: Arc<filter_index::readiness::ReadinessOwner>,
     #[cfg(test)]
     maybe_last_basic_filter_turn: Arc<Mutex<Option<BasicFilterTurnOutcome>>>,
 }
@@ -76,6 +77,7 @@ impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
         Self {
             authority: Arc::clone(&self.authority),
             automatic_prune: Arc::clone(&self.automatic_prune),
+            basic_filter_readiness: Arc::clone(&self.basic_filter_readiness),
             #[cfg(test)]
             maybe_last_basic_filter_turn: Arc::clone(&self.maybe_last_basic_filter_turn),
         }
@@ -94,6 +96,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         Self {
             authority: Arc::new(Mutex::new(network)),
             automatic_prune: Arc::new(Mutex::new(automatic_prune::AutomaticPruneState::default())),
+            basic_filter_readiness: Arc::default(),
             #[cfg(test)]
             maybe_last_basic_filter_turn: Arc::default(),
         }
@@ -102,28 +105,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     /// Wraps an explicitly constructed in-memory network for tests and benchmarks.
     pub fn from_network_fixture(network: ManagedPeerNetwork<S, V>) -> Self {
         Self::new(network)
-    }
-
-    fn read<T>(
-        &self,
-        snapshot: impl FnOnce(&ManagedPeerNetwork<S, V>) -> T,
-    ) -> Result<T, ManagedNetworkAuthorityError> {
-        let network = self
-            .authority
-            .lock()
-            .map_err(|_| ManagedNetworkAuthorityError::Poisoned)?;
-        Ok(snapshot(&network))
-    }
-
-    fn mutate<T>(
-        &self,
-        command: impl FnOnce(&mut ManagedPeerNetwork<S, V>) -> T,
-    ) -> Result<T, ManagedNetworkAuthorityError> {
-        let mut network = self
-            .authority
-            .lock()
-            .map_err(|_| ManagedNetworkAuthorityError::Poisoned)?;
-        Ok(command(&mut network))
     }
 
     fn try_mutate<T>(
@@ -576,7 +557,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     }
 
     #[cfg(test)]
-    fn poison_for_test(&self)
+    pub(crate) fn poison_for_test(&self)
     where
         S: Send + 'static,
         V: Send + 'static,

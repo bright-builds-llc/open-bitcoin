@@ -8,6 +8,78 @@ use super::*;
 use crate::storage::fjall_store::prune::{PRUNE_LOCKS_KEY, decode_prune_locks, encode_prune_locks};
 
 #[test]
+fn phase159_append_raw_clone_corruption_revokes_proof_and_genuine_recovery_refuses() {
+    // Arrange
+    let path = temp_path("append-raw-clone-recovery");
+    let store = FjallNodeStore::open(&path).expect("open");
+    let (positions, records) = fixtures(3);
+    recovered(&store, &positions);
+    append(&store, &records[..2]);
+    let proof = store
+        .maybe_basic_filter_append_proof_with_budget(budget())
+        .expect("proof")
+        .expect("recovered");
+    let clone = store.clone();
+    let key = codec::record_key(records[1].identity().block_hash());
+    let mut bytes = codec::encode_record(&records[1]);
+    let previous = open_bitcoin_core::primitives::FilterHeader::default();
+    bytes[70..102].copy_from_slice(previous.as_bytes());
+    let header = open_bitcoin_core::consensus::compute_filter_header(
+        records[1].identity().filter_hash(),
+        previous,
+    );
+    bytes[134..166].copy_from_slice(header.as_bytes());
+    // Act
+    clone
+        .write_raw_for_test(StorageNamespace::BlockIndex, &key, bytes.clone())
+        .expect("self-consistent row with incompatible parent header");
+    // Assert raw invalidation before recovery can itself revoke any authority.
+    assert!(
+        store
+            .check_basic_filter_append_proof(&proof)
+            .expect_err("every clone loses the captured proof")
+            .to_string()
+            .contains("invalidated")
+    );
+    assert!(
+        clone
+            .maybe_basic_filter_append_proof_with_budget(budget())
+            .expect("no live proof")
+            .is_none()
+    );
+    // Act: only genuine complete recovery may attempt to restore authority.
+    let recovery = store.configure_basic_filter_index_before_prune(
+        Some(positions.last().expect("tip").block_hash),
+        BasicFilterStartupMode::Enabled,
+    );
+    // Assert
+    assert!(
+        recovery
+            .expect_err("full recovery must reject the edge")
+            .to_string()
+            .contains("predecessor")
+    );
+    assert_eq!(
+        store
+            .get_bytes(StorageNamespace::BlockIndex, &key)
+            .expect("corruption remains untouched"),
+        Some(bytes)
+    );
+    assert!(
+        store
+            .get_bytes(
+                StorageNamespace::BlockIndex,
+                &codec::record_key(records[2].identity().block_hash())
+            )
+            .expect("no new immutable row")
+            .is_none()
+    );
+    drop(clone);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
 fn phase157_append_preparation_reserves_acquisition_plus_recheck_before_map_decode() {
     // Arrange
     let path = temp_path("append-acquisition-total");

@@ -27,6 +27,8 @@ mod append_proof;
 mod faults;
 mod lifecycle;
 mod ownership;
+#[path = "query/tests.rs"]
+mod query;
 mod reorg;
 use faults::{append_current, publish_current, seed_orphan_records};
 

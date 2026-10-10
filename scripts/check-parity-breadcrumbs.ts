@@ -101,8 +101,9 @@ function repoRoot(): string {
   return git(process.cwd(), ["rev-parse", "--show-toplevel"]).trim();
 }
 
-function trackedPaths(repoRoot: string): string[] {
-  return git(repoRoot, ["ls-files", "-z"])
+/** Current cached and nonignored untracked paths; Git owns ignore/gitlink policy. */
+export function worktreePaths(repoRoot: string): string[] {
+  return git(repoRoot, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"])
     .split("\0")
     .filter((filePath) => filePath.length > 0)
     .map(normalizeRelativePath)
@@ -400,7 +401,7 @@ function main(): void {
   const options = parseArgs(process.argv.slice(2));
   const root = repoRoot();
   const config = loadConfig(root, options.mappingPath);
-  const scopePaths = trackedPaths(root).filter(inScopeRustFile);
+  const scopePaths = worktreePaths(root).filter(inScopeRustFile);
   const { errors: mappingErrors, mappings } = buildMappings(config, scopePaths);
   const targetErrors = validateBreadcrumbTargets(root, mappings);
   const fileErrors =
@@ -418,10 +419,12 @@ function main(): void {
   }
 }
 
-try {
-  main();
-} catch (error) {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(message);
-  process.exit(1);
+if (import.meta.main) {
+  try {
+    main();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(message);
+    process.exit(1);
+  }
 }

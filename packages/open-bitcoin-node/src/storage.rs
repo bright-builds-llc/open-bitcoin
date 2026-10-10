@@ -14,6 +14,7 @@ pub mod fjall_store;
 mod lock_probe;
 pub mod mempool_snapshot;
 pub mod snapshot_codec;
+pub(crate) mod validation_history;
 
 pub use coins_view::FjallCoinsView;
 pub use fjall_store::FjallNodeStore;

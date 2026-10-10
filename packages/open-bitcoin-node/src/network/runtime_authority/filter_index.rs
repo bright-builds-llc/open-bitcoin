@@ -11,6 +11,18 @@ use crate::{FjallChainstateStore, storage::FjallCoinsView};
 use open_bitcoin_core::chainstate::{CoinsView, VerifiedChainstateFence};
 
 mod catch_up;
+mod query;
+pub(in crate::network) mod readiness;
+pub use query::{
+    BASIC_FILTER_QUERY_MAX_HEX_BYTES, BASIC_FILTER_QUERY_MAX_READ_BYTES,
+    BASIC_FILTER_QUERY_MAX_RECORD_BYTES, BasicBlockValidationProvenance, BasicFilterQuery,
+    BasicFilterQueryError, BasicFilterQueryWork, BasicFilterReadFrontier, BasicFilterRecordView,
+    BasicIndexSummary,
+};
+pub use readiness::{
+    BasicFilterReadBarrier, BasicFilterReadCompletion, BasicFilterReadFailure,
+    MAX_BASIC_FILTER_WAITERS,
+};
 pub(in crate::network) mod reorg;
 pub use catch_up::BasicFilterTurnOutcome;
 

@@ -12,6 +12,10 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
+Phase 159 completed authenticated BASIC filter/index RPCs on 2026-10-10 (UTC). [Verification](phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md) passed 26/26 truths and all four roadmap criteria; full default native verification passed in 36m 0.155s with 3,864 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent review is clean across 91 paths/all seven findings closed; all 27 security mitigations are closed. CFRP-01/02 are Complete. Configured authenticated queries share the durable node authority, preserve exact BASIC results/error ordering and initial-sync semantics, and serve retained active/stale/pruned records after genuine paired deletion and all-handle reopen. UnknownLegacy absent rows fail closed; numeric read/waiter policies and synthetic genesis/maturity-one/manual-owner-plan limits remain explicit. Phase 160 is ready for context; peer/operator/integrated-client products and v2.5 completion remain pending.
+
+Earlier entries below preserve the scope and next-step status at their original verification dates.
+
 Phase 158 completed internal validated BASIC branch replacement on 2026-10-09. [Verification](phases/158-validated-reorg-and-retained-branch-identity/158-VERIFICATION.md) passed 21/21 truths and all three roadmap criteria; the default native contract passed in 19m24.571s with 3,735 primary Rust tests/doctests, benchmark smoke, six Bazel targets/provenance and no uncovered pure-core lines. Independent source review is clean, both review findings are fixed and all 25 declared mitigations are closed. CFIX-03 is Complete. Genuine accepted receipts and positions enforce common-ancestor replacement, immutable displaced hash lookup after actual reopen, conservative coins fencing and explicit required-body/undo refusal. A retained shorter unflushed return regression and missing/mismatched fence controls pass. Existing finite caps can refuse fully retained forks; maturity/halving and software-only fault limits remain explicit. Phase 159 is ready for context; RPC/peer/operator/integrated-client products remain pending.
 
 Phase 157 completed safe BASIC activation and scheduled catch-up on 2026-10-05. [Verification](phases/157-safe-activation-and-scheduled-index-catch-up/157-VERIFICATION.md) passed 34/34 truths and all four roadmap criteria; the complete default native contract passed in 17m22.546s with Bun 1.3.9/Rust 1.94.1, including 3604 primary Rust tests, benchmarks, Bazel/provenance and zero uncovered pure-core lines. Independent source review is clean across 91 files; all 33 declared mitigations are closed. CFAC-01/02 and CFIX-01 are Complete. Explicit bare/1/basic or zero selects configured durable startup without P2P activation; full required-history preflight precedes prune effects, and actual startup/one-second idle turns share the ordered accepted-state owner. Real paired loss/refusal, persistence faults, immutable retries and normal checkpoint/714 paired-delete evidence preserve conservative progress. Enabled empty storage still requires retained validated genesis/history; exact-tip retention, representation/resource limits and the existing three v2.4 advisories remain. Phase 158 subsequently completed internal validated reorg; filter/index RPC, peer serving, operator projections and integrated retained-client proof remain pending.
@@ -45,7 +49,7 @@ Historical phase directories remain tracked because repository verifiers referen
 - Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
 - Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
 
-Continue at Phase 159 and preserve earlier phase directories required by repository verifiers. Phases 157–158 completed explicit activation, bounded catch-up and internal validated reorg with missing-history refusal. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+Continue at Phase 160 and preserve earlier phase directories required by repository verifiers. Phases 157–158 completed explicit activation, bounded catch-up and internal validated reorg with missing-history refusal. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
 
 FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
 
@@ -222,14 +226,15 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - ✓ CFIX-03 validated in Phase 158: genuine branch replacement, immutable displaced lookup after reopen and explicit required-source refusal; 21/21 truths, full native and all 25 security mitigations passed.
 
+- ✓ CFRP-01/02 validated in Phase 159: authenticated retained BASIC lookup and exact initial-sync index summaries; 26/26 formal truths, full native, clean source review and 27/27 security mitigations passed.
+
 ### Active
 - [ ] CFPR-02: Retained filter service after pruning
 - [ ] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
-- [ ] CFRP-01/02: Authenticated BASIC filter and index-info RPC parity
 - [ ] CFOP-01: Shared sanitized operator evidence and separate filter-growth disclosure
 - [ ] CFGR-01/02: Parity guardrails and continuous validated-chain integrated proof
 
-CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02 and CFPR-01/03 are Complete and 12 detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
+CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03 and CFRP-01/02 are Complete and ten detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 
@@ -363,4 +368,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-05 after Phase 157 verification*
+*Last updated: 2026-10-10 after Phase 159 verification*

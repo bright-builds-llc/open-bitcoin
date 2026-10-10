@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–158 completed 33 plans and ten requirements after full native verification through 2026-10-09. Five of nine phases are complete; 12 requirements remain pending, and Phase 159 is ready for context. BASIC construction, recoverable immutable storage, pre-prune protection, index-owned prune coordination, explicit safe activation/bounded catch-up and internal validated branch replacement are implemented. Serving/operator/integrated-client products remain planned scope; v2.5 is not a shipped capability. Phase 158 passed 21/21 truths, independent source review, all 25 declared security mitigations and the default native contract in 19m24.571s. Existing finite caps can refuse fully retained forks before effects. v2.4 remains archived with three nonblocking advisories, and historical phase directories remain tracked for verifier evidence.
+v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–159 completed 41 plans and twelve requirements after full native verification. Six of nine phases are complete; ten requirements remain pending, and Phase 160 is ready for context. BASIC construction, recoverable storage, prune protection/coordination, safe activation, bounded catch-up, validated branch replacement and authenticated filter/index RPCs are implemented. Phase 159 passed 26/26 truths, clean 91-path independent source review, all 27 declared security mitigations and the full default native contract in 36m 0.155s with 3,864 primary Rust passes, benchmark/Bazel/provenance and zero uncovered pure-core lines. UnknownLegacy missing rows fail closed and finite resource policies remain explicit. Peer/operator/integrated-client products remain planned scope; v2.5 is not a shipped capability. v2.4 remains archived with three nonblocking advisories, and historical phase directories remain tracked for verifier evidence.
 
 ## Milestones
 
@@ -38,7 +38,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 156: Index-Owned Manual and Automatic Prune Coordination** — Make required input protection enforceable through the actual deletion and lock owners. (completed 2026-10-05)
 - [x] **Phase 157: Safe Activation and Scheduled Index Catch-Up** — Enable indexing only with retained inputs, then advance through real startup and ordinary maintenance. (completed 2026-10-05)
 - [x] **Phase 158: Validated Reorg and Retained Branch Identity** — Replace active commitments while retaining indexed displaced blocks and refusing lost reorg inputs. (completed 2026-10-09)
-- [ ] **Phase 159: Authenticated BASIC Filter and Index RPCs** — Expose pinned lookup results and initial-synchronization semantics through the shared durable authority.
+- [x] **Phase 159: Authenticated BASIC Filter and Index RPCs** — Expose pinned lookup results and initial-synchronization semantics through the shared durable authority. (completed 2026-10-10)
 - [ ] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence.
 - [ ] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers.
 - [ ] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports.
@@ -151,7 +151,7 @@ Plans:
 
 **Goal**: Authenticated clients can query BASIC filters and index summaries with pinned Knots result shapes, selection and error ordering.
 **Depends on**: Phase 158
-**Requirements**: CFRP-01, CFRP-02
+**Requirements:** CFRP-01, CFRP-02
 **Success Criteria** (what must be TRUE):
 
 1. An authenticated getblockfilter request defaults to BASIC and returns exact filter/header hex for indexed active, retained stale and pruned blocks through the shared durable authority, including available records during catch-up. (CFRP-01)
@@ -159,7 +159,7 @@ Plans:
 1. Authenticated getindexinfo returns basic block filter index with only the pinned synced and best_block_height fields; exact-name selection, unknown selection and disabled absence return the expected objects. (CFRP-02)
 1. getindexinfo synced retains Knots' initial-synchronization meaning when later tip movement creates lag; it is neither a configured-capability flag nor an instantaneous tip-equality claim. (CFRP-02)
 
-**Plans**: TBD
+**Plans:** 8/8 plans complete
 **UI hint**: yes
 
 ### Phase 160: Explicit Bounded Peer Filter Serving
@@ -240,11 +240,11 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | 156. Index-Owned Manual and Automatic Prune Coordination | 8/8 | Complete | 2026-10-05 |
 | 157. Safe Activation and Scheduled Index Catch-Up | 10/10 | Complete | 2026-10-05 |
 | 158. Validated Reorg and Retained Branch Identity | 7/7 | Complete | 2026-10-09 |
-| 159. Authenticated BASIC Filter and Index RPCs | 0/TBD | Not started | - |
+| 159. Authenticated BASIC Filter and Index RPCs | 8/8 | Complete    | 2026-10-10 |
 | 160. Explicit Bounded Peer Filter Serving | 0/TBD | Not started | - |
 | 161. Shared Operator Index and Retention Evidence | 0/TBD | Not started | - |
 | 162. Real Prune Retention and Integrated Parity Proof | 0/TBD | Not started | - |
 
 ## Coverage
 
-22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 5/9 verified phases and 33/33 created plans. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02 and CFPR-01/03 are Complete; the remaining 12 requirements are Pending.
+22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 6/9 verified phases and 41/41 created plans. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03 and CFRP-01/02 are Complete; the remaining ten requirements are Pending.

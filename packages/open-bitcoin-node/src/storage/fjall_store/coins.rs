@@ -48,6 +48,7 @@ impl FjallNodeStore {
         mode: PersistMode,
     ) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
+        self.invalidate_validation_coverage()?;
         control.invalidate_append()?;
         control.chain_meta_fault()?;
         let meta_bytes = encode_chain_meta(active_chain, maybe_counts)?;
@@ -72,6 +73,7 @@ impl FjallNodeStore {
         )?;
         let mut control = self.filter_publication_guard()?;
         let maybe_pending = control.maybe_pending_coins;
+        self.check_validation_coverage_for_metadata(active_chain)?;
         control.invalidate_append()?;
         control.chain_meta_fault()?;
         let view = self.coins_view();
@@ -349,7 +351,11 @@ impl FjallNodeStore {
         &self,
         snapshot: &ChainstateSnapshot,
     ) -> Result<(), StorageError> {
-        self.filter_publication_guard()?.invalidate_append()?;
+        {
+            let mut control = self.filter_publication_guard()?;
+            self.invalidate_validation_coverage()?;
+            control.invalidate_append()?;
+        }
         if let Some(tip) = snapshot.active_chain.last() {
             self.write_migrated_coins_with_tip(&snapshot.utxos, tip.block_hash)?;
         } else if snapshot.utxos.is_empty() {

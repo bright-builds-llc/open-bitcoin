@@ -161,6 +161,29 @@ lifecycle verification passed; all 21 truths and 25 mitigations are closed. Filt
 projections 161 and integrated retained-client proof 162 remain pending and are
 not shipped. No public reorg CLI/RPC is added.
 
+## Authenticated BASIC queries (Phase 159)
+
+Phase 159 implements authenticated `getblockfilter` and `getindexinfo` on the
+configured daemon's shared durable authority. Existing retained rows serve during
+initial catch-up and after body/undo pruning; later lag awaits a bounded captured
+frontier outside the HTTP context lock. Summaries retain the initial-sync latch
+and report processed height independently of safe durable coins progress.
+
+The [scoped query contract, limits and exact Cargo/Bazel commands](./docs/parity/catalog/basic-compact-filters.md#authenticated-basic-queries-phase-159)
+link genuine accepted-chain paired deletion/all-handle reopen evidence and the
+explicit UnknownLegacy missing-row limitation. Private node faults compose with
+the real RPC mapper. Fixtures use synthetic genesis/maturity one and a manual
+owner-plan, not automatic threshold or ordinary prune-RPC proof. Default-off
+activation and dependencies are unchanged. CFRP-01/02 are Complete after full native, clean 91-path source review, 27/27
+security mitigations and [26/26 formal verification](./.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md)
+with valid lifecycle gates; peers 160, operator 161, integrated 162 and
+v2.5 completion remain pending. Earlier paragraphs record historical phase scope.
+
+```bash
+bun test ./scripts/check-phase159-filter-rpcs.test.ts
+bun run scripts/check-phase159-filter-rpcs.ts
+```
+
 ## Parity At A Glance
 
 The current status source is the parity ledger:

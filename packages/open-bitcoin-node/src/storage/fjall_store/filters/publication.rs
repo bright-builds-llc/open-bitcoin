@@ -29,6 +29,9 @@ use std::sync::MutexGuard;
 #[derive(Default)]
 pub(crate) struct PublicationControl {
     poisoned: bool,
+    /// Complete immutable forest checked during exclusive recovery. Trusted
+    /// immutable batches preserve this; raw writes clear it before effects.
+    pub(in crate::storage::fjall_store) read_integrity: bool,
     pub(super) maybe_reorg_suspension: Option<super::reorg::BasicFilterReorgSuspension>,
     pub(in crate::storage::fjall_store) revision: u64,
     pub(in crate::storage::fjall_store) maybe_append_identity: Option<BasicFilterAppendIdentity>,
@@ -36,7 +39,7 @@ pub(crate) struct PublicationControl {
     pub(in crate::storage::fjall_store) maybe_completed_metadata:
         Option<CompletedMetadataPublication>,
     #[cfg(test)]
-    maybe_fault: Option<FilterPublicationFault>,
+    pub(super) maybe_fault: Option<FilterPublicationFault>,
     #[cfg(test)]
     maybe_writer_interleave: Option<BasicFilterWriterInterleave>,
 }
@@ -110,6 +113,7 @@ impl PublicationControl {
 #[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum FilterPublicationFault {
+    BeforeQueryRead,
     BeforeBody,
     BeforeUndo,
     BeforeCoins,
@@ -125,7 +129,6 @@ pub(crate) enum FilterPublicationFault {
     BeforeEnable,
     AfterEnable,
 }
-
 pub(super) enum LifecyclePublicationPoint {
     BeforeDisable,
     AfterDisable,
@@ -300,7 +303,9 @@ impl FjallNodeStore {
             PRUNE_LOCKS_KEY,
             encode_prune_locks(&locks)?,
         );
-        self.finish_basic_filter_batch(batch, control)
+        self.finish_basic_filter_batch(batch, control)?;
+        control.read_integrity = true; // Explicit initialization proved the forest empty.
+        Ok(())
     }
 
     /// Persist validated immutable candidates without creating or changing authority.
@@ -414,7 +419,9 @@ impl FjallNodeStore {
             PRUNE_LOCKS_KEY,
             encode_prune_locks(&locks)?,
         );
-        self.finish_basic_filter_batch(batch, control)
+        self.finish_basic_filter_batch(batch, control)?;
+        control.read_integrity = true; // Full forest scan and immutable candidate checks above.
+        Ok(())
     }
 
     pub(super) fn materialize_basic_filter_owner_guarded(

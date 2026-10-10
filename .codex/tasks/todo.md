@@ -238,3 +238,47 @@ Verification: `bash scripts/verify.sh` with Rust 1.94.1 and Bun 1.3.9. Ad hoc Ca
 Tracking compatibility: the installed GSD CLI recognizes `**Plans:**` and `**Requirements:**`, while the Phase 158 headings placed the colon outside bold. Only those two Phase 158 labels were normalized before CLI progress updates. Its progress-table regex also stops at the earlier two-column Phase 158 evidence row; the actual four-column progress row was reconciled explicitly to the CLI-reported 6/7 In Progress result. No completion or requirement activation is implied by this compatibility repair.
 
 Completion review (2026-10-09 UTC): all seven plans and 21/21 formal truths are verified. The full default native contract passed in 19m24.571s with 3,735 primary Rust tests/doctests, zero failures, benchmark smoke, all six Bazel targets/provenance and no uncovered pure-core lines. Both review findings are resolved and all 25 security mitigations are closed. CFIX-03 is Complete; the active milestone has five of nine phases and ten of 22 requirements complete. Existing finite caps may refuse fully retained forks; compact maturity-one and default-maturity-100/halving limits, software versus hardware evidence and the three v2.4 advisories remain explicit. Phases 159–162 are pending. Mandatory hook and push results are derived from Git evidence as described above.
+
+## task-phase159-yolo | 2026-10-09 11:11 CDT | Authenticated BASIC Filter and Index RPCs
+
+- [x] Capture one-pass recommended context and canonical references.
+- [x] Research durable read/connected-history authority and exact pinned RPC semantics.
+- [x] Create executable plans and pass independent plan/requirements checks.
+- [x] Execute source work with positional/named parsing, shared authority and authenticated transport evidence; full default native passed.
+- [x] Review source and simplification opportunities; all seven findings closed in the clean 91-path independent review. Security closeout passed27/27 after final08 summary and actual preverification lifecycle receipts.
+- [x] Run full native verification, Bright Builds and lifecycle validation; review the final diff.
+- [x] Reconcile contributor docs and mark Phase159 complete after formal proof.
+- [x] Prepare verified staged changes for consolidated commit/push; derive actual hook and transport evidence from Git and upstream refs.
+
+Verification contract: `bash scripts/verify.sh`, pinned Bun 1.3.9 and Rust 1.94.1, serialized timed Cargo/Bazel commands. Defer all workflow commits to the strict clean-verification gate; no hook bypass. Root owns this task block and STATE/ROADMAP mutations.
+
+Wave 1 review: Plans 01/02 are behavior-complete with 12 history and 18 new RPC tests, scoped RPC lint and Bright Builds clean. Sixteen unsuppressed dormant node diagnostics remain explicit Plan 03/04 production-consumer obligations. The GSD key-link helper cannot infer Rust `mod` paths from file names; actual call/import direction was checked and explicit Rust source patterns now verify all six prior-wave links. The acceptance mint and raw-metadata invalidation ownership deltas are recorded in Plans 01/03 and summaries.
+
+Tracking compatibility: as in Phase 158, the installed GSD updater requires the colon inside `**Plans:**`/`**Requirements:**`. Only those Phase 159 labels were normalized so subsequent CLI-owned progress/completion updates can run; future phase labels and all other roadmap content remain untouched. This is a narrow parser compatibility repair inside the active workflow, not a completion override.
+
+Task 07 fault-placement replan: RPC dependencies cannot access node `cfg(test)` private hooks. The independently checked amendment preserves configured HTTP proof and composes private genuine owner/query fault tests with exact RPC projection evidence. A store-bound, crate-private `cfg(test)` read-failure seam closes actual query-read injection; no public test feature/API, dependency, accepted-fact factory or clean-epoch grant is introduced. Reports distinguish composed proof from single daemon flows and record synthetic genesis/maturity-one/manual owner-plan limits.
+
+Native-gate replan after two failed attempts:
+
+- [x] Preserve both failed default-native receipts and fix the stale Phase 134 insertion marker; focused 257 tests and independent delta review passed.
+- [x] Reconcile the current RPC catalog/checker with both methods; 20 controls, exact-set live check, managed checks and independent review passed; no other active count consumer found.
+- [x] Run serialized workspace Rust preflight, then restart the entire default native contract; actual native4 exit0 recorded before final security/lifecycle/commit gates.
+
+Workspace preflight follow-up: the host loader wait cleared without intervention, then strict Clippy exposed the missing CLI MethodCall conversions. Plan02 owns typed wire encoding plus positional/named/default controls; Plan08 owns native CLI-bin execution and corresponding claim guards. The actual test-only runtime_state module was moved to canonical tests.rs instead of relaxing production panic policy; its three controls, owning module, parity manifest and evidence paths are preserved.
+
+Native attempt 3 recovery plan:
+
+- [x] Repair legacy/raw metadata compatibility without minting provenance; all four original cases and the new live/reopen regression pass; WR-07 is closed.
+- [x] Repair stale proof fixtures using actual recovery and preserve corruption refusal; all original append cases/new negative control pass, and final paired-reopen catchup regression passes exactly (1/0fail,0.87s).
+- [x] Update the producer source assertion to actual modules/exact boundaries; its regression passes without weakening no-Always/no-Periodic checks.
+- [x] Independently review all deltas, run focused and full workspace Rust verification, then restart the entire default native contract before phase closure.
+
+Evidence: default native3 failed after1h5m5.214s: 1,931 earlier Rust passes, then node1,417pass/10fail/3ignored. Full594 source guard and workspace strictClippy/build passed. This is a real test failure; host startup delays do not waive it. Queued final Cargo formatter exited0 after verifier release. No commit/push or requirement activation.
+
+Recovery2 result: workspace formatting/strictClippy/build passed; node1,428pass/1fail/3ignored. The remaining fixture configured only its store, leaving manager/store branch identities mismatched; authorization correctly refused. Paired actual fixture.reopen() now rebinds both, with original missing-payload/reuse assertions preserved. Recovery3 compiles once, runs that exact regression first, then full workspace and CLI binary tests. Full current guard611 passed (1,816 assertions/312.02s) before this final fixture sequencing edit. Independent review covers91 paths/all7findings closed; final execution/native/security/lifecycle gates still pending.
+
+
+Native4 final receipt: default verifier exit0 in36m0.155s;3,864primaryRust passes/zero failures/three existingoptinignores,611guardtests/1,816assertions, benchmark smoke, six Bazel targets/provenance and zero-uncovered pure-core coverage passed. Source remains frozen; final08/security/formal/lifecycle records precede requirement activation and mandatory hook/Git finalization. Earlier failed receipts remain historical.
+
+
+Completion review (verified pre-commit snapshot): Phase159 passed all26 truths/four roadmap criteria, clean91-path review/all seven findings closed and27/27 security mitigations. Default native exited0 in36m0.155s with3,864 primary Rust passes,611 mutation tests, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Full lifecycle validation passed before CFRP-01/02 activation. Phase160 is next; CFPR-02/CFNET/CFOP/CFGR and v2.5 remain pending. UnknownLegacy absent rows, numeric read/waiter caps and synthetic genesis/maturity-one/manual-owner-plan/composed private-fault limitations remain documented. Actual hook/commit/push outcomes are derived from the saving commit and upstream refs, avoiding a self-referential post-push edit.

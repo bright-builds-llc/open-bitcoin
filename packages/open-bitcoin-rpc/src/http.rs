@@ -36,14 +36,15 @@ use open_bitcoin_node::{ChainstateStore, MemoryChainstateStore};
 use crate::{
     JsonRpcId, ManagedRpcContext, RpcAuthConfig, RpcFailure,
     config::DEFAULT_COOKIE_AUTH_USER,
-    dispatch::dispatch,
-    method::{MethodScope, RequestParameters, normalize_method_call},
+    dispatch::filter_index::prepare,
+    method::{MethodScope, normalize_method_call},
 };
 
+mod filter_index;
 mod request;
 use request::{
-    ParsedRequest, error_body, legacy_error_body, legacy_status_for_failure, parse_request,
-    rpc_error_object, status_for_single, success_body,
+    ParsedRequest, error_body, legacy_error_body, legacy_status_for_failure, rpc_error_object,
+    status_for_single, success_body,
 };
 
 const WWW_AUTH_HEADER_DATA: &str = "Basic realm=\"jsonrpc\"";
@@ -74,10 +75,16 @@ impl<S, V: CoinsView> core::fmt::Debug for RpcHttpState<S, V> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct ResolvedHttpAuth {
     username: String,
     password: String,
+}
+
+impl core::fmt::Debug for ResolvedHttpAuth {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str("ResolvedHttpAuth { credentials: [REDACTED] }")
+    }
 }
 
 pub fn build_http_state<S, V>(
@@ -137,7 +144,7 @@ where
         return unauthorized_response();
     }
 
-    let value = match serde_json::from_slice::<serde_json::Value>(body) {
+    let value = match serde_json::from_slice::<filter_index::ScopedRequest>(body) {
         Ok(value) => value,
         Err(_) => {
             return json_response(
@@ -150,9 +157,9 @@ where
         }
     };
 
-    match value {
+    match value.value {
         serde_json::Value::Object(_) => handle_single_request(state, path, value).await,
-        serde_json::Value::Array(batch) => handle_batch_request(state, path, batch).await,
+        serde_json::Value::Array(_) => handle_batch_request(state, path, value.batch).await,
         _ => json_response(
             StatusCode::INTERNAL_SERVER_ERROR,
             legacy_error_body(
@@ -180,13 +187,13 @@ where
 async fn handle_single_request<S, V>(
     state: &RpcHttpState<S, V>,
     path: &str,
-    value: serde_json::Value,
+    value: filter_index::ScopedRequest,
 ) -> Response
 where
     S: ChainstateStore + Send + 'static,
     V: CoinsView + Send + 'static,
 {
-    let parsed = match parse_request(value) {
+    let parsed = match value.parse() {
         Ok(parsed) => parsed,
         Err(error) => {
             let status = legacy_status_for_failure(error.failure.kind);
@@ -206,7 +213,7 @@ where
 async fn handle_batch_request<S, V>(
     state: &RpcHttpState<S, V>,
     path: &str,
-    batch: Vec<serde_json::Value>,
+    batch: Vec<filter_index::ScopedRequest>,
 ) -> Response
 where
     S: ChainstateStore + Send + 'static,
@@ -219,7 +226,7 @@ where
     let mut responses = Vec::new();
 
     for value in batch {
-        match parse_request(value) {
+        match value.parse() {
             Ok(parsed) => {
                 if let Some((_status, body)) = execute_request(state, path, parsed).await {
                     responses.push(body);
@@ -245,10 +252,7 @@ where
     S: ChainstateStore + Send + 'static,
     V: CoinsView + Send + 'static,
 {
-    let call = match normalize_method_call(
-        &parsed.method,
-        RequestParameters::from_json(parsed.params.clone()),
-    ) {
+    let call = match normalize_method_call(&parsed.method, parsed.params.clone()) {
         Ok(call) => call,
         Err(failure) => {
             if parsed.is_notification {
@@ -286,8 +290,14 @@ where
             error_body(parsed.version, parsed.maybe_id, failure),
         ));
     }
-    let result = dispatch(&mut context, call);
+    let prepared = prepare(&mut context, call);
+    let network = context.basic_filter_network_handle();
     context.clear_request_wallet_name();
+    drop(context);
+    let result = match prepared {
+        Ok(prepared) => filter_index::finish(&state.context, network, prepared).await,
+        Err(failure) => Err(failure),
+    };
     match result {
         Ok(result) => {
             if parsed.is_notification {

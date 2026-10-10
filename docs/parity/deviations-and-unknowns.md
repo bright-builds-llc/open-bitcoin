@@ -5,6 +5,33 @@ surfaces, and folded todo history for audit review. It summarizes existing
 parity artifacts and completed planning follow-ups without adding new
 implementation scope.
 
+## Phase 159 BASIC query limitations
+
+The [authenticated BASIC contract](catalog/basic-compact-filters.md#authenticated-basic-queries-phase-159)
+addresses CFRP-01/02 with scoped evidence; root full native/source/security and
+formal lifecycle verification remain required. The additive Fjall validation
+ledger retains genuine scripts-valid acceptance independently of active
+membership, payload presence and filter rows. Legacy storage has UnknownLegacy
+coverage: absent rows fail closed with -32603 `Block filter index is unavailable`,
+while valid retained rows still serve. No inferred backfill or repair occurs.
+
+Intentional local resource policy bounds queries to 1–2 filter records plus
+bounded metadata/provenance: 33,554,602 bytes per envelope, 67,109,204 combined,
+67,108,928 filter/header hex characters and 64 pending waiters. These are not
+whole-HTTP/allocator/RSS or latency caps. Logical-copy/SHA-padding accounting is
+separate; the 32 MiB filter fixture is synthetic codec-capacity evidence, while
+the genuine approximately 1 MB block generates seven filter bytes.
+
+The genuine daemon retention fixture uses synthetic genesis/maturity one and
+manual owner-plan pruning outside the trailing 288 window. Default automatic
+prune-after 1000 is unchanged and unexercised. Its actual height 20 pair loses
+1,126 logical bytes (451,352→450,226), with 402 original accepts and 11
+replacements; exact active/stale/pruned/missing responses survive all-handle
+configured reopen. Private cfg(test) node faults compose with the actual RPC
+mapper rather than all being injected through daemon HTTP. No CFPR-02/CFNET/CFOP/
+CFGR or v2.5 completion, new default activation, production/funds or hardware
+power-loss claim follows.
+
 ## Intentional Deviations
 
 `docs/parity/index.json` now records these intentional in-scope migration

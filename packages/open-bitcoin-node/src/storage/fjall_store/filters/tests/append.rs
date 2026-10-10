@@ -184,8 +184,11 @@ fn phase157_append_conflicting_immutable_row_refuses_without_rewrite() {
     append(&store, &records[..1]);
     let key = codec::record_key(records[1].identity().block_hash());
     let bytes = alternate_bytes(&records[1]);
+    // Bypass raw publication deliberately to exercise local immutable conflict
+    // detection while the original recovered append proof is still live.
     store
-        .write_raw_for_test(StorageNamespace::BlockIndex, &key, bytes.clone())
+        .block_index
+        .insert(&key, bytes.clone())
         .expect("valid conflicting hidden row");
     let proof = store
         .maybe_basic_filter_append_proof_with_budget(budget())
@@ -194,7 +197,13 @@ fn phase157_append_conflicting_immutable_row_refuses_without_rewrite() {
     // Act
     let result = store.prepare_basic_filter_append(proof, &records[1..]);
     // Assert
-    assert!(result.is_err());
+    assert!(
+        result
+            .err()
+            .expect("immutable conflict")
+            .to_string()
+            .contains("conflicting immutable BASIC record")
+    );
     assert_eq!(
         store
             .get_bytes(StorageNamespace::BlockIndex, &key)
@@ -221,6 +230,19 @@ fn phase157_append_saved_hidden_rows_are_reused_after_local_validation() {
     let (positions, records) = fixtures(3);
     recovered(&store, &positions);
     seed_orphan_records(&store, &records);
+    assert!(
+        store
+            .maybe_basic_filter_append_proof_with_budget(budget())
+            .expect("raw writes revoke authority")
+            .is_none()
+    );
+    // Reestablish authority only through the actual complete recovery/preflight.
+    store
+        .configure_basic_filter_index_before_prune(
+            Some(positions.last().expect("tip").block_hash),
+            BasicFilterStartupMode::Enabled,
+        )
+        .expect("full recovery of retained hidden rows");
     // Act
     let achieved = append(&store, &records);
     // Assert
@@ -243,10 +265,12 @@ fn phase157_append_saved_projection_conflict_refuses_before_new_rows() {
     let store = FjallNodeStore::open(&path).expect("open");
     let (positions, records) = fixtures(2);
     recovered(&store, &positions);
+    // Inject backend tampering beneath the raw-write invalidation boundary so
+    // this test still exercises append's bounded saved-projection validation.
     store
-        .write_raw_for_test(
-            StorageNamespace::BlockIndex,
-            &codec::active_key(0),
+        .block_index
+        .insert(
+            codec::active_key(0),
             codec::encode_projection(0, positions[1].block_hash),
         )
         .expect("conflict fixture");

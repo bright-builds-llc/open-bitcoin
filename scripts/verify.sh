@@ -143,6 +143,8 @@ bun test ./scripts/check-phase157-index-catch-up.test.ts
 bun run scripts/check-phase157-index-catch-up.ts
 bun test ./scripts/check-phase158-validated-reorg.test.ts
 bun run scripts/check-phase158-validated-reorg.ts
+bun test ./scripts/check-phase159-filter-rpcs.test.ts
+bun run scripts/check-phase159-filter-rpcs.ts
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
@@ -219,6 +221,7 @@ if [[ -z "${CI:-}" ]]; then
 fi
 
 run_step "generate LOC report" bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
+run_step "test parity breadcrumb worktree inventory" bun test ./scripts/check-parity-breadcrumbs.test.ts
 run_step "check parity breadcrumbs" bun run scripts/check-parity-breadcrumbs.ts --check
 run_step "check v1.3 release boundaries" bun run scripts/check-v1.3-release-boundaries.ts
 run_step "check v1.4 release boundaries" bun run scripts/check-v1.4-release-boundaries.ts
@@ -324,6 +327,8 @@ run_step "test Phase 157 index catch-up checker" bun test ./scripts/check-phase1
 run_step "check Phase 157 index catch-up evidence" bun run scripts/check-phase157-index-catch-up.ts
 run_step "test Phase 158 validated reorg checker" bun test ./scripts/check-phase158-validated-reorg.test.ts
 run_step "check Phase 158 validated reorg evidence" bun run scripts/check-phase158-validated-reorg.ts
+run_step "test Phase 159 authenticated filter RPC checker" bun test ./scripts/check-phase159-filter-rpcs.test.ts
+run_step "check Phase 159 authenticated filter RPC evidence" bun run scripts/check-phase159-filter-rpcs.ts
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
 run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
 run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
@@ -374,6 +379,7 @@ if [[ "$verify_mode" == "full" ]]; then
 fi
 
 run_step "cargo test" cargo test --manifest-path packages/Cargo.toml --workspace --all-features
+run_step "cargo test CLI RPC client binary" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features
 
 if [[ "$verify_mode" == "full" ]]; then
   run_step "benchmark list" run_benchmark_list

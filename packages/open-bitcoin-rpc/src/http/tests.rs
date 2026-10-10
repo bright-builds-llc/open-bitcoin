@@ -30,6 +30,7 @@ use crate::{
     http::{build_http_state, handle_http_request},
 };
 
+mod filter_index;
 mod prune_ownership;
 
 fn auth_headers(username: &str, password: &str) -> HeaderMap {

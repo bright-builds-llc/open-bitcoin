@@ -44,6 +44,7 @@ pub(crate) mod filters;
 mod mempool;
 mod payload_usage;
 mod prune;
+pub(crate) mod validation_history;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
 pub use payload_usage::{PayloadUsageRevision, RetainedPayloadUsage};
 pub use prune::PairedDeleteOutcome;
@@ -73,6 +74,7 @@ pub struct FjallNodeStore {
     schema: Keyspace,
     payload_usage: Arc<Mutex<payload_usage::PayloadUsageState>>,
     filter_publication: Arc<Mutex<filters::PublicationControl>>,
+    validation_history: Arc<Mutex<validation_history::HistoryControl>>,
     #[cfg(test)]
     filter_integrity_reads: Arc<std::sync::atomic::AtomicUsize>,
 }
@@ -80,13 +82,21 @@ pub struct FjallNodeStore {
 impl FjallNodeStore {
     /// Open or create the store rooted at `path` and verify schema metadata.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+        let store = Self::open_unrecovered(path)?;
+        store.recover_validation_history()?;
+        store.ensure_schema()?;
+        Ok(store)
+    }
+
+    fn open_unrecovered(path: impl AsRef<Path>) -> Result<Self, StorageError> {
         let db = Database::builder(path.as_ref())
             .open()
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
 
-        let store = Self {
+        Ok(Self {
             payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
             filter_publication: Arc::new(Mutex::new(filters::PublicationControl::default())),
+            validation_history: Arc::default(),
             #[cfg(test)]
             filter_integrity_reads: Arc::default(),
             path: path.as_ref().to_path_buf(),
@@ -100,10 +110,7 @@ impl FjallNodeStore {
             runtime: open_keyspace(&db, StorageNamespace::Runtime)?,
             schema: open_keyspace(&db, StorageNamespace::Schema)?,
             db,
-        };
-        store.ensure_schema()?;
-
-        Ok(store)
+        })
     }
 
     /// Filesystem root used when opening this store.
@@ -118,6 +125,8 @@ impl FjallNodeStore {
         mode: PersistMode,
     ) -> Result<(), StorageError> {
         let bytes = encode_chainstate_snapshot(snapshot)?;
+        let _publication = self.filter_publication_guard()?;
+        self.invalidate_validation_coverage()?;
         self.put_bytes(StorageNamespace::Chainstate, SNAPSHOT_KEY, bytes, mode)
     }
 
@@ -136,6 +145,8 @@ impl FjallNodeStore {
     ) -> Result<(), StorageError> {
         let header_bytes = encode_header_entries(entries)?;
         let block_index_bytes = encode_block_index_entries(entries)?;
+        let _publication = self.filter_publication_guard()?;
+        self.invalidate_validation_coverage()?;
         let mut batch = self.db.batch();
         if let Some(mode) = fjall_persist_mode(mode) {
             batch = batch.durability(Some(mode));
@@ -524,26 +535,7 @@ impl FjallNodeStore {
     pub(crate) fn open_without_ensure_schema_for_test(
         path: impl AsRef<std::path::Path>,
     ) -> Result<Self, StorageError> {
-        let db = Database::builder(path.as_ref())
-            .open()
-            .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
-        Ok(Self {
-            payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
-            filter_publication: Arc::new(Mutex::new(filters::PublicationControl::default())),
-            #[cfg(test)]
-            filter_integrity_reads: Arc::default(),
-            path: path.as_ref().to_path_buf(),
-            headers: open_keyspace(&db, StorageNamespace::Headers)?,
-            block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
-            chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,
-            coins: open_keyspace(&db, StorageNamespace::Coins)?,
-            wallet: open_keyspace(&db, StorageNamespace::Wallet)?,
-            metrics: open_keyspace(&db, StorageNamespace::Metrics)?,
-            mempool: open_keyspace(&db, StorageNamespace::Mempool)?,
-            runtime: open_keyspace(&db, StorageNamespace::Runtime)?,
-            schema: open_keyspace(&db, StorageNamespace::Schema)?,
-            db,
-        })
+        Self::open_unrecovered(path)
     }
 }
 

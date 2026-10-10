@@ -23,6 +23,7 @@ mod reorg;
 pub(crate) use reorg::{CompletedBasicFilterReorg, PreparedBasicFilterReorg};
 mod ownership;
 pub(super) mod publication;
+pub(crate) mod query;
 mod startup;
 mod turn_inputs;
 pub(crate) use ownership::{BasicFilterAppendProof, BasicFilterWorkToken};

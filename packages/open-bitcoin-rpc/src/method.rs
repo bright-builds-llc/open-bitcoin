@@ -14,6 +14,7 @@ use serde_json::Value;
 
 use crate::error::RpcFailure;
 
+mod filter_index;
 mod node;
 mod normalize;
 mod package;
@@ -22,6 +23,7 @@ mod prune;
 mod tests;
 mod wallet;
 
+pub use filter_index::*;
 pub use node::*;
 pub use package::*;
 pub use prune::*;
@@ -41,6 +43,10 @@ pub enum MethodScope {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SupportedMethod {
+    #[serde(rename = "getblockfilter")]
+    GetBlockFilter,
+    #[serde(rename = "getindexinfo")]
+    GetIndexInfo,
     #[serde(rename = "getblockchaininfo")]
     GetBlockchainInfo,
     #[serde(rename = "listprunelocks")]
@@ -100,6 +106,8 @@ pub enum SupportedMethod {
 impl SupportedMethod {
     pub const fn all() -> &'static [Self] {
         &[
+            Self::GetBlockFilter,
+            Self::GetIndexInfo,
             Self::GetBlockchainInfo,
             Self::ListPruneLocks,
             Self::SetPruneLock,
@@ -132,6 +140,8 @@ impl SupportedMethod {
 
     pub const fn name(self) -> &'static str {
         match self {
+            Self::GetBlockFilter => "getblockfilter",
+            Self::GetIndexInfo => "getindexinfo",
             Self::GetBlockchainInfo => "getblockchaininfo",
             Self::ListPruneLocks => "listprunelocks",
             Self::SetPruneLock => "setprunelock",
@@ -189,7 +199,9 @@ impl SupportedMethod {
             | Self::RescanBlockchain
             | Self::BuildTransaction
             | Self::BuildAndSignTransaction => MethodScope::Wallet,
-            Self::GetBlockchainInfo
+            Self::GetBlockFilter
+            | Self::GetIndexInfo
+            | Self::GetBlockchainInfo
             | Self::GetMempoolInfo
             | Self::GetNetworkInfo
             | Self::OpenBitcoinNetworkStatus
@@ -240,6 +252,8 @@ impl RequestParameters {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MethodCall {
+    GetBlockFilter(GetBlockFilterRequest),
+    GetIndexInfo(GetIndexInfoRequest),
     GetBlockchainInfo(GetBlockchainInfoRequest),
     ListPruneLocks(ListPruneLocksRequest),
     SetPruneLock(SetPruneLockRequest),
@@ -283,7 +297,9 @@ impl MethodCall {
             | Self::RescanBlockchain(_)
             | Self::BuildTransaction(_)
             | Self::BuildAndSignTransaction(_) => MethodScope::Wallet,
-            Self::GetBlockchainInfo(_)
+            Self::GetBlockFilter(_)
+            | Self::GetIndexInfo(_)
+            | Self::GetBlockchainInfo(_)
             | Self::GetMempoolInfo(_)
             | Self::GetNetworkInfo(_)
             | Self::OpenBitcoinNetworkStatus(_)
@@ -312,6 +328,12 @@ pub fn normalize_method_call(
     };
 
     match method {
+        SupportedMethod::GetBlockFilter => {
+            normalize_getblockfilter(params).map(MethodCall::GetBlockFilter)
+        }
+        SupportedMethod::GetIndexInfo => {
+            normalize_getindexinfo(params).map(MethodCall::GetIndexInfo)
+        }
         SupportedMethod::GetBlockchainInfo => {
             normalize::normalize_request::<GetBlockchainInfoRequest>(&[], params)
                 .map(MethodCall::GetBlockchainInfo)

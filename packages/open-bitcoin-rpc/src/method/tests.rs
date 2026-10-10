@@ -29,6 +29,8 @@ use super::{
 fn supported_http_methods_match_phase_20_wallet_surface() {
     // Arrange
     let expected = [
+        "getblockfilter",
+        "getindexinfo",
         "getblockchaininfo",
         "listprunelocks",
         "setprunelock",

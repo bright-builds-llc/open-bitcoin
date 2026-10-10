@@ -265,16 +265,14 @@ impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
         now: PolicyTime,
         periodic_interval_seconds: u64,
     ) -> Result<CheckpointEvidenceSnapshot, ManagedNetworkAuthorityError> {
-        let network = self
-            .authority
-            .lock()
-            .map_err(|_| ManagedNetworkAuthorityError::Poisoned)?;
-        Ok(network.checkpoint_evidence.snapshot(
-            network.lifecycle_generation,
-            network.dirty_generation,
-            now,
-            periodic_interval_seconds,
-        ))
+        self.read(|network| {
+            network.checkpoint_evidence.snapshot(
+                network.lifecycle_generation,
+                network.dirty_generation,
+                now,
+                periodic_interval_seconds,
+            )
+        })
     }
 }
 

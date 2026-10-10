@@ -35,6 +35,7 @@ use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
 
 mod address_boundary;
+mod filter_index;
 mod inbound_status;
 mod inbound_wire;
 mod mempool_recovery;

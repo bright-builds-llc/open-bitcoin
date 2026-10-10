@@ -1,4 +1,12 @@
-# BASIC compact filter construction
+# BASIC compact filter construction and authenticated queries
+
+Phase 159 implements authenticated BASIC `getblockfilter` and `getindexinfo`
+through the configured daemon's existing shared authority. Scoped execution
+evidence is recorded below; full native, independent source/security and formal
+lifecycle verification passed the root-owned gates. CFRP-01/02 are Complete;
+[formal verification](../../../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md)
+records 26/26 truths and 27/27 closed mitigations. Earlier sections describe their
+original phase boundaries.
 
 Phase 154 implements pure BASIC construction and commitments for CFIL-01 and
 CFIL-02 against Bitcoin Knots `29.3.knots20260210`, exact commit
@@ -478,3 +486,141 @@ support-summary crash undercount advisories remain. No software/reopen result
 proves hardware power loss, public-mainnet, archive-scale, production or funds
 readiness. Reproduction and operator prerequisites are in
 [157-UAT.md](../../../.planning/phases/157-safe-activation-and-scheduled-index-catch-up/157-UAT.md).
+
+## Authenticated BASIC queries (Phase 159)
+
+The scoped CFRP-01/02 owner is
+`v2-5-authenticated-basic-filter-and-index-rpcs` in [index.json](../index.json).
+Pinned [rpc/blockchain.cpp](../../../packages/bitcoin-knots/src/rpc/blockchain.cpp)
+anchors `getblockfilter`; [rpc/node.cpp](../../../packages/bitcoin-knots/src/rpc/node.cpp)
+anchors `getindexinfo`; `rpc/server.cpp`, `rpc/util.cpp`, `index/base.cpp` and
+`index/blockfilterindex.cpp` anchor normalization, readiness and retained lookup.
+This is source-derived parity evidence against the exact pin, not a live Knots
+binary comparison. No production dependency or activation default changes.
+
+`getblockfilter` accepts positional or named `blockhash` and optional
+`filtertype`, defaulting omitted/null type to BASIC. Framework duplicate/name,
+arity/help and aggregate type checks precede strict raw hash parsing, filter
+selection, enabled-index and known-block resolution. V0 is recognized but
+disabled; uppercase BASIC and numeric names are unknown. Successful results
+contain exactly lowercase hexadecimal `filter` and `header`; only the raw
+header bytes reverse for uint256 display order. Authentication precedes JSON
+parsing and context acquisition, including malformed input. Password/cookie,
+batches/notifications, duplicate names and node scope use the existing transport.
+
+| Outcome                                                       |   Code | Message                                                                      |
+| ------------------------------------------------------------- | -----: | ---------------------------------------------------------------------------- |
+| Unknown type                                                  |     -5 | `Unknown filtertype`                                                         |
+| BASIC disabled                                                |     -1 | `Index is not enabled for filtertype basic`                                  |
+| Unknown block                                                 |     -5 | `Block not found`                                                            |
+| Missing, definitely never connected                           |     -5 | `Filter not found. Block was not connected to active chain.`                 |
+| Missing, accepted during initial indexing                     |     -1 | `Filter not found. Block filters are still in the process of being indexed.` |
+| Missing, accepted after readiness                             | -32603 | `Filter not found. This error is unexpected and indicates index corruption.` |
+| Legacy-unknown absence or authority/storage/readiness failure | -32603 | `Block filter index is unavailable`                                          |
+
+The additive Fjall `validated_block:v1` ledger captures genuine scripts-valid
+acceptance immediately after absorption, before fallible BASIC/coins publication.
+One unresolved accepted batch, at most 128 identities/19,584 encoded bytes,
+blocks further preparation before mempool effects. Durable positives survive
+displacement and payload/filter loss. Raw metadata/snapshot/header seeding loses
+complete coverage before effects; it cannot fabricate acceptance. UnknownLegacy
+missing-row behavior is an intentional compatibility limitation: legacy absence
+cannot distinguish never-connected from historically accepted, so it fails closed
+with the fixed unavailable error. Valid retained records still serve. No legacy
+backfill, repair or request-triggered regeneration occurs.
+
+`getindexinfo` exposes only `basic block filter index`, with exactly Boolean
+`synced` and numeric `best_block_height`. Omitted/null/empty selection returns all
+enabled in-scope indexes; the exact name selects BASIC; unmatched/disabled returns
+`{}`. The initial-sync latch stays true during later lag/reorg; height is processed
+progress with zero fallback, independently of the safe durable checkpoint.
+Initial indexing returns promptly and stored rows win. Later lag captures the
+original accepted height/hash, branch, generation, authority incarnation and
+requested hash/provenance. At most 64 pending waiters await ordinary owner work
+outside the HTTP context lock. Cancellation, owner stop/failure, poison and
+invalidation settle terminally; final completion consumes a same-handle token and
+rechecks the original request and captured frontier without chasing new work.
+
+### Bounded work and genuine retention evidence
+
+[Query measurements](../../../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-04-QUERY-MEASUREMENTS.md)
+record 1–2 filter record reads plus bounded lifecycle/identity/provenance reads.
+Every target and immediate parent is fully parsed under recovered immutable
+integrity; raw writes invalidate every clone before effects. Individual envelopes
+are bounded at **33,554,602 bytes**, combined envelopes at **67,109,204 bytes**;
+filter plus header hex is at most **67,108,928 characters**. This is not an entire
+HTTP response, allocator or RSS cap. Logical copy and SHA-padding ceilings are
+separate (100,663,648 and 67,109,696 bytes). The genuine approximately 1 MB block
+deduplicates to seven filter bytes; the exact 32 MiB filter is a synthetic codec
+capacity fixture. Debug observations are not latency guarantees.
+
+[Daemon proof](../../../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-07-DAEMON-PROOF.md)
+records nine configured authenticated HTTP tests and ten private node fault tests;
+the complete daemon regression has 74 tests. Counts overlap. The genuine fixture
+accepts 402 original blocks and 11 replacements through actual managed staging
+and absorption. One real height-20 body/undo pair disappears: logical payload
+usage changes **451,352 → 450,226 bytes**, a **1,126-byte** loss. Indexed stale400,
+replacement active401 and pruned20 retain exact responses after every handle
+closes and configured storage/runtime/context reopen. Original accepted401 was
+displaced before indexing; its naturally absent row retains the exact ready
+missing-row diagnostic before/after reopen. A live second open refuses first.
+
+Fixtures use synthetic genesis, easy valid PoW and explicit maturity one. The
+manual owner-plan target is outside the unchanged trailing 288-block window;
+default regtest automatic prune-after 1000 is unchanged and unexercised. This is
+not ordinary prune-RPC eligibility or automatic-threshold proof. Private node
+`cfg(test)` publication/corruption/read faults exercise production query/owner
+paths and compose with the actual RPC projection; those injections did not all
+run through daemon HTTP. No public node test API, feature or dependency is added.
+
+Only CFRP-01/02 are addressed here. CFPR-02, CFNET, CFOP, CFGR and v2.5 completion
+remain deferred. V0 generation, peer filter serving, new operator surfaces,
+public defaults, production/funds claims and hardware power-loss guarantees
+remain deferred. Full native/source/security/lifecycle gates passed before
+formal CFRP-01/02 activation; this section records scoped execution evidence.
+
+### Repo-local reproduction and client commands
+
+Run sequentially from the repository root with pinned Bun/Rust. These hermetic
+selectors need no existing datadir, credentials, network or funds:
+
+```bash
+bun test ./scripts/check-phase159-filter-rpcs.test.ts
+bun run scripts/check-phase159-filter-rpcs.ts
+bun run scripts/check-parity-breadcrumbs.ts --check
+bun run scripts/command-timings.ts run --key phase159-uat-daemon -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind phase159_daemon_rpc -- --nocapture
+bun run scripts/command-timings.ts run --key phase159-uat-private-faults -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib phase159_rpc_owner_faults_
+```
+
+For manual local queries, use an existing validated **Open Bitcoin regtest**
+datadir with retained required history and its normal cookie authentication.
+Replace `'<retained-validated-regtest-dir>'` and `'<known-block-hash>'` before
+running. Do not use a Knots datadir. Enabled empty storage refuses validated
+genesis history required. These explicit daemon commands write index ownership
+and records; they do not install genesis or activate public networking. Cargo and
+Bazel are alternatives. The timed daemon commands below run in isolation and
+hold the cooperative build lock until exit. For simultaneous interactive clients,
+use the separate Cargo build/start recipe afterward. Target names are from the
+actual package BUILD.bazel files; client strings use ordinary CLI arguments.
+
+```bash
+bun run scripts/command-timings.ts run --key phase159-uat-daemon-cargo -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- -regtest -datadir='<retained-validated-regtest-dir>' -blockfilterindex=basic
+bun run scripts/command-timings.ts run --key phase159-uat-daemon-bazel -- bazel run //packages/open-bitcoin-rpc:open_bitcoind -- -regtest -datadir='<retained-validated-regtest-dir>' -blockfilterindex=basic
+bun run scripts/command-timings.ts run --key phase159-uat-index-cargo -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest -datadir='<retained-validated-regtest-dir>' getindexinfo 'basic block filter index'
+bun run scripts/command-timings.ts run --key phase159-uat-filter-cargo -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli -- -regtest -datadir='<retained-validated-regtest-dir>' getblockfilter '<known-block-hash>' basic
+bun run scripts/command-timings.ts run --key phase159-uat-index-bazel -- bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest -datadir='<retained-validated-regtest-dir>' getindexinfo 'basic block filter index'
+bun run scripts/command-timings.ts run --key phase159-uat-filter-bazel -- bazel run //packages/open-bitcoin-cli:open_bitcoin_cli -- -regtest -datadir='<retained-validated-regtest-dir>' getblockfilter '<known-block-hash>' basic
+```
+
+For a two-terminal local session, first build both Cargo products sequentially:
+
+```bash
+bun run scripts/command-timings.ts run --key phase159-uat-build-daemon -- cargo build --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind
+bun run scripts/command-timings.ts run --key phase159-uat-build-client -- cargo build --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli
+packages/target/debug/open-bitcoind -regtest -datadir='<retained-validated-regtest-dir>' -blockfilterindex=basic
+```
+
+Then invoke the explicit Cargo client commands above from the second terminal.
+The built daemon is the same repo-local Cargo product. Stop it before switching
+build tooling. Do not start a second Cargo/Bazel command while a timed daemon
+still holds the cooperative lock.

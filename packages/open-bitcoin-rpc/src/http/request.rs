@@ -24,7 +24,7 @@ pub(super) struct ParsedRequest {
     pub(super) version: RequestVersion,
     pub(super) maybe_id: Option<JsonRpcId>,
     pub(super) method: String,
-    pub(super) params: serde_json::Value,
+    pub(super) params: crate::method::RequestParameters,
     pub(super) is_notification: bool,
 }
 
@@ -83,7 +83,7 @@ pub(super) fn parse_request(value: serde_json::Value) -> Result<ParsedRequest, P
         version,
         maybe_id,
         method: method.clone(),
-        params,
+        params: crate::method::RequestParameters::from_json(params),
         is_notification,
     })
 }

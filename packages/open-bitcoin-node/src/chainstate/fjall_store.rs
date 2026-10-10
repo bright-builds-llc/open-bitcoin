@@ -179,6 +179,7 @@ impl ManagedChainstate<FjallChainstateStore, FjallCoinsView> {
             flush_lifecycle: lifecycle,
             maybe_validated_lineage,
             maybe_basic_index_owner: None,
+            maybe_pending_validation: None,
         })
     }
 }
@@ -219,6 +220,12 @@ impl fmt::Debug for FjallChainstateStore {
 }
 
 impl ChainstateStore for FjallChainstateStore {
+    fn maybe_basic_filter_query_store(&self) -> Option<&FjallNodeStore> {
+        Some(&self.store)
+    }
+    fn maybe_validation_history_store(&self) -> Option<FjallNodeStore> {
+        Some(self.store.clone())
+    }
     fn load_snapshot(&self) -> Option<ChainstateSnapshot> {
         None
     }

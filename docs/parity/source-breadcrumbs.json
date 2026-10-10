@@ -12,6 +12,226 @@
   },
   "groups": [
     {
+      "label": "phase159-authenticated-filter-rpcs-1",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/validation_history.rs",
+        "packages/open-bitcoin-node/src/chainstate/validation_history/tests.rs",
+        "packages/open-bitcoin-node/src/chainstate/validation_history/tests/fixtures.rs",
+        "packages/open-bitcoin-node/src/storage/validation_history.rs",
+        "packages/open-bitcoin-node/src/storage/validation_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-2",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/validation_history/tests/coverage.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-3",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/validation_history/tests/network.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txmempool.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-4",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/query.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/query/tests.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/catch_up/rpc_faults.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-5",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/readiness.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/readiness/owner.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/readiness/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/readiness/tests/failures.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/readiness/tests/interleavings.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-6",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-7",
+      "files": [
+        "packages/open-bitcoin-node/src/network/validation_history.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-8",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/query.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/query/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/blockfilter.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-9",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/validation_history.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/validation_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-10",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/rpc.rs",
+        "packages/open-bitcoin-rpc/src/context/filter_index.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/filter_index.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/filter_index/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/node.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-11",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/rpc/failures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-12",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/rpc/retention.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-13",
+      "files": [
+        "packages/open-bitcoin-rpc/src/http/filter_index.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-14",
+      "files": [
+        "packages/open-bitcoin-rpc/src/http/tests/filter_index.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/node.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-15",
+      "files": [
+        "packages/open-bitcoin-rpc/src/http/tests/filter_index/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-16",
+      "files": [
+        "packages/open-bitcoin-rpc/src/method/filter_index.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/node.cpp",
+        "packages/bitcoin-knots/src/rpc/util.cpp",
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/uint256.h"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-17",
+      "files": [
+        "packages/open-bitcoin-rpc/src/method/filter_index/normalize.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/rpc/util.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/node.cpp",
+        "packages/bitcoin-knots/src/univalue/lib/univalue.cpp",
+        "packages/bitcoin-knots/src/uint256.h"
+      ]
+    },
+    {
+      "label": "phase159-authenticated-filter-rpcs-18",
+      "files": [
+        "packages/open-bitcoin-rpc/src/method/filter_index/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/node.cpp",
+        "packages/bitcoin-knots/src/rpc/protocol.h",
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/rpc/util.cpp",
+        "packages/bitcoin-knots/src/univalue/lib/univalue.cpp",
+        "packages/bitcoin-knots/src/univalue/lib/univalue_write.cpp",
+        "packages/bitcoin-knots/src/uint256.h"
+      ]
+    },
+    {
       "label": "phase158-sealed-reorg-acceptance",
       "files": [
         "packages/open-bitcoin-chainstate/src/engine.rs",
@@ -2594,11 +2814,17 @@
         "packages/open-bitcoin-rpc/src/dispatch/tests/sync_status.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/transaction_methods.rs",
         "packages/open-bitcoin-rpc/src/dispatch/tests/wallet_fixtures.rs",
-        "packages/open-bitcoin-rpc/src/dispatch/tests/wallet_methods.rs"
-      ],
-      "patterns": [
-        "packages/open-bitcoin-rpc/src/dispatch/*.rs",
-        "packages/open-bitcoin-rpc/src/method/*.rs"
+        "packages/open-bitcoin-rpc/src/dispatch/tests/wallet_methods.rs",
+        "packages/open-bitcoin-rpc/src/method/normalize.rs",
+        "packages/open-bitcoin-rpc/src/method/node.rs",
+        "packages/open-bitcoin-rpc/src/method/wallet.rs",
+        "packages/open-bitcoin-rpc/src/method/package.rs",
+        "packages/open-bitcoin-rpc/src/method/prune.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/prune.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/wallet.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/package.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/decode.rs",
+        "packages/open-bitcoin-rpc/src/dispatch/node.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/bitcoind.cpp",

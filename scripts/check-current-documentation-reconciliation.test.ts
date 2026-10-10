@@ -266,6 +266,22 @@ test("catalog rejects a catalog-only supported method", () => {
   expect(failures).toContain("catalog supported-method set mismatch: extra catalogonlymethod");
 });
 
+for (const method of ["getblockfilter", "getindexinfo"]) {
+  test(`catalog retains the implemented baseline method ${method}`, () => {
+    // Arrange
+    const root = createFixture();
+    expect(checkCurrentDocumentationReconciliation(root)).toEqual([]);
+    replaceInFixture(root, "docs/parity/catalog/rpc-cli-config.md", `\`${method}\`,`, "");
+
+    // Act
+    const failures = checkCurrentDocumentationReconciliation(root).join("\n");
+
+    // Assert
+    expect(failures).toContain(`catalog supported-method set mismatch: missing ${method}`);
+    expect(failures).toContain("catalog baseline-backed supported-method list has incorrect grouping");
+  });
+}
+
 test("catalog rejects blanket sendtoaddress deferral", () => {
   // Arrange
   const root = createFixture();

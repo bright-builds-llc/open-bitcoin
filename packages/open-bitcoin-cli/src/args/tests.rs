@@ -187,3 +187,138 @@ fn deferred_netinfo_and_supported_rpcwallet_behave_as_documented() {
         }),
     );
 }
+
+#[test]
+fn phase159_filter_rpc_cli_args_accept_positional_named_and_v0() {
+    // Arrange
+    use open_bitcoin_rpc::method::{BlockFilterSelection, MethodCall, normalize_method_call};
+    let hash = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+    let cases = [
+        (
+            vec![os("getblockfilter"), os(hash)],
+            BlockFilterSelection::Basic,
+        ),
+        (
+            vec![os("getblockfilter"), os(hash), os("null")],
+            BlockFilterSelection::Basic,
+        ),
+        (
+            vec![
+                os("-named"),
+                os("getblockfilter"),
+                os(&format!("blockhash={hash}")),
+                os("filtertype=v0"),
+            ],
+            BlockFilterSelection::V0,
+        ),
+        (
+            vec![
+                os("-named"),
+                os("getblockfilter"),
+                os(hash),
+                os("filtertype=basic"),
+            ],
+            BlockFilterSelection::Basic,
+        ),
+    ];
+    for (args, expected_filter) in cases {
+        // Act
+        let parsed = parse_cli_args(&args, "").expect("valid filter arguments");
+        let CliCommand::RpcMethod(command) = parsed.command else {
+            panic!("RPC method expected")
+        };
+        let MethodCall::GetBlockFilter(request) =
+            normalize_method_call(&command.method, command.params).expect("typed filter call")
+        else {
+            panic!("getblockfilter expected")
+        };
+        // Assert
+        assert_eq!(request.filter_type, expected_filter);
+        assert_eq!(request.block_hash.as_bytes()[0], 0xff);
+        assert_eq!(request.block_hash.as_bytes()[31], 0);
+    }
+}
+
+#[test]
+fn phase159_filter_rpc_cli_args_preserve_index_selectors() {
+    // Arrange
+    let mut cases = vec![(vec![os("getindexinfo")], RequestParameters::None)];
+    for name in [
+        "",
+        "basic block filter index",
+        "txindex",
+        "v0 block filter index",
+    ] {
+        cases.push((
+            vec![os("getindexinfo"), os(name)],
+            RequestParameters::Positional(vec![json!(name)]),
+        ));
+        cases.push((
+            vec![
+                os("-named"),
+                os("getindexinfo"),
+                os(&format!("index_name={name}")),
+            ],
+            RequestParameters::Named(vec![("index_name".to_owned(), json!(name))]),
+        ));
+    }
+    for (args, expected_params) in cases {
+        // Act
+        let parsed = parse_cli_args(&args, "").expect("valid index selector");
+        // Assert
+        assert_eq!(
+            parsed.command,
+            CliCommand::RpcMethod(super::RpcMethodCommand {
+                method: "getindexinfo".to_owned(),
+                params: expected_params
+            })
+        );
+    }
+}
+
+#[test]
+fn phase159_filter_rpc_cli_args_reject_filter_parameter_errors() {
+    // Arrange
+    let hash = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+    let cases = [
+        (
+            vec![
+                os("-named"),
+                os("getblockfilter"),
+                os(&format!("blockhash={hash}")),
+                os(&format!("blockhash={hash}")),
+            ],
+            "Parameter blockhash specified multiple times",
+        ),
+        (
+            vec![
+                os("-named"),
+                os("getblockfilter"),
+                os(hash),
+                os(&format!("blockhash={hash}")),
+            ],
+            "Parameter blockhash specified twice both as positional and named argument",
+        ),
+        (
+            vec![os("getblockfilter"), os("bad")],
+            "blockhash must be of length 64 (not 3, for 'bad')",
+        ),
+        (
+            vec![os("getblockfilter"), os(hash), os("BASIC")],
+            "Unknown filtertype",
+        ),
+        (
+            vec![os("-named"), os("getindexinfo"), os("name=basic")],
+            "Unknown named parameter name",
+        ),
+    ];
+    for (args, expected_error) in cases {
+        // Act / Assert
+        assert_eq!(
+            parse_cli_args(&args, "")
+                .expect_err("invalid arguments")
+                .to_string(),
+            expected_error
+        );
+    }
+}

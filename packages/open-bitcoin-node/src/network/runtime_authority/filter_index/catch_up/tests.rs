@@ -359,16 +359,40 @@ fn phase158_preflight_lagging_common_immutable_row_reuses_unavailable_payload() 
             crate::storage::filter_index::encode_record(old),
         )
         .expect("genuine immutable ahead row");
-    store
-        .delete_basic_input_for_test(old.identity().block_hash(), false)
-        .expect("physical missing body");
-    store
-        .delete_basic_input_for_test(old.identity().block_hash(), true)
-        .expect("physical missing undo");
+    assert!(
+        store
+            .maybe_basic_filter_append_proof_with_budget(ReorgFixture::budget())
+            .expect("raw row revokes recovered proof")
+            .is_none()
+    );
+    // Recover both the store and its manager lineage before removing inputs.
+    // Reconfiguring only a live store changes its recovered branch identity
+    // without rebinding the manager's genuinely captured validation lineage.
+    drop(stage);
+    drop(store);
+    let fixture = fixture.reopen();
+    let store = fixture.store.clone();
+    let genesis = fixture.records[0].identity();
     let network = handle(fixture);
     network
         .initialize_basic_filter_index_owner()
         .expect("owner");
+    // Assert the actual restored cursor, including its identity, without advancing
+    // the worker into the lagging common height whose inputs are about to vanish.
+    assert_eq!(
+        network
+            .maybe_basic_index_progress()
+            .expect("read recovered progress")
+            .expect("recovered owner")
+            .maybe_processed_endpoint(),
+        Some(genesis)
+    );
+    store
+        .delete_basic_input_for_test(old_hash, false)
+        .expect("physical missing body");
+    store
+        .delete_basic_input_for_test(old_hash, true)
+        .expect("physical missing undo");
     // Act
     reorg(&network, &disconnect, &replacement)
         .expect("no consensus disconnect at pruned common height");

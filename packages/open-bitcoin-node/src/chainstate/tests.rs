@@ -449,17 +449,18 @@ fn managed_chainstate_owns_required_flush_lifecycle() {
 fn connect_block_does_not_call_flush_mode_always() {
     // Arrange
     let source = include_str!("../chainstate.rs");
-    let names = [
-        "fn persist",
-        "fn connect_block",
-        "fn commit_prepared_connect",
-        "fn commit_prepared_reorg",
-        "fn disconnect_tip",
-        "fn reorg",
+    let validation_source = include_str!("validation_history.rs");
+    let producers = [
+        (source, "fn persist("),
+        (source, "fn connect_block("),
+        (validation_source, "fn commit_prepared_connect("),
+        (validation_source, "fn commit_prepared_reorg("),
+        (source, "fn disconnect_tip("),
+        (source, "fn reorg("),
     ];
 
     // Act / Assert
-    for name in names {
+    for (source, name) in producers {
         let body = function_body(source, name);
         assert!(
             !body.contains("FlushMode::Always") && !body.contains("FlushMode::Periodic"),

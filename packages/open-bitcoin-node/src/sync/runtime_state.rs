@@ -30,6 +30,8 @@ mod helpers;
 // Emits chainstate_durability_log_record beside block-relay logs.
 mod operator_logs;
 mod recovery;
+#[cfg(test)]
+mod tests;
 
 use helpers::{maybe_available_ref, progress_ratio};
 
@@ -88,9 +90,7 @@ impl DurableSyncRuntime {
     }
 
     pub(super) fn persist_progress(&self) -> Result<(), SyncRuntimeError> {
-        let header_entries = self.network.header_entries()?;
-        self.store
-            .save_header_entries(&header_entries, self.config.persist_mode)?;
+        self.network.persist_validation_header_snapshot()?;
         let mut metadata = self.load_runtime_metadata()?;
         metadata.last_clean_shutdown = false;
         self.store

@@ -11,6 +11,9 @@ use open_bitcoin_node::core::chainstate::{PruneMode, filter_index::lifecycle::In
 pub(crate) mod fixtures;
 use fixtures::History;
 
+#[path = "filter_index/rpc.rs"]
+mod rpc;
+
 #[test]
 fn phase157_daemon_explicit_zero_preserves_complete_saved_checkpoint_on_reopen() {
     // Arrange

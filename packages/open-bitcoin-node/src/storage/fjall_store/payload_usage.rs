@@ -102,6 +102,12 @@ impl FjallNodeStore {
         if is_payload_key(namespace, key) {
             return self.with_payload_mutation(mutate);
         }
+        if namespace == StorageNamespace::BlockIndex && key.starts_with("basic_filter:") {
+            let mut control = self.filter_publication_guard()?;
+            control.read_integrity = false;
+            control.invalidate_append()?;
+            return mutate();
+        }
         mutate()
     }
 
@@ -119,6 +125,12 @@ impl FjallNodeStore {
         };
         if is_payload_key(namespace, key) {
             return self.with_payload_mutation(mutate);
+        }
+        if namespace == StorageNamespace::BlockIndex && key.starts_with("basic_filter:") {
+            let mut control = self.filter_publication_guard()?;
+            control.read_integrity = false;
+            control.invalidate_append()?;
+            return mutate();
         }
         mutate()
     }

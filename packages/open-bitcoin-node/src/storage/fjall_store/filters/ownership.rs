@@ -340,6 +340,7 @@ impl FjallNodeStore {
             projection_authority: BasicFilterProjectionAuthority::RecoveredPrefix,
             maybe_replacement: None,
         });
+        control.read_integrity = true;
         Ok(())
     }
 

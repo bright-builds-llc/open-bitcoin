@@ -108,8 +108,8 @@ export function authorityMutations(): MutationCase[] {
         DIAGNOSTICS.io,
         insertAfter(
           "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
-          "        apply_lifecycle_command(&mut network, command)",
-          `;\n        ${statement}`,
+          "        let outcome = apply_lifecycle_command(&mut network, command);",
+          `\n        ${statement}`,
         ),
       ],
     ),

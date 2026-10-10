@@ -471,3 +471,131 @@ fn rpcwallet_keeps_node_methods_on_root_path() {
         }],
     );
 }
+
+#[test]
+fn phase159_filter_rpc_client_blockfilter_envelope_canonicalizes_hash_and_filter() {
+    // Arrange
+    use open_bitcoin_rpc::method::RequestParameters;
+    let hash = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+    let cases = [
+        (
+            RequestParameters::Positional(vec![json!(hash.to_uppercase())]),
+            "basic",
+        ),
+        (
+            RequestParameters::Positional(vec![json!(hash), json!(null)]),
+            "basic",
+        ),
+        (
+            RequestParameters::Named(vec![
+                ("blockhash".to_owned(), json!(hash)),
+                ("filtertype".to_owned(), json!("v0")),
+            ]),
+            "v0",
+        ),
+        (
+            RequestParameters::Mixed {
+                positional: vec![json!(hash)],
+                named: vec![("filtertype".to_owned(), json!("basic"))],
+            },
+            "basic",
+        ),
+    ];
+    for (params, filter_type) in cases {
+        // Act
+        let request =
+            super::build_request_envelope("getblockfilter", params, 7).expect("filter envelope");
+        // Assert
+        assert_eq!(
+            serde_json::to_value(request).expect("wire JSON"),
+            json!({
+                "jsonrpc": "2.0", "method": "getblockfilter", "id": 7,
+                "params": {"blockhash": hash, "filtertype": filter_type},
+            })
+        );
+    }
+}
+
+#[test]
+fn phase159_filter_rpc_client_indexinfo_envelope_preserves_selectors() {
+    // Arrange
+    use open_bitcoin_rpc::method::RequestParameters;
+    let mut cases = vec![
+        (RequestParameters::None, json!({})),
+        (RequestParameters::Positional(vec![json!(null)]), json!({})),
+    ];
+    for name in [
+        "",
+        "basic block filter index",
+        "v0 block filter index",
+        "txindex",
+    ] {
+        cases.push((
+            RequestParameters::Positional(vec![json!(name)]),
+            json!({"index_name": name}),
+        ));
+        cases.push((
+            RequestParameters::Named(vec![("index_name".to_owned(), json!(name))]),
+            json!({"index_name": name}),
+        ));
+    }
+    for (params, expected_params) in cases {
+        // Act
+        let request =
+            super::build_request_envelope("getindexinfo", params, 8).expect("index envelope");
+        // Assert
+        assert_eq!(
+            serde_json::to_value(request).expect("wire JSON"),
+            json!({
+                "jsonrpc": "2.0", "method": "getindexinfo", "params": expected_params, "id": 8,
+            })
+        );
+    }
+}
+
+#[test]
+fn phase159_filter_rpc_client_filter_method_uses_authenticated_root_endpoint() {
+    // Arrange
+    let hash = "00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff";
+    let server = TestServer::start(
+        json!({"jsonrpc": "2.0", "result": {"filter": "00", "header": hash}, "id": 1}),
+    );
+    let parsed = parse_cli_args(
+        &[
+            os("-rpcwallet=alpha"),
+            os("-named"),
+            os("getblockfilter"),
+            os(&format!("blockhash={}", hash.to_uppercase())),
+        ],
+        "",
+    )
+    .expect("parsed filter call");
+    let startup = CliStartupConfig {
+        conf_path: std::env::temp_dir().join("bitcoin.conf"),
+        maybe_data_dir: None,
+        rpc: CliRpcConfig {
+            host: "127.0.0.1".to_owned(),
+            port: server.address.port(),
+            auth: RpcAuthConfig::UserPassword {
+                username: "alice".to_owned(),
+                password: "secret".to_owned(),
+            },
+        },
+    };
+    // Act
+    let output = execute_parsed_cli(&parsed, &startup).expect("filter output");
+    // Assert
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(&output).expect("result JSON"),
+        json!({"filter": "00", "header": hash})
+    );
+    assert_eq!(
+        server.requests(),
+        vec![CapturedRequest {
+            method: "POST".to_owned(),
+            path: "/".to_owned(),
+            authorization: Some("Basic YWxpY2U6c2VjcmV0".to_owned()),
+            body: json!({"jsonrpc": "2.0", "method": "getblockfilter", "params": {"blockhash": hash, "filtertype": "basic"}, "id": 1}),
+        }]
+    );
+}

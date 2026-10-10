@@ -24,6 +24,7 @@ use crate::{
 };
 
 mod decode;
+pub(crate) mod filter_index;
 mod node;
 mod package;
 mod prune;
@@ -42,6 +43,10 @@ where
     V: open_bitcoin_node::core::chainstate::CoinsView,
 {
     match call {
+        MethodCall::GetBlockFilter(request) => {
+            filter_index::completed(filter_index::prepare_filter(context, request)?)
+        }
+        MethodCall::GetIndexInfo(request) => filter_index::index_info(context, request),
         call @ (MethodCall::ListPruneLocks(_)
         | MethodCall::SetPruneLock(_)
         | MethodCall::PruneBlockchain(_)

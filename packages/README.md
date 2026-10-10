@@ -1,5 +1,18 @@
 # Packages
 
+Phase 159 implements authenticated BASIC `getblockfilter`/`getindexinfo` through
+the existing node authority and RPC HTTP shell. See the
+[scoped contract and exact Cargo/Bazel commands](../docs/parity/catalog/basic-compact-filters.md#authenticated-basic-queries-phase-159).
+Genuine acceptance, paired deletion and all-handle configured reopen supplement
+private node faults composed with actual RPC projection. UnknownLegacy missing
+rows fail closed; valid retained records still serve. Initial-sync latch,
+processed height and captured-frontier readiness remain distinct. Dependencies
+and default-off activation are unchanged. CFRP-01/02 are Complete after full native, independent source/security and
+[formal lifecycle verification](../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md); peers 160, operator 161,
+integrated 162 and v2.5 completion remain pending. Earlier phase scope below is
+historical; synthetic genesis/maturity-one/manual owner-plan evidence does not
+establish ordinary prune-RPC, automatic-threshold or production/funds safety.
+
 This directory holds both the pinned upstream reference baseline and first-party
 Open Bitcoin crates.
 

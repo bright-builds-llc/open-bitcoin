@@ -11,6 +11,11 @@ use super::*;
 mod failures;
 pub(super) mod fixtures;
 mod measurements;
+#[path = "../../../network/runtime_authority/filter_index/query/tests.rs"]
+mod phase159_query_tests;
+#[path = "../../../network/runtime_authority/filter_index/readiness/tests.rs"]
+mod phase159_readiness_tests;
+mod rpc_faults;
 use fixtures::TurnHistory;
 
 #[test]

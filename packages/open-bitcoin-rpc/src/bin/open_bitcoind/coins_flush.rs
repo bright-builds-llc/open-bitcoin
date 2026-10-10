@@ -23,24 +23,36 @@ pub(super) const PERIODIC_WRITE_MAX_SECS: u64 = 70 * 60;
 
 const TICK_SECS: u64 = 1;
 
-#[derive(Debug)]
 pub(super) enum CoinsFlushError {
     Authority,
     BasicFilter(ManagedNetworkAuthorityError),
+}
+
+impl fmt::Debug for CoinsFlushError {
+    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, formatter)
+    }
 }
 
 impl fmt::Display for CoinsFlushError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Authority => formatter.write_str("open-bitcoind coins flush failed: authority"),
-            Self::BasicFilter(error) => {
-                write!(formatter, "open-bitcoind BASIC maintenance failed: {error}")
+            Self::BasicFilter(_) => {
+                formatter.write_str("open-bitcoind BASIC maintenance failed: index unavailable")
             }
         }
     }
 }
 
-impl std::error::Error for CoinsFlushError {}
+impl std::error::Error for CoinsFlushError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::BasicFilter(error) => Some(error),
+            Self::Authority => None,
+        }
+    }
+}
 
 impl From<ManagedNetworkAuthorityError> for CoinsFlushError {
     fn from(_error: ManagedNetworkAuthorityError) -> Self {
@@ -144,19 +156,46 @@ where
     loop {
         match wait(Duration::from_secs(TICK_SECS)) {
             CheckpointWait::Elapsed => {
-                maybe_index_error = match maybe_drive_elapsed(&handle, &store) {
-                    Ok(_) => None,
-                    Err(error) => {
-                        eprintln!("{error}");
-                        Some(error)
+                if let Err(error) = maybe_drive_elapsed(&handle, &store) {
+                    eprintln!("{error}");
+                    if let Err(stop_error) = handle.stop_basic_filter_readiness() {
+                        eprintln!(
+                            "open-bitcoind BASIC readiness settlement also failed: {stop_error}"
+                        );
                     }
-                };
+                    // A stopped read owner cannot become healthy on a later tick.
+                    if maybe_index_error.is_none() {
+                        maybe_index_error = Some(error);
+                    }
+                }
             }
             CheckpointWait::Shutdown => {
                 // No further index turn after the stop event. Always retains the
                 // saved Active protection; configured disable owns its release.
-                drive_always(&handle, &store)?;
-                return maybe_index_error.map_or(Ok(()), Err);
+                let flush_result = drive_always(&handle, &store);
+                let stop_result = handle
+                    .stop_basic_filter_readiness()
+                    .map_err(CoinsFlushError::from);
+                if flush_result.is_err()
+                    && let Err(error) = &stop_result
+                {
+                    eprintln!("open-bitcoind BASIC readiness settlement also failed: {error}");
+                }
+                if let Some(error) = maybe_index_error {
+                    if let Err(flush_error) = &flush_result {
+                        eprintln!("open-bitcoind coins settlement also failed: {flush_error}");
+                    }
+                    if flush_result.is_ok()
+                        && let Err(stop_error) = &stop_result
+                    {
+                        eprintln!(
+                            "open-bitcoind BASIC readiness settlement also failed: {stop_error}"
+                        );
+                    }
+                    return Err(error);
+                }
+                flush_result?;
+                return stop_result;
             }
         }
     }
@@ -171,23 +210,20 @@ where
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
     ManagedNetworkHandle<S, V>: BasicIndexMaintenance,
 {
-    drive_periodic(handle, store);
+    drive_periodic(handle, store)?;
     handle.maybe_drive_index_turn()
 }
 
-fn drive_periodic<S, V>(handle: &ManagedNetworkHandle<S, V>, store: &FjallNodeStore)
+fn drive_periodic<S, V>(
+    handle: &ManagedNetworkHandle<S, V>,
+    store: &FjallNodeStore,
+) -> Result<(), CoinsFlushError>
 where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
 {
-    match flush_now(handle, store, FlushMode::Periodic) {
-        Ok(execution) => {
-            if let Err(error) = resample_after_periodic_write(handle, execution) {
-                eprintln!("open-bitcoind periodic coins flush failed: {error}");
-            }
-        }
-        Err(error) => eprintln!("open-bitcoind periodic coins flush failed: {error}"),
-    }
+    let execution = flush_now(handle, store, FlushMode::Periodic)?;
+    resample_after_periodic_write(handle, execution)
 }
 
 fn drive_always<S, V>(
@@ -255,3 +291,102 @@ fn current_flush_policy_time() -> FlushPolicyTime {
 #[cfg(test)]
 #[path = "coins_flush/tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod phase159_tests {
+    use super::*;
+    use crate::tests::filter_index::fixtures::{History, next_block, params};
+    use open_bitcoin_node::core::consensus::{ScriptVerifyFlags, block_hash};
+    use open_bitcoin_node::{BasicFilterQuery, BasicFilterQueryError, BasicFilterReadFailure};
+    use std::{
+        future::Future,
+        pin::Pin,
+        task::{Context, Poll, Waker},
+    };
+
+    #[test]
+    fn phase159_filter_rpc_maintenance_actual_exit_settles_pending() {
+        for fail in [false, true] {
+            // Arrange
+            let history = History::new(2);
+            drop(history.seed());
+            let config = history.config(Some("-blockfilterindex=1"));
+            let store = crate::open_runtime_store(&config)
+                .expect("store")
+                .expect("durable");
+            let opened = crate::open_authoritative_network_runtime(&config, Some(store.clone()))
+                .expect("owner")
+                .expect_durable();
+            let handle = opened.network.clone();
+            let next = next_block(history.blocks.last(), 2);
+            handle
+                .connect_local_block(&next, ScriptVerifyFlags::P2SH, params())
+                .expect("genuine accepted lag");
+            store
+                .save_block(&next, open_bitcoin_node::PersistMode::Sync)
+                .expect("ordinary body");
+            let BasicFilterQuery::Pending(mut barrier) = handle
+                .basic_filter_query(block_hash(&next.header))
+                .expect("capture")
+            else {
+                panic!("pending");
+            };
+            assert!(
+                Pin::new(&mut barrier)
+                    .poll(&mut Context::from_waker(Waker::noop()))
+                    .is_pending()
+            );
+            if fail {
+                handle
+                    .set_coins_next_write(FlushPolicyTime::new(u64::MAX))
+                    .expect("not due");
+                store
+                    .coins_view()
+                    .batch_write_with_persist_mode(
+                        open_bitcoin_node::core::chainstate::CoinsBatch {
+                            entries: Default::default(),
+                        },
+                        Some(
+                            open_bitcoin_node::core::primitives::BlockHash::from_byte_array(
+                                [99; 32],
+                            ),
+                        ),
+                        open_bitcoin_node::PersistMode::Sync,
+                    )
+                    .expect("injected invalid durable marker");
+            }
+            let mut ticks = 0;
+            // Act
+            let result = coins_flush_worker_loop(handle.clone(), store, |_| {
+                ticks += 1;
+                if fail && ticks == 1 {
+                    CheckpointWait::Elapsed
+                } else {
+                    CheckpointWait::Shutdown
+                }
+            });
+            // Assert
+            assert_eq!(result.is_err(), fail);
+            assert!(matches!(
+                Pin::new(&mut barrier).poll(&mut Context::from_waker(Waker::noop())),
+                Poll::Ready(Err(BasicFilterQueryError::Readiness(
+                    BasicFilterReadFailure::OwnerStopped | BasicFilterReadFailure::OwnerFailed
+                )))
+            ));
+        }
+    }
+
+    #[test]
+    fn phase159_filter_rpc_maintenance_error_diagnostics_are_redacted() {
+        // Arrange
+        let error = CoinsFlushError::BasicFilter(ManagedNetworkAuthorityError::LifecycleEffect(
+            "/private/backend-marker".to_owned(),
+        ));
+        // Act / Assert
+        assert!(!format!("{error:?} {error}").contains("backend-marker"));
+        assert!(
+            std::error::Error::source(&error).is_some(),
+            "internal typed cause retained"
+        );
+    }
+}

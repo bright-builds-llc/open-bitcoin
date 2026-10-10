@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
 status: planning
-stopped_at: Phase 158 verified 21/21; strict commit/push finalization
-last_updated: "2026-10-09T04:31:55.542Z"
-last_activity: "2026-10-09"
+stopped_at: Phase 159 verified; Phase 160 ready for context
+last_updated: "2026-10-10T00:12:17.532Z"
+last_activity: "2026-10-10"
 progress:
   total_phases: 9
-  completed_phases: 5
-  total_plans: 33
-  completed_plans: 33
+  completed_phases: 6
+  total_plans: 41
+  completed_plans: 41
   percent: 100
 ---
 
@@ -18,23 +18,23 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-09 — Phase 158 completion).
+See: `.planning/PROJECT.md` (updated 2026-10-10 — Phase 159 completion).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 159 — Authenticated BASIC Filter and Index RPCs (ready for context)
+**Current focus:** Phase 160 — Explicit Bounded Peer Filter Serving (ready for context; not started)
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 159 (Authenticated BASIC Filter and Index RPCs)
+Phase: 160 (Explicit Bounded Peer Filter Serving)
 Plan: Not started
-**Status:** Planning — ready for Phase 159 context
-Last activity: 2026-10-09
-Last Activity Description: Phase 158 verified 21/21; full native passed; strict Git finalization underway
+**Status:** Ready to plan
+Last activity: 2026-10-10
+Last Activity Description: Phase 159 complete, transitioned to Phase 160
 
-Milestone progress: [██████░░░░] 56% (5/9 active v2.5 phases complete; 33/33 created plans complete; 12 requirements pending).
+Milestone progress: [███████░░░] 67% (6/9 active v2.5 phases complete; 41/41 created plans have summaries; ten requirements pending).
 
-Next action: /gsd-discuss-phase 159 — gather context after Phase 158 commit/push.
+Next action: Phase 159 verified changes are prepared for the authorized hook/commit/push; begin Phase 160 context in a subsequent run.
 
 ## Performance Metrics
 
@@ -81,6 +81,7 @@ Next action: /gsd-discuss-phase 159 — gather context after Phase 158 commit/pu
 | 156 | 8 | - | - |
 | 157 | 10 | - | - |
 | 158 | 7 | - | - |
+| 159 | 8 | - | - |
 
 ### Plan Execution History
 
@@ -610,6 +611,6 @@ Next action: /gsd-discuss-phase 159 — gather context after Phase 158 commit/pu
 
 ## Session Continuity
 
-Last session: 2026-10-09T04:29:45.178Z
-Stopped at: Phase 158 verified 21/21; strict commit/push finalization
-Resume file: .planning/phases/158-validated-reorg-and-retained-branch-identity/158-VERIFICATION.md
+Last session: 2026-10-09T18:53:38.011Z
+Stopped at: Phase 159 verified; Phase 160 ready for context
+Resume file: None
