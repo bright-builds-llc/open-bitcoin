@@ -14,6 +14,106 @@ use super::network_fixtures::*;
 use super::*;
 
 #[test]
+fn phase161_rpc_schema_basic_matches_captured_authority() {
+    // Arrange
+    let mut context = empty_context();
+    let snapshot = context.authoritative_operator_snapshot().expect("snapshot");
+    let expected =
+        serde_json::to_value(snapshot.operator_network().basic_index()).expect("BASIC snapshot");
+
+    // Act
+    let status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+
+    // Assert
+    assert_eq!(status["basic_index"], expected);
+}
+
+#[test]
+fn phase161_rpc_schema_legacy_omission_stays_unavailable() {
+    // Arrange
+    let mut context = empty_context();
+    let mut status = dispatch(
+        &mut context,
+        MethodCall::OpenBitcoinNetworkStatus(OpenBitcoinNetworkStatusRequest::default()),
+    )
+    .expect("network status");
+    status
+        .as_object_mut()
+        .expect("object")
+        .remove("basic_index");
+
+    // Act
+    let decoded: crate::method::OpenBitcoinNetworkStatusResponse =
+        serde_json::from_value(status).expect("legacy network response");
+    let encoded = serde_json::to_value(decoded).expect("network response");
+
+    // Assert
+    assert_eq!(
+        encoded["basic_index"],
+        serde_json::to_value(open_bitcoin_node::status::BasicIndexOperatorStatus::default())
+            .expect("unavailable BASIC")
+    );
+}
+
+#[tokio::test]
+async fn phase161_rpc_schema_existing_auth_guards_basic_evidence() {
+    use axum::{
+        body::to_bytes,
+        http::{HeaderMap, HeaderValue, Method, StatusCode},
+    };
+
+    // Arrange
+    let context = empty_context();
+    let expected = serde_json::to_value(
+        context
+            .authoritative_operator_snapshot()
+            .expect("snapshot")
+            .basic_index(),
+    )
+    .expect("BASIC snapshot");
+    let state = crate::http::build_http_state(
+        crate::RpcAuthConfig::UserPassword {
+            username: "alice".to_string(),
+            password: "secret".to_string(),
+        },
+        context,
+    )
+    .expect("HTTP state");
+    let request = br#"{"method":"openbitcoinnetworkstatus","params":[],"id":1}"#;
+    let mut headers = HeaderMap::new();
+
+    // Act
+    let denied =
+        crate::http::handle_http_request(&state, "/", Method::POST, &headers, request).await;
+    headers.insert(
+        "authorization",
+        HeaderValue::from_static("Basic YWxpY2U6c2VjcmV0"),
+    );
+    let allowed =
+        crate::http::handle_http_request(&state, "/", Method::POST, &headers, request).await;
+    let allowed_status = allowed.status();
+    let bytes = to_bytes(allowed.into_body(), 1_048_576)
+        .await
+        .expect("HTTP body");
+    let body: serde_json::Value = serde_json::from_slice(&bytes).expect("RPC envelope");
+
+    // Assert
+    assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    assert_eq!(allowed_status, StatusCode::OK);
+    assert_eq!(body["result"]["basic_index"], expected);
+    assert!(
+        serde_json::to_vec(&body["result"]["basic_index"])
+            .expect("BASIC bytes")
+            .len()
+            <= 4096
+    );
+}
+
+#[test]
 fn open_bitcoin_network_status_returns_available_inbound_evidence() {
     // Arrange
     let mut context = inbound_context(4, 0);
@@ -124,6 +224,7 @@ fn authoritative_operator_snapshot_preserves_network_status_schema_and_provenanc
             .keys()
             .collect::<Vec<_>>(),
         vec![
+            "basic_index",
             "block_relay",
             "chainstate_durability",
             "inbound",
@@ -213,6 +314,7 @@ fn open_bitcoin_network_status_exact_keys_include_chainstate_durability() {
             .keys()
             .collect::<Vec<_>>(),
         vec![
+            "basic_index",
             "block_relay",
             "chainstate_durability",
             "inbound",

@@ -21,6 +21,7 @@ mod catch_up;
 mod evidence;
 mod faults;
 mod lifecycle;
+mod operator_status;
 mod peer_evidence;
 pub(super) mod peer_fixtures;
 mod peer_measurements;
@@ -207,6 +208,49 @@ fn append_current(
         .maybe_basic_filter_work(&fence)?
         .ok_or_else(|| codec::index_corruption("test requires Active BASIC work"))?;
     store.persist_basic_filter_records(&work, &fence, records)
+}
+
+#[test]
+fn phase161_operator_authority_failed_enable_after_durable_effect_reports_unknown() {
+    use crate::status::{BasicIndexOperationalState, FieldAvailability};
+    use crate::storage::fjall_store::filters::FilterPublicationFault;
+    for fault in [
+        FilterPublicationFault::BeforeEnable,
+        FilterPublicationFault::AfterEnable,
+    ] {
+        // Arrange
+        let history = recovery::ValidatedHistory::new("operator-enable-uncertain", false);
+        let runtime = DurableSyncRuntime::open_configured(
+            history.seed(1),
+            sync_config(),
+            crate::chainstate::BasicFilterStartupMode::Enabled,
+        )
+        .expect("actual startup");
+        runtime
+            .network
+            .disable_basic_filter_index()
+            .expect("known disabled");
+        runtime.store().set_basic_filter_fault(fault);
+        // Act
+        assert!(runtime.network.enable_basic_filter_index().is_err());
+        let snapshot = runtime
+            .network
+            .operator_snapshot()
+            .expect("other groups usable");
+        let status = snapshot.basic_index();
+        // Assert
+        assert!(matches!(
+            status.configured_indexing,
+            FieldAvailability::Unavailable { .. }
+        ));
+        assert_ne!(
+            status.operational_state,
+            FieldAvailability::available(BasicIndexOperationalState::Current)
+        );
+        assert!(serde_json::to_vec(status).expect("bounded BASIC").len() <= 4096);
+        drop(runtime);
+        history.cleanup();
+    }
 }
 
 fn publish_current(

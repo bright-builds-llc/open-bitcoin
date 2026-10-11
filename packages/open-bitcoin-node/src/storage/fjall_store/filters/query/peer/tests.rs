@@ -6,6 +6,110 @@ use super::*;
 use crate::storage::fjall_store::filters::tests::query::recovered_fixture;
 
 #[test]
+fn phase161_read_fault_callers_peer_policy_and_budget_errors_never_latch() {
+    // Arrange
+    let (path, store, records) = recovered_fixture("peer-read-fault-negative", 4);
+    let hash = records[3].identity().block_hash();
+    let expected = store.basic_filter_retention().expect("complete");
+    // Act / Assert
+    for refusal in 0..3 {
+        let result = store.with_basic_filter_query(|_| match refusal {
+            0 => check_envelope(BASIC_FILTER_QUERY_MAX_RECORD_BYTES + 1),
+            1 => checked_response_hex_bytes(usize::MAX).map(|_| ()),
+            _ => charge_hash_work(&mut BasicFilterQueryWork::default(), usize::MAX, true),
+        });
+        assert!(matches!(result, Err(StorageError::Corruption { .. })));
+        assert!(
+            store
+                .basic_filter_operator_observation()
+                .expect("policy callback")
+                .maybe_read_fault
+                .is_none()
+        );
+    }
+    for axis in [
+        Axis::RecordReads,
+        Axis::MetadataReads,
+        Axis::ValidatedEnvelopeBytes,
+        Axis::HashPaddedBytes,
+        Axis::HeaderOperations,
+        Axis::LogicalCopyBytes,
+        Axis::EncodedSuffixBytes,
+    ] {
+        let mut budget = BasicPeerServeBudget::default().with_limit(axis, 0);
+        assert!(
+            store
+                .with_basic_peer_query(&mut budget, |reader, meter| reader
+                    .maybe_peer_record(hash, meter, true))
+                .is_err()
+        );
+        assert!(
+            store
+                .basic_filter_operator_observation()
+                .expect("capture")
+                .maybe_read_fault
+                .is_none()
+        );
+        assert_eq!(store.basic_filter_retention(), Ok(expected));
+    }
+    let mut budget = BasicPeerServeBudget::default();
+    assert!(
+        store
+            .with_basic_peer_query(&mut budget, |reader, meter| reader.maybe_peer_record(
+                BlockHash::from_byte_array([99; 32]),
+                meter,
+                true
+            ))
+            .expect("unknown")
+            .is_none()
+    );
+    let wrong = [open_bitcoin_network::policy::FilterBranchIdentity {
+        hash,
+        height: 1,
+        parent: Default::default(),
+    }];
+    assert!(matches!(
+        store.with_basic_peer_query(&mut BasicPeerServeBudget::default(), |reader, meter| reader
+            .maybe_peer_records(&wrong, meter, true)),
+        Err(BasicPeerReadError::Storage(StorageError::Corruption { .. }))
+    ));
+    assert!(
+        store
+            .basic_filter_operator_observation()
+            .expect("capture")
+            .maybe_read_fault
+            .is_none()
+    );
+    let key = codec::record_key(hash);
+    let original = store.block_index.get(&key).expect("get").expect("row");
+    store
+        .block_index
+        .insert(&key, vec![0; BASIC_FILTER_QUERY_MAX_RECORD_BYTES + 1])
+        .expect("oversize under earned epoch");
+    assert!(store.maybe_basic_filter_point_query(hash).is_err());
+    assert!(
+        store
+            .with_basic_peer_query(&mut BasicPeerServeBudget::default(), |reader, meter| reader
+                .maybe_peer_record(hash, meter, true))
+            .is_err()
+    );
+    assert!(
+        store
+            .basic_filter_operator_observation()
+            .expect("capture")
+            .maybe_read_fault
+            .is_none()
+    );
+    store
+        .block_index
+        .insert(key, original)
+        .expect("restore policy fixture");
+    assert_eq!(store.basic_filter_retention(), Ok(expected));
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
 fn phase160_budgeted_read_disabled_and_integrity_epoch_are_distinct() {
     // Arrange
     let path = std::env::temp_dir().join(format!("phase160-peer-disabled-{}", std::process::id()));

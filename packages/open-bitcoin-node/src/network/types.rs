@@ -148,6 +148,7 @@ pub struct ManagedNetworkInfo {
 /// Owned, sanitized network state captured under one authoritative read guard.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ManagedNetworkOperatorSnapshot {
+    pub(super) basic_index: crate::status::BasicIndexOperatorStatus,
     pub(super) network: ManagedNetworkInfo,
     pub(super) mempool: ManagedMempoolInfo,
     pub(super) relay: RelayEvidenceStatus,
@@ -167,6 +168,11 @@ pub struct ManagedNetworkOperatorSnapshot {
 }
 
 impl ManagedNetworkOperatorSnapshot {
+    /// Identifier-free BASIC evidence captured with this authoritative snapshot.
+    pub fn basic_index(&self) -> &crate::status::BasicIndexOperatorStatus {
+        &self.basic_index
+    }
+
     pub fn network(&self) -> &ManagedNetworkInfo {
         &self.network
     }

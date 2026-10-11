@@ -35,6 +35,42 @@ function mutate(root: string, file: string, before: string, after = "removed_evi
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
+test("disable epoch advance alone cannot replace read-integrity revocation", () => {
+  // Arrange
+  const root = fixture();
+  const file = NODE + "storage/fjall_store/filters/lifecycle.rs";
+  const target = join(root, file);
+  const source = readFileSync(target, "utf8");
+  const changed = source.replace("control.invalidate_read_integrity()?;", "control.advance_integrity_epoch()?;");
+  const maybeDisable = maybeRustFunction(changed, "disable_basic_filter_index_guarded", true);
+  expect(maybeDisable?.body.includes("control.advance_integrity_epoch()?;")).toBe(true);
+  expect(maybeDisable?.body.includes("control.invalidate_read_integrity()?;")).toBe(false);
+  writeFileSync(target, changed);
+  // Act
+  const failures = checkPhase155FilterIndex(root);
+  // Assert
+  expect(failures.some(item => item.includes("Disabled route"))).toBe(true);
+});
+
+const recoveryOwnerProof = "let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {";
+for (const [mode, before, after] of [
+  ["false state", "if self.maybe_basic_filter_state()?.is_some()", "if false"],
+  ["inverted state", "if self.maybe_basic_filter_state()?.is_some()", "if self.maybe_basic_filter_state()?.is_none()"],
+  ["missing proof", recoveryOwnerProof, "let Some(owner) = None else {"],
+  ["premature total", recoveryOwnerProof, "control.install_retention(retained);\n" + recoveryOwnerProof],
+  ["early return", recoveryOwnerProof, "return Ok(());\n" + recoveryOwnerProof],
+] as const) {
+  test(`state-gated recovery rejects ${mode}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs", before, after);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes("PreserveSaved protection"))).toBe(true);
+  });
+}
+
 test("fixed evidence passes and check mode preserves all bytes", () => {
   // Arrange
   const root = fixture();
@@ -64,7 +100,7 @@ for (const [label, file, before, category] of [
   ["runtime constructor", NODE + "sync/open_runtime.rs", "initialize_configured(&store", "runtime constructor"],
   ["managed constructor", NODE + "sync/open_runtime.rs", "ManagedChainstate::from_recovered_chainstate", "runtime constructor"],
   ["direct intent protection", NODE + "storage/fjall_store/filters/startup.rs", ".check_prune_intent(intent.height)", "guard mechanism"],
-  ["full integrity scan", NODE + "storage/fjall_store/filters/startup.rs", "self.validate_basic_filter_records()?;", "guard mechanism"],
+  ["full integrity scan", NODE + "storage/fjall_store/filters/startup.rs", "self.measure_basic_filter_records(limits)?", "guard mechanism"],
   ["pre-mutation protection", NODE + "storage/fjall_store/filters/startup.rs", "self.maybe_prune_intent()?", "guard ordering"],
   ["real reopen", NODE + "sync/tests/filter_index/recovery.rs", "DurableSyncRuntime::open(", "validated history"],
   ["actual validation", NODE + "sync/tests/filter_index/recovery.rs", ".stage_connect_block_with_current_time(", "validated history"],
@@ -127,14 +163,47 @@ test("conditional initialize guard refuses", () => {
 
 const STARTUP = NODE + "storage/fjall_store/filters/startup.rs";
 const LIFECYCLE = NODE + "storage/fjall_store/filters/lifecycle.rs";
+const RETENTION = NODE + "storage/fjall_store/filters/retention.rs";
+const PUBLICATION = NODE + "storage/fjall_store/filters/publication.rs";
+const APPEND = NODE + "storage/fjall_store/filters/append.rs";
 const FRESH_PREFLIGHT = "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;";
 const SAVED_PREFLIGHT = "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;";
+for (const replacement of ["", "if false { control.reset_verified_forest(retained); }",
+  "return Ok(()); control.reset_verified_forest(retained);", "// control.reset_verified_forest(retained);",
+  'let decoy = r##"control.reset_verified_forest(retained);"##;']) {
+  test(`successful disable closing reset cannot be skipped or substituted: ${replacement}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, LIFECYCLE, "control.reset_verified_forest(retained);", replacement);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes("Disabled route"))).toBe(true);
+  });
+}
+for (const mode of ["reset before validation", "guarded failure ignored"]) {
+  test(`disable verified reset refuses ${mode}`, () => {
+    // Arrange
+    const root = fixture();
+    const target = join(root, LIFECYCLE);
+    const source = readFileSync(target, "utf8");
+    const changed = source.replace(/pub\(crate\) fn disable_basic_filter_index\([\s\S]*?^    }/m, body => mode === "reset before validation"
+      ? body.replace("self.disable_basic_filter_index_guarded(", "let retained = control.retention;\ncontrol.reset_verified_forest(retained);\nself.disable_basic_filter_index_guarded(")
+      : body.replace(/(RetentionObservationLimits::default\(\),\s*\))\?;/, "$1;"));
+    expect(changed).not.toBe(source);
+    writeFileSync(target, changed);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes("Disabled route"))).toBe(true);
+  });
+}
 for (const [label, file, anchor, category] of [
   ["compatibility initialize policy", NODE + "chainstate/flush_lifecycle.rs", "BasicFilterStartupMode::PreserveSaved,", "compatibility route"],
   ["compatibility runtime policy", NODE + "sync/open_runtime.rs", "BasicFilterStartupMode::PreserveSaved,", "compatibility route"],
   ["configured selected policy", NODE + "sync/open_runtime.rs", "u64::MAX, basic_filter_mode", "runtime constructor"],
-  ["PreserveSaved dispatch", STARTUP, "self.recover_basic_filter_index(maybe_recovered_best_block)", "independent startup routes"],
-  ["Enabled dispatch", STARTUP, "self.enable_basic_filter_index(&fence)", "independent startup routes"],
+  ["PreserveSaved dispatch", STARTUP, "self.recover_basic_filter_index_guarded(maybe_recovered_best_block, limits, control)", "independent startup routes"],
+  ["Enabled dispatch", STARTUP, "self.enable_basic_filter_index_guarded(&fence, control, limits)", "independent startup routes"],
   ["Enabled recovered fence", STARTUP, "VerifiedChainstateFence::new(maybe_recovered_best_block, Some(&positions))", "independent startup routes"],
   ["PreserveSaved inspection", STARTUP, "self.inspect_basic_filter_recovery(owner, &fence)?;", "PreserveSaved protection"],
   ["PreserveSaved recovered prefix", STARTUP, "self.scan_basic_filter_checkpoint(saved, owner.saved_protection(), fence)?;", "PreserveSaved retained protection"],
@@ -146,8 +215,26 @@ for (const [label, file, anchor, category] of [
   ["suffix undo", LIFECYCLE, "self.load_undo(position.block_hash)?", "required suffix validation"],
   ["suffix bound authority", LIFECYCLE, "BasicFilterInputs::from_historical(&block, position, maybe_history)", "required suffix validation"],
   ["publication block ceiling", NODE + "storage/fjall_store/filters/publication.rs", "BASIC_INDEX_MAX_CANDIDATES", "atomic publication"],
-  ["publication total ceiling", NODE + "storage/fjall_store/filters/publication.rs", "BASIC_INDEX_MAX_ENCODED_BYTES", "atomic publication"],
-  ["publication singleton ceiling", NODE + "storage/fjall_store/filters/publication.rs", "BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES", "atomic publication"],
+  ["publication total ceiling", NODE + "storage/fjall_store/filters/retention.rs", "BASIC_INDEX_MAX_ENCODED_BYTES", "atomic publication"],
+  ["publication singleton ceiling", NODE + "storage/fjall_store/filters/retention.rs", "BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES", "atomic publication"],
+  ["configured default limits route", STARTUP, "self.configure_basic_filter_index_before_prune_with_retention_limits(", "configured route"],
+  ["guarded dispatcher", STARTUP, ".apply_basic_filter_startup_guarded(", "configured route"],
+  ["successful startup capture revocation", STARTUP, ".and_then(|()| control.advance_integrity_epoch())", "configured route"],
+  ["Disabled dispatch", STARTUP, "self.disable_basic_filter_index_guarded(control, limits)", "independent startup routes"],
+  ["Disabled durable invalidation", LIFECYCLE, "control.invalidate_read_integrity()?;", "Disabled route"],
+  ["Disabled checkpoint validation", LIFECYCLE, "self.maybe_basic_filter_checkpoint()?;", "Disabled route"],
+  ["Disabled release ordering", LIFECYCLE, "LifecyclePublicationPoint::AfterDisable", "Disabled route"],
+  ["immutable scan", NODE + "storage/fjall_store/filters.rs", "for guard in self.block_index.prefix(codec::RECORD_PREFIX)", "guard mechanism"],
+  ["projection scan", NODE + "storage/fjall_store/filters.rs", "for guard in self.block_index.prefix(codec::ACTIVE_PREFIX)", "guard mechanism"],
+  ["shared candidate ceiling", RETENTION, "records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES", "atomic publication"],
+  ["shared singleton comparison", RETENTION, "envelope > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES", "atomic publication"],
+  ["shared total comparison", RETENTION, "total > BASIC_INDEX_MAX_ENCODED_BYTES", "atomic publication"],
+  ["shared envelope overflow", RETENTION, ".checked_add(codec::RECORD_OVERHEAD as u64)", "atomic publication"],
+  ["shared cumulative overflow", RETENTION, ".checked_add(envelope)", "atomic publication"],
+  ["atomic SyncAll durability", PUBLICATION, ".durability(Some(FjallPersistMode::SyncAll))", "atomic publication"],
+  ["atomic commit poison", PUBLICATION, "control.poisoned = true;", "atomic publication"],
+  ["atomic fence verification", PUBLICATION, "self.verify_basic_filter_fence(fence)?;", "atomic publication"],
+  ["shared poison refusal", PUBLICATION, "if guard.poisoned", "atomic publication"],
 ] as const) {
   test(`independent route refuses missing ${label}`, () => {
     // Arrange
@@ -157,6 +244,90 @@ for (const [label, file, anchor, category] of [
     const failures = checkPhase155FilterIndex(root);
     // Assert
     expect(failures.some(item => item.includes(category))).toBe(true);
+  });
+}
+for (const refusal of ["BASIC append record count bound", "BASIC append singleton byte bound", "BASIC append aggregate byte bound"]) {
+  test(`shared immutable admission refuses removed ${refusal} return`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, RETENTION, `return Err(index_corruption("${refusal}"));`, `record_bound_removed();`);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes("immutable admission ceilings/refusal"))).toBe(true);
+  });
+}
+test("shared immutable admission after early success refuses", () => {
+  // Arrange
+  const root = fixture();
+  const statement = "if records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES";
+  mutate(root, RETENTION, statement, `return Ok(());\n${statement}`);
+  // Act
+  const failures = checkPhase155FilterIndex(root);
+  // Assert
+  expect(failures.some(item => item.includes("immutable admission ceilings/refusal"))).toBe(true);
+});
+for (const [file, statement, category] of [
+  [LIFECYCLE, "self.measure_basic_filter_records(limits)?;", "Disabled route"],
+  [LIFECYCLE, "self.maybe_basic_filter_checkpoint()?;", "Disabled route"],
+] as const) {
+  test(`conditional extracted startup validation refuses ${statement}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, file, statement, `if false { ${statement} }`);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes(category))).toBe(true);
+  });
+}
+test("conditional extracted guarded dispatcher refuses", () => {
+  // Arrange
+  const root = fixture();
+  const source = readFileSync(join(root, STARTUP), "utf8");
+  const maybeCall = source.match(/let result = self\s*\.apply_basic_filter_startup_guarded\([\s\S]*?;\n/);
+  if (!maybeCall) throw new Error("missing ordinary guarded startup dispatch anchor");
+  mutate(root, STARTUP, maybeCall[0], `if false { ${maybeCall[0]} }`);
+  // Act
+  const failures = checkPhase155FilterIndex(root);
+  // Assert
+  expect(failures.some(item => item.includes("configured route") && item.includes("cannot be conditional"))).toBe(true);
+});
+test("configured guarded dispatcher after early success refuses", () => {
+  // Arrange
+  const root = fixture();
+  const statement = "let result = self";
+  mutate(root, STARTUP, statement, `return Ok(());\n${statement}`);
+  // Act
+  const failures = checkPhase155FilterIndex(root);
+  // Assert
+  expect(failures.some(item => item.includes("configured route") && item.includes("bypassed"))).toBe(true);
+});
+for (const [file, call, allocation] of [
+  [PUBLICATION, "super::retention::check_envelope_bounds(records)?;", "let mut encoded = Vec::with_capacity(records.len());"],
+  [APPEND, "check_envelope_bounds(records)?;", "let mut prepared = PreparedBasicFilterAppend {"],
+] as const) {
+  for (const substitute of ["", `if false { ${call} }`, `return Ok(Default::default()); ${call}`,
+    `// ${call}`, `let decoy = r##"${call}"##;`]) {
+    test(`immutable admission bypass refuses ${file}: ${substitute.slice(0, 24)}`, () => {
+      // Arrange
+      const root = fixture();
+      mutate(root, file, call, substitute);
+      // Act
+      const failures = checkPhase155FilterIndex(root);
+      // Assert
+      expect(failures.some(item => item.includes("mandatory immutable admission"))).toBe(true);
+    });
+  }
+  test(`immutable admission after allocation refuses ${file}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, file, call, "");
+    mutate(root, file, allocation, `${allocation}\n${call}`);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes("mandatory immutable admission"))).toBe(true);
   });
 }
 for (const preflight of [FRESH_PREFLIGHT, SAVED_PREFLIGHT]) {
@@ -172,7 +343,11 @@ for (const preflight of [FRESH_PREFLIGHT, SAVED_PREFLIGHT]) {
   test(`suffix preflight after Active return refuses: ${preflight}`, () => {
     // Arrange
     const root = fixture();
-    const returnCall = "return self.install_recovered_basic_filter_append_guarded(fence, &mut control);";
+    const source = readFileSync(join(root, LIFECYCLE), "utf8");
+    const maybeReturn = [...source.matchAll(/return self\.install_recovered_basic_filter_append_guarded\([\s\S]*?\);/g)]
+      .find(match => preflight === FRESH_PREFLIGHT || match[0].includes(", retained)"));
+    if (!maybeReturn) throw new Error("missing ordinary recovered append return anchor");
+    const returnCall = maybeReturn[0];
     mutate(root, LIFECYCLE, preflight, "");
     mutate(root, LIFECYCLE, returnCall, `${returnCall}\n${preflight}`);
     // Act
@@ -214,8 +389,12 @@ for (const substitute of [
 for (const declaration of ["mod", "pub mod", "pub(crate) mod"]) {
   for (const [file, symbol, category] of [
     [NODE + "chainstate/flush_lifecycle.rs", "initialize_configured", "startup ordering"],
-    [STARTUP, "recover_basic_filter_index", "PreserveSaved protection"],
-    [LIFECYCLE, "enable_basic_filter_index", "Enabled suffix preflight"],
+    [STARTUP, "recover_basic_filter_index_guarded", "PreserveSaved protection"],
+    [LIFECYCLE, "enable_basic_filter_index_guarded", "Enabled suffix preflight"],
+    [STARTUP, "configure_basic_filter_index_before_prune_with_retention_limits", "configured route"],
+    [LIFECYCLE, "disable_basic_filter_index_guarded", "Disabled route"],
+    [RETENTION, "check_envelope_bounds", "atomic publication"],
+    [PUBLICATION, "finish_basic_filter_batch", "atomic publication"],
   ] as const) {
     test(`test-only ${declaration} cannot substitute ${symbol}`, () => {
       // Arrange

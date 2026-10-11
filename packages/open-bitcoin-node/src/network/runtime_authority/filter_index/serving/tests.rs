@@ -16,6 +16,200 @@ use crate::network::{
 };
 use open_bitcoin_network::{GetCFCheckpt, GetCFHeaders, GetCFilters};
 
+#[test]
+fn phase161_disable_validation_genuine_managed_failure_hides_old_growth() {
+    use crate::status::FieldAvailability;
+    use crate::storage::fjall_store::filters::query::QueryRecordFault;
+    // Arrange
+    let fixture = PeerFilterFixture::new(16);
+    let runtime = &fixture.runtime;
+    assert!(runtime.store().basic_filter_retention().is_ok());
+    let old = runtime
+        .store()
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("healthy epoch");
+    let scans = runtime.store().basic_filter_validation_scans_for_test();
+    runtime
+        .store()
+        .inject_query_record_fault_for_test(fixture.hash(4), QueryRecordFault::CorruptTarget)
+        .expect("undiscovered forest fault");
+    // Act
+    assert!(runtime.network.disable_basic_filter_index().is_err());
+    // Assert
+    let status = runtime.network.operator_snapshot().expect("snapshot");
+    assert!(matches!(
+        status.basic_index().retention,
+        FieldAvailability::Unavailable { .. }
+    ));
+    assert!(matches!(
+        status.basic_index().retained_availability,
+        FieldAvailability::Unavailable { .. }
+    ));
+    assert!(
+        runtime
+            .store()
+            .with_basic_filter_query(|reader| reader.integrity_epoch())
+            .is_err()
+    );
+    assert!(
+        !runtime
+            .store()
+            .basic_peer_epoch_is_current(&old)
+            .expect("old epoch")
+    );
+    assert_eq!(
+        runtime.store().basic_filter_validation_scans_for_test() - scans,
+        1
+    );
+    drop(old);
+    fixture.cleanup();
+}
+
+#[test]
+fn phase161_read_fault_callers_managed_peer_revokes_prepared_receipt_and_suffix() {
+    use crate::network::filter_transport::FilterTransportDisposition;
+    use crate::status::{
+        BasicIndexFailureCategory as Failure, BasicIndexOperationalState as State,
+        FieldAvailability as Field,
+    };
+    use crate::storage::fjall_store::filters::{FilterPublicationFault, query::QueryRecordFault};
+    for kind in 0..4 {
+        // Arrange
+        let fixture = PeerFilterFixture::new(16);
+        let runtime = &fixture.runtime;
+        runtime
+            .network
+            .connect_outbound_peer(2, 0)
+            .expect("independent request slot");
+        super::complete_peer_handshake(runtime, 2);
+        let before = runtime
+            .network
+            .operator_snapshot()
+            .expect("snapshot")
+            .basic_index()
+            .clone();
+        let result = managed_receive(runtime, 1, request_filters(1, fixture.hash(3)), false);
+        let PlanItem::PreparedFilterServe(mut prepared) = result
+            .inbound_response_plan
+            .into_iter()
+            .next()
+            .expect("prepared")
+        else {
+            panic!("prepared response");
+        };
+        let frame = prepared.next_frame().expect("frame").expect("present");
+        let frame_bytes = frame.bytes().len() as u64;
+        if kind == 3 {
+            runtime
+                .store()
+                .set_basic_filter_fault(FilterPublicationFault::BeforeQueryRead);
+        } else {
+            let fault = match kind {
+                0 => QueryRecordFault::CorruptTarget,
+                1 => QueryRecordFault::CorruptParent,
+                _ => QueryRecordFault::MissingParent,
+            };
+            runtime
+                .store()
+                .inject_query_record_fault_for_test(fixture.hash(8), fault)
+                .expect("fault");
+        }
+        // Act
+        let failure = managed_receive(runtime, 2, request_filters(8, fixture.hash(10)), false);
+        assert_eq!(
+            failure.inbound_response_plan,
+            vec![PlanItem::FilterServeUnavailable(
+                Unavailable::StorageFailure
+            )]
+        );
+        // Assert
+        let status = runtime
+            .network
+            .operator_snapshot()
+            .expect("snapshot")
+            .basic_index()
+            .clone();
+        assert_eq!(
+            status.maybe_failure,
+            Field::available(Some(if kind == 3 {
+                Failure::Backend
+            } else {
+                Failure::IntegrityOrInvalidFacts
+            }))
+        );
+        assert_eq!(status.operational_state, Field::available(State::Failed));
+        assert_eq!(status.protection, before.protection);
+        assert_eq!(status.initial_sync_complete, before.initial_sync_complete);
+        let rows = runtime.store().basic_operator_namespaces_for_test();
+        let scans = runtime.store().basic_filter_validation_scans_for_test();
+        let reads = runtime.store().basic_filter_point_reads_for_test();
+        for _ in 0..32 {
+            assert_eq!(
+                runtime
+                    .network
+                    .operator_snapshot()
+                    .expect("poll")
+                    .basic_index(),
+                &status
+            );
+        }
+        assert_eq!(runtime.store().basic_operator_namespaces_for_test(), rows);
+        assert_eq!(
+            runtime.store().basic_filter_validation_scans_for_test(),
+            scans
+        );
+        assert_eq!(runtime.store().basic_filter_point_reads_for_test(), reads);
+        assert!(
+            !runtime
+                .network
+                .basic_filter_response_is_current(&prepared)
+                .expect("revoked")
+        );
+        let held = runtime
+            .network
+            .basic_filter_transport_snapshot()
+            .expect("held physical frame");
+        // The handed frame remains charged until its physical receipt settles.
+        assert_eq!(held.suffix_bytes, frame_bytes);
+        assert_eq!(held.active_frame_bytes, frame_bytes);
+        assert_eq!(prepared.progress().expect("no invented bytes").bytes, 0);
+        let completed = runtime
+            .network
+            .complete_basic_filter_frame(frame.acknowledge_write())
+            .expect("isolated physical receipt");
+        assert_eq!(
+            completed.disposition,
+            FilterTransportDisposition::PhysicalPrefixInvalidated
+        );
+        assert_eq!(completed.progress.messages, 1);
+        assert_eq!(completed.progress.bytes, frame_bytes);
+        assert!(matches!(
+            prepared.next_frame(),
+            Err(crate::network::filter_transport::FilterTransportError::Invalidated)
+        ));
+        drop(prepared);
+        assert_eq!(
+            runtime
+                .network
+                .basic_filter_transport_snapshot()
+                .expect("released"),
+            FilterTransportSnapshot::default()
+        );
+        runtime
+            .network
+            .disconnect_peer(1)
+            .expect("disconnect cleanup");
+        assert_eq!(
+            runtime
+                .network
+                .basic_filter_transport_snapshot()
+                .expect("disconnected"),
+            FilterTransportSnapshot::default()
+        );
+        fixture.cleanup();
+    }
+}
+
 pub(super) fn managed_receive(
     runtime: &DurableSyncRuntime,
     peer: u64,
@@ -240,6 +434,14 @@ fn permission_only_case(token: &str) {
     assert!(invalid.is_err());
     assert!(
         runtime
+            .store()
+            .basic_filter_operator_observation()
+            .expect("invalid request")
+            .maybe_read_fault
+            .is_none()
+    );
+    assert!(
+        runtime
             .network
             .peer_manager_snapshot()
             .expect("peers")
@@ -292,6 +494,14 @@ fn phase160_managed_completeness_catchup_prefix_and_crossing_missing_are_immedia
     // Assert
     assert_eq!(prefix.len(), 16);
     assert_unavailable(&runtime, missing, Unavailable::Missing);
+    assert!(
+        runtime
+            .store()
+            .basic_filter_operator_observation()
+            .expect("initial catchup absence")
+            .maybe_read_fault
+            .is_none()
+    );
     assert_eq!(
         runtime
             .network

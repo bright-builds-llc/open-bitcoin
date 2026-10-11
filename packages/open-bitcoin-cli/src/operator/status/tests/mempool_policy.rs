@@ -82,6 +82,7 @@ fn available_policy_mempool() -> MempoolStatus {
 fn live_rpc_with_policy_mempool() -> FakeStatusRpcClient {
     FakeStatusRpcClient {
         maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),

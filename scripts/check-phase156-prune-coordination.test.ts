@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { CHECK_FILES, CONTRACTS, DOC, SURFACE, checkPhase156PruneCoordination } from "./check-phase156-prune-coordination.ts";
+import { maybeRustFunction } from "./check-phase156-prune-coordination/rust-evidence.ts";
 
 const REPO = resolve(import.meta.dir, "..");
 const roots: string[] = [];
@@ -27,6 +28,172 @@ function append(root: string, file: string, added: string): void {
   writeFileSync(target, readFileSync(target, "utf8") + added);
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+
+const STARTUP = "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs";
+const LIFECYCLE = "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs";
+const FRESH_PREFLIGHT = "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;";
+const SAVED_PREFLIGHT = "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;";
+
+const recoveryOwnerProof = "let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {";
+for (const [mode, before, after] of [
+  ["false state", "if self.maybe_basic_filter_state()?.is_some()", "if false"],
+  ["inverted state", "if self.maybe_basic_filter_state()?.is_some()", "if self.maybe_basic_filter_state()?.is_none()"],
+  ["missing proof", recoveryOwnerProof, "let Some(owner) = None else {"],
+  ["premature total", recoveryOwnerProof, "control.install_retention(retained);\n" + recoveryOwnerProof],
+  ["early return", recoveryOwnerProof, "return Ok(());\n" + recoveryOwnerProof],
+] as const) {
+  test(`state-gated recovery rejects ${mode}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs", before, after);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-156-06"))).toBe(true);
+  });
+}
+
+test("disable epoch advance alone cannot replace read-integrity revocation", () => {
+  // Arrange
+  const root = fixture();
+  const target = join(root, LIFECYCLE);
+  const source = readFileSync(target, "utf8");
+  const changed = source.replace("control.invalidate_read_integrity()?;", "control.advance_integrity_epoch()?;");
+  const maybeDisable = maybeRustFunction(changed, "disable_basic_filter_index_guarded", true);
+  expect(maybeDisable?.body.includes("control.advance_integrity_epoch()?;")).toBe(true);
+  expect(maybeDisable?.body.includes("control.invalidate_read_integrity()?;")).toBe(false);
+  writeFileSync(target, changed);
+  // Act
+  const failures = checkPhase156PruneCoordination(root);
+  // Assert
+  expect(failures.some(item => item.includes("T-156-08"))).toBe(true);
+});
+for (const mode of ["removed", "conditional", "after return", "before validation", "ignored failure", "comment", "raw literal"]) {
+  test(`public disable verified reset refuses ${mode}`, () => {
+    // Arrange
+    const root = fixture();
+    const target = join(root, LIFECYCLE);
+    const source = readFileSync(target, "utf8");
+    const reset = "control.reset_verified_forest(retained);";
+    const changed = source.replace(/pub\(crate\) fn disable_basic_filter_index\([\s\S]*?^    }/m, body => {
+      if (mode === "before validation") return body.replace("self.disable_basic_filter_index_guarded(", `let retained = control.retention;\n${reset}\nself.disable_basic_filter_index_guarded(`);
+      if (mode === "ignored failure") return body.replace(/(RetentionObservationLimits::default\(\),\s*\))\?;/, "$1;");
+      const replacement = mode === "removed" ? "" : mode === "conditional" ? `if false { ${reset} }`
+        : mode === "after return" ? `return Ok(()); ${reset}` : mode === "comment" ? `// ${reset}` : `let decoy = r##"${reset}"##;`;
+      return body.replace(reset, replacement);
+    });
+    expect(changed).not.toBe(source);
+    writeFileSync(target, changed);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-156-08") || item.includes("production boundary"))).toBe(true);
+  });
+}
+for (const [file, statement, category] of [
+  [STARTUP, "self.inspect_basic_filter_recovery(owner, &fence)?;", "T-156-06"],
+  [STARTUP, "self.measure_basic_filter_records(limits)?", "T-156-06"],
+  [STARTUP, "self.filter_publication_guard()?;", "T-156-06"],
+  [LIFECYCLE, "self.maybe_basic_filter_checkpoint()?;", "T-156-08"],
+  [LIFECYCLE, FRESH_PREFLIGHT, "T-156-10"],
+  [LIFECYCLE, SAVED_PREFLIGHT, "T-156-10"],
+  [LIFECYCLE, "self.load_block(position.block_hash)?", "T-156-09"],
+  [LIFECYCLE, "self.load_undo(position.block_hash)?", "T-156-09"],
+] as const) {
+  test(`extracted mandatory validation cannot be conditional: ${statement}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, file, statement, `if false { ${statement} }`);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes(category) && item.includes("cannot be conditional"))).toBe(true);
+  });
+}
+for (const statement of ["owner.lifecycle().disable()", "locks.retain(|lock| lock.name != BASIC_INDEX_PRUNE_LOCK)",
+  "self.measure_basic_filter_records(limits)?;", ".check_prune_intent(intent.height)"]) {
+  test(`owned lifecycle protection/refusal remains required: ${statement}`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, LIFECYCLE, statement);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-156-08") || item.includes("T-156-10"))).toBe(true);
+  });
+}
+for (const preflight of [FRESH_PREFLIGHT, SAVED_PREFLIGHT]) {
+  test(`extracted suffix preflight after corresponding Active return refuses: ${preflight}`, () => {
+    // Arrange
+    const root = fixture();
+    const source = readFileSync(join(root, LIFECYCLE), "utf8");
+    const maybeReturn = [...source.matchAll(/return self\.install_recovered_basic_filter_append_guarded\([\s\S]*?\);/g)]
+      .find(match => preflight === FRESH_PREFLIGHT || match[0].includes(", retained)"));
+    if (!maybeReturn) throw new Error("missing actual recovered append return");
+    mutate(root, LIFECYCLE, preflight, "");
+    mutate(root, LIFECYCLE, maybeReturn[0], `${maybeReturn[0]}\n${preflight}`);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-156-10"))).toBe(true);
+  });
+}
+for (const [file, symbol, category] of [
+  [STARTUP, "configure_basic_filter_index_before_prune_with_retention_limits", "production boundary"],
+  [STARTUP, "recover_basic_filter_index_guarded", "T-156-06"],
+  [LIFECYCLE, "enable_basic_filter_index_guarded", "T-156-10"],
+  [LIFECYCLE, "disable_basic_filter_index_guarded", "T-156-08"],
+] as const) {
+  for (const substitute of ["comment", "raw literal", "test-only"]) {
+    test(`ordinary extracted ${symbol} cannot be substituted by ${substitute}`, () => {
+      // Arrange
+      const root = fixture();
+      const source = readFileSync(join(root, file), "utf8");
+      const maybeFunction = maybeRustFunction(source, symbol, true);
+      if (!maybeFunction) throw new Error("missing ordinary guarded fixture function");
+      mutate(root, file, `fn ${symbol}(`, `fn removed_${symbol}(`);
+      const decoy = `fn ${symbol}() { ${maybeFunction.body} }`;
+      append(root, file, substitute === "comment" ? `\n/* ${decoy} */\n`
+        : substitute === "raw literal" ? `\nconst DECOY: &str = r##"${decoy}"##;\n`
+          : `\n#[cfg(test)] pub(crate) mod counterfeit { ${decoy} }\n`);
+      // Act
+      const failures = checkPhase156PruneCoordination(root);
+      // Assert
+      expect(failures.some(item => item.includes(category) && item.includes(symbol))).toBe(true);
+    });
+  }
+}
+for (const [symbol, statement] of [
+  ["enable", "self.enable_basic_filter_index_guarded("],
+  ["disable", "self.disable_basic_filter_index_guarded("],
+] as const) {
+  test(`public ${symbol} wrapper cannot succeed before guarded helper`, () => {
+    // Arrange
+    const root = fixture();
+    mutate(root, LIFECYCLE, statement, `return Ok(());\n${statement}`);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("cannot be conditional or bypassed"))).toBe(true);
+  });
+}
+for (const symbol of ["enable", "disable"]) {
+  test(`public ${symbol} wrapper cannot conditionally invoke its guarded helper`, () => {
+    // Arrange
+    const root = fixture();
+    const source = readFileSync(join(root, LIFECYCLE), "utf8");
+    const expression = symbol === "enable"
+      ? /self\.enable_basic_filter_index_guarded\(\s*fence,\s*&mut control,\s*RetentionObservationLimits::default\(\),\s*\)/
+      : /self\.disable_basic_filter_index_guarded\(\s*&mut control,\s*RetentionObservationLimits::default\(\),\s*\)\?;/;
+    const maybeCall = source.match(expression);
+    if (!maybeCall) throw new Error("missing actual public wrapper call");
+    mutate(root, LIFECYCLE, maybeCall[0], `if false { ${maybeCall[0]} }`);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("cannot be conditional or bypassed"))).toBe(true);
+  });
+}
 
 test("current evidence passes without changing fixture bytes", () => {
   // Arrange

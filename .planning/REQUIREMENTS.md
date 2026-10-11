@@ -44,7 +44,7 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 - [x] **CFRP-01**: An authenticated client can call BASIC `getblockfilter` with pinned result shape, default filter type, error ordering and codes for disabled index, unknown block/type, never-connected block, indexing absence and corruption, including successful retained stale/pruned lookup.
 - [x] **CFRP-02**: An authenticated client can call `getindexinfo` with the pinned BASIC index name, `synced` and `best_block_height`, exact-name selection and empty-object absence; `synced` preserves Knots' initial-synchronization meaning.
-- [ ] **CFOP-01**: An operator can distinguish configured capability, initial catch-up, current lag, safe durable progress, missing history and index failures consistently across existing status RPC, repo-local CLI, dashboard and redacted support evidence; retained filter growth is separate from the soft block/undo prune target.
+- [x] **CFOP-01**: An operator can distinguish configured capability, initial catch-up, current lag, safe durable progress, missing history and index failures consistently across existing status RPC, repo-local CLI, dashboard and redacted support evidence; retained filter growth is separate from the soft block/undo prune target.
 
 ### Parity and Integrated Proof
 
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02 and CFNET-01–06 are Complete after Phases 154–160's lifecycle-valid verification and full native passes; the remaining four requirements are Pending.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02, CFNET-01–06 and CFOP-01 are Complete after Phases 154–161's lifecycle-valid verification and full native passes; CFPR-02 and CFGR-01/02 remain Pending for Phase 162.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
@@ -107,7 +107,7 @@ All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CF
 | CFNET-04 | Phase 160 | Complete |
 | CFNET-05 | Phase 160 | Complete |
 | CFNET-06 | Phase 160 | Complete |
-| CFOP-01 | Phase 161 | Pending |
+| CFOP-01 | Phase 161 | Complete |
 | CFPR-02 | Phase 162 | Pending |
 | CFGR-01 | Phase 162 | Pending |
 | CFGR-02 | Phase 162 | Pending |

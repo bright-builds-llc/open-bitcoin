@@ -121,6 +121,7 @@ fn stopped_snapshot() -> OpenBitcoinStatusSnapshot {
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
         prune: crate::status::PruneOperatorStatus::unread_disabled("not collected"),
+        basic_index: crate::status::BasicIndexOperatorStatus::default(),
     }
 }
 

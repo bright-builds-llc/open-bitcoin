@@ -69,9 +69,12 @@ pub(crate) fn redaction_summary() -> RedactionSummary {
     }
 }
 
+mod basic_index;
+
 pub(crate) fn support_status_for_bundle(
     mut status: OpenBitcoinStatusSnapshot,
 ) -> OpenBitcoinStatusSnapshot {
+    basic_index::redact_basic_index(&mut status.basic_index);
     redact_relay_mempool_evidence(&mut status.mempool.relay);
     redact_mempool_policy_groups(&mut status.mempool);
     redact_block_relay_evidence(&mut status.block_relay);

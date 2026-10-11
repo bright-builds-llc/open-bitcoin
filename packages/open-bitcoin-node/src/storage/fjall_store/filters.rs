@@ -16,6 +16,12 @@ use open_bitcoin_core::{
     primitives::BlockHash,
 };
 
+#[cfg(test)]
+thread_local! {
+    // Cumulative per caller thread; unlike per-pass point reads this never resets.
+    static BASIC_FILTER_VALIDATION_SCANS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 mod append;
 pub(crate) use append::{BasicFilterAppendOutcome, PreparedBasicFilterAppend};
 mod lifecycle;
@@ -24,6 +30,7 @@ pub(crate) use reorg::{CompletedBasicFilterReorg, PreparedBasicFilterReorg};
 mod ownership;
 pub(super) mod publication;
 pub(crate) mod query;
+pub(crate) mod retention;
 mod startup;
 mod turn_inputs;
 pub(crate) use ownership::{BasicFilterAppendProof, BasicFilterWorkToken};
@@ -32,6 +39,10 @@ pub(crate) use publication::PublicationControl;
 pub(crate) use publication::{BasicFilterWriterInterleave, FilterPublicationFault};
 
 impl FjallNodeStore {
+    #[cfg(test)]
+    pub(crate) fn basic_filter_validation_scans_for_test(&self) -> usize {
+        BASIC_FILTER_VALIDATION_SCANS.get()
+    }
     #[cfg(test)]
     pub(crate) fn basic_filter_point_reads_for_test(&self) -> usize {
         self.filter_integrity_reads
@@ -206,6 +217,17 @@ impl FjallNodeStore {
 
     /// Validate all immutable rows, including unclaimed suffix/fork rows.
     pub(crate) fn validate_basic_filter_records(&self) -> Result<(), StorageError> {
+        self.measure_basic_filter_records(retention::RetentionObservationLimits::default())
+            .map(|_| ())
+    }
+
+    fn measure_basic_filter_records(
+        &self,
+        limits: retention::RetentionObservationLimits,
+    ) -> Result<retention::RetainedBasicFilterObservation, StorageError> {
+        #[cfg(test)]
+        BASIC_FILTER_VALIDATION_SCANS.set(BASIC_FILTER_VALIDATION_SCANS.get() + 1);
+        let mut retained = retention::RetainedBasicFilterObservation::empty();
         #[cfg(test)]
         self.filter_integrity_reads
             .store(0, std::sync::atomic::Ordering::Relaxed);
@@ -219,6 +241,12 @@ impl FjallNodeStore {
             let key = std::str::from_utf8(&key)
                 .map_err(|_| index_corruption("BASIC record key encoding"))?;
             let parsed = codec::parse_record(key, &bytes)?;
+            retained.observe_lengths(
+                key.len() as u64,
+                bytes.len() as u64,
+                (bytes.len() - codec::RECORD_OVERHEAD) as u64,
+                limits,
+            );
             if parsed.height == 0 {
                 parsed.verify_parent(None)?;
                 continue;
@@ -251,7 +279,7 @@ impl FjallNodeStore {
                 return Err(index_corruption("BASIC suffix projection record height"));
             }
         }
-        Ok(())
+        Ok(retained)
     }
 
     fn count_filter_integrity_read(&self) {

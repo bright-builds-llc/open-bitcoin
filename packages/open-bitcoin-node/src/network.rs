@@ -155,6 +155,8 @@ pub struct ManagedPeerNetwork<S, V: CoinsView = MemoryCoinsView> {
     latest_mempool_recovery: Option<ManagedMempoolRecoverySummary>,
     latest_mempool_recovery_storage_error: Option<crate::status::SyncRecoveryCategory>,
     local_config: LocalPeerConfig,
+    maybe_configured_basic_indexing: Option<bool>,
+    configured_basic_peer_serving: bool,
     prune_mode: PruneMode,
     serving_have_pruned: bool,
     blocks_by_hash: BTreeMap<BlockHash, Block>,

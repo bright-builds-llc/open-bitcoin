@@ -34,6 +34,7 @@ mod detection;
 mod http;
 mod recovery_evidence;
 mod render;
+pub(crate) use render::basic_index_entries;
 mod resource_bounds;
 mod service_status;
 mod sync_state;
@@ -234,6 +235,7 @@ fn collect_live_status_snapshot(
     let inbound = network_status.inbound;
     let block_relay = network_status.block_relay;
     let chainstate_durability = network_status.chainstate_durability;
+    let basic_index = network_status.basic_index;
     let metrics = network_status.metrics;
     let prune = network_status.prune.clone();
 
@@ -264,6 +266,7 @@ fn collect_live_status_snapshot(
         health_signals,
         build: current_build_provenance(),
         prune,
+        basic_index,
     }
 }
 
@@ -326,6 +329,9 @@ fn stopped_status_snapshot(
         health_signals,
         build: current_build_provenance(),
         prune,
+        basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::unavailable(
+            open_bitcoin_node::status::BasicIndexUnavailableReason::LiveUnavailable,
+        ),
     }
 }
 
@@ -363,6 +369,9 @@ fn collect_open_bitcoin_network_status(
     match rpc_client.get_open_bitcoin_network_status() {
         Ok(status) => status,
         Err(error) => OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::unavailable(
+                open_bitcoin_node::status::BasicIndexUnavailableReason::LiveUnavailable,
+            ),
             inbound: FieldAvailability::unavailable(inbound_status_unavailable_reason(&error)),
             relay: RelayEvidenceStatus::default(),
             block_relay: BlockRelayEvidenceStatus::default_unavailable(),

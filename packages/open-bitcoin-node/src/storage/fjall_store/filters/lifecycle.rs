@@ -7,7 +7,9 @@
 //! Holding publication stops token issuance throughout each durable transition.
 
 use super::super::prune::{PRUNE_LOCKS_KEY, encode_prune_locks};
+use super::PublicationControl;
 use super::publication::{LifecyclePublicationPoint, lifecycle_fault};
+use super::retention::{RetainedBasicFilterObservation, RetentionObservationLimits};
 use super::startup::InspectedBasicFilterRecovery;
 use super::{FjallNodeStore, StorageError, StoredFilterState, codec, index_corruption};
 use fjall::PersistMode;
@@ -30,39 +32,61 @@ impl FjallNodeStore {
     /// Retry Disabled-with-lock completes release without advancing generation.
     pub(crate) fn disable_basic_filter_index(&self) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
-        control.advance_integrity_epoch()?;
+        control.maybe_read_fault_protection = None;
+        self.disable_basic_filter_index_guarded(
+            &mut control,
+            RetentionObservationLimits::default(),
+        )?;
+        let retained = control.retention;
+        control.reset_verified_forest(retained);
+        Ok(())
+    }
+
+    pub(super) fn disable_basic_filter_index_guarded(
+        &self,
+        control: &mut PublicationControl,
+        limits: RetentionObservationLimits,
+    ) -> Result<(), StorageError> {
+        control.invalidate_read_integrity()?;
         control.invalidate_append()?;
-        let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {
+        let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {
+            control.read_integrity = true;
+            control.install_retention(RetainedBasicFilterObservation::empty());
             return Ok(());
         };
-        self.validate_basic_filter_records()?;
+        let retained = self.measure_basic_filter_records(limits)?;
         self.maybe_basic_filter_checkpoint()?;
         let disabled = owner.lifecycle().disable().map_err(index_corruption)?;
         if disabled != owner.lifecycle() {
-            lifecycle_fault(&mut control, LifecyclePublicationPoint::BeforeDisable)?;
+            lifecycle_fault(control, LifecyclePublicationPoint::BeforeDisable)?;
             let mut batch = self.db.batch().durability(Some(PersistMode::SyncAll));
             batch.insert(
                 &self.block_index,
                 codec::ownership::OWNER_KEY,
                 codec::ownership::encode_owner(disabled),
             );
-            self.finish_basic_filter_batch(batch, &mut control)?;
-            lifecycle_fault(&mut control, LifecyclePublicationPoint::AfterDisable)?;
+            self.finish_basic_filter_batch(batch, control)?;
+            lifecycle_fault(control, LifecyclePublicationPoint::AfterDisable)?;
         }
         let mut locks = self.load_prune_locks()?;
         if !locks.iter().any(|lock| lock.name == BASIC_INDEX_PRUNE_LOCK) {
+            control.read_integrity = true;
+            control.install_retention(retained);
             return Ok(());
         }
         locks.retain(|lock| lock.name != BASIC_INDEX_PRUNE_LOCK);
-        lifecycle_fault(&mut control, LifecyclePublicationPoint::BeforeRelease)?;
+        lifecycle_fault(control, LifecyclePublicationPoint::BeforeRelease)?;
         let mut batch = self.db.batch().durability(Some(PersistMode::SyncAll));
         batch.insert(
             &self.block_index,
             PRUNE_LOCKS_KEY,
             encode_prune_locks(&locks)?,
         );
-        self.finish_basic_filter_batch(batch, &mut control)?;
-        lifecycle_fault(&mut control, LifecyclePublicationPoint::AfterRelease)
+        self.finish_basic_filter_batch(batch, control)?;
+        lifecycle_fault(control, LifecyclePublicationPoint::AfterRelease)?;
+        control.read_integrity = true;
+        control.install_retention(retained);
+        Ok(())
     }
 
     /// Preflight retained authoritative inputs, then acquire protection and Active
@@ -72,22 +96,51 @@ impl FjallNodeStore {
         fence: &VerifiedChainstateFence<'_>,
     ) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
+        let maybe_previous_fault = control.maybe_read_fault;
+        let result = self.enable_basic_filter_index_guarded(
+            fence,
+            &mut control,
+            RetentionObservationLimits::default(),
+        );
+        if result.is_err() {
+            control.maybe_read_fault = maybe_previous_fault;
+            control.maybe_read_fault_protection = None;
+            control.read_integrity = false;
+            control.install_retention(RetainedBasicFilterObservation::Failed);
+        } else {
+            let retained = control.retention;
+            control.reset_verified_forest(retained);
+        }
+        result
+    }
+
+    pub(super) fn enable_basic_filter_index_guarded(
+        &self,
+        fence: &VerifiedChainstateFence<'_>,
+        control: &mut PublicationControl,
+        limits: RetentionObservationLimits,
+    ) -> Result<(), StorageError> {
+        control.invalidate_read_integrity()?;
         control.invalidate_append()?;
         self.verify_basic_filter_fence(fence)?;
-        let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {
+        let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {
             self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;
             if let Some(intent) = self.maybe_prune_intent()? {
                 IndexInputProtection::FromHeight(0)
                     .check_prune_intent(intent.height)
                     .map_err(index_corruption)?;
             }
-            lifecycle_fault(&mut control, LifecyclePublicationPoint::BeforeEnable)?;
-            self.initialize_basic_filter_state_guarded(fence, &mut control)?;
-            lifecycle_fault(&mut control, LifecyclePublicationPoint::AfterEnable)?;
-            return self.install_recovered_basic_filter_append_guarded(fence, &mut control);
+            lifecycle_fault(control, LifecyclePublicationPoint::BeforeEnable)?;
+            self.initialize_basic_filter_state_guarded(fence, control)?;
+            lifecycle_fault(control, LifecyclePublicationPoint::AfterEnable)?;
+            return self.install_recovered_basic_filter_append_guarded(
+                fence,
+                control,
+                super::retention::RetainedBasicFilterObservation::empty(),
+            );
         };
         let active = owner.lifecycle().enable().map_err(index_corruption)?;
-        self.validate_basic_filter_records()?;
+        let retained = self.measure_basic_filter_records(limits)?;
         let InspectedBasicFilterRecovery {
             checkpoint,
             protection,
@@ -105,7 +158,7 @@ impl FjallNodeStore {
             && !reconcile
             && self.maybe_basic_filter_lifecycle()?.is_some()
         {
-            return self.install_recovered_basic_filter_append_guarded(fence, &mut control);
+            return self.install_recovered_basic_filter_append_guarded(fence, control, retained);
         }
         let mut locks = self.load_prune_locks()?;
         locks.retain(|lock| lock.name != BASIC_INDEX_PRUNE_LOCK);
@@ -137,10 +190,10 @@ impl FjallNodeStore {
             PRUNE_LOCKS_KEY,
             encode_prune_locks(&locks)?,
         );
-        lifecycle_fault(&mut control, LifecyclePublicationPoint::BeforeEnable)?;
-        self.finish_basic_filter_batch(batch, &mut control)?;
-        lifecycle_fault(&mut control, LifecyclePublicationPoint::AfterEnable)?;
-        self.install_recovered_basic_filter_append_guarded(fence, &mut control)
+        lifecycle_fault(control, LifecyclePublicationPoint::BeforeEnable)?;
+        self.finish_basic_filter_batch(batch, control)?;
+        lifecycle_fault(control, LifecyclePublicationPoint::AfterEnable)?;
+        self.install_recovered_basic_filter_append_guarded(fence, control, retained)
     }
 
     fn preflight_basic_filter_history(

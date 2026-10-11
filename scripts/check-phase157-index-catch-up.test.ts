@@ -39,6 +39,125 @@ function mutateFunction(root: string, file: string, symbol: string, transform: (
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
+const LIFECYCLE = NODE + "storage/fjall_store/filters/lifecycle.rs";
+const RETENTION = NODE + "storage/fjall_store/filters/retention.rs";
+const FRESH_PREFLIGHT = "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;";
+const SAVED_PREFLIGHT = "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;";
+for (const [symbol, statement] of [
+  ["enable_basic_filter_index_guarded", FRESH_PREFLIGHT],
+  ["enable_basic_filter_index_guarded", SAVED_PREFLIGHT],
+  ["preflight_basic_filter_history", "self.load_block(position.block_hash)?"],
+  ["preflight_basic_filter_history", "self.load_undo(position.block_hash)?"],
+] as const) {
+  test(`extracted guarded suffix/input validation cannot be conditional: ${statement}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateFunction(root, LIFECYCLE, symbol, body => body.replace(pattern(statement), `if false { ${statement} }`));
+    // Act
+    const failures = checkPhase157IndexCatchUp(root);
+    // Assert
+    expect(failures.some(item => item.includes("mandatory guarded preflight") && item.includes(symbol))).toBe(true);
+  });
+}
+for (const preflight of [FRESH_PREFLIGHT, SAVED_PREFLIGHT]) {
+  test(`required suffix after corresponding Active return refuses: ${preflight}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateFunction(root, LIFECYCLE, "enable_basic_filter_index_guarded", body => {
+      const maybeReturn = [...body.matchAll(/return self\.install_recovered_basic_filter_append_guarded\([\s\S]*?\);/g)]
+        .find(match => preflight === FRESH_PREFLIGHT || match[0].includes(", retained)"));
+      if (!maybeReturn) throw new Error("missing actual recovered append return");
+      return body.replace(preflight, "").replace(maybeReturn[0], `${maybeReturn[0]}\n${preflight}`);
+    });
+    // Act
+    const failures = checkPhase157IndexCatchUp(root);
+    // Assert
+    expect(failures.some(item => item.includes("enable_basic_filter_index_guarded"))).toBe(true);
+  });
+}
+test("public enable wrapper cannot succeed before guarded helper", () => {
+  // Arrange
+  const root = fixture();
+  mutateFunction(root, LIFECYCLE, "enable_basic_filter_index", body => body.replace("{", "{ return Ok(());"));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures.some(item => item.includes("mandatory guarded preflight") && item.includes("bypassed"))).toBe(true);
+});
+test("public enable wrapper cannot conditionally invoke guarded helper", () => {
+  // Arrange
+  const root = fixture();
+  mutateFunction(root, LIFECYCLE, "enable_basic_filter_index", body => body.replace("{", "{ if false {").replace(/}\s*$/, "} }"));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures.some(item => item.includes("mandatory guarded preflight"))).toBe(true);
+});
+test("shared immutable admission cannot conditionally enforce ceilings", () => {
+  // Arrange
+  const root = fixture();
+  mutateFunction(root, RETENTION, "check_envelope_bounds", body => body.replace("{", "{ if false {").replace(/}\s*$/, "} }"));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures.some(item => item.includes("shared immutable admission"))).toBe(true);
+});
+test("shared immutable admission moved after allocation refuses", () => {
+  // Arrange
+  const root = fixture();
+  mutateFunction(root, NODE + "storage/fjall_store/filters/append.rs", "prepare_basic_filter_append_guarded_positions", body =>
+    body.replace("check_envelope_bounds(records)?;", "")
+      .replace("let mut prepared = PreparedBasicFilterAppend {", "let mut prepared = PreparedBasicFilterAppend {\ncheck_envelope_bounds(records)?;"));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures.some(item => item.includes("mandatory immutable admission"))).toBe(true);
+});
+for (const symbol of ["enable_basic_filter_index", "enable_basic_filter_index_guarded"]) {
+  for (const substitute of ["comment", "raw literal", "test-only"]) {
+    test(`ordinary ${symbol} cannot be replaced by ${substitute}`, () => {
+      // Arrange
+      const root = fixture();
+      const source = readFileSync(join(root, LIFECYCLE), "utf8");
+      const maybeBody = maybeFunction(source, symbol, true);
+      if (!maybeBody) throw new Error("missing actual enable function");
+      mutateFunction(root, LIFECYCLE, symbol, body => body.replace(`fn ${symbol}(`, `fn removed_${symbol}(`));
+      const decoy = `fn ${symbol}() { ${maybeBody.body} }`;
+      edit(root, LIFECYCLE, source => source + (substitute === "comment" ? `\n/* ${decoy} */\n`
+        : substitute === "raw literal" ? `\nconst DECOY: &str = r##"${decoy}"##;\n`
+          : `\n#[cfg(test)] pub(crate) mod counterfeit { ${decoy} }\n`));
+      // Act
+      const failures = checkPhase157IndexCatchUp(root);
+      // Assert
+      expect(failures.some(item => item.includes(`${LIFECYCLE}:${symbol}`))).toBe(true);
+    });
+  }
+}
+for (const refusal of ["BASIC append record count bound", "BASIC append singleton byte bound", "BASIC append aggregate byte bound"]) {
+  test(`shared immutable admission refusal remains required: ${refusal}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateFunction(root, RETENTION, "check_envelope_bounds", body => body.replace(`return Err(index_corruption("${refusal}"));`, "removed_refusal();"));
+    // Act
+    const failures = checkPhase157IndexCatchUp(root);
+    // Assert
+    expect(failures.some(item => item.includes("shared immutable admission"))).toBe(true);
+  });
+}
+for (const substitute of ["if false { check_envelope_bounds(records)?; }", "return Ok(Default::default()); check_envelope_bounds(records)?;",
+  "// check_envelope_bounds(records)?;", 'let decoy = r##"check_envelope_bounds(records)?;"##;']) {
+  test(`shared immutable admission bypass refuses: ${substitute}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateFunction(root, NODE + "storage/fjall_store/filters/append.rs", "prepare_basic_filter_append_guarded_positions",
+      body => body.replace("check_envelope_bounds(records)?;", substitute));
+    // Act
+    const failures = checkPhase157IndexCatchUp(root);
+    // Assert
+    expect(failures.some(item => item.includes("mandatory immutable admission"))).toBe(true);
+  });
+}
+
 test("positive snapshot passes and preserves every evidence byte", () => {
   // Arrange
   const root = fixture();

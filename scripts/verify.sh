@@ -147,6 +147,8 @@ bun test ./scripts/check-phase159-filter-rpcs.test.ts
 bun run scripts/check-phase159-filter-rpcs.ts
 bun test ./scripts/check-phase160-peer-filter-serving.test.ts
 bun run scripts/check-phase160-peer-filter-serving.ts
+bun test ./scripts/check-phase161-operator-index-evidence.test.ts
+bun run scripts/check-phase161-operator-index-evidence.ts
 bun test ./scripts/generate-peer-filter-fixtures.test.ts
 bun run scripts/generate-peer-filter-fixtures.ts --check
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
@@ -335,6 +337,8 @@ run_step "test Phase 159 authenticated filter RPC checker" bun test ./scripts/ch
 run_step "check Phase 159 authenticated filter RPC evidence" bun run scripts/check-phase159-filter-rpcs.ts
 run_step "test Phase 160 bounded peer filter checker" bun test ./scripts/check-phase160-peer-filter-serving.test.ts
 run_step "check Phase 160 bounded peer filter evidence" bun run scripts/check-phase160-peer-filter-serving.ts
+run_step "test Phase 161 operator index evidence checker" bun test ./scripts/check-phase161-operator-index-evidence.test.ts
+run_step "check Phase 161 operator index evidence" bun run scripts/check-phase161-operator-index-evidence.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts

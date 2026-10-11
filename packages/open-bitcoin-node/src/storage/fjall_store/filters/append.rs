@@ -6,16 +6,14 @@
 //! Bounded consecutive publication. Recovery remains the complete-history proof.
 
 use super::publication::{checkpoint_fault, protection_fault, records_fault};
+use super::retention::check_envelope_bounds;
 use super::{
     BasicFilterAppendProof, FjallNodeStore, StorageError, StorageNamespace, codec, index_corruption,
 };
 use crate::storage::fjall_store::prune::{PRUNE_LOCKS_KEY, encode_prune_locks};
 use open_bitcoin_core::chainstate::{
     BASIC_INDEX_PRUNE_LOCK, FilterCheckpoint, FilterRecordIdentity, IndexPrefix,
-    filter_index::catch_up::{
-        BASIC_INDEX_MAX_CANDIDATES, BASIC_INDEX_MAX_ENCODED_BYTES,
-        BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES, TurnWork,
-    },
+    filter_index::catch_up::{BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES, TurnWork},
 };
 
 /// Private prepared bytes cannot be altered or moved to another store/frontier.
@@ -326,6 +324,8 @@ impl FjallNodeStore {
             },
             maximum_work,
         )?;
+        let starting = control.retention;
+        let retained = control.retention_after_append(starting, &prepared.records)?;
         let mut batch = self
             .db
             .batch()
@@ -344,6 +344,7 @@ impl FjallNodeStore {
         protection_fault(&mut control)?;
         batch.insert(&self.block_index, PRUNE_LOCKS_KEY, lock_bytes);
         self.finish_basic_filter_batch(batch, &mut control)?;
+        control.install_retention(retained);
         identity.owner = owner;
         identity.processed = prepared.processed;
         identity.safe_checkpoint = prepared.safe_checkpoint;
@@ -562,28 +563,6 @@ fn maybe_checkpoint_endpoint(
         IndexPrefix::Empty => None,
         IndexPrefix::Committed(id) => Some((id.height(), id.block_hash())),
     }
-}
-
-fn check_envelope_bounds(records: &[codec::StoredFilterRecord]) -> Result<(), StorageError> {
-    if records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES {
-        return Err(index_corruption("BASIC append record count bound"));
-    }
-    let mut total = 0_u64;
-    for record in records {
-        let envelope = (record.encoded_bytes().len() as u64)
-            .checked_add(codec::RECORD_OVERHEAD as u64)
-            .ok_or_else(|| index_corruption("BASIC append byte overflow"))?;
-        if envelope > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES {
-            return Err(index_corruption("BASIC append singleton byte bound"));
-        }
-        total = total
-            .checked_add(envelope)
-            .ok_or_else(|| index_corruption("BASIC append byte overflow"))?;
-        if total > BASIC_INDEX_MAX_ENCODED_BYTES {
-            return Err(index_corruption("BASIC append aggregate byte bound"));
-        }
-    }
-    Ok(())
 }
 
 impl BasicFilterAppendProof {

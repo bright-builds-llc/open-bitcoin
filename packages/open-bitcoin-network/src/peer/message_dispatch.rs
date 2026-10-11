@@ -176,14 +176,20 @@ impl PeerManager {
         let local_nonce = self.local_config.nonce;
         let maybe_sender = maybe_version_sender_address(&self.local_address_decisions);
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
+        let old = peer.basic_scope;
         if peer.remote_version_received {
+            peer.basic_scope = super::BasicPeerScope::default();
+            self.transition_basic_peer_scope(old, super::BasicPeerScope::default());
             return Ok(vec![PeerAction::Disconnect(
                 DisconnectReason::DuplicateVersion,
             )]);
         }
 
         if peer.role == ConnectionRole::Inbound && version.nonce == local_nonce {
-            return Ok(vec![reject_self_connection(peer, version.nonce)]);
+            let action = reject_self_connection(peer, version.nonce);
+            peer.basic_scope = super::BasicPeerScope::default();
+            self.transition_basic_peer_scope(old, super::BasicPeerScope::default());
+            return Ok(vec![action]);
         }
 
         peer.remote_version_received = true;
@@ -213,6 +219,8 @@ impl PeerManager {
             actions.push(PeerAction::Send(WireNetworkMessage::Verack));
             actions.push(PeerAction::Send(WireNetworkMessage::SendHeaders));
         }
+        let new = peer.basic_scope;
+        self.transition_basic_peer_scope(old, new);
         Ok(actions)
     }
 

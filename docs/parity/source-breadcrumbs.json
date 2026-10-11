@@ -12,6 +12,56 @@
   },
   "groups": [
     {
+      "label": "phase161-genuine-operator-callers",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/operator_evidence.rs",
+        "packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs",
+        "packages/open-bitcoin-cli/tests/operator_flows/basic_index/captured.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/operator_status/captures.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/catch_up/rpc_faults/captures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase161-basic-operator-authority",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/operator_status.rs",
+        "packages/open-bitcoin-node/src/network/operator_snapshot/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase161-recovered-basic-retention-observation",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/retention.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/retention.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/retention/recovery.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/retention/publication.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "phase161-shared-basic-status-contract",
+      "files": [
+        "packages/open-bitcoin-node/src/status/basic_index.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
       "label": "phase160-independent-peer-wire-goldens",
       "files": [
         "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport/wire_goldens.rs"
@@ -205,6 +255,18 @@
       "breadcrumbs": [
         "packages/bitcoin-knots/src/init.cpp",
         "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase161-basic-peer-scope",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/basic_operator.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_permissions.h",
+        "packages/bitcoin-knots/src/net_permissions.cpp",
+        "packages/bitcoin-knots/src/init.cpp",
         "packages/bitcoin-knots/src/net_processing.cpp"
       ]
     },
@@ -1097,6 +1159,8 @@
         "packages/open-bitcoin-cli/src/operator/status/render/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/prune.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/basic_index.rs",
+        "packages/open-bitcoin-cli/src/operator/status/render/tests/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/relay.rs",
         "packages/open-bitcoin-cli/src/operator/status/render/tests.rs",
         "packages/open-bitcoin-cli/src/operator/status/service_status.rs",
@@ -1112,6 +1176,7 @@
         "packages/open-bitcoin-cli/src/operator/status/tests/restart_resume.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/service_manager.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/snapshot.rs",
+        "packages/open-bitcoin-cli/src/operator/status/tests/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/prune_snapshot.rs",
         "packages/open-bitcoin-cli/src/operator/status/tests/status_inputs.rs",
         "packages/open-bitcoin-cli/tests/operator_binary/compatibility_wallet.rs",
@@ -1137,16 +1202,19 @@
         "packages/open-bitcoin-cli/src/operator/support/live_smoke/tests.rs",
         "packages/open-bitcoin-cli/src/operator/support/progress_guarantee.rs",
         "packages/open-bitcoin-cli/src/operator/support/redaction.rs",
+        "packages/open-bitcoin-cli/src/operator/support/redaction/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/support/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/support/render.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/block_relay.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/prune.rs",
+        "packages/open-bitcoin-cli/src/operator/support/render/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/text.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/support/render/relay.rs",
         "packages/open-bitcoin-cli/src/operator/support/soak_evidence.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/support/tests/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/forensics_recovery_relay.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/inbound.rs",
         "packages/open-bitcoin-cli/src/operator/support/tests/mempool_policy.rs",
@@ -1197,7 +1265,9 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/action.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/app.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/app/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/app/tests/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/basic_index_section.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/block_relay.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/chainstate_durability.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/metric_labels.rs",
@@ -1208,6 +1278,7 @@
         "packages/open-bitcoin-cli/src/operator/dashboard/model/resource_bounds.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/sync_section.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
+        "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/basic_index.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/mempool_policy.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/projection.rs",
         "packages/open-bitcoin-cli/src/operator/dashboard/model/tests/prune.rs",

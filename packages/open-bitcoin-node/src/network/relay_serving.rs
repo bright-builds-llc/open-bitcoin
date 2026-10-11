@@ -409,6 +409,10 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
             snapshot_effect_ledger: super::lifecycle_effects::SnapshotEffectLedger::default(),
             latest_mempool_recovery: None,
             latest_mempool_recovery_storage_error: None,
+            configured_basic_peer_serving: local_config
+                .services
+                .contains(open_bitcoin_network::ServiceFlags::COMPACT_FILTERS),
+            maybe_configured_basic_indexing: None,
             local_config,
             prune_mode: PruneMode::Disabled,
             serving_have_pruned: false,
@@ -478,6 +482,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             snapshot_effect_ledger: super::lifecycle_effects::SnapshotEffectLedger::default(),
             latest_mempool_recovery: None,
             latest_mempool_recovery_storage_error: None,
+            configured_basic_peer_serving: local_config
+                .services
+                .contains(open_bitcoin_network::ServiceFlags::COMPACT_FILTERS),
+            maybe_configured_basic_indexing: None,
             local_config,
             prune_mode: PruneMode::Disabled,
             serving_have_pruned: false,

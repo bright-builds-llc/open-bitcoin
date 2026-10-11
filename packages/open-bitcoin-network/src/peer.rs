@@ -15,7 +15,7 @@ use crate::block_serving::BlockRelayActivationPolicy;
 use crate::compact_download::CompactDownloadPeerState;
 use crate::error::{DisconnectReason, NetworkError, PeerId};
 use crate::header_store::HeaderStore;
-use crate::inbound::{InboundAdmissionRejectionReason, InboundHandshakeState, InboundPeerRecord};
+use crate::inbound::{InboundAdmissionRejectionReason, InboundPeerRecord};
 use crate::message::{
     HeadersMessage, InventoryList, LocalPeerConfig, ServiceFlags, WireNetworkMessage,
 };
@@ -34,6 +34,8 @@ use open_bitcoin_primitives::{
 use std::collections::{BTreeMap, BTreeSet};
 
 mod address_boundary;
+mod basic_operator;
+pub use basic_operator::BasicPeerScope;
 mod compact_download_state;
 mod compact_relay;
 mod inbound_state;
@@ -120,6 +122,7 @@ pub enum PeerAction {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PeerState {
+    basic_scope: BasicPeerScope,
     pub role: ConnectionRole,
     /// Services actually offered on this session's local version message.
     pub own_advertised_services: ServiceFlags,
@@ -148,6 +151,7 @@ pub struct PeerState {
 impl PeerState {
     fn new(role: ConnectionRole) -> Self {
         Self {
+            basic_scope: BasicPeerScope::default(),
             role,
             own_advertised_services: ServiceFlags::from_bits(0),
             remote_start_height: -1,
@@ -173,13 +177,6 @@ impl PeerState {
         }
     }
 
-    fn from_inbound_record(mut record: InboundPeerRecord) -> Self {
-        record.handshake_state = InboundHandshakeState::Handshaking;
-        let mut state = Self::new(ConnectionRole::Inbound);
-        state.maybe_inbound_record = Some(record);
-        state
-    }
-
     fn handshake_established(&self) -> bool {
         self.remote_version_received && self.local_verack_sent && self.remote_verack_received
     }
@@ -198,6 +195,11 @@ impl PeerState {
             capability = record.permission_decision.basic_filter_capability();
         }
         self.own_advertised_services = capability.own_services(base);
+        self.basic_scope = BasicPeerScope::from_capability(
+            capability,
+            self.own_advertised_services
+                .contains(ServiceFlags::COMPACT_FILTERS),
+        );
         self.own_advertised_services
     }
 }
@@ -207,6 +209,7 @@ pub struct PeerManager {
     local_config: LocalPeerConfig,
     headers: HeaderStore,
     peers: BTreeMap<PeerId, PeerState>,
+    maybe_basic_scope: Option<BasicPeerScope>,
     known_blocks: BTreeSet<BlockHash>,
     known_txids: BTreeSet<Txid>,
     known_wtxids: BTreeSet<Wtxid>,
@@ -275,6 +278,7 @@ impl PeerManager {
             local_config,
             headers: HeaderStore::default(),
             peers: BTreeMap::new(),
+            maybe_basic_scope: Some(BasicPeerScope::default()),
             known_blocks: BTreeSet::new(),
             known_txids: BTreeSet::new(),
             known_wtxids: BTreeSet::new(),
@@ -507,6 +511,7 @@ impl PeerManager {
             .local_config
             .version_message(timestamp, self.headers.best_height());
         version.services = state.snapshot_own_services(self.local_config.services);
+        self.transition_basic_peer_scope(BasicPeerScope::default(), state.basic_scope);
         self.peers.insert(peer_id, state);
         Ok(vec![PeerAction::Send(WireNetworkMessage::Version(version))])
     }

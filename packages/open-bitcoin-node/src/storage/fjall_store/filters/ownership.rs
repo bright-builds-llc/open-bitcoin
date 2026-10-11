@@ -320,6 +320,7 @@ impl FjallNodeStore {
         &self,
         fence: &VerifiedChainstateFence<'_>,
         control: &mut PublicationControl,
+        retained: super::retention::RetainedBasicFilterObservation,
     ) -> Result<(), StorageError> {
         let owner = self
             .maybe_basic_filter_owner_guarded(control)?
@@ -340,7 +341,7 @@ impl FjallNodeStore {
             projection_authority: BasicFilterProjectionAuthority::RecoveredPrefix,
             maybe_replacement: None,
         });
-        control.read_integrity = true;
+        control.reset_verified_forest(retained);
         Ok(())
     }
 
@@ -524,6 +525,11 @@ impl FjallNodeStore {
         fence: &VerifiedChainstateFence<'_>,
     ) -> Result<Option<BasicFilterWorkToken>, StorageError> {
         let mut control = self.filter_publication_guard()?;
+        if control.maybe_read_fault.is_some() {
+            return Err(index_corruption(
+                "BASIC observed read fault requires exclusive recovery",
+            ));
+        }
         if control.maybe_reorg_suspension.is_some() {
             return Err(index_corruption("BASIC work suspended for reorg preview"));
         }
@@ -551,6 +557,11 @@ impl FjallNodeStore {
         fence: &VerifiedChainstateFence<'_>,
         control: &PublicationControl,
     ) -> Result<(), StorageError> {
+        if control.maybe_read_fault.is_some() {
+            return Err(index_corruption(
+                "BASIC observed read fault requires exclusive recovery",
+            ));
+        }
         if control.maybe_reorg_suspension.is_some() {
             return Err(index_corruption(
                 "BASIC publication suspended for reorg preview",

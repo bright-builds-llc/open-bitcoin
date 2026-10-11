@@ -218,6 +218,7 @@ fn test_snapshot() -> OpenBitcoinStatusSnapshot {
         }],
         build: BuildProvenance::unavailable(),
         prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
+        basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
     }
 }
 
@@ -333,6 +334,7 @@ fn phase77_recovery_evidence() -> RecoveryEvidenceSnapshot {
     }
 }
 
+mod basic_index;
 mod mempool_policy;
 mod projection;
 mod prune;

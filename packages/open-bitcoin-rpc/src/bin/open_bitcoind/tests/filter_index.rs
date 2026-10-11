@@ -17,6 +17,9 @@ mod rpc;
 #[path = "filter_index/peer_serving.rs"]
 mod peer_serving;
 
+#[path = "filter_index/operator_evidence.rs"]
+mod operator_evidence;
+
 #[test]
 fn phase157_daemon_explicit_zero_preserves_complete_saved_checkpoint_on_reopen() {
     // Arrange

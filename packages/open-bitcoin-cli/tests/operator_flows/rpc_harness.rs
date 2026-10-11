@@ -40,7 +40,23 @@ pub(super) struct RpcTestServer {
 }
 
 impl RpcTestServer {
-    pub(super) fn start(context: ManagedRpcContext) -> Self {
+    pub(super) fn start<S, V>(context: ManagedRpcContext<S, V>) -> Self
+    where
+        S: open_bitcoin_node::ChainstateStore + Send + 'static,
+        V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+    {
+        Self::start_with_response_transform(context, |_, result| result)
+    }
+
+    pub(super) fn start_with_response_transform<S, V, F>(
+        context: ManagedRpcContext<S, V>,
+        transform: F,
+    ) -> Self
+    where
+        S: open_bitcoin_node::ChainstateStore + Send + 'static,
+        V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+        F: Fn(&str, Value) -> Value + Send + 'static,
+    {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         listener
             .set_nonblocking(true)
@@ -56,7 +72,7 @@ impl RpcTestServer {
                 }
 
                 match listener.accept() {
-                    Ok((stream, _)) => handle_connection(stream, &shared_context),
+                    Ok((stream, _)) => handle_connection(stream, &shared_context, &transform),
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
                         thread::sleep(Duration::from_millis(10));
                     }
@@ -82,10 +98,17 @@ impl Drop for RpcTestServer {
     }
 }
 
-pub(super) fn handle_connection(mut stream: TcpStream, context: &Arc<Mutex<ManagedRpcContext>>) {
+pub(super) fn handle_connection<S, V>(
+    mut stream: TcpStream,
+    context: &Arc<Mutex<ManagedRpcContext<S, V>>>,
+    transform: &impl Fn(&str, Value) -> Value,
+) where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     stream.set_nonblocking(false).expect("blocking stream");
     let request = read_request(&mut stream);
-    let response = build_response(context, request);
+    let response = build_response(context, request, transform);
     stream
         .write_all(response.as_bytes())
         .expect("response write");
@@ -150,10 +173,15 @@ pub(super) fn read_request(stream: &mut TcpStream) -> HttpRequest {
     }
 }
 
-pub(super) fn build_response(
-    context: &Arc<Mutex<ManagedRpcContext>>,
+pub(super) fn build_response<S, V>(
+    context: &Arc<Mutex<ManagedRpcContext<S, V>>>,
     request: HttpRequest,
-) -> String {
+    transform: &impl Fn(&str, Value) -> Value,
+) -> String
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     if request.method != "POST" {
         return plain_response(405, "JSONRPC server handles only POST requests");
     }
@@ -179,11 +207,11 @@ pub(super) fn build_response(
     };
 
     match value {
-        Value::Object(_) => json_response(200, handle_single_request(context, value)),
+        Value::Object(_) => json_response(200, handle_single_request(context, value, transform)),
         Value::Array(items) => {
             let responses = items
                 .into_iter()
-                .map(|item| handle_single_request(context, item))
+                .map(|item| handle_single_request(context, item, transform))
                 .collect::<Vec<_>>();
             json_response(200, Value::Array(responses))
         }
@@ -201,10 +229,15 @@ pub(super) fn build_response(
     }
 }
 
-pub(super) fn handle_single_request(
-    context: &Arc<Mutex<ManagedRpcContext>>,
+pub(super) fn handle_single_request<S, V>(
+    context: &Arc<Mutex<ManagedRpcContext<S, V>>>,
     value: Value,
-) -> Value {
+    transform: &impl Fn(&str, Value) -> Value,
+) -> Value
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let Value::Object(object) = value else {
         return json!({
             "jsonrpc": "2.0",
@@ -231,7 +264,7 @@ pub(super) fn handle_single_request(
     match dispatch(&mut context, call) {
         Ok(result) => json!({
             "jsonrpc": "2.0",
-            "result": result,
+            "result": transform(method, result),
             "id": id,
         }),
         Err(failure) => failure_response(id, failure),
@@ -305,6 +338,9 @@ pub(super) fn serialized_script_num(value: i64) -> Vec<u8> {
     while magnitude > 0 {
         encoded.push((magnitude & 0xff) as u8);
         magnitude >>= 8;
+    }
+    if encoded.last().is_some_and(|byte| byte & 0x80 != 0) {
+        encoded.push(0);
     }
 
     let mut script = Vec::with_capacity(encoded.len() + 2);

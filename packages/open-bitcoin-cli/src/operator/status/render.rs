@@ -3,6 +3,7 @@
 
 //! Human and JSON status rendering.
 
+mod basic_index;
 mod block_relay;
 mod chainstate_durability;
 mod inbound;
@@ -25,6 +26,8 @@ use open_bitcoin_node::{
 };
 use serde::Serialize;
 
+pub(crate) use basic_index::basic_index_entries;
+use basic_index::basic_index_lines;
 use block_relay::block_relay_evidence_lines;
 use chainstate_durability::chainstate_durability_lines;
 use inbound::inbound_status_text;
@@ -198,6 +201,7 @@ fn render_human_status(snapshot: &OpenBitcoinStatusSnapshot) -> String {
     lines.extend(relay_evidence_lines(&snapshot.mempool));
     lines.extend(block_relay_evidence_lines(&snapshot.block_relay));
     lines.extend(chainstate_durability_lines(&snapshot.chainstate_durability));
+    lines.extend(basic_index_lines(&snapshot.basic_index));
     lines.extend(prune_status_lines(&snapshot.prune));
     lines.push(format!(
         "Wallet: {}",

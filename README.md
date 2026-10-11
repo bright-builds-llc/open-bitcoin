@@ -199,8 +199,7 @@ separates protocol limits from shared generic/scratch/CF accounting. Scoped
 implementation evidence is recorded by Plans 01–11 and 13–17. The
 [final verification](./.planning/phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md)
 records the passed native contract, clean independent review and lifecycle gates.
-Phase 161 operator
-projection, Phase 162 integrated retained-client proof and v2.5 completion remain
+Phase 161 adds shared operator evidence below. Phase 162 integrated retained-client proof and v2.5 completion remain
 pending. Public/default serving, V0/BIP37, archive, production readiness and
 production-funds claims remain deferred.
 
@@ -208,6 +207,31 @@ production-funds claims remain deferred.
 bun test ./scripts/check-phase160-peer-filter-serving.test.ts
 bun run scripts/check-phase160-peer-filter-serving.ts
 bun run scripts/generate-peer-filter-fixtures.ts --check
+```
+
+## Shared BASIC operator evidence (Phase 161)
+
+The existing `openbitcoinnetworkstatus` RPC supplies one typed `basic_index`
+section to status JSON/human output, dashboard and redacted support. It separates
+configured indexing/general serving and modeled per-peer capability, earned
+initial synchronization, current lag, processed versus safe durable height,
+fixed failure categories, retained availability and BASIC-owned protection.
+Stopped or older-daemon missing facts remain unavailable. Collection is read-only.
+
+Retained growth counts unique immutable records, encoded filter payload bytes and
+record key/value bytes, including stale branches. Payload bytes are a subset;
+these logical totals exclude Fjall overhead and physical allocation. Filter growth
+is separate from the soft block/undo target; protection can retain more history.
+Retained filters do not restore deleted bodies or wallet eligibility.
+
+See the [measurement basis, evidence limits and local commands](./docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161)
+and [operator interpretation](./docs/operator/runtime-guide.md#shared-basic-index-inspection-phase-161).
+Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+No stronger v2.4 crash-window guarantee is claimed.
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
 ```
 
 ## Parity At A Glance

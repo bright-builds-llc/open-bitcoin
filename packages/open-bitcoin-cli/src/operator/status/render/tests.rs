@@ -25,6 +25,8 @@ use open_bitcoin_node::{
 
 use super::{StatusRenderMode, render_status};
 
+mod basic_index;
+
 fn apply_phase78_available_sync_fields(sync: &mut SyncStatus) {
     sync.progress_credit = FieldAvailability::available(ProgressCreditEvidence {
         kind: ProgressCreditKind::ValidatedDurableActiveChain,
@@ -253,6 +255,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
         prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
+        basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
     }
 }
 
@@ -388,8 +391,9 @@ fn human_status_inserts_disabled_prune_lines_immediately_before_wallet() {
         .expect("wallet line");
 
     // Assert
+    assert_eq!(lines[durability + 1], "BASIC index");
     assert_eq!(
-        &lines[durability + 1..=wallet],
+        &lines[durability + 21..=wallet],
         &[
             "Prune mode: false",
             "Prune locks: Unavailable: not collected",

@@ -5,6 +5,30 @@ use super::*;
 use crate::status::EXPECTED_PROGRESS_WINDOW_UNAVAILABLE_REASON;
 
 #[test]
+fn phase161_contract_legacy_snapshot_round_trip_keeps_basic_facts_unavailable() {
+    // Arrange
+    let mut legacy = serde_json::to_value(stopped_snapshot()).expect("snapshot json");
+    legacy
+        .as_object_mut()
+        .expect("snapshot object")
+        .remove("basic_index");
+
+    // Act
+    let snapshot: OpenBitcoinStatusSnapshot =
+        serde_json::from_value(legacy).expect("legacy snapshot");
+    let encoded = serde_json::to_value(snapshot).expect("round trip snapshot");
+
+    // Assert
+    let basic = encoded["basic_index"]
+        .as_object()
+        .expect("explicit BASIC facts");
+    assert_eq!(basic.len(), 14);
+    for fact in basic.values() {
+        assert_eq!(fact["state"], "unavailable");
+    }
+}
+
+#[test]
 fn populated_snapshot_serializes_obs_01_fields() {
     // Arrange
     let snapshot = OpenBitcoinStatusSnapshot {
@@ -165,6 +189,7 @@ fn populated_snapshot_serializes_obs_01_fields() {
         }],
         build: BuildProvenance::unavailable(),
         prune: crate::status::PruneOperatorStatus::unread_disabled("not collected"),
+        basic_index: crate::status::BasicIndexOperatorStatus::default(),
     };
 
     // Act

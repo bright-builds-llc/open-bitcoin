@@ -30,6 +30,7 @@ mod ownership;
 #[path = "query/tests.rs"]
 pub(crate) mod query;
 mod reorg;
+mod retention;
 use faults::{append_current, publish_current, seed_orphan_records};
 
 fn temp_path(name: &str) -> PathBuf {

@@ -633,8 +633,8 @@ adapters. The [final verification](../../../.planning/phases/160-explicit-bounde
 records the passed full native contract, clean independent source review, all 39
 closed declared mitigations and lifecycle verification. Historical sections above
 retain their original evidence boundaries. Phase 161
-owns broad operator/status/dashboard/support projections; Phase 162 owns the
-integrated retained-client proof. Those phases and overall v2.5 completion remain
+adds broad operator/status/dashboard/support projections below; Phase 162 owns the
+integrated retained-client proof. Phase 162 and overall v2.5 completion remain
 pending. Public/default serving, V0/BIP37, archive behavior, production readiness
 and production-funds claims remain excluded.
 
@@ -790,3 +790,93 @@ Raw-body and UnknownLegacy controls assert immediate managed dispatch rejection
 and zero reservations, before background reconciliation can legitimately validate
 a retained body. Seeded best-header facts supply negative controls only; they do
 not establish accepted-chain provenance.
+
+## Shared BASIC operator evidence (Phase 161)
+
+CFOP-01 adds one identifier-free `basic_index` section to the existing
+`openbitcoinnetworkstatus` RPC, shared status, human output, dashboard and redacted
+support. It observes the existing serialized authority without mutation. Baseline
+`getindexinfo`/`getblockfilter` shapes, index activation and prune policy stay intact.
+See [status semantics](../../architecture/status-snapshot.md#shared-basic-index-evidence-phase-161)
+and [repo-local Cargo/Bazel inspection](../../operator/runtime-guide.md#shared-basic-index-inspection-phase-161).
+
+### Facts and exact measurement basis
+
+Configuration distinguishes BASIC indexing, general peer serving and aggregate
+modeled general/explicit/all/implicit/offered scope. Categories may overlap.
+Explicit `blockfilters` and `all` are not equivalent; `all` can advertise without
+a backend. Implicit origins are not modeled and count zero; ordinary peers are
+not relabeled implicit. The earned initial-sync latch survives later lag/reorg.
+Current lag uses the accepted active target; processed and safe durable heights
+remain separate. No-genesis/empty-prefix absence never invents height zero.
+
+Fixed failures distinguish missing body, missing undo, backend, integrity/invalid
+facts, resource-bound pause and lifecycle invalidation. Retained availability is
+independent of failure/progress and does not promise every arbitrary query.
+Stopped BASIC fields are unavailable because the current JSONC resolver has no
+BASIC settings or visibility into unseen daemon CLI overrides. Legacy missing
+fields default to unavailable. Neither can become false, healthy or zero.
+Status never repairs, downloads, clears faults, advances durability or releases
+protection. Safe categories replace raw backend errors and private material.
+
+Complete retained totals count each unique immutable record once, including
+displaced/stale rows: encoded filter payload bytes and immutable record key/value
+bytes (including each key and envelope). Payload bytes are a subset of key/value
+bytes, not additive. Active projections, runtime state, owner/checkpoint/protection/
+lock metadata, other namespaces, Fjall/WAL/SST/compaction overhead and physical
+filesystem allocation are excluded. Mandatory startup validation recovers the
+constant-size aggregate; only achieved newly inserted rows update it. Immutable
+retry and reorg reuse do not double count. Failed/incomplete/over-budget totals
+remain unavailable. Protection can retain block/undo history above its soft
+logical target; filter growth is outside that target. No physical disk guarantee
+or counterfactual bytes-saved estimate follows. Retained filters do not restore
+deleted bodies, ordinary body-serving eligibility or wallet eligibility.
+
+### Executed evidence and limits
+
+[Caller evidence](../../../.planning/phases/161-shared-operator-index-and-retention-evidence/161-CALLER-EVIDENCE.md)
+records genuine accepted/Fjall daemon HTTP, both actual binaries and all operator
+exports on frozen scenarios: disabled/no-genesis, catch-up/current, earned latch
+plus later lag, processed-ahead-of-durable, paired prune, stale/reorg retention,
+protected candidate refusal and all-handle reopen. Public daemon evidence includes
+empty-body unauthorized 401; body and wallet negatives remain separate assertions.
+Nine private fault captures are freshly compared to genuine producers, then
+replayed through authenticated actual consumers. Private faults were not injected
+through a live daemon socket. Catalog/type/size/staleness controls reject drift.
+
+Independent immutable-row enumeration observes 402 records, 4,801 payload bytes
+and 108,115 key/value bytes after one replacement, including displaced/pruned
+rows. A separate 550 MiB target display stays 576,716,800 bytes; it does not fill
+the target or prove automatic pruning. BASIC polling makes two metadata reads/
+91 admitted bytes within eight reads/4 KiB, with unchanged namespaces, owner and
+validation/integrity scan counters across 64 polls at prefixes 16/128. This bound
+is BASIC-specific, not a bound on older unrelated collectors. Whole-capture local
+wall times are observations, not direct lock-hold measurements or latency guarantees.
+
+Twelve actual Ratatui TestBackend cases cover normal 160x55, narrow 80x30/80x25,
+blocked 80x24 and bounded 40x30 presentation. The same nineteen shared rows and
+safe reasons feed full text and support; support sanitizes a copy without mutation.
+Fixtures use synthetic genesis/easy PoW/maturity one and manual owner-plan paired
+deletion, outside the trailing 288 window at height 20/tip 400. They do not exercise
+ordinary prune-RPC planning or unchanged automatic prune-after 1000. Private fact
+limit/read faults do not prove oversized real allocations or physical device failure.
+
+```bash
+bun test ./scripts/check-phase161-operator-index-evidence.test.ts
+bun run scripts/check-phase161-operator-index-evidence.ts
+bun run scripts/command-timings.ts run --key phase161-uat-node -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase161_ -- --nocapture
+bun run scripts/command-timings.ts run --key phase161-uat-callers -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --test operator_flows phase161_operator_consumers -- --nocapture
+bun run scripts/command-timings.ts run --key phase161-uat-daemon -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind phase161_operator_rpc -- --nocapture
+bun run scripts/command-timings.ts run --key phase161-uat-cells -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --lib phase161_basic_dashboard_cells -- --nocapture
+```
+
+Run filtered tests serially and require nonzero discovery; leave capture generation
+unset for freshness verification. The native mutation checker pins narrow source,
+consumer and claim seams; it does not certify behavior or replace executed tests,
+full native verification, independent source/security review or formal lifecycle gates.
+
+Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+No stronger v2.4 crash-window guarantee is claimed.
+Excluded: BIP37/V0, filter import, wallet acceleration, reindex/repair/download,
+archive-scale, assumeutxo, public defaults/network CI, production service/readiness
+and funds-safety. Existing v2.4 crash-window advisories remain unchanged.

@@ -67,6 +67,7 @@ fn authoritative_rpc_status_support_bundle_redacts_every_forbidden_material_clas
     let output_dir = temp.path().join("bundle");
     let status = phase127_authoritative_status_with_sensitive_operator_evidence();
     let network_status = OpenBitcoinNetworkStatusResponse {
+        basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
         inbound: status.peers.inbound,
         relay: status.mempool.relay.clone(),
         block_relay: status.block_relay,
@@ -355,7 +356,7 @@ fn inbound_support_markdown_renders_permission_labels_and_inactive_relay_guidanc
         "active_permission_effects: admission_protected, download_serving_policy_input",
         "inactive_permission_effects: inactive_relay, inactive_mempool",
         "latest_permission_decision: outcome=admitted reason=admitted permission_class=protected_inbound active_permission_effects=admission_protected inactive_permission_effects=inactive_relay message=inbound permission decision admitted as protected_inbound",
-        "Next action: Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.",
+        "Next action: Relay, mempool, and bloom permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support. BIP37/bloom remains unsupported. BASIC serving is default-off and requires explicit capability and index readiness. Read effective BASIC capability separately from index readiness.",
     ] {
         assert!(markdown.contains(expected), "missing {expected}");
     }

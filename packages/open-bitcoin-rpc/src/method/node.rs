@@ -123,6 +123,8 @@ pub struct OpenBitcoinNetworkStatusResponse {
     pub mempool: MempoolStatus,
     #[serde(default)]
     pub prune: PruneOperatorStatus,
+    #[serde(default)]
+    pub basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]

@@ -43,5 +43,7 @@ use rpc_harness::*;
 #[path = "operator_flows/domain_fixtures.rs"]
 mod domain_fixtures;
 use domain_fixtures::*;
+#[path = "operator_flows/basic_index.rs"]
+mod basic_index;
 #[path = "operator_flows/wallet_and_parity.rs"]
 mod wallet_and_parity;

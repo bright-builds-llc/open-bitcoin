@@ -6,7 +6,8 @@
 //! Exclusive startup recovery after coins H/B recovery and before prune resume.
 //! Runtime construction has not exposed any concurrent coins/metadata writer yet.
 
-use super::{FjallNodeStore, StorageError, index_corruption};
+use super::retention::{RetainedBasicFilterObservation, RetentionObservationLimits};
+use super::{FjallNodeStore, PublicationControl, StorageError, index_corruption};
 use crate::chainstate::BasicFilterStartupMode;
 use open_bitcoin_core::{
     chainstate::{
@@ -24,6 +25,17 @@ pub(super) struct InspectedBasicFilterRecovery {
 }
 
 impl FjallNodeStore {
+    /// Capture effective saved intent once after successful startup validation.
+    /// This bounded ownership read neither validates the forest nor recovers it.
+    pub(crate) fn resolved_basic_filter_indexing_after_startup(
+        &self,
+    ) -> Result<Option<bool>, StorageError> {
+        let control = self.filter_publication_guard()?;
+        Ok(self
+            .maybe_basic_filter_owner_guarded(&control)?
+            .map(|owner| matches!(owner.lifecycle(), IndexLifecycle::Active { .. })))
+    }
+
     /// Validate saved authority/protection before permitting startup deletion.
     pub(crate) fn recover_basic_filter_index_before_prune(
         &self,
@@ -41,34 +53,62 @@ impl FjallNodeStore {
         maybe_recovered_best_block: Option<BlockHash>,
         mode: BasicFilterStartupMode,
     ) -> Result<(), StorageError> {
-        self.filter_publication_guard()?
-            .invalidate_read_integrity()?;
-        self.apply_basic_filter_startup(maybe_recovered_best_block, mode)
-            .and_then(|()| {
-                let mut control = self.filter_publication_guard()?;
-                control.invalidate_read_integrity()?;
-                self.validate_basic_filter_records()?;
-                control.read_integrity = true;
-                Ok(())
-            })
-            .map_err(|error| match error {
-                StorageError::Corruption { detail, .. } => index_corruption(format!(
-                    "fail_closed BASIC index startup stopped closed and did not reindex: {detail}"
-                )),
-                other => other,
-            })
+        self.configure_basic_filter_index_before_prune_with_retention_limits(
+            maybe_recovered_best_block,
+            mode,
+            super::retention::RetentionObservationLimits::default(),
+        )
     }
 
-    fn apply_basic_filter_startup(
+    pub(super) fn configure_basic_filter_index_before_prune_with_retention_limits(
         &self,
         maybe_recovered_best_block: Option<BlockHash>,
         mode: BasicFilterStartupMode,
+        limits: super::retention::RetentionObservationLimits,
+    ) -> Result<(), StorageError> {
+        let mut control = self.filter_publication_guard()?;
+        let maybe_previous_fault = control.maybe_read_fault;
+        control.invalidate_read_integrity()?;
+        let result = self
+            .apply_basic_filter_startup_guarded(
+                maybe_recovered_best_block,
+                mode,
+                limits,
+                &mut control,
+            )
+            // Preserve startup's closing capture revocation without rescanning.
+            .and_then(|()| control.advance_integrity_epoch());
+        if result.is_err() {
+            control.maybe_read_fault = maybe_previous_fault;
+            control.maybe_read_fault_protection = None;
+            control.read_integrity = false;
+            control.install_retention(RetainedBasicFilterObservation::Failed);
+        } else {
+            let retained = control.retention;
+            control.reset_verified_forest(retained);
+        }
+        result.map_err(|error| match error {
+            StorageError::Corruption { detail, .. } => index_corruption(format!(
+                "fail_closed BASIC index startup stopped closed and did not reindex: {detail}"
+            )),
+            other => other,
+        })
+    }
+
+    fn apply_basic_filter_startup_guarded(
+        &self,
+        maybe_recovered_best_block: Option<BlockHash>,
+        mode: BasicFilterStartupMode,
+        limits: RetentionObservationLimits,
+        control: &mut PublicationControl,
     ) -> Result<(), StorageError> {
         match mode {
             BasicFilterStartupMode::PreserveSaved => {
-                self.recover_basic_filter_index(maybe_recovered_best_block)
+                self.recover_basic_filter_index_guarded(maybe_recovered_best_block, limits, control)
             }
-            BasicFilterStartupMode::Disabled => self.disable_basic_filter_index(),
+            BasicFilterStartupMode::Disabled => {
+                self.disable_basic_filter_index_guarded(control, limits)
+            }
             BasicFilterStartupMode::Enabled => {
                 if maybe_recovered_best_block.is_none() {
                     return Err(index_corruption("validated genesis history required"));
@@ -77,21 +117,29 @@ impl FjallNodeStore {
                 let fence =
                     VerifiedChainstateFence::new(maybe_recovered_best_block, Some(&positions))
                         .map_err(index_corruption)?;
-                self.enable_basic_filter_index(&fence)
+                self.enable_basic_filter_index_guarded(&fence, control, limits)
             }
         }
     }
 
-    fn recover_basic_filter_index(
+    fn recover_basic_filter_index_guarded(
         &self,
         maybe_recovered_best_block: Option<BlockHash>,
+        limits: RetentionObservationLimits,
+        control: &mut PublicationControl,
     ) -> Result<(), StorageError> {
-        let mut control = self.filter_publication_guard()?;
         control.invalidate_append()?;
-        if self.maybe_basic_filter_state()?.is_some() {
-            self.validate_basic_filter_records()?;
-        }
-        let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {
+        let retained = if self.maybe_basic_filter_state()?.is_some() {
+            self.measure_basic_filter_records(limits)?
+        } else {
+            // The bounded owner/artifact classification below must prove absence
+            // before this candidate zero can be installed. Preserve its refusal
+            // precedence for partial state rather than scanning orphan artifacts.
+            RetainedBasicFilterObservation::empty()
+        };
+        let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {
+            control.read_integrity = true;
+            control.install_retention(retained);
             return Ok(());
         };
         if matches!(owner.lifecycle(), IndexLifecycle::Disabled { .. }) {
@@ -103,6 +151,8 @@ impl FjallNodeStore {
                     .check_prune_intent(intent.height)
                     .map_err(index_corruption)?;
             }
+            control.read_integrity = true;
+            control.install_retention(retained);
             return Ok(());
         }
         let (positions, _) = self.load_chain_meta_for_open()?;
@@ -121,7 +171,7 @@ impl FjallNodeStore {
                 .map_err(index_corruption)?;
         }
         if self.maybe_basic_filter_lifecycle()?.is_none() {
-            self.materialize_basic_filter_owner_guarded(owner.lifecycle(), &mut control)?;
+            self.materialize_basic_filter_owner_guarded(owner.lifecycle(), control)?;
         }
         if reconcile {
             self.publish_basic_filter_checkpoint_guarded(
@@ -129,9 +179,11 @@ impl FjallNodeStore {
                 checkpoint,
                 protection,
                 &[],
-                &mut control,
+                control,
             )?;
         }
+        control.read_integrity = true;
+        control.install_retention(retained);
         Ok(())
     }
 

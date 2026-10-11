@@ -3,38 +3,38 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
 status: planning
-stopped_at: Phase 160 verified; hook-protected finalization prepared; Phase 161 ready for context
-last_updated: "2026-10-11T04:06:33.503Z"
+stopped_at: Phase161 verified complete; mandatory hook-protected Git finalization is authorized
+last_updated: "2026-10-11T11:05:15.468Z"
 last_activity: "2026-10-11"
 progress:
   total_phases: 9
-  completed_phases: 7
-  total_plans: 58
-  completed_plans: 58
-  percent: 78
+  completed_phases: 8
+  total_plans: 69
+  completed_plans: 69
+  percent: 100
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-11 — Phase 160 completion).
+See: `.planning/PROJECT.md` (updated 2026-10-11 — Phase 161 completion).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 161 — Shared Operator Index and Retention Evidence
+**Current focus:** Phase 162 — Real Prune Retention and Integrated Parity Proof (next; not started)
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 161
-Plan: Not started
+Phase: 162 (Real Prune Retention and Integrated Parity Proof)
+Plan: Not planned; Phase 161 complete
 **Status:** Ready to plan
 Last activity: 2026-10-11
-Last Activity Description: Phase 160 complete, transitioned to Phase 161
+Last Activity Description: Phase 161 complete, transitioned to Phase 162
 
-Milestone progress: [████████░░] 78% (7/9 active v2.5 phases complete; 58/58 created plans have summaries; four requirements pending).
+Milestone progress: [█████████░] 89% (8/9 phases complete; 69/69 created plans have summaries; Phase162 unplanned; three requirements pending).
 
-Next action: After the authorized Phase 160 hook-protected commit/push, gather Phase 161 context. Phase 162 integrated retained-client proof remains pending.
+Next action: Phase 162 is ready for context after the authorized Phase 161 commit/push. Await the next explicit request; v2.5 remains pending.
 
 ## Performance Metrics
 
@@ -83,6 +83,7 @@ Next action: After the authorized Phase 160 hook-protected commit/push, gather P
 | 158 | 7 | - | - |
 | 159 | 8 | - | - |
 | 160 | 17 | - | - |
+| 161 | 11 | - | - |
 
 ### Plan Execution History
 
@@ -187,6 +188,17 @@ Next action: After the authorized Phase 160 hook-protected commit/push, gather P
 | Phase 151 P02 | 1h 2m | 2 tasks | 8 files |
 | Phase 151 P03 | 1h 23m | 3 tasks | 11 files |
 | Phase 151 P04 | 2h 14m | 3 tasks | 11 files |
+| Phase 161 P01 | 7min evidence window | 3 tasks | 11 files |
+| Phase 161 P02 | 31min evidence window including correction | 2 tasks | 11 files |
+| Phase 161 P03 | 10min evidence window | 2 tasks | 6 files |
+| Phase 161 P10 | 14min including context and focused evidence | 2 tasks | 15 files |
+| Phase 161 P04 | 21min evidence window | 2 tasks | 11 files |
+| Phase 161 P05 | 6min evidence window | 3 tasks | 13 files |
+| Phase 161 P11 | 19min evidence window | 3 tasks | 14 files |
+| Phase 161 P06 | 13min context and evidence window | 3 tasks | 16 files |
+| Phase 161 P07 | 11min including context and evidence | 2 tasks | 10 files |
+| Phase 161 P08 | 37min recorded evidence window | 2 tasks | 14 files |
+| Phase 161 P09 | 11min source plus recorded root verification/closing window | 3 tasks | 36 files |
 
 ## Accumulated Context
 
@@ -612,6 +624,6 @@ Next action: After the authorized Phase 160 hook-protected commit/push, gather P
 
 ## Session Continuity
 
-Last session: 2026-10-11T03:32:13.461Z
-Stopped at: Phase 160 verified; hook-protected finalization prepared; Phase 161 ready for context
-Resume file: None; Phase 161 context is next
+Last session: 2026-10-11T11:03:55.985Z
+Stopped at: Phase161 verified complete; mandatory hook-protected Git finalization is authorized
+Resume file: .planning/phases/161-shared-operator-index-and-retention-evidence/161-VERIFICATION.md

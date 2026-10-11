@@ -16,6 +16,7 @@ use open_bitcoin_node::{
     },
 };
 
+mod basic_index_section;
 mod block_relay;
 mod chainstate_durability;
 mod metric_labels;
@@ -28,6 +29,7 @@ mod sync_section;
 #[cfg(test)]
 mod tests;
 
+use basic_index_section::basic_index_section;
 use block_relay::block_relay_rows;
 use chainstate_durability::chainstate_durability_rows;
 use prune_section::prune_section;
@@ -140,6 +142,7 @@ fn dashboard_sections(snapshot: &OpenBitcoinStatusSnapshot) -> Vec<DashboardSect
             title: "Service".to_string(),
             rows: service_rows(&snapshot.service),
         },
+        basic_index_section(&snapshot.basic_index),
         DashboardSection {
             title: "Logs and Health".to_string(),
             rows: vec![

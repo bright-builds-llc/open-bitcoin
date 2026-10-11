@@ -12,6 +12,22 @@ const SOURCES = ["packages/bitcoin-knots/src/index/base.cpp",
 const BASELINE_TESTS = ["packages/bitcoin-knots/test/functional/feature_index_prune.py",
   "packages/bitcoin-knots/test/functional/feature_pruning.py"];
 const EXTRA: [string, string, string[]][] = [
+  [NODE + "storage/fjall_store/filters/lifecycle.rs", "enable_basic_filter_index", [
+    "self.filter_publication_guard()?;", "self.enable_basic_filter_index_guarded(", "fence,", "&mut control,", "RetentionObservationLimits::default()"]],
+  [NODE + "storage/fjall_store/filters/lifecycle.rs", "disable_basic_filter_index", [
+    "self.filter_publication_guard()?;", "self.disable_basic_filter_index_guarded(&mut control, RetentionObservationLimits::default(),)?;",
+    "let retained = control.retention;", "control.reset_verified_forest(retained);", "Ok(())"]],
+  [NODE + "storage/fjall_store/filters/startup.rs", "recover_basic_filter_index_before_prune", [
+    "self.configure_basic_filter_index_before_prune(", "BasicFilterStartupMode::PreserveSaved"]],
+  [NODE + "storage/fjall_store/filters/startup.rs", "configure_basic_filter_index_before_prune", [
+    "self.configure_basic_filter_index_before_prune_with_retention_limits(", "maybe_recovered_best_block,", "mode,", "RetentionObservationLimits::default()"]],
+  [NODE + "storage/fjall_store/filters/startup.rs", "configure_basic_filter_index_before_prune_with_retention_limits", [
+    "self.filter_publication_guard()?;", "control.invalidate_read_integrity()?;", "self.apply_basic_filter_startup_guarded(",
+    "maybe_recovered_best_block,", "mode,", "limits,", "&mut control,", ".and_then(|()| control.advance_integrity_epoch())", "result.map_err("]],
+  [NODE + "storage/fjall_store/filters/startup.rs", "apply_basic_filter_startup_guarded", ["match mode {",
+    "self.recover_basic_filter_index_guarded(maybe_recovered_best_block, limits, control)",
+    "self.disable_basic_filter_index_guarded(control, limits)", "VerifiedChainstateFence::new(",
+    "self.enable_basic_filter_index_guarded(&fence, control, limits)"]],
   [CORE + "filter_index/lifecycle.rs", "next", ["checked_add(1)", "IndexLifecycleError::GenerationExhausted"]],
   [NODE + "storage/fjall_store/filters/ownership.rs", "maybe_basic_filter_work", [
     "self.filter_publication_guard()?", "IndexLifecycle::Active", "self.verify_basic_filter_fence(fence)?",
@@ -74,11 +90,55 @@ export function checkPhase156PruneCoordination(maybeRoot?: string): string[] {
     }
   }
   checkConcreteProof(text, failures);
+  checkGuardedRoutes(text, failures);
   checkParity(text("docs/parity/index.json"), failures);
   checkBreadcrumbs(text("docs/parity/source-breadcrumbs.json"), text, failures);
   checkDocumentation(text, failures);
   checkVerifier(text("scripts/verify.sh"), failures);
   return [...new Set(failures)];
+}
+
+function checkGuardedRoutes(text: (file: string) => string, failures: string[]): void {
+  const startup = NODE + "storage/fjall_store/filters/startup.rs";
+  const lifecycle = NODE + "storage/fjall_store/filters/lifecycle.rs";
+  for (const [file, symbol, statement, depth, category] of [
+    [NODE + "storage/fjall_store/filters/publication.rs", "publish_basic_filter_checkpoint_guarded", "self.measure_basic_filter_records(super::retention::RetentionObservationLimits::default())?;", 0, "T-156-05"],
+    [startup, "configure_basic_filter_index_before_prune", "self.configure_basic_filter_index_before_prune_with_retention_limits(", 0, "T-156-06"],
+    [startup, "configure_basic_filter_index_before_prune_with_retention_limits", "self.apply_basic_filter_startup_guarded(", 0, "T-156-06"],
+    [startup, "configure_basic_filter_index_before_prune_with_retention_limits", "self.filter_publication_guard()?;", 0, "T-156-06"],
+    [startup, "apply_basic_filter_startup_guarded", "match mode {", 0, "T-156-06"],
+    [startup, "recover_basic_filter_index_guarded", "self.measure_basic_filter_records(limits)?", 1, "T-156-06"],
+    [startup, "recover_basic_filter_index_guarded", "let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {", 0, "T-156-06"],
+    [startup, "recover_basic_filter_index_guarded", "self.inspect_basic_filter_recovery(owner, &fence)?;", 0, "T-156-06"],
+    [lifecycle, "enable_basic_filter_index", "self.enable_basic_filter_index_guarded(", 0, "T-156-10"],
+    [lifecycle, "disable_basic_filter_index", "self.disable_basic_filter_index_guarded(", 0, "T-156-08"],
+    [lifecycle, "disable_basic_filter_index", "control.reset_verified_forest(retained);", 0, "T-156-08"],
+    [lifecycle, "disable_basic_filter_index_guarded", "self.measure_basic_filter_records(limits)?;", 0, "T-156-08"],
+    [lifecycle, "disable_basic_filter_index_guarded", "self.maybe_basic_filter_checkpoint()?;", 0, "T-156-08"],
+    [lifecycle, "enable_basic_filter_index_guarded", "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;", 1, "T-156-10"],
+    [lifecycle, "enable_basic_filter_index_guarded", "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;", 0, "T-156-10"],
+    [lifecycle, "preflight_basic_filter_history", "for height in first..=fence.tip().height", 0, "T-156-09"],
+    [lifecycle, "preflight_basic_filter_history", "self.load_block(position.block_hash)?", 1, "T-156-09"],
+    [lifecycle, "preflight_basic_filter_history", "self.load_undo(position.block_hash)?", 2, "T-156-09"],
+  ] as const) {
+    const maybeFunction = maybeRustFunction(text(file), symbol, true);
+    const code = compact(maybeFunction?.body ?? "");
+    const start = code.indexOf(compact(statement));
+    let actualDepth = 0;
+    for (const char of code.slice(0, start)) {
+      if (char === "{") actualDepth++;
+      if (char === "}") actualDepth--;
+    }
+    const wrapper = symbol.endsWith("before_prune") || symbol.endsWith("with_retention_limits")
+      || ["enable_basic_filter_index", "disable_basic_filter_index", "apply_basic_filter_startup_guarded"].includes(symbol);
+    const resetBeforeDisable = symbol === "disable_basic_filter_index"
+      && code.indexOf("control.reset_verified_forest(") < code.indexOf("self.disable_basic_filter_index_guarded(");
+    const ownerProof = symbol === "recover_basic_filter_index_guarded" && statement.startsWith("let Some(owner)");
+    const prematureEmpty = ownerProof && /\breturn|control\.install_retention\(/.test(code.slice(0, start));
+    if (start < 0 || actualDepth !== depth || resetBeforeDisable || prematureEmpty || (wrapper && /\breturn/.test(code.slice(0, start)))) {
+      failures.push(`${category}: mandatory guarded route/preflight cannot be conditional or bypassed: ${symbol}`);
+    }
+  }
 }
 
 function checkBody(source: string, file: string, symbol: string, anchors: readonly string[],

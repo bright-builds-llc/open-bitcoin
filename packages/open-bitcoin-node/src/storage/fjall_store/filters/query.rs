@@ -4,12 +4,26 @@
 
 //! Point reads require all retained immutable records to have been recovered.
 
+use super::publication::BasicFilterReadFault;
 use super::{FjallNodeStore, StorageError, StorageNamespace, codec, index_corruption};
 use open_bitcoin_core::{
     chainstate::FilterRecordIdentity,
     codec::MAX_SIZE,
     primitives::{BlockHash, FilterHeader},
 };
+use std::cell::Cell;
+
+fn observe_read_result<T>(
+    observation: &Cell<Option<BasicFilterReadFault>>,
+    fault: BasicFilterReadFault,
+    result: Result<T, StorageError>,
+) -> Result<T, StorageError> {
+    result.inspect_err(|_| {
+        if observation.get() != Some(BasicFilterReadFault::Integrity) {
+            observation.set(Some(fault));
+        }
+    })
+}
 
 pub(crate) mod peer;
 
@@ -88,6 +102,7 @@ pub struct BasicFilterQueryWork {
 pub(crate) struct BasicFilterQueryReader<'a> {
     store: &'a FjallNodeStore,
     control: &'a super::PublicationControl,
+    read_fault: &'a Cell<Option<BasicFilterReadFault>>,
     pub enabled: bool,
     maybe_generation:
         Option<open_bitcoin_core::chainstate::filter_index::lifecycle::IndexGeneration>,
@@ -136,7 +151,7 @@ impl BasicFilterQueryReader<'_> {
         hash: BlockHash,
     ) -> Result<Option<BasicFilterRecordView>, StorageError> {
         self.store
-            .basic_filter_point_query_guarded(hash, self.control)
+            .basic_filter_point_query_guarded(hash, self.control, self.read_fault)
     }
 }
 
@@ -209,39 +224,59 @@ impl FjallNodeStore {
         &self,
         inspect: impl FnOnce(&BasicFilterQueryReader<'_>) -> Result<T, StorageError>,
     ) -> Result<T, StorageError> {
-        let control = self.filter_publication_guard()?;
-        self.count_filter_integrity_read();
-        let maybe_lifecycle = self
-            .block_index
-            .get(codec::ownership::OWNER_KEY)
-            .map_err(|error| super::super::backend_failure(StorageNamespace::BlockIndex, error))?
-            .map(|bytes| codec::ownership::decode_owner(&bytes))
-            .transpose()?;
-        let enabled = match maybe_lifecycle {
-            Some(
-                open_bitcoin_core::chainstate::filter_index::lifecycle::IndexLifecycle::Active {
-                    ..
-                },
-            ) => true,
-            Some(_) => false,
-            None => {
-                self.count_filter_integrity_read();
+        let mut control = self.filter_publication_guard()?;
+        let read_fault = Cell::new(None);
+        let result = (|| {
+            self.count_filter_integrity_read();
+            let maybe_lifecycle = observe_read_result(
+                &read_fault,
+                BasicFilterReadFault::Backend,
                 self.block_index
-                    .get(codec::STATE_KEY)
+                    .get(codec::ownership::OWNER_KEY)
                     .map_err(|error| {
                         super::super::backend_failure(StorageNamespace::BlockIndex, error)
-                    })?
-                    .map(|bytes| codec::decode_state(&bytes))
+                    }),
+            )?
+            .map(|bytes| {
+                observe_read_result(
+                    &read_fault,
+                    BasicFilterReadFault::Integrity,
+                    codec::ownership::decode_owner(&bytes),
+                )
+            })
+            .transpose()?;
+            let enabled = if let Some(lifecycle) = maybe_lifecycle {
+                matches!(lifecycle, open_bitcoin_core::chainstate::filter_index::lifecycle::IndexLifecycle::Active { .. })
+            } else {
+                self.count_filter_integrity_read();
+                let maybe_state = observe_read_result(
+                    &read_fault,
+                    BasicFilterReadFault::Backend,
+                    self.block_index.get(codec::STATE_KEY).map_err(|error| {
+                        super::super::backend_failure(StorageNamespace::BlockIndex, error)
+                    }),
+                )?;
+                maybe_state
+                    .map(|bytes| {
+                        observe_read_result(
+                            &read_fault,
+                            BasicFilterReadFault::Integrity,
+                            codec::decode_state(&bytes),
+                        )
+                    })
                     .transpose()?
                     .is_some()
-            }
-        };
-        inspect(&BasicFilterQueryReader {
-            store: self,
-            control: &control,
-            enabled,
-            maybe_generation: maybe_lifecycle.map(|lifecycle| lifecycle.generation()),
-        })
+            };
+            inspect(&BasicFilterQueryReader {
+                store: self,
+                control: &control,
+                read_fault: &read_fault,
+                enabled,
+                maybe_generation: maybe_lifecycle.map(|lifecycle| lifecycle.generation()),
+            })
+        })();
+        let observed = control.observe_read_fault(read_fault.get());
+        result.and_then(|value| observed.map(|()| value))
     }
 
     #[cfg(test)]
@@ -249,14 +284,18 @@ impl FjallNodeStore {
         &self,
         hash: BlockHash,
     ) -> Result<Option<BasicFilterRecordView>, StorageError> {
-        let control = self.filter_publication_guard()?;
-        self.basic_filter_point_query_guarded(hash, &control)
+        let mut control = self.filter_publication_guard()?;
+        let read_fault = Cell::new(None);
+        let result = self.basic_filter_point_query_guarded(hash, &control, &read_fault);
+        let observed = control.observe_read_fault(read_fault.get());
+        result.and_then(|value| observed.map(|()| value))
     }
 
     fn basic_filter_point_query_guarded(
         &self,
         hash: BlockHash,
         control: &super::PublicationControl,
+        read_fault: &Cell<Option<BasicFilterReadFault>>,
     ) -> Result<Option<BasicFilterRecordView>, StorageError> {
         if !control.read_integrity {
             return Err(index_corruption(
@@ -265,6 +304,7 @@ impl FjallNodeStore {
         }
         #[cfg(test)]
         if control.maybe_fault == Some(super::FilterPublicationFault::BeforeQueryRead) {
+            read_fault.set(Some(BasicFilterReadFault::Backend));
             return Err(StorageError::BackendFailure {
                 namespace: StorageNamespace::BlockIndex,
                 message: "/private/phase159-backend-read-marker".into(),
@@ -273,18 +313,25 @@ impl FjallNodeStore {
         }
         let key = codec::record_key(hash);
         self.count_filter_integrity_read();
-        let Some(bytes) = self
-            .block_index
-            .get(&key)
-            .map_err(|error| super::super::backend_failure(StorageNamespace::BlockIndex, error))?
+        let Some(bytes) = observe_read_result(
+            read_fault,
+            BasicFilterReadFault::Backend,
+            self.block_index.get(&key).map_err(|error| {
+                super::super::backend_failure(StorageNamespace::BlockIndex, error)
+            }),
+        )?
         else {
             return Ok(None);
         };
         check_envelope(bytes.len())?;
-        let encoded_len = bytes
-            .len()
-            .checked_sub(codec::RECORD_OVERHEAD)
-            .ok_or_else(|| index_corruption("truncated BASIC query envelope"))?;
+        let encoded_len = observe_read_result(
+            read_fault,
+            BasicFilterReadFault::Integrity,
+            bytes
+                .len()
+                .checked_sub(codec::RECORD_OVERHEAD)
+                .ok_or_else(|| index_corruption("truncated BASIC query envelope")),
+        )?;
         let mut work = BasicFilterQueryWork {
             record_reads: 1,
             validated_envelope_bytes: bytes.len(),
@@ -293,25 +340,44 @@ impl FjallNodeStore {
             ..Default::default()
         };
         charge_hash_work(&mut work, encoded_len, true)?;
-        let target = codec::parse_record(&key, &bytes)?;
+        let integrity =
+            |result| observe_read_result(read_fault, BasicFilterReadFault::Integrity, result);
+        let target = observe_read_result(
+            read_fault,
+            BasicFilterReadFault::Integrity,
+            codec::parse_record(&key, &bytes),
+        )?;
         let identity = if target.height == 0 {
-            target.verify_parent(None)?;
-            target.checkpoint_identity(None)?
+            integrity(target.verify_parent(None))?;
+            observe_read_result(
+                read_fault,
+                BasicFilterReadFault::Integrity,
+                target.checkpoint_identity(None),
+            )?
         } else {
             let parent_key = codec::record_key(target.parent);
             self.count_filter_integrity_read();
-            let parent_bytes = self
-                .block_index
-                .get(&parent_key)
-                .map_err(|error| {
+            let parent_bytes = observe_read_result(
+                read_fault,
+                BasicFilterReadFault::Backend,
+                self.block_index.get(&parent_key).map_err(|error| {
                     super::super::backend_failure(StorageNamespace::BlockIndex, error)
-                })?
-                .ok_or_else(|| index_corruption("missing BASIC query predecessor"))?;
+                }),
+            )?;
+            let parent_bytes = observe_read_result(
+                read_fault,
+                BasicFilterReadFault::Integrity,
+                parent_bytes.ok_or_else(|| index_corruption("missing BASIC query predecessor")),
+            )?;
             check_envelope(parent_bytes.len())?;
-            let parent_len = parent_bytes
-                .len()
-                .checked_sub(codec::RECORD_OVERHEAD)
-                .ok_or_else(|| index_corruption("truncated BASIC query parent envelope"))?;
+            let parent_len = observe_read_result(
+                read_fault,
+                BasicFilterReadFault::Integrity,
+                parent_bytes
+                    .len()
+                    .checked_sub(codec::RECORD_OVERHEAD)
+                    .ok_or_else(|| index_corruption("truncated BASIC query parent envelope")),
+            )?;
             work.record_reads += 1;
             work.validated_envelope_bytes = work
                 .validated_envelope_bytes
@@ -319,12 +385,20 @@ impl FjallNodeStore {
                 .filter(|size| *size <= BASIC_FILTER_QUERY_MAX_READ_BYTES)
                 .ok_or_else(|| index_corruption("BASIC query read byte bound"))?;
             charge_hash_work(&mut work, parent_len, false)?;
-            let parent = codec::parse_record(&parent_key, &parent_bytes)?;
+            let parent = observe_read_result(
+                read_fault,
+                BasicFilterReadFault::Integrity,
+                codec::parse_record(&parent_key, &parent_bytes),
+            )?;
             if parent.height == 0 {
-                parent.verify_parent(None)?;
+                integrity(parent.verify_parent(None))?;
             }
-            target.verify_parent(Some(&parent))?;
-            target.checkpoint_identity(Some(&parent))?
+            integrity(target.verify_parent(Some(&parent)))?;
+            observe_read_result(
+                read_fault,
+                BasicFilterReadFault::Integrity,
+                target.checkpoint_identity(Some(&parent)),
+            )?
         };
         let encoded = &bytes[codec::RECORD_OVERHEAD..];
         Ok(Some(BasicFilterRecordView {

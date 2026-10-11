@@ -11,6 +11,7 @@ pub struct BasicPeerServingCapability {
     pub general_configured: bool,
     pub effective_permission: bool,
     pub explicit_permission_requested: bool,
+    pub all_permission_requested: bool,
 }
 
 /// Startup prerequisite, including the pinned `all`-without-index exception.
@@ -28,6 +29,7 @@ impl BasicPeerServingCapability {
             effective_permission: permissions.contains_token(PeerPermissionToken::BlockFilters),
             explicit_permission_requested: permissions
                 .requested_token(PeerPermissionToken::BlockFilters),
+            all_permission_requested: permissions.requested_token(PeerPermissionToken::All),
         }
     }
 

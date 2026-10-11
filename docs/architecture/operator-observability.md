@@ -1,5 +1,34 @@
 # Operator Observability Contracts
 
+## Shared BASIC presentation (Phase 161)
+
+The existing `openbitcoinnetworkstatus.basic_index` capture feeds status,
+dashboard and support. The `BASIC index` section precedes Prune in full status and
+support, and precedes Logs and Health/Prune in the interactive right column.
+All full text outputs share nineteen ordered rows: State, Init sync, Lag,
+Processed, Durable, Failure, Retained, Index bytes, Filter bytes, Records,
+Indexing, Peer serving, Peer scope, Target, Protection, Basis, Next action,
+Retention note and Body/wallet note. Renderers do not infer state from heights.
+
+Normal 160x55 terminal buffers expose every row; at 80x30 and 80x25 the heading
+and seven critical progress/failure/availability rows take priority. Compact
+explanatory values do not change the captured facts. Full status/dashboard text
+and support retain complete reasons and accounting exclusions. At 80x24 the
+existing small-window blocker remains; very narrow 40x30 rendering stays bounded
+with full text as the inspection fallback. Four bands, eight-chart maximum,
+refresh cadence and existing actions remain unchanged; BASIC adds no mutation
+control. `Unavailable`, available `none`, measured zero and `none seen` are distinct.
+
+The shared [status contract](status-snapshot.md#shared-basic-index-evidence-phase-161)
+defines earned sync versus current lag, safe durability and the unique immutable
+row/payload/key-value basis. Support exports sanitize a captured copy without
+recollecting or mutating it. New BASIC facts exclude scripts, undo/filter payloads,
+transaction/block/peer identifiers, addresses, credentials, backend keys, paths
+and raw lock names. Fixed guidance never prescribes automatic repair or download.
+
+Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+No stronger v2.4 crash-window guarantee is claimed.
+
 `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard,
 support evidence, RPC-facing blockchain info, metrics projections, structured
 logs, and live-smoke snapshots. Observability writers and readers may keep their

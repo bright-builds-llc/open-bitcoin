@@ -48,6 +48,28 @@ test("passes_when_phase127_authoritative_composition_is_intact", () => {
   // Assert
   expect(failures).toEqual([]);
 });
+test("fails_when_frozen_status_keys_omit_basic_index", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutate(files) {
+      replace(
+        files,
+        "packages/open-bitcoin-rpc/tests/black_box_parity.rs",
+        'sorted_result_keys(&status_response),\n        [\n            "basic_index",',
+        'sorted_result_keys(&status_response),\n        [',
+      );
+    },
+  });
+  expect(checkPhase127AuthoritativeNetworkStateUnification(REPO_ROOT)).toEqual([]);
+
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+
+  // Assert
+  expect(failures).toEqual([
+    "P127 production proof: integration must cover shared mutation, restart serving, frozen schemas, and redaction",
+  ]);
+});
 test("fails_when_production_constructs_a_duplicate_network_authority", () => {
   // Arrange
   const root = createFixture({

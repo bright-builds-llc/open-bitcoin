@@ -63,6 +63,7 @@ mod status_inputs;
 use status_inputs::*;
 mod relay_and_filesystem_fixtures;
 use relay_and_filesystem_fixtures::*;
+mod basic_index;
 mod inbound_recovery_wallet;
 mod mempool_policy;
 mod prune_snapshot;

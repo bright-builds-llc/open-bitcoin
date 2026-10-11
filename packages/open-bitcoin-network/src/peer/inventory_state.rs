@@ -340,9 +340,10 @@ impl PeerManager {
         now_unix_seconds: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
         self.compact_download_disconnect_cleanup(peer_id);
-        let Some(_) = self.peers.remove(&peer_id) else {
+        let Some(peer) = self.peers.remove(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));
         };
+        self.transition_basic_peer_scope(peer.basic_scope, super::BasicPeerScope::default());
         self.orphanage.cleanup_peer(peer_id);
         Ok(handle_transaction_relay_actions(
             self.tx_download.cleanup_peer(peer_id, now_unix_seconds),

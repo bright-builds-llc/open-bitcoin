@@ -75,6 +75,7 @@ mod inbound_status_fixtures;
 use inbound_status_fixtures::*;
 mod soak_forensics_fixtures;
 use soak_forensics_fixtures::*;
+mod basic_index;
 mod forensics_recovery_relay;
 mod inbound;
 mod mempool_policy;

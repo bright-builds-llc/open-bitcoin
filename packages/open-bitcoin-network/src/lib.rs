@@ -104,8 +104,8 @@ pub use message::{
     WireNetworkMessage,
 };
 pub use peer::{
-    AcceptedPeerPackageFingerprint, BoundedOrphanAnnouncers, CompactAnnouncementAction,
-    CompactAnnouncementDecision, CompactAnnouncementEligibility,
+    AcceptedPeerPackageFingerprint, BasicPeerScope, BoundedOrphanAnnouncers,
+    CompactAnnouncementAction, CompactAnnouncementDecision, CompactAnnouncementEligibility,
     CompactAnnouncementEligibilityReason, CompactAnnouncementInput, CompactAnnouncementProvenance,
     CompactAnnouncementReason, CompactBlockReceiveFacts, CompactBlockTransactionsRequest,
     CompactRelayCapability, CompactRelayNegotiationOutcome, CompactRelayNegotiationReason,

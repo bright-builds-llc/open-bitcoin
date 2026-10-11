@@ -93,6 +93,10 @@ impl<S, V: CoinsView> fmt::Debug for ManagedNetworkHandle<S, V> {
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
+    #[cfg(test)]
+    #[rustfmt::skip]
+    pub(crate) fn basic_configuration_for_test(&self) -> Result<(Option<bool>, bool), ManagedNetworkAuthorityError> { self.read(|network| (network.maybe_configured_basic_indexing(), network.configured_basic_peer_serving())) }
+
     pub(crate) fn new(mut network: ManagedPeerNetwork<S, V>) -> Self {
         network.install_authority_incarnation();
         Self {

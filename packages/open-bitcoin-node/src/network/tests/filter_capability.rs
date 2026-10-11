@@ -8,6 +8,31 @@ use open_bitcoin_core::chainstate::PruneMode;
 use open_bitcoin_network::{PeerAction, VersionMessage};
 
 #[test]
+fn phase161_operator_authority_memory_keeps_configuration_without_live_backend() {
+    // Arrange
+    let network = ManagedPeerNetwork::new(
+        MemoryChainstateStore::default(),
+        local_config(161_401),
+        PolicyConfig::default(),
+    );
+    // Act
+    let snapshot = network.operator_snapshot();
+    // Assert
+    assert_eq!(
+        snapshot.basic_index().configured_peer_serving,
+        crate::status::FieldAvailability::available(false)
+    );
+    assert!(matches!(
+        snapshot.basic_index().configured_indexing,
+        crate::status::FieldAvailability::Unavailable { .. }
+    ));
+    assert!(matches!(
+        snapshot.basic_index().maybe_processed_height,
+        crate::status::FieldAvailability::Unavailable { .. }
+    ));
+}
+
+#[test]
 fn phase160_services_prune_update_preserves_configured_filter_bit() {
     // Arrange
     let mut config = local_config(160_201);

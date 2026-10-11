@@ -66,8 +66,10 @@ impl PeerManager {
         if self.peers.contains_key(&record.peer_id) {
             return Err(NetworkError::PeerAlreadyExists(record.peer_id));
         }
-        self.peers
-            .insert(record.peer_id, PeerState::from_inbound_record(record));
+        let peer_id = record.peer_id;
+        let state = PeerState::from_inbound_record(record);
+        self.transition_basic_peer_scope(super::BasicPeerScope::default(), state.basic_scope);
+        self.peers.insert(peer_id, state);
         Ok(())
     }
 }

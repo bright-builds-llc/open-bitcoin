@@ -8,6 +8,28 @@ use open_bitcoin_node::status::{
 
 use super::*;
 
+#[test]
+fn phase161_contract_support_capture_preserves_caller_and_basic_observations() {
+    // Arrange
+    let mut captured = phase72_status();
+    captured.basic_index.initial_sync_complete = FieldAvailability::available(true);
+    captured.basic_index.maybe_lag_blocks = FieldAvailability::available(Some(2));
+    captured.basic_index.maybe_processed_height = FieldAvailability::available(Some(21));
+    captured.basic_index.maybe_safe_durable_height = FieldAvailability::available(Some(18));
+    let before = captured.clone();
+
+    // Act
+    let support = support_status_for_bundle(captured.clone());
+
+    // Assert
+    assert_eq!(captured, before);
+    assert_eq!(support.basic_index, before.basic_index);
+    assert_eq!(
+        support.basic_index.maybe_lag_blocks,
+        FieldAvailability::available(Some(2))
+    );
+}
+
 pub(super) const PHASE96_PEER_POLICY_RUNTIME_BRIDGE_NEXT_ACTION: &str = "Treat Phase 96 as scoped runtime peer policy bridge evidence only; review ban, discourage, unban, and misbehavior labels before changing listener exposure or peer policy.";
 
 #[derive(Debug)]
@@ -142,6 +164,7 @@ pub(super) fn phase72_status() -> OpenBitcoinStatusSnapshot {
         health_signals: Vec::new(),
         build: BuildProvenance::unavailable(),
         prune: open_bitcoin_node::status::PruneOperatorStatus::unread_disabled("not collected"),
+        basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
     }
 }
 

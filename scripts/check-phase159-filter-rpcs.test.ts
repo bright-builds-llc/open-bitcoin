@@ -35,6 +35,67 @@ test("current scoped evidence runs before final native/requirement activation", 
 
 const N = "packages/open-bitcoin-node/src/";
 const R = "packages/open-bitcoin-rpc/src/";
+const QUERY = N + "storage/fjall_store/filters/query.rs";
+function mutateQueryFunction(root: string, symbol: string, transform: (body: string) => string): void {
+  edit(root, QUERY, source => {
+    const maybeBody = maybeFunction(source, symbol, true);
+    if (!maybeBody) throw new Error(`missing actual query fixture function: ${symbol}`);
+    return source.slice(0, maybeBody.start) + transform(source.slice(maybeBody.start, maybeBody.end)) + source.slice(maybeBody.end);
+  });
+}
+for (const [label, from, to] of [
+  ["target backend mislabeled integrity", "let Some(bytes) = observe_read_result(\n            read_fault,\n            BasicFilterReadFault::Backend,", "let Some(bytes) = observe_read_result(read_fault, BasicFilterReadFault::Integrity,"],
+  ["parent backend mislabeled integrity", "let parent_bytes = observe_read_result(\n                read_fault,\n                BasicFilterReadFault::Backend,", "let parent_bytes = observe_read_result(read_fault, BasicFilterReadFault::Integrity,"],
+  ["target codec mislabeled backend", "let target = observe_read_result(\n            read_fault,\n            BasicFilterReadFault::Integrity,", "let target = observe_read_result(read_fault, BasicFilterReadFault::Backend,"],
+  ["required parent refusal removed", 'parent_bytes.ok_or_else(|| index_corruption("missing BASIC query predecessor"))', "Ok(parent_bytes)"],
+  ["genesis parent integrity removed", "integrity(target.verify_parent(None))?;", "removed_validation();"],
+  ["parent genesis integrity removed", "integrity(parent.verify_parent(None))?;", "removed_validation();"],
+  ["target parent integrity conditional", "integrity(target.verify_parent(Some(&parent)))?;", "if false { integrity(target.verify_parent(Some(&parent)))?; }"],
+  ["target hash budget conditional", "charge_hash_work(&mut work, encoded_len, true)?;", "if false { charge_hash_work(&mut work, encoded_len, true)?; }"],
+  ["parent hash budget conditional", "charge_hash_work(&mut work, parent_len, false)?;", "if false { charge_hash_work(&mut work, parent_len, false)?; }"],
+  ["target envelope conditional", "check_envelope(bytes.len())?;", "if false { check_envelope(bytes.len())?; }"],
+  ["failed integrity becomes absence", "if !control.read_integrity {", "if !control.read_integrity { return Ok(None);"],
+] as const) {
+  test(`typed bounded query refuses ${label}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateQueryFunction(root, "basic_filter_point_query_guarded", body => body.replace(from, to));
+    // Act
+    const failures = checkPhase159FilterRpcs(root);
+    // Assert
+    expect(failures.some(item => item.includes(QUERY))).toBe(true);
+  });
+}
+test("hash budget moved after integrity validation refuses", () => {
+  // Arrange
+  const root = fixture();
+  const charge = "charge_hash_work(&mut work, encoded_len, true)?;";
+  mutateQueryFunction(root, "basic_filter_point_query_guarded", body => body.replace(charge, "").replace("Ok(Some(BasicFilterRecordView", `${charge}\nOk(Some(BasicFilterRecordView`));
+  // Act
+  const failures = checkPhase159FilterRpcs(root);
+  // Assert
+  expect(failures.some(item => item.includes(`${QUERY}:basic_filter_point_query_guarded`))).toBe(true);
+});
+test("query caller errors cannot be blanket retained integrity failures", () => {
+  // Arrange
+  const root = fixture();
+  mutateQueryFunction(root, "with_basic_filter_query", body => body.replace("let observed = control.observe_read_fault", "if result.is_err() { read_fault.set(Some(BasicFilterReadFault::Integrity)); }\nlet observed = control.observe_read_fault"));
+  // Act
+  const failures = checkPhase159FilterRpcs(root);
+  // Assert
+  expect(failures.some(item => item.includes("blanket retained read faults"))).toBe(true);
+});
+for (const symbol of ["observe_read_result", "basic_filter_point_query_guarded"]) {
+  test(`typed query ${symbol} cannot be supplied only by cfg(test)`, () => {
+    // Arrange
+    const root = fixture();
+    edit(root, QUERY, source => source.replace(`fn ${symbol}`, `#[cfg(test)]\nfn ${symbol}`));
+    // Act
+    const failures = checkPhase159FilterRpcs(root);
+    // Assert
+    expect(failures.some(item => item.includes(`${QUERY}:${symbol}`))).toBe(true);
+  });
+}
 const mutations: [string, string, string, string][] = [
   ["lost registry name", R + "method.rs", 'Self::GetBlockFilter => "getblockfilter"', 'Self::GetBlockFilter => "removed"'],
   ["lost typed normalizer", R + "method.rs", "normalize_getblockfilter(params).map(MethodCall::GetBlockFilter)", "Err(RpcFailure::method_not_found())"],
@@ -52,7 +113,7 @@ const mutations: [string, string, string, string][] = [
   ["lost prepare admission", N + "chainstate.rs", "self.admit_validation_acceptance(", "self.unchecked_validation_acceptance("],
   ["raw seed coverage laundering", N + "storage/fjall_store/coins.rs", "self.invalidate_validation_coverage()?;\n            control.invalidate_append()?;", "control.invalidate_append()?;"],
   ["raw flush sink coverage laundering", N + "storage/fjall_store/coins.rs", "self.check_validation_coverage_for_metadata(active_chain)?;", "skip_validation_coverage(active_chain);"],
-  ["parent fields substitute integrity", N + "storage/fjall_store/filters/query.rs", "codec::parse_record(&parent_key, &parent_bytes)?", "codec::parse_record_fields(&parent_key, &parent_bytes)?"],
+  ["parent fields substitute integrity", N + "storage/fjall_store/filters/query.rs", "codec::parse_record(&parent_key, &parent_bytes),", "codec::parse_record_fields(&parent_key, &parent_bytes),"],
   ["lost read bound", N + "storage/fjall_store/filters/query.rs", "*size <= BASIC_FILTER_QUERY_MAX_READ_BYTES", "true"],
   ["lost original captured provenance", N + "network/runtime_authority/filter_index/readiness/owner.rs", "provenance: completion.request.provenance", "provenance: BasicBlockValidationProvenance::NeverConnected"],
   ["initial latch substitutes processed readiness", N + "network/runtime_authority/filter_index/readiness/owner.rs", "record.height() >= frontier.accepted_height()", "true"],

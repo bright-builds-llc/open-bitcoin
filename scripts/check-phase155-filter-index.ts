@@ -17,6 +17,7 @@ const RUST_FILES = [
   CORE + "filter_index/tests/commitments.rs", NODE + "storage/filter_index.rs",
   NODE + "storage/filter_index/tests.rs", NODE + "storage/fjall_store/filters.rs",
   NODE + "storage/fjall_store/filters/publication.rs", NODE + "storage/fjall_store/filters/startup.rs",
+  NODE + "storage/fjall_store/filters/retention.rs", NODE + "storage/fjall_store/filters/append.rs",
   NODE + "storage/fjall_store/filters/tests.rs", NODE + "storage/fjall_store/filters/tests/faults.rs",
   NODE + "sync/tests/filter_index.rs", NODE + "sync/tests/filter_index/startup.rs",
   NODE + "sync/tests/filter_index/startup/recovery.rs", NODE + "sync/tests/filter_index/startup/faults.rs",
@@ -59,16 +60,16 @@ export function checkPhase155FilterIndex(maybeRoot?: string): string[] {
     }
   };
   checkStartupRoutes(text, failures);
+  checkImmutableAdmission(text, failures);
   const startup = NODE + "storage/fjall_store/filters/startup.rs";
-  requireText(startup, ["self.validate_basic_filter_records()?;", "VerifiedChainstateFence::new",
+  requireText(startup, ["self.measure_basic_filter_records(limits)?", "VerifiedChainstateFence::new",
     "FilterRecoveryPlan::Reconcile", "FilterRecoveryPlan::Refuse", ".check_prune_intent(intent.height)",
     "fail_closed BASIC index startup", "self.publish_basic_filter_checkpoint"], "guard mechanism");
   ordered(text(startup), ["self.maybe_prune_intent()?", ".check_prune_intent(intent.height)",
     "self.publish_basic_filter_checkpoint"], "guard ordering");
   requireText(NODE + "storage/fjall_store/filters/publication.rs", ["SyncAll", "control.poisoned = true",
     "self.verify_basic_filter_fence(fence)?", "PRUNE_LOCKS_KEY", "codec::STATE_KEY",
-    "BASIC_INDEX_MAX_CANDIDATES", "BASIC_INDEX_MAX_ENCODED_BYTES",
-    "BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES"], "atomic publication");
+    "BASIC_INDEX_MAX_CANDIDATES"], "atomic publication");
   requireText(NODE + "storage/filter_index.rs", ["basic_filter:v1:record:", "basic_filter:v1:active:",
     "basic_filter:v1:state", "validate_basic_filter_encoding", "double_sha256"], "bounded additive envelopes");
   requireText(NODE + "storage.rs", ["pub const CURRENT: Self = Self(2);"], "schema 2 compatibility");
@@ -128,6 +129,60 @@ export function checkPhase155FilterIndex(maybeRoot?: string): string[] {
   return failures;
 }
 
+function checkImmutableAdmission(text: (file: string) => string, failures: string[]): void {
+  const publication = NODE + "storage/fjall_store/filters/publication.rs";
+  for (const [symbol, anchors] of [
+    ["finish_basic_filter_batch", ["control.invalidate_append()?;", "if let Err(error) = batch.commit() {",
+      "control.poisoned = true;", "return Err(backend_failure(", "after_commit_fault(control)"]],
+    ["filter_publication_guard", [".filter_publication.lock()", "if guard.poisoned {", "return Err(publication_failure(", "Ok(guard)"]],
+    ["publish_basic_filter_checkpoint_guarded", ["self.verify_basic_filter_fence(fence)?;",
+      "self.prepare_basic_filter_records(records)?;", ".durability(Some(FjallPersistMode::SyncAll))", "self.finish_basic_filter_batch(batch, control)?;"]],
+    ["persist_basic_filter_records", ["self.filter_publication_guard()?;", "self.check_basic_filter_work_guarded(work, fence, &control)?;",
+      "self.prepare_basic_filter_records(records)?;", ".durability(Some(FjallPersistMode::SyncAll))", "self.finish_basic_filter_batch(batch, &mut control)?;"]],
+  ] as const) {
+    const maybeFunction = maybeRustFunction(text(publication), symbol, true);
+    if (!maybeFunction || compact(maybeFunction.attributes).includes("#[cfg(test)]")
+      || !hasOrderedCode(maybeFunction.body, anchors)) failures.push(`atomic publication: ordinary guarded atomic commit contract: ${symbol}`);
+  }
+  const retention = NODE + "storage/fjall_store/filters/retention.rs";
+  const maybeBounds = maybeRustFunction(text(retention), "check_envelope_bounds", true);
+  const anchors = ["if records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES {",
+    "return Err(index_corruption(", "let mut total = 0_u64;", "for record in records {",
+    "let envelope = (record.encoded_bytes().len() as u64)", ".checked_add(codec::RECORD_OVERHEAD as u64)",
+    "if envelope > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES {", "return Err(index_corruption(",
+    "total = total.checked_add(envelope)", "if total > BASIC_INDEX_MAX_ENCODED_BYTES {",
+    "return Err(index_corruption(", "Ok(())"];
+  if (!maybeBounds || compact(maybeBounds.attributes).includes("#[cfg(test)]")
+    || !hasOrderedCode(maybeBounds.body, anchors)
+    || !["records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES", "envelope > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES",
+      "total > BASIC_INDEX_MAX_ENCODED_BYTES"].every(condition => compact(maybeBounds.body)
+      .includes(compact(`if ${condition} { return Err(index_corruption(`)))
+    || !hasOrderedCode(maybeBounds.body, [".checked_add(codec::RECORD_OVERHEAD as u64)",
+      ".ok_or_else(|| index_corruption())?;", "total = total.checked_add(envelope)",
+      ".ok_or_else(|| index_corruption())?;"])
+    || statementDepth(maybeBounds.body, anchors[0]) !== 0
+    || [...maybeBounds.body.matchAll(/\breturn\b/g)].length !== 3
+    || statementDepth(maybeBounds.body, "for record in records {") !== 0
+    || statementDepth(maybeBounds.body, "if envelope > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES {") !== 1
+    || statementDepth(maybeBounds.body, "if total > BASIC_INDEX_MAX_ENCODED_BYTES {") !== 1) {
+    failures.push("atomic publication: immutable admission ceilings/refusal must remain in ordinary production helper");
+  }
+  for (const [file, symbol, call, allocation] of [
+    [NODE + "storage/fjall_store/filters/publication.rs", "prepare_basic_filter_records",
+      "super::retention::check_envelope_bounds(records)?;", "let mut encoded = Vec::with_capacity(records.len());"],
+    [NODE + "storage/fjall_store/filters/append.rs", "prepare_basic_filter_append_guarded_positions",
+      "check_envelope_bounds(records)?;", "let mut prepared"],
+  ] as const) {
+    const maybeFunction = maybeRustFunction(text(file), symbol, true);
+    if (!maybeFunction || compact(maybeFunction.attributes).includes("#[cfg(test)]")
+      || !hasOrderedCode(maybeFunction.body, [call, allocation, "codec::encode_record(record)"])
+      || statementDepth(maybeFunction.body, call) !== 0
+      || /\breturn\b/.test(maybeFunction.body.slice(0, maybeFunction.body.indexOf("check_envelope_bounds")))) {
+      failures.push(`atomic publication: mandatory immutable admission before allocation/encoding: ${symbol}`);
+    }
+  }
+}
+
 function checkStartupRoutes(text: (file: string) => string, failures: string[]): void {
   const body = (file: string, symbol: string, anchors: readonly string[], category: string) => {
     const maybeFunction = maybeRustFunction(text(file), symbol, true);
@@ -160,30 +215,70 @@ function checkStartupRoutes(text: (file: string) => string, failures: string[]):
     "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;",
     "Chainstate::from_coins_cache", "ManagedChainstate::from_recovered_chainstate("], "runtime constructor");
   const startup = NODE + "storage/fjall_store/filters/startup.rs";
+  const integrity = body(NODE + "storage/fjall_store/filters.rs", "measure_basic_filter_records", [
+    "for guard in self.block_index.prefix(codec::RECORD_PREFIX)", "codec::parse_record(key, &bytes)?;",
+    "parsed.verify_parent(None)?;", "codec::parse_record_fields(&parent_key, &parent_bytes)?;",
+    "parsed.verify_parent(Some(&parent))?;", "for guard in self.block_index.prefix(codec::ACTIVE_PREFIX)",
+    "codec::decode_projection(key, &bytes)?;", "codec::parse_record_fields(&record_key, &record_bytes)?;",
+    "if codec::active_key(record.height) != key", "return Err(index_corruption(", "Ok(retained)"], "guard mechanism");
+  for (const statement of ["for guard in self.block_index.prefix(codec::RECORD_PREFIX)",
+    "for guard in self.block_index.prefix(codec::ACTIVE_PREFIX)"]) {
+    if (statementDepth(integrity, statement) !== 0) failures.push("guard mechanism: mandatory integrity scan cannot be conditional");
+  }
   body(startup, "recover_basic_filter_index_before_prune", ["self.configure_basic_filter_index_before_prune(",
     "BasicFilterStartupMode::PreserveSaved"], "PreserveSaved route");
-  body(startup, "configure_basic_filter_index_before_prune", [
-    "self.apply_basic_filter_startup(maybe_recovered_best_block, mode)"], "configured route");
-  body(startup, "apply_basic_filter_startup", [
-    "BasicFilterStartupMode::PreserveSaved => { self.recover_basic_filter_index(maybe_recovered_best_block) }",
-    "BasicFilterStartupMode::Disabled => self.disable_basic_filter_index()",
+  const defaultRoute = body(startup, "configure_basic_filter_index_before_prune", [
+    "self.configure_basic_filter_index_before_prune_with_retention_limits(",
+    "maybe_recovered_best_block,", "mode,", "super::retention::RetentionObservationLimits::default()"], "configured route");
+  if (statementDepth(defaultRoute, "self.configure_basic_filter_index_before_prune_with_retention_limits(") !== 0
+    || /\breturn\b/.test(defaultRoute)) failures.push("configured route: mandatory default limits route cannot be conditional or bypassed");
+  const configured = body(startup, "configure_basic_filter_index_before_prune_with_retention_limits", [
+    "let mut control = self.filter_publication_guard()?;", "control.invalidate_read_integrity()?;",
+    "let result = self.apply_basic_filter_startup_guarded(", "maybe_recovered_best_block,", "mode,", "limits,", "&mut control,",
+    ".and_then(|()| control.advance_integrity_epoch())",
+    "if result.is_err()", "control.read_integrity = false;", "result.map_err("], "configured route");
+  for (const statement of ["control.invalidate_read_integrity()?;", "let result = self.apply_basic_filter_startup_guarded("]) {
+    if (statementDepth(configured, statement) !== 0
+      || /\breturn\b/.test(configured.slice(0, configured.indexOf("let result")))) {
+      failures.push("configured route: mandatory guarded dispatch cannot be conditional or bypassed");
+    }
+  }
+  const dispatchBody = body(startup, "apply_basic_filter_startup_guarded", [
+    "BasicFilterStartupMode::PreserveSaved => { self.recover_basic_filter_index_guarded(maybe_recovered_best_block, limits, control) }",
+    "BasicFilterStartupMode::Disabled => { self.disable_basic_filter_index_guarded(control, limits) }",
     "BasicFilterStartupMode::Enabled => {", "maybe_recovered_best_block.is_none()",
     "self.load_chain_meta_for_open()?", "VerifiedChainstateFence::new(maybe_recovered_best_block, Some(&positions))",
-    "self.enable_basic_filter_index(&fence)"], "independent startup routes");
-  const recover = body(startup, "recover_basic_filter_index", ["self.validate_basic_filter_records()?;",
+    "self.enable_basic_filter_index_guarded(&fence, control, limits)"], "independent startup routes");
+  if (statementDepth(dispatchBody, "match mode {") !== 0
+    || /\breturn\b/.test(dispatchBody.slice(0, dispatchBody.indexOf("match mode")))) {
+    failures.push("independent startup routes: mandatory policy dispatch cannot be conditional or bypassed");
+  }
+  const recover = body(startup, "recover_basic_filter_index_guarded", [
+    "let retained = if self.maybe_basic_filter_state()?.is_some() { self.measure_basic_filter_records(limits)? } else { RetainedBasicFilterObservation::empty() };",
+    "let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {",
+    "control.install_retention(retained);", "return Ok(());",
     "self.inspect_basic_filter_recovery(owner, &fence)?;", "self.maybe_prune_intent()?",
     ".check_prune_intent(intent.height)", "self.materialize_basic_filter_owner_guarded(",
     "self.publish_basic_filter_checkpoint_guarded("], "PreserveSaved protection");
   if (statementDepth(recover, "self.inspect_basic_filter_recovery(owner, &fence)?;") !== 0) {
     failures.push("PreserveSaved protection: required inspection cannot be conditional");
   }
+  const ownerProof = "let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {";
+  const beforeOwner = recover.slice(0, recover.indexOf(ownerProof));
+  if (statementDepth(recover, "self.measure_basic_filter_records(limits)?") !== 1
+    || statementDepth(recover, ownerProof) !== 0
+    || /\breturn\b/.test(beforeOwner) || beforeOwner.includes("control.install_retention(")) {
+    failures.push("PreserveSaved protection: mandatory state-gated validation cannot be conditional or bypass owner absence proof");
+  }
   body(startup, "inspect_basic_filter_recovery", ["self.scan_basic_filter_checkpoint(",
     "FilterRecoveryPlan::Reconcile", "FilterRecoveryPlan::Refuse",
     ".maybe_effective_protection()", "retained.covers(protection)",
     "Ok(InspectedBasicFilterRecovery"], "PreserveSaved retained protection");
   const lifecycle = NODE + "storage/fjall_store/filters/lifecycle.rs";
-  const enable = body(lifecycle, "enable_basic_filter_index", ["self.verify_basic_filter_fence(fence)?;",
-    "let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {",
+  body(lifecycle, "enable_basic_filter_index", ["let mut control = self.filter_publication_guard()?;",
+    "self.enable_basic_filter_index_guarded(", "fence,", "&mut control,", "RetentionObservationLimits::default()"], "Enabled suffix preflight");
+  const enable = body(lifecycle, "enable_basic_filter_index_guarded", ["self.verify_basic_filter_fence(fence)?;",
+    "let Some(owner) = self.maybe_basic_filter_owner_guarded(control)? else {",
     "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;",
     "self.maybe_prune_intent()?", ".check_prune_intent(intent.height)",
     "self.initialize_basic_filter_state_guarded(", "return self.install_recovered_basic_filter_append_guarded(",
@@ -192,6 +287,26 @@ function checkStartupRoutes(text: (file: string) => string, failures: string[]):
     "self.maybe_prune_intent()?", ".check_prune_intent(intent.height)",
     "if active == owner.lifecycle()", "return self.install_recovered_basic_filter_append_guarded(",
     "let mut batch = self.db.batch()", "self.finish_basic_filter_batch("], "Enabled suffix preflight");
+  const disableWrapper = body(lifecycle, "disable_basic_filter_index", ["let mut control = self.filter_publication_guard()?;",
+    "self.disable_basic_filter_index_guarded(&mut control, RetentionObservationLimits::default(),)?;",
+    "let retained = control.retention;", "control.reset_verified_forest(retained);", "Ok(())"], "Disabled route");
+  for (const statement of ["self.disable_basic_filter_index_guarded(", "control.reset_verified_forest(retained);"]) {
+    if (statementDepth(disableWrapper, statement) !== 0
+      || disableWrapper.indexOf("control.reset_verified_forest(") < disableWrapper.indexOf("self.disable_basic_filter_index_guarded(")
+      || /\breturn\b/.test(disableWrapper.slice(0, disableWrapper.indexOf("control.reset_verified_forest")))) {
+      failures.push("Disabled route: closing verified reset cannot be conditional, bypassed or precede successful disable");
+    }
+  }
+  const disable = body(lifecycle, "disable_basic_filter_index_guarded", ["control.invalidate_read_integrity()?;", "control.invalidate_append()?;",
+    "self.maybe_basic_filter_owner_guarded(control)?", "self.measure_basic_filter_records(limits)?;",
+    "self.maybe_basic_filter_checkpoint()?;", "owner.lifecycle().disable()", "self.finish_basic_filter_batch(batch, control)?;",
+    "LifecyclePublicationPoint::AfterDisable", "self.load_prune_locks()?;", "locks.retain(",
+    "LifecyclePublicationPoint::BeforeRelease", "self.finish_basic_filter_batch(batch, control)?;",
+    "LifecyclePublicationPoint::AfterRelease"], "Disabled route");
+  for (const statement of ["control.invalidate_read_integrity()?;", "control.invalidate_append()?;",
+    "self.measure_basic_filter_records(limits)?;", "self.maybe_basic_filter_checkpoint()?;", "locks.retain("]) {
+    if (statementDepth(disable, statement) !== 0) failures.push("Disabled route: mandatory validation/release cannot be conditional");
+  }
   for (const [statement, expectedDepth] of [
     ["self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;", 1],
     ["self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;", 0],

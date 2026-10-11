@@ -1,5 +1,71 @@
 # Operator Runtime Guide
 
+## Shared BASIC index inspection (Phase 161)
+
+Inspect `basic_index` in status JSON or the `BASIC index` human/dashboard/support
+section. These consumers use the existing `openbitcoinnetworkstatus` capture.
+Refresh reads facts only; it cannot enable, recover, reindex, repair, download
+history, clear faults, advance a durable checkpoint or remove prune protection.
+
+| Read together                                | Interpretation                                                                                                                                                                                                                                               |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Indexing / Peer serving / Peer scope         | Configured index and general service are separate from modeled per-peer capability. Explicit `blockfilters` differs from `all`; `all` can advertise without a backend. Implicit origins are unmodeled/count zero; ordinary peers are not relabeled implicit. |
+| Init sync / Lag / Target                     | Earned initial sync is a historical owner latch; later lag/reorg can leave it earned. Current lag uses the accepted active target, not header height.                                                                                                        |
+| Processed / Durable                          | Processed work can exceed the safe durable endpoint. `none` is observed absence; actual genesis is zero; `Unavailable` is unknown.                                                                                                                           |
+| State / Failure / Retained                   | Missing body/undo, backend, integrity, resource pause and invalidation are fixed categories. A failed/lagged index can retain useful filters; observed availability never promises every lookup succeeds.                                                    |
+| Records / Filter bytes / Index bytes / Basis | Unique immutable retained rows, encoded payload bytes and record key/value bytes include stale/displaced records and key/envelope bytes. Payload bytes are a subset, so do not add them to index bytes.                                                      |
+| Protection / Prune target                    | BASIC-owned inclusive bounds can retain block/undo history above the soft logical target. Filter growth is separate from that target; neither is a physical disk-capacity guarantee.                                                                         |
+
+Accounting excludes active projections, runtime state, owner/checkpoint/protection/
+lock metadata, other namespaces, Fjall/WAL/SST/compaction overhead and physical
+allocation. Startup validation recovers complete totals; achieved unique-row
+publication updates them without counting retries/reorg reuse twice. Polling
+performs bounded metadata reads, not full history/index scans. Incomplete, failed
+or over-budget measurements remain unavailable. Failed backend/integrity evidence
+must not be interpreted as ordinary absence, successful empty filters or zero bytes.
+
+Stopped collection cannot infer BASIC settings from the current JSONC resolver,
+which has no BASIC fields and cannot see daemon CLI overrides. Stopped live facts
+use `live BASIC evidence unavailable`; older-daemon missing fields use `BASIC evidence not reported`. Neither means disabled, healthy or caught up. Missing
+required bodies/undo refuse without automatic reconstruction or download.
+Retained filters do not restore deleted bodies or wallet eligibility.
+
+From the repo root, inspect the currently selected configuration with either form:
+
+```bash
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- status --format json
+```
+
+For an isolated stopped-node review, create a disposable empty directory. It does
+not provide live indexed history. Reuse this shell's variable for the commands:
+
+```bash
+basic_review_dir=$(mktemp -d /tmp/open-bitcoin-basic-review.XXXXXX)
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir="$basic_review_dir" --network regtest status --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir="$basic_review_dir" --network regtest status --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir="$basic_review_dir" --network regtest dashboard --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir="$basic_review_dir" --network regtest dashboard --format json
+cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --datadir="$basic_review_dir" --network regtest support bundle --output-dir="$basic_review_dir/support-cargo" --format json
+bazel run //packages/open-bitcoin-cli:open_bitcoin -- --datadir="$basic_review_dir" --network regtest support bundle --output-dir="$basic_review_dir/support-bazel" --format json
+```
+
+Expect every BASIC fact to be unavailable in this empty/stopped case. Human status
+uses `--format human`; dashboard uses `--format human --tick-ms 1000` for
+interactive display when stdout is a terminal, or complete text when redirected.
+At 160x55 all nineteen BASIC
+rows fit; at 80x30/80x25 the heading and first seven critical facts take priority.
+Below 25 rows the existing small-window blocker applies. Support writes redacted
+local files; inspect `support-evidence.json` and `support-evidence.md`. It sanitizes
+a captured copy and exposes no new raw BASIC payloads, identifiers, keys or paths.
+Ad-hoc Cargo/Bazel execution uses the existing timing runner; run serially:
+`bun run scripts/command-timings.ts run --key phase161-local-inspection -- COMMAND`.
+
+Live accepted-chain and private fault-capture/replay evidence is documented in the
+[parity catalog](../parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
+Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+No stronger v2.4 crash-window guarantee is claimed.
+
 This guide describes the current source-built operator workflow for Open
 Bitcoin on macOS and Linux. It is intentionally conservative: the runtime is
 source-built, service integration is local-machine only, migration remains

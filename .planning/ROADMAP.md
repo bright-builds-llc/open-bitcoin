@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–160 completed 58 plans and eighteen requirements after full native verification. Seven of nine phases are complete; four requirements remain pending. Phase 160 implements explicit bounded BASIC peer requests through both production socket adapters, with configured capability, branch-correct persisted reads and achieved-write accounting. Its verification passed 7/7 truths, all five roadmap criteria, six CFNET requirements and twenty decisions; independent source review is clean across 123 paths and all 39 declared mitigations are closed. Full default native verification passed in 26m 5.720s with 4,093 primary Rust passes, benchmark/Bazel/provenance and zero uncovered pure-core lines. BASIC construction, recoverable storage, prune protection/coordination, safe activation, bounded catch-up, validated branch replacement and authenticated filter/index RPCs are implemented. UnknownLegacy missing rows fail closed and finite resource policies remain explicit. Phase 161 operator projections and Phase 162 integrated retained-client proof remain pending; v2.5 is not a shipped capability. v2.4 remains archived with three nonblocking advisories, and historical phase directories remain tracked for verifier evidence.
+v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–161 completed 69 plans and nineteen requirements after full native verification. Eight of nine phases are complete; CFPR-02 and CFGR-01/02 remain pending for Phase 162. Phase 161 adds one authoritative BASIC operator group across RPC, CLI, dashboard and redacted support, with distinct configured capability, earned synchronization, current lag, processed/safe durable progress, fixed failures, retained logical growth and protection. Its verification passed 15/15 combined obligations, all three roadmap criteria and sixteen decisions; independent source review is clean across 113 paths and all 35 declared mitigations are closed. The complete default native verifier passed in 27m41.348s with 4,247 primary Rust passes, benchmark/Bazel/provenance and zero uncovered pure-core lines. Logical retained bytes include stale immutable rows, exclude engine/physical overhead and remain separate from the soft block/undo target; filters restore neither bodies nor wallet eligibility. Stopped/legacy unknowns, modeled implicit-origin limits and private-capture/replay composition remain explicit. Phase 162 owns the complete continuous-chain prune/reopen/RPC/both-transports proof; v2.5 is not shipped. Existing v2.4 crash-window advisories and public/default, archive, production/funds exclusions remain unchanged.
 
 ## Milestones
 
@@ -40,7 +40,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 158: Validated Reorg and Retained Branch Identity** — Replace active commitments while retaining indexed displaced blocks and refusing lost reorg inputs. (completed 2026-10-09)
 - [x] **Phase 159: Authenticated BASIC Filter and Index RPCs** — Expose pinned lookup results and initial-synchronization semantics through the shared durable authority. (completed 2026-10-10)
 - [x] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence. (completed 2026-10-11)
-- [ ] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers.
+- [x] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers. (completed 2026-10-11)
 - [ ] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports.
 
 ## Phase Details
@@ -209,7 +209,19 @@ Plans:
 1. Missing history, backend/index failure and retained filter availability have distinct actionable categories; redacted support evidence agrees with live operator facts without exposing raw scripts, paths or peer identifiers. (CFOP-01)
 1. Operators see retained filter growth separately from the soft block/undo prune target, including protection-induced retention; useful filters never imply old block bodies or wallet eligibility have been restored. (CFOP-01)
 
-**Plans**: TBD
+**Plans**: 11/11 complete; full native and strict lifecycle verification passed
+
+- [x] 161-01-PLAN.md
+- [x] 161-02-PLAN.md
+- [x] 161-03-PLAN.md
+- [x] 161-10-PLAN.md
+- [x] 161-04-PLAN.md
+- [x] 161-05-PLAN.md
+- [x] 161-11-PLAN.md
+- [x] 161-06-PLAN.md
+- [x] 161-07-PLAN.md
+- [x] 161-08-PLAN.md
+- [x] 161-09-PLAN.md
 **UI hint**: yes
 
 ### Phase 162: Real Prune Retention and Integrated Parity Proof
@@ -262,7 +274,7 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | 158. Validated Reorg and Retained Branch Identity | 7/7 | Complete | 2026-10-09 |
 | 159. Authenticated BASIC Filter and Index RPCs | 8/8 | Complete    | 2026-10-10 |
 | 160. Explicit Bounded Peer Filter Serving | 17/17 | Complete    | 2026-10-11 |
-| 161. Shared Operator Index and Retention Evidence | 0/TBD | Not started | - |
+| 161. Shared Operator Index and Retention Evidence | 11/11 | Complete    | 2026-10-11 |
 | 162. Real Prune Retention and Integrated Parity Proof | 0/TBD | Not started | - |
 
 ## Coverage

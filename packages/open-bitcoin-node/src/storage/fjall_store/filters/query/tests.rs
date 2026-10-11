@@ -9,6 +9,88 @@ use super::super::query::{
 use super::*;
 
 #[test]
+fn phase161_read_fault_storage_revokes_shared_authority_once() {
+    for fault in [
+        super::super::query::QueryRecordFault::CorruptTarget,
+        super::super::query::QueryRecordFault::CorruptParent,
+        super::super::query::QueryRecordFault::MissingParent,
+    ] {
+        // Arrange
+        let (path, store, records) = recovered_fixture("read-fault", 4);
+        let clone = store.clone();
+        let (positions, _) = fixtures(4);
+        let work = store
+            .maybe_basic_filter_work(&fence(&positions))
+            .expect("work")
+            .expect("active");
+        let epoch = store
+            .with_basic_filter_query(|reader| reader.integrity_epoch())
+            .expect("epoch");
+        let before = store
+            .filter_publication_guard()
+            .expect("guard")
+            .read_integrity_epoch();
+        clone
+            .inject_query_record_fault_for_test(records[3].identity().block_hash(), fault)
+            .expect("fault");
+        // Act
+        assert!(
+            clone
+                .maybe_basic_filter_point_query(records[3].identity().block_hash())
+                .is_err()
+        );
+        // Assert
+        assert!(!store.basic_peer_epoch_is_current(&epoch).expect("revoked"));
+        assert!(store.basic_filter_retention().is_err());
+        assert!(
+            store
+                .persist_basic_filter_records(&work, &fence(&positions), &records[..1])
+                .is_err(),
+            "old partial publisher cannot heal"
+        );
+        for _ in 0..3 {
+            assert!(
+                store
+                    .maybe_basic_filter_point_query(records[3].identity().block_hash())
+                    .is_err()
+            );
+            assert_eq!(
+                store
+                    .filter_publication_guard()
+                    .expect("guard")
+                    .read_integrity_epoch(),
+                before + 1
+            );
+        }
+        drop(epoch);
+        drop(clone);
+        drop(store);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
+}
+
+#[test]
+fn phase161_read_fault_storage_backend_revokes_without_reclassification() {
+    // Arrange
+    let (path, store, records) = recovered_fixture("read-backend", 4);
+    let epoch = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("epoch");
+    store.set_basic_filter_fault(super::super::FilterPublicationFault::BeforeQueryRead);
+    // Act
+    assert!(matches!(
+        store.maybe_basic_filter_point_query(records[3].identity().block_hash()),
+        Err(StorageError::BackendFailure { .. })
+    ));
+    // Assert
+    assert!(!store.basic_peer_epoch_is_current(&epoch).expect("revoked"));
+    assert!(store.basic_filter_retention().is_err());
+    drop(epoch);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
 fn phase160_query_epoch_recovery_same_generation_never_revives_token() {
     // Arrange
     let (path, store, records) = recovered_fixture("epoch-recovery", 4);
@@ -488,6 +570,13 @@ fn phase159_basic_query_measure_codec_maximum_singleton_is_admitted() {
             .work()
             .get(open_bitcoin_network::basic_peer_resource::BasicPeerServeAxis::HashPaddedBytes),
         0
+    );
+    assert!(
+        store
+            .basic_filter_operator_observation()
+            .expect("wire refusal")
+            .maybe_read_fault
+            .is_none()
     );
     assert_eq!(
         store

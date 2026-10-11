@@ -221,6 +221,7 @@ impl FakeStatusRpcClient {
             maybe_node_error: None,
             maybe_network_status_error: None,
             maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+                basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
@@ -266,6 +267,7 @@ impl FakeStatusRpcClient {
             maybe_node_error: None,
             maybe_network_status_error: None,
             maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+                basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
@@ -328,6 +330,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
             .maybe_network_status
             .clone()
             .unwrap_or_else(|| OpenBitcoinNetworkStatusResponse {
+                basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
                 inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                     INBOUND_STATUS_UNAVAILABLE_REASON,
                 ),
@@ -403,6 +406,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
 
 pub(super) fn inbound_status_response() -> OpenBitcoinNetworkStatusResponse {
     OpenBitcoinNetworkStatusResponse {
+        basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
         inbound: FieldAvailability::available(InboundPeerServingStatus {
             listener_state: "listening".to_string(),
             bound_endpoints: vec!["127.0.0.1:18444".to_string()],

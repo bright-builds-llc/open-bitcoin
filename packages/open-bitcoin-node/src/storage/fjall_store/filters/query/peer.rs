@@ -51,45 +51,71 @@ impl FjallNodeStore {
             &mut BasicPeerServeBudget,
         ) -> Result<T, BasicPeerReadError>,
     ) -> Result<T, BasicPeerReadError> {
-        let control = self.filter_publication_guard()?;
-        budget.charge(Axis::MetadataReads, 1)?;
-        self.count_filter_integrity_read();
-        let maybe_lifecycle = self
-            .block_index
-            .get(codec::ownership::OWNER_KEY)
-            .map_err(|error| {
-                super::super::super::backend_failure(StorageNamespace::BlockIndex, error)
-            })?
-            .map(|bytes| codec::ownership::decode_owner(&bytes))
-            .transpose()?;
-        let enabled = match maybe_lifecycle {
-            Some(IndexLifecycle::Active { .. }) => true,
-            Some(_) => false,
-            None => {
-                budget.charge(Axis::MetadataReads, 1)?;
-                self.count_filter_integrity_read();
+        let mut control = self.filter_publication_guard()?;
+        let read_fault = Cell::new(None);
+        let result = (|| {
+            budget.charge(Axis::MetadataReads, 1)?;
+            self.count_filter_integrity_read();
+            let maybe_lifecycle = observe_read_result(
+                &read_fault,
+                BasicFilterReadFault::Backend,
                 self.block_index
-                    .get(codec::STATE_KEY)
+                    .get(codec::ownership::OWNER_KEY)
                     .map_err(|error| {
                         super::super::super::backend_failure(StorageNamespace::BlockIndex, error)
-                    })?
-                    .map(|bytes| codec::decode_state(&bytes))
+                    }),
+            )?
+            .map(|bytes| {
+                observe_read_result(
+                    &read_fault,
+                    BasicFilterReadFault::Integrity,
+                    codec::ownership::decode_owner(&bytes),
+                )
+            })
+            .transpose()?;
+            let enabled = match maybe_lifecycle {
+                Some(IndexLifecycle::Active { .. }) => true,
+                Some(_) => false,
+                None => {
+                    budget.charge(Axis::MetadataReads, 1)?;
+                    self.count_filter_integrity_read();
+                    observe_read_result(
+                        &read_fault,
+                        BasicFilterReadFault::Backend,
+                        self.block_index.get(codec::STATE_KEY).map_err(|error| {
+                            super::super::super::backend_failure(
+                                StorageNamespace::BlockIndex,
+                                error,
+                            )
+                        }),
+                    )?
+                    .map(|bytes| {
+                        observe_read_result(
+                            &read_fault,
+                            BasicFilterReadFault::Integrity,
+                            codec::decode_state(&bytes),
+                        )
+                    })
                     .transpose()?
                     .is_some()
+                }
+            };
+            if !enabled {
+                return Err(BasicPeerReadError::Disabled);
             }
-        };
-        if !enabled {
-            return Err(BasicPeerReadError::Disabled);
-        }
-        inspect(
-            &BasicFilterQueryReader {
-                store: self,
-                control: &control,
-                enabled,
-                maybe_generation: maybe_lifecycle.map(|owner| owner.generation()),
-            },
-            budget,
-        )
+            inspect(
+                &BasicFilterQueryReader {
+                    store: self,
+                    control: &control,
+                    read_fault: &read_fault,
+                    enabled,
+                    maybe_generation: maybe_lifecycle.map(|owner| owner.generation()),
+                },
+                budget,
+            )
+        })();
+        let observed = control.observe_read_fault(read_fault.get());
+        result.and_then(|value| observed.map(|()| value).map_err(Into::into))
     }
 }
 
@@ -139,6 +165,7 @@ impl BasicFilterQueryReader<'_> {
         }
         #[cfg(test)]
         if self.control.maybe_fault == Some(super::super::FilterPublicationFault::BeforeQueryRead) {
+            self.read_fault.set(Some(BasicFilterReadFault::Backend));
             return Err(StorageError::BackendFailure {
                 namespace: StorageNamespace::BlockIndex,
                 message: "/private/phase160-backend-read-marker".into(),
@@ -150,7 +177,12 @@ impl BasicFilterQueryReader<'_> {
         let Some(bytes) = self.peer_row(&key, budget)? else {
             return Ok(None);
         };
-        let encoded_len = checked_encoded_length(bytes.len())?;
+        check_envelope(bytes.len())?;
+        let encoded_len = observe_read_result(
+            self.read_fault,
+            BasicFilterReadFault::Integrity,
+            checked_encoded_length(bytes.len()),
+        )?;
         if filter_frame {
             let frame = cfilter_frame_bytes(encoded_len as u64)
                 .filter(|bytes| *bytes <= BASIC_PEER_MAX_FRAME_BYTES)
@@ -163,22 +195,59 @@ impl BasicFilterQueryReader<'_> {
             ..Default::default()
         };
         charge_envelope(budget, &mut work, bytes.len(), true)?;
-        let target = codec::parse_record(&key, &bytes)?;
+        let target = observe_read_result(
+            self.read_fault,
+            BasicFilterReadFault::Integrity,
+            codec::parse_record(&key, &bytes),
+        )?;
         let identity = if target.height == 0 {
-            target.verify_parent(None)?;
-            target.checkpoint_identity(None)?
+            observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                target.verify_parent(None),
+            )?;
+            observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                target.checkpoint_identity(None),
+            )?
         } else {
             let parent_key = codec::record_key(target.parent);
-            let parent_bytes = self
-                .peer_row(&parent_key, budget)?
-                .ok_or_else(|| index_corruption("missing BASIC query predecessor"))?;
+            let parent_bytes = self.peer_row(&parent_key, budget)?;
+            let parent_bytes = observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                parent_bytes.ok_or_else(|| index_corruption("missing BASIC query predecessor")),
+            )?;
+            check_envelope(parent_bytes.len())?;
+            observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                checked_encoded_length(parent_bytes.len()),
+            )?;
             charge_envelope(budget, &mut work, parent_bytes.len(), false)?;
-            let parent = codec::parse_record(&parent_key, &parent_bytes)?;
+            let parent = observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                codec::parse_record(&parent_key, &parent_bytes),
+            )?;
             if parent.height == 0 {
-                parent.verify_parent(None)?;
+                observe_read_result(
+                    self.read_fault,
+                    BasicFilterReadFault::Integrity,
+                    parent.verify_parent(None),
+                )?;
             }
-            target.verify_parent(Some(&parent))?;
-            target.checkpoint_identity(Some(&parent))?
+            observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                target.verify_parent(Some(&parent)),
+            )?;
+            observe_read_result(
+                self.read_fault,
+                BasicFilterReadFault::Integrity,
+                target.checkpoint_identity(Some(&parent)),
+            )?
         };
         Ok(Some(BasicFilterRecordView {
             identity,
@@ -194,9 +263,14 @@ impl BasicFilterQueryReader<'_> {
     ) -> Result<Option<fjall::Slice>, BasicPeerReadError> {
         budget.charge(Axis::RecordReads, 1)?;
         self.store.count_filter_integrity_read();
-        self.store.block_index.get(key).map_err(|error| {
-            super::super::super::backend_failure(StorageNamespace::BlockIndex, error).into()
-        })
+        observe_read_result(
+            self.read_fault,
+            BasicFilterReadFault::Backend,
+            self.store.block_index.get(key).map_err(|error| {
+                super::super::super::backend_failure(StorageNamespace::BlockIndex, error)
+            }),
+        )
+        .map_err(Into::into)
     }
 }
 

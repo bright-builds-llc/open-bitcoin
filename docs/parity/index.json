@@ -926,6 +926,51 @@
         ]
       },
       {
+        "id": "v2-5-shared-basic-operator-evidence",
+        "title": "Shared BASIC index and retained-growth operator evidence",
+        "status": "done",
+        "requirements": ["CFOP-01"],
+        "evidence": [
+          "packages/open-bitcoin-node/src/status/basic_index.rs",
+          "packages/open-bitcoin-node/src/network/operator_snapshot.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/retention.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/tests/retention.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/operator_status.rs",
+          "packages/open-bitcoin-node/testdata/basic_operator_captures.json",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/operator_evidence.rs",
+          "packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs",
+          "packages/open-bitcoin-cli/tests/operator_flows/basic_index/captured.rs",
+          "packages/open-bitcoin-cli/src/operator/dashboard/app/tests/basic_index.rs",
+          ".planning/phases/161-shared-operator-index-and-retention-evidence/161-CALLER-EVIDENCE.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          "docs/operator/runtime-guide.md",
+          "docs/parity/catalog/basic-compact-filters.md",
+          "scripts/check-phase161-operator-index-evidence.ts",
+          "scripts/check-phase161-operator-index-evidence.test.ts",
+          "scripts/verify.sh"
+        ],
+        "rationale": "Scoped CFOP-01 shared identifier-free BASIC observations from the existing serialized authority through RPC, CLI, dashboard and redacted support. Genuine public callers, separately fresh-checked private producer captures/replay, independent unique retained-row totals and actual terminal buffers supplement narrow mutation guards. Root-owned full native, independent source/security and formal lifecycle gates remain required before completion.",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/index/base.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+            "packages/bitcoin-knots/src/rpc/node.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ]
+        },
+        "intentional_differences": [
+          "Open Bitcoin-owned typed basic_index operator extension; baseline getindexinfo/getblockfilter result shapes remain unchanged. Stopped/legacy fields remain unavailable rather than inferred false/zero/healthy.",
+          "Logical immutable record count/payload/key-value aggregate includes stale branches but excludes active projections, owner/checkpoint/lock metadata, Fjall overhead and physical allocation; payload bytes are a subset. BASIC observation admits at most eight metadata reads and 4096 bytes without history scans.",
+          "Recovery observation budgets are 2,000,000 rows/256 GiB; achieved bounded appends use separate existing finite batch bounds and checked arithmetic. Modeled capability counts preserve general/explicit/all distinctions; implicit origins are not modeled and count zero."
+        ],
+        "known_gaps": [
+          "The complete integrated prune/reopen client proof belongs to Phase 162 and remains pending alongside v2.5 completion; canonical CFGR ownership is not duplicated here.",
+          "Private faults compose genuine fresh producer captures with actual consumer replay, not every fault through live daemon HTTP. Synthetic genesis/maturity-one/manual owner-plan fixtures do not prove ordinary prune-RPC or automatic prune-after1000.",
+          "BIP37/V0, filter import, wallet acceleration, reindex/repair/download, archive-scale, assumeutxo, public defaults/network CI, production service/readiness and funds-safety remain excluded. No stronger v2.4 crash-window guarantee is claimed."
+        ]
+      },
+      {
         "id": "v2-5-authenticated-basic-filter-and-index-rpcs",
         "title": "Authenticated retained BASIC filter and index queries",
         "status": "done",

@@ -8,10 +8,22 @@ private node faults composed with actual RPC projection. UnknownLegacy missing
 rows fail closed; valid retained records still serve. Initial-sync latch,
 processed height and captured-frontier readiness remain distinct. Dependencies
 and default-off activation are unchanged. CFRP-01/02 are Complete after full native, independent source/security and
-[formal lifecycle verification](../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md); peers 160, operator 161,
-integrated 162 and v2.5 completion remain pending. Earlier phase scope below is
+[formal lifecycle verification](../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md). Phase 160 implements explicit bounded peers;
+Phase 161 adds shared operator evidence below. Integrated 162 and v2.5 completion remain pending. Earlier phase scope below is
 historical; synthetic genesis/maturity-one/manual owner-plan evidence does not
 establish ordinary prune-RPC, automatic-threshold or production/funds safety.
+
+Phase 161 adds one shared `basic_index` projection from the existing authority
+through `openbitcoinnetworkstatus`, status, dashboard and redacted support.
+Configured capability, earned initial sync, current lag, processed/safe durable
+heights, fixed failures, retained availability and protection remain independent.
+Stopped/legacy missing facts are unavailable. Unique immutable records and logical
+payload/key-value bytes include stale branches; payload bytes are a subset, and
+Fjall overhead/physical allocation are excluded. Growth stays outside the soft
+block/undo target and does not restore body/wallet eligibility. See the
+[operator contract and Cargo/Bazel commands](../docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
+Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+No stronger v2.4 crash-window guarantee is claimed.
 
 This directory holds both the pinned upstream reference baseline and first-party
 Open Bitcoin crates.

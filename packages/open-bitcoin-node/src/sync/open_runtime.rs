@@ -73,6 +73,13 @@ impl DurableSyncRuntime {
         let now = FlushPolicyTime::from_unix_seconds(0);
         let (lifecycle, _view, cache) =
             initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;
+        let maybe_configured_basic_indexing = match basic_filter_mode {
+            BasicFilterStartupMode::Enabled => Some(true),
+            BasicFilterStartupMode::Disabled => Some(false),
+            BasicFilterStartupMode::PreserveSaved => {
+                store.resolved_basic_filter_indexing_after_startup()?
+            }
+        };
         let (active_chain, maybe_counts) = store.load_chain_meta_for_open()?;
         let undo_by_block = store.load_all_undo_records()?;
         let chainstate =
@@ -92,6 +99,7 @@ impl DurableSyncRuntime {
             block_relay_activation,
             inbound_enabled,
         );
+        network.record_basic_indexing_configuration(maybe_configured_basic_indexing);
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);
         }

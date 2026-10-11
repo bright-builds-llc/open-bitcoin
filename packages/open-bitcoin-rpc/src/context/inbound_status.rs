@@ -62,6 +62,11 @@ impl AuthoritativeOperatorSnapshot {
         self.network.chainstate_durability()
     }
 
+    /// BASIC evidence from the same captured network authority as other groups.
+    pub fn basic_index(&self) -> &open_bitcoin_node::status::BasicIndexOperatorStatus {
+        self.network.basic_index()
+    }
+
     pub fn operator_network(&self) -> &ManagedNetworkOperatorSnapshot {
         &self.network
     }

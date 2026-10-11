@@ -297,6 +297,7 @@ impl StatusRpcClient for RunningStatusRpcClient {
         &self,
     ) -> Result<OpenBitcoinNetworkStatusResponse, StatusRpcError> {
         Ok(OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),

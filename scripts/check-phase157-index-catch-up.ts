@@ -7,8 +7,9 @@ import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, ru
 const GUARDS = ["scripts/check-phase157-index-catch-up.ts", "scripts/check-phase157-index-catch-up.test.ts",
   "scripts/check-phase157-index-catch-up/contracts.ts", "scripts/check-phase157-index-catch-up/rust-evidence.ts",
   "scripts/check-phase156-prune-coordination/rust-evidence.ts"];
+const HELPER_RUST = [NODE + "storage/fjall_store/filters/retention.rs"];
 export const CHECK_FILES = [...new Set([...CONTRACTS.map(row => row.file), ...TESTS.map(([file]) => file),
-  ...REGISTRATIONS.map(([file]) => file), ...NEW_RUST, ...SOURCES, ...CORPUS, ...GUARDS, DOC, "README.md",
+  ...REGISTRATIONS.map(([file]) => file), ...NEW_RUST, ...HELPER_RUST, ...SOURCES, ...CORPUS, ...GUARDS, DOC, "README.md",
   "docs/parity/index.json", "docs/parity/checklist.md", "docs/parity/source-breadcrumbs.json", "scripts/verify.sh",
   PHASE + "157-UAT.md", PHASE + "157-TURN-MEASUREMENTS.md", ...["07", "08", "09"].map(plan => PHASE + `157-${plan}-SUMMARY.md`)])];
 const REQUIREMENTS = ["CFAC-01", "CFAC-02", "CFIX-01"];
@@ -47,6 +48,7 @@ export function checkPhase157IndexCatchUp(maybeRoot?: string): string[] {
     if (!compact(rustCode(text(file))).includes(compact(module))) failures.push(`D-12: registration missing ${file}:${module}`);
   }
   checkDefaults(text, failures);
+  checkGuardedPreflight(text, failures);
   checkMeasurements(text, failures);
   checkBreadcrumbs(text, failures);
   checkParity(text, root, failures);
@@ -56,6 +58,52 @@ export function checkPhase157IndexCatchUp(maybeRoot?: string): string[] {
     if (/std::(?:fs|io|net|time|process)|(?:fjall|tokio)::|SystemTime/.test(ordinaryRust(text(file)))) failures.push(`D-10: pure owner gained effects ${file}`);
   }
   return [...new Set(failures)];
+}
+
+function checkGuardedPreflight(text: (file: string) => string, failures: string[]): void {
+  const lifecycle = NODE + "storage/fjall_store/filters/lifecycle.rs";
+  for (const [symbol, statement, depth] of [
+    ["enable_basic_filter_index", "self.enable_basic_filter_index_guarded(", 0],
+    ["enable_basic_filter_index_guarded", "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;", 1],
+    ["enable_basic_filter_index_guarded", "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?;", 0],
+    ["preflight_basic_filter_history", "for height in first..=fence.tip().height", 0],
+    ["preflight_basic_filter_history", "self.load_block(position.block_hash)?", 1],
+    ["preflight_basic_filter_history", "self.load_undo(position.block_hash)?", 2],
+  ] as const) {
+    const maybeBody = maybeFunction(text(lifecycle), symbol, true);
+    const code = compact(maybeBody?.body ?? "");
+    const start = code.indexOf(compact(statement));
+    let actualDepth = 0;
+    for (const char of code.slice(0, start)) {
+      if (char === "{") actualDepth++;
+      if (char === "}") actualDepth--;
+    }
+    if (start < 0 || actualDepth !== depth
+      || (symbol === "enable_basic_filter_index" && /\breturn/.test(code.slice(0, start)))) {
+      failures.push(`T-157-30/D-04: mandatory guarded preflight cannot be conditional or bypassed ${lifecycle}:${symbol}`);
+    }
+  }
+  const maybeAdmission = maybeFunction(text(HELPER_RUST[0]), "check_envelope_bounds", true);
+  const admission = compact(maybeAdmission?.body ?? "");
+  const conditions = ["records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES", "envelope > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES",
+    "total > BASIC_INDEX_MAX_ENCODED_BYTES"];
+  if (!maybeAdmission || !conditions.every((condition, index) => {
+    const start = admission.indexOf(compact(`if ${condition}`));
+    const prefix = admission.slice(0, start);
+    const depth = [...prefix].reduce((depth, char) => depth + (char === "{" ? 1 : char === "}" ? -1 : 0), 0);
+    return admission.includes(compact(`if ${condition} { return Err(index_corruption(`)) && depth === (index === 0 ? 0 : 1);
+  })
+    || [...(maybeAdmission?.body ?? "").matchAll(/\breturn\b/g)].length !== 3
+    || !hasOrderedCode(admission, [".checked_add(codec::RECORD_OVERHEAD as u64)", ".ok_or_else(|| index_corruption())?;",
+      "total = total.checked_add(envelope)", ".ok_or_else(|| index_corruption())?;"])) {
+    failures.push("T-157-30/D-14: shared immutable admission ceiling/overflow/refusal missing");
+  }
+  const append = NODE + "storage/fjall_store/filters/append.rs";
+  const maybePrepare = maybeFunction(text(append), "prepare_basic_filter_append_guarded_positions", true);
+  if (!maybePrepare || !hasOrderedCode(maybePrepare.body, ["check_envelope_bounds(records)?;", "let mut prepared", "codec::encode_record(record)"])
+    || /\breturn\b|[{}]/.test(maybePrepare.body.slice(0, maybePrepare.body.indexOf("check_envelope_bounds")))) {
+    failures.push(`T-157-30/D-14: mandatory immutable admission before allocation/encoding ${append}`);
+  }
 }
 
 function checkDefaults(text: (file: string) => string, failures: string[]): void {
@@ -94,7 +142,7 @@ function checkMeasurements(text: (file: string) => string, failures: string[]): 
 function checkBreadcrumbs(text: (file: string) => string, failures: string[]): void {
   try {
     const manifest = JSON.parse(text("docs/parity/source-breadcrumbs.json")) as { groups: { files: string[]; breadcrumbs: string[] }[] };
-    for (const file of NEW_RUST) {
+    for (const file of [...NEW_RUST, ...HELPER_RUST]) {
       const matching = manifest.groups.filter(group => group.files?.includes(file));
       if (matching.length !== 1 || !matching[0].breadcrumbs.length) { failures.push(`D-12: breadcrumb mapping missing/duplicate ${file}`); continue; }
       for (const anchor of matching[0].breadcrumbs) if (!text(file).includes(`// - ${anchor}`)) failures.push(`D-12: source breadcrumb mismatch ${file}`);

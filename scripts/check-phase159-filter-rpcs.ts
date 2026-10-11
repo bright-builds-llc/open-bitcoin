@@ -131,6 +131,23 @@ function checkSource(text: Texts, failures: string[]): void {
   const query = NODE + "storage/fjall_store/filters/query.rs";
   const maybeBody = maybeFunction(text(query), "basic_filter_point_query_guarded", true);
   if (!maybeBody || /\b(?:while|loop)\b|load_basic_filter_record\(|maybe_active_basic_filter_record\(|generate_records\(|load_block\(|load_undo\(/.test(maybeBody.body)) failures.push(`${query}: bounded request path`);
+  const point = compact(maybeBody?.body ?? "");
+  if ([...point.matchAll(/returnOk\(None\)/g)].length !== 1
+    || [...point.matchAll(/\.block_index\.get\(/g)].length !== 2) failures.push(`${query}: exact target absence and bounded target/parent reads`);
+  for (const [statement, depth] of [
+    ["check_envelope(bytes.len())?;", 0], ["charge_hash_work(&mut work, encoded_len, true)?;", 0],
+    ["let target = observe_read_result(", 0], ["check_envelope(parent_bytes.len())?;", 1],
+    ["charge_hash_work(&mut work, parent_len, false)?;", 1],
+    ["integrity(target.verify_parent(Some(&parent)))?;", 1],
+  ] as const) {
+    const start = point.indexOf(compact(statement));
+    const actualDepth = [...point.slice(0, start)].reduce((depth, char) => depth + (char === "{" ? 1 : char === "}" ? -1 : 0), 0);
+    if (start < 0 || actualDepth !== depth) failures.push(`${query}: mandatory bounded integrity validation cannot be conditional`);
+  }
+  const maybeQuery = maybeFunction(text(query), "with_basic_filter_query", true);
+  if (!maybeQuery || /StorageError::(?:Corruption|BackendFailure)|result\.is_err\(\)/.test(compact(maybeQuery.body))) {
+    failures.push(`${query}: caller failures must not become blanket retained read faults`);
+  }
   for (const expression of ["BASIC_FILTER_QUERY_MAX_RECORD_BYTES: usize = MAX_SIZE as usize + codec::RECORD_OVERHEAD", "BASIC_FILTER_QUERY_MAX_READ_BYTES: usize = 2 * BASIC_FILTER_QUERY_MAX_RECORD_BYTES", "BASIC_FILTER_QUERY_MAX_HEX_BYTES: usize = 2 * MAX_SIZE as usize + 64", "MAX_LOGICAL_COPY_BYTES: usize = 3 * MAX_SIZE as usize + 352", "MAX_HASH_PADDED_BYTES: usize = 2 * MAX_SIZE as usize + 832"]) {
     if (!compact(ordinaryRust(text(query))).includes(compact(expression))) failures.push(`${query}: measured query byte policy`);
   }

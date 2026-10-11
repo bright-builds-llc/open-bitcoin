@@ -25,6 +25,8 @@ use crate::operator::{
     },
 };
 
+mod basic_index;
+
 struct TestServiceManager {
     calls: Rc<RefCell<Vec<FakeServiceCall>>>,
     snapshot: ServiceStateSnapshot,

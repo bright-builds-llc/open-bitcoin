@@ -167,9 +167,9 @@ fn draw_dashboard(
             Constraint::Percentage(30),
         ])
         .split(outer[1]);
-    let left = render_sections(&state.sections[..2]);
-    let middle = render_sections(&state.sections[2..4]);
-    let right = render_sections(&state.sections[4..]);
+    let left = render_sections(&state.sections[..2], section_area[0]);
+    let middle = render_sections(&state.sections[2..4], section_area[1]);
+    let right = render_sections(&state.sections[4..], section_area[2]);
     frame.render_widget(left, section_area[0]);
     frame.render_widget(middle, section_area[1]);
     frame.render_widget(right, section_area[2]);
@@ -260,8 +260,25 @@ fn render_action_line(actions: &[super::model::ActionEntry]) -> Vec<Span<'static
     spans
 }
 
-fn render_sections(sections: &[super::model::DashboardSection]) -> List<'_> {
-    let items = sections
+fn render_sections(sections: &[super::model::DashboardSection], area: Rect) -> List<'static> {
+    let width = usize::from(area.width.saturating_sub(2));
+    let height = usize::from(area.height.saturating_sub(2));
+    let has_basic = sections
+        .first()
+        .is_some_and(|section| section.title == "BASIC index");
+    if has_basic
+        && (width < 22
+            || sections[0]
+                .rows
+                .iter()
+                .take(7)
+                .any(|row| row.label.len() + 2 + compact_basic_value(row).len() > width))
+    {
+        // An incomplete category or number can imply a different fact. Use the
+        // existing complete text output when critical values cannot fit.
+        return List::new(["BASIC", "Use status"]).block(Block::default().borders(Borders::ALL));
+    }
+    let mut items = sections
         .iter()
         .flat_map(|section| {
             let mut items = vec![ListItem::new(Line::from(Span::styled(
@@ -271,16 +288,92 @@ fn render_sections(sections: &[super::model::DashboardSection]) -> List<'_> {
                     .add_modifier(Modifier::BOLD),
             )))];
             items.extend(section.rows.iter().map(|row| {
+                let value = if section.title == "BASIC index" {
+                    compact_basic_value(row)
+                } else {
+                    row.value.clone()
+                };
+                if section.title == "BASIC index" && row.label.len() + 2 + value.len() > width {
+                    return ListItem::new("Details: use status");
+                }
                 ListItem::new(Line::from(vec![
                     Span::styled(format!("{}: ", row.label), Style::default().fg(Color::Gray)),
-                    Span::raw(row.value.clone()),
+                    Span::raw(value),
                 ]))
             }));
             items
         })
         .collect::<Vec<_>>();
 
+    if has_basic && items.len() > height && height > 8 && width >= 25 {
+        items.truncate(height - 1);
+        items.push(ListItem::new("Details: use status output"));
+    }
+
     List::new(items).block(Block::default().borders(Borders::ALL))
+}
+
+fn compact_basic_value(row: &super::model::DashboardRow) -> String {
+    if row.value.starts_with("Unavailable:") {
+        return "Unavailable".into();
+    }
+    match row.label.as_str() {
+        "Basis" => "immutable keys/values".into(),
+        "Retention note" => "filters outside target".into(),
+        "Body/wallet note" => "eligibility unchanged".into(),
+        "Peer scope" => row
+            .value
+            .split(';')
+            .next()
+            .unwrap_or_default()
+            .replace("general=", "G=")
+            .replace("explicit=", "E=")
+            .replace("all=", "A=")
+            .replace("implicit=", "I=")
+            .replace("offered=", "O="),
+        "Next action" => compact_basic_guidance(&row.value).into(),
+        _ => row.value.clone(),
+    }
+}
+
+fn compact_basic_guidance(value: &str) -> &'static str {
+    // These abbreviate shared formatter copy, never infer an action from state,
+    // heights, retained records, or a separately collected observation.
+    let guidance = [
+        ("BASIC indexing is disabled.", "indexing disabled"),
+        ("No BASIC prefix observed.", "no prefix observed"),
+        (
+            "Initial catch-up is incomplete.",
+            "initial catch-up incomplete",
+        ),
+        (
+            "Read safe durable progress",
+            "read durable and retained facts",
+        ),
+        ("Initial sync was earned;", "earned; behind accepted target"),
+        ("Processed work exceeds", "processed exceeds durable"),
+        (
+            "Required block body is missing.",
+            "missing body; inspect history",
+        ),
+        ("Required undo is missing.", "missing undo; inspect history"),
+        ("Index backend failed.", "backend failed; inspect support"),
+        (
+            "Index integrity check failed.",
+            "integrity failed; inspect support",
+        ),
+        ("Index work is paused", "resource bound; inspect support"),
+        (
+            "Index lifecycle changed.",
+            "lifecycle changed; collect status",
+        ),
+        ("Check daemon status,", "collect live BASIC evidence"),
+        ("Collect status again", "inspect bounded support"),
+    ];
+    guidance
+        .iter()
+        .find_map(|(prefix, compact)| value.starts_with(prefix).then_some(*compact))
+        .unwrap_or("use status output")
 }
 
 fn action_for_key(key: KeyEvent) -> DashboardAction {

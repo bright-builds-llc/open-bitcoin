@@ -9,7 +9,7 @@ use open_bitcoin_node::status::{
     InboundPermissionDecisionEvent, InboundResourceGovernanceEvent,
 };
 
-const INACTIVE_RELAY_PERMISSION_NEXT_ACTION: &str = "Relay, mempool, bloom, and blockfilter permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support.";
+const INACTIVE_RELAY_PERMISSION_NEXT_ACTION: &str = "Relay, mempool, and bloom permissions are recorded as inactive Phase 91 evidence; do not treat them as relay support. BIP37/bloom remains unsupported. BASIC serving is default-off and requires explicit capability and index readiness. Read effective BASIC capability separately from index readiness.";
 const PHASE92_ADDRESS_BOUNDARY_NEXT_ACTION: &str = "Treat Phase 92 as bounded local advertisement and direct getaddr evidence only; peer discovery, unsolicited address relay, DNS seed discovery, UPnP/NAT-PMP discovery, and public-network readiness remain outside this surface.";
 const PHASE96_PEER_POLICY_RUNTIME_BRIDGE_NEXT_ACTION: &str = "Treat Phase 96 as scoped runtime peer policy bridge evidence only; review ban, discourage, unban, and misbehavior labels before changing listener exposure or peer policy.";
 const PHASE94_RESOURCE_GOVERNANCE_NEXT_ACTION: &str = "Treat Phase 94 as bounded inbound resource-governance evidence only; inspect resource labels before raising listener exposure, queue caps, request caps, or timeout thresholds.";

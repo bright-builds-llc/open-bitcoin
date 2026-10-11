@@ -376,15 +376,17 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         })
         .await
         .expect("phase 127 RPC client task should join");
-    let authoritative_block_relay = {
+    let (authoritative_block_relay, authoritative_basic_index) = {
         let context = shared_context.lock().await;
-        serde_json::to_value(
-            context
-                .authoritative_operator_snapshot()
-                .expect("phase 127 operator snapshot should be available")
-                .block_relay(),
+        let snapshot = context
+            .authoritative_operator_snapshot()
+            .expect("phase 127 operator snapshot should be available");
+        (
+            serde_json::to_value(snapshot.block_relay())
+                .expect("phase 127 block relay snapshot should serialize"),
+            serde_json::to_value(snapshot.basic_index())
+                .expect("phase 127 BASIC snapshot should serialize"),
         )
-        .expect("phase 127 operator snapshot should serialize")
     };
 
     // Assert
@@ -425,6 +427,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     assert_eq!(
         sorted_result_keys(&status_response),
         [
+            "basic_index",
             "block_relay",
             "chainstate_durability",
             "inbound",
@@ -437,6 +440,10 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     assert_eq!(
         status_response["result"]["block_relay"],
         authoritative_block_relay
+    );
+    assert_eq!(
+        status_response["result"]["basic_index"],
+        authoritative_basic_index
     );
 
     rpc_server.abort();

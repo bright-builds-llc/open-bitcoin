@@ -183,11 +183,14 @@ impl ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
     /// This trusted host call shares the chainstate/deletion authority.
     pub fn disable_basic_filter_index(&self) -> Result<(), ManagedNetworkAuthorityError> {
         self.mutate(|network| {
-            network
+            let result = network
                 .chainstate()
                 .store()
                 .inner()
-                .disable_basic_filter_index()
+                .disable_basic_filter_index();
+            // Errors can follow committed lifecycle or release effects.
+            network.record_basic_indexing_configuration(result.as_ref().ok().map(|()| false));
+            result
         })?
         .map_err(lifecycle_error)
     }
@@ -196,14 +199,18 @@ impl ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
     /// The host supplies no name, range, checkpoint, generation or chainstate fence.
     pub fn enable_basic_filter_index(&self) -> Result<(), ManagedNetworkAuthorityError> {
         self.mutate(|network| {
-            let store = network.chainstate().store().inner();
-            let (positions, _) = store.load_chain_meta_for_open()?;
-            let fence = VerifiedChainstateFence::new(
-                store.coins_view().best_block().map_err(index_corruption)?,
-                Some(&positions),
-            )
-            .map_err(index_corruption)?;
-            store.enable_basic_filter_index(&fence)
+            let result = (|| {
+                let store = network.chainstate().store().inner();
+                let (positions, _) = store.load_chain_meta_for_open()?;
+                let fence = VerifiedChainstateFence::new(
+                    store.coins_view().best_block().map_err(index_corruption)?,
+                    Some(&positions),
+                )
+                .map_err(index_corruption)?;
+                store.enable_basic_filter_index(&fence)
+            })();
+            network.record_basic_indexing_configuration(result.as_ref().ok().map(|()| true));
+            result
         })?
         .map_err(lifecycle_error)
     }

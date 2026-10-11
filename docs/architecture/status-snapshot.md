@@ -6,6 +6,54 @@
 
 For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same lifecycle, phase, configured targets, attempt counters, header height, downloaded block height, connected block height, validated active-chain height/hash/work, peer compatibility state, progress signal, latest stop reason, latest error, recovery state, resource pressure, and unavailable-field reasons instead of inventing renderer-local summaries.
 
+## Shared BASIC index evidence (Phase 161)
+
+`OpenBitcoinStatusSnapshot.basic_index` is the typed `BasicIndexOperatorStatus`
+captured with the existing serialized network/index authority and forwarded by
+`openbitcoinnetworkstatus.basic_index`. CLI collection copies that section; human
+status, dashboard and support share its formatter. Existing `getindexinfo` and
+`getblockfilter` result shapes are unchanged. Polling cannot activate indexing or
+networking, recover state, clear faults, advance durability or release protection.
+
+Each fact uses `FieldAvailability`. Configuration separates indexing, general
+peer serving and aggregate modeled permission origins. Explicit `blockfilters`
+and `all` are distinct; `all` can advertise without an enabled backend. Implicit
+origins are not modeled and count zero; ordinary peers are not relabeled implicit.
+Neither advertisement nor RPC success establishes index health. The stopped
+JSONC resolver has no BASIC fields and cannot account for unseen daemon CLI
+overrides, so stopped BASIC configuration is also unavailable. Missing old-server
+fields default to `BASIC evidence not reported`, never false, zero or healthy.
+
+The owner's earned initial-sync latch survives later lag/reorg. Lag uses the
+accepted active target; processed and safe durable endpoints remain separate.
+An observed absent endpoint is `none` (JSON available/null), distinct from an
+actually processed genesis at height zero and from an unavailable endpoint.
+Failure categories are missing body, missing undo, backend, integrity/invalid
+facts, resource bound and lifecycle invalidation. Failure and retained availability
+are independent; `observed` does not promise every arbitrary lookup succeeds.
+Backend/integrity failure cannot become ordinary absence or successful zero totals.
+
+Retention measures complete unique immutable rows, encoded filter payload bytes
+and immutable record key/value bytes, including stale/displaced branches and the
+key/envelope. Payload bytes are a subset, not an additional footprint. Active
+projections, runtime state, owner/checkpoint/protection/lock metadata, other
+namespaces, Fjall/WAL/SST/compaction overhead and physical allocation are excluded.
+Startup's mandatory validation recovers the aggregate; achieved publication adds
+only new rows. Retries/reorg reuse do not double count. Observation uses constant
+space, at most eight metadata reads/4 KiB, with no per-poll history/index scan or
+filter-payload copy. Incomplete/failed/over-budget totals stay unavailable.
+
+Protection reports authoritative inclusive bounds separately from growth and the
+soft logical block/undo target; it can retain history above that target. The target
+is no physical disk-capacity guarantee. Retained filters do not restore deleted
+bodies, ordinary body-serving eligibility or wallet eligibility. New BASIC facts
+contain only fixed categories, booleans, heights and aggregate counts; unavailable
+reasons are normalized at serialization, collection and support boundaries.
+
+See the [scoped evidence and commands](../parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
+Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+No stronger v2.4 crash-window guarantee is claimed.
+
 ## Field Ownership
 
 | Field | Owner | OBS-01 details |
@@ -18,6 +66,7 @@ For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, 
 | `mempool` | Mempool collector | `transactions` and `relay` plus Phase 137 groups `resources`, `fee_floors`, `pressure`, `eviction`, `checkpoint`, `recovery`, `retry`, and `admission` |
 | `block_relay` | Network collector | block-serving activation/eligibility/status plus compact-relay evidence |
 | `chainstate_durability` | Flush/availability projector | `FieldAvailability<ChainstateDurabilityEvidence>` for `cache_size`, `last_flush_reason`, coins recovery, and have-bytes versus do-not |
+| `basic_index` | Existing serialized index/network authority | Independently available configuration, progress, failures, retained logical growth and protection |
 | `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
 | `logs` | Logging collector | log paths and retention |
 | `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |

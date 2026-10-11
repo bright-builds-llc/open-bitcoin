@@ -1,0 +1,695 @@
+{
+  "owner-integrity": {
+    "accepted_height": {
+      "state": "available",
+      "value": 1
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "integrity_or_invalid_facts"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": true
+    },
+    "lag_blocks": {
+      "state": "available",
+      "value": 0
+    },
+    "next_action": {
+      "state": "available",
+      "value": "integrity_or_invalid_facts"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "failed"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "available",
+      "value": 1
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 2,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "available",
+      "value": "observed"
+    },
+    "retention": {
+      "state": "available",
+      "value": {
+        "basis": "immutable_record_keys_and_values_including_stale_branches",
+        "encoded_filter_payload_bytes": 8,
+        "retained_record_count": 2,
+        "retained_record_key_value_bytes": 522
+      }
+    },
+    "safe_durable_height": {
+      "state": "available",
+      "value": 1
+    }
+  },
+  "owner-invalidated": {
+    "accepted_height": {
+      "state": "available",
+      "value": 1
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "invalidated"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": true
+    },
+    "lag_blocks": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC lifecycle evidence invalidated"
+      }
+    },
+    "next_action": {
+      "state": "available",
+      "value": "invalidated"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "invalidated"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC lifecycle evidence invalidated"
+      }
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 2,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "available",
+      "value": "observed"
+    },
+    "retention": {
+      "state": "available",
+      "value": {
+        "basis": "immutable_record_keys_and_values_including_stale_branches",
+        "encoded_filter_payload_bytes": 8,
+        "retained_record_count": 2,
+        "retained_record_key_value_bytes": 522
+      }
+    },
+    "safe_durable_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC lifecycle evidence invalidated"
+      }
+    }
+  },
+  "owner-resource": {
+    "accepted_height": {
+      "state": "available",
+      "value": 1
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "resource_bound"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": true
+    },
+    "lag_blocks": {
+      "state": "available",
+      "value": 0
+    },
+    "next_action": {
+      "state": "available",
+      "value": "resource_bound"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "paused"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "available",
+      "value": 1
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 2,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "available",
+      "value": "observed"
+    },
+    "retention": {
+      "state": "available",
+      "value": {
+        "basis": "immutable_record_keys_and_values_including_stale_branches",
+        "encoded_filter_payload_bytes": 8,
+        "retained_record_count": 2,
+        "retained_record_key_value_bytes": 522
+      }
+    },
+    "safe_durable_height": {
+      "state": "available",
+      "value": 1
+    }
+  },
+  "persistence-after-commit": {
+    "accepted_height": {
+      "state": "available",
+      "value": 39
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "backend"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": false
+    },
+    "lag_blocks": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    },
+    "next_action": {
+      "state": "available",
+      "value": "backend"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "failed"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    },
+    "protection": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    },
+    "retained_availability": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "retention": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "safe_durable_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    }
+  },
+  "persistence-before-records": {
+    "accepted_height": {
+      "state": "available",
+      "value": 39
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "backend"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": false
+    },
+    "lag_blocks": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    },
+    "next_action": {
+      "state": "available",
+      "value": "backend"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "failed"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    },
+    "protection": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    },
+    "retained_availability": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "retention": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "safe_durable_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "live BASIC evidence unavailable"
+      }
+    }
+  },
+  "read-backend": {
+    "accepted_height": {
+      "state": "available",
+      "value": 2
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "backend"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": true
+    },
+    "lag_blocks": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "next_action": {
+      "state": "available",
+      "value": "backend"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "failed"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 2,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "retention": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    },
+    "safe_durable_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC backend evidence unavailable"
+      }
+    }
+  },
+  "read-integrity": {
+    "accepted_height": {
+      "state": "available",
+      "value": 2
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "integrity_or_invalid_facts"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": true
+    },
+    "lag_blocks": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC integrity evidence unavailable"
+      }
+    },
+    "next_action": {
+      "state": "available",
+      "value": "integrity_or_invalid_facts"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "failed"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC integrity evidence unavailable"
+      }
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 2,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC integrity evidence unavailable"
+      }
+    },
+    "retention": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC integrity evidence unavailable"
+      }
+    },
+    "safe_durable_height": {
+      "state": "unavailable",
+      "value": {
+        "reason": "BASIC integrity evidence unavailable"
+      }
+    }
+  },
+  "required-body": {
+    "accepted_height": {
+      "state": "available",
+      "value": 39
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "required_body"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": false
+    },
+    "lag_blocks": {
+      "state": "available",
+      "value": 16
+    },
+    "next_action": {
+      "state": "available",
+      "value": "required_body"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "paused"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "available",
+      "value": 23
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 16,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "available",
+      "value": "observed"
+    },
+    "retention": {
+      "state": "available",
+      "value": {
+        "basis": "immutable_record_keys_and_values_including_stale_branches",
+        "encoded_filter_payload_bytes": 107,
+        "retained_record_count": 24,
+        "retained_record_key_value_bytes": 6275
+      }
+    },
+    "safe_durable_height": {
+      "state": "available",
+      "value": 15
+    }
+  },
+  "required-undo": {
+    "accepted_height": {
+      "state": "available",
+      "value": 39
+    },
+    "configured_indexing": {
+      "state": "available",
+      "value": true
+    },
+    "configured_peer_serving": {
+      "state": "available",
+      "value": false
+    },
+    "failure": {
+      "state": "available",
+      "value": "required_undo"
+    },
+    "initial_sync_complete": {
+      "state": "available",
+      "value": false
+    },
+    "lag_blocks": {
+      "state": "available",
+      "value": 16
+    },
+    "next_action": {
+      "state": "available",
+      "value": "required_undo"
+    },
+    "operational_state": {
+      "state": "available",
+      "value": "paused"
+    },
+    "peer_scope": {
+      "state": "available",
+      "value": {
+        "all_sessions": 0,
+        "explicit_sessions": 0,
+        "general_sessions": 0,
+        "implicit_sessions": 0,
+        "offered_sessions": 0
+      }
+    },
+    "processed_height": {
+      "state": "available",
+      "value": 23
+    },
+    "protection": {
+      "state": "available",
+      "value": {
+        "state": "inclusive_range",
+        "value": {
+          "height_first": 16,
+          "height_last": 4294967285
+        }
+      }
+    },
+    "retained_availability": {
+      "state": "available",
+      "value": "observed"
+    },
+    "retention": {
+      "state": "available",
+      "value": {
+        "basis": "immutable_record_keys_and_values_including_stale_branches",
+        "encoded_filter_payload_bytes": 107,
+        "retained_record_count": 24,
+        "retained_record_key_value_bytes": 6275
+      }
+    },
+    "safe_durable_height": {
+      "state": "available",
+      "value": 15
+    }
+  }
+}

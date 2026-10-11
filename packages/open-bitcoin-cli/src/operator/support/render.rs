@@ -3,6 +3,7 @@
 
 //! Rendering helpers for support bundle command output.
 
+mod basic_index;
 mod block_relay;
 mod chainstate_durability;
 mod inbound;
@@ -99,6 +100,7 @@ pub(super) fn render_support_markdown(bundle: &SupportEvidenceBundle) -> String 
         &mut output,
         &bundle.status.chainstate_durability,
     );
+    basic_index::push_basic_index(&mut output, &bundle.status.basic_index);
     prune::push_prune(&mut output, &bundle.status.prune);
     inbound::push_inbound_serving(&mut output, &bundle.status.peers.inbound);
     output.push_str("\n## Recovery Evidence\n\n");

@@ -2,6 +2,7 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 //! Shared operator status snapshot contracts.
+mod basic_index;
 mod block_relay_evidence;
 mod block_serving;
 mod chainstate_durability;
@@ -15,6 +16,7 @@ pub mod relay_evidence;
 mod resource_bounds;
 mod wallet_freshness;
 use crate::{LogStatus, MetricsStatus, recovery::RecoveryEvidenceSnapshot};
+pub use basic_index::*;
 pub use block_relay_evidence::*;
 pub use block_serving::*;
 pub use chainstate_durability::*;
@@ -605,6 +607,8 @@ pub struct OpenBitcoinStatusSnapshot {
     pub build: BuildProvenance,
     #[serde(default)]
     pub prune: PruneOperatorStatus,
+    #[serde(default)]
+    pub basic_index: BasicIndexOperatorStatus,
 }
 
 #[cfg(test)]

@@ -24,6 +24,7 @@ fn dashboard_projection_includes_required_sections_and_charts() {
             "Sync and Peers",
             "Mempool and Wallet",
             "Service",
+            "BASIC index",
             "Logs and Health",
             "Prune",
         ]
@@ -565,7 +566,7 @@ fn dashboard_max_charts_remains_eight() {
 }
 
 #[test]
-fn dashboard_sections_remain_five_with_353530_split_unchanged() {
+fn dashboard_sections_include_basic_with_353530_split_unchanged() {
     // Arrange
     let snapshot = test_snapshot();
 
@@ -585,13 +586,15 @@ fn dashboard_sections_remain_five_with_353530_split_unchanged() {
             "Sync and Peers",
             "Mempool and Wallet",
             "Service",
+            "BASIC index",
             "Logs and Health",
             "Prune",
         ]
     );
-    assert_eq!(state.sections.len(), 6);
+    assert_eq!(state.sections.len(), 7);
     assert_eq!(state.sections[2].title, "Mempool and Wallet");
-    assert_eq!(state.sections[5].title, "Prune");
+    assert_eq!(state.sections[4].title, "BASIC index");
+    assert_eq!(state.sections[6].title, "Prune");
     let durability = state.sections[2]
         .rows
         .iter()

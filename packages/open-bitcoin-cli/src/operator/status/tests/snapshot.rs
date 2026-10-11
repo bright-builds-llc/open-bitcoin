@@ -148,6 +148,7 @@ fn fake_live_rpc_maps_metrics_from_open_bitcoin_network_status() {
     let input = status_input(Vec::new());
     let rpc = FakeStatusRpcClient {
         maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
@@ -186,6 +187,7 @@ fn operator_status_renders_relay_evidence_from_open_bitcoin_network_status() {
     let input = status_input(Vec::new());
     let rpc = FakeStatusRpcClient {
         maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
@@ -280,6 +282,7 @@ fn operator_status_block_relay_maps_shared_contract_and_human_lines() {
     let input = status_input(Vec::new());
     let rpc = FakeStatusRpcClient {
         maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
@@ -401,6 +404,7 @@ fn available_chainstate_durability() -> FieldAvailability<ChainstateDurabilityEv
 fn live_rpc_with_chainstate_durability() -> FakeStatusRpcClient {
     FakeStatusRpcClient {
         maybe_network_status: Some(OpenBitcoinNetworkStatusResponse {
+            basic_index: open_bitcoin_node::status::BasicIndexOperatorStatus::default(),
             inbound: FieldAvailability::<InboundPeerServingStatus>::unavailable(
                 INBOUND_STATUS_UNAVAILABLE_REASON,
             ),
@@ -442,14 +446,15 @@ fn operator_status_chainstate_durability_maps_shared_contract_and_human_lines() 
         maybe_block_relay.map(|index| index + 1),
         Some(durability_start)
     );
-    assert_eq!(maybe_wallet, Some(durability_start + 9));
-    assert_eq!(lines[durability_start + 6], "Prune mode: false");
+    assert_eq!(maybe_wallet, Some(durability_start + 29));
+    assert_eq!(lines[durability_start + 6], "BASIC index");
+    assert_eq!(lines[durability_start + 26], "Prune mode: false");
     assert_eq!(
-        lines[durability_start + 7],
+        lines[durability_start + 27],
         "Prune locks: Unavailable: not collected"
     );
     assert_eq!(
-        lines[durability_start + 8],
+        lines[durability_start + 28],
         "Manual prune: Unavailable: not collected"
     );
     assert_eq!(

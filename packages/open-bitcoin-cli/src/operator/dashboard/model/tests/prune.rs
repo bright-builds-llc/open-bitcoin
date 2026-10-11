@@ -151,7 +151,11 @@ fn prune_rows(
 ) -> Vec<(String, String)> {
     let state = DashboardState::from_snapshot(snapshot);
     assert_eq!(state.sections[2].title, "Mempool and Wallet");
-    assert_eq!(state.sections[5].title, "Prune");
+    let prune = state
+        .sections
+        .iter()
+        .find(|section| section.title == "Prune")
+        .expect("Prune section");
     assert_eq!(state.charts.len(), 8);
     assert_eq!(
         state
@@ -161,7 +165,7 @@ fn prune_rows(
             .collect::<Vec<_>>(),
         ["r", "s", "t", "o", "x", "i", "u", "e", "d", "q"]
     );
-    state.sections[5]
+    prune
         .rows
         .iter()
         .map(|row| (row.label.clone(), row.value.clone()))

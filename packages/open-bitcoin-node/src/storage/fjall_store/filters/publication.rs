@@ -4,7 +4,6 @@
 
 //! Serialized same-database SyncAll publication. The runtime must also serialize
 //! coins/metadata writers: read/compare is not CAS against arbitrary raw writers.
-
 use super::super::{
     FjallNodeStore, StorageError, StorageNamespace, StorageRecoveryAction, backend_failure,
     prune::{PRUNE_LOCKS_KEY, encode_prune_locks},
@@ -14,10 +13,7 @@ use crate::storage::filter_index::{
     self as codec, StoredFilterRecord, StoredFilterState, index_corruption,
 };
 use fjall::PersistMode as FjallPersistMode;
-use open_bitcoin_core::chainstate::filter_index::catch_up::{
-    BASIC_INDEX_MAX_CANDIDATES, BASIC_INDEX_MAX_ENCODED_BYTES,
-    BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES,
-};
+use open_bitcoin_core::chainstate::filter_index::catch_up::BASIC_INDEX_MAX_CANDIDATES;
 use open_bitcoin_core::chainstate::filter_index::lifecycle::{IndexGeneration, IndexLifecycle};
 use open_bitcoin_core::chainstate::{
     BASIC_INDEX_PRUNE_LOCK, CoinsView, FilterCheckpoint, IndexInputProtection, IndexPrefix,
@@ -25,8 +21,14 @@ use open_bitcoin_core::chainstate::{
 };
 use std::sync::MutexGuard;
 mod epoch;
+pub(crate) use epoch::BasicFilterReadFault;
 #[derive(Default)]
 pub(crate) struct PublicationControl {
+    pub(super) maybe_read_fault: Option<BasicFilterReadFault>,
+    pub(super) maybe_read_fault_protection: Option<IndexInputProtection>,
+    pub(super) retention: super::retention::RetainedBasicFilterObservation,
+    #[cfg(test)]
+    pub(super) retention_inspections: usize,
     poisoned: bool,
     /// Complete immutable forest checked during exclusive recovery. Trusted
     /// immutable batches preserve this; raw writes clear it before effects.
@@ -96,18 +98,6 @@ impl PublicationControl {
         fault(self, FilterPublicationFault::BeforeChainMeta)?;
         Ok(())
     }
-    /// Clear every clone's live authority before any potentially ambiguous write.
-    pub(crate) fn invalidate_append(&mut self) -> Result<(), StorageError> {
-        self.maybe_append_identity = None;
-        self.maybe_pending_coins = None;
-        self.maybe_completed_metadata = None;
-        let Some(revision) = self.revision.checked_add(1) else {
-            self.poisoned = true;
-            return Err(publication_failure("BASIC durable revision exhausted"));
-        };
-        self.revision = revision;
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -120,6 +110,7 @@ pub(crate) enum FilterPublicationFault {
     BeforeRecords,
     BeforeCheckpoint,
     BeforeProtection,
+    BeforeCommit,
     AfterCommit,
     BeforeChainMeta,
     BeforeDisable,
@@ -304,7 +295,7 @@ impl FjallNodeStore {
             encode_prune_locks(&locks)?,
         );
         self.finish_basic_filter_batch(batch, control)?;
-        control.read_integrity = true; // Explicit initialization proved the forest empty.
+        control.reset_verified_forest(super::retention::RetainedBasicFilterObservation::empty());
         Ok(())
     }
 
@@ -319,12 +310,16 @@ impl FjallNodeStore {
         let mut control = self.filter_publication_guard()?;
         self.check_basic_filter_work_guarded(work, fence, &control)?;
         let encoded = self.prepare_basic_filter_records(records)?;
+        let starting = control.retention;
+        let retained = control.retention_after_append(starting, &encoded)?;
         records_fault(&mut control)?;
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
         for (key, bytes) in encoded {
             batch.insert(&self.block_index, key, bytes);
         }
-        self.finish_basic_filter_batch(batch, &mut control)
+        self.finish_basic_filter_batch(batch, &mut control)?;
+        control.install_retention(retained);
+        Ok(())
     }
 
     /// Atomically publish immutable rows, changed projection, explicit state and
@@ -368,7 +363,8 @@ impl FjallNodeStore {
         if !matches!(owner.lifecycle(), IndexLifecycle::Active { .. }) {
             return Err(index_corruption("disabled BASIC checkpoint publication"));
         }
-        self.validate_basic_filter_records()?;
+        let retained = self
+            .measure_basic_filter_records(super::retention::RetentionObservationLimits::default())?;
         let saved_checkpoint = self
             .maybe_basic_filter_checkpoint()?
             .ok_or_else(|| index_corruption("missing BASIC checkpoint"))?;
@@ -385,6 +381,7 @@ impl FjallNodeStore {
             return Err(index_corruption("weak BASIC publication protection"));
         }
         let encoded = self.prepare_basic_filter_records(records)?;
+        let retained = control.retention_after_append(retained, &encoded)?;
         let projections = self.prepare_basic_filter_projection(fence, checkpoint, records)?;
         let maybe_endpoint = match checkpoint.prefix() {
             IndexPrefix::Empty => None,
@@ -401,6 +398,7 @@ impl FjallNodeStore {
             protection,
         };
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
+        records_fault(control)?;
         for (key, bytes) in encoded {
             batch.insert(&self.block_index, key, bytes);
         }
@@ -420,7 +418,7 @@ impl FjallNodeStore {
             encode_prune_locks(&locks)?,
         );
         self.finish_basic_filter_batch(batch, control)?;
-        control.read_integrity = true; // Full forest scan and immutable candidate checks above.
+        control.reset_verified_forest(retained);
         Ok(())
     }
 
@@ -461,26 +459,7 @@ impl FjallNodeStore {
         &self,
         records: &[StoredFilterRecord],
     ) -> Result<Vec<(String, Vec<u8>)>, StorageError> {
-        if records.len() as u64 > BASIC_INDEX_MAX_CANDIDATES {
-            return Err(index_corruption("BASIC append record count bound"));
-        }
-        let mut total = 0_usize;
-        for record in records {
-            let envelope = record
-                .encoded_bytes()
-                .len()
-                .checked_add(codec::RECORD_OVERHEAD)
-                .ok_or_else(|| index_corruption("BASIC append byte overflow"))?;
-            if envelope as u64 > BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES {
-                return Err(index_corruption("BASIC append singleton byte bound"));
-            }
-            total = total
-                .checked_add(envelope)
-                .ok_or_else(|| index_corruption("BASIC append byte overflow"))?;
-        }
-        if total as u64 > BASIC_INDEX_MAX_ENCODED_BYTES {
-            return Err(index_corruption("BASIC append aggregate byte bound"));
-        }
+        super::retention::check_envelope_bounds(records)?;
         let mut encoded = Vec::with_capacity(records.len());
         for (index, record) in records.iter().enumerate() {
             let id = record.identity();
@@ -500,15 +479,24 @@ impl FjallNodeStore {
             };
             let bytes = codec::encode_record(record);
             codec::decode_record(&key, &bytes, maybe_predecessor.as_ref())?;
-            if let Some(existing) = self.load_basic_filter_record(id.block_hash())?
-                && existing != *record
+            let maybe_existing = self.load_basic_filter_record(id.block_hash())?;
+            if maybe_existing
+                .as_ref()
+                .is_some_and(|existing| existing != record)
             {
                 return Err(index_corruption("conflicting immutable BASIC record"));
             }
-            if records[..index].iter().any(|previous| {
-                previous.identity().block_hash() == id.block_hash() && previous != record
-            }) {
-                return Err(index_corruption("conflicting BASIC candidate identity"));
+            if let Some(previous) = records[..index]
+                .iter()
+                .find(|previous| previous.identity().block_hash() == id.block_hash())
+            {
+                if previous != record {
+                    return Err(index_corruption("conflicting BASIC candidate identity"));
+                }
+                continue;
+            }
+            if maybe_existing.is_some() {
+                continue;
             }
             encoded.push((key, bytes));
         }
@@ -573,6 +561,8 @@ impl FjallNodeStore {
         batch: fjall::OwnedWriteBatch,
         control: &mut PublicationControl,
     ) -> Result<(), StorageError> {
+        #[cfg(test)]
+        fault(control, FilterPublicationFault::BeforeCommit)?;
         control.invalidate_append()?;
         if let Err(error) = batch.commit() {
             control.poisoned = true;
