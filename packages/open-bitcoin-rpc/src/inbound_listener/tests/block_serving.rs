@@ -89,10 +89,11 @@ async fn durable_block_serving_survives_restart_without_cache_hydration() {
     let context = Arc::new(tokio::sync::Mutex::new(context));
 
     // Act
-    let mut responses =
+    let responses =
         resolve_inbound_wire_responses(&context, 123, durable_block_requests(&block), 2)
             .await
             .expect("resolve durable block responses");
+    let mut responses = ordinary_responses(responses);
     for response in &mut responses {
         let written = Ok(WriteWireMessageOutcome::Written);
         assert!(acknowledge_inbound_response_write(&written, response, &context).await);
@@ -127,6 +128,7 @@ async fn durable_block_serving_missing_body_returns_notfound_without_served_cred
         resolve_inbound_wire_responses(&context, 123, phase123_block_request(&block), 2)
             .await
             .expect("resolve missing durable block response");
+    let responses = ordinary_responses(responses);
     let served_count = context
         .lock()
         .await
@@ -166,6 +168,7 @@ fn durable_getdata_without_store_body_is_unavailable_at_gate() {
         .iter()
         .any(|item| matches!(item, ManagedInboundResponsePlanItem::DurableBlock(_)));
     let resolved = plan.resolve();
+    let responses = ordinary_responses(resolved.responses);
     let served_count = context
         .block_served_write_count()
         .expect("authoritative block write count");
@@ -176,9 +179,9 @@ fn durable_getdata_without_store_body_is_unavailable_at_gate() {
         "missing store body must not produce a DurableBlock intent"
     );
     assert_eq!(status.unavailable_count, 1);
-    assert_eq!(resolved.responses.len(), 1);
+    assert_eq!(responses.len(), 1);
     assert!(matches!(
-        resolved.responses[0].message,
+        responses[0].message,
         WireNetworkMessage::NotFound(_)
     ));
     assert_eq!(served_count, 0);

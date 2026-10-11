@@ -9,6 +9,44 @@ use crate::config::blockfilter::{
 };
 use open_bitcoin_node::core::wallet::AddressNetwork;
 
+pub(super) fn resolve_peer_serving(
+    cli: &super::CliSettings,
+    entries: &[ConfigEntry],
+    chain: AddressNetwork,
+) -> Result<bool, ConfigError> {
+    if let Some(enabled) = cli.maybe_peer_block_filters {
+        return Ok(enabled);
+    }
+    let active_section = config_section_name(chain);
+    for section in [Some(active_section), None] {
+        let mut maybe_selected = None;
+        let mut after_negation = false;
+        for entry in entries.iter().filter(|entry| {
+            entry.maybe_section.as_deref() == section
+                && matches!(
+                    entry.key.as_str(),
+                    "peerblockfilters" | "nopeerblockfilters"
+                )
+        }) {
+            // SettingsSpan discards earlier values at a negation, then takes
+            // the first scalar after that reset in a configuration section.
+            if entry.key == "nopeerblockfilters" && !super::parse_bool(Some(&entry.value), true)? {
+                maybe_selected = Some(entry);
+                after_negation = true;
+                continue;
+            }
+            if maybe_selected.is_none() || after_negation {
+                maybe_selected = Some(entry);
+                after_negation = false;
+            }
+        }
+        if let Some(entry) = maybe_selected {
+            return super::parse_bool(Some(&entry.value), entry.key == "nopeerblockfilters");
+        }
+    }
+    Ok(false)
+}
+
 pub(super) fn parse_cli(
     values: &mut Vec<FilterOptionValue>,
     key: &str,
@@ -80,5 +118,7 @@ pub(super) fn supported_config_key(key: &str) -> bool {
             | "datadir"
             | "blockfilterindex"
             | "noblockfilterindex"
+            | "peerblockfilters"
+            | "nopeerblockfilters"
     )
 }

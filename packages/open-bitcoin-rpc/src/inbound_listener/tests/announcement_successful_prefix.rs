@@ -44,20 +44,30 @@ struct ScriptedInboundExecutor {
     abort_calls: Vec<EffectAbort>,
     abort_attempts: usize,
     abort_should_fail: bool,
+    pending_during_write: Vec<u64>,
 }
 
 impl InboundEmissionExecutor for ScriptedInboundExecutor {
-    fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()> {
+    fn encode(
+        &mut self,
+        message: &WireNetworkMessage,
+    ) -> Result<open_bitcoin_node::network::filter_transport::GenericPendingBuffer, ()> {
         self.encode_calls = self.encode_calls.saturating_add(1);
         if self.failure == ScriptedFailure::Encode && self.encode_calls == self.failure_on_call {
             return Err(());
         }
-        message
-            .encode_wire(NetworkMagic::MAINNET)
+        self.network
+            .encode_pending_network_message(PEER_ID, message)
             .map_err(|_error| ())
     }
 
     async fn write(&mut self, _bytes: &[u8]) -> InboundEmissionWriteResult {
+        self.pending_during_write.push(
+            self.network
+                .basic_filter_transport_snapshot()
+                .expect("pending snapshot")
+                .generic_pending_bytes,
+        );
         self.write_calls = self.write_calls.saturating_add(1);
         if self.write_calls != self.failure_on_call {
             return InboundEmissionWriteResult::Written;
@@ -80,6 +90,13 @@ impl InboundEmissionExecutor for ScriptedInboundExecutor {
     }
 
     fn abort(&mut self, capability: PeerEmissionWriteCapability) -> Result<EffectAbort, ()> {
+        assert_eq!(
+            self.network
+                .basic_filter_transport_snapshot()
+                .expect("actual encoded bytes drop before capability retirement")
+                .generic_pending_bytes,
+            0
+        );
         self.abort_attempts = self.abort_attempts.saturating_add(1);
         if self.abort_should_fail {
             return Err(());
@@ -90,6 +107,13 @@ impl InboundEmissionExecutor for ScriptedInboundExecutor {
             .map_err(|_error| ())?;
         self.abort_calls.push(abort);
         Ok(abort)
+    }
+
+    fn cancellation_cleanup_failed(
+        &mut self,
+        _maybe_cause: Option<InboundEmissionExecutionOutcome>,
+    ) {
+        self.abort_should_fail = true;
     }
 }
 
@@ -162,6 +186,7 @@ async fn run_script(
         abort_calls: Vec::new(),
         abort_attempts: 0,
         abort_should_fail: false,
+        pending_during_write: Vec::new(),
     };
     let outcome = execute_inbound_emissions(emissions, PEER_ID, &mut executor).await;
     (outcome, executor)
@@ -306,6 +331,7 @@ async fn phase134_rpc_target_mismatch_aborts_current_and_unsent_suffix() {
         abort_calls: Vec::new(),
         abort_attempts: 0,
         abort_should_fail: false,
+        pending_during_write: Vec::new(),
     };
 
     // Act
@@ -334,6 +360,7 @@ async fn phase134_rpc_abort_failure_is_visible_and_attempts_every_suffix_item() 
         abort_calls: Vec::new(),
         abort_attempts: 0,
         abort_should_fail: true,
+        pending_during_write: Vec::new(),
     };
 
     // Act
@@ -392,4 +419,101 @@ fn spawn_registered_peer(
         outboxes.register_peer(peer_id).expect("register peer");
         peer_id
     })
+}
+
+#[tokio::test]
+async fn phase160_inbound_executor_announcements_keep_shared_pending_charge() {
+    // Arrange / Act
+    let (_, executor) = run_script(ScriptedFailure::Write, 2).await;
+    // Assert
+    assert_eq!(executor.pending_during_write.len(), 2);
+    assert!(executor.pending_during_write.iter().all(|bytes| *bytes > 0));
+    assert_eq!(
+        executor
+            .network
+            .basic_filter_transport_snapshot()
+            .expect("released pending")
+            .generic_pending_bytes,
+        0
+    );
+}
+
+struct BlockedAnnouncementExecutor {
+    inner: ScriptedInboundExecutor,
+    entered: Arc<tokio::sync::Notify>,
+}
+impl InboundEmissionExecutor for BlockedAnnouncementExecutor {
+    fn encode(
+        &mut self,
+        message: &WireNetworkMessage,
+    ) -> Result<open_bitcoin_node::network::filter_transport::GenericPendingBuffer, ()> {
+        self.inner.encode(message)
+    }
+    async fn write(&mut self, bytes: &[u8]) -> InboundEmissionWriteResult {
+        assert_eq!(
+            self.inner.write(bytes).await,
+            InboundEmissionWriteResult::Written
+        );
+        self.entered.notify_one();
+        std::future::pending().await
+    }
+    fn complete(&mut self, receipt: PeerEmissionReceipt) -> Result<(), ()> {
+        self.inner.complete(receipt)
+    }
+    fn abort(&mut self, capability: PeerEmissionWriteCapability) -> Result<EffectAbort, ()> {
+        self.inner.abort(capability)
+    }
+    fn cancellation_cleanup_failed(
+        &mut self,
+        maybe_cause: Option<InboundEmissionExecutionOutcome>,
+    ) {
+        self.inner.cancellation_cleanup_failed(maybe_cause);
+    }
+}
+
+#[tokio::test]
+async fn phase160_inbound_executor_dropped_announcement_write_retires_current_and_suffix() {
+    // Arrange
+    let network = network_fixture();
+    let emissions = scripted_emissions(&network, PEER_ID);
+    let entered = Arc::new(tokio::sync::Notify::new());
+    let mut executor = BlockedAnnouncementExecutor {
+        inner: ScriptedInboundExecutor {
+            network: network.clone(),
+            failure: ScriptedFailure::Write,
+            failure_on_call: usize::MAX,
+            encode_calls: 0,
+            write_calls: 0,
+            completion_calls: Vec::new(),
+            abort_calls: Vec::new(),
+            abort_attempts: 0,
+            abort_should_fail: false,
+            pending_during_write: Vec::new(),
+        },
+        entered: Arc::clone(&entered),
+    };
+    // Act
+    {
+        let execution = execute_inbound_emissions(emissions, PEER_ID, &mut executor);
+        tokio::pin!(execution);
+        tokio::select! { outcome = &mut execution => panic!("unexpected terminal: {outcome:?}"), () = entered.notified() => {} }
+        assert!(
+            network
+                .basic_filter_transport_snapshot()
+                .expect("blocked actual owner")
+                .generic_pending_bytes
+                > 0
+        );
+    }
+    // Assert
+    assert!(executor.inner.completion_calls.is_empty());
+    assert_eq!(executor.inner.abort_calls, [EffectAbort::Aborted; 3]);
+    assert_eq!(
+        network
+            .basic_filter_transport_snapshot()
+            .expect("dropped actual buffer")
+            .generic_pending_bytes,
+        0
+    );
+    assert_pending_capacity_recovered(&network, PEER_ID);
 }

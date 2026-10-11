@@ -10,7 +10,11 @@ use crate::storage::{StorageError, filter_index::index_corruption};
 use crate::{FjallChainstateStore, storage::FjallCoinsView};
 use open_bitcoin_core::chainstate::{CoinsView, VerifiedChainstateFence};
 
+pub(in crate::network) mod branch;
 mod catch_up;
+pub(in crate::network) mod serving;
+pub(in crate::network) mod transport;
+pub use branch::{BasicFilterBranchCapture, BasicFilterBranchLimit, BasicFilterBranchOutcome};
 mod query;
 pub(in crate::network) mod readiness;
 pub use query::{

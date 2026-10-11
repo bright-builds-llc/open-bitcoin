@@ -23,12 +23,28 @@ use super::{
 
 const WIRE_HEADER_LEN: usize = 24;
 
+#[cfg(test)]
+type SocketWriteControl = Box<dyn FnMut(&mut TcpStream, &[u8]) -> io::Result<()> + Send>;
+
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TcpPeerTransport;
 
 pub struct TcpPeerSession {
     peer: String,
     stream: TcpStream,
+    #[cfg(test)]
+    maybe_write_control: Option<SocketWriteControl>,
+}
+
+#[cfg(test)]
+impl TcpPeerSession {
+    /// A deterministic control around the real socket writer, never a recorder adapter.
+    pub(crate) fn control_writes(
+        &mut self,
+        control: impl FnMut(&mut TcpStream, &[u8]) -> io::Result<()> + Send + 'static,
+    ) {
+        self.maybe_write_control = Some(Box::new(control));
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -67,11 +83,24 @@ impl SyncTransport for TcpPeerTransport {
         Ok(TcpPeerSession {
             peer: peer.label(),
             stream,
+            #[cfg(test)]
+            maybe_write_control: None,
         })
     }
 }
 
 impl SyncPeerSession for TcpPeerSession {
+    fn send_encoded(&mut self, bytes: &[u8], _magic: NetworkMagic) -> Result<(), SyncRuntimeError> {
+        #[cfg(test)]
+        if let Some(control) = self.maybe_write_control.as_mut() {
+            return control(&mut self.stream, bytes)
+                .map_err(|error| io_error(self.peer.clone(), error));
+        }
+        self.stream
+            .write_all(bytes)
+            .map_err(|error| io_error(self.peer.clone(), error))
+    }
+
     fn send(
         &mut self,
         message: &WireNetworkMessage,
@@ -82,9 +111,7 @@ impl SyncPeerSession for TcpPeerSession {
             .map_err(|error| SyncRuntimeError::Network {
                 message: error.to_string(),
             })?;
-        self.stream
-            .write_all(&encoded)
-            .map_err(|error| io_error(self.peer.clone(), error))
+        self.send_encoded(&encoded, magic)
     }
 
     fn receive(&mut self, magic: NetworkMagic) -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> {

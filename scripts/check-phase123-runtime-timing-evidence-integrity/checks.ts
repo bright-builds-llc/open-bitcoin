@@ -1,4 +1,3 @@
-import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DEFAULT_REPO_ROOT, TARGET_FILES, TargetFile, CheckOptions } from "./constants.ts";
 import { readText } from "./filesystem.ts";
@@ -6,6 +5,7 @@ import { verifySuccessfulWriteEvidence, verifyPrivateProjection, verifyAuthorita
 import { verifyPhase121Compatibility, verifyParity, verifyBreadcrumbs, verifyVerifierWiring } from "./parity.ts";
 import { normalizeWhitespace, requireContains, requireAbsent, requireOrdered } from "./helpers.ts";
 import { normalizeRust, rustCallArguments, rustFunction } from "../rust-source-invariants.ts";
+import { maybeFunction } from "../check-phase157-index-catch-up/rust-evidence.ts";
 
 export function checkPhase123RuntimeTimingEvidenceIntegrity(
   options: CheckOptions = {},
@@ -169,7 +169,7 @@ export function verifyIdleMaintenance(
     texts.get("packages/open-bitcoin-node/src/sync/session/emission_terminal.rs") ?? "";
   const blockReconcile = texts.get("packages/open-bitcoin-node/src/sync/block_reconcile.rs") ?? "";
   const blockResponse = texts.get("packages/open-bitcoin-node/src/sync/block_response.rs") ?? "";
-  const syncSession = `${sync}\n${session}`;
+  const syncSession = normalizeWhitespace(maybeFunction(session, "sync_connected_peer_with_cancel", true)?.body ?? "");
   requireOrdered(
     syncSession,
     [
@@ -179,7 +179,7 @@ export function verifyIdleMaintenance(
       ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
       "let fallback_block_hashes = targeted",
       "block_reconcile::request_tracked_blocks(",
-      "self.send_all_for_peer(&mut session, peer_id, &outbound)?;",
+      "self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?;",
       "if !self.peer_has_pending_download_work(peer_id)",
       "self.complete_peer_session_progress(&mut progress, peer_id);",
       "return Ok(());",
@@ -246,11 +246,16 @@ export function verifyIdleMaintenance(
     failures,
   );
   requireOrdered(
-    emissionTerminal,
+    normalizeWhitespace(maybeFunction(emissionTerminal, "send_peer_emissions", true)?.body ?? ""),
     [
-      "pub(super) fn send_peer_emissions",
-      "session.send(&message, network_magic)",
+      "let preparation = emissions.iter().try_for_each",
+      ".encode_pending_network_message(peer_id, emission.message())",
+      "buffers.push_back(buffer);",
+      "while let Some(emission) = emissions.pop_front()",
+      "if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic)",
+      "return combined_error( write_error, abort_current_and_suffix(network, capability, emissions), );",
       "capability.acknowledge_write()",
+      "network.complete_peer_emission(receipt)",
     ],
     "P123 sync peer emission post-write completion",
     failures,

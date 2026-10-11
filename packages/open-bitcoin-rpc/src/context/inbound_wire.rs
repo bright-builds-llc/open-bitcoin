@@ -17,25 +17,33 @@ use std::{
 
 use open_bitcoin_network::{InventoryList, WireNetworkMessage};
 use open_bitcoin_node::FjallNodeStore;
+use open_bitcoin_node::core::chainstate::{CoinsView, MemoryCoinsView};
 use open_bitcoin_node::core::consensus::build_compact_block_payload;
-use open_bitcoin_node::core::primitives::{NetworkMagic, ScriptWitness};
+use open_bitcoin_node::core::primitives::ScriptWitness;
+use open_bitcoin_node::network::filter_transport::{GenericPendingBuffer, PreparedFilterResponse};
 use open_bitcoin_node::network::{
     ManagedBlockSerializationMode, ManagedBlockServeCompletion, ManagedBlockServeCompletionOutcome,
-    ManagedBlockServeIntent, ManagedInboundResponsePlanItem, PeerEmission,
-    PeerEmissionWriteCapability,
+    ManagedBlockServeIntent, ManagedInboundResponsePlanItem, PeerEmissionWriteCapability,
 };
+use open_bitcoin_node::{ChainstateStore, ManagedNetworkHandle, MemoryChainstateStore};
 
 use super::ManagedRpcContext;
 
 pub(crate) struct EncodedWireResponse {
     pub(crate) message: WireNetworkMessage,
-    pub(crate) bytes: Vec<u8>,
+    pub(crate) bytes: GenericPendingBuffer,
     pub(crate) maybe_block_serve_intent: Option<ManagedBlockServeIntent>,
     pub(crate) maybe_tx_write_capability: Option<PeerEmissionWriteCapability>,
 }
 
-pub(crate) struct InboundWireResponsePlan {
-    pub(super) network_magic: NetworkMagic,
+pub(crate) enum InboundWireStep {
+    Encoded(Box<EncodedWireResponse>),
+    Filter(PreparedFilterResponse),
+}
+
+pub(crate) struct InboundWireResponsePlan<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView>
+{
+    pub(super) network: ManagedNetworkHandle<S, V>,
     pub(crate) responses: Vec<ManagedInboundResponsePlanItem>,
     pub(super) maybe_block_source: Option<Arc<dyn DurableBlockSource>>,
     pub(super) peer_id: u64,
@@ -43,7 +51,7 @@ pub(crate) struct InboundWireResponsePlan {
 }
 
 pub(crate) struct ResolvedInboundWireResponses {
-    pub(crate) responses: Vec<EncodedWireResponse>,
+    pub(crate) responses: Vec<InboundWireStep>,
     pub(crate) immediate_completions: Vec<ManagedBlockServeCompletion>,
     pub(crate) tx_write_aborts: Vec<PeerEmissionWriteCapability>,
     pub(crate) failed: bool,
@@ -108,7 +116,7 @@ pub(crate) fn durable_block_source(
     maybe_store.map(|store| Arc::new(store) as Arc<dyn DurableBlockSource>)
 }
 
-impl InboundWireResponsePlan {
+impl<S: ChainstateStore, V: CoinsView> InboundWireResponsePlan<S, V> {
     pub(crate) fn resolve(mut self) -> ResolvedInboundWireResponses {
         let mut resolved = ResolvedInboundWireResponses {
             responses: Vec::new(),
@@ -119,14 +127,26 @@ impl InboundWireResponsePlan {
         for response in core::mem::take(&mut self.responses) {
             match response {
                 ManagedInboundResponsePlanItem::Immediate(message) => {
-                    resolved.push_encoded(message, None, None, self.network_magic);
+                    resolved.push_encoded(message, None, None, &self.network, self.peer_id);
                 }
                 ManagedInboundResponsePlanItem::DurableBlock(intent) => {
                     self.resolve_block_intent(intent, &mut resolved);
                 }
                 ManagedInboundResponsePlanItem::PreparedTxServe(emission) => {
-                    resolved.push_prepared_tx_serve(*emission, self.network_magic);
+                    let (_, message, capability) = emission.into_parts();
+                    resolved.push_encoded(
+                        message,
+                        None,
+                        Some(capability),
+                        &self.network,
+                        self.peer_id,
+                    );
                 }
+                ManagedInboundResponsePlanItem::PreparedFilterServe(response) => {
+                    resolved.responses.push(InboundWireStep::Filter(*response))
+                }
+                ManagedInboundResponsePlanItem::FilterServeUnavailable(_) => {}
+                ManagedInboundResponsePlanItem::FilterRequestIntent(_) => resolved.failed = true,
             }
         }
         resolved
@@ -153,7 +173,8 @@ impl InboundWireResponsePlan {
                     ])),
                     None,
                     None,
-                    self.network_magic,
+                    &self.network,
+                    self.peer_id,
                 );
                 return;
             }
@@ -170,41 +191,29 @@ impl InboundWireResponsePlan {
             resolved.failed = true;
             return;
         };
-        resolved.push_encoded(response, Some(intent), None, self.network_magic);
+        resolved.push_encoded(response, Some(intent), None, &self.network, self.peer_id);
     }
 }
 
 impl ResolvedInboundWireResponses {
-    fn push_prepared_tx_serve(&mut self, emission: PeerEmission, network_magic: NetworkMagic) {
-        let (_peer_id, message, capability) = emission.into_parts();
-        match message.encode_wire(network_magic) {
-            Ok(bytes) => self.responses.push(EncodedWireResponse {
-                message,
-                bytes,
-                maybe_block_serve_intent: None,
-                maybe_tx_write_capability: Some(capability),
-            }),
-            Err(_) => {
-                self.tx_write_aborts.push(capability);
-                self.failed = true;
-            }
-        }
-    }
-
-    fn push_encoded(
+    fn push_encoded<S: ChainstateStore, V: CoinsView>(
         &mut self,
         message: WireNetworkMessage,
         maybe_block_serve_intent: Option<ManagedBlockServeIntent>,
         maybe_tx_write_capability: Option<PeerEmissionWriteCapability>,
-        network_magic: NetworkMagic,
+        network: &ManagedNetworkHandle<S, V>,
+        peer_id: u64,
     ) {
-        match message.encode_wire(network_magic) {
-            Ok(bytes) => self.responses.push(EncodedWireResponse {
-                message,
-                bytes,
-                maybe_block_serve_intent,
-                maybe_tx_write_capability,
-            }),
+        match network.encode_pending_network_message(peer_id, &message) {
+            Ok(bytes) => {
+                self.responses
+                    .push(InboundWireStep::Encoded(Box::new(EncodedWireResponse {
+                        message,
+                        bytes,
+                        maybe_block_serve_intent,
+                        maybe_tx_write_capability,
+                    })))
+            }
             Err(_) => {
                 if let Some(intent) = maybe_block_serve_intent {
                     self.immediate_completions.push(
@@ -260,16 +269,17 @@ pub(crate) async fn resolve_inbound_wire_responses<S, V>(
     peer_id: u64,
     message: WireNetworkMessage,
     timestamp: i64,
-) -> Option<Vec<EncodedWireResponse>>
+) -> Option<Vec<InboundWireStep>>
 where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
 {
-    let plan = {
+    let (plan, network) = {
         let mut context = context.lock().await;
-        context
+        let plan = context
             .prepare_inbound_wire_message(peer_id, message, timestamp)
-            .ok()?
+            .ok()?;
+        (plan, context.basic_filter_network_handle())
     };
     let mut resolved = plan.resolve();
     if resolved.failed {
@@ -277,28 +287,43 @@ where
             resolved
                 .responses
                 .iter()
-                .filter_map(|response| response.maybe_block_serve_intent.as_ref())
+                .filter_map(|step| match step {
+                    InboundWireStep::Encoded(response) => {
+                        response.maybe_block_serve_intent.as_ref()
+                    }
+                    InboundWireStep::Filter(_) => None,
+                })
                 .map(|intent| {
                     intent.completion(ManagedBlockServeCompletionOutcome::TransportFailed)
                 }),
         );
-        resolved.tx_write_aborts.extend(
-            resolved
-                .responses
-                .iter_mut()
-                .filter_map(|response| response.maybe_tx_write_capability.take()),
-        );
+        resolved
+            .tx_write_aborts
+            .extend(resolved.responses.iter_mut().filter_map(|step| match step {
+                InboundWireStep::Encoded(response) => response.maybe_tx_write_capability.take(),
+                InboundWireStep::Filter(_) => None,
+            }));
     }
     {
-        let context = context.lock().await;
-        context
-            .complete_block_serves(&resolved.immediate_completions)
-            .ok()?;
-        for capability in resolved.tx_write_aborts {
-            context.abort_peer_emission(capability).ok()?;
+        let mut cleanup_failed = false;
+        for completion in &resolved.immediate_completions {
+            cleanup_failed |= network.complete_block_serve(completion).is_err();
         }
+        for capability in resolved.tx_write_aborts {
+            cleanup_failed |= network.abort_peer_emission(capability).is_err();
+        }
+        resolved.failed |= cleanup_failed;
     }
-    (!resolved.failed).then_some(resolved.responses)
+    if resolved.failed {
+        for step in resolved.responses {
+            if let InboundWireStep::Filter(response) = step {
+                // A terminal registry failure remains visible through its snapshot.
+                resolved.failed |= response.cancel().is_err();
+            }
+        }
+        return None;
+    }
+    Some(resolved.responses)
 }
 
 pub(crate) async fn acknowledge_encoded_wire_response<S, V>(
@@ -310,8 +335,8 @@ where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
 {
+    let context = context.lock().await;
     if let Some(capability) = response.maybe_tx_write_capability.take() {
-        let context = context.lock().await;
         return if was_written {
             context
                 .complete_peer_emission(capability.acknowledge_write())
@@ -320,8 +345,7 @@ where
             context.abort_peer_emission(capability).is_ok()
         };
     }
-    let context = context.lock().await;
-    let Some(intent) = response.maybe_block_serve_intent.as_ref() else {
+    let Some(intent) = response.maybe_block_serve_intent.take() else {
         return !was_written
             || context
                 .acknowledge_wire_message_written(&response.message)

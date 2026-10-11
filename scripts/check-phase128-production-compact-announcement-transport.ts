@@ -2,6 +2,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { hasInboundAnnouncementPrefix } from "./check-phase134-authoritative-lifecycle.ts";
 
 import { hasOrdinaryRuntimeOwner } from "./check-phase128-production-compact-announcement-transport/impl-attributes.ts";
 import {
@@ -40,6 +41,7 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   ".planning/ROADMAP.md",
   ".planning/PROJECT.md",
@@ -346,17 +348,33 @@ function checkProductionWriteBoundaries(
   const emissionTerminal =
     texts.get("packages/open-bitcoin-node/src/sync/session/emission_terminal.rs") ??
     "";
-  const outbound = section(
-    emissionTerminal,
-    "pub(super) fn send_peer_emissions",
-    "\npub(super) fn abort_emissions",
-  );
+  const outbound = compact(maybeFunction(emissionTerminal, "send_peer_emissions", true)?.body ?? "");
   if (
     !orderedFragments(outbound, [
-      "let (target_peer_id, message, capability) = emission.into_parts();",
-      "session.send(&message, network_magic)",
-      "capability.acknowledge_write()",
-    ])
+      "letpreparation=emissions.iter().try_for_each(|emission|{",
+      "ifemission.peer_id()!=peer_id{",
+      ".encode_pending_network_message(peer_id,emission.message())",
+      "buffers.push_back(buffer);",
+      "ifletErr(error)=preparation{",
+      "returncombined_error(error,abort_emissions(network,emissions));",
+      "whileletSome(emission)=emissions.pop_front(){",
+      "let(_target_peer_id,message,capability)=emission.into_parts();",
+      "letSome(buffer)=buffers.pop_front()else{",
+      "ifletErr(write_error)=session.send_encoded(buffer.bytes(),network_magic){",
+      "abort_current_and_suffix(network,capability,emissions)",
+      "letreceipt=capability.acknowledge_write();",
+      "ifletErr(completion_error)=network.complete_peer_emission(receipt){",
+      "abort_emissions(network,emissions)",
+    ]) ||
+    !outbound.includes(compact(`if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {
+      drop(buffer); drop(buffers); return combined_error(write_error,
+        abort_current_and_suffix(network, capability, emissions),); }`)) ||
+    (outbound.match(/capability\.acknowledge_write\(\)/g) ?? []).length !== 1 ||
+    (outbound.match(/abort_current_and_suffix\(network,capability,emissions\)/g) ?? []).length !== 3 ||
+    !compact(maybeFunction(emissionTerminal, "abort_current_and_suffix", true)?.body ?? "").includes(
+      "std::iter::once(current).chain(suffix.into_iter().map(|emission|emission.into_parts().2))",
+    ) ||
+    !compact(maybeFunction(emissionTerminal, "abort_capabilities", true)?.body ?? "").includes(".abort_peer_emission(capability)")
   ) {
     failures.push(
       "P128 outbound write boundary: receipt completion must follow the session send",
@@ -367,33 +385,9 @@ function checkProductionWriteBoundaries(
     texts.get(
       "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
     ) ?? "";
-  const drain = section(
-    inbound,
-    "async fn drain_inbound_announcements<",
-    "\nasync fn acknowledge_inbound_response_write<",
-  );
-  const executor = section(
-    inbound,
-    "pub(super) async fn execute_inbound_emissions",
-    "\n#[allow(clippy::too_many_arguments)]\nstruct SocketInboundEmissionExecutor",
-  );
-  const socketExecutor = section(
-    inbound,
-    "InboundEmissionExecutor for SocketInboundEmissionExecutor",
-    "\n#[allow(clippy::too_many_arguments)]\nasync fn drain_inbound_announcements<",
-  );
-  if (
-    !drain.includes("execute_inbound_emissions(emissions, peer_id, &mut executor).await") ||
-    !orderedFragments(executor, [
-      "match executor.write(&bytes).await",
-      "InboundEmissionWriteResult::Written => {",
-      "capability.acknowledge_write()",
-    ]) ||
-    !orderedFragments(socketExecutor, [
-      "fn complete(&mut self, receipt: PeerEmissionReceipt)",
-      ".complete_peer_emission(receipt)",
-    ])
-  ) {
+  if (!hasInboundAnnouncementPrefix(inbound, texts.get(
+    "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+  ) ?? "")) {
     failures.push(
       "P128 inbound write boundary: receipt completion must occur only after Written",
     );

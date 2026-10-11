@@ -406,18 +406,23 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         &self,
         responses: Vec<WireNetworkMessage>,
     ) -> Result<Vec<EncodedWireResponse>, ManagedNetworkAuthorityError> {
-        let encoded = self.network.encode_messages(&responses)?;
-        Ok(responses
+        responses
             .into_iter()
-            .zip(encoded)
-            .map(|(message, bytes)| EncodedWireResponse {
-                message,
-                bytes,
-                maybe_block_serve_intent: None,
-                maybe_tx_write_capability: None,
+            .map(|message| {
+                Ok(EncodedWireResponse {
+                    bytes: self
+                        .network
+                        .encode_pending_network_message(0, &message)
+                        .map_err(|error| {
+                            ManagedNetworkAuthorityError::LifecycleEffect(error.to_string())
+                        })?,
+                    message,
+                    maybe_block_serve_intent: None,
+                    maybe_tx_write_capability: None,
+                })
             })
             // Phase 123 carrier-shape anchor: EncodedWireResponse { message, bytes }
-            .collect())
+            .collect()
     }
 
     pub(crate) fn acknowledge_wire_message_written(

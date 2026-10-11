@@ -1,4 +1,5 @@
-import { PHASE134_CLOSED_TARGETS } from "../check-phase134-authoritative-lifecycle";
+import { expect } from "bun:test";
+import { PHASE134_CLOSED_TARGETS, checkPhase134AuthoritativeLifecycle } from "../check-phase134-authoritative-lifecycle";
 import {
   type MutationCase,
   type Mutator,
@@ -7,6 +8,7 @@ import {
   replace,
   replaceInFirst,
   replaceNth,
+  REPO_ROOT,
 } from "./fixture";
 
 export const DIAGNOSTICS = {
@@ -241,12 +243,47 @@ export function effectMutations(): MutationCase[] {
       "successful prefix not completed",
       DIAGNOSTICS.prefix,
       replace(
-        "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
-        "executor.complete(capability.acknowledge_write()).is_err()",
+        "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+        ".complete(capability.acknowledge_write())",
         "false",
       ),
     ],
+    ...prefixMutations(),
   ];
+}
+
+function prefixMutations(): MutationCase[] {
+  const runtime = "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs";
+  const helper = "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs";
+  return [
+    ["removed delegation", runtime, "execute_inbound_emissions(emissions, peer_id, &mut executor).await", "disconnected(emissions, peer_id, &mut executor).await"],
+    ["unconditional successful completion", helper, "match result {", "match InboundEmissionWriteResult::Written {"],
+    ["credit before real write", helper, "let result = pending.executor.write(bytes.bytes()).await;", "pending.executor.complete(pending.maybe_current.take().expect(\"current\").acknowledge_write()); let result = pending.executor.write(bytes.bytes()).await;"],
+    ["failed frame credit", helper, "InboundEmissionWriteResult::Failed => {", "InboundEmissionWriteResult::Failed => { pending.executor.complete(pending.maybe_current.take().expect(\"current\").acknowledge_write());"],
+    ["missing write", helper, "pending.executor.write(bytes.bytes()).await", "InboundEmissionWriteResult::Written"],
+    ["missing terminal cleanup", helper, "return pending.fail(InboundEmissionExecutionOutcome::WriteFailed);", "return InboundEmissionExecutionOutcome::WriteFailed;"],
+    ["missing current cleanup", helper, "self.executor.abort(current)", "Ok::<_, ()>(EffectAbort::Aborted)"],
+    ["missing suffix cleanup", helper, "self.executor.abort(emission.into_parts().2)", "Ok::<_, ()>(EffectAbort::Aborted)"],
+    ["missing cancellation cleanup", helper, "if !self.retire() {", "if false {"],
+    ["forged physical write", runtime, "let write_result = write_all_for_state(", "let write_result = pretend_write_all_for_state("],
+    ["failed socket write credited", runtime, "_ => InboundEmissionWriteResult::Failed,", "_ => InboundEmissionWriteResult::Written,"],
+    ["disconnected executor owner", runtime, "InboundEmissionExecutor for SocketInboundEmissionExecutor", "InboundEmissionExecutor for DisconnectedExecutor"],
+    ["comment delegation decoy", runtime, "execute_inbound_emissions(emissions, peer_id, &mut executor).await", "/* execute_inbound_emissions(emissions, peer_id, &mut executor).await */ InboundEmissionExecutionOutcome::Complete"],
+    ["literal delegation decoy", runtime, "execute_inbound_emissions(emissions, peer_id, &mut executor).await", "{ let _ = r#\"execute_inbound_emissions(emissions, peer_id, &mut executor).await\"#; InboundEmissionExecutionOutcome::Complete }"],
+    ["test-only executor decoy", helper, "pub(in crate::inbound_listener) async fn execute_inbound_emissions", "#[cfg(test)]\npub(in crate::inbound_listener) async fn execute_inbound_emissions"],
+    ["disconnected helper decoy", helper, "async fn execute_inbound_emissions", "async fn disconnected_execute_inbound_emissions"],
+    ["test-only socket owner", runtime, "impl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor", "#[cfg(test)]\nimpl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor"],
+    ["test-only retirement owner", helper, "impl<E: InboundEmissionExecutor> PendingEmissions", "#[cfg(test)]\nimpl<E: InboundEmissionExecutor> PendingEmissions"],
+    ["test-only cancellation owner", helper, "impl<E: InboundEmissionExecutor> Drop for PendingEmissions", "#[cfg(test)]\nimpl<E: InboundEmissionExecutor> Drop for PendingEmissions"],
+    ["test-only reexport", runtime, "pub(super) use filter_serving::{", "#[cfg(test)]\npub(super) use filter_serving::{"],
+    ["test-only reexport with intervening attribute", runtime, "pub(super) use filter_serving::{", "#[cfg(test)]\n#[allow(unused_imports)]\npub(super) use filter_serving::{"],
+    ["comment module binding decoy", runtime, "#[path = \"filter_serving.rs\"]", "/* #[path = \"filter_serving.rs\"] pub(super) mod filter_serving; */\n#[path = \"disconnected.rs\"]"],
+  ].map(([name, file, needle, replacement]): MutationCase => [
+    name, DIAGNOSTICS.prefix, (files) => {
+      expect(checkPhase134AuthoritativeLifecycle(REPO_ROOT)).toEqual([]);
+      replace(file, needle, replacement)(files);
+    },
+  ]);
 }
 
 export function scenarioMutations(): MutationCase[] {

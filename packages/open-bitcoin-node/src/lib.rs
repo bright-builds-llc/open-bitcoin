@@ -40,8 +40,9 @@ pub use metrics::{
 };
 pub use network::{
     BASIC_FILTER_QUERY_MAX_HEX_BYTES, BASIC_FILTER_QUERY_MAX_READ_BYTES,
-    BASIC_FILTER_QUERY_MAX_RECORD_BYTES, BasicBlockValidationProvenance, BasicFilterQuery,
-    BasicFilterQueryError, BasicFilterQueryWork, BasicFilterReadBarrier, BasicFilterReadCompletion,
+    BASIC_FILTER_QUERY_MAX_RECORD_BYTES, BasicBlockValidationProvenance, BasicFilterBranchCapture,
+    BasicFilterBranchLimit, BasicFilterBranchOutcome, BasicFilterQuery, BasicFilterQueryError,
+    BasicFilterQueryWork, BasicFilterReadBarrier, BasicFilterReadCompletion,
     BasicFilterReadFailure, BasicFilterReadFrontier, BasicFilterRecordView, BasicFilterTurnOutcome,
     BasicIndexSummary, MAX_BASIC_FILTER_WAITERS, ManagedAddressBoundaryInfo,
     ManagedInboundAdmissionInfo, ManagedInboundPermissionDecisionInfo,

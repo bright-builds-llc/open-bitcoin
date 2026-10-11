@@ -546,6 +546,14 @@ pub enum SyncPeerReceiveOutcome {
 }
 
 pub trait SyncPeerSession {
+    /// Write an already governed complete frame. Physical transports must override this
+    /// with a direct write of the supplied bytes. This compatibility default is only
+    /// for nonphysical scripted adapters and establishes no physical-write evidence.
+    fn send_encoded(&mut self, bytes: &[u8], magic: NetworkMagic) -> Result<(), SyncRuntimeError> {
+        let parsed = open_bitcoin_network::ParsedNetworkMessage::decode_wire(bytes)?;
+        self.send(&parsed.message, magic)
+    }
+
     fn send(
         &mut self,
         message: &WireNetworkMessage,

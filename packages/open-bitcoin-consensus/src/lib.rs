@@ -18,6 +18,7 @@
 
 pub mod block;
 pub mod block_filter;
+pub mod chain_proof;
 pub mod classify;
 pub mod compact_block_build;
 pub mod context;
@@ -36,6 +37,7 @@ pub use block_filter::{
     BasicFilter, FilterHeaderError, FilterHeaderPredecessor, compute_filter_header,
     filter_hash_display_hex, filter_header_display_hex,
 };
+pub use chain_proof::{ProofTimeError, ProofWork, block_proof, proof_equivalent_time};
 pub use classify::{
     ScriptPubKeyType, classify_script_pubkey, extract_redeem_script, extract_script_sig_pushes,
     is_push_only,

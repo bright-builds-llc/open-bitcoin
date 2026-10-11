@@ -2,7 +2,7 @@
 
 ## Current Status
 
-v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–159 completed 41 plans and twelve requirements after full native verification. Six of nine phases are complete; ten requirements remain pending, and Phase 160 is ready for context. BASIC construction, recoverable storage, prune protection/coordination, safe activation, bounded catch-up, validated branch replacement and authenticated filter/index RPCs are implemented. Phase 159 passed 26/26 truths, clean 91-path independent source review, all 27 declared security mitigations and the full default native contract in 36m 0.155s with 3,864 primary Rust passes, benchmark/Bazel/provenance and zero uncovered pure-core lines. UnknownLegacy missing rows fail closed and finite resource policies remain explicit. Peer/operator/integrated-client products remain planned scope; v2.5 is not a shipped capability. v2.4 remains archived with three nonblocking advisories, and historical phase directories remain tracked for verifier evidence.
+v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–160 completed 58 plans and eighteen requirements after full native verification. Seven of nine phases are complete; four requirements remain pending. Phase 160 implements explicit bounded BASIC peer requests through both production socket adapters, with configured capability, branch-correct persisted reads and achieved-write accounting. Its verification passed 7/7 truths, all five roadmap criteria, six CFNET requirements and twenty decisions; independent source review is clean across 123 paths and all 39 declared mitigations are closed. Full default native verification passed in 26m 5.720s with 4,093 primary Rust passes, benchmark/Bazel/provenance and zero uncovered pure-core lines. BASIC construction, recoverable storage, prune protection/coordination, safe activation, bounded catch-up, validated branch replacement and authenticated filter/index RPCs are implemented. UnknownLegacy missing rows fail closed and finite resource policies remain explicit. Phase 161 operator projections and Phase 162 integrated retained-client proof remain pending; v2.5 is not a shipped capability. v2.4 remains archived with three nonblocking advisories, and historical phase directories remain tracked for verifier evidence.
 
 ## Milestones
 
@@ -39,7 +39,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 157: Safe Activation and Scheduled Index Catch-Up** — Enable indexing only with retained inputs, then advance through real startup and ordinary maintenance. (completed 2026-10-05)
 - [x] **Phase 158: Validated Reorg and Retained Branch Identity** — Replace active commitments while retaining indexed displaced blocks and refusing lost reorg inputs. (completed 2026-10-09)
 - [x] **Phase 159: Authenticated BASIC Filter and Index RPCs** — Expose pinned lookup results and initial-synchronization semantics through the shared durable authority. (completed 2026-10-10)
-- [ ] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence.
+- [x] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence. (completed 2026-10-11)
 - [ ] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers.
 - [ ] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports.
 
@@ -175,8 +175,28 @@ Plans:
 1. Unsupported types, invalid/disallowed stop hashes, reversed or oversized ranges produce pinned disconnect/validation outcomes; a valid request crossing an absent record yields no fabricated empty filter or shortened successful response. (CFNET-05)
 1. Real inbound and outbound runtime callers read persisted records under explicit work/byte/queue bounds, write outside the authority lock and earn completion only from achieved transport writes; queue pressure and partial-write failure abort the unwritten suffix without crediting a full-range success. (CFNET-06)
 
-**Plans**: TBD
-**UI hint**: yes
+**Plans:** 17/17 plans complete
+
+Plans:
+- [x] 160-01-PLAN.md — pinned BASIC peer wire families
+- [x] 160-02-PLAN.md — requested permissions and configured peer capability
+- [x] 160-03-PLAN.md — explicit daemon configuration before startup effects
+- [x] 160-04-PLAN.md — exact fixed-width block proof arithmetic
+- [x] 160-05-PLAN.md — requested ancestry and exact stale eligibility
+- [x] 160-06-PLAN.md — measured finite persisted-read resource contracts
+- [x] 160-13-PLAN.md — monotonic shared read-integrity epoch and invalidation
+- [x] 160-07-PLAN.md — bounded request reservations and one-use receipts
+- [x] 160-15-PLAN.md — pure request actions and relay-safe carrier contracts
+- [x] 160-08-PLAN.md — complete persisted responses and managed dispatch
+- [x] 160-14-PLAN.md — shared mixed-traffic pending-byte governance
+- [x] 160-16-PLAN.md — independent pinned peer-wire/proof fixture generation
+- [x] 160-09-PLAN.md — actual inbound socket execution and suffix cleanup
+- [x] 160-10-PLAN.md — actual outbound session execution and suffix cleanup
+- [x] 160-11-PLAN.md — independent concrete cross-transport evidence
+- [x] 160-17-PLAN.md — bounded historical native guard compatibility repair
+- [x] 160-12-PLAN.md — scoped parity/native guard and final review gate
+
+**UI hint**: yes — protocol terminology; no frontend/browser UI contract (D-20).
 
 ### Phase 161: Shared Operator Index and Retention Evidence
 
@@ -241,10 +261,10 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | 157. Safe Activation and Scheduled Index Catch-Up | 10/10 | Complete | 2026-10-05 |
 | 158. Validated Reorg and Retained Branch Identity | 7/7 | Complete | 2026-10-09 |
 | 159. Authenticated BASIC Filter and Index RPCs | 8/8 | Complete    | 2026-10-10 |
-| 160. Explicit Bounded Peer Filter Serving | 0/TBD | Not started | - |
+| 160. Explicit Bounded Peer Filter Serving | 17/17 | Complete    | 2026-10-11 |
 | 161. Shared Operator Index and Retention Evidence | 0/TBD | Not started | - |
 | 162. Real Prune Retention and Integrated Parity Proof | 0/TBD | Not started | - |
 
 ## Coverage
 
-22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 6/9 verified phases and 41/41 created plans. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03 and CFRP-01/02 are Complete; the remaining ten requirements are Pending.
+22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 7/9 verified phases and 58/58 created plans complete. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02 and CFNET-01–06 are Complete; the remaining four requirements are Pending.

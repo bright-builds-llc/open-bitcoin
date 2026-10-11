@@ -38,6 +38,7 @@ const BITCOIN_CONF_FILE_NAME: &str = "bitcoin.conf";
 #[derive(Debug, Clone, Default)]
 struct CliSettings {
     block_filter_values: Vec<super::blockfilter::FilterOptionValue>,
+    maybe_peer_block_filters: Option<bool>,
     maybe_chain: Option<AddressNetwork>,
     maybe_conf_path: Option<PathBuf>,
     maybe_data_dir: Option<PathBuf>,
@@ -178,7 +179,8 @@ pub(super) fn load_runtime_config_for_args(
     #[rustfmt::skip]
     let prune = maybe_open_bitcoin_config.as_ref().map_or(0, |config| config.prune);
 
-    Ok(RuntimeConfig {
+    let peer_block_filters = blockfilter::resolve_peer_serving(&cli, &config_entries, chain)?;
+    let runtime = RuntimeConfig {
         chain,
         maybe_data_dir,
         rpc_server: RpcServerConfig {
@@ -202,7 +204,9 @@ pub(super) fn load_runtime_config_for_args(
         inbound_permission_validation_failures,
         prune_mode: super::prune::resolve_prune_mode(prune)?,
         block_filter_index: blockfilter::resolve(&cli.block_filter_values, &config_entries, chain)?,
-    })
+        peer_block_filters,
+    };
+    runtime.validate_peer_block_filters().map(|()| runtime)
 }
 
 fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
@@ -235,6 +239,9 @@ fn parse_cli_args(cli_args: &[OsString]) -> Result<CliSettings, ConfigError> {
         }
 
         match key {
+            "peerblockfilters" => {
+                settings.maybe_peer_block_filters = Some(parse_bool(maybe_value, negated)?);
+            }
             "server" => {
                 settings.maybe_server = Some(parse_bool(maybe_value, negated)?);
             }
@@ -534,7 +541,8 @@ fn collect_file_settings(
             "rpccookiefile" => settings.maybe_cookie_file = Some(PathBuf::from(&entry.value)),
             "datadir" => settings.maybe_data_dir = Some(PathBuf::from(&entry.value)),
             "main" | "test" | "testnet" | "signet" | "regtest" | "includeconf"
-            | "blockfilterindex" | "noblockfilterindex" => {}
+            | "blockfilterindex" | "noblockfilterindex" | "peerblockfilters"
+            | "nopeerblockfilters" => {}
             _ => {
                 return Err(ConfigError::new(format!(
                     "Error reading configuration file: Invalid configuration value {}",

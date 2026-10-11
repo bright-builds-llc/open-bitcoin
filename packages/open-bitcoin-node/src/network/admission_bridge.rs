@@ -518,6 +518,7 @@ fn transaction_relay_messages(actions: Vec<PeerAction>) -> Vec<(PeerId, WireNetw
             PeerAction::TransactionRelay(action) => process_transaction_relay_action(action),
             PeerAction::Send(_)
             | PeerAction::ServeInventory(_)
+            | PeerAction::ServeBasicFilter(_)
             | PeerAction::ServeCompactBlockTransactions(_)
             | PeerAction::ReceivedTransaction { .. }
             | PeerAction::ReceivedBlock(_)
@@ -547,5 +548,32 @@ fn reconsideration_status(outcome: &MempoolOutcome) -> OrphanReconsiderationStat
         MempoolOutcome::Rejected { .. } => OrphanReconsiderationStatus::Rejected,
         MempoolOutcome::Evicted { .. } => OrphanReconsiderationStatus::Evicted,
         MempoolOutcome::Expired { .. } => OrphanReconsiderationStatus::Expired,
+    }
+}
+
+#[cfg(test)]
+mod filter_bridge_tests {
+    use super::*;
+
+    #[test]
+    fn phase160_dispatch_bridge_filter_actions_leave_transaction_requests_unchanged() {
+        // Arrange
+        let request = open_bitcoin_network::policy::FilterRequest::Checkpoints {
+            filter_type: 0,
+            stop_hash: Default::default(),
+        };
+        let action = open_bitcoin_network::TxDownloadAction::RequestGetData {
+            peer_id: 9,
+            relay_id: TxRelayId::Txid(Txid::from_byte_array([9; 32])),
+        };
+        let expected = process_transaction_relay_action(action).expect("transaction request");
+        // Act
+        let messages = transaction_relay_messages(vec![
+            PeerAction::ServeBasicFilter(request),
+            PeerAction::TransactionRelay(action),
+            PeerAction::ServeBasicFilter(request),
+        ]);
+        // Assert
+        assert_eq!(messages, vec![expected]);
     }
 }

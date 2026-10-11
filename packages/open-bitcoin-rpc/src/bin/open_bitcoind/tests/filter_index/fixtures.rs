@@ -266,19 +266,53 @@ impl DaemonFixture {
     }
 
     pub fn open(path: std::path::PathBuf, blocks: Vec<Block>, enabled: bool) -> Self {
+        Self::open_policy(path, blocks, enabled, false, &["in"], false)
+    }
+
+    pub fn open_serving(
+        path: std::path::PathBuf,
+        blocks: Vec<Block>,
+        enabled: bool,
+        general: bool,
+        permissions: &[&str],
+    ) -> Self {
+        Self::open_policy(path, blocks, enabled, general, permissions, true)
+    }
+
+    fn open_policy(
+        path: std::path::PathBuf,
+        blocks: Vec<Block>,
+        enabled: bool,
+        general: bool,
+        permissions: &[&str],
+        listener: bool,
+    ) -> Self {
         std::fs::write(path.join("open-bitcoin.jsonc"), "{\"prune\":1}")
             .expect("actual manual-prune config");
-        let args = [
+        let mut args = vec![
             format!("-datadir={}", path.display()).into(),
             "-regtest".into(),
             format!("-blockfilterindex={}", if enabled { "basic" } else { "0" }).into(),
             "-rpcuser=phase159".into(),
             "-rpcpassword=private-password".into(),
+            format!("-peerblockfilters={}", u8::from(general)).into(),
+            format!("-openbitcoininbound={}", u8::from(listener)).into(),
+            "-openbitcoinlisten=127.0.0.1:0".into(),
+            "-openbitcoinmaxinbound=2".into(),
+            "-openbitcoinreservedslots=1".into(),
         ];
+        if permissions != ["in"] {
+            args.push(
+                format!(
+                    "-openbitcoininboundpermissionclass=evidence@127.0.0.1={}",
+                    permissions.join(",")
+                )
+                .into(),
+            );
+        }
         let config = open_bitcoin_rpc::config::load_runtime_config_for_args(&args, &path)
             .expect("production config parser");
         assert!(!config.sync.is_enabled());
-        assert!(!config.inbound.enabled);
         assert_eq!(
             config.prune_mode,
             open_bitcoin_node::core::chainstate::PruneMode::ManualOnly

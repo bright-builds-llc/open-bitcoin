@@ -5,43 +5,7 @@ import path from "node:path";
 
 import { checkPhase123RuntimeTimingEvidenceIntegrity } from "./check-phase123-runtime-timing-evidence-integrity";
 import { readText } from "./check-phase123-runtime-timing-evidence-integrity/filesystem.ts";
-
-const TARGET_FILES = [
-  "packages/open-bitcoin-node/src/sync/types.rs",
-  "packages/open-bitcoin-node/src/sync/tcp.rs",
-  "packages/open-bitcoin-node/src/sync.rs",
-  "packages/open-bitcoin-node/src/sync/open_runtime.rs",
-  "packages/open-bitcoin-node/src/sync/session.rs",
-  "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
-  "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
-  "packages/open-bitcoin-node/src/sync/block_response.rs",
-  "packages/open-bitcoin-node/src/lib.rs",
-  "packages/open-bitcoin-bench/src/runtime_fixtures.rs",
-  "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
-  "packages/open-bitcoin-node/src/metrics/block_relay.rs",
-  "packages/open-bitcoin-node/src/logging.rs",
-  "packages/open-bitcoin-node/src/status/block_relay_evidence.rs",
-  "packages/open-bitcoin-rpc/src/context.rs",
-  "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
-  "packages/open-bitcoin-rpc/src/context/network.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
-  "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
-  "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
-  "packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs",
-  "packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs",
-  "scripts/check-phase121-block-relay-metrics-log-runtime.ts",
-  "docs/architecture/operator-observability.md",
-  "docs/parity/index.json",
-  "docs/parity/checklist.md",
-  "docs/parity/catalog/p2p.md",
-  "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
-] as const;
-
-type TargetFile = (typeof TARGET_FILES)[number];
+import { TARGET_FILES, type TargetFile } from "./check-phase123-runtime-timing-evidence-integrity/constants.ts";
 type Mutator = (files: Map<TargetFile, string>) => void;
 const tempRoots: string[] = [];
 
@@ -83,6 +47,78 @@ test("Phase 123 immutable live source snapshot passes", () => {
   // Assert
   expect(failures).toEqual([]);
 });
+
+const terminalFile = "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs";
+const inboundFile = "packages/open-bitcoin-rpc/src/context/inbound_wire.rs";
+const listenerFile = "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs";
+const tcpFile = "packages/open-bitcoin-node/src/sync/tcp.rs";
+const exactSend = "session.send_encoded(buffer.bytes(), self.config.network.magic())?;";
+const blockAck = "self.network.acknowledge_wire_message_written(message)?;";
+
+test.each([
+  ["ordinary ack before exact send", terminalFile, `${exactSend}\n            ${blockAck}`, `${blockAck}\n            ${exactSend}`, "P123 sync send-before-ack"],
+  ["missing ordinary write", terminalFile, exactSend, "", "P123 sync send-before-ack"],
+  ["ignored failed ordinary write", terminalFile, exactSend, "let _ = session.send_encoded(buffer.bytes(), self.config.network.magic());", "P123 sync send-before-ack"],
+  ["fabricated outgoing bytes", terminalFile, "send_encoded(buffer.bytes(), self.config.network.magic())", "send_encoded(&fabricated, self.config.network.magic())", "P123 sync send-before-ack"],
+  ["ungoverned outgoing encoding", terminalFile, ".encode_pending_network_message(peer_id, message)", ".encode_network_message(message)", "P123 sync send-before-ack"],
+  ["incomplete outgoing batch", terminalFile, ".collect::<Result<Vec<_>, _>>()", ".next()", "P123 sync send-before-ack"],
+  ["ordinary caller bypass", terminalFile, "self.send_all_with_cancel(session, peer_id, messages, should_cancel)?;", "self.send_untracked(session, messages)?;", "P123 governed outbound production delegation"],
+  ["test-only outgoing helper", terminalFile, "    fn send_all_with_cancel", "    #[cfg(test)]\n    fn send_all_with_cancel", "P123 sync send-before-ack"],
+  ["disconnected outgoing owner", terminalFile, "impl super::DurableSyncRuntime", "impl DisconnectedRuntime", "P123 ordinary transport runtime owner"],
+  ["test-only outgoing owner", terminalFile, "impl super::DurableSyncRuntime", "#[cfg(test)]\nimpl super::DurableSyncRuntime", "P123 ordinary transport runtime owner"],
+  ["TCP exact override removed", tcpFile, "fn send_encoded(", "fn unused_send_encoded(", "P123 concrete exact transport write"],
+  ["TCP byte substitution", tcpFile, ".write_all(bytes)", ".write_all(&fabricated)", "P123 concrete exact transport write"],
+  ["test-only TCP owner", tcpFile, "impl SyncPeerSession for TcpPeerSession", "#[cfg(test)]\nimpl SyncPeerSession for TcpPeerSession", "P123 concrete exact transport owner"],
+  ["unguarded inbound carrier", inboundFile, "pub(crate) bytes: GenericPendingBuffer", "pub(crate) bytes: Vec<u8>", "P123 typed inbound carrier"],
+  ["test-only inbound carrier", inboundFile, "pub(crate) struct EncodedWireResponse", "#[cfg(test)]\npub(crate) struct EncodedWireResponse", "P123 typed inbound carrier"],
+  ["test-only inbound carrier with intervening attribute", inboundFile, "pub(crate) struct EncodedWireResponse", "#[cfg(test)]\n#[allow(dead_code)]\npub(crate) struct EncodedWireResponse", "P123 typed inbound carrier"],
+  ["fabricated inbound encoding", inboundFile, "network.encode_pending_network_message(peer_id, &message)", "fabricate_bytes(&message)", "P123 pre-write complete-batch encoding"],
+  ["test-only inbound factory", inboundFile, "    fn push_encoded", "    #[cfg(test)]\n    fn push_encoded", "P123 pre-write complete-batch encoding"],
+  ["disconnected inbound factory", inboundFile, "impl ResolvedInboundWireResponses", "impl DisconnectedResponses", "P123 pre-write complete-batch encoding"],
+  ["partial plan bypass", inboundFile, "let mut resolved = plan.resolve();", "let mut resolved = plan.partial();", "P123 inbound complete-batch resolution"],
+  ["durable block encoding bypass", inboundFile, "resolved.push_encoded(response, Some(intent), None, &self.network, self.peer_id);", "resolved.push_untracked(response);", "P123 durable inbound governed encoding"],
+  ["listener delegation removed", listenerFile, "if !acknowledge_inbound_response_write(&write_result, &mut response, &context).await", "if false", "P123 inbound Written-only acknowledgement"],
+  ["listener exact byte substitution", listenerFile, "response.bytes.bytes(),\n                &resource_policy", "&fabricated,\n                &resource_policy", "P123 inbound Written-only acknowledgement"],
+  ["Written gate made unconditional", listenerFile, "matches!(write_result, Ok(WriteWireMessageOutcome::Written))", "true", "P123 inbound Written-only delegation"],
+  ["ordinary false completion gate", inboundFile, "return !was_written", "return was_written", "P123 inbound Written-only acknowledgement"],
+  ["capability gate made unconditional", inboundFile, "return if was_written", "return if true", "P123 inbound Written-only acknowledgement"],
+  ["capability gate widened", inboundFile, "return if was_written", "return if was_written || true", "P123 inbound Written-only acknowledgement"],
+  ["unreachable Written delegation", listenerFile, "    acknowledge_encoded_wire_response(\n", "    return true;\n    acknowledge_encoded_wire_response(\n", "P123 inbound Written-only delegation"],
+  ["intent gate made unconditional", inboundFile, "let outcome = if was_written", "let outcome = if true", "P123 inbound Written-only acknowledgement"],
+  ["early duplicate credit", terminalFile, exactSend, `${blockAck}\n            ${exactSend}`, "P123 ordinary single post-write acknowledgement"],
+  ["idle cancellation forwarding removed", "packages/open-bitcoin-node/src/sync/session.rs", "&outbound,\n                            controls.1,", "&outbound,\n                            &mut || false,", "P123 idle clock target send order"],
+] as const)("rejects current production transport mutation: %s", (_label, file, from, to, diagnostic) => {
+  // Arrange
+  const files = liveFiles();
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
+  replaceRequired(files, file, from, to);
+
+  // Act
+  const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
+
+  // Assert
+  expect(failures.some((failure) => failure.startsWith(diagnostic))).toBe(true);
+});
+
+test.each(["comment", "literal", "disconnected", "test-only"] as const)(
+  "rejects exact-send %s decoy in current production corpus", (kind) => {
+    // Arrange
+    const files = liveFiles();
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
+    const decoy = kind === "comment" ? `/* ${exactSend} */`
+      : kind === "literal" ? `let decoy = r#"${exactSend}"#;`
+      : kind === "test-only" ? `#[cfg(test)] fn disconnected() { ${exactSend} }`
+      : `fn disconnected() { ${exactSend} }`;
+    replaceRequired(files, terminalFile, exactSend, "");
+    files.set(terminalFile, `${files.get(terminalFile)}\n${decoy}`);
+
+    // Act
+    const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
+
+    // Assert
+    expect(failures.some((failure) => failure.startsWith("P123 sync send-before-ack"))).toBe(true);
+  },
+);
 
 test.each([
   ["configured daemon constructor removed", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "DurableSyncRuntime::open_with_configured_runtime_activation(", "DurableSyncRuntime::open_with_runtime_activation("],
@@ -194,10 +230,10 @@ test.each([
   ],
   [
     "peer-targeted fallback send removed",
-    "P123 idle clock target send order missing or out of order self.send_all_for_peer(&mut session, peer_id, &outbound)?;",
+    "P123 idle clock target send order missing or out of order self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?;",
     mutate(
       "packages/open-bitcoin-node/src/sync/session.rs",
-      "self.send_all_for_peer(&mut session, peer_id, &outbound)?;",
+      "self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?;",
       "self.send_all(&mut session, &outbound)?;",
     ),
   ],
@@ -304,28 +340,22 @@ test.each([
   [
     "sync acknowledgement moved before send",
     "P123 sync send-before-ack missing or out of order self.network.acknowledge_wire_message_written(message)?;",
-    (files: Map<TargetFile, string>) => files.set(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "self.network.acknowledge_wire_message_written(message)?; session.send(message, self.config.network.magic())?;",
-    ),
+    mutate(terminalFile, `${exactSend} ${blockAck}`, `${blockAck} ${exactSend}`),
   ],
   [
     "inbound Written acknowledgement removed",
-    "P123 inbound Written-only acknowledgement missing or out of order .acknowledge_wire_message_written(&response.message)",
-    mutate("packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", ".acknowledge_wire_message_written(&response.message)", ".record_response_intent(&response.message)"),
+    "P123 inbound Written-only acknowledgement missing or out of order return !was_written || context .acknowledge_wire_message_written(&response.message) .is_ok();",
+    mutate("packages/open-bitcoin-rpc/src/context/inbound_wire.rs", ".acknowledge_wire_message_written(&response.message)", ".record_response_intent(&response.message)"),
   ],
   [
     "encoding bypassed with fabricated bytes before write",
-    "P123 pre-write complete-batch encoding missing or out of order let encoded = self.network.encode_messages(&responses)?;",
-    mutate("packages/open-bitcoin-rpc/src/context/network.rs", "let encoded = self.network.encode_messages(&responses)?;", "let encoded = fabricated_bytes(&responses); // bypass encoding failure"),
+    "P123 pre-write complete-batch encoding missing or out of order match network.encode_pending_network_message(peer_id, &message)",
+    mutate("packages/open-bitcoin-rpc/src/context/inbound_wire.rs", "match network.encode_pending_network_message(peer_id, &message)", "match fabricated_bytes(&message)"),
   ],
   [
     "acknowledgement moved before encoding",
-    "P123 pre-write complete-batch encoding missing or out of order .into_iter()",
-    (files: Map<TargetFile, string>) => files.set(
-      "packages/open-bitcoin-rpc/src/context/network.rs",
-      ".into_iter() .zip(encoded) EncodedWireResponse { message, bytes } let encoded = self.network.encode_messages(&responses)?;",
-    ),
+    "P123 inbound complete-batch resolution missing or out of order let mut resolved = plan.resolve();",
+    mutate("packages/open-bitcoin-rpc/src/context/inbound_wire.rs", "let mut resolved = plan.resolve();", "let mut resolved = fabricated_responses();"),
   ],
   [
     "exact encoding failure test removed",
@@ -508,11 +538,11 @@ bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
   return new Map<TargetFile, string>([
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
-    ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame }"],
+    ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame } impl SyncPeerSession for TcpPeerSession { fn send_encoded() { self.stream .write_all(bytes) .map_err(|error| error) } }"],
     ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation() { Self::open_with_runtime_activation( store, config, RelayActivationConfig::default(), block_relay_activation, false, ) } maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot()? let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?; self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); pub fn sync_until_idle_with_clock_and_cancel`],
     ["packages/open-bitcoin-node/src/sync/open_runtime.rs", `pub fn open_with_runtime_activation() { Self::open_with_configured_runtime_activation( store, config, relay_activation, block_relay_activation, inbound_enabled, BasicFilterStartupMode::PreserveSaved, ) } pub fn open_with_configured_runtime_activation() { initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?; store.load_chain_meta_for_open()?; store.load_all_undo_records()?; Chainstate::from_coins_cache(cache, active_chain, undo_by_block, maybe_counts); ManagedChainstate::from_recovered_chainstate( FjallChainstateStore::from_store(store.clone()), chainstate, lifecycle, )?; ManagedPeerNetwork::from_initialized_chainstate( managed, local_config, PolicyConfig::default(), config.max_blocks_in_flight_per_peer, relay_activation, block_relay_activation, inbound_enabled, ) }`],
-    ["packages/open-bitcoin-node/src/sync/session.rs", `session.send(message, self.config.network.magic())?; self.network.acknowledge_wire_message_written(message)?; SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = (controls.0)(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) let fallback_block_hashes = targeted block_reconcile::request_tracked_blocks( self.send_all_for_peer(&mut session, peer_id, &outbound)?; if !self.peer_has_pending_download_work(peer_id) self.complete_peer_session_progress(&mut progress, peer_id); return Ok(()); continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); let block_response_was_requested = || self.block_extends_active_tip(block) block_reconcile::release_inflight_for_message(self, &message); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags self.record_block_disposition( let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?; self.record_reconcile_progress(reconcile_progress); self.persist_progress_and_dispatch_tip()?; fn peer_has_pending_download_work .compact_download_peer_state(peer_id) .is_some_and(|state| !state.in_flight.is_empty()) .peer_requested_blocks(peer_id) .any(|block_hash| self.inflight_blocks.contains(block_hash)) pub(super) fn send_all_for_peer self.send_all(session, messages)?; let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;`],
-    ["packages/open-bitcoin-node/src/sync/session/emission_terminal.rs", "pub(super) fn send_peer_emissions session.send(&message, network_magic); capability.acknowledge_write();"],
+    ["packages/open-bitcoin-node/src/sync/session.rs", `fn sync_connected_peer_with_cancel() { SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = (controls.0)(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) let fallback_block_hashes = targeted block_reconcile::request_tracked_blocks( self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?; if !self.peer_has_pending_download_work(peer_id) self.complete_peer_session_progress(&mut progress, peer_id); return Ok(()); continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); let block_response_was_requested = || self.block_extends_active_tip(block) block_reconcile::release_inflight_for_message(self, &message); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags self.record_block_disposition( let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?; self.record_reconcile_progress(reconcile_progress); self.persist_progress_and_dispatch_tip()?; } fn peer_has_pending_download_work .compact_download_peer_state(peer_id) .is_some_and(|state| !state.in_flight.is_empty()) .peer_requested_blocks(peer_id) .any(|block_hash| self.inflight_blocks.contains(block_hash)) pub(super) fn send_all_for_peer self.send_all(session, messages)?; let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;`],
+    ["packages/open-bitcoin-node/src/sync/session/emission_terminal.rs", "\nimpl super::DurableSyncRuntime {\n fn send_all_with_cancel() {\n  let buffers = messages .iter() .map(|message| {\n   self.network .encode_pending_network_message(peer_id, message)\n  }) .collect::<Result<Vec<_>, _>>() .map_err(super::filter_serving::transport_error)?;\n  for (message, buffer) in messages.iter().zip(buffers) {\n   if should_cancel() { return Ok(()); }\n   session.send_encoded(buffer.bytes(), self.config.network.magic())?; self.network.acknowledge_wire_message_written(message)?;\n  }\n }\n fn send_all_for_peer_with_cancel() {\n  self.send_all_with_cancel(session, peer_id, messages, should_cancel)?;\n  let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;\n  send_peer_emissions( &self.network, session, peer_id, self.config.network.magic(), emissions, should_cancel, )\n }\n}\nfn send_peer_emissions() {\n let preparation = emissions.iter().try_for_each(|emission| {\n  network.encode_pending_network_message(peer_id, emission.message());\n  buffers.push_back(buffer);\n });\n while let Some(emission) = emissions.pop_front() {\n  if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {\n   return combined_error( write_error, abort_current_and_suffix(network, capability, emissions), );\n  }\n  let receipt = capability.acknowledge_write();\n  network.complete_peer_emission(receipt);\n }\n}"],
     ["packages/open-bitcoin-node/src/sync/block_reconcile.rs", `pub(super) fn request_tracked_blocks .request_missing_blocks(peer_id, &requested)? .inflight_blocks .insert(BlockHash::from(item.object_hash))`],
     ["packages/open-bitcoin-node/src/sync/block_response.rs", `fn block_extends_active_tip`],
     ["packages/open-bitcoin-node/src/lib.rs", "SyncPeerReceiveOutcome"],
@@ -522,10 +552,10 @@ bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
     ["packages/open-bitcoin-node/src/logging.rs", "pub fn block_relay_log_record served_count: u64 served_count,"],
     ["packages/open-bitcoin-node/src/status/block_relay_evidence.rs", "pub struct BlockRelayEvidenceStatus {}"],
     ["packages/open-bitcoin-rpc/src/context.rs", ""],
-    ["packages/open-bitcoin-rpc/src/context/inbound_wire.rs", "pub(crate) struct EncodedWireResponse { pub(crate) message: WireNetworkMessage, pub(crate) bytes: Vec<u8> }"],
+    ["packages/open-bitcoin-rpc/src/context/inbound_wire.rs", "\npub(crate) struct EncodedWireResponse { pub(crate) message: WireNetworkMessage, pub(crate) bytes: GenericPendingBuffer }\nimpl ResolvedInboundWireResponses {\n fn push_encoded() {\n  match network.encode_pending_network_message(peer_id, &message) {\n   Ok(bytes) => self.responses.push(InboundWireStep::Encoded(Box::new(EncodedWireResponse { message, bytes, maybe_block_serve_intent, maybe_tx_write_capability, }))),\n   Err(_) => { self.failed = true; }\n  }\n }\n}\nimpl<S: ChainstateStore, V: CoinsView> InboundWireResponsePlan<S, V> {\n fn resolve() {\n  for response in core::mem::take(&mut self.responses) {\n   resolved.push_encoded(message, None, None, &self.network, self.peer_id);\n   self.resolve_block_intent(intent, &mut resolved);\n  }\n  resolved\n }\n fn resolve_block_intent() { resolved.push_encoded(response, Some(intent), None, &self.network, self.peer_id); }\n}\nasync fn resolve_inbound_wire_responses() {\n context.prepare_inbound_wire_message(peer_id, message, timestamp);\n let mut resolved = plan.resolve();\n if resolved.failed { return None; }\n Some(resolved.responses)\n}\nasync fn acknowledge_encoded_wire_response() {\n let context = context.lock().await;\n if let Some(capability) = response.maybe_tx_write_capability.take() {\n  return if was_written { context.complete_peer_emission(capability.acknowledge_write()).is_ok() }\n  else { context.abort_peer_emission(capability).is_ok() };\n }\n let Some(intent) = response.maybe_block_serve_intent.take() else {\n  return !was_written || context .acknowledge_wire_message_written(&response.message) .is_ok();\n };\n let outcome = if was_written { ManagedBlockServeCompletionOutcome::Written } else { ManagedBlockServeCompletionOutcome::TransportFailed };\n context.complete_block_serves(&[intent.completion(outcome)]).is_ok()\n}"],
     ["packages/open-bitcoin-rpc/src/context/network.rs", "ManagedPeerNetwork::new_with_block_relay_activation( config.block_serving let encoded = self.network.encode_messages(&responses)?; .into_iter() .zip(encoded) EncodedWireResponse { message, bytes }"],
     ["packages/open-bitcoin-rpc/src/inbound_listener.rs", ""],
-    ["packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", "let was_written = matches!(write_result, Ok(WriteWireMessageOutcome::Written)); .acknowledge_wire_message_written(&response.message)"],
+    ["packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", "\nasync fn handle_inbound_stream() {\n let encoded_responses = resolve_inbound_wire_responses();\n let steps = Batch { steps: VecDeque::from(encoded_responses) };\n while let Some(step) = steps.steps.pop_front() {\n  let write_result = tokio::select! { result = write_all_for_state( &stream, response.bytes.bytes(), ) => result };\n  if !acknowledge_inbound_response_write(&write_result, &mut response, &context).await { break; }\n }\n}\nasync fn acknowledge_inbound_response_write() {\n acknowledge_encoded_wire_response(matches!(write_result, Ok(WriteWireMessageOutcome::Written)), response, context,).await\n}"],
     ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block phase123_disabled_runtime_config_does_not_serve_inbound_block"],
     ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "fn open_authoritative_network_runtime() { DurableSyncRuntime::open_with_configured_runtime_activation( store, runtime.sync.runtime.clone(), runtime.relay, runtime.block_serving, runtime.inbound.enabled, basic_filter_mode, ) } set_inbound_metric_status_provider let mut shutdown_latched = false; let mut should_cancel = || daemon_sync_shutdown_requested(&shutdown_receiver) sync_until_idle_with_clock_and_cancel( if shutdown_latched"],
     ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "phase123_daemon_shutdown_cancels_live_silent_peer_session"],
@@ -552,11 +582,14 @@ function breadcrumb(file: string, includeFunctional: boolean) {
 }
 
 function mutate(file: TargetFile, from: string, to: string): Mutator {
-  return (files) => files.set(file, (files.get(file) ?? "").replaceAll(from, to));
+  return (files) => {
+    expect(files.get(file)).toContain(from);
+    files.set(file, (files.get(file) ?? "").replaceAll(from, to));
+  };
 }
 
 function mutateFirst(file: TargetFile, from: string, to: string): Mutator {
-  return (files) => files.set(file, (files.get(file) ?? "").replace(from, to));
+  return (files) => replaceRequired(files, file, from, to);
 }
 
 function append(file: TargetFile, addition: string): Mutator {

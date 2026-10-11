@@ -9,6 +9,269 @@ use super::super::query::{
 use super::*;
 
 #[test]
+fn phase160_query_epoch_recovery_same_generation_never_revives_token() {
+    // Arrange
+    let (path, store, records) = recovered_fixture("epoch-recovery", 4);
+    let clone = store.clone();
+    let before = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("epoch");
+    let generation = store
+        .maybe_basic_filter_lifecycle_for_test()
+        .expect("owner")
+        .expect("present")
+        .generation();
+    let epoch_value = store
+        .filter_publication_guard()
+        .expect("guard")
+        .read_integrity_epoch();
+    // Act
+    clone
+        .recover_basic_filter_index_before_prune(Some(
+            records.last().expect("tip").identity().block_hash(),
+        ))
+        .expect("recover");
+    let after = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("new epoch");
+    // Assert
+    assert_ne!(
+        before, after,
+        "same generation recovery must not revive old capabilities"
+    );
+    assert_eq!(
+        store
+            .filter_publication_guard()
+            .expect("guard")
+            .read_integrity_epoch(),
+        epoch_value + 2
+    );
+    assert_eq!(
+        store
+            .maybe_basic_filter_lifecycle_for_test()
+            .expect("owner")
+            .expect("present")
+            .generation(),
+        generation
+    );
+    drop(clone);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
+fn phase160_query_epoch_raw_put_and_delete_invalidate_all_clones() {
+    // Arrange
+    for delete in [false, true] {
+        let (path, store, records) =
+            recovered_fixture(if delete { "epoch-delete" } else { "epoch-put" }, 4);
+        let clone = store.clone();
+        let epoch = store
+            .with_basic_filter_query(|reader| reader.integrity_epoch())
+            .expect("epoch");
+        let key = codec::record_key(records[1].identity().block_hash());
+        // Act
+        if delete {
+            clone
+                .remove_bytes(StorageNamespace::BlockIndex, &key, PersistMode::Sync)
+                .expect("delete");
+        } else {
+            clone
+                .write_raw_for_test(
+                    StorageNamespace::BlockIndex,
+                    &key,
+                    codec::encode_record(&records[1]),
+                )
+                .expect("put");
+        }
+        // Assert
+        assert!(
+            !store
+                .basic_peer_epoch_is_current(&epoch)
+                .expect("freshness")
+        );
+        assert!(
+            !clone
+                .basic_peer_epoch_is_current(&epoch)
+                .expect("clone freshness")
+        );
+        assert!(
+            store
+                .with_basic_filter_query(|reader| reader.integrity_epoch())
+                .is_err()
+        );
+        drop(epoch);
+        drop(clone);
+        drop(store);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
+}
+
+#[test]
+fn phase160_query_epoch_trusted_append_preserves_capture_and_rpc_record() {
+    // Arrange
+    let path = temp_path("epoch-append");
+    let (positions, records) = fixtures(4);
+    let store = FjallNodeStore::open(&path).expect("store");
+    seed(&store, &positions);
+    store
+        .initialize_basic_filter_state(&fence(&positions))
+        .expect("init");
+    publish(&store, &positions, &records[..2]);
+    let epoch = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("epoch");
+    // Act
+    publish(&store, &positions, &records[2..]);
+    // Assert
+    assert!(store.basic_peer_epoch_is_current(&epoch).expect("current"));
+    let record = store
+        .maybe_basic_filter_point_query(records[3].identity().block_hash())
+        .expect("query")
+        .expect("record");
+    assert_eq!(record.encoded_bytes(), records[3].encoded_bytes());
+    drop(epoch);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
+fn phase160_query_epoch_failed_disable_invalidates_before_writes() {
+    // Arrange
+    let (path, store, _) = recovered_fixture("epoch-disable-fault", 4);
+    let epoch = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("epoch");
+    store.set_basic_filter_fault(super::super::FilterPublicationFault::BeforeDisable);
+    // Act
+    assert!(store.disable_basic_filter_index().is_err());
+    // Assert
+    assert!(store.basic_peer_epoch_is_current(&epoch).is_err());
+    drop(epoch);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
+fn phase160_query_epoch_overflow_permanently_denies_authority_before_raw_write() {
+    // Arrange
+    let (path, store, records) = recovered_fixture("epoch-overflow", 4);
+    let epoch = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("epoch");
+    store
+        .filter_publication_guard()
+        .expect("guard")
+        .exhaust_integrity_epoch_for_test();
+    let key = codec::record_key(records[1].identity().block_hash());
+    let before = store
+        .block_index
+        .get(&key)
+        .expect("read")
+        .expect("row")
+        .to_vec();
+    // Act
+    let error = store
+        .write_raw_for_test(StorageNamespace::BlockIndex, &key, vec![0])
+        .expect_err("overflow");
+    // Assert
+    assert!(error.to_string().contains("epoch exhausted"));
+    assert_eq!(
+        store
+            .block_index
+            .get(&key)
+            .expect("read")
+            .expect("row")
+            .as_ref(),
+        before.as_slice()
+    );
+    assert!(store.basic_peer_epoch_is_current(&epoch).is_err());
+    assert!(
+        store
+            .with_basic_filter_query(|reader| reader.integrity_epoch())
+            .is_err()
+    );
+    assert!(
+        store
+            .recover_basic_filter_index_before_prune(Some(records[3].identity().block_hash()))
+            .is_err()
+    );
+    drop(epoch);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
+fn phase160_query_epoch_memory_only_validation_and_charged_capture() {
+    // Arrange
+    let (path, store, _) = recovered_fixture("epoch-memory", 4);
+    let mut budget = open_bitcoin_network::basic_peer_resource::BasicPeerServeBudget::default();
+    let epoch = store
+        .with_basic_peer_query(&mut budget, |reader, meter| {
+            reader.capture_basic_peer_epoch(meter)
+        })
+        .expect("capture");
+    let reads = store.basic_filter_point_reads_for_test();
+    // Act / Assert
+    for _ in 0..100 {
+        assert!(store.basic_peer_epoch_is_current(&epoch).expect("current"));
+    }
+    assert_eq!(reads, store.basic_filter_point_reads_for_test());
+    assert_eq!(
+        budget
+            .work()
+            .get(open_bitcoin_network::basic_peer_resource::BasicPeerServeAxis::MetadataReads),
+        2
+    );
+    let mut refused = open_bitcoin_network::basic_peer_resource::BasicPeerServeBudget::default()
+        .with_limit(
+            open_bitcoin_network::basic_peer_resource::BasicPeerServeAxis::MetadataReads,
+            1,
+        );
+    assert!(
+        store
+            .with_basic_peer_query(&mut refused, |reader, meter| reader
+                .capture_basic_peer_epoch(meter))
+            .is_err()
+    );
+    drop(epoch);
+    drop(store);
+    std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
+fn phase160_query_epoch_disabled_and_foreign_store_never_grant_read_authority() {
+    // Arrange
+    let (path, store, _) = recovered_fixture("epoch-disabled", 4);
+    let (foreign_path, foreign, _) = recovered_fixture("epoch-foreign", 4);
+    let epoch = store
+        .with_basic_filter_query(|reader| reader.integrity_epoch())
+        .expect("epoch");
+    // Act / Assert
+    assert!(
+        !foreign
+            .basic_peer_epoch_is_current(&epoch)
+            .expect("foreign")
+    );
+    store.disable_basic_filter_index().expect("disable");
+    assert!(
+        !store
+            .basic_peer_epoch_is_current(&epoch)
+            .expect("old epoch")
+    );
+    assert!(
+        store
+            .with_basic_filter_query(|reader| reader.integrity_epoch())
+            .is_err()
+    );
+    drop(epoch);
+    drop(store);
+    drop(foreign);
+    std::fs::remove_dir_all(path).expect("cleanup");
+    std::fs::remove_dir_all(foreign_path).expect("cleanup");
+}
+
+#[test]
 fn phase159_basic_point_query_requires_recovered_integrity() {
     // Arrange
     let path = std::env::temp_dir().join(format!("phase159-point-red-{}", std::process::id()));
@@ -21,7 +284,10 @@ fn phase159_basic_point_query_requires_recovered_integrity() {
     std::fs::remove_dir_all(path).expect("cleanup");
 }
 
-fn recovered_fixture(name: &str, count: u32) -> (PathBuf, FjallNodeStore, Vec<StoredFilterRecord>) {
+pub(crate) fn recovered_fixture(
+    name: &str,
+    count: u32,
+) -> (PathBuf, FjallNodeStore, Vec<StoredFilterRecord>) {
     let path = temp_path(name);
     let (positions, records) = fixtures(count);
     let store = FjallNodeStore::open(&path).expect("store");
@@ -209,6 +475,29 @@ fn phase159_basic_query_measure_codec_maximum_singleton_is_admitted() {
         BASIC_FILTER_QUERY_MAX_HEX_BYTES
     );
     assert_eq!(view.work().record_reads, 2);
+    let mut peer_budget =
+        open_bitcoin_network::basic_peer_resource::BasicPeerServeBudget::default();
+    assert!(matches!(
+        store.with_basic_peer_query(&mut peer_budget, |reader, meter| {
+            reader.maybe_peer_record(records[1].identity().block_hash(), meter, true)
+        }),
+        Err(super::super::query::peer::BasicPeerReadError::WirePayload)
+    ));
+    assert_eq!(
+        peer_budget
+            .work()
+            .get(open_bitcoin_network::basic_peer_resource::BasicPeerServeAxis::HashPaddedBytes),
+        0
+    );
+    assert_eq!(
+        store
+            .block_index
+            .get(&key)
+            .expect("unchanged stored row")
+            .expect("present")
+            .len(),
+        codec::RECORD_OVERHEAD + encoded.len()
+    );
     eprintln!(
         "phase159 QUERY codec_capacity elapsed_us={} work={:?}",
         start.elapsed().as_micros(),

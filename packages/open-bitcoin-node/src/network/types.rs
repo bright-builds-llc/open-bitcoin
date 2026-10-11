@@ -43,6 +43,9 @@ pub enum ManagedInboundResponsePlanItem {
     Immediate(WireNetworkMessage),
     DurableBlock(ManagedBlockServeIntent),
     PreparedTxServe(Box<PeerEmission>),
+    FilterRequestIntent(open_bitcoin_network::policy::FilterRequest),
+    PreparedFilterServe(Box<super::filter_transport::PreparedFilterResponse>),
+    FilterServeUnavailable(super::filter_transport::BasicFilterServeUnavailable),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

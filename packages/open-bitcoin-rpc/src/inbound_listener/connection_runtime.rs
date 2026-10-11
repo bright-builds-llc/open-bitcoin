@@ -16,17 +16,21 @@ use open_bitcoin_network::{
     WireNetworkMessage,
 };
 use open_bitcoin_node::{
-    core::primitives::NetworkMagic,
-    network::{EffectAbort, PeerEmission, PeerEmissionReceipt, PeerEmissionWriteCapability},
+    network::{EffectAbort, PeerEmissionReceipt, PeerEmissionWriteCapability},
     sync::{AnnouncementOutboxNotification, SyncRuntimeError},
 };
 
 use crate::{
     ManagedRpcContext,
     context::{
-        EncodedWireResponse, acknowledge_encoded_wire_response, resolve_inbound_wire_responses,
+        EncodedWireResponse, InboundWireStep, acknowledge_encoded_wire_response,
+        resolve_inbound_wire_responses,
     },
 };
+
+#[path = "filter_serving.rs"]
+pub(super) mod filter_serving;
+use filter_serving::execute_inbound_filter;
 
 use super::{
     InboundAnnouncementTransport, InboundConnectionControl, InboundListenerEvidence,
@@ -101,6 +105,7 @@ pub(super) async fn handle_inbound_stream<S, V>(
         return;
     };
     let envelope_policy = InboundEnvelopePolicy::new(network_info.network_magic);
+    let network = context.lock().await.basic_filter_network_handle();
 
     'message_loop: loop {
         if shutdown_requested.load(Ordering::Relaxed) {
@@ -221,44 +226,114 @@ pub(super) async fn handle_inbound_stream<S, V>(
                 .record_failure(&resource_policy, current_timestamp());
             break;
         };
-        for mut response in encoded_responses {
-            queue_pressure.record_pending_write(response.bytes.len());
-            if let Some(event) = queue_pressure_event(
+        let mut steps = filter_serving::InboundResponseBatch {
+            steps: VecDeque::from(encoded_responses),
+            network: &network,
+            evidence: &evidence,
+        };
+        while let Some(step) = steps.steps.pop_front() {
+            let mut response = match step {
+                InboundWireStep::Encoded(response) => filter_serving::GuardedEncodedResponse {
+                    response,
+                    network: &network,
+                    evidence: &evidence,
+                },
+                InboundWireStep::Filter(response) => {
+                    let result = execute_inbound_filter(
+                        response,
+                        &network,
+                        filter_serving::SocketFilterWriter {
+                            stream: &stream,
+                            policy: &resource_policy,
+                            connected: connected_at_unix_seconds,
+                            activity: last_activity_unix_seconds,
+                            handshake: handshake_state,
+                            queue: &mut queue_pressure,
+                            active: permission_decision.active_effects().to_vec(),
+                            inactive: permission_decision.inactive_effects().to_vec(),
+                            shutdown: &shutdown_notify,
+                        },
+                    )
+                    .await;
+                    if let Err(failure) = result {
+                        let clean =
+                            abort_inbound_suffix(std::mem::take(&mut steps.steps), &network);
+                        let mut event = failure.resource_event();
+                        if !clean {
+                            event.reason.push_str("; suffix cleanup failed");
+                        }
+                        record_shared_resource_event(&context, &evidence, event).await;
+                        lock_runtime_counters(&runtime_counters)
+                            .record_failure(&resource_policy, current_timestamp());
+                        break 'message_loop;
+                    }
+                    continue;
+                }
+            };
+            queue_pressure.record_pending_write(response.bytes.bytes().len());
+            if let Some(mut event) = queue_pressure_event(
                 &resource_policy,
                 &queue_pressure,
                 permission_decision.active_effects().to_vec(),
                 permission_decision.inactive_effects().to_vec(),
             ) {
-                acknowledge_encoded_wire_response(false, &mut response, &context).await;
+                let current_clean =
+                    acknowledge_encoded_wire_response(false, &mut response, &context).await;
+                drop(response);
+                let suffix_clean = abort_inbound_suffix(std::mem::take(&mut steps.steps), &network);
+                if !current_clean || !suffix_clean {
+                    event.reason.push_str("; unwritten cleanup failed");
+                }
+                queue_pressure.clear_pending_write();
                 record_shared_resource_event(&context, &evidence, event).await;
                 lock_runtime_counters(&runtime_counters)
                     .record_failure(&resource_policy, current_timestamp());
                 break 'message_loop;
             }
-            let write_result = write_all_for_state(
+            let write_result = tokio::select! { result = write_all_for_state(
                 &stream,
-                &response.bytes,
+                response.bytes.bytes(),
                 &resource_policy,
                 connected_at_unix_seconds,
                 last_activity_unix_seconds,
                 handshake_state,
-            )
-            .await;
+            ) => result, () = shutdown_notify.notified() => Err(io::Error::from(io::ErrorKind::Interrupted)) };
             queue_pressure.clear_pending_write();
             if !acknowledge_inbound_response_write(&write_result, &mut response, &context).await {
+                drop(response);
+                let clean = abort_inbound_suffix(std::mem::take(&mut steps.steps), &network);
+                let reason =
+                    format!("response settlement failed; suffix cleanup successful={clean}");
+                record_shared_resource_event(&context, &evidence, terminal_failure_event(reason))
+                    .await;
                 lock_runtime_counters(&runtime_counters)
                     .record_failure(&resource_policy, current_timestamp());
                 break 'message_loop;
             }
             match write_result {
                 Ok(WriteWireMessageOutcome::Written) => {}
-                Ok(WriteWireMessageOutcome::Rejected(event)) => {
+                Ok(WriteWireMessageOutcome::Rejected(mut event)) => {
+                    drop(response);
+                    if !abort_inbound_suffix(std::mem::take(&mut steps.steps), &network) {
+                        event.reason.push_str("; suffix cleanup failed");
+                    }
                     record_shared_resource_event(&context, &evidence, event).await;
                     lock_runtime_counters(&runtime_counters)
                         .record_failure(&resource_policy, current_timestamp());
                     break 'message_loop;
                 }
-                Err(_error) => {
+                Err(error) => {
+                    drop(response);
+                    let clean = abort_inbound_suffix(std::mem::take(&mut steps.steps), &network);
+                    record_shared_resource_event(
+                        &context,
+                        &evidence,
+                        terminal_failure_event(format!(
+                            "socket {:?}; suffix cleanup successful={clean}",
+                            error.kind()
+                        )),
+                    )
+                    .await;
                     lock_runtime_counters(&runtime_counters)
                         .record_failure(&resource_policy, current_timestamp());
                     break 'message_loop;
@@ -299,6 +374,37 @@ pub(super) async fn handle_inbound_stream<S, V>(
     disconnect_admitted_peer(&context, peer_id).await;
 }
 
+fn terminal_failure_event(reason: String) -> open_bitcoin_network::InboundResourceEvent {
+    open_bitcoin_network::InboundResourceEvent {
+        outcome: "transport_failed".to_string(),
+        reason,
+        label: "inbound_transport".to_string(),
+        source: "source_runtime_write".to_string(),
+        message: "inbound_resource_governance".to_string(),
+        next_action: "disconnect".to_string(),
+    }
+}
+
+fn abort_inbound_suffix<S, V>(
+    steps: VecDeque<InboundWireStep>,
+    network: &open_bitcoin_node::ManagedNetworkHandle<S, V>,
+) -> bool
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
+    let mut clean = true;
+    for step in steps {
+        match step {
+            InboundWireStep::Encoded(mut response) => {
+                clean &= filter_serving::abort_encoded_response(&mut response, network)
+            }
+            InboundWireStep::Filter(response) => clean &= response.cancel().is_ok(),
+        }
+    }
+    clean
+}
+
 async fn wait_for_outbox_notification(
     maybe_notification: &mut Option<AnnouncementOutboxNotification>,
 ) {
@@ -325,123 +431,17 @@ where
     Ok(())
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum InboundEmissionWriteResult {
-    Written,
-    Rejected,
-    Disconnected,
-    Failed,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum InboundEmissionExecutionOutcome {
-    Complete,
-    TargetMismatch,
-    EncodeFailed,
-    Rejected,
-    Disconnected,
-    WriteFailed,
-    CompletionFailed,
-    AbortFailed,
-}
-
-pub(super) trait InboundEmissionExecutor {
-    fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()>;
-
-    async fn write(&mut self, bytes: &[u8]) -> InboundEmissionWriteResult;
-
-    fn complete(&mut self, receipt: PeerEmissionReceipt) -> Result<(), ()>;
-
-    fn abort(&mut self, capability: PeerEmissionWriteCapability) -> Result<EffectAbort, ()>;
-}
-
-pub(super) async fn execute_inbound_emissions<E: InboundEmissionExecutor>(
-    emissions: Vec<PeerEmission>,
-    peer_id: u64,
-    executor: &mut E,
-) -> InboundEmissionExecutionOutcome {
-    let mut emissions = VecDeque::from(emissions);
-    while let Some(emission) = emissions.pop_front() {
-        let (target_peer_id, message, capability) = emission.into_parts();
-        if target_peer_id != peer_id {
-            return abort_current_and_suffix(executor, capability, emissions)
-                .map(|()| InboundEmissionExecutionOutcome::TargetMismatch)
-                .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
-        }
-        let Ok(bytes) = executor.encode(&message) else {
-            return abort_current_and_suffix(executor, capability, emissions)
-                .map(|()| InboundEmissionExecutionOutcome::EncodeFailed)
-                .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
-        };
-        match executor.write(&bytes).await {
-            InboundEmissionWriteResult::Written => {
-                if executor.complete(capability.acknowledge_write()).is_err() {
-                    if abort_suffix(executor, emissions).is_err() {
-                        return InboundEmissionExecutionOutcome::AbortFailed;
-                    }
-                    return InboundEmissionExecutionOutcome::CompletionFailed;
-                }
-            }
-            InboundEmissionWriteResult::Rejected => {
-                return abort_current_and_suffix(executor, capability, emissions)
-                    .map(|()| InboundEmissionExecutionOutcome::Rejected)
-                    .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
-            }
-            InboundEmissionWriteResult::Disconnected => {
-                return abort_current_and_suffix(executor, capability, emissions)
-                    .map(|()| InboundEmissionExecutionOutcome::Disconnected)
-                    .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
-            }
-            InboundEmissionWriteResult::Failed => {
-                return abort_current_and_suffix(executor, capability, emissions)
-                    .map(|()| InboundEmissionExecutionOutcome::WriteFailed)
-                    .unwrap_or(InboundEmissionExecutionOutcome::AbortFailed);
-            }
-        }
-    }
-    InboundEmissionExecutionOutcome::Complete
-}
-
-fn abort_current_and_suffix<E: InboundEmissionExecutor>(
-    executor: &mut E,
-    current: PeerEmissionWriteCapability,
-    suffix: VecDeque<PeerEmission>,
-) -> Result<(), ()> {
-    abort_capabilities(
-        executor,
-        std::iter::once(current).chain(suffix.into_iter().map(|emission| emission.into_parts().2)),
-    )
-}
-
-fn abort_suffix<E: InboundEmissionExecutor>(
-    executor: &mut E,
-    suffix: VecDeque<PeerEmission>,
-) -> Result<(), ()> {
-    abort_capabilities(
-        executor,
-        suffix.into_iter().map(|emission| emission.into_parts().2),
-    )
-}
-
-fn abort_capabilities<E: InboundEmissionExecutor>(
-    executor: &mut E,
-    capabilities: impl IntoIterator<Item = PeerEmissionWriteCapability>,
-) -> Result<(), ()> {
-    let mut abort_failed = false;
-    for capability in capabilities {
-        abort_failed |= !matches!(executor.abort(capability), Ok(EffectAbort::Aborted));
-    }
-    if abort_failed {
-        return Err(());
-    }
-    Ok(())
-}
+pub(super) use filter_serving::{
+    InboundEmissionExecutionOutcome, InboundEmissionExecutor, InboundEmissionWriteResult,
+    execute_inbound_emissions,
+};
 
 #[allow(clippy::too_many_arguments)]
 struct SocketInboundEmissionExecutor<'a, S, V: open_bitcoin_node::core::chainstate::CoinsView> {
     transport: &'a InboundAnnouncementTransport<S, V>,
+    encoding_network: &'a open_bitcoin_node::ManagedNetworkHandle<S, V>,
     stream: &'a tokio::net::TcpStream,
-    network_magic: NetworkMagic,
+    peer_id: u64,
     resource_policy: &'a ResourceGovernancePolicy,
     connected_at_unix_seconds: i64,
     last_activity_unix_seconds: i64,
@@ -459,8 +459,13 @@ where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
 {
-    fn encode(&mut self, message: &WireNetworkMessage) -> Result<Vec<u8>, ()> {
-        message.encode_wire(self.network_magic).map_err(|_error| ())
+    fn encode(
+        &mut self,
+        message: &WireNetworkMessage,
+    ) -> Result<open_bitcoin_node::network::filter_transport::GenericPendingBuffer, ()> {
+        self.encoding_network
+            .encode_pending_network_message(self.peer_id, message)
+            .map_err(|_error| ())
     }
 
     async fn write(&mut self, bytes: &[u8]) -> InboundEmissionWriteResult {
@@ -524,6 +529,17 @@ where
             .abort_peer_emission(capability)
             .map_err(|_error| ())
     }
+
+    fn cancellation_cleanup_failed(
+        &mut self,
+        maybe_cause: Option<InboundEmissionExecutionOutcome>,
+    ) {
+        lock_evidence(self.evidence).record_resource_event(terminal_failure_event(format!(
+            "announcement {maybe_cause:?}; unwritten capability cleanup failed"
+        )));
+        lock_runtime_counters(self.runtime_counters)
+            .record_failure(self.resource_policy, current_timestamp());
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -531,7 +547,7 @@ async fn drain_inbound_announcements<S, V>(
     maybe_transport: Option<&InboundAnnouncementTransport<S, V>>,
     peer_id: u64,
     stream: &tokio::net::TcpStream,
-    network_magic: NetworkMagic,
+    _network_magic: open_bitcoin_node::core::primitives::NetworkMagic,
     resource_policy: &ResourceGovernancePolicy,
     connected_at_unix_seconds: i64,
     last_activity_unix_seconds: i64,
@@ -550,13 +566,16 @@ where
     let Some(transport) = maybe_transport else {
         return true;
     };
+    // Capture the CF-configured ledger before taking any affine outbox capability.
+    let encoding_network = context.lock().await.basic_filter_network_handle();
     let Ok(emissions) = transport.outboxes.take_peer_emissions(peer_id) else {
         return false;
     };
     let mut executor = SocketInboundEmissionExecutor {
         transport,
+        encoding_network: &encoding_network,
         stream,
-        network_magic,
+        peer_id,
         resource_policy,
         connected_at_unix_seconds,
         last_activity_unix_seconds,
@@ -581,26 +600,10 @@ where
     S: open_bitcoin_node::ChainstateStore + Send + 'static,
     V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
 {
-    let was_written = matches!(write_result, Ok(WriteWireMessageOutcome::Written));
-    if let Some(capability) = response.maybe_tx_write_capability.take() {
-        let context = context.lock().await;
-        return if was_written {
-            context
-                .complete_peer_emission(capability.acknowledge_write())
-                .is_ok()
-        } else {
-            context.abort_peer_emission(capability).is_ok()
-        };
-    }
-    if !was_written {
-        return acknowledge_encoded_wire_response(false, response, context).await;
-    }
-    if response.maybe_block_serve_intent.is_some() {
-        return acknowledge_encoded_wire_response(true, response, context).await;
-    }
-    context
-        .lock()
-        .await
-        .acknowledge_wire_message_written(&response.message)
-        .is_ok()
+    acknowledge_encoded_wire_response(
+        matches!(write_result, Ok(WriteWireMessageOutcome::Written)),
+        response,
+        context,
+    )
+    .await
 }

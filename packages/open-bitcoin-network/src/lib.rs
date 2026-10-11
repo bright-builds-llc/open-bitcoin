@@ -22,6 +22,7 @@ mod compact_download;
 mod compact_reconstruction;
 mod compatibility;
 mod error;
+mod filter_serving;
 mod header_store;
 mod inbound;
 mod limited_serve;
@@ -77,7 +78,9 @@ pub use compatibility::{
 };
 pub use error::PeerId;
 pub use error::{DisconnectReason, NetworkError};
-pub use header_store::{HeaderEntry, HeaderStore, InsertedHeader};
+pub use filter_serving::{BasicPeerServingCapability, BasicPeerServingPrerequisite};
+pub use filter_serving::{policy, resource as basic_peer_resource};
+pub use header_store::{HeaderEntry, HeaderProofFacts, HeaderStore, InsertedHeader};
 pub use inbound::{
     INBOUND_ENABLED_FIELD, INBOUND_LISTEN_ADDRESSES_FIELD, INBOUND_PERMISSION_ADDRESSES_FIELD,
     INBOUND_PERMISSION_CLASS_NAME_FIELD, INBOUND_PERMISSION_TOKENS_FIELD,
@@ -95,8 +98,9 @@ pub use limited_serve::{
     LIMITED_SERVE_RACE_BUFFER, advertised_service_flags, block_request_exceeds_limited_serve_window,
 };
 pub use message::{
-    HeadersMessage, InventoryList, LocalPeerConfig, MAX_HEADERS_RESULTS, MAX_INV_SIZE,
-    PROTOCOL_VERSION, ParsedNetworkMessage, ServiceFlags, USER_AGENT, VersionMessage,
+    CFCheckpt, CFHeaders, CFRequestKind, CFilter, GetCFCheckpt, GetCFHeaders, GetCFilters,
+    HeadersMessage, InventoryList, LocalPeerConfig, MAX_CF_PAYLOAD_BYTES, MAX_HEADERS_RESULTS,
+    MAX_INV_SIZE, PROTOCOL_VERSION, ParsedNetworkMessage, ServiceFlags, USER_AGENT, VersionMessage,
     WireNetworkMessage,
 };
 pub use peer::{

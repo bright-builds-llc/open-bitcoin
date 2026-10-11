@@ -4,6 +4,11 @@
 // - packages/bitcoin-knots/src/netbase.h
 
 mod cursor;
+mod filter;
+pub use filter::{
+    CFCheckpt, CFHeaders, CFRequestKind, CFilter, GetCFCheckpt, GetCFHeaders, GetCFilters,
+    MAX_CF_PAYLOAD_BYTES,
+};
 
 use open_bitcoin_codec::{
     BlockTransactions, BlockTransactionsRequest, CodecError, CompactBlockPayload,
@@ -40,6 +45,7 @@ impl ServiceFlags {
     pub const NONE: Self = Self(0);
     pub const NETWORK: Self = Self(1 << 0);
     pub const WITNESS: Self = Self(1 << 3);
+    pub const COMPACT_FILTERS: Self = Self(1 << 6);
     pub const NETWORK_LIMITED: Self = Self(1 << 10);
     pub const REPLACE_BY_FEE: Self = Self(1 << 26);
 
@@ -167,6 +173,14 @@ pub struct HeadersMessage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WireNetworkMessage {
+    /// Receive-only extraction failure from a complete, checksum-validated CF request frame.
+    MalformedCFRequest(CFRequestKind),
+    GetCFilters(GetCFilters),
+    GetCFHeaders(GetCFHeaders),
+    GetCFCheckpt(GetCFCheckpt),
+    CFilter(CFilter),
+    CFHeaders(CFHeaders),
+    CFCheckpt(CFCheckpt),
     Version(VersionMessage),
     Verack,
     WtxidRelay,
@@ -198,6 +212,13 @@ pub enum WireNetworkMessage {
 impl WireNetworkMessage {
     pub fn command_name(&self) -> &'static str {
         match self {
+            Self::MalformedCFRequest(kind) => kind.command_name(),
+            Self::GetCFilters(_) => "getcfilters",
+            Self::GetCFHeaders(_) => "getcfheaders",
+            Self::GetCFCheckpt(_) => "getcfcheckpt",
+            Self::CFilter(_) => "cfilter",
+            Self::CFHeaders(_) => "cfheaders",
+            Self::CFCheckpt(_) => "cfcheckpt",
             Self::Version(_) => "version",
             Self::Verack => "verack",
             Self::WtxidRelay => "wtxidrelay",
@@ -222,6 +243,25 @@ impl WireNetworkMessage {
 
     pub fn encode_payload(&self) -> Result<Vec<u8>, NetworkError> {
         match self {
+            Self::MalformedCFRequest(kind) => Err(CodecError::UnexpectedEof {
+                needed: kind.payload_len(),
+                remaining: 0,
+            }
+            .into()),
+            Self::GetCFilters(request) => Ok(filter::encode_ranged(
+                request.filter_type,
+                request.start_height,
+                request.stop_hash,
+            )),
+            Self::GetCFHeaders(request) => Ok(filter::encode_ranged(
+                request.filter_type,
+                request.start_height,
+                request.stop_hash,
+            )),
+            Self::GetCFCheckpt(request) => Ok(filter::encode_checkpoint(request)),
+            Self::CFilter(response) => response.encode(),
+            Self::CFHeaders(response) => response.encode(),
+            Self::CFCheckpt(response) => response.encode(),
             Self::Version(message) => encode_version_payload(message),
             Self::Verack | Self::WtxidRelay | Self::SendHeaders | Self::GetAddr => Ok(Vec::new()),
             Self::SendCompact(message) => Ok(encode_send_compact_payload(message)),
@@ -268,7 +308,32 @@ impl WireNetworkMessage {
     }
 
     pub fn decode_payload(command: &MessageCommand, payload: &[u8]) -> Result<Self, NetworkError> {
+        // ProcessMessages catches CF handler extraction exceptions after transport validation.
+        let maybe_cf_kind = match command.as_str() {
+            "getcfilters" => Some(CFRequestKind::Filters),
+            "getcfheaders" => Some(CFRequestKind::Headers),
+            "getcfcheckpt" => Some(CFRequestKind::Checkpoints),
+            _ => None,
+        };
+        if let Some(kind) = maybe_cf_kind
+            && payload.len() < kind.payload_len()
+        {
+            return Ok(Self::MalformedCFRequest(kind));
+        }
         match command.as_str() {
+            "getcfilters" => Ok(Self::GetCFilters(filter::decode_ranged(payload)?)),
+            "getcfheaders" => {
+                let request = filter::decode_ranged(payload)?;
+                Ok(Self::GetCFHeaders(GetCFHeaders {
+                    filter_type: request.filter_type,
+                    start_height: request.start_height,
+                    stop_hash: request.stop_hash,
+                }))
+            }
+            "getcfcheckpt" => Ok(Self::GetCFCheckpt(filter::decode_checkpoint(payload)?)),
+            "cfilter" => Ok(Self::CFilter(CFilter::decode(payload)?)),
+            "cfheaders" => Ok(Self::CFHeaders(CFHeaders::decode(payload)?)),
+            "cfcheckpt" => Ok(Self::CFCheckpt(CFCheckpt::decode(payload)?)),
             "version" => Ok(Self::Version(decode_version_payload(payload)?)),
             "verack" => decode_empty_message(payload, Self::Verack),
             "wtxidrelay" => decode_empty_message(payload, Self::WtxidRelay),

@@ -4,26 +4,44 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-//! Version-message services chosen from prune mode.
+//! Version-message services composed from prune mode and explicit BASIC serving.
 
 use open_bitcoin_core::chainstate::{CoinsView, PruneMode};
-use open_bitcoin_network::{PermissionEffectLabel, ServiceFlags, advertised_service_flags};
+use open_bitcoin_network::{
+    BasicPeerServingCapability, PermissionEffectLabel, ServiceFlags, advertised_service_flags,
+};
 
 use super::ManagedPeerNetwork;
 use crate::ChainstateStore;
 
 impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
-    /// Sets advertised services from `mode`.
-    ///
-    /// Manual and automatic mode advertise limited service even when no block
-    /// data has been deleted. Disabled mode advertises full history.
+    /// Configured prune mode, independent of whether any body has been deleted.
     pub fn prune_mode(&self) -> PruneMode {
         self.prune_mode
     }
 
+    /// Updates full/limited service classification, preserving configured BASIC serving.
     pub fn set_prune_mode(&mut self, mode: PruneMode) {
         self.prune_mode = mode;
-        let services = advertised_service_flags(mode);
+        self.apply_configured_services(
+            self.local_config
+                .services
+                .contains(ServiceFlags::COMPACT_FILTERS),
+        );
+    }
+
+    /// Applies explicit general BASIC peer serving, independently of catch-up.
+    /// Startup must validate the BASIC prerequisite before calling this setter.
+    pub fn set_basic_filter_serving(&mut self, general_configured: bool) {
+        self.apply_configured_services(general_configured);
+    }
+
+    fn apply_configured_services(&mut self, general_configured: bool) {
+        let capability = BasicPeerServingCapability {
+            general_configured,
+            ..Default::default()
+        };
+        let services = capability.own_services(advertised_service_flags(self.prune_mode));
         self.local_config.services = services;
         self.peer_manager.set_local_services(services);
     }

@@ -1,0 +1,583 @@
+{
+  "schema_version": 1,
+  "authority": {
+    "version": "29.3.knots20260210",
+    "pin": "a9aee730466ac67d35a3c03ee24676be5e045878",
+    "wire": "test/functional/test_framework/messages.py:msg_getcfilters..msg_cfcheckpt",
+    "frame": "test/functional/test_framework/p2p.py:P2PConnection.build_message (v1/mainnet)",
+    "proof": "src/chain.cpp:GetBlockProof/GetBlockProofEquivalentTime; src/arith_uint256.cpp:SetCompact",
+    "handlers": "src/net_processing.cpp:PrepareBlockFilterRequest/ProcessGetCF*/BlockRequestAllowed; src/streams.h:DataStream::read",
+    "evidence": "independent helper/source expectations; no achieved Rust or socket-write claim"
+  },
+  "invalid_target_contract": "proof zero; equivalent time undefined (no division by zero)",
+  "stale_age_limit_seconds": 2592000,
+  "cases": [
+    {
+      "name": "target-0",
+      "input": {
+        "bits": 0,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+        "proof": "0",
+        "equivalent_time": null,
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "target-1800001",
+      "input": {
+        "bits": 25165825,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+        "proof": "0",
+        "equivalent_time": null,
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "target-1010000",
+      "input": {
+        "bits": 16842752,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "0000000000000000000000000000000000000000000000000000000000000001",
+        "proof": "57896044618658097711785492504343953926634992332820282019728792003956564819968",
+        "equivalent_time": "0",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "target-1d00ffff",
+      "input": {
+        "bits": 486604799,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "00000000ffff0000000000000000000000000000000000000000000000000000",
+        "proof": "4295032833",
+        "equivalent_time": "139696",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "target-1d80ffff",
+      "input": {
+        "bits": 494993407,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "00000000ffff0000000000000000000000000000000000000000000000000000",
+        "proof": "0",
+        "equivalent_time": null,
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "target-1c654657",
+      "input": {
+        "bits": 476399191,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "0000000065465700000000000000000000000000000000000000000000000000",
+        "proof": "10856718626",
+        "equivalent_time": "55265",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "target-207fffff",
+      "input": {
+        "bits": 545259519,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "300000000000000",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "target-2100ffff",
+      "input": {
+        "bits": 553713663,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "ffff000000000000000000000000000000000000000000000000000000000000",
+        "proof": "1",
+        "equivalent_time": "600000000000000",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "target-23010000",
+      "input": {
+        "bits": 587268096,
+        "to_work": "1000000000000",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "0000000000000000000000000000000000000000000000000000000000000000",
+        "proof": "0",
+        "equivalent_time": null,
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "timestamp-age-2591999",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 2591999,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "600",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "proof-age-2591999",
+      "input": {
+        "bits": 545259519,
+        "to_work": "5183998",
+        "from_work": "0",
+        "spacing": 1,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "2591999",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "timestamp-age-2592000",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 2592000,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "600",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "proof-age-2592000",
+      "input": {
+        "bits": 545259519,
+        "to_work": "5184000",
+        "from_work": "0",
+        "spacing": 1,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "2592000",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "timestamp-age-2592001",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 2592001,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "600",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "proof-age-2592001",
+      "input": {
+        "bits": 545259519,
+        "to_work": "5184002",
+        "from_work": "0",
+        "spacing": 1,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "2592001",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "timestamp-age--1",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": -1,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "600",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "proof-age--1",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 1,
+        "timestamp_age": -1,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "1",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "negative-equivalent-time",
+      "input": {
+        "bits": 545259519,
+        "to_work": "0",
+        "from_work": "20",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "-6000",
+        "sign": -1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "equal-work",
+      "input": {
+        "bits": 545259519,
+        "to_work": "20",
+        "from_work": "20",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "0",
+        "sign": -1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "wrap-256-multiply",
+      "input": {
+        "bits": 545259519,
+        "to_work": "57896044618658097711785492504343953926634992332820282019728792003956564819968",
+        "from_work": "0",
+        "spacing": 2,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "0",
+        "sign": 1,
+        "saturated": false,
+        "allowed": true
+      }
+    },
+    {
+      "name": "saturate-positive",
+      "input": {
+        "bits": 545259519,
+        "to_work": "18446744073709551614",
+        "from_work": "0",
+        "spacing": 2,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "9223372036854775807",
+        "sign": 1,
+        "saturated": true,
+        "allowed": false
+      }
+    },
+    {
+      "name": "saturate-negative",
+      "input": {
+        "bits": 545259519,
+        "to_work": "0",
+        "from_work": "18446744073709551614",
+        "spacing": 2,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "-9223372036854775807",
+        "sign": -1,
+        "saturated": true,
+        "allowed": true
+      }
+    },
+    {
+      "name": "int64-exact",
+      "input": {
+        "bits": 545259519,
+        "to_work": "18446744073709551614",
+        "from_work": "0",
+        "spacing": 1,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "9223372036854775807",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "int64-one-over",
+      "input": {
+        "bits": 545259519,
+        "to_work": "18446744073709551616",
+        "from_work": "0",
+        "spacing": 1,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "9223372036854775807",
+        "sign": 1,
+        "saturated": true,
+        "allowed": false
+      }
+    },
+    {
+      "name": "active-bypasses-age",
+      "input": {
+        "bits": 545259519,
+        "to_work": "18446744073709551616",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 9999999,
+        "active": true,
+        "scripts_valid": true,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "9223372036854775807",
+        "sign": 1,
+        "saturated": true,
+        "allowed": true
+      }
+    },
+    {
+      "name": "stale-not-scripts-valid",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": false,
+        "best_header": true
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "600",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    },
+    {
+      "name": "missing-best-header",
+      "input": {
+        "bits": 545259519,
+        "to_work": "2",
+        "from_work": "0",
+        "spacing": 600,
+        "timestamp_age": 0,
+        "active": false,
+        "scripts_valid": true,
+        "best_header": false
+      },
+      "expected": {
+        "target_hex": "7fffff0000000000000000000000000000000000000000000000000000000000",
+        "proof": "2",
+        "equivalent_time": "600",
+        "sign": 1,
+        "saturated": false,
+        "allowed": false
+      }
+    }
+  ]
+}

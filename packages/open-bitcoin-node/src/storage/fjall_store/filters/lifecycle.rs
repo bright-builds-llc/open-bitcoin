@@ -30,6 +30,7 @@ impl FjallNodeStore {
     /// Retry Disabled-with-lock completes release without advancing generation.
     pub(crate) fn disable_basic_filter_index(&self) -> Result<(), StorageError> {
         let mut control = self.filter_publication_guard()?;
+        control.advance_integrity_epoch()?;
         control.invalidate_append()?;
         let Some(owner) = self.maybe_basic_filter_owner_guarded(&control)? else {
             return Ok(());

@@ -859,6 +859,73 @@
     ],
     "surfaces": [
       {
+        "id": "v2-5-explicit-bounded-basic-peer-serving",
+        "title": "Explicit bounded BASIC peer requests and own capability",
+        "status": "done",
+        "requirements": ["CFNET-01", "CFNET-02", "CFNET-03", "CFNET-04", "CFNET-05", "CFNET-06"],
+        "evidence": [
+          "packages/open-bitcoin-network/src/message/filter.rs",
+          "packages/open-bitcoin-network/src/filter_serving/capability.rs",
+          "packages/open-bitcoin-network/src/filter_serving/policy.rs",
+          "packages/open-bitcoin-network/src/filter_serving/resource.rs",
+          "packages/open-bitcoin-consensus/src/chain_proof.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/branch.rs",
+          "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/serving.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/filters/query/peer.rs",
+          "packages/open-bitcoin-node/src/network/filter_transport.rs",
+          "packages/open-bitcoin-node/src/network/filter_transport/pending.rs",
+          "packages/open-bitcoin-node/src/network/filter_transport/encoded_size.rs",
+          "packages/open-bitcoin-node/src/sync/session/filter_serving.rs",
+          "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/peer_evidence.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/failures.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/peer_serving.rs",
+          "docs/parity/source-breadcrumbs.json",
+          "docs/parity/catalog/basic-compact-filters.md",
+          "docs/parity/fixtures/peer-filter-wire.json",
+          "docs/parity/fixtures/peer-filter-proof.json",
+          "docs/parity/fixtures/peer-filter-resource-measurements.json",
+          "scripts/generate-peer-filter-fixtures.ts",
+          "scripts/generate-peer-filter-fixtures.test.ts",
+          "scripts/check-phase160-peer-filter-serving.ts",
+          "scripts/check-phase160-peer-filter-serving.test.ts",
+          ".planning/phases/160-explicit-bounded-peer-filter-serving/160-12-SUMMARY.md",
+          ".planning/phases/160-explicit-bounded-peer-filter-serving/160-REVIEW.md",
+          ".planning/phases/160-explicit-bounded-peer-filter-serving/160-SECURITY.md",
+          ".planning/phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md",
+          "scripts/verify.sh"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/src/net_permissions.cpp",
+            "packages/bitcoin-knots/src/net_permissions.h",
+            "packages/bitcoin-knots/src/net.cpp",
+            "packages/bitcoin-knots/src/net.h",
+            "packages/bitcoin-knots/src/protocol.cpp",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/chain.cpp",
+            "packages/bitcoin-knots/src/arith_uint256.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+          ],
+          "tests": ["packages/bitcoin-knots/test/functional/p2p_blockfilters.py", "packages/bitcoin-knots/test/functional/test_framework/messages.py", "packages/bitcoin-knots/test/functional/test_framework/blocktools.py"]
+        },
+        "intentional_differences": [
+          "Default-off general peerblockfilters and explicit blockfilters require BASIC; pinned all-only permission preserves per-peer CF advertisement with a disabled/absent backend and no response to otherwise valid requests.",
+          "Local resource-policy: one affine request per peer, four aggregate, 8 MiB peer/32 MiB aggregate suffix and 4,000,024-byte active CF frame; all generic retained bytes/encoder scratch and CF active bytes share one atomic 8 MiB ledger with 128/1024 generic descriptors.",
+          "Logical per-request work caps ancestry/header operations at 8192, record reads at 4096, metadata reads at 256, envelope/copy bytes at 64 MiB, hash padding at 128 MiB and suffix at 8 MiB; fail-closed resource refusal differs from protocol-invalid disconnect.",
+          "Stored 32 MiB codec capacity remains distinct from 4,000,000-byte CF wire payload. Existing inbound 1 MiB/128 generic gates remain; outbound newly enforces a 4,000,000+24 local envelope and stage-aware encoder accounting, without claiming Knots protocol parity for shared resource policy.",
+          "Immutable hash-keyed Fjall records and private affine complete-write receipts replace Knots filter flat files and transport ownership; requests do not regenerate filters, fetch history or wait for RPC readiness.",
+          "Best exact-header equal-work ties use deterministic exact work, then height, then hash during recovery; this intentional local policy differs from Knots sequence/pointer tie-breaking and preserves existing synthetic fork-choice behavior."
+        ],
+        "known_gaps": [
+          "Phase 161 operator projections and Phase 162 integrated retained-client proof remain pending; overall v2.5 completion is not claimed.",
+          "Public/default serving, V0/BIP37, archive behavior, production readiness and production-funds claims remain excluded."
+        ]
+      },
+      {
         "id": "v2-5-authenticated-basic-filter-and-index-rpcs",
         "title": "Authenticated retained BASIC filter and index queries",
         "status": "done",

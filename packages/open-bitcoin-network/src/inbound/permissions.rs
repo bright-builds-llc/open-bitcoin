@@ -9,6 +9,7 @@ use core::net::IpAddr;
 use std::collections::BTreeSet;
 
 use super::InboundAdmissionSlotClass;
+use crate::BasicPeerServingCapability;
 pub use error::PeerPermissionParseError;
 
 pub const INBOUND_PERMISSION_TOKENS_FIELD: &str = "inbound.permission_classes[].permissions[]";
@@ -114,6 +115,7 @@ pub enum PermissionEffectLabel {
     MisbehaviorPolicyProtected,
     AddressResponsePolicyInput,
     DownloadServingPolicyInput,
+    BlockFiltersServingPolicyInput,
 }
 
 impl PermissionEffectLabel {
@@ -124,6 +126,7 @@ impl PermissionEffectLabel {
             Self::MisbehaviorPolicyProtected => "misbehavior_policy_protected",
             Self::AddressResponsePolicyInput => "address_response_policy_input",
             Self::DownloadServingPolicyInput => "download_serving_policy_input",
+            Self::BlockFiltersServingPolicyInput => "blockfilters_serving_policy_input",
         }
     }
 }
@@ -191,6 +194,11 @@ impl PeerPermissionSet {
             return self.requested_tokens.contains(&PeerPermissionToken::All);
         }
         self.permissions.contains(&token)
+    }
+
+    /// Whether the token was named explicitly, before permission expansion.
+    pub fn requested_token(&self, token: PeerPermissionToken) -> bool {
+        self.requested_tokens.contains(&token)
     }
 
     pub fn has_direction(&self, direction: PeerPermissionDirection) -> bool {
@@ -378,6 +386,10 @@ impl ParsedPeerPermissionClass {
         };
         InboundPermissionDecision {
             connection_class,
+            basic_filter_capability: BasicPeerServingCapability::from_permissions(
+                false,
+                &self.permissions,
+            ),
             active_effects: self.permissions.active_effects(),
             relay_permission_effects: self.permissions.relay_permission_effects(),
             inactive_effects: self.permissions.inactive_effects(),
@@ -440,6 +452,11 @@ pub struct PeerPermissionClassRegistry {
 }
 
 impl PeerPermissionClassRegistry {
+    /// Parsed classes retain original requested tokens for startup prerequisites.
+    pub fn classes(&self) -> &[ParsedPeerPermissionClass] {
+        &self.classes
+    }
+
     pub fn new<I>(classes: I) -> Self
     where
         I: IntoIterator<Item = ParsedPeerPermissionClass>,
@@ -494,6 +511,7 @@ impl PeerConnectionClass {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InboundPermissionDecision {
     connection_class: PeerConnectionClass,
+    basic_filter_capability: BasicPeerServingCapability,
     active_effects: Vec<PermissionEffectLabel>,
     relay_permission_effects: Vec<RelayPermissionEffectLabel>,
     inactive_effects: Vec<InactivePermissionEffectLabel>,
@@ -503,6 +521,7 @@ impl InboundPermissionDecision {
     pub fn ordinary() -> Self {
         Self {
             connection_class: PeerConnectionClass::OrdinaryInbound,
+            basic_filter_capability: BasicPeerServingCapability::default(),
             active_effects: Vec::new(),
             relay_permission_effects: Vec::new(),
             inactive_effects: Vec::new(),
@@ -527,5 +546,25 @@ impl InboundPermissionDecision {
 
     pub fn inactive_effects(&self) -> &[InactivePermissionEffectLabel] {
         &self.inactive_effects
+    }
+
+    /// Requested and expanded filter facts retained across admission.
+    pub const fn basic_filter_capability(&self) -> BasicPeerServingCapability {
+        self.basic_filter_capability
+    }
+
+    /// Classifies filter effects when local serving configuration is applied.
+    /// Bloom and unrelated relay effects retain their independent policies.
+    pub fn with_basic_filter_serving(mut self, general_configured: bool) -> Self {
+        self.basic_filter_capability.general_configured = general_configured;
+        self.active_effects
+            .retain(|effect| *effect != PermissionEffectLabel::BlockFiltersServingPolicyInput);
+        self.inactive_effects
+            .retain(|effect| *effect != InactivePermissionEffectLabel::BlockFilters);
+        if self.basic_filter_capability.advertised() {
+            self.active_effects
+                .push(PermissionEffectLabel::BlockFiltersServingPolicyInput);
+        }
+        self
     }
 }

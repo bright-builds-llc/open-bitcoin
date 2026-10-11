@@ -21,6 +21,9 @@ mod catch_up;
 mod evidence;
 mod faults;
 mod lifecycle;
+mod peer_evidence;
+pub(super) mod peer_fixtures;
+mod peer_measurements;
 mod prune_coordination;
 mod prune_faults;
 mod recovery;
@@ -134,7 +137,7 @@ impl FilterStartupFixture {
     }
 }
 
-fn fixture_block(parent: BlockHash, height: u32) -> Block {
+pub(super) fn fixture_block(parent: BlockHash, height: u32) -> Block {
     let transactions = vec![Transaction {
         version: 1,
         inputs: vec![TransactionInput {

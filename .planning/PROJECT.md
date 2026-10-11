@@ -12,9 +12,11 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-Phase 159 completed authenticated BASIC filter/index RPCs on 2026-10-10 (UTC). [Verification](phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md) passed 26/26 truths and all four roadmap criteria; full default native verification passed in 36m 0.155s with 3,864 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent review is clean across 91 paths/all seven findings closed; all 27 security mitigations are closed. CFRP-01/02 are Complete. Configured authenticated queries share the durable node authority, preserve exact BASIC results/error ordering and initial-sync semantics, and serve retained active/stale/pruned records after genuine paired deletion and all-handle reopen. UnknownLegacy absent rows fail closed; numeric read/waiter policies and synthetic genesis/maturity-one/manual-owner-plan limits remain explicit. Phase 160 is ready for context; peer/operator/integrated-client products and v2.5 completion remain pending.
+Phase 160 completed explicit bounded BASIC peer requests on 2026-10-11 (UTC). [Verification](phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md) passed 7/7 truths, all five roadmap criteria, six CFNET requirements and twenty decisions across seventeen plans. Full default native verification passed in 26m 5.720s with 4,093 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent source review is clean across 123 paths and all 39 declared mitigations are closed. Default-off general serving and per-peer permissions share durable branch-correct reads, bounded transport accounting and achieved complete-write evidence on both socket adapters. Finite local resource policies and the pinned all-only permission corner remain explicit. Phase 161 operator projections and Phase 162 integrated retained-client proof remain pending; v2.5 completion and public/default, archive, production/funds claims are not asserted.
 
 Earlier entries below preserve the scope and next-step status at their original verification dates.
+
+Phase 159 completed authenticated BASIC filter/index RPCs on 2026-10-10 (UTC). [Verification](phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md) passed 26/26 truths and all four roadmap criteria; full default native verification passed in 36m 0.155s with 3,864 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent review is clean across 91 paths/all seven findings closed; all 27 security mitigations are closed. CFRP-01/02 are Complete. Configured authenticated queries share the durable node authority, preserve exact BASIC results/error ordering and initial-sync semantics, and serve retained active/stale/pruned records after genuine paired deletion and all-handle reopen. UnknownLegacy absent rows fail closed; numeric read/waiter policies and synthetic genesis/maturity-one/manual-owner-plan limits remain explicit. Phase 160 is ready for context; peer/operator/integrated-client products and v2.5 completion remain pending.
 
 Phase 158 completed internal validated BASIC branch replacement on 2026-10-09. [Verification](phases/158-validated-reorg-and-retained-branch-identity/158-VERIFICATION.md) passed 21/21 truths and all three roadmap criteria; the default native contract passed in 19m24.571s with 3,735 primary Rust tests/doctests, benchmark smoke, six Bazel targets/provenance and no uncovered pure-core lines. Independent source review is clean, both review findings are fixed and all 25 declared mitigations are closed. CFIX-03 is Complete. Genuine accepted receipts and positions enforce common-ancestor replacement, immutable displaced hash lookup after actual reopen, conservative coins fencing and explicit required-body/undo refusal. A retained shorter unflushed return regression and missing/mismatched fence controls pass. Existing finite caps can refuse fully retained forks; maturity/halving and software-only fault limits remain explicit. Phase 159 is ready for context; RPC/peer/operator/integrated-client products remain pending.
 
@@ -49,7 +51,7 @@ Historical phase directories remain tracked because repository verifiers referen
 - Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
 - Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
 
-Continue at Phase 160 and preserve earlier phase directories required by repository verifiers. Phases 157–158 completed explicit activation, bounded catch-up and internal validated reorg with missing-history refusal. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+Continue at Phase 161 and preserve earlier phase directories required by repository verifiers. Phases 157–158 completed explicit activation, bounded catch-up and internal validated reorg with missing-history refusal. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
 
 FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
 
@@ -230,11 +232,11 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 ### Active
 - [ ] CFPR-02: Retained filter service after pruning
-- [ ] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
+- [x] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
 - [ ] CFOP-01: Shared sanitized operator evidence and separate filter-growth disclosure
 - [ ] CFGR-01/02: Parity guardrails and continuous validated-chain integrated proof
 
-CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03 and CFRP-01/02 are Complete and ten detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
+CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02 and CFNET-01–06 are Complete and four detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 
@@ -319,9 +321,9 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
 | Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: ten requirements Complete through Phase 158; 12 Pending; serving not shipped |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: eighteen requirements Complete through Phase 160; four Pending; operator and integrated-client products remain pending |
 | Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Phases 155–157 verified fenced recovery, pre-prune protection, ordinary ownership and explicit activation/catch-up with real faults/reopen |
-| Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Planned: exact BASIC/per-peer behavior plus distinct operator evidence |
+| Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Phase 160 verified exact BASIC/per-peer behavior; Phase 161 distinct operator evidence remains pending |
 
 ## Evolution
 
@@ -368,4 +370,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-10 after Phase 159 verification*
+*Last updated: 2026-10-11 after Phase 160 verification*

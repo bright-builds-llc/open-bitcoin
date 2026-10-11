@@ -9,8 +9,7 @@ use super::super::{
     FjallNodeStore, StorageError, StorageNamespace, StorageRecoveryAction, backend_failure,
     prune::{PRUNE_LOCKS_KEY, encode_prune_locks},
 };
-use super::BasicFilterWorkToken;
-use super::ownership::BasicFilterAppendIdentity;
+use super::{BasicFilterWorkToken, ownership::BasicFilterAppendIdentity};
 use crate::storage::filter_index::{
     self as codec, StoredFilterRecord, StoredFilterState, index_corruption,
 };
@@ -25,13 +24,14 @@ use open_bitcoin_core::chainstate::{
     VerifiedChainstateFence,
 };
 use std::sync::MutexGuard;
-
+mod epoch;
 #[derive(Default)]
 pub(crate) struct PublicationControl {
     poisoned: bool,
     /// Complete immutable forest checked during exclusive recovery. Trusted
     /// immutable batches preserve this; raw writes clear it before effects.
     pub(in crate::storage::fjall_store) read_integrity: bool,
+    integrity_epoch: u64,
     pub(super) maybe_reorg_suspension: Option<super::reorg::BasicFilterReorgSuspension>,
     pub(in crate::storage::fjall_store) revision: u64,
     pub(in crate::storage::fjall_store) maybe_append_identity: Option<BasicFilterAppendIdentity>,

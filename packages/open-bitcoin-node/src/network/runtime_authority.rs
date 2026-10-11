@@ -68,6 +68,7 @@ pub struct ManagedNetworkHandle<S = MemoryChainstateStore, V: CoinsView = Memory
     authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>,
     automatic_prune: Arc<Mutex<automatic_prune::AutomaticPruneState>>,
     basic_filter_readiness: Arc<filter_index::readiness::ReadinessOwner>,
+    basic_filter_transport: Arc<super::filter_transport::FilterTransportOwner>,
     #[cfg(test)]
     maybe_last_basic_filter_turn: Arc<Mutex<Option<BasicFilterTurnOutcome>>>,
 }
@@ -78,6 +79,7 @@ impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
             authority: Arc::clone(&self.authority),
             automatic_prune: Arc::clone(&self.automatic_prune),
             basic_filter_readiness: Arc::clone(&self.basic_filter_readiness),
+            basic_filter_transport: Arc::clone(&self.basic_filter_transport),
             #[cfg(test)]
             maybe_last_basic_filter_turn: Arc::clone(&self.maybe_last_basic_filter_turn),
         }
@@ -97,6 +99,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
             authority: Arc::new(Mutex::new(network)),
             automatic_prune: Arc::new(Mutex::new(automatic_prune::AutomaticPruneState::default())),
             basic_filter_readiness: Arc::default(),
+            basic_filter_transport: Arc::default(),
             #[cfg(test)]
             maybe_last_basic_filter_turn: Arc::default(),
         }
@@ -222,6 +225,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         self.mutate(|network| network.set_inbound_admission_policy(policy))
     }
 
+    /// Publishes explicit general BASIC capability without activating any adapter.
+    pub fn configure_basic_peer_serving(
+        &self,
+        enabled: bool,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.mutate(|network| network.set_basic_filter_serving(enabled))
+    }
+
     pub fn set_serving_have_pruned(
         &mut self,
         have_pruned: bool,
@@ -271,7 +282,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
+        let result = self.try_mutate(|network| {
             network.receive_sync_message(
                 peer_id,
                 message,
@@ -279,7 +290,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
                 verify_flags,
                 consensus_params,
             )
-        })
+        })?;
+        self.resolve_basic_filter_intents(peer_id, result, consensus_params)
     }
 
     pub fn receive_message(
@@ -290,9 +302,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
+        let result = self.try_mutate(|network| {
             network.receive_message(peer_id, message, timestamp, verify_flags, consensus_params)
-        })
+        })?;
+        self.resolve_basic_filter_intents(peer_id, result, consensus_params)
     }
 
     pub fn receive_message_for_durable_serving(
@@ -304,7 +317,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         consensus_params: ConsensusParams,
         durable_payload_present: impl Fn(BlockHash) -> bool,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| {
+        let result = self.try_mutate(|network| {
             network.receive_message_for_durable_serving(
                 peer_id,
                 message,
@@ -313,7 +326,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
                 consensus_params,
                 &durable_payload_present,
             )
-        })
+        })?;
+        self.resolve_basic_filter_intents(peer_id, result, consensus_params)
     }
 
     pub fn encode_messages(

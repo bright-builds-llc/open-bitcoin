@@ -87,6 +87,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     pub(in crate::network::runtime_authority) fn basic_filter_authority_unavailable(
         &self,
     ) -> ManagedNetworkAuthorityError {
+        self.basic_filter_transport.mark_failed();
         wake_all(
             self.basic_filter_readiness
                 .collect(|_| Some(Err(BasicFilterReadFailure::AuthorityUnavailable))),
@@ -129,6 +130,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         &self,
         network: &ManagedPeerNetwork<S, V>,
     ) -> Vec<std::task::Waker> {
+        if self.invalidate_basic_filter_transports(network).is_err() {
+            self.basic_filter_transport.mark_failed();
+        }
         self.basic_filter_readiness.collect(|frontier| {
             let Some(store) = network
                 .chainstate()
@@ -152,10 +156,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     /// Stopping is terminal for this authority; reopening creates a fresh owner.
     pub fn stop_basic_filter_readiness(&self) -> Result<(), ManagedNetworkAuthorityError> {
         let network = self.lock_authority()?;
+        let transport_result = self
+            .basic_filter_transport
+            .invalidate(|_, _| Ok(false))
+            .map_err(|error| ManagedNetworkAuthorityError::LifecycleEffect(error.to_string()));
         let wakes = self.basic_filter_readiness.stop();
         drop(network);
         wake_all(wakes);
-        Ok(())
+        transport_result
     }
 
     /// Read the original requested hash after earned completion. New accepts never

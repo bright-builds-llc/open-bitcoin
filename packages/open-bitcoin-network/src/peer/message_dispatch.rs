@@ -29,6 +29,48 @@ impl PeerManager {
         timestamp: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
         match message {
+            WireNetworkMessage::GetCFilters(request) => {
+                if !Self::peer_mut(&mut self.peers, peer_id)?.handshake_established() {
+                    return Ok(Vec::new());
+                }
+                Ok(vec![PeerAction::ServeBasicFilter(
+                    crate::policy::FilterRequest::Filters {
+                        filter_type: request.filter_type,
+                        start_height: request.start_height,
+                        stop_hash: request.stop_hash,
+                    },
+                )])
+            }
+            WireNetworkMessage::GetCFHeaders(request) => {
+                if !Self::peer_mut(&mut self.peers, peer_id)?.handshake_established() {
+                    return Ok(Vec::new());
+                }
+                Ok(vec![PeerAction::ServeBasicFilter(
+                    crate::policy::FilterRequest::Headers {
+                        filter_type: request.filter_type,
+                        start_height: request.start_height,
+                        stop_hash: request.stop_hash,
+                    },
+                )])
+            }
+            WireNetworkMessage::GetCFCheckpt(request) => {
+                if !Self::peer_mut(&mut self.peers, peer_id)?.handshake_established() {
+                    return Ok(Vec::new());
+                }
+                Ok(vec![PeerAction::ServeBasicFilter(
+                    crate::policy::FilterRequest::Checkpoints {
+                        filter_type: request.filter_type,
+                        stop_hash: request.stop_hash,
+                    },
+                )])
+            }
+            WireNetworkMessage::MalformedCFRequest(_)
+            | WireNetworkMessage::CFilter(_)
+            | WireNetworkMessage::CFHeaders(_)
+            | WireNetworkMessage::CFCheckpt(_) => {
+                Self::peer_mut(&mut self.peers, peer_id)?;
+                Ok(Vec::new())
+            }
             WireNetworkMessage::Version(version) => {
                 self.handle_version(peer_id, version, timestamp)
             }
@@ -157,13 +199,13 @@ impl PeerManager {
         let mut actions = Vec::new();
         if !peer.local_version_sent {
             peer.local_version_sent = true;
-            actions.push(PeerAction::Send(WireNetworkMessage::Version(
-                self.local_config.version_message_with_sender_policy(
-                    timestamp,
-                    best_height,
-                    maybe_sender,
-                ),
-            )));
+            let mut local_version = self.local_config.version_message_with_sender_policy(
+                timestamp,
+                best_height,
+                maybe_sender,
+            );
+            local_version.services = peer.snapshot_own_services(self.local_config.services);
+            actions.push(PeerAction::Send(WireNetworkMessage::Version(local_version)));
         }
         if !peer.local_verack_sent {
             peer.local_verack_sent = true;
@@ -286,5 +328,154 @@ impl PeerManager {
         }
 
         Ok(actions)
+    }
+}
+
+#[cfg(test)]
+mod filter_contract_tests {
+    use super::*;
+    use crate::{
+        CFCheckpt, CFHeaders, CFRequestKind, CFilter, GetCFCheckpt, GetCFHeaders, GetCFilters,
+        LocalPeerConfig, policy::FilterRequest,
+    };
+
+    fn requests(valid_fields: bool) -> [(WireNetworkMessage, FilterRequest); 3] {
+        let filter_types = if valid_fields { [0; 3] } else { [255, 2, 1] };
+        let starts = if valid_fields { [0; 2] } else { [u32::MAX, 77] };
+        let stop_hash = BlockHash::from_byte_array([73; 32]);
+        [
+            (
+                WireNetworkMessage::GetCFilters(GetCFilters {
+                    filter_type: filter_types[0],
+                    start_height: starts[0],
+                    stop_hash,
+                }),
+                FilterRequest::Filters {
+                    filter_type: filter_types[0],
+                    start_height: starts[0],
+                    stop_hash,
+                },
+            ),
+            (
+                WireNetworkMessage::GetCFHeaders(GetCFHeaders {
+                    filter_type: filter_types[1],
+                    start_height: starts[1],
+                    stop_hash,
+                }),
+                FilterRequest::Headers {
+                    filter_type: filter_types[1],
+                    start_height: starts[1],
+                    stop_hash,
+                },
+            ),
+            (
+                WireNetworkMessage::GetCFCheckpt(GetCFCheckpt {
+                    filter_type: filter_types[2],
+                    stop_hash,
+                }),
+                FilterRequest::Checkpoints {
+                    filter_type: filter_types[2],
+                    stop_hash,
+                },
+            ),
+        ]
+    }
+
+    #[test]
+    fn phase160_dispatch_contract_preserves_all_raw_request_identities() {
+        // Arrange
+        let mut manager = PeerManager::new(LocalPeerConfig::default());
+        manager.add_outbound_peer(1, 0).expect("peer");
+        manager
+            .handle_message(1, WireNetworkMessage::Version(Default::default()), 0)
+            .expect("version");
+        manager
+            .handle_message(1, WireNetworkMessage::Verack, 0)
+            .expect("verack");
+        for (request, expected) in requests(false) {
+            // Act
+            let actions = manager
+                .handle_message(1, request, 1)
+                .expect("parsed request");
+            // Assert
+            assert_eq!(actions, vec![PeerAction::ServeBasicFilter(expected)]);
+        }
+    }
+
+    #[test]
+    fn phase160_dispatch_contract_malformed_and_unsolicited_responses_are_inert() {
+        // Arrange
+        let mut manager = PeerManager::new(LocalPeerConfig::default());
+        manager.add_outbound_peer(1, 0).expect("peer");
+        let messages = [
+            WireNetworkMessage::MalformedCFRequest(CFRequestKind::Filters),
+            WireNetworkMessage::MalformedCFRequest(CFRequestKind::Headers),
+            WireNetworkMessage::MalformedCFRequest(CFRequestKind::Checkpoints),
+            WireNetworkMessage::CFilter(CFilter {
+                filter_type: 0,
+                block_hash: BlockHash::default(),
+                filter: vec![0],
+            }),
+            WireNetworkMessage::CFHeaders(CFHeaders {
+                filter_type: 0,
+                stop_hash: BlockHash::default(),
+                previous_filter_header: Default::default(),
+                filter_hashes: Vec::new(),
+            }),
+            WireNetworkMessage::CFCheckpt(CFCheckpt {
+                filter_type: 0,
+                stop_hash: BlockHash::default(),
+                filter_headers: Vec::new(),
+            }),
+        ];
+        for message in messages {
+            // Act
+            let actions = manager
+                .handle_message(1, message, 1)
+                .expect("inert receive");
+            // Assert
+            assert!(actions.is_empty());
+        }
+    }
+
+    #[test]
+    fn phase160_dispatch_contract_unknown_session_does_not_authorize_intent() {
+        // Arrange
+        let mut manager = PeerManager::new(LocalPeerConfig::default());
+        for (request, _) in requests(false) {
+            // Act
+            let result = manager.handle_message(99, request, 1);
+            // Assert
+            assert_eq!(result, Err(NetworkError::UnknownPeer(99)));
+        }
+    }
+
+    #[test]
+    fn phase160_dispatch_contract_requests_before_handshake_are_inert() {
+        for after_version in [false, true] {
+            for valid_fields in [false, true] {
+                for (request, _) in requests(valid_fields) {
+                    // Arrange: parsed valid/invalid fields cannot bypass handshake.
+                    let mut manager = PeerManager::new(LocalPeerConfig::default());
+                    manager.add_outbound_peer(1, 0).expect("peer");
+                    if after_version {
+                        manager
+                            .handle_message(1, WireNetworkMessage::Version(Default::default()), 0)
+                            .expect("version");
+                    }
+
+                    // Act
+                    let actions = manager
+                        .handle_message(1, request, 1)
+                        .expect("inert receive");
+
+                    // Assert
+                    assert!(
+                        actions.is_empty(),
+                        "version={after_version}, valid={valid_fields}"
+                    );
+                }
+            }
+        }
     }
 }

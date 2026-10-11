@@ -9,6 +9,8 @@ import {
   readSourceRoot,
 } from "./source-corpus";
 import { phase134ScopeFailures } from "./check-phase134-authoritative-lifecycle/scope";
+import { compact, maybeFunction, ordinaryRust } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { hasOrdinaryRuntimeOwner } from "./check-phase128-production-compact-announcement-transport/impl-attributes.ts";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 
@@ -42,6 +44,8 @@ const FILES = {
     "packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs",
   rpcRuntime:
     "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+  rpcEmissions:
+    "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
   singleton:
     "packages/open-bitcoin-node/src/network/admission_bridge/singleton.rs",
   package: "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
@@ -197,6 +201,69 @@ function addFailure(
 
 function hasAll(source: string, markers: readonly string[]): boolean {
   return markers.every((marker) => source.includes(marker));
+}
+
+/** Follow the ordinary listener, socket adapter, and affine delegated prefix. */
+export function hasInboundAnnouncementPrefix(runtime: string, delegated: string): boolean {
+  const body = (source: string, name: string): string => compact(maybeFunction(source, name, true)?.body ?? "");
+  const ownedBody = (source: string, marker: string): string => {
+    const start = source.indexOf(marker);
+    if (start < 0 || source.indexOf(marker, start + 1) >= 0) return "";
+    // Reuse the attribute-chain classifier after substituting its fixed owner name.
+    const owner = source.slice(0, start) + "impl DurableSyncRuntime";
+    return hasOrdinaryRuntimeOwner(owner) ? blockBody(source, marker) : "";
+  };
+  const code = ordinaryRust(runtime);
+  const socket = ownedBody(code, "impl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor");
+  const helper = ordinaryRust(delegated);
+  const pending = ownedBody(helper, "impl<E: InboundEmissionExecutor> PendingEmissions");
+  const cleanup = ownedBody(helper, "impl<E: InboundEmissionExecutor> Drop for PendingEmissions");
+  const moduleBinding = /#\[\s*path\s*=\s*"filter_serving.rs"\s*\]\s*pub\(super\)\s+mod\s+filter_serving\s*;/;
+  const maybeModule = moduleBinding.exec(runtime);
+  const reexport = /pub\(super\)\s+use\s+filter_serving\s*::\s*\{[^}]*\bexecute_inbound_emissions\s*,/;
+  const maybeReexport = reexport.exec(code);
+  if (maybeModule === null || compact(code.slice(maybeModule.index, maybeModule.index + maybeModule[0].length)) !== "#[path=]pub(super)modfilter_serving;" ||
+      !hasOrdinaryRuntimeOwner(code.slice(0, maybeModule.index) + "impl DurableSyncRuntime") ||
+      maybeReexport === null || !hasOrdinaryRuntimeOwner(code.slice(0, maybeReexport.index) + "impl DurableSyncRuntime") ||
+      !body(runtime, "handle_inbound_stream").includes("if!drain_inbound_announcements(")) return false;
+  const drain = body(runtime, "drain_inbound_announcements");
+  if (!drain.includes("transport.outboxes.take_peer_emissions(peer_id)") ||
+      !drain.includes("letmutexecutor=SocketInboundEmissionExecutor{transport,encoding_network:&encoding_network,stream,peer_id,") ||
+      !drain.endsWith("execute_inbound_emissions(emissions,peer_id,&mutexecutor).await==InboundEmissionExecutionOutcome::Complete")) return false;
+  if (!body(socket, "encode").includes("self.encoding_network.encode_pending_network_message(self.peer_id,message).map_err(")) return false;
+  const write = body(socket, "write");
+  if (!write.includes("letwrite_result=write_all_for_state(self.stream,bytes,self.resource_policy,self.connected_at_unix_seconds,self.last_activity_unix_seconds,self.handshake_state,).await;") ||
+      !write.includes("matchwrite_result{Ok(WriteWireMessageOutcome::Written)=>InboundEmissionWriteResult::Written,") ||
+      (write.match(/InboundEmissionWriteResult::Written/g) ?? []).length !== 1 ||
+      !write.includes("Ok(WriteWireMessageOutcome::Rejected(event))=>{") ||
+      !write.includes("_=>InboundEmissionWriteResult::Failed,") || !write.includes("=>InboundEmissionWriteResult::Disconnected,")) return false;
+  if (!body(socket, "complete").startsWith("self.transport.network.complete_peer_emission(receipt)") ||
+      !body(socket, "abort").startsWith("self.transport.network.abort_peer_emission(capability)")) return false;
+  const expected = `
+    let mut pending = PendingEmissions { executor, suffix: VecDeque::from(emissions), maybe_current: None, };
+    while let Some(emission) = pending.suffix.pop_front() {
+      let (target_peer_id, message, capability) = emission.into_parts();
+      pending.maybe_current = Some(capability);
+      if target_peer_id != peer_id { return pending.fail(InboundEmissionExecutionOutcome::TargetMismatch); }
+      let Ok(bytes) = pending.executor.encode(&message) else { return pending.fail(InboundEmissionExecutionOutcome::EncodeFailed); };
+      let result = pending.executor.write(bytes.bytes()).await; drop(bytes);
+      match result {
+        InboundEmissionWriteResult::Written => {
+          let Some(capability) = pending.maybe_current.take() else { return pending.fail(InboundEmissionExecutionOutcome::CompletionFailed); };
+          if pending.executor.complete(capability.acknowledge_write()).is_err() { return pending.fail(InboundEmissionExecutionOutcome::CompletionFailed); }
+        }
+        InboundEmissionWriteResult::Rejected => { return pending.fail(InboundEmissionExecutionOutcome::Rejected); }
+        InboundEmissionWriteResult::Disconnected => { return pending.fail(InboundEmissionExecutionOutcome::Disconnected); }
+        InboundEmissionWriteResult::Failed => { return pending.fail(InboundEmissionExecutionOutcome::WriteFailed); }
+      }
+    }
+    InboundEmissionExecutionOutcome::Complete`;
+  return body(delegated, "execute_inbound_emissions") === compact(expected) &&
+    body(pending, "retire") === compact(`let mut failed = false;
+      if let Some(current) = self.maybe_current.take() { failed |= !matches!(self.executor.abort(current), Ok(EffectAbort::Aborted)); }
+      for emission in self.suffix.drain(..) { failed |= !matches!(self.executor.abort(emission.into_parts().2), Ok(EffectAbort::Aborted)); } !failed`) &&
+    body(pending, "fail") === compact(`if self.retire() { cause } else { self.executor.cancellation_cleanup_failed(Some(cause)); InboundEmissionExecutionOutcome::AbortFailed }`) &&
+    body(cleanup, "drop") === compact(`if !self.retire() { self.executor.cancellation_cleanup_failed(None); }`);
 }
 
 export function checkPhase134AuthoritativeLifecycle(
@@ -392,9 +459,7 @@ export function checkPhase134AuthoritativeLifecycle(
   );
   addFailure(
     failures,
-    !get(FILES.rpcRuntime).includes(
-      "executor.complete(capability.acknowledge_write()).is_err()",
-    ),
+    !hasInboundAnnouncementPrefix(get(FILES.rpcRuntime), get(FILES.rpcEmissions)),
     DIAGNOSTICS.prefix,
   );
 

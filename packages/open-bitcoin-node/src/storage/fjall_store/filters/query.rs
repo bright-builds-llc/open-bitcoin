@@ -11,6 +11,27 @@ use open_bitcoin_core::{
     primitives::{BlockHash, FilterHeader},
 };
 
+pub(crate) mod peer;
+
+/// Read identity only; construction and the originating shared store remain private.
+#[derive(Clone)]
+pub(crate) struct BasicFilterReadEpoch {
+    value: u64,
+    publication: std::sync::Arc<std::sync::Mutex<super::PublicationControl>>,
+}
+impl std::fmt::Debug for BasicFilterReadEpoch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BasicFilterReadEpoch")
+            .finish_non_exhaustive()
+    }
+}
+impl PartialEq for BasicFilterReadEpoch {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value && std::sync::Arc::ptr_eq(&self.publication, &other.publication)
+    }
+}
+impl Eq for BasicFilterReadEpoch {}
+
 /// Codec maximum, including the persisted identity envelope; never a smaller
 /// response policy that would reject an admitted immutable singleton.
 pub const BASIC_FILTER_QUERY_MAX_RECORD_BYTES: usize = MAX_SIZE as usize + codec::RECORD_OVERHEAD;
@@ -81,6 +102,26 @@ pub(crate) enum QueryRecordFault {
 }
 
 impl BasicFilterQueryReader<'_> {
+    pub(crate) fn integrity_epoch(&self) -> Result<BasicFilterReadEpoch, StorageError> {
+        if !self.enabled || !self.control.read_integrity {
+            return Err(index_corruption("BASIC read integrity invalidated"));
+        }
+        Ok(BasicFilterReadEpoch {
+            value: self.control.read_integrity_epoch(),
+            publication: std::sync::Arc::clone(&self.store.filter_publication),
+        })
+    }
+    /// Charge the captured publication fact before using it in peer preparation.
+    pub(crate) fn capture_basic_peer_epoch(
+        &self,
+        budget: &mut open_bitcoin_network::basic_peer_resource::BasicPeerServeBudget,
+    ) -> Result<BasicFilterReadEpoch, peer::BasicPeerReadError> {
+        budget.charge(
+            open_bitcoin_network::basic_peer_resource::BasicPeerServeAxis::MetadataReads,
+            1,
+        )?;
+        Ok(self.integrity_epoch()?)
+    }
     pub(crate) fn matches_generation(
         &self,
         generation: open_bitcoin_core::chainstate::filter_index::lifecycle::IndexGeneration,
@@ -100,6 +141,17 @@ impl BasicFilterQueryReader<'_> {
 }
 
 impl FjallNodeStore {
+    /// Transport checks only bounded in-memory publication state, without backend I/O.
+    pub(crate) fn basic_peer_epoch_is_current(
+        &self,
+        epoch: &BasicFilterReadEpoch,
+    ) -> Result<bool, StorageError> {
+        if !std::sync::Arc::ptr_eq(&self.filter_publication, &epoch.publication) {
+            return Ok(false);
+        }
+        let control = self.filter_publication_guard()?;
+        Ok(control.read_integrity && control.read_integrity_epoch() == epoch.value)
+    }
     /// Simulate external backend tampering underneath an already earned epoch.
     /// This deliberately neither invalidates nor readmits any authority.
     #[cfg(test)]

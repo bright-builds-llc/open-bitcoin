@@ -282,3 +282,18 @@ Native4 final receipt: default verifier exit0 in36m0.155s;3,864primaryRust passe
 
 
 Completion review (verified pre-commit snapshot): Phase159 passed all26 truths/four roadmap criteria, clean91-path review/all seven findings closed and27/27 security mitigations. Default native exited0 in36m0.155s with3,864 primary Rust passes,611 mutation tests, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Full lifecycle validation passed before CFRP-01/02 activation. Phase160 is next; CFPR-02/CFNET/CFOP/CFGR and v2.5 remain pending. UnknownLegacy absent rows, numeric read/waiter caps and synthetic genesis/maturity-one/manual-owner-plan/composed private-fault limitations remain documented. Actual hook/commit/push outcomes are derived from the saving commit and upstream refs, avoiding a self-referential post-push edit.
+
+## task-phase160-yolo | 2026-10-10 13:34 CDT | Explicit Bounded Peer Filter Serving
+
+- [x] Resolve Phase160, load lessons/standards, sync clean main and capture yolo decisions.
+- [x] Scout pinned validation/permission/branch and shared query/transport seams; record lifecycle context and discussion log.
+- [x] Research exact CFNET-01–06 contracts and check executable plans, including all/implicit permission corners and measured budgets.
+- [x] Implement explicit BASIC peer activation/service bits, all three codecs, branch-aware persisted preparation and real inbound/outbound transport.
+- [x] Prove range/checkpoint/error parity, catch-up/missing/stale cases and achieved/partial writes with bounded cleanup through production callers.
+- [x] Review/simplify implementation, refresh parity/breadcrumbs/README/UAT and pass full default native verification.
+- [x] Complete independent source/security review and lifecycle-valid phase verification; update only relevant phase/task records.
+- [x] Prepare verified diff for hook-protected finalization on main after the strict clean-verification gate; derive actual commit/push outcomes from Git records.
+
+Workflow: `/gsd-yolo-discuss-plan-execute-commit-and-push` (no arguments; selected Phase160). Lifecycle: `160-20261010-peer-filter-serving`. Every workflow-level commit/push is deferred until clean verification. UI hint is protocol/operator terminology; no frontend contract applies. Phase161/162 remain pending.
+
+Completion review (verified pre-commit snapshot, 2026-10-11 UTC): all seventeen plans, seven formal truths, five roadmap criteria, six CFNET requirements and twenty decisions are verified. The third full default native run passed in 26m 5.720s with 4,093 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent review is clean across 123 paths; three warnings were resolved, and all 39 declared mitigations are closed. Plan17 repaired historical transport guards without weakening behavioral protection; focused boundary tests closed the second run’s pure-core coverage gaps. The 88-case independent corpus, 54 generator tests and 740 native mutation tests passed. Phase161 operator projections, Phase162 integrated retained-client proof and v2.5 completion remain pending. Public/default, V0/BIP37, archive and production/funds claims remain excluded. Actual mandatory hook, commit and push outcomes are derived from the saving commit and upstream refs, avoiding a self-referential post-push edit.

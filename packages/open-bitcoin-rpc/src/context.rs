@@ -50,7 +50,7 @@ mod wallet_state;
 
 pub use inbound_status::AuthoritativeOperatorSnapshot;
 pub(crate) use inbound_wire::{
-    DurableBlockSource, EncodedWireResponse, InboundWireResponsePlan,
+    DurableBlockSource, EncodedWireResponse, InboundWireResponsePlan, InboundWireStep,
     acknowledge_encoded_wire_response, durable_block_source, resolve_inbound_wire_responses,
 };
 pub use rescan::{WalletFreshnessKind, WalletFreshnessView, WalletRescanExecution};
@@ -387,7 +387,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
         peer_id: u64,
         message: WireNetworkMessage,
         timestamp: i64,
-    ) -> Result<InboundWireResponsePlan, open_bitcoin_node::ManagedNetworkAuthorityError> {
+    ) -> Result<InboundWireResponsePlan<S, V>, open_bitcoin_node::ManagedNetworkAuthorityError>
+    {
         let maybe_source = self.maybe_block_source.clone();
         let have_pruned = match maybe_source.as_ref() {
             Some(source) => source.load_have_pruned().unwrap_or(false),
@@ -412,7 +413,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedRpcContext<S, V> {
             .chain(result.inbound_response_plan)
             .collect();
         Ok(InboundWireResponsePlan {
-            network_magic: network::network_magic(self.chain),
+            network: self.network.clone(),
             responses,
             maybe_block_source: self.maybe_block_source.clone(),
             peer_id,

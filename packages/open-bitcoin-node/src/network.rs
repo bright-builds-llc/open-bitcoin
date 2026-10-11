@@ -25,6 +25,7 @@ mod block_serving;
 mod chainstate_durability_evidence;
 mod checkpoint;
 mod compact_receive_candidates;
+pub mod filter_transport;
 mod header_sync;
 mod inbound;
 mod inventory;
@@ -90,8 +91,9 @@ pub use relay_fanout::{
 };
 pub use runtime_authority::filter_index::{
     BASIC_FILTER_QUERY_MAX_HEX_BYTES, BASIC_FILTER_QUERY_MAX_READ_BYTES,
-    BASIC_FILTER_QUERY_MAX_RECORD_BYTES, BasicBlockValidationProvenance, BasicFilterQuery,
-    BasicFilterQueryError, BasicFilterQueryWork, BasicFilterReadBarrier, BasicFilterReadCompletion,
+    BASIC_FILTER_QUERY_MAX_RECORD_BYTES, BasicBlockValidationProvenance, BasicFilterBranchCapture,
+    BasicFilterBranchLimit, BasicFilterBranchOutcome, BasicFilterQuery, BasicFilterQueryError,
+    BasicFilterQueryWork, BasicFilterReadBarrier, BasicFilterReadCompletion,
     BasicFilterReadFailure, BasicFilterReadFrontier, BasicFilterRecordView, BasicIndexSummary,
     MAX_BASIC_FILTER_WAITERS,
 };

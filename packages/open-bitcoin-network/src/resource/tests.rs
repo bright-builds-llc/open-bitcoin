@@ -104,3 +104,29 @@ fn assert_lifecycle_event(
 mod envelope_cases;
 mod lifecycle_cases;
 mod pressure_cases;
+
+#[test]
+fn phase160_inbound_envelope_accepts_inert_filter_response_families() {
+    for (command, payload_len) in [("cfilter", 34), ("cfheaders", 66), ("cfcheckpt", 34)] {
+        // Arrange: bounded empty vectors form valid unsolicited response payloads.
+        let payload = vec![0; payload_len];
+        let digest = open_bitcoin_consensus::crypto::double_sha256(&payload);
+        let header = MessageHeader {
+            magic: NetworkMagic::MAINNET,
+            command: MessageCommand::new(command).expect("command"),
+            payload_size: payload_len as u32,
+            checksum: [digest[0], digest[1], digest[2], digest[3]],
+        };
+        let policy = InboundEnvelopePolicy::new(NetworkMagic::MAINNET);
+
+        // Act
+        let decision = policy.evaluate_header(&open_bitcoin_codec::encode_message_header(&header));
+
+        // Assert: ordinary peer dispatch, rather than unsupported-command rejection,
+        // owns the inert outcome; all historical byte/checksum gates still apply.
+        assert!(
+            matches!(decision, InboundEnvelopeDecision::ReadPayload { payload_len: actual } if actual == payload_len)
+        );
+        assert!(policy.decode_payload(&header, &payload).is_ok());
+    }
+}

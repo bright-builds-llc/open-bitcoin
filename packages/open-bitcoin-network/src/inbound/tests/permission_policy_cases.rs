@@ -4,6 +4,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 
 use super::*;
+use crate::{BasicPeerServingCapability, BasicPeerServingPrerequisite, PermissionEffectLabel};
 
 #[test]
 fn permission_tokens_accept_exact_knots_anchored_vocabulary() {
@@ -470,5 +471,110 @@ fn class_definitions_reject_direction_only_missing_in_and_outbound_rules() {
         assert_eq!(error.field(), "inbound.permission_classes[].permissions[]");
         assert_eq!(error.reason(), reason);
         assert_eq!(error.token(), token);
+    }
+}
+
+#[test]
+fn phase160_coverage_registry_retains_requested_filter_prerequisites() {
+    // Arrange
+    let cases: &[(&str, &[&str], bool, bool, bool)] = &[
+        ("all-only", &["in", "all"], true, false, true),
+        ("explicit", &["in", "blockfilters"], false, true, true),
+        (
+            "all-explicit",
+            &["in", "all", "blockfilters"],
+            true,
+            true,
+            true,
+        ),
+        ("download", &["in", "download"], false, false, false),
+    ];
+    let classes: Vec<_> = cases
+        .iter()
+        .map(|(name, tokens, _, _, _)| {
+            ParsedPeerPermissionClass::parse(
+                format!("  {name}  "),
+                ["203.0.113.20"],
+                tokens.iter().copied(),
+            )
+            .expect("valid requested permission fixture")
+        })
+        .collect();
+    let registry = PeerPermissionClassRegistry::new(classes.clone());
+
+    // Act
+    let retained = registry.classes();
+
+    // Assert
+    assert_eq!(retained, classes.as_slice());
+    for (class, &(name, _, requested_all, requested_filter, effective_filter)) in
+        retained.iter().zip(cases)
+    {
+        let permissions = class.permissions();
+        let capability = BasicPeerServingCapability::from_permissions(false, permissions);
+        assert_eq!(class.name().as_str(), name);
+        assert_eq!(class.addresses(), &[test_ip("203.0.113.20")]);
+        assert_eq!(
+            permissions.requested_token(PeerPermissionToken::All),
+            requested_all
+        );
+        assert_eq!(
+            permissions.requested_token(PeerPermissionToken::BlockFilters),
+            requested_filter
+        );
+        assert_eq!(capability.effective_permission, effective_filter);
+        assert_eq!(
+            capability.validate_basic_index(false),
+            if requested_filter {
+                BasicPeerServingPrerequisite::BasicIndexRequired
+            } else {
+                BasicPeerServingPrerequisite::Accepted
+            }
+        );
+    }
+}
+
+#[test]
+fn phase160_coverage_filter_effect_label_is_stable_and_input_independent() {
+    // Arrange
+    let cases: &[(&[&str], bool, &[&str])] = &[
+        (
+            &["in", "all"],
+            false,
+            &["blockfilters_serving_policy_input"],
+        ),
+        (
+            &["in", "blockfilters"],
+            false,
+            &["blockfilters_serving_policy_input"],
+        ),
+        (
+            &["in", "download"],
+            true,
+            &["blockfilters_serving_policy_input"],
+        ),
+        (&["in", "download"], false, &[]),
+    ];
+    for &(tokens, general_configured, expected) in cases {
+        let class = ParsedPeerPermissionClass::parse(
+            "  private-peer-name  ",
+            ["203.0.113.20"],
+            tokens.iter().copied(),
+        )
+        .expect("valid permission fixture");
+        let decision =
+            PeerPermissionClassRegistry::new([class]).resolve_inbound(test_ip("203.0.113.20"));
+
+        // Act
+        let configured = decision.with_basic_filter_serving(general_configured);
+        let labels: Vec<_> = configured
+            .active_effects()
+            .iter()
+            .filter(|effect| **effect == PermissionEffectLabel::BlockFiltersServingPolicyInput)
+            .map(|effect| effect.as_str())
+            .collect();
+
+        // Assert
+        assert_eq!(labels, expected);
     }
 }

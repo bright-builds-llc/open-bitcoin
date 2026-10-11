@@ -13,6 +13,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages/bitcoin-knots/test/functional"))
 from test_framework.crypto.siphash import siphash
 from test_framework.messages import CBlock, CBlockHeader, hash256, ser_compact_size
+from test_framework.messages import (
+    msg_getcfilters, msg_cfilter, msg_getcfheaders, msg_cfheaders,
+    msg_getcfcheckpt, msg_cfcheckpt,
+)
 
 
 def compute(case, predecessors):
@@ -60,8 +64,113 @@ def compute(case, predecessors):
                 k0=str(k0), k1=str(k1), mapped=mapped)
 
 
+def peer_wire(case):
+    """Use the pinned serializers; raw digest bytes map to uint256 little endian."""
+    fields = case["input"]
+    command = case["command"]
+    filter_type = fields["filter_type"]
+    raw_number = lambda value: int.from_bytes(bytes.fromhex(value), "little")
+    if command in ("getcfilters", "getcfheaders"):
+        constructor = msg_getcfilters if command == "getcfilters" else msg_getcfheaders
+        message = constructor(filter_type, fields["start_height"], raw_number(fields["stop_hash_raw"]))
+    elif command == "cfilter":
+        message = msg_cfilter(filter_type, raw_number(fields["block_hash_raw"]), bytes.fromhex(fields["filter_data"]))
+    elif command == "cfheaders":
+        message = msg_cfheaders(filter_type, raw_number(fields["stop_hash_raw"]),
+                                raw_number(fields["prev_header_raw"]), [raw_number(h) for h in fields["hashes_raw"]])
+    elif command == "getcfcheckpt":
+        message = msg_getcfcheckpt(filter_type, raw_number(fields["stop_hash_raw"]))
+    elif command == "cfcheckpt":
+        message = msg_cfcheckpt(filter_type, raw_number(fields["stop_hash_raw"]),
+                                [raw_number(h) for h in fields["headers_raw"]])
+    else:
+        raise ValueError("unknown peer serializer")
+    payload = message.serialize()
+    # v1 header: pinned p2p.py build_message; hash256 is the pinned helper.
+    frame = (bytes.fromhex("f9beb4d9") + message.msgtype.ljust(12, b"\x00") +
+             len(payload).to_bytes(4, "little") + hash256(payload)[:4] + payload)
+    return dict(case, expected=dict(payload_hex=payload.hex(), frame_hex=frame.hex()))
+
+
+def peer_proof(case):
+    """Independent integers mirroring chain.cpp and arith_uint256.cpp, including wrap."""
+    fields = case["input"]
+    bits = fields["bits"]
+    size = bits >> 24
+    word = bits & 0x007fffff
+    if size <= 3:
+        word >>= 8 * (3 - size)
+        target = word
+    else:
+        target = word << (8 * (size - 3))
+    mask = (1 << 256) - 1
+    target &= mask
+    negative = word != 0 and (bits & 0x00800000) != 0
+    overflow = word != 0 and (size > 34 or (word > 0xff and size > 33) or (word > 0xffff and size > 32))
+    proof = 0 if negative or overflow or target == 0 else ((mask - target) // (target + 1)) + 1
+    to_work, from_work = int(fields["to_work"]), int(fields["from_work"])
+    sign = 1 if to_work > from_work else -1
+    saturated = False
+    equivalent = None
+    if proof:
+        seconds = ((abs(to_work - from_work) * fields["spacing"]) & mask) // proof
+        saturated = seconds.bit_length() > 63
+        equivalent = sign * min(seconds, (1 << 63) - 1)
+    allowed = fields["active"] or (fields["scripts_valid"] and fields["best_header"] and
+                                  fields["timestamp_age"] < 2592000 and equivalent is not None and equivalent < 2592000)
+    return dict(case, expected=dict(target_hex=target.to_bytes(32, "big").hex(), proof=str(proof),
+                                   equivalent_time=None if equivalent is None else str(equivalent),
+                                   sign=sign, saturated=saturated, allowed=allowed))
+
+
+def peer_handler(case):
+    """Source-derived assertions, never invented peer RPC/error response bytes."""
+    fields = case["input"]
+    outcome, reason = "respond", "complete"
+    if fields["filter_type"] != 0 or not fields["advertised"]:
+        outcome, reason = "disconnect", "type-or-service"
+    elif not fields["known_stop"] or not fields["allowed_stop"]:
+        outcome, reason = "disconnect", "stop"
+    elif fields["family"] != "getcfcheckpt" and fields["start_height"] > fields["stop_height"]:
+        outcome, reason = "disconnect", "reversed"
+    elif fields["family"] != "getcfcheckpt" and fields["stop_height"] - fields["start_height"] + 1 > (
+            1000 if fields["family"] == "getcfilters" else 2000):
+        outcome, reason = "disconnect", "range"
+    elif not fields["backend"]:
+        outcome, reason = "no-normal-response", "index"
+    elif not fields["complete"]:
+        outcome, reason = "no-normal-response", "missing"
+    return dict(case, expected=dict(outcome=outcome, reason=reason))
+
+
+def peer_malformed(case, wire_cases):
+    """Trailing extraction uses helpers; short-read refusal is C++ streams.h evidence."""
+    source = next(row for row in wire_cases if row["command"] == case["command"])
+    payload = bytes.fromhex(peer_wire(source)["expected"]["payload_hex"])
+    payload = payload + b"\xff" if case["mutation"] == "append-ff" else payload[:-1]
+    constructor = {"getcfilters": msg_getcfilters, "getcfheaders": msg_getcfheaders,
+                   "getcfcheckpt": msg_getcfcheckpt}[case["command"]]
+    stream = io.BytesIO(payload)
+    if case["mutation"] == "append-ff":
+        constructor().deserialize(stream)
+        if stream.read() != b"\xff":
+            raise ValueError("pinned trailing-byte extraction disagrees")
+    # messages.py deser_uint256 uses a permissive read; do not confuse it with
+    # the C++ DataStream::read end-of-data exception used by the real handler.
+    return dict(case, payload_hex=payload.hex())
+
+
 def main():
     payload = json.load(sys.stdin)
+    if sys.argv[1:] == ["--peer-wire-proof"]:
+        result = dict(wire=[peer_wire(case) for case in payload["wire"]],
+                      proof=[peer_proof(case) for case in payload["proof"]],
+                      handlers=[peer_handler(case) for case in payload["handlers"]],
+                      malformed=[peer_malformed(case, payload["wire"]) for case in payload["malformed"]])
+        json.dump(result, sys.stdout, separators=(",", ":"))
+        return
+    if sys.argv[1:]:
+        raise ValueError("expected no arguments or --peer-wire-proof")
     predecessors = {}
     cases = [compute(case, predecessors) for case in payload["cases"]]
     lengths = [64, 255, 256, 257]

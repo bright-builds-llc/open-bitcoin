@@ -61,6 +61,7 @@ mod compact_cleanup_cases;
 mod compact_misbehavior_cases;
 mod compact_receive_cases;
 mod compact_timeout_cases;
+mod filter_capability;
 mod getdata_tx_receipt_cases;
 mod lifecycle_projection_cases;
 mod lifecycle_projection_target_cases;

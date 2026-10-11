@@ -23,6 +23,136 @@ use crate::{
 
 const TRANSPORT_TIMESTAMP: i64 = 1_784_523_200;
 
+#[test]
+fn phase160_outbound_executor_announcement_admission_failure_aborts_all_effects() {
+    // Arrange
+    let (mut runtime, path) = open_production_announcement_runtime("phase160-announcement-refusal");
+    let peer = 128_398;
+    complete_remote_handshake(&mut runtime, peer);
+    runtime
+        .announcement_outboxes
+        .register_peer(peer)
+        .expect("outbox");
+    let first = build_block(BlockHash::default(), 0);
+    make_durable_and_prepare(&mut runtime, &first);
+    let second = build_block(block_hash(&first.header), 1);
+    make_durable_and_prepare(&mut runtime, &second);
+    let buffers = super::support_transport::fill_pending(&runtime.network);
+    let retained = runtime
+        .network
+        .basic_filter_transport_snapshot()
+        .expect("retained")
+        .generic_pending_bytes;
+    let before = achieved_announcement_count(&announcement_evidence(&runtime));
+    let (mut session, mut socket, _) = super::peer_filter_transport::loopback();
+    // Act
+    let result = runtime.send_all_for_peer(&mut session, peer, &[]);
+    drop(session);
+    let mut bytes = Vec::new();
+    std::io::Read::read_to_end(&mut socket, &mut bytes).expect("no physical output");
+    // Assert
+    assert!(result.is_err());
+    assert!(bytes.is_empty());
+    assert_eq!(
+        achieved_announcement_count(&announcement_evidence(&runtime)),
+        before
+    );
+    assert_eq!(
+        runtime
+            .network
+            .basic_filter_transport_snapshot()
+            .expect("held generic")
+            .generic_pending_bytes,
+        retained
+    );
+    assert_peer_pending_capacity_recovered(&runtime, peer);
+    drop(buffers);
+    assert_eq!(
+        runtime
+            .network
+            .basic_filter_transport_snapshot()
+            .expect("released"),
+        crate::network::filter_transport::FilterTransportSnapshot::default()
+    );
+    drop(runtime);
+    remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase160_outbound_executor_announcement_batch_retains_encoded_suffix_and_cleans_failure() {
+    assert_governed_announcement_terminal(false);
+}
+
+#[test]
+fn phase160_outbound_executor_announcement_cancel_aborts_encoded_suffix() {
+    assert_governed_announcement_terminal(true);
+}
+
+fn assert_governed_announcement_terminal(cancel: bool) {
+    // Arrange
+    use std::io::Write;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let cancelled = Arc::new(AtomicBool::new(false));
+    let writer_cancelled = Arc::clone(&cancelled);
+    let (mut runtime, path) =
+        open_production_announcement_runtime("phase160-announcement-governed");
+    let peer = 128_399;
+    complete_remote_handshake(&mut runtime, peer);
+    runtime
+        .announcement_outboxes
+        .register_peer(peer)
+        .expect("outbox");
+    let first = build_block(BlockHash::default(), 0);
+    make_durable_and_prepare(&mut runtime, &first);
+    let second = build_block(block_hash(&first.header), 1);
+    make_durable_and_prepare(&mut runtime, &second);
+    let (mut session, mut socket, _) = super::peer_filter_transport::loopback();
+    let handle = runtime.network.clone();
+    session.control_writes(move |stream, bytes| {
+        let snapshot = handle
+            .basic_filter_transport_snapshot()
+            .expect("shared ledger");
+        assert_eq!(snapshot.generic_descriptors, 2);
+        assert!(snapshot.generic_pending_bytes > bytes.len() as u64);
+        assert!(
+            handle.peer_manager_snapshot().is_ok(),
+            "authority free during write"
+        );
+        if cancel {
+            writer_cancelled.store(true, Ordering::Release);
+            return stream.write_all(bytes);
+        }
+        stream.write_all(&bytes[..7])?;
+        Err(io::Error::other("actual partial announcement write"))
+    });
+    let before = achieved_announcement_count(&announcement_evidence(&runtime));
+    // Act
+    let result = runtime.send_all_for_peer_with_cancel(&mut session, peer, &[], &mut || {
+        cancelled.load(Ordering::Acquire)
+    });
+    drop(session);
+    let mut prefix = Vec::new();
+    std::io::Read::read_to_end(&mut socket, &mut prefix).expect("physical prefix");
+    // Assert
+    assert_eq!(result.is_ok(), cancel);
+    if !cancel {
+        assert_eq!(prefix.len(), 7);
+    }
+    assert_eq!(
+        achieved_announcement_count(&announcement_evidence(&runtime)),
+        before + u64::from(cancel)
+    );
+    assert_eq!(
+        runtime
+            .network
+            .basic_filter_transport_snapshot()
+            .expect("released"),
+        crate::network::filter_transport::FilterTransportSnapshot::default()
+    );
+    assert_peer_pending_capacity_recovered(&runtime, peer);
+    remove_dir_if_exists(&path);
+}
+
 #[derive(Debug, Default)]
 struct RecordingAnnouncementSession {
     sent: Vec<WireNetworkMessage>,

@@ -33,12 +33,12 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 ### Peer Serving
 
-- [ ] **CFNET-01**: An operator can explicitly enable general BASIC serving or the existing per-peer `blockfilters` permission only with the BASIC index prerequisite; `NODE_COMPACT_FILTERS` follows configured capability independently of catch-up completion, coexists truthfully with `NODE_NETWORK_LIMITED`, and does not implicitly activate listeners or public defaults.
-- [ ] **CFNET-02**: A peer can receive ordered `cfilter` responses for an entirely indexed legal range of at most 1,000 blocks, selected by the requested stop block's ancestry rather than only active heights, including during catch-up.
-- [ ] **CFNET-03**: A peer can receive `cfheaders` with the correct preceding header and ordered filter hashes for an entirely indexed legal range of at most 2,000 blocks, including genesis and permitted stale branches.
-- [ ] **CFNET-04**: A peer can receive `cfcheckpt` headers at every positive 1,000-block interval through its permitted stop block, with correct genesis exclusion and branch ancestry.
-- [ ] **CFNET-05**: Invalid compact-filter requests receive the pinned Knots disconnect/validation behavior, while absent records in an otherwise valid range never produce invented empty filters or a shortened successful response.
-- [ ] **CFNET-06**: Peer serving obeys explicit work, byte and queue bounds on real inbound and outbound runtime paths, reads persisted filters instead of regenerating on request, and earns response evidence only from achieved transport writes, including partial-write failure.
+- [x] **CFNET-01**: An operator can explicitly enable general BASIC serving or the existing per-peer `blockfilters` permission only with the BASIC index prerequisite; `NODE_COMPACT_FILTERS` follows configured capability independently of catch-up completion, coexists truthfully with `NODE_NETWORK_LIMITED`, and does not implicitly activate listeners or public defaults.
+- [x] **CFNET-02**: A peer can receive ordered `cfilter` responses for an entirely indexed legal range of at most 1,000 blocks, selected by the requested stop block's ancestry rather than only active heights, including during catch-up.
+- [x] **CFNET-03**: A peer can receive `cfheaders` with the correct preceding header and ordered filter hashes for an entirely indexed legal range of at most 2,000 blocks, including genesis and permitted stale branches.
+- [x] **CFNET-04**: A peer can receive `cfcheckpt` headers at every positive 1,000-block interval through its permitted stop block, with correct genesis exclusion and branch ancestry.
+- [x] **CFNET-05**: Invalid compact-filter requests receive the pinned Knots disconnect/validation behavior, while absent records in an otherwise valid range never produce invented empty filters or a shortened successful response.
+- [x] **CFNET-06**: Peer serving obeys explicit work, byte and queue bounds on real inbound and outbound runtime paths, reads persisted filters instead of regenerating on request, and earns response evidence only from achieved transport writes, including partial-write failure.
 
 ### RPC and Operator Evidence
 
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03 and CFRP-01/02 are Complete after Phases 154–159's lifecycle-valid verification and full native passes; the remaining ten requirements are Pending.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02 and CFNET-01–06 are Complete after Phases 154–160's lifecycle-valid verification and full native passes; the remaining four requirements are Pending.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
@@ -101,12 +101,12 @@ All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CF
 | CFIX-03 | Phase 158 | Complete |
 | CFRP-01 | Phase 159 | Complete |
 | CFRP-02 | Phase 159 | Complete |
-| CFNET-01 | Phase 160 | Pending |
-| CFNET-02 | Phase 160 | Pending |
-| CFNET-03 | Phase 160 | Pending |
-| CFNET-04 | Phase 160 | Pending |
-| CFNET-05 | Phase 160 | Pending |
-| CFNET-06 | Phase 160 | Pending |
+| CFNET-01 | Phase 160 | Complete |
+| CFNET-02 | Phase 160 | Complete |
+| CFNET-03 | Phase 160 | Complete |
+| CFNET-04 | Phase 160 | Complete |
+| CFNET-05 | Phase 160 | Complete |
+| CFNET-06 | Phase 160 | Complete |
 | CFOP-01 | Phase 161 | Pending |
 | CFPR-02 | Phase 162 | Pending |
 | CFGR-01 | Phase 162 | Pending |
@@ -117,4 +117,4 @@ Coverage: 22/22 requirements mapped; 0 unmapped; 0 duplicate owners.
 ______________________________________________________________________
 
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-10 after Phase 159 verification*
+*Last updated: 2026-10-11 after Phase 160 verification*

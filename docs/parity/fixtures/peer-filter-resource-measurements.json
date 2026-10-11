@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "knots_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "source": "phase160_peer_measurements: genuine accepted spend histories, durable Fjall rows and shared authority instrumentation",
+  "timings": "Observations are printed by tests and recorded in the plan summary; no checked-in latency guarantee.",
+  "limits": {
+    "AncestryLinks": 8192,
+    "HeaderOperations": 8192,
+    "RecordReads": 4096,
+    "MetadataReads": 256,
+    "ValidatedEnvelopeBytes": 67108864,
+    "HashPaddedBytes": 134217728,
+    "LogicalCopyBytes": 67108864,
+    "EncodedSuffixBytes": 8388608,
+    "payload_bytes": 4000000,
+    "peer_requests": 1,
+    "aggregate_requests": 4,
+    "aggregate_suffix_bytes": 33554432,
+    "peer_pending_frame_bytes": 4000024,
+    "aggregate_pending_frame_bytes": 8388608
+  },
+  "measurements": [
+    {"case":"cfilters-1","records":1,"work":{"AncestryLinks":1,"EncodedSuffixBytes":62,"HashPaddedBytes":832,"HeaderOperations":4,"LogicalCopyBytes":748,"MetadataReads":7,"RecordReads":2,"ValidatedEnvelopeBytes":348}},
+    {"case":"cfilters-20","records":20,"work":{"AncestryLinks":20,"EncodedSuffixBytes":1251,"HashPaddedBytes":16640,"HeaderOperations":80,"LogicalCopyBytes":13701,"MetadataReads":7,"RecordReads":40,"ValidatedEnvelopeBytes":6982}},
+    {"case":"cfilters-400","records":400,"work":{"AncestryLinks":400,"EncodedSuffixBytes":24811,"HashPaddedBytes":332800,"HeaderOperations":1600,"LogicalCopyBytes":272101,"MetadataReads":7,"RecordReads":800,"ValidatedEnvelopeBytes":139222}},
+    {"case":"cfilters-1000","records":1000,"work":{"AncestryLinks":1000,"EncodedSuffixBytes":62011,"HashPaddedBytes":832000,"HeaderOperations":4000,"LogicalCopyBytes":680101,"MetadataReads":7,"RecordReads":2000,"ValidatedEnvelopeBytes":348022}},
+    {"case":"cfheaders-2000","records":2000,"work":{"AncestryLinks":2001,"EncodedSuffixBytes":64092,"HashPaddedBytes":1664512,"HeaderOperations":8003,"LogicalCopyBytes":1360401,"MetadataReads":7,"RecordReads":4001,"ValidatedEnvelopeBytes":696196}},
+    {"case":"cfcheckpt-3001","records":3,"work":{"AncestryLinks":2002,"EncodedSuffixBytes":154,"HashPaddedBytes":2496,"HeaderOperations":2011,"LogicalCopyBytes":2108,"MetadataReads":7,"RecordReads":6,"ValidatedEnvelopeBytes":1044}},
+    {"case":"cfilter-genuine-large","records":1,"work":{"AncestryLinks":1,"EncodedSuffixBytes":105339,"HashPaddedBytes":106112,"HeaderOperations":4,"LogicalCopyBytes":211294,"MetadataReads":7,"RecordReads":2,"ValidatedEnvelopeBytes":105621}}
+  ],
+  "controls": {
+    "sparse_checkpoint": {
+      "genuinely_accepted_stop_height": 9301,
+      "indexed_prefix_records": 3,
+      "required_ancestry_links": 8302,
+      "ancestry_limit": 8192,
+      "persisted_record_reads": 0,
+      "result": "local ancestry refusal; no protocol stop-height cap"
+    },
+    "resource_axes": "Every axis admits exactly its observed work and refuses one less before exposing a successful batch.",
+    "codec_capacity_singleton": "33554432 encoded bytes remain valid and stored; cfilter wire admission refuses before hash/copy work.",
+    "metadata_derivation": "Active authorization charges 6; bounded stale authorization charges 138 (128 sealed provenance identities plus 10); publication owner inspection adds 1."
+  }
+}

@@ -3,44 +3,44 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
 status: planning
-stopped_at: Phase 159 verified; Phase 160 ready for context
-last_updated: "2026-10-10T00:12:17.532Z"
-last_activity: "2026-10-10"
+stopped_at: Phase 160 verified; hook-protected finalization prepared; Phase 161 ready for context
+last_updated: "2026-10-11T04:06:33.503Z"
+last_activity: "2026-10-11"
 progress:
   total_phases: 9
-  completed_phases: 6
-  total_plans: 41
-  completed_plans: 41
-  percent: 100
+  completed_phases: 7
+  total_plans: 58
+  completed_plans: 58
+  percent: 78
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-10 — Phase 159 completion).
+See: `.planning/PROJECT.md` (updated 2026-10-11 — Phase 160 completion).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 160 — Explicit Bounded Peer Filter Serving (ready for context; not started)
+**Current focus:** Phase 161 — Shared Operator Index and Retention Evidence
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 160 (Explicit Bounded Peer Filter Serving)
+Phase: 161
 Plan: Not started
 **Status:** Ready to plan
-Last activity: 2026-10-10
-Last Activity Description: Phase 159 complete, transitioned to Phase 160
+Last activity: 2026-10-11
+Last Activity Description: Phase 160 complete, transitioned to Phase 161
 
-Milestone progress: [███████░░░] 67% (6/9 active v2.5 phases complete; 41/41 created plans have summaries; ten requirements pending).
+Milestone progress: [████████░░] 78% (7/9 active v2.5 phases complete; 58/58 created plans have summaries; four requirements pending).
 
-Next action: Phase 159 verified changes are prepared for the authorized hook/commit/push; begin Phase 160 context in a subsequent run.
+Next action: After the authorized Phase 160 hook-protected commit/push, gather Phase 161 context. Phase 162 integrated retained-client proof remains pending.
 
 ## Performance Metrics
 
 **Archived milestone (v2.3):**
 
-- Total plans completed: 52
+- Total plans completed: 69
 - Counted summary tasks: 62
 
 **Previous milestone (v2.2 archive):**
@@ -82,6 +82,7 @@ Next action: Phase 159 verified changes are prepared for the authorized hook/com
 | 157 | 10 | - | - |
 | 158 | 7 | - | - |
 | 159 | 8 | - | - |
+| 160 | 17 | - | - |
 
 ### Plan Execution History
 
@@ -611,6 +612,6 @@ Next action: Phase 159 verified changes are prepared for the authorized hook/com
 
 ## Session Continuity
 
-Last session: 2026-10-09T18:53:38.011Z
-Stopped at: Phase 159 verified; Phase 160 ready for context
-Resume file: None
+Last session: 2026-10-11T03:32:13.461Z
+Stopped at: Phase 160 verified; hook-protected finalization prepared; Phase 161 ready for context
+Resume file: None; Phase 161 context is next

@@ -8,6 +8,165 @@ use crate::config::blockfilter::{
     BasicFilterIndexSetting as Setting, FilterOptionValue as Value, resolve_filter_index,
 };
 
+#[test]
+fn phase160_config_explicit_permissions_require_basic_before_effects() {
+    for tokens in ["in,blockfilters", "in,all,blockfilters", "blockfilters,in"] {
+        loader_refusal(
+            &[&format!(
+                "-openbitcoininboundpermissionclass=trusted@127.0.0.1={tokens}"
+            )],
+            "",
+            "Cannot grant blockfilters permission without -blockfilterindex",
+        );
+        loader_refusal(
+            &[
+                "-blockfilterindex=0",
+                &format!("-openbitcoininboundpermissionclass=trusted@127.0.0.1={tokens}"),
+            ],
+            "",
+            "Cannot grant blockfilters permission",
+        );
+    }
+}
+
+#[test]
+fn phase160_config_general_requires_basic_before_effects() {
+    loader_refusal(
+        &["-peerblockfilters"],
+        "",
+        "Cannot set -peerblockfilters without -blockfilterindex",
+    );
+    loader_refusal(
+        &["-peerblockfilters=1", "-blockfilterindex=0"],
+        "",
+        "Cannot set -peerblockfilters",
+    );
+}
+
+fn peer_case(cli: &[&str], conf: &str, expected: bool) {
+    // Arrange
+    let directory = TestDirectory::new("phase160-peer-config");
+    fs::write(directory.child("bitcoin.conf"), conf).expect("config fixture");
+    let args = cli.iter().map(|value| os(value)).collect::<Vec<_>>();
+    // Act
+    let config = load_runtime_config_for_args(&args, &directory.path).expect("valid activation");
+    // Assert
+    assert_eq!(config.peer_block_filters, expected);
+    assert_activation_unchanged(&config);
+}
+
+#[test]
+fn phase160_config_boolean_forms_preserve_network_defaults() {
+    for arg in [
+        "-peerblockfilters",
+        "-peerblockfilters=1",
+        "-peerblockfilters=",
+        "-nopeerblockfilters=0",
+    ] {
+        peer_case(&["-blockfilterindex=1", arg], "", true);
+    }
+    for arg in [
+        "-peerblockfilters=0",
+        "-nopeerblockfilters",
+        "-nopeerblockfilters=1",
+    ] {
+        peer_case(&[arg], "", false);
+    }
+    peer_case(&[], "", false);
+    peer_case(&["-blockfilterindex=1"], "", false);
+    peer_case(&["-peerblockfilters", "-nopeerblockfilters"], "", false);
+    peer_case(
+        &[
+            "-nopeerblockfilters",
+            "-peerblockfilters",
+            "-blockfilterindex=1",
+        ],
+        "",
+        true,
+    );
+}
+
+#[test]
+fn phase160_config_conf_precedence_and_sections() {
+    peer_case(&[], "peerblockfilters=1\nnopeerblockfilters=1\n", false);
+    peer_case(
+        &["-blockfilterindex=1"],
+        "peerblockfilters=0\nnopeerblockfilters=1\npeerblockfilters=1\n",
+        true,
+    );
+    peer_case(&["-blockfilterindex=1"], "peerblockfilters=1\n", true);
+    peer_case(&[], "nopeerblockfilters=1\n", false);
+    peer_case(&["-blockfilterindex=1"], "nopeerblockfilters=0\n", true);
+    peer_case(&["-peerblockfilters=0"], "peerblockfilters=1\n", false);
+    peer_case(
+        &["-peerblockfilters", "-blockfilterindex=1"],
+        "peerblockfilters=0\n",
+        true,
+    );
+    peer_case(
+        &["-regtest"],
+        "peerblockfilters=1\n[regtest]\npeerblockfilters=0\n",
+        false,
+    );
+    peer_case(
+        &["-regtest", "-blockfilterindex=1"],
+        "peerblockfilters=0\nregtest.peerblockfilters=1\nsignet.peerblockfilters=unknown\n",
+        true,
+    );
+    peer_case(&[], "peerblockfilters=0\npeerblockfilters=1\n", false);
+    loader_refusal(&[], "peerblockfilters=1\n", "Cannot set -peerblockfilters");
+    loader_refusal(&["-peerblockfilters=invalid"], "", "invalid boolean");
+    loader_refusal(&[], "peerblockfilters=invalid\n", "invalid boolean");
+}
+
+#[test]
+fn phase160_config_permission_matrix_retains_requested_provenance() {
+    for tokens in [
+        "in,all",
+        "in,noban",
+        "in,download",
+        "in,forceinbound",
+        "in,bloomfilter",
+        "in,mempool,noban,addr,relay",
+    ] {
+        // Arrange
+        let directory = TestDirectory::new("phase160-permission-defaults");
+        let arg = os(&format!(
+            "-openbitcoininboundpermissionclass=trusted@127.0.0.1={tokens}"
+        ));
+        // Act
+        let config = load_runtime_config_for_args(&[arg], &directory.path)
+            .expect("no explicit prerequisite");
+        // Assert
+        assert!(!config.block_filter_index.is_enabled());
+        assert!(!config.peer_block_filters);
+        assert!(!config.inbound.enabled);
+        assert_eq!(config.relay, RuntimeConfig::default().relay);
+    }
+    for tokens in ["in,blockfilters", "in,all,blockfilters"] {
+        // Arrange
+        let directory = TestDirectory::new("phase160-explicit-basic");
+        let args = [
+            os("-blockfilterindex=basic"),
+            os(&format!(
+                "-openbitcoininboundpermissionclass=trusted@127.0.0.1={tokens}"
+            )),
+        ];
+        // Act
+        let config =
+            load_runtime_config_for_args(&args, &directory.path).expect("BASIC prerequisite");
+        // Assert
+        assert!(config.block_filter_index.is_enabled());
+        assert!(!config.peer_block_filters);
+        assert!(!config.inbound.enabled);
+    }
+    loader_refusal(
+        &["-openbitcoininboundpermissionclass=trusted@127.0.0.1=out,blockfilters"],
+        "",
+        "out",
+    );
+}
+
 fn values(strings: &[&str]) -> Vec<Value> {
     strings
         .iter()

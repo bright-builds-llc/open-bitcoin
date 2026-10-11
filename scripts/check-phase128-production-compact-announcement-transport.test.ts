@@ -21,6 +21,11 @@ const SAVE_ERROR = "if let Err(error) = self.store.save_block(block, self.config
 const SAVE_RETURN = "return Err(error.into());";
 const DURABLE_TRIGGER_FAILURE =
   "P128 durable trigger: accepted best-tip blocks must queue only after durable save";
+const EMISSION_TERMINAL = "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs";
+const CONNECTION_RUNTIME = "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs";
+const FILTER_SERVING = "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs";
+const OUTBOUND_FAILURE = "P128 outbound write boundary: receipt completion must follow the session send";
+const INBOUND_FAILURE = "P128 inbound write boundary: receipt completion must occur only after Written";
 type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
 type Mutator = (files: Map<TargetFile, string>) => void;
 const tempRoots: string[] = [];
@@ -238,7 +243,7 @@ test.each([
     "inbound post-write receipt",
     "P128 inbound write boundary: receipt completion must occur only after Written",
     replace(
-      "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+      "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
       "capability.acknowledge_write()",
       "false",
     ),
@@ -318,6 +323,51 @@ test.each([
     expect(failures).toContain(expectedFailure);
   },
 );
+
+test.each([
+  ["removed exact send", EMISSION_TERMINAL, "session.send_encoded(buffer.bytes(), network_magic)", "Ok::<(), SyncRuntimeError>(())", OUTBOUND_FAILURE],
+  ["ignored failing send", EMISSION_TERMINAL, "if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {", "let _ = session.send_encoded(buffer.bytes(), network_magic); if let Err(write_error) = Ok::<(), SyncRuntimeError>(()) {", OUTBOUND_FAILURE],
+  ["ignored failed-send return", EMISSION_TERMINAL, "return combined_error(\n                write_error,", "let _ = combined_error(\n                write_error,", OUTBOUND_FAILURE],
+  ["receipt before send", EMISSION_TERMINAL, "if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {", "let receipt = capability.acknowledge_write(); if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {", OUTBOUND_FAILURE],
+  ["ungoverned encoding", EMISSION_TERMINAL, ".encode_pending_network_message(peer_id, emission.message())", ".encode_untracked_network_message(peer_id, emission.message())", OUTBOUND_FAILURE],
+  ["missing outbound suffix retirement", EMISSION_TERMINAL, "abort_current_and_suffix(network, capability, emissions)", "Ok(())", OUTBOUND_FAILURE],
+  ["removed delegation", CONNECTION_RUNTIME, "execute_inbound_emissions(emissions, peer_id, &mut executor).await", "execute_disconnected_emissions(emissions, peer_id, &mut executor).await", INBOUND_FAILURE],
+  ["removed module connection", CONNECTION_RUNTIME, "pub(super) mod filter_serving;", "pub(super) mod disconnected_serving;", INBOUND_FAILURE],
+  ["removed reexport", CONNECTION_RUNTIME, "    execute_inbound_emissions,", "    execute_disconnected_emissions,", INBOUND_FAILURE],
+  ["disconnected socket executor", CONNECTION_RUNTIME, "InboundEmissionExecutor for SocketInboundEmissionExecutor", "InboundEmissionExecutor for DisconnectedEmissionExecutor", INBOUND_FAILURE],
+  ["missing governed socket encoding", CONNECTION_RUNTIME, ".encode_pending_network_message(self.peer_id, message)", ".encode_untracked_network_message(self.peer_id, message)", INBOUND_FAILURE],
+  ["missing physical socket write", CONNECTION_RUNTIME, "let write_result = write_all_for_state(", "let write_result = pretend_write_all_for_state(", INBOUND_FAILURE],
+  ["forged Written socket result", CONNECTION_RUNTIME, "Ok(WriteWireMessageOutcome::Written) => InboundEmissionWriteResult::Written,", "Ok(_) => InboundEmissionWriteResult::Written,", INBOUND_FAILURE],
+  ["failed socket frame credited", CONNECTION_RUNTIME, "_ => InboundEmissionWriteResult::Failed,", "_ => InboundEmissionWriteResult::Written,", INBOUND_FAILURE],
+  ["receipt before delegated write", FILTER_SERVING, "let result = pending.executor.write(bytes.bytes()).await;", "let _ = pending.executor.complete(pending.maybe_current.take().expect(\"current\").acknowledge_write()); let result = pending.executor.write(bytes.bytes()).await;", INBOUND_FAILURE],
+  ["unconditional Written arm", FILTER_SERVING, "match result {", "match InboundEmissionWriteResult::Written {", INBOUND_FAILURE],
+  ["failed delegated frame credited", FILTER_SERVING, "InboundEmissionWriteResult::Failed => {", "InboundEmissionWriteResult::Failed => { pending.executor.complete(pending.maybe_current.take().expect(\"current\").acknowledge_write());", INBOUND_FAILURE],
+  ["missing terminal failure retirement", FILTER_SERVING, "return pending.fail(InboundEmissionExecutionOutcome::WriteFailed);", "return InboundEmissionExecutionOutcome::WriteFailed;", INBOUND_FAILURE],
+  ["missing current retirement", FILTER_SERVING, "self.executor.abort(current)", "Ok::<_, ()>(EffectAbort::Aborted)", INBOUND_FAILURE],
+  ["missing suffix retirement", FILTER_SERVING, "self.executor.abort(emission.into_parts().2)", "Ok::<_, ()>(EffectAbort::Aborted)", INBOUND_FAILURE],
+  ["missing cancellation retirement", FILTER_SERVING, "if !self.retire() {", "if false {", INBOUND_FAILURE],
+  ["test-only delegated executor", FILTER_SERVING, "pub(in crate::inbound_listener) async fn execute_inbound_emissions", "#[cfg(test)]\npub(in crate::inbound_listener) async fn execute_inbound_emissions", INBOUND_FAILURE],
+  ["disconnected helper decoy", FILTER_SERVING, "async fn execute_inbound_emissions", "async fn disconnected_execute_inbound_emissions", INBOUND_FAILURE],
+  ["test-only socket owner", CONNECTION_RUNTIME, "impl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor", "#[cfg(test)]\nimpl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor", INBOUND_FAILURE],
+  ["test-only retirement owner", FILTER_SERVING, "impl<E: InboundEmissionExecutor> PendingEmissions", "#[cfg(test)]\nimpl<E: InboundEmissionExecutor> PendingEmissions", INBOUND_FAILURE],
+  ["test-only cancellation owner", FILTER_SERVING, "impl<E: InboundEmissionExecutor> Drop for PendingEmissions", "#[cfg(test)]\nimpl<E: InboundEmissionExecutor> Drop for PendingEmissions", INBOUND_FAILURE],
+  ["test-only module", CONNECTION_RUNTIME, "#[path = \"filter_serving.rs\"]", "#[cfg(test)]\n#[path = \"filter_serving.rs\"]", INBOUND_FAILURE],
+  ["test-only reexport", CONNECTION_RUNTIME, "pub(super) use filter_serving::{", "#[cfg(test)]\npub(super) use filter_serving::{", INBOUND_FAILURE],
+  ["test-only reexport with intervening attribute", CONNECTION_RUNTIME, "pub(super) use filter_serving::{", "#[cfg(test)]\n#[allow(unused_imports)]\npub(super) use filter_serving::{", INBOUND_FAILURE],
+  ["comment module binding decoy", CONNECTION_RUNTIME, "#[path = \"filter_serving.rs\"]", "/* #[path = \"filter_serving.rs\"] pub(super) mod filter_serving; */\n#[path = \"disconnected.rs\"]", INBOUND_FAILURE],
+  ["comment-only exact send", EMISSION_TERMINAL, "session.send_encoded(buffer.bytes(), network_magic)", "/* session.send_encoded(buffer.bytes(), network_magic) */ Ok::<(), SyncRuntimeError>(())", OUTBOUND_FAILURE],
+  ["literal-only exact send", EMISSION_TERMINAL, "session.send_encoded(buffer.bytes(), network_magic)", "{ let _ = r#\"session.send_encoded(buffer.bytes(), network_magic)\"#; Ok::<(), SyncRuntimeError>(()) }", OUTBOUND_FAILURE],
+  ["comment-only delegation", CONNECTION_RUNTIME, "execute_inbound_emissions(emissions, peer_id, &mut executor).await", "/* execute_inbound_emissions(emissions, peer_id, &mut executor).await */ InboundEmissionExecutionOutcome::Complete", INBOUND_FAILURE],
+  ["literal-only delegation", CONNECTION_RUNTIME, "execute_inbound_emissions(emissions, peer_id, &mut executor).await", "{ let _ = r#\"execute_inbound_emissions(emissions, peer_id, &mut executor).await\"#; InboundEmissionExecutionOutcome::Complete }", INBOUND_FAILURE],
+] as const)("rejects live transport mutation: %s", (_name, file, needle, replacement, diagnostic) => {
+  // Arrange
+  expect(checkPhase128ProductionCompactAnnouncementTransport(createFixture())).toEqual([]);
+  const root = createFixture(replace(file, needle, replacement));
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toEqual([diagnostic]);
+});
 
 function createFixture(maybeMutate?: Mutator): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase128-"));

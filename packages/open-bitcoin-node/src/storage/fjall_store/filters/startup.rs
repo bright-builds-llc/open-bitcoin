@@ -41,11 +41,12 @@ impl FjallNodeStore {
         maybe_recovered_best_block: Option<BlockHash>,
         mode: BasicFilterStartupMode,
     ) -> Result<(), StorageError> {
-        self.filter_publication_guard()?.read_integrity = false;
+        self.filter_publication_guard()?
+            .invalidate_read_integrity()?;
         self.apply_basic_filter_startup(maybe_recovered_best_block, mode)
             .and_then(|()| {
                 let mut control = self.filter_publication_guard()?;
-                control.read_integrity = false;
+                control.invalidate_read_integrity()?;
                 self.validate_basic_filter_records()?;
                 control.read_integrity = true;
                 Ok(())

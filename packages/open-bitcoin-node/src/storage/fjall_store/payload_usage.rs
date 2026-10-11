@@ -104,7 +104,7 @@ impl FjallNodeStore {
         }
         if namespace == StorageNamespace::BlockIndex && key.starts_with("basic_filter:") {
             let mut control = self.filter_publication_guard()?;
-            control.read_integrity = false;
+            control.invalidate_read_integrity()?;
             control.invalidate_append()?;
             return mutate();
         }
@@ -128,7 +128,7 @@ impl FjallNodeStore {
         }
         if namespace == StorageNamespace::BlockIndex && key.starts_with("basic_filter:") {
             let mut control = self.filter_publication_guard()?;
-            control.read_integrity = false;
+            control.invalidate_read_integrity()?;
             control.invalidate_append()?;
             return mutate();
         }

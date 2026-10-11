@@ -34,6 +34,7 @@ use super::{
 use crate::network::{AnnouncementPreparationOutcome, PeerEmission, PeerOutboxSnapshot};
 
 mod emission_terminal;
+pub(super) mod filter_serving;
 
 struct AnnouncementOutbox {
     emissions: VecDeque<PeerEmission>,
@@ -276,7 +277,7 @@ impl DurableSyncRuntime {
             let mut outbound = self.network.connect_outbound_peer(peer_id, timestamp)?;
             network_connected = true;
             outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
-            self.send_all_for_peer(&mut session, peer_id, &outbound)?;
+            self.send_all_for_peer_with_cancel(&mut session, peer_id, &outbound, controls.1)?;
 
             let mut messages_received = 0_usize;
             while messages_received < self.config.max_messages_per_peer {
@@ -342,7 +343,12 @@ impl DurableSyncRuntime {
                             peer_id,
                             &fallback_block_hashes,
                         )?;
-                        self.send_all_for_peer(&mut session, peer_id, &outbound)?;
+                        self.send_all_for_peer_with_cancel(
+                            &mut session,
+                            peer_id,
+                            &outbound,
+                            controls.1,
+                        )?;
                         if !self.peer_has_pending_download_work(peer_id) {
                             self.complete_peer_session_progress(&mut progress, peer_id);
                             return Ok(());
@@ -392,7 +398,12 @@ impl DurableSyncRuntime {
                         block_response_is_best_chain,
                     )?;
                     let outbound = block_reconcile::request_missing_blocks(self, peer_id)?;
-                    self.send_all_for_peer(&mut session, peer_id, &outbound)?;
+                    self.send_all_for_peer_with_cancel(
+                        &mut session,
+                        peer_id,
+                        &outbound,
+                        controls.1,
+                    )?;
                     continue;
                 }
 
@@ -413,6 +424,14 @@ impl DurableSyncRuntime {
                     }
                 };
                 let mut outbound = sync_result.outbound;
+                filter_serving::send_filter_plans(
+                    &self.network,
+                    &mut session,
+                    peer_id,
+                    self.config.network.magic(),
+                    sync_result.inbound_response_plan,
+                    controls.1,
+                )?;
                 if let Some(header_count) = maybe_header_count {
                     progress.record_validated_headers(header_count);
                     let peer_manager = self.network.peer_manager_snapshot()?;
@@ -447,7 +466,7 @@ impl DurableSyncRuntime {
                     self.persist_progress_and_dispatch_tip()?;
                 }
                 outbound.extend(block_reconcile::request_missing_blocks(self, peer_id)?);
-                self.send_all_for_peer(&mut session, peer_id, &outbound)?;
+                self.send_all_for_peer_with_cancel(&mut session, peer_id, &outbound, controls.1)?;
             }
             progress.state = PeerSyncState::Connected;
             progress.maybe_capabilities = self.peer_capabilities(peer_id);
@@ -551,35 +570,6 @@ impl DurableSyncRuntime {
                 }
             }
         }
-    }
-
-    pub(super) fn send_all<S: SyncPeerSession>(
-        &mut self,
-        session: &mut S,
-        messages: &[WireNetworkMessage],
-    ) -> Result<(), SyncRuntimeError> {
-        for message in messages {
-            session.send(message, self.config.network.magic())?;
-            self.network.acknowledge_wire_message_written(message)?;
-        }
-        Ok(())
-    }
-
-    pub(super) fn send_all_for_peer<S: SyncPeerSession>(
-        &mut self,
-        session: &mut S,
-        peer_id: PeerId,
-        messages: &[WireNetworkMessage],
-    ) -> Result<(), SyncRuntimeError> {
-        self.send_all(session, messages)?;
-        let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;
-        emission_terminal::send_peer_emissions(
-            &self.network,
-            session,
-            peer_id,
-            self.config.network.magic(),
-            emissions,
-        )
     }
 
     pub(super) fn peer_handshake_complete(&self, peer_id: open_bitcoin_network::PeerId) -> bool {

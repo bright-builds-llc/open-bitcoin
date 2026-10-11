@@ -184,6 +184,32 @@ bun test ./scripts/check-phase159-filter-rpcs.test.ts
 bun run scripts/check-phase159-filter-rpcs.ts
 ```
 
+## Explicit bounded BASIC peers (Phase 160)
+
+Phase 160 implements default-off `peerblockfilters`, per-peer `blockfilters`
+permission and all three BIP157 request families on the shared durable authority.
+Own versions advertise configured capability before catch-up; requests use
+complete retained rows immediately and never trigger history acquisition.
+The pinned `all`-only permission corner advertises CF even with BASIC disabled,
+then returns no filter response when the backend is absent. Explicit
+`all,blockfilters` requires BASIC.
+
+The [peer contract, exact resource policies and timed Cargo/Bazel UAT](./docs/parity/catalog/basic-compact-filters.md#explicit-bounded-basic-peers-phase-160)
+separates protocol limits from shared generic/scratch/CF accounting. Scoped
+implementation evidence is recorded by Plans 01–11 and 13–17. The
+[final verification](./.planning/phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md)
+records the passed native contract, clean independent review and lifecycle gates.
+Phase 161 operator
+projection, Phase 162 integrated retained-client proof and v2.5 completion remain
+pending. Public/default serving, V0/BIP37, archive, production readiness and
+production-funds claims remain deferred.
+
+```bash
+bun test ./scripts/check-phase160-peer-filter-serving.test.ts
+bun run scripts/check-phase160-peer-filter-serving.ts
+bun run scripts/generate-peer-filter-fixtures.ts --check
+```
+
 ## Parity At A Glance
 
 The current status source is the parity ledger:

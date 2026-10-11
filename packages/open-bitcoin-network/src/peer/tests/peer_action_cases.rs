@@ -12,16 +12,7 @@ use super::*;
 #[test]
 fn deferred_relay_commands_remain_absent_from_peer_message_surface() {
     // Arrange
-    let deferred_commands = [
-        "mempool",
-        "getcfilters",
-        "cfilter",
-        "getcfheaders",
-        "getcfcheckpt",
-        "filterload",
-        "filteradd",
-        "filterclear",
-    ];
+    let deferred_commands = ["mempool", "filterload", "filteradd", "filterclear"];
 
     for command in deferred_commands {
         let command = MessageCommand::new(command).expect("test command should be valid");

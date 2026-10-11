@@ -221,6 +221,21 @@ pub(super) fn queue_pressure_event(
     ))
 }
 
+/// Only request-bound CF frames may use the explicit 4M payload envelope.
+/// Generic responses retain the existing 1MiB and 128-message local gates.
+pub(super) fn filter_queue_pressure_event(
+    policy: &ResourceGovernancePolicy,
+    state: &RuntimeQueuePressureState,
+    active: Vec<PermissionEffectLabel>,
+    inactive: Vec<InactivePermissionEffectLabel>,
+) -> Option<InboundResourceEvent> {
+    let filter_policy = ResourceGovernancePolicy {
+        max_peer_write_queue_bytes: 4_000_024,
+        ..*policy
+    };
+    queue_pressure_event(&filter_policy, state, active, inactive)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum ReadWireMessageOutcome {
     Message(ParsedNetworkMessage),
@@ -397,8 +412,19 @@ async fn write_all_with_timeout_duration(
     timeout_duration: Duration,
 ) -> io::Result<WriteWireMessageOutcome> {
     let mut offset = 0;
+    let deadline = tokio::time::Instant::now() + timeout_duration;
     while offset < buffer.len() {
-        match tokio::time::timeout(timeout_duration, stream.writable()).await {
+        if tokio::time::Instant::now() >= deadline {
+            return Ok(WriteWireMessageOutcome::Rejected(
+                timeout_event_after_elapsed(
+                    resource_policy,
+                    connected_at_unix_seconds,
+                    last_activity_unix_seconds,
+                    handshake_state,
+                ),
+            ));
+        }
+        match tokio::time::timeout_at(deadline, stream.writable()).await {
             Ok(result) => result?,
             Err(_elapsed) => {
                 return Ok(WriteWireMessageOutcome::Rejected(

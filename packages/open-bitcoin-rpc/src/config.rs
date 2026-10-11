@@ -227,6 +227,7 @@ pub struct RuntimeConfig {
     pub inbound_permission_validation_failures: u32,
     pub prune_mode: PruneMode,
     pub block_filter_index: BasicFilterIndexSetting,
+    pub peer_block_filters: bool,
 }
 
 impl Default for RuntimeConfig {
@@ -245,7 +246,38 @@ impl Default for RuntimeConfig {
             inbound_permission_validation_failures: 0,
             prune_mode: PruneMode::Disabled,
             block_filter_index: BasicFilterIndexSetting::Unspecified,
+            peer_block_filters: false,
         }
+    }
+}
+
+impl RuntimeConfig {
+    /// Refuses invalid BASIC serving activation before storage or socket effects.
+    pub fn validate_peer_block_filters(&self) -> Result<(), ConfigError> {
+        use open_bitcoin_network::{BasicPeerServingCapability, BasicPeerServingPrerequisite};
+        let basic_enabled = self.block_filter_index.is_enabled();
+        let general = BasicPeerServingCapability {
+            general_configured: self.peer_block_filters,
+            ..Default::default()
+        };
+        if general.validate_basic_index(basic_enabled)
+            == BasicPeerServingPrerequisite::BasicIndexRequired
+        {
+            return Err(ConfigError::new(
+                "Cannot set -peerblockfilters without -blockfilterindex.",
+            ));
+        }
+        for class in self.inbound.permission_classes.classes() {
+            if BasicPeerServingCapability::from_permissions(false, class.permissions())
+                .validate_basic_index(basic_enabled)
+                == BasicPeerServingPrerequisite::BasicIndexRequired
+            {
+                return Err(ConfigError::new(
+                    "Cannot grant blockfilters permission without -blockfilterindex.",
+                ));
+            }
+        }
+        Ok(())
     }
 }
 

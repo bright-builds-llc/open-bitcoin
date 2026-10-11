@@ -14,6 +14,9 @@ use fixtures::History;
 #[path = "filter_index/rpc.rs"]
 mod rpc;
 
+#[path = "filter_index/peer_serving.rs"]
+mod peer_serving;
+
 #[test]
 fn phase157_daemon_explicit_zero_preserves_complete_saved_checkpoint_on_reopen() {
     // Arrange

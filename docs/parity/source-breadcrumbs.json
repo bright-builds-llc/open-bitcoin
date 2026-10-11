@@ -12,6 +12,250 @@
   },
   "groups": [
     {
+      "label": "phase160-independent-peer-wire-goldens",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport/wire_goldens.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/protocol.cpp",
+        "packages/bitcoin-knots/test/functional/test_framework/messages.py",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase160-independent-concrete-peer-evidence",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/peer_evidence.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/peer_serving/evidence.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-socket-adapters",
+      "files": [
+        "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/failures.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/mixed.rs",
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/mixed/race.rs",
+        "packages/open-bitcoin-node/src/sync/session/filter_serving.rs",
+        "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase160-shared-pending-frame-governance",
+      "files": [
+        "packages/open-bitcoin-node/src/network/filter_transport/pending.rs",
+        "packages/open-bitcoin-node/src/network/filter_transport/pending/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net.h",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase160-wire-encoding-size-preflight",
+      "files": [
+        "packages/open-bitcoin-node/src/network/filter_transport/encoded_size.rs",
+        "packages/open-bitcoin-node/src/network/filter_transport/encoded_size/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.cpp",
+        "packages/bitcoin-knots/src/serialize.h",
+        "packages/bitcoin-knots/src/net.cpp"
+      ]
+    },
+    {
+      "label": "phase160-managed-filter-preparation",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/serving.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/serving/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/serving/tests/families.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "phase160-filter-read-integrity-epoch",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/publication/epoch.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/blockfilter.cpp"
+      ]
+    },
+    {
+      "label": "phase160-filter-transport-receipts",
+      "files": [
+        "packages/open-bitcoin-node/src/network/filter_transport.rs",
+        "packages/open-bitcoin-node/src/network/filter_transport/registry.rs",
+        "packages/open-bitcoin-node/src/network/filter_transport/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/transport.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/transport/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-resource-budget",
+      "files": [
+        "packages/open-bitcoin-network/src/filter_serving/resource.rs",
+        "packages/open-bitcoin-network/src/filter_serving/resource/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net.h",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase160-budgeted-persisted-filter-read",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/query/peer.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/query/peer/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/blockfilter.cpp"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-measurement-fixtures",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/peer_fixtures.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/peer_measurements.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase160-header-proof-facts",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store/proof.rs",
+        "packages/open-bitcoin-network/src/header_store/proof/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase160-filter-request-policy",
+      "files": [
+        "packages/open-bitcoin-network/src/filter_serving/policy.rs",
+        "packages/open-bitcoin-network/src/filter_serving/policy/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/chain.cpp"
+      ]
+    },
+    {
+      "label": "phase160-filter-branch-provenance",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/branch.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/branch/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase160-header-store-existing-tests",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
+        "packages/bitcoin-knots/src/node/txdownloadman.h",
+        "packages/bitcoin-knots/test/functional/p2p_handshake.py",
+        "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-startup",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/peer_serving.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-capability",
+      "files": [
+        "packages/open-bitcoin-network/src/filter_serving.rs",
+        "packages/open-bitcoin-network/src/filter_serving/capability.rs",
+        "packages/open-bitcoin-network/src/filter_serving/capability/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_permissions.h",
+        "packages/bitcoin-knots/src/net_permissions.cpp",
+        "packages/bitcoin-knots/src/init.cpp"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-service-composition",
+      "files": [
+        "packages/open-bitcoin-node/src/network/tests/filter_capability.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase160-peer-filter-wire",
+      "files": [
+        "packages/open-bitcoin-network/src/message/filter.rs",
+        "packages/open-bitcoin-network/src/message/filter/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/protocol.h",
+        "packages/bitcoin-knots/src/protocol.cpp",
+        "packages/bitcoin-knots/test/functional/test_framework/messages.py"
+      ]
+    },
+    {
+      "label": "phase160-exact-chain-proof",
+      "files": [
+        "packages/open-bitcoin-consensus/src/chain_proof.rs",
+        "packages/open-bitcoin-consensus/src/chain_proof/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.cpp",
+        "packages/bitcoin-knots/src/arith_uint256.h"
+      ]
+    },
+    {
       "label": "phase159-authenticated-filter-rpcs-1",
       "files": [
         "packages/open-bitcoin-node/src/chainstate/validation_history.rs",

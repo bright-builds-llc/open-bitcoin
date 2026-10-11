@@ -252,6 +252,195 @@ pub(super) async fn read_rejected_header(header: [u8; INBOUND_MESSAGE_HEADER_LEN
     }
 }
 
+pub(super) struct FilterListenerFixture {
+    pub path: PathBuf,
+    pub blocks: Vec<Block>,
+    pub runtime: DurableSyncRuntime,
+    pub context: Arc<tokio::sync::Mutex<ManagedRpcContext<FjallChainstateStore, FjallCoinsView>>>,
+    pub config: RuntimeConfig,
+}
+
+impl FilterListenerFixture {
+    pub fn new(general: bool, tokens: &[&str]) -> Self {
+        Self::new_with_peer(general, tokens, None)
+    }
+
+    pub fn new_with_peer(
+        general: bool,
+        tokens: &[&str],
+        maybe_endpoint: Option<std::net::SocketAddr>,
+    ) -> Self {
+        use open_bitcoin_node::core::{
+            chainstate::{FlushMode, FlushPolicyTime},
+            consensus::{ConsensusParams, ScriptVerifyFlags},
+        };
+        let id = NEXT_DURABLE_BLOCK_SERVING_DIR.fetch_add(1, Ordering::Relaxed);
+        let path = std::env::temp_dir().join(format!(
+            "open-bitcoin-inbound-filter-{}-{id}",
+            process::id()
+        ));
+        let store = FjallNodeStore::open(&path).expect("new real filter store");
+        let sync = SyncRuntimeConfig {
+            network: SyncNetwork::Regtest,
+            dns_seeds: Vec::new(),
+            manual_peers: maybe_endpoint
+                .into_iter()
+                .map(|endpoint| {
+                    open_bitcoin_node::SyncPeerAddress::manual("127.0.0.1", endpoint.port())
+                })
+                .collect(),
+            max_messages_per_peer: 3,
+            max_peer_retries: 0,
+            ..Default::default()
+        };
+        let seed =
+            DurableSyncRuntime::open(store.clone(), sync.clone()).expect("new real authority");
+        let mut blocks: Vec<Block> = Vec::new();
+        for height in 0..40_u32 {
+            let mut block = phase123_mined_block();
+            block.header.previous_block_hash =
+                blocks.last().map_or(BlockHash::default(), |previous| {
+                    block_hash(&previous.header)
+                });
+            block.header.time = 1_000 + height * 100;
+            let height_script = if height == 0 {
+                vec![0, 0x51]
+            } else {
+                vec![1, height as u8, 0x51]
+            };
+            block.transactions[0].inputs[0].script_sig =
+                ScriptBuf::from_bytes(height_script).expect("height");
+            block.transactions[0].outputs[0].script_pubkey =
+                ScriptBuf::from_bytes(vec![1, height as u8, 0x75, 0x51])
+                    .expect("distinct true script");
+            block.header.merkle_root = block_merkle_root(&block.transactions).expect("merkle").0;
+            block.header.nonce = (0..=u32::MAX)
+                .find(|nonce| {
+                    block.header.nonce = *nonce;
+                    check_block_header(&block.header).is_ok()
+                })
+                .expect("easy PoW");
+            seed.network_handle()
+                .connect_local_block(&block, ScriptVerifyFlags::P2SH, ConsensusParams::default())
+                .expect("actual validated acceptance");
+            store
+                .save_block(&block, PersistMode::Sync)
+                .expect("retained input body");
+            blocks.push(block);
+        }
+        seed.network_handle()
+            .flush_coins(FlushMode::Always, FlushPolicyTime::new(1), u64::MAX)
+            .expect("actual durable fence");
+        drop(seed);
+        let runtime = DurableSyncRuntime::open_with_configured_runtime_activation(
+            store.clone(),
+            sync,
+            Default::default(),
+            Default::default(),
+            true,
+            open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled,
+        )
+        .expect("configured real BASIC owner");
+        runtime
+            .network_handle()
+            .configure_basic_peer_serving(general)
+            .expect("configured general grant");
+        let config = RuntimeConfig {
+            chain: AddressNetwork::Regtest,
+            inbound: loopback_config_with_permission_classes(
+                2,
+                1,
+                if tokens == ["in"] {
+                    PeerPermissionClassRegistry::default()
+                } else {
+                    loopback_permission_registry(tokens)
+                },
+            ),
+            peer_block_filters: general,
+            prune_mode: open_bitcoin_node::core::chainstate::PruneMode::ManualOnly,
+            ..Default::default()
+        };
+        let context = Arc::new(tokio::sync::Mutex::new(
+            ManagedRpcContext::from_runtime_config_with_network_handle(
+                &config,
+                runtime.network_handle(),
+                Some(store),
+            )
+            .expect("shared configured authority"),
+        ));
+        Self {
+            path,
+            blocks,
+            runtime,
+            context,
+            config,
+        }
+    }
+
+    pub fn hash(&self, height: usize) -> BlockHash {
+        block_hash(&self.blocks[height].header)
+    }
+
+    pub async fn listener(&self) -> (InboundListenerWorker, String) {
+        let activation = activate_inbound_listener(&self.config.inbound).await;
+        let endpoint = activation.bound_endpoints()[0].bound_endpoint.clone();
+        let worker = start_inbound_accept_loop(activation, Arc::clone(&self.context))
+            .expect("actual listener");
+        (worker, endpoint)
+    }
+
+    pub async fn prepared(
+        &self,
+    ) -> open_bitcoin_node::network::filter_transport::PreparedFilterResponse {
+        let mut context = self.context.lock().await;
+        context
+            .record_inbound_admission_for_remote_addr(
+                160_009,
+                "127.0.0.1:18444".parse().expect("remote"),
+                false,
+            )
+            .expect("admission");
+        for message in [
+            WireNetworkMessage::Version(VersionMessage {
+                nonce: 160_009,
+                ..Default::default()
+            }),
+            WireNetworkMessage::Verack,
+        ] {
+            let plan = context
+                .prepare_inbound_wire_message(160_009, message, 1)
+                .expect("real handshake");
+            drop(plan.resolve());
+        }
+        let plan = context
+            .prepare_inbound_wire_message(
+                160_009,
+                WireNetworkMessage::GetCFilters(open_bitcoin_network::GetCFilters {
+                    filter_type: 0,
+                    start_height: 0,
+                    stop_hash: self.hash(2),
+                }),
+                2,
+            )
+            .expect("real preparation");
+        let step = plan
+            .resolve()
+            .responses
+            .pop()
+            .expect("complete prepared response");
+        let InboundWireStep::Filter(response) = step else {
+            panic!("request-bound filter carrier");
+        };
+        response
+    }
+
+    pub fn cleanup(self) {
+        let path = self.path.clone();
+        drop(self);
+        fs::remove_dir_all(path).expect("closed real filter store cleanup");
+    }
+}
+
 pub(super) async fn wait_for_inbound_peers(
     context: &Arc<tokio::sync::Mutex<ManagedRpcContext>>,
     expected: usize,

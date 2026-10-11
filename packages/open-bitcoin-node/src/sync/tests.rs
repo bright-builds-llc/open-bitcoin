@@ -57,6 +57,7 @@ use crate::{
     },
 };
 
+mod peer_filter_transport;
 mod production_announcement_transport_cases;
 mod runtime_projection_cases;
 mod runtime_timing_cases;

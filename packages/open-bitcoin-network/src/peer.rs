@@ -106,6 +106,7 @@ pub enum HeaderSyncPolicy {
 pub enum PeerAction {
     Send(WireNetworkMessage),
     ServeInventory(Vec<InventoryVector>),
+    ServeBasicFilter(crate::policy::FilterRequest),
     TransactionRelay(TxDownloadAction),
     ReceivedTransaction {
         transaction: Transaction,
@@ -120,6 +121,8 @@ pub enum PeerAction {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PeerState {
     pub role: ConnectionRole,
+    /// Services actually offered on this session's local version message.
+    pub own_advertised_services: ServiceFlags,
     pub remote_start_height: i32,
     pub remote_services_bits: u64,
     pub remote_user_agent: String,
@@ -146,6 +149,7 @@ impl PeerState {
     fn new(role: ConnectionRole) -> Self {
         Self {
             role,
+            own_advertised_services: ServiceFlags::from_bits(0),
             remote_start_height: -1,
             remote_services_bits: 0,
             remote_user_agent: String::new(),
@@ -178,6 +182,23 @@ impl PeerState {
 
     fn handshake_established(&self) -> bool {
         self.remote_version_received && self.local_verack_sent && self.remote_verack_received
+    }
+
+    fn snapshot_own_services(&mut self, base: ServiceFlags) -> ServiceFlags {
+        let general_configured = base.contains(ServiceFlags::COMPACT_FILTERS);
+        let mut capability = crate::BasicPeerServingCapability {
+            general_configured,
+            ..Default::default()
+        };
+        if let Some(record) = self.maybe_inbound_record.as_mut() {
+            record.permission_decision = record
+                .permission_decision
+                .clone()
+                .with_basic_filter_serving(general_configured);
+            capability = record.permission_decision.basic_filter_capability();
+        }
+        self.own_advertised_services = capability.own_services(base);
+        self.own_advertised_services
     }
 }
 
@@ -482,11 +503,12 @@ impl PeerManager {
         }
         let mut state = PeerState::new(ConnectionRole::Outbound);
         state.local_version_sent = true;
+        let mut version = self
+            .local_config
+            .version_message(timestamp, self.headers.best_height());
+        version.services = state.snapshot_own_services(self.local_config.services);
         self.peers.insert(peer_id, state);
-        Ok(vec![PeerAction::Send(WireNetworkMessage::Version(
-            self.local_config
-                .version_message(timestamp, self.headers.best_height()),
-        ))])
+        Ok(vec![PeerAction::Send(WireNetworkMessage::Version(version))])
     }
 
     pub fn request_ping(

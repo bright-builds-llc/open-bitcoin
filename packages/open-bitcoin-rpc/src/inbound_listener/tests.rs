@@ -43,7 +43,7 @@ use tokio::net::TcpStream;
 
 use crate::{
     ManagedRpcContext, RuntimeConfig,
-    context::{DurableBlockSource, EncodedWireResponse},
+    context::{DurableBlockSource, EncodedWireResponse, InboundWireStep},
 };
 
 use super::connection_runtime::{
@@ -98,18 +98,25 @@ impl DurableBlockSource for ScriptedDurableBlockSource {
 }
 
 fn block_response() -> EncodedWireResponse {
-    EncodedWireResponse {
-        message: WireNetworkMessage::Block(Block::default()),
-        bytes: Vec::new(),
-        maybe_block_serve_intent: None,
-        maybe_tx_write_capability: None,
-    }
+    encoded_test_response(WireNetworkMessage::Block(Block::default()))
 }
 
 fn non_block_response() -> EncodedWireResponse {
+    encoded_test_response(WireNetworkMessage::Verack)
+}
+
+fn encoded_test_response(message: WireNetworkMessage) -> EncodedWireResponse {
     EncodedWireResponse {
-        message: WireNetworkMessage::Verack,
-        bytes: Vec::new(),
+        bytes: ManagedNetworkHandle::transient_runtime(
+            NetworkMagic::MAINNET,
+            18444,
+            Default::default(),
+            Default::default(),
+            true,
+        )
+        .encode_pending_network_message(0, &message)
+        .expect("guarded test buffer"),
+        message,
         maybe_block_serve_intent: None,
         maybe_tx_write_capability: None,
     }
@@ -321,11 +328,13 @@ async fn durable_block_failure_outcome(
     let (mut context, block, data_dir) = durable_block_serving_context(true);
     context.set_durable_block_source_for_test(Arc::new(ScriptedDurableBlockSource { failure }));
     let context = Arc::new(tokio::sync::Mutex::new(context));
-    let mut responses =
+    let responses =
         resolve_inbound_wire_responses(&context, 123, phase123_block_request(&block), 2)
             .await
             .expect("map durable block source failure");
-    let response = responses.pop().expect("one redacted response");
+    let response = ordinary_responses(responses)
+        .pop()
+        .expect("one redacted response");
     let served_count = context
         .lock()
         .await
@@ -333,7 +342,11 @@ async fn durable_block_failure_outcome(
         .expect("authoritative block write count");
     drop(context);
     fs::remove_dir_all(data_dir).expect("remove failed durable block-serving store");
-    (response.message, response.bytes, served_count)
+    (
+        response.message,
+        response.bytes.bytes().to_vec(),
+        served_count,
+    )
 }
 
 fn rejected_write_result() -> io::Result<WriteWireMessageOutcome> {
@@ -369,7 +382,18 @@ mod announcement_successful_prefix;
 mod block_serving;
 mod envelope_and_resource;
 mod listener_fixtures;
+mod peer_filters;
 mod preflight_and_advertisement;
 mod reconnect_policy;
 
 use listener_fixtures::loopback_permission_registry;
+
+fn ordinary_responses(steps: Vec<InboundWireStep>) -> Vec<EncodedWireResponse> {
+    steps
+        .into_iter()
+        .map(|step| match step {
+            InboundWireStep::Encoded(response) => *response,
+            InboundWireStep::Filter(_) => panic!("expected ordinary response"),
+        })
+        .collect()
+}

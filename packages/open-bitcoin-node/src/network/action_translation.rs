@@ -219,6 +219,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         for action in actions {
             match action {
                 PeerAction::Send(message) => outbound.push(message),
+                PeerAction::ServeBasicFilter(request) => inbound_response_plan.push(
+                    super::ManagedInboundResponsePlanItem::FilterRequestIntent(request),
+                ),
                 PeerAction::ServeInventory(requests) => {
                     let (messages, missing) = match &serving_mode {
                         InventoryServingMode::Durable(payload_present) => {
@@ -406,4 +409,62 @@ fn compact_misbehavior_decision(
         score: policy.discourage_threshold,
         response: MisbehaviorResponse::Disconnect,
     })
+}
+
+#[cfg(test)]
+mod filter_intent_tests {
+    use super::*;
+
+    #[test]
+    fn phase160_dispatch_bridge_translates_exact_intents_in_request_order() {
+        // Arrange
+        use open_bitcoin_network::policy::FilterRequest;
+        let mut network = ManagedPeerNetwork::new(
+            crate::MemoryChainstateStore::default(),
+            Default::default(),
+            Default::default(),
+        );
+        let requests = [
+            FilterRequest::Filters {
+                filter_type: 255,
+                start_height: u32::MAX,
+                stop_hash: BlockHash::from_byte_array([1; 32]),
+            },
+            FilterRequest::Headers {
+                filter_type: 2,
+                start_height: 5,
+                stop_hash: BlockHash::from_byte_array([2; 32]),
+            },
+            FilterRequest::Checkpoints {
+                filter_type: 0,
+                stop_hash: BlockHash::from_byte_array([3; 32]),
+            },
+        ];
+        // Act
+        let result = network
+            .process_actions(
+                1,
+                requests
+                    .into_iter()
+                    .map(PeerAction::ServeBasicFilter)
+                    .collect(),
+                0,
+                ScriptVerifyFlags::P2SH,
+                ConsensusParams::default(),
+                immediate_inventory_serving(),
+            )
+            .expect("pure translation");
+        // Assert
+        assert_eq!(
+            result.inbound_response_plan,
+            requests
+                .into_iter()
+                .map(super::super::ManagedInboundResponsePlanItem::FilterRequestIntent)
+                .collect::<Vec<_>>()
+        );
+        assert!(result.outbound.is_empty());
+        assert!(result.targeted_outbound.is_empty());
+        assert_eq!(network.block_served_write_count(), 0);
+        assert!(network.chainstate().maybe_basic_index_progress().is_none());
+    }
 }

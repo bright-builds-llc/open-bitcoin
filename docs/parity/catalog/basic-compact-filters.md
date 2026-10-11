@@ -1,4 +1,4 @@
-# BASIC compact filter construction and authenticated queries
+# BASIC compact filter construction, queries and explicit peers
 
 Phase 159 implements authenticated BASIC `getblockfilter` and `getindexinfo`
 through the configured daemon's existing shared authority. Scoped execution
@@ -624,3 +624,169 @@ Then invoke the explicit Cargo client commands above from the second terminal.
 The built daemon is the same repo-local Cargo product. Stop it before switching
 build tooling. Do not start a second Cargo/Bazel command while a timed daemon
 still holds the cooperative lock.
+
+## Explicit bounded BASIC peers (Phase 160)
+
+Phase 160 implements configured BIP157 `getcfilters`, `getcfheaders` and
+`getcfcheckpt` through the existing shared durable authority and both real socket
+adapters. The [final verification](../../../.planning/phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md)
+records the passed full native contract, clean independent source review, all 39
+closed declared mitigations and lifecycle verification. Historical sections above
+retain their original evidence boundaries. Phase 161
+owns broad operator/status/dashboard/support projections; Phase 162 owns the
+integrated retained-client proof. Those phases and overall v2.5 completion remain
+pending. Public/default serving, V0/BIP37, archive behavior, production readiness
+and production-funds claims remain excluded.
+
+### Capability, semantics and retained data
+
+General `peerblockfilters` is default-off and requires BASIC. Explicit
+`blockfilters`, including `all,blockfilters`, also requires BASIC. The pinned
+`all`-only exception retains effective permission and advertises COMPACT_FILTERS
+on the matched local version even with BASIC disabled and no backend; valid
+requests then produce no filter response. Index enablement, listener activation,
+relay and network exposure are independent settings. Remote services grant no
+local permission. Pruned own versions retain NETWORK_LIMITED and WITNESS without
+NETWORK. Advertisement precedes catch-up and does not imply initial-sync success,
+index readiness or historical body/undo availability.
+
+Successfully extracted request fields pass the pinned gates in order: BASIC type
+and the session's own advertised capability; known eligible stop; forward range;
+inclusive family count. Filters allow 1,000 rows and headers 2,000. Short complete
+request payloads remain nonfatal and response-free; successfully extracted request
+fields tolerate trailing bytes. Broken framing/checksums and strict response
+decoding retain their independent errors. Invalid semantic requests disconnect;
+local capacity, missing rows, storage failure and invalidated captures produce no
+normal filter response and never manufacture a successful range.
+
+Active stops use checked active membership. A stale stop requires genuine
+ScriptsValid provenance and both signed timestamp age and exact 256-bit
+proof-equivalent age strictly below 2,592,000 seconds, using the selected best
+header's block proof and consensus spacing. Raw bodies/header snapshots and
+height or synthetic-work shortcuts grant no stale authority. Best exact-header
+ties use deterministic exact work, then height, then hash; this deliberate recovery
+policy differs from Knots sequence/pointer tie-breaking and does not change the
+existing synthetic fork-choice contract. Ancestry follows the
+requested stop's branch; cfheaders takes its start-minus-one predecessor, with
+zero at genesis. Checkpoints select positive multiples of 1,000: stop heights
+0/999 yield none; 1000/1001 one; 2000 two; 3001 three. There is no protocol maximum
+stop height for checkpoints; finite local ancestry work can refuse an otherwise
+valid request.
+
+Requests read the entire required persisted set and predecessor before exposing
+any frame. A retained complete prefix can serve during initial catch-up; a range
+crossing a missing row emits no prefix. No RPC readiness wait, request-time filter
+generation, body/undo lookup, indexing, repair or history download occurs. Opaque
+publication epochs and peer/session/branch generations reject stale handoff and
+same-generation integrity ABA. Preparation/enqueue is not write achievement:
+only a complete original encoded frame earns its private receipt. Cancellation or
+revocation retains a handed frame's charge until its owner settles; a late full
+write records only a physical prefix and cannot complete the live range.
+
+### Explicit local work and memory policies
+
+These are Open Bitcoin local resource policies, not Knots protocol limits or RSS
+guarantees. Checked counters charge before their lookup, hashing, copy or
+allocation. Exhaustion fails closed before exposing a successful batch. The
+stored codec capacity remains 32 MiB (33,554,432 encoded bytes), separately from
+the pinned 4,000,000-byte CF wire payload and its 4,000,024-byte complete frame.
+A codec-capacity stored singleton can therefore be valid storage and locally
+unservable on the wire.
+
+| Per-request logical axis | Limit |
+| -- | -- |
+| Ancestry links / header operations | 8,192 each |
+| Persisted record reads | 4,096 |
+| Metadata reads | 256 |
+| Validated envelope bytes / logical copy bytes | 67,108,864 each |
+| Hash padded bytes | 134,217,728 |
+| Encoded response suffix | 8,388,608 |
+
+One peer owns at most one affine filter request; a runtime owns four. Filter
+suffix retention is at most 8,388,608 bytes per peer and 33,554,432 aggregate.
+One active CF frame is at most 4,000,024 bytes per peer. Active CF bytes plus
+all generic retained buffers and admitted encoder scratch share one atomic
+8,388,608-byte ledger. Ordinary generic buffers permit 128 descriptors per peer
+and 1024 aggregate, including zero-byte reservations. Snapshots observe charges;
+callers cannot supply pressure snapshots to `next_frame()` admission.
+
+Inbound retains its preexisting independent 1 MiB/128-message generic queue gates;
+the request-bound CF writer alone uses the larger frame exception while preserving
+count checks. Outbound newly enforces a local 4,000,000-byte generic payload plus
+24-byte frame envelope; it did not previously have a 1 MiB outbound gate. Both
+ordinary and announcement queues retain the actual governed buffer through every
+partial write and suffix. Encoder scratch is stage-dependent: a maximum payload
+can require 8,000,064 bytes at peak before shrinking to its 4,000,024-byte retained
+frame. Generic-first encoding can shrink before CF admission; CF-first can refuse
+that same generic encoding because simultaneous scratch exceeds 8 MiB, even when
+the two final frames would fit. Neither order may uncharge live allocations.
+
+The [structural counter fixture](../fixtures/peer-filter-resource-measurements.json)
+records genuinely accepted histories and first/repeated recovered-store reads;
+it makes no claim about operating-system or disk-cache coldness. The table measures
+complete persisted-read work and suffix size admission through
+`measure_basic_peer_reads_for_test`, excluding subsequent response encoding and
+socket writes. Each read-counter axis has exact/one-under admission assertions.
+Timings printed by the tests are observations, not latency guarantees.
+
+| Case | Ancestry / header ops | Records / metadata | Validated / hashed / copied bytes | Suffix bytes |
+| -- | -- | -- | -- | -- |
+| 1 cfilter | 1 / 4 | 2 / 7 | 348 / 832 / 748 | 62 |
+| 20 cfilters | 20 / 80 | 40 / 7 | 6,982 / 16,640 / 13,701 | 1,251 |
+| 400 cfilters | 400 / 1,600 | 800 / 7 | 139,222 / 332,800 / 272,101 | 24,811 |
+| 1,000 cfilters | 1,000 / 4,000 | 2,000 / 7 | 348,022 / 832,000 / 680,101 | 62,011 |
+| 2,000 cfheaders | 2,001 / 8,003 | 4,001 / 7 | 696,196 / 1,664,512 / 1,360,401 | 64,092 |
+| Checkpoints through 3001 | 2,002 / 2,011 | 6 / 7 | 1,044 / 2,496 / 2,108 | 154 |
+| Genuine large filter | 1 / 4 | 2 / 7 | 105,621 / 106,112 / 211,294 | 105,339 |
+
+Complete preparation separately charges response-source copies, 32-byte hash
+vectors and bounded frame containers, then encoding work. For payload length
+`p`, encoding adds `3p + 56` logical copy bytes and SHA256d padded work of
+`ceil((p + 9) / 64) * 64 + 64` bytes. Both the Vec and VecDeque frame containers
+are charged before allocation. Plan 08's complete preparation path independently
+tests exact/one-under admission across all eight axes; its copy/hash totals exceed
+the persisted-read-only table. The table is not a final serving-counter total.
+
+The sparse genuinely accepted stop at 9301 requires 8,302 ancestry links and
+refuses against 8,192 before any persisted record read. Active authorization
+charges six metadata units; stale authorization charges 138 (128 sealed history
+identities plus ten); publication inspection adds one.
+
+### Reproduce scoped peer evidence
+
+From the repo root, materialize the pinned Knots submodule. The independent
+[wire](../fixtures/peer-filter-wire.json) and [proof](../fixtures/peer-filter-proof.json)
+corpora use exact commit `a9aee730466ac67d35a3c03ee24676be5e045878`; the oracle imports
+pinned peer-message helpers and implements source-derived proof formulas. Bun
+owns bounded orchestration. Codec/proof corpora, genuine
+durable response tests and actual socket tests are separate evidence layers.
+Full native/source/security/lifecycle gates remain independent of the lexical
+guard. All required Rust filters must report a nonzero executed count.
+
+```bash
+git submodule update --init --recursive
+bun test ./scripts/check-phase160-peer-filter-serving.test.ts
+bun run scripts/check-phase160-peer-filter-serving.ts
+bun test ./scripts/generate-peer-filter-fixtures.test.ts
+bun run scripts/generate-peer-filter-fixtures.ts --check
+bun run scripts/command-timings.ts run --key phase160-uat-node -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node phase160_peer_evidence -- --nocapture
+bun run scripts/command-timings.ts run --key phase160-uat-outbound -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node phase160_outbound_transport -- --nocapture
+bun run scripts/command-timings.ts run --key phase160-uat-inbound -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc phase160_inbound_transport -- --nocapture
+bun run scripts/command-timings.ts run --key phase160-uat-counters -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node phase160_peer_measurements -- --nocapture
+bun run scripts/command-timings.ts run --key phase160-uat-operator-cargo -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --network regtest config paths
+bun run scripts/command-timings.ts run --key phase160-uat-operator-bazel -- bazel run //packages/open-bitcoin-cli:open_bitcoin -- --network regtest config paths
+```
+
+The final two commands inspect existing operator configuration paths; they do
+not assert Phase 161 filter-status projections. Earlier Phase 159 commands
+provide authenticated index/filter inspection of an explicitly supplied retained
+regtest datadir. Peer tests use isolated loopback endpoints and bounded accepted
+fixtures, without public-network CI or default listener activation. These local
+commands do not establish archive service or the Phase 162 integrated proof.
+
+Eligibility negatives distinguish evidence paths: header-only stops and explicitly
+seeded old timestamp/proof facts are rejected through the actual outbound loop.
+Raw-body and UnknownLegacy controls assert immediate managed dispatch rejection
+and zero reservations, before background reconciliation can legitimately validate
+a retained body. Seeded best-header facts supply negative controls only; they do
+not establish accepted-chain provenance.

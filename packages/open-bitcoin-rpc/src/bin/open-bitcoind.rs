@@ -303,6 +303,9 @@ fn open_authoritative_network_runtime(
     runtime: &RuntimeConfig,
     maybe_store: Option<FjallNodeStore>,
 ) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
+    runtime
+        .validate_peer_block_filters()
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
     if let Some(store) = maybe_store {
         let basic_filter_mode = if runtime.block_filter_index.is_enabled() {
             open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled
@@ -333,6 +336,13 @@ fn open_authoritative_network_runtime(
             .map_err(|error| {
                 DaemonSyncPreflightError::new(format!("failed to configure prune mode: {error}"))
             })?;
+        network
+            .configure_basic_peer_serving(runtime.peer_block_filters)
+            .map_err(|error| {
+                DaemonSyncPreflightError::new(format!(
+                    "failed to configure BASIC peer serving: {error}"
+                ))
+            })?;
         return Ok(OpenedAuthoritativeRuntime::Durable(
             AuthoritativeNetworkRuntime {
                 network,
@@ -354,15 +364,23 @@ fn open_authoritative_network_runtime(
         ));
     }
 
+    let network = ManagedNetworkHandle::transient_runtime(
+        runtime.sync.runtime.network.magic(),
+        runtime.sync.runtime.network.default_port(),
+        runtime.relay,
+        runtime.block_serving,
+        runtime.inbound.enabled,
+    );
+    network
+        .configure_basic_peer_serving(runtime.peer_block_filters)
+        .map_err(|error| {
+            DaemonSyncPreflightError::new(format!(
+                "failed to configure BASIC peer serving: {error}"
+            ))
+        })?;
     Ok(OpenedAuthoritativeRuntime::Transient(
         AuthoritativeNetworkRuntime {
-            network: ManagedNetworkHandle::transient_runtime(
-                runtime.sync.runtime.network.magic(),
-                runtime.sync.runtime.network.default_port(),
-                runtime.relay,
-                runtime.block_serving,
-                runtime.inbound.enabled,
-            ),
+            network,
             peer_identity_authority: PeerIdentityAuthority::default(),
             announcement_outboxes: AnnouncementOutboxRegistry::default(),
             maybe_sync_runtime: None,
@@ -373,6 +391,9 @@ fn open_authoritative_network_runtime(
 fn open_runtime_store(
     runtime: &RuntimeConfig,
 ) -> Result<Option<FjallNodeStore>, DaemonSyncPreflightError> {
+    runtime
+        .validate_peer_block_filters()
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
     let has_valid_datadir = runtime
         .maybe_data_dir
         .as_ref()
