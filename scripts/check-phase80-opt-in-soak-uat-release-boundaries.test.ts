@@ -166,6 +166,143 @@ test("passes_when_phase80_fixture_contains_every_release_boundary_anchor", async
   expect(result.exitCode).toBe(0);
 });
 
+test.each([
+  "rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs",
+  'run_step "check Phase 162 shared Rust fixture format" rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs',
+])("passes_when_native_fixture_format_command_is_present: %s", async (command) => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${command}`,
+  });
+
+  // Act
+  const result = runChecker(root);
+
+  // Assert
+  expect(result.stderr).toBe("");
+  expect(result.exitCode).toBe(0);
+});
+
+test.each([
+  "packages/testdata/phase162/process.rs",
+  "packages/testdata/processing.rs",
+  "packages/testdata/proc.rs",
+  "packages/testdata/proc2",
+  "packages/testdata/proc_status",
+  "packages/testdata/proc-status",
+  "/processor/status",
+  "/procfile",
+  "/procfs/status",
+  "/proc.d/status",
+])("passes_when_proc_prefix_names_a_different_path: %s", async (fixturePath) => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\ncat ${fixturePath}`,
+  });
+
+  // Act
+  const result = runChecker(root);
+
+  // Assert
+  expect(result.stderr).toBe("");
+  expect(result.exitCode).toBe(0);
+});
+
+test.each([
+  "/proc",
+  "cat /proc",
+  "cat /proc\n",
+  "cat /proc\t",
+  "cat /proc/",
+  "cat /proc/self",
+  "cat /proc/self/status",
+  "cat /proc/123/status",
+  'cat "/proc"',
+  "cat '/proc'",
+  "cat `/proc`",
+  "cat /proc;",
+  "cat /proc|cat",
+  "cat /proc&",
+  "(cat /proc)",
+  "cat </proc",
+  "cat /proc>report",
+  "cat /proc</dev/null",
+])("fails_when_verify_contains_proc_directory: %s", async (command) => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${command}`,
+  });
+
+  // Act
+  const result = runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stderr).toBe(
+    "scripts/verify.sh must not contain Phase 80 forbidden text: /proc",
+  );
+});
+
+test.each([
+  "cat /proc{,/self/status}",
+  "cat /proc*",
+  "cat /proc[/]self/status",
+  'tail=/self/status\ncat /proc${tail}',
+  "cat /proc$(printf /self/status)",
+  "cat /proc`printf /self/status`",
+  "cat /proc\\/self/status",
+  "cat /proc?",
+])("fails_when_verify_contains_proc_shell_continuation: %s", async (command) => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${command}`,
+  });
+
+  // Act
+  const result = runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stderr).toBe(
+    "scripts/verify.sh must not contain Phase 80 forbidden text: /proc",
+  );
+});
+
+test.each([
+  "run-live-mainnet-smoke",
+  "--manual-peer",
+  "--restart-after-progress",
+  "systemctl",
+  "launchctl",
+  "-openbitcoinsync=mainnet-ibd",
+  "openbitcoinsync=mainnet-ibd",
+  "sleep 86400",
+  "sleep 259200",
+  "multi-day wall-clock",
+  "current tip",
+  "current-tip",
+  "release-blocking live sync",
+  "lsof",
+  "fallocate",
+  "mkfile",
+  "dd if=",
+  "107374182400",
+])("fails_when_verify_contains_other_forbidden_text: %s", async (forbidden) => {
+  // Arrange
+  const root = await createFixture({
+    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${forbidden}`,
+  });
+
+  // Act
+  const result = runChecker(root);
+
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stderr).toContain(
+    `scripts/verify.sh must not contain Phase 80 forbidden text: ${forbidden}`,
+  );
+});
+
 test("fails_when_uat_matrix_missing_workflow_or_proof_boundary", async () => {
   // Arrange
   const root = await createFixture({

@@ -149,6 +149,9 @@ bun test ./scripts/check-phase160-peer-filter-serving.test.ts
 bun run scripts/check-phase160-peer-filter-serving.ts
 bun test ./scripts/check-phase161-operator-index-evidence.test.ts
 bun run scripts/check-phase161-operator-index-evidence.ts
+bun test ./scripts/phase162-filter-oracle.test.ts
+bun test ./scripts/check-phase162-integrated-filter-proof.test.ts
+bun run scripts/check-phase162-integrated-filter-proof.ts
 bun test ./scripts/generate-peer-filter-fixtures.test.ts
 bun run scripts/generate-peer-filter-fixtures.ts --check
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
@@ -191,6 +194,7 @@ bun run scripts/check-current-documentation-reconciliation.ts
 bun test scripts/command-timings.test.ts
 bun test scripts/diagnose-rust-test-stall.test.ts
 bash scripts/check-pure-core-deps.sh
+rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs
 VERIFY_COMMAND_ORDER
 parse_args "$@"
 require_command cargo
@@ -339,6 +343,9 @@ run_step "test Phase 160 bounded peer filter checker" bun test ./scripts/check-p
 run_step "check Phase 160 bounded peer filter evidence" bun run scripts/check-phase160-peer-filter-serving.ts
 run_step "test Phase 161 operator index evidence checker" bun test ./scripts/check-phase161-operator-index-evidence.test.ts
 run_step "check Phase 161 operator index evidence" bun run scripts/check-phase161-operator-index-evidence.ts
+run_step "test Phase 162 independent raw filter oracle" bun test ./scripts/phase162-filter-oracle.test.ts
+run_step "test Phase 162 integrated filter proof checker" bun test ./scripts/check-phase162-integrated-filter-proof.test.ts
+run_step "check Phase 162 integrated filter proof" bun run scripts/check-phase162-integrated-filter-proof.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
@@ -384,6 +391,7 @@ run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh
 run_step "check file lengths" bash scripts/check-file-lengths.sh
 run_step "check panic sites" bash scripts/check-panic-sites.sh
 run_step "cargo fmt" cargo fmt --manifest-path packages/Cargo.toml --all --check
+run_step "check Phase 162 shared Rust fixture format" rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs
 run_step "cargo clippy" cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings
 
 if [[ "$verify_mode" == "full" ]]; then

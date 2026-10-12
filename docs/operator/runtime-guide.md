@@ -63,7 +63,19 @@ Ad-hoc Cargo/Bazel execution uses the existing timing runner; run serially:
 
 Live accepted-chain and private fault-capture/replay evidence is documented in the
 [parity catalog](../parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
-Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
+Use the [exact timed Cargo/Bazel UAT](../../.planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md)
+for the genuine integrated test and focused fault selectors, owned temporary
+datadir setup/cleanup and existing stopped-node status target. Status alone
+cannot prove pruning. The [executed proof](../parity/v2-5-integrated-filter-proof.md)
+records actual h715 Block/h714 NotFound and funded-wallet creating-history refusal,
+both physical filter directions, positive h1000 checkpoints and all-handle
+closure/reopen. Final06 is the resource authority: legal 550 MiB remains a soft
+body/undo target, unattained in this sample; physical allocation observations
+are points. Preserve the shared fixed guidance/redaction and processed/safe,
+earned-sync/lag distinctions above. Scoped source/security, full native
+and formal evidence gates passed.
 No stronger v2.4 crash-window guarantee is claimed.
 
 This guide describes the current source-built operator workflow for Open

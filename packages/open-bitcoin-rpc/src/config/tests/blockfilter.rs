@@ -325,7 +325,16 @@ fn load_case(cli: &[&str], conf: &str, expected: Setting) {
 }
 
 fn assert_activation_unchanged(config: &RuntimeConfig) {
-    let neutral = RuntimeConfig::default();
+    let mut neutral = RuntimeConfig::default();
+    let network = match config.chain {
+        AddressNetwork::Mainnet => SyncNetwork::Mainnet,
+        AddressNetwork::Testnet => SyncNetwork::Testnet,
+        AddressNetwork::Signet => SyncNetwork::Signet,
+        AddressNetwork::Regtest => SyncNetwork::Regtest,
+    };
+    neutral.sync.runtime.network = network;
+    let seeds = network.default_dns_seeds();
+    neutral.sync.runtime.dns_seeds = seeds.iter().map(|seed| seed.to_string()).collect();
     assert_eq!(config.sync, neutral.sync);
     assert_eq!(config.inbound, neutral.inbound);
     assert_eq!(config.relay, neutral.relay);

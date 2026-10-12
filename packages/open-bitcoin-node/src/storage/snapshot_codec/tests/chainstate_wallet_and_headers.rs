@@ -135,6 +135,95 @@ fn wallet_snapshot_round_trips_through_original_descriptors() {
 }
 
 #[test]
+fn phase162_descriptor_legacy_codec_preserves_metadata_and_raw_text() {
+    use open_bitcoin_core::wallet::{SingleKeyDescriptor, WalletError};
+
+    // Arrange: explicit historical bytes, independent of the current formatter.
+    for (canonical_suffix, legacy_suffix, range) in [
+        ("ob:0:0:0", "ob::0:0:0", (0, 0, 0)),
+        ("ob:2:5:3", "ob::2:5:3", (2, 5, 3)),
+        ("ob:0:1000:2", "ob::0:1000:2", (0, 1000, 2)),
+    ] {
+        let mut expected = wallet_snapshot();
+        let body = expected.descriptors[0]
+            .original_text
+            .split_once('#')
+            .expect("ranged storage body")
+            .0
+            .to_owned();
+        let canonical_text = format!("{body}#{canonical_suffix}");
+        let legacy_text = format!("{body}#{legacy_suffix}");
+        let canonical = SingleKeyDescriptor::parse(&canonical_text, expected.network)
+            .expect("canonical expected descriptor");
+        expected.descriptors[0].descriptor = canonical.clone();
+        expected.descriptors[0].original_text = canonical_text.clone();
+        let encoded = encode_wallet_snapshot(&expected).expect("canonical wallet encode");
+        let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("wallet JSON");
+        value["payload"]["descriptors"][0]["original_text"] = legacy_text.clone().into();
+        let legacy_bytes = serde_json::to_vec(&value).expect("explicit legacy wallet encode");
+        assert!(
+            String::from_utf8(legacy_bytes.clone())
+                .expect("JSON bytes")
+                .contains(&legacy_text)
+        );
+
+        // Act
+        let public_parse = SingleKeyDescriptor::parse(&legacy_text, expected.network);
+        let decoded = decode_wallet_snapshot(&legacy_bytes).expect("existing legacy compatibility");
+
+        // Assert: normalization is only for parsing; retained raw text is not rewritten.
+        assert!(matches!(
+            public_parse,
+            Err(WalletError::DescriptorSyntax(_))
+        ));
+        let record = &decoded.descriptors[0];
+        assert_eq!(record.original_text, legacy_text);
+        assert_eq!(record.descriptor, canonical);
+        assert_eq!(record.descriptor.range_start(), Some(range.0));
+        assert_eq!(record.descriptor.range_end(), Some(range.1));
+        assert_eq!(record.descriptor.next_index(), Some(range.2));
+        assert_eq!(record.descriptor.storage_text(), canonical_text);
+        assert_eq!(
+            SingleKeyDescriptor::parse(&record.descriptor.storage_text(), expected.network)
+                .expect("future descriptor storage parses directly"),
+            canonical
+        );
+        assert_eq!(
+            record
+                .descriptor
+                .script_pubkey()
+                .expect("decoded current script"),
+            canonical.script_pubkey().expect("canonical current script")
+        );
+        assert_eq!(
+            record
+                .descriptor
+                .address(expected.network)
+                .expect("decoded address"),
+            canonical
+                .address(expected.network)
+                .expect("canonical address")
+        );
+        for index in [range.0, range.1, range.2] {
+            assert_eq!(
+                record
+                    .descriptor
+                    .script_pubkey_at(index)
+                    .expect("decoded index script"),
+                canonical
+                    .script_pubkey_at(index)
+                    .expect("canonical index script")
+            );
+        }
+        expected.descriptors[0].original_text = legacy_text;
+        assert_eq!(
+            decoded, expected,
+            "all other snapshot fields survive unchanged"
+        );
+    }
+}
+
+#[test]
 fn header_entries_round_trip_and_validate_header_hashes() {
     // Arrange
     let header = header(2);

@@ -383,6 +383,40 @@ impl FlushLifecycle {
         locks: &[PruneLockInfo],
         on_deleted: &mut dyn FnMut(BlockHash),
     ) -> Result<FlushExecution, StorageError> {
+        self.execute_flush_applying_plan_with_header_checkpoint(
+            sink,
+            cache,
+            mode,
+            now,
+            disk_free_bytes,
+            undo_window,
+            header_entries,
+            block_payloads,
+            active_chain,
+            plan,
+            locks,
+            on_deleted,
+            &mut |_| Ok(()),
+        )
+    }
+    /// The selected prefix owns this checkpoint; skipped work never captures headers.
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn execute_flush_applying_plan_with_header_checkpoint<S: FlushPersistSink>(
+        &mut self,
+        sink: &mut S,
+        cache: &mut CoinsCache<impl CoinsView>,
+        mode: FlushMode,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+        undo_window: &[(BlockHash, BlockUndo)],
+        header_entries: &[HeaderEntry],
+        block_payloads: &[Block],
+        active_chain: &[ChainPosition],
+        plan: &PrunePlan,
+        locks: &[PruneLockInfo],
+        on_deleted: &mut dyn FnMut(BlockHash),
+        checkpoint: &mut impl FnMut(&S) -> Result<(), StorageError>,
+    ) -> Result<FlushExecution, StorageError> {
         if self.readiness != ManagerReadiness::ReadyToFlush {
             return Err(coins_corruption("flush before ready"));
         }
@@ -414,6 +448,7 @@ impl FlushLifecycle {
         }
 
         persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?;
+        checkpoint(sink)?;
         let deleted_block_hashes = if plan.heights.is_empty() {
             Vec::new()
         } else {
@@ -421,39 +456,7 @@ impl FlushLifecycle {
         };
         complete_coins_write(sink, cache, decision, active_chain, deleted_block_hashes)
     }
-
-    #[cfg(test)]
-    pub(crate) fn ready_for_test(
-        cache_byte_limit: u64,
-        mempool_leftover_bytes: u64,
-        next_write: FlushPolicyTime,
-        memory_pressure: bool,
-    ) -> Self {
-        Self {
-            readiness: ManagerReadiness::ReadyToFlush,
-            cache_byte_limit,
-            mempool_leftover_bytes,
-            next_write,
-            memory_pressure,
-            maybe_last_write_decision: None,
-            maybe_recovery_outcome: Some(CoinsRecoveryOutcome::Consistent),
-        }
-    }
-
-    #[cfg(test)]
-    pub(crate) fn not_ready_for_test() -> Self {
-        Self {
-            readiness: ManagerReadiness::NotReady,
-            cache_byte_limit: default_coins_cache_byte_limit(),
-            mempool_leftover_bytes: 0,
-            next_write: FlushPolicyTime::from_unix_seconds(0),
-            memory_pressure: false,
-            maybe_last_write_decision: None,
-            maybe_recovery_outcome: None,
-        }
-    }
 }
-
 /// Available bytes for the datadir filesystem. Callers may also inject a fact.
 ///
 /// Uses `fs4` so this crate can stay `forbid(unsafe_code)`. Probe failure

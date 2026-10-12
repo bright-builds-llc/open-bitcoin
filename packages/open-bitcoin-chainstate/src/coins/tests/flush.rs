@@ -145,17 +145,55 @@ fn crate_root_reexports_flush_and_recovery_types() {
 #[test]
 fn managed_chainstate_persist_calls_decide_flush_and_does_not_write_snapshot() {
     // Arrange
-    let persist_src = include_str!("../../../../open-bitcoin-node/src/chainstate.rs");
+    let persist_src: String = include_str!("../../../../open-bitcoin-node/src/chainstate.rs")
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect();
+    let body = |symbol: &str| {
+        let marker = format!("fn{symbol}(");
+        assert_eq!(persist_src.matches(&marker).count(), 1, "unique {symbol}");
+        let start = persist_src.find(&marker).expect("actual method");
+        let source = &persist_src[start..];
+        let open = source.find('{').expect("method body");
+        let mut depth = 0;
+        let end = source[open..]
+            .char_indices()
+            .find_map(|(index, character)| {
+                if character == '{' {
+                    depth += 1;
+                } else if character == '}' {
+                    depth -= 1;
+                }
+                (depth == 0).then_some(open + index)
+            })
+            .expect("closed method body");
+        &source[open + 1..end]
+    };
 
     // Act
-    let calls_execute = persist_src.contains("self.flush_lifecycle.execute_flush")
-        && persist_src.contains("FlushMode::IfNeeded");
+    let persist = body("persist");
+    let mode = body("flush_with_mode");
+    let delegate = body("flush_applying_plan");
+    let executor = body("flush_applying_plan_with_header_checkpoint");
     let leftover_snapshot = persist_src.contains("save_snapshot(self.chainstate.snapshot())");
 
     // Assert
     assert!(
-        calls_execute,
-        "ManagedChainstate::persist must call execute_flush with IfNeeded"
+        persist.contains("self.flush_with_mode(FlushMode::IfNeeded,"),
+        "ManagedChainstate::persist must delegate with IfNeeded"
+    );
+    assert!(
+        mode.contains("self.flush_applying_plan(mode,now,disk_free_bytes,"),
+        "flush_with_mode must preserve mode through the plan delegate"
+    );
+    assert!(
+        delegate.contains("self.flush_applying_plan_with_header_checkpoint("),
+        "the plan delegate must reach the private checkpoint executor"
+    );
+    assert!(
+        executor
+            .contains("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("),
+        "the private executor must reach the actual lifecycle"
     );
     assert!(
         !leftover_snapshot,

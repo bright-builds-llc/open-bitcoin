@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
 import { compact, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
+import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView } from "./check-phase158-validated-reorg.ts";
 
 const N = "packages/open-bitcoin-node/src/";
 const R = "packages/open-bitcoin-rpc/src/";
@@ -147,7 +148,7 @@ function owningEdges(): Edge[] {
 export const MODULE_EDGES = owningEdges();
 const extraRust = [N + "network/types.rs", N + "sync/types.rs", N + "network/filter_transport/encoded_size.rs", C + "chain_proof.rs", W + "peer.rs", W + "peer/message_dispatch.rs"];
 const references = [DOC, "README.md", "AGENTS.md", "scripts/verify.sh", "scripts/generate-peer-filter-fixtures.ts", "scripts/generate-peer-filter-fixtures.test.ts", "scripts/basic-filter-oracle.py", "docs/parity/index.json", "docs/parity/source-breadcrumbs.json", "docs/parity/fixtures/peer-filter-wire.json", "docs/parity/fixtures/peer-filter-proof.json", "docs/parity/fixtures/peer-filter-resource-measurements.json", W + "filter_serving/resource.rs"];
-export const CHECK_FILES = [...new Set([...MODULE_EDGES.flatMap(edge => [edge.parent, edge.child]), ...extraRust, ...references])];
+export const CHECK_FILES = [...new Set([...MODULE_EDGES.flatMap(edge => [edge.parent, edge.child]), ...extraRust, ...references, ...PHASE162_FILES])];
 type Texts = (file: string) => string;
 const sourceChecks = new Map<string, { source: string; failures: string[] }>();
 const ownershipChecks = new Map<string, { source: string; failures: string[] }>();
@@ -172,15 +173,17 @@ export function maybeSelector(source: string, selector: string, production = fal
 }
 
 /** Fail closed on missing source, executable evidence, registrations or scoped claims. */
-export function checkPhase160PeerFilterServing(maybeRoot?: string): string[] {
+export function checkPhase160PeerFilterServing(maybeRoot?: string, maybeSources?: ReadonlyMap<string, string>): string[] {
   const root = resolve(maybeRoot ?? resolve(import.meta.dir, ".."));
   const failures: string[] = [];
-  const texts = new Map<string, string>();
+  const texts = maybeSources ? new Map(maybeSources) : loadPhase162OptionalSources(root);
   for (const file of CHECK_FILES) {
+    if (maybeSources) { if (!texts.has(file)) failures.push(`${file}: required evidence unreadable`); continue; }
     try { texts.set(file, readFileSync(resolve(root, file), "utf8")); }
     catch { failures.push(`${file}: required evidence unreadable`); }
   }
   const text = (file: string) => texts.get(file) ?? "";
+  const claimState = checkPhase162ClaimState(text, failures);
   const contracts = [...CONTRACTS, ...HELPER_CONTRACTS, ...TEST_CONTRACTS];
   for (const file of new Set(contracts.map(row => row[0]))) {
     const source = text(file);
@@ -202,7 +205,7 @@ export function checkPhase160PeerFilterServing(maybeRoot?: string): string[] {
   checkOwnership(text, failures);
   checkIsolation(text, failures);
   checkResources(text, failures);
-  checkReferences(text, failures);
+  checkReferences(text, failures, claimState);
   return [...new Set(failures)];
 }
 
@@ -270,9 +273,10 @@ function checkResources(text: Texts, failures: string[]): void {
   for (const expression of ['(&["all"], true, false)', '(&["blockfilters"], true, true)', '(&["all", "blockfilters"], true, true)', '(&["bloomfilter"], false, false)']) if (!compact(matrix).includes(compact(expression))) failures.push(`${W}filter_serving/capability/tests.rs: full all/explicit/excluded matrix`);
 }
 
-function checkReferences(text: Texts, failures: string[]): void {
+function checkReferences(text: Texts, failures: string[], claimState: ReturnType<typeof checkPhase162ClaimState>): void {
   for (const file of [DOC, "README.md", "docs/parity/index.json"]) {
-    const source = text(file);
+    const source = phase162ClaimView(text(file), claimState);
+    checkPhase162ExcludedClaims(text(file), file, failures, claimState);
     const positive = "(?:(?:is|are|now|fully|already)\\s+)*(?:complete|shipped|ready|safe|supported|proven|enabled|passed)\\b";
     const subjects = "(?:v2\\.5(?:\\s+milestone)?|CF(?:OP|GR)-\\d+|Phase\\s+16[12]|(?:BIP37|V0)(?:\\s+(?:bloom|filter))?(?:\\s+serving)?|production(?:[- ]funds)?(?:\\s+(?:service|use|safety|operation))?|archive(?:\\s+serving)?)";
     if (new RegExp(`\\b${subjects}\\s+${positive}|\\bpublic\\s+(?:peer\\s+)?serving\\s+(?:(?:is|now)\\s+)*(?:enabled|default)\\b`, "i").test(source)) failures.push(`${file}: unsupported scope claim`);
@@ -285,7 +289,8 @@ function checkReferences(text: Texts, failures: string[]): void {
     const row = rows[0];
     if (index.baseline !== "29.3.knots20260210" || rows.length !== 1 || JSON.stringify(row.requirements) !== '["CFNET-01","CFNET-02","CFNET-03","CFNET-04","CFNET-05","CFNET-06"]') failures.push("docs/parity/index.json: unique scoped CFNET owner");
     for (const file of [DOC, "scripts/check-phase160-peer-filter-serving.ts", "scripts/check-phase160-peer-filter-serving.test.ts", "scripts/generate-peer-filter-fixtures.ts", "docs/parity/fixtures/peer-filter-resource-measurements.json"]) if (!row?.evidence?.includes(file)) failures.push(`docs/parity/index.json: peer evidence ${file}`);
-    if (!row?.known_gaps?.some((gap: string) => gap.includes("161") && gap.includes("162") && gap.includes("pending"))) failures.push("docs/parity/index.json: pending operator/integrated scope");
+    if (!row?.known_gaps?.some((gap: string) => (claimState !== "complete" && gap.includes("161") && gap.includes("162") && gap.includes("pending"))
+      || (claimState === "implementation" && gap === PHASE162_IMPLEMENTATION) || (claimState === "complete" && gap === PHASE162_COMPLETE))) failures.push("docs/parity/index.json: pending operator/integrated scope");
   } catch { failures.push("docs/parity/index.json: invalid peer parity inventory"); }
   for (const file of ["docs/parity/fixtures/peer-filter-wire.json", "docs/parity/fixtures/peer-filter-proof.json"]) if (!text(file).includes("a9aee730466ac67d35a3c03ee24676be5e045878")) failures.push(`${file}: exact Knots pin`);
   const commands = ["bun test ./scripts/check-phase159-filter-rpcs.test.ts", "bun run scripts/check-phase159-filter-rpcs.ts", "bun test ./scripts/check-phase160-peer-filter-serving.test.ts", "bun run scripts/check-phase160-peer-filter-serving.ts", "bun test ./scripts/generate-peer-filter-fixtures.test.ts", "bun run scripts/generate-peer-filter-fixtures.ts --check"];

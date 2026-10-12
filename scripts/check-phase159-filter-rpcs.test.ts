@@ -3,10 +3,12 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { CHECK_FILES, checkPhase159FilterRpcs } from "./check-phase159-filter-rpcs.ts";
-import { TEST_ACTIONS, TESTS } from "./check-phase159-filter-rpcs/contracts.ts";
+import { NEW_RUST, TEST_ACTIONS, TESTS } from "./check-phase159-filter-rpcs/contracts.ts";
 import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { MODULE_EDGES, meaningfulAssertions } from "./check-phase159-filter-rpcs/evidence.ts";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 
 const roots: string[] = [];
 const repo = resolve(import.meta.dir, "..");
@@ -14,7 +16,7 @@ function fixture(): string {
   const root = mkdtempSync(join(tmpdir(), "phase159-claims-"));
   roots.push(root);
   expect(spawnSync("git", ["init", "--quiet", root]).status).toBe(0);
-  for (const file of new Set([...CHECK_FILES, "packages/open-bitcoin-rpc/src/lib.rs", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "packages/open-bitcoin-node/src/sync.rs", "packages/open-bitcoin-node/src/sync/tests.rs", "packages/open-bitcoin-node/src/sync/tests/filter_index.rs", "packages/open-bitcoin-cli/src/main.rs", "packages/open-bitcoin-cli/src/client.rs", "packages/open-bitcoin-cli/src/client/tests.rs", "packages/open-bitcoin-cli/src/lib.rs", "packages/open-bitcoin-cli/src/args.rs", "packages/open-bitcoin-cli/src/args/tests.rs"])) {
+  for (const file of new Set([...CHECK_FILES, ...loadPhase162OptionalSources(repo).keys(), "packages/open-bitcoin-rpc/src/lib.rs", "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "packages/open-bitcoin-node/src/sync.rs", "packages/open-bitcoin-node/src/sync/tests.rs", "packages/open-bitcoin-node/src/sync/tests/filter_index.rs", "packages/open-bitcoin-cli/src/main.rs", "packages/open-bitcoin-cli/src/client.rs", "packages/open-bitcoin-cli/src/client/tests.rs", "packages/open-bitcoin-cli/src/lib.rs", "packages/open-bitcoin-cli/src/args.rs", "packages/open-bitcoin-cli/src/args/tests.rs"])) {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     copyFileSync(join(repo, file), join(root, file));
   }
@@ -32,6 +34,104 @@ test("current scoped evidence runs before final native/requirement activation", 
   // Arrange / Act / Assert
   expect(checkPhase159FilterRpcs(fixture())).toEqual([]);
 });
+
+function suppliedSources(): Map<string, string> {
+  const sources = loadPhase162OptionalSources(repo);
+  for (const file of CHECK_FILES) sources.set(file, readFileSync(join(repo, file), "utf8"));
+  return sources;
+}
+
+test("supplied-map complete evidence is independent of the checkout root", () => {
+  // Arrange
+  const sources = suppliedSources();
+  const root = join(mkdtempSync(join(tmpdir(), "phase159-claims-")), "nonexistent");
+  roots.push(dirname(root));
+  expect(checkPhase159FilterRpcs(undefined, sources)).toEqual([]);
+  // Act / Assert
+  expect(checkPhase159FilterRpcs(root, sources)).toEqual([]);
+});
+
+test("supplied-map empty inventory stays isolated from valid real evidence", () => {
+  // Arrange / Act
+  const failures = checkPhase159FilterRpcs(repo, new Map());
+  // Assert
+  for (const file of CHECK_FILES) expect(failures).toContain(`${file}: cannot read required evidence`);
+});
+
+for (const file of [NEW_RUST[0], "scripts/check-parity-breadcrumbs.ts"]) {
+  for (const mode of ["missing", "empty"]) test(`supplied-map ${mode} required evidence refuses: ${file}`, () => {
+    // Arrange
+    const sources = suppliedSources();
+    expect(sources.get(file)?.length).toBeGreaterThan(0);
+    if (mode === "missing") sources.delete(file); else sources.set(file, "");
+    // Act
+    const failures = checkPhase159FilterRpcs(repo, sources);
+    // Assert
+    expect(failures).toContain(`${file}: cannot read required evidence`);
+    if (NEW_RUST.includes(file)) expect(failures).toContain(`${file}: cannot read breadcrumb evidence`);
+  });
+}
+
+test("supplied-map discovery enforces extra source registration and exact anchors", () => {
+  // Arrange
+  const sources = suppliedSources();
+  const file = "packages/open-bitcoin-node/src/phase159_supplied_only.rs";
+  const anchor = "packages/bitcoin-knots/src/validation.cpp";
+  const manifest = JSON.parse(sources.get("docs/parity/source-breadcrumbs.json")!);
+  manifest.groups.push({ label: "supplied-only-control", files: [file], breadcrumbs: [anchor] });
+  sources.set("docs/parity/source-breadcrumbs.json", JSON.stringify(manifest));
+  sources.set(file, `// Parity breadcrumbs:\n// - ${anchor}\n\npub fn retained() {}\n`);
+  expect(checkPhase159FilterRpcs(repo, sources)).toEqual([]);
+  // Act / Assert
+  sources.set(file, "pub fn retained() {}\n");
+  expect(checkPhase159FilterRpcs(repo, sources)).toContain(`${file}: exact breadcrumb anchors`);
+  manifest.groups.pop();
+  sources.set("docs/parity/source-breadcrumbs.json", JSON.stringify(manifest));
+  expect(checkPhase159FilterRpcs(repo, sources)).toContain(`${file}: exact breadcrumb registration`);
+});
+
+test("supplied-map empty discovered source cannot borrow a valid real file", () => {
+  // Arrange
+  const sources = suppliedSources();
+  const file = "packages/open-bitcoin-node/src/chainstate/filter_index.rs";
+  expect(CHECK_FILES).not.toContain(file);
+  expect(readFileSync(join(repo, file), "utf8")).toContain("// Parity breadcrumbs:");
+  sources.set(file, "");
+  // Act / Assert
+  expect(checkPhase159FilterRpcs(repo, sources)).toContain(`${file}: cannot read breadcrumb evidence`);
+});
+
+test("current RPC roots admit source-bound implementation without future formal activation", () => {
+  // Arrange
+  const sources = new Map([...new Set([...CHECK_FILES, ...PHASE162_EVIDENCE])].map(file => [file, readFileSync(join(repo, file), "utf8")]));
+  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+  sources.set(".planning/REQUIREMENTS.md", requirements);
+  const index = JSON.parse(sources.get("docs/parity/index.json")!);
+  const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
+  owner.status = "in_progress";
+  if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
+  index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-authenticated-basic-filter-and-index-rpcs").known_gaps = [PHASE162_IMPLEMENTATION];
+  sources.set("docs/parity/index.json", JSON.stringify(index));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
+  // Act / Assert
+  expect(checkPhase159FilterRpcs(undefined, sources)).toEqual([]);
+  sources.delete(PHASE162_DOC);
+  expect(checkPhase159FilterRpcs(undefined, sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+});
+
+for (const file of [".planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-04-QUERY-MEASUREMENTS.md", ".planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-07-DAEMON-PROOF.md"]) {
+  test(`historical report cannot borrow current Phase162 evidence: ${file}`, () => {
+    // Arrange
+    const root = fixture();
+    const report = CHECK_FILES.find(candidate => candidate.endsWith(file.split("/").at(-1)!))!;
+    edit(root, report, source => source + "\n" + PHASE162_IMPLEMENTATION);
+    // Act / Assert
+    expect(checkPhase159FilterRpcs(root).some(failure => failure.includes(report) && failure.includes("unsupported"))).toBe(true);
+  });
+}
 
 const N = "packages/open-bitcoin-node/src/";
 const R = "packages/open-bitcoin-rpc/src/";

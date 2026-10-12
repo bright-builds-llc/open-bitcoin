@@ -56,6 +56,120 @@ fn disabled_sync_skips_daemon_preflight() {
     assert_eq!(preflight, None);
 }
 
+fn assert_phase162_disabled_daemon<S, V>(
+    runtime: &RuntimeConfig,
+    opened: crate::AuthoritativeNetworkRuntime<S, V>,
+    maybe_store: Option<FjallNodeStore>,
+    network: open_bitcoin_node::SyncNetwork,
+) where
+    S: crate::ChainstateStore + Send + 'static,
+    V: crate::CoinsView + Send + 'static,
+{
+    // Arrange
+    assert!(!runtime.sync.is_enabled());
+    assert!(runtime.inbound.enabled);
+    assert!(runtime.relay.enabled);
+    assert!(runtime.block_serving.block_serving.enabled);
+    assert!(runtime.block_serving.compact_relay.enabled);
+    assert!(!runtime.block_filter_index.is_enabled());
+    assert!(!runtime.peer_block_filters);
+    if let Some(sync) = opened.maybe_sync_runtime.as_ref() {
+        assert_eq!(sync.config().network, network);
+        assert_eq!(
+            sync.config().dns_seeds,
+            network
+                .default_dns_seeds()
+                .iter()
+                .map(|seed| seed.to_string())
+                .collect::<Vec<_>>()
+        );
+    }
+    let preflight = preflight_daemon_sync(runtime, opened.maybe_sync_runtime.as_ref())
+        .expect("disabled preflight");
+    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+        runtime,
+        opened.network.clone(),
+        maybe_store,
+    )
+    .expect("normal context");
+    let shared = Arc::new(tokio::sync::Mutex::new(context));
+
+    // Act
+    let maybe_worker =
+        crate::start_daemon_sync_worker(runtime, Arc::clone(&shared), opened.maybe_sync_runtime)
+            .expect("disabled worker");
+    let info = opened.network.network_info().expect("network info");
+
+    // Assert
+    assert!(preflight.is_none());
+    assert!(maybe_worker.is_none());
+    assert_eq!(info.network_magic, network.magic());
+    assert_eq!(info.connected_peers, 0);
+    assert!(
+        opened
+            .network
+            .peer_manager_snapshot()
+            .expect("peers")
+            .peer_ids()
+            .is_empty()
+    );
+    drop(shared);
+}
+
+#[test]
+fn phase162_disabled_network_daemon_durable_and_transient_consumers() {
+    use open_bitcoin_node::SyncNetwork;
+    for (name, network) in [
+        ("main", SyncNetwork::Mainnet),
+        ("test", SyncNetwork::Testnet),
+        ("signet", SyncNetwork::Signet),
+        ("regtest", SyncNetwork::Regtest),
+    ] {
+        for durable in [true, false] {
+            // Arrange
+            let data_dir = temp_store_path(&format!("phase162-disabled-{name}-{durable}"));
+            fs::create_dir(&data_dir).expect("unique datadir");
+            let args = [
+                format!("-datadir={}", data_dir.display()).into(),
+                format!("-chain={name}").into(),
+                "-openbitcoinsync=disabled".into(),
+                "-openbitcoininbound=1".into(),
+                "-openbitcoinlisten=127.0.0.1:0".into(),
+                "-openbitcoinrelay=1".into(),
+                "-openbitcoinblockserving=1".into(),
+                "-openbitcoincompactrelay=1".into(),
+                "-blockfilterindex=0".into(),
+                "-peerblockfilters=0".into(),
+            ];
+            let runtime = open_bitcoin_rpc::config::load_runtime_config_for_args(&args, &data_dir)
+                .expect("actual config");
+            let maybe_store =
+                durable.then(|| FjallNodeStore::open(&data_dir).expect("empty durable bootstrap"));
+
+            // Act
+            let opened = open_authoritative_network_runtime(&runtime, maybe_store.clone())
+                .expect("configured consumer");
+
+            // Assert
+            match opened {
+                crate::OpenedAuthoritativeRuntime::Durable(opened) => {
+                    assert!(durable);
+                    assert!(opened.maybe_sync_runtime.is_some());
+                    assert_phase162_disabled_daemon(&runtime, opened, maybe_store.clone(), network);
+                }
+                crate::OpenedAuthoritativeRuntime::Transient(opened) => {
+                    assert!(!durable);
+                    assert!(opened.maybe_sync_runtime.is_none());
+                    assert_phase162_disabled_daemon(&runtime, opened, None, network);
+                }
+            }
+            drop(maybe_store);
+            drop(runtime);
+            fs::remove_dir_all(&data_dir).expect("all handles dropped before cleanup");
+        }
+    }
+}
+
 #[test]
 fn enabled_sync_preflight_opens_durable_runtime_before_worker_startup() {
     // Arrange

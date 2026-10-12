@@ -470,7 +470,14 @@ function verifyVerifyScript(repoRoot: string, failures: string[]): void {
   }
   verifyCommandOrder(verifyScript, failures);
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    requireNotContains(verifyScript, forbidden, "scripts/verify.sh", failures);
+    // Allow literal filename continuations, while rejecting /proc shell expansions.
+    const containsForbidden =
+      forbidden === "/proc"
+        ? /\/proc(?![A-Za-z0-9_.-])/.test(verifyScript)
+        : verifyScript.includes(forbidden);
+    if (containsForbidden) {
+      failures.push(`scripts/verify.sh must not contain Phase 80 forbidden text: ${forbidden}`);
+    }
   }
 }
 

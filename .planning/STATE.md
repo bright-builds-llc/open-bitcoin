@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
-status: planning
-stopped_at: Phase161 verified complete; mandatory hook-protected Git finalization is authorized
-last_updated: "2026-10-11T11:05:15.468Z"
-last_activity: "2026-10-11"
+status: Ready for milestone audit
+stopped_at: Phase162complete/16plans/46truths/3requirements; all22milestone requirementsComplete; finalactivatedtests then mandatoryfullhook/protectedcommit/push; audit/shipmentseparate
+last_updated: "2026-10-12T04:17:26.414Z"
+last_activity: "2026-10-12"
 progress:
   total_phases: 9
-  completed_phases: 8
-  total_plans: 69
-  completed_plans: 69
+  completed_phases: 9
+  total_plans: 85
+  completed_plans: 85
   percent: 100
 ---
 
@@ -21,20 +21,20 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-11 — Phase 161 completion).
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 162 — Real Prune Retention and Integrated Parity Proof (next; not started)
+**Current focus:** Phase 162 complete — v2.5 milestone audit remains separate
 
 ## Current Position
 
 Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 162 (Real Prune Retention and Integrated Parity Proof)
-Plan: Not planned; Phase 161 complete
-**Status:** Ready to plan
-Last activity: 2026-10-11
-Last Activity Description: Phase 161 complete, transitioned to Phase 162
+Phase: 162 (complete)
+Plan: 16/16 complete
+**Status:** Ready for milestone audit
+Last activity: 2026-10-12
+Last Activity Description: Phase 162 passed 46/46 formal obligations, all five live guards, complete claim state and strict lifecycle; all 22 requirements Complete; full Native5 passed; v2.5 remains unaudited and unshipped
 
-Milestone progress: [█████████░] 89% (8/9 phases complete; 69/69 created plans have summaries; Phase162 unplanned; three requirements pending).
+Milestone progress: 9/9 phases and 85/85 plans complete; all 22 requirements are Complete. v2.5 audit/archive/shipment remains pending.
 
-Next action: Phase 162 is ready for context after the authorized Phase 161 commit/push. Await the next explicit request; v2.5 remains pending.
+Next action: Run /gsd-audit-milestone for v2.5 as separate work; actual saving commit, mandatory hook and push outcomes derive from Git and timing records
 
 ## Performance Metrics
 
@@ -84,6 +84,7 @@ Next action: Phase 162 is ready for context after the authorized Phase 161 commi
 | 159 | 8 | - | - |
 | 160 | 17 | - | - |
 | 161 | 11 | - | - |
+| 162 | 16 | - | - |
 
 ### Plan Execution History
 
@@ -624,6 +625,6 @@ Next action: Phase 162 is ready for context after the authorized Phase 161 commi
 
 ## Session Continuity
 
-Last session: 2026-10-11T11:03:55.985Z
-Stopped at: Phase161 verified complete; mandatory hook-protected Git finalization is authorized
-Resume file: .planning/phases/161-shared-operator-index-and-retention-evidence/161-VERIFICATION.md
+Last session: 2026-10-12T04:16:13.739Z
+Stopped at: Phase162complete/16plans/46truths/3requirements; all22milestone requirementsComplete; finalactivatedtests then mandatoryfullhook/protectedcommit/push; audit/shipmentseparate
+Resume file: .planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-VERIFICATION.md

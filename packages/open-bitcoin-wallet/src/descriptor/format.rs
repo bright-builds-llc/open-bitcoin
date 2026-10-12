@@ -160,7 +160,7 @@ impl SingleKeyDescriptor {
             return body;
         };
         format!(
-            "{body}#{}:{}:{}:{}",
+            "{body}#{}{}:{}:{}",
             RANGE_METADATA_PREFIX, range.start, range.end, range.next_index
         )
     }

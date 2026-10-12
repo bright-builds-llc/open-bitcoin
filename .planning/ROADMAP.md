@@ -2,7 +2,9 @@
 
 ## Current Status
 
-v2.5 Prune-Aware Compact-Filter Serving (BIP157/158) is in progress: Phases 154–161 completed 69 plans and nineteen requirements after full native verification. Eight of nine phases are complete; CFPR-02 and CFGR-01/02 remain pending for Phase 162. Phase 161 adds one authoritative BASIC operator group across RPC, CLI, dashboard and redacted support, with distinct configured capability, earned synchronization, current lag, processed/safe durable progress, fixed failures, retained logical growth and protection. Its verification passed 15/15 combined obligations, all three roadmap criteria and sixteen decisions; independent source review is clean across 113 paths and all 35 declared mitigations are closed. The complete default native verifier passed in 27m41.348s with 4,247 primary Rust passes, benchmark/Bazel/provenance and zero uncovered pure-core lines. Logical retained bytes include stale immutable rows, exclude engine/physical overhead and remain separate from the soft block/undo target; filters restore neither bodies nor wallet eligibility. Stopped/legacy unknowns, modeled implicit-origin limits and private-capture/replay composition remain explicit. Phase 162 owns the complete continuous-chain prune/reopen/RPC/both-transports proof; v2.5 is not shipped. Existing v2.4 crash-window advisories and public/default, archive, production/funds exclusions remain unchanged.
+Phases 154–162 have completed all 85 plans and 22 current v2.5 requirements with lifecycle-valid verification and full native evidence. All nine phases are complete. Phase 162 closes the continuous normal-maturity prune/reopen/RPC/both-transports proof, genuine wallet/body restrictions and durability/write-failure matrices. Its entire default native verifier passed in 35m 36.960s, including benchmarks, six Bazel targets/provenance and zero uncovered pure-core lines. Independent review is clean across 70 current paths with three findings closed; all 61 declared threats are closed. Formal verification passes 46/46 truth obligations and all five roadmap criteria.
+
+The milestone remains unaudited, unarchived and unshipped; audit/archive/shipment are separate work. The 550 MiB body/undo target remains soft and unattained in the measured pressure scenario; physical allocation samples are points, retained filters restore neither bodies nor wallet eligibility, and the synthetic-root/work/halving limits do not claim whole-chain Knots consensus parity. Earlier v2.4 crash-window advisories and BIP37/V0, assumeutxo, archive-scale, public/default/network-CI, implicit repair and production/funds exclusions remain unchanged.
 
 ## Milestones
 
@@ -41,7 +43,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 159: Authenticated BASIC Filter and Index RPCs** — Expose pinned lookup results and initial-synchronization semantics through the shared durable authority. (completed 2026-10-10)
 - [x] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence. (completed 2026-10-11)
 - [x] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers. (completed 2026-10-11)
-- [ ] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports.
+- [x] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports. Scoped full native and formal lifecycle verification passed; milestone audit/shipment remains separate. (completed 2026-10-12)
 
 ## Phase Details
 
@@ -237,7 +239,25 @@ Plans:
 1. A contributor audits BASIC generation/protocol/RPC behavior through pinned source breadcrumbs, parity roots and deterministic native claim checks; Fjall layout, BASIC-only V0 exclusion, earlier undo refusal and local resource-policy differences are explicit. (CFGR-01)
 1. Copy-pasteable repo-local Cargo/Bazel UAT and the native verification contract reproduce the scoped evidence while preserving BIP37/V0, assumeutxo, archive-scale, public-default/network-CI, implicit repair and production/funds exclusions. (CFGR-01, CFGR-02)
 
-**Plans**: TBD
+**Plans**: 16/16 complete; scoped full native and strict lifecycle verification passed.
+
+- [x] 162-01 — Continuous validated recipe and independent oracle
+- [x] 162-13 — Preserve selected network in disabled sync configuration
+- [x] 162-02 — Actual receive-independent maintenance worker
+- [x] 162-03 — Genuine reorg and manual/automatic paired retention
+- [x] 162-14 — Lazy trusted-header checkpoint and cold authorization
+- [x] 162-15 — Guard compatibility and retained inbound client proof
+- [x] 162-04 — Authenticated RPC and inbound evidence closure
+- [x] 162-16 — Public descriptor storage roundtrip and legacy compatibility
+- [x] 162-05 — Genuine funded-wallet and ordinary body restrictions
+- [x] 162-06 — Public outbound TCP on the same reopened datadir
+- [x] 162-07 — Missing-history and interrupted-recovery matrix
+- [x] 162-08 — Publication, durable-coins and corruption faults
+- [x] 162-09 — Physical partial-write receipts and resource settlement
+- [x] 162-10 — Historical/current claim compatibility
+- [x] 162-11 — Native claim/mutation guard and verifier wiring
+- [x] 162-12 — Current parity/operator documentation and reproducible UAT
+
 **UI hint**: yes
 
 ## Dependency and Evidence Gates
@@ -275,7 +295,7 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | 159. Authenticated BASIC Filter and Index RPCs | 8/8 | Complete    | 2026-10-10 |
 | 160. Explicit Bounded Peer Filter Serving | 17/17 | Complete    | 2026-10-11 |
 | 161. Shared Operator Index and Retention Evidence | 11/11 | Complete    | 2026-10-11 |
-| 162. Real Prune Retention and Integrated Parity Proof | 0/TBD | Not started | - |
+| 162. Real Prune Retention and Integrated Parity Proof | 16/16 | Complete    | 2026-10-12 |
 
 ## Coverage
 

@@ -859,6 +859,75 @@
     ],
     "surfaces": [
       {
+        "id": "v2-5-integrated-retained-filter-proof",
+        "title": "Real prune retention and integrated BASIC client proof",
+        "status": "done",
+        "requirements": ["CFPR-02", "CFGR-01", "CFGR-02"],
+        "evidence": [
+          "packages/open-bitcoin-chainstate/src/coins/tests/flush.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/tests/coins_migration.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs",
+          "packages/testdata/phase162/recipe.rs",
+          "packages/testdata/phase162/process.rs",
+          "scripts/phase162-filter-oracle.ts",
+          "scripts/phase162-filter-oracle.test.ts",
+          "scripts/check-phase162-integrated-filter-proof.ts",
+          "scripts/check-phase162-integrated-filter-proof/contracts.ts",
+          "scripts/check-phase162-integrated-filter-proof.test.ts",
+          "scripts/basic-filter-oracle.py",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/missing_history.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/recovery.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/publication_faults.rs",
+          "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/corruption.rs",
+          "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport/phase162.rs",
+          "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/phase162.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests/phase162.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/lifecycle.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/retention.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/rpc.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/inbound.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/restrictions.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/outbound.rs",
+          "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/execute_flush/header_checkpoint.rs",
+          "packages/open-bitcoin-node/src/sync/runtime_state/tests/header_checkpoint.rs",
+          "packages/open-bitcoin-node/src/sync/runtime_state/tests/header_checkpoint/faults.rs",
+          "packages/open-bitcoin-rpc/src/config/loader/open_bitcoin_runtime.rs",
+          "packages/open-bitcoin-wallet/src/descriptor/format.rs",
+          "README.md",
+          "packages/README.md",
+          "docs/parity/v2-5-integrated-filter-proof.md",
+          "docs/parity/catalog/basic-compact-filters.md",
+          "docs/operator/runtime-guide.md",
+          "docs/architecture/status-snapshot.md",
+          "docs/architecture/operator-observability.md",
+          ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md",
+          "docs/parity/source-breadcrumbs.json",
+          "scripts/verify.sh",
+          ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-REVIEW.md",
+          ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-SECURITY.md",
+          ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-NATIVE-EVIDENCE.md",
+          ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-VERIFICATION.md"
+        ],
+        "rationale": "Scoped integrated evidence is complete after independent source/security review, the entire default native verifier and lifecycle-valid goal verification for CFPR-02, CFGR-01 and CFGR-02. The complete same-datadir lifecycle uses actual configured daemon startup, normal maturity 100 accepted history through h1000, an elapsed idle worker, accepted reorg, manual/automatic paired deletion, all-handle reopen, authenticated RPC, physical inbound/outbound clients and genuine wallet/body restrictions. Focused faults supplement that lifecycle without duplicating its pressure corpus.",
+        "upstream": {
+          "sources": ["packages/bitcoin-knots/src/index/base.cpp", "packages/bitcoin-knots/src/index/blockfilterindex.cpp", "packages/bitcoin-knots/src/blockfilter.cpp", "packages/bitcoin-knots/src/node/blockstorage.cpp", "packages/bitcoin-knots/src/net_processing.cpp", "packages/bitcoin-knots/src/rpc/blockchain.cpp"],
+          "tests": ["packages/bitcoin-knots/test/functional/p2p_blockfilters.py", "packages/bitcoin-knots/test/functional/test_framework/messages.py", "packages/bitcoin-knots/test/functional/test_framework/blocktools.py", "packages/bitcoin-knots/test/functional/test_framework/siphash.py"]
+        },
+        "intentional_differences": [
+          "The hermetic synthetic root and caller-selected shallow work are not a public-network or most-work synchronization proof. Runtime subsidy halving interval 210000 differs from pinned Knots regtest 150; independently derived BASIC bytes/hash/header/protocol facts do not claim a whole-chain Knots consensus differential.",
+          "Immutable hash-keyed Fjall records retain active and stale BASIC facts after paired body/undo deletion; filter reads do not fetch, regenerate, repair or restore bodies. Selected lazy trusted-header checkpoint persistence preserves normal reopen without upgrading header-only ScriptsValid authority; old missing stale history still fails closed.",
+          "The automatic 550 MiB soft target is not attained when 584 nonactive codec-only pressure rows remain ineligible. Logical retention accounting and finite physical allocation samples are distinct; no filesystem cap, peak measurement or archive-scale proof is claimed.",
+          "Public wallet rescan keeps genuine creating-body eligibility after pruning: an earlier complete checkpoint survives a later missing-creating-history refusal, while its job state/error truthfully become Failed. Future descriptor metadata serialization is corrected; existing legacy read normalization remains unchanged and is not a migration or repair."
+        ],
+        "known_gaps": [
+          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
+          "BIP37/V0, assumeutxo/dual-chainstate, filter import, wallet acceleration, implicit repair/reindex/download, archive behavior, public defaults/network CI, production service/readiness and funds-safety remain excluded. No stronger v2.4 crash-window guarantee is claimed."
+        ]
+      },
+      {
         "id": "v2-5-explicit-bounded-basic-peer-serving",
         "title": "Explicit bounded BASIC peer requests and own capability",
         "status": "done",
@@ -921,7 +990,7 @@
           "Best exact-header equal-work ties use deterministic exact work, then height, then hash during recovery; this intentional local policy differs from Knots sequence/pointer tie-breaking and preserves existing synthetic fork-choice behavior."
         ],
         "known_gaps": [
-          "Phase 161 operator projections and Phase 162 integrated retained-client proof remain pending; overall v2.5 completion is not claimed.",
+          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
           "Public/default serving, V0/BIP37, archive behavior, production readiness and production-funds claims remain excluded."
         ]
       },
@@ -965,7 +1034,7 @@
           "Recovery observation budgets are 2,000,000 rows/256 GiB; achieved bounded appends use separate existing finite batch bounds and checked arithmetic. Modeled capability counts preserve general/explicit/all distinctions; implicit origins are not modeled and count zero."
         ],
         "known_gaps": [
-          "The complete integrated prune/reopen client proof belongs to Phase 162 and remains pending alongside v2.5 completion; canonical CFGR ownership is not duplicated here.",
+          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
           "Private faults compose genuine fresh producer captures with actual consumer replay, not every fault through live daemon HTTP. Synthetic genesis/maturity-one/manual owner-plan fixtures do not prove ordinary prune-RPC or automatic prune-after1000.",
           "BIP37/V0, filter import, wallet acceleration, reindex/repair/download, archive-scale, assumeutxo, public defaults/network CI, production service/readiness and funds-safety remain excluded. No stronger v2.4 crash-window guarantee is claimed."
         ]
@@ -1050,7 +1119,7 @@
           "Intentional local resource-policy: 1–2 filter records plus bounded metadata/provenance;33554602 bytes per envelope,67109204 combined;67108928 filter/header hex characters, separate logical-copy/SHA-padding accounting and64 pending waiters. No whole-HTTP/allocator/RSS or latency guarantee."
         ],
         "known_gaps": [
-          "CFPR-02, CFNET, CFOP, CFGR and v2.5 completion remain deferred.",
+          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
           "Synthetic genesis/maturity-one fixture:402 original accepts plus11 replacements; manual owner-plan height20 paired deletion outside trailing288 window yields1126 logical bytes loss451352→450226. Default regtest automatic prune-after1000 remains unchanged and unexercised; ordinary prune-RPC eligibility is not proven.",
           "Private node cfg(test) owner/query faults compose with actual production RPC projection, not every injection through daemon HTTP. Genuine approximately1MB block produces7 filter bytes;32MiB capacity fixture is synthetic codec evidence. V0 generation, peer serving, new operator surfaces, public defaults and production/funds or hardware power-loss claims remain deferred."
         ]
@@ -1131,9 +1200,10 @@
           "Local software admission and exact durable tip safe-release policy can conservatively refuse resources or prolong stronger retention while behind."
         ],
         "known_gaps": [
-          "Runtime reorg, filter/index RPC, peer serving/service advertisement, operator projections and integrated retained-client proof remain deferred to Phases 158\u2013162; v2.5 is planned scope, not a shipped capability.",
+          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
           "Full recovery/suffix preflight is startup-wide; admitted replay reservations do not promise RSS, every consensus-legal output representation, hardware power-loss or bounded fsync latency.",
-          "The three v2.4 stale-metadata recovery refusal, generic paired-unlink no-op and separate support-summary crash undercount advisories remain."
+          "The three v2.4 stale-metadata recovery refusal, generic paired-unlink no-op and separate support-summary crash undercount advisories remain.",
+          "BIP37/V0, assumeutxo/dual-chainstate, archive-scale, public defaults/public-network CI, implicit repair/import/download, production-service/readiness/funds and milestone audit/archive/shipment remain deferred."
         ],
         "suspected_unknowns": []
       },
@@ -4662,7 +4732,7 @@
           "Compact fixtures use explicit maturity one; standard maturity-100 mined-PoW case stays below 150 because runtime halving 210000 differs from Knots regtest 150."
         ],
         "known_gaps": [
-          "Filter/index RPC 159, peers 160, operator projections 161 and integrated retained-client proof 162 remain pending and are not shipped.",
+          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
           "Software faults do not establish hardware power-loss resilience, archive-scale performance, whole-runtime constant work/memory, isolated publication latency or production-funds safety.",
           "Three archived v2.4 advisories remain; no source repair/download or public reorg command is introduced."
         ],

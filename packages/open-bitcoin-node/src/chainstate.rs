@@ -453,6 +453,28 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     where
         S: FlushPersistSink,
     {
+        self.flush_applying_plan_with_header_checkpoint(
+            mode,
+            now,
+            disk_free_bytes,
+            plan,
+            locks,
+            &mut |_| Ok(()),
+        )
+    }
+
+    pub(crate) fn flush_applying_plan_with_header_checkpoint(
+        &mut self,
+        mode: FlushMode,
+        now: FlushPolicyTime,
+        disk_free_bytes: u64,
+        plan: &PrunePlan,
+        locks: &[PruneLockInfo],
+        checkpoint: &mut impl FnMut(&S) -> Result<(), StorageError>,
+    ) -> Result<FlushExecution, FlushApplyError>
+    where
+        S: FlushPersistSink,
+    {
         let maybe_pending = self
             .maybe_validated_lineage
             .as_ref()
@@ -468,20 +490,23 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             .flatten();
         let (undo_window, block_payloads, active_chain) = self.flush_window();
         let mut deleted = Vec::new();
-        let mut result = self.flush_lifecycle.execute_flush_applying_plan(
-            &mut self.store,
-            self.chainstate.coins_mut(),
-            mode,
-            now,
-            disk_free_bytes,
-            &undo_window,
-            &[],
-            &block_payloads,
-            &active_chain,
-            plan,
-            locks,
-            &mut |hash| deleted.push(hash),
-        );
+        let mut result = self
+            .flush_lifecycle
+            .execute_flush_applying_plan_with_header_checkpoint(
+                &mut self.store,
+                self.chainstate.coins_mut(),
+                mode,
+                now,
+                disk_free_bytes,
+                &undo_window,
+                &[],
+                &block_payloads,
+                &active_chain,
+                plan,
+                locks,
+                &mut |hash| deleted.push(hash),
+                checkpoint,
+            );
         if let Some(pending) = maybe_pending {
             if result.as_ref().is_ok_and(|execution| execution.wrote_coins) {
                 result = result.and_then(|execution| {

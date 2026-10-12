@@ -123,18 +123,58 @@ fn execute_flush_periodic_due_uses_sync_from_decide_flush() {
 
 #[test]
 fn persist_calls_execute_flush_ifneeded() {
-    // Arrange / Act / Assert
-    let persist_src = include_str!("../../../chainstate.rs");
+    // Arrange
+    let source: String = include_str!("../../../chainstate.rs")
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect();
+    let body = |symbol: &str| {
+        let marker = format!("fn{symbol}(");
+        assert_eq!(source.matches(&marker).count(), 1, "unique {symbol}");
+        let start = source.find(&marker).expect("actual method");
+        let source = &source[start..];
+        let open = source.find('{').expect("method body");
+        let mut depth = 0;
+        let end = source[open..]
+            .char_indices()
+            .find_map(|(index, character)| {
+                if character == '{' {
+                    depth += 1;
+                } else if character == '}' {
+                    depth -= 1;
+                }
+                (depth == 0).then_some(open + index)
+            })
+            .expect("closed method body");
+        &source[open + 1..end]
+    };
+
+    // Act
+    let persist = body("persist");
+    let mode = body("flush_with_mode");
+    let delegate = body("flush_applying_plan");
+    let executor = body("flush_applying_plan_with_header_checkpoint");
+
+    // Assert
     assert!(
-        persist_src.contains("self.flush_lifecycle.execute_flush"),
-        "ManagedChainstate::persist must call execute_flush"
+        persist.contains("self.flush_with_mode(FlushMode::IfNeeded,"),
+        "ManagedChainstate::persist must delegate with IfNeeded"
     );
     assert!(
-        persist_src.contains("FlushMode::IfNeeded"),
-        "ManagedChainstate::persist must use IfNeeded"
+        mode.contains("self.flush_applying_plan(mode,now,disk_free_bytes,"),
+        "flush_with_mode must preserve mode through the plan delegate"
     );
     assert!(
-        !persist_src.contains("save_snapshot(self.chainstate.snapshot())"),
+        delegate.contains("self.flush_applying_plan_with_header_checkpoint("),
+        "the plan delegate must reach the private checkpoint executor"
+    );
+    assert!(
+        executor
+            .contains("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("),
+        "the private executor must reach the actual lifecycle"
+    );
+    assert!(
+        !source.contains("save_snapshot(self.chainstate.snapshot())"),
         "ManagedChainstate::persist must not write leftover snapshots"
     );
 }

@@ -9,7 +9,9 @@ rows fail closed; valid retained records still serve. Initial-sync latch,
 processed height and captured-frontier readiness remain distinct. Dependencies
 and default-off activation are unchanged. CFRP-01/02 are Complete after full native, independent source/security and
 [formal lifecycle verification](../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md). Phase 160 implements explicit bounded peers;
-Phase 161 adds shared operator evidence below. Integrated 162 and v2.5 completion remain pending. Earlier phase scope below is
+Phase 161 adds shared operator evidence below. Current scoped integrated
+evidence is linked below; source/security, full native and formal evidence gates passed. v2.5 remains
+unaudited and unshipped. Earlier phase scope below is
 historical; synthetic genesis/maturity-one/manual owner-plan evidence does not
 establish ordinary prune-RPC, automatic-threshold or production/funds safety.
 
@@ -22,7 +24,18 @@ payload/key-value bytes include stale branches; payload bytes are a subset, and
 Fjall overhead/physical allocation are excluded. Growth stays outside the soft
 block/undo target and does not restore body/wallet eligibility. See the
 [operator contract and Cargo/Bazel commands](../docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
-Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
+The [integrated proof](../docs/parity/v2-5-integrated-filter-proof.md) and
+[timed Cargo/Bazel UAT](../.planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md)
+link actual normal-maturity startup/scheduler/connect/reorg, manual/automatic 550 MiB
+paired deletion, cold reopen, authenticated RPC and both peer adapters. Exact
+bounded test-wallet import/funding/scan/refusal and h715 Block/h714 NotFound details
+remain scoped there; only future descriptor formatting changes, with legacy
+decoder/raw-text compatibility preserved. Final06 resource observations retain
+soft-target excess and physical point-measurement limits. Scoped
+source/security, full native and formal evidence gates passed, without a
+default-wallet performance or whole-chain Knots differential claim.
 No stronger v2.4 crash-window guarantee is claimed.
 
 This directory holds both the pinned upstream reference baseline and first-party

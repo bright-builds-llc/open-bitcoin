@@ -199,8 +199,9 @@ separates protocol limits from shared generic/scratch/CF accounting. Scoped
 implementation evidence is recorded by Plans 01–11 and 13–17. The
 [final verification](./.planning/phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md)
 records the passed native contract, clean independent review and lifecycle gates.
-Phase 161 adds shared operator evidence below. Phase 162 integrated retained-client proof and v2.5 completion remain
-pending. Public/default serving, V0/BIP37, archive, production readiness and
+Phase 161 adds shared operator evidence below. Current scoped integrated
+evidence is linked below; source/security, full native and formal evidence gates passed. v2.5 remains
+unaudited and unshipped. Public/default serving, V0/BIP37, archive, production readiness and
 production-funds claims remain deferred.
 
 ```bash
@@ -226,7 +227,16 @@ Retained filters do not restore deleted bodies or wallet eligibility.
 
 See the [measurement basis, evidence limits and local commands](./docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161)
 and [operator interpretation](./docs/operator/runtime-guide.md#shared-basic-index-inspection-phase-161).
-Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
+The [integrated evidence](docs/parity/v2-5-integrated-filter-proof.md) records one
+normal-maturity history through actual manual/automatic 550 MiB paired deletion,
+cold reopen, authenticated RPC and both peer socket directions, including
+positive h1000 checkpoints. It preserves exact funded-wallet scan ordering and
+creating-body refusal, retained h715/deleted h714 body controls, formatter-only
+future storage correction with existing legacy decoding, and final Plan 06 resource
+observations with the soft target unattained. See [timed Cargo/Bazel UAT](.planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md).
+Scoped source/security, full native and formal lifecycle evidence gates passed. This adds no default-wallet benchmark or whole-chain Knots parity claim.
 No stronger v2.4 crash-window guarantee is claimed.
 
 ```bash

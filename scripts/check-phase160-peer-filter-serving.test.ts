@@ -4,13 +4,48 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { CHECK_FILES, CONTRACTS, HELPER_CONTRACTS, MODULE_EDGES, TEST_CONTRACTS, checkPhase160PeerFilterServing, maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { compact, maybeFunction, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { createHash } from "node:crypto";
+import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 
 const roots: string[] = [];
 const repo = resolve(import.meta.dir, "..");
+function transitionSources(): Map<string, string> {
+  const sources = new Map([...new Set([...CHECK_FILES, ...PHASE162_EVIDENCE])].map(file => [file, readFileSync(join(repo, file), "utf8")]));
+  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+  sources.set(".planning/REQUIREMENTS.md", requirements);
+  const index = JSON.parse(sources.get("docs/parity/index.json")!);
+  const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
+  owner.status = "in_progress";
+  if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
+  index.checklist.surfaces.find((row: { requirements: string[] }) => row.requirements.includes("CFNET-01")).known_gaps = [PHASE162_IMPLEMENTATION];
+  sources.set("docs/parity/index.json", JSON.stringify(index));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
+  return sources;
+}
+
+test("peer guard permits only evidence-linked current implementation", () => {
+  // Arrange
+  const sources = transitionSources();
+  // Act / Assert
+  expect(checkPhase160PeerFilterServing(undefined, sources)).toEqual([]);
+  sources.set("README.md", sources.get("README.md")! + "\nPhase 162 is complete.\n");
+  expect(checkPhase160PeerFilterServing(undefined, sources).some(failure => failure.includes("unsupported"))).toBe(true);
+});
+
+test("peer transition loses authority when paired-delete evidence is removed", () => {
+  // Arrange
+  const sources = transitionSources();
+  sources.delete(PHASE162_EVIDENCE[1]);
+  // Act / Assert
+  expect(checkPhase160PeerFilterServing(undefined, sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+});
 function fixture(): string {
   const root = mkdtempSync(join(tmpdir(), "phase160-guard-"));
   roots.push(root);
-  for (const file of CHECK_FILES) {
+  for (const file of new Set([...CHECK_FILES, ...loadPhase162OptionalSources(repo).keys()])) {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     copyFileSync(join(repo, file), join(root, file));
   }

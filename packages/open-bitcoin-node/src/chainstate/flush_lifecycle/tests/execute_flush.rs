@@ -11,8 +11,42 @@ use open_bitcoin_core::chainstate::{
 
 use super::*;
 use crate::chainstate::{ChainstateStore, FjallChainstateStore, ManagedChainstate};
+use crate::status::CoinsRecoveryOutcome;
 use crate::storage::coins_codec::encode_best_block_value;
 use crate::storage::fjall_store::PairedDeleteOutcome;
+
+mod header_checkpoint;
+
+impl FlushLifecycle {
+    pub(crate) fn ready_for_test(
+        cache_byte_limit: u64,
+        mempool_leftover_bytes: u64,
+        next_write: FlushPolicyTime,
+        memory_pressure: bool,
+    ) -> Self {
+        Self {
+            readiness: ManagerReadiness::ReadyToFlush,
+            cache_byte_limit,
+            mempool_leftover_bytes,
+            next_write,
+            memory_pressure,
+            maybe_last_write_decision: None,
+            maybe_recovery_outcome: Some(CoinsRecoveryOutcome::Consistent),
+        }
+    }
+
+    pub(crate) fn not_ready_for_test() -> Self {
+        Self {
+            readiness: ManagerReadiness::NotReady,
+            cache_byte_limit: default_coins_cache_byte_limit(),
+            mempool_leftover_bytes: 0,
+            next_write: FlushPolicyTime::from_unix_seconds(0),
+            memory_pressure: false,
+            maybe_last_write_decision: None,
+            maybe_recovery_outcome: None,
+        }
+    }
+}
 
 #[test]
 fn execute_flush_none_does_not_write_coins() {

@@ -26,6 +26,8 @@ pub(crate) struct HistoryControl {
     revision: u64,
     #[cfg(test)]
     maybe_fault: Option<HistoryPublicationFault>,
+    #[cfg(test)]
+    snapshot_attempts: [usize; 4],
 }
 
 /// Store-bound recovery evidence; raw identities and snapshots cannot create it.
@@ -55,6 +57,8 @@ impl RecoveredValidationHistory {
 pub(crate) enum HistoryPublicationFault {
     BeforeCommit,
     AfterCommit,
+    SnapshotBeforeCommitFailure,
+    SnapshotAfterCommitFailure,
 }
 
 impl FjallNodeStore {
@@ -114,7 +118,11 @@ impl FjallNodeStore {
         let headers = super::encode_header_entries(snapshot.entries())?;
         let index = super::encode_block_index_entries(snapshot.entries())?;
         let _publication = self.filter_publication_guard()?;
-        let control = self.history_guard()?;
+        let mut control = self.history_guard()?;
+        #[cfg(test)]
+        {
+            control.snapshot_attempts[2] += 1;
+        }
         if control.maybe_coverage == Some(ValidationCoverage::Complete) {
             for entry in snapshot.entries() {
                 let identity = BlockValidationIdentity::new(
@@ -133,9 +141,30 @@ impl FjallNodeStore {
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
         batch.insert(&self.headers, super::SNAPSHOT_KEY, headers);
         batch.insert(&self.block_index, super::SNAPSHOT_KEY, index);
-        batch
-            .commit()
-            .map_err(|error| backend_failure(StorageNamespace::Headers, error))
+        #[cfg(test)]
+        {
+            control.snapshot_attempts[3] += 1;
+        }
+        #[cfg(test)]
+        if control.maybe_fault == Some(HistoryPublicationFault::SnapshotBeforeCommitFailure) {
+            control.maybe_fault = None;
+            return Err(snapshot_failure(
+                "injected header snapshot failure before commit",
+            ));
+        }
+        if let Err(error) = batch.commit() {
+            control.poisoned = true;
+            return Err(backend_failure(StorageNamespace::Headers, error));
+        }
+        #[cfg(test)]
+        if control.maybe_fault == Some(HistoryPublicationFault::SnapshotAfterCommitFailure) {
+            control.maybe_fault = None;
+            control.poisoned = true;
+            return Err(snapshot_failure(
+                "injected header snapshot failure after commit",
+            ));
+        }
+        Ok(())
     }
 
     pub(crate) fn shares_validation_history_store(&self, other: &Self) -> bool {
@@ -394,6 +423,36 @@ impl FjallNodeStore {
     }
 
     #[cfg(test)]
+    pub(crate) fn remove_header_snapshot_for_test(&self) -> Result<(), StorageError> {
+        self.remove_bytes(
+            StorageNamespace::Headers,
+            super::SNAPSHOT_KEY,
+            crate::PersistMode::Sync,
+        )?;
+        self.remove_bytes(
+            StorageNamespace::BlockIndex,
+            super::SNAPSHOT_KEY,
+            crate::PersistMode::Sync,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn note_snapshot_attempt(&self, stage: usize) {
+        self.validation_history
+            .lock()
+            .expect("history observations")
+            .snapshot_attempts[stage] += 1;
+    }
+
+    #[cfg(test)]
+    pub(crate) fn snapshot_attempts(&self) -> [usize; 4] {
+        self.validation_history
+            .lock()
+            .expect("history observations")
+            .snapshot_attempts
+    }
+
+    #[cfg(test)]
     pub(crate) fn set_validation_history_fault(&self, fault: HistoryPublicationFault) {
         self.validation_history
             .lock()
@@ -405,6 +464,15 @@ impl FjallNodeStore {
 fn history_failure(message: &str) -> StorageError {
     StorageError::BackendFailure {
         namespace: StorageNamespace::BlockIndex,
+        message: message.to_owned(),
+        action: StorageRecoveryAction::Restart,
+    }
+}
+
+#[cfg(test)]
+fn snapshot_failure(message: &str) -> StorageError {
+    StorageError::BackendFailure {
+        namespace: StorageNamespace::Headers,
         message: message.to_owned(),
         action: StorageRecoveryAction::Restart,
     }

@@ -5,6 +5,202 @@
 
 use super::*;
 
+const STORAGE_PUBLIC_BODY: &str = "wpkh([deadbeef/1]tpubD6NzVbkrYhZ4WaWSyoBvQwbpLkojyoTZPRsgXELWz3Popb3qkjcJyJUGLnL4qHHoQvao8ESaAstxYSnhyswJ76uZPStJRJCTKvosUCJZL5B/0/*)";
+const STORAGE_PRIVATE_BODY: &str = "tr(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/1/1/*)";
+
+fn assert_storage_roundtrip(
+    descriptor: &SingleKeyDescriptor,
+    body: &str,
+    suffix: &str,
+    range: (u32, u32, u32),
+) -> SingleKeyDescriptor {
+    let stored = descriptor.storage_text();
+    let reparsed = SingleKeyDescriptor::parse(&stored, AddressNetwork::Regtest)
+        .expect("stored descriptor must parse through the public boundary");
+    assert_eq!(stored.split_once('#'), Some((body, suffix)));
+    assert_eq!(reparsed.range_start(), Some(range.0));
+    assert_eq!(reparsed.range_end(), Some(range.1));
+    assert_eq!(reparsed.next_index(), Some(range.2));
+    assert_eq!(&reparsed, descriptor);
+    assert_eq!(reparsed.storage_text(), stored);
+    assert_eq!(reparsed.script_pubkey(), descriptor.script_pubkey());
+    assert!(reparsed.script_pubkey().is_ok());
+    assert_eq!(
+        reparsed.address(AddressNetwork::Regtest),
+        descriptor.address(AddressNetwork::Regtest)
+    );
+    for index in [range.0, range.1, range.2] {
+        assert_eq!(
+            reparsed.script_pubkey_at(index).expect("reloaded script"),
+            descriptor.script_pubkey_at(index).expect("original script")
+        );
+    }
+    reparsed
+}
+
+#[test]
+fn phase162_descriptor_storage_zero_range_roundtrips() {
+    // Arrange
+    let descriptor = SingleKeyDescriptor::parse(
+        &format!("{STORAGE_PUBLIC_BODY}#ob:0:0:0"),
+        AddressNetwork::Regtest,
+    )
+    .expect("zero inclusive range");
+    // Act / Assert
+    assert_storage_roundtrip(&descriptor, STORAGE_PUBLIC_BODY, "ob:0:0:0", (0, 0, 0));
+}
+
+#[test]
+fn phase162_descriptor_storage_nonzero_cursor_roundtrips() {
+    // Arrange
+    let descriptor = SingleKeyDescriptor::parse(
+        &format!("{STORAGE_PRIVATE_BODY}#ob:2:5:3"),
+        AddressNetwork::Regtest,
+    )
+    .expect("nonzero inclusive range and cursor");
+    // Act
+    let reparsed =
+        assert_storage_roundtrip(&descriptor, STORAGE_PRIVATE_BODY, "ob:2:5:3", (2, 5, 3));
+    // Assert
+    for index in [2, 5] {
+        let script = descriptor.script_pubkey_at(index).expect("endpoint script");
+        assert_eq!(
+            reparsed
+                .matching_index(&script)
+                .expect("inclusive endpoint"),
+            Some(index)
+        );
+    }
+}
+
+#[test]
+fn phase162_descriptor_storage_default_bounds_roundtrip() {
+    // Arrange
+    let bodies = [STORAGE_PUBLIC_BODY, STORAGE_PRIVATE_BODY];
+    for body in bodies {
+        let descriptor = SingleKeyDescriptor::parse(body, AddressNetwork::Regtest)
+            .expect("default wildcard range");
+        // Act / Assert
+        assert_storage_roundtrip(&descriptor, body, "ob:0:1000:0", (0, 1000, 0));
+    }
+}
+
+#[test]
+fn phase162_descriptor_storage_advanced_and_exhausted_cursor_roundtrips() {
+    // Arrange
+    let mut descriptor = SingleKeyDescriptor::parse(
+        &format!("{STORAGE_PUBLIC_BODY}#ob:0:0:0"),
+        AddressNetwork::Regtest,
+    )
+    .expect("single-index range");
+    // Act
+    let allocated = descriptor
+        .advance_next_index(DescriptorRole::External)
+        .expect("index zero");
+    let mut reparsed =
+        assert_storage_roundtrip(&descriptor, STORAGE_PUBLIC_BODY, "ob:0:0:1", (0, 0, 1));
+    let exhausted = reparsed.advance_next_index(DescriptorRole::External);
+    // Assert
+    assert_eq!(allocated, 0);
+    assert!(matches!(
+        exhausted,
+        Err(WalletError::DescriptorCursorExhausted {
+            next_index: 1,
+            range_end: 0,
+            ..
+        })
+    ));
+    assert_eq!(reparsed, descriptor);
+}
+
+#[test]
+fn phase162_descriptor_storage_accepted_suffixes_preserve_canonical_body() {
+    // Arrange: suffixes are accepted by the existing parser without checksum validation.
+    for suffix in ["ignored", "deadbeef"] {
+        let descriptor = SingleKeyDescriptor::parse(
+            &format!("{STORAGE_PUBLIC_BODY}#{suffix}#ob:2:5:3"),
+            AddressNetwork::Regtest,
+        )
+        .expect("existing optional checksum/suffix handling");
+        // Act / Assert
+        assert_storage_roundtrip(&descriptor, STORAGE_PUBLIC_BODY, "ob:2:5:3", (2, 5, 3));
+    }
+    // Arrange: checksum-bearing fixture from pinned wallet_descriptor.py:193.
+    let body = "wpkh(tprv8ZgxMBicQKsPd7Uf69XL1XwhmjHopUGep8GuEiJDZmbQz6o58LninorQAfcKZWARbtRtfnLcJ5MQ2AtHcQJCCRUcMRvmDUjyEmNUWwx8UbK/0h/*h)";
+    let descriptor = SingleKeyDescriptor::parse(
+        &format!("{body}#y4dfsj7n#ob:2:5:3"),
+        AddressNetwork::Regtest,
+    )
+    .expect("pinned checksum-bearing descriptor");
+    // Act / Assert
+    assert_storage_roundtrip(&descriptor, body, "ob:2:5:3", (2, 5, 3));
+}
+
+#[test]
+fn phase162_descriptor_storage_nonranged_output_is_unchanged() {
+    // Arrange
+    let body = "wpkh(024d4b6cd1361032ca9bd2aeb9d900aa4d45d9ead80ac9423374c451a7254d0766)";
+    let descriptor =
+        SingleKeyDescriptor::parse(&format!("{body}#ignored"), AddressNetwork::Regtest)
+            .expect("nonranged descriptor");
+    // Act
+    let stored = descriptor.storage_text();
+    let reparsed =
+        SingleKeyDescriptor::parse(&stored, AddressNetwork::Regtest).expect("public reparse");
+    // Assert
+    assert_eq!(stored, body);
+    assert_eq!(reparsed, descriptor);
+    assert_eq!(
+        (
+            reparsed.range_start(),
+            reparsed.range_end(),
+            reparsed.next_index()
+        ),
+        (None, None, None)
+    );
+    assert_eq!(
+        reparsed.script_pubkey().expect("reloaded script"),
+        descriptor.script_pubkey().expect("script")
+    );
+    assert_eq!(reparsed.storage_text(), stored);
+}
+
+#[test]
+fn phase162_descriptor_storage_public_parser_rejects_malformed_metadata() {
+    // Arrange
+    let invalid = [
+        "ob::0:0:0",
+        "ob:0:0",
+        "ob:0:0:0:0",
+        "ob:a:5:0",
+        "ob:0:b:0",
+        "ob:0:5:c",
+        "ob:-1:5:0",
+        "ob:4294967296:5:0",
+        "ob:0:4294967296:0",
+        "ob:0:5:4294967296",
+    ];
+    for suffix in invalid {
+        // Act
+        let result = SingleKeyDescriptor::parse(
+            &format!("{STORAGE_PUBLIC_BODY}#{suffix}"),
+            AddressNetwork::Regtest,
+        );
+        // Assert
+        assert!(matches!(result, Err(WalletError::DescriptorSyntax(_))));
+    }
+    // Act
+    let inverted = SingleKeyDescriptor::parse(
+        &format!("{STORAGE_PUBLIC_BODY}#ob:5:2:3"),
+        AddressNetwork::Regtest,
+    );
+    // Assert
+    assert!(matches!(
+        inverted,
+        Err(WalletError::InvalidDescriptorRange { start: 5, end: 2 })
+    ));
+}
+
 #[test]
 fn key_source_and_storage_helpers_cover_extended_branches() {
     let maybe_origin = super::format::parse_origin("[deadbeef/1h/2]xpub").expect("origin parsing");

@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { hasOrderedCode, maybeFunction, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
+import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView } from "./check-phase158-validated-reorg.ts";
 
 const N = "packages/open-bitcoin-node/src/";
 const C = "packages/open-bitcoin-cli/src/operator/";
@@ -68,11 +69,11 @@ const LIMITS = [
   "Phase 162 owns the complete integrated prune/reopen client proof.",
   "v2.5 remains pending.", "No stronger v2.4 crash-window guarantee is claimed.",
 ];
-export const CHECK_FILES = [...new Set([...CONTRACTS, ...TESTS].map(row => row[0]).concat(MODULES.map(row => row[0]), DOCS, ["docs/parity/index.json", "scripts/verify.sh"]))];
+export const CHECK_FILES = [...new Set([...CONTRACTS, ...TESTS].map(row => row[0]).concat(MODULES.map(row => row[0]), DOCS, PHASE162_FILES, ["docs/parity/index.json", "scripts/verify.sh"]))];
 
 /** Load fixed current paths only; no archive traversal or generated evidence. */
 export function loadSources(): Map<string, string> {
-  return new Map(CHECK_FILES.map(file => [file, readFileSync(resolve(import.meta.dir, "..", file), "utf8")]));
+  return new Map([...loadPhase162OptionalSources(resolve(import.meta.dir, "..")), ...CHECK_FILES.map(file => [file, readFileSync(resolve(import.meta.dir, "..", file), "utf8")] as const)]);
 }
 
 /** In-memory source views let mutation tests remain isolated from the checkout. */
@@ -80,6 +81,7 @@ export function checkPhase161OperatorIndexEvidence(maybeSources?: ReadonlyMap<st
   const sources = maybeSources ?? loadSources();
   const failures: string[] = [];
   const text = (file: string) => sources.get(file) ?? "";
+  const claimState = checkPhase162ClaimState(text, failures);
   for (const file of CHECK_FILES) if (!sources.has(file)) failures.push(`${file}: required source missing`);
   for (const [file, symbol, anchors] of [...CONTRACTS, ...TESTS]) {
     const source = text(file);
@@ -105,15 +107,20 @@ export function checkPhase161OperatorIndexEvidence(maybeSources?: ReadonlyMap<st
   const captures = N + "sync/tests/filter_index/operator_status/captures.rs";
   const maybeFreshness = maybeFunction(text(captures), "compare_fixture");
   if (!maybeFreshness || !hasOrderedCode(maybeFreshness.body, ["validate_fixture(captures)", "assert_eq!(", "captures[name], *value"])) failures.push(`${captures}: mandatory exact fresh producer comparison`);
-  checkClaims(text, failures);
+  checkClaims(text, failures, claimState);
   checkNative(text("scripts/verify.sh"), failures);
   return [...new Set(failures)];
 }
 
-function checkClaims(text: (file: string) => string, failures: string[]): void {
+function checkClaims(text: (file: string) => string, failures: string[], claimState: ReturnType<typeof checkPhase162ClaimState>): void {
   for (const file of DOCS) {
-    for (const limit of LIMITS) if (!text(file).includes(limit)) failures.push(`${file}: fixed scope limit ${limit}`);
-    if (/v2\.5\s+(?:is\s+)?(?:production ready|complete|shipped)|Phase 162 integrated proof is complete|production readiness\s+is\s+(?:proven|complete|established)/i.test(text(file))) failures.push(`${file}: unsupported production/integrated claim`);
+    const scoped = claimState === "implementation" && text(file).includes(PHASE162_IMPLEMENTATION)
+      || claimState === "complete" && text(file).includes(PHASE162_COMPLETE);
+    for (const [index, limit] of LIMITS.entries()) if (!text(file).includes(limit)
+      && !(index === 0 && scoped) && !(index === 1 && text(file).includes("v2.5 remains unaudited and unshipped."))) failures.push(`${file}: fixed scope limit ${limit}`);
+    const view = phase162ClaimView(text(file), claimState);
+    if (/v2\.5\s+(?:is\s+)?(?:production ready|complete|shipped)|Phase 162 integrated proof is complete|production readiness\s+is\s+(?:proven|complete|established)/i.test(view)) failures.push(`${file}: unsupported production/integrated claim`);
+    checkPhase162ExcludedClaims(text(file), file, failures, claimState);
   }
   for (const phrase of ["Excluded: BIP37/V0, filter import, wallet acceleration, reindex/repair/download,", "archive-scale, assumeutxo, public defaults/network CI, production service/readiness", "and funds-safety."]) if (!text(DOC).includes(phrase)) failures.push(`${DOC}: excluded surface disclosure`);
   try {
@@ -121,7 +128,9 @@ function checkClaims(text: (file: string) => string, failures: string[]): void {
     const rows = index.checklist.surfaces.filter((row: { requirements: string[] }) => row.requirements.includes("CFOP-01"));
     if (rows.length !== 1 || JSON.stringify(rows[0].requirements) !== '["CFOP-01"]' || !["in_progress", "done"].includes(rows[0].status)) { failures.push("docs/parity/index.json: unique CFOP-01 owner"); return; }
     for (const file of [DOC, "scripts/check-phase161-operator-index-evidence.ts", "scripts/check-phase161-operator-index-evidence.test.ts", N + "storage/fjall_store/filters/retention.rs"]) if (!rows[0].evidence.includes(file)) failures.push(`docs/parity/index.json: evidence ${file}`);
-    if (!rows[0].known_gaps.some((gap: string) => gap.includes("Phase 162") && gap.includes("pending"))) failures.push("docs/parity/index.json: Phase 162 ownership");
+    if (!rows[0].known_gaps.some((gap: string) => (claimState !== "complete" && gap.includes("Phase 162") && gap.includes("pending"))
+      || (claimState === "implementation" && gap === PHASE162_IMPLEMENTATION) || (claimState === "complete" && gap === PHASE162_COMPLETE))) failures.push("docs/parity/index.json: Phase 162 ownership");
+    checkPhase162ExcludedClaims(JSON.stringify(rows[0]), "docs/parity/index.json", failures, claimState);
   } catch { failures.push("docs/parity/index.json: invalid claim inventory"); }
 }
 

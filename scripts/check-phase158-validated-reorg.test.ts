@@ -3,18 +3,187 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { CHECK_FILES, CONTRACTS, DOC, PHASE, REGISTRATIONS, SURFACE, TESTS, checkPhase158ValidatedReorg, maybeBoundary } from "./check-phase158-validated-reorg.ts";
+import { createHash } from "node:crypto";
+import { PHASE162, PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, checkPhase162ClaimState, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
+import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS, SURFACE, TESTS, checkPhase158ValidatedReorg, maybeBoundary } from "./check-phase158-validated-reorg.ts";
 
 const REPO = resolve(import.meta.dir, "..");
 const roots: string[] = [];
+
+function transitionSources(): Map<string, string> {
+  const sources = new Map([...new Set([...CHECK_FILES, ...PHASE162_EVIDENCE])].map(file => [file, readFileSync(join(REPO, file), "utf8")]));
+  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+  sources.set(".planning/REQUIREMENTS.md", requirements);
+  const index = JSON.parse(sources.get("docs/parity/index.json")!);
+  const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
+  owner.status = "in_progress";
+  if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
+  index.checklist.surfaces.find((row: { id: string }) => row.id === SURFACE).known_gaps = [PHASE162_IMPLEMENTATION];
+  sources.set("docs/parity/index.json", JSON.stringify(index));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
+  return sources;
+}
+
+test("current implementation transition requires linked source evidence without future formal output", () => {
+  // Arrange
+  const sources = transitionSources();
+  // Act / Assert
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+  expect(checkPhase162ClaimState(file => sources.get(file) ?? "", [])).toBe("implementation");
+  expect(sources.has(PHASE162 + "162-VERIFICATION.md")).toBe(false);
+});
+
+test("source binding accepts GFM table alignment without weakening hash identity", () => {
+  // Arrange
+  const sources = transitionSources();
+  sources.set(PHASE162_DOC, sources.get(PHASE162_DOC)!.replaceAll("` | `", "`      |     `"));
+  // Act / Assert
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+});
+
+for (const mutation of ["proof prose alone", "removed raw input", "removed paired undo", "removed reopen", "premature activation", "duplicate owner", "missing evidence root", "stale source hash", "stale lifecycle"]) {
+  test(`current transition refuses ${mutation}`, () => {
+    // Arrange
+    const sources = transitionSources();
+    if (mutation === "proof prose alone") sources.delete(PHASE162_DOC);
+    if (mutation === "removed raw input") sources.set(PHASE162_EVIDENCE[0], sources.get(PHASE162_EVIDENCE[0])!.replace("encode_block(block)", "unrelated_filter_result(block)"));
+    if (mutation === "removed paired undo") sources.set(PHASE162_EVIDENCE[1], sources.get(PHASE162_EVIDENCE[1])!.replace(".load_undo(hash)", ".load_block(hash)"));
+    if (mutation === "removed reopen") sources.set(PHASE162_EVIDENCE[2], sources.get(PHASE162_EVIDENCE[2])!.replace("drop(opened);", "retain(opened);"));
+    if (mutation.startsWith("removed")) sources.set(PHASE162_DOC, sources.get(PHASE162_DOC)!.replace(/\| `([^`]+)` \| `[a-f0-9]{64}` \|/g, (_row, file) => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`));
+    if (mutation === "premature activation") sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!.replace("[ ] **CFPR-02**", "[x] **CFPR-02**"));
+    if (mutation === "duplicate owner" || mutation === "missing evidence root") {
+      const index = JSON.parse(sources.get("docs/parity/index.json")!);
+      const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
+      if (mutation === "duplicate owner") index.checklist.surfaces.push({ ...owner, id: "duplicate" });
+      else owner.evidence = owner.evidence.filter((file: string) => file !== PHASE162_EVIDENCE[1]);
+      sources.set("docs/parity/index.json", JSON.stringify(index));
+    }
+    if (mutation === "stale source hash") sources.set(PHASE162_EVIDENCE[0], sources.get(PHASE162_EVIDENCE[0])! + "\n// changed after evidence\n");
+    if (mutation === "stale lifecycle") sources.set(PHASE162_DOC, sources.get(PHASE162_DOC)!.replaceAll("162-2026-10-11T16-25-37", "162-stale"));
+    // Act
+    const failures = checkPhase158ValidatedReorg(undefined, sources);
+    // Assert
+    expect(failures.some(failure => failure.includes("T-162-10"))).toBe(true);
+  });
+}
+
+test("formal scoped completion requires all consistent fresh formal gates", () => {
+  // Arrange
+  const sources = transitionSources();
+  sources.set("README.md", sources.get("README.md")!.replace(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
+  sources.set(PHASE162_DOC, sources.get(PHASE162_DOC)!.replace(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
+  // Act / Assert
+  expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+});
+
+for (const claim of ["BIP37 serving is supported.", "V0 is enabled.", "Assumeutxo is supported.", "Repair is enabled.", "Archive-scale is proven.", "Public defaults are enabled.", "Public-network CI is enabled.", "Production service is ready.", "Production-funds safety is proven.", "v2.5 is shipped."]) {
+  for (const file of [PHASE162_DOC, "docs/parity/index.json", PHASE + "158-REORG-MEASUREMENTS.md", PHASE + "158-06-SUMMARY.md"]) {
+    test(`scoped current evidence cannot authorize historical/excluded ${claim} in ${file}`, () => {
+      // Arrange
+      const sources = transitionSources();
+      if (file.endsWith(".json")) {
+        const index = JSON.parse(sources.get(file)!);
+        index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof").known_gaps.push(claim);
+        sources.set(file, JSON.stringify(index));
+      } else sources.set(file, sources.get(file)! + "\n" + claim);
+      // Act / Assert
+      expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("unsupported"))).toBe(true);
+    });
+  }
+}
+
+function formalSources(): Map<string, string> {
+  const sources = transitionSources();
+  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[ ] **${id}**`, `[x] **${id}**`).replace(`| ${id} | Phase 162 | Pending |`, `| ${id} | Phase 162 | Complete |`);
+  sources.set(".planning/REQUIREMENTS.md", requirements);
+  const index = JSON.parse(sources.get("docs/parity/index.json")!.replaceAll(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
+  const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
+  owner.status = "done";
+  const digest = createHash("sha256").update(PHASE162_EVIDENCE.map(file => `${file}:${createHash("sha256").update(sources.get(file)!).digest("hex")}`).join("\n")).digest("hex");
+  for (const [name, status, generator] of [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"], ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]]) {
+    const file = PHASE162 + `162-${name}.md`;
+    owner.evidence.push(file);
+    sources.set(file, `---\nstatus: ${status}\ngenerated_by: ${generator}\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\ngenerated_at: "2026-10-11T23:01:00Z"\nsource_digest: ${digest}\nlifecycle_validated: true\nthreats_open: 0\n---\nbash scripts/verify.sh\n`);
+  }
+  sources.set("docs/parity/index.json", JSON.stringify(index));
+  return sources;
+}
+
+test("current formal fixture requires scoped completion consistency while milestone stays unaudited", () => {
+  // Arrange: in-memory gate contracts, never persisted as executed reports.
+  const sources = formalSources();
+  // Act / Assert
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+});
+
+test("native evidence cannot collide with GSD formal verification suffix selection", () => {
+  // Arrange
+  const sources = formalSources();
+  // Act
+  const formalFiles = [...sources.keys()].filter(file => file.startsWith(PHASE162) && file.endsWith("-VERIFICATION.md")).sort();
+  // Assert
+  expect(formalFiles).toEqual([PHASE162 + "162-VERIFICATION.md"]);
+  expect(sources.has(PHASE162 + "162-NATIVE-EVIDENCE.md")).toBe(true);
+});
+for (const name of ["VERIFICATION", "NATIVE-EVIDENCE", "REVIEW", "SECURITY"]) {
+  for (const mutation of ["missing", "wrong lifecycle", "stale hash", "old report", "failing status"]) {
+    test(`formal transition refuses ${mutation} ${name}`, () => {
+      // Arrange
+      const sources = formalSources();
+      const file = PHASE162 + `162-${name}.md`;
+      if (mutation === "missing") sources.delete(file);
+      else sources.set(file, sources.get(file)!.replace(
+        mutation === "wrong lifecycle" ? "162-2026-10-11T16-25-37" : mutation === "stale hash" ? /source_digest: [a-f0-9]+/ : mutation === "old report" ? "23:01:00" : /status: \w+/,
+        mutation === "wrong lifecycle" ? "162-stale" : mutation === "stale hash" ? "source_digest: stale" : mutation === "old report" ? "22:00:00" : "status: failed"));
+      // Act / Assert
+      expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+    });
+  }
+}
+
+for (const [name, file, before, after] of [
+  ["fast-only native command", "NATIVE-EVIDENCE", "bash scripts/verify.sh", "bash scripts/verify.sh --fast"],
+  ["invalid lifecycle result", "VERIFICATION", "lifecycle_validated: true", "lifecycle_validated: false"],
+  ["open security threat", "SECURITY", "threats_open: 0", "threats_open: 1"],
+]) {
+  test(`formal transition refuses ${name}`, () => {
+    // Arrange
+    const sources = formalSources();
+    const target = PHASE162 + `162-${file}.md`;
+    sources.set(target, sources.get(target)!.replace(before, after));
+    // Act / Assert
+    expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("full native/security/lifecycle"))).toBe(true);
+  });
+}
 function fixture(): string {
   const root = mkdtempSync(join(tmpdir(), "phase158-evidence-"));
   roots.push(root);
-  for (const file of CHECK_FILES) {
+  for (const file of new Set([...CHECK_FILES, ...loadPhase162OptionalSources(REPO).keys()])) {
     mkdirSync(dirname(join(root, file)), { recursive: true });
     writeFileSync(join(root, file), readFileSync(join(REPO, file)));
   }
   return root;
+}
+
+for (const state of ["implementation", "formal"]) {
+  test(`filesystem loader permits current ${state} evidence without losing optional roots`, () => {
+    // Arrange
+    const root = fixture();
+    const sources = state === "implementation" ? transitionSources() : formalSources();
+    for (const [file, source] of sources) {
+      mkdirSync(dirname(join(root, file)), { recursive: true });
+      writeFileSync(join(root, file), source);
+    }
+    // Act / Assert
+    expect(checkPhase158ValidatedReorg(root)).toEqual([]);
+    expect(loadPhase162OptionalSources(root).has(PHASE162_DOC)).toBe(true);
+    expect(loadPhase162OptionalSources(root).has(PHASE162 + "162-VERIFICATION.md")).toBe(state === "formal");
+  });
 }
 function edit(root: string, file: string, transform: (source: string) => string): void {
   const target = join(root, file);
@@ -34,6 +203,59 @@ function mutateFunction(root: string, file: string, symbol: string, transform: (
   });
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
+
+const CHAINSTATE = "packages/open-bitcoin-node/src/chainstate.rs";
+const LIFECYCLE = "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs";
+const PRUNE_FLUSH = "packages/open-bitcoin-node/src/network/runtime_authority/prune_flush.rs";
+test("checkpoint guard accepts rustfmt-style delegate whitespace", () => {
+  // Arrange
+  const root = fixture();
+  mutateFunction(root, CHAINSTATE, "flush_applying_plan_with_header_checkpoint", body =>
+    body.replace(pattern("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("),
+      "self\n  .flush_lifecycle\n  .execute_flush_applying_plan_with_header_checkpoint\n  ("));
+  // Act
+  const failures = checkPhase158ValidatedReorg(root);
+  // Assert
+  expect(failures).toEqual([]);
+});
+const CHECKPOINT_MUTATIONS: [string, string, string, (body: string) => string][] = [
+  ["removed delegate", CHAINSTATE, "flush_applying_plan_with_header_checkpoint", body => body.replace(pattern("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("), "removed_delegate(")],
+  ["changed IfNeeded", CHAINSTATE, "persist", body => body.replace("FlushMode::IfNeeded", "FlushMode::Always")],
+  ["removed IfNeeded", CHAINSTATE, "persist", body => body.replace("FlushMode::IfNeeded", "removed_mode")],
+  ["actual leftover snapshot", CHAINSTATE, "persist", body => body.replace("self.flush_with_mode(", "self.save_snapshot(self.chainstate.snapshot())?; self.flush_with_mode(")],
+  ["comment-only delegate", CHAINSTATE, "flush_applying_plan_with_header_checkpoint", body => body.replace(pattern("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("), "/* self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint( */ removed_delegate(")],
+  ["literal-only delegate", CHAINSTATE, "flush_applying_plan_with_header_checkpoint", body => body.replace(pattern("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("), '"self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("; removed_delegate(')],
+  ["removed checkpoint", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "")],
+  ["checkpoint before prefix", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "").replace("persist_ordered_prefix(sink,", "checkpoint(sink)?; persist_ordered_prefix(sink,")],
+  ["checkpoint after unlink", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "").replace("complete_coins_write(sink,", "checkpoint(sink)?; complete_coins_write(sink,")],
+  ["swallowed checkpoint failure", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "let _ = checkpoint(sink);")],
+  ["untyped checkpoint result", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("FnMut(&S) -> Result<(), StorageError>", "FnMut(&S) -> Result<(), OtherError>")],
+  ["eager checkpoint before readiness", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("if self.readiness", "checkpoint(sink)?; if self.readiness")],
+  ["eager producer outside callback", PRUNE_FLUSH, "flush_and_evict_pruned_blocks", body => body.replace("chainstate.flush_applying_plan_with_header_checkpoint(", "let _ = crate::network::validation_history::TrustedHeaderSnapshot::maybe_capture(store, peer_manager.header_store()); chainstate.flush_applying_plan_with_header_checkpoint(")],
+  ["swallowed snapshot failure", PRUNE_FLUSH, "flush_and_evict_pruned_blocks", body => body.replace("snapshot.persist()", "let _ = snapshot.persist(); Ok(())")],
+];
+for (const [name, file, symbol, transform] of CHECKPOINT_MUTATIONS) {
+  test(`checkpoint guard refuses ${name}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateFunction(root, file, symbol, transform);
+    // Act
+    const failures = checkPhase158ValidatedReorg(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-162-15") && item.includes(`${file}:${symbol}`))).toBe(true);
+  });
+}
+for (const row of CHECKPOINT_CONTRACTS) for (const anchor of row.anchors) {
+  test(`checkpoint guard actual ${row.symbol} requires ${anchor}`, () => {
+    // Arrange
+    const root = fixture();
+    mutateFunction(root, row.file, row.symbol, body => body.replace(pattern(anchor), "removed_checkpoint_boundary"));
+    // Act
+    const failures = checkPhase158ValidatedReorg(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-162-15") && item.includes(`${row.file}:${row.symbol}`))).toBe(true);
+  });
+}
 
 test("current bounded roots pass without changing evidence", () => {
   // Arrange

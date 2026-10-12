@@ -1,9 +1,50 @@
 import { expect, test } from "bun:test";
 import { checkPhase161OperatorIndexEvidence, loadSources } from "./check-phase161-operator-index-evidence.ts";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { createHash } from "node:crypto";
+import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE } from "./check-phase158-validated-reorg.ts";
 
 const clean = loadSources();
 const N = "packages/open-bitcoin-node/src/";
 const C = "packages/open-bitcoin-cli/src/operator/";
+const CURRENT_DOCS = ["README.md", "packages/README.md", "docs/architecture/status-snapshot.md", "docs/architecture/operator-observability.md", "docs/operator/runtime-guide.md", "docs/parity/catalog/basic-compact-filters.md"];
+function transitionSources(): Map<string, string> {
+  const sources = new Map(clean);
+  for (const file of PHASE162_EVIDENCE) sources.set(file, readFileSync(resolve(import.meta.dir, "..", file), "utf8"));
+  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+  sources.set(".planning/REQUIREMENTS.md", requirements);
+  const index = JSON.parse(sources.get("docs/parity/index.json")!);
+  const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
+  owner.status = "in_progress";
+  if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
+  index.checklist.surfaces.find((row: { requirements: string[] }) => row.requirements.includes("CFOP-01")).known_gaps = [PHASE162_IMPLEMENTATION];
+  sources.set("docs/parity/index.json", JSON.stringify(index));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  for (const file of CURRENT_DOCS) sources.set(file, sources.get(file)!.replace("Phase 162 owns the complete integrated prune/reopen client proof.", PHASE162_IMPLEMENTATION).replace("v2.5 remains pending.", "v2.5 remains unaudited and unshipped."));
+  return sources;
+}
+
+test("all six current operator docs admit source-linked implementation while requirements remain pending", () => {
+  // Arrange
+  const sources = transitionSources();
+  // Act / Assert
+  expect(checkPhase161OperatorIndexEvidence(sources)).toEqual([]);
+  sources.delete(PHASE162_DOC);
+  expect(checkPhase161OperatorIndexEvidence(sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+});
+
+for (const claim of ["BIP37 serving is supported.", "V0 filter is enabled.", "Assumeutxo is supported.", "Dual-chainstate is supported.", "Implicit repair is supported.", "Import is enabled.", "Download is supported.", "Archive-scale is proven.", "Archive-scale serving is proven.", "Public defaults are enabled.", "Public defaults/network CI are enabled.", "Public-network CI is enabled.", "Production service is ready.", "Production-service is ready.", "Production readiness is proven.", "Production-funds safety is proven.", "Funds-safety is established.", "v2.5 is shipped.", "Phase 162 is complete."]) {
+  for (const file of CURRENT_DOCS) test(`implementation evidence cannot authorize ${claim} in ${file}`, () => {
+    // Arrange
+    const sources = transitionSources();
+    sources.set(file, sources.get(file)! + "\n" + claim);
+    // Act / Assert
+    expect(checkPhase161OperatorIndexEvidence(sources).some(failure => failure.includes(file) && failure.includes("unsupported"))).toBe(true);
+  });
+}
 
 test("current fixed source/document view passes", () => {
   // Arrange / Act
@@ -45,11 +86,13 @@ const mutations: [string, string, string, string][] = [
   ["missing native execution", "scripts/verify.sh", 'run_step "check Phase 161 operator index evidence" bun run scripts/check-phase161-operator-index-evidence.ts', ""],
 ];
 
-for (const [name, file, before, after] of mutations) {
+for (const [name, file, originalBefore, after] of mutations) {
   test(`reject ${name}`, () => {
     // Arrange
     const sources = new Map(clean);
     const source = sources.get(file)!;
+    const before = name === "unsupported production claim" && !source.includes(originalBefore) ? "v2.5 remains unaudited and unshipped."
+      : name === "removed integrated proof limit" && !source.includes(originalBefore) ? (source.includes(PHASE162_COMPLETE) ? PHASE162_COMPLETE : PHASE162_IMPLEMENTATION) : originalBefore;
     expect(source).toContain(before);
     sources.set(file, source.replace(before, after));
     // Act

@@ -26,7 +26,17 @@ recollecting or mutating it. New BASIC facts exclude scripts, undo/filter payloa
 transaction/block/peer identifiers, addresses, credentials, backend keys, paths
 and raw lock names. Fixed guidance never prescribes automatic repair or download.
 
-Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
+The [integrated evidence](../parity/v2-5-integrated-filter-proof.md) and
+[timed Cargo/Bazel UAT](../../.planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md)
+link actual retention/reopen/RPC/socket outcomes without changing Phase 161
+presentation, schemas or redaction. Processed work does not promote coins-fenced
+safe durability, and earned sync does not imply zero current lag. Final06's
+logical soft-target excess and physical point observations preserve the
+accounting basis above; retained filters still do not restore body/wallet
+eligibility. Scoped source/security, full native and formal evidence gates passed;
+status observation alone cannot establish prune proof.
 No stronger v2.4 crash-window guarantee is claimed.
 
 `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard,

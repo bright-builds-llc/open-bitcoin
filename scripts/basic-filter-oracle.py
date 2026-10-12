@@ -160,8 +160,81 @@ def peer_malformed(case, wire_cases):
     return dict(case, payload_hex=payload.hex())
 
 
+def phase162_recipe(payload):
+    """Decode raw inputs with pinned helpers; carry only oracle-produced ancestry.
+
+    Ancestor deltas keep state linear, rather than copying every branch's UTXO
+    set into every response. No caller-provided script or commitment is used.
+    """
+    nodes = payload["nodes"]
+    cases = []
+    identities = {node["block_hash_raw"] for node in nodes.values()}
+    for raw in payload["cases"]:
+        name, parent = raw["name"], raw["previous_name"]
+        if name in nodes or (parent and parent not in nodes):
+            raise ValueError("duplicate or future ancestry")
+        stream = io.BytesIO(bytes.fromhex(raw["raw_block"]))
+        block = CBlock()
+        block.deserialize(stream)
+        if stream.read() or not block.vtx:
+            raise ValueError("trailing or empty raw block")
+        block_hash = hash256(CBlockHeader.serialize(block)).hex()
+        if block_hash in identities:
+            raise ValueError("duplicate raw block identity")
+        expected_parent = nodes[parent]["block_hash_raw"] if parent else "00" * 32
+        if block.hashPrevBlock != int.from_bytes(bytes.fromhex(expected_parent), "little"):
+            raise ValueError("raw parent identity mismatch")
+        ancestry = []
+        cursor = parent
+        while cursor:
+            ancestry.append(nodes[cursor])
+            cursor = nodes[cursor]["parent"]
+        available = {}
+        for node in reversed(ancestry):
+            for outpoint in node["spent"]:
+                available.pop(outpoint)
+            available.update(node["outputs"])
+        spent_scripts, spent_outpoints, outputs = [], [], {}
+        for index, tx in enumerate(block.vtx):
+            coinbase = (len(tx.vin) == 1 and tx.vin[0].prevout.hash == 0 and
+                        tx.vin[0].prevout.n == 0xffffffff)
+            if coinbase != (index == 0):
+                raise ValueError("raw coinbase order mismatch")
+            if not coinbase:
+                for txin in tx.vin:
+                    outpoint = f"{txin.prevout.hash:064x}:{txin.prevout.n}"
+                    if outpoint not in available:
+                        raise ValueError("unresolved, future or spent raw prevout")
+                    spent_scripts.append(available.pop(outpoint))
+                    if outpoint in outputs:
+                        del outputs[outpoint]
+                    else:
+                        spent_outpoints.append(outpoint)
+            txid = int.from_bytes(hash256(tx.serialize_without_witness()), "little")
+            for vout, output in enumerate(tx.vout):
+                outpoint = f"{txid:064x}:{vout}"
+                if outpoint in available:
+                    raise ValueError("duplicate live raw outpoint")
+                script = bytes(output.scriptPubKey).hex()
+                available[outpoint] = script
+                outputs[outpoint] = script
+        previous_header = nodes[parent]["header_raw"] if parent else "00" * 32
+        case = compute(dict(raw, outputs=[], spent=spent_scripts,
+                            block_hash_raw=block_hash, predecessor_raw=previous_header),
+                       {parent: previous_header} if parent else {})
+        height = nodes[parent]["height"] + 1 if parent else 0
+        nodes[name] = dict(parent=parent, height=height, block_hash_raw=block_hash,
+                           header_raw=case["header_raw"], outputs=outputs, spent=spent_outpoints)
+        identities.add(block_hash)
+        cases.append(case)
+    return dict(cases=cases, nodes=nodes)
+
+
 def main():
     payload = json.load(sys.stdin)
+    if sys.argv[1:] == ["--phase162-recipe"]:
+        json.dump(phase162_recipe(payload), sys.stdout, separators=(",", ":"))
+        return
     if sys.argv[1:] == ["--peer-wire-proof"]:
         result = dict(wire=[peer_wire(case) for case in payload["wire"]],
                       proof=[peer_proof(case) for case in payload["proof"]],

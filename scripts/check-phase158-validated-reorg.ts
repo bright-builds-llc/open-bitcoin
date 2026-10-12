@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
@@ -16,6 +17,127 @@ const PREFLIGHT = NODE + "chainstate/filter_reorg/preflight.rs";
 const TEST = NODE + "sync/tests/filter_index/reorg/";
 type Contract = { file: string; symbol: string; anchors: string[]; maybeTest?: boolean; maybeImpl?: string };
 const row = (file: string, symbol: string, anchors: string[], maybeTest?: boolean, maybeImpl?: string): Contract => ({ file, symbol, anchors, maybeTest, maybeImpl });
+
+export const PHASE162 = ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/";
+export const PHASE162_DOC = "docs/parity/v2-5-integrated-filter-proof.md";
+export const PHASE162_IMPLEMENTATION = `Phase 162 scoped implementation evidence is available in ${PHASE162_DOC}; CFPR-02/CFGR-01/CFGR-02 remain Pending; v2.5 remains unaudited and unshipped.`;
+export const PHASE162_COMPLETE = `Phase 162 scoped integrated proof is complete in ${PHASE162_DOC}; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.`;
+const P162_RPC = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/";
+export const PHASE162_EVIDENCE = [P162_RPC + "tests/filter_index/phase162.rs", P162_RPC + "tests/filter_index/phase162/retention.rs",
+  P162_RPC + "tests/filter_index/phase162/fixtures.rs", P162_RPC + "coins_flush/tests/phase162.rs",
+  "packages/testdata/phase162/recipe.rs", "scripts/phase162-filter-oracle.ts"];
+export const PHASE162_FILES = [".planning/REQUIREMENTS.md", PHASE162 + "162-CONTEXT.md"];
+const FORMAL162 = [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"],
+  ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]] as const;
+type ClaimState = "pending" | "implementation" | "complete" | "invalid";
+type Text = (file: string) => string;
+
+/** Future output is optional at bootstrap and read only from these fixed paths. */
+export function loadPhase162OptionalSources(root: string): Map<string, string> {
+  const sources = new Map<string, string>();
+  if (!existsSync(resolve(root, PHASE162_DOC)) || !existsSync(resolve(root, ".planning/REQUIREMENTS.md"))) return sources;
+  const requirements = readFileSync(resolve(root, ".planning/REQUIREMENTS.md"), "utf8");
+  const complete = ["CFPR-02", "CFGR-01", "CFGR-02"].every(id => new RegExp(`^- \\[x\\] \\*\\*${id}\\*\\*:`, "mi").test(requirements));
+  const files = [PHASE162_DOC, ...PHASE162_EVIDENCE, ...(complete ? FORMAL162.map(([name]) => PHASE162 + `162-${name}.md`) : [])];
+  for (const file of files) {
+    if (existsSync(resolve(root, file))) sources.set(file, readFileSync(resolve(root, file), "utf8"));
+  }
+  return sources;
+}
+
+function metadata(source: string, key: string): string {
+  const maybeHeader = source.match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
+  const values = [...(maybeHeader ?? "").matchAll(new RegExp(`^${key}:\\s*["']?([^\\n"']+?)["']?\\s*$`, "gm"))];
+  return values.length === 1 ? values[0][1] : "";
+}
+
+/** Claim publication is source-bound; this supplements runtime and independent review evidence. */
+export function checkPhase162ClaimState(text: Text, failures: string[]): ClaimState {
+  const fail = (reason: string): ClaimState => { failures.push(`T-162-10: ${reason}`); return "invalid"; };
+  let owner;
+  try {
+    const index = JSON.parse(text("docs/parity/index.json"));
+    const owners = index.checklist.surfaces.filter((row: { requirements: string[] }) => row.requirements.some(id => ["CFPR-02", "CFGR-01", "CFGR-02"].includes(id)));
+    owner = owners[0];
+    if (index.baseline !== "29.3.knots20260210" || owners.length !== 1 || owner.id !== "v2-5-integrated-retained-filter-proof"
+      || JSON.stringify(owner.requirements) !== '["CFPR-02","CFGR-01","CFGR-02"]' || !["in_progress", "done"].includes(owner.status)) return fail("unique scoped Phase 162 parity owner");
+    for (const file of PHASE162_EVIDENCE) if (!owner.evidence.includes(file)) return fail(`registered Phase 162 evidence ${file}`);
+  } catch { return fail("invalid Phase 162 parity ownership"); }
+  const requirements = ["CFPR-02", "CFGR-01", "CFGR-02"].map(id => {
+    const source = text(".planning/REQUIREMENTS.md");
+    const boxes = [...source.matchAll(new RegExp(`^- \\[([ xX])\\] \\*\\*${id}\\*\\*:`, "gm"))];
+    const rows = [...source.matchAll(new RegExp(`^\\|\\s*${id}\\s*\\|\\s*Phase 162\\s*\\|\\s*(Pending|Complete)\\s*\\|`, "gm"))];
+    if (boxes.length !== 1 || rows.length !== 1 || (boxes[0][1] === " ") !== (rows[0][1] === "Pending")) return "invalid";
+    return rows[0][1];
+  });
+  if (requirements.includes("invalid") || new Set(requirements).size !== 1) return fail("Phase 162 requirement checkbox/traceability consistency");
+  const complete = requirements[0] === "Complete";
+  const proof = text(PHASE162_DOC);
+  const checked = (state: ClaimState): ClaimState => {
+    const before = failures.length;
+    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state);
+    if (proof) checkPhase162ExcludedClaims(proof, PHASE162_DOC, failures, state);
+    return failures.length === before ? state : "invalid";
+  };
+  if (!proof) return complete || owner.status !== "in_progress" ? fail("premature Phase 162 activation") : checked("pending");
+  const lifecycle = metadata(text(PHASE162 + "162-CONTEXT.md"), "phase_lifecycle_id");
+  const generated = metadata(proof, "generated_at");
+  if (!lifecycle || metadata(proof, "phase_lifecycle_id") !== lifecycle || metadata(proof, "lifecycle_mode") !== "yolo"
+    || metadata(proof, "implementation_status") !== "proven" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/.test(generated)
+    || !Number.isFinite(Date.parse(generated)) || !(Date.parse(generated) >= Date.parse(metadata(text(PHASE162 + "162-CONTEXT.md"), "generated_at")))
+    || !owner.evidence.includes(PHASE162_DOC)) return fail("linked current-lifecycle Phase 162 implementation evidence");
+  for (const file of PHASE162_EVIDENCE) {
+    const hash = createHash("sha256").update(text(file)).digest("hex");
+    const rows = proof.split(/\r?\n/).map(line => line.split("|").map(cell => cell.trim())).filter(cells => cells[1] === `\`${file}\``);
+    if (!text(file) || rows.length !== 1 || JSON.stringify(rows[0]) !== JSON.stringify(["", `\`${file}\``, `\`${hash}\``, ""])) return fail(`Phase 162 source hash ${file}`);
+  }
+  const contracts: [string, string, string[]][] = [
+    [PHASE162_EVIDENCE[0], "independent_oracle", ["recipe.fork(998, 4, 0x62)", "core_types::codec::encode_block(block)", "recipe.blocks", "process::run(", "output.reaped", "assert_eq!(result[", "recipe.spent_scripts"]],
+    [PHASE162_EVIDENCE[1], "assert_pair", ["assert_eq!(", ".load_block(hash)", ".is_some()", "present", "assert_eq!(", ".load_undo(hash)", ".is_some()", "present"]],
+    [PHASE162_EVIDENCE[1], "manual", ["invoke(fixture,", "json!([1000])", "assert_eq!", "json!([20])", "assert_pair(fixture, position.block_hash, false)", "settled.assert_unchanged(fixture)"]],
+    [PHASE162_EVIDENCE[1], "automatic", ["Phase162Fixture::open_with_prune(fixture.close(), 550)", "add_pressure(&fixture)", ".flush_coins(", "assert!(!deletion.deleted_block_hashes.is_empty())", "assert_pair(&fixture, position.block_hash, false)", "Phase162Fixture::open_with_prune(fixture.close(), 550)", "assert_pair(&fixture, position.block_hash, false)"]],
+    [PHASE162_EVIDENCE[2], "close", ["let Self", "drop(state)", "drop(shared)", "drop(opened)", "drop(store)", "Phase162Handoff"]],
+    [PHASE162_EVIDENCE[3], "phase162_integrated_lifecycle", ["Phase162Fixture::seed()", "MaintenanceHarness::start(&fixture)", "worker.tick()", "assert_eq!(previous, 1000,", "extend_and_reorg(&fixture", "worker.shutdown()", "retention::manual(&fixture", "retention::automatic(fixture", "rpc::assert_phase162_rpc(&fixture)", "inbound::assert_phase162_inbound(fixture", "restrictions::assert_restrictions(fixture", "outbound::assert_outbound(handoff)", "retention::assert_pair(&fixture", "std::fs::remove_dir_all(&handoff.path)"]],
+  ];
+  for (const [file, symbol, anchors] of contracts) {
+    const maybeBody = maybeFunction(text(file), symbol);
+    if (!maybeBody || !hasOrderedCode(maybeBody.body, anchors) || /#\[\s*(?:ignore|cfg\s*\(\s*any\s*\(\s*\))/.test(maybeBody.attributes)) return fail(`Phase 162 actual evidence ${file}:${symbol}`);
+  }
+  if (!complete) return owner.status === "in_progress" && proof.includes(PHASE162_IMPLEMENTATION) && !proof.includes(PHASE162_COMPLETE)
+    ? checked("implementation") : fail("Phase 162 implementation/requirement consistency");
+  if (owner.status !== "done" || !proof.includes(PHASE162_COMPLETE) || proof.includes(PHASE162_IMPLEMENTATION)) return fail("Phase 162 formal claim/requirement consistency");
+  const digest = createHash("sha256").update(PHASE162_EVIDENCE.map(file => `${file}:${createHash("sha256").update(text(file)).digest("hex")}`).join("\n")).digest("hex");
+  for (const [name, status, generator] of FORMAL162) {
+    const report = text(PHASE162 + `162-${name}.md`);
+    if (metadata(report, "status") !== status || metadata(report, "generated_by") !== generator || metadata(report, "phase_lifecycle_id") !== lifecycle
+      || metadata(report, "lifecycle_mode") !== "yolo" || metadata(report, "source_digest") !== digest || !owner.evidence.includes(PHASE162 + `162-${name}.md`)
+      || !(Date.parse(metadata(report, "generated_at")) >= Date.parse(generated))) return fail(`fresh scoped Phase 162 ${name} gate`);
+  }
+  if (metadata(text(PHASE162 + "162-VERIFICATION.md"), "lifecycle_validated") !== "true"
+    || metadata(text(PHASE162 + "162-SECURITY.md"), "threats_open") !== "0"
+    || !/^bash scripts\/verify\.sh[ \t]*$/m.test(text(PHASE162 + "162-NATIVE-EVIDENCE.md"))) return fail("Phase 162 full native/security/lifecycle gate");
+  return checked("complete");
+}
+
+/** Only the exact evidence-authorized sentence earns a current-document exemption. */
+export function phase162ClaimView(source: string, state: ClaimState): string {
+  return state === "implementation" ? source.replaceAll(PHASE162_IMPLEMENTATION, "")
+    : state === "complete" ? source.replaceAll(PHASE162_COMPLETE, "") : source;
+}
+
+/** Safety exclusions apply independently of implementation/formal state and historical limits. */
+export function checkPhase162ExcludedClaims(source: string, file: string, failures: string[], state: ClaimState = "pending"): void {
+  const view = phase162ClaimView(source, state);
+  const subjects = /Phase\s+162(?:\s+(?:scoped|integrated|proof|implementation|evidence|client|retention))*|CF(?:PR-02|GR-0[12])|BIP37(?:\s+serving)?|V0(?:\s+(?:filter|serving))?|assumeutxo|dual[- ]chainstate|(?:implicit\s+)?(?:repair|reindex|import|download)|archive(?:[- ]scale)?(?:\s+serving)?|public(?:[- ]network\s+CI|[- ]defaults(?:\/network\s+CI)?|\s+(?:peer\s+)?serving(?:\s+defaults)?)|production(?:[- ]funds)?(?:[- ](?:service|readiness|use|safety))?|funds[- ]safety|v2\.5(?:\s+milestone)?/gi;
+  const positive = /^\s+(?:(?:is|are|has|have|now|fully|already|successfully)\s+)*(?:available|active|enabled|supported|ready|shipped|safe|established|complete|proven|passed|succeeded|guaranteed)\b/i;
+  for (const clause of view.split(/\n|;|(?<=[.!?])\s+|\bbut\b|\bhowever\b|\band\b|\bwhile\b/)) {
+    const matches = [...clause.matchAll(subjects)];
+    for (const [index, match] of matches.entries()) {
+      const before = clause.slice(index === 0 ? 0 : matches[index - 1].index + matches[index - 1][0].length, match.index);
+      if (positive.test(clause.slice(match.index + match[0].length, matches[index + 1]?.index)) && !/\b(?:does not|do not|no claim|not a|future phase)\b/i.test(before)) failures.push(`${file}: unsupported claim T-162-10`);
+    }
+  }
+}
 
 /** Fixed actual callers and guarded callees; lexical checks supplement executed Rust behavior. */
 export const CONTRACTS: Contract[] = [
@@ -54,7 +176,8 @@ export const CONTRACTS: Contract[] = [
   row(NODE + "storage/fjall_store/filters/ownership.rs", "install_recovered_basic_filter_append_guarded", ["owner.checkpoint().checkpoint()", "control.maybe_append_identity = Some(", "processed: checkpoint", "safe_checkpoint: checkpoint", "BasicFilterProjectionAuthority::RecoveredPrefix"]),
   row(NODE + "storage/fjall_store/filters.rs", "maybe_active_basic_filter_record", ["self.maybe_basic_filter_checkpoint()?", "if height > endpoint.height()", "return Ok(None)", "self.basic_filter_projection(height)?", "self.load_basic_filter_record(hash)?"]),
   row(NODE + "storage/fjall_store/filters.rs", "load_basic_filter_record", ["codec::record_key(hash)", "codec::record_parent(", "while height != 0", "ancestors.into_iter().rev()", "codec::decode_record("]),
-  row(NODE + "chainstate.rs", "flush_applying_plan", ["lineage.maybe_prepare(self.chainstate.tip())", "execute_flush_applying_plan(", "execution.wrote_coins", "pending", ".complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?", "self.store.confirm_validated_flush(completed)?", "self.note_basic_index_reorg_durable()"]),
+  row(NODE + "chainstate.rs", "flush_applying_plan", ["self.flush_applying_plan_with_header_checkpoint(", "mode, now, disk_free_bytes, plan, locks,", "&mut |_| Ok(())"]),
+  row(NODE + "chainstate.rs", "flush_applying_plan_with_header_checkpoint", ["lineage.maybe_prepare(self.chainstate.tip())", "self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint(", "checkpoint,", "execution.wrote_coins", "pending", ".complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?", "self.store.confirm_validated_flush(completed)?", "self.note_basic_index_reorg_durable()"]),
   row(NODE + "chainstate/flush_lifecycle.rs", "complete_coins_write", ["coins_write_kind(decision)", "wrote_coins: false", "cache.flush()", "cache.sync()", "sink.persist_chain_meta(active_chain)?", "wrote_coins: true"]),
   row(NODE + "chainstate/fjall_store.rs", "complete", ["!self.store.shares_basic_filter_store(&lineage.store)", "Some(self.accepted) != lineage.maybe_accepted", "lineage.preview_frozen", "self.proof.generation() != lineage.generation", "self.proof.branch_identity() != lineage.branch", "Ok(CompletedValidatedFlush"]),
   row(NODE + "storage/fjall_store/filters/ownership.rs", "confirm_basic_filter_flush", ["control.maybe_reorg_suspension.is_some()", "!completed.belongs_to(self)", "pending.coins.previous != work.identity", "!pending.coins.completed", "work.identity.revision.checked_add(2) != Some(control.revision)", "completed.metadata_revision() != control.revision", "completed.accepted_endpoint()", "view.best_block()", "replacement.maybe_displaced_fence = None", "control.maybe_append_identity = Some(identity)"]),
@@ -65,6 +188,15 @@ export const CONTRACTS: Contract[] = [
   row(CORE + "filter_index/catch_up/reorg.rs", "replace_validated_branch", ["self.generation != facts.expected_generation", "self.branch_identity != facts.expected_branch_identity", "self.accepted_target != facts.old_target", ".checked_add(1)", "facts.protection", "Ok(Self {"]),
   row(TEST + "fixtures.rs", "reopen_inspecting", ["drop(runtime)", "inspect(&history.path)", "configured(FjallNodeStore::open(&history.path)", "runtime.consensus_params.coinbase_maturity = 1"], true),
   row(TEST + "failures.rs", "finish_recovered", ["fixture.reopen_inspecting(", "snapshot_index(path)", "codec::encode_record(record)", "drive_basic_filter_index_turn()"], true),
+];
+
+/** Selected callback edges extend the historical contracts without changing claim ownership. */
+export const CHECKPOINT_CONTRACTS: Contract[] = [
+  row(NODE + "chainstate.rs", "persist", ["self.flush_with_mode(", "FlushMode::IfNeeded,", "self.store.disk_free_bytes()", ".map(|_| ())"]),
+  row(NODE + "chainstate.rs", "flush_with_mode", ["self.flush_applying_plan(mode, now, disk_free_bytes, &PrunePlan::default(), &[])", ".map_err(|failure| failure.error)"]),
+  row(NODE + "chainstate.rs", "flush_applying_plan_with_header_checkpoint", ["lineage.maybe_prepare(self.chainstate.tip())", "self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint(", "checkpoint,", "execution.wrote_coins", "pending", ".complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?", "self.store.confirm_validated_flush(completed)?", "self.note_basic_index_reorg_durable()", "result.map_err(|error| FlushApplyError", "error,", "deleted_block_hashes: deleted"]),
+  row(NODE + "chainstate/flush_lifecycle.rs", "execute_flush_applying_plan_with_header_checkpoint", ["if self.readiness != ManagerReadiness::ReadyToFlush", "return Err(coins_corruption(", "let decision = decide_flush(", "if plan.heights.is_empty() && coins_write_kind(decision).is_none()", "return Err(refuse_disk_space())", "return Ok(FlushExecution", "persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?", "checkpoint(sink)?;", "apply_prune_plan(sink, plan, locks, active_chain, on_deleted)?", "complete_coins_write(sink, cache, decision, active_chain, deleted_block_hashes)"]),
+  row(NODE + "network/runtime_authority/prune_flush.rs", "flush_and_evict_pruned_blocks", ["let ManagedPeerNetwork", "chainstate.flush_applying_plan_with_header_checkpoint(", "&mut |sink: &S|", "sink.maybe_validation_history_store()", "TrustedHeaderSnapshot::maybe_capture(", "store, peer_manager.header_store()", "snapshot.persist()", "let deleted = match &outcome", "Err(failure) => failure.deleted_block_hashes.clone()", "network.blocks_by_hash.remove(hash)", "outcome.map_err(|failure| failure.error)"]),
 ];
 
 export const TESTS: [string, string][] = [
@@ -81,8 +213,8 @@ export const REGISTRATIONS: [string, string][] = [[NODE + "sync/tests/filter_ind
   ...["branches", "retention", "failures", "protection", "measurements"].map(name => [NODE + "sync/tests/filter_index/reorg.rs", `mod ${name};`] as [string, string])];
 const SEALED: [string, string][] = [[CORE + "engine.rs", "StagedChainstateReorg"], [CORE + "engine.rs", "AcceptedChainstateReorg"],
   [BRIDGE, "ValidatedBasicFilterReorg"], [BRIDGE, "ValidatedBasicFilterAppendPositions"], [NODE + "storage/fjall_store/filters/ownership.rs", "BasicFilterAppendProof"]];
-export const CHECK_FILES = [...new Set([...CONTRACTS.map(row => row.file), ...TESTS.map(([file]) => file), ...REGISTRATIONS.map(([file]) => file),
-  ...SEALED.map(([file]) => file), ...GUARDS, ...UPSTREAM, DOC, "README.md", "packages/README.md", "docs/parity/index.json",
+export const CHECK_FILES = [...new Set([...CONTRACTS.map(row => row.file), ...CHECKPOINT_CONTRACTS.map(row => row.file), ...TESTS.map(([file]) => file), ...REGISTRATIONS.map(([file]) => file),
+  ...SEALED.map(([file]) => file), ...PHASE162_FILES, ...GUARDS, ...UPSTREAM, DOC, "README.md", "packages/README.md", "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json", "scripts/verify.sh", PHASE + "158-UAT.md", PHASE + "158-REORG-MEASUREMENTS.md",
   ...["01", "02", "03", "04", "05", "06"].map(plan => PHASE + `158-${plan}-SUMMARY.md`)])];
 
@@ -99,19 +231,22 @@ export function maybeBoundary(source: string, contract: Contract): ReturnType<ty
 }
 
 /** Inspect bounded current roots without archive discovery or future completion prerequisites. */
-export function checkPhase158ValidatedReorg(maybeRoot?: string): string[] {
+export function checkPhase158ValidatedReorg(maybeRoot?: string, maybeSources?: ReadonlyMap<string, string>): string[] {
   const root = resolve(maybeRoot ?? resolve(import.meta.dir, ".."));
   const failures: string[] = [];
-  const texts = new Map<string, string>();
+  const texts = maybeSources ? new Map(maybeSources) : loadPhase162OptionalSources(root);
   for (const file of CHECK_FILES) {
+    if (maybeSources) { if (!texts.has(file)) failures.push(`${file}: cannot read required evidence`); continue; }
     try { texts.set(file, readFileSync(resolve(root, file), "utf8")); }
     catch { failures.push(`${file}: cannot read required evidence`); }
   }
   const text = (file: string) => texts.get(file) ?? "";
+  const claimState = checkPhase162ClaimState(text, failures);
   for (const contract of CONTRACTS) {
     const maybeBody = maybeBoundary(text(contract.file), contract);
     if (!maybeBody || !hasOrderedCode(maybeBody.body, contract.anchors)) failures.push(`T-158-07-01: actual boundary ${contract.file}:${contract.symbol}`);
   }
+  checkCheckpointEdges(text, failures);
   for (const [file, name] of TESTS) {
     const maybeTest = maybeFunction(text(file), name);
     if (!maybeTest || !/#\[(?:tokio::)?test(?:\]|\()/.test(maybeTest.attributes)
@@ -129,10 +264,32 @@ export function checkPhase158ValidatedReorg(maybeRoot?: string): string[] {
     if (/std::(?:fs|io|net|time|process)|(?:fjall|tokio)::|SystemTime/.test(ordinaryRust(text(file)))) failures.push(`T-158-07-01: pure core effects ${file}`);
   }
   checkBreadcrumbs(text, failures);
-  checkDocuments(text, failures);
-  checkParity(text, failures);
+  checkDocuments(text, failures, claimState);
+  checkParity(text, failures, claimState);
   checkVerifier(text("scripts/verify.sh"), failures);
   return [...new Set(failures)];
+}
+
+function checkCheckpointEdges(text: (file: string) => string, failures: string[]): void {
+  for (const contract of CHECKPOINT_CONTRACTS) {
+    const maybeBody = maybeBoundary(text(contract.file), contract);
+    const body = compact(maybeBody?.body ?? "");
+    let valid = maybeBody !== undefined && hasOrderedCode(maybeBody.body, contract.anchors);
+    if (contract.symbol === "persist") {
+      valid &&= !compact(ordinaryRust(text(contract.file))).includes("save_snapshot(self.chainstate.snapshot())");
+    }
+    if (contract.symbol === "execute_flush_applying_plan_with_header_checkpoint") {
+      valid &&= (body.match(/checkpoint\(sink\)/g) ?? []).length === 1;
+      const declaration = compact(ordinaryRust(text(contract.file)).slice(maybeBody?.start, maybeBody?.end));
+      valid &&= declaration.includes("checkpoint:&mutimplFnMut(&S)->Result<(),StorageError>")
+        && declaration.includes("->Result<FlushExecution,StorageError>");
+    }
+    if (contract.symbol === "flush_and_evict_pruned_blocks") {
+      valid &&= (body.match(/TrustedHeaderSnapshot::maybe_capture\(/g) ?? []).length === 1
+        && body.includes("snapshot.persist()},)");
+    }
+    if (!valid) failures.push(`T-162-15: ordered checkpoint boundary ${contract.file}:${contract.symbol}`);
+  }
 }
 
 function checkBreadcrumbs(text: (file: string) => string, failures: string[]): void {
@@ -145,7 +302,7 @@ function checkBreadcrumbs(text: (file: string) => string, failures: string[]): v
     }
   } catch { failures.push("T-158-07-01: breadcrumb manifest invalid"); }
 }
-function checkDocuments(text: (file: string) => string, failures: string[]): void {
+function checkDocuments(text: (file: string) => string, failures: string[], claimState: ClaimState): void {
   for (const anchor of ["Intentional local resource-policy difference", "54 preparation configurations", "149 complete ordinary turns", "maturity 100", "210,000", "Knots regtest 150", "NoTip", "independent source/security", "Required retained body", "1,025", "not shipped"]) {
     if (!text(DOC).includes(anchor)) failures.push(`T-158-07-01: scoped documentation missing ${anchor}`);
   }
@@ -156,7 +313,12 @@ function checkDocuments(text: (file: string) => string, failures: string[]): voi
     const summary = text(PHASE + `158-${plan}-SUMMARY.md`);
     if (!summary.includes("phase_lifecycle_id: 158-2026-10-08T02-17-15") || !summary.includes("## Self-Check: PASSED")) failures.push(`T-158-07-01: current lifecycle summary ${plan}`);
   }
-  for (const file of [DOC, "README.md", "packages/README.md", PHASE + "158-UAT.md"]) checkClaims(text(file), file, failures);
+  for (const file of [DOC, "README.md", "packages/README.md", PHASE + "158-UAT.md", PHASE + "158-REORG-MEASUREMENTS.md",
+    ...["01", "02", "03", "04", "05", "06"].map(plan => PHASE + `158-${plan}-SUMMARY.md`)]) {
+    const historical = file.startsWith(PHASE);
+    checkClaims(historical ? text(file) : phase162ClaimView(text(file), claimState), file, failures);
+    checkPhase162ExcludedClaims(text(file), file, failures, historical ? "pending" : claimState);
+  }
   for (const file of ["README.md", "packages/README.md"]) if (!text(file).includes("v2-5-validated-reorg.md")) failures.push(`T-158-07-01: contributor evidence link ${file}`);
   const uat = text(PHASE + "158-UAT.md");
   for (const anchor of ["scripts/command-timings.ts", "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib phase158_", "cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin --", "bazel run //packages/open-bitcoin-cli:open_bitcoin --", "--help", "158-REORG-MEASUREMENTS.md"]) {
@@ -177,7 +339,7 @@ function checkClaims(source: string, file: string, failures: string[]): void {
     }
   }
 }
-function checkParity(text: (file: string) => string, failures: string[]): void {
+function checkParity(text: (file: string) => string, failures: string[], claimState: ClaimState): void {
   try {
     const index = JSON.parse(text("docs/parity/index.json")) as { baseline: string; checklist: { surfaces: { id: string; status: string; requirements: string[]; evidence: string[]; upstream: { sources: string[] }; intentional_differences: string[]; known_gaps: string[] }[] } };
     const owners = index.checklist.surfaces.filter(row => row.requirements.includes("CFIX-03"));
@@ -189,9 +351,10 @@ function checkParity(text: (file: string) => string, failures: string[]): void {
     }
     for (const file of UPSTREAM) if (!surface.upstream.sources.includes(file)) failures.push(`T-158-07-01: pinned upstream ${file}`);
     if (!surface.intentional_differences.some(item => item.includes("resource-policy") && item.includes("fully retained"))) failures.push("T-158-07-01: intentional finite resource-policy difference");
-    if (!surface.known_gaps.some(item => item.includes("159") && item.includes("162") && item.includes("pending"))) failures.push("T-158-07-01: deferred serving boundary");
+    if (!surface.known_gaps.some(item => (claimState !== "complete" && item.includes("159") && item.includes("162") && item.includes("pending"))
+      || (claimState === "implementation" && item === PHASE162_IMPLEMENTATION) || (claimState === "complete" && item === PHASE162_COMPLETE))) failures.push("T-158-07-01: deferred serving boundary");
     const inspect = (value: unknown): void => {
-      if (typeof value === "string") { checkClaims(value, "parity surface", failures); return; }
+      if (typeof value === "string") { checkClaims(phase162ClaimView(value, claimState), "parity surface", failures); checkPhase162ExcludedClaims(value, "parity surface", failures, claimState); return; }
       if (value !== null && typeof value === "object") for (const child of Object.values(value)) inspect(child);
     };
     inspect(surface);

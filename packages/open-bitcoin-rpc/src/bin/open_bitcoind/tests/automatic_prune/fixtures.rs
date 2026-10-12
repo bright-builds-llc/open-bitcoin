@@ -4,9 +4,10 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use super::*;
+use open_bitcoin_network::{HeaderStore, NetworkError};
 use open_bitcoin_node::core::chainstate::{BlockUndo, ChainPosition, ChainstateSnapshot, Coin};
 use open_bitcoin_node::core::{
-    consensus::{ConsensusParams, ScriptVerifyFlags},
+    consensus::{ConsensusParams, ScriptVerifyFlags, block_hash},
     primitives::{
         Amount, Block, BlockHeader, OutPoint, ScriptBuf, ScriptWitness, Transaction,
         TransactionInput, TransactionOutput, Txid,
@@ -78,10 +79,30 @@ pub(super) fn position(height: u32) -> ChainPosition {
 }
 
 pub(super) fn seed(store: &FjallNodeStore) -> ChainstateSnapshot {
-    let positions: Vec<_> = [1, 500, 510, 713, 714, 1_001]
-        .into_iter()
-        .map(position)
-        .collect();
+    // Complete codec-only ancestry permits strict checkpoint reopen, not ScriptsValid.
+    let mut headers = HeaderStore::default();
+    let mut parent = BlockHash::default();
+    let mut positions = Vec::new();
+    for height in 0..=1_001 {
+        let mut header = position(height).header;
+        header.previous_block_hash = parent;
+        let inserted = headers
+            .insert_header(header.clone())
+            .expect("parent-linked codec header");
+        assert_eq!(inserted.height, height);
+        parent = inserted.block_hash;
+        if [1, 500, 510, 713, 714, 1_001].contains(&height) {
+            let median_time_past = i64::from(header.time);
+            positions.push(ChainPosition::new(
+                header,
+                inserted.height,
+                inserted.chain_work,
+                median_time_past,
+            ));
+        }
+    }
+    let entries = headers.entries().cloned().collect::<Vec<_>>();
+    HeaderStore::from_entries(entries.clone()).expect("complete codec header ancestry");
     let mut wallet = Wallet::new(AddressNetwork::Regtest);
     wallet
         .import_descriptor("receive", DescriptorRole::External, DESCRIPTOR)
@@ -113,6 +134,9 @@ pub(super) fn seed(store: &FjallNodeStore) -> ChainstateSnapshot {
     store
         .seed_coins_from_snapshot(&truth)
         .expect("seed consistent coins and chain meta");
+    store
+        .save_header_entries(&entries, PersistMode::Sync)
+        .expect("save complete unvalidated header ancestry");
     for p in &truth.active_chain {
         save_small(store, p);
     }
@@ -123,6 +147,63 @@ pub(super) fn seed(store: &FjallNodeStore) -> ChainstateSnapshot {
         .create_wallet(store, "alpha", wallet, PersistMode::Sync)
         .expect("wallet");
     truth
+}
+
+#[test]
+fn automatic_prune_fixture_saved_headers_have_complete_ancestry() {
+    // Arrange
+    let temp = TempDir::new("retention-header-ancestry");
+    let store = open_runtime_store(&config(&temp))
+        .expect("store")
+        .expect("durable");
+    let truth = seed(&store);
+
+    // Act
+    let saved = store
+        .load_header_store()
+        .expect("strict saved header reconstruction")
+        .expect("saved ancestry");
+    let mut entries = saved.entries().cloned().collect::<Vec<_>>();
+    assert_eq!(
+        HeaderStore::from_entries(entries.clone()).expect("roundtrip"),
+        saved
+    );
+    entries.sort_by_key(|entry| entry.height);
+
+    // Assert
+    assert_eq!(entries.len(), 1_002);
+    assert_eq!(entries[0].height, 0);
+    assert_eq!(entries[0].header.previous_block_hash, BlockHash::default());
+    assert_ne!(entries[0].block_hash, BlockHash::default());
+    for entry in &entries {
+        assert_eq!(entry.block_hash, block_hash(&entry.header));
+    }
+    for pair in entries.windows(2) {
+        assert_eq!(pair[1].height, pair[0].height + 1);
+        assert_eq!(pair[1].header.previous_block_hash, pair[0].block_hash);
+    }
+    assert_eq!(
+        truth
+            .active_chain
+            .iter()
+            .map(|position| position.height)
+            .collect::<Vec<_>>(),
+        [1, 500, 510, 713, 714, 1_001]
+    );
+    assert!(truth.maybe_confirmed_txid_counts.is_none());
+    for position in &truth.active_chain {
+        let entry = saved
+            .entry(&position.block_hash)
+            .expect("actual saved position");
+        assert_eq!(entry.header, position.header);
+        assert_eq!(entry.height, position.height);
+        assert_eq!(entry.chain_work, position.chain_work);
+    }
+    let removed = entries.remove(500);
+    assert_eq!(
+        HeaderStore::from_entries(entries).expect_err("missing actual parent must refuse"),
+        NetworkError::MissingHeaderAncestor(removed.block_hash)
+    );
 }
 
 pub(super) fn small_block(p: &ChainPosition) -> Block {

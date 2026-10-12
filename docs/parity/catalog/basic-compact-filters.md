@@ -633,9 +633,9 @@ adapters. The [final verification](../../../.planning/phases/160-explicit-bounde
 records the passed full native contract, clean independent source review, all 39
 closed declared mitigations and lifecycle verification. Historical sections above
 retain their original evidence boundaries. Phase 161
-adds broad operator/status/dashboard/support projections below; Phase 162 owns the
-integrated retained-client proof. Phase 162 and overall v2.5 completion remain
-pending. Public/default serving, V0/BIP37, archive behavior, production readiness
+adds broad operator/status/dashboard/support projections below. Current scoped
+integrated evidence is linked below; source/security, full native and formal evidence gates passed,
+and v2.5 remains unaudited and unshipped. Public/default serving, V0/BIP37, archive behavior, production readiness
 and production-funds claims remain excluded.
 
 ### Capability, semantics and retained data
@@ -875,7 +875,24 @@ unset for freshness verification. The native mutation checker pins narrow source
 consumer and claim seams; it does not certify behavior or replace executed tests,
 full native verification, independent source/security review or formal lifecycle gates.
 
-Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
+See the [current integrated proof](../v2-5-integrated-filter-proof.md) and
+[timed Cargo/Bazel UAT](../../../.planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md)
+for one normal 100-maturity history above h1000 through configured startup,
+elapsed scheduled catch-up, connect/reorg, authenticated manual pruning,
+ordinary legal 550 MiB automatic paired deletion, all-handle reopen and exact
+independent RPC/inbound/outbound replies with positive h1000 checkpoints.
+The precise public test-wallet #ob:0:0:0 import, genuine h20 funding, pre-protected
+scan/post-reorg refresh, final creating-history refusal and h715 Block before
+actually deleted in-window h714 NotFound remain documented there. Future
+descriptor storage formatting is corrected while existing strict parser,
+legacy node decoding and raw-text retention remain unchanged; no repair or
+migration follows. Final06 supplies current aggregate/space evidence with the
+soft target unattained and physical points distinguished from peaks/caps.
+Earlier Plans 15/05 samples remain historical. Scoped source/security, full
+native and formal evidence gates passed. No default-wallet benchmark,
+whole-wallet parity or whole-chain Knots consensus differential is claimed.
 No stronger v2.4 crash-window guarantee is claimed.
 Excluded: BIP37/V0, filter import, wallet acceleration, reindex/repair/download,
 archive-scale, assumeutxo, public defaults/network CI, production service/readiness

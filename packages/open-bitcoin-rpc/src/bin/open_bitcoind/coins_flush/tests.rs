@@ -8,6 +8,9 @@ use super::{PERIODIC_WRITE_MAX_SECS, PERIODIC_WRITE_MIN_SECS, resample_periodic_
 #[path = "tests/filter_index.rs"]
 mod filter_index;
 
+#[path = "tests/phase162.rs"]
+mod phase162;
+
 #[test]
 fn periodic_jitter_is_between_50_and_70_minutes() {
     // Arrange

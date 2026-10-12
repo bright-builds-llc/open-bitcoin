@@ -586,7 +586,10 @@ fn leftover_seed_then_spend_does_not_resurrect_spent_c_keys_on_hydrate() {
 fn persist_progress_source_does_not_write_leftover_snapshot() {
     // Arrange
     let runtime_state = include_str!("../../../sync/runtime_state.rs");
-    let chainstate = include_str!("../../../chainstate.rs");
+    let chainstate: String = include_str!("../../../chainstate.rs")
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .collect();
 
     // Act / Assert
     assert!(runtime_state.contains("fn persist_progress"));

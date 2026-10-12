@@ -25,6 +25,7 @@ mod operator_status;
 mod peer_evidence;
 pub(super) mod peer_fixtures;
 mod peer_measurements;
+pub(in crate::sync::tests) mod phase162;
 mod prune_coordination;
 mod prune_faults;
 mod recovery;

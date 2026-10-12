@@ -4,7 +4,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_blockfilters.py
 
 use super::super::connection_runtime::filter_serving::{
-    FilterWriteFailure, InboundFilterWriter, execute_inbound_filter,
+    FilterWriteFailure, InboundFilterFailure, InboundFilterWriter, execute_inbound_filter,
 };
 use super::listener_fixtures::*;
 use super::*;
@@ -402,6 +402,108 @@ async fn phase160_inbound_transport_all_only_no_backend_emits_no_response() {
 
 mod failures;
 mod mixed;
+mod phase162;
+
+#[derive(Clone, Copy, Debug)]
+enum SocketCase {
+    Expired,
+    Queue,
+    Shutdown,
+    Disconnect,
+    Complete,
+}
+async fn phase162_generic_suffix(fixture: &FilterListenerFixture) -> Vec<InboundWireStep> {
+    fixture
+        .context
+        .lock()
+        .await
+        .encode_wire_responses(vec![
+            WireNetworkMessage::Ping { nonce: 1 },
+            WireNetworkMessage::Pong { nonce: 1 },
+        ])
+        .expect("real shared pending encoders")
+        .into_iter()
+        .map(|response| InboundWireStep::Encoded(Box::new(response)))
+        .collect()
+}
+
+fn phase162_assert_prefix(failure: &InboundFilterFailure, expected: &[Vec<u8>], complete: usize) {
+    assert_eq!(failure.progress.messages, complete as u64);
+    assert_eq!(
+        failure.progress.bytes,
+        expected[..complete].concat().len() as u64
+    );
+    assert!(failure.maybe_cleanup.is_none() && failure.maybe_progress_failure.is_none());
+}
+
+struct Phase162WriteCleanup(PathBuf);
+impl Phase162WriteCleanup {
+    fn new() -> Self {
+        let path = std::env::temp_dir().join(format!(
+            "open-bitcoin-phase162-inbound-write-{}-{}",
+            process::id(),
+            NEXT_DURABLE_BLOCK_SERVING_DIR.fetch_add(1, Ordering::Relaxed)
+        ));
+        assert!(!path.exists(), "fresh owned path");
+        Self(path)
+    }
+}
+impl Drop for Phase162WriteCleanup {
+    fn drop(&mut self) {
+        drop(FjallNodeStore::open(&self.0).expect("all handles closed before raw reopen"));
+        fs::remove_dir_all(&self.0).expect("owned datadir removal");
+        assert!(!self.0.exists());
+    }
+}
+
+async fn phase162_physical_bytes(stream: &TcpStream, cap: usize) -> Vec<u8> {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        let mut result = Vec::new();
+        loop {
+            stream.readable().await.expect("finite remote EOF");
+            let mut buffer = [0; 8192];
+            match stream.try_read(&mut buffer) {
+                Ok(0) => return result,
+                Ok(count) => {
+                    result.extend_from_slice(&buffer[..count]);
+                    assert!(result.len() <= cap);
+                }
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
+                Err(error) => panic!("physical read: {error}"),
+            }
+        }
+    })
+    .await
+    .expect("absolute physical read deadline")
+}
+
+async fn phase162_saturate(stream: &TcpStream) -> usize {
+    stream.writable().await.expect("initial writable socket");
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(2);
+    let mut total = 0;
+    let mut blocked = 0;
+    loop {
+        assert!(
+            tokio::time::Instant::now() < deadline && total < 16 * 1024 * 1024,
+            "bounded saturation"
+        );
+        match stream.try_write(&[0; 65536]) {
+            Ok(0) => panic!("write zero"),
+            Ok(count) => {
+                total += count;
+                blocked = 0;
+            }
+            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                blocked += 1;
+                if blocked == 3 {
+                    return total;
+                }
+                tokio::time::sleep(Duration::from_millis(10)).await;
+            }
+            Err(error) => panic!("socket priming: {error}"),
+        }
+    }
+}
 
 #[tokio::test]
 async fn phase160_peer_evidence_pre_version_and_pre_verack_requests_are_inert() {

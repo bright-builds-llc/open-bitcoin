@@ -6,6 +6,313 @@
 
 use super::*;
 
+fn phase162_network_cases() -> [(AddressNetwork, SyncNetwork, &'static str, &'static str); 4] {
+    [
+        (
+            AddressNetwork::Mainnet,
+            SyncNetwork::Mainnet,
+            "main",
+            "main",
+        ),
+        (
+            AddressNetwork::Testnet,
+            SyncNetwork::Testnet,
+            "test",
+            "testnet",
+        ),
+        (
+            AddressNetwork::Signet,
+            SyncNetwork::Signet,
+            "signet",
+            "signet",
+        ),
+        (
+            AddressNetwork::Regtest,
+            SyncNetwork::Regtest,
+            "regtest",
+            "regtest",
+        ),
+    ]
+}
+
+fn assert_phase162_disabled_identity(
+    runtime: &RuntimeConfig,
+    chain: AddressNetwork,
+    network: SyncNetwork,
+) {
+    assert_eq!(runtime.chain, chain);
+    assert_eq!(runtime.sync.mode, DaemonSyncMode::Disabled);
+    assert!(!runtime.sync.is_enabled());
+    assert_eq!(runtime.sync.runtime.network, network);
+    assert_eq!(
+        runtime.sync.runtime.dns_seeds,
+        network
+            .default_dns_seeds()
+            .iter()
+            .map(|seed| seed.to_string())
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        runtime.sync.runtime.network.consensus_params(),
+        network.consensus_params()
+    );
+    assert_eq!(runtime.sync.runtime.network.magic(), network.magic());
+    assert_eq!(
+        runtime.sync.runtime.network.default_port(),
+        network.default_port()
+    );
+    assert_eq!(
+        runtime.sync.runtime.network.prune_after_height(),
+        network.prune_after_height()
+    );
+}
+
+#[test]
+fn phase162_disabled_network_entry_paths_preserve_identity_and_activation() {
+    for (chain, network, name, _) in phase162_network_cases() {
+        for (maybe_jsonc, maybe_cli_mode) in [
+            (None, None),
+            (Some("{}"), None),
+            (
+                Some(r#"{"sync":{"network_enabled":false,"mode":"disabled"}}"#),
+                None,
+            ),
+            (
+                Some(r#"{"sync":{"network_enabled":false,"mode":"off"}}"#),
+                None,
+            ),
+            (None, Some("disabled")),
+            (None, Some("off")),
+            (
+                Some(r#"{"sync":{"network_enabled":true,"mode":"mainnet-ibd"}}"#),
+                Some("disabled"),
+            ),
+            (
+                Some(r#"{"sync":{"network_enabled":true,"mode":"mainnet-ibd"}}"#),
+                Some("off"),
+            ),
+        ] {
+            for enabled in [false, true] {
+                // Arrange
+                let sandbox = TestDirectory::new("phase162-disabled-entry");
+                if let Some(jsonc) = maybe_jsonc {
+                    fs::write(sandbox.child("open-bitcoin.jsonc"), jsonc).expect("JSONC");
+                }
+                let mut args = vec![
+                    cli_arg("datadir", &sandbox.path),
+                    os(&format!("-chain={name}")),
+                ];
+                if let Some(mode) = maybe_cli_mode {
+                    args.push(os(&format!("-openbitcoinsync={mode}")));
+                }
+                for flag in [
+                    "openbitcoininbound",
+                    "openbitcoinrelay",
+                    "openbitcoinblockserving",
+                    "openbitcoincompactrelay",
+                    "blockfilterindex",
+                    "peerblockfilters",
+                ] {
+                    args.push(os(&format!("-{flag}={}", u8::from(enabled))));
+                }
+                args.push(os("-openbitcoinlisten=127.0.0.1:0"));
+
+                // Act
+                let runtime =
+                    load_runtime_config_for_args(&args, &sandbox.path).expect("disabled entry");
+
+                // Assert
+                assert_phase162_disabled_identity(&runtime, chain, network);
+                assert_eq!(runtime.inbound.enabled, enabled);
+                assert_eq!(runtime.relay.enabled, enabled);
+                assert_eq!(runtime.block_serving.block_serving.enabled, enabled);
+                assert_eq!(runtime.block_serving.compact_relay.enabled, enabled);
+                assert_eq!(runtime.block_filter_index.is_enabled(), enabled);
+                assert_eq!(runtime.peer_block_filters, enabled);
+            }
+        }
+    }
+}
+
+#[test]
+fn phase162_disabled_network_exact_dns_defaults() {
+    for (_, network, name, _) in phase162_network_cases() {
+        // Arrange
+        let sandbox = TestDirectory::new("phase162-default-seeds");
+        // Act
+        let runtime = load_runtime_config_for_args(&[os(&format!("-chain={name}"))], &sandbox.path)
+            .expect("selected chain");
+        // Assert
+        assert_eq!(
+            runtime.sync.runtime.dns_seeds,
+            network
+                .default_dns_seeds()
+                .iter()
+                .map(|seed| seed.to_string())
+                .collect::<Vec<_>>(),
+            "{name} exact DNS defaults"
+        );
+    }
+}
+
+#[test]
+fn phase162_disabled_network_selectors_and_cli_precedence() {
+    for (chain, network, name, flag) in phase162_network_cases() {
+        for selector in [format!("-{flag}"), format!("-chain={name}")] {
+            // Arrange
+            let sandbox = TestDirectory::new("phase162-cli-selector");
+            fs::write(
+                sandbox.child("bitcoin.conf"),
+                if chain == AddressNetwork::Regtest {
+                    "testnet=1"
+                } else {
+                    "regtest=1"
+                },
+            )
+            .expect("conflict");
+            // Act
+            let runtime = load_runtime_config_for_args(
+                &[cli_arg("datadir", &sandbox.path), os(&selector)],
+                &sandbox.path,
+            )
+            .expect("CLI wins");
+            // Assert
+            assert_phase162_disabled_identity(&runtime, chain, network);
+        }
+        // Arrange
+        let sandbox = TestDirectory::new("phase162-conf-selector");
+        fs::write(sandbox.child("bitcoin.conf"), format!("{flag}=1")).expect("global chain");
+        // Act
+        let runtime =
+            load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path)
+                .expect("conf chain");
+        // Assert
+        assert_phase162_disabled_identity(&runtime, chain, network);
+    }
+}
+
+#[test]
+fn phase162_disabled_network_ignores_enabled_only_overrides() {
+    for (chain, network, name, _) in phase162_network_cases() {
+        for mode in ["disabled", "off"] {
+            // Arrange
+            let sandbox = TestDirectory::new("phase162-ignored-overrides");
+            fs::write(sandbox.child("open-bitcoin.jsonc"), r#"{"sync":{"network_enabled":true,"mode":"mainnet-ibd","manual_peers":["localhost:not-a-port"],"dns_seeds":["custom.invalid"],"target_outbound_peers":0,"target_header_height":0,"max_messages_per_peer":0,"max_rounds":0,"max_blocks_in_flight_per_peer":0,"max_blocks_in_flight_total":0}}"#).expect("JSONC overrides");
+            // Act
+            let runtime = load_runtime_config_for_args(
+                &[
+                    cli_arg("datadir", &sandbox.path),
+                    os(&format!("-chain={name}")),
+                    os(&format!("-openbitcoinsync={mode}")),
+                ],
+                &sandbox.path,
+            )
+            .expect("ignored enabled-only overrides");
+            // Assert
+            assert_phase162_disabled_identity(&runtime, chain, network);
+            let mut expected = super::super::DaemonSyncConfig::disabled();
+            expected.runtime.network = network;
+            expected.runtime.dns_seeds = network
+                .default_dns_seeds()
+                .iter()
+                .map(|seed| seed.to_string())
+                .collect();
+            assert_eq!(runtime.sync, expected);
+        }
+    }
+}
+
+#[test]
+fn phase162_disabled_network_configless_defaults_remain_mainnet() {
+    // Arrange
+    let sandbox = TestDirectory::new("phase162-mainnet-default");
+    // Act
+    let runtime = load_runtime_config_for_args(&[], &sandbox.path).expect("configless default");
+    // Assert
+    assert_eq!(runtime.chain, RuntimeConfig::default().chain);
+    assert_eq!(runtime.sync, RuntimeConfig::default().sync);
+    assert_phase162_disabled_identity(&runtime, AddressNetwork::Mainnet, SyncNetwork::Mainnet);
+}
+
+#[test]
+fn phase162_sync_mode_guard_mainnet_ibd_cli_and_jsonc() {
+    for (chain, network, name, _) in phase162_network_cases() {
+        for jsonc in [false, true] {
+            // Arrange
+            let sandbox = TestDirectory::new("phase162-mainnet-guard");
+            let mut args = vec![
+                cli_arg("datadir", &sandbox.path),
+                os(&format!("-chain={name}")),
+            ];
+            if jsonc {
+                fs::write(
+                    sandbox.child("open-bitcoin.jsonc"),
+                    r#"{"sync":{"network_enabled":true,"mode":"mainnet-ibd"}}"#,
+                )
+                .expect("enabled JSONC");
+            } else {
+                args.push(os("-openbitcoinsync=mainnet-ibd"));
+            }
+            // Act
+            let result = load_runtime_config_for_args(&args, &sandbox.path);
+            // Assert
+            if chain == AddressNetwork::Mainnet {
+                let runtime = result.expect("Mainnet permitted");
+                assert_eq!(runtime.sync, super::super::DaemonSyncConfig::mainnet_ibd());
+                assert_eq!(runtime.sync.runtime.network, network);
+            } else {
+                assert_eq!(
+                    result.expect_err("non-mainnet refused").to_string(),
+                    format!(
+                        "open-bitcoind mainnet sync activation requires -chain=main or -main; current chain is {name}."
+                    )
+                );
+            }
+        }
+    }
+}
+
+#[test]
+fn phase162_sync_mode_guard_partial_jsonc_and_cli_precedence() {
+    for jsonc in [
+        r#"{"sync":{"network_enabled":true}}"#,
+        r#"{"sync":{"mode":"mainnet-ibd"}}"#,
+    ] {
+        // Arrange
+        let sandbox = TestDirectory::new("phase162-partial-guard");
+        fs::write(sandbox.child("open-bitcoin.jsonc"), jsonc).expect("partial JSONC");
+        // Act
+        let refused =
+            load_runtime_config_for_args(&[cli_arg("datadir", &sandbox.path)], &sandbox.path);
+        let disabled = load_runtime_config_for_args(
+            &[
+                cli_arg("datadir", &sandbox.path),
+                os("-openbitcoinsync=off"),
+                os("-regtest"),
+            ],
+            &sandbox.path,
+        )
+        .expect("CLI off wins");
+        let enabled = load_runtime_config_for_args(
+            &[
+                cli_arg("datadir", &sandbox.path),
+                os("-openbitcoinsync=mainnet-ibd"),
+            ],
+            &sandbox.path,
+        )
+        .expect("CLI enabled wins");
+        // Assert
+        assert!(
+            refused
+                .expect_err("partial activation refused")
+                .to_string()
+                .contains("requires sync.")
+        );
+        assert_phase162_disabled_identity(&disabled, AddressNetwork::Regtest, SyncNetwork::Regtest);
+        assert!(enabled.sync.is_enabled());
+    }
+}
+
 #[test]
 fn open_bitcoin_jsonc_accepts_manual_peers_seed_overrides_and_resource_bounds() {
     // Arrange

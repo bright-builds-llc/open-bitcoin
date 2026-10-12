@@ -28,7 +28,7 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 ### Prune Coordination
 
 - [x] **CFPR-01**: An active index protects all required body/undo inputs from both manual and ordinary automatic pruning until its safe durable checkpoint permits release; operator lock set/clear cannot weaken index-owned protection, and disable/re-enable has an explicit ownership transition.
-- [ ] **CFPR-02**: A client can retrieve previously indexed filters, headers and checkpoints after real paired body/undo deletion and datadir reopen, while ordinary block serving and wallet eligibility retain the shipped pruned-body restrictions.
+- [x] **CFPR-02**: A client can retrieve previously indexed filters, headers and checkpoints after real paired body/undo deletion and datadir reopen, while ordinary block serving and wallet eligibility retain the shipped pruned-body restrictions.
 - [x] **CFPR-03**: An operator can reopen a datadir with interrupted prune intent without recovery deleting inputs required by the index: index protection is validated before resumed deletion, and unsafe combinations retain protection or refuse with a diagnostic.
 
 ### Peer Serving
@@ -48,8 +48,8 @@ Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and ser
 
 ### Parity and Integrated Proof
 
-- [ ] **CFGR-01**: A contributor can audit pinned BASIC/protocol/RPC parity and intentional Fjall, BASIC-only and local resource-policy differences through source breadcrumbs, parity roots and deterministic native claim checks that retain the milestone's excluded surfaces.
-- [ ] **CFGR-02**: A contributor can reproduce a hermetic continuous validated-chain scenario through actual startup, scheduled catch-up, connect/reorg, real Fjall paired prune, reopen, RPC and both peer transport paths, including missing-history refusal and durability/write failures; sparse codec-valid fixtures alone do not satisfy this proof.
+- [x] **CFGR-01**: A contributor can audit pinned BASIC/protocol/RPC parity and intentional Fjall, BASIC-only and local resource-policy differences through source breadcrumbs, parity roots and deterministic native claim checks that retain the milestone's excluded surfaces.
+- [x] **CFGR-02**: A contributor can reproduce a hermetic continuous validated-chain scenario through actual startup, scheduled catch-up, connect/reorg, real Fjall paired prune, reopen, RPC and both peer transport paths, including missing-history refusal and durability/write failures; sparse codec-valid fixtures alone do not satisfy this proof.
 
 ## Future Requirements
 
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02, CFNET-01–06 and CFOP-01 are Complete after Phases 154–161's lifecycle-valid verification and full native passes; CFPR-02 and CFGR-01/02 remain Pending for Phase 162.
+All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02, CFNET-01–06 and CFOP-01 are Complete after Phases 154–161's lifecycle-valid verification and full native passes; CFPR-02 and CFGR-01/02 are Complete after Phase162 scoped source/security, entire native and lifecycle-valid formal verification. All22requirements are Complete; v2.5 milestone audit/archive/shipment remains separate.
 
 | Requirement | Phase | Status |
 | -- | -- | -- |
@@ -108,9 +108,9 @@ All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CF
 | CFNET-05 | Phase 160 | Complete |
 | CFNET-06 | Phase 160 | Complete |
 | CFOP-01 | Phase 161 | Complete |
-| CFPR-02 | Phase 162 | Pending |
-| CFGR-01 | Phase 162 | Pending |
-| CFGR-02 | Phase 162 | Pending |
+| CFPR-02 | Phase 162 | Complete |
+| CFGR-01 | Phase 162 | Complete |
+| CFGR-02 | Phase 162 | Complete |
 
 Coverage: 22/22 requirements mapped; 0 unmapped; 0 duplicate owners.
 

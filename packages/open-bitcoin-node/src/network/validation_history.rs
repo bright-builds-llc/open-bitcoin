@@ -27,6 +27,23 @@ pub(crate) struct TrustedHeaderSnapshot {
 }
 
 impl TrustedHeaderSnapshot {
+    pub(crate) fn maybe_capture(
+        store: crate::FjallNodeStore,
+        headers: &HeaderStore,
+    ) -> Option<Self> {
+        #[cfg(test)]
+        store.note_snapshot_attempt(1);
+        let entries: Vec<_> = headers.entries().cloned().collect();
+        if entries.is_empty() {
+            return None;
+        }
+        Some(Self { store, entries })
+    }
+
+    pub(crate) fn persist(&self) -> Result<(), crate::StorageError> {
+        self.store.save_trusted_header_snapshot(self)
+    }
+
     pub(crate) fn belongs_to(&self, store: &crate::FjallNodeStore) -> bool {
         self.store.shares_validation_history_store(store)
     }
@@ -131,13 +148,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         let Some(store) = self.chainstate.store().maybe_validation_history_store() else {
             return Ok(());
         };
-        let snapshot = TrustedHeaderSnapshot {
-            store: store.clone(),
-            entries: self.header_entries(),
+        let Some(snapshot) =
+            TrustedHeaderSnapshot::maybe_capture(store, self.peer_manager.header_store())
+        else {
+            return Ok(());
         };
-        store
-            .save_trusted_header_snapshot(&snapshot)
-            .map_err(history_network_error)
+        snapshot.persist().map_err(history_network_error)
     }
 }
 

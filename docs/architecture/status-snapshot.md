@@ -51,7 +51,17 @@ contain only fixed categories, booleans, heights and aggregate counts; unavailab
 reasons are normalized at serialization, collection and support boundaries.
 
 See the [scoped evidence and commands](../parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
-Phase 162 owns the complete integrated prune/reopen client proof. v2.5 remains pending.
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
+The [executed integrated evidence](../parity/v2-5-integrated-filter-proof.md)
+links real paired deletion/cold reopen and retained clients; it adds no status
+field or collection effect. Earned sync, lag, processed and coins-fenced safe
+progress retain the distinctions above. Logical immutable filter growth stays
+separate from the soft block/undo target, which final Plan 06 did not attain; allocated
+files are two point observations. Exact body/wallet restrictions remain separate
+from filter availability. [Cargo/Bazel UAT](../../.planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-UAT.md)
+includes stopped-node inspection, which alone cannot establish retention.
+Scoped source/security, full native and formal evidence gates passed.
 No stronger v2.4 crash-window guarantee is claimed.
 
 ## Field Ownership

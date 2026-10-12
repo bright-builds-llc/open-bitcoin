@@ -12,6 +12,178 @@
   },
   "groups": [
     {
+      "label": "phase162-inbound-physical-write-faults",
+      "files": [
+        "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/phase162.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase162-outbound-physical-write-faults",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport/phase162.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase162-genuine-publication-and-corruption-faults",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/publication_faults.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/corruption.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase162-genuine-missing-history-and-recovery",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/missing_history.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/recovery.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase162-public-outbound-retained-filter-client",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/outbound.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase162-genuine-wallet-and-body-restrictions",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/restrictions.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/wallet.cpp",
+        "packages/bitcoin-knots/src/wallet/rpc/transactions.cpp",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase162-ordered-header-checkpoint-flush",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/execute_flush/header_checkpoint.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/chainstate.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase162-normal-header-checkpoint-reopen",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/runtime_state/tests/header_checkpoint.rs",
+        "packages/open-bitcoin-node/src/sync/runtime_state/tests/header_checkpoint/faults.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp"
+      ]
+    },
+    {
+      "label": "phase162-retained-inbound-filter-clients",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/inbound.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase162-retained-authenticated-rpc",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/rpc.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/rpc/node.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
+      "label": "phase162-actual-prune-retention",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/retention.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase162-accepted-connect-reorg",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/lifecycle.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "phase162-configured-daemon-fixture",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162.rs",
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase162-actual-idle-worker",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests/phase162.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
+      "label": "phase162-continuous-validated-recipe",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
       "label": "phase161-genuine-operator-callers",
       "files": [
         "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/operator_evidence.rs",

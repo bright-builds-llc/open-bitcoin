@@ -150,7 +150,22 @@ fn daemon_sync_config_for_mode(
     mode: DaemonSyncMode,
 ) -> Result<DaemonSyncConfig, ConfigError> {
     match mode {
-        DaemonSyncMode::Disabled => Ok(DaemonSyncConfig::disabled()),
+        DaemonSyncMode::Disabled => {
+            let mut sync = DaemonSyncConfig::disabled();
+            let network = match chain {
+                AddressNetwork::Mainnet => SyncNetwork::Mainnet,
+                AddressNetwork::Testnet => SyncNetwork::Testnet,
+                AddressNetwork::Signet => SyncNetwork::Signet,
+                AddressNetwork::Regtest => SyncNetwork::Regtest,
+            };
+            sync.runtime.network = network;
+            sync.runtime.dns_seeds = network
+                .default_dns_seeds()
+                .iter()
+                .map(|seed| seed.to_string())
+                .collect();
+            Ok(sync)
+        }
         DaemonSyncMode::MainnetIbd => {
             if chain != AddressNetwork::Mainnet {
                 return Err(ConfigError::new(format!(

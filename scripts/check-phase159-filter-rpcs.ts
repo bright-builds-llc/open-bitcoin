@@ -5,26 +5,30 @@ import { compact, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "
 import { CLI, CONTRACTS, DOC, NEW_RUST, NODE, PHASE, RPC, SOURCE_FILES, SURFACE, TEST_ACTIONS, TEST_CONTRACTS, TESTS } from "./check-phase159-filter-rpcs/contracts.ts";
 import { OWNER_FILES, checkModuleOwnership, meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { worktreePaths } from "./check-parity-breadcrumbs.ts";
+import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView } from "./check-phase158-validated-reorg.ts";
 
 const UPSTREAM = ["rpc/blockchain.cpp", "rpc/node.cpp", "rpc/server.cpp", "rpc/util.cpp", "index/base.cpp", "index/blockfilterindex.cpp", "validation.cpp", "chain.h"].map(file => "packages/bitcoin-knots/src/" + file);
 const GUIDANCE = [DOC, "README.md", "packages/README.md", "docs/parity/deviations-and-unknowns.md"];
 const REPORTS = [PHASE + "159-04-QUERY-MEASUREMENTS.md", PHASE + "159-07-DAEMON-PROOF.md"];
-export const CHECK_FILES = [...new Set([...SOURCE_FILES, ...OWNER_FILES, NODE + "network/mempool_lifecycle.rs", ...UPSTREAM, ...GUIDANCE, ...REPORTS,
+export const CHECK_FILES = [...new Set([...SOURCE_FILES, ...OWNER_FILES, ...PHASE162_FILES, NODE + "network/mempool_lifecycle.rs", ...UPSTREAM, ...GUIDANCE, ...REPORTS,
   ...["01", "02", "03", "04", "05", "06", "07"].map(plan => PHASE + `159-${plan}-SUMMARY.md`),
   "packages/open-bitcoin-cli/BUILD.bazel", "packages/open-bitcoin-rpc/BUILD.bazel", "docs/parity/index.json", "docs/parity/source-breadcrumbs.json",
   "scripts/verify.sh", "scripts/check-parity-breadcrumbs.ts", "scripts/check-phase159-filter-rpcs.ts", "scripts/check-phase159-filter-rpcs.test.ts", "scripts/check-phase159-filter-rpcs/contracts.ts", "scripts/check-phase159-filter-rpcs/evidence.ts"])];
 type Texts = (file: string) => string;
 
 /** Lexical contracts supplement executed Rust evidence; they cannot establish parity or a native pass. */
-export function checkPhase159FilterRpcs(maybeRoot?: string): string[] {
+export function checkPhase159FilterRpcs(maybeRoot?: string, maybeSources?: ReadonlyMap<string, string>): string[] {
   const root = resolve(maybeRoot ?? resolve(import.meta.dir, ".."));
   const failures: string[] = [];
-  const texts = new Map<string, string>();
+  const suppliedMap = maybeSources !== undefined;
+  const texts = suppliedMap ? new Map(maybeSources) : loadPhase162OptionalSources(root);
   for (const file of CHECK_FILES) {
+    if (suppliedMap) { if (!texts.get(file)?.length) failures.push(`${file}: cannot read required evidence`); continue; }
     try { texts.set(file, readFileSync(resolve(root, file), "utf8")); }
     catch { failures.push(`${file}: cannot read required evidence`); }
   }
   const text = (file: string) => texts.get(file) ?? "";
+  const claimState = checkPhase162ClaimState(text, failures);
   for (const [file, symbol, anchors] of CONTRACTS) {
     const maybeBody = maybeBoundary(text(file), symbol, true);
     if (!maybeBody || !supportedOwnership(text(file), maybeBody.start, false)
@@ -48,9 +52,9 @@ export function checkPhase159FilterRpcs(maybeRoot?: string): string[] {
   checkCliConversion(text, failures);
   checkRegistrations(text, failures);
   checkModuleOwnership(text, failures);
-  checkBreadcrumbs(root, text, failures);
-  checkParity(text, failures);
-  checkDocuments(text, failures);
+  checkBreadcrumbs(root, text, failures, suppliedMap ? [...texts.keys()] : undefined);
+  checkParity(text, failures, claimState);
+  checkDocuments(text, failures, claimState);
   checkVerifier(text("scripts/verify.sh"), failures);
   return [...new Set(failures)];
 }
@@ -183,10 +187,10 @@ function checkRegistrations(text: Texts, failures: string[]): void {
   }
 }
 
-function checkBreadcrumbs(root: string, text: Texts, failures: string[]): void {
+function checkBreadcrumbs(root: string, text: Texts, failures: string[], maybeFiles?: readonly string[]): void {
   try {
     const manifest = JSON.parse(text("docs/parity/source-breadcrumbs.json")) as { groups: { files?: string[]; patterns?: string[]; breadcrumbs?: string[] }[] };
-    const discovered = worktreePaths(root).filter(file => (file.startsWith(NODE) || file.startsWith(RPC) || file.startsWith(CLI)) && file.endsWith(".rs"));
+    const discovered = (maybeFiles ?? worktreePaths(root)).filter(file => (file.startsWith(NODE) || file.startsWith(RPC) || file.startsWith(CLI)) && file.endsWith(".rs"));
     for (const file of new Set([...NEW_RUST, ...discovered])) {
       const exact = manifest.groups.filter(group => group.files?.includes(file));
       const matches = exact.length ? exact : manifest.groups.filter(group => group.patterns?.some(pattern => {
@@ -194,14 +198,15 @@ function checkBreadcrumbs(root: string, text: Texts, failures: string[]): void {
         return new RegExp(`^${expression}$`).test(file);
       }));
       if (matches.length !== 1 || (NEW_RUST.includes(file) && (!exact.length || !matches[0].breadcrumbs?.length))) { failures.push(`${file}: exact breadcrumb registration`); continue; }
-      const source = text(file) || readFileSync(resolve(root, file), "utf8");
+      const source = maybeFiles !== undefined ? text(file) : text(file) || readFileSync(resolve(root, file), "utf8");
+      if (maybeFiles !== undefined && !source.length) { failures.push(`${file}: cannot read breadcrumb evidence`); continue; }
       const comments = [...source.matchAll(/^\/\/ - (packages\/bitcoin-knots\/[^\n]+)$/gm)].map(match => match[1]);
       if (JSON.stringify(comments) !== JSON.stringify(matches[0].breadcrumbs ?? [])) failures.push(`${file}: exact breadcrumb anchors`);
     }
   } catch { failures.push("docs/parity/source-breadcrumbs.json: breadcrumb inventory invalid"); }
 }
 
-function checkParity(text: Texts, failures: string[]): void {
+function checkParity(text: Texts, failures: string[], claimState: ReturnType<typeof checkPhase162ClaimState>): void {
   try {
     const index = JSON.parse(text("docs/parity/index.json"));
     const rows = index.checklist.surfaces.filter((row: { requirements: string[] }) => row.requirements.some(req => ["CFRP-01", "CFRP-02"].includes(req)));
@@ -217,13 +222,18 @@ function checkParity(text: Texts, failures: string[]): void {
     for (const term of ["UnknownLegacy", "resource-policy", "64"]) {
       if (!row.intentional_differences.some((item: string) => item.includes(term))) failures.push(`docs/parity/index.json: intentional parity difference ${term}`);
     }
-    if (!row.known_gaps.some((item: string) => item.includes("CFPR-02") && item.includes("CFNET") && item.includes("deferred"))) failures.push("docs/parity/index.json: later-phase parity exclusions");
-    checkClaims(JSON.stringify(row), "docs/parity/index.json", failures);
+    if (!row.known_gaps.some((item: string) => (claimState !== "complete" && item.includes("CFPR-02") && item.includes("CFNET") && item.includes("deferred"))
+      || (claimState === "implementation" && item === PHASE162_IMPLEMENTATION) || (claimState === "complete" && item === PHASE162_COMPLETE))) failures.push("docs/parity/index.json: later-phase parity exclusions");
+    checkClaims(phase162ClaimView(JSON.stringify(row), claimState), "docs/parity/index.json", failures);
+    checkPhase162ExcludedClaims(JSON.stringify(row), "docs/parity/index.json", failures, claimState);
   } catch { failures.push("docs/parity/index.json: invalid parity manifest"); }
 }
 
-function checkDocuments(text: Texts, failures: string[]): void {
-  for (const file of GUIDANCE) checkClaims(text(file), file, failures);
+function checkDocuments(text: Texts, failures: string[], claimState: ReturnType<typeof checkPhase162ClaimState>): void {
+  for (const file of GUIDANCE) {
+    checkClaims(phase162ClaimView(text(file), claimState), file, failures);
+    checkPhase162ExcludedClaims(text(file), file, failures, claimState);
+  }
   for (const term of ["UnknownLegacy", "33,554,602", "67,109,204", "67,108,928", "64 pending", "402 original", "11 replacements", "1,126-byte", "451,352", "450,226", "synthetic genesis", "maturity one", "1000", "cfg(test)", "CFRP-01/02", "root-owned gates", "not an entire", "synthetic codec", "not latency guarantees"]) {
     if (!text(DOC).includes(term)) failures.push(`${DOC}: honest scope/resource disclosure ${term}`);
   }
@@ -237,6 +247,8 @@ function checkDocuments(text: Texts, failures: string[]): void {
     if (!text(file).includes(`name = "${target}"`)) failures.push(`${file}: actual UAT target`);
   }
   for (const file of REPORTS) {
+    checkClaims(text(file), file, failures);
+    checkPhase162ExcludedClaims(text(file), file, failures);
     if (!text(file).includes("phase_lifecycle_id: 159-2026-10-09T16-11-49")) failures.push(`${file}: current lifecycle evidence`);
   }
 }

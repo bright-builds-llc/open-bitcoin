@@ -28,10 +28,36 @@ where
     S: ChainstateStore + FlushPersistSink,
     V: CoinsView,
 {
-    let outcome =
-        network
-            .chainstate_mut()
-            .flush_applying_plan(mode, now, disk_free_bytes, plan, locks);
+    let outcome = {
+        let ManagedPeerNetwork {
+            chainstate,
+            peer_manager,
+            ..
+        } = network;
+        chainstate.flush_applying_plan_with_header_checkpoint(
+            mode,
+            now,
+            disk_free_bytes,
+            plan,
+            locks,
+            &mut |sink: &S| {
+                let Some(store) = sink.maybe_validation_history_store() else {
+                    return Ok(());
+                };
+                #[cfg(test)]
+                store.note_snapshot_attempt(0);
+                let Some(snapshot) =
+                    crate::network::validation_history::TrustedHeaderSnapshot::maybe_capture(
+                        store,
+                        peer_manager.header_store(),
+                    )
+                else {
+                    return Ok(());
+                };
+                snapshot.persist()
+            },
+        )
+    };
     let deleted = match &outcome {
         Ok(execution) => execution.deleted_block_hashes.clone(),
         Err(failure) => failure.deleted_block_hashes.clone(),

@@ -172,3 +172,5 @@ fn phase159_validation_history_store_header_publication_fault_stays_closed() {
     drop(runtime);
     std::fs::remove_dir_all(dir).expect("cleanup");
 }
+
+mod header_checkpoint;
