@@ -12,9 +12,19 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-Phase 161 completed Shared Operator Index and Retention Evidence on 2026-10-11 UTC. [Verification](phases/161-shared-operator-index-and-retention-evidence/161-VERIFICATION.md) passed 15/15 combined obligations, all three roadmap criteria, CFOP-01 and sixteen decisions across eleven plans. The complete default native contract passed in 27m41.348s with 4,247 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent source review is clean across 113 paths and all 35 declared mitigations are closed. RPC, CLI, dashboard and redacted support consume one authoritative typed BASIC group; configured capability, earned initial sync/current lag, processed/safe durability, fixed failures, retained logical growth and protection remain distinct. Unknown legacy/stopped facts stay unavailable. Logical bytes include stale immutable rows and exclude metadata/engine/physical overhead; filters restore neither bodies nor wallet eligibility. Modeled implicit-origin limits and genuine public versus private-capture/replay evidence remain explicit. Phase 162 and CFPR-02/CFGR-01/02 own the remaining integrated proof; v2.5 and public/default, archive, production/funds claims remain pending. Prior crash-window guarantees are unchanged.
+Phases 154–162 completed the original v2.5 delivery. [Phase 162 verification](phases/162-real-prune-retention-and-integrated-parity-proof/162-VERIFICATION.md) records 46/46 scoped truth obligations, clean independent source review, 61/61 mitigations and the complete default native contract. These are historical delivery receipts; the [original gaps audit](phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-ORIGINAL-MILESTONE-AUDIT.md) subsequently identified CFGR-01/AG01/AF01's archive handoff defect. Phase 163's five plans address that closure. The previous digest `34443772` receipts retain their original dates and historical scope. The saving-hook fixture correction and archive-aware test repair are now bound to21-input `e0c16fb2`, whose new complete default native run, clean source review,16/16 security acceptance and canonical functional closure passed. CFGR-01 is functionallyComplete; actual corrected-source audit passed22/22 and readiness is now published. FinalSC1–SC5verification and canonicalcarrier reconciliation nowpass. Allfive Phase163plans are complete.
+
+CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
+
+v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.
+
+Scope remains BASIC/type 0 on one active Fjall chainstate with explicit/default-off indexing and networking, missing-history refusal, and unchanged body/wallet restrictions. The measured 550 MiB logical target remains soft and unattained; physical allocations are point observations. Synthetic-root, caller-selected work and Open Bitcoin 210000 versus Knots regtest 150 halving limits exclude whole-chain consensus differential claims. Inherited v2.4 advisories remain unfixed; BIP37/V0, assumeutxo/dual-chainstate, archive-scale, public-default/network-CI, implicit repair/import/download and production/service/funds claims remain excluded.
 
 Earlier entries below preserve the scope and next-step status at their original verification dates.
+
+### Historical Phase 161 delivery
+
+Phase 161 completed Shared Operator Index and Retention Evidence on 2026-10-11 UTC. [Verification](phases/161-shared-operator-index-and-retention-evidence/161-VERIFICATION.md) passed 15/15 combined obligations, all three roadmap criteria, CFOP-01 and sixteen decisions across eleven plans. The complete default native contract passed in 27m41.348s with 4,247 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent source review is clean across 113 paths and all 35 declared mitigations are closed. RPC, CLI, dashboard and redacted support consume one authoritative typed BASIC group; configured capability, earned initial sync/current lag, processed/safe durability, fixed failures, retained logical growth and protection remain distinct. Unknown legacy/stopped facts stay unavailable. Logical bytes include stale immutable rows and exclude metadata/engine/physical overhead; filters restore neither bodies nor wallet eligibility. Modeled implicit-origin limits and genuine public versus private-capture/replay evidence remain explicit. Phase 162 and CFPR-02/CFGR-01/02 own the remaining integrated proof; v2.5 and public/default, archive, production/funds claims remain pending. Prior crash-window guarantees are unchanged.
 
 Phase 160 completed explicit bounded BASIC peer requests on 2026-10-11 (UTC). [Verification](phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md) passed 7/7 truths, all five roadmap criteria, six CFNET requirements and twenty decisions across seventeen plans. Full default native verification passed in 26m 5.720s with 4,093 primary Rust passes, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Independent source review is clean across 123 paths and all 39 declared mitigations are closed. Default-off general serving and per-peer permissions share durable branch-correct reads, bounded transport accounting and achieved complete-write evidence on both socket adapters. Finite local resource policies and the pinned all-only permission corner remain explicit. Phase 161 operator projections and Phase 162 integrated retained-client proof remain pending; v2.5 completion and public/default, archive, production/funds claims are not asserted.
 
@@ -53,9 +63,9 @@ Historical phase directories remain tracked because repository verifiers referen
 - Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
 - Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
 
-Continue at Phase 162 and preserve earlier phase directories required by repository verifiers. Phases 157–158 completed explicit activation, bounded catch-up and internal validated reorg with missing-history refusal. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. Review the three accepted v2.4 advisories where they affect index/prune coordination without promising unrelated cleanup.
+Corrected-source functional closure, current activation and renewed audit pass; readiness is published. Readiness-state tests and finalSC1–SC5whole-phase verification nowpass; the original authorized wrapper owns subsequent normal-hook Git saving. Actual archival remains the separate coordinated /gsd-complete-milestone workflow. Preserve earlier phase directories required by repository verifiers. Phases 154–162 remain completed historical delivery; CFGR-01 has one current owner, Phase 163, and is functionally Complete. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. The three accepted v2.4 advisories remain unfixed; unrelated cleanup is outside this closure.
 
-FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5 is planned scope, not a shipped capability.
+FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5's scoped delivery has historical verification evidence; functional archive-gap closure is verified; allfive phaseplans are complete and the milestone remains unshipped.
 
 ## Latest Completed Milestone: v2.4 Prune-Mode Product Behavior
 
@@ -233,12 +243,10 @@ v2.1 does not imply public relay defaults, production service operation, product
 - ✓ CFRP-01/02 validated in Phase 159: authenticated retained BASIC lookup and exact initial-sync index summaries; 26/26 formal truths, full native, clean source review and 27/27 security mitigations passed.
 
 ### Active
-- [ ] CFPR-02: Retained filter service after pruning
-- [x] CFNET-01 through CFNET-06: Explicit bounded BIP157 serving with branch-correct ranges and achieved-write evidence
-- [ ] CFOP-01: Shared sanitized operator evidence and separate filter-growth disclosure
-- [ ] CFGR-01/02: Parity guardrails and continuous validated-chain integrated proof
 
-CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02 and CFNET-01–06 are Complete and four detailed requirements remain Pending in [REQUIREMENTS.md](REQUIREMENTS.md), mapped once across Phases 154–162. All v2.4 requirements remain Validated.
+- [x] CFGR-01: Archive-safe parity provenance and milestone handoff under Phase 163 (AG01/AF01), verified at the functional-closure boundary.
+
+All 22 v2.5 requirements are Complete in [REQUIREMENTS.md](REQUIREMENTS.md), including CFOP-01 under Phase 161, CFPR-02/CFGR-02 under Phase 162 and newly verified functional CFGR-01 closure under Phase 163. All 22 requirements map to exactly one active owner across Phases 154–163. Phase 162's original CFGR-01 completion remains separate historical delivery evidence. Corrected-source native/functional closure and renewed audit pass; readiness is published and finalSC1–SC5verification nowpasses. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 
@@ -323,9 +331,9 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified |
 | Keep support counters separately persisted and sanitized | Counters describe earned deletes without exposing backend paths or lock names | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata | Recovery must not invent blocks, reindex or silently mutate authority | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | In progress: eighteen requirements Complete through Phase 160; four Pending; operator and integrated-client products remain pending |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate | 22 Complete / corrected21-input source functional closure and actual renewed audit verified; readiness/finalSC1–SC5 verified; all90plans complete; prior34443772 receipts historical |
 | Refuse missing-history activation and protect index inputs before prune recovery | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction | Phases 155–157 verified fenced recovery, pre-prune protection, ordinary ownership and explicit activation/catch-up with real faults/reopen |
-| Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Phase 160 verified exact BASIC/per-peer behavior; Phase 161 distinct operator evidence remains pending |
+| Preserve Knots enablement-based filter capability advertisement | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up | Phase 160 verified exact BASIC/per-peer behavior; Phase 161 verified distinct capability, initial-sync, lag and durable-progress evidence |
 
 ## Evolution
 
@@ -372,4 +380,4 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-11 after Phase 160 verification*
+*Last updated: 2026-10-13 corrected-source audit/readiness/finalSC1–SC5verification and all90plans complete; normal-hook source saving remains separate*

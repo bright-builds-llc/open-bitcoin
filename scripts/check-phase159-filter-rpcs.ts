@@ -5,7 +5,7 @@ import { compact, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "
 import { CLI, CONTRACTS, DOC, NEW_RUST, NODE, PHASE, RPC, SOURCE_FILES, SURFACE, TEST_ACTIONS, TEST_CONTRACTS, TESTS } from "./check-phase159-filter-rpcs/contracts.ts";
 import { OWNER_FILES, checkModuleOwnership, meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { worktreePaths } from "./check-parity-breadcrumbs.ts";
-import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView } from "./check-phase158-validated-reorg.ts";
+import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView, sourceText } from "./check-phase158-validated-reorg.ts";
 
 const UPSTREAM = ["rpc/blockchain.cpp", "rpc/node.cpp", "rpc/server.cpp", "rpc/util.cpp", "index/base.cpp", "index/blockfilterindex.cpp", "validation.cpp", "chain.h"].map(file => "packages/bitcoin-knots/src/" + file);
 const GUIDANCE = [DOC, "README.md", "packages/README.md", "docs/parity/deviations-and-unknowns.md"];
@@ -27,7 +27,7 @@ export function checkPhase159FilterRpcs(maybeRoot?: string, maybeSources?: Reado
     try { texts.set(file, readFileSync(resolve(root, file), "utf8")); }
     catch { failures.push(`${file}: cannot read required evidence`); }
   }
-  const text = (file: string) => texts.get(file) ?? "";
+  const text = sourceText(texts);
   const claimState = checkPhase162ClaimState(text, failures);
   for (const [file, symbol, anchors] of CONTRACTS) {
     const maybeBody = maybeBoundary(text(file), symbol, true);
@@ -224,15 +224,15 @@ function checkParity(text: Texts, failures: string[], claimState: ReturnType<typ
     }
     if (!row.known_gaps.some((item: string) => (claimState !== "complete" && item.includes("CFPR-02") && item.includes("CFNET") && item.includes("deferred"))
       || (claimState === "implementation" && item === PHASE162_IMPLEMENTATION) || (claimState === "complete" && item === PHASE162_COMPLETE))) failures.push("docs/parity/index.json: later-phase parity exclusions");
-    checkClaims(phase162ClaimView(JSON.stringify(row), claimState), "docs/parity/index.json", failures);
-    checkPhase162ExcludedClaims(JSON.stringify(row), "docs/parity/index.json", failures, claimState);
+    checkClaims(phase162ClaimView(JSON.stringify(row), claimState, text), "docs/parity/index.json", failures);
+    checkPhase162ExcludedClaims(JSON.stringify(row), "docs/parity/index.json", failures, claimState, text);
   } catch { failures.push("docs/parity/index.json: invalid parity manifest"); }
 }
 
 function checkDocuments(text: Texts, failures: string[], claimState: ReturnType<typeof checkPhase162ClaimState>): void {
   for (const file of GUIDANCE) {
-    checkClaims(phase162ClaimView(text(file), claimState), file, failures);
-    checkPhase162ExcludedClaims(text(file), file, failures, claimState);
+    checkClaims(phase162ClaimView(text(file), claimState, text), file, failures);
+    checkPhase162ExcludedClaims(text(file), file, failures, claimState, text);
   }
   for (const term of ["UnknownLegacy", "33,554,602", "67,109,204", "67,108,928", "64 pending", "402 original", "11 replacements", "1,126-byte", "451,352", "450,226", "synthetic genesis", "maturity one", "1000", "cfg(test)", "CFRP-01/02", "root-owned gates", "not an entire", "synthetic codec", "not latency guarantees"]) {
     if (!text(DOC).includes(term)) failures.push(`${DOC}: honest scope/resource disclosure ${term}`);

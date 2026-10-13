@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,533 |
-| Total lines | 450,950 |
-| Code/content lines | 394,477 |
-| Comment-only lines | 22,834 |
-| Blank lines | 33,639 |
+| Included files | 1,538 |
+| Total lines | 452,567 |
+| Code/content lines | 395,894 |
+| Comment-only lines | 22,924 |
+| Blank lines | 33,749 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 646 | 203,581 | 175,895 | 14,057 | 13,629 |
 | Rust production | 497 | 140,285 | 122,154 | 5,959 | 12,172 |
-| TypeScript/Bun scripts | 318 | 89,188 | 79,495 | 2,735 | 6,958 |
+| TypeScript/Bun scripts | 323 | 90,801 | 80,908 | 2,825 | 7,068 |
 | Fixture/data | 6 | 8,232 | 8,227 | 5 | 0 |
-| Shell scripts | 23 | 4,582 | 4,103 | 69 | 410 |
+| Shell scripts | 23 | 4,586 | 4,107 | 69 | 410 |
 | TOML/config | 16 | 3,467 | 3,101 | 0 | 366 |
 | Other config | 4 | 978 | 954 | 0 | 24 |
 | Bazel/Starlark | 18 | 415 | 380 | 0 | 35 |
@@ -242,19 +242,24 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase157-index-catch-up.ts | 243 |
 | scripts/check-phase157-index-catch-up/contracts.ts | 155 |
 | scripts/check-phase157-index-catch-up/rust-evidence.ts | 48 |
-| scripts/check-phase158-validated-reorg.test.ts | 500 |
-| scripts/check-phase158-validated-reorg.ts | 381 |
-| scripts/check-phase159-filter-rpcs.test.ts | 583 |
+| scripts/check-phase158-validated-reorg.test.ts | 590 |
+| scripts/check-phase158-validated-reorg.ts | 394 |
+| scripts/check-phase159-filter-rpcs.test.ts | 588 |
 | scripts/check-phase159-filter-rpcs.ts | 317 |
 | scripts/check-phase159-filter-rpcs/contracts.ts | 436 |
 | scripts/check-phase159-filter-rpcs/evidence.ts | 171 |
-| scripts/check-phase160-peer-filter-serving.test.ts | 167 |
+| scripts/check-phase160-peer-filter-serving.test.ts | 174 |
 | scripts/check-phase160-peer-filter-serving.ts | 319 |
-| scripts/check-phase161-operator-index-evidence.test.ts | 134 |
+| scripts/check-phase161-operator-index-evidence.test.ts | 136 |
 | scripts/check-phase161-operator-index-evidence.ts | 155 |
-| scripts/check-phase162-integrated-filter-proof.test.ts | 503 |
-| scripts/check-phase162-integrated-filter-proof.ts | 398 |
-| scripts/check-phase162-integrated-filter-proof/contracts.ts | 584 |
+| scripts/check-phase162-integrated-filter-proof.test.ts | 576 |
+| scripts/check-phase162-integrated-filter-proof.ts | 399 |
+| scripts/check-phase162-integrated-filter-proof/contracts.ts | 588 |
+| scripts/check-phase163-provenance.test.ts | 401 |
+| scripts/check-phase163-provenance.ts | 299 |
+| scripts/check-phase163-provenance/fixture-controls.ts | 34 |
+| scripts/check-phase163-provenance/fixtures.ts | 217 |
+| scripts/check-phase163-provenance/native.test.ts | 467 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -399,7 +404,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 8a12024a86b63c032f97ba3faf7f81cc5a8cc299cbed6b6f1c19ecc55df6a98c |
+| Input fingerprint | a3dff427adf21eedb8232c72dcb9a082c826d2dada7c1ba0aee5255bb5adc7f7 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

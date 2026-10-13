@@ -6,15 +6,20 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { PHASE162, PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, checkPhase162ClaimState, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS, SURFACE, TESTS, checkPhase158ValidatedReorg, maybeBoundary } from "./check-phase158-validated-reorg.ts";
+import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
+import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
 const REPO = resolve(import.meta.dir, "..");
 const roots: string[] = [];
 
-function transitionSources(): Map<string, string> {
-  const sources = new Map([...new Set([...CHECK_FILES, ...PHASE162_EVIDENCE])].map(file => [file, readFileSync(join(REPO, file), "utf8")]));
-  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
-  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
-  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+function transitionSources(maybeBase?: ReadonlyMap<string, string>): Map<string, string> {
+  const historicalFiles = new Set([...CHECK_FILES, ...PHASE162_EVIDENCE, ".planning/REQUIREMENTS.md", ".planning/ROADMAP.md"]);
+  const selected = v25FixtureSources(maybeBase ?? currentSources());
+  const sources = new Map([...selected].filter(([file]) => historicalFiles.has(file)));
+  for (const [file, source] of sources) if (file.endsWith(".md") || file.endsWith(".json")) sources.set(file, PROVENANCE_CLAIMS.reduce((view, claim) => view.replaceAll(claim, ""), source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION)));
+  sources.set(".planning/ROADMAP.md", sources.get(".planning/ROADMAP.md")!.replace("**Requirements**: CFPR-02, CFGR-02", "**Requirements**: CFPR-02, CFGR-01, CFGR-02").replace("**Requirements**: CFGR-01", "**Requirements**: none"));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!.replace(/(\|\s*CFGR-01\s*\|)\s*Phase 163\s*\|\s*(?:Pending|Complete)\s*\|/, "$1 Phase 162 | Pending |");
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(new RegExp(`(\\|\\s*${id}\\s*\\|\\s*Phase 162\\s*\\|)\\s*Complete\\s*\\|`), "$1 Pending |");
   sources.set(".planning/REQUIREMENTS.md", requirements);
   const index = JSON.parse(sources.get("docs/parity/index.json")!);
   const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
@@ -99,7 +104,7 @@ function formalSources(): Map<string, string> {
   const sources = transitionSources();
   for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
   let requirements = sources.get(".planning/REQUIREMENTS.md")!;
-  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[ ] **${id}**`, `[x] **${id}**`).replace(`| ${id} | Phase 162 | Pending |`, `| ${id} | Phase 162 | Complete |`);
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[ ] **${id}**`, `[x] **${id}**`).replace(new RegExp(`(\\|\\s*${id}\\s*\\|\\s*Phase 162\\s*\\|)\\s*Pending\\s*\\|`), "$1 Complete |");
   sources.set(".planning/REQUIREMENTS.md", requirements);
   const index = JSON.parse(sources.get("docs/parity/index.json")!.replaceAll(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
   const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
@@ -160,12 +165,12 @@ for (const [name, file, before, after] of [
     expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("full native/security/lifecycle"))).toBe(true);
   });
 }
-function fixture(): string {
+function fixture(maybeSources?: ReadonlyMap<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), "phase158-evidence-"));
   roots.push(root);
-  for (const file of new Set([...CHECK_FILES, ...loadPhase162OptionalSources(REPO).keys()])) {
+  for (const [file, source] of maybeSources ?? currentSources()) {
     mkdirSync(dirname(join(root, file)), { recursive: true });
-    writeFileSync(join(root, file), readFileSync(join(REPO, file)));
+    writeFileSync(join(root, file), source);
   }
   return root;
 }
@@ -173,16 +178,13 @@ function fixture(): string {
 for (const state of ["implementation", "formal"]) {
   test(`filesystem loader permits current ${state} evidence without losing optional roots`, () => {
     // Arrange
-    const root = fixture();
     const sources = state === "implementation" ? transitionSources() : formalSources();
-    for (const [file, source] of sources) {
-      mkdirSync(dirname(join(root, file)), { recursive: true });
-      writeFileSync(join(root, file), source);
-    }
+    const root = fixture(sources);
     // Act / Assert
     expect(checkPhase158ValidatedReorg(root)).toEqual([]);
     expect(loadPhase162OptionalSources(root).has(PHASE162_DOC)).toBe(true);
     expect(loadPhase162OptionalSources(root).has(PHASE162 + "162-VERIFICATION.md")).toBe(state === "formal");
+    expect([...loadPhase162OptionalSources(root).keys()].sort()).toEqual([...new Set([...PROVENANCE_FILES, ...PHASE162_EVIDENCE])].filter(file => sources.has(file)).sort());
   });
 }
 function edit(root: string, file: string, transform: (source: string) => string): void {
@@ -419,7 +421,7 @@ test("breadcrumb mapping cannot be removed", () => {
   // Assert
   expect(failures.some(item => item.includes("breadcrumb") && item.includes(file))).toBe(true);
 });
-for (const file of CHECK_FILES.filter(file => !file.startsWith("scripts/check-phase158"))) {
+for (const file of [...CHECK_FILES.filter(file => !file.startsWith("scripts/check-phase158")), ".planning/REQUIREMENTS.md"]) {
   test(`fixed current evidence root must exist: ${file}`, () => {
     // Arrange
     const root = fixture();
@@ -498,3 +500,91 @@ test("missing current root exits with bounded category diagnostics", () => {
   expect(result.stderr).toContain("cannot read required evidence");
   expect(result.stderr.length).toBeLessThan(10_000);
 });
+
+function currentSources(): Map<string, string> {
+  const sources = loadPhase162OptionalSources(REPO);
+  for (const file of CHECK_FILES) sources.set(file, readFileSync(join(REPO, file), "utf8"));
+  return sources;
+}
+
+test("actual live provenance preserves historical Phase162 proof in every valid closure state", () => {
+  const sources = currentSources();
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+  expect(checkPhase162ClaimState(file => sources.get(file) ?? "", [])).toBe("complete");
+});
+
+function gapPendingSources(): Map<string, string> {
+  const sources = v25FixtureSources(currentSources());
+  sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!.replace("[x] **CFGR-01**", "[ ] **CFGR-01**").replace(/(\|\s*CFGR-01\s*\|\s*Phase 163\s*\|)\s*Complete\s*\|/, "$1 Pending |"));
+  sources.set(".planning/v2.5-MILESTONE-AUDIT.md", sources.get(ORIGINAL_AUDITS[0])!);
+  return sources;
+}
+
+test("explicit audited Phase163 Pending preserves formal proof without future reports", () => {
+  const sources = gapPendingSources();
+  expect(sources.has(PHASE163 + "163-VERIFICATION.md")).toBe(false);
+  sources.set("README.md", sources.get("README.md")! + "\n" + GAP_CLAIM);
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+});
+
+test("original implementation fixture restores Phase162 ownership after later closure completion", () => {
+  const advanced = v25FixtureSources(currentSources());
+  advanced.set(".planning/REQUIREMENTS.md", advanced.get(".planning/REQUIREMENTS.md")!.replace("[ ] **CFGR-01**", "[x] **CFGR-01**").replace(/(\|\s*CFGR-01\s*\|\s*Phase 163\s*\|)\s*Pending\s*\|/, "$1 Complete |"));
+  const sources = transitionSources(advanced);
+  expect([...sources.keys()].sort()).toEqual([...transitionSources().keys()].sort());
+  expect(checkPhase162ClaimState(file => sources.get(file) ?? "", [])).toBe("implementation");
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+});
+
+for (const file of [PHASE162 + "162-VERIFICATION.md", ".planning/v2.5-MILESTONE-AUDIT.md", PHASE163 + "163-GAP-SCOPE.md", ".planning/REQUIREMENTS.md"]) {
+  test(`supplied-map Pending cannot rescue absent ${file} from valid disk`, () => {
+    const sources = gapPendingSources();
+    sources.delete(file);
+    expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+  });
+}
+
+for (const claim of [CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM]) {
+  test(`Pending cannot publish exact unauthorized sentence ${claim}`, () => {
+    const sources = gapPendingSources();
+    sources.set("README.md", sources.get("README.md")! + "\n" + claim);
+    expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("unsupported claim"))).toBe(true);
+  });
+}
+
+for (const claim of [READINESS_CLAIM, "v2.5 is shipped.", "Production service is ready.", `\`\`\`text\n${READINESS_CLAIM}\n\`\`\``]) {
+  test(`optional current provenance page refuses unearned/excluded claim: ${claim}`, () => {
+    // Arrange
+    const sources = gapPendingSources();
+    const file = PHASE163_DOC;
+    sources.set(file, claim);
+    // Act
+    const failures = checkPhase158ValidatedReorg(undefined, sources);
+    // Assert
+    expect(failures.some(failure => failure.includes(file) && failure.includes("unsupported claim"))).toBe(true);
+  });
+}
+
+test("optional current provenance page accepts earned gap wording and may be absent before creation", () => {
+  const sources = gapPendingSources();
+  const file = PHASE163_DOC;
+  sources.set(file, GAP_CLAIM);
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+  sources.delete(file);
+  expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+});
+
+for (const paths of [V25_REQUIREMENTS, V25_ROADMAPS]) {
+  test(`empty active control remains present in158 map: ${paths[0]}`, () => {
+    // Arrange
+    const sources = gapPendingSources();
+    sources.set(paths[1], sources.get(paths[0])!);
+    sources.set(paths[0], "");
+    // Act
+    const failures = checkPhase158ValidatedReorg(undefined, sources);
+    // Assert
+    expect(failures.some(failure => failure.includes(`${paths[0]}: invalid active milestone identity`))).toBe(true);
+    sources.delete(paths[0]);
+    expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
+  });
+}

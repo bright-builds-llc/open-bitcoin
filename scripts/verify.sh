@@ -152,6 +152,8 @@ bun run scripts/check-phase161-operator-index-evidence.ts
 bun test ./scripts/phase162-filter-oracle.test.ts
 bun test ./scripts/check-phase162-integrated-filter-proof.test.ts
 bun run scripts/check-phase162-integrated-filter-proof.ts
+bun test ./scripts/check-phase163-provenance.test.ts
+bun test ./scripts/check-phase163-provenance/native.test.ts
 bun test ./scripts/generate-peer-filter-fixtures.test.ts
 bun run scripts/generate-peer-filter-fixtures.ts --check
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
@@ -346,6 +348,8 @@ run_step "check Phase 161 operator index evidence" bun run scripts/check-phase16
 run_step "test Phase 162 independent raw filter oracle" bun test ./scripts/phase162-filter-oracle.test.ts
 run_step "test Phase 162 integrated filter proof checker" bun test ./scripts/check-phase162-integrated-filter-proof.test.ts
 run_step "check Phase 162 integrated filter proof" bun run scripts/check-phase162-integrated-filter-proof.ts
+run_step "test Phase 163 milestone provenance" bun test ./scripts/check-phase163-provenance.test.ts
+run_step "test Phase 163 native archive transitions" bun test ./scripts/check-phase163-provenance/native.test.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts

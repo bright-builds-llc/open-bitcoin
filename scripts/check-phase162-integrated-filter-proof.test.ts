@@ -9,20 +9,92 @@ import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { CHECKPOINT_CONTRACTS, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE,
   PHASE162_IMPLEMENTATION, PHASE162_COMPLETE } from "./check-phase158-validated-reorg.ts";
+import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, ORIGINAL_AUDITS, READINESS_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
+import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
 const real = loadSources();
 const sha = (source: string) => createHash("sha256").update(source).digest("hex");
 const reports = [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"],
   ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]];
+const ORIGINAL_PENDING_CLAIM = "Phase 162 scoped proof remains pending; v2.5 remains unaudited and unshipped.";
+
+function normalizeOriginalClaims(sources: Map<string, string>, sentence: string): void {
+  for (const file of ["docs/parity/index.json", PHASE162_DOC, "README.md", "packages/README.md"]) {
+    const maybeSource = sources.get(file);
+    if (!maybeSource) continue;
+    sources.set(file, [PHASE162_COMPLETE, PHASE162_IMPLEMENTATION, ORIGINAL_PENDING_CLAIM]
+      .reduce((view, claim) => view.replaceAll(claim, sentence), maybeSource));
+  }
+}
+
+test("actual live provenance accepts every valid closure state", () => {
+  expect(checkPhase162IntegratedFilterProof(real)).toEqual([]);
+});
+function gapPending(): Map<string, string> {
+  const sources = v25FixtureSources(real);
+  sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!.replace("[x] **CFGR-01**", "[ ] **CFGR-01**").replace(/(\|\s*CFGR-01\s*\|\s*Phase 163\s*\|)\s*Complete\s*\|/, "$1 Pending |"));
+  sources.set(".planning/v2.5-MILESTONE-AUDIT.md", sources.get(ORIGINAL_AUDITS[0])!);
+  return sources;
+}
+test("explicit Pending fixture clears future closure reports", () => {
+  const sources = gapPending();
+  expect(sources.has(PHASE163 + "163-VERIFICATION.md")).toBe(false);
+  expect(checkPhase162IntegratedFilterProof(sources)).toEqual([]);
+});
+for (const claim of [READINESS_CLAIM, "v2.5 is shipped.", "Production service is ready.", `\`\`\`text\n${READINESS_CLAIM}\n\`\`\``]) {
+  test(`optional provenance page claim refuses through162: ${claim}`, () => {
+    const sources = gapPending();
+    const file = PHASE163_DOC;
+    sources.set(file, claim);
+    const failures = checkPhase162IntegratedFilterProof(sources);
+    expect(failures.some(failure => failure.includes(file) && failure.includes("unsupported claim"))).toBe(true);
+  });
+}
+test("optional provenance page earns gap claim but is not required before publication", () => {
+  const sources = gapPending();
+  const file = PHASE163_DOC;
+  sources.set(file, GAP_CLAIM);
+  expect(checkPhase162IntegratedFilterProof(sources)).toEqual([]);
+  sources.delete(file);
+  expect(checkPhase162IntegratedFilterProof(sources)).toEqual([]);
+});
+for (const paths of [V25_REQUIREMENTS, V25_ROADMAPS]) {
+  test(`empty active control remains present in162 map: ${paths[0]}`, () => {
+    const sources = gapPending();
+    sources.set(paths[1], sources.get(paths[0])!);
+    sources.set(paths[0], "");
+    const failures = checkPhase162IntegratedFilterProof(sources);
+    expect(failures.some(failure => failure.includes(`${paths[0]}: invalid active milestone identity`))).toBe(true);
+    sources.delete(paths[0]);
+    expect(checkPhase162IntegratedFilterProof(sources)).toEqual([]);
+  });
+}
+for (const file of [PHASE162 + "162-VERIFICATION.md", ".planning/v2.5-MILESTONE-AUDIT.md", PHASE163 + "163-GAP-SCOPE.md", ".planning/REQUIREMENTS.md"]) {
+  test(`hermetic Pending map refuses missing ${file}`, () => {
+    const sources = gapPending();
+    sources.delete(file);
+    expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes("T-162-10"))).toBe(true);
+  });
+}
+test("transitive provenance helper alone is frozen to reviewed replacement bytes", () => {
+  const sources = new Map(real);
+  const file = "scripts/check-phase163-provenance.ts";
+  sources.set(file, sources.get(file)! + "\n// helper-only mutation\n");
+  expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(file) && failure.includes("frozen"))).toBe(true);
+});
 
 function pending(): Map<string, string> {
-  const sources = new Map(real);
+  const sources = gapPending();
+  sources.delete(PHASE163_DOC);
+  sources.set(".planning/ROADMAP.md", sources.get(".planning/ROADMAP.md")!.replace("**Requirements**: CFPR-02, CFGR-02", "**Requirements**: CFPR-02, CFGR-01, CFGR-02").replace("**Requirements**: CFGR-01", "**Requirements**: none"));
   sources.delete(PHASE162_DOC);
   for (const [name] of reports) sources.delete(PHASE162 + `162-${name}.md`);
   sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!
+    .replace(/(\|\s*CFGR-01\s*\|)\s*Phase 163\s*\|\s*Pending\s*\|/, "$1 Phase 162 | Pending |")
     .replace(/^- \[[ xX]\] \*\*(CFPR-02|CFGR-01|CFGR-02)\*\*:/gm, "- [ ] **$1**:")
     .replace(/(\|\s*(?:CFPR-02|CFGR-01|CFGR-02)\s*\|\s*Phase 162\s*\|)\s*(?:Pending|Complete)\s*\|/g, "$1 Pending |"));
-  inventory(sources, owner => { owner.status = "in_progress"; owner.known_gaps = ["Phase162 scoped proof remains pending; v2.5 remains unaudited and unshipped."]; });
+  inventory(sources, owner => { owner.status = "in_progress"; owner.known_gaps = [ORIGINAL_PENDING_CLAIM]; });
+  normalizeOriginalClaims(sources, ORIGINAL_PENDING_CLAIM);
   return sources;
 }
 type Owner = { id: string; status: string; requirements: string[]; evidence: string[]; known_gaps: string[]; intentional_differences: string[] };
@@ -44,6 +116,7 @@ function implementation(complete = false): Map<string, string> {
     owner.evidence.push(PHASE162_DOC);
     owner.known_gaps = [sentence];
   });
+  normalizeOriginalClaims(sources, sentence);
   if (!complete) return sources;
   sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!
     .replace(/^- \[ \] \*\*(CFPR-02|CFGR-01|CFGR-02)\*\*:/gm, "- [x] **$1**:")

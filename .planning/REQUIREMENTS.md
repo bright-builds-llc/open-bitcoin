@@ -6,7 +6,7 @@
 
 ## v2.5 Requirements
 
-Requirements for explicitly enabled BASIC/type 0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` is the behavioral baseline. Nine requirements are complete through Phases 154–157; remaining planned scope does not claim shipped compact-filter serving. Each requirement receives exactly one owning roadmap phase.
+Requirements for explicitly enabled BASIC/type0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` remains the baseline. All22requirements are functionallyComplete with unique owners; CFGR-01 remains owned by Phase163. The corrected21-input `e0c16fb2` earned new full/default native, independent source/security and functional verification. Prior34443772receipts remain dated history. Actual corrected-source renewed audit passed and readiness is now published; finalSC1–SC5verification nowpasses;5/5phaseplans and90/90milestoneplans are complete. Actual archival/shipment is separate.
 
 ### Filter Construction
 
@@ -69,52 +69,52 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Out of Scope
 
-| Feature | Reason |
-| -- | -- |
-| BIP37 bloom serving | Separate privacy/DoS surface; BASIC compact filters are the selected light-client capability. |
-| Knots V0/type 2 filters | BIP158 BASIC/type 0 is selected; the pinned Knots local V0 extension needs a separate generator/index scope and explicit parity exclusion. |
-| Partial-history index advertised as complete | Historical commitments require a validated genesis prefix; already-pruned gaps must refuse activation. |
-| Implicit reindex, redownload or destructive repair | Missing-history and corruption diagnostics do not authorize source-history mutation or acquisition. |
-| Filter import from peers | Trust, provenance and historical reconstruction policy are separate work. |
-| New filter-assisted wallet behavior | Existing wallet eligibility stays coins/body based; this milestone serves filters rather than adding a new wallet product. |
-| New production crates or Rust Bitcoin dependencies | Extend existing first-party crates and Fjall; retain the current Rust/Bazel/Bun stack. |
-| Knots LevelDB/fltr storage layout | Match observable behavior on Fjall and document layout/durability differences rather than add a second storage engine. |
-| Archive-scale serving, assumeutxo, public defaults or production/funds claims | Existing capability, activation and evidence gates remain independent. |
-| Public-network default CI or release-blocking live sync | Native verification stays deterministic and hermetic; optional network UAT remains explicit. |
-| Unrelated v2.4 advisory cleanup | Address a retained advisory only when required for the selected index/prune contract. |
+| Feature                                                                       | Reason                                                                                                                                     |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| BIP37 bloom serving                                                           | Separate privacy/DoS surface; BASIC compact filters are the selected light-client capability.                                              |
+| Knots V0/type 2 filters                                                       | BIP158 BASIC/type 0 is selected; the pinned Knots local V0 extension needs a separate generator/index scope and explicit parity exclusion. |
+| Partial-history index advertised as complete                                  | Historical commitments require a validated genesis prefix; already-pruned gaps must refuse activation.                                     |
+| Implicit reindex, redownload or destructive repair                            | Missing-history and corruption diagnostics do not authorize source-history mutation or acquisition.                                        |
+| Filter import from peers                                                      | Trust, provenance and historical reconstruction policy are separate work.                                                                  |
+| New filter-assisted wallet behavior                                           | Existing wallet eligibility stays coins/body based; this milestone serves filters rather than adding a new wallet product.                 |
+| New production crates or Rust Bitcoin dependencies                            | Extend existing first-party crates and Fjall; retain the current Rust/Bazel/Bun stack.                                                     |
+| Knots LevelDB/fltr storage layout                                             | Match observable behavior on Fjall and document layout/durability differences rather than add a second storage engine.                     |
+| Archive-scale serving, assumeutxo, public defaults or production/funds claims | Existing capability, activation and evidence gates remain independent.                                                                     |
+| Public-network default CI or release-blocking live sync                       | Native verification stays deterministic and hermetic; optional network UAT remains explicit.                                               |
+| Unrelated v2.4 advisory cleanup                                               | Address a retained advisory only when required for the selected index/prune contract.                                                      |
 
 ## Traceability
 
-All 22 current v2.5 requirements map to exactly one owning phase. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02, CFNET-01–06 and CFOP-01 are Complete after Phases 154–161's lifecycle-valid verification and full native passes; CFPR-02 and CFGR-01/02 are Complete after Phase162 scoped source/security, entire native and lifecycle-valid formal verification. All22requirements are Complete; v2.5 milestone audit/archive/shipment remains separate.
+All22 current v2.5 requirements map to exactly one active owner and are Complete. Phases154–162retain their historical lifecycle-valid delivery/native evidence; CFGR-01's historicalPhase162proof remains separate from activeowner163. The original gaps audit and all34443772receipts are preserved as dated history. Corrected21-inpute0c16fb2 now has actual full6, clean source review,16/16security and fresh functional verification for CFGR-01, plus a successful current activation suite. Canonical04/05 and Phase163are complete after actual readiness-state tests and finalSC1–SC5verification. Milestone archive/shipment remains separate.
 
-| Requirement | Phase | Status |
-| -- | -- | -- |
-| CFIL-01 | Phase 154 | Complete |
-| CFIL-02 | Phase 154 | Complete |
-| CFIX-02 | Phase 155 | Complete |
-| CFIX-04 | Phase 155 | Complete |
-| CFPR-03 | Phase 155 | Complete |
-| CFPR-01 | Phase 156 | Complete |
-| CFAC-01 | Phase 157 | Complete |
-| CFAC-02 | Phase 157 | Complete |
-| CFIX-01 | Phase 157 | Complete |
-| CFIX-03 | Phase 158 | Complete |
-| CFRP-01 | Phase 159 | Complete |
-| CFRP-02 | Phase 159 | Complete |
-| CFNET-01 | Phase 160 | Complete |
-| CFNET-02 | Phase 160 | Complete |
-| CFNET-03 | Phase 160 | Complete |
-| CFNET-04 | Phase 160 | Complete |
-| CFNET-05 | Phase 160 | Complete |
-| CFNET-06 | Phase 160 | Complete |
-| CFOP-01 | Phase 161 | Complete |
-| CFPR-02 | Phase 162 | Complete |
-| CFGR-01 | Phase 162 | Complete |
-| CFGR-02 | Phase 162 | Complete |
+| Requirement | Phase     | Status   |
+| ----------- | --------- | -------- |
+| CFIL-01     | Phase 154 | Complete |
+| CFIL-02     | Phase 154 | Complete |
+| CFIX-02     | Phase 155 | Complete |
+| CFIX-04     | Phase 155 | Complete |
+| CFPR-03     | Phase 155 | Complete |
+| CFPR-01     | Phase 156 | Complete |
+| CFAC-01     | Phase 157 | Complete |
+| CFAC-02     | Phase 157 | Complete |
+| CFIX-01     | Phase 157 | Complete |
+| CFIX-03     | Phase 158 | Complete |
+| CFRP-01     | Phase 159 | Complete |
+| CFRP-02     | Phase 159 | Complete |
+| CFNET-01    | Phase 160 | Complete |
+| CFNET-02    | Phase 160 | Complete |
+| CFNET-03    | Phase 160 | Complete |
+| CFNET-04    | Phase 160 | Complete |
+| CFNET-05    | Phase 160 | Complete |
+| CFNET-06    | Phase 160 | Complete |
+| CFOP-01     | Phase 161 | Complete |
+| CFPR-02     | Phase 162 | Complete |
+| CFGR-01     | Phase 163 | Complete |
+| CFGR-02     | Phase 162 | Complete |
 
-Coverage: 22/22 requirements mapped; 0 unmapped; 0 duplicate owners.
+Coverage: 22/22 requirements mapped; 22 Complete; 0 Pending; 0 unmapped; 0 duplicate owners.
 
 ______________________________________________________________________
 
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-11 after Phase 160 verification*
+*Last updated: 2026-10-13 corrected-source audit/readiness/finalSC1–SC5verification and carrier reconciliation passed*

@@ -4,17 +4,19 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE } from "./check-phase158-validated-reorg.ts";
+import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
 const clean = loadSources();
 const N = "packages/open-bitcoin-node/src/";
 const C = "packages/open-bitcoin-cli/src/operator/";
 const CURRENT_DOCS = ["README.md", "packages/README.md", "docs/architecture/status-snapshot.md", "docs/architecture/operator-observability.md", "docs/operator/runtime-guide.md", "docs/parity/catalog/basic-compact-filters.md"];
 function transitionSources(): Map<string, string> {
-  const sources = new Map(clean);
+  const sources = v25FixtureSources(clean);
   for (const file of PHASE162_EVIDENCE) sources.set(file, readFileSync(resolve(import.meta.dir, "..", file), "utf8"));
-  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
-  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
-  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+  for (const [file, source] of sources) if (file.endsWith(".md") || file.endsWith(".json")) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
+  sources.set(".planning/ROADMAP.md", sources.get(".planning/ROADMAP.md")!.replace("**Requirements**: CFPR-02, CFGR-02", "**Requirements**: CFPR-02, CFGR-01, CFGR-02").replace("**Requirements**: CFGR-01", "**Requirements**: none"));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!.replace(/(\|\s*CFGR-01\s*\|)\s*Phase 163\s*\|\s*(?:Pending|Complete)\s*\|/, "$1 Phase 162 | Pending |");
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(new RegExp(`(\\|\\s*${id}\\s*\\|\\s*Phase 162\\s*\\|)\\s*Complete\\s*\\|`), "$1 Pending |");
   sources.set(".planning/REQUIREMENTS.md", requirements);
   const index = JSON.parse(sources.get("docs/parity/index.json")!);
   const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");

@@ -50,6 +50,14 @@ Knots-aligned prune on the single active chainstate deletes old block and undo p
 
 The automatic target is a soft logical block/undo retention target: protected and nonactive payloads count in usage while only active candidates may be deleted. It does not guarantee physical disk capacity or immediate reclamation. Wallet eligibility probes and persistence are separate effects. The archived audit preserves the stale-metadata recovery refusal, generic sink no-op default and crash-window support-counter undercount advisories.
 
+CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
+
+The [archive-safe provenance policy and pinned reproduction commands](./docs/parity/v2-5-archive-safe-provenance.md) explain current closure ownership, equivalent archive overlap, conflicting-evidence refusal and the required current claim transition after a future actual archive. Earlier phase implementation descriptions below retain their dated scope; [Phase 162's proof](./docs/parity/v2-5-integrated-filter-proof.md) records the completed historical delivery. Phase 163's corrected21-input source `e0c16fb2` passed the complete default native verifier, independent source/security acceptance and canonical functional-closure verification. Earlier digest `34443772` receipts remain dated historical evidence. CFGR-01 closure and the renewed22/22audit are earned; readiness is published through the current handoff policy. Readiness-state tests and finalSC1–SC5whole-phase verification passed; allfive phaseplans are complete. Normal-hook source saving remains the original wrapper gate. Actual archival/shipment remains separate.
+
+Historical publication at 2026-10-12T03:42:55Z, before the later gaps audit (retained as dated delivery evidence):
+
+Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+
 ## Pure BASIC filter construction
 
 Phase 154 provides pure BASIC-only generation and commitments with independent
@@ -200,8 +208,7 @@ implementation evidence is recorded by Plans 01–11 and 13–17. The
 [final verification](./.planning/phases/160-explicit-bounded-peer-filter-serving/160-VERIFICATION.md)
 records the passed native contract, clean independent review and lifecycle gates.
 Phase 161 adds shared operator evidence below. Current scoped integrated
-evidence is linked below; source/security, full native and formal evidence gates passed. v2.5 remains
-unaudited and unshipped. Public/default serving, V0/BIP37, archive, production readiness and
+evidence is linked below; historical Phase 162 source/security, full native and formal evidence gates passed. The dated v2.5 audit found the archive handoff gap now owned by Phase 163. Public/default serving, V0/BIP37, archive-scale serving, production readiness and
 production-funds claims remain deferred.
 
 ```bash
@@ -227,7 +234,7 @@ Retained filters do not restore deleted bodies or wallet eligibility.
 
 See the [measurement basis, evidence limits and local commands](./docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161)
 and [operator interpretation](./docs/operator/runtime-guide.md#shared-basic-index-inspection-phase-161).
-Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
+CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
 
 The [integrated evidence](docs/parity/v2-5-integrated-filter-proof.md) records one
 normal-maturity history through actual manual/automatic 550 MiB paired deletion,

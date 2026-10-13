@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, posix, resolve } from "node:path";
 import { compact, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
-import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView } from "./check-phase158-validated-reorg.ts";
+import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView, sourceText } from "./check-phase158-validated-reorg.ts";
 
 const N = "packages/open-bitcoin-node/src/";
 const R = "packages/open-bitcoin-rpc/src/";
@@ -182,7 +182,7 @@ export function checkPhase160PeerFilterServing(maybeRoot?: string, maybeSources?
     try { texts.set(file, readFileSync(resolve(root, file), "utf8")); }
     catch { failures.push(`${file}: required evidence unreadable`); }
   }
-  const text = (file: string) => texts.get(file) ?? "";
+  const text = sourceText(texts);
   const claimState = checkPhase162ClaimState(text, failures);
   const contracts = [...CONTRACTS, ...HELPER_CONTRACTS, ...TEST_CONTRACTS];
   for (const file of new Set(contracts.map(row => row[0]))) {
@@ -275,8 +275,8 @@ function checkResources(text: Texts, failures: string[]): void {
 
 function checkReferences(text: Texts, failures: string[], claimState: ReturnType<typeof checkPhase162ClaimState>): void {
   for (const file of [DOC, "README.md", "docs/parity/index.json"]) {
-    const source = phase162ClaimView(text(file), claimState);
-    checkPhase162ExcludedClaims(text(file), file, failures, claimState);
+    const source = phase162ClaimView(text(file), claimState, text);
+    checkPhase162ExcludedClaims(text(file), file, failures, claimState, text);
     const positive = "(?:(?:is|are|now|fully|already)\\s+)*(?:complete|shipped|ready|safe|supported|proven|enabled|passed)\\b";
     const subjects = "(?:v2\\.5(?:\\s+milestone)?|CF(?:OP|GR)-\\d+|Phase\\s+16[12]|(?:BIP37|V0)(?:\\s+(?:bloom|filter))?(?:\\s+serving)?|production(?:[- ]funds)?(?:\\s+(?:service|use|safety|operation))?|archive(?:\\s+serving)?)";
     if (new RegExp(`\\b${subjects}\\s+${positive}|\\bpublic\\s+(?:peer\\s+)?serving\\s+(?:(?:is|now)\\s+)*(?:enabled|default)\\b`, "i").test(source)) failures.push(`${file}: unsupported scope claim`);

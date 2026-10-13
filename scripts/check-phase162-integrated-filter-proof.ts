@@ -8,7 +8,7 @@ import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filte
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { CHECKPOINT_CONTRACTS, PHASE162_FILES, PHASE162_EVIDENCE, PHASE162_DOC,
   checkPhase162ClaimState, loadPhase162OptionalSources, checkPhase162ExcludedClaims,
-  phase162ClaimView } from "./check-phase158-validated-reorg.ts";
+  phase162ClaimView, sourceText } from "./check-phase158-validated-reorg.ts";
 
 const N = "packages/open-bitcoin-node/src/";
 const R = "packages/open-bitcoin-rpc/src/";
@@ -53,8 +53,8 @@ export const CHECK_FILES = [...new Set([...ROOTS, ...MODULE_EDGES.flatMap(edge =
   "docs/parity/index.json", "docs/parity/source-breadcrumbs.json", "scripts/verify.sh", "scripts/generate-peer-filter-fixtures.ts", ".gitmodules", "rust-toolchain.toml", ".bun-version"])];
 
 /** Load only fixed current roots and the frozen claim helper's lazy optional outputs. */
-export function loadSources(): Map<string, string> {
-  const root = resolve(import.meta.dir, "..");
+export function loadSources(maybeRoot?: string): Map<string, string> {
+  const root = maybeRoot ?? resolve(import.meta.dir, "..");
   const sources = loadPhase162OptionalSources(root);
   for (const file of CHECK_FILES) sources.set(file, readFileSync(resolve(root, file), "utf8"));
   return sources;
@@ -327,7 +327,7 @@ function checkNative(source: string, failures: string[]): void {
 /** Supplied source maps are hermetic: missing keys never fall back to the filesystem. */
 export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<string, string>): string[] {
   const sources = maybeSources ?? loadSources();
-  const text = (file: string) => sources.get(file) ?? "";
+  const text = sourceText(sources);
   const failures: string[] = [];
   for (const file of CHECK_FILES) if (!sources.has(file)) failures.push(`${file}: required current source missing`);
   const state = checkPhase162ClaimState(text, failures);
@@ -363,9 +363,9 @@ function checkScope(text: (file: string) => string, failures: string[], state: R
     const pinSource = text("scripts/generate-peer-filter-fixtures.ts");
     const pins = [...rustCode(pinSource).matchAll(/\bexport\s+const\s+PIN\s*=/g)];
     if (pins.length !== 1 || !pinSource.slice(pins[0].index).startsWith(`export const PIN = "${PIN}"`)) failures.push("Phase162: exact independent oracle Knots pin required");
-    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state);
-    const view = phase162ClaimView(text(PHASE162_DOC), state);
-    checkPhase162ExcludedClaims(view, PHASE162_DOC, failures, state);
+    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state, text);
+    const view = phase162ClaimView(text(PHASE162_DOC), state, text);
+    checkPhase162ExcludedClaims(view, PHASE162_DOC, failures, state, text);
     const breadcrumbs = JSON.parse(text("docs/parity/source-breadcrumbs.json"));
     for (const [file, anchors] of Object.entries(BREADCRUMBS)) {
       const groups = breadcrumbs.groups.filter((group: { files: string[] }) => group.files.includes(file));
@@ -376,9 +376,10 @@ function checkScope(text: (file: string) => string, failures: string[], state: R
 }
 
 function checkFrozenGuards(text: (file: string) => string, failures: string[]): void {
-  // Plan10 froze these exact already-executed Plan15 guards and their mutation suite.
-  for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "b2339c02beebd971432bd53dfc81df5f563a41968b5181ff66112045748169e5"],
-    ["scripts/check-phase158-validated-reorg.test.ts", "68e444d11ae5a3203c6a51c069a00a496db6dd99bbf191c724c2ca496f1855ec"]]) {
+  // Phase163's exact scoped replacement and preserved checkpoint contracts require independent review.
+  for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "1df027aca2deb9827f135d9a558ef2377d7a2ebb18b830ba76f41698376834de"],
+    ["scripts/check-phase158-validated-reorg.test.ts", "6526c6d4c1853b4bbf21e462b8dc292eeb95a6c10e493e9d0cbbf449f43c01cb"],
+    ["scripts/check-phase163-provenance.ts", "cf22edda320107ce0dfda9a8692e8c29aaa436ad6ca1f82c48f66b1d778c67d7"]]) {
     if (createHash("sha256").update(text(file)).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
   }
 }

@@ -2,9 +2,9 @@
 
 ## Current Status
 
-Phases 154–162 have completed all 85 plans and 22 current v2.5 requirements with lifecycle-valid verification and full native evidence. All nine phases are complete. Phase 162 closes the continuous normal-maturity prune/reopen/RPC/both-transports proof, genuine wallet/body restrictions and durability/write-failure matrices. Its entire default native verifier passed in 35m 36.960s, including benchmarks, six Bazel targets/provenance and zero uncovered pure-core lines. Independent review is clean across 70 current paths with three findings closed; all 61 declared threats are closed. Formal verification passes 46/46 truth obligations and all five roadmap criteria.
+Phases154–162completed all85original plans with preserved historical proof. Corrected21-inpute0c16fb2 now has actual full/default native, clean review,16/16security,functional activation, renewed22/22audit/31seams/18flows,284-case readiness and finalSC1–SC5acceptance. AllfivePhase163plans and90/90milestoneplans/10/10phases/22uniqueComplete requirements are verified. The actualaudit boundary9final+1functional and prior344receipts remain dated history. The milestone is ready for its separate actualarchival workflow and remainsunarchived/unshipped. Allsource/runtime/resource/public-network/productionlimits remain unchanged.
 
-The milestone remains unaudited, unarchived and unshipped; audit/archive/shipment are separate work. The 550 MiB body/undo target remains soft and unattained in the measured pressure scenario; physical allocation samples are points, retained filters restore neither bodies nor wallet eligibility, and the synthetic-root/work/halving limits do not claim whole-chain Knots consensus parity. Earlier v2.4 crash-window advisories and BIP37/V0, assumeutxo, archive-scale, public/default/network-CI, implicit repair and production/funds exclusions remain unchanged.
+The original gaps audit remains immutable history; the [renewed audit](v2.5-MILESTONE-AUDIT.md) passes31/31 integration seams and18/18 flows. Phase163's verified provenance preserves native parity checks across reassignment, standard archival and a later milestone's active controls. The milestone is ready for its separate archival workflow and remains unarchived/unshipped. The 550 MiB body/undo target remains soft and unattained in the measured pressure scenario; physical allocation samples are points, retained filters restore neither bodies nor wallet eligibility, and the synthetic-root/work/halving limits do not claim whole-chain Knots consensus parity. Earlier v2.4 crash-window advisories and BIP37/V0, assumeutxo, archive-scale, public/default/network-CI, implicit repair and production/funds exclusions remain unchanged.
 
 ## Milestones
 
@@ -23,7 +23,7 @@ The milestone remains unaudited, unarchived and unshipped; audit/archive/shipmen
 - ✅ **v2.2 Package Relay and Long-Lived Mempool Policy** — Phases 130–138, including inserted 133.1 (shipped 2026-08-22). Archive: [v2.2-ROADMAP.md](milestones/v2.2-ROADMAP.md)
 - ✅ **v2.3 Chainstate Durability and Historical Serving** — Phases 139–145 (shipped 2026-09-20). Archive: [v2.3-ROADMAP.md](milestones/v2.3-ROADMAP.md)
 - ✅ **v2.4 Prune-Mode Product Behavior** — Phases 146–153 (shipped 2026-10-03). Archive: [v2.4-ROADMAP.md](milestones/v2.4-ROADMAP.md)
-- 📋 **v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)** — Phases 154–162 (planning; started 2026-10-03).
+- 📋 **v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)** — Phases154–163 complete; archive readiness verified, unarchived/unshipped (started2026-10-03).
 
 ## Active Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
 
@@ -33,7 +33,7 @@ Material guidance: repo-local `AGENTS.md`, `AGENTS.bright-builds.md`, placeholde
 
 ## Phases
 
-Integer phases continue from archived Phase 153; decimal phases remain available for urgent insertions. Fine granularity preserves nine coherent delivery boundaries. Unimplemented requirements remain Pending until implementation and lifecycle-valid verification are committed.
+Integer phases continue from archived Phase 153; decimal phases remain available for urgent insertions. Nine original delivery boundaries are followed by one audit gap closure. Unimplemented or reopened requirements remain Pending until their owning work and lifecycle-valid verification are complete.
 
 - [x] **Phase 154: BASIC Generation and Commitment Parity** — Produce exact BASIC bytes and ancestry-dependent commitments from validated script history. (completed 2026-10-04)
 - [x] **Phase 155: Recoverable Index and Pre-Prune Startup Protection** — Recover concrete Fjall records and validate protection before interrupted pruning can resume. (completed 2026-10-04)
@@ -44,6 +44,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence. (completed 2026-10-11)
 - [x] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers. (completed 2026-10-11)
 - [x] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports. Scoped full native and formal lifecycle verification passed; milestone audit/shipment remains separate. (completed 2026-10-12)
+- [x] **Phase 163: Archive-Safe Parity Provenance and Milestone Handoff** — Preserve deterministic historical parity checks across gap reassignment, standard requirements archival and the next milestone; reconcile audited closeout records. (completed2026-10-13)
 
 ## Phase Details
 
@@ -180,6 +181,7 @@ Plans:
 **Plans:** 17/17 plans complete
 
 Plans:
+
 - [x] 160-01-PLAN.md — pinned BASIC peer wire families
 - [x] 160-02-PLAN.md — requested permissions and configured peer capability
 - [x] 160-03-PLAN.md — explicit daemon configuration before startup effects
@@ -224,13 +226,15 @@ Plans:
 - [x] 161-07-PLAN.md
 - [x] 161-08-PLAN.md
 - [x] 161-09-PLAN.md
+
 **UI hint**: yes
 
 ### Phase 162: Real Prune Retention and Integrated Parity Proof
 
 **Goal**: Contributors can reproduce retained filter service after real prune/reopen and audit the complete scoped lifecycle without broadening milestone claims.
 **Depends on**: Phase 161
-**Requirements**: CFPR-02, CFGR-01, CFGR-02
+**Requirements**: CFPR-02, CFGR-02
+**Historical requirement evidence**: Phase 162 also delivered the originally verified CFGR-01 scope. The audit reopened its archive handoff and moved active closure ownership to Phase 163; the original certificates and success criteria below remain historical evidence.
 **Success Criteria** (what must be TRUE):
 
 1. A client retrieves previously indexed filter bytes/headers through authenticated RPC and filters, headers and checkpoints through all three peer families after actual paired Fjall body/undo deletion and production datadir reopen; ordinary block serving and wallet eligibility still obey the existing pruned-body restrictions. (CFPR-02)
@@ -260,6 +264,30 @@ Plans:
 
 **UI hint**: yes
 
+### Phase 163: Archive-Safe Parity Provenance and Milestone Handoff
+
+**Goal**: Contributors can run ordinary native parity verification during gap closure, after standard v2.5 requirements archival and with a later milestone's active requirements, while preserving original evidence and fail-closed claim rules.
+**Depends on**: Phase 162
+**Requirements**: CFGR-01
+**Gap Closure**: CFGR-01, AG01 and AF01 from [v2.5-MILESTONE-AUDIT.md](v2.5-MILESTONE-AUDIT.md); related closeout records TD01 and TD02.
+**Success Criteria** (what must be TRUE):
+
+1. The original completed implementation remains verifiable while legitimate gap-reassignment ownership and Pending status are distinguished from missing, forged or premature completion evidence. (CFGR-01)
+1. Native verification consumes milestone-bound v2.5 provenance in active, standard archived and archive-plus-next-milestone layouts; conflicting, missing, incomplete or mismatched evidence fails with a bounded diagnostic. (CFGR-01, AG01, AF01)
+1. Actual CLI/filesystem loaders and hermetic supplied-map checkers agree on supported transitions, retain existing source/function/ownership/baseline/exclusion controls and never fill missing supplied-map keys from disk. (CFGR-01)
+1. Current closeout prose and older debug handoffs agree with actual native/CI receipts, preserving historical failures and explicit audited/archive claim boundaries without expanding excluded product scope. (TD01, TD02)
+1. Focused regression and transition controls, independent review, the complete default native contract and a renewed milestone audit pass before archive readiness is asserted; layout demonstrations use isolated fixtures rather than archiving this checkout. (CFGR-01, AG01, AF01)
+
+**Plans**:5/5plans complete in five sequential waves. Corrected21-input source has actual renewed audit/readiness and finalSC1–SC5verification; canonical04anddistinct05outcomes are complete. Original344history and actualnewfull/activation/audit/readiness/final boundaries remain preserved.
+
+- [x] 163-01 — Milestone-bound provenance and preserved evidence
+- [x] 163-02 — Native archive transitions and refusal controls
+- [x] 163-03 — Truthful contributor and debug handoffs
+- [x] 163-04 — Independent/native evidence and functional closure handoff
+- [x] 163-05 — Renewed audit, readiness publication and final reconciliation
+
+**UI hint**: no
+
 ## Dependency and Evidence Gates
 
 - Phase 155 must prove the actual pre-resume startup path with real Fjall/durable-runtime fixtures. Installing protection after initialize is insufficient. Reserved ownership is established at this foundation seam and enforced across every concrete mutation/deletion path in Phase 156.
@@ -267,36 +295,39 @@ Plans:
 - Build continuous validated spend/fork fixtures from Phase 154 onward and use them for ordinary lifecycle evidence in Phases 157–158. Final integration expands these fixtures; it must not discover their feasibility only at closeout.
 - Phase 160 advertises configured BASIC capability independently of initial synchronization, serves complete indexed ranges during catch-up and uses branch-aware persisted lookup. A transport enqueue or prepared plan is not an achieved write receipt.
 - Phase 162 owns CFPR-02's complete post-prune client proof because RPC and all peer families must already exist. Earlier phases prove their own safety behavior; final proof traverses their ordinary production callers with concrete durable coins and Fjall.
+- Phase 163 preserves Phase 162's completed historical evidence while repairing requirement-source and claim-state transitions. The original gaps audit reproduced requirement-reassignment/archive failures at d47f6e09b4621808974cc083fcc27ee9d2c1b4c7; current repair, renewed audit and final phase evidence are tracked separately. Reassignment alone cannot authorize a hook bypass, historical proof downgrade or premature archive claim.
 - Preserve the v2.4 permitted finish-or-Repair refusal, generic-sink advisory and deletion-summary undercount limits. Those counters/defaults cannot authorize index progress; unrelated advisory cleanup is excluded.
 
 UI hints follow the roadmap keyword contract, which also matches protocol header terminology. Only Phase 161 changes an existing terminal dashboard; no GUI or new frontend is planned.
 
 ## Research Focus for Planning
 
-| Phase | Decision to settle before implementation |
-| -- | -- |
-| 155 | Additive schema/reopen compatibility; recoverable chain checkpoint; immutable extra records versus active projection; atomic filter batches and early protection before prune resume. |
-| 156 | Reserved CRUD ownership; apply-time manual/automatic checks; cached measurement invalidation; safe disable and protection-release ordering. |
-| 157 | Mixed/repeated option semantics; validated undo access; accepted-state/persistence-error seams; measured bounded offline scheduler budgets and required prefix/suffix boundary. |
-| 158 | Common-ancestor rewind and retained stale identity under real faults; explicit deep-reorg missing-input refusal. |
-| 159–160 | BASIC-only known V0 outcomes; exact RPC error ordering; implicit/all peer permissions; stale eligibility; checkpoint byte/work/queue budgets and transport cleanup. |
+| Phase   | Decision to settle before implementation                                                                                                                                                   |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 155     | Additive schema/reopen compatibility; recoverable chain checkpoint; immutable extra records versus active projection; atomic filter batches and early protection before prune resume.      |
+| 156     | Reserved CRUD ownership; apply-time manual/automatic checks; cached measurement invalidation; safe disable and protection-release ordering.                                                |
+| 157     | Mixed/repeated option semantics; validated undo access; accepted-state/persistence-error seams; measured bounded offline scheduler budgets and required prefix/suffix boundary.            |
+| 158     | Common-ancestor rewind and retained stale identity under real faults; explicit deep-reorg missing-input refusal.                                                                           |
+| 159–160 | BASIC-only known V0 outcomes; exact RPC error ordering; implicit/all peer permissions; stale eligibility; checkpoint byte/work/queue budgets and transport cleanup.                        |
+| 163     | Milestone-bound provenance selection, audited gap reassignment, active/archive/next-milestone loader agreement and narrowly evidenced claim transitions without weakening existing guards. |
 
 ## Progress
 
-Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 → 162.
+Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 → 162 → 163.
 
-| Phase | Plans Complete | Status | Completed |
-| -- | -- | -- | -- |
-| 154. BASIC Generation and Commitment Parity | 4/4 | Complete | 2026-10-04 |
-| 155. Recoverable Index and Pre-Prune Startup Protection | 4/4 | Complete | 2026-10-04 |
-| 156. Index-Owned Manual and Automatic Prune Coordination | 8/8 | Complete | 2026-10-05 |
-| 157. Safe Activation and Scheduled Index Catch-Up | 10/10 | Complete | 2026-10-05 |
-| 158. Validated Reorg and Retained Branch Identity | 7/7 | Complete | 2026-10-09 |
-| 159. Authenticated BASIC Filter and Index RPCs | 8/8 | Complete    | 2026-10-10 |
-| 160. Explicit Bounded Peer Filter Serving | 17/17 | Complete    | 2026-10-11 |
-| 161. Shared Operator Index and Retention Evidence | 11/11 | Complete    | 2026-10-11 |
-| 162. Real Prune Retention and Integrated Parity Proof | 16/16 | Complete    | 2026-10-12 |
+| Phase                                                     | Plans Complete | Status   | Completed  |
+| --------------------------------------------------------- | -------------- | -------- | ---------- |
+| 154. BASIC Generation and Commitment Parity               | 4/4            | Complete | 2026-10-04 |
+| 155. Recoverable Index and Pre-Prune Startup Protection   | 4/4            | Complete | 2026-10-04 |
+| 156. Index-Owned Manual and Automatic Prune Coordination  | 8/8            | Complete | 2026-10-05 |
+| 157. Safe Activation and Scheduled Index Catch-Up         | 10/10          | Complete | 2026-10-05 |
+| 158. Validated Reorg and Retained Branch Identity         | 7/7            | Complete | 2026-10-09 |
+| 159. Authenticated BASIC Filter and Index RPCs            | 8/8            | Complete | 2026-10-10 |
+| 160. Explicit Bounded Peer Filter Serving                 | 17/17          | Complete | 2026-10-11 |
+| 161. Shared Operator Index and Retention Evidence         | 11/11          | Complete | 2026-10-11 |
+| 162. Real Prune Retention and Integrated Parity Proof     | 16/16          | Complete | 2026-10-12 |
+| 163. Archive-Safe Parity Provenance and Milestone Handoff | 5/5 | Complete | 2026-10-13 |
 
 ## Coverage
 
-22/22 current v2.5 requirements map to exactly one owning phase; no orphans or duplicate owners. Requirement lists in Phase Details are authoritative and match [REQUIREMENTS.md](REQUIREMENTS.md#traceability). All nine phases have 2–5 observable success criteria; active milestone completion is 7/9 verified phases and 58/58 created plans complete. CFIL-01/02, CFIX-01/02/03/04, CFAC-01/02, CFPR-01/03, CFRP-01/02 and CFNET-01–06 are Complete; the remaining four requirements are Pending.
+22/22current v2.5requirements map to unique active owners with noorphans. Requirement lists match currentREQUIREMENTS; historical162CFGR-01evidence remains separate from active163. Alltenphases/finalcertificates and90plans are complete, withPhase1635/5. Corrected21-input actualnative/review/security/audit/readiness/finalphase gates passed. Normal-hook saving and actualarchive/tag/shipment remain separate.

@@ -899,6 +899,7 @@
           "README.md",
           "packages/README.md",
           "docs/parity/v2-5-integrated-filter-proof.md",
+          "docs/parity/v2-5-archive-safe-provenance.md",
           "docs/parity/catalog/basic-compact-filters.md",
           "docs/operator/runtime-guide.md",
           "docs/architecture/status-snapshot.md",
@@ -911,7 +912,7 @@
           ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-NATIVE-EVIDENCE.md",
           ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-VERIFICATION.md"
         ],
-        "rationale": "Scoped integrated evidence is complete after independent source/security review, the entire default native verifier and lifecycle-valid goal verification for CFPR-02, CFGR-01 and CFGR-02. The complete same-datadir lifecycle uses actual configured daemon startup, normal maturity 100 accepted history through h1000, an elapsed idle worker, accepted reorg, manual/automatic paired deletion, all-handle reopen, authenticated RPC, physical inbound/outbound clients and genuine wallet/body restrictions. Focused faults supplement that lifecycle without duplicating its pressure corpus.",
+        "rationale": "Original publication at 2026-10-12T03:42:55Z, before the later gaps audit, retained as dated delivery evidence: Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped. Historical Phase 162 integrated delivery passed independent source/security review, the entire default native verifier and lifecycle-valid goal verification for its original CFPR-02, CFGR-01 and CFGR-02 scope. CFGR-01's later archive handoff is Pending under Phase 163 for revalidation after a saving-hook test-fixture correction changed the source binding; prior digest 34443772 closure, audit and final verification remain dated history. The complete same-datadir lifecycle uses actual configured daemon startup, normal maturity 100 accepted history through h1000, an elapsed idle worker, accepted reorg, manual/automatic paired deletion, all-handle reopen, authenticated RPC, physical inbound/outbound clients and genuine wallet/body restrictions. Focused faults supplement that lifecycle without duplicating its pressure corpus.",
         "upstream": {
           "sources": ["packages/bitcoin-knots/src/index/base.cpp", "packages/bitcoin-knots/src/index/blockfilterindex.cpp", "packages/bitcoin-knots/src/blockfilter.cpp", "packages/bitcoin-knots/src/node/blockstorage.cpp", "packages/bitcoin-knots/src/net_processing.cpp", "packages/bitcoin-knots/src/rpc/blockchain.cpp"],
           "tests": ["packages/bitcoin-knots/test/functional/p2p_blockfilters.py", "packages/bitcoin-knots/test/functional/test_framework/messages.py", "packages/bitcoin-knots/test/functional/test_framework/blocktools.py", "packages/bitcoin-knots/test/functional/test_framework/siphash.py"]
@@ -923,7 +924,7 @@
           "Public wallet rescan keeps genuine creating-body eligibility after pruning: an earlier complete checkpoint survives a later missing-creating-history refusal, while its job state/error truthfully become Failed. Future descriptor metadata serialization is corrected; existing legacy read normalization remains unchanged and is not a migration or repair."
         ],
         "known_gaps": [
-          "Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.",
+          "v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.",
           "BIP37/V0, assumeutxo/dual-chainstate, filter import, wallet acceleration, implicit repair/reindex/download, archive behavior, public defaults/network CI, production service/readiness and funds-safety remain excluded. No stronger v2.4 crash-window guarantee is claimed."
         ]
       },

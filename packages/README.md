@@ -10,8 +10,7 @@ processed height and captured-frontier readiness remain distinct. Dependencies
 and default-off activation are unchanged. CFRP-01/02 are Complete after full native, independent source/security and
 [formal lifecycle verification](../.planning/phases/159-authenticated-basic-filter-and-index-rpcs/159-VERIFICATION.md). Phase 160 implements explicit bounded peers;
 Phase 161 adds shared operator evidence below. Current scoped integrated
-evidence is linked below; source/security, full native and formal evidence gates passed. v2.5 remains
-unaudited and unshipped. Earlier phase scope below is
+evidence is linked below; historical Phase 162 source/security, full native and formal evidence gates passed. The dated v2.5 audit found the archive handoff gap now owned by Phase 163. Earlier phase scope below is
 historical; synthetic genesis/maturity-one/manual owner-plan evidence does not
 establish ordinary prune-RPC, automatic-threshold or production/funds safety.
 
@@ -24,6 +23,12 @@ payload/key-value bytes include stale branches; payload bytes are a subset, and
 Fjall overhead/physical allocation are excluded. Growth stays outside the soft
 block/undo target and does not restore body/wallet eligibility. See the
 [operator contract and Cargo/Bazel commands](../docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
+v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.
+
+See the [archive-safe provenance policy and pinned reproduction commands](../docs/parity/v2-5-archive-safe-provenance.md) for fixed milestone controls, equivalent overlap/conflict refusal, hermetic maps and the required current claim transition after a future actual archive. Phase 163's corrected21-input source `e0c16fb2` passed the complete default native verifier, independent source/security acceptance and canonical functional-closure verification. Earlier digest `34443772` receipts remain dated historical evidence. CFGR-01 closure and the renewed22/22audit are earned; readiness is published through the current handoff policy. Readiness-state tests and finalSC1–SC5whole-phase verification passed; allfive phaseplans are complete. Normal-hook source saving remains the original wrapper gate. Actual archival/shipment remains separate.
+
+Historical publication at 2026-10-12T03:42:55Z, before the later gaps audit (retained as dated delivery evidence):
+
 Phase 162 scoped integrated proof is complete in docs/parity/v2-5-integrated-filter-proof.md; CFPR-02/CFGR-01/CFGR-02 are Complete; v2.5 remains unaudited and unshipped.
 
 The [integrated proof](../docs/parity/v2-5-integrated-filter-proof.md) and
@@ -78,6 +83,8 @@ fanout, Phase 137 operator surfaces, Phase 138 release proof, general package
 wire relay, whole-mempool rebroadcast, arbitrary multi-parent peer assembly,
 public or default relay, guaranteed propagation, public-network CI or release
 gates, and production readiness remain deferred.
+
+The following Phase 158 description preserves its original implementation-stage handoff; Phases 159–162 subsequently completed their scoped historical delivery.
 
 Phase 158 implements internal validated BASIC branch replacement in the pure
 chainstate and serialized node adapters. Genuine accepted receipts and live

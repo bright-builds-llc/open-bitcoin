@@ -9,6 +9,8 @@ import { MODULE_EDGES, meaningfulAssertions } from "./check-phase159-filter-rpcs
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
+import { PHASE163_DOC, PROVENANCE_CLAIMS } from "./check-phase163-provenance.ts";
+import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
 const roots: string[] = [];
 const repo = resolve(import.meta.dir, "..");
@@ -103,10 +105,13 @@ test("supplied-map empty discovered source cannot borrow a valid real file", () 
 
 test("current RPC roots admit source-bound implementation without future formal activation", () => {
   // Arrange
-  const sources = new Map([...new Set([...CHECK_FILES, ...PHASE162_EVIDENCE])].map(file => [file, readFileSync(join(repo, file), "utf8")]));
-  for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION));
-  let requirements = sources.get(".planning/REQUIREMENTS.md")!;
-  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(`| ${id} | Phase 162 | Complete |`, `| ${id} | Phase 162 | Pending |`);
+  const historicalFiles = new Set([...CHECK_FILES, ...PHASE162_EVIDENCE, ".planning/REQUIREMENTS.md", ".planning/ROADMAP.md"]);
+  const sources = new Map([...v25FixtureSources(suppliedSources())].filter(([file]) => historicalFiles.has(file)));
+  sources.delete(PHASE163_DOC);
+  for (const [file, source] of sources) if (file.endsWith(".md") || file.endsWith(".json")) sources.set(file, PROVENANCE_CLAIMS.reduce((view, claim) => view.replaceAll(claim, ""), source.replaceAll(PHASE162_COMPLETE, PHASE162_IMPLEMENTATION)));
+  sources.set(".planning/ROADMAP.md", sources.get(".planning/ROADMAP.md")!.replace("**Requirements**: CFPR-02, CFGR-02", "**Requirements**: CFPR-02, CFGR-01, CFGR-02").replace("**Requirements**: CFGR-01", "**Requirements**: none"));
+  let requirements = sources.get(".planning/REQUIREMENTS.md")!.replace(/(\|\s*CFGR-01\s*\|)\s*Phase 163\s*\|\s*(?:Pending|Complete)\s*\|/, "$1 Phase 162 | Pending |");
+  for (const id of ["CFPR-02", "CFGR-01", "CFGR-02"]) requirements = requirements.replace(`[x] **${id}**`, `[ ] **${id}**`).replace(new RegExp(`(\\|\\s*${id}\\s*\\|\\s*Phase 162\\s*\\|)\\s*Complete\\s*\\|`), "$1 Pending |");
   sources.set(".planning/REQUIREMENTS.md", requirements);
   const index = JSON.parse(sources.get("docs/parity/index.json")!);
   const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");

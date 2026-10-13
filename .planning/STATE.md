@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
-status: Ready for milestone audit
-stopped_at: Phase162complete/16plans/46truths/3requirements; all22milestone requirementsComplete; finalactivatedtests then mandatoryfullhook/protectedcommit/push; audit/shipmentseparate
-last_updated: "2026-10-12T04:17:26.414Z"
-last_activity: "2026-10-12"
+status: completed
+stopped_at: Phase163 complete; original wrapper normal-hook Git saving pending; actual milestone archive separate
+last_updated: "2026-10-13T06:28:56.284Z"
+last_activity: "2026-10-13"
 progress:
-  total_phases: 9
-  completed_phases: 9
-  total_plans: 85
-  completed_plans: 85
+  total_phases: 10
+  completed_phases: 10
+  total_plans: 90
+  completed_plans: 90
   percent: 100
 ---
 
@@ -18,23 +18,25 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-11 — Phase 161 completion).
+See: `.planning/PROJECT.md` (current handoff reconciled in Phase 163). Current audit: `.planning/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 162 complete — v2.5 milestone audit remains separate
+**Current focus:** Phase 163 — Archive-Safe Parity Provenance and Milestone Handoff
 
 ## Current Position
 
-Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
-Phase: 162 (complete)
-Plan: 16/16 complete
-**Status:** Ready for milestone audit
-Last activity: 2026-10-12
-Last Activity Description: Phase 162 passed 46/46 formal obligations, all five live guards, complete claim state and strict lifecycle; all 22 requirements Complete; full Native5 passed; v2.5 remains unaudited and unshipped
+Milestone:v2.5 Prune-Aware Compact-Filter Serving
+Phase: 163 — COMPLETE
+Plan: 5 of 5 — complete
+**Status:** Milestone complete
+Last activity: 2026-10-13
+Last Activity Description: Corrected21-input finalSC1–SC5/5of5, audit/readiness and90/90plans verified; normal-hook source saving remains separate
 
-Milestone progress: 9/9 phases and 85/85 plans complete; all 22 requirements are Complete. v2.5 audit/archive/shipment remains pending.
+Milestoneprogress10/10phases and90/90plans complete;Phase1635/5plans;all22requirementsComplete/uniqueowners. Actualfull6/all1760, freshreview/security16closed, activation284/0, actualrenewedaudit22/22/31/18, readiness284/0 and final5/5canonicalverification are earned onunchangede0c21source. Canonical04anddistinct05complete; original69archivedv2.3metric preserved.
 
-Next action: Run /gsd-audit-milestone for v2.5 as separate work; actual saving commit, mandatory hook and push outcomes derive from Git and timing records
+Next action: originalauthorizedwrapper performs normal-hook commit/push and checks clean synchronizedsourceHEAD. Actualarchive/tag/shipmentbelongs to the separate coordinatedtaskafterthatpushedhandoff; no actualarchive occurred here.
+
+Prior344/7ed/initial96bec/functionaldbee/actualaudit9final1functional receipts remain datedhistory; no execution is relabeled. Savingoutcomes derivefromGit/commandreceipts and are not claimed by this preparation record.
 
 ## Performance Metrics
 
@@ -85,6 +87,7 @@ Next action: Run /gsd-audit-milestone for v2.5 as separate work; actual saving c
 | 160 | 17 | - | - |
 | 161 | 11 | - | - |
 | 162 | 16 | - | - |
+| 163 | 5 | - | - |
 
 ### Plan Execution History
 
@@ -625,6 +628,8 @@ Next action: Run /gsd-audit-milestone for v2.5 as separate work; actual saving c
 
 ## Session Continuity
 
-Last session: 2026-10-12T04:16:13.739Z
-Stopped at: Phase162complete/16plans/46truths/3requirements; all22milestone requirementsComplete; finalactivatedtests then mandatoryfullhook/protectedcommit/push; audit/shipmentseparate
-Resume file: .planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-VERIFICATION.md
+Last session: 2026-10-13T03:06:36Z
+Stopped at: Phase163 complete; original wrapper normal-hook Git saving pending; actual milestone archive separate
+Resume file: .planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-05-SUMMARY.md
+
+Corrected-source functional handoff: actual full6/21-inpute0c and fresh SC1–SC4 verification passed; CFGR-01 activated with exact closure prose. Current activation suite and renewed audit/readiness/final phase reconciliation remain pending; canonical04/05in_progress and3/5+88/90+9/10 remain.

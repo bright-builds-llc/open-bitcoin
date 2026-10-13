@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { PHASE163_DOC, PROVENANCE_FILES, PROVENANCE_CODE, PROVENANCE_CLAIMS, resolveV25Provenance, provenanceClaimView } from "./check-phase163-provenance.ts";
 
 const NODE = "packages/open-bitcoin-node/src/";
 const CORE = "packages/open-bitcoin-chainstate/src/";
@@ -26,19 +27,28 @@ const P162_RPC = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/";
 export const PHASE162_EVIDENCE = [P162_RPC + "tests/filter_index/phase162.rs", P162_RPC + "tests/filter_index/phase162/retention.rs",
   P162_RPC + "tests/filter_index/phase162/fixtures.rs", P162_RPC + "coins_flush/tests/phase162.rs",
   "packages/testdata/phase162/recipe.rs", "scripts/phase162-filter-oracle.ts"];
-export const PHASE162_FILES = [".planning/REQUIREMENTS.md", PHASE162 + "162-CONTEXT.md"];
+export const PHASE162_FILES = [PHASE162 + "162-CONTEXT.md", ...PROVENANCE_CODE];
 const FORMAL162 = [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"],
   ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]] as const;
 type ClaimState = "pending" | "implementation" | "complete" | "invalid";
-type Text = (file: string) => string;
+type Text = ((file: string) => string) & { maybeHasSource?: (file: string) => boolean };
+
+/** Preserve map presence: legacy string-only callbacks cannot distinguish absent and empty sources. */
+export function sourceText(sources: ReadonlyMap<string, string>): Text {
+  return Object.assign((file: string) => sources.get(file) ?? "", {
+    maybeHasSource: (file: string) => sources.has(file),
+  });
+}
 
 /** Future output is optional at bootstrap and read only from these fixed paths. */
 export function loadPhase162OptionalSources(root: string): Map<string, string> {
   const sources = new Map<string, string>();
-  if (!existsSync(resolve(root, PHASE162_DOC)) || !existsSync(resolve(root, ".planning/REQUIREMENTS.md"))) return sources;
-  const requirements = readFileSync(resolve(root, ".planning/REQUIREMENTS.md"), "utf8");
-  const complete = ["CFPR-02", "CFGR-01", "CFGR-02"].every(id => new RegExp(`^- \\[x\\] \\*\\*${id}\\*\\*:`, "mi").test(requirements));
-  const files = [PHASE162_DOC, ...PHASE162_EVIDENCE, ...(complete ? FORMAL162.map(([name]) => PHASE162 + `162-${name}.md`) : [])];
+  for (const file of PROVENANCE_FILES) {
+    if (file.startsWith(PHASE162) && /162-(?:VERIFICATION|NATIVE-EVIDENCE|REVIEW|SECURITY)\.md$/.test(file)) continue;
+    if (existsSync(resolve(root, file))) sources.set(file, readFileSync(resolve(root, file), "utf8"));
+  }
+  const complete = sources.get(PHASE162_DOC)?.includes(PHASE162_COMPLETE) ?? false;
+  const files = [...PHASE162_EVIDENCE, ...(complete ? FORMAL162.map(([name]) => PHASE162 + `162-${name}.md`) : [])];
   for (const file of files) {
     if (existsSync(resolve(root, file))) sources.set(file, readFileSync(resolve(root, file), "utf8"));
   }
@@ -63,20 +73,16 @@ export function checkPhase162ClaimState(text: Text, failures: string[]): ClaimSt
       || JSON.stringify(owner.requirements) !== '["CFPR-02","CFGR-01","CFGR-02"]' || !["in_progress", "done"].includes(owner.status)) return fail("unique scoped Phase 162 parity owner");
     for (const file of PHASE162_EVIDENCE) if (!owner.evidence.includes(file)) return fail(`registered Phase 162 evidence ${file}`);
   } catch { return fail("invalid Phase 162 parity ownership"); }
-  const requirements = ["CFPR-02", "CFGR-01", "CFGR-02"].map(id => {
-    const source = text(".planning/REQUIREMENTS.md");
-    const boxes = [...source.matchAll(new RegExp(`^- \\[([ xX])\\] \\*\\*${id}\\*\\*:`, "gm"))];
-    const rows = [...source.matchAll(new RegExp(`^\\|\\s*${id}\\s*\\|\\s*Phase 162\\s*\\|\\s*(Pending|Complete)\\s*\\|`, "gm"))];
-    if (boxes.length !== 1 || rows.length !== 1 || (boxes[0][1] === " ") !== (rows[0][1] === "Pending")) return "invalid";
-    return rows[0][1];
-  });
-  if (requirements.includes("invalid") || new Set(requirements).size !== 1) return fail("Phase 162 requirement checkbox/traceability consistency");
-  const complete = requirements[0] === "Complete";
+  const maybeProvenance = resolveTextProvenance(text, failures);
+  if (!maybeProvenance) return "invalid";
+  const complete = maybeProvenance.historical === "complete";
   const proof = text(PHASE162_DOC);
   const checked = (state: ClaimState): ClaimState => {
     const before = failures.length;
-    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state);
-    if (proof) checkPhase162ExcludedClaims(proof, PHASE162_DOC, failures, state);
+    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state, text);
+    if (proof) checkPhase162ExcludedClaims(proof, PHASE162_DOC, failures, state, text);
+    const currentPage = text(PHASE163_DOC);
+    if (currentPage) checkPhase162ExcludedClaims(currentPage, PHASE163_DOC, failures, state, text);
     return failures.length === before ? state : "invalid";
   };
   if (!proof) return complete || owner.status !== "in_progress" ? fail("premature Phase 162 activation") : checked("pending");
@@ -120,15 +126,22 @@ export function checkPhase162ClaimState(text: Text, failures: string[]): ClaimSt
 }
 
 /** Only the exact evidence-authorized sentence earns a current-document exemption. */
-export function phase162ClaimView(source: string, state: ClaimState): string {
-  return state === "implementation" ? source.replaceAll(PHASE162_IMPLEMENTATION, "")
+export function phase162ClaimView(source: string, state: ClaimState, maybeText?: Text): string {
+  const view = state === "implementation" ? source.replaceAll(PHASE162_IMPLEMENTATION, "")
     : state === "complete" ? source.replaceAll(PHASE162_COMPLETE, "") : source;
+  return maybeText && state !== "invalid" ? provenanceClaimView(view, resolveTextProvenance(maybeText, [])) : view;
+}
+
+function resolveTextProvenance(text: Text, failures: string[]): ReturnType<typeof resolveV25Provenance> {
+  const present = PROVENANCE_FILES.filter(file => text.maybeHasSource ? text.maybeHasSource(file) : Boolean(text(file)));
+  return resolveV25Provenance(new Map(present.map(file => [file, text(file)])), failures);
 }
 
 /** Safety exclusions apply independently of implementation/formal state and historical limits. */
-export function checkPhase162ExcludedClaims(source: string, file: string, failures: string[], state: ClaimState = "pending"): void {
-  const view = phase162ClaimView(source, state);
-  const subjects = /Phase\s+162(?:\s+(?:scoped|integrated|proof|implementation|evidence|client|retention))*|CF(?:PR-02|GR-0[12])|BIP37(?:\s+serving)?|V0(?:\s+(?:filter|serving))?|assumeutxo|dual[- ]chainstate|(?:implicit\s+)?(?:repair|reindex|import|download)|archive(?:[- ]scale)?(?:\s+serving)?|public(?:[- ]network\s+CI|[- ]defaults(?:\/network\s+CI)?|\s+(?:peer\s+)?serving(?:\s+defaults)?)|production(?:[- ]funds)?(?:[- ](?:service|readiness|use|safety))?|funds[- ]safety|v2\.5(?:\s+milestone)?/gi;
+export function checkPhase162ExcludedClaims(source: string, file: string, failures: string[], state: ClaimState = "pending", maybeText?: Text): void {
+  const view = phase162ClaimView(source, state, maybeText);
+  if (PROVENANCE_CLAIMS.some(claim => view.includes(claim))) failures.push(`${file}: unsupported claim T-162-10`);
+  const subjects = /Phase\s+162(?:\s+(?:scoped|integrated|proof|implementation|evidence|client|retention))*|CF(?:PR-02|GR-0[12])|BIP37(?:\s+serving)?|V0(?:\s+(?:filter|serving))?|assumeutxo|dual[- ]chainstate|(?:implicit\s+)?(?:repair|reindex|import|download)|archive(?:[- ]scale)?(?:\s+serving)?|public(?:[- ]network\s+CI|[- ]defaults(?:\/network\s+CI)?|\s+(?:peer\s+)?serving(?:\s+defaults)?)|production(?:[- ]funds)?(?:[-\s]+(?:service|readiness|use|safety))?|funds[- ]safety|v2\.5(?:\s+milestone)?/gi;
   const positive = /^\s+(?:(?:is|are|has|have|now|fully|already|successfully)\s+)*(?:available|active|enabled|supported|ready|shipped|safe|established|complete|proven|passed|succeeded|guaranteed)\b/i;
   for (const clause of view.split(/\n|;|(?<=[.!?])\s+|\bbut\b|\bhowever\b|\band\b|\bwhile\b/)) {
     const matches = [...clause.matchAll(subjects)];
@@ -240,7 +253,7 @@ export function checkPhase158ValidatedReorg(maybeRoot?: string, maybeSources?: R
     try { texts.set(file, readFileSync(resolve(root, file), "utf8")); }
     catch { failures.push(`${file}: cannot read required evidence`); }
   }
-  const text = (file: string) => texts.get(file) ?? "";
+  const text = sourceText(texts);
   const claimState = checkPhase162ClaimState(text, failures);
   for (const contract of CONTRACTS) {
     const maybeBody = maybeBoundary(text(contract.file), contract);
@@ -316,8 +329,8 @@ function checkDocuments(text: (file: string) => string, failures: string[], clai
   for (const file of [DOC, "README.md", "packages/README.md", PHASE + "158-UAT.md", PHASE + "158-REORG-MEASUREMENTS.md",
     ...["01", "02", "03", "04", "05", "06"].map(plan => PHASE + `158-${plan}-SUMMARY.md`)]) {
     const historical = file.startsWith(PHASE);
-    checkClaims(historical ? text(file) : phase162ClaimView(text(file), claimState), file, failures);
-    checkPhase162ExcludedClaims(text(file), file, failures, historical ? "pending" : claimState);
+    checkClaims(historical ? text(file) : phase162ClaimView(text(file), claimState, text), file, failures);
+    checkPhase162ExcludedClaims(text(file), file, failures, historical ? "pending" : claimState, historical ? undefined : text);
   }
   for (const file of ["README.md", "packages/README.md"]) if (!text(file).includes("v2-5-validated-reorg.md")) failures.push(`T-158-07-01: contributor evidence link ${file}`);
   const uat = text(PHASE + "158-UAT.md");
@@ -354,7 +367,7 @@ function checkParity(text: (file: string) => string, failures: string[], claimSt
     if (!surface.known_gaps.some(item => (claimState !== "complete" && item.includes("159") && item.includes("162") && item.includes("pending"))
       || (claimState === "implementation" && item === PHASE162_IMPLEMENTATION) || (claimState === "complete" && item === PHASE162_COMPLETE))) failures.push("T-158-07-01: deferred serving boundary");
     const inspect = (value: unknown): void => {
-      if (typeof value === "string") { checkClaims(phase162ClaimView(value, claimState), "parity surface", failures); checkPhase162ExcludedClaims(value, "parity surface", failures, claimState); return; }
+      if (typeof value === "string") { checkClaims(phase162ClaimView(value, claimState, text), "parity surface", failures); checkPhase162ExcludedClaims(value, "parity surface", failures, claimState, text); return; }
       if (value !== null && typeof value === "object") for (const child of Object.values(value)) inspect(child);
     };
     inspect(surface);
