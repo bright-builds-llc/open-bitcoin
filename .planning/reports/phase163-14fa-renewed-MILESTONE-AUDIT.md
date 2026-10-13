@@ -1,0 +1,93 @@
+---
+milestone: v2.5
+milestone_name: Prune-Aware Compact-Filter Serving
+audited: 2026-10-13T19:07:36Z
+generated_by: gsd-audit-milestone
+phase_lifecycle_id: 163-2026-10-12T21-09-41
+source_commit: 2a7920757ca93a1debee9ba1bdcee51fd808210c
+source_worktree_dirty: true
+source_digest: 14fa9cc585c9cf8d9b2c0ae04d7f92e6411b38fb7d19128359126eee2735f977
+source_inventory_count: 21
+status: passed
+scores:
+  requirements: 22/22
+  phases: 10/10
+  integration: 31/31
+  flows: 18/18
+scope:
+  phases: 10
+  plans: 90
+  summaries: 90
+  completed_plans_at_audit: 88
+  completed_phases_at_audit: 9
+  final_phase_certificates_at_audit: 9
+  functional_phase_certificates_at_audit: 1
+gaps:
+  requirements: []
+  integration: []
+  flows: []
+nyquist:
+  enabled: false
+---
+
+# Renewed v2.5 audit after logical-control repair
+
+All 22 active requirements are satisfied with unique owners and no orphan. The independent integration assessment reports 31/31 connected seams and 18/18 complete flows. This fresh audit authorizes archive-readiness publication on the unchanged 21-input source. It does not assert actual archival, shipment, normal-hook saving, final SC5 verification or completed administrative reconciliation.
+
+At this actual boundary, nine older phases have final certificates and Phase163 has a fresh SC1–SC4 functional certificate. The 10/10 phase score counts passing certificates; it does not claim ten final phases. Canonical04/05 remain in progress, with 88/90 plans and 9/10 phases complete. Root must publish earned readiness, execute its current-state controls, obtain final SC1–SC5 verification and then reconcile completion.
+
+## Method and three-source coverage
+
+Material guidance: repository AGENTS and local verification contract, Bright Builds sidecar, placeholder overrides, relevant architecture/testing/verification standards, and the GSD milestone-audit workflow. Nyquist discovery is disabled by the actual workflow configuration.
+
+Two independent readers freshly read all nine historical canonical verification bodies (437,074 bytes), parsed all 85 historical summary frontmatters, cross-referenced their active requirements, and matched all 94 historical files byte-for-byte to base2a792075. Reader A covers154–158; Reader B covers159–162. Their exact read scopes and limits are preserved in the ignored coverage manifests. Root fully read the current Phase163 functional report, checked the five current summary frontmatters and completing claims, and cross-referenced all 22 current checkbox/table/owner entries. No full semantic reread of all historical summary bodies or new tracing of unchanged runtime functions is claimed.
+
+Historical Phase162 CFGR-01 remains delivery evidence, not a second active owner. Current CFGR-01 is owned only by163 and completed by the current04 carrier after independent functional acceptance. All other21 owners and scoped requirement descriptions are unchanged. There are no unsatisfied, partial or orphaned active requirements; no gap was deferred to a later milestone.
+
+| Requirement | Active owner | Completing summary | Canonical verification | Assessment             |
+| ----------- | ------------ | ------------------ | ---------------------- | ---------------------- |
+| CFIL-01     | 154          | 154-03-SUMMARY.md  | 154-VERIFICATION.md    | SATISFIED              |
+| CFIL-02     | 154          | 154-03-SUMMARY.md  | 154-VERIFICATION.md    | SATISFIED              |
+| CFIX-02     | 155          | 155-02-SUMMARY.md  | 155-VERIFICATION.md    | SATISFIED              |
+| CFIX-04     | 155          | 155-02-SUMMARY.md  | 155-VERIFICATION.md    | SATISFIED              |
+| CFPR-03     | 155          | 155-03-SUMMARY.md  | 155-VERIFICATION.md    | SATISFIED              |
+| CFPR-01     | 156          | 156-08-SUMMARY.md  | 156-VERIFICATION.md    | SATISFIED              |
+| CFAC-01     | 157          | 157-10-SUMMARY.md  | 157-VERIFICATION.md    | SATISFIED              |
+| CFAC-02     | 157          | 157-10-SUMMARY.md  | 157-VERIFICATION.md    | SATISFIED              |
+| CFIX-01     | 157          | 157-10-SUMMARY.md  | 157-VERIFICATION.md    | SATISFIED              |
+| CFIX-03     | 158          | 158-07-SUMMARY.md  | 158-VERIFICATION.md    | SATISFIED              |
+| CFRP-01     | 159          | 159-08-SUMMARY.md  | 159-VERIFICATION.md    | SATISFIED              |
+| CFRP-02     | 159          | 159-08-SUMMARY.md  | 159-VERIFICATION.md    | SATISFIED              |
+| CFNET-01    | 160          | 160-12-SUMMARY.md  | 160-VERIFICATION.md    | SATISFIED              |
+| CFNET-02    | 160          | 160-12-SUMMARY.md  | 160-VERIFICATION.md    | SATISFIED              |
+| CFNET-03    | 160          | 160-12-SUMMARY.md  | 160-VERIFICATION.md    | SATISFIED              |
+| CFNET-04    | 160          | 160-12-SUMMARY.md  | 160-VERIFICATION.md    | SATISFIED              |
+| CFNET-05    | 160          | 160-12-SUMMARY.md  | 160-VERIFICATION.md    | SATISFIED              |
+| CFNET-06    | 160          | 160-12-SUMMARY.md  | 160-VERIFICATION.md    | SATISFIED              |
+| CFOP-01     | 161          | 161-09-SUMMARY.md  | 161-VERIFICATION.md    | SATISFIED              |
+| CFPR-02     | 162          | 162-12-SUMMARY.md  | 162-VERIFICATION.md    | SATISFIED              |
+| CFGR-01     | 163          | 163-04-SUMMARY.md  | 163-VERIFICATION.md    | SATISFIED (functional) |
+| CFGR-02     | 162          | 162-12-SUMMARY.md  | 162-VERIFICATION.md    | SATISFIED              |
+
+## Actual current-source gates
+
+- Complete default native: dfbd420c-9a6f-405e-8d24-65c9d9385a08, 2026-10-13T17:26:26.639Z–2026-10-13T18:10:46.426Z; all176 unique raw stages succeeded in full/default mode. Log SHA256 e26d1f3216c03480a234cdf03fcf69c903eccdbadfbf1545be510bbf1e47b216.
+- Four-layout whole legacy proof:28 unfiltered files,20,128 passes,0 failures,66,956 assertions and24 raw boundaries. Composite SHA256 beb01a4bc4c08cc9571e5dd3be68a12862995f58c38b3719203d17deb45029da; four paired corpus manifests match and all21+6 source/control witnesses were unchanged before release.
+- Fresh independent review is clean; security verifies16 mitigations with0 open. All21 raw source hashes and both original audit snapshots match their frozen manifest.
+- Canonical functional verification SHA256 63b263492b6054b4078fedba40884fa199d3a13693819089c24ced9a40da49e2; source14fa/current lifecycle, SC1–SC4 passed with SC5 deliberately conditional. Root then activated CFGR-01 and its04 carrier plus exact closure wording.
+- Actual activation: 8bb72102-fbba-4420-8667-d27e45dde05e, 2026-10-13T18:54:53.528Z–2026-10-13T18:58:47.380Z;284 cases passed with0 failures. Raw activation log SHA256 711197ee5109673d5ab0acd83b03b9f4fc65d4dc71b3900513ddc8bf702ccec0.
+- Fresh independent integration report SHA256 d0db187936d0fcea0c6ca65b489cd2a3081fd3792f3122a1b5bc6e87ac663a09;31/31 seams,18/18 flows and22/22 wired current requirements, with the declared unchanged-runtime carry-forward limits.
+
+The full/default receipt, actual activation and source checks are distinct observations. This audit is genuinely generated now; old e0 acceptance and the actual failed archive hook672cd52d retain their original dates, statuses and source binding in the preserved reports. The parallel timeout-bearing matrix and failed busy13.761s probe remain nonpassing attempts; only complete successful whole-file rows with identical corpora are counted. The quiet357ms probe is diagnostic and adds no whole-file coverage.
+
+## Preserved limits and inherited advisories
+
+The historical six-root proof remains a4b0d71d01def301ba406d6b46c351ed8944d8d4508182ffb0dfd21960043575; original audit snapshots remain f14fa21d… and f60ef2fa…. All1,145 tracked Rust files and57 Phase162 planning/proof files are byte-identical to2a. This provenance repair adds no runtime capability.
+
+BASIC/type0 remains scoped to one active Fjall chainstate with explicit/default-off activation/networking and missing-history refusal. Retained filters restore neither deleted bodies nor wallet eligibility. The550MiB logical body/undo target remains soft and unattained in the measured scenario; physical allocation samples are points, not peak/reclamation guarantees. Synthetic-root/work/halving differences preclude whole-chain Knots consensus differential claims. Authenticated handler/composed/private fault and achieved peer-write evidence retain their declared boundaries.
+
+Inherited v2.4 stale-metadata finish-or-Repair refusal, generic paired-unlink sink default and crash-window support-counter undercount advisories remain unfixed and outside this provenance repair. BIP37/V0, assumeutxo/dual-chainstate, archive-scale serving, public/default networking, public-network CI, implicit repair/import/download, production service/readiness and production-funds safety remain excluded. Phase156's original debugger human-confirmation condition is unperformed; its session remains unarchived.
+
+## Routing
+
+Audit PASSED: readiness may now be published. Root must run the readiness-state suite and obtain final SC1–SC5 verification before complete04/05,5/5phaseplans,90/90plans and10/10phases are asserted. The original strict-push wrapper retains normal-hook Git ownership. The separately authorized archive owner resumes only after a clean pushed source handoff.

@@ -2,7 +2,7 @@
 status: awaiting_human_verify
 trigger: "Default-parallel automatic_prune::tests aborts with writers.rs Fjall ENOENT and TempStore double panic; 25 serial controls pass."
 created: 2026-10-05T00:00:00Z
-updated: 2026-10-13T05:54:47Z
+updated: 2026-10-13T19:19:24Z
 ---
 
 ## Current Focus
@@ -10,7 +10,7 @@ updated: 2026-10-13T05:54:47Z
 hypothesis: Identical wall-clock paths give multiple TempStore owners; a failed open's cleanup deletes the sibling database.
 test: Original equal-clock red/green and repeated parallel controls are preserved below. Later Phase 162 full-default and normal-hook receipts were rechecked on 2026-10-12 with success/exit0.
 expecting: Historical automated verification uncertainty is resolved by actual later receipts; no human confirmation has been performed.
-next_action: Preserve this unarchived session under the original debugger human-confirmation condition. Corrected21-input Phase163 now has actual full6 native acceptance (38c0607f,176stages/exit0) and fresh functional verification05:36:20Z. Actualrenewedaudit/readiness/finalSC1–SC5nowpassed; normal-hook saving remains separate. Historical receipts are preserved; no human confirmation or debug-session archival has occurred.
+next_action: Preserve the original dated failures and historical e0 acceptance below. The current 21-input source14fa passed the full default verifier, four complete layout suites, independent acceptance, functional activation, renewed audit, readiness execution and final5/5verification. Strict normal-hook saving is the wrapper gate; actual Git outcomes are derived from its receipts and repository state. The original human-confirmation condition remains unperformed; keep this session unarchived.
 
 ## Symptoms
 
@@ -117,3 +117,17 @@ Read-only inspection of actual `verify-full` JSON receipts confirmed `outcome: s
 The GitHub read-only recheck also confirmed [CI 38206596321](https://github.com/bright-builds-llc/open-bitcoin/actions/runs/38206596321) and [Bright Builds 38206596267](https://github.com/bright-builds-llc/open-bitcoin/actions/runs/38206596267) both `completed`/`success` at exact head `d47f6e09b4621808974cc083fcc27ee9d2c1b4c7`. That historical remote success is distinct from the uncommitted Phase 163 tree.
 
 Automated native/CI uncertainty is superseded to the extent above. Human confirmation was not performed. The original debugger's human-confirmation archival condition remains unsatisfied; this record remains `awaiting_human_verify` and is neither moved nor deleted. Current archive-gap readiness still requires Phase 163's independent/full-native/formal/re-audit gates.
+
+## Logical-control source revalidation | 2026-10-13T17:42:27Z
+
+Earlier current-focus statement retained as dated e0 history: next_action: Preserve this unarchived session under the original debugger human-confirmation condition. Corrected21-input Phase163 now has actual full6 native acceptance (38c0607f,176stages/exit0) and fresh functional verification05:36:20Z. Actualrenewedaudit/readiness/finalSC1–SC5nowpassed; normal-hook saving remains separate. Historical receipts are preserved; no human confirmation or debug-session archival has occurred.
+
+Actual source repair replaces one active physical requirements assertion with four explicit logical availability/refusal cases and refreshes its frozen hash. Production selectors, claims and runtime proof remain unchanged. Original e0 reports are preserved in `.planning/reports/phase163-e0c-before-logical-control-revalidation/`; no failed or interrupted run becomes a PASS.
+
+## Current audit boundary | 2026-10-13T19:09:31Z
+
+The actual corrected-source audit passed22/22 at19:07:36Z after functional activation and independent integration31/31seams/18/18flows. Readiness publication followed at19:08:16Z; its actual suite is in progress. This update changes current focus only and does not retime earlier receipts or perform human confirmation, Git saving or archival.
+
+## Final corrected-source acceptance | 2026-10-13T19:19:24Z
+
+Fresh final SC1–SC5 verification passed on the unchanged source after actual native, matrix, activation, audit and readiness execution. Canonical verification SHA256 2d2531cf866871d78bb42f7570970d4715e71c84a49f44e115f8c21464f0472b. Root reconciled all22 unique Complete owners,5/5phaseplans,90/90milestoneplans and10/10phases. Original historical observations and the separate human-confirmation condition remain unchanged. Normal-hook source saving and actual archival are separate transactions.

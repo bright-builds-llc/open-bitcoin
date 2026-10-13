@@ -3,8 +3,8 @@ gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
 status: completed
-stopped_at: Phase163 complete; original wrapper normal-hook Git saving pending; actual milestone archive separate
-last_updated: "2026-10-13T06:28:56.284Z"
+stopped_at: Phase163 corrected-source acceptance complete; strict normal-hook source saving is the wrapper gate; actual archival separate
+last_updated: "2026-10-13T19:17:25Z"
 last_activity: "2026-10-13"
 progress:
   total_phases: 10
@@ -30,9 +30,9 @@ Phase: 163 — COMPLETE
 Plan: 5 of 5 — complete
 **Status:** Milestone complete
 Last activity: 2026-10-13
-Last Activity Description: Corrected21-input finalSC1–SC5/5of5, audit/readiness and90/90plans verified; normal-hook source saving remains separate
+Last Activity Description: Corrected14fa21 SC1–SC5, full/default, four-layout whole suites and renewed audit/readiness passed; normal-hook source saving separate
 
-Milestoneprogress10/10phases and90/90plans complete;Phase1635/5plans;all22requirementsComplete/uniqueowners. Actualfull6/all1760, freshreview/security16closed, activation284/0, actualrenewedaudit22/22/31/18, readiness284/0 and final5/5canonicalverification are earned onunchangede0c21source. Canonical04anddistinct05complete; original69archivedv2.3metric preserved.
+Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
 
 Next action: originalauthorizedwrapper performs normal-hook commit/push and checks clean synchronizedsourceHEAD. Actualarchive/tag/shipmentbelongs to the separate coordinatedtaskafterthatpushedhandoff; no actualarchive occurred here.
 
@@ -51,158 +51,158 @@ Prior344/7ed/initial96bec/functionaldbee/actualaudit9final1functional receipts r
 - Average duration: 42 min
 - Total execution time: 9h 4m
 
-| Phase | Plans | Total | Avg/Plan |
-| -- | -: | -: | -: |
-| 130–138 | 13 | 9h 4m | 42 min |
-| 130 | 13 | - | - |
-| 131 | 5 | - | - |
-| 132 | 8 | - | - |
-| 133 | 4 | - | - |
-| 133.1 | 6 | - | - |
-| 134 | 24 | - | - |
-| 135 | 14 | - | - |
-| 136 | 6 | - | - |
-| 137 | 11 | - | - |
-| 138 | 4 | - | - |
-| 139 | 4 | - | - |
-| 140 | 3 | - | - |
-| 141 | 4 | - | - |
-| 142 | 6 | - | - |
-| 143 | 4 | - | - |
-| 144 | 4 | - | - |
-| 145 | 4 | - | - |
-| 146 | 3 | - | - |
-| 147 | 3 | - | - |
-| 148 | 5 | - | - |
-| 149 | 4 | - | - |
-| 150 | 8 | - | - |
-| 152 | 3 | - | - |
-| 153 | 4 | - | - |
-| 154 | 4 | - | - |
-| 155 | 4 | - | - |
-| 156 | 8 | - | - |
-| 157 | 10 | - | - |
-| 158 | 7 | - | - |
-| 159 | 8 | - | - |
-| 160 | 17 | - | - |
-| 161 | 11 | - | - |
-| 162 | 16 | - | - |
-| 163 | 5 | - | - |
+| Phase   | Plans | Total | Avg/Plan |
+| ------- | ----: | ----: | -------: |
+| 130–138 |    13 | 9h 4m |   42 min |
+| 130     |    13 |     - |        - |
+| 131     |     5 |     - |        - |
+| 132     |     8 |     - |        - |
+| 133     |     4 |     - |        - |
+| 133.1   |     6 |     - |        - |
+| 134     |    24 |     - |        - |
+| 135     |    14 |     - |        - |
+| 136     |     6 |     - |        - |
+| 137     |    11 |     - |        - |
+| 138     |     4 |     - |        - |
+| 139     |     4 |     - |        - |
+| 140     |     3 |     - |        - |
+| 141     |     4 |     - |        - |
+| 142     |     6 |     - |        - |
+| 143     |     4 |     - |        - |
+| 144     |     4 |     - |        - |
+| 145     |     4 |     - |        - |
+| 146     |     3 |     - |        - |
+| 147     |     3 |     - |        - |
+| 148     |     5 |     - |        - |
+| 149     |     4 |     - |        - |
+| 150     |     8 |     - |        - |
+| 152     |     3 |     - |        - |
+| 153     |     4 |     - |        - |
+| 154     |     4 |     - |        - |
+| 155     |     4 |     - |        - |
+| 156     |     8 |     - |        - |
+| 157     |    10 |     - |        - |
+| 158     |     7 |     - |        - |
+| 159     |     8 |     - |        - |
+| 160     |    17 |     - |        - |
+| 161     |    11 |     - |        - |
+| 162     |    16 |     - |        - |
+| 163     |     5 |     - |        - |
 
 ### Plan Execution History
 
-| Plan | Duration | Tasks | Files |
-| -- | -- | -- | -- |
-| Phase 133 P01 | 1h 13m | 3 tasks | 16 files |
-| Phase 133 P02 | 1h 10m | 3 tasks | 28 files |
-| Phase 133 P03 | 1h 4m | 3 tasks | 20 files |
-| Phase 133 P04 | 38min | 3 tasks | 14 files |
-| Phase 133.1 P01 | 10min | 2 tasks | 48 files |
-| Phase 133.1 P02 | 13min | 3 tasks | 62 files |
-| Phase 133.1 P03 | 51min | 3 tasks | 263 files |
-| Phase 133.1 P04 | 27min | 3 tasks | 137 files |
-| Phase 133.1 P05 | 21min | 3 tasks | 21 files |
-| Phase 133.1 P06 | 53m | 2 tasks | 63 files |
-| Phase 134 P01 | 1h 10m | 3 tasks | 13 files |
-| Phase 134 P02 | 32min | 2 tasks | 5 files |
-| Phase 134 P03 | 71min | 2 tasks | 11 files |
-| Phase 134 P04 | 58min | 2 tasks | 12 files |
-| Phase 134 P05 | 1h 41m | 2 tasks | 25 files |
-| Phase 134 P06 | 1h 7m | 2 tasks | 19 files |
-| Phase 134-authoritative-cross-cache-lifecycle-integration P07 | 1h 5m | 3 tasks | 10 files |
-| Phase 134 P08 | 1h 17m | 2 tasks | 13 files |
-| Phase 134 P09 | 1h 17m | 3 tasks | 31 files |
-| Phase 134 P10 | 1h 10m | 2 tasks | 4 files |
-| Phase 134 P11 | 94m | 3 tasks | 12 files |
-| Phase 134 P12 | 1h 29m | 2 tasks | 5 files |
-| Phase 134 P13 | 41m | 2 tasks | 5 files |
-| Phase 134 P14 | 58m | 2 tasks | 9 files |
-| Phase 134 P15 | 2h 7m | 2 tasks | 22 files |
-| Phase 134 P16 | 2h 51m | 2 tasks | 23 files |
-| Phase 134 P17 | 116m | 2 tasks | 12 files |
-| Phase 134 P18 | 1h 52m | 2 tasks | 12 files |
-| Phase 134 P19 | 125m | 2 tasks | 5 files |
-| Phase 134 P20 | 2h 35m | 2 tasks | 7 files |
-| Phase 134 P21 | 2h 39m | 2 tasks | 9 files |
-| Phase 134 P22 | 27m | 1 tasks | 4 files |
-| Phase 134 P23 | 69m | 1 tasks | 8 files |
-| Phase 134 P24 | 1h 4m | 2 tasks | 5 files |
-| Phase 135 P12 | 33min | 2 tasks | 16 files |
-| Phase 135 P13 | 34 | 2 tasks | 11 files |
-| Phase 135 P14 | 23 | 3 tasks | 7 files |
-| Phase 136-receive-independent-maintenance-and-transport-receipts P01 | 33 | 2 tasks | 5 files |
-| Phase 136 P02 | 21 | 2 tasks | 7 files |
-| Phase 136 P03 | 71 | 2 tasks | 9 files |
-| Phase 136 P04 | 55 | 2 tasks | 22 files |
-| Phase 136-receive-independent-maintenance-and-transport-receipts P05 | 74 | 2 tasks | 10 files |
-| Phase 136 P06 | 72min | 2 tasks | 21 files |
-| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P01 | 32 min | 2 tasks | 8 files |
-| Phase 138 P02 | 58 | 2 tasks | 7 files |
-| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P03 | 86min | 2 tasks | 27 files |
-| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P04 | 63 | 2 tasks | 21 files |
-| Phase 140 P01 | 133 | 2 tasks | 6 files |
-| Phase 140 P02 | 79 | 2 tasks | 3 files |
-| Phase 140 P03 | 28 | 2 tasks | 5 files |
-| Phase 141 P01 | 42 | 2 tasks | 13 files |
-| Phase 141 P02 | 27 | 2 tasks | 5 files |
-| Phase 141 P03 | 37 | 2 tasks | 6 files |
-| Phase 141-durable-fjall-coins-adapter P04 | 118min | 2 tasks | 25 files |
-| Phase 142-manager-flush-lifecycle-and-restart P01 | 21 min | 2 tasks | 6 files |
-| Phase 142-manager-flush-lifecycle-and-restart P02 | 23 min | 2 tasks | 9 files |
-| Phase 142 P03 | 53 | 2 tasks | 8 files |
-| Phase 142-manager-flush-lifecycle-and-restart P04 | 43 | 2 tasks | 6 files |
-| Phase 142 P05 | 60min | 2 tasks | 16 files |
-| Phase 142 P06 | 120min | 2 tasks | 104 files |
-| Phase 143-honest-stored-block-availability P01 | 23 | 2 tasks | 9 files |
-| Phase 143-honest-stored-block-availability P02 | 28 | 2 tasks | 16 files |
-| Phase 143-honest-stored-block-availability P03 | 26 | 2 tasks | 3 files |
-| Phase 143-honest-stored-block-availability P04 | 14min | 2 tasks | 4 files |
-| Phase 144 P01 | 71min | 3 tasks | 25 files |
-| Phase 144 P02 | 67 | 3 tasks | 20 files |
-| Phase 144-operator-flush-and-availability-evidence P03 | 80min | 3 tasks | 25 files |
-| Phase 144 P04 | 30min | 2 tasks | 7 files |
-| Phase 145-parity-roots-and-no-claim-guardrails P01 | 35 min | 2 tasks | 8 files |
-| Phase 145-parity-roots-and-no-claim-guardrails P02 | 36 min | 2 tasks | 8 files |
-| Phase 145-parity-roots-and-no-claim-guardrails P03 | 47min | 2 tasks | 9 files |
-| Phase 145-parity-roots-and-no-claim-guardrails P04 | 38 min | 2 tasks | 13 files |
-| Phase 146 P01 | 79 min | 2 tasks | 5 files |
-| Phase 146 P02 | 70 min | 2 tasks | 6 files |
-| Phase 146 P03 | 18 min | 2 tasks | 1 files |
-| Phase 147 P01 | 1h 2m | 2 tasks | 11 files |
-| Phase 147 P02 | 55 min | 1 tasks | 7 files |
-| Phase 147 P03 | 62 min | 1 tasks | 7 files |
-| Phase 148 P01 | 41 min | 2 tasks | 7 files |
-| Phase 148 P02 | 59 min | 2 tasks | 14 files |
-| Phase 148 P03 | 31 min | 2 tasks | 5 files |
-| Phase 148 P04 | 29 min | 2 tasks | 5 files |
-| Phase 148 P05 | 27 min | 2 tasks | 4 files |
-| Phase 149 P01 | 27 min | 2 tasks | 5 files |
-| Phase 149 P02 | 58 min | 2 tasks | 12 files |
-| Phase 149 P03 | 1h 14m | 3 tasks | 16 files |
-| Phase 149 P04 | 1h 1m | 2 tasks | 8 files |
-| Phase 150 P01 | 1h 17m | 1 tasks | 6 files |
-| Phase 150 P02 | 1h 13m | 2 tasks | 9 files |
-| Phase 150 P03 | 1h 16m | 2 tasks | 11 files |
-| Phase 150 P04 | 2h 16m | 2 tasks | 40 files |
-| Phase 150 P05 | 1h 37m | 2 tasks | 21 files |
-| Phase 150 P06 | 49min | 1 tasks | 11 files |
-| Phase 150 P08 | 33 min | 1 tasks | 6 files |
-| Phase 150 P07 | 32min | 1 tasks | 8 files |
-| Phase 151 P01 | 53 min | 3 tasks | 9 files |
-| Phase 151 P02 | 1h 2m | 2 tasks | 8 files |
-| Phase 151 P03 | 1h 23m | 3 tasks | 11 files |
-| Phase 151 P04 | 2h 14m | 3 tasks | 11 files |
-| Phase 161 P01 | 7min evidence window | 3 tasks | 11 files |
-| Phase 161 P02 | 31min evidence window including correction | 2 tasks | 11 files |
-| Phase 161 P03 | 10min evidence window | 2 tasks | 6 files |
-| Phase 161 P10 | 14min including context and focused evidence | 2 tasks | 15 files |
-| Phase 161 P04 | 21min evidence window | 2 tasks | 11 files |
-| Phase 161 P05 | 6min evidence window | 3 tasks | 13 files |
-| Phase 161 P11 | 19min evidence window | 3 tasks | 14 files |
-| Phase 161 P06 | 13min context and evidence window | 3 tasks | 16 files |
-| Phase 161 P07 | 11min including context and evidence | 2 tasks | 10 files |
-| Phase 161 P08 | 37min recorded evidence window | 2 tasks | 14 files |
-| Phase 161 P09 | 11min source plus recorded root verification/closing window | 3 tasks | 36 files |
+| Plan                                                                     | Duration                                                    | Tasks   | Files     |
+| ------------------------------------------------------------------------ | ----------------------------------------------------------- | ------- | --------- |
+| Phase 133 P01                                                            | 1h 13m                                                      | 3 tasks | 16 files  |
+| Phase 133 P02                                                            | 1h 10m                                                      | 3 tasks | 28 files  |
+| Phase 133 P03                                                            | 1h 4m                                                       | 3 tasks | 20 files  |
+| Phase 133 P04                                                            | 38min                                                       | 3 tasks | 14 files  |
+| Phase 133.1 P01                                                          | 10min                                                       | 2 tasks | 48 files  |
+| Phase 133.1 P02                                                          | 13min                                                       | 3 tasks | 62 files  |
+| Phase 133.1 P03                                                          | 51min                                                       | 3 tasks | 263 files |
+| Phase 133.1 P04                                                          | 27min                                                       | 3 tasks | 137 files |
+| Phase 133.1 P05                                                          | 21min                                                       | 3 tasks | 21 files  |
+| Phase 133.1 P06                                                          | 53m                                                         | 2 tasks | 63 files  |
+| Phase 134 P01                                                            | 1h 10m                                                      | 3 tasks | 13 files  |
+| Phase 134 P02                                                            | 32min                                                       | 2 tasks | 5 files   |
+| Phase 134 P03                                                            | 71min                                                       | 2 tasks | 11 files  |
+| Phase 134 P04                                                            | 58min                                                       | 2 tasks | 12 files  |
+| Phase 134 P05                                                            | 1h 41m                                                      | 2 tasks | 25 files  |
+| Phase 134 P06                                                            | 1h 7m                                                       | 2 tasks | 19 files  |
+| Phase 134-authoritative-cross-cache-lifecycle-integration P07            | 1h 5m                                                       | 3 tasks | 10 files  |
+| Phase 134 P08                                                            | 1h 17m                                                      | 2 tasks | 13 files  |
+| Phase 134 P09                                                            | 1h 17m                                                      | 3 tasks | 31 files  |
+| Phase 134 P10                                                            | 1h 10m                                                      | 2 tasks | 4 files   |
+| Phase 134 P11                                                            | 94m                                                         | 3 tasks | 12 files  |
+| Phase 134 P12                                                            | 1h 29m                                                      | 2 tasks | 5 files   |
+| Phase 134 P13                                                            | 41m                                                         | 2 tasks | 5 files   |
+| Phase 134 P14                                                            | 58m                                                         | 2 tasks | 9 files   |
+| Phase 134 P15                                                            | 2h 7m                                                       | 2 tasks | 22 files  |
+| Phase 134 P16                                                            | 2h 51m                                                      | 2 tasks | 23 files  |
+| Phase 134 P17                                                            | 116m                                                        | 2 tasks | 12 files  |
+| Phase 134 P18                                                            | 1h 52m                                                      | 2 tasks | 12 files  |
+| Phase 134 P19                                                            | 125m                                                        | 2 tasks | 5 files   |
+| Phase 134 P20                                                            | 2h 35m                                                      | 2 tasks | 7 files   |
+| Phase 134 P21                                                            | 2h 39m                                                      | 2 tasks | 9 files   |
+| Phase 134 P22                                                            | 27m                                                         | 1 tasks | 4 files   |
+| Phase 134 P23                                                            | 69m                                                         | 1 tasks | 8 files   |
+| Phase 134 P24                                                            | 1h 4m                                                       | 2 tasks | 5 files   |
+| Phase 135 P12                                                            | 33min                                                       | 2 tasks | 16 files  |
+| Phase 135 P13                                                            | 34                                                          | 2 tasks | 11 files  |
+| Phase 135 P14                                                            | 23                                                          | 3 tasks | 7 files   |
+| Phase 136-receive-independent-maintenance-and-transport-receipts P01     | 33                                                          | 2 tasks | 5 files   |
+| Phase 136 P02                                                            | 21                                                          | 2 tasks | 7 files   |
+| Phase 136 P03                                                            | 71                                                          | 2 tasks | 9 files   |
+| Phase 136 P04                                                            | 55                                                          | 2 tasks | 22 files  |
+| Phase 136-receive-independent-maintenance-and-transport-receipts P05     | 74                                                          | 2 tasks | 10 files  |
+| Phase 136 P06                                                            | 72min                                                       | 2 tasks | 21 files  |
+| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P01 | 32 min                                                      | 2 tasks | 8 files   |
+| Phase 138 P02                                                            | 58                                                          | 2 tasks | 7 files   |
+| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P03 | 86min                                                       | 2 tasks | 27 files  |
+| Phase 138-parity-adversarial-pressure-restart-and-release-guardrails P04 | 63                                                          | 2 tasks | 21 files  |
+| Phase 140 P01                                                            | 133                                                         | 2 tasks | 6 files   |
+| Phase 140 P02                                                            | 79                                                          | 2 tasks | 3 files   |
+| Phase 140 P03                                                            | 28                                                          | 2 tasks | 5 files   |
+| Phase 141 P01                                                            | 42                                                          | 2 tasks | 13 files  |
+| Phase 141 P02                                                            | 27                                                          | 2 tasks | 5 files   |
+| Phase 141 P03                                                            | 37                                                          | 2 tasks | 6 files   |
+| Phase 141-durable-fjall-coins-adapter P04                                | 118min                                                      | 2 tasks | 25 files  |
+| Phase 142-manager-flush-lifecycle-and-restart P01                        | 21 min                                                      | 2 tasks | 6 files   |
+| Phase 142-manager-flush-lifecycle-and-restart P02                        | 23 min                                                      | 2 tasks | 9 files   |
+| Phase 142 P03                                                            | 53                                                          | 2 tasks | 8 files   |
+| Phase 142-manager-flush-lifecycle-and-restart P04                        | 43                                                          | 2 tasks | 6 files   |
+| Phase 142 P05                                                            | 60min                                                       | 2 tasks | 16 files  |
+| Phase 142 P06                                                            | 120min                                                      | 2 tasks | 104 files |
+| Phase 143-honest-stored-block-availability P01                           | 23                                                          | 2 tasks | 9 files   |
+| Phase 143-honest-stored-block-availability P02                           | 28                                                          | 2 tasks | 16 files  |
+| Phase 143-honest-stored-block-availability P03                           | 26                                                          | 2 tasks | 3 files   |
+| Phase 143-honest-stored-block-availability P04                           | 14min                                                       | 2 tasks | 4 files   |
+| Phase 144 P01                                                            | 71min                                                       | 3 tasks | 25 files  |
+| Phase 144 P02                                                            | 67                                                          | 3 tasks | 20 files  |
+| Phase 144-operator-flush-and-availability-evidence P03                   | 80min                                                       | 3 tasks | 25 files  |
+| Phase 144 P04                                                            | 30min                                                       | 2 tasks | 7 files   |
+| Phase 145-parity-roots-and-no-claim-guardrails P01                       | 35 min                                                      | 2 tasks | 8 files   |
+| Phase 145-parity-roots-and-no-claim-guardrails P02                       | 36 min                                                      | 2 tasks | 8 files   |
+| Phase 145-parity-roots-and-no-claim-guardrails P03                       | 47min                                                       | 2 tasks | 9 files   |
+| Phase 145-parity-roots-and-no-claim-guardrails P04                       | 38 min                                                      | 2 tasks | 13 files  |
+| Phase 146 P01                                                            | 79 min                                                      | 2 tasks | 5 files   |
+| Phase 146 P02                                                            | 70 min                                                      | 2 tasks | 6 files   |
+| Phase 146 P03                                                            | 18 min                                                      | 2 tasks | 1 files   |
+| Phase 147 P01                                                            | 1h 2m                                                       | 2 tasks | 11 files  |
+| Phase 147 P02                                                            | 55 min                                                      | 1 tasks | 7 files   |
+| Phase 147 P03                                                            | 62 min                                                      | 1 tasks | 7 files   |
+| Phase 148 P01                                                            | 41 min                                                      | 2 tasks | 7 files   |
+| Phase 148 P02                                                            | 59 min                                                      | 2 tasks | 14 files  |
+| Phase 148 P03                                                            | 31 min                                                      | 2 tasks | 5 files   |
+| Phase 148 P04                                                            | 29 min                                                      | 2 tasks | 5 files   |
+| Phase 148 P05                                                            | 27 min                                                      | 2 tasks | 4 files   |
+| Phase 149 P01                                                            | 27 min                                                      | 2 tasks | 5 files   |
+| Phase 149 P02                                                            | 58 min                                                      | 2 tasks | 12 files  |
+| Phase 149 P03                                                            | 1h 14m                                                      | 3 tasks | 16 files  |
+| Phase 149 P04                                                            | 1h 1m                                                       | 2 tasks | 8 files   |
+| Phase 150 P01                                                            | 1h 17m                                                      | 1 tasks | 6 files   |
+| Phase 150 P02                                                            | 1h 13m                                                      | 2 tasks | 9 files   |
+| Phase 150 P03                                                            | 1h 16m                                                      | 2 tasks | 11 files  |
+| Phase 150 P04                                                            | 2h 16m                                                      | 2 tasks | 40 files  |
+| Phase 150 P05                                                            | 1h 37m                                                      | 2 tasks | 21 files  |
+| Phase 150 P06                                                            | 49min                                                       | 1 tasks | 11 files  |
+| Phase 150 P08                                                            | 33 min                                                      | 1 tasks | 6 files   |
+| Phase 150 P07                                                            | 32min                                                       | 1 tasks | 8 files   |
+| Phase 151 P01                                                            | 53 min                                                      | 3 tasks | 9 files   |
+| Phase 151 P02                                                            | 1h 2m                                                       | 2 tasks | 8 files   |
+| Phase 151 P03                                                            | 1h 23m                                                      | 3 tasks | 11 files  |
+| Phase 151 P04                                                            | 2h 14m                                                      | 3 tasks | 11 files  |
+| Phase 161 P01                                                            | 7min evidence window                                        | 3 tasks | 11 files  |
+| Phase 161 P02                                                            | 31min evidence window including correction                  | 2 tasks | 11 files  |
+| Phase 161 P03                                                            | 10min evidence window                                       | 2 tasks | 6 files   |
+| Phase 161 P10                                                            | 14min including context and focused evidence                | 2 tasks | 15 files  |
+| Phase 161 P04                                                            | 21min evidence window                                       | 2 tasks | 11 files  |
+| Phase 161 P05                                                            | 6min evidence window                                        | 3 tasks | 13 files  |
+| Phase 161 P11                                                            | 19min evidence window                                       | 3 tasks | 14 files  |
+| Phase 161 P06                                                            | 13min context and evidence window                           | 3 tasks | 16 files  |
+| Phase 161 P07                                                            | 11min including context and evidence                        | 2 tasks | 10 files  |
+| Phase 161 P08                                                            | 37min recorded evidence window                              | 2 tasks | 14 files  |
+| Phase 161 P09                                                            | 11min source plus recorded root verification/closing window | 3 tasks | 36 files  |
 
 ## Accumulated Context
 
@@ -616,8 +616,8 @@ Prior344/7ed/initial96bec/functionaldbee/actualaudit9final1functional receipts r
 
 ### Quick Tasks Completed
 
-| # | Description | Date | Commit | Directory |
-| -- | -- | -- | -- | -- |
+| #          | Description                                                                | Date       | Commit      | Directory                                                                                                           |
+| ---------- | -------------------------------------------------------------------------- | ---------- | ----------- | ------------------------------------------------------------------------------------------------------------------- |
 | 260921-hi7 | Persist post-v2.3 next milestone candidates report under .planning/reports | 2026-09-21 | uncommitted | [260921-hi7-persist-post-v2-3-next-milestone-candida](./quick/260921-hi7-persist-post-v2-3-next-milestone-candida/) |
 
 ## Latest Milestone Archive
@@ -628,8 +628,8 @@ Prior344/7ed/initial96bec/functionaldbee/actualaudit9final1functional receipts r
 
 ## Session Continuity
 
-Last session: 2026-10-13T03:06:36Z
-Stopped at: Phase163 complete; original wrapper normal-hook Git saving pending; actual milestone archive separate
+Last session: 2026-10-13T19:17:25Z
+Stopped at: Phase163 corrected-source acceptance complete; strict normal-hook source saving is the wrapper gate; actual archival separate
 Resume file: .planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-05-SUMMARY.md
 
-Corrected-source functional handoff: actual full6/21-inpute0c and fresh SC1–SC4 verification passed; CFGR-01 activated with exact closure prose. Current activation suite and renewed audit/readiness/final phase reconciliation remain pending; canonical04/05in_progress and3/5+88/90+9/10 remain.
+Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.

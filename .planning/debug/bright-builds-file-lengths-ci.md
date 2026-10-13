@@ -2,7 +2,7 @@
 status: automated_verified
 trigger: "Investigate and fix failing GitHub Actions for Open Bitcoin... Bright Builds Checks fails file-lengths"
 created: 2026-09-21T02:47:41Z
-updated: 2026-10-13T05:54:47Z
+updated: 2026-10-13T19:19:24Z
 ---
 
 ## Current Focus
@@ -12,7 +12,7 @@ updated: 2026-10-13T05:54:47Z
 hypothesis: Confirmed — ten tracked sources exceeded the Bright Builds 628-line hard gate; repo-native check-file-lengths.sh cannot see test/script offenders.
 test: Local red-capable loop was `bun scripts/bright-builds-check.ts all`; after splits it reports findings=0.
 expecting: Historical remote uncertainty is superseded by the 2026-10-12 read-only recheck of successful CI and Bright Builds at exact d47f6e09b4621808974cc083fcc27ee9d2c1b4c7.
-next_action: Retain original ten failures, split fixes and dated local receipts below. Corrected21-input Phase163 has current local full6 acceptance (38c0607f,all176stages/exit0), clean independent review/security and functional verification05:36:20Z; current managed source checks have0findings. Actualrenewedaudit/readiness/finalSC1–SC5nowpassed; normal-hook saving remains pending. The prior successful remote d47f6e09 CI remains dated evidence; no new remote CI success is claimed for this uncommitted source.
+next_action: Preserve the original dated failures and historical e0 acceptance below. The current 21-input source14fa passed the full default verifier, four complete layout suites, independent acceptance, functional activation, renewed audit, readiness execution and final5/5verification. Strict normal-hook saving is the wrapper gate; actual Git outcomes are derived from its receipts and repository state. The old d47f6e09 remote CI observation remains dated evidence; no new remote CI result is inferred.
 known_pattern_candidate: none
 
 ## Symptoms
@@ -125,3 +125,17 @@ Actual read-only `gh run view 38206596321 --json status,conclusion,headSha,url` 
 Both actual local full-default JSON receipts were also rechecked: `6c7c6001-7fbd-42ec-875d-840c0c380707` (2,137,553ms wrapper) and `b427fa6a-122a-4c28-9dcb-e58342ec3eac` (2,064,537ms wrapper), each success/exit0/full on 2026-10-12. They record `a77edab276a9daa086055aa61e6143ce86bc1218` plus dirty Phase 162 worktree changes, not an exact d47 execution. [Phase 162 native evidence](../phases/162-real-prune-retention-and-integrated-parity-proof/162-NATIVE-EVIDENCE.md) and [the current handoff](../phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-HANDOFF.md) give paths and scope.
 
 Status `automated_verified` records these observed automated results only. No human confirmation was performed, no historical failure was rewritten, and no fresh Phase 163 CI/full-native/closure/audit result is implied. The unrelated `main-ci-stale-loc-after-bright-builds-update.md` incident is not this reconciliation target.
+
+## Logical-control source revalidation | 2026-10-13T17:42:27Z
+
+Earlier current-focus statement retained as dated e0 history: next_action: Retain original ten failures, split fixes and dated local receipts below. Corrected21-input Phase163 has current local full6 acceptance (38c0607f,all176stages/exit0), clean independent review/security and functional verification05:36:20Z; current managed source checks have0findings. Actualrenewedaudit/readiness/finalSC1–SC5nowpassed; normal-hook saving remains pending. The prior successful remote d47f6e09 CI remains dated evidence; no new remote CI success is claimed for this uncommitted source.
+
+Actual source repair replaces one active physical requirements assertion with four explicit logical availability/refusal cases and refreshes its frozen hash. Production selectors, claims and runtime proof remain unchanged. Original e0 reports are preserved in `.planning/reports/phase163-e0c-before-logical-control-revalidation/`; no failed or interrupted run becomes a PASS.
+
+## Current audit boundary | 2026-10-13T19:09:31Z
+
+The actual corrected-source audit passed22/22 at19:07:36Z after functional activation and independent integration31/31seams/18/18flows. Readiness publication followed at19:08:16Z; its actual suite is in progress. This update changes current focus only and does not retime earlier receipts or perform human confirmation, Git saving or archival.
+
+## Final corrected-source acceptance | 2026-10-13T19:19:24Z
+
+Fresh final SC1–SC5 verification passed on the unchanged source after actual native, matrix, activation, audit and readiness execution. Canonical verification SHA256 2d2531cf866871d78bb42f7570970d4715e71c84a49f44e115f8c21464f0472b. Root reconciled all22 unique Complete owners,5/5phaseplans,90/90milestoneplans and10/10phases. Original historical observations and the separate human-confirmation condition remain unchanged. Normal-hook source saving and actual archival are separate transactions.

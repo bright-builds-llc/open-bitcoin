@@ -421,7 +421,7 @@ test("breadcrumb mapping cannot be removed", () => {
   // Assert
   expect(failures.some(item => item.includes("breadcrumb") && item.includes(file))).toBe(true);
 });
-for (const file of [...CHECK_FILES.filter(file => !file.startsWith("scripts/check-phase158")), ".planning/REQUIREMENTS.md"]) {
+for (const file of CHECK_FILES.filter(file => !file.startsWith("scripts/check-phase158"))) {
   test(`fixed current evidence root must exist: ${file}`, () => {
     // Arrange
     const root = fixture();
@@ -430,6 +430,40 @@ for (const file of [...CHECK_FILES.filter(file => !file.startsWith("scripts/chec
     const failures = checkPhase158ValidatedReorg(root);
     // Assert
     expect(failures.some(item => item.includes(file) && item.includes("cannot read"))).toBe(true);
+  });
+}
+function requirementsFixture(): string {
+  const sources = transitionSources();
+  sources.set(V25_REQUIREMENTS[1], sources.get(V25_REQUIREMENTS[0])!);
+  return fixture(sources);
+}
+test("logical requirements accept valid archive when active is absent", () => {
+  // Arrange
+  const root = requirementsFixture();
+  unlinkSync(join(root, V25_REQUIREMENTS[0]));
+  // Act
+  const failures = checkPhase158ValidatedReorg(root);
+  // Assert
+  expect(failures).toEqual([]);
+});
+test("logical requirements refuse all fixed candidates missing", () => {
+  // Arrange
+  const root = requirementsFixture();
+  for (const file of V25_REQUIREMENTS) unlinkSync(join(root, file));
+  // Act
+  const failures = checkPhase158ValidatedReorg(root);
+  // Assert
+  expect(failures.some(item => item.includes("T-162-10") && item.includes("cannot read required evidence") && V25_REQUIREMENTS.every(file => item.includes(file)))).toBe(true);
+});
+for (const active of ["", "**Milestone:** v2.x\n"]) {
+  test(`logical requirements refuse invalid-present active despite valid archive: ${JSON.stringify(active)}`, () => {
+    // Arrange
+    const root = requirementsFixture();
+    writeFileSync(join(root, V25_REQUIREMENTS[0]), active);
+    // Act
+    const failures = checkPhase158ValidatedReorg(root);
+    // Assert
+    expect(failures.some(item => item.includes(`${V25_REQUIREMENTS[0]}: invalid active milestone identity/baseline`))).toBe(true);
   });
 }
 for (const [file, module] of REGISTRATIONS) {

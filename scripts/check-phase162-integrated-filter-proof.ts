@@ -378,7 +378,7 @@ function checkScope(text: (file: string) => string, failures: string[], state: R
 function checkFrozenGuards(text: (file: string) => string, failures: string[]): void {
   // Phase163's exact scoped replacement and preserved checkpoint contracts require independent review.
   for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "1df027aca2deb9827f135d9a558ef2377d7a2ebb18b830ba76f41698376834de"],
-    ["scripts/check-phase158-validated-reorg.test.ts", "6526c6d4c1853b4bbf21e462b8dc292eeb95a6c10e493e9d0cbbf449f43c01cb"],
+    ["scripts/check-phase158-validated-reorg.test.ts", "efa71956ef2e4916a94790f9f9855a418e8f6d4b84c953db126654e89fbd85dc"],
     ["scripts/check-phase163-provenance.ts", "cf22edda320107ce0dfda9a8692e8c29aaa436ad6ca1f82c48f66b1d778c67d7"]]) {
     if (createHash("sha256").update(text(file)).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
   }

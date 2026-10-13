@@ -102,7 +102,6 @@ and upstream refs provide final Git evidence.
 Source paths use root-owned intent-to-add entries only
 to satisfy tracked-file discovery; no commit has been created.
 
-
 ## task-v24-archive-push | 2026-10-03 12:35 CDT | Archive v2.4 and push all
 
 - [x] Verify scoped readiness, collect summary/task/Git statistics, and retain audit advisories.
@@ -155,7 +154,6 @@ Completion review: four plans implemented; 11/11 must-haves and all three roadma
 - [x] Prepare verified changes for commit/push; derive actual finalization from Git history and remote synchronization.
 
 Completion review: four plans implemented; formal verification passed 10/10 distinct truths and all four roadmap criteria, independent source review is clean across 36 files, and 17/17 security dispositions are closed. The full default native verifier passed in 50m 23.935s with Bun 1.3.9 and Rust 1.94.1, including integration, benchmark, Bazel/provenance and zero-uncovered-lines pure-core coverage. CFIX-02/04 and CFPR-03 are Complete. This is the verified pre-commit snapshot; Git history and remote synchronization record the actual consolidated commit/push. Residual boundary: ordinary index-owned prune coordination, activation/catch-up, runtime reorg and serving/operator/integrated-client scope remain Phases 156–162; accepted historical-fence provenance and linear startup work do not claim hardware durability or archive-scale performance.
-
 
 ## task-phase156-owned-prune | 2026-10-04 15:28 CDT | Index-Owned Manual and Automatic Prune Coordination
 
@@ -277,9 +275,7 @@ Evidence: default native3 failed after1h5m5.214s: 1,931 earlier Rust passes, the
 
 Recovery2 result: workspace formatting/strictClippy/build passed; node1,428pass/1fail/3ignored. The remaining fixture configured only its store, leaving manager/store branch identities mismatched; authorization correctly refused. Paired actual fixture.reopen() now rebinds both, with original missing-payload/reuse assertions preserved. Recovery3 compiles once, runs that exact regression first, then full workspace and CLI binary tests. Full current guard611 passed (1,816 assertions/312.02s) before this final fixture sequencing edit. Independent review covers91 paths/all7findings closed; final execution/native/security/lifecycle gates still pending.
 
-
 Native4 final receipt: default verifier exit0 in36m0.155s;3,864primaryRust passes/zero failures/three existingoptinignores,611guardtests/1,816assertions, benchmark smoke, six Bazel targets/provenance and zero-uncovered pure-core coverage passed. Source remains frozen; final08/security/formal/lifecycle records precede requirement activation and mandatory hook/Git finalization. Earlier failed receipts remain historical.
-
 
 Completion review (verified pre-commit snapshot): Phase159 passed all26 truths/four roadmap criteria, clean91-path review/all seven findings closed and27/27 security mitigations. Default native exited0 in36m0.155s with3,864 primary Rust passes,611 mutation tests, benchmark smoke, six Bazel targets/provenance and zero uncovered pure-core lines. Full lifecycle validation passed before CFRP-01/02 activation. Phase160 is next; CFPR-02/CFNET/CFOP/CFGR and v2.5 remain pending. UnknownLegacy absent rows, numeric read/waiter caps and synthetic genesis/maturity-one/manual-owner-plan/composed private-fault limitations remain documented. Actual hook/commit/push outcomes are derived from the saving commit and upstream refs, avoiding a self-referential post-push edit.
 
@@ -647,7 +643,6 @@ Plan: configured mode:yolo auto-approves scope/stats/accomplishment gates; all22
 
 Preparation/re-plan | 2026-10-13T03:55:58Z: all90complete SUMMARY bodies reviewed by three disjoint readers; canonical XML tasks total220 (72+78+70), not inconsistent legacy numeric-summary counts. Root read-only supplied-map archive preflight passes both safety-overlap audit_passed and final all-archived publication states with zero fixture writes. Original third normal hook stopped on604pass/3fail historical transition fixtures at311,825ms; source owner is now repairing check-phase158-validated-reorg.test.ts. Any changed20-input binding requires its fresh accepted native/review/security/formal/audit evidence before archival. Earlier3444pass remains correctly attributed historical candidate evidence; this archive task holds all shared control mutations and Git until the saving owner earns a clean checkpoint.
 
-
 Coordination authorization: the human user explicitly approved messages both ways with “Run GSD YOLO workflow” (thread01a131f2-3afa-7971-b9e8-0346d2f0d08d). Root sent reproduced archive-test prerequisites and proposed disjoint ownership: saving chat repairs source/revalidates/saves; this chat archives only after its clean handoff. Isolated archive-only native six-boundary proof passes, while legacy158–162 test helpers and163fixture imports fail on absent active controls. Precise read-only findings are at .local/open-bitcoin-dev/phase163/archive25-legacy-test-preflight.md. No production guard is relaxed and no archive has occurred.
 
 ## task-phase163-fixture-revalidation | 2026-10-13 03:57 UTC | Revalidate final source after historical fixture isolation
@@ -659,7 +654,6 @@ Coordination authorization: the human user explicitly approved messages both way
 - [x] Prepare the final verified normal-hook commit/push handoff on existing main; actual saving and synchronization outcomes derive from Git and command receipts.
 
 Recovery plan: prior344full/audit/final receipts stay historical, never relabeled as corrected-source results. The production guard and digest inventory remain strict. Existing completion gates are reopened only for this source-bound test correction. Root owns shared evidence/publication and saving; GSDdebugger owns historical fixture/debug receipt. No actual milestone archive or shipment.
-
 
 Final-hook failure evidence | 2026-10-13T03:57:04Z:48fd406d-3c8d-41e3-ab29-c57b3cbb7f07 ran03:45:45.463Z–03:50:57.765Z,312302ms wrapper/311825ms inner,exit1; Phase158historicalsuite604pass3fail/1072assertions211.42s. Newtest-onlyfix exactthreecasesRED0/3 thenGREEN3/0/11assertions446ms,77adjacenthistoricals0fail. New20digest0285c036c7d74b71e468266063e53c5a799880248548d0d6d8571492888d988f; only158testsourcehashchangedc5581d74952b15e2dea98d817e4364362256dabc8b135bfcbb5a5f579c4566b2. Old344receipts do notcertifythissource.
 
@@ -686,3 +680,25 @@ Actualcorrected-source finalPASS/reconciliation | 2026-10-13T06:27:17Z:canonical
 GSDfinalmetadata check | 2026-10-13T06:31:03Z:phasecomplete163returned5/5,lastphase,roadmap/stateupdated. Its stderrnotedmissingLastActivityDescription and helperagainincremented archivedv2.3metric69→74/currentPlanNotstarted. Roottarget-restored69,complete5of5positionandstandardLastActivityDescriptionwithouttouchingactualsource/receipt dates. Finalprod/doc/traceability/exactlifecycleguardsall0/validbeforehelper; recheckpreparedcandidateaftertargetcorrection. No bypass/extra source oractualarchival.
 
 Corrected-source saving preparation | 2026-10-13T15:57:16Z:allactualphase5/5/sourcee0c21/native38c/audit/readinesscb2/final1d6 accepted; ROOTfinalmetadata/69archivedmetric corrected andallfinalguards/lifecyclepass. No gitcommit/verifyprocesssurvived;HEAD/originmainstilld47/0ahead0behind. Cargoformatphase163-final-formatpassed. Stageauthorizedcurrentdocs/rawreports/debugfollowups, verifyall21indexhashes/stagedwhitespace/cleanunstaged, thenactualnormalhook4 andpush. Do not inferfuturehook/push fromthispreparedchecklist; actualoutcomesareGit/localreceipt-derived. No actualarchive/tag/shipment.
+
+## task-phase163-logical-control-revalidation | 2026-10-13 | Repair archive safety-hook test
+
+- [x] Confirm the archive owner restored its uncommitted safety candidate; clean HEAD/origin `2a792075`, all21 e0 source hashes match.
+- [x] Diagnose the actual606pass/1fail receipt and review159–163 for the same physical-control assumption.
+- [x] Replace the Phase158 active-path assertion with explicit logical availability and invalid-present regressions; refresh only its frozen test hash.
+- [x] Preserve e0 acceptance reports, withdraw current closure/readiness while source changes, and freeze the new21-input manifest.
+- [x] Run whole158–163 suites in equivalent overlap, exact safety-index, archive-only and next-active isolated layouts; inspect every result and source/control witness.
+- [x] Re-earn actual full-default native, independent review/security, functional verification, audit/readiness and final phase acceptance on the corrected source.
+- [x] Prepare the reviewed strict normal-hook saving gate and archive-owner handoff. Actual commit/push outcome is derived from Git, the hook receipt and the final handoff; this preparation does not assert either operation already happened.
+
+Guidance: GSD debug under the invoked strict-push workflow; repo AGENTS, Bright Builds sidecar/overrides and testing/verification standards. Preserve failed safety run672cd52d and all earlier acceptance as dated history. Actual archival remains owned by the separate paused workflow.
+
+Current frozen source: `14fa9cc585c9cf8d9b2c0ae04d7f92e6411b38fb7d19128359126eee2735f977`,21inputs. Independent REVIEW clean (`8a4cd012`); SECURITY16/16closed (`a62f24ce`). Full-default run `dfbd420c` and four-layout unfiltered matrix are running; no current closure/readiness is inferred from focused passes.
+
+Re-plan after actual validation failure: four parallel worlds passed whole158/159, then160default5-second timeouts with sampled filesystem waits. Parallel attempt interrupted honestly; single-case serial probe also timed out13.761s while native Rust/Fjall verification ran. Hold remaining whole-layout executions until the default verifier finishes, then retry the unchanged control and whole suites serially. Preserve all failed attempts; do not increase limits or change source without new evidence.
+
+Progress at 2026-10-13T18:34:18+00:00: actual full run `dfbd420c` passed all 176 default stages in 44m19.044s (inner); all 21 source hashes are unchanged. The quiet Phase160 control passed in 357ms after native completion, contrasting the earlier 13.761s failure under filesystem load. Equivalent overlap and exact safety-index each have all 5,032 tests passed; archive-only and next-active remain pending. Current closure/readiness stay withdrawn until the completed matrix and fresh formal gates.
+
+Matrix completion: all 28 whole files, 20,128 tests and 66,956 assertions passed across four layouts, with 24 raw boundaries and matching corpus manifests. Composite SHA `beb01a4b`; canonical preflight SHA `98c875d0`. Source/control ownership was released after the final unchanged witness.
+
+Completion review at 2026-10-13T19:19:24Z: source acceptance is complete on unchanged14fa21; final5/5certificate 2d2531cf866871d78bb42f7570970d4715e71c84a49f44e115f8c21464f0472b. The corrected logical assertion retains physical-root, invalid-present, missing-all, ownership, baseline and claim-state refusals. Earlier failures, resource-sensitive diagnostic attempts and all old source acceptance remain preserved. No new runtime capability, remote CI, human confirmation or actual archive is claimed. Strict normal-hook Git saving is the remaining wrapper transaction.

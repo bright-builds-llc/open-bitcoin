@@ -7,9 +7,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,538 |
-| Total lines | 452,567 |
-| Code/content lines | 395,894 |
-| Comment-only lines | 22,924 |
+| Total lines | 452,601 |
+| Code/content lines | 395,919 |
+| Comment-only lines | 22,933 |
 | Blank lines | 33,749 |
 
 ## Per-Crate Modules
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 646 | 203,581 | 175,895 | 14,057 | 13,629 |
 | Rust production | 497 | 140,285 | 122,154 | 5,959 | 12,172 |
-| TypeScript/Bun scripts | 323 | 90,801 | 80,908 | 2,825 | 7,068 |
+| TypeScript/Bun scripts | 323 | 90,835 | 80,933 | 2,834 | 7,068 |
 | Fixture/data | 6 | 8,232 | 8,227 | 5 | 0 |
 | Shell scripts | 23 | 4,586 | 4,107 | 69 | 410 |
 | TOML/config | 16 | 3,467 | 3,101 | 0 | 366 |
@@ -242,7 +242,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase157-index-catch-up.ts | 243 |
 | scripts/check-phase157-index-catch-up/contracts.ts | 155 |
 | scripts/check-phase157-index-catch-up/rust-evidence.ts | 48 |
-| scripts/check-phase158-validated-reorg.test.ts | 590 |
+| scripts/check-phase158-validated-reorg.test.ts | 624 |
 | scripts/check-phase158-validated-reorg.ts | 394 |
 | scripts/check-phase159-filter-rpcs.test.ts | 588 |
 | scripts/check-phase159-filter-rpcs.ts | 317 |
@@ -404,7 +404,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | a3dff427adf21eedb8232c72dcb9a082c826d2dada7c1ba0aee5255bb5adc7f7 |
+| Input fingerprint | cebf1b4b88ca566e605fcab9f6d427e685b553a9ae6ca5ee138f82d328f86f45 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -2,9 +2,7 @@
 
 ## Current Status
 
-Phases154–162completed all85original plans with preserved historical proof. Corrected21-inpute0c16fb2 now has actual full/default native, clean review,16/16security,functional activation, renewed22/22audit/31seams/18flows,284-case readiness and finalSC1–SC5acceptance. AllfivePhase163plans and90/90milestoneplans/10/10phases/22uniqueComplete requirements are verified. The actualaudit boundary9final+1functional and prior344receipts remain dated history. The milestone is ready for its separate actualarchival workflow and remainsunarchived/unshipped. Allsource/runtime/resource/public-network/productionlimits remain unchanged.
-
-The original gaps audit remains immutable history; the [renewed audit](v2.5-MILESTONE-AUDIT.md) passes31/31 integration seams and18/18 flows. Phase163's verified provenance preserves native parity checks across reassignment, standard archival and a later milestone's active controls. The milestone is ready for its separate archival workflow and remains unarchived/unshipped. The 550 MiB body/undo target remains soft and unattained in the measured pressure scenario; physical allocation samples are points, retained filters restore neither bodies nor wallet eligibility, and the synthetic-root/work/halving limits do not claim whole-chain Knots consensus parity. Earlier v2.4 crash-window advisories and BIP37/V0, assumeutxo, archive-scale, public/default/network-CI, implicit repair and production/funds exclusions remain unchanged.
+Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
 
 ## Milestones
 
@@ -44,7 +42,7 @@ Integer phases continue from archived Phase 153; decimal phases remain available
 - [x] **Phase 160: Explicit Bounded Peer Filter Serving** — Serve all three branch-aware BIP157 families on real inbound and outbound paths with achieved-write evidence. (completed 2026-10-11)
 - [x] **Phase 161: Shared Operator Index and Retention Evidence** — Present configured capability, progress, failures and separate retained-index growth through existing consumers. (completed 2026-10-11)
 - [x] **Phase 162: Real Prune Retention and Integrated Parity Proof** — Prove retained client responses across continuous validated-chain pruning, recovery, forks and both transports. Scoped full native and formal lifecycle verification passed; milestone audit/shipment remains separate. (completed 2026-10-12)
-- [x] **Phase 163: Archive-Safe Parity Provenance and Milestone Handoff** — Preserve deterministic historical parity checks across gap reassignment, standard requirements archival and the next milestone; reconcile audited closeout records. (completed2026-10-13)
+- [x] **Phase 163: Archive-Safe Parity Provenance and Milestone Handoff** — Preserve deterministic historical parity checks across gap reassignment, standard requirements archival and the next milestone; reconcile audited closeout records.
 
 ## Phase Details
 
@@ -278,7 +276,7 @@ Plans:
 1. Current closeout prose and older debug handoffs agree with actual native/CI receipts, preserving historical failures and explicit audited/archive claim boundaries without expanding excluded product scope. (TD01, TD02)
 1. Focused regression and transition controls, independent review, the complete default native contract and a renewed milestone audit pass before archive readiness is asserted; layout demonstrations use isolated fixtures rather than archiving this checkout. (CFGR-01, AG01, AF01)
 
-**Plans**:5/5plans complete in five sequential waves. Corrected21-input source has actual renewed audit/readiness and finalSC1–SC5verification; canonical04anddistinct05outcomes are complete. Original344history and actualnewfull/activation/audit/readiness/final boundaries remain preserved.
+**Plans**:5/5 complete after actual corrected-source full/native, functional, audit/readiness and final SC1–SC5 acceptance. Original and prior-source receipts remain dated history.
 
 - [x] 163-01 — Milestone-bound provenance and preserved evidence
 - [x] 163-02 — Native archive transitions and refusal controls
@@ -326,8 +324,6 @@ Execution order: 154 → 155 → 156 → 157 → 158 → 159 → 160 → 161 →
 | 160. Explicit Bounded Peer Filter Serving                 | 17/17          | Complete | 2026-10-11 |
 | 161. Shared Operator Index and Retention Evidence         | 11/11          | Complete | 2026-10-11 |
 | 162. Real Prune Retention and Integrated Parity Proof     | 16/16          | Complete | 2026-10-12 |
-| 163. Archive-Safe Parity Provenance and Milestone Handoff | 5/5 | Complete | 2026-10-13 |
+| 163. Archive-Safe Parity Provenance and Milestone Handoff | 5/5            | Complete | 2026-10-13 |
 
 ## Coverage
-
-22/22current v2.5requirements map to unique active owners with noorphans. Requirement lists match currentREQUIREMENTS; historical162CFGR-01evidence remains separate from active163. Alltenphases/finalcertificates and90plans are complete, withPhase1635/5. Corrected21-input actualnative/review/security/audit/readiness/finalphase gates passed. Normal-hook saving and actualarchive/tag/shipment remain separate.

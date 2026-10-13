@@ -6,7 +6,7 @@
 
 ## v2.5 Requirements
 
-Requirements for explicitly enabled BASIC/type0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` remains the baseline. All22requirements are functionallyComplete with unique owners; CFGR-01 remains owned by Phase163. The corrected21-input `e0c16fb2` earned new full/default native, independent source/security and functional verification. Prior34443772receipts remain dated history. Actual corrected-source renewed audit passed and readiness is now published; finalSC1–SC5verification nowpasses;5/5phaseplans and90/90milestoneplans are complete. Actual archival/shipment is separate.
+Requirements for explicitly enabled BASIC/type0 compact-filter indexing and serving on the existing single active Fjall chainstate. Bitcoin Knots `29.3.knots20260210` remains the baseline. CFGR-01 has fresh functional closure under Phase163 after the actual archive safety hook exposed a test assertion tied to an active physical path. Other21requirements and owners remain unchanged. Earlier e0 acceptance is preserved as dated history; corrected-source full validation and closure/readiness must be re-earned.
 
 ### Filter Construction
 
@@ -85,7 +85,7 @@ Deferred and not mapped to the v2.5 roadmap. FUT-20 compact-filter serving is pr
 
 ## Traceability
 
-All22 current v2.5 requirements map to exactly one active owner and are Complete. Phases154–162retain their historical lifecycle-valid delivery/native evidence; CFGR-01's historicalPhase162proof remains separate from activeowner163. The original gaps audit and all34443772receipts are preserved as dated history. Corrected21-inpute0c16fb2 now has actual full6, clean source review,16/16security and fresh functional verification for CFGR-01, plus a successful current activation suite. Canonical04/05 and Phase163are complete after actual readiness-state tests and finalSC1–SC5verification. Milestone archive/shipment remains separate.
+All22 requirements have unique active owners;all22 are Complete after fresh corrected-source functional acceptance. Historical Phase162 CFGR-01 delivery remains separate. Earlier e0 acceptance retains its actual source and dates in preserved reports; new closure/readiness require current execution and independent acceptance.
 
 | Requirement | Phase     | Status   |
 | ----------- | --------- | -------- |
@@ -117,4 +117,4 @@ Coverage: 22/22 requirements mapped; 22 Complete; 0 Pending; 0 unmapped; 0 dupli
 ______________________________________________________________________
 
 *Requirements defined: 2026-10-03*
-*Last updated: 2026-10-13 corrected-source audit/readiness/finalSC1–SC5verification and carrier reconciliation passed*
+*Last updated: 2026-10-13T19:17:25Z — final corrected-source acceptance*
