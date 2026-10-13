@@ -1,5 +1,44 @@
 # Milestones: Open Bitcoin
 
+## v2.5 Prune-Aware Compact-Filter Serving (Archive checkpoint: 2026-10-13)
+
+**Delivered:** Explicitly enabled Knots-compatible BASIC compact filters with recoverable indexing, prune-safe retained serving, validated branch replacement, bounded client transport and auditable operator evidence on one active Fjall chainstate.
+
+**Status:** Source delivery is saved and pushed; the archive safety checkpoint is being committed before active requirements retirement and tagging.
+
+**Phases completed:** 154–163; 90 plans; 220 completed plan tasks.
+
+**Key accomplishments:**
+
+- Independent exact BASIC bytes, hashes and branch-dependent commitments from body-bound historical inputs.
+- Recoverable immutable Fjall indexing, required-history refusal, explicit activation and bounded scheduled catch-up.
+- Index-owned prune protection and validated branch replacement, preserving retained reads across paired deletion and reopen.
+- Authenticated filter/index RPCs and bounded inbound/outbound peer families with whole-range validation and achieved-write evidence.
+- Coherent sanitized operator facts across RPC, CLI, dashboard and support, separating capability, synchronization, durability, failures and retention.
+- Continuous normal-maturity integration proof and archive-safe provenance, preserving original delivery and subsequent CFGR-01 closure.
+
+**Stats:**
+
+- 22/22 requirements, 10 verified phases, 90 complete plans and 220 canonical plan tasks. XML task counts are corroborated against all 90 complete SUMMARY bodies; the archive CLI's 52 legacy counted tasks are not the canonical denominator.
+- Prearchive first-party snapshot: 452,601 total lines / 395,919 code-content lines; production Rust 140,285 physical / 122,154 code lines.
+- After v2.4: 15 source-delivery commits; 838 files changed, 167117 insertions(+), 3162 deletions(-). Git range: `v2.4` → `8ba1d345`; initialization `c0ffc5ea`. Archive commits follow this range.
+- Timeline: 2026-10-03 through 2026-10-13, 10 elapsed calendar days.
+- Current source: 21-input `14fa9cc585c9cf8d9b2c0ae04d7f92e6411b38fb7d19128359126eee2735f977`. Full default native dfbd420c passed all176stages; normal source hook8be1cfdd passed all176 in2,670,882ms wrapper. Whole four-layout matrix passed20,128tests/0fail/66,956assertions with unchanged test limits. Earlier failed/interrupted/superseded receipts remain separately attributed.
+- Final verification 5/5; audit 22/22 requirements, 31/31 seams and 18/18 flows, zero blockers. Runtime 30/30 and 17/17 remain separate from finer provenance inventories.
+
+**Archived artifacts:**
+
+- [Roadmap](milestones/v2.5-ROADMAP.md)
+- [Requirements](milestones/v2.5-REQUIREMENTS.md)
+- [Milestone audit](milestones/v2.5-MILESTONE-AUDIT.md)
+- [Integration audit](milestones/v2.5-INTEGRATION-AUDIT.md)
+
+**Accepted limits:** BASIC/type0, one active Fjall and explicit/default-off activation. Filters restore neither bodies nor wallet eligibility. The 550 MiB logical target remains soft/unattained; physical samples are points. Synthetic-root/caller-work/runtime-halving limits do not establish whole-chain Knots parity. Preserve inherited v2.4 advisories, separate debug-session human archival condition and BIP37/V0, assumeutxo, archive-scale, implicit repair/import/download, public defaults/network-CI and production/service/funds exclusions.
+
+**What's next:** Finish archive retirement/tagging, then define fresh goals and requirements through `/gsd-new-milestone`; continue phase numbering at164.
+
+______________________________________________________________________
+
 ## v2.4 Prune-Mode Product Behavior (Shipped: 2026-10-03)
 
 **Delivered:** Knots-aligned height-window pruning, durable paired deletion, limited serving and honest labels, post-prune wallet eligibility, automatic retention and operator controls on the single active Fjall chainstate.

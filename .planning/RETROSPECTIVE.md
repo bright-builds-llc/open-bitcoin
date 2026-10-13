@@ -618,6 +618,55 @@
 
 ***
 
+## Milestone: v2.5 — Prune-Aware Compact-Filter Serving
+
+**Archive safety checkpoint:** 2026-10-13
+\*\*Phases:\*\*10 | \*\*Plans:\*\*90 | \*\*Completed plan tasks:\*\*220
+
+### What Was Built
+
+- Independent pinned BASIC generation/commitments, durable immutable indexing and required-history protection.
+- Explicit activation, scheduled catch-up, validated branch replacement and retained client service after real paired pruning/reopen.
+- Authenticated RPC, bounded inbound/outbound filter transport and coherent sanitized operator facts.
+- Continuous normal-maturity proof and versioned archive-safe provenance preserving original delivery and later gap closure.
+
+### What Worked
+
+- Genuine ordinary callers and real all-handle reopen exposed authority, deletion and publication errors hidden by isolated shapes.
+- Private lineage and same-store capabilities separated matching raw state from permission to publish or delete.
+- Independent expected bytes, meaningful refusal controls and source binding retained strong oracles through repairs.
+- Explicit functional closure, requirement activation, renewed audit and final acceptance avoided circular gates.
+
+### What Was Inefficient
+
+- Long verification was repeated after stale publication/test-fixture assumptions escaped earlier stage checks.
+- Concurrent live-record updates invalidated fixture snapshots; later runs required a disciplined shared-input freeze.
+- An incorrect PATH resolved the wrong Bun during saving and required an honestly interrupted retry.
+- Archive-only CLI proof did not exercise the legacy default test helpers; isolated archived suite preflight found that missing boundary before actual control retirement.
+
+### Patterns Established
+
+- Accepted, processed, initial synchronization, safe durability, retained availability and achieved writes are separate facts.
+- Reserve variable work before effects and count actual outer-caller traversals and completed transport frames.
+- Bind transitive implementations/tests/contracts, retain all failed/superseded receipts and never relabel a run.
+- Historical test fixtures must explicitly construct their lifecycle from selected milestone controls, independent of current active filenames or later certificates.
+- Preserve key presence and detect changes in both present bytes and legitimate absence.
+
+### Key Lessons
+
+1. Validate ordinary effects and genuinely reopened state; a failed reply does not prove rollback.
+1. Keep filtered history, bodies and wallet eligibility distinct.
+1. Freeze every watched fixture input for an evidence run and serialize shared control/publication ownership.
+1. Test the whole archive boundary, including default test setup, before deleting active controls.
+1. Resolve the pinned executable before long hooks and retain liveness/failure evidence.
+1. Count canonical plan task blocks rather than inconsistent legacy summary fields or lifecycle checkboxes.
+
+### Cost Observations
+
+- Model mix and session totals unavailable; no invented estimates.
+- Full default native dfbd420c passed all176stages; normal source hook8be1cfdd passed all176 in2,670,882ms wrapper. Whole four-layout matrix passed20,128tests/0fail/66,956assertions with unchanged test limits. Archive hook outcomes remain pending their actual receipts.
+- Archive safety checkpoint and final active-file retirement are separate normal-hook commits under the completion workflow.
+
 ## Cross-Milestone Trends
 
 ### Process Evolution

@@ -12,6 +12,8 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
+Archival safety checkpoint: versioned v2.5 roadmap, requirements and audit records now exist. Active requirements remain authoritative until the normal-hook safety commit succeeds and the original is retired. Final archived claims and release tagging follow that checkpoint.
+
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
 
 CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
@@ -246,7 +248,7 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - [x] CFGR-01: Archive-safe parity provenance and milestone handoff under Phase 163 (AG01/AF01), verified at the functional-closure boundary.
 
-All 22 v2.5 requirements are Complete in [REQUIREMENTS.md](REQUIREMENTS.md), including CFOP-01 under Phase 161, CFPR-02/CFGR-02 under Phase 162 and newly verified functional CFGR-01 closure under Phase 163. All 22 requirements map to exactly one active owner across Phases 154–163. Phase 162's original CFGR-01 completion remains separate historical delivery evidence. Corrected-source native/functional closure and renewed audit pass; readiness is published and finalSC1–SC5verification nowpasses. All v2.4 requirements remain Validated.
+All 22 v2.5 requirements are Complete in [REQUIREMENTS.md](milestones/v2.5-REQUIREMENTS.md), including CFOP-01 under Phase 161, CFPR-02/CFGR-02 under Phase 162 and newly verified functional CFGR-01 closure under Phase 163. All 22 requirements map to exactly one active owner across Phases 154–163. Phase 162's original CFGR-01 completion remains separate historical delivery evidence. Corrected-source native/functional closure and renewed audit pass; readiness is published and finalSC1–SC5verification nowpasses. All v2.4 requirements remain Validated.
 
 ### Out of Scope
 

@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
-status: completed
-stopped_at: Phase163 corrected-source acceptance complete; strict normal-hook source saving is the wrapper gate; actual archival separate
-last_updated: "2026-10-13T19:17:25Z"
+status: archiving
+stopped_at: v2.5 archive safety checkpoint prepared; active requirements retained until normal-hook safety commit
+last_updated: "2026-10-13T20:14:09Z"
 last_activity: "2026-10-13"
 progress:
   total_phases: 10
@@ -18,25 +18,23 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (current handoff reconciled in Phase 163). Current audit: `.planning/v2.5-MILESTONE-AUDIT.md`.
+See: `.planning/PROJECT.md` (current handoff reconciled in Phase 163). Current audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 163 — Archive-Safe Parity Provenance and Milestone Handoff
+**Current focus:** v2.5 archival safety checkpoint
 
 ## Current Position
 
-Milestone:v2.5 Prune-Aware Compact-Filter Serving
-Phase: 163 — COMPLETE
-Plan: 5 of 5 — complete
-**Status:** Milestone complete
+Milestone: v2.5 Prune-Aware Compact-Filter Serving
+Phase: 154–163 complete
+Plan: 90/90 complete
+**Status:** Archive safety checkpoint; active requirements retirement pending
 Last activity: 2026-10-13
-Last Activity Description: Corrected14fa21 SC1–SC5, full/default, four-layout whole suites and renewed audit/readiness passed; normal-hook source saving separate
+Last Activity Description: Source8ba1d345 clean and pushed; standard archive copies prepared before retiring originals
 
-Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
+All22 requirements and ten phases are complete. Source21-input 14fa9cc5 and final verification5/5 are accepted. The normal source hook passed176/176; this archive checkpoint still requires its own mandatory normal hook.
 
-Next action: originalauthorizedwrapper performs normal-hook commit/push and checks clean synchronizedsourceHEAD. Actualarchive/tag/shipmentbelongs to the separate coordinatedtaskafterthatpushedhandoff; no actualarchive occurred here.
-
-Prior344/7ed/initial96bec/functionaldbee/actualaudit9final1functional receipts remain datedhistory; no execution is relabeled. Savingoutcomes derivefromGit/commandreceipts and are not claimed by this preparation record.
+Next action: Commit the archive safety checkpoint, then git rm active REQUIREMENTS and switch current claims to ARCHIVED_CLAIM before the final normal-hook commit and tag. No next milestone scope is selected.
 
 ## Performance Metrics
 
@@ -629,7 +627,7 @@ Prior344/7ed/initial96bec/functionaldbee/actualaudit9final1functional receipts r
 ## Session Continuity
 
 Last session: 2026-10-13T19:17:25Z
-Stopped at: Phase163 corrected-source acceptance complete; strict normal-hook source saving is the wrapper gate; actual archival separate
-Resume file: .planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-05-SUMMARY.md
+Stopped at: v2.5 archive safety checkpoint prepared; active requirements retained until safety commit
+Resume file: .planning/milestones/v2.5-ROADMAP.md
 
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
