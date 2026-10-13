@@ -1,10 +1,10 @@
 # Milestones: Open Bitcoin
 
-## v2.5 Prune-Aware Compact-Filter Serving (Archive checkpoint: 2026-10-13)
+## v2.5 Prune-Aware Compact-Filter Serving (Shipped: 2026-10-13)
 
 **Delivered:** Explicitly enabled Knots-compatible BASIC compact filters with recoverable indexing, prune-safe retained serving, validated branch replacement, bounded client transport and auditable operator evidence on one active Fjall chainstate.
 
-**Status:** Source delivery is saved and pushed; the archive safety checkpoint is being committed before active requirements retirement and tagging.
+**Status:** Versioned controls are authoritative after committed safety checkpoint `85cd5537b5cf42a86655983bc1ba91e1d4085135` and subsequent active requirements retirement. Saving/tag outcomes derive from actual Git refs and command receipts.
 
 **Phases completed:** 154–163; 90 plans; 220 completed plan tasks.
 
@@ -35,7 +35,7 @@
 
 **Accepted limits:** BASIC/type0, one active Fjall and explicit/default-off activation. Filters restore neither bodies nor wallet eligibility. The 550 MiB logical target remains soft/unattained; physical samples are points. Synthetic-root/caller-work/runtime-halving limits do not establish whole-chain Knots parity. Preserve inherited v2.4 advisories, separate debug-session human archival condition and BIP37/V0, assumeutxo, archive-scale, implicit repair/import/download, public defaults/network-CI and production/service/funds exclusions.
 
-**What's next:** Finish archive retirement/tagging, then define fresh goals and requirements through `/gsd-new-milestone`; continue phase numbering at164.
+**What's next:** Define fresh goals and requirements through `/gsd-new-milestone`; continue phase numbering at 164.
 
 ______________________________________________________________________
 

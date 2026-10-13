@@ -2,9 +2,9 @@
 gsd_state_version: "1.0"
 milestone: v2.5
 milestone_name: Prune-Aware Compact-Filter Serving
-status: archiving
-stopped_at: v2.5 archive safety checkpoint prepared; active requirements retained until normal-hook safety commit
-last_updated: "2026-10-13T20:14:09Z"
+status: completed
+stopped_at: v2.5 controls archived and active requirements retired after committed safety checkpoint; next milestone unselected
+last_updated: "2026-10-13T21:24:31Z"
 last_activity: "2026-10-13"
 progress:
   total_phases: 10
@@ -18,23 +18,23 @@ progress:
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (current handoff reconciled in Phase 163). Current audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
+See: `.planning/PROJECT.md` (updated 2026-10-13). Current audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** v2.5 archival safety checkpoint
+**Current focus:** Planning the next milestone
 
 ## Current Position
 
-Milestone: v2.5 Prune-Aware Compact-Filter Serving
+Milestone: v2.5 Prune-Aware Compact-Filter Serving — archived
 Phase: 154–163 complete
 Plan: 90/90 complete
-**Status:** Archive safety checkpoint; active requirements retirement pending
+**Status:** Milestone archived; no next scope selected
 Last activity: 2026-10-13
-Last Activity Description: Source8ba1d345 clean and pushed; standard archive copies prepared before retiring originals
+Last Activity Description: Versioned controls authoritative after committed safety checkpoint and active requirements retirement
 
-All22 requirements and ten phases are complete. Source21-input 14fa9cc5 and final verification5/5 are accepted. The normal source hook passed176/176; this archive checkpoint still requires its own mandatory normal hook.
+All 22 requirements, 10 phases, 90 plans and 220 plan tasks are complete. The 21 source inputs and original proof remain preserved. Final saving and tag outcomes derive from Git and actual receipts.
 
-Next action: Commit the archive safety checkpoint, then git rm active REQUIREMENTS and switch current claims to ARCHIVED_CLAIM before the final normal-hook commit and tag. No next milestone scope is selected.
+Next action: `/gsd-new-milestone` defines fresh goals and requirements; continue phase numbering at 164.
 
 ## Performance Metrics
 
@@ -603,7 +603,7 @@ Next action: Commit the archive safety checkpoint, then git rm active REQUIREMEN
 - Keep historical `.planning/phases/` directories tracked because repository verifiers consume selected evidence.
 - Keep repo-local Cargo and Bazel command forms in UAT guidance.
 - Preserve existing explicit relay activation and public-network opt-in boundaries.
-- Keep archive-node serving, assumeutxo, compact-filter serving, public defaults, and production claims deferred beyond v2.4 prune scope.
+- Keep archive-node serving, assumeutxo, public/default compact-filter serving and production claims deferred beyond the archived v2.5 explicit BASIC scope.
 
 ### Blockers/Concerns
 
@@ -620,14 +620,14 @@ Next action: Commit the archive safety checkpoint, then git rm active REQUIREMEN
 
 ## Latest Milestone Archive
 
-- Roadmap: `.planning/milestones/v2.4-ROADMAP.md`
-- Requirements: `.planning/milestones/v2.4-REQUIREMENTS.md`
-- Audit: `.planning/milestones/v2.4-MILESTONE-AUDIT.md`
+- Roadmap: `.planning/milestones/v2.5-ROADMAP.md`
+- Requirements: `.planning/milestones/v2.5-REQUIREMENTS.md`
+- Audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`
 
 ## Session Continuity
 
-Last session: 2026-10-13T19:17:25Z
-Stopped at: v2.5 archive safety checkpoint prepared; active requirements retained until safety commit
-Resume file: .planning/milestones/v2.5-ROADMAP.md
+Last session: 2026-10-13T21:24:31Z
+Stopped at: v2.5 archived; next milestone undefined
+Resume file: .planning/MILESTONES.md
 
-Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
+Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and milestone archival remain separately attributable; archived controls now select all three versioned roots. Runtime, resource, networking and funds-safety limits are unchanged.

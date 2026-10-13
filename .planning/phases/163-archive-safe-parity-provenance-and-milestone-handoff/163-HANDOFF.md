@@ -4,13 +4,14 @@ generated_by: gsd-execute-plan
 lifecycle_mode: yolo
 phase_lifecycle_id: 163-2026-10-12T21-09-41
 generated_at: "2026-10-12T22:35:50Z"
-status: phase-complete
+updated_at: "2026-10-13T21:24:31Z"
+status: archived-milestone-handoff
 requirements-completed: []
 ---
 
 # Phase 163 current milestone handoff
 
-v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.
+v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
 
 ## Historical delivery and actual receipts
 
@@ -34,3 +35,7 @@ Read-only GitHub queries independently returned completed/success for [CI 382065
 Completed, passing-audit and archived fixture certificates are synthetic data. Actual CLI/filesystem/map tests reproduce the safety copy, audit move, active requirements removal and later milestone in owned finite temporary layouts, including the required current claim reconciliation at the archive boundary. They preserve the original dated proof and remove their roots; they do not archive this checkout or activate live requirements.
 
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
+
+## Actual archived control handoff | 2026-10-13T21:24:31Z
+
+The committed safety checkpoint is `85cd5537b5cf42a86655983bc1ba91e1d4085135`. Active requirements were retired only afterward. All three versioned controls now resolve under milestones, and current publication uses exact ARCHIVED_CLAIM. The 21 source inputs and original proof remain unchanged. Final archive saving/tag outcomes derive from actual Git refs and command receipts. No next milestone scope is selected; use `/gsd-new-milestone` for fresh requirements.

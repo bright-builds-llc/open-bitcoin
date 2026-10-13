@@ -18,7 +18,10 @@ consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
 configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
-> Current release: v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03: 17/17 requirements, 8/8 phases and 34/34 plans complete. The audit records 20/20 connected seams, 10/10 scoped flows and three accepted nonblocking advisories. The active v2.5 milestone plans Prune-Aware Compact-Filter Serving (BIP157/158); compact-filter serving is not yet a shipped capability.
+> Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).
+> Archive date: 2026-10-13. Scope: 22 requirements, 10 phases, 90 plans and 220 completed plan tasks. Audit: 31/31 seams and 18/18 flows, with no blocking gaps.
+
+> Previous release: v2.4 Prune-Mode Product Behavior shipped and was archived on 2026-10-03: 17/17 requirements, 8/8 phases and 34/34 plans complete. The audit records 20/20 connected seams, 10/10 scoped flows and three accepted nonblocking advisories.
 > Status: Open Bitcoin v2.2 provides bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members.
 > The v2.2 milestone audit passed at 40/40 requirements, 10/10 phases, 8/8
 > integration seams, and 8/8 end-to-end flows. v2.2 shipped and was archived on 2026-08-22.
@@ -38,7 +41,7 @@ auditable, and modular.
 > 39/39 requirements, 20/20 phases, 13/13 integration links, and 11/11
 > end-to-end flows. v2.1 shipped and was archived on 2026-07-22.
 > General package wire, peer package assembly, arbitrary multi-parent peer assembly, cluster mempool,
-> whole-mempool rebroadcast, BIP37 bloom-filter serving, compact-filter
+> whole-mempool rebroadcast, BIP37 bloom-filter serving, public/default compact-filter
 > serving, public serving or relay defaults, archive-node and production-scale
 > historical serving, public-network CI or release gates, production
 > service/deployment, guaranteed propagation, production full-node readiness,
@@ -50,7 +53,7 @@ Knots-aligned prune on the single active chainstate deletes old block and undo p
 
 The automatic target is a soft logical block/undo retention target: protected and nonactive payloads count in usage while only active candidates may be deleted. It does not guarantee physical disk capacity or immediate reclamation. Wallet eligibility probes and persistence are separate effects. The archived audit preserves the stale-metadata recovery refusal, generic sink no-op default and crash-window support-counter undercount advisories.
 
-CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
+v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
 
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged. See the [archive-safe provenance policy and repository reproduction commands](./docs/parity/v2-5-archive-safe-provenance.md).
 
@@ -234,7 +237,7 @@ Retained filters do not restore deleted bodies or wallet eligibility.
 
 See the [measurement basis, evidence limits and local commands](./docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161)
 and [operator interpretation](./docs/operator/runtime-guide.md#shared-basic-index-inspection-phase-161).
-CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
+v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
 
 The [integrated evidence](docs/parity/v2-5-integrated-filter-proof.md) records one
 normal-maturity history through actual manual/automatic 550 MiB paired deletion,

@@ -23,7 +23,7 @@ payload/key-value bytes include stale branches; payload bytes are a subset, and
 Fjall overhead/physical allocation are excluded. Growth stays outside the soft
 block/undo target and does not restore body/wallet eligibility. See the
 [operator contract and Cargo/Bazel commands](../docs/parity/catalog/basic-compact-filters.md#shared-basic-operator-evidence-phase-161).
-v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.
+v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
 
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged. See the [archive-safe provenance policy and repository reproduction commands](../docs/parity/v2-5-archive-safe-provenance.md).
 
@@ -103,3 +103,7 @@ projections 161 and integrated retained-client proof 162 remain pending and are
 not shipped. Compact maturity-one fixtures and the separate unchanged
 maturity-100 case do not establish full regtest parameter parity, archive-scale
 performance, hardware crash guarantees or production/funds safety.
+
+## Archived milestone controls
+
+The versioned [roadmap](../.planning/milestones/v2.5-ROADMAP.md), [requirements](../.planning/milestones/v2.5-REQUIREMENTS.md) and [audit](../.planning/milestones/v2.5-MILESTONE-AUDIT.md) are authoritative after the committed safety checkpoint and retirement of active requirements. Historical phase folders and source receipts remain in place. The current exact archived claim above records this location boundary. Actual saving/tag outcomes are derived from Git and command receipts.

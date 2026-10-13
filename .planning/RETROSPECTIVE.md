@@ -620,8 +620,8 @@
 
 ## Milestone: v2.5 — Prune-Aware Compact-Filter Serving
 
-**Archive safety checkpoint:** 2026-10-13
-\*\*Phases:\*\*10 | \*\*Plans:\*\*90 | \*\*Completed plan tasks:\*\*220
+**Shipped:** 2026-10-13
+**Phases:** 10 | **Plans:** 90 | **Completed plan tasks:** 220
 
 ### What Was Built
 
@@ -688,6 +688,7 @@
 | v2.2 | 10 | Added bounded local-package admission, same-peer 1P1C assembly, accounted long-lived pressure, durable mempool recovery, initial-broadcast retry, and last-gate D-21 claim guardrails. |
 | v2.3 | 7 | Added disk-backed per-outpoint coins, typed cache-flush policy, single-chainstate manager restart, honest stored-block availability, sanitized durability evidence, and last-gate D-14 claim guardrails. |
 | v2.4 | 8 | Added paired Fjall prune, limited serving, durable locks and operator evidence; production-consumer audit gaps led to shared post-prune wallet eligibility and measured ordinary automatic retention before archival. |
+| v2.5 | 10 | Added explicit BASIC indexing/serving, retained-client proof and source-bound archive controls; whole legacy layout tests distinguish optional filenames from required logical evidence. |
 
 ### Cumulative Quality
 
@@ -708,6 +709,7 @@
 | v2.2 | 40/40 complete | Passed with zero requirement, integration, or flow gaps after Phase 138 closeout | Repo-native `scripts/verify.sh`, Phase 130-138 deterministic checkers, last-gate D-21/D-22 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 | v2.3 | 15/15 complete | Passed with zero requirement, integration, or flow gaps after Phase 145 closeout | Repo-native `scripts/verify.sh`, Phase 139-145 deterministic checkers, last-gate D-14/D-16 claim guardrails, archived requirements and roadmap checks, and 8/8 integration plus 8/8 flow audit checks. |
 | v2.4 | 17/17 complete | Tech-debt audit with zero requirement, integration or flow blockers; three nonblocking advisories accepted | Full default native verification, genuine legal-target ordinary deletion/reopen, lifecycle-valid Phase 152/153 evidence, 26-file clean review, 14 closed security mitigations, no-claim/archive-aware checks and 20/20 seams plus 10/10 scoped flows. |
+| v2.5 | 22/22 complete | Passing source-bound audit, zero blockers; inherited limits and separate debug archival condition preserved | Full native and normal hooks, 31/31 seams and 18/18 flows, genuine prune/reopen/client evidence, lifecycle coverage and complete active/archive/next-active legacy suites. |
 
 ### Top Lessons
 

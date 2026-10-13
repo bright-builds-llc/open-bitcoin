@@ -924,7 +924,7 @@
           "Public wallet rescan keeps genuine creating-body eligibility after pruning: an earlier complete checkpoint survives a later missing-creating-history refusal, while its job state/error truthfully become Failed. Future descriptor metadata serialization is corrected; existing legacy read normalization remains unchanged and is not a migration or repair."
         ],
         "known_gaps": [
-          "v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.",
+          "v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.",
           "BIP37/V0, assumeutxo/dual-chainstate, filter import, wallet acceleration, implicit repair/reindex/download, archive behavior, public defaults/network CI, production service/readiness and funds-safety remain excluded. No stronger v2.4 crash-window guarantee is claimed."
         ]
       },

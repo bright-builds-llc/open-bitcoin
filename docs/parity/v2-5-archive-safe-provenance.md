@@ -1,8 +1,8 @@
 # v2.5 archive-safe parity provenance
 
-v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.
+v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
 
-This policy was introduced2026-10-12; corrected-source readiness is updated2026-10-13. The [original integrated proof](v2-5-integrated-filter-proof.md), its six source hashes and original Phase 162 certificates retain their original delivery boundary. The [original gaps audit](../../.planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-ORIGINAL-MILESTONE-AUDIT.md) and [integration audit](../../.planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-ORIGINAL-INTEGRATION-AUDIT.md) preserve the later archive defect. CFGR-01 has one active closure owner, Phase 163; the other 21 requirements remain Complete.
+This policy was introduced on 2026-10-12; milestone control archival completed on 2026-10-13. The [original integrated proof](v2-5-integrated-filter-proof.md), its six source hashes and original Phase 162 certificates retain their original delivery boundary. The [original gaps audit](../../.planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-ORIGINAL-MILESTONE-AUDIT.md) and [integration audit](../../.planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/163-ORIGINAL-INTEGRATION-AUDIT.md) preserve the later archive defect. Archived CFGR-01 closure belongs uniquely to Phase 163; the other 21 requirements remain Complete.
 
 ## Evidence selection and publication
 
@@ -41,3 +41,7 @@ The [dated Phase 162 UAT](../../.planning/phases/162-real-prune-retention-and-in
 Scope remains BASIC/type 0 on one active Fjall chainstate, explicit/default-off indexing/networking and missing-history refusal. Filters restore neither deleted bodies nor wallet eligibility and add no wallet acceleration. The 550 MiB logical body/undo target remains soft and unattained in the measured pressure scenario; allocated-file samples are points, with no peak or reclamation guarantee. Synthetic-root, caller-selected work and Open Bitcoin's 210000 versus Knots regtest's 150 halving interval exclude whole-chain Knots consensus differential claims.
 
 The inherited v2.4 stale-metadata finish-or-Repair refusal, generic paired-unlink sink default and crash-window support-counter undercount advisories remain unfixed. BIP37/V0, assumeutxo/dual-chainstate, archive-scale serving, public/default networking, public-network CI, implicit repair/import/download, production service/readiness and production-funds safety remain excluded. Provenance archival adds no runtime capability.
+
+## Archived milestone controls
+
+The versioned [roadmap](../../.planning/milestones/v2.5-ROADMAP.md), [requirements](../../.planning/milestones/v2.5-REQUIREMENTS.md) and [audit](../../.planning/milestones/v2.5-MILESTONE-AUDIT.md) are authoritative after the committed safety checkpoint and retirement of active requirements. Historical phase folders and source receipts remain in place. The current exact archived claim above records this location boundary. Actual saving/tag outcomes are derived from Git and command receipts.

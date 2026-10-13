@@ -2,7 +2,7 @@
 
 ## What This Is
 
-Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. Through the shipped v2.4 milestone, the project includes a headless parity baseline, a terminal-first operator surface, opt-in public-mainnet sync and inbound serving, bounded transaction relay, default-off block serving and compact-block relay, the scoped v2.2 package and long-lived mempool surface, and the scoped v2.3 durability surface: disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. v2.4 adds single-chainstate height-window pruning of paired Fjall block/undo keys, ordinary automatic retention, limited serving, earned Pruned labels, durable locks, post-prune wallet eligibility, and sanitized operator evidence. The automatic target is a soft logical payload-retention target, not a physical disk-capacity guarantee. Archive-node or production-scale historical serving, assumeutxo, public/default relay, public-network CI, production service operation, production-funds wallet use, and production full-node readiness remain deferred.
+Open Bitcoin is a Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` where a behavior is in scope. Through the shipped v2.5 milestone, the project includes a headless parity baseline, a terminal-first operator surface, opt-in public-mainnet sync and inbound serving, bounded transaction relay, default-off block serving and compact-block relay, the scoped v2.2 package and long-lived mempool surface, and the scoped v2.3 durability surface: disk-backed per-outpoint coins, typed cache-flush policy, fuller chainstate-manager behavior for the single active chainstate, and honest stored-block availability that serves or reports a stored block only when the payload bytes are present. v2.4 adds single-chainstate height-window pruning of paired Fjall block/undo keys, ordinary automatic retention, limited serving, earned Pruned labels, durable locks, post-prune wallet eligibility, and sanitized operator evidence. v2.5 adds explicitly enabled BASIC/type 0 generation and durable indexing, scheduled catch-up, validated branch replacement, authenticated filter/index RPCs, bounded peer serving and coherent operator evidence across actual paired pruning and reopen. The automatic target is a soft logical payload-retention target, not a physical disk-capacity guarantee. Archive-node or production-scale historical serving, assumeutxo, public/default relay, public-network CI, production service operation, production-funds wallet use, and production full-node readiness remain deferred.
 
 It is for contributors and operators who want a reference-grade node with a cleaner, more type-safe internal architecture, auditable parity, and a strict separation between pure domain logic and effectful adapters.
 
@@ -12,17 +12,18 @@ When a behavior is in scope, Open Bitcoin must behave like the pinned Knots base
 
 ## Current State
 
-Archival safety checkpoint: versioned v2.5 roadmap, requirements and audit records now exist. Active requirements remain authoritative until the normal-hook safety commit succeeds and the original is retired. Final archived claims and release tagging follow that checkpoint.
+Latest completed milestone: [v2.5 Prune-Aware Compact-Filter Serving](milestones/v2.5-ROADMAP.md).
 
-Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged.
+**Status:** Shipped and archived 2026-10-13; 22/22 requirements, 10 phases, 90 plans and 220 completed plan tasks.
 
-CFGR-01 archive-safe requirement closure is complete under Phase 163; v2.5 remains unarchived and unshipped.
+v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
 
-v2.5 archive readiness is established by the renewed passing milestone audit; v2.5 remains unarchived and unshipped.
+The [archived requirements](milestones/v2.5-REQUIREMENTS.md) and [passing audit](milestones/v2.5-MILESTONE-AUDIT.md) preserve scoped delivery and closure ownership. Phase 162 remains original delivery evidence; Phase 163 separately closes CFGR-01's archive-safe handoff. Source checkpoint `8ba1d345efb58e9632af50c1a4623c01db9bbb4f`, digest `14fa9cc585c9cf8d9b2c0ae04d7f92e6411b38fb7d19128359126eee2735f977`, and the actual native/review/security/final receipts remain separately attributable.
 
 Scope remains BASIC/type 0 on one active Fjall chainstate with explicit/default-off indexing and networking, missing-history refusal, and unchanged body/wallet restrictions. The measured 550 MiB logical target remains soft and unattained; physical allocations are point observations. Synthetic-root, caller-selected work and Open Bitcoin 210000 versus Knots regtest 150 halving limits exclude whole-chain consensus differential claims. Inherited v2.4 advisories remain unfixed; BIP37/V0, assumeutxo/dual-chainstate, archive-scale, public-default/network-CI, implicit repair/import/download and production/service/funds claims remain excluded.
 
-Earlier entries below preserve the scope and next-step status at their original verification dates.
+<details>
+<summary>Historical delivery receipts and prior foundation</summary>
 
 ### Historical Phase 161 delivery
 
@@ -54,22 +55,22 @@ The accepted advisories are stale durable metadata causing permitted finish-or-R
 
 Historical phase directories remain tracked because repository verifiers reference selected evidence. The [archived roadmap](milestones/v2.4-ROADMAP.md) and [requirements](milestones/v2.4-REQUIREMENTS.md) preserve the completed scope.
 
-## Current Milestone: v2.5 Prune-Aware Compact-Filter Serving (BIP157/158)
+</details>
 
-**Goal:** Let lightweight clients fetch Knots-compatible basic compact filters from an explicitly enabled node, with durable indexing that remains correct across pruning, restart and reorgs.
+## Next Milestone Goals
 
-**Target features:**
+No next milestone scope is selected. Define goals and fresh requirements through `/gsd-new-milestone`; continue phase numbering at 164. Deferred requirements remain candidates rather than commitments.
 
-- Deterministic BIP158 basic filters, filter hashes and BIP157 filter headers with pinned Knots parity evidence
-- Durable filter indexing, catch-up, restart and reorg handling coordinated with the existing single-chainstate prune owner and locks
-- Explicit, bounded compact-filter P2P serving and truthful service advertisement, with missing-history and index-readiness outcomes
-- Operator index status and sanitized support evidence, plus deterministic generation/persistence/prune/restart/serving proof
+## Latest Completed Milestone: v2.5 Prune-Aware Compact-Filter Serving
 
-Corrected-source functional closure, current activation and renewed audit pass; readiness is published. Readiness-state tests and finalSC1–SC5whole-phase verification nowpass; the original authorized wrapper owns subsequent normal-hook Git saving. Actual archival remains the separate coordinated /gsd-complete-milestone workflow. Preserve earlier phase directories required by repository verifiers. Phases 154–162 remain completed historical delivery; CFGR-01 has one current owner, Phase 163, and is functionally Complete. Filters must be persisted before dependent history can be deleted; missing history cannot silently become a complete index. The three accepted v2.4 advisories remain unfixed; unrelated cleanup is outside this closure.
+**Status:** Shipped and archived 2026-10-13.
 
-FUT-20 compact-filter serving is selected for v2.5. BIP37 bloom serving, assumeutxo/dual chainstate, archive-scale serving, public defaults, public-network CI gates and production/funds claims remain deferred. v2.5's scoped delivery has historical verification evidence; functional archive-gap closure is verified; allfive phaseplans are complete and the milestone remains unshipped.
+**Goal:** Explicit BASIC client service backed by recoverable prune-safe indexing and honest bounded evidence. All 22 requirements are validated. The [milestone record](MILESTONES.md) captures accomplishments, source statistics and retained limits.
 
-## Latest Completed Milestone: v2.4 Prune-Mode Product Behavior
+<details>
+<summary>Previous shipped milestone: v2.4 Prune-Mode Product Behavior</summary>
+
+## Completed Milestone: v2.4 Prune-Mode Product Behavior
 
 **Status:** Shipped and archived on 2026-10-03 after both audit integration gaps closed.
 
@@ -85,6 +86,8 @@ Initialized through `/gsd-new-milestone` after the archived v2.3 closeout; all 1
 - Coins-backed staged wallet replacement with requested/creating-payload eligibility and truthful refusal checkpoints
 - Exact logical payload accounting, ordinary automatic retention, full checkpoint/reopen and receipt-owned cache/undo cleanup
 - RPC, CLI, read-only dashboard and redacted support evidence with pinned parity and no-claim guardrails
+
+</details>
 
 <details>
 <summary>Previous shipped milestone: v2.3 Chainstate Durability and Historical Serving</summary>
@@ -244,15 +247,23 @@ v2.1 does not imply public relay defaults, production service operation, product
 
 - ✓ CFRP-01/02 validated in Phase 159: authenticated retained BASIC lookup and exact initial-sync index summaries; 26/26 formal truths, full native, clean source review and 27/27 security mitigations passed.
 
+- ✓ CFNET-01, CFNET-02, CFNET-03, CFNET-04, CFNET-05 and CFNET-06 validated under Phase 160 — v2.5.
+
+- ✓ CFOP-01 validated under Phase 161 — v2.5.
+
+- ✓ CFPR-02 and CFGR-02 validated under Phase 162 — v2.5.
+
+- ✓ CFGR-01 archive-safe parity closure validated under Phase 163 — v2.5; Phase 162's original delivery remains historical provenance.
+
+All 22 v2.5 requirements are validated with unique archived ownership in [the requirement archive](milestones/v2.5-REQUIREMENTS.md).
+
 ### Active
 
-- [x] CFGR-01: Archive-safe parity provenance and milestone handoff under Phase 163 (AG01/AF01), verified at the functional-closure boundary.
-
-All 22 v2.5 requirements are Complete in [REQUIREMENTS.md](milestones/v2.5-REQUIREMENTS.md), including CFOP-01 under Phase 161, CFPR-02/CFGR-02 under Phase 162 and newly verified functional CFGR-01 closure under Phase 163. All 22 requirements map to exactly one active owner across Phases 154–163. Phase 162's original CFGR-01 completion remains separate historical delivery evidence. Corrected-source native/functional closure and renewed audit pass; readiness is published and finalSC1–SC5verification nowpasses. All v2.4 requirements remain Validated.
+No active milestone requirements. Define fresh requirements through `/gsd-new-milestone`.
 
 ### Out of Scope
 
-The v2.5 boundary selects compact-filter serving while keeping archive-node product modes, assumeutxo and IBD snapshot shortcuts, BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred. The shipped v2.4 prune contract remains the foundation.
+The shipped v2.5 boundary includes compact-filter serving while keeping archive-node product modes, assumeutxo and IBD snapshot shortcuts, BIP37 serving, general package wire, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred. The shipped v2.4 prune contract remains the foundation.
 
 - Faithful Qt GUI parity or porting the upstream GUI code - shipped milestones remain terminal-first and headless.
 - Windows service integration - still deferred until a later milestone.
@@ -270,6 +281,10 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 - Claiming v1.8 as production full-node ready by default - this milestone defines gates and guardrails before such a claim is allowed.
 
 ## Context
+
+- The accepted v2.5 source checkpoint LOC report totals 452,601 tracked first-party lines, including 395,919 code/content lines; production Rust is 140,285 physical / 122,154 code lines. The tracked report refreshes during verification.
+
+- v2.5 source checkpoint `8ba1d345efb58e9632af50c1a4623c01db9bbb4f` provides explicit BASIC indexing/serving, continuous retained-client evidence and source-bound archive-compatible verification. Versioned controls are authoritative; current scope remains headless, bounded and default-off.
 
 - The repository has first-party pure-core domain and codec crates under `packages/`, plus parity catalog artifacts under `docs/parity/`.
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
@@ -333,9 +348,13 @@ The v2.5 boundary selects compact-filter serving while keeping archive-node prod
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery                                                                                                                                            | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified                                                                                                                    |
 | Keep support counters separately persisted and sanitized                               | Counters describe earned deletes without exposing backend paths or lock names                                                                                                                                                                                         | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success                                                                                                           |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata                 | Recovery must not invent blocks, reindex or silently mutate authority                                                                                                                                                                                                 | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated                                                                                                                                        |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving                       | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate                                                                                                          | 22 Complete / corrected21-input source functional closure and actual renewed audit verified; readiness/finalSC1–SC5 verified; all90plans complete; prior34443772 receipts historical                                    |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving                       | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate                                                                                                          | ✓ Good: archived 2026-10-13; 22/22 requirements and separate Phase 163 closure preserved |
 | Refuse missing-history activation and protect index inputs before prune recovery       | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction                                                                                                                                        | Phases 155–157 verified fenced recovery, pre-prune protection, ordinary ownership and explicit activation/catch-up with real faults/reopen                                                                              |
 | Preserve Knots enablement-based filter capability advertisement                        | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up                                                                                                                                                           | Phase 160 verified exact BASIC/per-peer behavior; Phase 161 verified distinct capability, initial-sync, lag and durable-progress evidence                                                                               |
+| Use an independent Knots-derived BASIC oracle | Expected filter bytes and commitments must come from the pinned baseline rather than the implementation under test | ✓ Good: Phase 154 generation evidence and Phase 162 retained-client proof preserve independent expectations |
+| Bind filter history to validated branch identity | Reorg replacement must use validated durable authority and refuse missing history before changing retained index state | ✓ Good: Phase 158 branch replacement and reopen evidence preserve retained filter commitments |
+| Earn prune evidence through actual paired deletion and reopen | Logical projections alone cannot establish durable payload removal, retained-filter availability or client continuity | ✓ Good: Phase 162 exercised genuine pruning, retained RPC/peer reads and reopen while retaining resource and consensus limits |
+| Resolve milestone controls by logical identity across archive layouts | Optional active filenames must not replace source-bound requirements, owner and audit evidence | ✓ Good: Phase 163 and complete four-layout legacy suites validate overlap, safety-index, archive-only and next-active states without relaxing authority checks |
 
 ## Evolution
 
@@ -382,4 +401,6 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-13 corrected-source audit/readiness/finalSC1–SC5verification and all90plans complete; normal-hook source saving remains separate*
+*Last updated: 2026-10-13 after v2.5 milestone archival*
+
+Versioned v2.5 history: [roadmap](milestones/v2.5-ROADMAP.md), [requirements](milestones/v2.5-REQUIREMENTS.md), [audit](milestones/v2.5-MILESTONE-AUDIT.md). Historical phase folders remain required native roots.
