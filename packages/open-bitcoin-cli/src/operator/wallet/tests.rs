@@ -207,7 +207,9 @@ fn managed_wallet_resolution_rejects_unknown_wallet_names() {
     let store_path = managed_wallet_store(&["alpha", "beta"]);
 
     // Act
-    let error = resolve_managed_wallet_name(Some(&store_path), Some("missing"))
+    let store = FjallNodeStore::open(&store_path).expect("raw synthetic registry fixture");
+    let registry = WalletRegistry::load(&store).expect("fixture registry");
+    let error = maybe_resolve_wallet_name_from_registry(&registry, Some("missing"))
         .expect_err("unknown wallet");
 
     // Assert
@@ -217,6 +219,117 @@ fn managed_wallet_resolution_rejects_unknown_wallet_names() {
     );
 
     remove_dir_if_exists(&store_path);
+}
+
+#[test]
+fn chain_compatibility_wallet_name_refuses_without_guessing_or_source_mutation() {
+    use crate::operator::runtime::chain_compatibility::tests::{CHAINS, SHAPES, SourceFixture};
+    for maybe_name in [None, Some("alpha")] {
+        assert!(
+            resolve_managed_wallet_name(None, maybe_name, CHAINS[0])
+                .expect_err("no configured source")
+                .to_string()
+                .contains("requires a configured datadir")
+        );
+    }
+    for shape in SHAPES {
+        // Arrange
+        let fixture = SourceFixture::new(shape);
+        let before = fixture.snapshot();
+        for chain in CHAINS {
+            for maybe_name in [None, Some("alpha")] {
+                // Act
+                let error = resolve_managed_wallet_name(Some(&fixture.source), maybe_name, chain)
+                    .expect_err("no guessed wallet");
+                // Assert
+                let OperatorRuntimeError::CompatibilityRefused { refusal } = error else {
+                    panic!("typed compatibility refusal");
+                };
+                assert_eq!(refusal.selected_chain(), chain);
+                assert_eq!(fixture.snapshot(), before);
+            }
+        }
+    }
+}
+
+#[test]
+fn chain_compatibility_wallet_backup_preserves_source_and_every_destination() {
+    use crate::operator::runtime::chain_compatibility::tests::{CHAINS, SHAPES, SourceFixture};
+    for shape in SHAPES {
+        // Arrange
+        let fixture = SourceFixture::new(shape);
+        fs::write(
+            fixture.root.join("existing.json"),
+            b"original backup sentinel",
+        )
+        .expect("existing backup");
+        let before = fixture.snapshot();
+        for chain in CHAINS {
+            for maybe_name in [None, Some("alpha")] {
+                for destination in [
+                    fixture.root.join("new.json"),
+                    fixture.root.join("existing.json"),
+                    fixture.root.join("absent-parent/new.json"),
+                ] {
+                    for format in [OperatorOutputFormat::Human, OperatorOutputFormat::Json] {
+                        // Act
+                        let error = execute_backup_command(
+                            format,
+                            maybe_name,
+                            &WalletBackupArgs {
+                                destination: destination.clone(),
+                            },
+                            Some(&fixture.source),
+                            &[],
+                            chain,
+                        )
+                        .expect_err("backup refusal");
+                        // Assert
+                        let OperatorRuntimeError::CompatibilityRefused { refusal } = error else {
+                            panic!("typed compatibility refusal");
+                        };
+                        assert_eq!(refusal.selected_chain(), chain);
+                        assert_eq!(fixture.snapshot(), before, "{shape} {chain}");
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn chain_compatibility_wallet_live_send_uses_rpc_without_local_name_lookup() {
+    use crate::operator::OperatorCommand;
+    use crate::operator::runtime::chain_compatibility::tests::{SourceFixture, serve_rpc_response};
+    for maybe_name in [None, Some("alpha")] {
+        // Arrange
+        let fixture = SourceFixture::new("durable");
+        let (resolution, server) = serve_rpc_response(&fixture, 401, "{}");
+        let before = fixture.snapshot();
+        let args = WalletArgs {
+            maybe_wallet_name: maybe_name.map(str::to_owned),
+            command: WalletCommand::Send(sample_send_args()),
+        };
+        let cli = OperatorCli {
+            maybe_config_path: None,
+            maybe_data_dir: Some(fixture.source.clone()),
+            maybe_network: Some(NetworkSelection::Regtest),
+            format: OperatorOutputFormat::Human,
+            no_color: true,
+            command: OperatorCommand::Wallet(args.clone()),
+        };
+        // Act
+        let error = execute_wallet_command(&args, &cli, &resolution, &[], &fixture.source)
+            .expect_err("live authentication failure");
+        // Assert
+        assert!(error.to_string().contains("authentication"), "{error}");
+        let request = server.join().expect("RPC server");
+        let endpoint = maybe_name.map_or("POST / HTTP/1.1".to_owned(), |name| {
+            format!("POST /wallet/{name} HTTP/1.1")
+        });
+        assert!(request.starts_with(&endpoint), "wallet endpoint selection");
+        assert_eq!(fixture.snapshot(), before);
+    }
 }
 
 #[test]

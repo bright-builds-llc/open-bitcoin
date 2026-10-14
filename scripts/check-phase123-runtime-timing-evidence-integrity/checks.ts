@@ -65,14 +65,19 @@ export function verifyProductionActivation(
   const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
   const daemonCalls = rustCallArguments(
     rustFunction(daemon, "fn open_authoritative_network_runtime("),
-    "DurableSyncRuntime::open_with_configured_runtime_activation",
+    "DurableSyncRuntime::open_ordinary_configured",
   );
   const expectedArguments = [
-    "store", "runtime.sync.runtime.clone()", "runtime.relay",
-    "runtime.block_serving", "runtime.inbound.enabled", "basic_filter_mode",
+    "store", "runtime.sync.runtime.clone()", "basic_filter_startup_mode(runtime)",
   ];
   if (daemonCalls.length !== 1 || daemonCalls[0]?.map(normalizeRust).join("|") !== expectedArguments.join("|")) {
     failures.push("P123 daemon sync activation wiring must preserve configured activation arguments");
+  }
+  const fixture = texts.get("packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs") ?? "";
+  const fixtureCalls = rustCallArguments(rustFunction(fixture, "pub(crate) fn fixture_open_authoritative_network_runtime("), "DurableSyncRuntime::open_with_configured_runtime_activation");
+  const fixtureArguments = ["store", "runtime.sync.runtime.clone()", "runtime.relay", "runtime.block_serving", "runtime.inbound.enabled", "basic_filter_startup_mode(runtime)"];
+  if (fixtureCalls.length !== 1 || fixtureCalls[0]?.map(normalizeRust).join("|") !== fixtureArguments.join("|")) {
+    failures.push("P123 explicit fixture activation must preserve configured activation arguments");
   }
   for (const file of [
     "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
@@ -86,7 +91,7 @@ export function verifyProductionActivation(
     );
   }
 
-  const rpcNetwork = texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
+  const rpcNetwork = rustFunction(texts.get("packages/open-bitcoin-rpc/src/context/canonical_chain.rs") ?? "", "pub(super) fn build_context_network(");
   requireOrdered(
     rpcNetwork,
     ["ManagedPeerNetwork::new_with_block_relay_activation(", "config.block_serving"],

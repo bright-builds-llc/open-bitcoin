@@ -87,7 +87,7 @@ pub(super) fn resource_fee_evidence_context() -> (ManagedRpcContext, usize) {
 }
 
 pub(super) fn inbound_context(max_peers: usize, reserved_slots: usize) -> ManagedRpcContext {
-    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         inbound: InboundListenerConfig {
             enabled: true,
@@ -114,7 +114,7 @@ pub(super) fn permission_context_with_limits(
     max_peers: usize,
     reserved_slots: usize,
 ) -> ManagedRpcContext {
-    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         inbound: InboundListenerConfig {
             enabled: true,
@@ -142,7 +142,7 @@ pub(super) fn parsed_permission_class(
 }
 
 pub(super) fn address_boundary_context() -> ManagedRpcContext {
-    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         inbound: InboundListenerConfig {
             enabled: true,

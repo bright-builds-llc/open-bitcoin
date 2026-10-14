@@ -521,7 +521,7 @@ fn durable_direct_rescan_helper_cannot_bypass_eligibility() {
 #[test]
 fn local_direct_rescan_helper_keeps_supplied_snapshot() {
     // Arrange
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig::default());
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig::default());
     let snapshot = ChainstateSnapshot::new(
         vec![ChainPosition::new(BlockHeader::default(), 7, 8, 77)],
         Default::default(),

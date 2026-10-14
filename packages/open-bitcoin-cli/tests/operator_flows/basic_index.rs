@@ -248,7 +248,7 @@ fn assert_consumers(sandbox: &TestSandbox, runtime: &DurableSyncRuntime, label: 
         prune_mode: network.prune_mode().expect("actual prune mode"),
         ..Default::default()
     };
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &config,
         network.clone(),
         Some(runtime.store().clone()),

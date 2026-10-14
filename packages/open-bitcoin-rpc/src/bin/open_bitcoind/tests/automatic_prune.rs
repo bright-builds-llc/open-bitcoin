@@ -4,7 +4,8 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use super::*;
-use crate::{OpenedAuthoritativeRuntime, open_runtime_store};
+use crate::OpenedAuthoritativeRuntime;
+use crate::tests::fixture_runtime::fixture_open_runtime_store as open_runtime_store;
 use open_bitcoin_node::core::chainstate::PruneMode;
 
 #[path = "automatic_prune/fixtures.rs"]
@@ -73,7 +74,7 @@ async fn automatic_prune_offline_keeps_sync_and_listener_workers_disabled() {
     let mut opened = open_authoritative_network_runtime(&runtime, maybe_store.clone())
         .expect("owner")
         .expect_durable();
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime,
         opened.network.clone(),
         maybe_store,
@@ -149,7 +150,7 @@ fn automatic_prune_genuine_ordinary_retention_and_reopen() {
     for p in &truth.active_chain {
         cache_small(&handle, p);
     }
-    let mut rpc = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let mut rpc = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime,
         handle.clone(),
         Some(store.clone()),

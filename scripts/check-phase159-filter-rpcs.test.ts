@@ -8,6 +8,7 @@ import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts"
 import { MODULE_EDGES, meaningfulAssertions } from "./check-phase159-filter-rpcs/evidence.ts";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { historicalFixtureView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 import { PHASE163_DOC, PROVENANCE_CLAIMS } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
@@ -119,7 +120,7 @@ test("current RPC roots admit source-bound implementation without future formal 
   if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
   index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-authenticated-basic-filter-and-index-rpcs").known_gaps = [PHASE162_IMPLEMENTATION];
   sources.set("docs/parity/index.json", JSON.stringify(index));
-  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(historicalFixtureView(sources).get(file)!).digest("hex")}\` |`).join("\n"));
   sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
   // Act / Assert
   expect(checkPhase159FilterRpcs(undefined, sources)).toEqual([]);

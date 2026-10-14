@@ -490,7 +490,7 @@ pub(super) fn wallet_with_descriptors() -> Wallet {
 }
 
 pub(super) fn empty_context() -> ManagedRpcContext {
-    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         wallet: WalletRuntimeConfig {
             coinbase_maturity: 1,

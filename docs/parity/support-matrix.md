@@ -41,6 +41,40 @@ production-funds wallet safety/use, packaging, GUI and hosted dashboards,
 migration apply mode, destructive repair, and automatic support upload also
 remain `deferred` or `unsupported`.
 
+## Current Phase 164 source boundary
+
+The [canonical identity and compatibility surface](v2-6-canonical-chain-identity.md)
+governs current ordinary activation across the older classifications below.
+Mainnet, testnet3 (CLI `testnet`), default Signet and default regtest each have
+exact identity-only, source-derived genesis recognition. **Ordinary history is
+currently refused for all four selectors**, including missing/empty sources,
+pending `canonical_bootstrap`, `exact_work` and `candidate_history`; Signet also
+lacks `signet_challenge_validation`. Focused implementation tests are recorded;
+complete phase verification and requirement closure remain separate gates.
+
+Every existing nonempty unproved store refuses without backend open. Observed
+stored network/root/work are unavailable, not wrong-network findings. Ordinary
+daemon/RPC construction, offline CLI sync controls, managed-wallet name lookup
+and backup refuse; soak enrichment/start exposes bounded compatibility
+unavailability and start writes no ledger/index. Separately authenticated live
+RPC status/index/send/control remains separate and opens no local store.
+
+Earlier public-network, service, serving, prune and filter rows retain their
+historical scoped evidence; they do not authorize current canonical startup,
+bootstrap or positive reopen. Original v2.5 receipt/source identities, bytes,
+hashes, dates and counts retain their synthetic-root, caller-work, maturity and
+halving limits. Named synthetic fixture factories preserve regression proof
+without granting ordinary capability. Preserve/review existing data separately;
+use a separate datadir only after the missing prerequisites are implemented and
+verified. No automatic repair/conversion/reindex, actual Knots daemon
+qualification, whole-chain, full-node, public-default, production-service,
+production-readiness or production-funds claim is added.
+
+Safe owned-temp-datadir examples and exact parsed status/sync flags are in the
+[repo-local Cargo/Bazel UAT](v2-6-canonical-chain-identity.md#repo-local-uat-expected-outcomes).
+They are expected-outcome instructions, not new execution receipts, and activate
+no public networking.
+
 ## Support Terms
 
 The support terms are exactly the Phase 82 terms:
@@ -63,6 +97,11 @@ changes must preserve the Phase 82 vocabulary and link back to
 
 | Environment family | Support term | Evidence basis | Default verification | Opt-in UAT / manual validation | Residual risk | Next gate |
 | --- | --- | --- | --- | --- | --- | --- |
+| mainnet exact identity and ordinary refusal | `preview` | [Phase 164 identity/refusal surface](v2-6-canonical-chain-identity.md), pinned mainnet vectors and focused ordinary-preservation tests. | Focused checks passed; complete phase verification remains separate. | Owned temporary status/sync examples; no public-network activation. | Identity-only; stored identity/work unavailable; all ordinary history refused. | Verified exact work 165, canonical bootstrap/reopen 166 and candidate history 167. |
+| testnet3 exact identity and ordinary refusal (CLI `testnet`) | `preview` | [Phase 164 identity/refusal surface](v2-6-canonical-chain-identity.md), pinned testnet3 vectors and selected-identity diagnostics. | Focused checks passed; complete phase verification remains separate. | Use `--network testnet`; expected diagnostic identity is `testnet3`. | Identity-only; testnet4 excluded; all ordinary history refused. | Verified exact work 165, canonical bootstrap/reopen 166 and candidate history 167. |
+| default Signet exact identity and ordinary refusal | `preview` | [Phase 164 identity/refusal surface](v2-6-canonical-chain-identity.md), pinned default genesis/challenge facts. | Focused checks passed; complete phase verification remains separate. | Owned missing/empty refusal includes `signet_challenge_validation`. | Shared genesis proves no challenge solution; custom Signet excluded; all ordinary history refused. | Bootstrap/work/history plus verified Signet challenge checks. |
+| default regtest exact identity and ordinary refusal | `preview` | [Phase 164 identity/refusal surface](v2-6-canonical-chain-identity.md), pinned exact regtest root and near-miss controls. | Focused checks passed; complete phase verification remains separate. | Owned temporary refusal; synthetic fixtures remain separate. | Easy PoW or synthetic accepted receipts do not grant ordinary history. | Verified work/bootstrap/history 165–167 and actual differential qualification 168. |
+| ordinary canonical history for all four selectors | `deferred` | Identity-only support facts list absent bootstrap, exact work and candidate-history prerequisites; Signet adds challenge validation. | Refusal/preservation is tested; no canonical accepted-history evidence. | Missing/empty and nonempty unproved datadirs refuse before backend open. | No positive canonical reopen or bootstrap; no wrong stored-identity inference. | Later verified Phases 165–168 evidence; no automatic repair/conversion/reindex. |
 | source-built install and repo verification | `supported` | Source build path in [`runtime-guide.md`](../operator/runtime-guide.md), repo-native verifier, pinned Rust/Bun/Bazel context, and Phase 82 boundary docs. | `bash scripts/verify.sh` covers first-party formatting, linting, build, tests, parity breadcrumbs, bounded smoke checks, and Bazel smoke. | Operators may repeat source build and verifier on their platform, but no public-network or service-manager action is required. | Platform-specific toolchain drift can still block a local checkout. | Keep `runtime-guide.md`, `rust-toolchain.toml`, `.bun-version`, and verifier evidence current before changing the term. |
 | repo-local operator command forms through Cargo and Bazel | `supported` | Repo-local command forms in [`runtime-guide.md`](../operator/runtime-guide.md) and AGENTS.md guidance for Cargo and Bazel UAT commands. | `bash scripts/verify.sh` keeps CLI and Bazel smoke paths exercised. | Operators can run documented Cargo and Bazel forms against their selected datadir for issue evidence. | Operator aliases or installed binaries can differ from repo-local forms. | Add concrete command evidence and verifier coverage before changing the command support term. |
 | local deterministic runtime, status, config, RPC, and support-bundle surfaces | `supported` | [`docs/architecture/status-snapshot.md`](../architecture/status-snapshot.md), [`docs/architecture/operator-observability.md`](../architecture/operator-observability.md), [`docs/operator/runtime-guide.md`](../operator/runtime-guide.md), and `bash scripts/verify.sh`. | `bash scripts/verify.sh` covers deterministic local runtime, status, config, RPC, and support-bundle behavior without public-network requirements. | Operators may collect local status and support-bundle evidence for a selected datadir. | Missing local fields must be reported as unavailable rather than inferred as proof. | Promote only with a concrete evidence source, verifier command, residual-risk update, and next gate. |

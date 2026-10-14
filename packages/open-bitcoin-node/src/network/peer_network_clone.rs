@@ -27,6 +27,7 @@ impl<S, V: CoinsView> fmt::Debug for ManagedPeerNetwork<S, V> {
 impl<S: Clone> Clone for ManagedPeerNetwork<S, MemoryCoinsView> {
     fn clone(&self) -> Self {
         Self {
+            admission_scope: self.admission_scope,
             chainstate: self.chainstate.clone(),
             mempool: self.mempool.clone(),
             peer_manager: self.peer_manager.clone(),

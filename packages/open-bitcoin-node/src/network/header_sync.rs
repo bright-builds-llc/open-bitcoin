@@ -14,6 +14,7 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{HeaderEntry, HeaderStore, NetworkError};
 
+/// Contextual fixture validation only; the managed owner checks canonical scope first.
 pub(super) fn validate_header_for_sync(
     header_store: &HeaderStore,
     header: &BlockHeader,

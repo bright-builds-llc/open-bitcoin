@@ -181,7 +181,7 @@ fn fixture(path: &Path) -> (FilterListenerFixture, Vec<Vec<u8>>) {
         ..Default::default()
     };
     let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config_with_network_handle(
+        ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
             &config,
             network,
             Some(runtime.store().clone()),

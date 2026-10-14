@@ -5,7 +5,10 @@
 
 use super::super::*;
 use crate::tests::filter_index::fixtures::{History, next_block, params};
-use crate::{open_authoritative_network_runtime, open_runtime_store};
+use crate::tests::fixture_runtime::{
+    fixture_open_authoritative_network_runtime as open_authoritative_network_runtime,
+    fixture_open_runtime_store as open_runtime_store,
+};
 use open_bitcoin_node::core::chainstate::{
     CoinsView, FlushPolicyTime, IndexInputProtection, IndexPrefix,
 };

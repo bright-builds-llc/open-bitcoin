@@ -36,7 +36,7 @@ pub(super) async fn start_inbound_listener_for_runtime(
     runtime: &RuntimeConfig,
 ) -> InboundDaemonListener {
     let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config(runtime),
+        ManagedRpcContext::from_fixture_runtime_config(runtime),
     ));
     start_inbound_listener_for_runtime_with_context(runtime, context).await
 }

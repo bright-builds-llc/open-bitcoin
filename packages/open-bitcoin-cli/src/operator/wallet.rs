@@ -14,6 +14,7 @@ use std::{
 use open_bitcoin_node::{
     FjallNodeStore, WalletRegistry,
     core::{
+        consensus::CanonicalChain,
         mempool::FeeRate,
         wallet::wallet::{
             ChangePolicy, FeeEstimateMode, FeeEstimateRequest, FeeSelection, SendIntent,
@@ -34,7 +35,10 @@ use super::{
     WalletCommand, WalletEstimateMode, WalletSendArgs,
     config::OperatorConfigResolution,
     detect::DetectedInstallation,
-    runtime::{OperatorCommandOutcome, OperatorExitCode, OperatorRuntimeError},
+    runtime::{
+        OperatorCommandOutcome, OperatorExitCode, OperatorRuntimeError,
+        chain_compatibility::canonical_chain_from_resolution,
+    },
     wallet_support::{
         HttpWalletOperatorRpcClient, WalletOperatorError, WalletOperatorRpcClient,
         script_pubkey_from_address,
@@ -49,6 +53,11 @@ const MULTI_WALLET_SELECTION_MESSAGE: &str =
     "Multiple wallets are loaded. Please pass --wallet <name> to select the managed wallet.";
 const NO_MANAGED_WALLET_MESSAGE: &str = "No managed wallet is available in the configured datadir.";
 
+mod name_resolution;
+#[cfg(test)]
+use name_resolution::maybe_resolve_wallet_name_from_registry;
+use name_resolution::resolve_managed_wallet_name;
+
 pub(crate) fn execute_wallet_command(
     args: &WalletArgs,
     cli: &OperatorCli,
@@ -61,28 +70,33 @@ pub(crate) fn execute_wallet_command(
         .maybe_network
         .map(map_network_selection)
         .unwrap_or(AddressNetwork::Mainnet);
-    let maybe_wallet_name =
-        resolve_managed_wallet_name(maybe_data_dir, args.maybe_wallet_name.as_deref())
-            .map_err(to_invalid_request)?;
-
     match &args.command {
         WalletCommand::Send(send) => {
             let startup = wallet_startup_config(config_resolution, default_data_dir)?;
             execute_send_command(
                 cli.format,
-                maybe_wallet_name.as_deref(),
+                args.maybe_wallet_name.as_deref(),
                 network,
                 send,
                 &HttpWalletOperatorRpcClient::from_config(&startup.rpc)?,
             )
         }
-        WalletCommand::Backup(backup) => execute_backup_command(
-            cli.format,
-            maybe_wallet_name.as_deref(),
-            backup,
-            maybe_data_dir,
-            detections,
-        ),
+        WalletCommand::Backup(backup) => {
+            let chain = canonical_chain_from_resolution(config_resolution)?;
+            let maybe_wallet_name = resolve_managed_wallet_name(
+                maybe_data_dir,
+                args.maybe_wallet_name.as_deref(),
+                chain,
+            )?;
+            execute_backup_command(
+                cli.format,
+                maybe_wallet_name.as_deref(),
+                backup,
+                maybe_data_dir,
+                detections,
+                chain,
+            )
+        }
     }
 }
 
@@ -153,12 +167,15 @@ fn execute_backup_command(
     args: &WalletBackupArgs,
     maybe_data_dir: Option<&Path>,
     detections: &[DetectedInstallation],
+    selected_chain: CanonicalChain,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
-    let wallet_name = maybe_wallet_name.ok_or_else(|| OperatorRuntimeError::InvalidRequest {
-        message: NO_MANAGED_WALLET_MESSAGE.to_string(),
-    })?;
     let data_dir = maybe_data_dir.ok_or_else(|| OperatorRuntimeError::InvalidRequest {
         message: "wallet backup requires a configured datadir".to_string(),
+    })?;
+    let store = FjallNodeStore::open_ordinary(data_dir, selected_chain)
+        .map_err(|refusal| OperatorRuntimeError::CompatibilityRefused { refusal })?;
+    let wallet_name = maybe_wallet_name.ok_or_else(|| OperatorRuntimeError::InvalidRequest {
+        message: NO_MANAGED_WALLET_MESSAGE.to_string(),
     })?;
     ensure_safe_backup_destination(&args.destination, detections).map_err(to_invalid_request)?;
     if args.destination.exists() {
@@ -186,10 +203,6 @@ fn execute_backup_command(
         });
     }
 
-    let store =
-        FjallNodeStore::open(data_dir).map_err(|error| OperatorRuntimeError::InvalidRequest {
-            message: error.to_string(),
-        })?;
     let registry =
         WalletRegistry::load(&store).map_err(|error| OperatorRuntimeError::InvalidRequest {
             message: error.to_string(),
@@ -466,42 +479,6 @@ const fn render_fee_estimate_mode(mode: FeeEstimateMode) -> &'static str {
         FeeEstimateMode::Unset => "unset",
         FeeEstimateMode::Economical => "economical",
         FeeEstimateMode::Conservative => "conservative",
-    }
-}
-
-fn resolve_managed_wallet_name(
-    maybe_data_dir: Option<&Path>,
-    maybe_requested_wallet_name: Option<&str>,
-) -> Result<Option<String>, WalletOperatorError> {
-    let Some(data_dir) = maybe_data_dir else {
-        return Ok(maybe_requested_wallet_name.map(str::to_owned));
-    };
-    let Ok(store) = FjallNodeStore::open(data_dir) else {
-        return Ok(maybe_requested_wallet_name.map(str::to_owned));
-    };
-    let Ok(registry) = WalletRegistry::load(&store) else {
-        return Ok(maybe_requested_wallet_name.map(str::to_owned));
-    };
-
-    if let Some(wallet_name) = maybe_requested_wallet_name {
-        if registry
-            .wallet_names()
-            .iter()
-            .any(|candidate| candidate == wallet_name)
-        {
-            return Ok(Some(wallet_name.to_string()));
-        }
-        return Err(WalletOperatorError::new(
-            "Requested wallet does not exist or is not loaded",
-        ));
-    }
-    if let Some(selected_wallet_name) = registry.selected_wallet_name() {
-        return Ok(Some(selected_wallet_name.to_string()));
-    }
-    match registry.wallet_names() {
-        [] => Ok(None),
-        [wallet_name] => Ok(Some(wallet_name.clone())),
-        _ => Err(WalletOperatorError::new(MULTI_WALLET_SELECTION_MESSAGE)),
     }
 }
 

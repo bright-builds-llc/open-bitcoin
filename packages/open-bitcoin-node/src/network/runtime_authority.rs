@@ -12,7 +12,7 @@ use open_bitcoin_core::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, CoinsView, FlushMode,
         FlushPolicyTime, MemoryCoinsView, PruneMode,
     },
-    consensus::{ConsensusParams, ScriptVerifyFlags},
+    consensus::{CanonicalChain, ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
     primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction, Txid},
 };
@@ -93,10 +93,6 @@ impl<S, V: CoinsView> fmt::Debug for ManagedNetworkHandle<S, V> {
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
-    #[cfg(test)]
-    #[rustfmt::skip]
-    pub(crate) fn basic_configuration_for_test(&self) -> Result<(Option<bool>, bool), ManagedNetworkAuthorityError> { self.read(|network| (network.maybe_configured_basic_indexing(), network.configured_basic_peer_serving())) }
-
     pub(crate) fn new(mut network: ManagedPeerNetwork<S, V>) -> Self {
         network.install_authority_incarnation();
         Self {
@@ -109,9 +105,11 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         }
     }
 
-    /// Wraps an explicitly constructed in-memory network for tests and benchmarks.
-    pub fn from_network_fixture(network: ManagedPeerNetwork<S, V>) -> Self {
-        Self::new(network)
+    /// Reads immutable canonical ownership, with no admission capability.
+    pub fn maybe_canonical_chain(
+        &self,
+    ) -> Result<Option<CanonicalChain>, ManagedNetworkAuthorityError> {
+        self.read(|network| network.maybe_canonical_chain())
     }
 
     fn try_mutate<T>(
@@ -591,7 +589,8 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
 }
 
 impl ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
-    /// Creates a transient production authority when no durable store is configured.
+    /// Creates an unbound transient authority for lower-level fixtures.
+    /// Canonical binding and supported validation are required for ordinary use.
     pub fn transient_runtime(
         magic: NetworkMagic,
         port: u16,

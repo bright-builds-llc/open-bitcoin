@@ -7,6 +7,7 @@ use core::fmt;
 
 use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
+pub mod chain_compatibility;
 pub mod coins_codec;
 pub mod coins_view;
 pub(crate) mod filter_index;

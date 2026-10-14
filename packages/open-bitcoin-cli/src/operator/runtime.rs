@@ -3,6 +3,7 @@
 
 //! Operator runtime contract surface.
 
+pub(crate) mod chain_compatibility;
 mod onboarding;
 mod support;
 use std::{
@@ -112,6 +113,11 @@ impl OperatorCommandOutcome {
 /// Runtime error contract for operator command execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperatorRuntimeError {
+    /// Selected canonical support or source identity is unproved before backend access.
+    CompatibilityRefused {
+        /// Bounded typed facts with no source paths or backend text.
+        refusal: open_bitcoin_node::storage::chain_compatibility::CompatibilityRefusal,
+    },
     /// Request was invalid before command execution.
     InvalidRequest {
         /// Human-readable error message.
@@ -132,6 +138,7 @@ pub enum OperatorRuntimeError {
 impl fmt::Display for OperatorRuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::CompatibilityRefused { refusal } => refusal.fmt(f),
             Self::InvalidRequest { message } => f.write_str(message),
             Self::UnsupportedCommand { command } => {
                 write!(f, "operator command is not supported yet: {command}")
@@ -159,8 +166,20 @@ pub fn execute_operator_cli_with_default_data_dir(
     cli: OperatorCli,
     default_data_dir: PathBuf,
 ) -> OperatorCommandOutcome {
+    let format = cli.format;
     match execute_operator_cli_inner(cli, default_data_dir) {
         Ok(outcome) => outcome,
+        Err(OperatorRuntimeError::CompatibilityRefused { refusal })
+            if format == OperatorOutputFormat::Json =>
+        {
+            OperatorCommandOutcome::failure(format!(
+                "{}\n",
+                serde_json::json!({
+                    "error": "chain_compatibility_refused",
+                    "diagnostic": refusal,
+                })
+            ))
+        }
         Err(error) => OperatorCommandOutcome::failure(error.to_string()),
     }
 }

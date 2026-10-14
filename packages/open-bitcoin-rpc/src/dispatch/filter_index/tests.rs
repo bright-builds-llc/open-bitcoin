@@ -78,7 +78,8 @@ fn phase159_filter_rpc_dispatch_registry_and_node_scope() {
 #[test]
 fn phase159_filter_rpc_dispatch_parameter_precedence_before_disabled() {
     // Arrange
-    let mut context = ManagedRpcContext::from_runtime_config(&crate::RuntimeConfig::default());
+    let mut context =
+        ManagedRpcContext::from_fixture_runtime_config(&crate::RuntimeConfig::default());
     let cases = [
         (json!(["bad", "unknown"]), -8),
         (json!(["00".repeat(32), 3]), -3),

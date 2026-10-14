@@ -296,6 +296,9 @@ mod tests;
 mod phase159_tests {
     use super::*;
     use crate::tests::filter_index::fixtures::{History, next_block, params};
+    use crate::tests::fixture_runtime::{
+        fixture_open_authoritative_network_runtime, fixture_open_runtime_store,
+    };
     use open_bitcoin_node::core::consensus::{ScriptVerifyFlags, block_hash};
     use open_bitcoin_node::{BasicFilterQuery, BasicFilterQueryError, BasicFilterReadFailure};
     use std::{
@@ -311,10 +314,10 @@ mod phase159_tests {
             let history = History::new(2);
             drop(history.seed());
             let config = history.config(Some("-blockfilterindex=1"));
-            let store = crate::open_runtime_store(&config)
+            let store = fixture_open_runtime_store(&config)
                 .expect("store")
                 .expect("durable");
-            let opened = crate::open_authoritative_network_runtime(&config, Some(store.clone()))
+            let opened = fixture_open_authoritative_network_runtime(&config, Some(store.clone()))
                 .expect("owner")
                 .expect_durable();
             let handle = opened.network.clone();

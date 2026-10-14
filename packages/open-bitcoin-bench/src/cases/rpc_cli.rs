@@ -49,7 +49,7 @@ fn run_rpc_cli_case() -> Result<(), BenchError> {
             rpc_failure_reason(error),
         )
     })?;
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     let network_info = dispatch(&mut context, call).map_err(|error| {
         BenchError::case_failed(
             "rpc-cli.parse-normalize-dispatch",

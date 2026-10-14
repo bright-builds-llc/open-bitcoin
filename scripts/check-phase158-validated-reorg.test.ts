@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { historicalFixtureView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { PHASE162, PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, checkPhase162ClaimState, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS, SURFACE, TESTS, checkPhase158ValidatedReorg, maybeBoundary } from "./check-phase158-validated-reorg.ts";
 import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
@@ -27,7 +28,7 @@ function transitionSources(maybeBase?: ReadonlyMap<string, string>): Map<string,
   if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
   index.checklist.surfaces.find((row: { id: string }) => row.id === SURFACE).known_gaps = [PHASE162_IMPLEMENTATION];
   sources.set("docs/parity/index.json", JSON.stringify(index));
-  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(historicalFixtureView(sources).get(file)!).digest("hex")}\` |`).join("\n"));
   sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
   return sources;
 }
@@ -57,7 +58,7 @@ for (const mutation of ["proof prose alone", "removed raw input", "removed paire
     if (mutation === "removed raw input") sources.set(PHASE162_EVIDENCE[0], sources.get(PHASE162_EVIDENCE[0])!.replace("encode_block(block)", "unrelated_filter_result(block)"));
     if (mutation === "removed paired undo") sources.set(PHASE162_EVIDENCE[1], sources.get(PHASE162_EVIDENCE[1])!.replace(".load_undo(hash)", ".load_block(hash)"));
     if (mutation === "removed reopen") sources.set(PHASE162_EVIDENCE[2], sources.get(PHASE162_EVIDENCE[2])!.replace("drop(opened);", "retain(opened);"));
-    if (mutation.startsWith("removed")) sources.set(PHASE162_DOC, sources.get(PHASE162_DOC)!.replace(/\| `([^`]+)` \| `[a-f0-9]{64}` \|/g, (_row, file) => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`));
+    if (mutation.startsWith("removed")) sources.set(PHASE162_DOC, sources.get(PHASE162_DOC)!.replace(/\| `([^`]+)` \| `[a-f0-9]{64}` \|/g, (_row, file) => `| \`${file}\` | \`${createHash("sha256").update(historicalFixtureView(sources).get(file)!).digest("hex")}\` |`));
     if (mutation === "premature activation") sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!.replace("[ ] **CFPR-02**", "[x] **CFPR-02**"));
     if (mutation === "duplicate owner" || mutation === "missing evidence root") {
       const index = JSON.parse(sources.get("docs/parity/index.json")!);
@@ -109,7 +110,7 @@ function formalSources(): Map<string, string> {
   const index = JSON.parse(sources.get("docs/parity/index.json")!.replaceAll(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
   const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
   owner.status = "done";
-  const digest = createHash("sha256").update(PHASE162_EVIDENCE.map(file => `${file}:${createHash("sha256").update(sources.get(file)!).digest("hex")}`).join("\n")).digest("hex");
+  const digest = createHash("sha256").update(PHASE162_EVIDENCE.map(file => `${file}:${createHash("sha256").update(historicalFixtureView(sources).get(file)!).digest("hex")}`).join("\n")).digest("hex");
   for (const [name, status, generator] of [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"], ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]]) {
     const file = PHASE162 + `162-${name}.md`;
     owner.evidence.push(file);

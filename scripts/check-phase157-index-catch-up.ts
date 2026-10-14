@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONTRACTS, CORPUS, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, PRODUCTION_BUDGET, REGISTRATIONS, RPC, SOURCES, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
+import { CONTRACTS, CORPUS, DAEMON_FIXTURE, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, PRODUCTION_BUDGET, REGISTRATIONS, RPC, SOURCES, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
 import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const GUARDS = ["scripts/check-phase157-index-catch-up.ts", "scripts/check-phase157-index-catch-up.test.ts",
@@ -9,6 +9,7 @@ const GUARDS = ["scripts/check-phase157-index-catch-up.ts", "scripts/check-phase
   "scripts/check-phase156-prune-coordination/rust-evidence.ts"];
 const HELPER_RUST = [NODE + "storage/fjall_store/filters/retention.rs"];
 export const CHECK_FILES = [...new Set([...CONTRACTS.map(row => row.file), ...TESTS.map(([file]) => file),
+  RPC + "bin/open_bitcoind/tests.rs",
   ...REGISTRATIONS.map(([file]) => file), ...NEW_RUST, ...HELPER_RUST, ...SOURCES, ...CORPUS, ...GUARDS, DOC, "README.md",
   "docs/parity/index.json", "docs/parity/checklist.md", "docs/parity/source-breadcrumbs.json", "scripts/verify.sh",
   PHASE + "157-UAT.md", PHASE + "157-TURN-MEASUREMENTS.md", ...["07", "08", "09"].map(plan => PHASE + `157-${plan}-SUMMARY.md`)])];
@@ -26,9 +27,13 @@ export function checkPhase157IndexCatchUp(maybeRoot?: string): string[] {
     catch { failures.push(`${file}: cannot read required evidence`); }
   }
   const text = (file: string) => texts.get(file) ?? "";
+  const fixtureOwner = RPC + "bin/open_bitcoind/tests.rs";
+  if (!fixtureRegistration(text(RPC + "bin/open-bitcoind.rs"), "tests", /#\[cfg\(test\)\]\s*#\[path\s*=\s*"open_bitcoind\/tests.rs"\]\s*$/)
+    || !fixtureRegistration(text(fixtureOwner), "fixture_runtime", /#\[path\s*=\s*"tests\/fixture_runtime.rs"\]\s*pub\(crate\)\s*$/)) failures.push("T-157-30/D-03: exact cfg-test fixture owner required");
   for (const row of CONTRACTS) {
-    const maybeBody = maybeFunction(text(row.file), row.symbol, true);
-    if (!maybeBody || !hasOrderedCode(maybeBody.body, row.anchors)) failures.push(`${row.threat}/${row.decision}: ordinary boundary ${row.file}:${row.symbol}`);
+    if (row.maybeFixture && (row.file !== DAEMON_FIXTURE || !["fixture_open_runtime_store", "fixture_open_authoritative_network_runtime"].includes(row.symbol))) failures.push("T-157-30/D-03: fixture qualification belongs only to the two named cfg-test helpers");
+    const maybeBody = maybeFunction(text(row.file), row.symbol, !row.maybeFixture);
+    if (!maybeBody || !hasOrderedCode(maybeBody.body, row.anchors)) failures.push(`${row.threat}/${row.decision}: ${row.maybeFixture ? "explicit fixture" : "ordinary"} boundary ${row.file}:${row.symbol}`);
     for (const denied of row.maybeForbidden ?? []) if (maybeBody && compact(maybeBody.body).includes(compact(denied))) {
       const category = denied.endsWith("?") ? "early shutdown error" : "hidden full scan";
       failures.push(`T-157-31/${row.decision}: ${category} ${row.file}:${row.symbol}`);
@@ -106,6 +111,17 @@ function checkGuardedPreflight(text: (file: string) => string, failures: string[
   }
 }
 
+function fixtureRegistration(source: string, symbol: string, attributes: RegExp): boolean {
+  const code = rustCode(source);
+  const declarations = [...code.matchAll(new RegExp(`\\bmod\\s+${symbol}\\s*;`, "g"))];
+  if (declarations.length !== 1) return false;
+  const start = declarations[0].index;
+  const depth = [...code.slice(0, start)].reduce((value, char) => value + Number(char === "{") - Number(char === "}"), 0);
+  const maybeAttributes = code.slice(0, start).match(/(?:#\s*\[[^\]]*\]\s*)+(?:pub(?:\([^)]*\))?\s*)?$/);
+  if (!maybeAttributes) return false;
+  return depth === 0 && new RegExp(`^(?:${attributes.source})`).test(source.slice(maybeAttributes.index, start));
+}
+
 function checkDefaults(text: (file: string) => string, failures: string[]): void {
   const source = text(PRODUCTION_BUDGET);
   const maybeBudget = maybeFunction(source, "production_budget", true);
@@ -162,9 +178,12 @@ function checkParity(text: (file: string) => string, root: string, failures: str
       const owners = index.checklist.surfaces.filter(row => row.requirements.includes(requirement));
       if (owners.length !== 1 || owners[0].id !== SURFACE) failures.push(`T-157-29: unique requirement owner missing ${requirement}`);
     }
-    for (const file of [...new Set([...CONTRACTS.map(row => row.file), ...TESTS.map(([file]) => file), DOC, PHASE + "157-TURN-MEASUREMENTS.md", PHASE + "157-UAT.md", ...GUARDS.slice(0, 4)])]) {
+    for (const file of [...new Set([...CONTRACTS.filter(row => !row.maybeFixture).map(row => row.file), ...TESTS.map(([file]) => file), DOC, PHASE + "157-TURN-MEASUREMENTS.md", PHASE + "157-UAT.md", ...GUARDS.slice(0, 4)])]) {
       if (!row.evidence.includes(file)) failures.push(`T-157-29: parity evidence missing ${file}`);
     }
+    // Current cfg-test wiring is regression evidence, never renewed ordinary parity qualification.
+    const breadcrumbs = JSON.parse(text("docs/parity/source-breadcrumbs.json"));
+    if (!breadcrumbs.groups.some((group: { files: string[] }) => group.files.includes(DAEMON_FIXTURE))) failures.push("T-157-29: current explicit fixture source breadcrumb required");
     for (const file of SOURCES) if (!row.upstream.sources.includes(file)) failures.push(`T-157-29: pinned source missing ${file}`);
     for (const file of CORPUS) if (!row.upstream.tests.includes(file)) failures.push(`T-157-29: pinned corpus missing ${file}`);
     if (!row.known_gaps.some(gap => gap.includes("remain deferred"))) failures.push("T-157-29: explicit deferred scope missing");

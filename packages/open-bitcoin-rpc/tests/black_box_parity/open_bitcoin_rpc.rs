@@ -24,7 +24,7 @@ async fn same_black_box_suite_targets_open_bitcoin_rpc() {
         .await
         .expect("listener should bind");
     let address = listener.local_addr().expect("local address");
-    let context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     let state = build_http_state(
         RpcAuthConfig::user_password(RPC_USERNAME, RPC_PASSWORD),
         context,

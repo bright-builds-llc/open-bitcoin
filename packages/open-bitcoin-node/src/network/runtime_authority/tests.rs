@@ -27,6 +27,20 @@ use crate::{FjallChainstateStore, ManagedPeerNetwork, MemoryChainstateStore};
 
 use super::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
+impl<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>
+    super::ManagedNetworkHandle<S, V>
+{
+    pub(crate) fn basic_configuration_for_test(
+        &self,
+    ) -> Result<(Option<bool>, bool), super::ManagedNetworkAuthorityError> {
+        self.read(|network| {
+            (
+                network.maybe_configured_basic_indexing(),
+                network.configured_basic_peer_serving(),
+            )
+        })
+    }
+}
 fn test_handle() -> ManagedNetworkHandle {
     let network = ManagedPeerNetwork::new(
         MemoryChainstateStore::default(),

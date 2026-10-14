@@ -173,8 +173,8 @@ fn startup_store_applies_manual_only_prune_mode() {
     };
 
     // Act
-    let context =
-        ManagedRpcContext::from_runtime_config_with_store(&config, None).expect("startup context");
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_store(&config, None)
+        .expect("startup context");
 
     // Assert
     assert_eq!(
@@ -189,8 +189,8 @@ fn startup_store_default_stays_disabled() {
     let config = RuntimeConfig::default();
 
     // Act
-    let context =
-        ManagedRpcContext::from_runtime_config_with_store(&config, None).expect("startup context");
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_store(&config, None)
+        .expect("startup context");
 
     // Assert
     assert_eq!(
@@ -208,7 +208,7 @@ fn startup_network_handle_applies_manual_only_prune_mode() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &config,
         fresh_network_handle(),
         None,
@@ -229,8 +229,8 @@ fn later_set_prune_mode_overrides_startup_mode() {
         prune_mode: PruneMode::ManualOnly,
         ..RuntimeConfig::default()
     };
-    let mut context =
-        ManagedRpcContext::from_runtime_config_with_store(&config, None).expect("startup context");
+    let mut context = ManagedRpcContext::from_fixture_runtime_config_with_store(&config, None)
+        .expect("startup context");
 
     // Act
     context

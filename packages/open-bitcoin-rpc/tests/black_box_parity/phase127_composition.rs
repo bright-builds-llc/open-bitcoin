@@ -50,7 +50,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         .persist_durable_sync_state(preexisting_sync_state)
         .expect("phase 127 startup sync metadata should persist");
     let shared_handle = runtime.network_handle();
-    let pre_sync_context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let pre_sync_context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime_config,
         shared_handle,
         Some(store.clone()),
@@ -123,7 +123,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     )
     .expect("phase 127 runtime should recover without cache hydration");
     let restarted_handle = restarted_runtime.network_handle();
-    let mut restarted_context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let mut restarted_context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime_config,
         restarted_handle.clone(),
         Some(restarted_store),

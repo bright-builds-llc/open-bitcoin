@@ -4,6 +4,71 @@
 use super::*;
 
 #[test]
+fn chain_compatibility_soak_enrichment_is_unavailable_and_preserves_source() {
+    use crate::operator::runtime::chain_compatibility::tests::{
+        CHAINS, NETWORKS, SHAPES, SourceFixture,
+    };
+    use crate::operator::{
+        config::OperatorConfigResolution,
+        status::{
+            StatusCollectorInput, StatusDetectionEvidence, StatusRenderMode, StatusRequest,
+            StatusWalletRpcAccess, collect_status_snapshot,
+        },
+    };
+    use open_bitcoin_node::FieldAvailability;
+    for shape in SHAPES {
+        // Arrange
+        let fixture = SourceFixture::new(shape);
+        let before = fixture.snapshot();
+        for (network, chain) in NETWORKS.into_iter().zip(CHAINS) {
+            let resolution = OperatorConfigResolution {
+                maybe_data_dir: Some(fixture.source.clone()),
+                maybe_network: Some(network),
+                ..OperatorConfigResolution::default()
+            };
+            let input = StatusCollectorInput {
+                request: StatusRequest {
+                    include_live_rpc: false,
+                    render_mode: StatusRenderMode::Json,
+                    maybe_config_path: None,
+                    maybe_data_dir: None,
+                    maybe_network: None,
+                    no_color: true,
+                },
+                config_resolution: OperatorConfigResolution::default(),
+                detection_evidence: StatusDetectionEvidence {
+                    detected_installations: Vec::new(),
+                    service_candidates: Vec::new(),
+                },
+                maybe_live_rpc: None,
+                maybe_service_manager: None,
+                wallet_rpc_access: StatusWalletRpcAccess::Root,
+            };
+            let mut snapshot = collect_status_snapshot(&input, None);
+            snapshot.sync.network = FieldAvailability::available("regtest".to_owned());
+            let sync_before = snapshot.sync.clone();
+            let peers_before = snapshot.peers.clone();
+            // Act
+            super::super::runtime::enrich_soak_resource_bounds_from_store(
+                &mut snapshot,
+                &resolution,
+            );
+            // Assert
+            let FieldAvailability::Unavailable { reason } = &snapshot.resource_bounds else {
+                panic!("unproved resource bounds unavailable");
+            };
+            assert!(reason.starts_with("chain_compatibility_unavailable:"));
+            assert!(reason.contains(&format!("selected_network={chain}")));
+            assert!(reason.contains("observed_work=unavailable"));
+            assert!(reason.len() <= 1024);
+            assert_eq!(snapshot.sync, sync_before);
+            assert_eq!(snapshot.peers, peers_before);
+            assert_eq!(fixture.snapshot(), before, "{shape} {chain}");
+        }
+    }
+}
+
+#[test]
 fn soak_recovery_evidence_report_markdown_renders_recovery_labels() {
     // Arrange
     let temp = TestDirectory::new("recovery-report-markdown");

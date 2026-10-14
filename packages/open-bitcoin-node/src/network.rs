@@ -22,6 +22,8 @@ mod admission_bridge;
 mod announcement_transport;
 mod block_relay_evidence;
 mod block_serving;
+mod canonical_admission;
+pub use canonical_admission::CanonicalAdmissionError;
 mod chainstate_durability_evidence;
 mod checkpoint;
 mod compact_receive_candidates;
@@ -125,6 +127,7 @@ fn allocate_authority_epoch() -> lifecycle_projection::AuthorityEpoch {
 }
 
 pub struct ManagedPeerNetwork<S, V: CoinsView = MemoryCoinsView> {
+    admission_scope: canonical_admission::AdmissionScope,
     chainstate: ManagedChainstate<S, V>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
@@ -193,9 +196,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
 
     #[rustfmt::skip]
     pub fn record_resource_governance_event(&mut self, event: InboundResourceEvent) { self.resource_governance_info.record_event(event); }
-
-    #[rustfmt::skip]
-    pub fn seed_header_store(&mut self, header_store: HeaderStore) { self.peer_manager.seed_header_store(header_store); }
 
     pub fn header_entries(&self) -> Vec<HeaderEntry> {
         self.peer_manager
@@ -381,6 +381,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        self.guard_message_admission(&message)?;
         let observed_block_relay_message = matches!(
             &message,
             WireNetworkMessage::SendCompact(_)
@@ -420,6 +421,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        self.guard_message_admission(&message)?;
         let actions = match message {
             WireNetworkMessage::Headers(headers_message) => {
                 self.handle_headers_message(peer_id, headers_message, timestamp, consensus_params)?

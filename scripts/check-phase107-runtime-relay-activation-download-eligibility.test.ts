@@ -17,6 +17,7 @@ const TARGET_FILES = [
   "docs/parity/checklist.md",
   "docs/parity/index.json",
   "packages/open-bitcoin-rpc/src/context/network.rs",
+  "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
   "packages/open-bitcoin-node/src/network/relay_serving.rs",
   "packages/open-bitcoin-node/src/network/relay_fanout.rs",
   "packages/open-bitcoin-network/src/peer/relay_download.rs",
@@ -66,7 +67,7 @@ test("fails_when_runtime_context_drops_relay_activation_config", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
-      replaceInFile(files, "packages/open-bitcoin-rpc/src/context/network.rs", "config.relay,", "RelayActivationConfig::default(),");
+      replaceInFile(files, "packages/open-bitcoin-rpc/src/context/canonical_chain.rs", "config.relay,", "RelayActivationConfig::default(),");
     },
   });
 
@@ -81,7 +82,7 @@ test("fails_when_runtime_context_drops_inbound_serving_config", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
-      replaceInFile(files, "packages/open-bitcoin-rpc/src/context/network.rs", "config.inbound.enabled,", "false,");
+      replaceInFile(files, "packages/open-bitcoin-rpc/src/context/canonical_chain.rs", "config.inbound.enabled,", "false,");
     },
   });
 
@@ -98,7 +99,7 @@ test("fails_when_runtime_context_uses_default_managed_network_constructor", () =
     maybeMutateFiles(files) {
       replaceInFile(
         files,
-        "packages/open-bitcoin-rpc/src/context/network.rs",
+        "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
         "ManagedPeerNetwork::new_with_block_relay_activation(",
         "ManagedPeerNetwork::new(",
       );

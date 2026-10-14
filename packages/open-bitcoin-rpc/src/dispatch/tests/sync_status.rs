@@ -180,11 +180,15 @@ fn context_with_runtime_metadata(test_name: &str, metadata: RuntimeMetadata) -> 
     store
         .save_runtime_metadata(&metadata, PersistMode::Sync)
         .expect("save runtime metadata");
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
-        chain: AddressNetwork::Mainnet,
-        maybe_data_dir: Some(path),
-        ..RuntimeConfig::default()
-    });
+    let mut context = ManagedRpcContext::from_fixture_runtime_config_with_store(
+        &RuntimeConfig {
+            chain: AddressNetwork::Mainnet,
+            maybe_data_dir: Some(path),
+            ..RuntimeConfig::default()
+        },
+        Some(store.clone()),
+    )
+    .expect("context shares existing fixture store");
     context.set_daemon_sync_control(DaemonSyncControl::store_backed(store, PersistMode::Sync));
     context
 }
@@ -329,7 +333,7 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
         .expect("runtime metadata");
     assert!(reopened_metadata.maybe_sync_state.is_some());
     drop(reopened);
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Mainnet,
         maybe_data_dir: Some(path),
         ..RuntimeConfig::default()

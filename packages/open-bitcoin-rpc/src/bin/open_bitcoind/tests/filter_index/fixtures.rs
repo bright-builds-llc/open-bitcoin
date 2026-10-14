@@ -6,6 +6,9 @@
 //! Continuous consensus-staged history with historical and same-block spends.
 
 use super::*;
+use crate::tests::fixture_runtime::{
+    fixture_open_authoritative_network_runtime, fixture_open_runtime_store,
+};
 use open_bitcoin_node::core::{
     chainstate::{Chainstate, ChainstateSnapshot},
     consensus::{
@@ -317,13 +320,13 @@ impl DaemonFixture {
             config.prune_mode,
             open_bitcoin_node::core::chainstate::PruneMode::ManualOnly
         );
-        let store = crate::open_runtime_store(&config)
+        let store = fixture_open_runtime_store(&config)
             .expect("production store selection")
             .expect("configured durable store");
-        let opened = crate::open_authoritative_network_runtime(&config, Some(store.clone()))
+        let opened = fixture_open_authoritative_network_runtime(&config, Some(store.clone()))
             .expect("actual production configured open")
             .expect_durable();
-        let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+        let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
             &config,
             opened.network.clone(),
             Some(store.clone()),

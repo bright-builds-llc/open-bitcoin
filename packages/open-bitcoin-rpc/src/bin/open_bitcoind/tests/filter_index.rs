@@ -4,7 +4,8 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use super::*;
-use crate::{OpenedAuthoritativeRuntime, open_runtime_store};
+use crate::OpenedAuthoritativeRuntime;
+use crate::tests::fixture_runtime::fixture_open_runtime_store as open_runtime_store;
 use open_bitcoin_node::core::chainstate::{PruneMode, filter_index::lifecycle::IndexLifecycle};
 
 #[path = "filter_index/fixtures.rs"]
@@ -348,7 +349,7 @@ async fn phase157_daemon_basic_keeps_actual_sync_and_inbound_workers_off() {
     let mut opened = open_authoritative_network_runtime(&config, Some(store.clone()))
         .expect("open")
         .expect_durable();
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &config,
         opened.network.clone(),
         Some(store),

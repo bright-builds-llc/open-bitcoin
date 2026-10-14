@@ -82,6 +82,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         consensus_params: ConsensusParams,
         serving_mode: InventoryServingMode<impl Fn(BlockHash) -> bool>,
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
+        self.guard_message_admission(&message)?;
         let observed_block_relay_message = matches!(
             &message,
             WireNetworkMessage::SendCompact(_)
@@ -335,6 +336,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     }
                 }
                 PeerAction::ReceivedBlock(block) => {
+                    self.guard_body(&block)?;
                     // Clear matching volatile compact in-flight across all peers before
                     // connect so a connect failure cannot leave stale multi-peer slots (D-08).
                     let connected_hash = block_hash(&block.header);

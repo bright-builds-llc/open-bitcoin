@@ -19,6 +19,7 @@
 pub mod block;
 pub mod block_filter;
 pub mod chain_proof;
+pub mod chain_spec;
 pub mod classify;
 pub mod compact_block_build;
 pub mod context;
@@ -38,6 +39,10 @@ pub use block_filter::{
     filter_hash_display_hex, filter_header_display_hex,
 };
 pub use chain_proof::{ProofTimeError, ProofWork, block_proof, proof_equivalent_time};
+pub use chain_spec::{
+    CanonicalChain, ChainSpec, MissingValidationPrerequisite, RootIdentityError,
+    UnsupportedValidationScope, ValidationEvidenceClass, ValidationScope,
+};
 pub use classify::{
     ScriptPubKeyType, classify_script_pubkey, extract_redeem_script, extract_script_sig_pushes,
     is_push_only,

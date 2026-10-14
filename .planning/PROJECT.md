@@ -61,7 +61,7 @@ Historical phase directories remain tracked because repository verifiers referen
 
 **Goal:** Start from an empty datadir, validate canonical Bitcoin histories with network-correct rules and cumulative proof of work, and demonstrate matching results against pinned Bitcoin Knots `29.3.knots20260210`.
 
-**Status:** Goals, 30 requirements and the eight-phase roadmap were approved by the user on 2026-10-13. Research is complete; Phase 164 is ready for discussion and planning. No implementation phase has started.
+**Status:** Goals, 30 requirements and the eight-phase roadmap were approved by the user on 2026-10-13. Phase 164 completed 13 plans and passed 27/27 goal verification after full native acceptance, clean source review and 30 closed security controls. CBOT-01, CBOT-04 and CVLD-05 are closed. Phase 165 has not started; ordinary histories remain refused for all four selectors pending the remaining prerequisites.
 
 **Target features:**
 
@@ -279,7 +279,7 @@ All 22 v2.5 requirements are validated with unique archived ownership in [the re
 - [ ] Differential forks, rejection and durable recovery.
 - [ ] Canonical-history pruning, retained BASIC serving and auditable parity closure.
 
-These user-approved v2.6 goals are decomposed into 30 approved atomic requirements in `.planning/REQUIREMENTS.md`, with exactly-once phase ownership in `.planning/ROADMAP.md`. All requirements remain Pending; no implementation is claimed complete.
+These user-approved v2.6 goals are decomposed into 30 approved atomic requirements in `.planning/REQUIREMENTS.md`, with exactly-once phase ownership in `.planning/ROADMAP.md`. Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 for identity/refusal scope; the remaining 27 requirements stay Pending. Ordinary history remains refused pending the later prerequisites.
 
 ### Out of Scope
 

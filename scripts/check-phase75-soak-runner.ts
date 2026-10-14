@@ -1,7 +1,9 @@
 #!/usr/bin/env bun
 
 import path from "node:path";
-import { readSourceCorpus } from "./source-corpus";
+import { createHash } from "node:crypto";
+import { readSourceCorpus, readSourceRoot } from "./source-corpus";
+import { compact, maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const REPO_ROOT_OVERRIDE_ENV = "OPEN_BITCOIN_PHASE75_REPO_ROOT";
 const maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV];
@@ -12,6 +14,15 @@ const SOAK_REQUIREMENTS = ["SOAK-01", "SOAK-02", "SOAK-03", "SOAK-04"] as const;
 const PHASE75_CHECKER_COMMAND = "bun run scripts/check-phase75-soak-runner.ts";
 const PHASE75_TEST_COMMAND = "bun test scripts/check-phase75-soak-runner.test.ts";
 const SURFACE_ID = "phase75-multi-day-soak-runner-evidence-ledger";
+const CURRENT_SOAK_TEST_FILE = "packages/open-bitcoin-cli/tests/operator_binary/status_sync_soak.rs";
+// Current ordinary start refuses before writes; explicit synthetic ledger setup proves reports only.
+const CURRENT_SOAK_CONTRACTS: readonly (readonly [string, string, boolean])[] = [
+  ["seed_synthetic_completed_soak_ledger","c03772d1f29a7cbac314de9a57d1c0d34cb2db505fccad9028879417062cccec",false],
+  ["open_bitcoin_soak_start_refuses_unproved_bounds_before_ledger_write","01a703cc31b81598a15818bb9e903f6ffbb341a105fff87dbf5f3efcad7a2a0e",true],
+  ["open_bitcoin_soak_stop_rejects_terminal_verdict","a3bef7f2bce03855f35fad6a50a40556bebd3eebafdadb0badcb8042ac51e922",true],
+  ["open_bitcoin_soak_report_is_projection_without_ledger_append","6da5c258fddbf5ef2a23e93ddf9129bc24d9f44588234eac4c12a54803797763",true],
+  ["open_bitcoin_soak_resume_refuses_clean_completion","35aeaa4d86089d13fe6cd825d65c0c276478cfb1a0a48d58e5c1eb687c9a05cb",true],
+];
 const FORBIDDEN_VERIFY_STRINGS = [
   "run-live-mainnet-smoke",
   "--manual-peer",
@@ -140,7 +151,7 @@ const SYNTHETIC_COVERAGE_ANCHORS = {
     "1_777_300_120",
   ],
   "packages/open-bitcoin-cli/tests/operator_binary.rs": [
-    "open_bitcoin_soak_start_writes_durable_ledger_and_reports",
+    "open_bitcoin_soak_start_refuses_unproved_bounds_before_ledger_write",
     "open_bitcoin_soak_stop_rejects_terminal_verdict",
     "open_bitcoin_soak_report_is_projection_without_ledger_append",
     "open_bitcoin_soak_resume_refuses_clean_completion",
@@ -304,6 +315,20 @@ function verifySoakSourceAnchors(failures: string[]): void {
 
 function verifySyntheticCoverageAnchors(failures: string[]): void {
   requireAnchors(SYNTHETIC_COVERAGE_ANCHORS, failures);
+  verifyCurrentSoakEvidence(failures);
+}
+
+function verifyCurrentSoakEvidence(failures: string[]): void {
+  let source: string;
+  try { source = readSourceRoot(REPO_ROOT, CURRENT_SOAK_TEST_FILE); }
+  catch { failures.push(`missing required file: ${CURRENT_SOAK_TEST_FILE}`); return; }
+  for (const [symbol, expectedHash, isTest] of CURRENT_SOAK_CONTRACTS) {
+    const maybeBody = maybeFunction(source, symbol);
+    if (!maybeBody || createHash("sha256").update(source.slice(maybeBody.start, maybeBody.end)).digest("hex") !== expectedHash
+      || isTest && (!compact(maybeBody.attributes).includes("#[test]") || /#\[\s*(?:ignore|cfg)\b/.test(maybeBody.attributes))) {
+      failures.push(`${CURRENT_SOAK_TEST_FILE}:${symbol}: reviewed ordinary-refusal/explicit-fixture evidence required`);
+    }
+  }
 }
 
 function verifySupportProjectionAnchors(failures: string[]): void {

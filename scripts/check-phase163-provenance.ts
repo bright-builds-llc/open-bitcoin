@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { historicalToolingView, HISTORICAL_TOOLING_FILES } from "./check-phase164-canonical-identity/historical-tooling.ts";
 
 export const PHASE163 = ".planning/phases/163-archive-safe-parity-provenance-and-milestone-handoff/";
 export const PHASE163_DOC = "docs/parity/v2-5-archive-safe-provenance.md";
@@ -19,7 +20,7 @@ export const PROVENANCE_DIGEST_FILES = [...PROVENANCE_CODE, "scripts/check-phase
   "scripts/check-phase163-provenance/native.test.ts", "scripts/check-phase163-provenance/fixtures.ts", "scripts/check-phase163-provenance/fixture-controls.ts",
   "scripts/check-phase162-integrated-filter-proof/contracts.ts", "scripts/verify.sh",
   PHASE163 + "163-CONTEXT.md", PHASE163 + "163-GAP-SCOPE.md", ...ORIGINAL_AUDITS];
-export const PROVENANCE_FILES = [...new Set([...V25_REQUIREMENTS, ...V25_ROADMAPS, ...V25_AUDITS,
+export const PROVENANCE_FILES = [...new Set([...V25_REQUIREMENTS, ...V25_ROADMAPS, ...V25_AUDITS, ...HISTORICAL_TOOLING_FILES,
   ...PROVENANCE_DIGEST_FILES, PROOF, PHASE163_DOC, PHASE162 + "162-CONTEXT.md",
   ...["VERIFICATION", "NATIVE-EVIDENCE", "REVIEW", "SECURITY"].map(name => PHASE162 + `162-${name}.md`),
   ...["VERIFICATION", "NATIVE-EVIDENCE", "REVIEW", "SECURITY", "CLOSURE-VERIFICATION", "04-SUMMARY"].map(name => PHASE163 + `163-${name}.md`)])];
@@ -58,7 +59,8 @@ function canonical(value: unknown): string {
 
 /** Bind closure receipts to fixed implementation inputs, never mutable reports or audits. */
 export function provenanceDigest(sources: ReadonlyMap<string, string>): string {
-  return hash(PROVENANCE_DIGEST_FILES.map(file => `${file}:${hash(sources.get(file) ?? "")}`).join("\n"));
+  const historical = historicalToolingView(sources);
+  return hash(PROVENANCE_DIGEST_FILES.map(file => `${file}:${hash(historical.get(file) ?? "")}`).join("\n"));
 }
 
 /** Parse only the first frontmatter; reject ambiguous keys before YAML can overwrite them. */

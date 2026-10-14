@@ -29,16 +29,18 @@ use std::{
 };
 
 use open_bitcoin_network::{InboundPreflightDiagnostic, InboundPreflightReason};
-use open_bitcoin_node::core::chainstate::{CoinsView, MemoryCoinsView};
+use open_bitcoin_node::core::chainstate::CoinsView;
 use open_bitcoin_node::{
     ChainstateStore, DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore,
-    ManagedNetworkHandle, MemoryChainstateStore, PeerIdentityAuthority, SyncLifecycleState,
-    SyncRunSummary, SyncRuntimeError, SyncStopReason, TcpPeerTransport,
-    status::inbound_status_unavailable, sync::AnnouncementOutboxRegistry,
+    ManagedNetworkHandle, PeerIdentityAuthority, SyncLifecycleState, SyncRunSummary,
+    SyncRuntimeError, SyncStopReason, TcpPeerTransport, status::inbound_status_unavailable,
+    sync::AnnouncementOutboxRegistry,
 };
+#[cfg(test)]
+use open_bitcoin_node::{MemoryChainstateStore, core::chainstate::MemoryCoinsView};
 use open_bitcoin_rpc::{
     DaemonSyncControl, ManagedRpcContext,
-    config::{RuntimeConfig, load_runtime_config},
+    config::{RuntimeConfig, load_runtime_config, selected_canonical_chain},
     http,
     inbound_listener::{InboundListenerState, InboundListenerWorker},
 };
@@ -99,6 +101,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )
             .await
         }
+        #[cfg(test)]
         OpenedAuthoritativeRuntime::Transient(authoritative_runtime) => {
             serve_authoritative_runtime(
                 runtime,
@@ -215,6 +218,7 @@ struct AuthoritativeNetworkRuntime<S, V: CoinsView> {
 
 enum OpenedAuthoritativeRuntime {
     Durable(AuthoritativeNetworkRuntime<FjallChainstateStore, FjallCoinsView>),
+    #[cfg(test)]
     Transient(AuthoritativeNetworkRuntime<MemoryChainstateStore, MemoryCoinsView>),
 }
 
@@ -306,71 +310,51 @@ fn open_authoritative_network_runtime(
     runtime
         .validate_peer_block_filters()
         .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    if let Some(store) = maybe_store {
-        let basic_filter_mode = if runtime.block_filter_index.is_enabled() {
-            open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled
-        } else {
-            open_bitcoin_node::chainstate::BasicFilterStartupMode::Disabled
-        };
-        let sync_runtime = DurableSyncRuntime::open_with_configured_runtime_activation(
-            store,
-            runtime.sync.runtime.clone(),
-            runtime.relay,
-            runtime.block_serving,
-            runtime.inbound.enabled,
-            basic_filter_mode,
-        )
-        .map_err(|error| {
-            DaemonSyncPreflightError::new(format!(
-                "open-bitcoind failed to construct authoritative network runtime: {error}"
-            ))
-        })?;
-        let mut network = sync_runtime.network_handle();
-        network
-            .set_prune_network(runtime.sync.runtime.network)
-            .map_err(|error| {
-                DaemonSyncPreflightError::new(format!("failed to configure prune network: {error}"))
-            })?;
-        network
-            .set_prune_mode(runtime.prune_mode)
-            .map_err(|error| {
-                DaemonSyncPreflightError::new(format!("failed to configure prune mode: {error}"))
-            })?;
-        network
-            .configure_basic_peer_serving(runtime.peer_block_filters)
-            .map_err(|error| {
-                DaemonSyncPreflightError::new(format!(
-                    "failed to configure BASIC peer serving: {error}"
-                ))
-            })?;
-        return Ok(OpenedAuthoritativeRuntime::Durable(
-            AuthoritativeNetworkRuntime {
-                network,
-                peer_identity_authority: sync_runtime.peer_identity_authority(),
-                announcement_outboxes: sync_runtime.announcement_outboxes(),
-                maybe_sync_runtime: Some(sync_runtime),
-            },
+    let chain = selected_canonical_chain(runtime)
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    chain
+        .spec()
+        .require_ordinary_history()
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    let Some(store) = maybe_store else {
+        return Err(DaemonSyncPreflightError::new(
+            "canonical_bootstrap: ordinary daemon authority requires a proved durable store",
         ));
-    }
+    };
+    let sync_runtime = DurableSyncRuntime::open_ordinary_configured(
+        store,
+        runtime.sync.runtime.clone(),
+        basic_filter_startup_mode(runtime),
+    )
+    .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    assemble_durable_runtime(runtime, sync_runtime)
+}
 
+fn basic_filter_startup_mode(
+    runtime: &RuntimeConfig,
+) -> open_bitcoin_node::chainstate::BasicFilterStartupMode {
     if runtime.block_filter_index.is_enabled() {
-        return Err(DaemonSyncPreflightError::new(
-            "open-bitcoind BASIC indexing requires an existing datadir and retained validated genesis history; set -datadir=<path> before enabling -blockfilterindex.",
-        ));
+        open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled
+    } else {
+        open_bitcoin_node::chainstate::BasicFilterStartupMode::Disabled
     }
-    if runtime.sync.is_enabled() {
-        return Err(DaemonSyncPreflightError::new(
-            "open-bitcoind mainnet sync activation requires an existing datadir; set -datadir=<path> or create the default Bitcoin datadir before enabling -openbitcoinsync=mainnet-ibd.",
-        ));
-    }
+}
 
-    let network = ManagedNetworkHandle::transient_runtime(
-        runtime.sync.runtime.network.magic(),
-        runtime.sync.runtime.network.default_port(),
-        runtime.relay,
-        runtime.block_serving,
-        runtime.inbound.enabled,
-    );
+fn assemble_durable_runtime(
+    runtime: &RuntimeConfig,
+    sync_runtime: DurableSyncRuntime,
+) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
+    let mut network = sync_runtime.network_handle();
+    network
+        .set_prune_network(runtime.sync.runtime.network)
+        .map_err(|error| {
+            DaemonSyncPreflightError::new(format!("failed to configure prune network: {error}"))
+        })?;
+    network
+        .set_prune_mode(runtime.prune_mode)
+        .map_err(|error| {
+            DaemonSyncPreflightError::new(format!("failed to configure prune mode: {error}"))
+        })?;
     network
         .configure_basic_peer_serving(runtime.peer_block_filters)
         .map_err(|error| {
@@ -378,12 +362,12 @@ fn open_authoritative_network_runtime(
                 "failed to configure BASIC peer serving: {error}"
             ))
         })?;
-    Ok(OpenedAuthoritativeRuntime::Transient(
+    Ok(OpenedAuthoritativeRuntime::Durable(
         AuthoritativeNetworkRuntime {
             network,
-            peer_identity_authority: PeerIdentityAuthority::default(),
-            announcement_outboxes: AnnouncementOutboxRegistry::default(),
-            maybe_sync_runtime: None,
+            peer_identity_authority: sync_runtime.peer_identity_authority(),
+            announcement_outboxes: sync_runtime.announcement_outboxes(),
+            maybe_sync_runtime: Some(sync_runtime),
         },
     ))
 }
@@ -394,33 +378,27 @@ fn open_runtime_store(
     runtime
         .validate_peer_block_filters()
         .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    let has_valid_datadir = runtime
-        .maybe_data_dir
-        .as_ref()
-        .is_some_and(|dir| dir.is_dir());
-    if runtime.block_filter_index.is_enabled() && !has_valid_datadir {
-        return Err(DaemonSyncPreflightError::new(
-            "open-bitcoind BASIC indexing requires an existing datadir and retained validated genesis history; set -datadir=<path> before enabling -blockfilterindex.",
-        ));
-    }
+    let chain = selected_canonical_chain(runtime)
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
     let has_durable_trigger = runtime.sync.is_enabled()
         || runtime.inbound.enabled
         || runtime.prune_mode != open_bitcoin_node::core::chainstate::PruneMode::Disabled
-        || (runtime.block_filter_index.is_explicit() && has_valid_datadir);
+        || runtime.block_filter_index.is_explicit();
     if !has_durable_trigger {
         return Ok(None);
     }
 
     let Some(data_dir) = runtime.maybe_data_dir.as_ref() else {
-        return Ok(None);
+        return Err(DaemonSyncPreflightError::new(
+            open_bitcoin_node::storage::chain_compatibility::CompatibilityRefusal::from_observation(
+                chain, open_bitcoin_node::storage::chain_compatibility::DatadirObservation::Missing,
+            ).to_string(),
+        ));
     };
 
-    FjallNodeStore::open(data_dir).map(Some).map_err(|error| {
-        DaemonSyncPreflightError::new(format!(
-            "open-bitcoind runtime failed to open durable store at \"{}\": {error}",
-            data_dir.display()
-        ))
-    })
+    FjallNodeStore::open_ordinary(data_dir, chain)
+        .map(Some)
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))
 }
 
 fn start_daemon_sync_worker<S, V>(

@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 
 import path from "node:path";
+import { createHash } from "node:crypto";
+import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
@@ -14,6 +16,7 @@ const PHASE97_CHECKER_COMMAND =
   "bun run scripts/check-phase97-inbound-metrics.ts";
 const CLOSED_FLOW =
   "InboundPeerServingStatus aggregate counters -> fixed MetricSample values -> FjallNodeStore::append_metric_samples -> dashboard/status/support retained history";
+const ORDINARY_CONTEXT_CONTRACTS = [["from_runtime_config_with_store","7b7aff37b15816b509d2c8fd34460af5c2288d8f9d08f46649a483ba746c7e69"],["try_from_runtime_config_with_store","a14b7d44cf57b8c5c01546b65fedf0f5fc24c4bda7e6e11bf12083f8bd054ed6"]];
 
 const INBOUND_METRIC_VARIANTS = [
   "InboundAdmittedPeerCount",
@@ -53,6 +56,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/config/loader/open_bitcoin_runtime.rs",
   "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
+  "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
@@ -237,7 +241,7 @@ function verifyRuntimeAppendAndProvider(
   }
   for (const needle of [
     "open_bitcoind_inbound_metrics_worker_persists_sync_disabled_inbound_samples",
-    "ManagedRpcContext::from_runtime_config_with_store",
+    "ManagedRpcContext::from_fixture_runtime_config_with_store",
     "wait_for_inbound_metric_sample",
     "MetricKind::InboundAdmittedPeerCount",
   ]) {
@@ -249,9 +253,14 @@ function verifyRpcAndCliStatusSurface(
   texts: Map<TargetFile, string>,
   failures: string[],
 ): void {
+  const canonical = texts.get("packages/open-bitcoin-rpc/src/context/canonical_chain.rs") ?? "";
+  for (const [symbol, expected] of ORDINARY_CONTEXT_CONTRACTS) {
+    const maybeBody = maybeFunction(canonical, symbol, true);
+    if (!maybeBody || createHash("sha256").update(canonical.slice(maybeBody.start, maybeBody.end)).digest("hex") !== expected) failures.push(`P97 ordinary context guard/delegation required: ${symbol}`);
+  }
   const context = `${texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? ""}\n${
     texts.get("packages/open-bitcoin-rpc/src/context/inbound_status.rs") ?? ""
-  }`;
+  }\n${texts.get("packages/open-bitcoin-rpc/src/context/canonical_chain.rs") ?? ""}`;
   const method = texts.get("packages/open-bitcoin-rpc/src/method/node.rs") ?? "";
   const dispatch = texts.get("packages/open-bitcoin-rpc/src/dispatch/node.rs") ?? "";
   const cliStatus = texts.get("packages/open-bitcoin-cli/src/operator/status.rs") ?? "";

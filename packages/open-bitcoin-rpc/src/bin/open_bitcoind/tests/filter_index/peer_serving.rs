@@ -4,6 +4,10 @@
 // - packages/bitcoin-knots/src/net_processing.cpp
 
 use super::*;
+use crate::tests::fixture_runtime::{
+    fixture_open_authoritative_network_runtime as open_authoritative_network_runtime,
+    fixture_open_runtime_store as open_runtime_store,
+};
 use open_bitcoin_network::{ServiceFlags, VersionMessage, WireNetworkMessage};
 
 #[path = "peer_serving/evidence.rs"]
@@ -38,7 +42,7 @@ fn phase160_startup_general_reaches_real_authority_before_index_catchup() {
         .expect("configured durable startup")
         .expect_durable();
     let network = opened.network.clone();
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &config,
         network.clone(),
         Some(store.clone()),
@@ -216,7 +220,7 @@ async fn phase160_startup_all_only_actual_loopback_version_without_backend() {
     else {
         panic!("listener without datadir must retain transient authority");
     };
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &config,
         opened.network.clone(),
         None,

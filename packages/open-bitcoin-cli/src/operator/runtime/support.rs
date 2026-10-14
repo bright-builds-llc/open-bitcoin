@@ -17,11 +17,13 @@ use open_bitcoin_rpc::{
 use serde_json::{Value, json};
 use ureq::Agent;
 
+use super::chain_compatibility::canonical_chain_from_resolution;
 use super::{
     OperatorCommandOutcome, OperatorOutputFormat, OperatorRuntimeError, SyncArgs, SyncCommand,
 };
 use crate::operator::config::OperatorConfigResolution;
 use crate::startup::CliRpcConfig;
+use open_bitcoin_node::core::consensus::CanonicalChain;
 
 pub(super) fn execute_sync_command(
     args: &SyncArgs,
@@ -38,7 +40,12 @@ pub(super) fn execute_sync_command(
         return Ok(outcome);
     }
 
-    execute_offline_sync_command(data_dir, args, format)
+    execute_offline_sync_command(
+        data_dir,
+        canonical_chain_from_resolution(config_resolution)?,
+        args,
+        format,
+    )
 }
 
 fn maybe_execute_live_sync_command(
@@ -61,15 +68,14 @@ fn maybe_execute_live_sync_command(
     }
 }
 
-fn execute_offline_sync_command(
+pub(super) fn execute_offline_sync_command(
     data_dir: &Path,
+    selected_chain: CanonicalChain,
     args: &SyncArgs,
     format: OperatorOutputFormat,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
-    let store =
-        FjallNodeStore::open(data_dir).map_err(|error| OperatorRuntimeError::InvalidRequest {
-            message: error.to_string(),
-        })?;
+    let store = FjallNodeStore::open_ordinary(data_dir, selected_chain)
+        .map_err(|refusal| OperatorRuntimeError::CompatibilityRefused { refusal })?;
     let mut metadata = store
         .load_runtime_metadata()
         .map_err(|error| OperatorRuntimeError::InvalidRequest {
@@ -440,15 +446,9 @@ fn path_to_string(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use std::{
-        fs,
-        path::PathBuf,
-        sync::atomic::{AtomicU64, Ordering},
-    };
-
     use open_bitcoin_node::{
-        DurableSyncState, FieldAvailability, FjallNodeStore, PeerStatus, RuntimeMetadata,
-        SyncLifecycleState, SyncStatus,
+        DurableSyncState, FieldAvailability, PeerStatus, RuntimeMetadata, SyncLifecycleState,
+        SyncStatus,
         status::{
             BestKnownTipStatus, PeerCounts, RECONCILE_PROGRESS_UNAVAILABLE_REASON,
             StayCurrentStatus, SyncAttemptCounters, SyncConfiguredTargets, SyncProgress,
@@ -458,18 +458,8 @@ mod tests {
     };
 
     use super::{
-        OperatorOutputFormat, SyncArgs, SyncCommand, execute_offline_sync_command,
-        render_sync_status, sync_pressure_text,
+        SyncCommand, reject_offline_mutating_sync_conflict, render_sync_status, sync_pressure_text,
     };
-
-    static NEXT_TEST_DIRECTORY_ID: AtomicU64 = AtomicU64::new(0);
-
-    fn temp_store_path(label: &str) -> PathBuf {
-        std::env::temp_dir().join(format!(
-            "open-bitcoin-cli-sync-control-{label}-{}",
-            NEXT_TEST_DIRECTORY_ID.fetch_add(1, Ordering::Relaxed)
-        ))
-    }
 
     #[rustfmt::skip]
     fn runtime_metadata_with_lifecycle(
@@ -523,53 +513,27 @@ mod tests {
     }
 
     #[test]
-    fn offline_pause_refuses_unclean_active_daemon_sync_state() {
+    fn offline_mutation_policy_refuses_unclean_active_daemon_sync_state() {
         // Arrange
-        let path = temp_store_path("active-conflict");
-        let _ = fs::remove_dir_all(&path);
-        let store = FjallNodeStore::open(&path).expect("store");
-        store
-            .save_runtime_metadata(
-                &runtime_metadata_with_lifecycle(SyncLifecycleState::Active, false),
-                open_bitcoin_node::PersistMode::Sync,
-            )
-            .expect("save metadata");
-        drop(store);
-        let args = SyncArgs {
-            command: SyncCommand::Pause,
-        };
-
+        let metadata = runtime_metadata_with_lifecycle(SyncLifecycleState::Active, false);
         // Act
-        let error = execute_offline_sync_command(&path, &args, OperatorOutputFormat::Human)
+        let error = reject_offline_mutating_sync_conflict(&SyncCommand::Pause, &metadata)
             .expect_err("offline pause should fail");
 
         // Assert
         assert!(error.to_string().contains("second-writer store conflict"));
-        let _ = fs::remove_dir_all(&path);
     }
 
     #[test]
-    fn offline_pause_allows_missing_sync_state() {
+    fn offline_mutation_policy_allows_missing_sync_state_after_compatibility() {
         // Arrange
-        let path = temp_store_path("missing-state");
-        let _ = fs::remove_dir_all(&path);
-        let args = SyncArgs {
-            command: SyncCommand::Pause,
-        };
+        let metadata = RuntimeMetadata::default();
 
         // Act
-        let outcome = execute_offline_sync_command(&path, &args, OperatorOutputFormat::Human)
-            .expect("offline pause");
-        let store = FjallNodeStore::open(&path).expect("store");
-        let metadata = store
-            .load_runtime_metadata()
-            .expect("load metadata")
-            .expect("metadata");
+        let result = reject_offline_mutating_sync_conflict(&SyncCommand::Pause, &metadata);
 
         // Assert
-        assert!(outcome.stdout.text.contains("Daemon sync paused"));
-        assert!(metadata.sync_control.paused);
-        let _ = fs::remove_dir_all(&path);
+        assert!(result.is_ok());
     }
 
     #[test]

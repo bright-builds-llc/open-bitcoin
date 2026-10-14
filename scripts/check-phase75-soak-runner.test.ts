@@ -2,10 +2,14 @@
 
 import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const CHECKER_PATH = path.join(import.meta.dir, "check-phase75-soak-runner.ts");
+const CURRENT_SOAK_TEST_FILE = "packages/open-bitcoin-cli/tests/operator_binary/status_sync_soak.rs";
+const CURRENT_SOAK_TEST_SOURCE = readFileSync(path.resolve(import.meta.dir, "..", CURRENT_SOAK_TEST_FILE), "utf8");
 const PHASE_DIR = ".planning/phases/75-multi-day-soak-runner-and-evidence-ledger";
 const PLAN_FILES = [
   `${PHASE_DIR}/75-01-PLAN.md`,
@@ -157,7 +161,7 @@ const SOURCE_ANCHORS: Record<string, readonly string[]> = {
     "phase75_synthetic_soak_resource_stop_uses_shared_status_evidence",
   ],
   "packages/open-bitcoin-cli/tests/operator_binary.rs": [
-    "open_bitcoin_soak_start_writes_durable_ledger_and_reports",
+    "open_bitcoin_soak_start_refuses_unproved_bounds_before_ledger_write",
     "open_bitcoin_soak_stop_rejects_terminal_verdict",
     "open_bitcoin_soak_report_is_projection_without_ledger_append",
     "open_bitcoin_soak_resume_refuses_clean_completion",
@@ -368,6 +372,57 @@ test("fails when verify.sh does not run the Phase 75 checker after the v1.6 chec
   expect(result.exitCode).not.toBe(0);
 });
 
+const ORDINARY_REFUSAL = "open_bitcoin_soak_start_refuses_unproved_bounds_before_ledger_write";
+for (const [symbol, before, after] of [
+  [ORDINARY_REFUSAL, "assert_failure(&output);", "assert_success(&output);"],
+  [ORDINARY_REFUSAL, 'assert!(!data_dir.join("soak").exists());', 'assert!(data_dir.join("soak").exists());'],
+  [ORDINARY_REFUSAL, "stderr.len() <= 1024", "stderr.len() <= 10240"],
+  [ORDINARY_REFUSAL, "source_manifest(&data_dir)", "unrelated_manifest(&data_dir)"],
+  [ORDINARY_REFUSAL, "chain_compatibility_unavailable: existing_state_unproved", "wrong_network"],
+  ["seed_synthetic_completed_soak_ledger", "fs::write(run_dir.join", "discard(run_dir.join"],
+  ["seed_synthetic_completed_soak_ledger", "synthetic fixture bounds", "qualified ordinary bounds"],
+  ["open_bitcoin_soak_report_is_projection_without_ledger_append", "seed_synthetic_completed_soak_ledger(&sandbox, &data_dir);", "ordinary_start(&sandbox, &data_dir);"],
+  ["open_bitcoin_soak_report_is_projection_without_ledger_append", "assert_eq!(before_count, after_count);", "assert!(true);"],
+  ["open_bitcoin_soak_stop_rejects_terminal_verdict", "already has a terminal verdict", "new ordinary startup"],
+  ["open_bitcoin_soak_resume_refuses_clean_completion", "seed_synthetic_completed_soak_ledger(&sandbox, &data_dir);", "ordinary_start(&sandbox, &data_dir);"],
+] as const) {
+  test(`actual current ordinary/fixture mutation refuses: ${symbol}: ${before}`, async () => {
+    // Arrange
+    const root = await createFixture({});
+    const maybeBody = maybeFunction(CURRENT_SOAK_TEST_SOURCE, symbol);
+    expect(maybeBody).toBeDefined();
+    const body = CURRENT_SOAK_TEST_SOURCE.slice(maybeBody!.start, maybeBody!.end);
+    expect(body.includes(before)).toBe(true);
+    const changed = CURRENT_SOAK_TEST_SOURCE.slice(0, maybeBody!.start) + body.replace(before, after)
+      + CURRENT_SOAK_TEST_SOURCE.slice(maybeBody!.end);
+    await writeFile(path.join(root, CURRENT_SOAK_TEST_FILE), changed);
+    // Act
+    const result = runChecker(root);
+    // Assert
+    expect(result.exitCode).not.toBe(0);
+  });
+}
+
+test("a missing exact current source cannot borrow the real checkout", async () => {
+  // Arrange
+  const root = await createFixture({});
+  await rm(path.join(root, CURRENT_SOAK_TEST_FILE));
+  // Act
+  const result = runChecker(root);
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
+test("a copied refusal spelling cannot replace the actual ordinary test", async () => {
+  // Arrange
+  const root = await createFixture({});
+  await writeFile(path.join(root, CURRENT_SOAK_TEST_FILE), CURRENT_SOAK_TEST_SOURCE.replace(`fn ${ORDINARY_REFUSAL}(`, `fn disabled_${ORDINARY_REFUSAL}(`) + `\n// ${ORDINARY_REFUSAL}\n`);
+  // Act
+  const result = runChecker(root);
+  // Assert
+  expect(result.exitCode).not.toBe(0);
+});
+
 async function createFixture(options: {
   maybeDocOmission?: { file: string; needle: string };
   maybePlanTexts?: readonly string[];
@@ -402,6 +457,7 @@ function buildFixtureFiles(options: {
     files[file] = filteredAnchors(anchors, file, options.maybeDocOmission).join("\n");
   }
   files["scripts/verify.sh"] = options.maybeVerifyScript ?? DEFAULT_VERIFY_SCRIPT;
+  files[CURRENT_SOAK_TEST_FILE] = CURRENT_SOAK_TEST_SOURCE;
 
   return files;
 }

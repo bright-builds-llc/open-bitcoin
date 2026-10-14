@@ -13,6 +13,42 @@ import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, ORIGINAL_AUDITS
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
 const real = loadSources();
+import { historicalFixtureView, fixtureSourceAttribution, MIGRATED_FIXTURE } from "./check-phase162-integrated-filter-proof.ts";
+const historicalSha = (sources: Map<string, string>, file: string) => sha(historicalFixtureView(sources).get(file)!);
+
+test("explicit fixture wiring retains unequal current and original historical digests", () => {
+  // Arrange
+  const current = real.get(MIGRATED_FIXTURE)!;
+  // Act
+  const attribution = fixtureSourceAttribution(current);
+  // Assert
+  expect(attribution.evidenceClass).toBe("current-explicit-fixture");
+  expect(attribution.currentHash).toBe(sha(current));
+  expect(attribution.currentHash).not.toBe(attribution.historicalHash);
+  expect(attribution.historicalHash).toBe("faa009380301d6e6acbf032fd814f5cf9e31ddcbdb629787477fe5fbc5d62615");
+  expect(fixtureSourceAttribution(attribution.historicalSource).evidenceClass).toBe("original-historical");
+  expect(real.get(MIGRATED_FIXTURE)).toBe(current);
+});
+
+for (const edit of [
+  (source: string) => source + "\n",
+  (source: string) => source.replace("Self::seed_count(1001)", "Self::seed_count(1000)"),
+  (source: string) => source.replace("use crate::tests::fixture_runtime::{", "use crate::tests::fixture_runtime::{ /* unknown */"),
+  (source: string) => source.replace("from_fixture_runtime_config_with_network_handle", "from_runtime_config_with_network_handle"),
+  (source: string) => source.replace("as open_runtime_store,", "as unchecked_runtime_store,"),
+]) {
+  test(`unreviewed current fixture mutation cannot earn historical mapping: ${edit}`, () => {
+    // Arrange
+    const original = real.get(MIGRATED_FIXTURE)!;
+    const changed = edit(original);
+    expect(changed).not.toBe(original);
+    // Act
+    const attribution = fixtureSourceAttribution(changed);
+    // Assert
+    expect(attribution.evidenceClass).toBe("unproved");
+    expect(attribution.historicalSource).toBe(changed);
+  });
+}
 const sha = (source: string) => createHash("sha256").update(source).digest("hex");
 const reports = [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"],
   ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]];
@@ -108,7 +144,7 @@ function implementation(complete = false): Map<string, string> {
   const context = sources.get(PHASE162 + "162-CONTEXT.md")!;
   const lifecycle = context.match(/^phase_lifecycle_id: (.+)$/m)![1];
   const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-  const table = PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${sha(sources.get(file)!)}\` |`).join("\n");
+  const table = PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${historicalSha(sources, file)}\` |`).join("\n");
   const sentence = complete ? PHASE162_COMPLETE : PHASE162_IMPLEMENTATION;
   sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: ${lifecycle}\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: ${timestamp}\n---\n${sentence}\n${table}\n`);
   inventory(sources, owner => {
@@ -121,7 +157,7 @@ function implementation(complete = false): Map<string, string> {
   sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!
     .replace(/^- \[ \] \*\*(CFPR-02|CFGR-01|CFGR-02)\*\*:/gm, "- [x] **$1**:")
     .replace(/(\|\s*(?:CFPR-02|CFGR-01|CFGR-02)\s*\|\s*Phase 162\s*\|)\s*Pending\s*\|/g, "$1 Complete |"));
-  const digest = sha(PHASE162_EVIDENCE.map(file => `${file}:${sha(sources.get(file)!)}`).join("\n"));
+  const digest = sha(PHASE162_EVIDENCE.map(file => `${file}:${historicalSha(sources, file)}`).join("\n"));
   for (const [name, status, generator] of reports) {
     const file = PHASE162 + `162-${name}.md`;
     sources.set(file, `---\nstatus: ${status}\ngenerated_by: ${generator}\nphase_lifecycle_id: ${lifecycle}\nlifecycle_mode: yolo\ngenerated_at: ${timestamp}\nsource_digest: ${digest}\nlifecycle_validated: true\nthreats_open: 0\n---\n\`\`\`bash\nbash scripts/verify.sh\n\`\`\`\n`);
@@ -136,11 +172,11 @@ function rebindProof(sources: Map<string, string>): void {
     const lines = proof.split("\n");
     const index = lines.findIndex(line => line.includes(`\`${file}\``));
     expect(index).toBeGreaterThanOrEqual(0);
-    lines[index] = `| \`${file}\` | \`${sha(sources.get(file)!)}\` |`;
+    lines[index] = `| \`${file}\` | \`${historicalSha(sources, file)}\` |`;
     proof = lines.join("\n");
   }
   sources.set(PHASE162_DOC, proof);
-  const digest = sha(PHASE162_EVIDENCE.map(file => `${file}:${sha(sources.get(file)!)}`).join("\n"));
+  const digest = sha(PHASE162_EVIDENCE.map(file => `${file}:${historicalSha(sources, file)}`).join("\n"));
   for (const [name] of reports) {
     const file = PHASE162 + `162-${name}.md`;
     if (sources.has(file)) sources.set(file, sources.get(file)!.replace(/^source_digest: .+$/m, `source_digest: ${digest}`));
@@ -473,7 +509,7 @@ for (const state of [false, true]) {
   });
   for (const file of PHASE162_EVIDENCE) test(`independent proof hash binding ${file} complete=${state}`, () => {
     const sources = implementation(state);
-    mutate(sources, PHASE162_DOC, source => source.replace(sha(sources.get(file)!), "0".repeat(64)));
+    mutate(sources, PHASE162_DOC, source => source.replace(historicalSha(sources, file), "0".repeat(64)));
     expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes("source hash"))).toBe(true);
   });
 }

@@ -35,6 +35,7 @@ use crate::inbound_listener::InboundListenerEvidence;
 use crate::{RpcFailure, RpcFailureKind};
 
 mod address_boundary;
+mod canonical_chain;
 mod filter_index;
 mod inbound_status;
 mod inbound_wire;
@@ -48,6 +49,7 @@ mod resource_governance;
 mod tests;
 mod wallet_state;
 
+pub use canonical_chain::CanonicalContextError;
 pub use inbound_status::AuthoritativeOperatorSnapshot;
 pub(crate) use inbound_wire::{
     DurableBlockSource, EncodedWireResponse, InboundWireResponsePlan, InboundWireStep,

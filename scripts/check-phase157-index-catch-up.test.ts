@@ -7,6 +7,50 @@ import { CHECK_FILES, checkPhase157IndexCatchUp } from "./check-phase157-index-c
 import { CONTRACTS, CORPUS, DOC, DOCUMENTED_LIMITS, EVIDENCE, NEW_RUST, NODE, PHASE, PRODUCTION_BUDGET, REGISTRATIONS, SURFACE, TESTS } from "./check-phase157-index-catch-up/contracts.ts";
 import { maybeFunction, ordinaryRust } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
+test("commented cfg-test owner cannot qualify explicit fixture startup", () => {
+  // Arrange
+  const root = fixture();
+  const file = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
+  edit(root, file, source => source.replace('#[cfg(test)]\n#[path = "open_bitcoind/tests.rs"]\nmod tests;', '#[cfg(any())]\n#[path = "open_bitcoind/tests.rs"]\nmod tests;\n/* #[cfg(test)]\n#[path = "open_bitcoind/tests.rs"]\nmod tests; */'));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures).toContain("T-157-30/D-03: exact cfg-test fixture owner required");
+});
+
+test("commented fixture module cannot replace executable registration", () => {
+  // Arrange
+  const root = fixture();
+  const file = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs";
+  edit(root, file, source => source.replace('pub(crate) mod fixture_runtime;', '/* pub(crate) mod fixture_runtime; */'));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures).toContain("T-157-30/D-03: exact cfg-test fixture owner required");
+});
+
+test("attribute-only comment cannot authorize disabled ordinary owner", () => {
+  // Arrange
+  const root = fixture();
+  const file = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
+  edit(root, file, source => source.replace('#[cfg(test)]\n#[path = "open_bitcoind/tests.rs"]\nmod tests;', '#[cfg(any())]\n#[path = "open_bitcoind/tests.rs"]\n// #[cfg(test)] #[path = "open_bitcoind/tests.rs"]\nmod tests;'));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures).toContain("T-157-30/D-03: exact cfg-test fixture owner required");
+});
+
+test("attribute-only comment cannot authorize a wrong fixture module path", () => {
+  // Arrange
+  const root = fixture();
+  const file = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs";
+  edit(root, file, source => source.replace('#[path = "tests/fixture_runtime.rs"]\npub(crate) mod fixture_runtime;', '#[path = "wrong.rs"]\n// #[path = "tests/fixture_runtime.rs"]\npub(crate) mod fixture_runtime;'));
+  // Act
+  const failures = checkPhase157IndexCatchUp(root);
+  // Assert
+  expect(failures).toContain("T-157-30/D-03: exact cfg-test fixture owner required");
+});
+
 const REPO = resolve(import.meta.dir, "..");
 const COMPLETION_REPORTS = [PHASE + "157-VERIFICATION.md", PHASE + "157-SECURITY.md"];
 const roots: string[] = [];

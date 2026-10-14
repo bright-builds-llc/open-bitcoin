@@ -229,7 +229,7 @@ fn aggregate_queue_pressure_records_shared_resource_evidence() {
     let event = super::queue_pressure_event(&policy, &queue, Vec::new(), Vec::new())
         .expect("aggregate queue pressure event");
     let mut evidence = listener_evidence(&["127.0.0.1:18444"]);
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     context
         .set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]))
         .expect("authoritative listener evidence");
@@ -350,7 +350,7 @@ async fn read_wire_message_times_out_across_partial_header_bytes() {
 #[test]
 fn context_records_inbound_resource_event_for_managed_evidence() {
     // Arrange
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     context
         .set_inbound_listener_evidence(listener_evidence(&["127.0.0.1:18444"]))
         .expect("authoritative listener evidence");

@@ -202,7 +202,7 @@ mod initial_tests {
                 username: "alice".into(),
                 password: "secret".into(),
             },
-            ManagedRpcContext::from_runtime_config(&RuntimeConfig::default()),
+            ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig::default()),
         )
         .expect("state");
         let mut headers = HeaderMap::new();

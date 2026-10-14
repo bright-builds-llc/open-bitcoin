@@ -14,7 +14,7 @@ use std::net::SocketAddr;
 use open_bitcoin_mempool::{PackageReport, SubmittedPackageResult};
 use open_bitcoin_network::{
     InboundAdmissionDecision, InboundAdmissionPolicy, InboundAdmissionRequest,
-    InboundListenerConfig, InboundPermissionDecision, ReconnectSuppressionInput,
+    InboundPermissionDecision, ReconnectSuppressionInput,
 };
 use open_bitcoin_node::core::chainstate::ChainstateSnapshot;
 use open_bitcoin_node::core::consensus::{ConsensusParams, ScriptVerifyFlags};
@@ -22,8 +22,8 @@ use open_bitcoin_node::core::mempool::PolicyConfig;
 use open_bitcoin_node::core::mempool::{
     AdmissionResult, MempoolEntryMetadata, MempoolOutcome, RelayIntent,
 };
-use open_bitcoin_node::core::network::{LocalPeerConfig, ServiceFlags, WireNetworkMessage};
-use open_bitcoin_node::core::primitives::{Block, NetworkAddress, NetworkMagic, Transaction, Txid};
+use open_bitcoin_node::core::network::{ServiceFlags, WireNetworkMessage};
+use open_bitcoin_node::core::primitives::{Block, NetworkMagic, Transaction, Txid};
 use open_bitcoin_node::core::wallet::AddressNetwork;
 use open_bitcoin_node::network::{
     LocalRelaySubmissionEvidence, ManagedInboundAdmissionInfo, ManagedMempoolInfo,
@@ -34,188 +34,140 @@ use open_bitcoin_node::{
     DurableSyncState, FjallNodeStore, MetricRetentionPolicy, MetricsStatus, PersistMode,
     StorageError,
 };
-use open_bitcoin_node::{
-    ManagedNetworkAuthorityError, ManagedNetworkHandle, ManagedPeerNetwork, ManagedWallet,
-    MemoryChainstateStore, MemoryWalletStore,
-};
+use open_bitcoin_node::{ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
+use super::CanonicalContextError;
 #[cfg(test)]
 use super::EncodedWireResponse;
-use super::mempool_recovery::recover_mempool_snapshot_from_store_handle;
-use super::wallet_state::{WalletState, build_wallet_state_with_store};
+use super::canonical_chain::{require_ordinary_scope, selected_chain};
+use super::mempool_recovery::{
+    recover_fixture_mempool_snapshot_from_store_handle, recover_mempool_snapshot_from_store_handle,
+};
+use super::wallet_state::{
+    WalletState, build_fixture_wallet_state_with_store, build_wallet_state_with_store,
+};
 use super::{ManagedRpcContext, address_boundary::local_advertisement_decisions};
 use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
-impl ManagedRpcContext {
-    pub fn new(
-        chain: AddressNetwork,
-        consensus_params: ConsensusParams,
-        verify_flags: ScriptVerifyFlags,
-        network: ManagedPeerNetwork<MemoryChainstateStore>,
-        wallet: ManagedWallet<MemoryWalletStore>,
-    ) -> Self {
-        Self {
-            chain,
-            consensus_params,
-            verify_flags,
-            network: ManagedNetworkHandle::from_network_fixture(network),
-            permission_classes: Default::default(),
-            inbound_permission_validation_failures: 0,
-            inbound_listener_config: InboundListenerConfig::default(),
-            maybe_inbound_listener_evidence: None,
-            maybe_resource_governance_log_dir: None,
-            resource_governance_log_retention: Default::default(),
-            resource_governance_log_write_failures: 0,
-            maybe_block_source: None,
-            maybe_metrics_store: None,
-            maybe_runtime_metadata_source: None,
-            maybe_daemon_sync_control: None,
-            manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
-            wallet_state: super::wallet_state::WalletState::Local(wallet),
-        }
+fn effective_context_store(
+    maybe_store: Option<FjallNodeStore>,
+    wallet_state: &WalletState,
+) -> Option<FjallNodeStore> {
+    match wallet_state {
+        WalletState::Local(_) => maybe_store,
+        WalletState::DurableNamedRegistry { store, .. } => Some(store.clone()),
     }
+}
 
-    #[allow(
-        clippy::expect_used,
-        reason = "memory-only construction cannot cross a durable migration boundary"
-    )]
-    pub fn from_runtime_config(config: &RuntimeConfig) -> Self {
-        Self::from_runtime_config_with_store(config, None)
-            .expect("memory-only context has no durable migration boundary")
+fn context_consensus_params(config: &RuntimeConfig) -> ConsensusParams {
+    ConsensusParams {
+        coinbase_maturity: config.wallet.coinbase_maturity,
+        ..ConsensusParams::default()
     }
+}
 
-    #[allow(
-        clippy::expect_used,
-        reason = "the fresh startup authority is unshared before context publication"
-    )]
-    pub fn from_runtime_config_with_store(
-        config: &RuntimeConfig,
-        maybe_store: Option<FjallNodeStore>,
-    ) -> Result<Self, StorageError> {
-        let consensus_params = ConsensusParams {
-            coinbase_maturity: config.wallet.coinbase_maturity,
-            ..ConsensusParams::default()
-        };
-        let local_config = LocalPeerConfig {
-            magic: network_magic(config.chain),
-            services: ServiceFlags::NETWORK | ServiceFlags::WITNESS,
-            address: NetworkAddress {
-                services: 0,
-                address_bytes: [0_u8; 16],
-                port: default_p2p_port(config.chain),
-            },
-            nonce: 0,
-            relay: true,
-            user_agent: "/open-bitcoin:0.1.0/".to_string(),
-        };
-        let policy = PolicyConfig::default();
-        let maybe_resource_governance_log_dir =
-            config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
-        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
-        let effective_store = match &wallet_state {
-            super::wallet_state::WalletState::Local(_) => maybe_store,
-            super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
-                Some(store.clone())
-            }
-        };
-        let durable_chainstate = match effective_store.as_ref() {
-            Some(store) => store.wallet_scan_chainstate_snapshot()?,
-            None => None,
-        };
-        let chainstate_store = durable_chainstate.map_or_else(
-            MemoryChainstateStore::default,
-            MemoryChainstateStore::from_snapshot,
-        );
-        let mut managed_network = ManagedPeerNetwork::new_with_block_relay_activation(
-            chainstate_store,
-            local_config,
-            policy.clone(),
-            config.relay,
-            config.block_serving,
-            config.inbound.enabled,
-        );
-        managed_network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
-            config.inbound.max_peers,
-            config.inbound.reserved_slots,
-        ));
-        let mut network = ManagedNetworkHandle::from_network_fixture(managed_network);
-        network
-            .set_prune_mode(config.prune_mode)
-            .expect("fresh startup authority accepts the resolved prune mode");
-        recover_mempool_snapshot_from_store_handle(
-            config,
-            effective_store.as_ref(),
-            &network,
-            &policy,
-            default_verify_flags(),
-            consensus_params,
-        )
-        .expect("fresh startup authority remains available before publication");
-        Ok(Self {
-            chain: config.chain,
-            consensus_params,
-            verify_flags: default_verify_flags(),
-            network,
-            permission_classes: config.inbound.permission_classes.clone(),
-            inbound_permission_validation_failures: config.inbound_permission_validation_failures,
-            inbound_listener_config: config.inbound.clone(),
-            maybe_inbound_listener_evidence: None,
-            maybe_resource_governance_log_dir,
-            resource_governance_log_retention: Default::default(),
-            resource_governance_log_write_failures: 0,
-            maybe_block_source: super::durable_block_source(effective_store.clone()),
-            maybe_metrics_store: effective_store.clone(),
-            maybe_runtime_metadata_source: effective_store,
-            maybe_daemon_sync_control: None,
-            manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
-            wallet_state,
-        })
-    }
-
-    pub fn for_local_operator(network: AddressNetwork) -> Self {
-        Self::from_runtime_config(&RuntimeConfig {
-            chain: network,
-            ..RuntimeConfig::default()
-        })
+fn fixture_authority_storage_error(_: ManagedNetworkAuthorityError) -> StorageError {
+    StorageError::BackendFailure {
+        namespace: open_bitcoin_node::storage::StorageNamespace::Runtime,
+        message: "fixture context authority unavailable".to_string(),
+        action: open_bitcoin_node::storage::StorageRecoveryAction::RestoreFromBackup,
     }
 }
 
 impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
     ManagedRpcContext<S, V>
 {
+    /// Validate selected canonical ownership and support before any startup mutation.
     pub fn from_runtime_config_with_network_handle(
         config: &RuntimeConfig,
         mut network: ManagedNetworkHandle<S, V>,
         maybe_store: Option<FjallNodeStore>,
-    ) -> Result<Self, ManagedNetworkAuthorityError> {
+    ) -> Result<Self, CanonicalContextError> {
+        let chain = selected_chain(config)?;
+        let Some(owner_chain) = network.maybe_canonical_chain()? else {
+            return Err(CanonicalContextError::UnprovedOwner);
+        };
+        if owner_chain != chain {
+            return Err(CanonicalContextError::ChainMismatch);
+        }
+        require_ordinary_scope(chain)?;
+        Self::configure_context_network(config, &mut network)?;
+        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone())?;
+        let effective_store = effective_context_store(maybe_store, &wallet_state);
+        recover_mempool_snapshot_from_store_handle(
+            config,
+            effective_store.as_ref(),
+            &network,
+            &PolicyConfig::default(),
+            default_verify_flags(),
+            context_consensus_params(config),
+        )?;
+        Ok(Self::assemble_context(
+            config,
+            network,
+            effective_store,
+            wallet_state,
+        ))
+    }
+
+    /// Synthetic/source-derived regression evidence only; never ordinary canonical authorization.
+    pub fn from_fixture_runtime_config_with_network_handle(
+        config: &RuntimeConfig,
+        network: ManagedNetworkHandle<S, V>,
+        maybe_store: Option<FjallNodeStore>,
+    ) -> Result<Self, StorageError> {
+        let wallet_state = build_fixture_wallet_state_with_store(config, maybe_store.clone())?;
+        Self::assemble_fixture_context(config, network, maybe_store, wallet_state)
+    }
+
+    pub(super) fn assemble_fixture_context(
+        config: &RuntimeConfig,
+        mut network: ManagedNetworkHandle<S, V>,
+        maybe_store: Option<FjallNodeStore>,
+        wallet_state: WalletState,
+    ) -> Result<Self, StorageError> {
+        Self::configure_context_network(config, &mut network)
+            .map_err(fixture_authority_storage_error)?;
+        let effective_store = effective_context_store(maybe_store, &wallet_state);
+        recover_fixture_mempool_snapshot_from_store_handle(
+            config,
+            effective_store.as_ref(),
+            &network,
+            &PolicyConfig::default(),
+            default_verify_flags(),
+            context_consensus_params(config),
+        )
+        .map_err(fixture_authority_storage_error)?;
+        Ok(Self::assemble_context(
+            config,
+            network,
+            effective_store,
+            wallet_state,
+        ))
+    }
+
+    fn configure_context_network(
+        config: &RuntimeConfig,
+        network: &mut ManagedNetworkHandle<S, V>,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
         network.set_prune_mode(config.prune_mode)?;
         network.set_inbound_admission_policy(InboundAdmissionPolicy::new(
             config.inbound.max_peers,
             config.inbound.reserved_slots,
         ))?;
-        let consensus_params = ConsensusParams {
-            coinbase_maturity: config.wallet.coinbase_maturity,
-            ..ConsensusParams::default()
-        };
-        let policy = PolicyConfig::default();
+        Ok(())
+    }
+
+    fn assemble_context(
+        config: &RuntimeConfig,
+        network: ManagedNetworkHandle<S, V>,
+        effective_store: Option<FjallNodeStore>,
+        wallet_state: WalletState,
+    ) -> Self {
+        let consensus_params = context_consensus_params(config);
         let maybe_resource_governance_log_dir =
             config.maybe_data_dir.as_ref().map(|dir| dir.join("logs"));
-        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone());
-        let effective_store = match &wallet_state {
-            super::wallet_state::WalletState::Local(_) => maybe_store.clone(),
-            super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
-                Some(store.clone())
-            }
-        };
-        recover_mempool_snapshot_from_store_handle(
-            config,
-            effective_store.as_ref(),
-            &network,
-            &policy,
-            default_verify_flags(),
-            consensus_params,
-        )?;
-        Ok(Self {
+        Self {
             chain: config.chain,
             consensus_params,
             verify_flags: default_verify_flags(),
@@ -233,7 +185,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
             maybe_daemon_sync_control: None,
             manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
             wallet_state,
-        })
+        }
     }
 
     pub fn chain(&self) -> AddressNetwork {

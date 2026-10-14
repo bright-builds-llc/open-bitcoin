@@ -8,7 +8,7 @@ use super::*;
 #[test]
 fn reconnect_suppression_uses_matching_remote_policy_state() {
     // Arrange
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     context
         .record_peer_policy_ban(
             peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 2])), 300),
@@ -32,7 +32,7 @@ fn reconnect_suppression_uses_matching_remote_policy_state() {
 #[test]
 fn reconnect_suppression_ignores_non_matching_remote_policy_state() {
     // Arrange
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     context
         .record_peer_policy_ban(
             peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 2])), 300),
@@ -56,7 +56,7 @@ fn reconnect_suppression_ignores_non_matching_remote_policy_state() {
 #[test]
 fn listener_records_scoped_banned_reconnect_suppression() {
     // Arrange
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     context
         .record_peer_policy_ban(
             peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 1])), 300),
@@ -92,7 +92,7 @@ fn listener_records_scoped_banned_reconnect_suppression() {
 #[test]
 fn listener_records_scoped_discouraged_reconnect_suppression() {
     // Arrange
-    let mut context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let mut context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     context
         .record_peer_policy_discouragement(
             peer_policy_entry(BanScope::Address(IpAddr::from([127, 0, 0, 1])), 300),

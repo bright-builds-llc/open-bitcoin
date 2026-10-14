@@ -71,7 +71,7 @@ fn context_with_store(path: &Path) -> ManagedRpcContext<FjallChainstateStore> {
         },
         ..Default::default()
     };
-    ManagedRpcContext::from_runtime_config_with_network_handle(
+    ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &config,
         ManagedNetworkHandle::from_network_fixture(network),
         Some(store),

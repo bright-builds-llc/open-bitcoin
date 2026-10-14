@@ -5,6 +5,7 @@ import { dirname, join, resolve } from "node:path";
 import { CHECK_FILES, CONTRACTS, HELPER_CONTRACTS, MODULE_EDGES, TEST_CONTRACTS, checkPhase160PeerFilterServing, maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { compact, maybeFunction, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { createHash } from "node:crypto";
+import { historicalFixtureView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 import { PHASE163_DOC, PROVENANCE_CLAIMS } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
@@ -28,7 +29,7 @@ function transitionSources(): Map<string, string> {
   if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
   index.checklist.surfaces.find((row: { requirements: string[] }) => row.requirements.includes("CFNET-01")).known_gaps = [PHASE162_IMPLEMENTATION];
   sources.set("docs/parity/index.json", JSON.stringify(index));
-  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(historicalFixtureView(sources).get(file)!).digest("hex")}\` |`).join("\n"));
   sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
   return sources;
 }

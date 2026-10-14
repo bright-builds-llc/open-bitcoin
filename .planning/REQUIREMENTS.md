@@ -17,10 +17,10 @@ Preserve one active Fjall chainstate, first-party Bitcoin domain ownership, func
 
 ### Canonical Bootstrap
 
-- [ ] **CBOT-01**: An operator's selected existing network binds the accepted root to pinned canonical genesis header/body identity; a different null-parent root is rejected.
+- [x] **CBOT-01**: An operator's selected existing network binds the accepted root to pinned canonical genesis header/body identity; a different null-parent root is rejected.
 - [ ] **CBOT-02**: An operator can initialize and reopen an empty durable datadir with canonical genesis as best block, while the genesis coinbase contributes no spendable UTXOs and interrupted initialization never publishes partial authority.
 - [ ] **CBOT-03**: An operator can enable BASIC indexing on a fresh canonical datadir, obtain its genesis filter and zero-predecessor commitment, and continue ordinary indexing without seeded history or implicit public-network activation.
-- [ ] **CBOT-04**: An operator opening a foreign-network or noncanonical-root datadir receives a bounded diagnostic before automatic coins/schema migration, initialization, prune resume or index mutation; prior durable data remains intact.
+- [x] **CBOT-04**: An operator opening a foreign-network or noncanonical-root datadir receives a bounded diagnostic before automatic coins/schema migration, initialization, prune resume or index mutation; prior durable data remains intact.
 
 ### Network and Historical Validation
 
@@ -28,7 +28,7 @@ Preserve one active Fjall chainstate, first-party Bitcoin domain ownership, func
 - [ ] **CVLD-02**: A contributor observes contextual block and transaction decisions derived from the selected network and validated deployment history, including BIP34 height, BIP65/BIP66 block-version constraints, BIP113/sequence-lock context and Segwit commitment rules, without caller-selected blanket activation switches.
 - [ ] **CVLD-03**: A contributor observes pinned `GetBlockScriptFlags` behavior, including its baseline flags, block-hash exceptions and deployment-dependent additions, through the actual durable connect path.
 - [ ] **CVLD-04**: A contributor observes pinned network difficulty and contextual time decisions at supported retarget, minimum-difficulty and median-time boundaries; header admission and body connection use the same validated network authority.
-- [ ] **CVLD-05**: An operator can identify the exact supported validation/evidence scope of existing mainnet, testnet3, signet and regtest selectors; any mode lacking required consensus checks, including Signet challenge validation, refuses before accepting unsupported blocks rather than using another network's defaults.
+- [x] **CVLD-05**: An operator can identify the exact supported validation/evidence scope of existing mainnet, testnet3, signet and regtest selectors; any mode lacking required consensus checks, including Signet challenge validation, refuses before accepting unsupported blocks rather than using another network's defaults.
 - [ ] **CVLD-06**: A contributor observes pinned duplicate-coinbase/BIP30 and coin-overwrite behavior in the supported historical contexts, with the required ancestor/hash facts and correct disconnect restoration rather than a global permissive exception.
 
 ### Exact Cumulative Work
@@ -99,19 +99,19 @@ Full address relay/address-manager persistence and wallet PSBT/multisig/multiwal
 
 ## Traceability
 
-The approved roadmap maps every active requirement to exactly one phase beginning at 164. All 30 active requirements remain Pending; no phase execution or verification is claimed.
+The approved roadmap maps every active requirement to exactly one phase beginning at 164. Phase 164 uniquely closes CBOT-01, CBOT-04 and CVLD-05 after full native and 27/27 goal verification; the other 27 requirements remain Pending. This identity/refusal closure grants no ordinary accepted-history qualification.
 
 | Requirement | Phase     | Status  |
 | ----------- | --------- | ------- |
-| CBOT-01     | Phase 164 | Pending |
+| CBOT-01     | Phase 164 | Complete |
 | CBOT-02     | Phase 166 | Pending |
 | CBOT-03     | Phase 166 | Pending |
-| CBOT-04     | Phase 164 | Pending |
+| CBOT-04     | Phase 164 | Complete |
 | CVLD-01     | Phase 167 | Pending |
 | CVLD-02     | Phase 167 | Pending |
 | CVLD-03     | Phase 167 | Pending |
 | CVLD-04     | Phase 167 | Pending |
-| CVLD-05     | Phase 164 | Pending |
+| CVLD-05     | Phase 164 | Complete |
 | CVLD-06     | Phase 167 | Pending |
 | CWOR-01     | Phase 165 | Pending |
 | CWOR-02     | Phase 165 | Pending |

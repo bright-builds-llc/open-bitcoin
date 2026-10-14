@@ -80,7 +80,9 @@ pub struct FjallNodeStore {
 }
 
 impl FjallNodeStore {
-    /// Open or create the store rooted at `path` and verify schema metadata.
+    /// Lower-level storage/fixture infrastructure: opens, recovers and may migrate.
+    /// This generic API provides no canonical identity or ordinary-admission guarantee.
+    /// Ordinary product paths must use [`Self::open_ordinary`].
     pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
         let store = Self::open_unrecovered(path)?;
         store.recover_validation_history()?;
@@ -89,6 +91,11 @@ impl FjallNodeStore {
     }
 
     fn open_unrecovered(path: impl AsRef<Path>) -> Result<Self, StorageError> {
+        #[cfg(test)]
+        assert!(
+            !super::chain_compatibility::ORDINARY_BACKEND_OPEN_SPY.get(),
+            "backend reached during ordinary refusal"
+        );
         let db = Database::builder(path.as_ref())
             .open()
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;

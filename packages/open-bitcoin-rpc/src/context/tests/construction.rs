@@ -26,7 +26,7 @@ fn authoritative_network_sync_mutation_is_visible_to_rpc() {
     )
     .expect("open authoritative sync runtime");
     let sync_network = sync_runtime.network_handle();
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &RuntimeConfig {
             chain: AddressNetwork::Regtest,
             ..RuntimeConfig::default()
@@ -58,7 +58,7 @@ fn managed_rpc_context_builds_from_runtime_config() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config(&runtime);
+    let context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let network_info = context.network_info().expect("authoritative network info");
     let wallet_info = context.wallet_info();
     let snapshot = context
@@ -92,7 +92,7 @@ fn managed_rpc_context_builds_from_runtime_config_with_enabled_relay_activation(
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config(&runtime);
+    let context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
 
     // Assert
     assert!(
@@ -244,7 +244,7 @@ fn durable_rescan_ignores_disagreeing_leftover_snapshot() {
     drop(store);
 
     // Act
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         maybe_data_dir: Some(data_dir.clone()),
         wallet: WalletRuntimeConfig {
@@ -308,7 +308,7 @@ fn durable_rescan_missing_block_payload_fails_closed() {
     drop(store);
 
     // Act
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         maybe_data_dir: Some(data_dir.clone()),
         wallet: WalletRuntimeConfig {

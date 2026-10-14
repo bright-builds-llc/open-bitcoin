@@ -124,7 +124,7 @@ fn encoded_test_response(message: WireNetworkMessage) -> EncodedWireResponse {
 
 fn phase123_block_serving_context(enabled: bool) -> (ManagedRpcContext, Block) {
     let permission_classes = loopback_permission_registry(&["in", "download"]);
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         inbound: InboundListenerConfig {
             enabled: true,
@@ -243,7 +243,7 @@ fn durable_block_serving_context(
         ..RuntimeConfig::default()
     };
     let block = phase123_mined_block();
-    let mut seed_context = ManagedRpcContext::from_runtime_config(&runtime_config);
+    let mut seed_context = ManagedRpcContext::from_fixture_runtime_config(&runtime_config);
     seed_context
         .connect_local_block(&block)
         .expect("connect durable block fixture");
@@ -277,7 +277,7 @@ fn durable_block_serving_context(
         true,
     )
     .expect("reopen durable runtime without block cache hydration");
-    let mut context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let mut context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime_config,
         sync_runtime.network_handle(),
         Some(store),
@@ -365,7 +365,7 @@ async fn acknowledged_block_count(
     write_results: Vec<io::Result<WriteWireMessageOutcome>>,
 ) -> u64 {
     let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::for_local_operator(AddressNetwork::Regtest),
+        ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest),
     ));
     for (response, write_result) in responses.iter_mut().zip(write_results.iter()) {
         assert!(acknowledge_inbound_response_write(write_result, response, &context).await);

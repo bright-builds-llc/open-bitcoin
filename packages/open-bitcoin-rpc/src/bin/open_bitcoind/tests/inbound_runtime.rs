@@ -68,7 +68,7 @@ async fn open_bitcoind_inbound_listener_evidence_reaches_shared_rpc_status() {
         ..RuntimeConfig::default()
     };
     let shared_context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config(&runtime),
+        ManagedRpcContext::from_fixture_runtime_config(&runtime),
     ));
 
     // Act
@@ -108,8 +108,11 @@ async fn open_bitcoind_inbound_metrics_worker_persists_sync_disabled_inbound_sam
     };
     let metrics_store = FjallNodeStore::open(&data_dir).expect("metrics store");
     let shared_context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(metrics_store.clone()))
-            .expect("construct durable RPC context"),
+        ManagedRpcContext::from_fixture_runtime_config_with_store(
+            &runtime,
+            Some(metrics_store.clone()),
+        )
+        .expect("construct durable RPC context"),
     ));
     let mut listener =
         start_inbound_listener_for_runtime_with_context(&runtime, Arc::clone(&shared_context))

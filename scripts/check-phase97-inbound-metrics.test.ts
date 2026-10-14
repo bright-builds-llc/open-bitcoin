@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -43,6 +43,7 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/config/loader/open_bitcoin_runtime.rs",
   "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
   "packages/open-bitcoin-rpc/src/context/network.rs",
+  "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
@@ -85,6 +86,30 @@ test("passes with complete Phase 97 inbound metrics corpus", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+for (const [file, before, after] of [
+  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs", "Self::try_from_runtime_config_with_store(config, maybe_store)", "Self::from_fixture_runtime_config_with_store(config, maybe_store)"],
+  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs", "require_ordinary_scope(chain)?;", "let _ = require_ordinary_scope(chain);"],
+  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "ManagedRpcContext::from_fixture_runtime_config_with_store", "ManagedRpcContext::from_runtime_config_with_store"],
+] as const) {
+  test(`refuses ordinary/fixture metrics construction drift: ${before}`, () => {
+    // Arrange
+    const root = createFixture({ maybeMutateFiles(files) { replaceInFile(files, file, before, after); } });
+    // Act
+    const failures = checkPhase97InboundMetrics({ rootDir: root });
+    // Assert
+    expect(failures.length).toBeGreaterThan(0);
+  });
+}
+
+test("moved ordinary constructor input is mandatory without checkout fallback", () => {
+  // Arrange
+  const root = createFixture({ maybeMutateFiles(files) { files.set("packages/open-bitcoin-rpc/src/context/canonical_chain.rs", ""); } });
+  // Act
+  const failures = checkPhase97InboundMetrics({ rootDir: root });
+  // Assert
+  expect(failures.some(failure => failure.includes("ordinary context guard/delegation"))).toBe(true);
 });
 
 test("fails when mapper omits an inbound metric kind", () => {
@@ -310,6 +335,10 @@ pub fn metrics_status() { load_metrics_status(MetricRetentionPolicy::default());
 `,
     ],
     [
+      "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
+      readFileSync(path.resolve(import.meta.dir, "..", "packages/open-bitcoin-rpc/src/context/canonical_chain.rs"), "utf8"),
+    ],
+    [
       "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
       `
 admission.inactive_permission_effect_observations;
@@ -338,7 +367,7 @@ fn persist_inbound_metrics_once() {
       "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
       `
 fn open_bitcoind_inbound_metrics_worker_persists_sync_disabled_inbound_samples() {
-  ManagedRpcContext::from_runtime_config_with_store();
+  ManagedRpcContext::from_fixture_runtime_config_with_store();
   wait_for_inbound_metric_sample();
   MetricKind::InboundAdmittedPeerCount;
 }

@@ -22,6 +22,7 @@ export const TARGET_FILES = [
   "docs/parity/checklist.md",
   "docs/parity/index.json",
   "packages/open-bitcoin-rpc/src/context/network.rs",
+  "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
   "packages/open-bitcoin-node/src/network/relay_serving.rs",
   "packages/open-bitcoin-node/src/network/relay_fanout.rs",
   "packages/open-bitcoin-network/src/peer/relay_download.rs",

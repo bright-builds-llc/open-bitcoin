@@ -125,7 +125,7 @@ fn network_fixture() -> ManagedNetworkHandle {
         BlockRelayActivationPolicy::default(),
         true,
     );
-    let mut context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let mut context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &RuntimeConfig::default(),
         network.clone(),
         None,

@@ -3,6 +3,61 @@
 
 use super::*;
 
+/// Synthetic ledger schema evidence for report/stop/resume/support regressions only.
+/// This does not call ordinary startup or authorize canonical runtime history.
+pub(super) fn seed_synthetic_completed_soak_ledger(sandbox: &TestSandbox, data_dir: &Path) {
+    let run_id = "soak-1700000000-0001";
+    let run_dir = data_dir.join("soak/runs").join(run_id);
+    fs::create_dir_all(&run_dir).expect("synthetic run fixture");
+    let events = [
+        json!({"kind": "started", "bounds": {
+            "elapsed_time_seconds": 1, "checkpoint_interval_seconds": 1,
+            "maybe_target_height": 144, "datadir": data_dir, "network": "regtest",
+            "peer_policy": "daemon_configured", "disk_budget_bytes": 1073741824,
+            "stop_conditions": ["elapsed_time", "target_height"]
+        }}),
+        json!({"kind": "checkpoint", "status": {
+            "maybe_network": "regtest", "maybe_lifecycle": "idle",
+            "maybe_latest_stop_reason_label": "target_header_reached",
+            "progress_credit_rejected_activity_labels": [], "stall_evidence_basis": [],
+            "resource_bound_labels": ["synthetic fixture bounds"],
+            "maybe_validated_active_chain_height": 144
+        }}),
+        json!({"kind": "stop", "outcome": "clean_completion"}),
+        json!({"kind": "verdict", "outcome": "clean_completion"}),
+    ];
+    let mut encoded = String::new();
+    for (index, event) in events.into_iter().enumerate() {
+        let envelope = json!({"schema_version": 1, "run_id": run_id, "sequence": index + 1,
+            "recorded_at_unix_seconds": 1700000000 + index, "event": event});
+        encoded.push_str(&serde_json::to_string(&envelope).expect("synthetic event"));
+        encoded.push('\n');
+    }
+    fs::write(run_dir.join("events.jsonl"), encoded).expect("synthetic ledger");
+    let index = json!({"schema_version": 1, "runs": [{"run_id": run_id,
+        "ledger_path": run_dir.join("events.jsonl"), "started_at_unix_seconds": 1700000000,
+        "updated_at_unix_seconds": 1700000003, "maybe_outcome": "clean_completion"}]});
+    fs::write(
+        data_dir.join("soak/run-index.json"),
+        serde_json::to_vec(&index).expect("synthetic index"),
+    )
+    .expect("fixture index");
+    let report = run_open_bitcoin(
+        sandbox,
+        [
+            "--datadir",
+            data_dir.to_str().expect("datadir"),
+            "--network",
+            "regtest",
+            "soak",
+            "report",
+            "--run-id",
+            run_id,
+        ],
+    );
+    assert_success(&report);
+}
+
 #[test]
 fn open_bitcoin_status_json_succeeds_for_stopped_node() {
     // Arrange
@@ -110,7 +165,7 @@ fn open_bitcoin_status_json_uses_fake_running_rpc() {
 }
 
 #[test]
-fn open_bitcoin_sync_pause_and_resume_update_durable_control_state() {
+fn open_bitcoin_offline_sync_controls_refuse_unproved_state_without_mutation() {
     // Arrange
     let sandbox = TestSandbox::new("sync-control");
     let data_dir = sandbox.child("open-data");
@@ -120,6 +175,8 @@ fn open_bitcoin_sync_pause_and_resume_update_durable_control_state() {
         .save_runtime_metadata(&RuntimeMetadata::default(), PersistMode::Sync)
         .expect("save runtime metadata");
     drop(store);
+    let before = super::compatibility_wallet::source_manifest(&data_dir);
+    let data_dir = data_dir.canonicalize().expect("real owned source path");
 
     // Act
     let pause_output = run_open_bitcoin(
@@ -164,12 +221,24 @@ fn open_bitcoin_sync_pause_and_resume_update_durable_control_state() {
     );
 
     // Assert
-    assert_success(&pause_output);
-    assert_success(&resume_output);
-    let paused: Value = serde_json::from_slice(&paused_status.stdout).expect("paused status");
-    let resumed: Value = serde_json::from_slice(&resumed_status.stdout).expect("resumed status");
-    assert_eq!(paused["sync_control"]["paused"], json!(true));
-    assert_eq!(resumed["sync_control"]["paused"], json!(false));
+    for output in [
+        &pause_output,
+        &resume_output,
+        &paused_status,
+        &resumed_status,
+    ] {
+        assert_failure(output);
+        let stderr = std::str::from_utf8(&output.stderr).expect("refusal stderr");
+        assert!(stderr.contains("existing_state_unproved: selected_network=mainnet"));
+        assert!(stderr.contains("observed_root=unavailable"));
+        assert!(output.stdout.is_empty());
+    }
+    let diagnostic: Value = serde_json::from_slice(&paused_status.stderr).expect("JSON refusal");
+    assert_eq!(diagnostic["error"], "chain_compatibility_refused");
+    assert_eq!(
+        super::compatibility_wallet::source_manifest(&data_dir),
+        before
+    );
 }
 
 #[test]
@@ -267,57 +336,35 @@ fn sync_control_auth_failure_does_not_fallback_to_store() {
 }
 
 #[test]
-fn open_bitcoin_soak_start_writes_durable_ledger_and_reports() {
+fn open_bitcoin_soak_start_refuses_unproved_bounds_before_ledger_write() {
     // Arrange
-    let sandbox = TestSandbox::new("soak-phase75-start");
+    let sandbox = TestSandbox::new("soak-phase164-start-refusal");
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
     seed_phase72_runtime_metadata(&data_dir, false);
+    let data_dir = data_dir.canonicalize().expect("real owned source path");
+    let before = super::compatibility_wallet::source_manifest(&data_dir);
 
     // Act
-    let output = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
+    for args in [
+        soak_start_args(&data_dir, "soak-1700000000-0001"),
+        soak_target_height_start_args(&data_dir, "soak-1700000000-0001"),
+    ] {
+        let output = run_open_bitcoin_vec(&sandbox, args);
 
-    // Assert
-    assert_success(&output);
-    let decoded: Value = serde_json::from_slice(&output.stdout).expect("soak start json");
-    let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
-    let index_path = data_dir.join("soak/run-index.json");
-    let events_path = run_dir.join("events.jsonl");
-    let report_json_path = run_dir.join("report.json");
-    let report_markdown_path = run_dir.join("report.md");
-    assert_eq!(decoded["run_id"], json!("soak-1700000000-0001"));
-    assert_eq!(
-        decoded["ledger_path"],
-        json!(events_path.display().to_string())
-    );
-    assert_eq!(
-        decoded["json_report_path"],
-        json!(report_json_path.display().to_string())
-    );
-    assert_eq!(
-        decoded["markdown_report_path"],
-        json!(report_markdown_path.display().to_string())
-    );
-    assert!(index_path.exists());
-    assert!(events_path.exists());
-    assert!(report_json_path.exists());
-    assert!(report_markdown_path.exists());
-    let index: Value =
-        serde_json::from_str(&fs::read_to_string(index_path).expect("run index json"))
-            .expect("run index");
-    assert_eq!(index["runs"][0]["run_id"], json!("soak-1700000000-0001"));
-    let events = read_jsonl_values(&events_path);
-    assert_eq!(events[0]["event"]["kind"], json!("started"));
-    assert!(
-        events
-            .iter()
-            .any(|event| event["event"]["kind"] == json!("checkpoint"))
-    );
-    let report: Value =
-        serde_json::from_str(&fs::read_to_string(report_json_path).expect("report json"))
-            .expect("report");
-    assert_eq!(report["is_projection"], json!(true));
-    assert_eq!(report["run_id"], json!("soak-1700000000-0001"));
+        // Assert
+        assert_failure(&output);
+        let stderr = String::from_utf8(output.stderr).expect("stderr");
+        assert!(stderr.contains("chain_compatibility_unavailable: existing_state_unproved"));
+        assert!(stderr.contains("selected_network=regtest"));
+        assert!(stderr.contains("observed_root=unavailable"));
+        assert!(stderr.len() <= 1024);
+        assert!(!data_dir.join("soak").exists());
+        assert_eq!(
+            super::compatibility_wallet::source_manifest(&data_dir),
+            before
+        );
+    }
 }
 
 #[test]
@@ -327,8 +374,7 @@ fn open_bitcoin_soak_stop_rejects_terminal_verdict() {
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
     seed_phase72_runtime_metadata(&data_dir, false);
-    let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
-    assert_success(&start);
+    seed_synthetic_completed_soak_ledger(&sandbox, &data_dir);
 
     // Act
     let stop = run_open_bitcoin(
@@ -372,8 +418,7 @@ fn open_bitcoin_soak_report_is_projection_without_ledger_append() {
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
     seed_phase72_runtime_metadata(&data_dir, false);
-    let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
-    assert_success(&start);
+    seed_synthetic_completed_soak_ledger(&sandbox, &data_dir);
     let events_path = data_dir.join("soak/runs/soak-1700000000-0001/events.jsonl");
     let before_count = read_jsonl_values(&events_path).len();
 
@@ -413,11 +458,7 @@ fn open_bitcoin_soak_resume_refuses_clean_completion() {
     let data_dir = sandbox.child("open-data");
     fs::create_dir_all(&data_dir).expect("open datadir");
     seed_phase72_runtime_metadata(&data_dir, false);
-    let start = run_open_bitcoin_vec(
-        &sandbox,
-        soak_target_height_start_args(&data_dir, "soak-1700000000-0001"),
-    );
-    assert_success(&start);
+    seed_synthetic_completed_soak_ledger(&sandbox, &data_dir);
     let report: Value = serde_json::from_str(
         &fs::read_to_string(data_dir.join("soak/runs/soak-1700000000-0001/report.json"))
             .expect("report"),

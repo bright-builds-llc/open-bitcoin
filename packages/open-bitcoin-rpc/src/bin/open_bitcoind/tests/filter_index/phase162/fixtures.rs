@@ -6,7 +6,11 @@
 //! Handle-owning configured fixture and handle-free provenance handoff.
 
 use super::{core_types, recipe};
-use crate::{AuthoritativeNetworkRuntime, open_authoritative_network_runtime, open_runtime_store};
+use crate::AuthoritativeNetworkRuntime;
+use crate::tests::fixture_runtime::{
+    fixture_open_authoritative_network_runtime as open_authoritative_network_runtime,
+    fixture_open_runtime_store as open_runtime_store,
+};
 use core_types::{
     chainstate::{
         BasicFilterInputs, ChainPosition, CoinsView, FlushMode, FlushPolicyTime,
@@ -293,7 +297,7 @@ impl Phase162Fixture {
         let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
             .expect("configured BASIC startup")
             .expect_durable();
-        let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+        let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
             &config,
             opened.network.clone(),
             Some(store.clone()),

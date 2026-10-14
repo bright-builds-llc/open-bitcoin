@@ -12,6 +12,108 @@
   },
   "groups": [
     {
+      "label": "phase164-cli-soak-compatibility-observation",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/soak/runtime/chain_compatibility.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "phase164-cli-canonical-compatibility",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility.rs",
+        "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase164-cli-wallet-name-resolution",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/wallet/name_resolution.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/wallet/rpc/util.cpp"
+      ]
+    },
+    {
+      "label": "phase164-rpc-canonical-context-guard",
+      "files": [
+        "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
+        "packages/open-bitcoin-rpc/src/context/canonical_chain/tests.rs",
+        "packages/open-bitcoin-rpc/src/context/canonical_chain/tests/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase164-daemon-canonical-guard",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase164-explicit-daemon-fixture-startup",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase164-canonical-config-selection",
+      "files": [
+        "packages/open-bitcoin-rpc/src/config/canonical_chain.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/chainparams.cpp"
+      ]
+    },
+    {
+      "label": "phase164-canonical-managed-admission",
+      "files": [
+        "packages/open-bitcoin-node/src/network/canonical_admission.rs",
+        "packages/open-bitcoin-node/src/network/canonical_admission/tests.rs",
+        "packages/open-bitcoin-node/src/network/canonical_admission/tests/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase164-nonopening-chain-compatibility",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
+        "packages/open-bitcoin-node/src/storage/chain_compatibility/tests.rs",
+        "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs"
+      ],
+      "breadcrumbs": []
+    },
+    {
+      "label": "phase164-canonical-chain-identity",
+      "files": [
+        "packages/open-bitcoin-consensus/src/chain_spec.rs",
+        "packages/open-bitcoin-consensus/src/chain_spec/genesis.rs",
+        "packages/open-bitcoin-consensus/src/chain_spec/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "phase162-inbound-physical-write-faults",
       "files": [
         "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/phase162.rs"

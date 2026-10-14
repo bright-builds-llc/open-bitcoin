@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
+import { fixtureSourceAttribution, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { PHASE163_DOC, PROVENANCE_FILES, PROVENANCE_CODE, PROVENANCE_CLAIMS, resolveV25Provenance, provenanceClaimView } from "./check-phase163-provenance.ts";
 
@@ -63,6 +64,11 @@ function metadata(source: string, key: string): string {
 
 /** Claim publication is source-bound; this supplements runtime and independent review evidence. */
 export function checkPhase162ClaimState(text: Text, failures: string[]): ClaimState {
+  // Translate only historical attribution; all current source inspectors keep their raw reader.
+  const currentText = text;
+  text = Object.assign((file: string) => file === MIGRATED_FIXTURE
+    ? fixtureSourceAttribution(currentText(file)).historicalSource : currentText(file),
+  { maybeHasSource: currentText.maybeHasSource });
   const fail = (reason: string): ClaimState => { failures.push(`T-162-10: ${reason}`); return "invalid"; };
   let owner;
   try {

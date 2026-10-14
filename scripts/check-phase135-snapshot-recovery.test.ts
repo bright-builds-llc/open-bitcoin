@@ -148,6 +148,7 @@ function contractMutations(): Mutation[] {
     syncRuntime: "packages/open-bitcoin-node/src/sync/open_runtime.rs",
     startup: "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
     startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
+    startupCanonical: "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
     daemonCheckpoint:
       "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
     daemon: "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
@@ -358,10 +359,20 @@ function contractMutations(): Mutation[] {
       "mempool recovery precedes durable chainstate load",
       PHASE135_DIAGNOSTICS.startup,
       replace(
-        files.startupContext,
+        files.startupCanonical,
         "let durable_chainstate = match effective_store.as_ref() {",
         "recover_mempool_snapshot_from_store_handle;\n        let durable_chainstate = match effective_store.as_ref() {",
       ),
+    ],
+    [
+      "ordinary support guard swallowed before startup effects",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(files.startupCanonical, "require_ordinary_scope(chain)?;", "let _ = require_ordinary_scope(chain);"),
+    ],
+    [
+      "fixture context publishes before its recovery",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(files.startupContext, "recover_fixture_mempool_snapshot_from_store_handle(", "publish_before_fixture_recovery("),
     ],
     [
       "authoritative runtime bypasses initialize cache attach",

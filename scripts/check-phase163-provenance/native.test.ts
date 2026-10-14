@@ -2,6 +2,7 @@ import { afterEach, afterAll, expect, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { historicalFixtureView } from "../check-phase164-canonical-identity/fixture-source.ts";
 import { checkPhase158ValidatedReorg, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE } from "../check-phase158-validated-reorg.ts";
 import { checkPhase162IntegratedFilterProof } from "../check-phase162-integrated-filter-proof.ts";
 import { PHASE163, PHASE163_DOC, ORIGINAL_AUDITS, V25_REQUIREMENTS, V25_ROADMAPS, V25_AUDITS,
@@ -400,7 +401,7 @@ test("source-bound executable assertion removal refuses even after proof hashes 
   const file = PHASE162_EVIDENCE[1];
   change(sources, file, source => source.replace(".load_undo(hash)", ".load_block(hash)"));
   change(sources, PHASE162_DOC, source => source.replace(/\| `([^`]+)`\s*\|\s*`[a-f0-9]{64}`\s*\|/g,
-    (_row, file) => `| \`${file}\` | \`${sha(sources.get(file)!)}\` |`));
+    (_row, file) => `| \`${file}\` | \`${sha(historicalFixtureView(sources).get(file)!)}\` |`));
   // Act / Assert
   refuses(sources, /actual evidence .*retention.rs:assert_pair/);
 }, 30_000);
@@ -450,7 +451,7 @@ test("removing executable assertion macros cannot be rescued by new proof hashes
   const file = PHASE162_EVIDENCE[1];
   change(sources, file, source => source.replaceAll("assert_eq!", "removed_assertion!"));
   change(sources, PHASE162_DOC, source => source.replace(/\| `([^`]+)`\s*\|\s*`[a-f0-9]{64}`\s*\|/g,
-    (_row, file) => `| \`${file}\` | \`${sha(sources.get(file)!)}\` |`));
+    (_row, file) => `| \`${file}\` | \`${sha(historicalFixtureView(sources).get(file)!)}\` |`));
   // Act / Assert
   refuses(sources, /actual evidence .*retention.rs:assert_pair/);
 }, 30_000);

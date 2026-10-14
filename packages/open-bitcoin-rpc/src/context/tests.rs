@@ -61,7 +61,7 @@ fn managed_rpc_context_loads_durable_mempool_snapshot_on_startup() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store))
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_store(&runtime, Some(store))
         .expect("construct durable RPC context");
 
     // Assert
@@ -184,7 +184,7 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store))
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_store(&runtime, Some(store))
         .expect("construct durable RPC context");
 
     // Assert
@@ -238,7 +238,7 @@ fn managed_rpc_context_ignores_leftover_snapshot_when_coins_are_empty() {
     };
 
     // Act
-    let context = ManagedRpcContext::from_runtime_config_with_store(&runtime, Some(store))
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_store(&runtime, Some(store))
         .expect("empty coins open with leftover must succeed");
     let chain = context
         .blockchain_snapshot()
@@ -259,7 +259,7 @@ fn record_inbound_resource_event_appends_inbound_resource_governance_log_record(
         maybe_data_dir: Some(data_dir.clone()),
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let event = InboundResourceEvent {
         outcome: "rejected".to_string(),
         reason: "payload checksum did not match message header".to_string(),
@@ -303,7 +303,7 @@ fn record_inbound_resource_event_projects_current_inbound_status() {
         chain: AddressNetwork::Regtest,
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let event = InboundResourceEvent {
         outcome: "rejected".to_string(),
         reason: "payload checksum did not match message header".to_string(),
@@ -338,7 +338,7 @@ fn record_inbound_peer_policy_event_appends_inbound_peer_policy_log_record() {
         maybe_data_dir: Some(data_dir.clone()),
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let event = InboundPeerPolicyEvent {
         outcome: "ban_active".to_string(),
         reason: "127.0.0.1:18444".to_string(),
@@ -384,7 +384,7 @@ fn record_peer_policy_runtime_decisions_append_sanitized_logs_automatically() {
         maybe_data_dir: Some(data_dir.clone()),
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let ban_scope = BanScope::Address(std::net::IpAddr::from([203, 0, 113, 32]));
     let discouragement_scope = BanScope::Address(std::net::IpAddr::from([203, 0, 113, 33]));
     let misbehavior = MisbehaviorDecision {
@@ -459,7 +459,7 @@ fn record_inbound_peer_policy_runtime_decision_projects_status_and_log() {
         maybe_data_dir: Some(data_dir.clone()),
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     context
         .record_peer_policy_ban(
             peer_policy_entry(
@@ -509,7 +509,7 @@ fn current_inbound_status_projects_runtime_peer_policy_bridge() {
         chain: AddressNetwork::Regtest,
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let scope = BanScope::Address(std::net::IpAddr::from([203, 0, 113, 30]));
     let decision = MisbehaviorDecision {
         peer_label: "peer-protected".to_string(),
@@ -549,7 +549,7 @@ fn current_inbound_status_projects_runtime_peer_policy_bridge() {
 #[test]
 fn current_inbound_status_remains_unavailable_without_peer_policy_bridge_evidence() {
     // Arrange
-    let context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
 
     // Act
     let status = context.current_inbound_status();

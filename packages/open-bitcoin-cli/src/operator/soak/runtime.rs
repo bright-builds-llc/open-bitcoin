@@ -3,7 +3,7 @@
 
 use std::path::PathBuf;
 
-use open_bitcoin_node::{FjallNodeStore, OpenBitcoinStatusSnapshot};
+use open_bitcoin_node::OpenBitcoinStatusSnapshot;
 use serde_json::json;
 
 use super::{
@@ -17,7 +17,7 @@ use crate::operator::{
     SoakStartArgs, SoakStopArgs, SoakStopConditionArg, SoakStopReasonArg,
     config::OperatorConfigResolution,
     runtime::{OperatorCommandOutcome, OperatorRuntimeError},
-    status::{collect_resource_bounds, collect_status_snapshot},
+    status::collect_status_snapshot,
 };
 use helpers::{
     checkpoint_status_from_snapshot, current_unix_seconds, evaluate_stop_outcome, first_started_at,
@@ -27,7 +27,9 @@ use helpers::{
     validate_resource_bound_preflight,
 };
 
+mod chain_compatibility;
 mod helpers;
+pub(super) use chain_compatibility::enrich_soak_resource_bounds_from_store;
 
 pub(crate) fn execute_soak_start(
     args: &SoakStartArgs,
@@ -44,6 +46,13 @@ pub(crate) fn execute_soak_start(
     reject_run_collision(layout, &run_id)?;
     let bounds = bounds_from_start_args(args, layout, maybe_network)?;
     let preflight_snapshot = collector.collect();
+    if let open_bitcoin_node::FieldAvailability::Unavailable { reason } =
+        &preflight_snapshot.resource_bounds
+    {
+        return Err(OperatorRuntimeError::InvalidRequest {
+            message: reason.clone(),
+        });
+    }
     validate_resource_bound_preflight(&bounds, &preflight_snapshot)?;
     let started_hint = current_unix_seconds();
     let paths = layout.paths_for_run(&run_id);
@@ -163,27 +172,6 @@ impl SoakStatusCollector for RuntimeSoakStatusCollector<'_> {
         enrich_soak_resource_bounds_from_store(&mut snapshot, &self.parts.input.config_resolution);
         snapshot
     }
-}
-
-fn enrich_soak_resource_bounds_from_store(
-    snapshot: &mut OpenBitcoinStatusSnapshot,
-    resolution: &OperatorConfigResolution,
-) {
-    let Some(datadir) = resolution.maybe_data_dir.as_deref() else {
-        return;
-    };
-    let Ok(store) = FjallNodeStore::open(datadir) else {
-        return;
-    };
-    let Ok(Some(metadata)) = store.load_runtime_metadata() else {
-        return;
-    };
-    if let Some(sync_state) = metadata.maybe_sync_state.as_ref() {
-        snapshot.sync = sync_state.sync.clone();
-        snapshot.peers = sync_state.peers.clone();
-    }
-    snapshot.resource_bounds =
-        collect_resource_bounds(resolution, metadata.maybe_sync_state.as_ref());
 }
 
 pub(crate) trait SoakClock {

@@ -52,7 +52,7 @@ pub(crate) fn durable_context(
             .enable_basic_filter_index()
             .expect("trusted host enable");
     }
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &crate::config::RuntimeConfig {
             chain: open_bitcoin_node::core::wallet::AddressNetwork::Regtest,
             ..Default::default()

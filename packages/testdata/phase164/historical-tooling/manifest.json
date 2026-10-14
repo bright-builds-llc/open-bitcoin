@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "origin_commit": "6cf34f1b96cdb7e719752395b2c52c8f531b559c",
+  "evidence_scope": "historical/source-derived-regression",
+  "current_ordinary_qualification": false,
+  "bindings": [
+    {
+      "file": "scripts/check-phase158-validated-reorg.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase158-checker.txt",
+      "original_sha": "1df027aca2deb9827f135d9a558ef2377d7a2ebb18b830ba76f41698376834de",
+      "current_sha": "385b6c6d62067ba13e8e4d29d0ea1005252614830430f800b0824ec7ba954fdd"
+    },
+    {
+      "file": "scripts/check-phase163-provenance.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase163-provenance.txt",
+      "original_sha": "cf22edda320107ce0dfda9a8692e8c29aaa436ad6ca1f82c48f66b1d778c67d7",
+      "current_sha": "e42bd6a3f1660d46ac35c2bb98fe4df44766ac84ee80d7ffae2a766c22dbaa03"
+    },
+    {
+      "file": "scripts/check-phase162-integrated-filter-proof.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase162-checker.txt",
+      "original_sha": "61c1919cc35f388b8d462ed28d8042cf33d5e5752afcc5d43fea79817d46ad97",
+      "current_sha": "caf9147ecd5b4ac189486bca0d2e81298ff0cfc0ffc218769a5f690a20ca8350"
+    },
+    {
+      "file": "scripts/check-phase162-integrated-filter-proof.test.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase162-tests.txt",
+      "original_sha": "01e84e45886a44d020ffabfebf32d8c898affc3afe1e35613478d38bd870cbc5",
+      "current_sha": "784e29775202503f892ee7b005a5595f77ac8d0f8bdb42ca19818c138a86f6d5"
+    },
+    {
+      "file": "scripts/check-phase162-integrated-filter-proof/contracts.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase162-contracts.txt",
+      "original_sha": "b5e5df1f4dc8705cdbe1ca85f9d9049a6e0188653311e00f2cacabb9f88daa00",
+      "current_sha": "57c5de29c641a4b2e947cd9e0b25b270cb07dfac018320d7f1961580b2e6b10b"
+    },
+    {
+      "file": "scripts/verify.sh",
+      "snapshot": "packages/testdata/phase164/historical-tooling/verify.txt",
+      "original_sha": "cd051fd967934b85a7489f75ad8793cc4880ef918ced776b179a8ff7fb3165bf",
+      "current_sha": "2925344e06e3604fbba1821e49a00b0f2f292448eae205107882d0ed65aacc43"
+    },
+    {
+      "file": "scripts/check-phase163-provenance/fixtures.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase163-fixtures.txt",
+      "original_sha": "40a76924ac64135f08f3482c50f8aafd1b5d98fa6d4dfd7052b87e0b6a492615",
+      "current_sha": "24bf75c09f40d0008bf528a7bd77fa9edf409e15ae967005cae02f6083bb25ae"
+    },
+    {
+      "file": "scripts/check-phase158-validated-reorg.test.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase158-tests.txt",
+      "original_sha": "efa71956ef2e4916a94790f9f9855a418e8f6d4b84c953db126654e89fbd85dc",
+      "current_sha": "bebdd0c7f2cc6e787f34502bb82f6ae6fd27c7a5ce5ac9bdd14be73c054193a3"
+    },
+    {
+      "file": "scripts/check-phase163-provenance/native.test.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase163-native-tests.txt",
+      "original_sha": "f3750b40ca00a3e2faa38df1e0af24536ba152bcd7141e686d67d1c1a0a5bae9",
+      "current_sha": "5297898680a15de12f79b7e6c9c8a814fdd0276522bfd071b96cd7b3a6f7ac16"
+    },
+    {
+      "file": "scripts/check-phase159-filter-rpcs.test.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase159-tests.txt",
+      "original_sha": "8c3591fcd8f4d1e523d77fbd85e4c0d9d50a27e14925ed8876879d1c380451b3",
+      "current_sha": "a4762b5de5ca3c79d1ee2a77d2e48ee77cd29424c6c6a1b44dae1c15944dd59d"
+    },
+    {
+      "file": "scripts/check-phase160-peer-filter-serving.test.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase160-tests.txt",
+      "original_sha": "38b3fd04eb9bbafb1ca2d3b75eb5880ec1f75f147f71836ccb1840680edfbee8",
+      "current_sha": "7994fb29f277138305152f0c46ce7a99c96ab1a740ca4dd6876bb0203eb591bf"
+    },
+    {
+      "file": "scripts/check-phase161-operator-index-evidence.test.ts",
+      "snapshot": "packages/testdata/phase164/historical-tooling/phase161-tests.txt",
+      "original_sha": "05a59352ca6c1641690c94ece985644fd5ae1f72d8cb32cfdf455bdaf85e61dc",
+      "current_sha": "114dd2bb65d95ad3efcf51273e7d8198b46f31c8ad75600435ccb52988280e8a"
+    }
+  ]
+}

@@ -46,6 +46,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, ManagedNetworkError> {
+        self.guard_body(block)?;
         let prepared_chainstate = self.chainstate.prepare_connect_block(
             block,
             self.next_chain_work(),
@@ -78,6 +79,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> ManagedResult<BlockConnectDisposition> {
+        self.guard_body(block)?;
         let block_hash = block_hash(&block.header);
         if self
             .chainstate
@@ -143,6 +145,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> ManagedResult<ChainTransition> {
+        for candidate in replacement_branch {
+            self.guard_body(&candidate.block)?;
+        }
+        self.admission_scope
+            .require_history()
+            .map_err(|error| error.network_error())?;
         let prepared_chainstate = super::runtime_authority::filter_index::reorg::prepare_reorg(
             &self.chainstate,
             disconnect_blocks,

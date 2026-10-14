@@ -15,7 +15,7 @@ use super::*;
 #[test]
 fn permission_context_defaults_to_ordinary_decision_without_configured_classes() {
     // Arrange
-    let context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     let remote_addr = "127.0.0.1:50000".parse().expect("remote address");
 
     // Act

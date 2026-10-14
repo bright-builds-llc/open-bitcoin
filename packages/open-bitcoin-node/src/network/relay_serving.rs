@@ -253,6 +253,7 @@ impl RelayServingCache {
 }
 
 impl<S: ChainstateStore> ManagedPeerNetwork<S> {
+    /// Lower-level fixture/infrastructure owner; ordinary routes must bind canonical scope.
     pub fn new(store: S, local_config: LocalPeerConfig, mempool_config: PolicyConfig) -> Self {
         Self::new_with_relay_activation(
             store,
@@ -263,6 +264,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    /// Lower-level fixture owner with explicit relay policy, without canonical authority.
     pub fn new_with_relay_activation(
         store: S,
         local_config: LocalPeerConfig,
@@ -280,6 +282,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    /// Lower-level fixture owner with explicit block relay policy, without canonical authority.
     pub fn new_with_block_relay_activation(
         store: S,
         local_config: LocalPeerConfig,
@@ -299,6 +302,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    /// Lower-level fixture owner with bounded scheduling, without canonical authority.
     pub fn with_sync_limits(
         store: S,
         local_config: LocalPeerConfig,
@@ -315,6 +319,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    /// Lower-level fixture scheduling and relay owner, without canonical authority.
     pub fn with_sync_limits_and_relay_activation(
         store: S,
         local_config: LocalPeerConfig,
@@ -334,6 +339,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         )
     }
 
+    /// Lower-level fixture constructor; ordinary factories must bind the selected chain.
     pub(crate) fn with_sync_limits_and_block_relay_activation(
         store: S,
         local_config: LocalPeerConfig,
@@ -378,6 +384,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
 
         Self {
             chainstate,
+            admission_scope: super::canonical_admission::AdmissionScope::Fixture,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
             known_peers: Default::default(),
@@ -428,6 +435,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         self.authority_epoch = super::allocate_authority_epoch();
     }
 
+    /// Lower-level recovered fixture owner; initialization is not canonical admission.
     pub(crate) fn from_initialized_chainstate(
         chainstate: ManagedChainstate<S, V>,
         local_config: LocalPeerConfig,
@@ -451,6 +459,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
 
         Self {
             chainstate,
+            admission_scope: super::canonical_admission::AdmissionScope::Fixture,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
             known_peers: Default::default(),

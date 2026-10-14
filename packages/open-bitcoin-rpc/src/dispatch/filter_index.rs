@@ -160,8 +160,9 @@ mod initial_tests {
     #[test]
     fn phase159_filter_rpc_dispatch_disabled_and_summary() {
         // Arrange
-        let mut context =
-            ManagedRpcContext::from_runtime_config(&crate::config::RuntimeConfig::default());
+        let mut context = ManagedRpcContext::from_fixture_runtime_config(
+            &crate::config::RuntimeConfig::default(),
+        );
         let filter = normalize_method_call(
             "getblockfilter",
             RequestParameters::Positional(vec![json!("00".repeat(32))]),

@@ -215,3 +215,24 @@ export function addFailure(
 export function count(source: string, marker: string): number {
   return source.split(marker).length - 1;
 }
+
+/** Current ordinary refusal and explicitly synthetic recovery keep separate publication routes. */
+export function contextStartupIsOrdered(canonical: string, network: string): boolean {
+  const build = body(canonical, "pub(super) fn build_context_network(");
+  const ordinary = body(canonical, "pub fn try_from_runtime_config_with_store(");
+  const fixture = body(canonical, "pub fn from_fixture_runtime_config_with_store(");
+  const ordinaryHandle = body(network, "pub fn from_runtime_config_with_network_handle(");
+  const fixtureHandle = body(network, "pub(super) fn assemble_fixture_context(");
+  const before = (source: string, first: string, last: string) => source.indexOf(first) >= 0 && source.indexOf(last) > source.indexOf(first);
+  return before(build, "wallet_scan_chainstate_snapshot()?", "ManagedPeerNetwork::new_with_block_relay_activation(")
+    && !build.includes("recover_mempool_snapshot")
+    && before(ordinary, "require_ordinary_scope(chain)?", "build_wallet_state_with_store(")
+    && before(ordinary, "Self::build_context_network(", "ManagedNetworkHandle::from_canonical_network(")
+    && before(ordinary, "ManagedNetworkHandle::from_canonical_network(", "Self::from_runtime_config_with_network_handle(")
+    && before(ordinaryHandle, "require_ordinary_scope(chain)?", "recover_mempool_snapshot_from_store_handle(")
+    && before(ordinaryHandle, "recover_mempool_snapshot_from_store_handle(", "Self::assemble_context(")
+    && before(fixture, "Self::build_context_network(", "Self::assemble_fixture_context(")
+    && fixture.includes("ManagedNetworkHandle::from_network_fixture(network)")
+    && before(fixtureHandle, "recover_fixture_mempool_snapshot_from_store_handle(", "Self::assemble_context(")
+    && body(network, "fn assemble_context(").includes("Self {");
+}

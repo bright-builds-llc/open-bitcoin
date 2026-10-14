@@ -2,6 +2,26 @@
   "baseline": "29.3.knots20260210",
   "deviations": [
     {
+      "id": "canonical-ordinary-history-refused-pending-prerequisites",
+      "surfaces": [
+        "v2-6-canonical-chain-identity",
+        "datadir",
+        "validation",
+        "operator-docs"
+      ],
+      "summary": "Phase 164 recognizes only the four exact pinned mainnet/testnet3/default-Signet/default-regtest genesis identities, with identity-only source-derived evidence. Unlike pinned Knots canonical startup/validation, every ordinary history mode currently refuses: all existing nonempty unproved stores refuse without backend open, and missing/empty sources refuse because canonical_bootstrap, exact_work and candidate_history are absent; Signet also lacks signet_challenge_validation. Observed stored network/root/work remain unavailable rather than invented wrong-network facts. No repair, conversion, reindex, positive canonical reopen or bootstrap is provided.",
+      "evidence": [
+        "docs/parity/v2-6-canonical-chain-identity.md",
+        "packages/open-bitcoin-consensus/src/chain_spec.rs",
+        "packages/open-bitcoin-consensus/src/chain_spec/tests.rs",
+        "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
+        "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs",
+        "packages/open-bitcoin-node/src/network/canonical_admission.rs",
+        "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
+        "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility.rs"
+      ]
+    },
+    {
       "id": "basic-enabled-empty-history-refusal",
       "surfaces": [
         "compact-filter-index",
@@ -536,6 +556,10 @@
   },
   "surfaces": [
     {
+      "name": "v2-6-canonical-chain-identity",
+      "status": "done"
+    },
+    {
       "name": "consensus",
       "status": "done"
     },
@@ -858,6 +882,76 @@
       "out_of_scope"
     ],
     "surfaces": [
+      {
+        "id": "v2-6-canonical-chain-identity",
+        "title": "Exact canonical genesis identity and non-opening ordinary refusal",
+        "status": "done",
+        "requirements": [
+          "CBOT-01",
+          "CBOT-04",
+          "CVLD-05"
+        ],
+        "evidence": [
+          "docs/parity/v2-6-canonical-chain-identity.md",
+          "README.md",
+          "docs/parity/support-matrix.md",
+          "packages/open-bitcoin-consensus/src/chain_spec.rs",
+          "packages/open-bitcoin-consensus/src/chain_spec/genesis.rs",
+          "packages/open-bitcoin-consensus/src/chain_spec/tests.rs",
+          "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
+          "packages/open-bitcoin-node/src/storage/chain_compatibility/tests.rs",
+          "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs",
+          "packages/open-bitcoin-node/src/network/canonical_admission.rs",
+          "packages/open-bitcoin-node/src/network/canonical_admission/tests.rs",
+          "packages/open-bitcoin-rpc/src/config/canonical_chain.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs",
+          "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
+          "packages/open-bitcoin-rpc/src/context/canonical_chain/tests.rs",
+          "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility.rs",
+          "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility/tests.rs",
+          "packages/open-bitcoin-cli/src/operator/soak/runtime/chain_compatibility.rs",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-01-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-02-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-03-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-04-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-05-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-06-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-13-SUMMARY.md",
+          "scripts/check-phase164-canonical-identity.ts",
+          "scripts/check-phase164-canonical-identity.test.ts",
+          "scripts/check-phase164-canonical-identity/contracts.ts",
+          "scripts/check-phase164-canonical-identity/claims.ts",
+          "scripts/check-phase164-canonical-identity/regions.ts",
+          "scripts/check-phase164-canonical-identity/fixture-source.ts",
+          "scripts/check-phase164-canonical-identity/historical-tooling.ts",
+          "scripts/check-phase164-canonical-identity/historical.test.ts",
+          "packages/testdata/phase164/historical-tooling/manifest.json",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-07-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-08-SUMMARY.md",
+          ".planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/signet.cpp"
+          ],
+          "tests": [
+            "packages/bitcoin-knots/test/functional/feature_signet.py"
+          ]
+        },
+        "rationale": "Current-source identity/refusal surface against Bitcoin Knots 29.3.knots20260210 at a9aee730466ac67d35a3c03ee24676be5e045878. Exact four-network genesis vectors and actual ordinary-refusal/preservation regressions are evidence inputs; Phase 164 verification passed 27/27 after full default native verification, clean source review and 30 closed security controls; CBOT-01, CBOT-04 and CVLD-05 are closed for identity/refusal scope only. Source-derived vectors and explicit synthetic fixture factories do not claim actual Knots daemon qualification or ordinary accepted canonical history.",
+        "intentional_differences": [
+          "Every existing nonempty unproved store refuses without backend open; observed stored network/root/work are unavailable, never fabricated wrong-network observations. Filesystem classification reads no source-file contents and cannot authorize access.",
+          "Missing and empty sources also refuse ordinary activation: canonical_bootstrap, exact_work and candidate_history are missing for all four selectors, with signet_challenge_validation additionally missing for Signet. Exact root identity grants no canonical bootstrap/reopen or accepted history.",
+          "Offline CLI sync controls, managed-wallet name lookup/backup and soak enrichment/start refuse or report bounded compatibility unavailability before source/output/index/ledger writes. Separately authenticated live RPC status/index/send/control paths remain separate and open no local store.",
+          "Historical v2.5 receipt bytes, hashes, dates, counts and source IDs retain their original synthetic-root, caller-work, maturity and halving limits; current fixture regression success cannot enable ordinary runtime config or environment paths."
+        ],
+        "known_gaps": [
+          "Exact work is Phase 165-owned, canonical durable bootstrap/reopen is Phase 166-owned, candidate-history rules are Phase 167-owned and actual Knots differential qualification is Phase 168-owned.",
+          "No new network selector, automatic repair/conversion/reindex, whole-chain parity, public/default networking, production service/readiness or production-funds claim is introduced."
+        ]
+      },
       {
         "id": "v2-5-integrated-retained-filter-proof",
         "title": "Real prune retention and integrated BASIC client proof",

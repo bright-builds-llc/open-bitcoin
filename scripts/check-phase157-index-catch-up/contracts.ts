@@ -52,9 +52,10 @@ const PROOFS = NODE + "storage/fjall_store/filters/ownership/proofs.rs";
 export const PRODUCTION_BUDGET = NODE + "chainstate/filter_reorg/preflight.rs";
 const TEST = NODE + "sync/tests/filter_index/";
 const DAEMON = RPC + "bin/open-bitcoind.rs";
+export const DAEMON_FIXTURE = RPC + "bin/open_bitcoind/tests/fixture_runtime.rs";
 const TIMER = RPC + "bin/open_bitcoind/coins_flush.rs";
 export type Contract = { decision: string; threat: string; file: string; symbol: string;
-  anchors: readonly string[]; maybeForbidden?: readonly string[] };
+  anchors: readonly string[]; maybeForbidden?: readonly string[]; maybeFixture?: boolean };
 const row = (decision: string, file: string, symbol: string, anchors: string[], maybeForbidden?: string[]): Contract =>
   ({ decision, threat: "T-157-30", file, symbol, anchors, maybeForbidden });
 export const SCANS = ["load_chain_meta_for_open(", "validate_basic_filter_records(",
@@ -68,8 +69,11 @@ export const CONTRACTS: Contract[] = [
   row("D-01", RPC + "config/loader.rs", "load_runtime_config_for_args", ["blockfilter::resolve(&cli.block_filter_values, &config_entries, chain)?"]),
   row("D-01", RPC + "config/loader.rs", "parse_cli_args", ["blockfilter::parse_cli(&mut settings.block_filter_values, key, maybe_value, negated)"]),
   row("D-01", RPC + "config/loader/blockfilter.rs", "resolve", ["config_section_name(chain)", "entry.maybe_section.as_deref()", "resolve_filter_index(cli, &network, &defaults)"]),
-  row("D-02", DAEMON, "open_runtime_store", ["runtime.block_filter_index.is_enabled() && !has_valid_datadir", "runtime.block_filter_index.is_explicit() && has_valid_datadir", "if !has_durable_trigger", "FjallNodeStore::open(data_dir)"]),
-  row("D-03", DAEMON, "open_authoritative_network_runtime", ["runtime.block_filter_index.is_enabled()", "BasicFilterStartupMode::Enabled", "BasicFilterStartupMode::Disabled", "DurableSyncRuntime::open_with_configured_runtime_activation("]),
+  row("D-02", DAEMON, "open_runtime_store", ["selected_canonical_chain(runtime)", "runtime.block_filter_index.is_explicit()", "if !has_durable_trigger", "FjallNodeStore::open_ordinary(data_dir, chain)"]),
+  row("D-03", DAEMON, "open_authoritative_network_runtime", ["selected_canonical_chain(runtime)", ".require_ordinary_history()", "let Some(store) = maybe_store", "DurableSyncRuntime::open_ordinary_configured(", "basic_filter_startup_mode(runtime)", "assemble_durable_runtime(runtime, sync_runtime)"]),
+  row("D-03", DAEMON, "basic_filter_startup_mode", ["runtime.block_filter_index.is_enabled()", "BasicFilterStartupMode::Enabled", "BasicFilterStartupMode::Disabled"]),
+  { ...row("D-02", DAEMON_FIXTURE, "fixture_open_runtime_store", ["runtime.block_filter_index.is_enabled() && !has_valid_datadir", "runtime.block_filter_index.is_explicit() && has_valid_datadir", "if !has_durable_trigger", "FjallNodeStore::open(data_dir)"]), maybeFixture: true },
+  { ...row("D-03", DAEMON_FIXTURE, "fixture_open_authoritative_network_runtime", ["DurableSyncRuntime::open_with_configured_runtime_activation(", "runtime.relay", "runtime.block_serving", "runtime.inbound.enabled", "basic_filter_startup_mode(runtime)", "assemble_durable_runtime(runtime, sync_runtime)"]), maybeFixture: true },
   row("D-03", NODE + "chainstate/flush_lifecycle.rs", "initialize_configured", ["apply_recovery_decision(", "coins_recovery_outcome_after_success(", "match basic_filter_mode", "configure_basic_filter_index_before_prune(", "store.load_prune_locks()?", "resume_prune_intent(store, &locks)?", "ManagerReadiness::ReadyToFlush", "CoinsCache::from_parent(recovered)"]),
   row("D-04", NODE + "storage/fjall_store/filters/lifecycle.rs", "enable_basic_filter_index", ["self.filter_publication_guard()?;", "self.enable_basic_filter_index_guarded(", "fence,", "&mut control,", "RetentionObservationLimits::default()"]),
   row("D-04", NODE + "storage/fjall_store/filters/lifecycle.rs", "enable_basic_filter_index_guarded", ["self.verify_basic_filter_fence(fence)?;", "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?", ".check_prune_intent(intent.height)", "self.initialize_basic_filter_state_guarded(", "return self.install_recovered_basic_filter_append_guarded(", "self.inspect_basic_filter_recovery(owner, fence)?", "self.preflight_basic_filter_history(checkpoint.input_protection(), fence)?", ".check_prune_intent(intent.height)", "if active == owner.lifecycle()", "return self.install_recovered_basic_filter_append_guarded(", "self.finish_basic_filter_batch("]),

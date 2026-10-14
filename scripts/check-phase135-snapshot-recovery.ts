@@ -11,6 +11,7 @@ import {
   hasAll,
   sameFields,
   statementHasDisablingAttribute,
+  contextStartupIsOrdered,
 } from "./check-phase135-snapshot-recovery/source";
 import { checkPersistedInputContract } from "./check-phase135-snapshot-recovery/persisted-input";
 import {
@@ -54,6 +55,7 @@ const FILES = {
   syncRuntime: "packages/open-bitcoin-node/src/sync/open_runtime.rs",
   startup: "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
   startupContext: "packages/open-bitcoin-rpc/src/context/network.rs",
+  startupCanonical: "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
   daemonCheckpoint:
     "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
   daemon: "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
@@ -405,20 +407,7 @@ export function checkPhase135SnapshotRecovery(
     get(FILES.chainstateTypes),
     "impl ChainstateSnapshot {",
   );
-  const startupConstruction = body(
-    startupContext,
-    "pub fn from_runtime_config_with_store(",
-  );
-  const chainstateLoad = startupConstruction.indexOf(
-    "wallet_scan_chainstate_snapshot",
-  );
-  const handleConstruction = startupConstruction.indexOf(
-    "ManagedNetworkHandle::from_network_fixture",
-  );
-  const recoveryInstall = startupConstruction.indexOf(
-    "recover_mempool_snapshot_from_store_handle",
-  );
-  const publication = startupConstruction.indexOf("Self {");
+  const startupOrdered = contextStartupIsOrdered(get(FILES.startupCanonical), startupContext);
   const daemonCheckpoint = get(FILES.daemonCheckpoint);
   addFailure(
     failures,
@@ -438,13 +427,7 @@ export function checkPhase135SnapshotRecovery(
       !genericSnapshotConstruction.includes(
         "maybe_confirmed_txid_counts: None",
       ) ||
-      !startupConstruction.includes(
-        "wallet_scan_chainstate_snapshot()?",
-      ) ||
-      chainstateLoad < 0 ||
-      handleConstruction < chainstateLoad ||
-      recoveryInstall < handleConstruction ||
-      publication < recoveryInstall ||
+      !startupOrdered ||
       !daemonCheckpoint.includes("Duration::from_secs(300)") ||
       !daemonCheckpoint.includes("MempoolCheckpointCoordinator::new()"),
     PHASE135_DIAGNOSTICS.startup,

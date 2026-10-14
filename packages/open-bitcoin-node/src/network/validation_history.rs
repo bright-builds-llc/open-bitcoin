@@ -67,6 +67,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             }
             .into());
         }
+        // Refuse the entire ordinary batch before peer bookkeeping or prefix publication.
+        self.guard_header_batch(&message.headers)?;
+        let admission_scope = self.admission_scope;
         let maybe_store = self.chainstate.store().maybe_validation_history_store();
         let mut identities = Vec::new();
         let result = self.peer_manager.handle_headers_with_policy(
@@ -74,6 +77,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             message,
             HeaderSyncPolicy::HeadersOnly,
             |headers, header| {
+                admission_scope
+                    .check_header(header)
+                    .map_err(|error| error.network_error())?;
                 validate_header_for_sync(headers, header, timestamp, params)?;
                 let was_known = headers.entry(&block_hash(header)).is_some();
                 let inserted = headers.insert_header(header.clone())?;

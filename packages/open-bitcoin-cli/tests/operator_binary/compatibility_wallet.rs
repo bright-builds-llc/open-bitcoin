@@ -250,7 +250,7 @@ fn open_bitcoin_wallet_send_confirm_submits_sendtoaddress() {
 }
 
 #[test]
-fn open_bitcoin_wallet_backup_writes_open_bitcoin_export() {
+fn open_bitcoin_wallet_backup_refuses_unproved_source_before_export() {
     // Arrange
     let sandbox = TestSandbox::new("wallet-backup-write");
     let data_dir = sandbox.child("open-data");
@@ -258,6 +258,8 @@ fn open_bitcoin_wallet_backup_writes_open_bitcoin_export() {
     let backup_path = backup_dir.join("alpha-backup.json");
     fs::create_dir_all(&backup_dir).expect("backup dir");
     seed_managed_wallet(&data_dir, "alpha");
+    let before = source_manifest(&data_dir);
+    let data_dir = data_dir.canonicalize().expect("real owned source path");
 
     // Act
     let output = run_open_bitcoin(
@@ -276,19 +278,16 @@ fn open_bitcoin_wallet_backup_writes_open_bitcoin_export() {
     );
 
     // Assert
-    assert_success(&output);
-    let stdout = String::from_utf8(output.stdout).expect("stdout utf8");
-    assert!(stdout.contains("Wrote Open Bitcoin wallet backup for alpha"));
-    let contents = fs::read_to_string(&backup_path).expect("backup contents");
-    let decoded: Value = serde_json::from_str(&contents).expect("backup json");
-    assert_eq!(decoded["format"], "open-bitcoin-wallet-backup");
-    assert_eq!(decoded["wallet_name"], "alpha");
-    assert_eq!(decoded["snapshot"]["network"], "regtest");
-    assert_eq!(decoded["snapshot"]["descriptor_count"], 2);
+    assert_failure(&output);
+    let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
+    assert!(stderr.contains("existing_state_unproved: selected_network=regtest"));
+    assert!(stderr.contains("observed_root=unavailable"));
+    assert!(!backup_path.exists());
+    assert_eq!(source_manifest(&data_dir), before);
 }
 
 #[test]
-fn open_bitcoin_wallet_backup_rejects_external_wallet_candidate_paths() {
+fn open_bitcoin_wallet_backup_refuses_source_before_external_destination() {
     // Arrange
     let sandbox = TestSandbox::new("wallet-backup-unsafe");
     let data_dir = sandbox.child("open-data");
@@ -296,6 +295,9 @@ fn open_bitcoin_wallet_backup_rejects_external_wallet_candidate_paths() {
     let unsafe_backup_path = unsafe_wallet_dir.join("backup.json");
     fs::create_dir_all(&unsafe_wallet_dir).expect("unsafe wallet dir");
     seed_managed_wallet(&data_dir, "alpha");
+    let source_before = source_manifest(&data_dir);
+    let destination_before = source_manifest(&unsafe_wallet_dir);
+    let data_dir = data_dir.canonicalize().expect("real owned source path");
 
     // Act
     let output = run_open_bitcoin(
@@ -316,5 +318,72 @@ fn open_bitcoin_wallet_backup_rejects_external_wallet_candidate_paths() {
     // Assert
     assert_failure(&output);
     let stderr = String::from_utf8(output.stderr).expect("stderr utf8");
-    assert!(stderr.contains("backup destination overlaps detected external wallet candidate"));
+    assert!(stderr.contains("existing_state_unproved: selected_network=regtest"));
+    assert!(!unsafe_backup_path.exists());
+    assert_eq!(source_manifest(&data_dir), source_before);
+    assert_eq!(source_manifest(&unsafe_wallet_dir), destination_before);
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct SourceEntry {
+    relative: PathBuf,
+    bytes: Vec<u8>,
+    length: u64,
+    modified: std::time::SystemTime,
+    mode: u32,
+    kind: &'static str,
+    maybe_target: Option<PathBuf>,
+}
+
+pub(super) fn source_manifest(root: &Path) -> Vec<SourceEntry> {
+    fn visit(root: &Path, path: &Path, entries: &mut Vec<SourceEntry>) {
+        let metadata = fs::symlink_metadata(path).expect("source metadata");
+        #[cfg(unix)]
+        let mode = {
+            use std::os::unix::fs::PermissionsExt;
+            metadata.permissions().mode()
+        };
+        #[cfg(not(unix))]
+        let mode = 0;
+        entries.push(SourceEntry {
+            relative: path
+                .strip_prefix(root)
+                .expect("relative source path")
+                .to_owned(),
+            bytes: if metadata.is_file() {
+                fs::read(path).expect("source bytes")
+            } else {
+                Vec::new()
+            },
+            length: metadata.len(),
+            modified: metadata.modified().expect("source modification"),
+            mode,
+            kind: if metadata.is_dir() {
+                "directory"
+            } else if metadata.is_symlink() {
+                "symlink"
+            } else {
+                "file"
+            },
+            maybe_target: if metadata.is_symlink() {
+                Some(fs::read_link(path).expect("source link"))
+            } else {
+                None
+            },
+        });
+        if !metadata.is_dir() {
+            return;
+        }
+        let mut children = fs::read_dir(path)
+            .expect("source children")
+            .map(|entry| entry.expect("source entry").path())
+            .collect::<Vec<_>>();
+        children.sort();
+        for child in children {
+            visit(root, &child, entries);
+        }
+    }
+    let mut entries = Vec::new();
+    visit(root, root, &mut entries);
+    entries
 }

@@ -238,7 +238,7 @@ pub(super) fn decode_hex(text: &str) -> Vec<u8> {
 }
 
 pub(crate) fn empty_context() -> ManagedRpcContext {
-    ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         wallet: WalletRuntimeConfig {
             coinbase_maturity: 1,

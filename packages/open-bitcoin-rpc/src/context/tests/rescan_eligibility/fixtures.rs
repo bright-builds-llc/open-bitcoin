@@ -95,7 +95,7 @@ pub(super) fn fixture(label: &str) -> (PathBuf, FjallNodeStore, ChainstateSnapsh
 }
 
 pub(super) fn context(store: &FjallNodeStore, data_dir: &std::path::Path) -> ManagedRpcContext {
-    let mut context = ManagedRpcContext::from_runtime_config_with_store(
+    let mut context = ManagedRpcContext::from_fixture_runtime_config_with_store(
         &RuntimeConfig {
             chain: AddressNetwork::Regtest,
             maybe_data_dir: Some(data_dir.to_path_buf()),

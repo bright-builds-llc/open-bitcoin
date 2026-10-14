@@ -16,6 +16,8 @@ const B = R + "bin/open_bitcoind/";
 const OWNED = ["scripts/check-phase162-integrated-filter-proof.ts", "scripts/check-phase162-integrated-filter-proof/contracts.ts", "scripts/check-phase162-integrated-filter-proof.test.ts"];
 const PIN = "a9aee730466ac67d35a3c03ee24676be5e045878";
 const SHARED = ["packages/testdata/phase162/recipe.rs", "packages/testdata/phase162/process.rs"];
+import { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
+export { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 const PROCESS = SHARED[1];
 const UNIX_TESTS = "#[cfg(all(test, unix))]";
 const CHECKPOINTS: Contract[] = CHECKPOINT_CONTRACTS.map((row, index) => ({ ...row, kind: "production", counts: CHECKPOINT_COUNTS[index], assertions: [], facts: [] }));
@@ -330,11 +332,12 @@ export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<st
   const text = sourceText(sources);
   const failures: string[] = [];
   for (const file of CHECK_FILES) if (!sources.has(file)) failures.push(`${file}: required current source missing`);
-  const state = checkPhase162ClaimState(text, failures);
+  const historicalText = sourceText(historicalFixtureView(sources));
+  const state = checkPhase162ClaimState(historicalText, failures);
   for (const file of [...new Set(ROOTS)]) failures.push(...checkFunctions(file, text(file)));
   checkModules(text, failures);
   checkNative(text("scripts/verify.sh"), failures);
-  checkScope(text, failures, state);
+  checkScope(text, failures, state, historicalText);
   checkFrozenGuards(text, failures);
   checkTypeScriptOracle(text("scripts/phase162-filter-oracle.ts"), failures);
   if (!compact(rustCode(text(N + "sync/tests/peer_filter_transport/phase162.rs"))).includes("constPARTIAL:usize=31;")) failures.push("Phase162 outbound physical prefix: exact31-byte constant required");
@@ -355,7 +358,7 @@ function checkTypeScriptOracle(source: string, failures: string[]): void {
   }
 }
 
-function checkScope(text: (file: string) => string, failures: string[], state: ReturnType<typeof checkPhase162ClaimState>): void {
+function checkScope(text: (file: string) => string, failures: string[], state: ReturnType<typeof checkPhase162ClaimState>, historicalText: (file: string) => string): void {
   try {
     const index = JSON.parse(text("docs/parity/index.json"));
     const owner = index.checklist.surfaces.find((row: { id: string }) => row.id === "v2-5-integrated-retained-filter-proof");
@@ -363,9 +366,9 @@ function checkScope(text: (file: string) => string, failures: string[], state: R
     const pinSource = text("scripts/generate-peer-filter-fixtures.ts");
     const pins = [...rustCode(pinSource).matchAll(/\bexport\s+const\s+PIN\s*=/g)];
     if (pins.length !== 1 || !pinSource.slice(pins[0].index).startsWith(`export const PIN = "${PIN}"`)) failures.push("Phase162: exact independent oracle Knots pin required");
-    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state, text);
-    const view = phase162ClaimView(text(PHASE162_DOC), state, text);
-    checkPhase162ExcludedClaims(view, PHASE162_DOC, failures, state, text);
+    checkPhase162ExcludedClaims(JSON.stringify(owner), "docs/parity/index.json", failures, state, historicalText);
+    const view = phase162ClaimView(text(PHASE162_DOC), state, historicalText);
+    checkPhase162ExcludedClaims(view, PHASE162_DOC, failures, state, historicalText);
     const breadcrumbs = JSON.parse(text("docs/parity/source-breadcrumbs.json"));
     for (const [file, anchors] of Object.entries(BREADCRUMBS)) {
       const groups = breadcrumbs.groups.filter((group: { files: string[] }) => group.files.includes(file));
@@ -377,9 +380,9 @@ function checkScope(text: (file: string) => string, failures: string[], state: R
 
 function checkFrozenGuards(text: (file: string) => string, failures: string[]): void {
   // Phase163's exact scoped replacement and preserved checkpoint contracts require independent review.
-  for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "1df027aca2deb9827f135d9a558ef2377d7a2ebb18b830ba76f41698376834de"],
-    ["scripts/check-phase158-validated-reorg.test.ts", "efa71956ef2e4916a94790f9f9855a418e8f6d4b84c953db126654e89fbd85dc"],
-    ["scripts/check-phase163-provenance.ts", "cf22edda320107ce0dfda9a8692e8c29aaa436ad6ca1f82c48f66b1d778c67d7"]]) {
+  for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "385b6c6d62067ba13e8e4d29d0ea1005252614830430f800b0824ec7ba954fdd"],
+    ["scripts/check-phase158-validated-reorg.test.ts", "bebdd0c7f2cc6e787f34502bb82f6ae6fd27c7a5ce5ac9bdd14be73c054193a3"],
+    ["scripts/check-phase163-provenance.ts", "e42bd6a3f1660d46ac35c2bb98fe4df44766ac84ee80d7ffae2a766c22dbaa03"]]) {
     if (createHash("sha256").update(text(file)).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
   }
 }
@@ -391,6 +394,8 @@ if (import.meta.main) {
       console.error("Phase162 integrated structural/claim guard failed:\n" + failures.map(failure => `- ${failure}`).join("\n"));
       process.exit(1);
     }
+    const attribution = fixtureSourceAttribution(loadSources().get(MIGRATED_FIXTURE)!);
+    console.log(`Phase162 fixture attribution: ${attribution.evidenceClass}; raw current SHA=${attribution.currentHash}; original historical SHA=${attribution.historicalHash}; no current ordinary qualification.`);
     console.log(`Phase162: ${CONTRACTS.length} fixed function contracts; Pending/implementation/formal claim consistency; executable behavior and full native/review gates remain independent.`);
   } catch (error) {
     console.error(`Phase162 cannot read required current evidence: ${error instanceof Error ? error.message : String(error)}`);

@@ -3,6 +3,7 @@ import { checkPhase161OperatorIndexEvidence, loadSources } from "./check-phase16
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
+import { historicalFixtureView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE } from "./check-phase158-validated-reorg.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
@@ -24,7 +25,7 @@ function transitionSources(): Map<string, string> {
   if (!owner.evidence.includes(PHASE162_DOC)) owner.evidence.push(PHASE162_DOC);
   index.checklist.surfaces.find((row: { requirements: string[] }) => row.requirements.includes("CFOP-01")).known_gaps = [PHASE162_IMPLEMENTATION];
   sources.set("docs/parity/index.json", JSON.stringify(index));
-  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(sources.get(file)!).digest("hex")}\` |`).join("\n"));
+  sources.set(PHASE162_DOC, `---\nphase_lifecycle_id: 162-2026-10-11T16-25-37\nlifecycle_mode: yolo\nimplementation_status: proven\ngenerated_at: "2026-10-11T23:00:00Z"\n---\n${PHASE162_IMPLEMENTATION}\n` + PHASE162_EVIDENCE.map(file => `| \`${file}\` | \`${createHash("sha256").update(historicalFixtureView(sources).get(file)!).digest("hex")}\` |`).join("\n"));
   for (const file of CURRENT_DOCS) sources.set(file, sources.get(file)!.replace("Phase 162 owns the complete integrated prune/reopen client proof.", PHASE162_IMPLEMENTATION).replace("v2.5 remains pending.", "v2.5 remains unaudited and unshipped."));
   return sources;
 }

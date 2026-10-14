@@ -51,6 +51,10 @@ function corpus(): Map<string, string> {
     sources.set(file, source);
     for (const match of source.matchAll(/\bfrom\s+["'](\.[^"']+)["']/g)) {
       const imported = relative(REPO, resolve(dirname(full), match[1]));
+      if (imported === "packages/testdata/phase164/historical-tooling/manifest.json") {
+        if (!sources.has(imported)) throw new Error("required historical tooling manifest missing");
+        continue;
+      }
       if (imported.startsWith("..") || !imported.endsWith(".ts")) throw new Error(`invalid bounded import: ${imported}`);
       pending.push(imported);
     }

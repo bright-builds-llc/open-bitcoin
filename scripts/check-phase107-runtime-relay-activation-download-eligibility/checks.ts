@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { maybeFunction } from "../check-phase157-index-catch-up/rust-evidence.ts";
 import { DEFAULT_REPO_ROOT, TARGET_FILES, REQUIRED_SUPPRESSION_LABELS, REQUIRED_STATUS_SYMBOLS, REQUIRED_POLICY_SYMBOLS, TargetFile, TextCorpus } from "./constants.ts";
 import { checkParitySurface, checkRequiredDocsAndCommands } from "./parity.ts";
 import { checkVerifierOrder, checkForbiddenDefaultVerifierGates, checkSensitivePublicEvidence, checkForbiddenClaims } from "./claims.ts";
@@ -35,7 +36,9 @@ export function checkPhase107RuntimeRelayActivationDownloadEligibility(
 }
 
 export function checkRuntimeConfigPropagation(texts: TextCorpus, failures: string[]): void {
-  const context = texts.get("packages/open-bitcoin-rpc/src/context/network.rs") ?? "";
+  const source = texts.get("packages/open-bitcoin-rpc/src/context/canonical_chain.rs") ?? "";
+  const maybeBuild = maybeFunction(source, "build_context_network", true);
+  const context = maybeBuild ? source.slice(maybeBuild.start, maybeBuild.end) : "";
   if (
     !orderedIndexes(context, [
       "ManagedPeerNetwork::new_with_block_relay_activation(",

@@ -2,11 +2,11 @@
 
 ## Active Milestone: v2.6 Canonical Chain Bootstrap and Validation Parity
 
-**Status:** Approved 2026-10-13; Phase 164 ready for discussion and planning
+**Status:** Approved 2026-10-13; Phase 164 verified complete 2026-10-14; Phase 165 ready for planning
 **Granularity:** Fine
 **Goal:** Start from an empty datadir, validate canonical Bitcoin histories with network-correct rules and cumulative proof of work, and demonstrate matching results against pinned Bitcoin Knots `29.3.knots20260210` (`a9aee730466ac67d35a3c03ee24676be5e045878`).
 
-This user-approved roadmap maps all 30 requirements to eight phases, continuing after shipped Phase 163. Every requirement is Pending; all phases are Not started with zero plans. Approval completes milestone definition; phase planning and execution remain separate workflows.
+This user-approved roadmap maps all 30 requirements to eight phases, continuing after shipped Phase 163. Phase 164 closes three requirements across 13 verified plans; the remaining 27 requirements and Phases 165–171 remain pending. Approval, phase execution and full ordinary-history qualification remain separate gates.
 
 ## Scope and Delivery Gates
 
@@ -20,7 +20,7 @@ This user-approved roadmap maps all 30 requirements to eight phases, continuing 
 
 ## Phases
 
-- [ ] **Phase 164: Canonical Chain Identity and Compatibility Gates** - Bind existing network selectors to canonical roots and refuse incompatible state before mutation.
+- [x] **Phase 164: Canonical Chain Identity and Compatibility Gates** - Bind existing network selectors to canonical roots and refuse incompatible state before mutation. (completed 2026-10-14)
 - [ ] **Phase 165: Shared Exact Work Authority** - Select headers and connected branches using verified target-derived 256-bit work.
 - [ ] **Phase 166: Canonical Durable Bootstrap and Genesis BASIC** - Initialize and reopen canonical genesis, exact work and BASIC without seeded history.
 - [ ] **Phase 167: Candidate-History Validation Rules** - Apply pinned network and branch-history rules through ordinary durable validation.
@@ -42,7 +42,7 @@ This user-approved roadmap maps all 30 requirements to eight phases, continuing 
 1. An operator opening foreign-network or noncanonical-root durable state gets a bounded diagnostic while prior data remains intact, before automatic coins/schema migration, initialization, prune resume or BASIC writes. The same read-only inspection boundary is available to the later legacy-work decision. [CBOT-04]
 1. An operator can identify the supported validation/evidence scope of mainnet, testnet3, signet and regtest; missing consensus prerequisites cause explicit unsupported refusal before accepting history, including absent Signet challenge validation. [CVLD-05]
 
-**Plans**: 0 plans (not yet planned)
+**Plans**: 13/13 plans verified complete
 
 **UI hint**: no
 
@@ -154,11 +154,11 @@ Historical fixture prerequisites are established here for Phase 171. Canonical o
 
 ## Progress
 
-The requirements and roadmap were approved on 2026-10-13. The acceptance dependency order is 164 → 165 → 166 → 167 → 168 → 169 → 170 → 171. Early runner design and historical fixture selection do not remove those acceptance dependencies. No phase execution has started.
+The requirements and roadmap were approved on 2026-10-13. The acceptance dependency order is 164 → 165 → 166 → 167 → 168 → 169 → 170 → 171. Early runner design and historical fixture selection do not remove those acceptance dependencies. Phase 164 passed full native, source/security and 27/27 goal verification; later phases have not started.
 
 | Phase                                                  | Plans Complete | Status      | Completed |
 | ------------------------------------------------------ | -------------- | ----------- | --------- |
-| 164. Canonical Chain Identity and Compatibility Gates  | 0/0            | Not started | -         |
+| 164. Canonical Chain Identity and Compatibility Gates  | 13/13          | Complete    | 2026-10-14 |
 | 165. Shared Exact Work Authority                       | 0/0            | Not started | -         |
 | 166. Canonical Durable Bootstrap and Genesis BASIC     | 0/0            | Not started | -         |
 | 167. Candidate-History Validation Rules                | 0/0            | Not started | -         |
@@ -167,7 +167,7 @@ The requirements and roadmap were approved on 2026-10-13. The acceptance depende
 | 170. Canonical Prune and Retained BASIC Integration    | 0/0            | Not started | -         |
 | 171. Classified Historical Contexts and Parity Closure | 0/0            | Not started | -         |
 
-Coverage: 30/30 active requirements mapped exactly once; no orphaned or duplicate owners. Later integration phases exercise foundations without reassigning their ownership. Phase 164–171 directories contain only `.gitkeep`; execution artifacts will be created by subsequent approved phase workflows.
+Coverage: 30/30 active requirements mapped exactly once; no orphaned or duplicate owners. Later integration phases exercise foundations without reassigning their ownership. Phase 164 contains its 13 plans/summaries and accepted verification; Phases 165–171 remain scaffolds awaiting subsequent workflows.
 
 ## Historical Milestones and Guidance
 

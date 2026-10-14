@@ -86,7 +86,7 @@ fn assert_phase162_disabled_daemon<S, V>(
     }
     let preflight = preflight_daemon_sync(runtime, opened.maybe_sync_runtime.as_ref())
         .expect("disabled preflight");
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         runtime,
         opened.network.clone(),
         maybe_store,
@@ -297,7 +297,7 @@ fn authoritative_network_daemon_composition_shares_runtime_handle_with_rpc() {
         .expect("authoritative runtime")
         .expect_durable();
     let sync_network = authoritative_runtime.network.clone();
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime,
         authoritative_runtime.network,
         Some(store),

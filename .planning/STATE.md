@@ -2,19 +2,16 @@
 gsd_state_version: "1.0"
 milestone: v2.6
 milestone_name: Canonical Chain Bootstrap and Validation Parity
-status: ready_to_plan
-stopped_at: v2.6 requirements and roadmap approved; Phase 164 ready for discussion and planning
-last_updated: "2026-10-14T01:09:33Z"
-last_activity: "2026-10-13"
-current_phase: 164
-current_phase_name: Canonical Chain Identity and Compatibility Gates
-current_plan: 0
+status: planning
+stopped_at: Phase 164 verified complete; strict normal-hook Git finalization pending
+last_updated: "2026-10-14T10:40:49.347Z"
+last_activity: "2026-10-14"
 progress:
   total_phases: 8
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 13
+  completed_plans: 13
+  percent: 100
 ---
 
 # Project State
@@ -24,22 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-13). Latest archived milestone audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 164 — Canonical Chain Identity and Compatibility Gates
+**Current focus:** Phase 165 — Shared Exact Work Authority (not started)
 
 ## Current Position
 
 Milestone: v2.6 Canonical Chain Bootstrap and Validation Parity
-Phase: 164 (Canonical Chain Identity and Compatibility Gates; 1 of 8 milestone phases, not started)
-Plan: 0 of 0 in current phase (not yet planned)
-**Status:** Ready for discussion and planning
-Last activity: 2026-10-13
-Last Activity Description: User approved all 30 requirements and eight phases; Phase 164 is ready for discussion and planning
+Phase: 165 (Shared Exact Work Authority)
+Plan: Not started
+**Status:** Ready to plan
+Last activity: 2026-10-14
+Last Activity Description: Phase 164 complete, transitioned to Phase 165
 
-Progress: [░░░░░░░░░░] 0%
+Milestone progress: 1/8 phases verified; 13/13 currently planned execution plans complete.
 
-The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; v2.6 has no completed implementation requirements or execution plans.
+The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 across 13 verified plans. Ordinary history remains refused for all four selectors pending Phases 165–167.
 
-Next action: `/gsd-discuss-phase 164`, then `/gsd-plan-phase 164`; no phase execution has started. Historical phase directories remain tracked because native verifiers consume them.
+Next action after this single-phase Git transaction: `/gsd-discuss-phase 165`, then `/gsd-plan-phase 165`; Phase 165 has not started. Historical phase directories remain tracked because native verifiers consume them.
 
 ## Performance Metrics
 
@@ -91,6 +88,7 @@ Next action: `/gsd-discuss-phase 164`, then `/gsd-plan-phase 164`; no phase exec
 | 161     |    11 |     - |        - |
 | 162     |    16 |     - |        - |
 | 163     |     5 |     - |        - |
+| 164 | 13 | - | - |
 
 ### Plan Execution History
 
@@ -631,8 +629,10 @@ Next action: `/gsd-discuss-phase 164`, then `/gsd-plan-phase 164`; no phase exec
 
 ## Session Continuity
 
-Last session: 2026-10-14T01:09:33Z
-Stopped at: v2.6 requirements and roadmap approved; Phase 164 ready for discussion and planning
-Resume file: .planning/ROADMAP.md
+Last session: 2026-10-14T10:43:05.753751Z
+Stopped at: Phase 164 verified complete; strict normal-hook Git finalization pending
+Resume file: .planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md
 
-Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and milestone archival remain separately attributable; archived controls now select all three versioned roots. Runtime, resource, networking and funds-safety limits are unchanged.
+Historical v2.5 source acceptance for the original 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and milestone archival remain separately attributable; archived controls now select all three versioned roots. Runtime, resource, networking and funds-safety limits are unchanged.
+
+Phase 164 identity/refusal acceptance: full default native exit0 (1h0m21.973s), 27/27 formal truths, clean 146-file source review and 30 closed security controls. Original v2.5 receipts retain their own source and scope. Normal-hook commit/push outcome is derived from Git and the hook log; no Phase 165 work is performed by this transaction.

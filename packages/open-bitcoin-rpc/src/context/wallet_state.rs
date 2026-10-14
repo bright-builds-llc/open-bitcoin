@@ -18,7 +18,8 @@ use open_bitcoin_node::{
 use crate::config::{RuntimeConfig, WalletRuntimeScope};
 use crate::error::{RpcErrorCode, RpcErrorDetail, RpcFailure, RpcFailureKind};
 
-use super::ManagedRpcContext;
+use super::canonical_chain::selected_chain;
+use super::{CanonicalContextError, ManagedRpcContext};
 
 pub(super) enum WalletState {
     Local(ManagedWallet<MemoryWalletStore>),
@@ -304,12 +305,33 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 pub(super) fn build_wallet_state_with_store(
     config: &RuntimeConfig,
     maybe_store: Option<FjallNodeStore>,
-) -> WalletState {
+) -> Result<WalletState, CanonicalContextError> {
+    let chain = selected_chain(config)?;
+    let should_use_registry = matches!(
+        config.wallet.scope,
+        WalletRuntimeScope::DurableNamedRegistry | WalletRuntimeScope::LocalOperatorSingleWallet
+    );
+    if should_use_registry {
+        if let Some(store) = maybe_store {
+            super::canonical_chain::require_ordinary_scope(chain)?;
+            return Ok(registry_wallet_state(store));
+        }
+        if let Some(data_dir) = config.maybe_data_dir.as_ref() {
+            return Ok(registry_wallet_state(FjallNodeStore::open_ordinary(
+                data_dir, chain,
+            )?));
+        }
+    }
+    super::canonical_chain::require_ordinary_scope(chain)?;
+    Ok(local_wallet_state(config))
+}
+
+pub(super) fn build_fixture_wallet_state_with_store(
+    config: &RuntimeConfig,
+    maybe_store: Option<FjallNodeStore>,
+) -> Result<WalletState, StorageError> {
     let Some(data_dir) = config.maybe_data_dir.as_ref() else {
-        return WalletState::Local(ManagedWallet::from_store(
-            MemoryWalletStore::default(),
-            Wallet::new(config.chain),
-        ));
+        return Ok(local_wallet_state(config));
     };
 
     let should_use_registry = matches!(
@@ -317,18 +339,23 @@ pub(super) fn build_wallet_state_with_store(
         WalletRuntimeScope::DurableNamedRegistry | WalletRuntimeScope::LocalOperatorSingleWallet
     );
     if should_use_registry && let Some(store) = maybe_store {
-        return WalletState::DurableNamedRegistry {
-            store,
-            maybe_request_wallet_name: None,
-        };
+        return Ok(registry_wallet_state(store));
     }
-    if should_use_registry && let Ok(store) = FjallNodeStore::open(data_dir) {
-        return WalletState::DurableNamedRegistry {
-            store,
-            maybe_request_wallet_name: None,
-        };
+    if should_use_registry {
+        return Ok(registry_wallet_state(FjallNodeStore::open(data_dir)?));
     }
 
+    Ok(local_wallet_state(config))
+}
+
+fn registry_wallet_state(store: FjallNodeStore) -> WalletState {
+    WalletState::DurableNamedRegistry {
+        store,
+        maybe_request_wallet_name: None,
+    }
+}
+
+fn local_wallet_state(config: &RuntimeConfig) -> WalletState {
     WalletState::Local(ManagedWallet::from_store(
         MemoryWalletStore::default(),
         Wallet::new(config.chain),

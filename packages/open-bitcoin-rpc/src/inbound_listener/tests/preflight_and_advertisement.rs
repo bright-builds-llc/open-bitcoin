@@ -135,7 +135,7 @@ fn loopback_listener_evidence_is_suppressed_for_public_advertisement() {
         },
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
 
     // Act
     context
@@ -170,7 +170,7 @@ fn public_literal_listener_evidence_can_be_advertisement_candidate_when_allowed(
         },
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
 
     // Act
     context
@@ -211,7 +211,7 @@ fn invalid_runtime_bound_evidence_is_suppressed_without_falling_back_to_configur
         },
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
 
     // Act
     context

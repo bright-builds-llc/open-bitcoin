@@ -17,7 +17,7 @@ use fixtures::History;
 type DurableState = RpcHttpState<FjallChainstateStore, FjallCoinsView>;
 
 fn durable_state(history: &History) -> DurableState {
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &RuntimeConfig {
             chain: AddressNetwork::Regtest,
             ..Default::default()
@@ -68,7 +68,7 @@ async fn invoke<
 #[tokio::test]
 async fn phase159_filter_rpc_http_auth_before_parse_and_held_context() {
     // Arrange
-    let context = Arc::new(Mutex::new(ManagedRpcContext::from_runtime_config(
+    let context = Arc::new(Mutex::new(ManagedRpcContext::from_fixture_runtime_config(
         &RuntimeConfig::default(),
     )));
     let state = build_http_state_with_shared_context(

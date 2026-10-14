@@ -21,8 +21,7 @@ fn open_bitcoin_support_bundle_includes_phase75_soak_summary() {
     )
     .expect("cookie");
     seed_phase72_runtime_metadata(&data_dir, false);
-    let start = run_open_bitcoin_vec(&sandbox, soak_start_args(&data_dir, "soak-1700000000-0001"));
-    assert_success(&start);
+    super::status_sync_soak::seed_synthetic_completed_soak_ledger(&sandbox, &data_dir);
     let run_dir = data_dir.join("soak/runs/soak-1700000000-0001");
     let events_path = run_dir.join("events.jsonl");
     let report_json_path = run_dir.join("report.json");

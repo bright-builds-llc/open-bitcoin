@@ -18,6 +18,38 @@ consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and
 configuration surfaces while keeping the first-party internals strongly typed,
 auditable, and modular.
 
+## Current source: canonical identity and ordinary refusal
+
+Phase 164 recognizes the exact pinned mainnet, testnet3, default Signet and
+default regtest genesis header/body identities. The existing CLI `testnet`
+selector means testnet3. Evidence is identity-only and source-derived;
+**ordinary history is currently refused for all four selectors** pending
+canonical bootstrap, exact work and candidate-history validation in Phases
+165–167. Signet also lacks challenge validation.
+
+Every existing nonempty unproved datadir refuses without backend open; missing
+and empty sources refuse too. Stored network/root/work remain unavailable,
+not proved wrong-network facts. Offline sync controls, managed-wallet lookup
+and backup refuse; soak start reports bounded compatibility unavailability
+before ledger/index writes. Separately authenticated live RPC
+status/index/send/control paths remain separate and open no local store.
+
+Use the [exact identity/support/refusal matrix and repo-local Cargo/Bazel UAT](./docs/parity/v2-6-canonical-chain-identity.md)
+and [support classification](./docs/parity/support-matrix.md#current-phase-164-source-boundary).
+[Phase 164 verification](./.planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md) passed 27/27 after the full native contract; this remains identity-only/refusal evidence.
+Preserve existing data and review it separately; a separate datadir becomes a
+usable next step only after the missing prerequisites are implemented and
+verified. No automatic repair, conversion, reindex, canonical bootstrap/reopen
+or actual Knots daemon qualification is provided. Full phase verification and
+requirement closure remain separate from these focused implementation results.
+
+The release records and earlier phase sections below retain their original
+historical evidence. v2.5's synthetic roots, caller-selected work, original
+maturity limits and halving difference remain bounded regression evidence;
+named fixture factories do not enable ordinary canonical acceptance. This
+change does not establish whole-chain, full-node, public-default,
+production-service, production-readiness or production-funds readiness.
+
 > Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).
 > Archive date: 2026-10-13. Scope: 22 requirements, 10 phases, 90 plans and 220 completed plan tasks. Audit: 31/31 seams and 18/18 flows, with no blocking gaps.
 
@@ -54,6 +86,9 @@ Knots-aligned prune on the single active chainstate deletes old block and undo p
 The automatic target is a soft logical block/undo retention target: protected and nonactive payloads count in usage while only active candidates may be deleted. It does not guarantee physical disk capacity or immediate reclamation. Wallet eligibility probes and persistence are separate effects. The archived audit preserves the stale-metadata recovery refusal, generic sink no-op default and crash-window support-counter undercount advisories.
 
 v2.5 controls are archived under .planning/milestones/; this provenance does not establish new runtime capability or production/funds safety.
+
+The following source-acceptance record is retained v2.5 evidence for its original
+digest and scope; it does not certify the current Phase 164 source changes:
 
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and actual archival remain separate. Runtime, resource, networking and funds-safety limits are unchanged. See the [archive-safe provenance policy and repository reproduction commands](./docs/parity/v2-5-archive-safe-provenance.md).
 

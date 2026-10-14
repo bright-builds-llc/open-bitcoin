@@ -17,9 +17,54 @@ use open_bitcoin_node::status::SyncRecoveryCategory;
 use open_bitcoin_node::storage::fjall_store::MempoolSnapshotDecodeLimits;
 use open_bitcoin_node::{FjallNodeStore, ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
+use super::{
+    CanonicalContextError,
+    canonical_chain::{require_ordinary_scope, selected_chain},
+};
 use crate::config::RuntimeConfig;
 
 pub(super) fn recover_mempool_snapshot_from_store_handle<S, V>(
+    config: &RuntimeConfig,
+    maybe_store: Option<&FjallNodeStore>,
+    network: &ManagedNetworkHandle<S, V>,
+    policy: &PolicyConfig,
+    verify_flags: ScriptVerifyFlags,
+    consensus_params: ConsensusParams,
+) -> Result<(), CanonicalContextError>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
+    let chain = selected_chain(config)?;
+    let opened_store;
+    let maybe_store = match maybe_store {
+        Some(store) => {
+            require_ordinary_scope(chain)?;
+            Some(store)
+        }
+        None => match config.maybe_data_dir.as_ref() {
+            Some(data_dir) => {
+                opened_store = FjallNodeStore::open_ordinary(data_dir, chain)?;
+                Some(&opened_store)
+            }
+            None => {
+                require_ordinary_scope(chain)?;
+                None
+            }
+        },
+    };
+    recover_mempool_snapshot_from_open_store_at(
+        maybe_store,
+        network,
+        policy,
+        verify_flags,
+        consensus_params,
+        startup_policy_time(),
+    )
+    .map_err(Into::into)
+}
+
+pub(super) fn recover_fixture_mempool_snapshot_from_store_handle<S, V>(
     config: &RuntimeConfig,
     maybe_store: Option<&FjallNodeStore>,
     network: &ManagedNetworkHandle<S, V>,
@@ -31,8 +76,24 @@ where
     S: open_bitcoin_node::ChainstateStore,
     V: open_bitcoin_node::core::chainstate::CoinsView,
 {
-    recover_mempool_snapshot_from_store_handle_at(
-        config,
+    let opened_store;
+    let maybe_store = match maybe_store {
+        Some(store) => Some(store),
+        None => match config.maybe_data_dir.as_ref() {
+            Some(data_dir) => match FjallNodeStore::open(data_dir) {
+                Ok(store) => {
+                    opened_store = store;
+                    Some(&opened_store)
+                }
+                Err(error) => {
+                    network.record_mempool_recovery_storage_error(&error)?;
+                    return Ok(());
+                }
+            },
+            None => None,
+        },
+    };
+    recover_mempool_snapshot_from_open_store_at(
         maybe_store,
         network,
         policy,
@@ -42,9 +103,7 @@ where
     )
 }
 
-#[allow(clippy::too_many_arguments)]
-fn recover_mempool_snapshot_from_store_handle_at<S, V>(
-    config: &RuntimeConfig,
+fn recover_mempool_snapshot_from_open_store_at<S, V>(
     maybe_store: Option<&FjallNodeStore>,
     network: &ManagedNetworkHandle<S, V>,
     policy: &PolicyConfig,
@@ -63,23 +122,8 @@ where
             return Ok(());
         }
     };
-    let store;
-    let store = match maybe_store {
-        Some(store) => store,
-        None => {
-            let Some(data_dir) = config.maybe_data_dir.as_ref() else {
-                return Ok(());
-            };
-            let opened_store = match FjallNodeStore::open(data_dir) {
-                Ok(store) => store,
-                Err(error) => {
-                    network.record_mempool_recovery_storage_error(&error)?;
-                    return Ok(());
-                }
-            };
-            store = opened_store;
-            &store
-        }
+    let Some(store) = maybe_store else {
+        return Ok(());
     };
 
     recover_mempool_snapshot_with_loader(

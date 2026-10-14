@@ -38,9 +38,15 @@ use open_bitcoin_rpc::{
 use super::{
     DaemonSyncLoopDecision, DaemonSyncLoopPolicy, DaemonSyncPreflight, InboundDaemonListener,
     daemon_sync_preflight_message, daemon_sync_worker_with_transport,
-    inbound_listener_startup_message, open_authoritative_network_runtime, preflight_daemon_sync,
-    run_daemon_sync_loop_cycle, start_inbound_listener_for_runtime,
-    start_inbound_listener_for_runtime_with_context, start_inbound_metrics_worker,
+    inbound_listener_startup_message, preflight_daemon_sync, run_daemon_sync_loop_cycle,
+    start_inbound_listener_for_runtime, start_inbound_listener_for_runtime_with_context,
+};
+
+#[path = "tests/fixture_runtime.rs"]
+pub(crate) mod fixture_runtime;
+use fixture_runtime::{
+    fixture_open_authoritative_network_runtime as open_authoritative_network_runtime,
+    fixture_start_inbound_metrics_worker as start_inbound_metrics_worker,
 };
 
 pub(super) fn temp_store_path(label: &str) -> PathBuf {
@@ -150,6 +156,8 @@ fn silent_peer_sync_runtime(label: &str) -> DurableSyncRuntime {
 
 #[path = "tests/automatic_prune.rs"]
 mod automatic_prune;
+#[path = "tests/canonical_chain.rs"]
+mod canonical_chain;
 #[path = "tests/checkpoint.rs"]
 mod checkpoint;
 #[path = "tests/daemon_sync.rs"]

@@ -45,7 +45,7 @@ pub(super) async fn running_loopback_listener_with_config(
         ..RuntimeConfig::default()
     };
     let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config(&runtime),
+        ManagedRpcContext::from_fixture_runtime_config(&runtime),
     ));
     let activation = activate_inbound_listener(&runtime.inbound).await;
     let endpoint = activation
@@ -82,8 +82,12 @@ pub(super) async fn running_loopback_listener_with_announcements() -> (
         true,
     );
     let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::from_runtime_config_with_network_handle(&runtime, network.clone(), None)
-            .expect("compose announcement listener context"),
+        ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
+            &runtime,
+            network.clone(),
+            None,
+        )
+        .expect("compose announcement listener context"),
     ));
     let outboxes = AnnouncementOutboxRegistry::default();
     let activation = activate_inbound_listener(&runtime.inbound).await;
@@ -361,7 +365,7 @@ impl FilterListenerFixture {
             ..Default::default()
         };
         let context = Arc::new(tokio::sync::Mutex::new(
-            ManagedRpcContext::from_runtime_config_with_network_handle(
+            ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
                 &config,
                 runtime.network_handle(),
                 Some(store),

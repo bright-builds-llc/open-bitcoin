@@ -55,7 +55,7 @@ pub(super) fn durable_wallet_context(test_name: &str, wallet_name: &str) -> Mana
         .expect("create wallet");
     drop(store);
 
-    let mut context = ManagedRpcContext::from_runtime_config(&RuntimeConfig {
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig {
         chain: AddressNetwork::Regtest,
         maybe_data_dir: Some(path),
         wallet: WalletRuntimeConfig {

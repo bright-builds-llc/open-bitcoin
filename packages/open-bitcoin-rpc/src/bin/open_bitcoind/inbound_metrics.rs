@@ -21,7 +21,7 @@ use open_bitcoin_node::{
 };
 use open_bitcoin_rpc::{ManagedRpcContext, config::RuntimeConfig};
 
-use super::{DaemonSyncPreflightError, current_timestamp_unix_seconds};
+use super::{DaemonSyncPreflightError, current_timestamp_unix_seconds, selected_canonical_chain};
 
 pub(super) struct InboundMetricsWorker {
     pub(super) join_handle: thread::JoinHandle<()>,
@@ -51,25 +51,46 @@ where
         return Ok(None);
     }
 
+    let chain = selected_canonical_chain(runtime)
+        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    // Supplied lower-level handles cannot grant ordinary authority either.
+    if maybe_store.is_some() || runtime.maybe_data_dir.is_none() {
+        chain
+            .spec()
+            .require_ordinary_history()
+            .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    }
     let Some(data_dir) = runtime.maybe_data_dir.as_ref() else {
         return Ok(None);
     };
 
     let store = match maybe_store {
         Some(store) => store,
-        None => FjallNodeStore::open(data_dir).map_err(|error| {
-            DaemonSyncPreflightError::new(format!(
-                "open-bitcoind inbound metrics failed to open durable store at \"{}\": {error}",
-                data_dir.display()
-            ))
-        })?,
+        None => FjallNodeStore::open_ordinary(data_dir, chain)
+            .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?,
     };
+    Ok(Some(spawn_inbound_metrics_worker(
+        runtime,
+        shared_context,
+        store,
+    )))
+}
+
+pub(super) fn spawn_inbound_metrics_worker<S, V>(
+    runtime: &RuntimeConfig,
+    shared_context: Arc<tokio::sync::Mutex<ManagedRpcContext<S, V>>>,
+    store: FjallNodeStore,
+) -> InboundMetricsWorker
+where
+    S: open_bitcoin_node::ChainstateStore + Send + 'static,
+    V: open_bitcoin_node::core::chainstate::CoinsView + Send + 'static,
+{
     let metrics_store = store.clone();
     let retention = MetricRetentionPolicy::default();
     let persist_mode = runtime.sync.runtime.persist_mode;
     let (shutdown_sender, shutdown_receiver) = mpsc::channel();
 
-    Ok(Some(InboundMetricsWorker {
+    InboundMetricsWorker {
         join_handle: thread::spawn(move || {
             inbound_metrics_worker(
                 store,
@@ -81,7 +102,7 @@ where
         }),
         shutdown_sender,
         metrics_store,
-    }))
+    }
 }
 
 fn inbound_metrics_worker<S, V>(

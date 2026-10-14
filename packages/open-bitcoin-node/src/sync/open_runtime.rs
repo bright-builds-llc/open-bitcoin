@@ -27,7 +27,30 @@ use super::{
 };
 
 impl DurableSyncRuntime {
-    /// Opens a durable runtime with all resolved network activation policies.
+    /// Ordinary startup refuses missing canonical prerequisites before initialization.
+    pub fn open_ordinary_configured(
+        store: FjallNodeStore,
+        config: SyncRuntimeConfig,
+        mode: BasicFilterStartupMode,
+    ) -> Result<Self, SyncRuntimeError> {
+        use super::SyncNetwork;
+        use open_bitcoin_core::consensus::CanonicalChain;
+        let chain = match config.network {
+            SyncNetwork::Mainnet => CanonicalChain::Mainnet,
+            SyncNetwork::Testnet => CanonicalChain::Testnet3,
+            SyncNetwork::Signet => CanonicalChain::Signet,
+            SyncNetwork::Regtest => CanonicalChain::Regtest,
+        };
+        chain
+            .spec()
+            .require_ordinary_history()
+            .map_err(|error| SyncRuntimeError::InvalidData {
+                message: error.to_string(),
+            })?;
+        Self::open_configured(store, config, mode)
+    }
+
+    /// Lower-level fixture/infrastructure startup with recovery effects and no canonical admission.
     pub fn open_with_runtime_activation(
         store: FjallNodeStore,
         config: SyncRuntimeConfig,
@@ -45,7 +68,7 @@ impl DurableSyncRuntime {
         )
     }
 
-    /// Opens configured durable indexing without implicitly activating networking.
+    /// Lower-level fixture/infrastructure indexing startup; ordinary routes use `open_ordinary_configured`.
     pub fn open_configured(
         store: FjallNodeStore,
         config: SyncRuntimeConfig,
@@ -61,7 +84,7 @@ impl DurableSyncRuntime {
         )
     }
 
-    /// Apply explicit index startup policy before constructing the managed owner.
+    /// Lower-level fixture/infrastructure recovery and indexing; grants no canonical support.
     pub fn open_with_configured_runtime_activation(
         store: FjallNodeStore,
         config: SyncRuntimeConfig,

@@ -65,7 +65,7 @@ fn captured_response_server(
     runtime: &DurableSyncRuntime,
     maybe_basic: Option<Value>,
 ) -> (RpcTestServer, Arc<AtomicU64>, Arc<Value>) {
-    let mut context = ManagedRpcContext::from_runtime_config_with_network_handle(
+    let mut context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &RuntimeConfig::default(),
         runtime.network_handle(),
         Some(runtime.store().clone()),

@@ -20,11 +20,13 @@ use open_bitcoin_node::{
 };
 
 mod blockfilter;
+mod canonical_chain;
 mod loader;
 mod open_bitcoin;
 mod prune;
 
 pub use blockfilter::BasicFilterIndexSetting;
+pub use canonical_chain::{CanonicalChainSelectionError, selected_canonical_chain};
 
 pub use open_bitcoin::{
     BlockServingConfig, ConfigPrecedence, ConfigSource, DEFAULT_INBOUND_LISTEN_ADDRESS,

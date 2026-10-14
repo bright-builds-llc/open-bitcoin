@@ -345,7 +345,7 @@ function checkIntegrationAndParity(
     texts.get("packages/open-bitcoin-cli/src/operator/support/tests.rs") ?? "";
   const integrationAnchors = [
     "phase127_production_composition_shares_sync_serving_and_operator_authority",
-    "let pre_sync_context = ManagedRpcContext::from_runtime_config_with_network_handle(",
+    "let pre_sync_context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(",
     ".sync_once(&mut transport",
     ".load_block(expected_hash)",
     "start_inbound_accept_loop(",

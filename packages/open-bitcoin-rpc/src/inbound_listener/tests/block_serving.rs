@@ -11,7 +11,7 @@ use super::*;
 async fn phase123_inbound_written_block_increments_served_once() {
     // Arrange
     let context = Arc::new(tokio::sync::Mutex::new(
-        ManagedRpcContext::for_local_operator(AddressNetwork::Regtest),
+        ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest),
     ));
     let mut responses = context
         .lock()
@@ -293,7 +293,7 @@ async fn phase123_inbound_two_blocks_before_later_failure_count_two() {
 #[tokio::test]
 async fn phase123_inbound_encoding_failure_does_not_increment_served() {
     // Arrange
-    let context = ManagedRpcContext::for_local_operator(AddressNetwork::Regtest);
+    let context = ManagedRpcContext::for_fixture_local_operator(AddressNetwork::Regtest);
     let inventory = InventoryVector {
         inventory_type: InventoryType::Block,
         object_hash: BlockHash::default().into(),
@@ -384,7 +384,7 @@ async fn out_of_window_notfound_closes_the_inbound_socket() {
         },
         ..RuntimeConfig::default()
     };
-    let mut context = ManagedRpcContext::from_runtime_config(&runtime);
+    let mut context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     context
         .set_prune_mode(PruneMode::ManualOnly)
         .expect("manual prune mode");
