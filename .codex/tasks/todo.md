@@ -711,3 +711,24 @@ Progress at 2026-10-13T18:34:18+00:00: actual full run `dfbd420c` passed all 176
 Matrix completion: all 28 whole files, 20,128 tests and 66,956 assertions passed across four layouts, with 24 raw boundaries and matching corpus manifests. Composite SHA `beb01a4b`; canonical preflight SHA `98c875d0`. Source/control ownership was released after the final unchanged witness.
 
 Completion review at 2026-10-13T19:19:24Z: source acceptance is complete on unchanged14fa21; final5/5certificate 2d2531cf866871d78bb42f7570970d4715e71c84a49f44e115f8c21464f0472b. The corrected logical assertion retains physical-root, invalid-present, missing-all, ownership, baseline and claim-state refusals. Earlier failures, resource-sensitive diagnostic attempts and all old source acceptance remain preserved. No new runtime capability, remote CI, human confirmation or actual archive is claimed. Strict normal-hook Git saving is the remaining wrapper transaction.
+
+
+## task-v26-new-milestone | 2026-10-13 19:39 CDT | Define canonical chain bootstrap and validation parity
+
+- [x] Load active lessons, repo guidance and archived v2.5 context; sync the clean checkout.
+- [x] Confirm v2.6 name, version and recommended six-part scope through the user’s explicit acceptance.
+- [x] Update project goals and reset current milestone state without removing historical verifier roots.
+- [x] Research stack, feature behavior, integration architecture and pitfalls against pinned Knots.
+- [x] Define atomic requirements and explicit exclusions within the accepted scope.
+- [x] Create a roadmap beginning at Phase 164 and verify exactly-once requirement coverage.
+- [x] Review/simplify the artifacts and run targeted planning, standards and formatter verification.
+- [x] Obtain review of the concrete requirements and roadmap.
+- [x] Prepare the approved artifact candidate for the full normal-hook native gate and saving commit; actual outcomes are derived from Git and verifier receipts.
+
+Workflow: `/gsd-new-milestone`. User accepted the proposed v2.6 scope on 2026-10-13. Existing GSD mode is yolo and research is enabled; recommended scope decisions stay within that acceptance. Repo-local preservation of historical `.planning/phases/` overrides generic workflow cleanup. Production source edits and phase execution are outside this milestone-initialization task. Accumulated state/history remain preserved.
+
+Progress: Four source-backed research dimensions are complete. The draft contains 30 atomic Pending requirements; synthesis and roadmap derivation are complete and concrete approval was received on 2026-10-13. Compatibility refusal precedes automatic schema effects, actual oracle qualification binds executable/source/build identity, and affected source/corpus changes invalidate qualification. Existing host Bun is 1.4.2; final checks use isolated repo-pinned Bun 1.3.9 rather than change the project pin or global runtime. No production implementation, actual Knots run or new parity acceptance is claimed.
+
+Review checkpoint (2026-10-13): Research, 30 Pending requirements, eight phases (164–171) and .gitkeep-only scaffolds are concrete and reviewed. All 30 owners map exactly once, every phase has 2–5 tagged observable criteria, GSD parses all eight phases, historical state is byte-preserved and all 2,208 historical phase paths remain. Targeted traceability/documentation suites passed 43/43 under pinned Bun 1.3.9; live traceability/documentation checks, Bright Builds checks, configured GFM/frontmatter formatting and diff-whitespace checks passed. The simplification pass keeps one existing exact-work authority and no new production dependency/crate. README shipped-release status was checked and remains accurate. No production source, saved datadir, baseline pin or persistent GSD preference changed. Concrete milestone approval remains required by the invoked skill before finalization; the full repo-native normal-hook commit gate, commit and phase execution have not occurred.
+
+Finalization preparation (2026-10-13): The user explicitly approved all 30 requirements and eight phases and requested full native verification plus commit. Project/requirements/roadmap/state now record approval and Phase 164 readiness; all implementation requirements remain Pending and no phase has executed. The reviewed candidate is saved through the normal pre-commit hook, which runs the full default native contract before Git creates the commit. This preparation does not assert the hook or commit already passed: their outcomes are derived from the actual saving commit and ignored local verifier log. Residual runtime gaps remain the unimplemented v2.6 scope; production source, existing datadirs and historic verifier roots are unchanged.

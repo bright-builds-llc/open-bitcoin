@@ -1,40 +1,45 @@
 ---
 gsd_state_version: "1.0"
-milestone: v2.5
-milestone_name: Prune-Aware Compact-Filter Serving
-status: completed
-stopped_at: v2.5 controls archived and active requirements retired after committed safety checkpoint; next milestone unselected
-last_updated: "2026-10-13T21:24:31Z"
+milestone: v2.6
+milestone_name: Canonical Chain Bootstrap and Validation Parity
+status: ready_to_plan
+stopped_at: v2.6 requirements and roadmap approved; Phase 164 ready for discussion and planning
+last_updated: "2026-10-14T01:09:33Z"
 last_activity: "2026-10-13"
+current_phase: 164
+current_phase_name: Canonical Chain Identity and Compatibility Gates
+current_plan: 0
 progress:
-  total_phases: 10
-  completed_phases: 10
-  total_plans: 90
-  completed_plans: 90
-  percent: 100
+  total_phases: 8
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
 
 ## Project Reference
 
-See: `.planning/PROJECT.md` (updated 2026-10-13). Current audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
+See: `.planning/PROJECT.md` (updated 2026-10-13). Latest archived milestone audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Planning the next milestone
+**Current focus:** Phase 164 — Canonical Chain Identity and Compatibility Gates
 
 ## Current Position
 
-Milestone: v2.5 Prune-Aware Compact-Filter Serving — archived
-Phase: 154–163 complete
-Plan: 90/90 complete
-**Status:** Milestone archived; no next scope selected
+Milestone: v2.6 Canonical Chain Bootstrap and Validation Parity
+Phase: 164 (Canonical Chain Identity and Compatibility Gates; 1 of 8 milestone phases, not started)
+Plan: 0 of 0 in current phase (not yet planned)
+**Status:** Ready for discussion and planning
 Last activity: 2026-10-13
-Last Activity Description: Versioned controls authoritative after committed safety checkpoint and active requirements retirement
+Last Activity Description: User approved all 30 requirements and eight phases; Phase 164 is ready for discussion and planning
 
-All 22 requirements, 10 phases, 90 plans and 220 plan tasks are complete. The 21 source inputs and original proof remain preserved. Final saving and tag outcomes derive from Git and actual receipts.
+Progress: [░░░░░░░░░░] 0%
 
-Next action: `/gsd-new-milestone` defines fresh goals and requirements; continue phase numbering at 164.
+The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; v2.6 has no completed implementation requirements or execution plans.
+
+Next action: `/gsd-discuss-phase 164`, then `/gsd-plan-phase 164`; no phase execution has started. Historical phase directories remain tracked because native verifiers consume them.
 
 ## Performance Metrics
 
@@ -626,8 +631,8 @@ Next action: `/gsd-new-milestone` defines fresh goals and requirements; continue
 
 ## Session Continuity
 
-Last session: 2026-10-13T21:24:31Z
-Stopped at: v2.5 archived; next milestone undefined
-Resume file: .planning/MILESTONES.md
+Last session: 2026-10-14T01:09:33Z
+Stopped at: v2.6 requirements and roadmap approved; Phase 164 ready for discussion and planning
+Resume file: .planning/ROADMAP.md
 
 Current source acceptance for the 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and milestone archival remain separately attributable; archived controls now select all three versioned roots. Runtime, resource, networking and funds-safety limits are unchanged.

@@ -57,9 +57,22 @@ Historical phase directories remain tracked because repository verifiers referen
 
 </details>
 
-## Next Milestone Goals
+## Current Milestone: v2.6 Canonical Chain Bootstrap and Validation Parity
 
-No next milestone scope is selected. Define goals and fresh requirements through `/gsd-new-milestone`; continue phase numbering at 164. Deferred requirements remain candidates rather than commitments.
+**Goal:** Start from an empty datadir, validate canonical Bitcoin histories with network-correct rules and cumulative proof of work, and demonstrate matching results against pinned Bitcoin Knots `29.3.knots20260210`.
+
+**Status:** Goals, 30 requirements and the eight-phase roadmap were approved by the user on 2026-10-13. Research is complete; Phase 164 is ready for discussion and planning. No implementation phase has started.
+
+**Target features:**
+
+- Canonical network identity and genesis initialization, durable genesis history, correct genesis coinbase semantics, and safe refusal for incompatible existing datadirs.
+- Network- and history-derived validation rules, subsidy schedules and script flags, including genuine regtest maturity and halving boundaries.
+- Exact target-derived 256-bit cumulative work as the shared authority for headers, fork choice, chainstate, persistence and recovery.
+- A hermetic pinned-Knots differential harness using identical serialized blocks and transactions, canonical roots and ordinary validation.
+- Differential competing-branch, rejection, disconnect/reconnect, checkpoint and actual reopen evidence.
+- Canonical-history integration of shipped pruning and retained BASIC filters, with bounded historical-network fixtures and explicit residual parity limits.
+
+Research is enabled for this milestone under the existing GSD configuration. Preserve first-party Bitcoin ownership, functional-core boundaries, the single active Fjall chainstate and explicit/default-off public networking. Assumeutxo, a second chainstate, archive-scale serving, wallet product expansion and production-readiness claims remain deferred. Finite differential evidence must not be described as complete consensus parity.
 
 ## Latest Completed Milestone: v2.5 Prune-Aware Compact-Filter Serving
 
@@ -259,7 +272,14 @@ All 22 v2.5 requirements are validated with unique archived ownership in [the re
 
 ### Active
 
-No active milestone requirements. Define fresh requirements through `/gsd-new-milestone`.
+- [ ] Canonical network-bound genesis bootstrap and fresh BASIC-enabled startup.
+- [ ] Network- and history-correct validation rules, subsidy and script execution flags.
+- [ ] Exact cumulative-work authority across live and durable chain selection.
+- [ ] Genuine pinned-Knots differential block and transaction validation.
+- [ ] Differential forks, rejection and durable recovery.
+- [ ] Canonical-history pruning, retained BASIC serving and auditable parity closure.
+
+These user-approved v2.6 goals are decomposed into 30 approved atomic requirements in `.planning/REQUIREMENTS.md`, with exactly-once phase ownership in `.planning/ROADMAP.md`. All requirements remain Pending; no implementation is claimed complete.
 
 ### Out of Scope
 
@@ -287,23 +307,41 @@ The shipped v2.5 boundary includes compact-filter serving while keeping archive-
 - v2.5 source checkpoint `8ba1d345efb58e9632af50c1a4623c01db9bbb4f` provides explicit BASIC indexing/serving, continuous retained-client evidence and source-bound archive-compatible verification. Versioned controls are authoritative; current scope remains headless, bounded and default-off.
 
 - The repository has first-party pure-core domain and codec crates under `packages/`, plus parity catalog artifacts under `docs/parity/`.
+
 - Bitcoin Knots `29.3.knots20260210` is the pinned behavioral reference baseline.
+
 - The pre-archive v2.4 LOC report totals 355,534 tracked first-party lines, including 308,584 code/content lines; production Rust is 118,495 physical / 102,749 code lines, and test Rust is 141,316 physical / 119,570 code lines. The tracked report refreshes during verification.
+
 - Repo-native verification remains centered on `bash scripts/verify.sh`, including Rust checks, parity breadcrumbs, benchmark smoke and report validation, and Bazel smoke builds.
+
 - Bun is a pinned runtime for repo-owned TypeScript automation, not a package-install surface; there is no `package.json` or `bun install` bootstrap step.
+
 - Operator-facing surfaces should stay quiet, information-dense, and work-focused: terminal dashboard controls, status output, onboarding copy, service actions, and migration guidance should help operators make decisions without marketing language.
+
 - Any migration from Bitcoin Core or Bitcoin Knots must treat the existing datadir and wallet data as high-value user data. Detection and explanation are in scope before automated mutation, while destructive apply-mode work remains deferred.
+
 - First-party code should continue to live in well-bounded packages, with Bazelisk and Bazel/Bzlmod as the top-level build entrypoint unless a later decision replaces that choice.
+
 - The project explicitly avoids existing Rust Bitcoin libraries in the production path and instead exports first-party Rust Bitcoin libraries from this repository.
+
 - Verification must emphasize externally observable parity, pure-core correctness, hermetic integration testing, and contributor guardrails against accidental architectural drift.
+
 - Public-network checks must remain opt-in unless a future milestone deliberately changes the verification contract, so `bash scripts/verify.sh` stays deterministic by default.
+
 - Production full-node readiness must remain a gated claim, not a marketing label. v1.8 should make the boundary explicit across support docs, upgrade policy, runbooks, service expectations, and release-readiness checks.
+
 - v1.9 built inbound peer serving from the existing pure `PeerManager`/`ManagedPeerNetwork` models and added socket/listener behavior in shell-owned runtime adapters, preserving functional-core boundaries.
+
 - Pinned Knots anchors for v1.9 include `net.cpp`, `net_processing.cpp`, `addrman.cpp`, `banman.cpp`, and `net_permissions.cpp`; future network-participation work should cite these anchors or explain intentional behavior differences in `docs/parity/`.
+
 - Future relay, mempool, and peer-participation work should continue citing pinned Knots anchors such as `net_processing.cpp`, `txmempool.cpp`, `validation.cpp`, `policy/`, and related relay tests, or document intentional behavior differences in `docs/parity/`.
+
 - v2.1 block-serving and compact-block relay work should cite pinned Knots anchors for block inventory, `sendcmpct`, `cmpctblock`, `getblocktxn`, `blocktxn`, compact-block reconstruction, block serving, validation, peer state, and resource-governance behavior, or document intentional behavior differences in `docs/parity/`.
+
 - v2.2 package relay and long-lived mempool policy should reuse v2.0 admission, lifecycle, recovery, and relay foundations plus v2.1 authoritative peer transport and observability, while citing pinned Knots package-policy, rolling-fee, rebroadcast, eviction, and mempool-pressure anchors.
+
 - v2.3 chainstate durability reused the existing pure-core UTXO engine and node-side snapshot adapter, then added disk-backed coins, cache-flush policy, and manager behavior while citing pinned Knots `coins.h`, `coins.cpp`, `validation.cpp`, `node/chainstate.cpp`, and `node/blockstorage.cpp` anchors or documenting intentional differences.
+
 - v2.4 prune-mode work builds on that honest-availability and durable-coins foundation. Cite pinned Knots prune anchors (`-prune`, block-file unlinking, `m_have_pruned`, prune locks, `NODE_NETWORK_LIMITED`) or document intentional differences in `docs/parity/`. Functional-core crates stay I/O-free, and historical `.planning/phases/` directories stay tracked.
 
 ## Constraints
@@ -348,13 +386,13 @@ The shipped v2.5 boundary includes compact-filter serving while keeping archive-
 | Reuse serialized ordinary flush activity and force full checkpoints for nonempty plans | Avoid a second retention worker, stale candidate reuse or split lock authority; offline explicit mode still needs recovery                                                                                                                                            | ✓ Good: cadence, durable locks, configured offline startup and production checkpoint/reopen verified                                                                                                                    |
 | Keep support counters separately persisted and sanitized                               | Counters describe earned deletes without exposing backend paths or lock names                                                                                                                                                                                         | ⚠ Revisit: crash between durable unlink and summary persistence can undercount; retries do not invent success                                                                                                           |
 | Preserve finish-or-Repair refusal for stale interrupted-prune metadata                 | Recovery must not invent blocks, reindex or silently mutate authority                                                                                                                                                                                                 | ⚠ Revisit: accepted UNLK-03 advisory, not proof every crash window is eliminated                                                                                                                                        |
-| Scope v2.5 to BASIC compact-filter indexing and explicit serving                       | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate                                                                                                          | ✓ Good: archived 2026-10-13; 22/22 requirements and separate Phase 163 closure preserved |
+| Scope v2.5 to BASIC compact-filter indexing and explicit serving                       | Shipped prune locks and honest availability now support an independent retained filter index; V0, BIP37, archive scale and production claims remain separate                                                                                                          | ✓ Good: archived 2026-10-13; 22/22 requirements and separate Phase 163 closure preserved                                                                                                                                |
 | Refuse missing-history activation and protect index inputs before prune recovery       | Pruned body/undo cannot be reconstructed from current coins; startup can otherwise resume deletion before manager construction                                                                                                                                        | Phases 155–157 verified fenced recovery, pre-prune protection, ordinary ownership and explicit activation/catch-up with real faults/reopen                                                                              |
 | Preserve Knots enablement-based filter capability advertisement                        | Capability and initial/current index progress differ; complete indexed ranges can be served during catch-up                                                                                                                                                           | Phase 160 verified exact BASIC/per-peer behavior; Phase 161 verified distinct capability, initial-sync, lag and durable-progress evidence                                                                               |
-| Use an independent Knots-derived BASIC oracle | Expected filter bytes and commitments must come from the pinned baseline rather than the implementation under test | ✓ Good: Phase 154 generation evidence and Phase 162 retained-client proof preserve independent expectations |
-| Bind filter history to validated branch identity | Reorg replacement must use validated durable authority and refuse missing history before changing retained index state | ✓ Good: Phase 158 branch replacement and reopen evidence preserve retained filter commitments |
-| Earn prune evidence through actual paired deletion and reopen | Logical projections alone cannot establish durable payload removal, retained-filter availability or client continuity | ✓ Good: Phase 162 exercised genuine pruning, retained RPC/peer reads and reopen while retaining resource and consensus limits |
-| Resolve milestone controls by logical identity across archive layouts | Optional active filenames must not replace source-bound requirements, owner and audit evidence | ✓ Good: Phase 163 and complete four-layout legacy suites validate overlap, safety-index, archive-only and next-active states without relaxing authority checks |
+| Use an independent Knots-derived BASIC oracle                                          | Expected filter bytes and commitments must come from the pinned baseline rather than the implementation under test                                                                                                                                                    | ✓ Good: Phase 154 generation evidence and Phase 162 retained-client proof preserve independent expectations                                                                                                             |
+| Bind filter history to validated branch identity                                       | Reorg replacement must use validated durable authority and refuse missing history before changing retained index state                                                                                                                                                | ✓ Good: Phase 158 branch replacement and reopen evidence preserve retained filter commitments                                                                                                                           |
+| Earn prune evidence through actual paired deletion and reopen                          | Logical projections alone cannot establish durable payload removal, retained-filter availability or client continuity                                                                                                                                                 | ✓ Good: Phase 162 exercised genuine pruning, retained RPC/peer reads and reopen while retaining resource and consensus limits                                                                                           |
+| Resolve milestone controls by logical identity across archive layouts                  | Optional active filenames must not replace source-bound requirements, owner and audit evidence                                                                                                                                                                        | ✓ Good: Phase 163 and complete four-layout legacy suites validate overlap, safety-index, archive-only and next-active states without relaxing authority checks                                                          |
 
 ## Evolution
 
@@ -401,6 +439,6 @@ This document evolves at phase transitions and milestone boundaries.
 
 ______________________________________________________________________
 
-*Last updated: 2026-10-13 after v2.5 milestone archival*
+*Last updated: 2026-10-13 after user approval of v2.6 requirements and roadmap*
 
 Versioned v2.5 history: [roadmap](milestones/v2.5-ROADMAP.md), [requirements](milestones/v2.5-REQUIREMENTS.md), [audit](milestones/v2.5-MILESTONE-AUDIT.md). Historical phase folders remain required native roots.

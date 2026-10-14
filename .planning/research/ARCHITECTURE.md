@@ -1,218 +1,224 @@
 # Architecture Research
 
-**Domain:** Open Bitcoin v2.5 BASIC compact-filter indexing and prune-aware BIP157 serving
-**Researched:** 2026-10-03
-**Confidence:** HIGH for traced source/baseline behavior; MEDIUM for proposed modules and commit protocol
+**Domain:** Open Bitcoin v2.6 canonical chain bootstrap and bounded validation parity
+**Researched:** 2026-10-13
+**Confidence:** HIGH for inspected source behavior; MEDIUM for proposed integration
+**Baseline:** Bitcoin Knots `29.3.knots20260210`, commit `a9aee730466ac67d35a3c03ee24676be5e045878`
 
-## Recommendation and Settled Contract
-
-Extend the existing functional core / imperative shell and single serialized chainstate/prune authority. Add owned BASIC generation, a same-database Fjall index, bounded catch-up, branch-aware lookup and transport-confirmed serving. No new production dependency, workspace crate, public default or production claim is required.
-
-**Settled advertisement contract:** `NODE_COMPACT_FILTERS` follows explicit enablement and permitted per-peer service policy, independently of `synced`. Serve any complete indexed range during catch-up. Do not gate the service bit on catching up to tip. Fresh or lagging indexing beyond deleted historical inputs refuses; never start at prune height or implicitly repair/redownload. BASIC/type `0` is the only selected filter; V0/type `2` and BIP37 stay excluded. [K1–K4]
-
-Material guidance: `AGENTS.md`, Bright Builds sidecar, placeholder-only overrides, architecture/verification/Rust standards, current PROJECT/ARCHITECTURE and the v2.4 audit. Existing deletion/lock authority and the audit's three accepted advisories constrain the new persistence/recovery work; they are not permission to expand unrelated cleanup.
+This is a proposed architecture, not executed v2.6 validation evidence. It follows repository `AGENTS.md`, `AGENTS.bright-builds.md`, the placeholder-only overrides, and the architecture, verification, testing and Rust standards. Research runs inside the authorized new-milestone workflow; it changes no production code or saved datadir. Initial executable evidence should cover real default-regtest chains and bounded, classified mainnet historical rule-context fixtures. Canonical identities for other networks do not establish their validation support; unsupported modes refuse before effects.
 
 ## Standard Architecture
 
 ### System Overview
 
+Keep the existing first-party crates and single active Fjall chainstate. Establish canonical identity and history-derived rules in the pure core; execute their decisions through the existing managed runtime owner.
+
 ```text
-Configuration / authenticated RPC / inbound and outbound peers
-                         |
-         Existing daemon and transport shell adapters
-                         |
-       ManagedNetworkHandle: one serialized authority
-            |                  |                 |
-       Chainstate          Filter lifecycle    Request plans
-       staging/flush       catch-up/reorg      + completions
-            |                  |                 |
-  Pure chainstate facts -> Pure BASIC generator / BIP157 policy
-            |                  |                 |
-       Existing Fjall database: coins + block/undo + filter index
-                              |
-                 Versioned rows + branch maps + cursors
+Offline fixtures / explicit operator configuration / opt-in peers
+                             |
+                 codecs + resolved chain identity
+                             |
+       consensus: canonical genesis, rules, target-derived ProofWork
+                             |
+       network: admitted header ancestry + exact-work candidate
+                             |
+       chainstate: contextual connect / disconnect / reorg staging
+                             |
+       node: existing managed owner + lifecycle receipts
+                             |
+       Fjall: identity, headers, coins/B/H, undo, bodies, BASIC
+                             |
+       RPC / CLI / status / wallet eligibility projections
+
+Test-only Bun runner -> actual pinned Knots and Open Bitcoin
+                      -> identical serialized input + independent observations
 ```
 
-### Component Responsibilities
+### Existing Seams and Required Changes
 
-| Component | Responsibility | Boundary |
-| --- | --- | --- |
-| Primitives | BASIC type, filter hash/header identities | Distinct raw bytes and display encodings |
-| Codec | Bit/Golomb coding, filter serialization and six BIP157 message shapes | No hashing, storage or sockets |
-| Pure generator | Raw-script set, SipHash-2-4 range mapping, bytes/hash/header | Block plus validated spent-script facts in; derived records out |
-| Pure index transition policy | Contiguous progress, predecessor/branch validation, rewind, protection facts | No direct Fjall or clocks |
-| Fjall filter adapter | Immutable block-hash records, active projection, cursor/checkpoint, integrity checks | Same database as existing node store; explicit fallible commits |
-| Managed runtime owner | Serialize index transition with connect/reorg/prune/lock mutation | Existing `Arc<Mutex<ManagedPeerNetwork>>` authority, not another deletion owner [O2] |
-| Transport adapters | Resolve bounded complete responses, encode/write/acknowledge | Socket writes outside authority; no earned success until write completion [O5] |
-| RPC/operator projection | Baseline filter lookup, index summary, sanitized status/support | One authoritative model with enabled, synced and available range separately |
+| Component                            | Inspected current behavior                                                                                                       | v2.6 change                                                                                                                  |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `consensus/chain_proof.rs`           | `ProofWork([u64;4])`, exact proof, ordering and Knots-style wrapping arithmetic already exist                                    | Reuse this arithmetic; add explicit fixed-width encoding/display and one authoritative cumulative-work API                   |
+| `consensus/context.rs`               | Caller supplies `ConsensusParams` and `ScriptVerifyFlags`; defaults describe one modern regtest-like profile with 210000 halving | Introduce immutable network rules plus per-candidate history-derived validation context                                      |
+| `chainstate/types.rs`                | `ChainPosition`, `AnchoredBlock` use caller-supplied `u128`; genesis checks only zero parent                                     | Replace work representation and constructors; require canonical root identity                                                |
+| `network/header_store.rs`            | Zero-parent header becomes root; work score is 1; fork ordering uses work, height, hash                                          | Canonical root admission, contextual headers, exact work and explicit candidate ordering                                     |
+| `network/header_store/proof.rs`      | Separate exact arithmetic facts and best-proof tip coexist with synthetic fork choice                                            | Merge arithmetic into the authoritative header entries; retain derived diagnostics without a second competing tip            |
+| `chainstate/engine/overlay_apply.rs` | Empty chain accepts a zero-parent block and applies its transactions                                                             | Dedicated canonical genesis stage that creates no genesis UTXO; ordinary block path requires initialized ancestry            |
+| `node/sync/open_runtime.rs`          | Recovers coins/meta/undo and headers, initializes BASIC owner, fixes runtime flags to P2SH                                       | Identity/read-only compatibility gate before recovery mutations; bootstrap before BASIC catch-up; derive flags per candidate |
+| `node/sync/types.rs`                 | Four network selectors; all use 210000 halving and unconditional BIP34/BIP113/Segwit booleans                                    | Resolve selectors into one core chain specification; regtest interval 150; preserve network-specific rules                   |
+| `node/sync/block_reconcile.rs`       | Copies header `u128` work into connect/replacement paths and compares candidates                                                 | Consume shared exact-work entries and branch-specific contexts; keep staged lifecycle ownership                              |
+| `node/storage/snapshot_codec*`       | Chain/header DTOs persist `u128`; store schema is 2; blobs 1/2 remain readable                                                   | Version affected record formats and provenance; refuse incompatible chain authority before mutation                          |
+| `node/storage/fjall_store/coins.rs`  | Open can automatically migrate schema-1 coins and write schema metadata                                                          | Separate format compatibility from canonical validation provenance; do not let old automatic migration confer v2.6 authority |
+| Existing prune/BASIC owner           | Accepted-state receipts, immutable retained filters, coins fences, recovery and missing-history refusal                          | Reuse owner and receipts with canonical identities; adapt genesis and exact-work records without bypassing fences            |
 
-## Live Call Chains and Required Integration
-
-| Existing path | Traced call chain | Required v2.5 change |
-| --- | --- | --- |
-| Durable startup | `open-bitcoind::open_runtime_store` → `open_authoritative_network_runtime` → `DurableSyncRuntime::open_with_runtime_activation` → `initialize` → recovered coins/chain metadata/undo → `ManagedNetworkHandle` | Index-enabled offline mode must select durable storage too. Validate/reconcile filter protection before recovery can resume pruning, before workers/listeners start. [O1, O3] |
-| Outbound sync receive | `sync/session.rs` → `handle.receive_sync_message` → `ManagedPeerNetwork::receive_sync_message` → peer actions / `process_actions` | Filter requests must route here as well as through inbound handling. Live block acceptance must feed the index transition, not only status/report code. [O2, O4] |
-| Connected block | `mempool_lifecycle` → `prepare_connect_block_with_current_time` → sealed mempool lifecycle → `commit_connected_block_lifecycle_transaction` → `commit_prepared_connect` → absorb + persist | Extract generated undo from the validated staged connect before consumption, then notify/process index work under the same owner. Preserve existing chain/mempool commit failure semantics. [O4] |
-| Reorg | `reorg_to_branch` → `prepare_reorg` → preview + mempool transition → `commit_prepared_reorg` | Reconcile filter frontier and rewind active projection; retain old branch records; never publish an index branch based only on the preview. [O4, K5] |
-| Ordinary maintenance | daemon `start_coins_flush_worker` → `flush_cycle` → `handle.flush_coins` → `automatic_prune::flush` | Drive a bounded index step or its checkpoint here; idle/offline index catch-up needs a real consumer even without new peer blocks. Index-enabled startup must not bypass this worker. [O6] |
-| Manual/automatic delete | authority-owned `flush_applying_prune_plan` / ordinary flush → reload locks → prefix writes → paired unlink → coins/meta completion | Make filter protection and persistence part of the actual apply/recovery gates. Proposed planner-only protection is insufficient. [O6, O7] |
-| Inbound serving | listener frame read → `resolve_inbound_wire_responses` → `ManagedRpcContext::prepare_inbound_wire_message` → `receive_message_for_durable_serving` → action translation → response plan → `resolve` → bounded write → acknowledgement | Add a filter response plan/reader independent of body presence. Carry branch/range identity and completion evidence through resolution/write. [O5] |
-| Outbound response write | sync receive result → session `send_all_for_peer` | Use the same filter plan/completion semantics; prove writes rather than assuming inbound plumbing covers it. [O4] |
-
-**Important existing seam:** startup `initialize` calls `resume_prune_intent` before it sets `ReadyToFlush`. Filter protection must already be durable and validated at that point; attaching an index after runtime construction leaves a recovery deletion window. **Important failure seam:** connect absorbs validated state before its persistence result returns, and reorg installs a preview before final commit. A filter hook must track accepted transitions and durable checkpoints explicitly; an ordinary success-only callback can miss state changes after a persistence error. [O3, O4]
+The v2.5 audit explicitly excludes whole-chain differential claims because of synthetic roots/work and the regtest subsidy mismatch. Its receipts remain historical evidence; they cannot certify the revised bootstrap. [S1–S5]
 
 ## Recommended Project Structure
 
-Proposed paths below are new modules, not current implemented capability. Preserve `foo.rs` plus `foo/` convention and existing crate graph.
+Add focused modules inside existing crates, with names finalized during phase planning:
 
 ```text
-packages/
-  open-bitcoin-primitives/src/compact_filter.rs       typed identities
-  open-bitcoin-codec/src/compact_filter.rs            filter/bit codec
-  open-bitcoin-codec/src/compact_filter/              bounded helpers
-  open-bitcoin-codec/src/filter_messages.rs           BIP157 payloads
-  open-bitcoin-consensus/src/compact_filter.rs         pure generation
-  open-bitcoin-consensus/src/crypto/siphash.rs          byte API extension
-  open-bitcoin-chainstate/src/filter_index.rs          pure cursor/rewind facts
-  open-bitcoin-network/src/compact_filter.rs           request/serve policy
-  open-bitcoin-node/src/storage/filter_index.rs        versioned records
-  open-bitcoin-node/src/storage/fjall_store/filters.rs  atomic adapter
-  open-bitcoin-node/src/network/filter_index.rs        lifecycle/catch-up
-  open-bitcoin-node/src/network/runtime_authority/filter_index.rs
-  open-bitcoin-rpc/src/dispatch/compact_filters.rs     baseline lookup RPCs
+packages/open-bitcoin-consensus/src/
+  chain_params.rs          # new: pure chain specification and canonical genesis
+  deployment.rs           # new: buried/versionbits history decisions
+  context.rs              # modify: resolved candidate consensus context
+  chain_proof.rs          # modify: existing exact work becomes shared authority
+packages/open-bitcoin-network/src/
+  header_store.rs         # modify: admitted ancestry/work/candidate policy
+packages/open-bitcoin-chainstate/src/
+  types.rs                # modify: canonical positions and exact work
+  engine/overlay_apply.rs # modify: genesis versus ordinary transitions
+packages/open-bitcoin-node/src/
+  chainstate/             # modify: startup and accepted transition orchestration
+  storage/                # modify: identity/provenance schema, compatibility gate
+  sync/                   # modify: candidate contexts and checkpoint/recovery
+scripts/
+  canonical-chain-oracle.ts # new: bounded test-only actual Knots orchestration
 ```
 
-Modify existing daemon config/startup, storage namespaces/schema, chainstate staging/flush, network message dispatch/service flags/permissions, inbound response plans and sync session send paths. Extend shared status/support and existing harness/benchmarks; do not build a separate dashboard, index service or database.
-
-Codec currently depends only on primitives while consensus depends on codec. Keep hash computation outside codec. Consensus should accept spent-script facts, avoiding a dependency back to chainstate merely for `BlockUndo`. `StagedChainstateConnect` already carries public undo; `PreparedChainstateConnect` is opaque and currently exposes only position, so add a narrow validated-input accessor or prepared filter projection at that seam. [O4, O8]
+Use the existing primitives `Block`, `BlockHeader`, `NetworkMagic`, `BlockHash`, codecs, `ProofWork`, `CoinsOverlay` and accepted receipts. A resolved `ChainSpec` belongs below `open-bitcoin-node`, avoiding a core dependency on shell-owned `SyncNetwork`. Genesis bytes may live as audited constants/fixtures or a pure constructor; always verify serialized bytes, hash and merkle root against the pin. No production Rust Bitcoin library or new runtime service is needed.
 
 ## Architectural Patterns
 
-### Immutable Records, Branch-Aware Projection
+### Pattern 1: Canonical Root as a State Transition
 
-Persist record identity `(BASIC, block hash)` containing filter bytes/hash/header/predecessor. Maintain active height→block-hash projection and branch-aware lookups separately. Raw-script inputs come from the validated block and undo; genesis has no undo. Cache bounded records if useful, but durable absence remains authoritative. Keep completed filter records when bodies/undo are pruned. [K3, K5]
+**What:** Bootstrap establishes chain identity, header/index/body and coins best-block consistently; genesis transaction outputs never enter spendable coins.
+**Why:** Knots `ConnectBlock` skips genesis transaction connection and sets best-block. This is a special genesis rule, not OP_RETURN filtering, coinbase immaturity, or a generally invalid output script. The familiar P2PK genesis output remains in its serialized body and BASIC filter input. [S6]
 
-Knots keeps disconnected filter rows accessible by hash and looks up ranges along the stop block's ancestry. Active height alone cannot answer a stale-branch request. Validate parent/header chaining and capture the full requested branch before emitting anything. Retained filter records do not make block bodies available and must not change wallet rescan eligibility or `Pruned` labels. [K5, O9]
+Proposed bootstrap protocol:
 
-### Progress Separate from Durable Resume Authority
+1. Resolve network and any explicitly supported regtest/signet parameters into immutable identity.
+1. Inspect compatibility/provenance before legacy schema migration, index recovery, pruning or replacement writes.
+1. On a genuinely empty compatible datadir, stage the exact canonical genesis header/body/index, height 0, `block_proof(genesis.bits)` and genesis MTP.
+1. Establish empty genesis coins state with best-block at genesis; create only the metadata/undo representation required by existing recovery and filter contracts. Do not invent a Knots genesis undo transaction.
+1. Commit through the managed owner using replay-safe initialization markers; repeated open validates/completes its own bounded bootstrap or refuses inconsistent partial state.
+1. Only then initialize/catch up explicitly configured BASIC and permit ordinary validation.
 
-Maintain explicit processed frontier, committed filter rows, durable resume cursor, current active branch identity and synced state. Do not collapse them into one height/counter. A record can be durable before the chain checkpoint catches up; it must not make the durable resume cursor claim chainstate that will disappear on restart. Knots explicitly warns against committed index state ahead of flushed chainstate. [K6]
+Reject arbitrary zero-parent roots even if their PoW is valid; prevent ordinary reorg/disconnect from removing genesis. Genesis is not downloaded as an unknown peer root. Distinguish absent state from mismatched or partially populated state. A header-only checkpoint is not body-validated chainstate.
 
-Use the existing successful coins/chain-metadata checkpoint as the fence for publishing a durable index cursor. If records have been written ahead, reopen derives the active projection/frontier from the recovered chain anchor, preserving immutable branch records without trusting stale active mappings. Header/coins/checkpoint errors leave a conservative lock/frontier; status exposes the failure instead of fabricating progress. Protect the earliest needed history until a safe committed transition permits release.
+### Pattern 2: One Work Number, Separate Validation Provenance
 
-### Atomic Index Commit and Protection
+**What:** Every admitted header stores `parent.work + block_proof(bits)` using the existing exact 256-bit arithmetic. Genesis accumulates from zero. Chain positions, candidates, replacement branches, checkpoints, DTOs and status consume that same value.
+**Trade-off:** This touches many signatures and fixtures, but avoids a permanent split between diagnostic correct work and operative synthetic work. Arithmetic alone proves neither valid difficulty nor canonical ancestry nor script validity. [S2, S7]
 
-Within the shared owner, prepare bounded records and branch changes, then commit records/projection/cursor/protection through a same-database atomic `SyncAll` batch where its chain checkpoint preconditions hold. If protection is a separate effect, write filter/checkpoint proof first and advance protection second. Never advance the lock first. A crash may retain extra payloads but must not delete required unindexed block/undo. Existing paired deletes are separately atomic; design the cross-operation protocol rather than claiming a transaction across all current effects. [O7, F1]
+Admit headers only after identity, parent, PoW limit, expected difficulty, timestamp/MTP and version rules for their network/history are established. Decode persisted work losslessly and recompute/check it against ancestry; never trust a saved number because its width is correct. Preserve Knots arithmetic semantics rather than substituting saturation. [S7, S8]
 
-Reserve internal filter-index lock identity and owner. Operator set/clear must reject attempts to overwrite/remove internal protection. An explicit disable transition stops catch-up and invalidates in-flight work before releasing protection; ordinary status may show sanitized owned-lock counts. Current public named-lock CRUD allows general replacement/clear, so this control is new behavior needing a real production guard. Catch-up/manual/automatic/recovery deletion must all use that guard. [O7]
+Keep header-valid and fully connected facts distinct in types/receipts. Best header drives download selection; active chain changes only after contextual block/UTXO/script validation and accepted transition installation. Remove caller-selected work from production entrypoints; test fixture helpers can compute genuine proofs rather than mint trusted authority.
 
-### Bounded Work under One Authority
+Equal work needs its own parity decision. Knots block candidates use activation sequence before an address tie-break; current Open Bitcoin uses height/hash. Do not claim exact Knots equal-work behavior from a new numeric type. Preserve arrival/activation facts where observable, test no unnecessary equal-work reorg, and declare unresolved restart ties explicitly rather than copying pointer addresses. [S9]
 
-Process a fixed batch of blocks/bytes per catch-up turn and yield between batches. Revalidate branch identity and durable inputs at each turn. Initial historical replay and live connects share one append policy; while catch-up is behind, new connects enlarge the backlog instead of creating out-of-order headers. Do not duplicate full-chain metadata/undo into another index-owned cache. The current runtime already loads undo at reopen; this milestone should not add a second unbounded copy. [O1, K6]
+### Pattern 3: Rules Derived for the Candidate's Branch
 
-Use existing periodic shell scheduling to call the owner; an index task may prepare work concurrently only if branch/checkpoint identity is revalidated before commit. Network/socket writes must never hold the authority lock. These are design recommendations; batch budgets require phase profiling and tests.
+**What:** Resolve a pure candidate context from chain specification, candidate hash/header and validated ancestor facts. Supply clock observations and history as data; keep filesystem/network/cache loading in the shell.
 
-## Data Flow and Recovery
+Separate:
 
-1. **Startup:** parse default-off index and serving activation → open Fjall for index-enabled durable/offline mode → verify record schema/checksums/cursor and internal protection → existing coins/prune recovery → recover chain anchor → reconcile filter branch/cursor → preflight block+undo availability → start bounded catch-up and existing listeners/workers. Fresh/lagged missing history refuses without implicit repair. [O1, O3, K4]
-2. **Connect:** validate/stage block+undo → prepare pure filter inputs → commit accepted chain lifecycle → append in order or queue indexed backlog → commit index rows → use chain checkpoint fence to advance resume cursor/protection → derive status. Genesis uses the zero preceding header. [O4, K3, K6]
-3. **Disconnect/reorg:** capture validated transition → find common ancestor → preserve old hash rows → rewind projection/header under authority → index replacement branch in order → commit fenced cursor/protection. A deeper-than-retained required input fails explicitly; no replacement fabricated from current coins. [K5, K6]
-4. **Prune:** actual planner reloads internal protection → filter records needed by deletion already committed → existing prefix and paired deletes → existing checkpoint/recovery protocol → filter rows remain readable. Deleted-body receipts still own cache cleanup. [O6, O7, O9]
-5. **Serve:** validated peer/request → BASIC/per-peer services/stop ancestry/range policy → bounded complete index lookup → all requested responses prepared → encode → socket write → acknowledge written prefix or abort. Missing records yield Knots lookup behavior, not shortened ranges or `notfound` substitutes. [K2, K7, O5]
-6. **Reopen:** recover the real Fjall store after each fault boundary; reconcile to durable chain anchor and validate predecessor/header/rows/protection. `synced` is recomputed, not restored from a hopeful cached boolean. Existing finish-or-Repair prune refusal remains permitted and visible. [O3, K6, O9]
+- Static network identity, genesis, maturity, subsidy schedule, PoW parameters and hash-specific exceptions.
+- Buried height activations and contextual version/BIP34/CSV/Segwit commitment rules.
+- Branch-dependent versionbits state, period/MTP boundaries, thresholds and minimum activation height where the pinned behavior requires them.
+- Block consensus script flags versus mempool standardness/policy flags.
 
-## Exact Baseline Lookup Outcomes
+**Pinned nuance:** `GetBlockScriptFlags` starts with P2SH/WITNESS/TAPROOT, applies exact block-hash exceptions, then adds DERSIG/CLTV/CSV and NULLDUMMY at their pinned deployment boundaries. A generic “turn every flag on at activation height” implementation is wrong for this baseline. Segwit contextual checks and versionbits APIs are separate from that script-flag rule. [S6, S10]
 
-| Surface / condition | Required outcome |
-| --- | --- |
-| Global `-peerblockfilters` without BASIC index | Configuration error; global service bit otherwise follows enablement, independent of synced. [K1] |
-| Explicit `blockfilters` permission | Requires BASIC index; peer initialization adds the service bit for permitted peers. Audit implicit/all permissions separately against pinned behavior. [K1] |
-| Unsupported type, unknown/disallowed stop, start above stop, oversized range | Knots disconnects; inclusive caps 1,000 filters/2,000 hashes. Stop policy accepts active blocks or script-valid sufficiently recent stale blocks under both time/work-age checks. [K2] |
-| Valid filter range partly absent | No range response; no shortened prefix. All filter rows are loaded before emission. [K7] |
-| `getcfheaders` predecessor missing or any hash missing | No response; genesis predecessor is zero. [K7] |
-| `getcfcheckpt` checkpoint missing | No response; return headers at positive 1,000-block intervals, excluding genesis. [K7] |
-| Complete indexed range while catch-up incomplete | Serve normally; no global synced gate. [K2, K7] |
-| `getblockfilter`: unknown filter name / block unknown | `-5`, respectively `Unknown filtertype` / `Block not found`. [K8] |
-| `getblockfilter`: index disabled | `-1`, `Index is not enabled for filtertype basic`. [K8] |
-| Lookup absent for block never script-valid/connected | `-5`, `Filter not found. Block was not connected to active chain.` [K8] |
-| Lookup absent for connected block while index lagging | `-1`, `Filter not found. Block filters are still in the process of being indexed.` [K8] |
-| Lookup absent for connected block while synced | `-32603`, `Filter not found. This error is unexpected and indicates index corruption.` [K8] |
-| Lookup succeeds while index lagging / retained stale or pruned block | Return filter hex and header hex; synced is consulted to explain absence, not deny successful lookup. [K8] |
+Reorg validation derives each replacement block's context from the retained common prefix plus the preceding replacement headers. Never reuse the displaced active tip's flags or a process-global deployment cache without branch identity. Missing required history yields a typed refusal; an unproven context cannot default to all-active.
 
-Scope models BASIC only. Knots locally recognizes V0 as well; do not accidentally add its generator/RPC/serving capability. Record the scoped unsupported V0 boundary in parity artifacts rather than claim all Knots filter types.
+### Pattern 4: Actual Differential Oracle, Reproducible Evidence
 
-## Dependency Build Order
+**What:** A test-only Bun runner starts a locally built, exact-pinned Knots executable in an isolated temporary regtest datadir and feeds identical serialized blocks/transactions to both ordinary validation paths. Existing Python BASIC oracle remains narrow protocol evidence, not a consensus daemon substitute. [S11]
 
-| Order | Deliverable | Depends on / integration proof |
-| --- | --- | --- |
-| 1 | Typed identities, byte SipHash, bit codec, BASIC generator/commitments | Pinned byte/header vectors and SipHash tails; no storage |
-| 2 | Index schema, atomic adapter, branch lookup and cursor/checkpoint policy | Generation; real Fjall commit/failure/reopen proof |
-| 3 | Startup/catch-up/connect/reorg/checkpoint owner integration | Storage + staged undo; demonstrate actual daemon/idle consumer and fenced progress |
-| 4 | Reserved protection and prune/recovery coordination | Durable cursor policy + same runtime owner; real deletes, reopen and refusal after lost history |
-| 5 | Wire codecs/policy, per-peer advertisement, RPC lookup and transport completions | Complete durable branch lookup; inbound and outbound wire/acknowledgement proof |
-| 6 | Shared operator/support evidence and release guardrails | Real lifecycle and writes; one deterministic integrated scenario, parity roots, final native verification |
+Record source pin, executable digest/build provenance, effective consensus settings, input bytes/digests, ordering, raw outcomes and compared observations. Disable external peers/discovery, ambient datadir/config/wallet use and assumevalid shortcuts; use explicit local process/RPC transport. Freeze time where required without making it part of consensus core I/O. Availability of an actual compatible binary is a required gate, not permission to silently replace it with golden expected output.
 
-Wire shape work can run alongside storage, but public-facing activation cannot precede durable complete-range and prune/recovery proof. No phase may count only library existence or a static support flag as runtime completion.
+Compare accept/reject categories/reasons where stable, tip hash/height/exact work, selected spendable outpoints and disconnect/reconnect results. Do not compare incompatible serialized UTXO database formats. Knots accepting the same block is independent evidence only if its ordinary checks actually ran; self-generated fixtures and matched expected JSON alone are insufficient.
 
-## Deterministic Integration and Crash Proof
+## Data Flow
 
-| Evidence case | Required observable proof |
-| --- | --- |
-| Generator oracle | Exact BASIC bytes/hash/header from pinned fixtures, duplicate scripts, spent scripts, OP_RETURN/empty rules, SipHash tails and bit boundaries |
-| Actual connect/reorg | Validated runtime blocks/undo reach the owner; branch headers and hash lookups remain correct after real disconnect/replacement |
-| Ordinary catch-up | Enable index on retained history through production startup; bounded scheduled work advances without requiring another inbound block |
-| Real prune + reopen + wire | Generate/index before real Fjall paired delete; prove bodies/undo absent, filters present; reopen production durable runtime; handshake and decode all six wire messages, including old filter ranges |
-| Catch-up service | Observe advertised service while synced=false; complete indexed range succeeds, crossing an unindexed range sends no partial response |
-| Stale branch / branch race | Hash/ancestor selection survives equal-height replacements; allowed stale range succeeds, disallowed stop disconnects; captured response never mixes branches |
-| Missing-history refusal | Fresh and lagged index activation after real deletion refuses; no cursor jump, zero-header suffix or hidden redownload |
-| Reserved lock | Authenticated operator cannot overwrite/clear internal lock; disable/re-enable and restart preserve intended ownership; automatic/manual/recovery paths obey it |
-| Transport failure | Budget refusal and partial socket-write failure earn no full-range success; only successfully written prefix is counted, with cleanup and retry evidence |
-| Corruption/failed batch | Missing bytes, wrong predecessor/header/hash, mixed cursor mapping and failed commit surface distinct errors; no phantom synced/cursor/protection advancement |
+### Startup and Recovery
 
-Inject failures before/after: filter batch, protection commit, paired delete, coins/meta checkpoint, cursor publication, reorg rewind, and response write. Reopen after persisted boundaries using concrete Fjall and durable coins. If a fixture substitutes `MemoryCoinsView` or sparse codec-valid blocks, state that limitation; it does not prove a continuous consensus chain or a production durable-coins crash. Preserve the v2.4 allowed interrupted-prune Repair refusal, generic-sink advisory and support-counter crash undercount; filter progress must use records/checkpoints rather than deletion summary counters. [O9]
+```text
+Resolved chain identity + storage read-only compatibility inspection
+    -> Empty compatible store: canonical bootstrap
+    -> Compatible canonical store: verify ancestry/work + recovery markers
+    -> Unknown/synthetic/mismatched store: typed refusal; preserve source bytes
+    -> Existing initialize/coins recovery -> managed active chain
+    -> BASIC ownership/catch-up -> optional runtime networking
+```
 
-## Scaling Considerations
+### Ordinary Block and Fork Flow
 
-| Pressure | Initial architecture | Optimize only with evidence |
-| --- | --- | --- |
-| Historical catch-up | Bounded batch reads/generation; one owner; no full-history copying | Prepare outside lock with branch revalidation if measured lock duration hurts live paths |
-| Serving many ranges | Per-peer request/output-byte limits; complete lookup before output | Bounded shared record cache or chunked lookup that still verifies completeness before first emission |
-| Persistent filter growth | Separate visible index-byte accounting; no implicit filter pruning | Future explicit retention mode requires a separate BIP157 availability contract |
-| Chain transition/storage failures | Immutable branch rows and conservative resume fence/protection | Optimize write cadence after fault/reopen tests, not before |
+```text
+Decoded header -> branch context -> admitted exact-work header
+    -> candidate selection -> required retained bodies/undo preflight
+    -> staged contextual validation on coins overlay
+    -> existing accepted lifecycle receipt / managed commit
+    -> coins checkpoint + header/meta/body/undo durability
+    -> branch-correct BASIC append/replacement -> pruning eligibility
+    -> RPC/CLI/status projection of achieved facts
+```
 
-## Anti-Patterns
+Preserve the existing crash-window and flush contracts: prepared, accepted, checkpointed and recovered facts are distinct. A successful in-memory connect does not certify durable reopen. Filter retention never restores deleted bodies or wallet eligibility.
 
-- Gating `NODE_COMPACT_FILTERS` on synced contradicts the settled Knots contract; advertise explicit enablement and show sync separately.
-- Indexing from current UTXOs or regenerating on each request loses spent scripts and breaks after pruning; generate with validated undo and retain records.
-- Height-only index keys mix branches after reorg; retain block-hash identity and predecessor commitments.
-- Lock advancement or persisted cursor before durable proof can destroy needed history; use conservative commit/checkpoint ordering.
-- Registering protection after `initialize` misses recovery deletes; make startup recovery ordering explicit.
-- Activating only codecs, helpers or static permission labels leaves the feature disconnected; prove actual daemon maintenance, transport reads/writes and reopen.
-- Applying the limited-body 288+2 window to filters unnecessarily denies retained historical records; keep availability policies distinct.
-- Restoring `synced` from status counters or treating a generic no-op sink as index success creates false authority; require concrete records and checks.
+## Cross-Layer Compatibility and Migration
+
+Use a new versioned canonical-chain authority envelope recording network identity, genesis hash, consensus-profile identity (including supported overrides/challenge), work encoding and validation provenance. A genesis hash alone cannot distinguish custom signets because their genesis is shared; challenge-derived identity matters. Mainnet and testnet3 also share the genesis transaction/merkle root, so do not key network identity from those fields. [S12]
+
+| Saved state                                       | Proposed treatment                                                                       |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Truly empty                                       | Explicit canonical initialization; bootstrap crash/retry tests                           |
+| New canonical format, matching identity           | Validate envelopes and authority links, then existing recovery                           |
+| Wrong network/challenge/profile                   | Refuse before mutable recovery; no automatic switching                                   |
+| Old synthetic root or unproven validation context | Refuse canonical runtime activation; retain source datadir and diagnostic provenance     |
+| Old canonical-looking root with `u128` work       | Root alone is insufficient; no automatic authority upgrade or reinterpretation           |
+| Pruned legacy history                             | Refuse replay when required bodies/history are missing; retained BASIC cannot substitute |
+| Malformed or interrupted new bootstrap            | Bounded finish of its own validated intent or typed refusal; no generic repair           |
+
+The safest initial release supports fresh datadirs and proven new-format reopen. A later explicit dry-run-first export/replay workflow can rebuild into a separate destination when complete canonical blocks exist. It must revalidate consensus, work, coins and dependent filter fences; merely widening integers cannot repair synthetic roots, historical flags or genesis coins. Do not overwrite, delete, reset, auto-import/download, or “repair” existing state as a startup side effect.
+
+Keep wallet/mempool blob readability separate from chain authority versions. Map every persisted carrier: active metadata, header checkpoint, runtime/reorg checkpoint, coins B/H markers and accepted history/fences referencing their identities. Preserve unknown facts as unavailable instead of fabricating canonical provenance.
+
+## Integration Points and Safest Build Order
+
+| Proposed phase                           | Deliverable and dependency                                                                                                | Acceptance gate                                                                                  |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| 1. Chain identity and compatibility      | Core chain specs, network mapping, canonical genesis fixtures, read-only legacy refusal                                   | Exact pinned genesis identities; no changed source datadir on refusal                            |
+| 2. Exact work foundation                 | Extend existing `ProofWork` encoding and migrate live/header/chainstate signatures before declaring canonical persistence | Known target proofs, >128-bit ordering, no synthetic production work path                        |
+| 3. Canonical durable bootstrap           | New authority schema, genesis connect semantics, complete startup/reopen path; depends on 1–2                             | Empty/repeat/partial initialization, genesis unspendability, wrong network refusal               |
+| 4. Candidate rule derivation             | Buried/history rules, script exceptions, subsidy, contextual header/block checks; depends on 1–3                          | Genuine maturity 100 and regtest 150 halving; historical boundary controls                       |
+| 5. Actual Knots differential             | Hermetic runner/provenance, ordinary shared-byte accept/reject corpus; runner scaffolding can begin earlier               | Real pinned executable, canonical roots, no weakened consensus test profile                      |
+| 6. Fork and recovery differential        | Work-based branches, disconnect/reconnect, failed replacement, checkpoint and all-handle reopen; depends on 4–5           | Same branch choice and coins observations; refusal on missing required data                      |
+| 7. Canonical pruning and BASIC           | Reuse existing ownership/fencing; real genesis filter, retained/stale branch and actual paired loss/reopen                | Exact filters/commitments, honest availability, no deleted-body recovery claim                   |
+| 8. Historical contexts and claim closure | Bounded classified mainnet fixtures, supported-network/refusal matrix, native integration                                 | Every claim names network/profile/history and executed evidence; offline default verifier passes |
+
+Six milestone deliverables can therefore become eight phases. Implement only deployment modes necessary for the accepted profiles; validate bounded historical context decisions independently. Dynamic deployment overrides and complete signet support are separate scope decisions, with early typed refusal as the safe bounded alternative. Do not release a partially migrated authority between work/schema phases; use explicit compatibility gating until the complete path exists.
+
+## Scaling Considerations and Anti-Patterns
+
+Bound corpus size, retained branch depth, child-process lifetime and fixture bytes. Real regtest maturity and canonical prune thresholds make integration scenarios longer than maturity-one fixtures; separate small pure-core vectors from full-path canonical scenarios. Existing `Vec<ChainPosition>`, all-undo loading and finite reorg caps remain scaling limits, not reasons to add archive-scale infrastructure.
+
+Avoid: two best-work authorities; trusted caller totals; rewriting old metadata to look canonical; static global flags; genesis coinbase insertion; branch-global deployment caches; golden-output “differential”; pruning before history preflight; BASIC as a substitute for bodies; silent skipped oracle runs; public-network-dependent native checks.
+
+## Material Scope Risks and Honest Claim Gates
+
+- **Network coverage:** Current `SyncNetwork` has mainnet/testnet3/signet/regtest; the pin also contains testnet4/BIP94. Explicitly decide whether to add it or document a bounded omission. Do not silently reinterpret `testnet` as testnet4. Regtest activation/versionbits overrides and custom signet are separate profiles, not automatic scope.
+- **Signet:** No signet validation path was found in the inspected consensus crate. Proof-of-work plus signet genesis does not validate non-genesis signet blocks; implement the challenge/solution checks or refuse unsupported signet validation. Default and custom challenge/magic identity require explicit fixtures. [S12]
+- **Historical completeness:** Buried heights alone do not cover BIP30 duplicate-transaction exceptions, exact historical script exceptions, difficulty recovery/retarget context or dynamic deployment histories. Inventory against the pin; bounded fixture admission must say which context it proves.
+- **Equal work and recovery:** Work correctness does not alone prove candidate arrival order or restarted tie behavior. Resolve observable rules and record any intentional difference through `docs/parity/`.
+- **Evidence:** Existing v2.5 synthetic/maturity-one proofs remain useful regressions with their original labels. New genuine canonical/ordinary validation receipts are required before stronger v2.6 claims.
+- **Release:** Preserve `bash scripts/verify.sh` as the default offline contract; integrate deterministic bounded suites and required oracle provisioning without implicit downloads/public peers. No tests/builds were executed by this research.
+- **Deferred:** Single chainstate only; default-off networking; no assumeutxo, archive-scale, unattended production full sync, production service/funds safety or complete consensus-parity assertion.
 
 ## Sources
 
-All paths are repo-relative and were inspected on 2026-10-03. HIGH confidence means source-confirmed existing behavior; proposed file layout, scheduling budgets and persistence protocol remain MEDIUM until implementation verification.
+All Knots references below use the exact milestone pin; local source inspection is the primary evidence. BIP pages are current specifications checked on the research date, not a replacement for pinned behavior.
 
-- **O1:** `packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs:301–380,134–145`; `packages/open-bitcoin-node/src/sync/open_runtime.rs:30–85` — durable startup and workers.
-- **O2:** `packages/open-bitcoin-node/src/network/runtime_authority.rs:65–132,280–330,536–545`; `network.rs:364–445` — shared authority and receive paths.
-- **O3:** `packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs:209–239` — coins recovery and prune-intent resume before readiness.
-- **O4:** `packages/open-bitcoin-node/src/chainstate.rs:183–204,295–380`; `network/mempool_lifecycle.rs:113–178`; `network/lifecycle_projection/authority.rs:545–571`; `sync/session.rs:399–447`; `sync/block_response.rs:117–172`; `packages/open-bitcoin-chainstate/src/engine.rs:48–62` — staged undo, connect/reorg, persistence and transport flow.
-- **O5:** `packages/open-bitcoin-rpc/src/context.rs:384–429`; `context/inbound_wire.rs:111–174,258–338`; `inbound_listener/connection_runtime.rs:200–265,575–604`; node `network/action_translation.rs:76–113` — plan/resolve/write/acknowledge seam.
-- **O6:** `packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush.rs:68–90,161–171`; node `network/runtime_authority/automatic_prune.rs:132–173`; `chainstate/flush_lifecycle.rs:338–391,554–566` — real ordinary maintenance and deletion ordering.
-- **O7:** node `network/runtime_authority/prune_flush.rs:60–115`; `storage/fjall_store/prune.rs:79–103,211–244`; `chainstate/fjall_store.rs:130–135` — lock CRUD, concrete deletes and recovery.
-- **O8:** consensus/codec/network Cargo manifests; `packages/open-bitcoin-consensus/src/crypto/siphash.rs:45–87`; chainstate `types.rs:15–40` — crate graph and reusable hashing/undo.
-- **O9:** `.planning/milestones/v2.4-MILESTONE-AUDIT.md`, Actual retention and limits / Advisory debt; `.planning/PROJECT.md`, Current Milestone and Current State — accepted caveats and claim boundaries.
-- **K1:** Knots `src/init.cpp:1075–1104,2358–2361`; `src/net_processing.cpp:1548–1555` — global enablement and per-peer permission advertisement.
-- **K2:** Knots `src/net_processing.cpp:86,1865–1871,3156–3206` — exact preparation/disconnect and stale-stop policy.
-- **K3:** Knots `src/blockfilter.cpp:187–224,258–282`; `src/index/blockfilterindex.cpp:268–285` — generation, undo and commitments.
-- **K4:** Knots `src/init.cpp:2485–2496`; `test/functional/feature_index_prune.py:123–155` — missing-history startup refusal.
-- **K5:** Knots `src/index/blockfilterindex.cpp:336–370,476–510` — rewind, branch rows and complete range lookup.
-- **K6:** Knots `src/index/base.cpp:227–261,274–319,322–388,430–446`; `blockfilterindex.cpp:145–165` — processed/committed progress, flush fence and protection ordering.
-- **K7:** Knots `src/net_processing.cpp:3219–3315`; `src/index/blockfilterindex.h:20`; `test/functional/p2p_blockfilters.py` — missing-range no-response, counts and checkpoints.
-- **K8:** Knots `src/rpc/blockchain.cpp:3340–3391`; `src/rpc/protocol.h:34–42`; `src/rpc/node.cpp:422–458` — exact RPC lookup outcomes and index summary.
-- **F1:** [Fjall 3.1.4 OwnedWriteBatch](https://docs.rs/fjall/3.1.4/fjall/struct.OwnedWriteBatch.html) — atomic writes across same-database keyspaces and durability selection; checked alongside concrete existing adapter use.
-- **Normative specifications:** [Official BIP157](https://github.com/bitcoin/bips/blob/master/bip-0157.mediawiki), [Official BIP158](https://github.com/bitcoin/bips/blob/master/bip-0158.mediawiki); generation/wire contracts cross-checked against pinned Knots `a9aee730466ac67d35a3c03ee24676be5e045878`.
-
-*Active v2.5 architecture research; earlier v2.4 research remains recoverable in Git.*
+- **S1 — HIGH:** [Current project](../PROJECT.md) and [archived v2.5 audit](../milestones/v2.5-MILESTONE-AUDIT.md), especially preserved limits.
+- **S2 — HIGH:** Local `packages/open-bitcoin-consensus/src/chain_proof.rs`, `packages/open-bitcoin-network/src/header_store.rs` and `header_store/proof.rs`.
+- **S3 — HIGH:** Local `packages/open-bitcoin-chainstate/src/types.rs`, `engine/overlay_apply.rs`, `engine/stage.rs`, `engine/apply.rs`.
+- **S4 — HIGH:** Local `packages/open-bitcoin-node/src/sync/{types,open_runtime,block_reconcile,runtime_state}.rs` and `network/mempool_lifecycle.rs`.
+- **S5 — HIGH:** Local `packages/open-bitcoin-node/src/storage.rs`, `storage/snapshot_codec.rs`, `storage/snapshot_codec/chain_meta.rs`, `storage/fjall_store/coins.rs`.
+- **S6 — HIGH:** [Pinned validation.cpp](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/validation.cpp#L2645), script flags, genesis special case, subsidy and contextual validation.
+- **S7 — HIGH:** [Pinned chain.cpp](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/chain.cpp#L131), `GetBlockProof`; [arith_uint256.h](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/arith_uint256.h).
+- **S8 — HIGH:** [Pinned chain parameters](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/kernel/chainparams.cpp), genesis, network heights, subsidy and signet/testnet4 identity.
+- **S9 — HIGH:** [Pinned blockstorage.cpp](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/node/blockstorage.cpp#L194), candidate comparator.
+- **S10 — HIGH:** [Pinned deploymentstatus.h](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/deploymentstatus.h), [versionbits.cpp](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/versionbits.cpp), [BIP9](https://github.com/bitcoin/bips/blob/master/bip-0009.mediawiki).
+- **S11 — HIGH:** Local `scripts/phase162-filter-oracle.ts`, `scripts/basic-filter-oracle.py` and `scripts/verify.sh`: present independent BASIC helper oracle and native registration, not an actual daemon consensus differential.
+- **S12 — HIGH:** [BIP325](https://github.com/bitcoin/bips/blob/master/bip-0325.mediawiki) and [pinned signet.cpp](https://github.com/bitcoinknots/bitcoin/blob/a9aee730466ac67d35a3c03ee24676be5e045878/src/signet.cpp), challenge validation and shared signet genesis.
