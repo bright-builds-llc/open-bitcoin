@@ -6,6 +6,155 @@
 use super::*;
 use crate::storage::StorageRecoveryAction;
 
+pub(super) fn stale_runtime() -> (std::path::PathBuf, DurableSyncRuntime, BlockHash) {
+    stale_runtime_configured(false)
+}
+
+pub(super) fn stale_runtime_configured(
+    indexed: bool,
+) -> (std::path::PathBuf, DurableSyncRuntime, BlockHash) {
+    // Arrange: ordinary mined coinbase-only history, with no maturity override.
+    let params = SyncNetwork::Regtest.consensus_params();
+    assert_eq!(params.coinbase_maturity, 100);
+    let genesis = block(BlockHash::default(), 0, 0x51);
+    let old = block(block_hash(&genesis.header), 1, 0x51);
+    let (dir, initial) = runtime("phase162-stale-normal");
+    let runtime = if indexed {
+        drop(initial);
+        let source = live_source(
+            crate::FjallNodeStore::open(&dir).expect("same empty fixture store"),
+            &[genesis.clone(), old.clone()],
+        );
+        let runtime = DurableSyncRuntime::from_live_fixture_source(
+            source,
+            crate::SyncRuntimeConfig {
+                network: SyncNetwork::Regtest,
+                ..Default::default()
+            },
+            params,
+            crate::chainstate::BasicFilterStartupMode::Enabled,
+            Default::default(),
+            Default::default(),
+            false,
+        )
+        .expect("same genuine indexed prefix");
+        runtime
+            .network_handle()
+            .connect_outbound_peer(1, 10_000)
+            .expect("initial session");
+        runtime
+    } else {
+        initial
+    };
+    let handle = runtime.network_handle();
+    handle.disconnect_peer(1).expect("replace initial session");
+    handle
+        .configure_basic_peer_serving(true)
+        .expect("explicit BASIC capability");
+    handle
+        .connect_outbound_peer(2, 10_000)
+        .expect("advertising peer");
+    let stale_hash = block_hash(&old.header);
+    if !indexed {
+        let mut initial = open_bitcoin_network::HeaderStore::default();
+        initial
+            .insert_header(genesis.header.clone())
+            .expect("actual root");
+        initial
+            .insert_header(old.header.clone())
+            .expect("actual old header");
+        handle
+            .try_admit_fixture_headers(initial, i64::MAX, params)
+            .expect("controlled accepted fixture headers");
+        for accepted in [&genesis, &old] {
+            runtime
+                .store()
+                .save_block(accepted, crate::PersistMode::Sync)
+                .expect("ordinary body");
+            handle
+                .connect_local_block(accepted, ScriptVerifyFlags::P2SH, params)
+                .expect("genuine accept");
+        }
+    } else {
+        assert_eq!(
+            handle
+                .header_entries()
+                .expect("captured accepted prefix")
+                .len(),
+            2
+        );
+    }
+    handle
+        .flush_coins(
+            FlushMode::Always,
+            FlushPolicyTime::from_unix_seconds(20_000),
+            u64::MAX,
+        )
+        .expect("old durable coins fence");
+    assert_eq!(
+        runtime
+            .store()
+            .validation_provenance(stale_hash)
+            .expect("accepted provenance"),
+        ValidationProvenance::ScriptsValid
+    );
+    assert!(
+        handle
+            .peer_manager_snapshot()
+            .expect("live accepted headers")
+            .header_store()
+            .entry(&stale_hash)
+            .is_some()
+    );
+    let alternate = block(block_hash(&genesis.header), 1, 0x52);
+    let extension = block(block_hash(&alternate.header), 2, 0x52);
+    let replacement = vec![
+        AnchoredBlock {
+            block: alternate,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
+        },
+        AnchoredBlock {
+            block: extension,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(4),
+        },
+    ];
+    for accepted in &replacement {
+        runtime
+            .store()
+            .save_block(&accepted.block, crate::PersistMode::Sync)
+            .expect("competing body");
+    }
+    handle
+        .receive_sync_message(
+            2,
+            WireNetworkMessage::Headers(HeadersMessage {
+                headers: replacement
+                    .iter()
+                    .map(|candidate| candidate.block.header.clone())
+                    .collect(),
+            }),
+            1_000_000,
+            ScriptVerifyFlags::P2SH,
+            params,
+        )
+        .expect("actual branch headers before body reorg");
+
+    // Genuine managed reorg leaves old h1 admitted but stale.
+    let transition = handle
+        .reorg_to_branch(
+            &[old],
+            &replacement,
+            ReorgLifecycleContext::new(PolicyTime::from_unix_seconds(20_001)),
+            ScriptVerifyFlags::P2SH,
+            params,
+        )
+        .expect("genuine reorg");
+    assert_eq!(transition.disconnected.len(), 1);
+    assert_eq!(transition.connected.len(), 2);
+    drop(handle);
+    (dir, runtime, stale_hash)
+}
+
 pub(super) fn settle(
     runtime: &DurableSyncRuntime,
 ) -> Result<crate::chainstate::FlushExecution, crate::ManagedNetworkAuthorityError> {

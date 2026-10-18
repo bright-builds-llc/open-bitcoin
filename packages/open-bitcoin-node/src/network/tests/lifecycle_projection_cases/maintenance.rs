@@ -284,6 +284,18 @@ fn reorg_steps_apply_sequentially_and_reconcile_each_generation() {
         .tip()
         .expect("fork position")
         .clone();
+    let replacement_parent_tip =
+        block_with_transactions(fork.block_hash, fork.height + 1, Vec::new());
+    let replacement_child_tip = block_with_transactions(
+        block_hash(&replacement_parent_tip.header),
+        fork.height + 2,
+        Vec::new(),
+    );
+    for block in [&replacement_parent_tip, &replacement_child_tip] {
+        network
+            .retain_checked_candidate(block, consensus_params(), i64::from(block.header.time))
+            .expect("real replacement body eligibility before old tips");
+    }
     let old_parent_tip =
         block_with_transactions(fork.block_hash, fork.height + 1, vec![old_parent.clone()]);
     network
@@ -297,33 +309,41 @@ fn reorg_steps_apply_sequentially_and_reconcile_each_generation() {
     network
         .connect_local_block(&old_child_tip, verify_flags(), consensus_params())
         .expect("old child tip");
-    let replacement_parent_tip =
-        block_with_transactions(fork.block_hash, fork.height + 1, Vec::new());
-    let replacement_child_tip = block_with_transactions(
-        block_hash(&replacement_parent_tip.header),
-        fork.height + 2,
-        Vec::new(),
-    );
     let replacement = [
         AnchoredBlock {
             block: replacement_parent_tip.clone(),
-            chain_work: fork.chain_work + 1,
+            chain_work: fork.chain_work.wrapping_add(
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            ),
         },
         AnchoredBlock {
             block: replacement_child_tip.clone(),
-            chain_work: fork.chain_work + 2,
+            chain_work: fork.chain_work.wrapping_add(
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+            ),
         },
     ];
     let disconnected = [old_child_tip, old_parent_tip];
-    let transition = network
+    let mut authorization = network
+        .authorize_reorg(&disconnected, &replacement, consensus_params())
+        .expect("actual preferred replacement authorization");
+    network
+        .retain_authorized_reorg(&mut authorization)
+        .expect("publish only checked grant intake");
+    let prepared = network
         .chainstate
-        .reorg(
+        .prepare_authorized_reorg(
+            authorization,
             &disconnected,
             &replacement,
             verify_flags(),
             consensus_params(),
         )
-        .expect("chainstate reorg");
+        .expect("sealed lower reorg preparation");
+    let transition = network
+        .chainstate
+        .commit_prepared_reorg(prepared)
+        .expect("consume actual prepared reorg");
     let context = ReorgLifecycleContext::new(PolicyTime::new(500));
 
     // Act — every replacement-block state commits before disconnected transactions.

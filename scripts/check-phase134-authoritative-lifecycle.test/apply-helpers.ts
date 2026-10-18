@@ -251,6 +251,7 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
       },
     },
     ...connectedPersistenceMutations(),
+    ...connectedAuthorizationMutations(),
     ...aggregateReachabilityMutations(),
     ...strictReachabilityMutations(),
     ...tokenScannerMutations(),
@@ -273,8 +274,8 @@ export function applyHelperMutations(): ApplyHelperMutation[] {
           files,
           MEMPOOL_LIFECYCLE_FILE,
           "connect_local_block",
-          ".prepare_connect_block(",
-          ".removed_prepare_connect_block(",
+          ".prepare_authorized_connect(",
+          ".removed_prepare_authorized_connect(",
         );
       },
     },
@@ -508,6 +509,32 @@ function insertAtFunctionEnd(
   );
 }
 
+function connectedAuthorizationMutations(): ApplyHelperMutation[] {
+  const acquisition = "let authorization = self.authorize_connect(block, consensus_params)?;";
+  const cases = [
+    ["missing acquisition", acquisition, "let authorization = forged_authorization;"],
+    ["substituted acquisition receiver", "self.authorize_connect(block, consensus_params)", "other.authorize_connect(block, consensus_params)"],
+    ["substituted authorization block", "self.authorize_connect(block, consensus_params)", "self.authorize_connect(other_block, consensus_params)"],
+    ["substituted consumed capability", "                authorization,", "                forged_authorization,"],
+    ["substituted preparation receiver", ".chainstate\n            .prepare_authorized_connect(", ".other_chainstate\n            .prepare_authorized_connect("],
+    ["authorization after preparation", acquisition, ""],
+    ["effect before transaction", "let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;", "let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;\n        writer.write_all(bytes);"],
+  ] as const;
+  return ["connect_local_block", "connect_stored_block"].flatMap((functionName) =>
+    cases.map(([name, needle, replacement]) => ({
+      name: `${functionName}: ${name}`,
+      mutate: (files: ApplyFixtureFiles) => {
+        replaceInFunction(files, MEMPOOL_LIFECYCLE_FILE, functionName, needle, replacement);
+        if (name === "authorization after preparation") {
+          replaceInFunction(files, MEMPOOL_LIFECYCLE_FILE, functionName,
+            "let position = prepared_chainstate.position().clone();",
+            `${acquisition}\n        let position = prepared_chainstate.position().clone();`);
+        }
+      },
+    })),
+  );
+}
+
 function replaceInFunction(
   files: ApplyFixtureFiles,
   relativePath: string,
@@ -521,6 +548,9 @@ function replaceInFunction(
   const match = functionBody.indexOf(search);
   if (match < 0) {
     throw new Error(`missing fixture text in ${functionName}: ${search}`);
+  }
+  if (search === replacement || functionBody.indexOf(search, match + search.length) >= 0) {
+    throw new Error(`non-unique or unchanged fixture text in ${functionName}: ${search}`);
   }
   const absoluteMatch = body.open + 1 + match;
   files.set(

@@ -25,7 +25,12 @@ fn position(height: u32) -> ChainPosition {
         bits: 0x207f_ffff,
         nonce: height,
     };
-    ChainPosition::new(header, height, u128::from(height), 1)
+    ChainPosition::new(
+        header,
+        height,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::from(height)),
+        1,
+    )
 }
 
 #[test]

@@ -523,7 +523,12 @@ fn local_direct_rescan_helper_keeps_supplied_snapshot() {
     // Arrange
     let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig::default());
     let snapshot = ChainstateSnapshot::new(
-        vec![ChainPosition::new(BlockHeader::default(), 7, 8, 77)],
+        vec![ChainPosition::new(
+            BlockHeader::default(),
+            7,
+            open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(8),
+            77,
+        )],
         Default::default(),
         Default::default(),
     );

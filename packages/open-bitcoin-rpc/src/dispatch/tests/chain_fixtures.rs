@@ -38,7 +38,7 @@ pub(super) fn sample_tip(height: u32) -> ChainPosition {
             nonce: 1,
         },
         height,
-        1,
+        open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(1),
         i64::from(1_700_000_000 + height),
     )
 }

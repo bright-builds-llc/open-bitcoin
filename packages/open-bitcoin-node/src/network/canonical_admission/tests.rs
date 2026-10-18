@@ -165,7 +165,9 @@ fn canonical_chain_header_imports_and_fixture_seed_cannot_change_bound_store() {
                 block_hash: block_hash(&header),
                 header,
                 height: 0,
-                chain_work: u128::MAX,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::MAX,
+                ),
             }];
             let headers = HeaderStore::from_entries(entries).expect("forged raw work carrier");
             let mut network = fixture().into_canonical_scope(chain);
@@ -205,14 +207,17 @@ fn canonical_chain_body_all_roots_and_altered_body_preserve_whole_owner() {
                 );
                 let stored = network.connect_stored_block(
                     &candidate,
-                    u128::MAX,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::MAX),
                     i64::MAX,
                     ScriptVerifyFlags::P2SH,
                     ConsensusParams::default(),
                 );
                 let replacement = [AnchoredBlock {
                     block: candidate.clone(),
-                    chain_work: u128::MAX,
+                    chain_work:
+                        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                            u128::MAX,
+                        ),
                 }];
                 let reorg = network.reorg_to_branch(
                     &[],
@@ -276,7 +281,7 @@ fn canonical_chain_body_cached_dispositions_and_reorg_refuse_before_effects() {
                 );
                 let result = network.connect_stored_block(
                     candidate,
-                    u128::MAX,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::MAX),
                     i64::MAX,
                     ScriptVerifyFlags::P2SH,
                     ConsensusParams::default(),
@@ -294,7 +299,9 @@ fn canonical_chain_body_cached_dispositions_and_reorg_refuse_before_effects() {
             }
             let replacement = [AnchoredBlock {
                 block: child.clone(),
-                chain_work: u128::MAX,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::MAX,
+                ),
             }];
             let result = network.reorg_to_branch(
                 &[child],
@@ -415,7 +422,10 @@ fn canonical_chain_header_empty_nonroot_and_multiple_root_imports_refuse() {
                     block_hash: block_hash(&header),
                     header,
                     height: 0,
-                    chain_work: u128::MAX,
+                    chain_work:
+                        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                            u128::MAX,
+                        ),
                 }
             }))
             .expect("multiple raw roots"),
@@ -583,7 +593,7 @@ fn canonical_chain_body_durable_receipts_coins_filters_and_prune_remain_unchange
         // Act
         let result = network.connect_stored_block(
             &chain.spec().genesis_block(),
-            u128::MAX,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::MAX),
             i64::MAX,
             ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),

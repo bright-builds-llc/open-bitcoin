@@ -64,6 +64,7 @@ where
     };
     for hash in &deleted {
         network.blocks_by_hash.remove(hash);
+        network.peer_manager.mark_body_unavailable(*hash);
     }
     outcome.map_err(|failure| failure.error)
 }
@@ -174,6 +175,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     ) -> Result<(), ManagedNetworkAuthorityError> {
         self.mutate(|network| {
             network.blocks_by_hash.remove(&block_hash);
+            network.peer_manager.mark_body_unavailable(block_hash);
             network.chainstate_mut().forget_undo_for_test(block_hash);
         })
     }

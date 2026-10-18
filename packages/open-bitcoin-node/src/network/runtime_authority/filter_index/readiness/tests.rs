@@ -49,6 +49,10 @@ fn accept(runtime: &DurableSyncRuntime, block: &open_bitcoin_core::primitives::B
             },
         )
         .expect("genuine acceptance");
+    runtime
+        .store()
+        .save_block(block, PersistMode::Sync)
+        .expect("retained accepted body");
 }
 
 fn poll(
@@ -58,12 +62,7 @@ fn poll(
 }
 
 fn configured(history: &ValidatedHistory) -> DurableSyncRuntime {
-    DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime")
+    history.live_runtime()
 }
 
 fn ready(barrier: &mut crate::BasicFilterReadBarrier) -> crate::BasicFilterReadCompletion {
@@ -221,8 +220,51 @@ fn phase159_basic_readiness_owner_connected_during_wait_keeps_request_provenance
     // Arrange: height 3 is known historical recipe, never accepted by this manager.
     let fixture = TurnHistory::new(1, 4, 1);
     let runtime = configured(&fixture.history);
+    runtime
+        .store()
+        .save_block(&fixture.history.blocks[3], PersistMode::Sync)
+        .expect("raw historical body");
+    runtime
+        .network
+        .connect_outbound_peer(91, 0)
+        .expect("header peer");
+    for message in [
+        WireNetworkMessage::Version(VersionMessage::default()),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: fixture.history.blocks[2..4]
+                .iter()
+                .map(|block| block.header.clone())
+                .collect(),
+        }),
+    ] {
+        runtime
+            .network
+            .receive_sync_message(
+                91,
+                message,
+                1_000_000,
+                open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
+                open_bitcoin_core::consensus::ConsensusParams {
+                    coinbase_maturity: 1,
+                    ..Default::default()
+                },
+            )
+            .expect("normal contiguous successor headers");
+    }
     accept(&runtime, &fixture.history.blocks[2]);
     let hash = fixture.history.records[3].identity().block_hash();
+    runtime
+        .store()
+        .invalidate_validation_coverage()
+        .expect("explicit raw legacy coverage");
+    assert_eq!(
+        runtime
+            .store()
+            .validation_provenance(hash)
+            .expect("request-time legacy fact"),
+        crate::storage::validation_history::ValidationProvenance::UnknownLegacy
+    );
     let provenance = runtime
         .network
         .basic_filter_query(hash)
@@ -262,12 +304,7 @@ fn phase159_basic_readiness_owner_connected_during_wait_keeps_request_provenance
 fn phase159_basic_readiness_owner_unflushed_completion_and_final_read() {
     // Arrange
     let history = ValidatedHistory::new("readiness-unflushed", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = configured(&history);
     accept(&runtime, &history.blocks[2]);
     let hash = history.records[2].identity().block_hash();
     let mut barrier = pending(&runtime, hash);
@@ -319,12 +356,7 @@ fn phase159_basic_readiness_owner_unflushed_completion_and_final_read() {
 fn phase159_basic_readiness_owner_disable_wakes_and_cancels() {
     // Arrange
     let history = ValidatedHistory::new("readiness-disable", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = configured(&history);
     accept(&runtime, &history.blocks[2]);
     let mut barrier = pending(&runtime, history.records[2].identity().block_hash());
     let count = Arc::new(WakeCount::default());

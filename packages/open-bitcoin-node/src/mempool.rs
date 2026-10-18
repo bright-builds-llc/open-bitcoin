@@ -411,7 +411,7 @@ mod tests {
         chainstate
             .connect_block(
                 &genesis,
-                1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                 ScriptVerifyFlags::P2SH
                     | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                     | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -424,7 +424,7 @@ mod tests {
         chainstate
             .connect_block(
                 &spendable,
-                2,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                 ScriptVerifyFlags::P2SH
                     | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                     | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,

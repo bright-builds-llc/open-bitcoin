@@ -38,7 +38,7 @@ fn phase111_side_chain_cached_block_is_not_served() {
         network
             .connect_stored_block(
                 &side_block,
-                2,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                 i64::from(side_block.header.time),
                 verify_flags(),
                 consensus_params(),
@@ -159,7 +159,7 @@ fn phase111_cached_old_block_outside_active_chain_is_not_archive_served() {
         network
             .connect_stored_block(
                 &old_disconnected,
-                1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                 i64::from(old_disconnected.header.time),
                 verify_flags(),
                 consensus_params(),

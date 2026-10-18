@@ -157,7 +157,9 @@ pub(crate) fn extend_and_reorg(
         .enumerate()
         .map(|(offset, block)| AnchoredBlock {
             block: block.clone(),
-            chain_work: 2000 + offset as u128,
+            chain_work: open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(
+                2000 + offset as u128,
+            ),
         })
         .collect();
     for anchored in &connected {

@@ -405,7 +405,8 @@ pub(super) fn phase79_shared_contract_status() -> OpenBitcoinStatusSnapshot {
         kind: ProgressCreditKind::ValidatedDurableActiveChain,
         credited_validated_active_chain_height: 840_004,
         credited_validated_active_chain_hash: "11".repeat(32),
-        credited_validated_active_chain_work: "840005".to_string(),
+        credited_validated_active_chain_work:
+            "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
         source_unix_seconds: 1_717_000_020,
         rejected_activity: vec![RejectedProgressActivity {
             kind: RejectedProgressActivityKind::HeaderDownload,
@@ -458,7 +459,7 @@ pub(super) fn phase79_shared_checkpoint_status() -> SoakCheckpointStatus {
         maybe_progress_credit_kind_label: Some("validated_durable_active_chain".to_string()),
         maybe_progress_credit_height: Some(840_004),
         maybe_progress_credit_hash: Some("11".repeat(32)),
-        maybe_progress_credit_work: Some("840005".to_string()),
+        maybe_progress_credit_work: Some("00000000000000000000000000000000000000000000000000000000000cd145".to_string()),
         maybe_progress_credit_source_unix_seconds: Some(1_717_000_020),
         progress_credit_rejected_activity_labels: vec![
             "kind=header_download observed_count=2 reason=headers without durable active-chain update"

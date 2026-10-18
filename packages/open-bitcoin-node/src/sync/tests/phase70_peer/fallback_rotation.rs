@@ -12,9 +12,14 @@ fn phase70_notfound_releases_inflight_and_rotates_to_second_peer() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0)],
+    );
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![
         vec![
             WireNetworkMessage::Version(VersionMessage {
@@ -60,13 +65,14 @@ fn phase78_stale_inflight_cleanup_preserves_prior_credit_and_rotates_peer() {
     remove_dir_if_exists(&path);
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     runtime
         .inflight_blocks
         .insert(BlockHash::from_byte_array([78_u8; 32]));
@@ -139,9 +145,14 @@ fn phase78_no_credit_peer_rotation_keeps_last_peer_contribution_without_credit()
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0)],
+    );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, rotation_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let previous_credit =
         persist_previous_active_chain_credit(&mut runtime, i64::from(genesis.header.time));
     assert_eq!(previous_credit.credited_validated_active_chain_height, 0);

@@ -77,11 +77,19 @@ export function checkPhase155FilterIndex(maybeRoot?: string): string[] {
   requireText(NODE + "sync/tests/filter_index.rs", ["mod recovery;", "mod faults;", "mod startup;"], "test registration");
   requireText(CORE + "lib.rs", ["pub mod filter_index;"], "core registration");
   requireText(NODE + "sync/tests/filter_index/recovery.rs", [".stage_connect_block_with_current_time(",
-    "BasicFilterInputs::from_historical", "staged.undo.transactions", "DurableSyncRuntime::open(",
+    "BasicFilterInputs::from_historical", "staged.undo().transactions.len()", "DurableSyncRuntime::open(",
     "FjallNodeStore::open(&self.path)", "filter_index_production_validated_ahead_records_do_not_mint_cursor",
     "filter_index_production_validated_equal_height_fork_retains_common_prefix", "history.reopen()",
     "original.reopen()", "maybe_active_basic_filter_record(2)", "assert_rows_and_payloads",
     "filter_index_production_validated_missing_prefix_preserves_history_and_intent"], "validated history");
+  const maybeHistory = maybeRustFunction(text(NODE + "sync/tests/filter_index/recovery.rs"), "new");
+  if (!maybeHistory || !hasOrderedCode(maybeHistory.body, [
+    ".stage_connect_block_with_current_time(", "ScriptVerifyFlags::P2SH", "ScriptVerifyFlags::CHECKLOCKTIMEVERIFY",
+    "ScriptVerifyFlags::CHECKSEQUENCEVERIFY", "assert_eq!(staged.undo().transactions.len(), 2)",
+    ".basic_filter_inputs(block)", "assert_eq!(inputs.spent_scripts().collect::<Vec<_>>(), vec![&[0x51][..], &[0x52][..]])",
+    ".commit_staged_connect(staged)", "chainstate.tip()", "HistoricalBlockUndo {", "undo: &chainstate.undo_by_block()[&position.block_hash]",
+    "BasicFilterInputs::from_historical(block, position, maybe_history)", "StoredFilterRecord::generate(",
+  ])) failures.push("validated history: actual staged scripts, commit and retained inputs required");
   requireText(NODE + "sync/tests/filter_index/faults.rs", [".batch_write_with_limit(", "partial_buffered_commits()",
     "compatible_metadata", "history.reopen()", "lifecycle.execute_flush(", "FilterPublicationFault::BeforeChainMeta",
     "FilterPublicationFault::BeforeRecords", "FilterPublicationFault::BeforeCheckpoint",

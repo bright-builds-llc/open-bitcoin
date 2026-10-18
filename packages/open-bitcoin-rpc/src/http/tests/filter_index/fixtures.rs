@@ -6,7 +6,7 @@
 //! Real same-store acceptance fixtures, reusable by daemon integration tests.
 
 use open_bitcoin_node::core::{
-    chainstate::{ChainstateSnapshot, FlushMode, FlushPolicyTime},
+    chainstate::{Chainstate, FlushMode, FlushPolicyTime},
     consensus::{
         ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
         transaction_txid,
@@ -40,48 +40,68 @@ impl History {
             std::process::id()
         ));
         let store = FjallNodeStore::open(&path).expect("fresh store");
-        store
-            .seed_coins_from_snapshot(&ChainstateSnapshot::new(
-                Vec::new(),
-                Default::default(),
-                Default::default(),
-            ))
-            .expect("empty coins authority");
-        let runtime = DurableSyncRuntime::open(
-            store,
-            SyncRuntimeConfig {
-                network: SyncNetwork::Regtest,
-                ..Default::default()
-            },
-        )
-        .expect("fresh production runtime");
-        let handle = runtime.network_handle();
+        let mut core =
+            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+        Chainstate::new()
+            .rebind_into(&mut core)
+            .expect("genuine empty source");
+        let now = FlushPolicyTime::new(0);
+        let mut source = open_bitcoin_node::ManagedChainstate::from_chainstate(
+            open_bitcoin_node::FjallChainstateStore::from_store(store.clone()),
+            core,
+            open_bitcoin_node::chainstate::FlushLifecycle::ready(now, now, 0, false),
+        );
         let mut blocks = Vec::new();
         for height in 0..count {
             let block = next_block(blocks.last(), height);
-            handle
-                .connect_local_block(&block, ScriptVerifyFlags::P2SH, params())
+            source
+                .connect_block(
+                    &block,
+                    open_bitcoin_node::core::consensus::chain_proof::ProofWork::ZERO,
+                    ScriptVerifyFlags::P2SH,
+                    params(),
+                )
                 .expect("genuine same-authority acceptance");
-            runtime
-                .store()
+            store
                 .save_block(&block, PersistMode::Sync)
                 .expect("ordinary retained body");
             blocks.push(block);
         }
-        handle
-            .flush_coins(FlushMode::Always, FlushPolicyTime::new(1), u64::MAX)
+        let (mut sink, mut core) = source.into_parts();
+        let undo = core
+            .undo_by_block()
+            .iter()
+            .map(|(hash, undo)| (*hash, undo.clone()))
+            .collect::<Vec<_>>();
+        let positions = core.active_chain().to_vec();
+        let mut lifecycle =
+            open_bitcoin_node::chainstate::FlushLifecycle::ready(now, now, 0, false);
+        lifecycle
+            .execute_flush(
+                &mut sink,
+                &mut core,
+                FlushMode::Always,
+                FlushPolicyTime::new(1),
+                u64::MAX,
+                &undo,
+                &[],
+                &blocks,
+                &positions,
+            )
             .expect("genuine durable fence");
-        drop(handle);
-        drop(runtime);
-        let runtime = DurableSyncRuntime::open_configured(
-            FjallNodeStore::open(&path).expect("closed reopen"),
+        let runtime = DurableSyncRuntime::from_live_fixture_source(
+            open_bitcoin_node::ManagedChainstate::from_chainstate(sink, core, lifecycle),
             SyncRuntimeConfig {
                 network: SyncNetwork::Regtest,
                 ..Default::default()
             },
+            params(),
             open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled,
+            Default::default(),
+            Default::default(),
+            false,
         )
-        .expect("explicit configured owner and initial turn");
+        .expect("same genuine BASIC owner and initial turn");
         Self {
             path,
             blocks,

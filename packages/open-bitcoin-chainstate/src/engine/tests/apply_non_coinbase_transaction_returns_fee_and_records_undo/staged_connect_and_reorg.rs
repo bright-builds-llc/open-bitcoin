@@ -36,7 +36,7 @@ fn commit_staged_connect_rejects_fresh_flag_misapplied_to_live_cache() {
     let mut staged = chainstate
         .stage_connect_block_with_current_time(
             &child,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(child.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -93,7 +93,7 @@ fn absorb_staged_connect_overwrites_fresh_misapplied_and_installs_tip() {
     let mut staged = chainstate
         .stage_connect_block_with_current_time(
             &child,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(child.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -112,7 +112,9 @@ fn absorb_staged_connect_overwrites_fresh_misapplied_and_installs_tip() {
     assert_eq!(staged.position().height, 1);
 
     // Act
-    let position = chainstate.absorb_staged_connect(staged);
+    let position = chainstate
+        .absorb_staged_connect(staged)
+        .expect("owner-bound connect");
 
     // Assert
     assert_eq!(position.height, 1);
@@ -144,7 +146,7 @@ fn absorb_and_preview_staged_reorg_install_replacement_tip() {
             &[],
             &[crate::AnchoredBlock {
                 block: child.clone(),
-                chain_work: 2,
+                chain_work: crate::ChainPosition::untrusted_fixture_work(2),
             }],
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -159,14 +161,18 @@ fn absorb_and_preview_staged_reorg_install_replacement_tip() {
     let mut preview = Chainstate::from_snapshot(chainstate.snapshot());
 
     // Act
-    preview.install_staged_reorg_preview(&staged);
-    let transition = chainstate.absorb_staged_reorg(staged);
+    let preview_before = preview.snapshot();
+    assert!(preview.install_staged_reorg_preview(&staged).is_err());
+    assert_eq!(preview.snapshot(), preview_before);
+    let transition = chainstate
+        .absorb_staged_reorg(staged)
+        .expect("owner-bound reorg");
 
     // Assert
     assert_eq!(transition.connected.len(), 1);
-    assert_eq!(preview.tip().map(|tip| tip.height), Some(1));
+    assert_eq!(preview.tip().map(|tip| tip.height), Some(0));
     assert_eq!(chainstate.tip().map(|tip| tip.height), Some(1));
-    assert_eq!(preview.snapshot(), chainstate.snapshot());
+    assert_ne!(preview.snapshot(), chainstate.snapshot());
 }
 
 #[test]
@@ -206,7 +212,7 @@ fn phase158_reorg_preview_then_absorb_preserves_captured_old_ancestor_and_undo()
             &[child],
             &[crate::AnchoredBlock {
                 block: replacement.clone(),
-                chain_work: 3,
+                chain_work: crate::ChainPosition::untrusted_fixture_work(3),
             }],
             ScriptVerifyFlags::P2SH,
             ConsensusParams {
@@ -250,8 +256,12 @@ fn phase158_reorg_preview_then_absorb_preserves_captured_old_ancestor_and_undo()
         2
     );
     // Act
-    chainstate.install_staged_reorg_preview(&staged);
-    let (transition, accepted) = chainstate.absorb_staged_reorg_with_receipt(staged);
+    chainstate
+        .install_staged_reorg_preview(&staged)
+        .expect("same-owner preview");
+    let (transition, accepted) = chainstate
+        .absorb_staged_reorg_with_receipt(staged)
+        .expect("owner-bound reorg");
     // Assert
     assert_eq!(chainstate.tip(), Some(&new));
     assert_eq!(chainstate.undo_by_block().get(&new.block_hash), Some(&undo));
@@ -286,11 +296,16 @@ fn phase158_reorg_disconnect_to_empty_receipt_has_no_new_endpoint() {
             &[genesis],
             &[],
             ScriptVerifyFlags::P2SH,
-            ConsensusParams::default(),
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
         )
         .expect("disconnect");
     // Act
-    let (_, accepted) = chainstate.absorb_staged_reorg_with_receipt(staged);
+    let (_, accepted) = chainstate
+        .absorb_staged_reorg_with_receipt(staged)
+        .expect("owner-bound reorg");
     // Assert
     assert_eq!(
         accepted.maybe_old_endpoint(),

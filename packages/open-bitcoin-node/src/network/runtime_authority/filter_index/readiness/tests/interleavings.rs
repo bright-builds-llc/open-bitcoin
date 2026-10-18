@@ -315,12 +315,15 @@ fn phase159_basic_readiness_owner_never_connected_request_keeps_snapshot_after_a
     // Arrange: genuine genesis earns complete retained validation coverage.
     let dir = reserved_filter_path("readiness-never-connected");
     let store = FjallNodeStore::open(&dir).expect("fresh store");
-    let state = Chainstate::from_coins_cache(
+    let mut state = Chainstate::from_coins_cache(
         CoinsCache::from_parent(store.coins_view()),
         Vec::new(),
         Default::default(),
         None,
     );
+    Chainstate::new()
+        .rebind_into(&mut state)
+        .expect("genuine empty source");
     let mut manager = crate::ManagedChainstate::from_recovered_chainstate(
         crate::FjallChainstateStore::from_store(store.clone()),
         state,
@@ -336,9 +339,12 @@ fn phase159_basic_readiness_owner_never_connected_request_keeps_snapshot_after_a
     manager
         .connect_block(
             &genesis,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
-            Default::default(),
+            open_bitcoin_core::consensus::ConsensusParams {
+                coinbase_maturity: 1,
+                ..Default::default()
+            },
         )
         .expect("genuine genesis");
     store.save_block(&genesis, PersistMode::Sync).expect("body");
@@ -349,12 +355,18 @@ fn phase159_basic_readiness_owner_never_connected_request_keeps_snapshot_after_a
             u64::MAX,
         )
         .expect("genuine coins fence");
-    drop(manager);
     drop(store);
-    let runtime = DurableSyncRuntime::open_configured(
-        FjallNodeStore::open(&dir).expect("reopen"),
+    let runtime = DurableSyncRuntime::from_live_fixture_source(
+        manager,
         sync_config(),
+        open_bitcoin_core::consensus::ConsensusParams {
+            coinbase_maturity: 1,
+            ..Default::default()
+        },
         crate::chainstate::BasicFilterStartupMode::Enabled,
+        Default::default(),
+        Default::default(),
+        false,
     )
     .expect("runtime");
     let first = block(block_hash(&genesis.header), 1, 0x52);
@@ -374,7 +386,7 @@ fn phase159_basic_readiness_owner_never_connected_request_keeps_snapshot_after_a
             1_000_000,
             open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
             open_bitcoin_core::consensus::ConsensusParams {
-                no_pow_retargeting: true,
+                coinbase_maturity: 1,
                 ..Default::default()
             },
         )

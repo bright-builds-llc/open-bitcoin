@@ -6,6 +6,12 @@
 //! Handle-owning configured fixture and handle-free provenance handoff.
 
 use super::{core_types, recipe};
+pub(super) mod live_source {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/support/phase165_live_source.rs"
+    ));
+}
 use crate::AuthoritativeNetworkRuntime;
 use crate::tests::fixture_runtime::{
     fixture_open_authoritative_network_runtime as open_authoritative_network_runtime,
@@ -13,20 +19,21 @@ use crate::tests::fixture_runtime::{
 };
 use core_types::{
     chainstate::{
-        BasicFilterInputs, ChainPosition, CoinsView, FlushMode, FlushPolicyTime,
+        BasicFilterInputs, ChainPosition, Chainstate, CoinsView, FlushMode, FlushPolicyTime,
         HistoricalBlockUndo, PruneMode,
     },
-    consensus::{ScriptVerifyFlags, block_hash},
+    consensus::{ScriptVerifyFlags, block_hash, chain_proof::ProofWork},
 };
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore, PersistMode,
-    SyncNetwork, SyncRuntimeConfig,
+    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore, ManagedChainstate,
+    PersistMode, SyncNetwork, SyncRuntimeConfig, chainstate::FlushLifecycle,
 };
 use open_bitcoin_rpc::{ManagedRpcContext, config::RuntimeConfig, http::RpcHttpState};
 use std::{path::PathBuf, sync::Arc, time::Instant};
 
 type SharedContext =
     Arc<tokio::sync::Mutex<ManagedRpcContext<FjallChainstateStore, FjallCoinsView>>>;
+type LiveSource = ManagedChainstate<FjallChainstateStore, FjallCoinsView>;
 
 struct SeedCleanup {
     maybe_path: Option<PathBuf>,
@@ -65,6 +72,113 @@ pub(crate) struct Phase162Fixture {
     pub shared: SharedContext,
 }
 
+pub(super) fn admit_retained_header_proof(
+    network: &open_bitcoin_node::ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView>,
+    store: &FjallNodeStore,
+    receipts: &[ChainPosition],
+    params: core_types::consensus::ConsensusParams,
+) {
+    use open_bitcoin_network::{HeaderEntry, HeaderStore};
+    let saved = store
+        .hydrate_chainstate_for_open()
+        .expect("actual raw serving metadata")
+        .expect("populated serving prefix");
+    let physical = store
+        .coins_view()
+        .complete_snapshot()
+        .expect("actual serving coins B heads");
+    assert!(saved.maybe_confirmed_txid_counts.is_none());
+    let before = network
+        .peer_manager_snapshot()
+        .expect("raw header observations");
+    assert!(before.header_store().maybe_best_proof_header().is_none());
+    let mut positions = saved.active_chain.clone();
+    for receipt in receipts {
+        if positions
+            .iter()
+            .any(|position| position.block_hash == receipt.block_hash)
+        {
+            continue;
+        }
+        assert!(
+            before
+                .header_store()
+                .maybe_proof_facts(receipt.block_hash)
+                .is_none()
+        );
+        let body = store
+            .load_block(receipt.block_hash)
+            .expect("retained actual stale body")
+            .expect("required stale header input");
+        assert_eq!(block_hash(&body.header), receipt.block_hash);
+        assert_eq!(body.header, receipt.header);
+        positions.push(receipt.clone());
+    }
+    let headers = HeaderStore::from_entries(positions.iter().map(|position| HeaderEntry {
+        block_hash: position.block_hash,
+        header: position.header.clone(),
+        height: position.height,
+        chain_work: position.chain_work,
+    }))
+    .expect("actual active and retained receipt headers");
+    let current_time = positions
+        .iter()
+        .map(|position| i64::from(position.header.time))
+        .max()
+        .expect("actual maximum header time");
+    network
+        .try_admit_fixture_headers(headers, current_time, params)
+        .expect("independently checked header-only serving graph");
+    let checked = network
+        .peer_manager_snapshot()
+        .expect("checked serving proof");
+    assert_eq!(
+        checked
+            .header_store()
+            .maybe_best_proof_header()
+            .expect("checked best header")
+            .block_hash,
+        saved
+            .active_chain
+            .last()
+            .expect("actual active endpoint")
+            .block_hash
+    );
+    assert!(
+        network
+            .eligible_body_candidates()
+            .expect("no body candidates")
+            .is_empty()
+    );
+    for position in &positions {
+        let proof = checked
+            .header_store()
+            .maybe_proof_facts(position.block_hash)
+            .expect("checked active or stale stop");
+        assert_eq!(proof.height, position.height);
+        assert_eq!(proof.cumulative, position.chain_work);
+        assert_eq!(
+            network
+                .maybe_body_eligibility(position.block_hash)
+                .expect("header-only body observation"),
+            None
+        );
+    }
+    assert_eq!(
+        store
+            .hydrate_chainstate_for_open()
+            .expect("unchanged serving metadata"),
+        Some(saved)
+    );
+    assert_eq!(
+        store
+            .coins_view()
+            .complete_snapshot()
+            .expect("unchanged serving physical identity"),
+        physical
+    );
+}
+
 impl Phase162Fixture {
     pub fn seed() -> Self {
         Self::seed_count(1001)
@@ -79,53 +193,85 @@ impl Phase162Fixture {
             maybe_path: Some(path.clone()),
         };
         let started = Instant::now();
-        let runtime = DurableSyncRuntime::open(
-            FjallNodeStore::open(&path).expect("fresh real Fjall"),
-            SyncRuntimeConfig {
-                network: SyncNetwork::Regtest,
-                ..Default::default()
-            },
-        )
-        .expect("unindexed actual runtime");
-        let params = runtime.config().network.consensus_params();
+        let config = SyncRuntimeConfig {
+            network: SyncNetwork::Regtest,
+            ..Default::default()
+        };
+        let params = config.network.consensus_params();
         let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);
+        let store = FjallNodeStore::open(&path).expect("fresh same-Fjall genuine source");
+        let mut core =
+            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+        Chainstate::new()
+            .rebind_into(&mut core)
+            .expect("genuine empty source transfer");
+        let now = FlushPolicyTime::new(0);
+        let mut source = ManagedChainstate::from_chainstate(
+            FjallChainstateStore::from_store(store.clone()),
+            core,
+            FlushLifecycle::ready(now, now, 0, false),
+        );
         let mut receipts = Vec::with_capacity(recipe.blocks.len());
         for block in &recipe.blocks {
-            runtime
-                .store()
+            store
                 .save_block(block, PersistMode::Sync)
                 .expect("ordinary body persistence");
-            let receipt = runtime
-                .network_handle()
-                .connect_local_block(block, recipe.flags, recipe.params)
+            let receipt = source
+                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)
                 .expect("normal-maturity managed acceptance");
             assert_eq!(receipt.height as usize, receipts.len());
             assert_eq!(receipt.block_hash, block_hash(&block.header));
             receipts.push(receipt);
         }
+        assert!(source.chainstate().has_earned_work());
+        assert_eq!(source.chainstate().validate_live_origin(), Ok(()));
+        source
+            .chainstate()
+            .bind_live_work_source(recipe.params)
+            .expect("full normal source parameters");
         assert!(
-            runtime
-                .network_handle()
-                .maybe_basic_index_summary()
-                .expect("disabled progress")
-                .is_none()
+            store
+                .hydrate_chainstate_for_open()
+                .expect("pre-flush physical metadata")
+                .is_none_or(|saved| saved.maybe_confirmed_txid_counts.is_none())
         );
-        let flushed = runtime
-            .network_handle()
-            .flush_coins(FlushMode::Always, FlushPolicyTime::new(500_000), u64::MAX)
+        let (mut sink, mut core) = source.into_parts();
+        let positions = core.active_chain().to_vec();
+        let undo = core
+            .undo_by_block()
+            .iter()
+            .map(|(hash, undo)| (*hash, undo.clone()))
+            .collect::<Vec<_>>();
+        let mut lifecycle = FlushLifecycle::ready(now, now, 0, false);
+        let flushed = lifecycle
+            .execute_flush(
+                &mut sink,
+                &mut core,
+                FlushMode::Always,
+                FlushPolicyTime::new(500_000),
+                u64::MAX,
+                &undo,
+                &[],
+                &recipe.blocks,
+                &positions,
+            )
             .expect("genuine coins undo metadata flush");
         assert!(flushed.wrote_coins);
+        let source = ManagedChainstate::from_chainstate(sink, core, lifecycle);
+        assert!(
+            store
+                .hydrate_chainstate_for_open()
+                .expect("saved physical metadata")
+                .expect("complete persisted prefix")
+                .maybe_confirmed_txid_counts
+                .is_none()
+        );
         assert_eq!(
-            runtime
-                .store()
-                .coins_view()
-                .best_block()
-                .expect("durable B"),
+            store.coins_view().best_block().expect("durable B"),
             receipts.last().map(|position| position.block_hash)
         );
         for (height, receipt) in receipts.iter().enumerate().skip(1) {
-            let undo = runtime
-                .store()
+            let undo = store
                 .load_undo(receipt.block_hash)
                 .expect("persisted undo")
                 .expect("actual accepted undo");
@@ -146,7 +292,7 @@ impl Phase162Fixture {
                 recipe.spent_scripts[height]
             );
         }
-        drop(runtime);
+        drop(store);
         let oracle = if count == 1001 {
             super::independent_oracle(&recipe)
         } else {
@@ -171,11 +317,19 @@ impl Phase162Fixture {
             oracle,
             seed_ms: started.elapsed().as_millis(),
         };
-        let fixture = Self::open(Phase162Handoff {
-            path,
-            recipe,
-            provenance,
-        });
+        let fixture = Self::open_policy(
+            Phase162Handoff {
+                path,
+                recipe,
+                provenance,
+            },
+            1,
+            false,
+            false,
+            false,
+            &["in"],
+            Some(source),
+        );
         cleanup.maybe_path = None;
         fixture
     }
@@ -185,7 +339,7 @@ impl Phase162Fixture {
     }
 
     pub fn open_with_prune(handoff: Phase162Handoff, prune: u64) -> Self {
-        Self::open_policy(handoff, prune, false, false, false, &["in"])
+        Self::open_policy(handoff, prune, false, false, false, &["in"], None)
     }
 
     pub fn open_serving(
@@ -194,7 +348,14 @@ impl Phase162Fixture {
         listener: bool,
         permissions: &[&str],
     ) -> Self {
-        Self::open_policy(handoff, 550, general, listener, false, permissions)
+        let fixture = Self::open_policy(handoff, 550, general, listener, false, permissions, None);
+        admit_retained_header_proof(
+            &fixture.opened.network,
+            &fixture.store,
+            &fixture.provenance.receipts,
+            fixture.recipe.params,
+        );
+        fixture
     }
 
     pub fn open_body_serving(handoff: Phase162Handoff) -> Self {
@@ -205,6 +366,7 @@ impl Phase162Fixture {
             true,
             true,
             &["in", "download", "blockfilters"],
+            None,
         )
     }
 
@@ -215,6 +377,7 @@ impl Phase162Fixture {
         listener: bool,
         body_serving: bool,
         permissions: &[&str],
+        maybe_source: Option<LiveSource>,
     ) -> Self {
         assert!(
             matches!(prune, 1 | 550),
@@ -291,12 +454,31 @@ impl Phase162Fixture {
             config.sync.runtime.network.consensus_params(),
             recipe.params
         );
-        let store = open_runtime_store(&config)
-            .expect("actual store selection")
-            .expect("durable store");
-        let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-            .expect("configured BASIC startup")
-            .expect_durable();
+        let (store, opened) = if let Some(source) = maybe_source {
+            let store = source.store().inner().clone();
+            let runtime = DurableSyncRuntime::from_live_fixture_source(
+                source,
+                config.sync.runtime.clone(),
+                recipe.params,
+                crate::basic_filter_startup_mode(&config),
+                config.relay,
+                config.block_serving,
+                config.inbound.enabled,
+            )
+            .expect("retained normal-maturity public source");
+            let opened = crate::assemble_durable_runtime(&config, runtime)
+                .expect("same-source configured BASIC startup")
+                .expect_durable();
+            (store, opened)
+        } else {
+            let store = open_runtime_store(&config)
+                .expect("actual store selection")
+                .expect("durable store");
+            let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
+                .expect("configured BASIC startup")
+                .expect_durable();
+            (store, opened)
+        };
         let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
             &config,
             opened.network.clone(),

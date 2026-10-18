@@ -20,14 +20,15 @@ fn sync_once_continues_header_batches_when_peer_advertises_more_work() {
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis],
+            headers: vec![child],
         }),
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![child, grandchild],
+            headers: vec![grandchild],
         }),
     ];
     let mut transport = ScriptedTransport::new(vec![script]);
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_root(&runtime, genesis);
 
     // Act
     let summary = runtime
@@ -63,13 +64,15 @@ fn same_datadir_reopen_seeds_headers_from_durable_store() {
                         block_hash: block_hash(&genesis),
                         header: genesis.clone(),
                         height: 0,
-                        chain_work: 1,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                     },
                     open_bitcoin_network::HeaderEntry {
                         block_hash: block_hash(&child),
                         header: child,
                         height: 1,
-                        chain_work: 2,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     },
                 ],
                 PersistMode::Sync,
@@ -80,6 +83,7 @@ fn same_datadir_reopen_seeds_headers_from_durable_store() {
     // Act
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = runtime.snapshot_summary();
     let status = runtime
         .durable_sync_state_for_summary(&summary, SyncLifecycleState::Active, None, 1_777_225_176)
@@ -112,6 +116,7 @@ fn durable_sync_state_projects_storage_first_recovery_category() {
         .save_runtime_metadata(&metadata, PersistMode::Sync)
         .expect("save runtime metadata");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary =
         summary_with_peer_failure(PeerFailureReason::Stall, "peer stalled waiting for headers");
 
@@ -147,6 +152,7 @@ fn durable_sync_state_storage_metadata_beats_peer_network_last_error_detail() {
         .save_runtime_metadata(&metadata, PersistMode::Sync)
         .expect("save runtime metadata");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = SyncRunSummary::empty(0, 0, 1);
 
     // Act
@@ -175,6 +181,7 @@ fn durable_sync_state_projects_storage_lock_category_from_last_error() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = SyncRunSummary::empty(0, 0, 1);
 
     // Act
@@ -210,6 +217,7 @@ fn durable_sync_state_distinguishes_clean_and_unclean_shutdown_category() {
         .save_runtime_metadata(&clean_metadata, PersistMode::Sync)
         .expect("save clean runtime metadata");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = SyncRunSummary::empty(0, 0, 1);
 
     // Act

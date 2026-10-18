@@ -3,6 +3,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { readSourceCorpus } from "./source-corpus";
+import { rustCode } from "./check-phase157-index-catch-up/rust-evidence";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE_DIR =
@@ -99,10 +100,11 @@ function verifyStatusContract(): void {
 
 function verifyRuntimeProjection(): void {
   const runtimeState = readText("packages/open-bitcoin-node/src/sync/runtime_state.rs");
+  const findings = checkCurrentWorkProjection(runtimeState);
+  if (findings.length) throw new Error(findings.join("; "));
   requireAllContains(
     runtimeState,
     [
-      "chain_work: u128",
       "progress.validated_active_chain_height = progress.connected_block_height",
       "progress.maybe_validated_active_chain_hash",
       "progress.maybe_connected_block_hash.clone()",
@@ -129,13 +131,15 @@ function verifyTests(): void {
     tests,
     [
       "connected_active_chain_progress_survives_runtime_reopen",
-      "maybe_validated_active_chain_work: Some(\"2\".to_string())",
       "load_chainstate_snapshot",
-      "assert_eq!(active_tip.chain_work, 2)",
+      "ChainPosition::untrusted_fixture_work(2)",
       "sync_progress_reports_downloaded_only_block_hash",
     ],
     "packages/open-bitcoin-node/src/sync/tests.rs",
   );
+  if (!/maybe_validated_active_chain_work:\s*Some\(\s*"0000000000000000000000000000000000000000000000000000000000000002"\s*\.to_string\(\),?\s*\)/.test(tests)) {
+    throw new Error("Phase 68 tests missing exact work projection assertion");
+  }
 }
 
 function verifyDocs(): void {
@@ -176,4 +180,20 @@ function main(): void {
   console.log("validated Phase 68 active-chain persistence evidence");
 }
 
-main();
+/** Current carrier/projection contract; fixture numbers never prove lineage. */
+export function checkCurrentWorkProjection(runtimeState: string): readonly string[] {
+  const findings: string[] = [];
+  const code = rustCode(runtimeState);
+  if (!/chain_work:\s*(?:\w+::)*ProofWork\b/.test(code)) {
+    findings.push("exact ProofWork progress carrier required");
+  }
+  if (/chain_work:\s*u128\b|chain_work\s+as\s+u128|parse::<u128>/.test(code)) {
+    findings.push("truncated work carrier/projection refused");
+  }
+  if (!code.includes("block.chain_work.to_string()")) {
+    findings.push("lossless exact work projection required");
+  }
+  return findings;
+}
+
+if (import.meta.main) main();

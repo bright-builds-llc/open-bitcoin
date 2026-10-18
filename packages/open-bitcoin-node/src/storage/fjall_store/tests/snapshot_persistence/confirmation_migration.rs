@@ -29,17 +29,22 @@ fn legacy_confirmation_evidence_migrates_from_blocks_before_recovery_classificat
     );
     let legacy_chainstate = ChainstateSnapshot::new(
         vec![
-            ChainPosition::new(genesis.header.clone(), 0, 1, i64::from(genesis.header.time)),
+            ChainPosition::new(
+                genesis.header.clone(),
+                0,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+                i64::from(genesis.header.time),
+            ),
             ChainPosition::new(
                 confirming_block.header.clone(),
                 1,
-                2,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                 i64::from(confirming_block.header.time),
             ),
             ChainPosition::new(
                 spending_block.header.clone(),
                 2,
-                3,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
                 i64::from(spending_block.header.time),
             ),
         ],
@@ -128,7 +133,12 @@ fn legacy_confirmation_migration_fails_closed_when_active_block_is_missing() {
     remove_dir_if_exists(&path);
     let block = checkpoint_test_block(BlockHash::from_byte_array([0; 32]), 0, 500_000_000);
     let legacy_chainstate = ChainstateSnapshot::new(
-        vec![ChainPosition::new(block.header, 0, 1, 1_231_006_500)],
+        vec![ChainPosition::new(
+            block.header,
+            0,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            1_231_006_500,
+        )],
         HashMap::new(),
         HashMap::new(),
     );
@@ -164,7 +174,12 @@ fn legacy_confirmation_migration_rejects_block_stored_under_wrong_active_key() {
     different.header.time = different.header.time.saturating_add(1);
     let expected_hash = block_hash(&expected.header);
     let legacy_chainstate = ChainstateSnapshot::new(
-        vec![ChainPosition::new(expected.header, 0, 1, 1_231_006_500)],
+        vec![ChainPosition::new(
+            expected.header,
+            0,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            1_231_006_500,
+        )],
         HashMap::new(),
         HashMap::new(),
     );
@@ -212,7 +227,12 @@ fn legacy_confirmation_migration_rejects_same_header_with_different_body() {
     };
     let expected_hash = block_hash(&expected.header);
     let legacy_chainstate = ChainstateSnapshot::new(
-        vec![ChainPosition::new(expected.header, 0, 1, 1_231_006_500)],
+        vec![ChainPosition::new(
+            expected.header,
+            0,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            1_231_006_500,
+        )],
         HashMap::new(),
         HashMap::new(),
     );
@@ -275,7 +295,7 @@ fn legacy_confirmation_migration_rejects_matching_mutated_transaction_tree() {
         vec![ChainPosition::new(
             mutated.header.clone(),
             0,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             i64::from(mutated.header.time),
         )],
         HashMap::new(),

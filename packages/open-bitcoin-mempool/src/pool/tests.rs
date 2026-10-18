@@ -182,7 +182,9 @@ pub(super) fn sample_chainstate_snapshot(block_count: u32) -> (ChainstateSnapsho
         chainstate
             .connect_block(
                 &block,
-                u128::from(height + 1),
+                open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(u128::from(
+                    height + 1,
+                )),
                 ScriptVerifyFlags::P2SH
                     | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                     | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,

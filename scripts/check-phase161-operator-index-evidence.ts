@@ -46,11 +46,19 @@ export const CONTRACTS: readonly Contract[] = [
 
 const TESTS: readonly Contract[] = [
   [R + "bin/open_bitcoind/tests/filter_index/operator_evidence.rs", "phase161_operator_rpc_frozen_progress_auth_and_real_reopen", ["DaemonFixture::", "captured(&fixture).await", "assert_eq!(", "StatusCode::UNAUTHORIZED", "fixture.close()", "DaemonFixture::open(", "assert_eq!(captured(&fixture).await, settled)"]],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs", "phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen", ["durable_basic_runtime(", "DurableSyncRuntime::open_configured(", "assert_consumers(", "drive_basic_filter_index_turn()", "assert_consumers("]],
+  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs", "phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen", ["durable_basic_runtime(", "assert_consumers(", "drive_basic_filter_index_turn()", "assert_consumers(", ".set_prune_mode(", "assert_consumers(", ".connect_local_block(", ".save_block(", "blocks.push(block)", "assert_consumers(", ".drive_basic_filter_index_turn()", "assert_consumers(", ".flush_coins(", "FlushMode::Always", ".drive_basic_filter_index_turn()", "let before = runtime", ".operator_snapshot()", ".basic_index()", ".clone()", "drop(runtime)", "DurableSyncRuntime::open_configured(", "FjallNodeStore::open(&store_dir)", "BasicFilterStartupMode::Enabled", "assert_eq!(", ".operator_snapshot()", ".basic_index()", "&before", "assert_consumers(", "assert_raw_reopen_refuses_work(&runtime)", ".disable_basic_filter_index()", "assert_consumers("]],
   [C + "dashboard/app/tests/basic_index.rs", "phase161_basic_dashboard_cells_normal_shows_all_nineteen_adjacent_facts", ["draw(", "160, 55", "assert_eq!(right, expected)"]],
   [C + "dashboard/app/tests/basic_index.rs", "phase161_basic_dashboard_cells_narrow_preserves_seven_critical_adjacent_values", ["draw(", "80", "assert_eq!(region(", "expected)"]],
   [N + "sync/tests/filter_index/operator_status/captures.rs", "phase161_operator_authority_detailed_private_owner_failures_coexist_with_genuine_retention", ["ValidatedHistory::new(", "note_basic_index_failure(", "capture(&runtime)", "assert_eq!(", "verify_caller_capture("]],
   ["packages/open-bitcoin-cli/tests/operator_flows/basic_index/captured.rs", "phase161_operator_consumers_hostile_captured_reasons_are_private", ["captured_response_server(", "assert_exports(", "assert_eq!(", "assert!(!text.contains("]],
+];
+
+// Helpers carry genuine source and raw-reopen evidence without posing as test registrations.
+const FIXTURE_HELPERS: readonly Contract[] = [
+  ["packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "durable_basic_runtime", ["durable_basic_runtime_with_policy(data_dir, count, Default::default(), Default::default())"]],
+  ["packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "durable_basic_runtime_with_policy", ["let genesis = blocks.first()", "open_basic_source(data_dir, genesis, relay, block_relay)", "admit_basic_headers(&runtime, &blocks[1..], maybe_replacement.as_ref())", "for block in blocks.iter().skip(1)", ".connect_local_block(block, ScriptVerifyFlags::P2SH, basic_params())", ".save_block(block, PersistMode::Sync)", ".flush_coins(FlushMode::Always"]],
+  ["packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "open_basic_source", ["FjallNodeStore::open(data_dir)", "Chainstate::from_parent(", "Chainstate::new().rebind_into(&mut core)", "ManagedChainstate::from_chainstate(", ".connect_block(genesis, fixture_work(), ScriptVerifyFlags::P2SH, basic_params(),)", "source.into_parts()", "same_core.active_chain().to_vec()", "same_core.undo_by_block()", ".execute_flush(&mut sink, &mut same_core, FlushMode::Always", "&undo", "&[]", "std::slice::from_ref(genesis)", "&positions", "ManagedChainstate::from_chainstate(sink, same_core, lifecycle)", "DurableSyncRuntime::from_live_fixture_source(source", "BasicFilterStartupMode::Enabled", "relay", "block_relay", "false"]],
+  ["packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "assert_raw_reopen_refuses_work", ["let before = network.chainstate_snapshot()", "let physical = runtime.store().coins_view().complete_snapshot()", "let tip = before.tip()", "let later = build_block(", "assert!(matches!(", "network.connect_local_block(&later, ScriptVerifyFlags::P2SH, basic_params())", "ChainstateError::UntrustedWorkLineage", "assert_eq!(", "network.chainstate_snapshot()", "before", "assert_eq!(", "runtime.store().coins_view().complete_snapshot()", "physical", "assert!(!runtime.store().has_block(block_hash(&later.header))"]],
 ];
 
 const MODULES: readonly [string, string][] = [
@@ -69,7 +77,7 @@ const LIMITS = [
   "Phase 162 owns the complete integrated prune/reopen client proof.",
   "v2.5 remains pending.", "No stronger v2.4 crash-window guarantee is claimed.",
 ];
-export const CHECK_FILES = [...new Set([...CONTRACTS, ...TESTS].map(row => row[0]).concat(MODULES.map(row => row[0]), DOCS, PHASE162_FILES, ["docs/parity/index.json", "scripts/verify.sh"]))];
+export const CHECK_FILES = [...new Set([...CONTRACTS, ...TESTS, ...FIXTURE_HELPERS].map(row => row[0]).concat(MODULES.map(row => row[0]), DOCS, PHASE162_FILES, ["docs/parity/index.json", "scripts/verify.sh"]))];
 
 /** Load fixed current paths only; no archive traversal or generated evidence. */
 export function loadSources(): Map<string, string> {
@@ -83,14 +91,15 @@ export function checkPhase161OperatorIndexEvidence(maybeSources?: ReadonlyMap<st
   const text = sourceText(sources);
   const claimState = checkPhase162ClaimState(text, failures);
   for (const file of CHECK_FILES) if (!sources.has(file)) failures.push(`${file}: required source missing`);
-  for (const [file, symbol, anchors] of [...CONTRACTS, ...TESTS]) {
+  for (const [file, symbol, anchors] of [...CONTRACTS, ...TESTS, ...FIXTURE_HELPERS]) {
     const source = text(file);
     const production = CONTRACTS.some(row => row[0] === file && row[1] === symbol);
     const maybeBody = maybeSelector(source, symbol, production);
     // Existing dead-code lint allowances do not change executable ownership.
     const ownership = source.replaceAll("#[cfg_attr(not(test), allow(dead_code))]", " ".repeat("#[cfg_attr(not(test), allow(dead_code))]".length));
     if (!maybeBody || !supportedOwnership(ownership, maybeBody.start, !production) || !hasOrderedCode(maybeBody.body, anchors)) failures.push(`${file}:${symbol}: actual function edge required`);
-    if (!production && (!maybeBody || !/#\[(?:tokio::)?test(?:\]|\()/.test(maybeBody.attributes) || !meaningfulAssertions(source, maybeBody.body))) failures.push(`${file}:${symbol}: assertive executable caller required`);
+    if (TESTS.some(row => row[0] === file && row[1] === symbol)
+      && (!maybeBody || !/#\[(?:tokio::)?test(?:\]|\()/.test(maybeBody.attributes) || !meaningfulAssertions(source, maybeBody.body))) failures.push(`${file}:${symbol}: assertive executable caller required`);
   }
   for (const [file, symbol] of MODULES) {
     const source = text(file);

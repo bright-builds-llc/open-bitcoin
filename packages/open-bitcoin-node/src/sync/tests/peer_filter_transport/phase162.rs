@@ -9,9 +9,8 @@ use super::*;
 use crate::chainstate::BasicFilterStartupMode;
 use crate::network::filter_transport::{FilterTransportDisposition, PreparedFilterResponse};
 use crate::sync::tests::filter_index::phase162::{
-    AcceptedRecipe, independent_oracle, oracle_input, recipe,
+    AcceptedRecipe, independent_oracle, oracle_input,
 };
-use open_bitcoin_core::chainstate::{FlushMode, FlushPolicyTime};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
@@ -28,49 +27,7 @@ impl Drop for Cleanup {
 }
 
 fn accepted(path: &Path) -> AcceptedRecipe {
-    let mut runtime = DurableSyncRuntime::open_configured(
-        FjallNodeStore::open(path).expect("fresh Fjall"),
-        sync_config(),
-        BasicFilterStartupMode::PreserveSaved,
-    )
-    .expect("fresh runtime without BASIC");
-    let recipe = recipe::Recipe::new(runtime.consensus_params, runtime.verify_flags, 102);
-    let mut receipts = Vec::new();
-    for block in &recipe.blocks {
-        runtime
-            .store()
-            .save_block(block, PersistMode::Sync)
-            .expect("actual body");
-        let receipt = runtime
-            .network_handle()
-            .connect_local_block(block, recipe.flags, recipe.params)
-            .expect("normal accepted block");
-        assert_eq!(receipt.height as usize, receipts.len());
-        receipts.push(receipt);
-        if receipts.len() == 1 {
-            runtime
-                .network_handle()
-                .flush_coins(
-                    FlushMode::Always,
-                    FlushPolicyTime::from_unix_seconds(2000),
-                    u64::MAX,
-                )
-                .expect("genuine genesis fence");
-            drop(runtime);
-            runtime = DurableSyncRuntime::open_configured(
-                FjallNodeStore::open(path).expect("genesis cold reopen"),
-                sync_config(),
-                BasicFilterStartupMode::Enabled,
-            )
-            .expect("configured BASIC owner");
-        }
-    }
-    let fixture = AcceptedRecipe {
-        path: path.to_owned(),
-        runtime,
-        recipe,
-        receipts,
-    };
+    let fixture = AcceptedRecipe::at(path.to_owned(), 102, BasicFilterStartupMode::Enabled);
     fixture.finish();
     fixture.flush();
     let progress = fixture

@@ -421,11 +421,22 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         Ok((txid, wtxid))
     }
 
-    pub(super) fn next_chain_work(&self) -> u128 {
-        self.chainstate
+    /// Computes numbers only; imported parent data acquires no body lineage or authority.
+    pub(super) fn next_chain_work(
+        &self,
+        header: &open_bitcoin_core::primitives::BlockHeader,
+    ) -> Result<open_bitcoin_core::consensus::chain_proof::ProofWork, ManagedNetworkError> {
+        use open_bitcoin_core::consensus::chain_proof::{ProofWork, block_proof};
+        let own_proof = block_proof(header.bits).map_err(|error| NetworkError::InvalidHeader {
+            reject_reason: "bad-diffbits".to_owned(),
+            maybe_debug_message: Some(error.to_string()),
+        })?;
+        let parent_work = self
+            .chainstate
             .chainstate()
             .tip()
-            .map_or(1, |tip| tip.chain_work.saturating_add(1))
+            .map_or(ProofWork::ZERO, |tip| tip.chain_work);
+        Ok(parent_work.wrapping_add(own_proof))
     }
 
     pub(super) fn disconnect_for_resource_governance(

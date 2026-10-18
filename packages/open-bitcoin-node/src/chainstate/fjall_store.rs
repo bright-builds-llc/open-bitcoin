@@ -35,6 +35,31 @@ pub(in crate::chainstate) struct ValidatedChainstateLineage {
     preview_frozen: bool,
 }
 
+impl ValidatedChainstateLineage {
+    #[cfg(test)]
+    pub(super) fn from_fixture_flush_proof(
+        store: &FjallNodeStore,
+        proof: &BasicFilterAppendProof,
+        tip: &ChainPosition,
+        control: &crate::storage::fjall_store::filters::PublicationControl,
+    ) -> Result<Self, StorageError> {
+        store.check_fixture_append_proof_guarded(proof, control)?;
+        if proof.durable_tip() != (tip.height, tip.block_hash) {
+            return Err(receipt_error(
+                "fixture BASIC proof differs from actual flushed source",
+            ));
+        }
+        Ok(Self {
+            store: store.clone(),
+            generation: proof.generation(),
+            branch: proof.branch_identity(),
+            maybe_accepted: Some((tip.height, tip.block_hash)),
+            maybe_pending_reorg: None,
+            preview_frozen: false,
+        })
+    }
+}
+
 mod reorg;
 use reorg::PendingBasicFilterReorg;
 pub(crate) use reorg::{ValidatedBasicFilterAppendPositions, ValidatedBasicFilterReorg};
@@ -180,6 +205,7 @@ impl ManagedChainstate<FjallChainstateStore, FjallCoinsView> {
             maybe_validated_lineage,
             maybe_basic_index_owner: None,
             maybe_pending_validation: None,
+            maybe_body_preference: None,
         })
     }
 }

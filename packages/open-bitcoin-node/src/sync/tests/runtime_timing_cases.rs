@@ -14,7 +14,7 @@ use open_bitcoin_codec::{
     BIP152_COMPACT_BLOCKS_VERSION, CompactBlockPayload, PrefilledTransaction, SendCompactMessage,
 };
 use open_bitcoin_core::consensus::{
-    block_hash, block_merkle_root, transaction_txid, transaction_wtxid,
+    ConsensusParams, block_hash, block_merkle_root, transaction_txid, transaction_wtxid,
 };
 use open_bitcoin_network::{
     BlockRelayActivationPolicy, BlockServingActivationConfig,
@@ -149,7 +149,7 @@ impl SyncPeerSession for PerpetualIdleSession {
 
 fn timing_runtime(path: &std::path::Path, max_messages_per_peer: usize) -> DurableSyncRuntime {
     let store = FjallNodeStore::open(path).expect("store");
-    DurableSyncRuntime::open_with_block_relay_activation(
+    let runtime = DurableSyncRuntime::open_with_block_relay_activation(
         store,
         SyncRuntimeConfig {
             max_messages_per_peer,
@@ -158,7 +158,12 @@ fn timing_runtime(path: &std::path::Path, max_messages_per_peer: usize) -> Durab
         },
         enabled_block_relay_activation(),
     )
-    .expect("runtime")
+    .expect("runtime");
+    runtime
+        .network
+        .adopt_live_fixture_owner(open_bitcoin_core::chainstate::Chainstate::new())
+        .expect("genuine empty timing source");
+    runtime
 }
 
 fn timing_resolver() -> ScriptedResolver {
@@ -176,18 +181,28 @@ fn enabled_block_relay_activation() -> BlockRelayActivationPolicy {
     }
 }
 
-fn compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
+fn compact_fixture_prefix(runtime: &mut DurableSyncRuntime, params: ConsensusParams) -> Block {
+    assert!(
+        runtime
+            .network
+            .header_entries()
+            .expect("unbound timing headers")
+            .is_empty()
+    );
+    runtime.consensus_params = params;
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let spendable = build_block(block_hash(&genesis.header), 1);
-    runtime
-        .network
-        .connect_local_block(&genesis, runtime.verify_flags, runtime.consensus_params)
-        .expect("connect genesis");
+    super::support_runtime::initialize_fixture_runtime_genesis(runtime, &genesis);
     runtime
         .network
         .connect_local_block(&spendable, runtime.verify_flags, runtime.consensus_params)
         .expect("connect spendable");
+    spendable
+}
 
+fn compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
+    let params = runtime.consensus_params;
+    let spendable = compact_fixture_prefix(runtime, params);
     let mut announced = build_block(block_hash(&spendable.header), 2);
     announced.transactions.push(coinbase_transaction(3, 25));
     let (merkle_root, maybe_mutated) =
@@ -199,17 +214,11 @@ fn compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
 }
 
 fn connectable_compact_block_fixture(runtime: &mut DurableSyncRuntime) -> Block {
-    runtime.consensus_params.coinbase_maturity = 1;
-    let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
-    let spendable = build_block(block_hash(&genesis.header), 1);
-    runtime
-        .network
-        .connect_local_block(&genesis, runtime.verify_flags, runtime.consensus_params)
-        .expect("connect genesis");
-    runtime
-        .network
-        .connect_local_block(&spendable, runtime.verify_flags, runtime.consensus_params)
-        .expect("connect spendable");
+    let params = ConsensusParams {
+        coinbase_maturity: 1,
+        ..runtime.consensus_params
+    };
+    let spendable = compact_fixture_prefix(runtime, params);
 
     let previous_txid = transaction_txid(&spendable.transactions[0]).expect("coinbase txid");
     let spend = Transaction {

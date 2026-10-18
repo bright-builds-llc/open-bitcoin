@@ -535,7 +535,9 @@ fn phase161_retention_publication_real_reorg_reuses_retained_branch_rows_once() 
                 .load_block(record.identity().block_hash())
                 .expect("body read")
                 .expect("retained original body"),
-            chain_work: u128::from(record.identity().height()) + 100,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                u128::from(record.identity().height()) + 100,
+            ),
         })
         .collect::<Vec<_>>();
     let staged = current

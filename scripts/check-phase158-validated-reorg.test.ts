@@ -1,17 +1,39 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { historicalFixtureView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { PHASE162, PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, checkPhase162ClaimState, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
-import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS, SURFACE, TESTS, checkPhase158ValidatedReorg, maybeBoundary } from "./check-phase158-validated-reorg.ts";
+import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS, SURFACE, TESTS, SEALED, SEALED_FIELD_CASES, CURRENT_REORG_ORDER, CURRENT_REORG_DECLARATIONS, HISTORICAL_PARITY_EVIDENCE, checkPhase158ValidatedReorg, checkCurrentReorgBoundaries, maybeBoundary, maybeSealedFields } from "./check-phase158-validated-reorg.ts";
 import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
+import { createCopiedFixture } from "./check-phase163-provenance/fixtures.ts";
 
 const REPO = resolve(import.meta.dir, "..");
 const roots: string[] = [];
+test("phase165 current158 semantic actual raw baseline", () => {
+  expect(checkCurrentReorgBoundaries(file => readFileSync(resolve(REPO, file), "utf8"))).toEqual([]);
+});
+for (const [file, module] of REGISTRATIONS) for (const replacement of [`#[cfg(any())]\n${module}`, '#[path = "other.rs"]\n' + module, module + "\n" + module]) test(`phase165 current158 semantic owning ${file}:${replacement}`, () => {
+  const sources = currentSources();
+  expect(checkCurrentReorgBoundaries(file => sources.get(file) ?? "")).toEqual([]);
+  expect(sources.get(file)!.split(module)).toHaveLength(2);
+  sources.set(file, sources.get(file)!.replace(module, replacement));
+  expect(checkCurrentReorgBoundaries(file => sources.get(file) ?? "").some(row => row.includes(`module registration ${file}:`))).toBe(true);
+});
+test("phase165 current158 semantic original complete CFIX iteration", () => {
+  expect(HISTORICAL_PARITY_EVIDENCE).toHaveLength(35);
+  expect(createHash("sha256").update(JSON.stringify(HISTORICAL_PARITY_EVIDENCE)).digest("hex")).toBe("22c43450a9a707ae80da237a5cb1922d0da84c0159366a51d261ad75f63e1a7f");
+});
+for (const file of HISTORICAL_PARITY_EVIDENCE) test(`phase165 current158 semantic original CFIX removal ${file}`, () => {
+  const failures = fixtureMutation("docs/parity/index.json", source => {
+    const index = JSON.parse(source), owner = index.checklist.surfaces.find(row => row.id === SURFACE);
+    owner.evidence = owner.evidence.filter(entry => entry !== file);
+    return JSON.stringify(index);
+  });
+  expect(failures).toContain(`T-158-07-01: parity evidence ${file}`);
+});
 
 function transitionSources(maybeBase?: ReadonlyMap<string, string>): Map<string, string> {
   const historicalFiles = new Set([...CHECK_FILES, ...PHASE162_EVIDENCE, ".planning/REQUIREMENTS.md", ".planning/ROADMAP.md"]);
@@ -167,13 +189,8 @@ for (const [name, file, before, after] of [
   });
 }
 function fixture(maybeSources?: ReadonlyMap<string, string>): string {
-  const root = mkdtempSync(join(tmpdir(), "phase158-evidence-"));
-  roots.push(root);
-  for (const [file, source] of maybeSources ?? currentSources()) {
-    mkdirSync(dirname(join(root, file)), { recursive: true });
-    writeFileSync(join(root, file), source);
-  }
-  return root;
+  return createCopiedFixture(maybeSources ?? currentSources(), root => roots.push(root),
+    ["scripts/check-phase158-validated-reorg.ts"], maybeSources === undefined ? "executable" : "evidence-only");
 }
 
 for (const state of ["implementation", "formal"]) {
@@ -195,6 +212,13 @@ function edit(root: string, file: string, transform: (source: string) => string)
   expect(after).not.toBe(before);
   writeFileSync(target, after);
 }
+function fixtureMutation(file: string, transform: (source: string) => string, semanticOnly = false): string[] {
+  const root = fixture();
+  if (semanticOnly) expect(checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"))).toEqual([]);
+  edit(root, file, transform);
+  if (semanticOnly) return checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"));
+  return checkPhase158ValidatedReorg(root);
+}
 function pattern(anchor: string): RegExp {
   return new RegExp([...anchor.replace(/\s/g, "")].map(char => char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("\\s*"), "g");
 }
@@ -204,6 +228,12 @@ function mutateFunction(root: string, file: string, symbol: string, transform: (
     if (!maybeBody) throw new Error(`missing actual fixture function ${symbol}`);
     return source.slice(0, maybeBody.start) + transform(source.slice(maybeBody.start, maybeBody.end)) + source.slice(maybeBody.end);
   });
+}
+function functionMutation(file: string, symbol: string, transform: (body: string) => string, maybeImpl?: string): string[] {
+  const root = fixture();
+  expect(checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"))).toEqual([]);
+  mutateFunction(root, file, symbol, transform, maybeImpl);
+  return checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"));
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
@@ -240,10 +270,7 @@ const CHECKPOINT_MUTATIONS: [string, string, string, (body: string) => string][]
 for (const [name, file, symbol, transform] of CHECKPOINT_MUTATIONS) {
   test(`checkpoint guard refuses ${name}`, () => {
     // Arrange
-    const root = fixture();
-    mutateFunction(root, file, symbol, transform);
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+    const failures = functionMutation(file, symbol, transform);
     // Assert
     expect(failures.some(item => item.includes("T-162-15") && item.includes(`${file}:${symbol}`))).toBe(true);
   });
@@ -251,10 +278,7 @@ for (const [name, file, symbol, transform] of CHECKPOINT_MUTATIONS) {
 for (const row of CHECKPOINT_CONTRACTS) for (const anchor of row.anchors) {
   test(`checkpoint guard actual ${row.symbol} requires ${anchor}`, () => {
     // Arrange
-    const root = fixture();
-    mutateFunction(root, row.file, row.symbol, body => body.replace(pattern(anchor), "removed_checkpoint_boundary"));
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+    const failures = functionMutation(row.file, row.symbol, body => body.replace(pattern(anchor), "removed_checkpoint_boundary"));
     // Assert
     expect(failures.some(item => item.includes("T-162-15") && item.includes(`${row.file}:${row.symbol}`))).toBe(true);
   });
@@ -270,13 +294,10 @@ test("current bounded roots pass without changing evidence", () => {
   expect(failures).toEqual([]);
   expect(CHECK_FILES.map(file => readFileSync(join(root, file), "utf8"))).toEqual(before);
 });
-for (const row of CONTRACTS) for (const anchor of row.anchors) {
+for (const row of CONTRACTS) for (const anchor of [...row.anchors, ...(row.maybeClauses ?? [])]) {
   test(`actual route ${row.symbol} requires ${anchor}`, () => {
     // Arrange
-    const root = fixture();
-    mutateFunction(root, row.file, row.symbol, body => body.replace(pattern(anchor), "removed_boundary"), row.maybeImpl);
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+    const failures = functionMutation(row.file, row.symbol, body => body.replace(pattern(anchor), "removed_boundary"), row.maybeImpl);
     // Assert
     expect(failures.some(item => item.includes(`${row.file}:${row.symbol}`))).toBe(true);
   });
@@ -298,7 +319,7 @@ for (const disguise of ["comment", "literal", "raw literal"]) {
     // Arrange
     const root = fixture();
     const row = CONTRACTS.find(row => row.symbol === "commit_prepared_reorg")!;
-    const call = "absorb_staged_reorg_with_receipt(prepared.staged)";
+    const call = "validate_staged_reorg(prepared.staged)";
     const replacements = { comment: `// ${call}\n`, literal: `"${call}"`, "raw literal": `r###"${call}"###` };
     mutateFunction(root, row.file, row.symbol, body => body.replace(call, replacements[disguise as keyof typeof replacements]));
     // Act
@@ -307,57 +328,55 @@ for (const disguise of ["comment", "literal", "raw literal"]) {
     expect(failures.some(item => item.includes(row.symbol))).toBe(true);
   });
 }
-for (const [file, name] of TESTS) {
-  test(`required executable behavior remains ${name}`, () => {
-    // Arrange
-    const root = fixture();
-    edit(root, file, source => source.replace(name, "removed_test"));
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+for (const [file, name] of TESTS) for (const change of ["rename", "disabled", "file", "assertions"]) {
+  test(`required executable behavior remains ${name}${change === "rename" ? "" : " " + change}`, () => {
+    // Arrange / Act
+    const failures = fixtureMutation(file, source => change === "file" ? "#![cfg(any())]\n" + source : change === "assertions"
+      ? source.replace(/\bassert(?:_eq|_ne)?\s*!/g, "removed_assert!") : source.replace(`fn ${name}`, change === "disabled" ? `#[cfg(any())]\nfn ${name}` : "fn removed_test"));
     // Assert
     expect(failures.some(item => item.includes(name))).toBe(true);
   });
 }
 test("ignored required behavior refuses", () => {
-  // Arrange
-  const root = fixture();
   const [file, name] = TESTS[0];
-  edit(root, file, source => source.replace(`fn ${name}`, `#[ignore]\nfn ${name}`));
-  // Act
-  const failures = checkPhase158ValidatedReorg(root);
-  // Assert
+  const failures = fixtureMutation(file, source => source.replace(`fn ${name}`, `#[ignore]\nfn ${name}`));
   expect(failures.some(item => item.includes(name))).toBe(true);
 });
-for (const symbol of ["StagedChainstateReorg", "AcceptedChainstateReorg", "ValidatedBasicFilterReorg", "ValidatedBasicFilterAppendPositions", "BasicFilterAppendProof"]) {
+for (const [file, symbol, guard, later] of CURRENT_REORG_ORDER) test(`phase165 current158 semantic refuses late ${file}:${guard}`, () => {
+  const failures = functionMutation(file, symbol, body => body.replace(pattern(guard), "").replace(pattern(later), guard + "\n" + later));
+  expect(failures).toContain(`T-158-07-01: actual boundary ${file}:${symbol}`);
+});
+function sealedMutation(symbol: string, transform: (block: string) => string, maybeMove = false): string[] {
+  const root = fixture(), file = SEALED.find(row => row[1] === symbol)![0];
+  expect(checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"))).toEqual([]);
+  edit(root, file, source => {
+    const span = maybeSealedFields(source, symbol)!;
+    if (maybeMove) edit(root, file.replace("/engine/stage.rs", "/engine.rs"), parent => parent + "\n" + source.slice(span.start, span.end));
+    return source.slice(0, span.start) + transform(source.slice(span.start, span.end)) + source.slice(span.end);
+  });
+  return checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"));
+}
+for (const symbol of ["StagedChainstateReorg", "AcceptedChainstateReorg", "ValidatedChainstateReorg"]) for (const change of ["missing", "extra", "duplicate", "moved"]) test(`phase165 current158 semantic sealed ${symbol} ${change}`, () => {
+  const failures = sealedMutation(symbol, block => change === "moved" ? "" : change === "duplicate" ? block + "\n" + block : change === "missing"
+    ? block.replace(/\n[^\n]+:/, "\n removed_field:") : block.replace("{", "{\n pub(super) forged: bool,"), change === "moved");
+  expect(failures).toContain(`T-158-07-01: private ${symbol} fields required`);
+});
+for (const [, symbol] of SEALED) {
   test(`sealed ${symbol} fields cannot become public`, () => {
-    // Arrange
-    const root = fixture();
-    const file = CHECK_FILES.find(file => file.endsWith(symbol === "BasicFilterAppendProof" ? "/ownership.rs" : symbol.startsWith("Validated") ? "/fjall_store/reorg.rs" : "/engine.rs"))!;
-    edit(root, file, source => source.replace(new RegExp(`(struct ${symbol}(?:<'a>)?\\s*\\{\\s*)(\\w+)`), "$1pub $2"));
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
-    // Assert
-    expect(failures.some(item => item.includes(`private ${symbol}`))).toBe(true);
+    expect(sealedMutation(symbol, block => block.replace(/\n(\s*)(?:pub\([^)]*\)\s+)?(\w+)\s*:/, "\n$1pub $2:"))).toContain(`T-158-07-01: private ${symbol} fields required`);
   });
 }
-const SEALED_FIELDS = [
-  ["StagedChainstateReorg", "overlay"], ["AcceptedChainstateReorg", "maybe_old_endpoint"],
-  ["ValidatedBasicFilterReorg", "facts"], ["ValidatedBasicFilterAppendPositions", "positions"],
-  ...["publication", "preparation_work", "maybe_maximum_work"].map(field => ["BasicFilterAppendProof", field]),
-];
-function mutateSealedField(root: string, symbol: string, field: string, visibility: string): void {
-  const file = CHECK_FILES.find(file => file.endsWith(symbol === "BasicFilterAppendProof" ? "/ownership.rs" : symbol.startsWith("Validated") ? "/fjall_store/reorg.rs" : "/engine.rs"))!;
-  edit(root, file, source => source.replace(new RegExp(`struct ${symbol}(?:<'a>)?\\s*\\{[^}]+\\}`), block =>
-    block.replace(new RegExp(`\\n(\\s*)(?:pub\\s*\\([^)]*\\)\\s+)?${field}\\s*:`), `\n$1${visibility} ${field}:`)));
+function mutateSealedField(symbol: string, field: string, visibility: string): string[] {
+  return sealedMutation(symbol, block => block.replace(new RegExp(`\\n(\\s*)(?:pub\\s*\\([^)]*\\)\\s+)?${field}\\s*:`), `\n$1${visibility} ${field}:`));
 }
-for (const [symbol, field] of SEALED_FIELDS) {
+for (const [symbol, field] of SEALED_FIELD_CASES) {
   for (const visibility of ["pub", "pub(super)", "pub(crate)", "pub(self)", "pub(in crate)"]) {
-    test(`restricted visibility refuses ${symbol}.${field}: ${visibility}`, () => {
+    test(`restricted visibility ${visibility === "pub(super)" && ["StagedChainstateReorg", "AcceptedChainstateReorg"].includes(symbol) ? "accepts" : "refuses"} ${symbol}.${field}: ${visibility}`, () => {
       // Arrange
-      const root = fixture();
-      mutateSealedField(root, symbol, field, visibility);
-      // Act
-      const failures = checkPhase158ValidatedReorg(root);
+      if (visibility === "pub(super)" && ["StagedChainstateReorg", "AcceptedChainstateReorg"].includes(symbol)) {
+        return expect(checkCurrentReorgBoundaries(file => readFileSync(join(REPO, file), "utf8"))).toEqual([]);
+      }
+      const failures = mutateSealedField(symbol, field, visibility);
       // Assert
       expect(failures.some(item => item.includes(`private ${symbol}`))).toBe(true);
     });
@@ -366,10 +385,7 @@ for (const [symbol, field] of SEALED_FIELDS) {
 for (const visibility of ["pub", "pub(crate)", "pub(self)", "pub(in crate)", "pub(in super)"]) {
   test(`restricted visibility refuses proof identity outside exact pub(super): ${visibility}`, () => {
     // Arrange
-    const root = fixture();
-    mutateSealedField(root, "BasicFilterAppendProof", "identity", visibility);
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+    const failures = mutateSealedField("BasicFilterAppendProof", "identity", visibility);
     // Assert
     expect(failures.some(item => item.includes("private BasicFilterAppendProof"))).toBe(true);
   });
@@ -381,10 +397,7 @@ for (const claim of ["Peer filter serving is supported.", "Filter/index RPC is a
   for (const file of [DOC, "README.md", "packages/README.md", PHASE + "158-UAT.md"]) {
     test(`independent unsupported claim refuses in ${file}: ${claim}`, () => {
       // Arrange
-      const root = fixture();
-      edit(root, file, source => source + `\n${claim}\nOther products remain deferred.\n`);
-      // Act
-      const failures = checkPhase158ValidatedReorg(root);
+      const failures = fixtureMutation(file, source => source + `\n${claim}\nOther products remain deferred.\n`);
       // Assert
       expect(failures.some(item => item.includes("unsupported claim") && item.includes(file))).toBe(true);
     });
@@ -392,21 +405,18 @@ for (const claim of ["Peer filter serving is supported.", "Filter/index RPC is a
 }
 test("another subject's negation cannot authorize production readiness", () => {
   // Arrange
-  const root = fixture();
-  edit(root, DOC, source => source + "\nNo claim of peer filter serving, production readiness is established.\n");
-  // Act
-  const failures = checkPhase158ValidatedReorg(root);
+  const failures = fixtureMutation(DOC, source => source + "\nNo claim of peer filter serving, production readiness is established.\n");
   // Assert
   expect(failures.some(item => item.includes("unsupported claim"))).toBe(true);
+});
+for (const [file, symbol, before, after] of CURRENT_REORG_DECLARATIONS) test(`phase165 current158 semantic capability ${symbol}:${before}`, () => {
+  expect(fixtureMutation(file, source => source.replace(pattern(before), after), true)).toContain(`T-158-07-01: actual boundary ${file}:${symbol}`);
 });
 for (const command of ["bun test ./scripts/check-phase158-validated-reorg.test.ts", "bun run scripts/check-phase158-validated-reorg.ts"]) {
   for (const executed of [false, true]) {
     test(`ordered ${executed ? "executed" : "documented"} verifier requires ${command}`, () => {
       // Arrange
-      const root = fixture();
-      edit(root, "scripts/verify.sh", source => source.replace(new RegExp(`^${executed ? "run_step [^\\n]+" : ""}${command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"), "# removed stage"));
-      // Act
-      const failures = checkPhase158ValidatedReorg(root);
+      const failures = fixtureMutation("scripts/verify.sh", source => source.replace(new RegExp(`^${executed ? "run_step [^\\n]+" : ""}${command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"), "# removed stage"));
       // Assert
       expect(failures.some(item => item.includes("verifier"))).toBe(true);
     });
@@ -469,11 +479,8 @@ for (const active of ["", "**Milestone:** v2.x\n"]) {
 }
 for (const [file, module] of REGISTRATIONS) {
   test(`executable registration must remain: ${file}:${module}`, () => {
-    // Arrange
-    const root = fixture();
-    edit(root, file, source => source.replace(module, `// ${module}`));
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+    // Arrange / Act
+    const failures = fixtureMutation(file, source => source.replace(module, `// ${module}`));
     // Assert
     expect(failures.some(item => item.includes("registration") && item.includes(file))).toBe(true);
   });
@@ -481,8 +488,7 @@ for (const [file, module] of REGISTRATIONS) {
 for (const field of ["title", "rationale", "evidence", "known_gaps", "intentional_differences"]) {
   test(`positive parity ${field} claim cannot borrow another deferred clause`, () => {
     // Arrange
-    const root = fixture();
-    edit(root, "docs/parity/index.json", source => {
+    const failures = fixtureMutation("docs/parity/index.json", source => {
       const index = JSON.parse(source);
       const surface = index.checklist.surfaces.find((row: { id: string }) => row.id === SURFACE);
       const claim = "Peer filter serving is now fully supported.";
@@ -491,8 +497,6 @@ for (const field of ["title", "rationale", "evidence", "known_gaps", "intentiona
       surface.known_gaps.push("Other products remain deferred.");
       return JSON.stringify(index);
     });
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
     // Assert
     expect(failures.some(item => item.includes("unsupported claim"))).toBe(true);
   });
@@ -500,25 +504,19 @@ for (const field of ["title", "rationale", "evidence", "known_gaps", "intentiona
 for (const field of ["requirements", "evidence", "intentional_differences", "known_gaps"]) {
   test(`parity ${field} cannot be emptied`, () => {
     // Arrange
-    const root = fixture();
-    edit(root, "docs/parity/index.json", source => {
+    const failures = fixtureMutation("docs/parity/index.json", source => {
       const index = JSON.parse(source);
       index.checklist.surfaces.find((row: { id: string }) => row.id === SURFACE)[field] = [];
       return JSON.stringify(index);
     });
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
     // Assert
     expect(failures.some(item => item.includes("parity") || item.includes("resource-policy") || item.includes("serving boundary"))).toBe(true);
   });
 }
 for (const anchor of ["54 concrete Fjall configurations and 149 ordinary bounded turns", "not isolated new-index timings", "401-block history", "98 record operations and 56 point reads"]) {
   test(`current measured limit remains ${anchor}`, () => {
-    // Arrange
-    const root = fixture();
-    edit(root, PHASE + "158-REORG-MEASUREMENTS.md", source => source.replace(anchor, "removed_measurement"));
-    // Act
-    const failures = checkPhase158ValidatedReorg(root);
+    // Arrange / Act
+    const failures = fixtureMutation(PHASE + "158-REORG-MEASUREMENTS.md", source => source.replace(anchor, "removed_measurement"));
     // Assert
     expect(failures.some(item => item.includes("measurement"))).toBe(true);
   });

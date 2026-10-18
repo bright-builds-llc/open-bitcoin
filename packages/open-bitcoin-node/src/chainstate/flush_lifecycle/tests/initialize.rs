@@ -214,7 +214,12 @@ struct ResumeChain {
 
 fn position(height: u32, nonce: u32) -> ChainPosition {
     let block_header = header(BlockHash::from_byte_array([0_u8; 32]), nonce);
-    ChainPosition::new(block_header, height, u128::from(height), 1_700_000_000)
+    ChainPosition::new(
+        block_header,
+        height,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::from(height)),
+        1_700_000_000,
+    )
 }
 
 fn open_resume_chain(test_name: &str, eligible_height: u32, tip_height: u32) -> ResumeChain {

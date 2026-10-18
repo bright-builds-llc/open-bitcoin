@@ -31,7 +31,10 @@ fn phase62_runtime_metadata() -> RuntimeMetadata {
                     maybe_downloaded_block_hash: Some("11".repeat(32)),
                     maybe_connected_block_hash: Some("00".repeat(32)),
                     maybe_validated_active_chain_hash: Some("00".repeat(32)),
-                    maybe_validated_active_chain_work: Some("840005".to_string()),
+                    maybe_validated_active_chain_work: Some(
+                        "00000000000000000000000000000000000000000000000000000000000cd145"
+                            .to_string(),
+                    ),
                     progress_ratio: 840_004.0 / 840_200.0,
                     messages_processed: 42,
                     headers_received: 100,
@@ -145,7 +148,7 @@ fn phase72_runtime_metadata() -> RuntimeMetadata {
         source: BestKnownTipSource::HeaderStore,
         height: 840_004,
         block_hash: "11".repeat(32),
-        work: "840005".to_string(),
+        work: "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
         block_time_unix_seconds: 1_717_000_010,
         observed_at_unix_seconds: 1_717_000_020,
         freshness: TipFreshnessStatus::Fresh,
@@ -217,7 +220,10 @@ fn get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height
                             maybe_downloaded_block_hash: Some("11".repeat(32)),
                             maybe_connected_block_hash: Some("00".repeat(32)),
                             maybe_validated_active_chain_hash: Some("00".repeat(32)),
-                            maybe_validated_active_chain_work: Some("840005".to_string()),
+                            maybe_validated_active_chain_work: Some(
+                                "00000000000000000000000000000000000000000000000000000000000cd145"
+                                    .to_string(),
+                            ),
                             progress_ratio: 840_004.0 / 840_200.0,
                             messages_processed: 42,
                             headers_received: 100,
@@ -403,7 +409,7 @@ fn open_bitcoin_sync_status_returns_phase72_durable_truth_contract() {
     );
     assert_eq!(
         sync["sync_progress"]["value"]["maybe_validated_active_chain_work"],
-        json!("840005")
+        json!("00000000000000000000000000000000000000000000000000000000000cd145")
     );
     assert_eq!(sync["best_known_tip"]["state"], json!("available"));
     assert_eq!(sync["best_known_tip"]["value"]["freshness"], json!("fresh"));

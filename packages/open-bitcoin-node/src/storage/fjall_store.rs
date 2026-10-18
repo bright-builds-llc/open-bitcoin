@@ -92,6 +92,8 @@ impl FjallNodeStore {
 
     fn open_unrecovered(path: impl AsRef<Path>) -> Result<Self, StorageError> {
         #[cfg(test)]
+        super::chain_compatibility::record_backend_builder_call();
+        #[cfg(test)]
         assert!(
             !super::chain_compatibility::ORDINARY_BACKEND_OPEN_SPY.get(),
             "backend reached during ordinary refusal"

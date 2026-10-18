@@ -24,7 +24,14 @@ fn connect_block_rejects_wrong_bits_at_retarget_boundary() {
         100,
         vec![coinbase_transaction(0, 50)],
     );
-    connect_block(&mut chainstate, &genesis_block, 1);
+    chainstate
+        .connect_block(
+            &genesis_block,
+            crate::ChainPosition::untrusted_fixture_work(1),
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
+        .expect("genesis uses the selected retarget parameters");
     let height_one_block = build_block(
         open_bitcoin_consensus::block_hash(&genesis_block.header),
         110,
@@ -33,7 +40,7 @@ fn connect_block_rejects_wrong_bits_at_retarget_boundary() {
     let height_one_position = chainstate
         .connect_block(
             &height_one_block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )
@@ -48,7 +55,7 @@ fn connect_block_rejects_wrong_bits_at_retarget_boundary() {
     let error = chainstate
         .connect_block(
             &wrong_bits_block,
-            3,
+            crate::ChainPosition::untrusted_fixture_work(3),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )
@@ -83,7 +90,12 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
         vec![coinbase_transaction(0, 50)],
     );
     let genesis_position = chainstate
-        .connect_block(&genesis_block, 1, ScriptVerifyFlags::P2SH, consensus_params)
+        .connect_block(
+            &genesis_block,
+            crate::ChainPosition::untrusted_fixture_work(1),
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
         .expect("genesis block should connect");
     let on_time_block = build_block_with_bits(
         genesis_position.block_hash,
@@ -92,7 +104,12 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
         vec![coinbase_transaction(1, 50)],
     );
     let on_time_position = chainstate
-        .connect_block(&on_time_block, 2, ScriptVerifyFlags::P2SH, consensus_params)
+        .connect_block(
+            &on_time_block,
+            crate::ChainPosition::untrusted_fixture_work(2),
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
         .expect("non-special block should connect");
     let second_on_time_block = build_block_with_bits(
         on_time_position.block_hash,
@@ -103,7 +120,7 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
     let second_on_time_position = chainstate
         .connect_block(
             &second_on_time_block,
-            3,
+            crate::ChainPosition::untrusted_fixture_work(3),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )
@@ -117,7 +134,7 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
     let third_on_time_position = chainstate
         .connect_block(
             &third_on_time_block,
-            4,
+            crate::ChainPosition::untrusted_fixture_work(4),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )
@@ -131,7 +148,7 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
     let boundary_position = chainstate
         .connect_block(
             &boundary_block,
-            5,
+            crate::ChainPosition::untrusted_fixture_work(5),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )
@@ -143,7 +160,12 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
         vec![coinbase_transaction(5, 50)],
     );
     let special_position = chainstate
-        .connect_block(&special_block, 6, ScriptVerifyFlags::P2SH, consensus_params)
+        .connect_block(
+            &special_block,
+            crate::ChainPosition::untrusted_fixture_work(6),
+            ScriptVerifyFlags::P2SH,
+            consensus_params,
+        )
         .expect("late special block should connect");
     let wrong_bits_block = build_block_with_bits(
         special_position.block_hash,
@@ -162,7 +184,7 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
     let error = chainstate
         .connect_block(
             &wrong_bits_block,
-            7,
+            crate::ChainPosition::untrusted_fixture_work(7),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )
@@ -170,7 +192,7 @@ fn connect_block_recovers_last_non_special_target_after_special_min_difficulty_b
     let recovered_position = chainstate
         .connect_block(
             &recovered_bits_block,
-            7,
+            crate::ChainPosition::untrusted_fixture_work(7),
             ScriptVerifyFlags::P2SH,
             consensus_params,
         )

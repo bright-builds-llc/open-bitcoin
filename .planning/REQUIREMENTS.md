@@ -2,7 +2,7 @@
 
 **Milestone:** v2.6 Canonical Chain Bootstrap and Validation Parity
 **Defined:** 2026-10-13
-**Status:** Approved by the user on 2026-10-13; all 30 requirements remain Pending.
+**Status:** Approved by the user on 2026-10-13; seven requirements Complete after verified Phases 164 and 165; 23 remain Pending.
 **Core Value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 
 ## Scope and Evidence Contract
@@ -33,11 +33,11 @@ Preserve one active Fjall chainstate, first-party Bitcoin domain ownership, func
 
 ### Exact Cumulative Work
 
-- [ ] **CWOR-01**: A contributor obtains exact target-derived 256-bit block proof and cumulative work with pinned compact-target validity and cumulative-arithmetic semantics, including values beyond 128 bits; any additional overflow refusal is documented as an intentional difference rather than silently changing the reference arithmetic.
-- [ ] **CWOR-02**: An operator's live header best-chain selection follows verified cumulative proof of work rather than header count; defined equal-work arrival/activation behavior matches the pinned reference, while genuinely ambiguous internal ties remain explicitly bounded.
-- [ ] **CWOR-03**: An operator's connected-chain and reorg selection consume the same internally verified work authority as accepted headers; caller-supplied work cannot authorize a stronger active branch.
+- [x] **CWOR-01**: A contributor obtains exact target-derived 256-bit block proof and cumulative work with pinned compact-target validity and cumulative-arithmetic semantics, including values beyond 128 bits; any additional overflow refusal is documented as an intentional difference rather than silently changing the reference arithmetic.
+- [x] **CWOR-02**: An operator's live header best-chain selection follows verified cumulative proof of work rather than header count; defined equal-work arrival/activation behavior matches the pinned reference, while genuinely ambiguous internal ties remain explicitly bounded.
+- [x] **CWOR-03**: An operator's connected-chain and reorg selection consume the same internally verified work authority as accepted headers; caller-supplied work cannot authorize a stronger active branch.
 - [ ] **CWOR-04**: An operator can checkpoint and reopen exact cumulative work without truncation, and recovered work is bound to stored headers, network identity and the recovered coins best block.
-- [ ] **CWOR-05**: An operator opening legacy synthetic-work state receives an explicit compatibility decision before automatic coins/schema migration or live/durable authority changes; unprovable state refuses without silent reinterpretation, destructive conversion or automatic repair.
+- [x] **CWOR-05**: An operator opening legacy synthetic-work state receives an explicit compatibility decision before automatic coins/schema migration or live/durable authority changes; unprovable state refuses without silent reinterpretation, destructive conversion or automatic repair.
 
 ### Genuine Knots Differential Harness
 
@@ -99,7 +99,7 @@ Full address relay/address-manager persistence and wallet PSBT/multisig/multiwal
 
 ## Traceability
 
-The approved roadmap maps every active requirement to exactly one phase beginning at 164. Phase 164 uniquely closes CBOT-01, CBOT-04 and CVLD-05 after full native and 27/27 goal verification; the other 27 requirements remain Pending. This identity/refusal closure grants no ordinary accepted-history qualification.
+The approved roadmap maps every active requirement to exactly one phase beginning at 164. Phase 164 uniquely closes CBOT-01, CBOT-04 and CVLD-05 after full native and 27/27 goal verification. Phase 165 closes CWOR-01, CWOR-02, CWOR-03 and CWOR-05 after its full native and formal goal verification; the other 23 requirements remain Pending. This identity/refusal closure grants no ordinary accepted-history qualification.
 
 | Requirement | Phase     | Status  |
 | ----------- | --------- | ------- |
@@ -113,11 +113,11 @@ The approved roadmap maps every active requirement to exactly one phase beginnin
 | CVLD-04     | Phase 167 | Pending |
 | CVLD-05     | Phase 164 | Complete |
 | CVLD-06     | Phase 167 | Pending |
-| CWOR-01     | Phase 165 | Pending |
-| CWOR-02     | Phase 165 | Pending |
-| CWOR-03     | Phase 165 | Pending |
+| CWOR-01     | Phase 165 | Complete |
+| CWOR-02     | Phase 165 | Complete |
+| CWOR-03     | Phase 165 | Complete |
 | CWOR-04     | Phase 166 | Pending |
-| CWOR-05     | Phase 165 | Pending |
+| CWOR-05     | Phase 165 | Complete |
 | CDIF-01     | Phase 168 | Pending |
 | CDIF-02     | Phase 168 | Pending |
 | CDIF-03     | Phase 168 | Pending |

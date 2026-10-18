@@ -78,7 +78,9 @@ fn fjall_store_reopens_saved_snapshots_and_metadata() {
             .load_header_store()
             .expect("load header store")
             .expect("header store")
-            .best_height(),
+            .maybe_unproved_fixture_tip()
+            .expect("raw numerical fixture view")
+            .height,
         1
     );
     assert_eq!(

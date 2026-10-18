@@ -16,22 +16,26 @@
 
 use super::fixtures::*;
 use super::*;
+use open_bitcoin_network::HeaderStore;
+use open_bitcoin_node::{
+    FjallChainstateStore, FjallCoinsView, ManagedChainstate, PersistMode, StorageError,
+    chainstate::{BasicFilterStartupMode, FlushLifecycle, FlushPersistSink},
+    core::{
+        chainstate::{
+            Chainstate, ChainstateError, CoinsBatch, CoinsView, FlushMode, FlushPolicyTime,
+        },
+        consensus::{ScriptVerifyFlags, chain_proof::ProofWork},
+    },
+};
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn phase127_production_composition_shares_sync_serving_and_operator_authority() {
     // Arrange
-    let data_dir = phase127_data_dir();
-    let _ = fs::remove_dir_all(&data_dir);
-    let runtime_config = phase127_runtime_config(data_dir.clone());
-    let store = FjallNodeStore::open(&data_dir).expect("phase 127 store should open");
-    let mut runtime = DurableSyncRuntime::open_with_runtime_activation(
-        store.clone(),
-        phase127_sync_config(),
-        runtime_config.relay,
-        runtime_config.block_serving,
-        true,
-    )
-    .expect("phase 127 durable runtime should open");
+    let (runtime_config, store, mut runtime, root) = phase127_fixture();
+    let data_dir = runtime_config
+        .maybe_data_dir
+        .clone()
+        .expect("fixture datadir");
     let mut preexisting_sync_state = runtime
         .durable_sync_state(
             SyncLifecycleState::Recovering,
@@ -56,7 +60,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         Some(store.clone()),
     )
     .expect("phase 127 pre-sync context should compose");
-    let block = phase127_mined_block();
+    let block = phase127_mined_block_after(block_hash(&root.header), 1);
     let expected_hash = block_hash(&block.header);
     let mut transport = phase127_transport(&block);
 
@@ -84,7 +88,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         live_chain_info["headers"],
         json!(summary.best_header_height)
     );
-    assert_eq!(live_chain_info["verificationprogress"], json!(0.0));
+    assert_eq!(live_chain_info["verificationprogress"], json!(1.0));
     assert_eq!(live_chain_info["initialblockdownload"], json!(false));
     assert!(
         live_chain_info["warnings"]
@@ -114,14 +118,10 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
 
     let restarted_store =
         FjallNodeStore::open(&data_dir).expect("phase 127 store should reopen after cache loss");
-    let restarted_runtime = DurableSyncRuntime::open_with_runtime_activation(
-        restarted_store.clone(),
-        phase127_sync_config(),
-        runtime_config.relay,
-        runtime_config.block_serving,
-        true,
-    )
-    .expect("phase 127 runtime should recover without cache hydration");
+    let reopened_before = phase127_manifest(&restarted_store);
+    let restarted_runtime = phase127_requalify(&restarted_store, &runtime_config)
+        .expect("complete actual prefix and strict consuming public handoff");
+    assert_eq!(phase127_manifest(&restarted_store), reopened_before);
     let restarted_handle = restarted_runtime.network_handle();
     let mut restarted_context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime_config,
@@ -130,8 +130,11 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     )
     .expect("phase 127 restarted context should compose");
     let mut previous_block_hash = expected_hash;
-    for height in 1..=restarted_context.coinbase_maturity() {
-        let maturity_block = phase127_mined_block_after(previous_block_hash, height);
+    let accepted_height = u32::try_from(summary.best_block_height).expect("fixture height");
+    assert_eq!(restarted_context.coinbase_maturity(), 100);
+    for offset in 1..=restarted_context.coinbase_maturity() {
+        let maturity_block =
+            phase127_mined_block_after(previous_block_hash, accepted_height + offset);
         previous_block_hash = block_hash(&maturity_block.header);
         restarted_context
             .connect_local_block(&maturity_block)
@@ -185,11 +188,7 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     ));
     peer.send(phase127_block_request(&block), magic).await;
     let served = peer.receive().await;
-    assert!(matches!(
-        served,
-        WireNetworkMessage::Block(ref served_block)
-            if block_hash(&served_block.header) == expected_hash
-    ));
+    assert!(matches_block(&served, expected_hash));
     peer.send(
         phase127_mixed_missing_transaction_block_request(&block),
         magic,
@@ -197,51 +196,29 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     .await;
     let mixed_block_response = peer.receive().await;
     let mixed_not_found_response = peer.receive().await;
-    assert!(matches!(
-        mixed_block_response,
-        WireNetworkMessage::Block(ref served_block)
-            if block_hash(&served_block.header) == expected_hash
-    ));
-    assert!(matches!(
-        mixed_not_found_response,
-        WireNetworkMessage::NotFound(ref inventory)
-            if inventory.inventory.len() == 1
-                && inventory.inventory[0].object_hash
-                    == Txid::from_byte_array([127_u8; 32]).into()
-    ));
+    assert!(matches_block(&mixed_block_response, expected_hash));
+    assert!(matches_missing(&mixed_not_found_response, 127));
     peer.send(
         phase127_mixed_available_transaction_block_request(&block, &available_transaction),
         magic,
     )
     .await;
     let available_then_block = [peer.receive().await, peer.receive().await];
-    assert!(matches!(
-        available_then_block[0],
-        WireNetworkMessage::Tx(ref transaction)
-            if transaction_txid(transaction)
-                == transaction_txid(&available_transaction)
+    assert!(matches_transaction(
+        &available_then_block[0],
+        &available_transaction
     ));
-    assert!(matches!(
-        available_then_block[1],
-        WireNetworkMessage::Block(ref served_block)
-            if block_hash(&served_block.header) == expected_hash
-    ));
+    assert!(matches_block(&available_then_block[1], expected_hash));
     peer.send(
         phase127_mixed_block_available_transaction_request(&block, &available_transaction),
         magic,
     )
     .await;
     let block_then_available = [peer.receive().await, peer.receive().await];
-    assert!(matches!(
-        block_then_available[0],
-        WireNetworkMessage::Block(ref served_block)
-            if block_hash(&served_block.header) == expected_hash
-    ));
-    assert!(matches!(
-        block_then_available[1],
-        WireNetworkMessage::Tx(ref transaction)
-            if transaction_txid(transaction)
-                == transaction_txid(&available_transaction)
+    assert!(matches_block(&block_then_available[0], expected_hash));
+    assert!(matches_transaction(
+        &block_then_available[1],
+        &available_transaction
     ));
     peer.send(
         phase127_mixed_cycle_request(&block, &available_transaction),
@@ -253,31 +230,19 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         peer.receive().await,
         peer.receive().await,
     ];
-    assert!(matches!(
-        mixed_cycles[0],
-        WireNetworkMessage::Block(ref served_block)
-            if block_hash(&served_block.header) == expected_hash
-    ));
-    assert!(matches!(
-        mixed_cycles[1],
-        WireNetworkMessage::NotFound(ref inventory)
-            if inventory.inventory.len() == 1
-                && inventory.inventory[0].object_hash
-                    == Txid::from_byte_array([126_u8; 32]).into()
-    ));
-    assert!(matches!(
-        mixed_cycles[2],
-        WireNetworkMessage::Tx(ref transaction)
-            if transaction_txid(transaction)
-                == transaction_txid(&available_transaction)
+    assert!(matches_block(&mixed_cycles[0], expected_hash));
+    assert!(matches_missing(&mixed_cycles[1], 126));
+    assert!(matches_transaction(
+        &mixed_cycles[2],
+        &available_transaction
     ));
     peer.send(phase127_two_block_request(&block), magic).await;
     let two_blocks = [peer.receive().await, peer.receive().await];
-    assert!(two_blocks.iter().all(|message| matches!(
-        message,
-        WireNetworkMessage::Block(served_block)
-            if block_hash(&served_block.header) == expected_hash
-    )));
+    assert!(
+        two_blocks
+            .iter()
+            .all(|message| matches_block(message, expected_hash))
+    );
     peer.send(
         phase127_unknown_available_transaction_request(&available_transaction),
         magic,
@@ -286,11 +251,9 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     peer.send(WireNetworkMessage::Ping { nonce: 127 }, magic)
         .await;
     let unknown_then_available = [peer.receive().await, peer.receive().await];
-    assert!(matches!(
-        unknown_then_available[0],
-        WireNetworkMessage::Tx(ref transaction)
-            if transaction_txid(transaction)
-                == transaction_txid(&available_transaction)
+    assert!(matches_transaction(
+        &unknown_then_available[0],
+        &available_transaction
     ));
     assert!(matches!(
         unknown_then_available[1],
@@ -308,18 +271,10 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
         peer.receive().await,
         peer.receive().await,
     ];
-    assert!(matches!(
-        missing_unknown_available[0],
-        WireNetworkMessage::NotFound(ref inventory)
-            if inventory.inventory.len() == 1
-                && inventory.inventory[0].object_hash
-                    == Txid::from_byte_array([124_u8; 32]).into()
-    ));
-    assert!(matches!(
-        missing_unknown_available[1],
-        WireNetworkMessage::Tx(ref transaction)
-            if transaction_txid(transaction)
-                == transaction_txid(&available_transaction)
+    assert!(matches_missing(&missing_unknown_available[0], 124));
+    assert!(matches_transaction(
+        &missing_unknown_available[1],
+        &available_transaction
     ));
     assert!(matches!(
         missing_unknown_available[2],
@@ -447,9 +402,225 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     );
 
     rpc_server.abort();
+    assert!(
+        rpc_server
+            .await
+            .expect_err("server cancellation joins")
+            .is_cancelled()
+    );
     drop(peer);
     listener_worker.shutdown().await;
     drop(shared_context);
+    drop(restarted_handle);
     drop(restarted_runtime);
     fs::remove_dir_all(data_dir).expect("phase 127 datadir should be removed");
+}
+
+#[derive(Debug, PartialEq)]
+enum PrefixRefusal {
+    MissingBody(BlockHash),
+    Core(ChainstateError),
+    Storage(StorageError),
+    Runtime(SyncRuntimeError),
+}
+
+fn phase127_open(
+    core: Chainstate<FjallCoinsView>,
+    store: &FjallNodeStore,
+    config: &RuntimeConfig,
+) -> Result<DurableSyncRuntime, SyncRuntimeError> {
+    let now = FlushPolicyTime::new(0);
+    let source = ManagedChainstate::from_chainstate(
+        FjallChainstateStore::from_store(store.clone()),
+        core,
+        FlushLifecycle::ready(now, now, 0, false),
+    );
+    DurableSyncRuntime::from_live_fixture_source(
+        source,
+        phase127_sync_config(),
+        SyncNetwork::Regtest.consensus_params(),
+        BasicFilterStartupMode::Disabled,
+        config.relay,
+        config.block_serving,
+        config.inbound.enabled,
+    )
+}
+
+fn phase127_fixture() -> (RuntimeConfig, FjallNodeStore, DurableSyncRuntime, Block) {
+    let data_dir = phase127_data_dir();
+    if data_dir.exists() {
+        fs::remove_dir_all(&data_dir).expect("fresh fixture cleanup");
+    }
+    let config = phase127_runtime_config(data_dir.clone());
+    let store = FjallNodeStore::open(&data_dir).expect("fresh store");
+    let mut core = Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+    Chainstate::new()
+        .rebind_into(&mut core)
+        .expect("genuine empty source transfer");
+    let runtime = phase127_open(core, &store, &config).expect("genuine empty fixture runtime");
+    let root = phase127_mined_block();
+    let params = SyncNetwork::Regtest.consensus_params();
+    let mut headers = HeaderStore::default();
+    headers
+        .insert_header_with_params(root.header.clone(), &params)
+        .expect("actual model root proof");
+    let handle = runtime.network_handle();
+    handle
+        .try_admit_fixture_headers(headers, i64::from(root.header.time), params)
+        .expect("model root outside P2P");
+    handle
+        .connect_local_block(&root, ScriptVerifyFlags::P2SH, params)
+        .expect("actual model root body");
+    store
+        .save_block(&root, PersistMode::Sync)
+        .expect("retained actual root");
+    handle
+        .flush_coins(FlushMode::Always, FlushPolicyTime::new(0), u64::MAX)
+        .expect("actual root prefix fence");
+    (config, store, runtime, root)
+}
+
+fn phase127_requalify(
+    store: &FjallNodeStore,
+    config: &RuntimeConfig,
+) -> Result<DurableSyncRuntime, PrefixRefusal> {
+    let saved = store
+        .hydrate_chainstate_for_open()
+        .map_err(PrefixRefusal::Storage)?
+        .ok_or(PrefixRefusal::Core(ChainstateError::MissingTip))?;
+    assert!(saved.maybe_confirmed_txid_counts.is_none());
+    let params = SyncNetwork::Regtest.consensus_params();
+    assert_eq!(params.coinbase_maturity, 100);
+    let mut genuine = Chainstate::new();
+    for position in &saved.active_chain {
+        let block = store
+            .load_block(position.block_hash)
+            .map_err(PrefixRefusal::Storage)?
+            .ok_or(PrefixRefusal::MissingBody(position.block_hash))?;
+        let actual = genuine
+            .connect_block_with_current_time(
+                &block,
+                ProofWork::ZERO,
+                i64::from(block.header.time),
+                ScriptVerifyFlags::P2SH,
+                params,
+            )
+            .map_err(PrefixRefusal::Core)?;
+        if actual != *position {
+            return Err(PrefixRefusal::Core(ChainstateError::WorkRebindMismatch));
+        }
+    }
+    let derived = genuine.snapshot();
+    assert!(derived.maybe_confirmed_txid_counts.is_some());
+    if derived.undo_by_block != saved.undo_by_block {
+        return Err(PrefixRefusal::Core(ChainstateError::WorkRebindMismatch));
+    }
+    let mut target = Chainstate::from_parent(
+        store.coins_view(),
+        derived.active_chain.clone(),
+        derived.undo_by_block.clone(),
+        derived.maybe_confirmed_txid_counts.clone(),
+    );
+    assert!(!target.has_earned_work());
+    genuine
+        .rebind_into(&mut target)
+        .map_err(PrefixRefusal::Core)?;
+    let runtime = phase127_open(target, store, config).map_err(PrefixRefusal::Runtime)?;
+    for position in derived
+        .active_chain
+        .iter()
+        .filter(|position| position.height > 0)
+    {
+        let facts = runtime
+            .network_handle()
+            .maybe_body_eligibility(position.block_hash)
+            .expect("validated prefix graph")
+            .expect("actual prefix body");
+        assert_eq!(facts.maybe_sequence, None);
+    }
+    Ok(runtime)
+}
+
+fn phase127_manifest(store: &FjallNodeStore) -> impl PartialEq + std::fmt::Debug + use<> {
+    let saved = store
+        .hydrate_chainstate_for_open()
+        .expect("physical metadata");
+    let payloads = saved
+        .iter()
+        .flat_map(|snapshot| &snapshot.active_chain)
+        .map(|position| {
+            (
+                position.block_hash,
+                store
+                    .load_block(position.block_hash)
+                    .expect("physical body"),
+                store.load_undo(position.block_hash).expect("physical undo"),
+            )
+        })
+        .collect::<Vec<_>>();
+    (
+        saved,
+        store
+            .coins_view()
+            .complete_snapshot()
+            .expect("complete physical coins B heads"),
+        store.load_header_store().expect("physical headers"),
+        store
+            .load_prune_protection()
+            .expect("physical index protection"),
+        store
+            .load_runtime_metadata()
+            .expect("physical runtime metadata"),
+        payloads,
+    )
+}
+
+#[test]
+fn phase127_fixture_prefix_requalification_refuses_missing_required_body() {
+    // Arrange
+    let (config, store, runtime, root) = phase127_fixture();
+    let data_dir = config.maybe_data_dir.clone().expect("datadir");
+    let hash = block_hash(&root.header);
+    drop((runtime, store));
+    let store = FjallNodeStore::open(&data_dir).expect("exclusive reopen");
+    FjallChainstateStore::from_store(store.clone())
+        .commit_paired_unlink(0, hash)
+        .expect("remove required retained body");
+    let before = phase127_manifest(&store);
+    // Act / Assert: no configured replacement is returned and no input is repaired.
+    assert_eq!(
+        phase127_requalify(&store, &config).err(),
+        Some(PrefixRefusal::MissingBody(hash))
+    );
+    assert_eq!(phase127_manifest(&store), before);
+    drop(store);
+    fs::remove_dir_all(data_dir).expect("closed negative cleanup");
+}
+
+#[test]
+fn phase127_fixture_prefix_requalification_refuses_physical_identity_mismatch() {
+    // Arrange
+    let (config, store, runtime, _) = phase127_fixture();
+    let data_dir = config.maybe_data_dir.clone().expect("datadir");
+    drop((runtime, store));
+    let store = FjallNodeStore::open(&data_dir).expect("exclusive reopen");
+    store
+        .coins_view()
+        .batch_write_with_persist_mode(
+            CoinsBatch {
+                entries: Default::default(),
+            },
+            Some(BlockHash::from_byte_array([31; 32])),
+            PersistMode::Sync,
+        )
+        .expect("precise foreign physical B");
+    let before = phase127_manifest(&store);
+    // Act / Assert
+    assert_eq!(
+        phase127_requalify(&store, &config).err(),
+        Some(PrefixRefusal::Core(ChainstateError::WorkRebindMismatch))
+    );
+    assert_eq!(phase127_manifest(&store), before);
+    drop(store);
+    fs::remove_dir_all(data_dir).expect("closed negative cleanup");
 }

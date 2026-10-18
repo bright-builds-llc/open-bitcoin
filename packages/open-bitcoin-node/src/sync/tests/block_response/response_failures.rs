@@ -15,6 +15,7 @@ fn block_notfound_is_peer_attributed_no_credit() {
     save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -51,6 +52,7 @@ fn block_notfound_is_peer_attributed_no_credit() {
             .is_none()
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -69,6 +71,7 @@ fn duplicate_block_response_is_peer_attributed_no_credit() {
     );
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -99,6 +102,7 @@ fn duplicate_block_response_is_peer_attributed_no_credit() {
     );
     assert_peer_reason_without_block_credit(&summary, PeerFailureReason::DuplicateBlock);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -111,6 +115,7 @@ fn disconnected_block_response_is_peer_attributed_no_credit() {
     let block_hash = block_hash(&block.header);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -146,6 +151,7 @@ fn disconnected_block_response_is_peer_attributed_no_credit() {
             .is_none()
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -160,6 +166,7 @@ fn non_extending_block_response_is_peer_attributed_no_credit() {
     save_best_chain_with_active_blocks(&path, &[(&genesis, 0)], &[(&genesis, 0)]);
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -197,5 +204,6 @@ fn non_extending_block_response_is_peer_attributed_no_credit() {
             .is_none()
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }

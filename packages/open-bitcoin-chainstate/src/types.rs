@@ -7,6 +7,7 @@
 
 use std::collections::HashMap;
 
+use open_bitcoin_consensus::chain_proof::ProofWork;
 use open_bitcoin_consensus::{SpentOutput, block_hash};
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, OutPoint, TransactionOutput, Txid};
 
@@ -45,12 +46,26 @@ pub struct ChainPosition {
     pub block_hash: BlockHash,
     pub header: BlockHeader,
     pub height: u32,
-    pub chain_work: u128,
+    pub chain_work: ProofWork,
     pub median_time_past: i64,
 }
 
 impl ChainPosition {
-    pub fn new(header: BlockHeader, height: u32, chain_work: u128, median_time_past: i64) -> Self {
+    /// Construct a synthetic historic fixture number from bytes.
+    /// This grants no accepted lineage, admission, stage or recovery authority.
+    /// Runtime selection and hydration must never use this fixture boundary.
+    pub fn untrusted_fixture_work(score: u128) -> ProofWork {
+        let mut bytes = [0; 32];
+        bytes[..16].copy_from_slice(&score.to_le_bytes());
+        ProofWork::from_le_bytes(bytes)
+    }
+
+    pub fn new(
+        header: BlockHeader,
+        height: u32,
+        chain_work: ProofWork,
+        median_time_past: i64,
+    ) -> Self {
         let block_hash = block_hash(&header);
 
         Self {
@@ -64,7 +79,7 @@ impl ChainPosition {
 
     pub fn genesis(
         header: BlockHeader,
-        chain_work: u128,
+        chain_work: ProofWork,
         median_time_past: i64,
     ) -> Result<Self, ChainstateError> {
         let position = Self::new(header, 0, chain_work, median_time_past);
@@ -112,7 +127,7 @@ impl ChainstateSnapshot {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnchoredBlock {
     pub block: Block,
-    pub chain_work: u128,
+    pub chain_work: ProofWork,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -149,8 +164,21 @@ mod tests {
             bits: 1,
             nonce: 1,
         };
-        let position = ChainPosition::new(header, 2, 3, 4);
+        let position = ChainPosition::new(header, 2, ChainPosition::untrusted_fixture_work(3), 4);
 
         assert_eq!(position.previous_block_hash(), previous_block_hash);
+    }
+
+    #[test]
+    fn synthetic_fixture_number_preserves_every_legacy_bit_without_high_limbs() {
+        // Arrange
+        let score = u128::MAX;
+
+        // Act
+        let bytes = ChainPosition::untrusted_fixture_work(score).to_le_bytes();
+
+        // Assert
+        assert_eq!(&bytes[..16], &score.to_le_bytes());
+        assert_eq!(&bytes[16..], &[0; 16]);
     }
 }

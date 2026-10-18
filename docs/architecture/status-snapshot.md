@@ -6,6 +6,33 @@
 
 For v1.6, `OpenBitcoinStatusSnapshot` is the shared source of truth for status, dashboard, support evidence, RPC-facing blockchain info, metrics projections, structured logs, and live-smoke snapshots. Each consumer may render a different view, but it must preserve the same lifecycle, phase, configured targets, attempt counters, header height, downloaded block height, connected block height, validated active-chain height/hash/work, peer compatibility state, progress signal, latest stop reason, latest error, recovery state, resource pressure, and unavailable-field reasons instead of inventing renderer-local summaries.
 
+## Exact work and authority boundary (Phase 165)
+
+`maybe_validated_active_chain_work` remains an optional string in the shared
+projection. When supplied by the live validated owner, `ProofWork::Display` renders
+exactly 64 lowercase hexadecimal digits for all 256 bits. Missing work remains
+unavailable; height, downloaded bytes, header preference and decoded numerical
+records cannot substitute for accepted coins/work lineage. No status renderer
+earns authority by parsing an exact number.
+
+Header preference requires strictly greater cumulative target proof; connected
+candidates additionally require checked body/ancestor eligibility. Known body
+order differs from header arrival, and cached unknown order stays unknown through
+copies and ancestry. Mutable eligibility revocation is separate from immutable
+checked linkage; BASIC writes require the actual active identity. The
+[source/evidence record](../parity/v2-6-shared-exact-work.md) bounds restart ties
+and fixture-only missing-count enrichment after real flush/prefix validation.
+
+Ordinary history is currently refused for all four selectors, with networking
+default off. The filesystem-only gate reports observed stored work as unavailable
+and appends typed `work_decision` after fixed guidance; it does not open Fjall or
+perform recovery/migration/index writes. The delivered numeric/live-owner
+foundation does not remove the ordinary profile's missing `exact_work` prerequisite.
+Phase 166 retains canonical bootstrap/exact all-handle reopen/genesis BASIC,
+Phase 167 contextual completeness and Phase 168 actual pinned-Knots qualification.
+Actual local Open Bitcoin refusal processes grant no ordinary support, whole-chain
+or production/funds claim.
+
 ## Shared BASIC index evidence (Phase 161)
 
 `OpenBitcoinStatusSnapshot.basic_index` is the typed `BasicIndexOperatorStatus`
@@ -66,22 +93,22 @@ No stronger v2.4 crash-window guarantee is claimed.
 
 ## Field Ownership
 
-| Field | Owner | OBS-01 details |
-| --- | --- | --- |
-| `node` | Runtime/process collector | daemon state and version |
-| `config` | Config/datadir collector | `datadir` and `config paths` |
-| `service` | Service lifecycle collector | service manager and installed/enabled/running state |
-| `sync` | Sync/runtime collector | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, bounded reorg/reconcile evidence, no-progress diagnosis, resource pressure, recovery guidance, and last error |
-| `peers` | Network collector | `peer counts` plus recent peer telemetry when durable sync state is available |
-| `mempool` | Mempool collector | `transactions` and `relay` plus Phase 137 groups `resources`, `fee_floors`, `pressure`, `eviction`, `checkpoint`, `recovery`, `retry`, and `admission` |
-| `block_relay` | Network collector | block-serving activation/eligibility/status plus compact-relay evidence |
-| `chainstate_durability` | Flush/availability projector | `FieldAvailability<ChainstateDurabilityEvidence>` for `cache_size`, `last_flush_reason`, coins recovery, and have-bytes versus do-not |
-| `basic_index` | Existing serialized index/network authority | Independently available configuration, progress, failures, retained logical growth and protection |
-| `wallet` | Wallet collector | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves |
-| `logs` | Logging collector | log paths and retention |
-| `metrics` | Metrics collector | retention, enabled series, and bounded samples when a metrics snapshot exists |
-| `health_signals` | Log/status collectors | recent `health signals` |
-| `build` | Build/release collector | version, commit, build time, target, and profile |
+| Field                   | Owner                                       | OBS-01 details                                                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `node`                  | Runtime/process collector                   | daemon state and version                                                                                                                                                                                                           |
+| `config`                | Config/datadir collector                    | `datadir` and `config paths`                                                                                                                                                                                                       |
+| `service`               | Service lifecycle collector                 | service manager and installed/enabled/running state                                                                                                                                                                                |
+| `sync`                  | Sync/runtime collector                      | `network`, `chain tip`, `sync progress`, lifecycle, phase, progress signal, estimated lag, last successful progress, bounded reorg/reconcile evidence, no-progress diagnosis, resource pressure, recovery guidance, and last error |
+| `peers`                 | Network collector                           | `peer counts` plus recent peer telemetry when durable sync state is available                                                                                                                                                      |
+| `mempool`               | Mempool collector                           | `transactions` and `relay` plus Phase 137 groups `resources`, `fee_floors`, `pressure`, `eviction`, `checkpoint`, `recovery`, `retry`, and `admission`                                                                             |
+| `block_relay`           | Network collector                           | block-serving activation/eligibility/status plus compact-relay evidence                                                                                                                                                            |
+| `chainstate_durability` | Flush/availability projector                | `FieldAvailability<ChainstateDurabilityEvidence>` for `cache_size`, `last_flush_reason`, coins recovery, and have-bytes versus do-not                                                                                              |
+| `basic_index`           | Existing serialized index/network authority | Independently available configuration, progress, failures, retained logical growth and protection                                                                                                                                  |
+| `wallet`                | Wallet collector                            | `trusted_balance_sats`, `freshness`, and `scan_progress` so balances never imply completeness by themselves                                                                                                                        |
+| `logs`                  | Logging collector                           | log paths and retention                                                                                                                                                                                                            |
+| `metrics`               | Metrics collector                           | retention, enabled series, and bounded samples when a metrics snapshot exists                                                                                                                                                      |
+| `health_signals`        | Log/status collectors                       | recent `health signals`                                                                                                                                                                                                            |
+| `build`                 | Build/release collector                     | version, commit, build time, target, and profile                                                                                                                                                                                   |
 
 ## Phase 62 sync truth contract
 
@@ -95,28 +122,28 @@ output or preserve the equivalent unavailable/null reason in machine output.
 The shared order is:
 
 1. `lifecycle`
-2. `phase`
-3. `configured_targets`
-4. `attempt_counters`
-5. `progress_signal`
-6. `last_successful_progress_unix_seconds`
-7. `latest_stop_reason`
-8. `last_error`
-9. `recovery_category`
-10. `recovery_action`
-11. `resource_pressure`
-12. `peer health`
-13. `header_height`
-14. `downloaded_block_height`
-15. `maybe_downloaded_block_hash`
-16. `connected_block_height`
-17. `maybe_connected_block_hash`
-18. `validated_active_chain_height`
-19. `maybe_validated_active_chain_hash`
-20. `maybe_validated_active_chain_work`
-21. `messages_processed`
-22. `headers_received`
-23. `blocks_received`
+1. `phase`
+1. `configured_targets`
+1. `attempt_counters`
+1. `progress_signal`
+1. `last_successful_progress_unix_seconds`
+1. `latest_stop_reason`
+1. `last_error`
+1. `recovery_category`
+1. `recovery_action`
+1. `resource_pressure`
+1. `peer health`
+1. `header_height`
+1. `downloaded_block_height`
+1. `maybe_downloaded_block_hash`
+1. `connected_block_height`
+1. `maybe_connected_block_hash`
+1. `validated_active_chain_height`
+1. `maybe_validated_active_chain_hash`
+1. `maybe_validated_active_chain_work`
+1. `messages_processed`
+1. `headers_received`
+1. `blocks_received`
 
 ## Stopped-node status
 

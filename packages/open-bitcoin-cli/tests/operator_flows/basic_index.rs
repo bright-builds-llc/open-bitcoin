@@ -31,7 +31,7 @@ fn body_request(
 ) -> open_bitcoin_node::network::ManagedSyncMessageResult {
     use open_bitcoin_network::{InventoryList, VersionMessage, WireNetworkMessage};
     use open_bitcoin_node::core::{
-        consensus::{ConsensusParams, ScriptVerifyFlags},
+        consensus::ScriptVerifyFlags,
         primitives::{InventoryType, InventoryVector},
     };
     let network = runtime.network_handle();
@@ -43,13 +43,7 @@ fn body_request(
         WireNetworkMessage::Verack,
     ] {
         network
-            .receive_message(
-                peer,
-                message,
-                1,
-                ScriptVerifyFlags::P2SH,
-                ConsensusParams::default(),
-            )
+            .receive_message(peer, message, 1, ScriptVerifyFlags::P2SH, basic_params())
             .expect("modeled handshake");
     }
     network
@@ -61,7 +55,7 @@ fn body_request(
             }])),
             2,
             ScriptVerifyFlags::P2SH,
-            ConsensusParams::default(),
+            basic_params(),
             |candidate| {
                 runtime
                     .store()
@@ -285,16 +279,6 @@ fn phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen() {
     let sandbox = TestSandbox::new("phase161-consumers");
     let store_dir = sandbox.home.join("store");
     let (runtime, mut blocks) = durable_basic_runtime(&store_dir, 24);
-    drop(runtime);
-    let runtime = DurableSyncRuntime::open_configured(
-        FjallNodeStore::open(&store_dir).expect("all-handle reopen"),
-        SyncRuntimeConfig {
-            network: SyncNetwork::Regtest,
-            ..Default::default()
-        },
-        BasicFilterStartupMode::Enabled,
-    )
-    .expect("actual configured startup");
     // Act / Assert
     assert_consumers(&sandbox, &runtime, "catching");
     for _ in 0..2 {
@@ -376,6 +360,7 @@ fn phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen() {
         &before
     );
     assert_consumers(&sandbox, &runtime, "reopened");
+    assert_raw_reopen_refuses_work(&runtime);
     runtime
         .network_handle()
         .disable_basic_filter_index()
@@ -443,23 +428,15 @@ fn phase161_operator_consumers_retained_pruned_stale_and_wallet_body_negatives()
     // Arrange: continuous actual accepted history and explicitly enabled modeled body serving.
     let sandbox = TestSandbox::new("phase161-retained-clients");
     let store_dir = sandbox.home.join("store");
-    let (runtime, blocks) = durable_basic_runtime(&store_dir, 401);
-    drop(runtime);
-    let runtime = DurableSyncRuntime::open_with_configured_runtime_activation(
-        FjallNodeStore::open(&store_dir).expect("all-handle open"),
-        SyncRuntimeConfig {
-            network: SyncNetwork::Regtest,
-            ..Default::default()
-        },
+    let (runtime, blocks) = durable_basic_runtime_with_policy(
+        &store_dir,
+        401,
         RelayActivationConfig { enabled: true },
         BlockRelayActivationPolicy {
             block_serving: BlockServingActivationConfig { enabled: true },
             ..Default::default()
         },
-        false,
-        BasicFilterStartupMode::Enabled,
-    )
-    .expect("explicit local runtime policy");
+    );
     let mut network = runtime.network_handle();
     network
         .set_prune_mode(PruneMode::ManualOnly)
@@ -567,6 +544,7 @@ fn phase161_operator_consumers_retained_pruned_stale_and_wallet_body_negatives()
         &expected
     );
     assert_consumers(&sandbox, &runtime, "pruned-stale-reopened");
+    assert_raw_reopen_refuses_work(&runtime);
     assert!(
         !runtime
             .store()

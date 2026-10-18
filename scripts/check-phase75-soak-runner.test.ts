@@ -34,7 +34,7 @@ const RUNTIME_GUIDE_COMMANDS = [
   "soak resume --run-id <run-id> --checkpoint-interval-seconds 300",
   "soak stop --run-id <run-id> --reason operator-stop",
   "soak report --run-id <run-id>",
-  "The durable source of truth is <datadir>/soak/run-index.json plus <datadir>/soak/runs/<run_id>/events.jsonl.",
+  "The durable source of truth is <datadir>/soak/run-index.json plus <datadir>/soak/runs/\\<run_id>/events.jsonl.",
   "A soak run can prove bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence; it does not prove inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness.",
 ] as const;
 const SOURCE_ANCHORS: Record<string, readonly string[]> = {
@@ -491,4 +491,32 @@ function runChecker(root: string): CheckerRun {
   });
 
   return { exitCode: child.exitCode };
+}
+
+for (const [file, index, replacement] of [
+  ["docs/operator/runtime-guide.md", 6, ""],
+  ["docs/operator/runtime-guide.md", 6, RUNTIME_GUIDE_COMMANDS[6].replace("\\<run_id>", "<run_id>")],
+  ["docs/operator/runtime-guide.md", 6, RUNTIME_GUIDE_COMMANDS[6].replace("events.jsonl", "report.json")],
+  ["docs/architecture/operator-observability.md", 0, ""],
+  ["docs/architecture/operator-observability.md", 0, DOC_ANCHORS["docs/architecture/operator-observability.md"][0].replace("<run_id>", "\\<run_id>")],
+  ["docs/architecture/operator-observability.md", 0, DOC_ANCHORS["docs/architecture/operator-observability.md"][0].replace("events.jsonl", "report.json")],
+] as const) {
+  test(`phase165 distinct soak ledger path refuses ${file}: ${replacement}`, async () => {
+    // Arrange
+    const root = await createFixture({});
+    const needle = DOC_ANCHORS[file][index];
+    const source = buildFixtureFiles({})[file];
+    expect(source.split(needle)).toHaveLength(2);
+    const changed = source.replace(needle, replacement);
+    expect(changed).not.toBe(source);
+    await writeFile(path.join(root, file), changed);
+    // Act
+    const child = Bun.spawnSync(["bun", "run", CHECKER_PATH], {
+      env: { ...process.env, OPEN_BITCOIN_PHASE75_REPO_ROOT: root },
+      stderr: "pipe", stdout: "pipe",
+    });
+    // Assert
+    expect(child.exitCode).not.toBe(0);
+    expect(child.stderr.toString()).toContain(`${file} missing required text: ${needle}`);
+  });
 }

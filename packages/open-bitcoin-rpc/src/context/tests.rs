@@ -124,7 +124,7 @@ fn managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot() {
             nonce: 1,
         },
         0,
-        1,
+        open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(1),
         captured_at.unix_seconds(),
     );
     let mut chainstate = ChainstateSnapshot::new(
@@ -222,7 +222,7 @@ fn managed_rpc_context_ignores_leftover_snapshot_when_coins_are_empty() {
                 ..BlockHeader::default()
             },
             0,
-            1,
+            open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(1),
             135,
         )],
         HashMap::new(),

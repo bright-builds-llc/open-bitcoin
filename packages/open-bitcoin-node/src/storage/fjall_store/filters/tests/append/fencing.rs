@@ -4,7 +4,7 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use super::*;
-use open_bitcoin_core::chainstate::{Chainstate, FlushMode, FlushPolicyTime};
+use open_bitcoin_core::chainstate::{Chainstate, ChainstateSnapshot, FlushMode, FlushPolicyTime};
 use open_bitcoin_core::consensus::{
     ConsensusParams, ScriptVerifyFlags, block_hash, check_block_header,
 };
@@ -435,13 +435,7 @@ fn phase157_append_processed_projection_tampering_refuses_completion() {
     std::fs::remove_dir_all(path).expect("cleanup");
 }
 
-fn validated_history(
-    count: u32,
-) -> (
-    Vec<Block>,
-    Vec<StoredFilterRecord>,
-    open_bitcoin_core::chainstate::ChainstateSnapshot,
-) {
+fn validated_history(count: u32) -> (Vec<Block>, Vec<StoredFilterRecord>, ChainstateSnapshot) {
     let mut state = Chainstate::default();
     let mut blocks = Vec::new();
     let mut records: Vec<StoredFilterRecord> = Vec::new();
@@ -476,7 +470,9 @@ fn validated_history(
         state
             .connect_block_with_current_time(
                 &block,
-                u128::from(height) + 1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1,
+                ),
                 i64::from(block.header.time) + 1,
                 ScriptVerifyFlags::P2SH,
                 ConsensusParams::default(),
@@ -513,18 +509,42 @@ fn phase157_append_actual_runtime_deferred_flush_earns_bounded_zero_record_relea
         let path = temp_path("append-own-flush-release");
         let store = FjallNodeStore::open(&path).expect("open");
         let (blocks, records, genesis) = validated_history(count);
-        store
-            .seed_coins_from_snapshot(&genesis)
-            .expect("genesis B and metadata");
         for block in &blocks {
             store
                 .save_block(block, PersistMode::Sync)
                 .expect("retained body");
         }
-        let runtime = crate::DurableSyncRuntime::open_configured(
-            store,
+        let mut core =
+            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+        Chainstate::new()
+            .rebind_into(&mut core)
+            .expect("genuine empty source");
+        let now = FlushPolicyTime::new(0);
+        let mut source = crate::ManagedChainstate::from_chainstate(
+            crate::FjallChainstateStore::from_store(store),
+            core,
+            crate::chainstate::FlushLifecycle::ready(now, now, 0, false),
+        );
+        source
+            .connect_block(
+                &blocks[0],
+                open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+                ScriptVerifyFlags::P2SH,
+                ConsensusParams::default(),
+            )
+            .expect("actual genesis acceptance");
+        assert_eq!(source.chainstate().overlay_snapshot(), genesis);
+        source
+            .flush_with_mode(FlushMode::Always, now, u64::MAX)
+            .expect("real genesis flush");
+        let runtime = crate::DurableSyncRuntime::from_live_fixture_source(
+            source,
             crate::SyncRuntimeConfig::default(),
+            ConsensusParams::default(),
             BasicFilterStartupMode::Enabled,
+            Default::default(),
+            Default::default(),
+            false,
         )
         .expect("actual recovered runtime");
         let store = runtime.store();
@@ -544,7 +564,9 @@ fn phase157_append_actual_runtime_deferred_flush_earns_bounded_zero_record_relea
                 .network_handle()
                 .connect_stored_block(
                     block,
-                    index as u128 + 1,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                        index as u128 + 1,
+                    ),
                     i64::from(block.header.time) + 1,
                     ScriptVerifyFlags::P2SH,
                     ConsensusParams::default(),

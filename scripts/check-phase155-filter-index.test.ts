@@ -35,6 +35,27 @@ function mutate(root: string, file: string, before: string, after = "removed_evi
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
+for (const [label, before, after] of [
+  ["undo accessor", "staged.undo().transactions.len()", "dummy_undo_count()"],
+  ["validated commit", ".commit_staged_connect(staged)", ".commit_dummy(staged)"],
+  ["script inputs", ".basic_filter_inputs(block)", ".dummy_inputs(block)"],
+  ["spent scripts", "inputs.spent_scripts().collect::<Vec<_>>()", "Vec::<&[u8]>::new()"],
+  ["historical inputs", "BasicFilterInputs::from_historical", "BasicFilterInputs::dummy"],
+] as const) {
+  test(`current validated recovery refuses missing ${label}`, () => {
+    // Arrange
+    const root = fixture();
+    expect(checkPhase155FilterIndex(root)).toEqual([]);
+    const file = NODE + "sync/tests/filter_index/recovery.rs";
+    expect(readFileSync(join(root, file), "utf8").split(before)).toHaveLength(2);
+    mutate(root, file, before, after);
+    // Act
+    const failures = checkPhase155FilterIndex(root);
+    // Assert
+    expect(failures.some(item => item.includes("validated history"))).toBe(true);
+  });
+}
+
 test("disable epoch advance alone cannot replace read-integrity revocation", () => {
   // Arrange
   const root = fixture();

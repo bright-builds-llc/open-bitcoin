@@ -169,13 +169,13 @@ pub(crate) fn sample_header_entries() -> Vec<HeaderEntry> {
             block_hash: genesis_hash,
             header: genesis_header,
             height: 0,
-            chain_work: 1,
+            chain_work: open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
         },
         HeaderEntry {
             block_hash: child_hash,
             header: child_header,
             height: 1,
-            chain_work: 2,
+            chain_work: open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
         },
     ]
 }
@@ -311,7 +311,7 @@ fn tip(height: u32) -> ChainPosition {
             nonce: height,
         },
         height,
-        u128::from(height) + 1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(u128::from(height) + 1),
         i64::from(1_700_000_000 + height),
     )
 }

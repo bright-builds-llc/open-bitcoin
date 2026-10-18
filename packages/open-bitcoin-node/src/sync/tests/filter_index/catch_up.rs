@@ -324,12 +324,7 @@ fn phase157_turn_accepted_unflushed_facts_process_ahead_then_genuine_flush_relea
 {
     // Arrange
     let history = ValidatedHistory::new("turn-accepted-error", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = history.live_runtime();
     let result = runtime.network.connect_local_block(
         &history.blocks[2],
         open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,

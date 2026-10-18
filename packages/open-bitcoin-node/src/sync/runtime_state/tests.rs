@@ -7,7 +7,7 @@ use super::*;
 use crate::chainstate::validation_history::tests::block;
 use crate::storage::fjall_store::validation_history::HistoryPublicationFault;
 use crate::storage::validation_history::ValidationProvenance;
-use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags, block_hash};
+use open_bitcoin_core::consensus::{ScriptVerifyFlags, block_hash};
 use open_bitcoin_network::{HeadersMessage, WireNetworkMessage};
 
 fn runtime(name: &str) -> (std::path::PathBuf, DurableSyncRuntime) {
@@ -39,15 +39,41 @@ fn headers(
     runtime: &DurableSyncRuntime,
     headers: Vec<open_bitcoin_core::primitives::BlockHeader>,
 ) -> Result<crate::network::ManagedSyncMessageResult, crate::ManagedNetworkAuthorityError> {
-    runtime.network_handle().receive_sync_message(
+    let handle = runtime.network_handle();
+    let params = runtime.consensus_params;
+    if handle.best_chain_entries()?.is_empty() {
+        let mut entries = handle.header_entries()?;
+        if entries.is_empty()
+            && let Some(root) = headers
+                .first()
+                .filter(|header| header.previous_block_hash == BlockHash::default())
+        {
+            entries.push(open_bitcoin_network::HeaderEntry {
+                block_hash: block_hash(root),
+                header: root.clone(),
+                height: 0,
+                chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+            });
+        }
+        // Controlled model-fixture initialization precedes actual P2P admission.
+        handle.try_admit_fixture_headers(
+            open_bitcoin_network::HeaderStore::from_entries(entries)
+                .expect("complete fixture root"),
+            1_000_000,
+            params,
+        )?;
+    }
+    handle.receive_sync_message(
         1,
-        WireNetworkMessage::Headers(HeadersMessage { headers }),
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: headers
+                .into_iter()
+                .filter(|header| header.previous_block_hash != BlockHash::default())
+                .collect(),
+        }),
         1_000_000,
         ScriptVerifyFlags::P2SH,
-        ConsensusParams {
-            no_pow_retargeting: true,
-            ..Default::default()
-        },
+        params,
     )
 }
 

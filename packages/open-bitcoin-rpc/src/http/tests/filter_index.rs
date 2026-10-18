@@ -508,13 +508,15 @@ async fn phase159_filter_rpc_http_waiter_terminal_lifecycle_is_redacted() {
                             .is_ok()
                     })
                     .expect("easy replacement header");
+                let successor = fixtures::next_block(Some(&replacement), 3);
+                let stronger_tip = block_hash(&successor.header);
                 handle
                     .reorg_to_branch(
                         &[history.blocks[2].clone()],
-                        &[open_bitcoin_node::core::chainstate::AnchoredBlock {
-                            block: replacement,
-                            chain_work: 100,
-                        }],
+                        &[replacement, successor].into_iter().map(|block| open_bitcoin_node::core::chainstate::AnchoredBlock {
+                            block,
+                            chain_work: open_bitcoin_node::core::consensus::chain_proof::ProofWork::ZERO,
+                        }).collect::<Vec<_>>(),
                         open_bitcoin_mempool::ReorgLifecycleContext::new(
                             open_bitcoin_mempool::PolicyTime::from_unix_seconds(50_000),
                         ),
@@ -522,6 +524,13 @@ async fn phase159_filter_rpc_http_waiter_terminal_lifecycle_is_redacted() {
                         fixtures::params(),
                     )
                     .expect("genuine replacement");
+                let tip = handle
+                    .maybe_chain_tip()
+                    .expect("stronger accepted tip")
+                    .expect("tip");
+                assert_eq!(tip.height, 3);
+                assert_eq!(tip.block_hash, stronger_tip);
+                assert!(tip.chain_work > snapshot.active_chain.last().expect("old tip").chain_work);
             }
             _ => unreachable!("test cases"),
         }

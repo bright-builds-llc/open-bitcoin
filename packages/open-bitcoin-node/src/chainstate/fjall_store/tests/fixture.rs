@@ -4,17 +4,68 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 use super::*;
+#[path = "fixture/managed.rs"]
+mod managed;
+use managed::FixtureManagedNetwork;
 
 /// Real configured recovery and manager absorption shared by storage behavior tests.
 pub(crate) struct ReorgFixture {
     path: std::path::PathBuf,
     pub(crate) store: FjallNodeStore,
-    pub(crate) manager: ManagedChainstate<FjallChainstateStore, FjallCoinsView>,
+    pub(crate) manager: FixtureManagedNetwork,
     blocks: Vec<Block>,
     pub(crate) records: Vec<crate::storage::filter_index::StoredFilterRecord>,
 }
 
 impl ReorgFixture {
+    pub(crate) fn reopen_live_fixture(mut self) -> Self {
+        assert_eq!(
+            self.store
+                .load_all_undo_records()
+                .expect("actual durable undo"),
+            *self.manager.chainstate().undo_by_block(),
+            "count preparation cannot certify different physical undo"
+        );
+        self.manager
+            .persist_missing_live_fixture_counts()
+            .expect("actual flushed source counts");
+        let mut reopened = self.reopen();
+        let mut genuine = Chainstate::new();
+        let mut bodies = Vec::new();
+        for position in reopened.manager.chainstate().active_chain() {
+            let body = reopened
+                .store
+                .load_block(position.block_hash)
+                .expect("actual body read")
+                .expect("complete retained active prefix");
+            genuine
+                .connect_block(
+                    &body,
+                    open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+                    open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
+                    Self::params(),
+                )
+                .expect("actual full prefix validation");
+            bodies.push(body);
+        }
+        reopened
+            .manager
+            .adopt_live_fixture_owner(genuine)
+            .expect("strict full-state physical fixture transfer");
+        reopened.manager = FixtureManagedNetwork::from_live_owner(
+            reopened.manager.into_manager(),
+            &bodies,
+            Self::params(),
+        );
+        reopened
+    }
+    pub(crate) fn wrap_live_owner(
+        manager: ManagedChainstate<FjallChainstateStore, FjallCoinsView>,
+        blocks: &[Block],
+        params: open_bitcoin_core::consensus::ConsensusParams,
+    ) -> FixtureManagedNetwork {
+        FixtureManagedNetwork::from_live_owner(manager, blocks, params)
+    }
     pub(crate) fn budget() -> open_bitcoin_core::chainstate::filter_index::catch_up::TurnWork {
         open_bitcoin_core::chainstate::filter_index::catch_up::TurnWork {
             blocks: 128,
@@ -28,24 +79,17 @@ impl ReorgFixture {
     }
 
     pub(crate) fn new(name: &str, indexed: usize) -> Self {
-        let (path, store, mut manager, genesis) = managed_fixture(name);
+        let (path, store, manager, genesis) =
+            crate::chainstate::flush_lifecycle::managed_fixture_with_params(name, Self::params());
         let mut blocks = vec![genesis];
         for height in 1..3 {
             let block = Self::child(blocks.last().expect("parent"), height, false);
-            manager
-                .connect_block_with_current_time(
-                    &block,
-                    u128::from(height) + 1,
-                    i64::from(block.header.time) + 1,
-                    open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
-                    Self::params(),
-                )
-                .expect("genuine spend acceptance");
             store
                 .save_block(&block, PersistMode::Sync)
                 .expect("retained body");
             blocks.push(block);
         }
+        let mut manager = FixtureManagedNetwork::new(manager, &blocks, true);
         flush(&mut manager);
         let mut records: Vec<crate::storage::filter_index::StoredFilterRecord> = Vec::new();
         for (height, block) in blocks.iter().enumerate() {
@@ -173,7 +217,9 @@ impl ReorgFixture {
                 .expect("retained replacement");
             replacement.push(open_bitcoin_core::chainstate::AnchoredBlock {
                 block: block.clone(),
-                chain_work: u128::from(height) + 10,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 10,
+                ),
             });
             parent = block;
         }
@@ -234,7 +280,8 @@ impl ReorgFixture {
         let (_, accepted) = self
             .manager
             .chainstate
-            .absorb_staged_reorg_with_receipt(staged);
+            .absorb_staged_reorg_with_receipt(staged)
+            .expect("owner-bound reorg");
         self.manager
             .maybe_validated_lineage
             .as_mut()
@@ -318,6 +365,7 @@ impl ReorgFixture {
             lifecycle,
         )
         .expect("genuine recovered manager");
+        let manager = FixtureManagedNetwork::new(manager, &blocks, false);
         Self {
             path,
             store,

@@ -170,8 +170,13 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
     );
 
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 2);
-    let position = ChainPosition::new(genesis, 0, 1, 0);
-    manager.seed_local_chain(std::slice::from_ref(&position));
+    let position = ChainPosition::new(
+        genesis,
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
+    seed_mined_fixture_chain(&mut manager, std::slice::from_ref(&position));
     manager.note_local_position(&position);
     manager
         .note_local_transaction(&open_bitcoin_primitives::Transaction::default())
@@ -182,5 +187,13 @@ fn helper_methods_and_unknown_peer_errors_are_covered() {
     restored_headers.seed_from_chain(std::slice::from_ref(&position));
     let mut restored_manager = PeerManager::new(local_config());
     restored_manager.seed_header_store(restored_headers);
-    assert_eq!(restored_manager.header_store().best_height(), 0);
+    assert_eq!(restored_manager.header_store().best_height(), -1);
+    assert_eq!(
+        restored_manager
+            .header_store()
+            .maybe_unproved_fixture_tip()
+            .expect("raw seed")
+            .height,
+        0
+    );
 }

@@ -110,7 +110,7 @@ export const CONTRACTS: Contract[] = [
   contract(23, AUTO, "flush",
     ["prepare(", "FlushMode::Always", "flush_and_evict_pruned_blocks("],
     RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs",
-    "index_protection_ordinary_legal_target_retains_then_deletes_only_after_disable"),
+    "index_protection_genuine_fixture_retains_then_deletes_only_after_disable"),
   contract(24, RPC + "context/prune.rs", "clear_named_prune_lock",
     ["refuse_reserved_name(name)?", ".clear_prune_lock(name)"],
     RPC + "http/tests/prune_ownership.rs", "prune_http_ordinary_authenticated_crud_persists_with_reserved_owner"),

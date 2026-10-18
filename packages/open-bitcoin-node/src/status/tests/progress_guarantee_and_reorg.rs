@@ -11,7 +11,8 @@ fn phase78_progress_guarantee_status_contract() {
         kind: ProgressCreditKind::ValidatedDurableActiveChain,
         credited_validated_active_chain_height: 840_001,
         credited_validated_active_chain_hash: "active-tip".to_string(),
-        credited_validated_active_chain_work: "00000000000000000000000000000042".to_string(),
+        credited_validated_active_chain_work:
+            "000000000000000000000000000000000000000000000000000000000000002a".to_string(),
         source_unix_seconds: 1_717_000_000,
         rejected_activity: vec![RejectedProgressActivity {
             kind: RejectedProgressActivityKind::HeaderDownload,

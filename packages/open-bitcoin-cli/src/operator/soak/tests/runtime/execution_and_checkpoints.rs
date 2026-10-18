@@ -286,7 +286,7 @@ fn soak_progress_guarantee_checkpoint_available_status_records_shared_fields() {
     );
     assert_eq!(
         checkpoint.maybe_progress_credit_work.as_deref(),
-        Some("900001")
+        Some("00000000000000000000000000000000000000000000000000000000000dbba1")
     );
     assert_eq!(
         checkpoint.maybe_progress_credit_source_unix_seconds,

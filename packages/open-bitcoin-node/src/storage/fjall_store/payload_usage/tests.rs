@@ -63,7 +63,7 @@ fn position(height: u32) -> ChainPosition {
             nonce: height,
         },
         height,
-        1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
         1,
     )
 }

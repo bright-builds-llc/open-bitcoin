@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/sync.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainstateError},
@@ -13,7 +13,7 @@ use open_bitcoin_core::{
     primitives::{BlockHash, InventoryType},
 };
 use open_bitcoin_mempool::{PolicyTime, ReorgLifecycleContext};
-use open_bitcoin_network::{PeerId, WireNetworkMessage};
+use open_bitcoin_network::{HeaderEntry, PeerId, WireNetworkMessage};
 
 use super::{DurableSyncRuntime, SyncRuntimeError, tip, types::SyncReconcileProgress};
 use crate::{
@@ -57,7 +57,10 @@ pub(super) fn request_missing_blocks(
         .map(|position| position.block_hash)
         .collect::<BTreeSet<_>>();
     let mut requested = Vec::new();
-    for entry in runtime.network.best_chain_entries()? {
+    for entry in runtime
+        .network
+        .requestable_header_entries(runtime.consensus_params)?
+    {
         if requested.len() >= available_global
             || active_chain_hashes.contains(&entry.block_hash)
             || runtime.inflight_blocks.contains(&entry.block_hash)
@@ -165,55 +168,134 @@ fn reconcile_best_chain_inner(
     timestamp: i64,
     queue_durable_tip: bool,
 ) -> Result<SyncReconcileProgress, SyncRuntimeError> {
+    let mut maybe_error = readmit_cached_bodies(runtime, timestamp)?;
     let active_chain = runtime.network.chainstate_snapshot()?.active_chain;
-    let best_chain = runtime.network.best_chain_entries()?;
-    if best_chain.is_empty() {
-        return Ok(SyncReconcileProgress::NoChange);
+    let entries: BTreeMap<_, _> = runtime
+        .network
+        .header_entries()?
+        .into_iter()
+        .map(|entry| (entry.block_hash, entry))
+        .collect();
+    let mut candidates: VecDeque<_> = runtime.network.eligible_body_candidates()?.into();
+    let mut attempted = BTreeSet::new();
+    while let Some(candidate) = candidates.pop_front() {
+        attempted.insert(candidate.block_hash);
+        if active_chain.last().is_some_and(|tip| {
+            candidate.block_hash == tip.block_hash || candidate.chain_work < tip.chain_work
+        }) {
+            continue;
+        }
+        let Some((common_prefix_len, suffix)) =
+            candidate_suffix(candidate.block_hash, &entries, &active_chain)
+        else {
+            continue;
+        };
+        let result = activate_candidate(
+            runtime,
+            timestamp,
+            queue_durable_tip,
+            &active_chain,
+            common_prefix_len,
+            &suffix,
+        );
+        match result {
+            Ok(progress) if progress.should_persist_progress() => return Ok(progress),
+            Ok(_) => {}
+            Err(ActivationFailure::Invalid(error)) => {
+                if maybe_error.is_none() {
+                    maybe_error = Some(error);
+                }
+                // The exact failed body revoked eligibility; obtain current candidates/grants.
+                candidates = runtime
+                    .network
+                    .eligible_body_candidates()?
+                    .into_iter()
+                    .filter(|facts| !attempted.contains(&facts.block_hash))
+                    .collect();
+            }
+            Err(ActivationFailure::Fatal(error)) => return Err(error),
+        }
     }
-
-    let mut common_prefix_len = 0_usize;
-    while common_prefix_len < active_chain.len()
-        && common_prefix_len < best_chain.len()
-        && active_chain[common_prefix_len].block_hash == best_chain[common_prefix_len].block_hash
-    {
-        common_prefix_len += 1;
+    if let Some(error) = maybe_error {
+        return Err(error);
     }
+    waiting_progress(runtime, &active_chain)
+}
 
+enum ActivationFailure {
+    Invalid(SyncRuntimeError),
+    Fatal(SyncRuntimeError),
+}
+
+impl From<StorageError> for ActivationFailure {
+    fn from(error: StorageError) -> Self {
+        Self::Fatal(error.into())
+    }
+}
+
+impl From<ManagedNetworkAuthorityError> for ActivationFailure {
+    fn from(error: ManagedNetworkAuthorityError) -> Self {
+        Self::Fatal(error.into())
+    }
+}
+
+fn body_consensus_failure(error: &ManagedNetworkAuthorityError) -> bool {
+    matches!(error, ManagedNetworkAuthorityError::Operation(ManagedNetworkError::Chainstate(error))
+        if consensus_cause(error))
+}
+
+fn consensus_cause(error: &ChainstateError) -> bool {
+    matches!(
+        error,
+        ChainstateError::BlockValidation { .. }
+            | ChainstateError::TransactionValidation { .. }
+            | ChainstateError::MissingCoin { .. }
+            | ChainstateError::OutputOverwrite { .. }
+    )
+}
+
+fn candidate_suffix(
+    hash: BlockHash,
+    entries: &BTreeMap<BlockHash, HeaderEntry>,
+    active: &[ChainPosition],
+) -> Option<(usize, Vec<HeaderEntry>)> {
+    let mut current = hash;
+    let mut suffix = Vec::new();
+    for _ in 0..=entries.len() {
+        if let Some(index) = active
+            .iter()
+            .position(|position| position.block_hash == current)
+        {
+            suffix.reverse();
+            return Some((index + 1, suffix));
+        }
+        let entry = entries.get(&current)?;
+        suffix.push(entry.clone());
+        current = entry.header.previous_block_hash;
+        if current == BlockHash::default() && active.is_empty() {
+            suffix.reverse();
+            return Some((0, suffix));
+        }
+    }
+    None
+}
+
+fn activate_candidate(
+    runtime: &mut DurableSyncRuntime,
+    timestamp: i64,
+    queue_durable_tip: bool,
+    active_chain: &[ChainPosition],
+    common_prefix_len: usize,
+    suffix: &[HeaderEntry],
+) -> Result<SyncReconcileProgress, ActivationFailure> {
     if common_prefix_len == active_chain.len() {
-        let mut connected_count = 0_u64;
-        let mut maybe_final_connected_block = None;
-        for entry in best_chain.iter().skip(common_prefix_len) {
-            let Some(block) = runtime.store.load_block(entry.block_hash)? else {
-                break;
-            };
-            runtime.network.note_local_block_hash(entry.block_hash)?;
-            let disposition = runtime.network.connect_stored_block(
-                &block,
-                entry.chain_work,
-                timestamp,
-                runtime.verify_flags,
-                runtime.consensus_params,
-            )?;
-            if matches!(disposition, BlockConnectDisposition::Connected(_)) {
-                connected_count = connected_count.saturating_add(1);
-                maybe_final_connected_block = Some(block);
-                continue;
-            }
-            break;
-        }
-        if connected_count > 0 {
-            if queue_durable_tip && let Some(block) = maybe_final_connected_block {
-                runtime.queue_durable_tip_advanced(block);
-            }
-            return Ok(SyncReconcileProgress::ExtendedActiveChain { connected_count });
-        }
-        return Ok(SyncReconcileProgress::NoChange);
+        return activate_extension(runtime, timestamp, queue_durable_tip, suffix);
     }
 
     let mut replacement_branch = Vec::new();
     let mut maybe_first_missing = None;
     let mut missing_count = 0_u64;
-    for entry in best_chain.iter().skip(common_prefix_len) {
+    for entry in suffix {
         let Some(block) = runtime.store.load_block(entry.block_hash)? else {
             missing_count = missing_count.saturating_add(1);
             if maybe_first_missing.is_none() {
@@ -238,44 +320,47 @@ fn reconcile_best_chain_inner(
         return Ok(SyncReconcileProgress::NoChange);
     }
 
-    let Some(current_tip) = active_chain.last() else {
-        return Ok(SyncReconcileProgress::NoChange);
-    };
-    let candidate_entry = &best_chain[common_prefix_len + replacement_branch.len() - 1];
-    let candidate_outranks = candidate_entry.chain_work > current_tip.chain_work
-        || (candidate_entry.chain_work == current_tip.chain_work
-            && (candidate_entry.height > current_tip.height
-                || (candidate_entry.height == current_tip.height
-                    && candidate_entry.block_hash > current_tip.block_hash)));
-    if !candidate_outranks {
-        return Ok(SyncReconcileProgress::SideBranchPreserved);
-    }
-
     let mut disconnect_blocks = Vec::new();
     for position in active_chain.iter().skip(common_prefix_len).rev() {
         let Some(block) = runtime.store.load_block(position.block_hash)? else {
-            return Err(SyncRuntimeError::Storage(crate::StorageError::Corruption {
-                namespace: StorageNamespace::BlockIndex,
-                detail: format!(
-                    "missing durable block body for active chain block {:?}",
-                    position.block_hash
-                ),
-                action: StorageRecoveryAction::Repair,
-            }));
+            return Err(ActivationFailure::Fatal(SyncRuntimeError::Storage(
+                crate::StorageError::Corruption {
+                    namespace: StorageNamespace::BlockIndex,
+                    detail: format!(
+                        "missing durable block body for active chain block {:?}",
+                        position.block_hash
+                    ),
+                    action: StorageRecoveryAction::Repair,
+                },
+            )));
         };
         disconnect_blocks.push(block);
     }
 
-    let transition = runtime
-        .network
-        .reorg_to_branch(
-            &disconnect_blocks,
-            &replacement_branch,
-            reorg_lifecycle_context(timestamp),
-            runtime.verify_flags,
-            runtime.consensus_params,
-        )
-        .map_err(reorg_runtime_error)?;
+    let transition = runtime.network.reorg_to_branch(
+        &disconnect_blocks,
+        &replacement_branch,
+        reorg_lifecycle_context(timestamp),
+        runtime.verify_flags,
+        runtime.consensus_params,
+    );
+    let transition = match transition {
+        Ok(transition) => transition,
+        Err(ManagedNetworkAuthorityError::Operation(ManagedNetworkError::Chainstate(
+            ChainstateError::BranchNotPreferred,
+        ))) => return Ok(SyncReconcileProgress::SideBranchPreserved),
+        Err(error) => {
+            let invalid = matches!(&error, ManagedNetworkAuthorityError::Operation(
+                ManagedNetworkError::Chainstate(ChainstateError::ReplacementBlock { source, .. }))
+                if consensus_cause(source));
+            let error = reorg_runtime_error(error);
+            return Err(if invalid {
+                ActivationFailure::Invalid(error)
+            } else {
+                ActivationFailure::Fatal(error)
+            });
+        }
+    };
     let common_ancestor = active_chain
         .get(common_prefix_len.saturating_sub(1))
         .or_else(|| active_chain.first());
@@ -294,6 +379,125 @@ fn reconcile_best_chain_inner(
         &transition,
         &final_active_tip,
     )))
+}
+
+fn activate_extension(
+    runtime: &mut DurableSyncRuntime,
+    timestamp: i64,
+    queue_durable_tip: bool,
+    suffix: &[HeaderEntry],
+) -> Result<SyncReconcileProgress, ActivationFailure> {
+    let mut connected_count = 0_u64;
+    let mut maybe_final_connected_block = None;
+    for entry in suffix {
+        let Some(block) = runtime.store.load_block(entry.block_hash)? else {
+            break;
+        };
+        runtime.network.note_local_block_hash(entry.block_hash)?;
+        let disposition = runtime.network.connect_stored_block(
+            &block,
+            entry.chain_work,
+            timestamp,
+            runtime.verify_flags,
+            runtime.consensus_params,
+        );
+        let disposition = match disposition {
+            Ok(disposition) => disposition,
+            Err(error) if body_consensus_failure(&error) => {
+                if connected_count == 0 {
+                    return Err(ActivationFailure::Invalid(error.into()));
+                }
+                // Report the actually accepted prefix, then reacquire ancestry next turn.
+                break;
+            }
+            Err(error) => return Err(error.into()),
+        };
+        if matches!(disposition, BlockConnectDisposition::Connected(_)) {
+            connected_count = connected_count.saturating_add(1);
+            maybe_final_connected_block = Some(block);
+            continue;
+        }
+        break;
+    }
+    if connected_count > 0 {
+        if queue_durable_tip && let Some(block) = maybe_final_connected_block {
+            runtime.queue_durable_tip_advanced(block);
+        }
+        return Ok(SyncReconcileProgress::ExtendedActiveChain { connected_count });
+    }
+    Ok(SyncReconcileProgress::NoChange)
+}
+
+fn waiting_progress(
+    runtime: &DurableSyncRuntime,
+    active: &[ChainPosition],
+) -> Result<SyncReconcileProgress, SyncRuntimeError> {
+    let best = runtime.network.best_chain_entries()?;
+    let mut missing = Vec::new();
+    let mut has_side = false;
+    for entry in best {
+        if active
+            .iter()
+            .any(|position| position.block_hash == entry.block_hash)
+        {
+            continue;
+        }
+        has_side = true;
+        if runtime.store.load_block(entry.block_hash)?.is_none() {
+            missing.push(entry);
+        }
+    }
+    if let Some(first) = missing.first() {
+        return Ok(SyncReconcileProgress::BranchCompetitionAwaitingBodies {
+            missing_count: missing.len() as u64,
+            first_missing_height: u64::from(first.height),
+            first_missing_hash: tip::block_hash_hex(first.block_hash),
+        });
+    }
+    Ok(if has_side {
+        SyncReconcileProgress::SideBranchPreserved
+    } else {
+        SyncReconcileProgress::NoChange
+    })
+}
+
+fn readmit_cached_bodies(
+    runtime: &DurableSyncRuntime,
+    timestamp: i64,
+) -> Result<Option<SyncRuntimeError>, SyncRuntimeError> {
+    // This traversal supplies ancestry for validation, never historical arrival order.
+    let mut entries = runtime
+        .network
+        .requestable_header_entries(runtime.consensus_params)?;
+    entries.sort_by_key(|entry| entry.height);
+    let mut maybe_error = None;
+    for entry in entries {
+        let maybe_facts = runtime.network.maybe_body_eligibility(entry.block_hash)?;
+        let maybe_block = runtime.store.load_block(entry.block_hash)?;
+        if maybe_block.is_none() {
+            runtime.network.mark_body_unavailable(entry.block_hash)?;
+            continue;
+        }
+        if maybe_facts.is_some() {
+            continue;
+        }
+        if let Some(block) = maybe_block {
+            match runtime.network.retain_cached_candidate(
+                &block,
+                runtime.consensus_params,
+                timestamp,
+            ) {
+                Ok(()) => {}
+                Err(error) if body_consensus_failure(&error) => {
+                    if maybe_error.is_none() {
+                        maybe_error = Some(error.into());
+                    }
+                }
+                Err(error) => return Err(error.into()),
+            }
+        }
+    }
+    Ok(maybe_error)
 }
 
 pub(super) const fn reorg_lifecycle_context(timestamp: i64) -> ReorgLifecycleContext {
@@ -339,104 +543,5 @@ fn reorg_evidence(
 }
 
 #[cfg(test)]
-mod phase158_tests {
-    use super::*;
-    use crate::chainstate::ReorgFixture;
-
-    fn runtime(name: &str) -> (std::path::PathBuf, DurableSyncRuntime, Vec<AnchoredBlock>) {
-        let fixture = ReorgFixture::new(name, 3);
-        let path = fixture.path().to_owned();
-        let (staged, _) = fixture.stage(2);
-        let replacement: Vec<_> = staged
-            .transition()
-            .connected
-            .iter()
-            .map(|position| AnchoredBlock {
-                block: fixture
-                    .store
-                    .load_block(position.block_hash)
-                    .expect("body")
-                    .expect("retained"),
-                chain_work: position.chain_work,
-            })
-            .collect();
-        let positions = fixture
-            .manager
-            .chainstate()
-            .active_chain()
-            .iter()
-            .take(1)
-            .chain(staged.transition().connected.iter());
-        let headers = open_bitcoin_network::HeaderStore::from_entries(positions.map(|position| {
-            open_bitcoin_network::HeaderEntry {
-                block_hash: position.block_hash,
-                header: position.header.clone(),
-                height: position.height,
-                chain_work: position.chain_work,
-            }
-        }))
-        .expect("genuine accepted fork headers");
-        fixture
-            .store
-            .save_header_entries(
-                &headers.entries().cloned().collect::<Vec<_>>(),
-                crate::PersistMode::Sync,
-            )
-            .expect("header store");
-        drop(staged);
-        drop(fixture);
-        let store = crate::FjallNodeStore::open(&path).expect("actual reopen");
-        let mut runtime = DurableSyncRuntime::open_configured(
-            store,
-            super::super::SyncRuntimeConfig {
-                network: super::super::SyncNetwork::Regtest,
-                ..Default::default()
-            },
-            crate::chainstate::BasicFilterStartupMode::Enabled,
-        )
-        .expect("production startup");
-        runtime.consensus_params.coinbase_maturity = 1;
-        (path, runtime, replacement)
-    }
-
-    #[test]
-    fn phase158_preflight_sync_reconcile_uses_production_reorg_and_scheduled_owner() {
-        // Arrange
-        let (path, mut runtime, replacement) = runtime("sync-driver-reorg");
-        // Act
-        let result = reconcile_best_chain(&mut runtime, 2000).expect("actual sync reorg");
-        let turn = runtime
-            .network
-            .drive_basic_filter_index_turn()
-            .expect("idle ordinary turn");
-        // Assert
-        assert!(matches!(result, SyncReconcileProgress::ReorgPersisted(_)));
-        assert_eq!(
-            turn.maybe_accepted_target.expect("accepted").block_hash(),
-            block_hash(&replacement[1].block.header)
-        );
-        assert_eq!(turn.maybe_accepted_lag, Some(0));
-        drop(runtime);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-
-    #[test]
-    fn phase158_preflight_sync_missing_undo_is_explicit_storage_refusal_before_preview() {
-        // Arrange
-        let (path, mut runtime, _) = runtime("sync-driver-loss");
-        let old = runtime.network.chainstate_snapshot().expect("before");
-        runtime
-            .store
-            .delete_basic_input_for_test(old.active_chain[2].block_hash, true)
-            .expect("actual missing durable mate");
-        // Act
-        let result = reconcile_best_chain(&mut runtime, 2000);
-        // Assert
-        assert!(
-            matches!(result, Err(SyncRuntimeError::Storage(StorageError::Corruption { ref detail, .. })) if detail.contains("required undo"))
-        );
-        assert_eq!(runtime.network.chainstate_snapshot().expect("after"), old);
-        drop(runtime);
-        std::fs::remove_dir_all(path).expect("cleanup");
-    }
-}
+#[path = "tests/phase158_preflight.rs"]
+mod phase158_tests;

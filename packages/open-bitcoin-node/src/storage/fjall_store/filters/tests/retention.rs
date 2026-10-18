@@ -166,7 +166,12 @@ fn phase161_retention_recovery_displaced_and_ahead_rows_count_once() {
     .expect("displace suffix");
     let mut replacement_block = fixture_block(positions[0].block_hash, 1);
     replacement_block.header.nonce = 42;
-    let replacement_position = ChainPosition::new(replacement_block.header.clone(), 1, 3, 1001);
+    let replacement_position = ChainPosition::new(
+        replacement_block.header.clone(),
+        1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
+        1001,
+    );
     let undo = BlockUndo::default();
     let inputs = BasicFilterInputs::from_historical(
         &replacement_block,

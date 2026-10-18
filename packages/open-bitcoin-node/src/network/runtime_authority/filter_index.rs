@@ -38,6 +38,51 @@ pub(crate) struct AcceptedBasicFactsTestEvidence {
 
 impl ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
     #[cfg(test)]
+    pub(crate) fn attach_fixture_basic_owner_after_flush(
+        &self,
+        params: open_bitcoin_core::consensus::ConsensusParams,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            if !matches!(
+                network.admission_scope,
+                crate::network::canonical_admission::AdmissionScope::Fixture
+            ) {
+                return Err(
+                    open_bitcoin_core::chainstate::ChainstateError::UntrustedWorkLineage.into(),
+                );
+            }
+            network
+                .chainstate_mut()
+                .attach_fixture_basic_owner_after_flush(params)
+                .map_err(Into::into)
+        })
+    }
+
+    /// Fixture intake delays activation while exercising the real checked-body owner.
+    #[cfg(test)]
+    pub(crate) fn retain_fixture_body_before_activation(
+        &self,
+        block: &open_bitcoin_core::primitives::Block,
+        params: open_bitcoin_core::consensus::ConsensusParams,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| network.retain_checked_candidate(block, params, 2_000_000_000))
+    }
+
+    /// Explicit operator-style fixture action; this never grants reorg preference.
+    #[cfg(test)]
+    pub(crate) fn disconnect_fixture_tip(
+        &self,
+        block: &open_bitcoin_core::primitives::Block,
+    ) -> Result<open_bitcoin_core::chainstate::ChainPosition, ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| {
+            network
+                .chainstate_mut()
+                .disconnect_tip(block)
+                .map_err(Into::into)
+        })
+    }
+
+    #[cfg(test)]
     pub(crate) fn maybe_basic_index_accepted_target_for_test(
         &self,
     ) -> Result<
@@ -65,10 +110,14 @@ impl ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
     > {
         self.read(|network| {
             let start = std::time::Instant::now();
-            let prepared =
-                network
-                    .chainstate()
-                    .prepare_reorg(disconnect, replacements, flags, params)?;
+            let authorization = network.authorize_reorg(disconnect, replacements, params)?;
+            let prepared = network.chainstate().prepare_authorized_reorg(
+                authorization,
+                disconnect,
+                replacements,
+                flags,
+                params,
+            )?;
             let work = prepared
                 .maybe_basic_filter_component_work()
                 .ok_or_else(

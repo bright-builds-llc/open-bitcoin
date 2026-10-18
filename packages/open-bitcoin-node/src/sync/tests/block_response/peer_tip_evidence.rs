@@ -21,6 +21,7 @@ fn phase69_peer_agreement_classifies_agrees_behind_disagrees_and_no_evidence() {
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut agrees = peer_outcome(
         SyncPeerAddress::manual("127.0.0.1", 18_444),
         PeerSyncState::Connected,
@@ -30,7 +31,8 @@ fn phase69_peer_agreement_classifies_agrees_behind_disagrees_and_no_evidence() {
     );
     agrees.maybe_tip_height = Some(2);
     agrees.maybe_tip_hash = Some(block_hash_hex(best_tip_hash));
-    agrees.maybe_tip_work = Some("3".to_string());
+    agrees.maybe_tip_work =
+        Some("0000000000000000000000000000000000000000000000000000000000000006".to_string());
     agrees.maybe_last_activity_unix_seconds = Some(u64::from(best_tip.header.time));
     let mut behind = peer_outcome(
         SyncPeerAddress::manual("127.0.0.1", 18_445),
@@ -41,7 +43,8 @@ fn phase69_peer_agreement_classifies_agrees_behind_disagrees_and_no_evidence() {
     );
     behind.maybe_tip_height = Some(1);
     behind.maybe_tip_hash = Some(block_hash_hex(child_hash));
-    behind.maybe_tip_work = Some("2".to_string());
+    behind.maybe_tip_work =
+        Some("0000000000000000000000000000000000000000000000000000000000000004".to_string());
     behind.maybe_last_activity_unix_seconds = Some(u64::from(best_tip.header.time));
     let mut disagrees = peer_outcome(
         SyncPeerAddress::manual("127.0.0.1", 18_446),
@@ -52,7 +55,8 @@ fn phase69_peer_agreement_classifies_agrees_behind_disagrees_and_no_evidence() {
     );
     disagrees.maybe_tip_height = Some(2);
     disagrees.maybe_tip_hash = Some("aa".repeat(32));
-    disagrees.maybe_tip_work = Some("3".to_string());
+    disagrees.maybe_tip_work =
+        Some("0000000000000000000000000000000000000000000000000000000000000006".to_string());
     disagrees.maybe_last_activity_unix_seconds = Some(u64::from(best_tip.header.time));
     let no_evidence = peer_outcome(
         SyncPeerAddress::manual("127.0.0.1", 18_447),
@@ -100,6 +104,7 @@ fn phase69_peer_agreement_classifies_agrees_behind_disagrees_and_no_evidence() {
         FieldAvailability::available(StayCurrentStatus::CurrentAtBestKnownTip)
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -121,6 +126,7 @@ fn phase69_peer_tip_observation_uses_peer_terminal_header_not_global_best() {
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     assert_eq!(
         runtime
             .network
@@ -165,7 +171,10 @@ fn phase69_peer_tip_observation_uses_peer_terminal_header_not_global_best() {
         outcome.maybe_tip_hash,
         Some(block_hash_hex(peer_terminal_hash))
     );
-    assert_eq!(outcome.maybe_tip_work, Some("2".to_string()));
+    assert_eq!(
+        outcome.maybe_tip_work,
+        Some("0000000000000000000000000000000000000000000000000000000000000004".to_string())
+    );
     let FieldAvailability::Available(best_known_tip) = state.sync.best_known_tip else {
         panic!("best-known tip should be available");
     };
@@ -175,6 +184,7 @@ fn phase69_peer_tip_observation_uses_peer_terminal_header_not_global_best() {
         Some(PeerTipAgreementStatus::Behind)
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -192,7 +202,8 @@ fn sync_progress_omits_block_hashes_when_unavailable() {
                     block_hash: block_hash(&header_only_block.header),
                     header: header_only_block.header.clone(),
                     height: 0,
-                    chain_work: 1,
+                    chain_work:
+                        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                 }],
                 PersistMode::Sync,
             )
@@ -200,6 +211,7 @@ fn sync_progress_omits_block_hashes_when_unavailable() {
     }
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
 
     // Act
     let summary = runtime.snapshot_summary();
@@ -232,5 +244,6 @@ fn sync_progress_omits_block_hashes_when_unavailable() {
     assert!(encoded["value"]["maybe_validated_active_chain_hash"].is_null());
     assert!(encoded["value"]["maybe_validated_active_chain_work"].is_null());
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }

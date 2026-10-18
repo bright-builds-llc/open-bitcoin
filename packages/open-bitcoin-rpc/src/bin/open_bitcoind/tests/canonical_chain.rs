@@ -10,14 +10,14 @@ use open_bitcoin_node::{
 use open_bitcoin_rpc::config::{BasicFilterIndexSetting, DaemonSyncMode};
 use std::collections::BTreeMap;
 
-const NETWORKS: [(AddressNetwork, SyncNetwork, &str); 4] = [
+pub(super) const NETWORKS: [(AddressNetwork, SyncNetwork, &str); 4] = [
     (AddressNetwork::Mainnet, SyncNetwork::Mainnet, "mainnet"),
     (AddressNetwork::Testnet, SyncNetwork::Testnet, "testnet3"),
     (AddressNetwork::Signet, SyncNetwork::Signet, "signet"),
     (AddressNetwork::Regtest, SyncNetwork::Regtest, "regtest"),
 ];
 
-fn owned_path(label: &str) -> PathBuf {
+pub(super) fn owned_path(label: &str) -> PathBuf {
     // macOS temp_dir can contain /var, a symlink deliberately refused by production.
     std::env::temp_dir()
         .canonicalize()
@@ -26,7 +26,7 @@ fn owned_path(label: &str) -> PathBuf {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct PhysicalEntry {
+pub(super) struct PhysicalEntry {
     kind: fs::FileType,
     bytes: Vec<u8>,
     length: u64,
@@ -37,7 +37,7 @@ struct PhysicalEntry {
     mode: u32,
 }
 
-fn manifest(root: &Path) -> BTreeMap<PathBuf, PhysicalEntry> {
+pub(super) fn manifest(root: &Path) -> BTreeMap<PathBuf, PhysicalEntry> {
     fn visit(root: &Path, path: &Path, entries: &mut BTreeMap<PathBuf, PhysicalEntry>) {
         let metadata = fs::symlink_metadata(path).expect("owned metadata");
         let kind = metadata.file_type();
@@ -74,7 +74,12 @@ fn manifest(root: &Path) -> BTreeMap<PathBuf, PhysicalEntry> {
     entries
 }
 
-fn config(path: &Path, address: AddressNetwork, sync: SyncNetwork, triggers: u8) -> RuntimeConfig {
+pub(super) fn config(
+    path: &Path,
+    address: AddressNetwork,
+    sync: SyncNetwork,
+    triggers: u8,
+) -> RuntimeConfig {
     let mut runtime = RuntimeConfig {
         chain: address,
         maybe_data_dir: Some(path.to_path_buf()),

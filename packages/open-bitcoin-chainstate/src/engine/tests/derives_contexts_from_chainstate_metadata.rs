@@ -126,7 +126,7 @@ fn legacy_snapshot_connect_and_disconnect_preserve_unknown_confirmed_identity() 
     let genesis_position = connect_block(&mut chainstate, &genesis_block, 1);
     let mut legacy_snapshot = chainstate.snapshot();
     legacy_snapshot.maybe_confirmed_txid_counts = None;
-    let mut legacy_chainstate = Chainstate::from_snapshot(legacy_snapshot);
+    let mut legacy_chainstate = Chainstate::from_snapshot_for_mechanical_fixture(legacy_snapshot);
     let block = build_block(
         genesis_position.block_hash,
         1_231_006_600,
@@ -161,13 +161,13 @@ fn connect_rejects_confirmed_txid_count_overflow_without_mutation() {
     let mut snapshot = ChainstateSnapshot::new(Vec::new(), HashMap::new(), HashMap::new());
     snapshot.maybe_confirmed_txid_counts = Some(HashMap::from([(txid, u32::MAX)]));
     let expected = snapshot.clone();
-    let mut chainstate = Chainstate::from_snapshot(snapshot);
+    let mut chainstate = Chainstate::from_snapshot_for_mechanical_fixture(snapshot);
 
     // Act
     let error = chainstate
         .connect_block(
             &block,
-            1,
+            crate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )
@@ -201,7 +201,7 @@ fn disconnect_rejects_missing_confirmed_txid_count_without_mutation() {
         .expect("exact confirmation counts")
         .clear();
     let expected = snapshot.clone();
-    let mut corrupted = Chainstate::from_snapshot(snapshot);
+    let mut corrupted = Chainstate::from_snapshot_for_mechanical_fixture(snapshot);
 
     // Act
     let error = corrupted
@@ -252,20 +252,35 @@ fn duplicate_txid_counts_remain_exact_across_disconnect_and_snapshot_restore() {
         | ScriptVerifyFlags::CHECKSEQUENCEVERIFY;
     let mut chainstate = Chainstate::new();
     chainstate
-        .connect_block(&genesis, 1, flags, params)
+        .connect_block(
+            &genesis,
+            crate::ChainPosition::untrusted_fixture_work(1),
+            flags,
+            params,
+        )
         .expect("connect first occurrence");
     chainstate
-        .connect_block(&middle, 2, flags, params)
+        .connect_block(
+            &middle,
+            crate::ChainPosition::untrusted_fixture_work(2),
+            flags,
+            params,
+        )
         .expect("spend first occurrence outputs");
     chainstate
-        .connect_block(&later_duplicate, 3, flags, params)
+        .connect_block(
+            &later_duplicate,
+            crate::ChainPosition::untrusted_fixture_work(3),
+            flags,
+            params,
+        )
         .expect("connect allowed later occurrence");
 
     // Act
     chainstate
         .disconnect_tip(&later_duplicate)
         .expect("disconnect later duplicate");
-    let mut restored = Chainstate::from_snapshot(chainstate.snapshot());
+    let mut restored = Chainstate::from_snapshot_for_mechanical_fixture(chainstate.snapshot());
 
     // Assert
     let counts = restored
@@ -297,7 +312,7 @@ fn duplicate_txid_counts_remain_exact_across_disconnect_and_snapshot_restore() {
 #[test]
 fn reorg_prefers_heavier_branch_and_preserves_expected_utxos() {
     // Arrange
-    let mut chainstate = Chainstate::new();
+    let mut chainstate = Chainstate::new_for_mechanical_fixture();
     let genesis_coinbase = coinbase_transaction(0, 50);
     let genesis_block = build_block(
         BlockHash::from_byte_array([0_u8; 32]),
@@ -325,7 +340,12 @@ fn reorg_prefers_heavier_branch_and_preserves_expected_utxos() {
         1_231_006_650,
         vec![coinbase_transaction(1, 50), branch_b_spend],
     );
-    let branch_b_tip = ChainPosition::new(branch_b.header.clone(), 1, 3, 1_231_006_650);
+    let branch_b_tip = ChainPosition::new(
+        branch_b.header.clone(),
+        1,
+        crate::ChainPosition::untrusted_fixture_work(3),
+        1_231_006_650,
+    );
     assert!(prefer_candidate_tip(&branch_a_position, &branch_b_tip));
 
     // Act
@@ -334,7 +354,7 @@ fn reorg_prefers_heavier_branch_and_preserves_expected_utxos() {
             std::slice::from_ref(&branch_a),
             &[AnchoredBlock {
                 block: branch_b.clone(),
-                chain_work: 3,
+                chain_work: crate::ChainPosition::untrusted_fixture_work(3),
             }],
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -363,7 +383,14 @@ fn connect_block_rejects_premature_coinbase_spend() {
         1_231_006_500,
         vec![genesis_coinbase.clone()],
     );
-    let genesis_position = connect_block(&mut chainstate, &genesis_block, 1);
+    let genesis_position = chainstate
+        .connect_block(
+            &genesis_block,
+            crate::ChainPosition::untrusted_fixture_work(1),
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams::default(),
+        )
+        .expect("genesis uses the same maturity rule");
     let premature_spend = spend_transaction(
         open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid"),
         0,
@@ -380,7 +407,7 @@ fn connect_block_rejects_premature_coinbase_spend() {
     let error = chainstate
         .connect_block(
             &block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -420,7 +447,7 @@ fn connect_block_rejects_missing_prevouts_from_chainstate() {
     let error = chainstate
         .connect_block(
             &block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             ScriptVerifyFlags::P2SH,
             ConsensusParams {
                 coinbase_maturity: 1,
@@ -452,7 +479,7 @@ fn connect_block_uses_explicit_current_time_for_future_time_rejection() {
     let error = chainstate
         .connect_block_with_current_time(
             &future_block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(future_block.header.time) - 7_201,
             ScriptVerifyFlags::P2SH,
             ConsensusParams {

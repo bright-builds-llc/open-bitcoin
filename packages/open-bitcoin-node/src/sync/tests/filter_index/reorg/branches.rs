@@ -5,9 +5,11 @@
 
 use super::*;
 
+mod manual_lifecycle;
+
 fn replacement_case(indexed: usize, count: usize) {
     // Arrange: startup itself performs its real eight-block turn.
-    let fixture = ForkFixture::compact(16, 8, indexed);
+    let fixture = ForkFixture::compact_early(16, 8, indexed, 10, count, 0x61);
     let before = fixture
         .runtime
         .network
@@ -109,65 +111,6 @@ fn phase158_validated_reorg_longer_replacement() {
     replacement_case(24, 16);
 }
 
-#[test]
-fn phase158_validated_reorg_shorter_replacement() {
-    replacement_case(24, 4);
-}
-
-#[test]
-fn phase158_validated_reorg_disconnect_only_to_common_ancestor() {
-    replacement_case(24, 0);
-}
-
-#[test]
-fn phase158_validated_reorg_full_disconnect_has_empty_checkpoint_and_no_fabricated_target() {
-    // Arrange
-    let fixture = ForkFixture::compact(16, 8, 24);
-    let branch = ForkBranch {
-        disconnect: fixture.history.blocks.iter().rev().cloned().collect(),
-        connected: Vec::new(),
-        records: Vec::new(),
-    };
-    // Act
-    fixture.apply(&branch);
-    let turn = fixture
-        .runtime
-        .network
-        .drive_basic_filter_index_turn()
-        .expect("ordinary empty maintenance");
-    // Assert
-    assert_eq!(turn.maybe_accepted_target, None);
-    assert_eq!(turn.maybe_accepted_lag, None);
-    assert_eq!(turn.work.blocks, 0);
-    assert_eq!(
-        fixture
-            .runtime
-            .store()
-            .maybe_basic_filter_checkpoint()
-            .expect("empty checkpoint"),
-        Some(FilterCheckpoint::new(IndexPrefix::Empty))
-    );
-    assert_eq!(
-        fixture
-            .runtime
-            .store()
-            .maybe_active_basic_filter_record(0)
-            .expect("empty active projection"),
-        None
-    );
-    for record in &fixture.history.records {
-        assert_eq!(
-            fixture
-                .runtime
-                .store()
-                .load_basic_filter_record(record.identity().block_hash())
-                .expect("immutable empty-branch retention"),
-            Some(record.clone())
-        );
-    }
-    fixture.cleanup();
-}
-
 pub(super) fn assert_active(fixture: &ForkFixture, branch: &ForkBranch, ancestor: usize) {
     for record in fixture.history.records[..=ancestor]
         .iter()
@@ -224,7 +167,7 @@ pub(super) fn assert_active(fixture: &ForkFixture, branch: &ForkBranch, ancestor
 #[test]
 fn phase158_validated_reorg_stale_owned_turn_cannot_publish() {
     // Arrange
-    let fixture = ForkFixture::compact(16, 8, 24);
+    let fixture = ForkFixture::compact_early(16, 8, 24, 10, 13, 0x62);
     let proof = fixture
         .runtime
         .store()
@@ -256,10 +199,10 @@ fn phase158_validated_reorg_stale_owned_turn_cannot_publish() {
 }
 
 #[test]
-fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_reopens() {
-    // Arrange: A23 -> B14 leaves the actual durable coins checkpoint at A23.
+fn phase158_validated_reorg_stronger_unflushed_extended_return_preserves_coins_fence_and_reopens() {
+    // Arrange: A23 -> B26 leaves the actual durable coins checkpoint at A23.
     let fixture = ForkFixture::compact(16, 8, 24);
-    let branch = fixture.fork(10, 4, 0x6a);
+    let branch = fixture.fork(10, 16, 0x6a);
     fixture.apply(&branch);
     fixture.finish();
     // Retain required sources independently; this does not flush coins or metadata.
@@ -276,23 +219,7 @@ fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_r
             .save_undo(hash, &accepted.undo_by_block[&hash], PersistMode::Sync)
             .expect("retained genuine B undo");
     }
-    let original = ForkBranch {
-        disconnect: branch
-            .connected
-            .iter()
-            .rev()
-            .map(|a| a.block.clone())
-            .collect(),
-        connected: fixture.history.blocks[11..]
-            .iter()
-            .enumerate()
-            .map(|(offset, block)| AnchoredBlock {
-                block: block.clone(),
-                chain_work: offset as u128 + 2_000,
-            })
-            .collect(),
-        records: fixture.history.records[11..].to_vec(),
-    };
+    let original = fixture.extended_original(&branch, 4);
     let original_tip = fixture.history.records[23].identity().block_hash();
     drop(accepted);
     assert_eq!(
@@ -310,7 +237,7 @@ fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_r
         .maybe_basic_index_progress()
         .expect("read")
         .expect("owner");
-    assert_eq!(before.accepted_target().height(), 14);
+    assert_eq!(before.accepted_target().height(), 26);
     assert_eq!(
         before
             .maybe_safe_durable_endpoint()
@@ -319,7 +246,7 @@ fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_r
         10
     );
 
-    // Act: genuine B14 -> A23 acceptance before any ordinary coins flush.
+    // Act: genuine B26 -> extended A27 acceptance before any ordinary coins flush.
     fixture.apply(&original);
     let rewound = fixture
         .runtime
@@ -364,7 +291,7 @@ fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_r
         .maybe_basic_index_progress()
         .expect("read")
         .expect("owner");
-    assert_eq!(returned.accepted_target().height(), 23);
+    assert_eq!(returned.accepted_target().height(), 27);
     assert_eq!(returned.current_lag(), 0);
     assert_eq!(
         returned
@@ -381,6 +308,35 @@ fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_r
             .expect("safe checkpoint"),
         Some(checkpoint(&fixture.history.records[23]))
     );
+    let accepted_return = fixture
+        .runtime
+        .network
+        .chainstate_snapshot()
+        .expect("actual unflushed extended A suffix");
+    for record in original
+        .records
+        .iter()
+        .filter(|record| record.identity().height() > 23)
+    {
+        let identity = record.identity();
+        assert_eq!(
+            accepted_return.active_chain[identity.height() as usize].block_hash,
+            identity.block_hash()
+        );
+        assert!(
+            accepted_return
+                .undo_by_block
+                .contains_key(&identity.block_hash())
+        );
+        assert_eq!(
+            fixture
+                .runtime
+                .store()
+                .load_basic_filter_record(identity.block_hash())
+                .expect("immutable unflushed suffix commitment"),
+            Some(record.clone())
+        );
+    }
     for record in &fixture.history.records {
         assert_eq!(
             fixture
@@ -421,34 +377,18 @@ fn phase158_validated_reorg_shorter_unflushed_return_preserves_coins_fence_and_r
 #[test]
 fn phase158_validated_reorg_return_to_original_then_subsequent_stored_connect() {
     // Arrange
-    let fixture = ForkFixture::compact(16, 8, 24);
+    let fixture = ForkFixture::compact_early(16, 8, 24, 10, 13, 0x63);
     let branch = fixture.fork(10, 13, 0x63);
     fixture.apply(&branch);
     fixture.finish();
     fixture.flush();
-    let original = ForkBranch {
-        disconnect: branch
-            .connected
-            .iter()
-            .rev()
-            .map(|a| a.block.clone())
-            .collect(),
-        connected: fixture.history.blocks[11..]
-            .iter()
-            .enumerate()
-            .map(|(offset, block)| AnchoredBlock {
-                block: block.clone(),
-                chain_work: offset as u128 + 2_000,
-            })
-            .collect(),
-        records: fixture.history.records[11..].to_vec(),
-    };
+    let original = fixture.extended_original(&branch, 1);
     // Act: A -> B -> A through ordinary authority, without reopen or re-enable.
     fixture.apply(&original);
     fixture.finish();
     fixture.flush();
     assert_active(&fixture, &original, 10);
-    let child_branch = fixture.fork(23, 1, 0x64);
+    let child_branch = fixture.fork(24, 1, 0x64);
     let anchored = &child_branch.connected[0];
     fixture
         .runtime
@@ -473,7 +413,22 @@ fn phase158_validated_reorg_return_to_original_then_subsequent_stored_connect() 
     ));
     fixture.finish();
     fixture.flush();
-    assert_active(&fixture, &child_branch, 23);
+    let extended = ForkBranch {
+        disconnect: original.disconnect.clone(),
+        connected: original
+            .connected
+            .iter()
+            .chain(&child_branch.connected)
+            .cloned()
+            .collect(),
+        records: original
+            .records
+            .iter()
+            .chain(&child_branch.records)
+            .cloned()
+            .collect(),
+    };
+    assert_active(&fixture, &extended, 10);
     for record in &branch.records {
         assert_eq!(
             fixture

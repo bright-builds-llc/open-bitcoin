@@ -13,6 +13,7 @@ use open_bitcoin_core::{
 
 pub(in crate::network) fn prepare_reorg<S: crate::ChainstateStore, V: CoinsView>(
     manager: &crate::ManagedChainstate<S, V>,
+    authorization: crate::network::work_authority::ReorgAuthorization,
     disconnect: &[Block],
     replacements: &[AnchoredBlock],
     flags: ScriptVerifyFlags,
@@ -21,5 +22,5 @@ pub(in crate::network) fn prepare_reorg<S: crate::ChainstateStore, V: CoinsView>
     crate::chainstate::PreparedChainstateReorg,
     open_bitcoin_core::chainstate::ChainstateError,
 > {
-    manager.prepare_reorg(disconnect, replacements, flags, params)
+    manager.prepare_authorized_reorg(authorization, disconnect, replacements, flags, params)
 }

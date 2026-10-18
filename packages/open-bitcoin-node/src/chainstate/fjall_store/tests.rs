@@ -41,7 +41,10 @@ fn phase158_bridge_reorg_genuine_acceptance_publishes_and_pending_blocks_flush()
     let prepared = store
         .prepare_basic_filter_reorg(&proof, &staged)
         .expect("prepare");
-    let (_, accepted) = manager.chainstate.absorb_staged_reorg_with_receipt(staged);
+    let (_, accepted) = manager
+        .chainstate
+        .absorb_staged_reorg_with_receipt(staged)
+        .expect("owner-bound reorg");
     // Act
     let lineage = manager.maybe_validated_lineage.as_mut().expect("tracked");
     let authorization = lineage
@@ -82,7 +85,8 @@ fn phase158_bridge_reorg_preview_never_earns_replacement_positions_or_flush() {
     fixture
         .manager
         .chainstate
-        .install_staged_reorg_preview(&staged);
+        .install_staged_reorg_preview(&staged)
+        .expect("owner-bound preview");
     // Assert
     assert!(
         fixture

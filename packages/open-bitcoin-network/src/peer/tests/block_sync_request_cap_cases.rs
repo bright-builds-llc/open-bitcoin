@@ -109,7 +109,15 @@ fn block_inventory_triggers_getheaders_then_getdata_for_missing_blocks() {
     let mut manager = PeerManager::new(local_config());
     let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
     let genesis_hash = open_bitcoin_consensus::block_hash(&genesis_header);
-    manager.seed_local_chain(&[ChainPosition::new(genesis_header.clone(), 0, 1, 0)]);
+    seed_mined_fixture_chain(
+        &mut manager,
+        &[ChainPosition::new(
+            genesis_header.clone(),
+            0,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+            0,
+        )],
+    );
     manager.add_outbound_peer(2, 10).expect("peer");
     manager
         .handle_message(
@@ -440,7 +448,15 @@ fn headers_response_caps_block_requests_to_in_flight_limit() {
     let first_header = mined_header(genesis_hash, 2);
     let first_hash = open_bitcoin_consensus::block_hash(&first_header);
     let second_header = mined_header(first_hash, 3);
-    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    seed_mined_fixture_chain(
+        &mut manager,
+        &[ChainPosition::new(
+            genesis_header,
+            0,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+            0,
+        )],
+    );
     manager.add_outbound_peer(12, 10).expect("peer");
 
     // Act

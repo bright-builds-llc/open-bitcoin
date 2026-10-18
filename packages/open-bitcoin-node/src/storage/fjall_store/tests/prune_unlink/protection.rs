@@ -52,8 +52,14 @@ impl History {
         let mut parent = BlockHash::default();
         for height in 0..=400 {
             let body = history_block(parent, height);
-            let position =
-                ChainPosition::new(body.header.clone(), height, u128::from(height) + 1, 1);
+            let position = ChainPosition::new(
+                body.header.clone(),
+                height,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1,
+                ),
+                1,
+            );
             let undo = BlockUndo::default();
             if height <= 16 {
                 let maybe_history = (height != 0).then_some(HistoricalBlockUndo {
@@ -272,8 +278,14 @@ fn prune_owned_live_replacement_branch_cannot_use_old_released_cursor() {
                 replacement.last().expect("parent").block_hash,
                 height + 1000,
             );
-            let position =
-                ChainPosition::new(body.header.clone(), height, u128::from(height) + 1, 1);
+            let position = ChainPosition::new(
+                body.header.clone(),
+                height,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1,
+                ),
+                1,
+            );
             if height == 1 {
                 history
                     .store
@@ -394,9 +406,12 @@ fn prune_owned_same_branch_extension_preserves_safe_prefix_delete() {
     // Arrange
     let mut history = History::new("safe-extension");
     let body = history_block(history.positions.last().expect("tip").block_hash, 401);
-    history
-        .positions
-        .push(ChainPosition::new(body.header, 401, 402, 1));
+    history.positions.push(ChainPosition::new(
+        body.header,
+        401,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(402),
+        1,
+    ));
     save_authority(&history.store, &history.positions);
     let intent = history.intent(1);
 

@@ -10,7 +10,7 @@ fn raw_snapshot(tag: u8) -> ChainstateSnapshot {
     state
         .connect_block(
             &genesis,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )
@@ -233,7 +233,12 @@ fn phase159_validation_history_coverage_sparse_raw_metadata_invalidates_without_
         } else {
             block(BlockHash::default(), 0, 0x52)
         };
-        let sparse = ChainPosition::new(raw.header, 50, 50, 1_700_000_000);
+        let sparse = ChainPosition::new(
+            raw.header,
+            50,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(50),
+            1_700_000_000,
+        );
         let raw_hash = sparse.block_hash;
         assert!(
             crate::storage::validation_history::BlockValidationIdentity::new(

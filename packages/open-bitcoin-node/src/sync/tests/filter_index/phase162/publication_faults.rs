@@ -57,7 +57,9 @@ pub(super) fn saved_with_stale(cleanup: &Cleanup) -> (AcceptedRecipe, StoredFilt
                 .expect("ordinary replacement body");
             AnchoredBlock {
                 block: block.clone(),
-                chain_work: u128::from(fixture.receipts.len() as u32) + 1000,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(fixture.receipts.len() as u32) + 1000,
+                ),
             }
         })
         .collect();

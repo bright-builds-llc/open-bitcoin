@@ -26,7 +26,8 @@ pub(super) fn apply_connect_on_overlay<V: CoinsView>(
     active_chain: &[ChainPosition],
     maybe_confirmed_txid_counts: &Option<HashMap<Txid, u32>>,
     block: &Block,
-    chain_work: u128,
+    chain_work: open_bitcoin_consensus::chain_proof::ProofWork,
+    derive_work: bool,
     current_time: i64,
     verify_flags: ScriptVerifyFlags,
     consensus_params: open_bitcoin_consensus::ConsensusParams,
@@ -61,9 +62,25 @@ pub(super) fn apply_connect_on_overlay<V: CoinsView>(
         current_time,
         consensus_params,
     };
+    if derive_work {
+        open_bitcoin_consensus::block::check_block_header_with_params(
+            &block.header,
+            &consensus_params,
+        )
+        .map_err(|source| ChainstateError::BlockValidation { source })?;
+    }
     check_block_contextual(block, &block_context)
         .map_err(|source| ChainstateError::BlockValidation { source })?;
 
+    let chain_work = if derive_work {
+        let parent_work = active_chain.last().map_or(
+            open_bitcoin_consensus::chain_proof::ProofWork::ZERO,
+            |tip| tip.chain_work,
+        );
+        super::work_authority::derive_child_work(parent_work, block.header.bits)?
+    } else {
+        chain_work
+    };
     let next_confirmed_txid_counts = next_counts_after_connect(maybe_confirmed_txid_counts, block)?;
     let (block_undo, _total_fees_sats) = apply::apply_connect_transactions(
         overlay,

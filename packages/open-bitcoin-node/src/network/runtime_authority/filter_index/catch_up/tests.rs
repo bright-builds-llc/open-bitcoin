@@ -5,9 +5,6 @@
 
 use super::*;
 use crate::chainstate::ReorgFixture;
-use crate::network::ManagedPeerNetwork;
-use open_bitcoin_core::primitives::{NetworkAddress, NetworkMagic};
-use open_bitcoin_network::LocalPeerConfig;
 mod faults;
 
 #[test]
@@ -66,7 +63,7 @@ fn phase158_preflight_publication_failure_exposes_new_accepted_target_and_keeps_
 }
 
 #[test]
-fn phase158_preflight_full_disconnect_ordinary_turn_reports_absent_accepted_target() {
+fn phase158_preflight_explicit_full_disconnect_invalidates_ordinary_turn() {
     // Arrange
     let fixture = ReorgFixture::new("driver-full-disconnect", 3);
     let path = fixture.path().to_owned();
@@ -88,21 +85,99 @@ fn phase158_preflight_full_disconnect_ordinary_turn_reports_absent_accepted_targ
     network
         .initialize_basic_filter_index_owner()
         .expect("owner");
+    let old_target = network
+        .maybe_basic_index_accepted_target_for_test()
+        .expect("retained accepted identity");
     // Act
-    reorg(&network, &disconnect, &[]).expect("full genuine disconnect");
+    network
+        .mutate(|owner| {
+            for block in &disconnect {
+                owner
+                    .chainstate_mut()
+                    .disconnect_tip(block)
+                    .expect("explicit managed disconnect");
+            }
+        })
+        .expect("actual owner mutation");
     let turn = network
         .drive_basic_filter_index_turn()
-        .expect("no nonempty turn");
+        .expect("paused conservative turn");
     // Assert
-    assert!(turn.maybe_accepted_target.is_none());
-    assert!(turn.maybe_accepted_lag.is_none());
     assert_eq!(turn.work, TurnWork::default());
+    assert_eq!(turn.work.blocks, 0);
+    assert_eq!(turn.generations, 0);
+    assert_eq!(turn.body_reads, 0);
+    assert_eq!(turn.work.encoded_bytes, 0);
+    let budget = super::production_budget().expect("native turn budget");
+    assert!(turn.work.fits(budget.normal()));
+    assert_eq!(turn.maybe_accepted_target, old_target);
+    assert!(
+        network
+            .chainstate_snapshot()
+            .expect("actual empty chain")
+            .active_chain
+            .is_empty()
+    );
     assert!(matches!(
-        turn.maybe_progress.expect("conservative owner").state(),
+        network
+            .maybe_basic_index_progress()
+            .expect("read owner")
+            .expect("conservative owner")
+            .state(),
         BasicIndexState::Paused(_)
     ));
     drop(network);
     std::fs::remove_dir_all(path).expect("cleanup");
+}
+
+#[test]
+fn phase165_work_authority_matching_basic_identity_can_resume_without_live_work() {
+    for raw_reopen in [false, true] {
+        // Arrange
+        let fixture = ReorgFixture::new("driver-matching-invalidation", 3);
+        let fixture = if raw_reopen {
+            fixture.reopen()
+        } else {
+            fixture
+        };
+        let path = fixture.path().to_owned();
+        let network = handle(fixture);
+        network
+            .initialize_basic_filter_index_owner()
+            .expect("BASIC owner independently of earned work");
+        if raw_reopen {
+            assert!(
+                !network
+                    .has_earned_fixture_work()
+                    .expect("raw work remains untrusted")
+            );
+        }
+        let target = network
+            .maybe_basic_index_accepted_target_for_test()
+            .expect("captured accepted index identity");
+        network
+            .note_basic_index_failure(
+                crate::chainstate::filter_index::AcceptedBasicIndexFailure::Invalidated,
+            )
+            .expect("explicit BASIC invalidation");
+        // Act
+        let turn = network
+            .drive_basic_filter_index_turn()
+            .expect("matching saved/actual identity may reacquire read-only BASIC authority");
+        // Assert
+        assert_eq!(turn.maybe_accepted_target, target);
+        assert_eq!(turn.maybe_accepted_lag, Some(0));
+        assert_eq!(turn.generations, 0);
+        if raw_reopen {
+            assert!(
+                !network
+                    .has_earned_fixture_work()
+                    .expect("BASIC never grants work provenance")
+            );
+        }
+        drop(network);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
 }
 
 #[test]
@@ -179,27 +254,7 @@ fn one_block_budget() -> BasicIndexTurnBudget {
 }
 
 fn handle(fixture: ReorgFixture) -> ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView> {
-    let local = LocalPeerConfig {
-        magic: NetworkMagic::from_bytes([0xfa, 0xbf, 0xb5, 0xda]),
-        services: Default::default(),
-        address: NetworkAddress {
-            services: 0,
-            address_bytes: [0; 16],
-            port: 18444,
-        },
-        nonce: 1,
-        relay: false,
-        user_agent: "/phase158/".to_owned(),
-    };
-    ManagedNetworkHandle::from_network_fixture(ManagedPeerNetwork::from_initialized_chainstate(
-        fixture.manager,
-        local,
-        Default::default(),
-        16,
-        Default::default(),
-        Default::default(),
-        false,
-    ))
+    ManagedNetworkHandle::from_network_fixture(fixture.manager.into_network())
 }
 
 fn branch(
@@ -326,7 +381,7 @@ fn phase158_preflight_lagging_common_immutable_row_reuses_unavailable_payload() 
     let fixture = ReorgFixture::new("driver-immutable", 1);
     let path = fixture.path().to_owned();
     let store = fixture.store.clone();
-    let (stage, _) = fixture.stage_from(1, 1);
+    let (stage, _) = fixture.stage_from(1, 2);
     let replacement: Vec<_> = stage
         .transition()
         .connected
@@ -370,7 +425,7 @@ fn phase158_preflight_lagging_common_immutable_row_reuses_unavailable_payload() 
     // without rebinding the manager's genuinely captured validation lineage.
     drop(stage);
     drop(store);
-    let fixture = fixture.reopen();
+    let fixture = fixture.reopen_live_fixture();
     let store = fixture.store.clone();
     let genesis = fixture.records[0].identity();
     let network = handle(fixture);
@@ -401,7 +456,7 @@ fn phase158_preflight_lagging_common_immutable_row_reuses_unavailable_payload() 
         .expect("reuse + replacement");
     // Assert
     assert_eq!(outcome.reused_records, 1);
-    assert_eq!(outcome.generations, 1);
+    assert_eq!(outcome.generations, 2);
     assert_eq!(outcome.maybe_accepted_lag, Some(0));
     assert!(!store.has_block(old_hash).expect("still absent"));
     drop(network);

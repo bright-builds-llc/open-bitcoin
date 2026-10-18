@@ -229,7 +229,7 @@ fn phase161_operator_authority_actual_catchup_keeps_safe_fence_separate() {
 fn phase161_operator_authority_actual_later_lag_processed_ahead_and_achieved_flush() {
     // Arrange
     let history = ValidatedHistory::new("operator-ahead", false);
-    let runtime = opened(&history);
+    let runtime = history.live_runtime();
     runtime
         .network
         .connect_local_block(
@@ -491,7 +491,8 @@ fn phase161_operator_authority_actual_successful_transitions_record_configuratio
 #[test]
 fn phase161_operator_authority_actual_equal_height_reorg_reports_verified_common_prefix() {
     // Arrange
-    let fixture = super::reorg::fixtures::ForkFixture::compact(16, 8, 24);
+    let fixture =
+        super::reorg::fixtures::ForkFixture::compact_with_early_branch(16, 8, 24, 15, 8, 0x76);
     let before = capture(&fixture.runtime);
     let branch = fixture.fork(15, 8, 0x76);
     // Act

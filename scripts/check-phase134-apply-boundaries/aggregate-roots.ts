@@ -4,11 +4,11 @@ export const CONNECTED_BLOCK_ROOT_SYMBOL =
 export const CONNECTED_BLOCK_SEAMS = [
   {
     symbol: "ManagedPeerNetwork::connect_local_block",
-    chainstatePreparation: "prepare_connect_block",
+    chainstatePreparation: "prepare_authorized_connect",
   },
   {
     symbol: "ManagedPeerNetwork::connect_stored_block",
-    chainstatePreparation: "prepare_connect_block_with_current_time",
+    chainstatePreparation: "prepare_authorized_connect",
   },
 ] as const;
 
@@ -235,6 +235,7 @@ export function inspectConnectedBlockSeam(
   tools: RustStructureTools,
 ): boolean {
   const maskedBody = tools.maskCommentsAndStrings(seam.body);
+  const authorizationCalls = methodCallBounds(maskedBody, "authorize_connect", tools);
   const chainstateCalls = methodCallBounds(
     maskedBody,
     chainstatePreparation,
@@ -256,6 +257,7 @@ export function inspectConnectedBlockSeam(
     tools,
   );
   if (
+    authorizationCalls.length !== 1 ||
     chainstateCalls.length !== 1 ||
     lifecycleCalls.length !== 1 ||
     sealingCalls.length !== 1 ||
@@ -264,14 +266,29 @@ export function inspectConnectedBlockSeam(
     return false;
   }
   const chainstate = chainstateCalls[0];
+  const authorization = authorizationCalls[0];
   const lifecycle = lifecycleCalls[0];
   const sealing = sealingCalls[0];
   const transaction = transactionCalls[0];
-  if (!chainstate || !lifecycle || !sealing || !transaction) {
+  if (!authorization || !chainstate || !lifecycle || !sealing || !transaction) {
+    return false;
+  }
+  const compactBody = maskedBody.replace(/\s+/g, "");
+  const usesStoredTimestamp = /\bblock_lifecycle_context\s*\(\s*timestamp\s*,/.test(maskedBody);
+  const timestamp = usesStoredTimestamp ? "timestamp" : "i64::from(block.header.time)";
+  const preparationPrefix = maskedBody.slice(0, chainstate.call).replace(/\s+/g, "");
+  const preparationArguments = maskedBody.slice(chainstate.open + 1, chainstate.close).replace(/\s+/g, "");
+  if (
+    !compactBody.includes("letauthorization=self.authorize_connect(block,consensus_params)?;") ||
+    (maskedBody.match(/\bauthorization\b/g) ?? []).length !== 2 ||
+    !preparationPrefix.endsWith("letprepared_chainstate=self.chainstate") ||
+    preparationArguments !== `authorization,block,${timestamp},verify_flags,consensus_params,`
+  ) {
     return false;
   }
   if (
     !(
+      authorization.close < chainstate.call &&
       chainstate.call < lifecycle.call &&
       lifecycle.call < sealing.call &&
       sealing.call < transaction.call

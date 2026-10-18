@@ -147,7 +147,10 @@ function phase72UnavailableReasonFixture(): Record<string, string> {
   };
 }
 
-function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
+const CANONICAL_VALIDATED_WORK = "00000000000000000000000000000000000000000000000000000000000cd145";
+
+/** Returns source expectations without executing verification or source-corpus reads. */
+export function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
   const available = phase72AvailableFixture();
   const unavailable = phase72UnavailableReasonFixture();
 
@@ -164,7 +167,7 @@ function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
           `validated_active_chain_hash=${available.maybe_validated_active_chain_hash}`,
         ],
         maybe_validated_active_chain_work: [
-          `validated_active_chain_work=${available.maybe_validated_active_chain_work}`,
+          `validated_active_chain_work=${CANONICAL_VALIDATED_WORK}`,
         ],
         best_known_tip_freshness: [available.best_known_tip_freshness],
       },
@@ -187,7 +190,7 @@ function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
           `validated_active_chain_hash=${available.maybe_validated_active_chain_hash}`,
         ],
         maybe_validated_active_chain_work: [
-          `validated_active_chain_work=${available.maybe_validated_active_chain_work}`,
+          `validated_active_chain_work=${CANONICAL_VALIDATED_WORK}`,
         ],
       },
       unavailable: {
@@ -208,7 +211,7 @@ function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
         ],
         maybe_validated_active_chain_work: [
           "maybe_validated_active_chain_work",
-          `json!("${available.maybe_validated_active_chain_work}")`,
+          `json!("${CANONICAL_VALIDATED_WORK}")`,
         ],
         best_known_tip_freshness: ["best_known_tip", `json!("${available.best_known_tip_freshness}")`],
       },
@@ -245,7 +248,7 @@ function phase72SurfaceComparisonMatrix(): readonly SurfaceComparison[] {
           `validated_active_chain_height=${available.validated_active_chain_height}`,
         ],
         maybe_validated_active_chain_work: [
-          `validated_active_chain_work=${available.maybe_validated_active_chain_work}`,
+          `validated_active_chain_work=${CANONICAL_VALIDATED_WORK}`,
         ],
         peer_contribution_connected: [
           `peer_contribution_connected=${available.peer_contribution_connected}`,
@@ -543,4 +546,6 @@ async function main(): Promise<void> {
   console.log("validated Phase 72 observability/support evidence");
 }
 
-await main();
+if (import.meta.main) {
+  await main();
+}

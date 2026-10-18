@@ -32,7 +32,8 @@ fn apply_phase78_available_sync_fields(sync: &mut SyncStatus) {
         kind: ProgressCreditKind::ValidatedDurableActiveChain,
         credited_validated_active_chain_height: 840_004,
         credited_validated_active_chain_hash: "11".repeat(32),
-        credited_validated_active_chain_work: "840005".to_string(),
+        credited_validated_active_chain_work:
+            "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
         source_unix_seconds: 1_717_000_020,
         rejected_activity: vec![RejectedProgressActivity {
             kind: RejectedProgressActivityKind::HeaderDownload,
@@ -56,7 +57,8 @@ fn apply_phase78_available_sync_fields(sync: &mut SyncStatus) {
         kind: ProgressCreditKind::CurrentAtBestKnownTip,
         credited_validated_active_chain_height: 840_004,
         credited_validated_active_chain_hash: "11".repeat(32),
-        credited_validated_active_chain_work: "840005".to_string(),
+        credited_validated_active_chain_work:
+            "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
         source_unix_seconds: 1_717_000_025,
         rejected_activity: Vec::new(),
     });
@@ -134,7 +136,7 @@ fn shared_sync_truth_snapshot() -> OpenBitcoinStatusSnapshot {
                 maybe_downloaded_block_hash: Some("22".repeat(32)),
                 maybe_connected_block_hash: Some("11".repeat(32)),
                 maybe_validated_active_chain_hash: Some("11".repeat(32)),
-                maybe_validated_active_chain_work: Some("840005".to_string()),
+                maybe_validated_active_chain_work: Some("00000000000000000000000000000000000000000000000000000000000cd145".to_string()),
                 progress_ratio: 840_004.0 / 840_100.0,
                 messages_processed: 7,
                 headers_received: 3,

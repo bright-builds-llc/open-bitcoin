@@ -24,7 +24,7 @@ fn connect_block_rejects_accumulated_fees_above_max_money_without_mutating_snaps
     let genesis_position = initial_chainstate
         .connect_block(
             &genesis_block,
-            1,
+            crate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -64,7 +64,7 @@ fn connect_block_rejects_accumulated_fees_above_max_money_without_mutating_snaps
             created_median_time_past: genesis_position.median_time_past,
         },
     );
-    let mut chainstate = Chainstate::from_snapshot(seeded_snapshot);
+    let mut chainstate = Chainstate::from_snapshot_for_mechanical_fixture(seeded_snapshot);
     let zero_fee_spend = spend_transaction(
         open_bitcoin_consensus::transaction_txid(&genesis_coinbase).expect("txid"),
         0,
@@ -99,7 +99,7 @@ fn connect_block_rejects_accumulated_fees_above_max_money_without_mutating_snaps
     let error = chainstate
         .connect_block_with_current_time(
             &block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(block.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -137,7 +137,7 @@ fn connect_block_rejects_overpaying_coinbase_without_mutating_snapshot() {
     let genesis_position = chainstate
         .connect_block(
             &genesis_block,
-            1,
+            crate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -163,7 +163,7 @@ fn connect_block_rejects_overpaying_coinbase_without_mutating_snapshot() {
     let error = chainstate
         .connect_block_with_current_time(
             &block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(block.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -223,19 +223,25 @@ fn failed_connect_leaves_live_cache_occupancy_and_best_block_unchanged() {
         1_231_006_500,
         vec![genesis_coinbase.clone()],
     );
-    let genesis_position = ChainPosition::new(genesis_block.header.clone(), 0, 1, 1_231_006_500);
+    let genesis_position = ChainPosition::new(
+        genesis_block.header.clone(),
+        0,
+        crate::ChainPosition::untrusted_fixture_work(1),
+        1_231_006_500,
+    );
     let genesis_coin = Coin {
         output: genesis_coinbase.outputs[0].clone(),
         is_coinbase: true,
         created_height: 0,
         created_median_time_past: 0,
     };
-    let mut chainstate = Chainstate::from_snapshot(crate::ChainstateSnapshot {
-        active_chain: vec![genesis_position.clone()],
-        utxos: HashMap::from([(genesis_outpoint.clone(), genesis_coin)]),
-        undo_by_block: HashMap::new(),
-        maybe_confirmed_txid_counts: Some(HashMap::new()),
-    });
+    let mut chainstate =
+        Chainstate::from_snapshot_for_mechanical_fixture(crate::ChainstateSnapshot {
+            active_chain: vec![genesis_position.clone()],
+            utxos: HashMap::from([(genesis_outpoint.clone(), genesis_coin)]),
+            undo_by_block: HashMap::new(),
+            maybe_confirmed_txid_counts: Some(HashMap::new()),
+        });
     let occupancy_before = chainstate.have_coin_in_cache(&genesis_outpoint);
     let tip_before = chainstate.tip().cloned();
     let best_before = chainstate.coins_best_block();
@@ -256,7 +262,7 @@ fn failed_connect_leaves_live_cache_occupancy_and_best_block_unchanged() {
     let error = chainstate
         .connect_block_with_current_time(
             &bad_block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(bad_block.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -298,6 +304,9 @@ fn connect_block_does_not_clone_utxo_map() {
     // Assert
     assert_eq!(chainstate.utxos().len(), 1);
     assert_eq!(chainstate.snapshot().utxos.len(), 1);
-    assert_eq!(Chainstate::from_snapshot(chainstate.snapshot()), chainstate);
+    assert_eq!(
+        Chainstate::from_snapshot_for_mechanical_fixture(chainstate.snapshot()),
+        chainstate
+    );
     assert!(!format!("{chainstate:?}").is_empty());
 }

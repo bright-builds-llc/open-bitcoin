@@ -141,9 +141,24 @@ fn run_checkpoint(
     } else {
         FlushLifecycle::not_ready_for_test()
     };
-    let first = ChainPosition::new(header(BlockHash::default(), 1), 1, 1, 1);
-    let second = ChainPosition::new(header(first.block_hash, 2), 2, 2, 1);
-    let tip = ChainPosition::new(header(second.block_hash, 3), 400, 400, 1);
+    let first = ChainPosition::new(
+        header(BlockHash::default(), 1),
+        1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
+    let second = ChainPosition::new(
+        header(first.block_hash, 2),
+        2,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+        1,
+    );
+    let tip = ChainPosition::new(
+        header(second.block_hash, 3),
+        400,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(400),
+        1,
+    );
     let plan = PrunePlan {
         heights: if prune { vec![1, 2] } else { Vec::new() },
     };

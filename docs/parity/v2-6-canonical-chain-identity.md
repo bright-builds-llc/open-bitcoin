@@ -36,12 +36,12 @@ compare every header field and the complete transaction body, including witness
 metadata; shared transaction bytes, a null parent or easy valid PoW do not prove
 the selected identity.
 
-| Existing CLI selector | Canonical identity | Time | Nonce | Bits | Display genesis hash | Ordinary history |
-| --- | --- | ---: | ---: | --- | --- | --- |
-| `mainnet` | mainnet | 1231006505 | 2083236893 | `0x1d00ffff` | `000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f` | Refused |
-| `testnet` | testnet3 | 1296688602 | 414098458 | `0x1d00ffff` | `000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943` | Refused |
-| `signet` | default Signet | 1598918400 | 52613770 | `0x1e0377ae` | `00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6` | Refused |
-| `regtest` | default regtest | 1296688602 | 2 | `0x207fffff` | `0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206` | Refused |
+| Existing CLI selector | Canonical identity |       Time |      Nonce | Bits         | Display genesis hash                                               | Ordinary history |
+| --------------------- | ------------------ | ---------: | ---------: | ------------ | ------------------------------------------------------------------ | ---------------- |
+| `mainnet`             | mainnet            | 1231006505 | 2083236893 | `0x1d00ffff` | `000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f` | Refused          |
+| `testnet`             | testnet3           | 1296688602 |  414098458 | `0x1d00ffff` | `000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943` | Refused          |
+| `signet`              | default Signet     | 1598918400 |   52613770 | `0x1e0377ae` | `00000008819873e925422c1ff0f99f7cc9bbb232af63a077a480a3633bee1ef6` | Refused          |
+| `regtest`             | default regtest    | 1296688602 |          2 | `0x207fffff` | `0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206` | Refused          |
 
 `testnet` retains its existing parser spelling and means **testnet3**; `testnet3`
 is the diagnostic identity, not a new CLI value. Testnet4 and custom Signet are
@@ -53,6 +53,10 @@ Every profile exposes `scope=identity_only` and `ordinary_history=false`, with
 missing `canonical_bootstrap`, `exact_work` and `candidate_history`. Signet also
 requires `signet_challenge_validation`. Phase 165 owns exact work, Phase 166
 canonical durable bootstrap/reopen, and Phase 167 candidate-history validation.
+The [Phase 165 work foundation](v2-6-shared-exact-work.md) now supplies exact
+numeric carriers and earned live-owner checks. The ordinary profile still reports
+`exact_work` missing: no canonical bootstrap or recovered work authority follows
+from that foundation or its fixture evidence.
 Until implemented and verified, ordinary headers, bodies, stored/local connects,
 snapshot import, compact dispatch, reorg and startup refuse before acceptance.
 An exact genesis match grants no accepted tip, spendable genesis outputs or
@@ -77,12 +81,12 @@ compares physical names, types, bytes, lengths, permissions, modification times
 and symlink targets; access times are excluded. This is software preservation
 evidence, not a hardware crash guarantee.
 
-| Observation | Fixed reason | Stored network/root/work |
-| --- | --- | --- |
-| `missing` or `empty_directory` | `unsupported_validation_scope` | Unavailable |
-| `existing_unproved` | `existing_state_unproved` | Unavailable |
-| `unsafe_path` (including a symlink or non-directory ancestor) | `unsafe_path` | Unavailable |
-| `permission_denied` or `inspection_io_other` | `inspection_io_failure` | Unavailable |
+| Observation                                                   | Fixed reason                   | Stored network/root/work |
+| ------------------------------------------------------------- | ------------------------------ | ------------------------ |
+| `missing` or `empty_directory`                                | `unsupported_validation_scope` | Unavailable              |
+| `existing_unproved`                                           | `existing_state_unproved`      | Unavailable              |
+| `unsafe_path` (including a symlink or non-directory ancestor) | `unsafe_path`                  | Unavailable              |
+| `permission_denied` or `inspection_io_other`                  | `inspection_io_failure`        | Unavailable              |
 
 Diagnostics expose `selected_network`, `selected_genesis`, `observation`,
 `observed_network=unavailable`, `observed_root=unavailable`,
@@ -90,6 +94,14 @@ Diagnostics expose `selected_network`, `selected_genesis`, `observation`,
 prerequisite codes. The selected hash is expected identity, never observed
 stored identity. Fixed diagnostic text stays below 1,024 UTF-8 bytes and excludes
 caller paths, file contents and backend error text.
+
+Phase 165 appends `work_decision` after the fixed guidance: missing/empty sources
+use `bootstrap_unavailable`, existing unproved sources use `existing_unproved`,
+unsafe paths use `unsafe_path`, and inspection I/O failures use
+`inspection_io_failure`. Observed work stays unavailable. The
+[work evidence page](v2-6-shared-exact-work.md#legacy-representation-and-non-opening-refusal)
+separates actual local Open Bitcoin refusal processes from deferred pinned-Knots
+daemon qualification; it does not grant ordinary history support.
 
 Ordinary daemon and metrics startup, RPC context/fallback construction, offline
 CLI sync status/pause/resume, managed-wallet name lookup and backup use these

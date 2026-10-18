@@ -47,12 +47,22 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, ManagedNetworkError> {
         self.guard_body(block)?;
-        let prepared_chainstate = self.chainstate.prepare_connect_block(
-            block,
-            self.next_chain_work(),
-            verify_flags,
-            consensus_params,
-        )?;
+        self.chainstate
+            .authorize_direct_connect(block, consensus_params)?;
+        self.retain_checked_candidate(block, consensus_params, i64::from(block.header.time))?;
+        let authorization = self.authorize_connect(block, consensus_params)?;
+        let prepared_chainstate = self
+            .chainstate
+            .prepare_authorized_connect(
+                authorization,
+                block,
+                i64::from(block.header.time),
+                verify_flags,
+                consensus_params,
+            )
+            .inspect_err(|error| {
+                self.note_candidate_connection_failure(block_hash(&block.header), error)
+            })?;
         let position = prepared_chainstate.position().clone();
         let context = block_lifecycle_context(i64::from(block.header.time), position.height);
         let prepared_lifecycle = self
@@ -74,12 +84,16 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn connect_stored_block(
         &mut self,
         block: &Block,
-        chain_work: u128,
+        _chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork,
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> ManagedResult<BlockConnectDisposition> {
         self.guard_body(block)?;
+        self.chainstate
+            .chainstate()
+            .bind_live_work_source(consensus_params)?;
+        self.retain_checked_candidate(block, consensus_params, timestamp)?;
         let block_hash = block_hash(&block.header);
         if self
             .chainstate
@@ -112,13 +126,17 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             return Ok(BlockConnectDisposition::Disconnected { block_hash });
         }
 
-        let prepared_chainstate = self.chainstate.prepare_connect_block_with_current_time(
-            block,
-            chain_work,
-            timestamp,
-            verify_flags,
-            consensus_params,
-        )?;
+        let authorization = self.authorize_connect(block, consensus_params)?;
+        let prepared_chainstate = self
+            .chainstate
+            .prepare_authorized_connect(
+                authorization,
+                block,
+                timestamp,
+                verify_flags,
+                consensus_params,
+            )
+            .inspect_err(|error| self.note_candidate_connection_failure(block_hash, error))?;
         let position = prepared_chainstate.position().clone();
         let context = block_lifecycle_context(timestamp, position.height);
         let prepared_lifecycle = self
@@ -151,13 +169,26 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         self.admission_scope
             .require_history()
             .map_err(|error| error.network_error())?;
+        let mut authorization =
+            self.authorize_reorg(disconnect_blocks, replacement_branch, consensus_params)?;
+        self.retain_authorized_reorg(&mut authorization)?;
         let prepared_chainstate = super::runtime_authority::filter_index::reorg::prepare_reorg(
             &self.chainstate,
+            authorization,
             disconnect_blocks,
             replacement_branch,
             verify_flags,
             consensus_params,
-        )?;
+        )
+        .inspect_err(|error| {
+            if let open_bitcoin_core::chainstate::ChainstateError::ReplacementBlock {
+                block_hash,
+                source,
+            } = error
+            {
+                self.note_candidate_connection_failure(*block_hash, source);
+            }
+        })?;
         let transition = prepared_chainstate.transition().clone();
         self.chainstate
             .install_prepared_reorg_preview(&prepared_chainstate)?;

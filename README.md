@@ -24,8 +24,12 @@ Phase 164 recognizes the exact pinned mainnet, testnet3, default Signet and
 default regtest genesis header/body identities. The existing CLI `testnet`
 selector means testnet3. Evidence is identity-only and source-derived;
 **ordinary history is currently refused for all four selectors** pending
-canonical bootstrap, exact work and candidate-history validation in Phases
-165–167. Signet also lacks challenge validation.
+canonical bootstrap and candidate-history validation in Phases 166–167. Signet
+also lacks challenge validation. Phase 165 adds the
+[shared exact-work foundation](./docs/parity/v2-6-shared-exact-work.md): exact
+256-bit proof/wrapping accumulation, accepted-header preference, checked-body
+eligibility and owner-bound activation. Numbers alone grant no lineage; ordinary
+profiles still report `exact_work` missing until canonical authority is available.
 
 Every existing nonempty unproved datadir refuses without backend open; missing
 and empty sources refuse too. Stored network/root/work remain unavailable,
@@ -33,6 +37,9 @@ not proved wrong-network facts. Offline sync controls, managed-wallet lookup
 and backup refuse; soak start reports bounded compatibility unavailability
 before ledger/index writes. Separately authenticated live RPC
 status/index/send/control paths remain separate and open no local store.
+Work diagnostics append `work_decision` while observed work stays unavailable.
+Actual local Open Bitcoin daemon refusal processes are distinct from deferred
+pinned-Knots differential qualification in Phase 168; networking remains default off.
 
 Use the [exact identity/support/refusal matrix and repo-local Cargo/Bazel UAT](./docs/parity/v2-6-canonical-chain-identity.md)
 and [support classification](./docs/parity/support-matrix.md#current-phase-164-source-boundary).

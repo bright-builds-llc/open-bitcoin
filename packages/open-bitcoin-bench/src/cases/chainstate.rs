@@ -29,12 +29,13 @@ pub const CASES: [BenchCase; 1] = [BenchCase {
 
 fn run_once() -> Result<(), BenchError> {
     let fixtures = BenchFixtures::shared()?;
-    let mut connect_disconnect =
-        Chainstate::from_snapshot(fixtures.chainstate.genesis_snapshot.clone());
+    let mut connect_disconnect = Chainstate::from_snapshot_for_mechanical_fixture(
+        fixtures.chainstate.genesis_snapshot.clone(),
+    );
     connect_disconnect
         .connect_block(
             &fixtures.chainstate.branch_a,
-            2,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
             verify_flags(),
             consensus_params(),
         )
@@ -43,13 +44,15 @@ fn run_once() -> Result<(), BenchError> {
         .disconnect_tip(&fixtures.chainstate.branch_a)
         .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
 
-    let mut reorg = Chainstate::from_snapshot(fixtures.chainstate.branch_a_snapshot.clone());
+    let mut reorg = Chainstate::from_snapshot_for_mechanical_fixture(
+        fixtures.chainstate.branch_a_snapshot.clone(),
+    );
     reorg
         .reorg(
             std::slice::from_ref(&fixtures.chainstate.branch_a),
             &[AnchoredBlock {
                 block: fixtures.chainstate.branch_b.clone(),
-                chain_work: 3,
+                chain_work: open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(3),
             }],
             verify_flags(),
             consensus_params(),

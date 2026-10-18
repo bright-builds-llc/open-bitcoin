@@ -5,6 +5,7 @@
 
 //! Shell-owned CanFlush init and ordered `decide_flush` execution.
 
+use open_bitcoin_core::chainstate::coins::CoinsFlush;
 use std::path::Path;
 
 use open_bitcoin_core::{
@@ -37,7 +38,7 @@ mod fjall_sink;
 pub use super::fjall_store::CompletedValidatedFlush;
 pub(super) use super::fjall_store::ValidatedChainstateLineage;
 #[cfg(test)]
-pub(super) use fjall_sink::proof_tests::managed_fixture;
+pub(super) use fjall_sink::proof_tests::{managed_fixture, managed_fixture_with_params};
 mod prune_apply;
 
 use prune_apply::apply_prune_plan;
@@ -338,10 +339,10 @@ impl FlushLifecycle {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn execute_flush<V: CoinsView, S: FlushPersistSink>(
+    pub fn execute_flush<S: FlushPersistSink>(
         &mut self,
         sink: &mut S,
-        cache: &mut CoinsCache<V>,
+        cache: &mut impl CoinsFlush,
         mode: FlushMode,
         now: FlushPolicyTime,
         disk_free_bytes: u64,
@@ -368,10 +369,10 @@ impl FlushLifecycle {
 
     /// Prefix, then eligible paired deletes, then coins. An empty plan skips deletes.
     #[allow(clippy::too_many_arguments)]
-    pub fn execute_flush_applying_plan<V: CoinsView, S: FlushPersistSink>(
+    pub fn execute_flush_applying_plan<S: FlushPersistSink>(
         &mut self,
         sink: &mut S,
-        cache: &mut CoinsCache<V>,
+        cache: &mut impl CoinsFlush,
         mode: FlushMode,
         now: FlushPolicyTime,
         disk_free_bytes: u64,
@@ -404,7 +405,7 @@ impl FlushLifecycle {
     pub(crate) fn execute_flush_applying_plan_with_header_checkpoint<S: FlushPersistSink>(
         &mut self,
         sink: &mut S,
-        cache: &mut CoinsCache<impl CoinsView>,
+        cache: &mut impl CoinsFlush,
         mode: FlushMode,
         now: FlushPolicyTime,
         disk_free_bytes: u64,
@@ -551,9 +552,9 @@ const fn coins_write_kind(decision: FlushDecision) -> Option<CoinsWriteKind> {
     }
 }
 
-fn complete_coins_write<V: CoinsView, S: FlushPersistSink>(
+fn complete_coins_write<S: FlushPersistSink>(
     sink: &mut S,
-    cache: &mut CoinsCache<V>,
+    cache: &mut impl CoinsFlush,
     decision: FlushDecision,
     active_chain: &[ChainPosition],
     deleted_block_hashes: Vec<BlockHash>,
@@ -570,9 +571,7 @@ fn complete_coins_write<V: CoinsView, S: FlushPersistSink>(
     };
     // An opened or previously flushed cache has no staged tip. Carry current
     // coins authority into the write without changing a newer overlay tip.
-    if let Some(best_block) = cache.best_block().map_err(map_chainstate)? {
-        cache.set_best_block(best_block);
-    }
+    cache.prepare_current_best_block().map_err(map_chainstate)?;
     match write_kind {
         CoinsWriteKind::Flush => cache.flush().map_err(map_chainstate)?,
         CoinsWriteKind::Sync => cache.sync().map_err(map_chainstate)?,

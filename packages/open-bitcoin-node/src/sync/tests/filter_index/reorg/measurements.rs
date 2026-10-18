@@ -93,7 +93,14 @@ fn phase158_reorg_measurements() {
                 // accidentally turn a prefix-scaling test into whole backlog work.
                 for indexed in [ancestor.saturating_sub(16), ancestor + 1, total] {
                     // Arrange
-                    let fixture = ForkFixture::compact(prefix, 32, indexed);
+                    let fixture = ForkFixture::compact_early(
+                        prefix,
+                        32,
+                        indexed,
+                        ancestor,
+                        depth + extra,
+                        0x7c,
+                    );
                     let branch = fixture.fork(ancestor, depth + extra, 0x7c);
                     let before = fixture
                         .runtime
@@ -164,7 +171,7 @@ fn phase158_reorg_measurement_fixed_depth_complete_preparation_and_turns_do_not_
     let mut maybe_previous = None;
     for prefix in [16, 128, 512] {
         // Arrange: exactly eight disconnected/replacement records, fully indexed.
-        let fixture = ForkFixture::compact(prefix, 8, prefix + 8);
+        let fixture = ForkFixture::compact_early(prefix, 8, prefix + 8, prefix - 1, 8, 0x7d);
         let branch = fixture.fork(prefix - 1, 8, 0x7d);
         // Act
         let (prepared, _) = preparation(&fixture, &branch);
@@ -198,7 +205,7 @@ fn phase158_reorg_measurement_fixed_depth_complete_preparation_and_turns_do_not_
 #[test]
 fn phase158_reorg_measurement_exact_and_one_under_record_acquisition_preserve_effects() {
     // Arrange
-    let fixture = ForkFixture::compact(16, 8, 24);
+    let fixture = ForkFixture::compact_early(16, 8, 24, 15, 8, 0x7f);
     let branch = fixture.fork(15, 8, 0x7f);
     fixture.apply(&branch);
     let store = fixture.runtime.store();
@@ -245,7 +252,7 @@ fn phase158_reorg_measurement_exact_and_one_under_record_acquisition_preserve_ef
 #[test]
 fn phase158_reorg_measurement_retained_over_budget_gap_refuses_before_preview() {
     // Arrange: all inputs genuinely exist; only the finite source envelope refuses.
-    let fixture = ForkFixture::compact(400, 1, 16);
+    let fixture = ForkFixture::compact_early(400, 1, 16, 390, 10, 0x80);
     let branch = fixture.fork(390, 10, 0x80);
     for anchored in &branch.connected {
         fixture
@@ -329,7 +336,7 @@ fn phase158_reorg_measurement_retained_over_budget_gap_refuses_before_preview() 
 #[test]
 fn phase158_reorg_measurement_absolute_acquisition_exhaustion_refuses_before_effects() {
     // Arrange
-    let fixture = ForkFixture::compact(16, 8, 24);
+    let fixture = ForkFixture::compact_early(16, 8, 24, 15, 8, 0x7e);
     let branch = fixture.fork(15, 8, 0x7e);
     fixture.apply(&branch);
     let before = fixture

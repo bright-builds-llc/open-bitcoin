@@ -35,7 +35,9 @@ fn tip(height: u32) -> ChainPosition {
             nonce: height,
         },
         height,
-        u128::from(height) + 1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+            u128::from(height) + 1,
+        ),
         i64::from(1_700_000_000 + height),
     )
 }

@@ -51,7 +51,7 @@ fn staged_genesis_and_explicit_empty_undo_agree_with_no_undo_path() {
     let staged_inputs = staged
         .basic_filter_inputs(&fixture.genesis)
         .expect("staged genesis");
-    let historical = BasicFilterInputs::from_historical(&fixture.genesis, &staged.position, None)
+    let historical = BasicFilterInputs::from_historical(&fixture.genesis, staged.position(), None)
         .expect("genesis no-undo path");
     // Assert
     assert_eq!(staged_inputs.spent_scripts().count(), 0);
@@ -86,26 +86,26 @@ fn staged_validation_projects_historical_and_same_block_spends() {
         .basic_filter_inputs(&fixture.spending)
         .expect("actual stage inputs");
     // Assert
-    assert_eq!(staged.undo.transactions.len(), 2);
-    assert!(staged.undo.transactions[0].restored_inputs[0].is_coinbase);
+    assert_eq!(staged.undo().transactions.len(), 2);
+    assert!(staged.undo().transactions[0].restored_inputs[0].is_coinbase);
     assert_eq!(
-        staged.undo.transactions[0].restored_inputs[0].created_height,
+        staged.undo().transactions[0].restored_inputs[0].created_height,
         1
     );
-    assert!(!staged.undo.transactions[1].restored_inputs[0].is_coinbase);
+    assert!(!staged.undo().transactions[1].restored_inputs[0].is_coinbase);
     assert_eq!(
-        staged.undo.transactions[1].restored_inputs[0].created_height,
+        staged.undo().transactions[1].restored_inputs[0].created_height,
         2
     );
     assert_eq!(
-        staged.undo.transactions[0].restored_inputs[0]
+        staged.undo().transactions[0].restored_inputs[0]
             .output
             .script_pubkey
             .as_bytes(),
         fixtures::FUNDING_SCRIPT
     );
     assert_eq!(
-        staged.undo.transactions[1].restored_inputs[0]
+        staged.undo().transactions[1].restored_inputs[0]
             .output
             .script_pubkey
             .as_bytes(),
@@ -117,7 +117,7 @@ fn staged_validation_projects_historical_and_same_block_spends() {
     );
     assert_eq!(fixture.chainstate.snapshot(), before);
     assert_eq!(
-        raw_hex(staged.position.block_hash.as_bytes()),
+        raw_hex(staged.position().block_hash.as_bytes()),
         independent("actual-spending").block_hash_raw
     );
 }
@@ -161,7 +161,7 @@ fn retained_history_generates_identical_commitments_after_spent_coins_disappear(
     let mut fixture = fixtures::spending_chain();
     let previous_header = funding_header(&fixture);
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
-    let position = staged.position.clone();
+    let position = staged.position().clone();
     let funding_outpoint = fixtures::outpoint(&fixture.funding.transactions[0]);
     let same_block_outpoint = fixtures::outpoint(&fixture.spending.transactions[1]);
     let predecessor = FilterHeaderPredecessor::Previous {
@@ -231,7 +231,7 @@ fn projection_borrows_scripts_in_transaction_and_input_order() {
     let fixture = fixtures::spending_chain();
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
     let mut block = fixture.spending.clone();
-    let mut undo = staged.undo.clone();
+    let mut undo = staged.undo().clone();
     let second_input = block.transactions[2].inputs[0].clone();
     block.transactions[1].inputs.push(second_input);
     let second_coin = undo.transactions[1].restored_inputs[0].clone();
@@ -240,7 +240,7 @@ fn projection_borrows_scripts_in_transaction_and_input_order() {
         .expect("edited fixture merkle");
     assert!(!mutated);
     block.header.merkle_root = merkle_root;
-    let mut position = staged.position.clone();
+    let mut position = staged.position().clone();
     position.block_hash = open_bitcoin_consensus::block_hash(&block.header);
     position.header = block.header.clone();
     // Act
@@ -383,11 +383,11 @@ fn historical_refusals_do_not_mutate_validated_state() {
     let fixture = fixtures::spending_chain();
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
     let before = fixture.chainstate.snapshot();
-    let mut altered = staged.undo.clone();
+    let mut altered = staged.undo().clone();
     altered.transactions[1].restored_inputs.clear();
     // Act
-    let missing = BasicFilterInputs::from_historical(&fixture.spending, &staged.position, None);
-    let mismatch = historical_error(&fixture.spending, &staged.position, &altered);
+    let missing = BasicFilterInputs::from_historical(&fixture.spending, staged.position(), None);
+    let mismatch = historical_error(&fixture.spending, staged.position(), &altered);
     // Assert
     assert_eq!(missing.err(), Some(BasicFilterInputError::MissingUndo));
     assert_eq!(

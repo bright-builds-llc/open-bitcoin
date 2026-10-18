@@ -27,7 +27,28 @@ pub use flush::{
 };
 pub use memory::MemoryCoinsView;
 
+/// Complete effective state observed together, unlike an optional admission hint.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompleteCoinsSnapshot {
+    pub coins: HashMap<OutPoint, Coin>,
+    pub maybe_best_block: Option<BlockHash>,
+    pub head_blocks: Vec<BlockHash>,
+}
+
+/// Closed persistence operations that cannot inject coins or a caller-selected B.
+pub trait CoinsFlush {
+    fn estimated_cache_bytes(&self) -> u64;
+    fn cache_entry_count(&self) -> u64;
+    fn prepare_current_best_block(&mut self) -> Result<(), ChainstateError>;
+    fn flush(&mut self) -> Result<(), ChainstateError>;
+    fn sync(&mut self) -> Result<(), ChainstateError>;
+}
+
 pub trait CoinsView {
+    /// Unsupported views cannot certify emptiness through the hint's default empty map.
+    fn complete_snapshot(&self) -> Result<CompleteCoinsSnapshot, ChainstateError> {
+        Err(ChainstateError::CompleteCoinsSnapshotUnavailable)
+    }
     fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError>;
     fn have_coin(&self, outpoint: &OutPoint) -> Result<bool, ChainstateError>;
     fn best_block(&self) -> Result<Option<BlockHash>, ChainstateError>;

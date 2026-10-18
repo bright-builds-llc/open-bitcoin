@@ -28,6 +28,7 @@ impl<S: Clone> Clone for ManagedPeerNetwork<S, MemoryCoinsView> {
     fn clone(&self) -> Self {
         Self {
             admission_scope: self.admission_scope,
+            maybe_header_consensus_params: self.maybe_header_consensus_params,
             chainstate: self.chainstate.clone(),
             mempool: self.mempool.clone(),
             peer_manager: self.peer_manager.clone(),

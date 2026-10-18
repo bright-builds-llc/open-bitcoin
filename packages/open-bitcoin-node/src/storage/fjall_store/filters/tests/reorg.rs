@@ -35,7 +35,7 @@ fn phase158_storage_reorg_preserves_stronger_reserved_and_ordinary_locks() {
                 .expect("stronger persisted lock fixture"),
         )
         .expect("fixture");
-    fixture = fixture.reopen();
+    fixture = fixture.reopen_live_fixture();
     let (staged, _) = fixture.stage(2);
     let proof = fixture
         .store

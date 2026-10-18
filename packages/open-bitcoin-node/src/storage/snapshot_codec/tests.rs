@@ -122,7 +122,12 @@ pub(super) fn legacy_mempool_snapshot() -> MempoolSnapshot {
 }
 
 pub(super) fn chainstate_snapshot() -> ChainstateSnapshot {
-    let position = ChainPosition::new(header(1), 0, 1, 1);
+    let position = ChainPosition::new(
+        header(1),
+        0,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
     let outpoint = OutPoint {
         txid: Txid::from_byte_array([9; 32]),
         vout: 0,

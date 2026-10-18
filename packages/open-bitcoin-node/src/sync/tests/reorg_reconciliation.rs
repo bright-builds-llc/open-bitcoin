@@ -37,6 +37,7 @@ fn phase70_branch_awaiting_bodies_does_not_disconnect_active_chain() {
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
 
     // Act
     let progress = block_reconcile::reconcile_and_persist_best_chain(
@@ -81,6 +82,7 @@ fn phase70_branch_awaiting_bodies_does_not_disconnect_active_chain() {
         )
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -93,6 +95,7 @@ fn phase70_reorg_records_bounded_persisted_evidence() {
         phase70_save_reorg_ready_branch(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let expected_evidence = SyncReorgEvidence {
         common_ancestor_height: 0,
         common_ancestor_hash: block_hash_hex(block_hash(&genesis.header)),
@@ -125,6 +128,7 @@ fn phase70_reorg_records_bounded_persisted_evidence() {
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
     let reopened_runtime =
         DurableSyncRuntime::open(reopened_store, sync_config()).expect("reopen runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&reopened_runtime);
     let reopened_summary = reopened_runtime.snapshot_summary();
     let reopened_state = reopened_runtime
         .durable_sync_state_for_summary(
@@ -180,7 +184,7 @@ fn phase70_equal_or_lower_work_side_branch_does_not_replace_active_tip() {
     };
     let active_tip_hash = block_hash(&active_tip.header);
     let side_tip_hash = block_hash(&side_tip.header);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&side_tip, 1)],
         &[(&genesis, 0), (&active_tip, 1)],
@@ -193,6 +197,7 @@ fn phase70_equal_or_lower_work_side_branch_does_not_replace_active_tip() {
     }
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
 
     // Act
     let progress = block_reconcile::reconcile_and_persist_best_chain(
@@ -262,6 +267,7 @@ fn phase70_missing_active_chain_block_body_blocks_runtime_open() {
     // migration, so a missing active-chain body no longer blocks publication.
     let runtime = DurableSyncRuntime::open(store, sync_config())
         .expect("hydrate from coins does not require leftover confirmation bodies");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
 
     // Assert
     let summary = runtime.snapshot_summary();
@@ -278,7 +284,7 @@ fn phase70_missing_undo_data_is_storage_blocker() {
     remove_dir_if_exists(&path);
     let (genesis, branch_a_one, branch_a_two, branch_b_one, branch_b_two, branch_b_three) =
         phase70_branch_blocks();
-    save_chain_headers_snapshot_and_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[
             (&genesis, 0),
@@ -287,17 +293,21 @@ fn phase70_missing_undo_data_is_storage_blocker() {
             (&branch_b_three, 3),
         ],
         &[(&genesis, 0), (&branch_a_one, 1), (&branch_a_two, 2)],
-        &[
-            (&genesis, 0),
-            (&branch_a_one, 1),
-            (&branch_a_two, 2),
-            (&branch_b_one, 1),
-            (&branch_b_two, 2),
-            (&branch_b_three, 3),
-        ],
     );
+    {
+        let store = FjallNodeStore::open(&path).expect("actual fixture store");
+        for block in [&branch_b_one, &branch_b_two, &branch_b_three] {
+            store
+                .save_block(block, PersistMode::Sync)
+                .expect("actual retained candidate");
+        }
+        store
+            .delete_basic_input_for_test(block_hash(&branch_a_two.header), true)
+            .expect("actual missing active undo");
+    }
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
 
     // Act
     let error =
@@ -334,6 +344,7 @@ fn phase70_malformed_leftover_chainstate_does_not_block_open() {
     // Act
     let runtime = DurableSyncRuntime::open(store, sync_config())
         .expect("leftover snapshot is unread; malformed leftover must not block open");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
 
     // Assert
     assert_eq!(runtime.snapshot_summary().best_block_height, 0);

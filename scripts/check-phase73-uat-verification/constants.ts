@@ -195,7 +195,7 @@ export const VER02_COVERAGE = [
         file: "packages/open-bitcoin-node/src/sync/tests.rs",
         needles: [
           "competing_header_branch_wins_after_restart_when_it_extends_farther",
-          "bounded_block_requests_use_validated_best_chain_headers_only",
+          "bounded_block_requests_prioritize_best_headers_and_include_accepted_sides",
         ],
       },
     ],

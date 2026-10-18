@@ -22,6 +22,13 @@ use crate::{
 mod apply;
 mod overlay_apply;
 mod stage;
+mod work_authority;
+
+pub use stage::{
+    AcceptedChainstateReorg, StagedChainstateConnect, StagedChainstateReorg,
+    ValidatedChainstateConnect, ValidatedChainstateReorg,
+};
+use work_authority::{WorkAuthority, WorkOrigin};
 
 use overlay_apply::{apply_connect_on_overlay, apply_disconnect_on_overlay};
 
@@ -37,6 +44,7 @@ type StagedDisconnect = (
 pub(super) type ConnectApplyOutcome = (ChainPosition, BlockUndo, Option<HashMap<Txid, u32>>);
 
 pub struct Chainstate<V: CoinsView = MemoryCoinsView> {
+    work_authority: WorkAuthority,
     active_chain: Vec<ChainPosition>,
     coins: CoinsCache<V>,
     undo_by_block: HashMap<BlockHash, BlockUndo>,
@@ -45,120 +53,10 @@ pub struct Chainstate<V: CoinsView = MemoryCoinsView> {
 
 pub type MemoryBackedChainstate = Chainstate<MemoryCoinsView>;
 
-#[derive(Debug)]
-pub struct StagedChainstateConnect {
-    pub overlay: CoinsOverlay,
-    pub undo: BlockUndo,
-    pub position: ChainPosition,
-    pub next_active_chain: Vec<ChainPosition>,
-    pub next_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
-}
-
-/// Genuine validated stage with read-only borrowed facts.
-///
-/// Raw construction is forbidden:
-/// ```compile_fail
-/// use open_bitcoin_chainstate::{StagedChainstateReorg, ChainTransition};
-/// use open_bitcoin_chainstate::coins::CoinsOverlay;
-/// use std::collections::HashMap;
-/// let _ = StagedChainstateReorg {
-///     overlay: CoinsOverlay::new(), transition: ChainTransition::default(),
-///     next_active_chain: Vec::new(), next_undo_by_block: HashMap::new(),
-///     next_confirmed_txid_counts: None,
-///     maybe_old_tip: None, maybe_common_ancestor: None,
-/// };
-/// ```
-/// Every staged field is immutable to external consumers:
-/// ```compile_fail
-/// use open_bitcoin_chainstate::{StagedChainstateReorg, coins::CoinsOverlay};
-/// fn mutate(stage: &mut StagedChainstateReorg) { stage.overlay = CoinsOverlay::new(); }
-/// ```
-/// ```compile_fail
-/// use open_bitcoin_chainstate::{StagedChainstateReorg, ChainTransition};
-/// fn mutate(stage: &mut StagedChainstateReorg) { stage.transition = ChainTransition::default(); }
-/// ```
-/// ```compile_fail
-/// use open_bitcoin_chainstate::StagedChainstateReorg;
-/// fn mutate(stage: &mut StagedChainstateReorg) { stage.next_active_chain = Vec::new(); }
-/// ```
-/// ```compile_fail
-/// use open_bitcoin_chainstate::StagedChainstateReorg;
-/// fn mutate(stage: &mut StagedChainstateReorg) { stage.next_undo_by_block = std::collections::HashMap::new(); }
-/// ```
-/// ```compile_fail
-/// use open_bitcoin_chainstate::StagedChainstateReorg;
-/// fn mutate(stage: &mut StagedChainstateReorg) { stage.next_confirmed_txid_counts = None; }
-/// ```
-/// Borrowed access preserves exact identity without exposing mutable parts:
-/// ```
-/// use open_bitcoin_chainstate::{StagedChainstateReorg, ChainPosition, BlockUndo, ChainTransition};
-/// use open_bitcoin_primitives::BlockHash;
-/// fn inspect(stage: &StagedChainstateReorg, hash: BlockHash) {
-///     let _: &ChainTransition = stage.transition();
-///     let _: Option<&ChainPosition> = stage.maybe_position_at_height(0);
-///     let _: Option<&BlockUndo> = stage.maybe_replacement_undo(hash);
-///     let _: Option<&ChainPosition> = stage.maybe_old_tip();
-///     let _: Option<&ChainPosition> = stage.maybe_common_ancestor();
-/// }
-/// ```
-/// Mutable borrowed access is forbidden:
-/// ```compile_fail
-/// use open_bitcoin_chainstate::{StagedChainstateReorg, ChainTransition};
-/// fn mutate(stage: &mut StagedChainstateReorg) {
-///     let _: &mut ChainTransition = stage.transition();
-/// }
-/// ```
-#[derive(Debug)]
-pub struct StagedChainstateReorg {
-    overlay: CoinsOverlay,
-    transition: ChainTransition,
-    next_active_chain: Vec<ChainPosition>,
-    next_undo_by_block: HashMap<BlockHash, BlockUndo>,
-    next_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
-    maybe_old_tip: Option<ChainPosition>,
-    maybe_common_ancestor: Option<ChainPosition>,
-}
-
-/// Consume-only evidence of genuine absorption, distinct from a durable checkpoint.
-/// ```compile_fail
-/// use open_bitcoin_chainstate::AcceptedChainstateReorg;
-/// let _ = AcceptedChainstateReorg {
-///     maybe_old_endpoint: None, maybe_new_endpoint: None,
-///     maybe_common_ancestor_endpoint: None,
-/// };
-/// ```
-/// Accepted receipts cannot be cloned:
-/// ```compile_fail
-/// use open_bitcoin_chainstate::AcceptedChainstateReorg;
-/// fn duplicate(receipt: AcceptedChainstateReorg) -> AcceptedChainstateReorg { receipt.clone() }
-/// ```
-/// Preview has no accepted receipt:
-/// ```compile_fail
-/// use open_bitcoin_chainstate::{Chainstate, StagedChainstateReorg, AcceptedChainstateReorg};
-/// fn preview(chain: &mut Chainstate, stage: &StagedChainstateReorg) {
-///     let _: AcceptedChainstateReorg = chain.install_staged_reorg_preview(stage);
-/// }
-/// ```
-/// Read-only receipt inspection remains available to downstream adapters:
-/// ```
-/// use open_bitcoin_chainstate::AcceptedChainstateReorg;
-/// use open_bitcoin_primitives::BlockHash;
-/// fn inspect(receipt: &AcceptedChainstateReorg) {
-///     let _: Option<(u32, BlockHash)> = receipt.maybe_old_endpoint();
-///     let _: Option<(u32, BlockHash)> = receipt.maybe_new_endpoint();
-///     let _: Option<(u32, BlockHash)> = receipt.maybe_common_ancestor_endpoint();
-/// }
-/// ```
-#[derive(Debug)]
-pub struct AcceptedChainstateReorg {
-    maybe_old_endpoint: Option<(u32, BlockHash)>,
-    maybe_new_endpoint: Option<(u32, BlockHash)>,
-    maybe_common_ancestor_endpoint: Option<(u32, BlockHash)>,
-}
-
 impl Default for Chainstate<MemoryCoinsView> {
     fn default() -> Self {
         Self {
+            work_authority: WorkAuthority::new(WorkOrigin::Live),
             active_chain: Vec::new(),
             coins: CoinsCache::from_parent(MemoryCoinsView::from_coins(HashMap::new(), None)),
             undo_by_block: HashMap::new(),
@@ -198,6 +96,7 @@ impl Chainstate<MemoryCoinsView> {
     pub fn from_snapshot(snapshot: ChainstateSnapshot) -> Self {
         let maybe_best_block = snapshot.tip().map(|tip| tip.block_hash);
         Self {
+            work_authority: WorkAuthority::new(WorkOrigin::Untrusted),
             active_chain: snapshot.active_chain,
             coins: CoinsCache::from_parent(MemoryCoinsView::from_coins(
                 snapshot.utxos,
@@ -231,6 +130,7 @@ impl<V: CoinsView> Chainstate<V> {
         maybe_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
     ) -> Self {
         Self {
+            work_authority: WorkAuthority::new(WorkOrigin::Untrusted),
             active_chain,
             coins: CoinsCache::from_parent(parent),
             undo_by_block,
@@ -245,6 +145,7 @@ impl<V: CoinsView> Chainstate<V> {
         maybe_confirmed_txid_counts: Option<HashMap<Txid, u32>>,
     ) -> Self {
         Self {
+            work_authority: WorkAuthority::new(WorkOrigin::Untrusted),
             active_chain,
             coins,
             undo_by_block,
@@ -262,6 +163,7 @@ impl<V: CoinsView> Chainstate<V> {
 
     /// Drops one undo so a later flush cannot write that key back.
     pub fn forget_undo(&mut self, block_hash: BlockHash) {
+        self.work_authority.invalidate_stages();
         self.undo_by_block.remove(&block_hash);
     }
 
@@ -294,6 +196,7 @@ impl<V: CoinsView> Chainstate<V> {
     }
 
     pub fn coins_mut(&mut self) -> &mut CoinsCache<V> {
+        self.work_authority.invalidate_coins_authority();
         &mut self.coins
     }
 
@@ -316,7 +219,7 @@ impl<V: CoinsView> Chainstate<V> {
     pub fn connect_block(
         &mut self,
         block: &Block,
-        chain_work: u128,
+        chain_work: open_bitcoin_consensus::chain_proof::ProofWork,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, ChainstateError> {
@@ -332,7 +235,7 @@ impl<V: CoinsView> Chainstate<V> {
     pub fn connect_block_with_current_time(
         &mut self,
         block: &Block,
-        chain_work: u128,
+        chain_work: open_bitcoin_consensus::chain_proof::ProofWork,
         current_time: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -350,11 +253,15 @@ impl<V: CoinsView> Chainstate<V> {
     pub fn stage_connect_block_with_current_time(
         &self,
         block: &Block,
-        chain_work: u128,
+        chain_work: open_bitcoin_consensus::chain_proof::ProofWork,
         current_time: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<StagedChainstateConnect, ChainstateError> {
+        let derive_work = self
+            .work_authority
+            .check_parent(&self.active_chain, consensus_params)?;
+        let binding = self.work_authority.bind(self.tip(), consensus_params);
         let mut overlay = CoinsOverlay::new();
         let (position, undo, next_confirmed_txid_counts) = apply_connect_on_overlay(
             &mut overlay,
@@ -363,6 +270,7 @@ impl<V: CoinsView> Chainstate<V> {
             &self.maybe_confirmed_txid_counts,
             block,
             chain_work,
+            derive_work,
             current_time,
             verify_flags,
             consensus_params,
@@ -371,6 +279,7 @@ impl<V: CoinsView> Chainstate<V> {
         let mut next_active_chain = self.active_chain.clone();
         next_active_chain.push(position.clone());
         Ok(StagedChainstateConnect {
+            binding,
             overlay,
             undo,
             position,
@@ -383,11 +292,14 @@ impl<V: CoinsView> Chainstate<V> {
         &mut self,
         staged: StagedChainstateConnect,
     ) -> Result<ChainPosition, ChainstateError> {
+        self.work_authority
+            .check(&staged.binding, self.tip(), false)?;
         let position = staged.position;
         let undo = staged.undo;
         let next_active_chain = staged.next_active_chain;
         let next_confirmed_txid_counts = staged.next_confirmed_txid_counts;
         self.apply_flushed(staged.overlay, Some(position.block_hash), |this| {
+            this.work_authority.accept(&staged.binding);
             this.undo_by_block.insert(position.block_hash, undo);
             this.active_chain = next_active_chain;
             this.maybe_confirmed_txid_counts = next_confirmed_txid_counts;
@@ -400,6 +312,7 @@ impl<V: CoinsView> Chainstate<V> {
             self.stage_disconnect_tip(block)?;
         let maybe_best_block = next_active_chain.last().map(|position| position.block_hash);
         self.apply_flushed(overlay, maybe_best_block, |this| {
+            this.work_authority.invalidate_stages();
             this.active_chain = next_active_chain;
             this.undo_by_block = next_undo_by_block;
             this.maybe_confirmed_txid_counts = next_confirmed_txid_counts;
@@ -427,11 +340,14 @@ impl<V: CoinsView> Chainstate<V> {
         &mut self,
         staged: StagedChainstateReorg,
     ) -> Result<ChainTransition, ChainstateError> {
+        self.work_authority
+            .check(&staged.binding, self.tip(), true)?;
         let maybe_best_block = staged
             .next_active_chain
             .last()
             .map(|position| position.block_hash);
         self.apply_flushed(staged.overlay, maybe_best_block, |this| {
+            this.work_authority.accept(&staged.binding);
             this.active_chain = staged.next_active_chain;
             this.undo_by_block = staged.next_undo_by_block;
             this.maybe_confirmed_txid_counts = staged.next_confirmed_txid_counts;

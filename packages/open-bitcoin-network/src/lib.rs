@@ -80,7 +80,47 @@ pub use error::PeerId;
 pub use error::{DisconnectReason, NetworkError};
 pub use filter_serving::{BasicPeerServingCapability, BasicPeerServingPrerequisite};
 pub use filter_serving::{policy, resource as basic_peer_resource};
-pub use header_store::{HeaderEntry, HeaderProofFacts, HeaderStore, InsertedHeader};
+pub use header_store::{
+    BodyEligibilityError, BodyEligibilityFacts, HeaderEntry, HeaderProofFacts, HeaderStore,
+    InsertedHeader,
+};
+
+/// Immutable identity of one actually earned body linkage in this history.
+/// Cloning preserves that past event; independently linking an equal body does not.
+#[derive(Debug, Clone)]
+pub struct BodyEligibilityBinding {
+    seal: std::sync::Arc<()>,
+    facts: BodyEligibilityFacts,
+}
+
+/// Read-only freshness of current eligibility facts; the mutable registry is
+/// the sole strong owner. This carries no body or coins acceptance authority.
+#[derive(Debug)]
+pub struct BodyEligibilityEpoch {
+    epoch: std::sync::Weak<()>,
+}
+
+impl BodyEligibilityEpoch {
+    /// Refuse after issuing facts change, their owner is replaced, or it is dropped.
+    pub fn is_current(&self) -> bool {
+        self.epoch.strong_count() == 1
+    }
+}
+
+impl BodyEligibilityBinding {
+    /// Borrow immutable numerical observations from the sealed linkage event.
+    pub fn facts(&self) -> BodyEligibilityFacts {
+        self.facts
+    }
+
+    /// Compare the actual event identity, independently of equal numeric sequences.
+    pub fn same_linkage(&self, other: &Self) -> bool {
+        std::sync::Arc::ptr_eq(&self.seal, &other.seal)
+            && self.facts.block_hash == other.facts.block_hash
+            && self.facts.chain_work == other.facts.chain_work
+            && self.facts.maybe_sequence == other.facts.maybe_sequence
+    }
+}
 pub use inbound::{
     INBOUND_ENABLED_FIELD, INBOUND_LISTEN_ADDRESSES_FIELD, INBOUND_PERMISSION_ADDRESSES_FIELD,
     INBOUND_PERMISSION_CLASS_NAME_FIELD, INBOUND_PERMISSION_TOKENS_FIELD,

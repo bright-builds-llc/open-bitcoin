@@ -37,6 +37,13 @@ impl MemoryCoinsView {
 }
 
 impl CoinsView for MemoryCoinsView {
+    fn complete_snapshot(&self) -> Result<super::CompleteCoinsSnapshot, ChainstateError> {
+        Ok(super::CompleteCoinsSnapshot {
+            coins: self.coins.clone(),
+            maybe_best_block: self.maybe_best_block,
+            head_blocks: Vec::new(),
+        })
+    }
     fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
         Ok(self.coins.get(outpoint).cloned())
     }

@@ -66,7 +66,9 @@ fn sync_summary_projects_consistent_operator_evidence_fields() {
         best_block_height: 840_004,
         maybe_downloaded_block_hash: Some("22".repeat(32)),
         maybe_connected_block_hash: Some("11".repeat(32)),
-        maybe_validated_active_chain_work: Some("840005".to_string()),
+        maybe_validated_active_chain_work: Some(
+            "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
+        ),
         peer_outcomes: vec![PeerSyncOutcome {
             peer: SyncPeerAddress::manual("seed.bitcoin.sipa.be", 8_333),
             maybe_resolved_endpoint: Some("203.0.113.10:8333".to_string()),
@@ -114,7 +116,7 @@ fn sync_summary_projects_consistent_operator_evidence_fields() {
     );
     assert_eq!(
         progress.maybe_validated_active_chain_work,
-        Some("840005".to_string())
+        Some("00000000000000000000000000000000000000000000000000000000000cd145".to_string())
     );
     assert_eq!(
         status.progress_signal,
@@ -188,7 +190,9 @@ fn phase72_summary_metrics_and_logs_carry_full_sync_truth_dimensions() {
         best_block_height: 840_004,
         maybe_downloaded_block_hash: Some("11".repeat(32)),
         maybe_connected_block_hash: Some("11".repeat(32)),
-        maybe_validated_active_chain_work: Some("840005".to_string()),
+        maybe_validated_active_chain_work: Some(
+            "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
+        ),
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: Some(SyncStopReason::TargetHeaderReached {
@@ -215,7 +219,7 @@ fn phase72_summary_metrics_and_logs_carry_full_sync_truth_dimensions() {
         .join("\n");
     for expected in [
         "validated_active_chain_height=840004",
-        "validated_active_chain_work=840005",
+        "validated_active_chain_work=00000000000000000000000000000000000000000000000000000000000cd145",
         "resource_pressure_blocks_in_flight=0",
         "resource_pressure_target_outbound_peers=4",
         "peer_contribution_connected=3",

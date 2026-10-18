@@ -4,10 +4,8 @@
 use super::*;
 
 #[test]
-fn chain_compatibility_soak_enrichment_is_unavailable_and_preserves_source() {
-    use crate::operator::runtime::chain_compatibility::tests::{
-        CHAINS, NETWORKS, SHAPES, SourceFixture,
-    };
+fn phase165_chain_compatibility_soak_enrichment_is_unavailable_and_preserves_source() {
+    use crate::operator::runtime::chain_compatibility::tests::{CHAINS, NETWORKS, SHAPES};
     use crate::operator::{
         config::OperatorConfigResolution,
         status::{
@@ -18,7 +16,10 @@ fn chain_compatibility_soak_enrichment_is_unavailable_and_preserves_source() {
     use open_bitcoin_node::FieldAvailability;
     for shape in SHAPES {
         // Arrange
-        let fixture = SourceFixture::new(shape);
+        let fixture =
+            crate::operator::runtime::chain_compatibility::tests::phase165_work::forged_source(
+                shape,
+            );
         let before = fixture.snapshot();
         for (network, chain) in NETWORKS.into_iter().zip(CHAINS) {
             let resolution = OperatorConfigResolution {
@@ -60,6 +61,10 @@ fn chain_compatibility_soak_enrichment_is_unavailable_and_preserves_source() {
             assert!(reason.starts_with("chain_compatibility_unavailable:"));
             assert!(reason.contains(&format!("selected_network={chain}")));
             assert!(reason.contains("observed_work=unavailable"));
+            assert!(reason.contains("work_decision="));
+            for private in ["PRIVATE", "rpcpassword", "wallet-secret", "backend-payload"] {
+                assert!(!reason.contains(private), "refusal leaked {private}");
+            }
             assert!(reason.len() <= 1024);
             assert_eq!(snapshot.sync, sync_before);
             assert_eq!(snapshot.peers, peers_before);

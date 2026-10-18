@@ -6,12 +6,16 @@
 //! Real acceptance adapter for the shared normal-maturity history.
 
 use super::*;
-use crate::chainstate::BasicFilterStartupMode;
+use crate::{
+    FjallChainstateStore, ManagedChainstate,
+    chainstate::{BasicFilterStartupMode, FlushLifecycle},
+};
 use core_types::{
-    chainstate::{FlushMode, FlushPolicyTime},
-    consensus::ScriptVerifyFlags,
+    chainstate::{Chainstate, FlushMode, FlushPolicyTime},
+    consensus::{ConsensusParams, ScriptVerifyFlags, chain_proof::ProofWork},
 };
 use open_bitcoin_core as core_types;
+use open_bitcoin_network::{BlockRelayActivationPolicy, RelayActivationConfig};
 
 pub(in crate::sync::tests) mod recipe {
     include!(concat!(
@@ -48,18 +52,32 @@ impl AcceptedRecipe {
         )
     }
 
-    fn at(path: PathBuf, count: u32, mode: BasicFilterStartupMode) -> Self {
-        let mut runtime = DurableSyncRuntime::open_configured(
-            FjallNodeStore::open(&path).expect("empty actual Fjall"),
-            sync_config(),
-            BasicFilterStartupMode::PreserveSaved,
-        )
-        .expect("actual configured runtime");
-        let recipe = recipe::Recipe::new(runtime.consensus_params, runtime.verify_flags, count);
+    pub(in crate::sync::tests) fn at(
+        path: PathBuf,
+        count: u32,
+        mode: BasicFilterStartupMode,
+    ) -> Self {
+        let params = SyncNetwork::Regtest.consensus_params();
+        assert_eq!(params.coinbase_maturity, 100);
+        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);
+        let (runtime, genesis) =
+            live_genesis_runtime(&path, &recipe.blocks[0], params, recipe.flags, mode);
         assert_eq!(recipe.params, SyncNetwork::Regtest.consensus_params());
         assert_eq!(recipe.flags, runtime.verify_flags);
         let mut receipts = Vec::with_capacity(count as usize);
-        for block in &recipe.blocks {
+        assert_eq!(genesis.height, 0);
+        assert_eq!(genesis.block_hash, block_hash(&recipe.blocks[0].header));
+        receipts.push(genesis);
+        assert_eq!(
+            runtime
+                .network_handle()
+                .maybe_basic_index_progress()
+                .expect("configured owner read")
+                .is_some(),
+            mode == BasicFilterStartupMode::Enabled
+        );
+        admit_recipe_headers(&runtime, &recipe.blocks[1..], recipe.flags, recipe.params);
+        for block in &recipe.blocks[1..] {
             runtime
                 .store()
                 .save_block(block, PersistMode::Sync)
@@ -71,31 +89,6 @@ impl AcceptedRecipe {
             assert_eq!(receipt.height as usize, receipts.len());
             assert_eq!(receipt.block_hash, block_hash(&block.header));
             receipts.push(receipt);
-            if receipts.len() == 1 {
-                runtime
-                    .network_handle()
-                    .flush_coins(
-                        FlushMode::Always,
-                        FlushPolicyTime::from_unix_seconds(2000),
-                        u64::MAX,
-                    )
-                    .expect("accepted genesis durability");
-                drop(runtime);
-                runtime = DurableSyncRuntime::open_configured(
-                    FjallNodeStore::open(&path).expect("accepted genesis all-handle-close reopen"),
-                    sync_config(),
-                    mode,
-                )
-                .expect("configured owner after genuine genesis");
-                assert_eq!(
-                    runtime
-                        .network_handle()
-                        .maybe_basic_index_progress()
-                        .expect("configured owner read")
-                        .is_some(),
-                    mode == BasicFilterStartupMode::Enabled
-                );
-            }
         }
         Self {
             path,
@@ -150,6 +143,136 @@ impl AcceptedRecipe {
         fs::remove_dir_all(&path).expect("actual datadir cleanup");
         assert!(!path.exists());
     }
+}
+
+fn live_genesis_runtime(
+    path: &Path,
+    genesis: &Block,
+    params: ConsensusParams,
+    flags: ScriptVerifyFlags,
+    mode: BasicFilterStartupMode,
+) -> (DurableSyncRuntime, ChainPosition) {
+    let store = FjallNodeStore::open(path).expect("empty actual Fjall");
+    let mut core = Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+    Chainstate::new()
+        .rebind_into(&mut core)
+        .expect("genuine empty transfer");
+    let now = FlushPolicyTime::from_unix_seconds(0);
+    let mut source = ManagedChainstate::from_chainstate(
+        FjallChainstateStore::from_store(store.clone()),
+        core,
+        FlushLifecycle::ready(now, now, 0, false),
+    );
+    let receipt = source
+        .connect_block(genesis, ProofWork::ZERO, flags, params)
+        .expect("normal-maturity accepted genesis receipt");
+    let (mut sink, mut same_core) = source.into_parts();
+    let positions = same_core.active_chain().to_vec();
+    let undo = same_core
+        .undo_by_block()
+        .iter()
+        .map(|(hash, undo)| (*hash, undo.clone()))
+        .collect::<Vec<_>>();
+    let mut lifecycle = FlushLifecycle::ready(now, now, 0, false);
+    let flushed = lifecycle
+        .execute_flush(
+            &mut sink,
+            &mut same_core,
+            FlushMode::Always,
+            FlushPolicyTime::from_unix_seconds(2000),
+            u64::MAX,
+            &undo,
+            &[],
+            std::slice::from_ref(genesis),
+            &positions,
+        )
+        .expect("accepted genesis durability");
+    assert!(flushed.wrote_coins);
+    assert_eq!(
+        store.coins_view().best_block().expect("durable genesis B"),
+        Some(receipt.block_hash)
+    );
+    let runtime = DurableSyncRuntime::from_live_fixture_source(
+        ManagedChainstate::from_chainstate(sink, same_core, lifecycle),
+        sync_config(),
+        params,
+        mode,
+        RelayActivationConfig::default(),
+        BlockRelayActivationPolicy::default(),
+        false,
+    )
+    .expect("same genuine genesis configured runtime");
+    let headers = runtime
+        .network_handle()
+        .header_entries()
+        .expect("captured genesis graph");
+    assert_eq!(headers.len(), 1);
+    assert_eq!(headers[0].header, genesis.header);
+    (runtime, receipt)
+}
+
+/// Admit only caller-created descendants; this helper never handles bodies or source ownership.
+fn admit_recipe_headers(
+    runtime: &DurableSyncRuntime,
+    blocks: &[Block],
+    flags: ScriptVerifyFlags,
+    params: ConsensusParams,
+) {
+    let Some(first) = blocks.first() else {
+        return;
+    };
+    assert_ne!(first.header.previous_block_hash, BlockHash::default());
+    let network = runtime.network_handle();
+    let before = network.header_entries().expect("already bound graph");
+    assert!(
+        before
+            .iter()
+            .any(|entry| entry.block_hash == first.header.previous_block_hash)
+    );
+    assert!(blocks.iter().all(|block| {
+        !before
+            .iter()
+            .any(|entry| entry.block_hash == block_hash(&block.header))
+    }));
+    assert!(
+        blocks
+            .windows(2)
+            .all(|pair| pair[1].header.previous_block_hash == block_hash(&pair[0].header))
+    );
+    let now = blocks
+        .iter()
+        .map(|block| i64::from(block.header.time))
+        .max()
+        .expect("nonempty batch");
+    let peer = 165_025;
+    network
+        .connect_outbound_peer(peer, now)
+        .expect("modeled header peer");
+    for message in [
+        WireNetworkMessage::Version(VersionMessage {
+            nonce: peer,
+            start_height: 1100,
+            ..Default::default()
+        }),
+        WireNetworkMessage::Verack,
+        WireNetworkMessage::Headers(HeadersMessage {
+            headers: blocks.iter().map(|block| block.header.clone()).collect(),
+        }),
+    ] {
+        network
+            .receive_sync_message(peer, message, now, flags, params)
+            .expect("normal contiguous descendant headers");
+    }
+    let after = network.header_entries().expect("accepted descendants");
+    for block in blocks {
+        assert!(
+            after
+                .iter()
+                .any(|entry| entry.block_hash == block_hash(&block.header)
+                    && entry.header == block.header)
+        );
+    }
+    network.disconnect_peer(peer).expect("modeled peer cleanup");
 }
 
 /// Hermetic raw evidence only: scripts and commitments cannot enter this boundary.
@@ -254,6 +377,78 @@ fn footprint(path: &Path) -> u64 {
             }
         })
         .sum()
+}
+
+#[test]
+fn phase162_recipe_isolated_genesis_raw_reopen_preserves_observation_without_authority() {
+    // Arrange: this observer has no later body acceptance or retained genuine owner.
+    let path = reserved_filter_path("phase162-isolated-genesis");
+    let params = SyncNetwork::Regtest.consensus_params();
+    let flags = ScriptVerifyFlags::P2SH;
+    let recipe = recipe::Recipe::new(params, flags, 102);
+    let (runtime, position) = live_genesis_runtime(
+        &path,
+        &recipe.blocks[0],
+        params,
+        flags,
+        BasicFilterStartupMode::Enabled,
+    );
+    assert_eq!(position.height, 0);
+    assert!(
+        runtime
+            .network_handle()
+            .has_earned_fixture_work()
+            .expect("live source")
+    );
+    let store = runtime.store();
+    let saved_checkpoint = store
+        .maybe_basic_filter_checkpoint()
+        .expect("saved checkpoint")
+        .expect("present checkpoint");
+    let saved_state = store
+        .maybe_basic_filter_state()
+        .expect("saved state")
+        .expect("present state");
+    drop(runtime);
+    // Act: opening the store proves every original Fjall handle was released.
+    let raw = DurableSyncRuntime::open_configured(
+        FjallNodeStore::open(&path).expect("all-handle-close genesis observer"),
+        sync_config(),
+        BasicFilterStartupMode::PreserveSaved,
+    )
+    .expect("raw genesis observation");
+    // Assert
+    let store = raw.store();
+    assert_eq!(
+        store.coins_view().best_block().expect("raw durable B"),
+        Some(position.block_hash)
+    );
+    assert_eq!(
+        raw.network_handle()
+            .chainstate_snapshot()
+            .expect("raw accepted position")
+            .active_chain,
+        vec![position]
+    );
+    assert_eq!(
+        store
+            .maybe_basic_filter_checkpoint()
+            .expect("raw checkpoint"),
+        Some(saved_checkpoint)
+    );
+    assert_eq!(
+        store.maybe_basic_filter_state().expect("raw state"),
+        Some(saved_state)
+    );
+    assert!(
+        !raw.network_handle()
+            .has_earned_fixture_work()
+            .expect("raw origin remains unearned")
+    );
+    drop(raw);
+    drop(FjallNodeStore::open(&path).expect("raw observer released every handle"));
+    fs::remove_dir_all(&path).expect("isolated genesis cleanup");
+    assert!(!path.exists());
 }
 
 #[test]

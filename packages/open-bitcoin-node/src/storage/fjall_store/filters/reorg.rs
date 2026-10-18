@@ -455,7 +455,9 @@ mod tests {
                     .load_block(record.identity().block_hash())
                     .expect("read")
                     .expect("retained A body"),
-                chain_work: u128::from(record.identity().height()) + 100,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(record.identity().height()) + 100,
+                ),
             })
             .collect::<Vec<_>>();
         let staged = current

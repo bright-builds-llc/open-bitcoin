@@ -94,7 +94,9 @@ fn phase159_validation_history_accept_network_refusal_precedes_chainstate_previe
             parent = block_hash(&next.header);
             branch.push(AnchoredBlock {
                 block: next,
-                chain_work: u128::from(height) + 1,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1,
+                ),
             });
         }
         let result = if unresolved {

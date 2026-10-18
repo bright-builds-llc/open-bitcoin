@@ -74,7 +74,7 @@ pub(super) fn fresh(
         Default::default(),
         None,
     );
-    let manager = ManagedChainstate::from_recovered_chainstate(
+    let mut manager = ManagedChainstate::from_recovered_chainstate(
         FjallChainstateStore::from_store(store.clone()),
         state,
         FlushLifecycle::ready(
@@ -85,6 +85,9 @@ pub(super) fn fresh(
         ),
     )
     .expect("same recovered store");
+    manager
+        .adopt_live_fixture_owner(Chainstate::new())
+        .expect("genuine empty owner into complete empty coins");
     (dir, store, manager)
 }
 
@@ -95,7 +98,9 @@ pub(super) fn accept(
 ) -> Result<ChainPosition, ChainstateError> {
     manager.connect_block(
         block,
-        u128::from(height) + 1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+            u128::from(height) + 1,
+        ),
         ScriptVerifyFlags::P2SH,
         ConsensusParams::default(),
     )

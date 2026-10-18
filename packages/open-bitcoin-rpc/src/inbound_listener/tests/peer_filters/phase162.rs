@@ -9,6 +9,7 @@ use super::*;
 use crate::inbound_listener::connection_runtime::filter_serving::{
     InboundResponseBatch, SocketFilterWriter,
 };
+use live_source::{admit_descendant_headers, live_genesis_runtime};
 use open_bitcoin_network::{InboundAdmissionDecision, InboundPermissionDecision};
 use open_bitcoin_node::chainstate::BasicFilterStartupMode;
 use open_bitcoin_node::core as core_types;
@@ -19,6 +20,13 @@ use open_bitcoin_node::core::{
 use open_bitcoin_node::network::filter_transport::{FilterTransportError, PreparedFilterResponse};
 use serde_json::Value;
 use std::path::Path;
+
+mod live_source {
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/support/phase165_live_source.rs"
+    ));
+}
 
 mod recipe {
     include!(concat!(
@@ -67,41 +75,32 @@ fn fixture(path: &Path) -> (FilterListenerFixture, Vec<Vec<u8>>) {
         manual_peers: Vec::new(),
         ..Default::default()
     };
-    let mut runtime = DurableSyncRuntime::open_configured(
-        FjallNodeStore::open(path).expect("fresh Fjall"),
-        sync.clone(),
-        BasicFilterStartupMode::PreserveSaved,
-    )
-    .expect("no synthetic root/index");
-    let recipe = recipe::Recipe::new(
-        sync.network.consensus_params(),
-        ScriptVerifyFlags::P2SH,
-        102,
+    let params = sync.network.consensus_params();
+    let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, 102);
+    let (runtime, genesis) = live_genesis_runtime(
+        path,
+        &recipe.blocks[0],
+        sync,
+        recipe.params,
+        recipe.flags,
+        BasicFilterStartupMode::Enabled,
     );
+    admit_descendant_headers(&runtime, &recipe.blocks[1..], recipe.flags, recipe.params);
     for (height, block) in recipe.blocks.iter().enumerate() {
-        runtime
-            .store()
-            .save_block(block, PersistMode::Sync)
-            .expect("actual body");
-        let receipt = runtime
-            .network_handle()
-            .connect_local_block(block, recipe.flags, recipe.params)
-            .expect("normal-maturity genuine receipt");
-        assert_eq!(receipt.height as usize, height);
-        assert_eq!(receipt.block_hash, block_hash(&block.header));
-        if height == 0 {
+        let receipt = if height == 0 {
+            genesis.clone()
+        } else {
+            runtime
+                .store()
+                .save_block(block, PersistMode::Sync)
+                .expect("actual body");
             runtime
                 .network_handle()
-                .flush_coins(FlushMode::Always, FlushPolicyTime::new(2000), u64::MAX)
-                .expect("genuine genesis coins/meta");
-            drop(runtime);
-            runtime = DurableSyncRuntime::open_configured(
-                FjallNodeStore::open(path).expect("cold genesis"),
-                sync.clone(),
-                BasicFilterStartupMode::Enabled,
-            )
-            .expect("configured owner after genesis");
-        }
+                .connect_local_block(block, recipe.flags, recipe.params)
+                .expect("normal-maturity genuine receipt")
+        };
+        assert_eq!(receipt.height as usize, height);
+        assert_eq!(receipt.block_hash, block_hash(&block.header));
     }
     let network = runtime.network_handle();
     for turn in 0..256 {

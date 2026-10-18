@@ -128,7 +128,14 @@ fn write_sentinels(store: &FjallNodeStore) {
 
 fn position(block: &Block, height: u32) -> ChainPosition {
     // Synthetic chainwork exists only to arrange explicitly owned infrastructure fixtures.
-    ChainPosition::new(block.header.clone(), height, u128::from(height) + 1, 1)
+    ChainPosition::new(
+        block.header.clone(),
+        height,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+            u128::from(height) + 1,
+        ),
+        1,
+    )
 }
 
 fn arrange_schema_one(source: &Path) -> (BlockHash, OutPoint) {

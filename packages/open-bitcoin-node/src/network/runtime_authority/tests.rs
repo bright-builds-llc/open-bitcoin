@@ -162,7 +162,7 @@ fn flush_applying_prune_plan_drops_only_the_deleted_hash() {
     let tip = ChainPosition::new(
         test_header(eligible.block_hash, 22),
         400,
-        400,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(400),
         1_700_000_000,
     );
     let kept_header = test_header(BlockHash::from_byte_array([9_u8; 32]), 33);
@@ -235,7 +235,7 @@ fn error_after_unlink_drops_deleted_hash_and_retry_leaves_it_gone() {
     let tip = ChainPosition::new(
         test_header(eligible.block_hash, 22),
         400,
-        400,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(400),
         1_700_000_000,
     );
     let kept_header = test_header(BlockHash::from_byte_array([9_u8; 32]), 33);
@@ -413,7 +413,12 @@ fn test_header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
 
 fn plant_payload(store: &FjallNodeStore, height: u32, nonce: u32) -> (ChainPosition, Block) {
     let header = test_header(BlockHash::from_byte_array([0_u8; 32]), nonce);
-    let position = ChainPosition::new(header.clone(), height, u128::from(height), 1_700_000_000);
+    let position = ChainPosition::new(
+        header.clone(),
+        height,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::from(height)),
+        1_700_000_000,
+    );
     let body = Block {
         header,
         transactions: Vec::new(),
@@ -486,7 +491,12 @@ fn prune_reserved_handle_refuses_every_saved_owner_and_preserves_ordinary_crud()
     for mode in 0..4 {
         // Arrange: Active, Disabled released/retained, exhausted Active.
         let (path, store) = open_temp_store("reserved-owner-modes");
-        let position = ChainPosition::new(test_header(BlockHash::default(), 0), 0, 1, 1);
+        let position = ChainPosition::new(
+            test_header(BlockHash::default(), 0),
+            0,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            1,
+        );
         let snapshot =
             ChainstateSnapshot::new(vec![position], Default::default(), Default::default());
         store

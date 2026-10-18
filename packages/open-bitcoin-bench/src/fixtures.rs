@@ -356,7 +356,7 @@ fn sample_tip(height: u32) -> open_bitcoin_chainstate::ChainPosition {
             nonce: 1,
         },
         height,
-        1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
         i64::from(1_700_000_000 + height),
     )
 }
@@ -456,7 +456,12 @@ fn connect_block(
     chain_work: u128,
 ) -> Result<(), BenchError> {
     chainstate
-        .connect_block(block, chain_work, verify_flags(), consensus_params())
+        .connect_block(
+            block,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(chain_work),
+            verify_flags(),
+            consensus_params(),
+        )
         .map(|_| ())
         .map_err(|error| BenchError::case_failed("chainstate-fixture", error.to_string()))
 }

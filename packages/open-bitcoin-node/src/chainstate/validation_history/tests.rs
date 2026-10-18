@@ -26,6 +26,8 @@ mod network;
 pub(crate) use fixtures::block;
 use fixtures::{accept, fresh};
 
+mod phase165_work_authority;
+
 #[test]
 fn phase159_validation_history_accept_ordinary_fault_retains_live_bounded_fact_and_refuses_absorb()
 {
@@ -445,13 +447,17 @@ fn phase159_validation_history_accept_exact_batch_bound_admitted_one_over_refuse
     let genesis = block(BlockHash::default(), 0, 0x51);
     accept(&mut manager, &genesis, 0).expect("genuine genesis");
     let mut parent = block_hash(&genesis.header);
+    let mut manager =
+        ReorgFixture::wrap_live_owner(manager, &[genesis], ConsensusParams::default());
     let mut branch = Vec::new();
     for height in 1..=129 {
         let next = block(parent, height, 0x51);
         parent = block_hash(&next.header);
         branch.push(AnchoredBlock {
             block: next,
-            chain_work: u128::from(height) + 1,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                u128::from(height) + 1,
+            ),
         });
     }
     // Act
@@ -560,13 +566,8 @@ fn phase159_validation_history_accept_zero_replacement_disconnect_cannot_erase_h
     accept(&mut manager, &genesis, 0).expect("genuine acceptance");
     // Act
     manager
-        .reorg(
-            &[genesis],
-            &[],
-            ScriptVerifyFlags::P2SH,
-            ConsensusParams::default(),
-        )
-        .expect("genuine disconnect without replacement");
+        .disconnect_tip(&genesis)
+        .expect("explicit managed disconnect");
     // Assert
     assert!(manager.chainstate().tip().is_none());
     assert_eq!(

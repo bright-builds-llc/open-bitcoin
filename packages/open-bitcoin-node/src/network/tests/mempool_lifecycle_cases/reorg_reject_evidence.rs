@@ -12,6 +12,18 @@ use crate::network::lifecycle_projection::{
 };
 use crate::network::mempool_lifecycle;
 
+fn preferred_replacements(parent: BlockHash) -> Vec<AnchoredBlock> {
+    let first = build_block_with_transactions(parent, 2, vec![]);
+    let second = build_block_with_transactions(block_hash(&first.header), 3, vec![]);
+    [first, second]
+        .into_iter()
+        .map(|block| AnchoredBlock {
+            block,
+            chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+        })
+        .collect()
+}
+
 #[test]
 fn local_block_lifecycle_failure_is_atomic_and_retry_converges() {
     // Arrange
@@ -72,7 +84,7 @@ fn stored_block_lifecycle_failure_does_not_turn_retry_into_duplicate() {
     // Act
     let failed = network.connect_stored_block(
         &block,
-        3,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
         i64::from(block.header.time),
         verify_flags(),
         consensus_params(),
@@ -87,7 +99,7 @@ fn stored_block_lifecycle_failure_does_not_turn_retry_into_duplicate() {
     let retried = network
         .connect_stored_block(
             &block,
-            3,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
             i64::from(block.header.time),
             verify_flags(),
             consensus_params(),
@@ -112,6 +124,7 @@ fn reorg_lifecycle_failure_is_atomic_and_retry_converges() {
         .connect_local_block(&old_tip, verify_flags(), consensus_params())
         .expect("connect old tip");
     let baseline = format!("{network:?}");
+    let replacement = preferred_replacements(block_hash(&spendable.header));
     let context = ReorgLifecycleContext::new(PolicyTime::new(72));
     let failure = LifecyclePreparationFailureGuard::inject(LifecyclePreparationFailurePoint::Peer);
 
@@ -119,7 +132,7 @@ fn reorg_lifecycle_failure_is_atomic_and_retry_converges() {
     let mut working = network.clone();
     let failed = working.reorg_to_branch(
         std::slice::from_ref(&old_tip),
-        &[],
+        &replacement,
         context,
         verify_flags(),
         consensus_params(),
@@ -132,12 +145,18 @@ fn reorg_lifecycle_failure_is_atomic_and_retry_converges() {
 
     // Act
     let transition = network
-        .reorg_to_branch(&[old_tip], &[], context, verify_flags(), consensus_params())
+        .reorg_to_branch(
+            &[old_tip],
+            &replacement,
+            context,
+            verify_flags(),
+            consensus_params(),
+        )
         .expect("retry should complete the staged reorg");
 
     // Assert
     assert_eq!(transition.disconnected.len(), 1);
-    assert!(transition.connected.is_empty());
+    assert_eq!(transition.connected.len(), 2);
     assert!(
         network
             .mempool()
@@ -159,7 +178,7 @@ fn managed_reorg_reacceptance_uses_explicit_event_time() {
         2,
         vec![disconnected_transaction.clone()],
     );
-    let replacement_tip = build_block_with_transactions(block_hash(&spendable.header), 2, vec![]);
+    let replacement = preferred_replacements(block_hash(&spendable.header));
     network
         .connect_local_block(&old_tip, verify_flags(), consensus_params())
         .expect("connect old tip");
@@ -176,10 +195,7 @@ fn managed_reorg_reacceptance_uses_explicit_event_time() {
     network
         .reorg_to_branch(
             &[old_tip],
-            &[AnchoredBlock {
-                block: replacement_tip,
-                chain_work: 3,
-            }],
+            &replacement,
             reorg_context,
             verify_flags(),
             consensus_params(),
@@ -253,7 +269,7 @@ fn stored_connected_active_tip_change_resets_both_reject_evidence_domains() {
     let disposition = network
         .connect_stored_block(
             &genesis,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             1_231_006_500,
             verify_flags(),
             consensus_params(),
@@ -273,17 +289,14 @@ fn successful_reorg_resets_both_reject_evidence_domains() {
     network
         .connect_local_block(&old_tip, verify_flags(), consensus_params())
         .expect("connect old tip");
-    let replacement_tip = build_block_with_transactions(block_hash(&spendable.header), 2, vec![]);
+    let replacement = preferred_replacements(block_hash(&spendable.header));
     let (hard_reject, reconsiderable) = seed_reject_evidence(&mut network);
 
     // Act
     network
         .reorg_to_branch(
             &[old_tip],
-            &[AnchoredBlock {
-                block: replacement_tip,
-                chain_work: 3,
-            }],
+            &replacement,
             ReorgLifecycleContext::new(PolicyTime::new(90)),
             verify_flags(),
             consensus_params(),
@@ -314,7 +327,7 @@ fn duplicate_non_extending_and_disconnected_receipts_preserve_reject_evidence() 
     let duplicate = network
         .connect_stored_block(
             &genesis,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             1_231_006_500,
             verify_flags(),
             consensus_params(),
@@ -323,7 +336,7 @@ fn duplicate_non_extending_and_disconnected_receipts_preserve_reject_evidence() 
     let side_branch = network
         .connect_stored_block(
             &non_extending,
-            2,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
             1_231_006_501,
             verify_flags(),
             consensus_params(),
@@ -350,7 +363,7 @@ fn duplicate_non_extending_and_disconnected_receipts_preserve_reject_evidence() 
     let disconnected = empty_network
         .connect_stored_block(
             &non_extending,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             1_231_006_501,
             verify_flags(),
             consensus_params(),
@@ -403,7 +416,7 @@ fn failed_reorg_preserves_reject_evidence() {
         &[old_tip],
         &[AnchoredBlock {
             block: disconnected_replacement,
-            chain_work: 3,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
         }],
         ReorgLifecycleContext::new(PolicyTime::new(91)),
         verify_flags(),

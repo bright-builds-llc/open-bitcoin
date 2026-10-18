@@ -161,25 +161,61 @@ fn persistent(
     crate::DurableSyncRuntime,
     crate::DurableNetworkHandle,
 ) {
-    let (path, store, _) =
-        crate::storage::fjall_store::filters::tests::query::recovered_fixture(name, 4);
-    let positions = store.load_chain_meta_for_open().expect("positions").0;
-    let runtime = crate::DurableSyncRuntime::open_configured(
-        store,
+    use open_bitcoin_core::{
+        chainstate::{Chainstate, FlushMode, FlushPolicyTime},
+        consensus::{ScriptVerifyFlags, chain_proof::ProofWork},
+    };
+    let path = std::env::temp_dir().join(format!(
+        "phase165-transport-{name}-{}-{:?}",
+        std::process::id(),
+        std::time::SystemTime::now()
+    ));
+    let store = crate::FjallNodeStore::open(&path).expect("fresh genuine store");
+    let mut core = Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+    Chainstate::new()
+        .rebind_into(&mut core)
+        .expect("genuine empty source");
+    let now = FlushPolicyTime::new(0);
+    let mut source = crate::ManagedChainstate::from_chainstate(
+        crate::FjallChainstateStore::from_store(store.clone()),
+        core,
+        crate::chainstate::FlushLifecycle::ready(now, now, 0, false),
+    );
+    for height in 0..4 {
+        let parent = source
+            .chainstate()
+            .tip()
+            .map_or(Default::default(), |tip| tip.block_hash);
+        let block = crate::chainstate::validation_history::tests::block(parent, height, 0x51);
+        source
+            .connect_block(
+                &block,
+                ProofWork::ZERO,
+                ScriptVerifyFlags::P2SH,
+                Default::default(),
+            )
+            .expect("actual four-block acceptance");
+        store
+            .save_block(&block, crate::PersistMode::Sync)
+            .expect("retained actual body");
+    }
+    source
+        .flush_with_mode(FlushMode::Always, now, u64::MAX)
+        .expect("real original-owner flush");
+    let runtime = crate::DurableSyncRuntime::from_live_fixture_source(
+        source,
+        Default::default(),
         Default::default(),
         crate::chainstate::BasicFilterStartupMode::Enabled,
+        Default::default(),
+        Default::default(),
+        false,
     )
     .expect("runtime");
     let handle = runtime.network_handle();
     handle
-        .mutate(|network| {
-            let mut headers = open_bitcoin_network::HeaderStore::default();
-            for position in positions {
-                headers.record_position(&position);
-            }
-            network.seed_header_store(headers);
-        })
-        .expect("headers");
+        .drive_basic_filter_index_turn()
+        .expect("actual four-block indexing");
     handle
         .configure_basic_peer_serving(true)
         .expect("configure");

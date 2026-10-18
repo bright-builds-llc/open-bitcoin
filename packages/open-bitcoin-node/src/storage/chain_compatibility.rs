@@ -26,6 +26,12 @@ impl super::FjallNodeStore {
 #[cfg(test)]
 thread_local! {
     pub(super) static ORDINARY_BACKEND_OPEN_SPY: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    pub(super) static BACKEND_BUILDER_CALLS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+#[cfg(test)]
+pub(super) fn record_backend_builder_call() {
+    BACKEND_BUILDER_CALLS.with(|calls| calls.set(calls.get() + 1));
 }
 
 /// Coarse errors deliberately omit paths, backend messages and file contents.
@@ -69,6 +75,27 @@ pub enum ObservedChainIdentity {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum WorkProfileObservation {
     Unavailable,
+}
+
+/// Refusal policy only; filesystem shape never identifies a stored work format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WorkCompatibilityDecision {
+    BootstrapUnavailable,
+    ExistingUnproved,
+    UnsafePath,
+    InspectionIoFailure,
+}
+
+impl WorkCompatibilityDecision {
+    /// Fixed redacted policy code, separate from observed work evidence.
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::BootstrapUnavailable => "bootstrap_unavailable",
+            Self::ExistingUnproved => "existing_unproved",
+            Self::UnsafePath => "unsafe_path",
+            Self::InspectionIoFailure => "inspection_io_failure",
+        }
+    }
 }
 
 /// An unproved store is never described as a proved wrong-network store.
@@ -138,6 +165,20 @@ impl CompatibilityRefusal {
         WorkProfileObservation::Unavailable
     }
 
+    /// Existing bytes remain unproved, including legacy and exact-looking records.
+    pub const fn work_decision(&self) -> WorkCompatibilityDecision {
+        match self.observation {
+            DatadirObservation::Missing | DatadirObservation::EmptyDirectory => {
+                WorkCompatibilityDecision::BootstrapUnavailable
+            }
+            DatadirObservation::ExistingUnproved => WorkCompatibilityDecision::ExistingUnproved,
+            DatadirObservation::UnsafePath => WorkCompatibilityDecision::UnsafePath,
+            DatadirObservation::InspectionIoFailure(_) => {
+                WorkCompatibilityDecision::InspectionIoFailure
+            }
+        }
+    }
+
     /// Typed unavailable prerequisites for ordinary history.
     pub const fn missing_prerequisites(&self) -> &'static [MissingValidationPrerequisite] {
         self.selected_scope().missing_prerequisites()
@@ -183,7 +224,12 @@ impl fmt::Display for CompatibilityRefusal {
             }
             f.write_str(prerequisite.code())?;
         }
-        write!(f, "; {}", self.guidance())
+        write!(
+            f,
+            "; {}; work_decision={}",
+            self.guidance(),
+            self.work_decision().code()
+        )
     }
 }
 
@@ -276,6 +322,9 @@ fn io_observation(error: io::Error) -> DatadirObservation {
     })
 }
 
+#[cfg(test)]
+#[path = "chain_compatibility/tests/phase165_work.rs"]
+mod phase165_work;
 #[cfg(test)]
 #[path = "chain_compatibility/tests/preservation.rs"]
 mod preservation;

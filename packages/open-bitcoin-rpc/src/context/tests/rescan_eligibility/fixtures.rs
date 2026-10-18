@@ -41,7 +41,9 @@ pub(super) fn fixture(label: &str) -> (PathBuf, FjallNodeStore, ChainstateSnapsh
                     ..BlockHeader::default()
                 },
                 height,
-                u128::from(height) + 1,
+                open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1,
+                ),
                 1_700_000_000 + i64::from(height),
             )
         })

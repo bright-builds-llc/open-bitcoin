@@ -22,10 +22,11 @@ fn competing_header_branch_wins_after_restart_when_it_extends_farther() {
             }),
             WireNetworkMessage::Verack,
             WireNetworkMessage::Headers(HeadersMessage {
-                headers: vec![genesis.clone(), branch_a_one, branch_a_two],
+                headers: vec![branch_a_one, branch_a_two],
             }),
         ]]);
         let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        crate::sync::tests::support_runtime::admit_fixture_runtime_root(&runtime, genesis.clone());
         runtime
             .sync_once(&mut transport, 1_777_225_188)
             .expect("initial branch imports");
@@ -47,6 +48,7 @@ fn competing_header_branch_wins_after_restart_when_it_extends_farther() {
         }),
     ]]);
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = runtime
         .sync_once(&mut transport, 1_777_225_199)
         .expect("fork extends");
@@ -83,7 +85,8 @@ fn same_datadir_reopen_does_not_duplicate_connected_block_getdata() {
                     block_hash: genesis_hash,
                     header: genesis.header.clone(),
                     height: 0,
-                    chain_work: 1,
+                    chain_work:
+                        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                 }],
                 PersistMode::Sync,
             )
@@ -95,6 +98,7 @@ fn same_datadir_reopen_does_not_duplicate_connected_block_getdata() {
 
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![version_verack_script(0)]);
 
     // Act
@@ -140,20 +144,19 @@ fn same_datadir_reopen_connects_best_available_branch_when_blocks_are_already_lo
             }),
             WireNetworkMessage::Verack,
             WireNetworkMessage::Headers(HeadersMessage {
-                headers: vec![
-                    genesis.header.clone(),
-                    branch_a_one.header.clone(),
-                    branch_a_two.header.clone(),
-                ],
+                headers: vec![branch_a_one.header.clone(), branch_a_two.header.clone()],
             }),
-            WireNetworkMessage::Block(genesis.clone()),
             WireNetworkMessage::Block(branch_a_one.clone()),
             WireNetworkMessage::Block(branch_a_two.clone()),
         ]]);
         let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
-        runtime
+        crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
+        crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
+        let initial = runtime
             .sync_once(&mut transport, i64::from(branch_a_two.header.time))
             .expect("initial branch sync");
+        assert_eq!(initial.best_block_height, 2, "{:?}", initial.peer_outcomes);
+        flush_coins_always(&runtime);
     }
 
     let branch_b_one = build_branch_block(block_hash(&genesis.header), 1, 100);
@@ -176,6 +179,7 @@ fn same_datadir_reopen_connects_best_available_branch_when_blocks_are_already_lo
             }),
         ]]);
         let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
         runtime
             .sync_once(&mut transport, i64::from(branch_b_three.header.time))
             .expect("persist better branch headers");
@@ -195,6 +199,7 @@ fn same_datadir_reopen_connects_best_available_branch_when_blocks_are_already_lo
 
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![version_verack_script(3)]);
 
     // Act

@@ -117,13 +117,13 @@ fn header_entries() -> Vec<HeaderEntry> {
             block_hash: genesis_hash,
             header: genesis_header,
             height: 0,
-            chain_work: 1,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
         },
         HeaderEntry {
             block_hash: child_hash,
             header: child_header,
             height: 1,
-            chain_work: 2,
+            chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
         },
     ]
 }
@@ -195,7 +195,12 @@ fn mempool_snapshot() -> MempoolSnapshot {
 }
 
 fn chainstate_snapshot() -> ChainstateSnapshot {
-    let position = ChainPosition::new(header(BlockHash::from_byte_array([0_u8; 32]), 1), 0, 1, 1);
+    let position = ChainPosition::new(
+        header(BlockHash::from_byte_array([0_u8; 32]), 1),
+        0,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
     let outpoint = OutPoint {
         txid: Txid::from_byte_array([9; 32]),
         vout: 0,

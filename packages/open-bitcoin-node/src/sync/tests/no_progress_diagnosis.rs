@@ -11,13 +11,14 @@ fn phase70_no_progress_status_projects_at_tip() {
     remove_dir_if_exists(&path);
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = runtime.snapshot_summary();
 
     // Act
@@ -47,6 +48,7 @@ fn phase70_no_progress_status_projects_branch_competition_awaiting_bodies() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut summary = SyncRunSummary::empty(3, 2, 1);
     summary.maybe_reconcile_progress =
         Some(SyncReconcileProgress::BranchCompetitionAwaitingBodies {
@@ -77,6 +79,7 @@ fn phase70_no_progress_status_projects_peer_backoff() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut summary = SyncRunSummary::empty(0, 0, 1);
     summary.peer_outcomes.push(peer_outcome(
         SyncPeerAddress::manual("127.0.0.1", 18_444),
@@ -108,6 +111,7 @@ fn phase70_no_progress_status_projects_stale_inflight_cleanup() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     runtime
         .inflight_blocks
         .insert(BlockHash::from_byte_array([17_u8; 32]));
@@ -135,6 +139,7 @@ fn phase70_no_progress_status_projects_storage_or_resource_blocker() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = SyncRunSummary::empty(0, 0, 1);
 
     // Act
@@ -164,6 +169,7 @@ fn phase78_storage_resource_pressure_outranks_peer_retry_advice() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut summary = SyncRunSummary::empty(0, 0, 1);
     summary.peer_outcomes.push(peer_outcome(
         SyncPeerAddress::manual("127.0.0.1", 18_444),
@@ -216,6 +222,7 @@ fn phase78_operator_stop_and_shutdown_classify_local_subsystems() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let cases = [
         (
             SyncStopReason::OperatorPaused,

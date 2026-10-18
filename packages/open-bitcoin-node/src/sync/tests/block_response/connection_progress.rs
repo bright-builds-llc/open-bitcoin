@@ -12,9 +12,14 @@ fn first_non_genesis_block_connect_advances_downloaded_and_connected_height() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0)],
+    );
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -55,9 +60,14 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
     let expected_child_hash = block_hash_hex(child_hash);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0)],
+    );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -78,6 +88,7 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
     let reopened_runtime =
         DurableSyncRuntime::open(reopened_store, sync_config()).expect("reopen runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&reopened_runtime);
     let reopened_summary = reopened_runtime.snapshot_summary();
     let reopened_state = reopened_runtime
         .durable_sync_state_for_summary(
@@ -102,7 +113,9 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
             maybe_downloaded_block_hash: Some(expected_child_hash.clone()),
             maybe_connected_block_hash: Some(expected_child_hash.clone()),
             maybe_validated_active_chain_hash: Some(expected_child_hash.clone()),
-            maybe_validated_active_chain_work: Some("2".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000004".to_string()
+            ),
             progress_ratio: 1.0,
             messages_processed: 3,
             headers_received: 0,
@@ -117,7 +130,7 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
     );
     assert_eq!(
         reopened_summary.maybe_validated_active_chain_work,
-        Some("2".to_string())
+        Some("0000000000000000000000000000000000000000000000000000000000000004".to_string())
     );
     assert_eq!(
         reopened_state.sync.sync_progress,
@@ -130,7 +143,9 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
             maybe_downloaded_block_hash: Some(expected_child_hash.clone()),
             maybe_connected_block_hash: Some(expected_child_hash.clone()),
             maybe_validated_active_chain_hash: Some(expected_child_hash),
-            maybe_validated_active_chain_work: Some("2".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000004".to_string()
+            ),
             progress_ratio: 1.0,
             messages_processed: 0,
             headers_received: 0,
@@ -151,7 +166,10 @@ fn connected_active_chain_progress_survives_runtime_reopen() {
         .expect("active tip after coins B reopen");
     assert_eq!(active_tip.height, 1);
     assert_eq!(active_tip.block_hash, child_hash);
-    assert_eq!(active_tip.chain_work, 2);
+    assert_eq!(
+        active_tip.chain_work,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(4)
+    );
 
     remove_dir_if_exists(&path);
 }
@@ -164,9 +182,14 @@ fn unrequested_extending_block_response_is_no_credit_and_does_not_mutate_chainst
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0)],
+        &[(&genesis, 0)],
+    );
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -215,9 +238,14 @@ fn sync_progress_reports_downloaded_and_connected_block_hashes() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0)],
+    );
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -245,7 +273,9 @@ fn sync_progress_reports_downloaded_and_connected_block_hashes() {
             maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
             maybe_connected_block_hash: Some(block_hash_hex(child_hash)),
             maybe_validated_active_chain_hash: Some(block_hash_hex(child_hash)),
-            maybe_validated_active_chain_work: Some("2".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000004".to_string()
+            ),
             progress_ratio: 1.0,
             messages_processed: 3,
             headers_received: 0,
@@ -265,7 +295,11 @@ fn sync_progress_reports_downloaded_only_block_hash() {
     let child = build_block(block_hash(&genesis.header), 1);
     let genesis_hash = block_hash(&genesis.header);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(&path, &[(&genesis, 0), (&child, 1)], &[(&genesis, 0)]);
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
+        &path,
+        &[(&genesis, 0), (&child, 1)],
+        &[(&genesis, 0)],
+    );
     {
         let store = FjallNodeStore::open(&path).expect("store");
         store
@@ -275,6 +309,7 @@ fn sync_progress_reports_downloaded_only_block_hash() {
 
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
 
     // Act
     let summary = runtime.snapshot_summary();
@@ -294,7 +329,9 @@ fn sync_progress_reports_downloaded_only_block_hash() {
             maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
             maybe_connected_block_hash: Some(block_hash_hex(genesis_hash)),
             maybe_validated_active_chain_hash: Some(block_hash_hex(genesis_hash)),
-            maybe_validated_active_chain_work: Some("1".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000002".to_string()
+            ),
             progress_ratio: 0.0,
             messages_processed: 0,
             headers_received: 0,

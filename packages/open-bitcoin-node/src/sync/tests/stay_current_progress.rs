@@ -13,7 +13,7 @@ fn phase69_fresh_idle_cycle_reports_current_at_best_known_tip() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -28,6 +28,7 @@ fn phase69_fresh_idle_cycle_reports_current_at_best_known_tip() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport =
         ScriptedTransport::new(vec![version_verack_script(1), version_verack_script(1)]);
 
@@ -92,7 +93,7 @@ fn phase69_post_catch_up_new_headers_connect_and_report_stay_current_progress() 
     let grandchild = build_block(block_hash(&child.header), 2);
     let grandchild_hash = block_hash(&grandchild.header);
     let expected_grandchild_hash = block_hash_hex(grandchild_hash);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -106,6 +107,7 @@ fn phase69_post_catch_up_new_headers_connect_and_report_stay_current_progress() 
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 2,
@@ -163,7 +165,10 @@ fn phase69_post_catch_up_new_headers_connect_and_report_stay_current_progress() 
     };
     assert_eq!(best_known_tip.height, 2);
     assert_eq!(best_known_tip.block_hash, expected_grandchild_hash.clone());
-    assert_eq!(best_known_tip.work, "3");
+    assert_eq!(
+        best_known_tip.work,
+        "0000000000000000000000000000000000000000000000000000000000000006"
+    );
     assert_eq!(best_known_tip.freshness, TipFreshnessStatus::Fresh);
     assert_eq!(
         best_known_tip.peer_agreement.first().map(|row| row.status),
@@ -171,7 +176,10 @@ fn phase69_post_catch_up_new_headers_connect_and_report_stay_current_progress() 
     );
     assert_eq!(active_tip.height, 2);
     assert_eq!(active_tip.block_hash, grandchild_hash);
-    assert_eq!(active_tip.chain_work, 3);
+    assert_eq!(
+        active_tip.chain_work,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(6)
+    );
     assert!(
         runtime
             .store()
@@ -193,7 +201,7 @@ fn phase69_headers_only_tip_does_not_report_current() {
     let grandchild = build_block(block_hash(&child.header), 2);
     let child_hash = block_hash(&child.header);
     let grandchild_hash = block_hash(&grandchild.header);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -207,6 +215,7 @@ fn phase69_headers_only_tip_does_not_report_current() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport =
         ScriptedTransport::new(vec![headers_script(2, vec![grandchild.header.clone()])]);
 
@@ -269,7 +278,7 @@ fn phase78_progress_guarantee_projection_rejects_headers_only_as_useful_work() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let grandchild = build_block(block_hash(&child.header), 2);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -277,6 +286,7 @@ fn phase78_progress_guarantee_projection_rejects_headers_only_as_useful_work() {
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime =
         DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let previous_summary = runtime.snapshot_summary();
     let previous_timestamp = u64::from(child.header.time);
     let previous_state = runtime
@@ -347,7 +357,7 @@ fn phase78_branch_competition_does_not_credit_replacement_tip_before_connect() {
     remove_dir_if_exists(&path);
     let (genesis, branch_a_one, branch_a_two, branch_b_one, branch_b_two, branch_b_three) =
         phase70_branch_blocks();
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[
             (&genesis, 0),
@@ -359,6 +369,7 @@ fn phase78_branch_competition_does_not_credit_replacement_tip_before_connect() {
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let previous_summary = runtime.snapshot_summary();
     let previous_state = runtime
         .durable_sync_state_for_summary(
@@ -425,7 +436,7 @@ fn phase78_current_at_tip_credits_stay_current_useful_work() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -440,6 +451,7 @@ fn phase78_current_at_tip_credits_stay_current_useful_work() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let previous_summary = runtime.snapshot_summary();
     let previous_state = runtime
         .durable_sync_state_for_summary(

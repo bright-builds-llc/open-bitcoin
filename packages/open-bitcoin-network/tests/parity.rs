@@ -163,8 +163,18 @@ fn messages_from_actions(
 fn wire_encoded_peer_managers_sync_headers_and_blocks() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
     let child = build_block(block_hash(&genesis.header), 1, 50);
-    let genesis_position = ChainPosition::new(genesis.header.clone(), 0, 1, 0);
-    let child_position = ChainPosition::new(child.header.clone(), 1, 2, 0);
+    let genesis_position = ChainPosition::new(
+        genesis.header.clone(),
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
+    let child_position = ChainPosition::new(
+        child.header.clone(),
+        1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
+        0,
+    );
 
     let source_blocks = BTreeMap::from([
         (genesis_position.block_hash, genesis.clone()),
@@ -173,6 +183,14 @@ fn wire_encoded_peer_managers_sync_headers_and_blocks() {
 
     let mut source = PeerManager::new(local_config(1));
     source.seed_local_chain(&[genesis_position.clone(), child_position.clone()]);
+    let mut admitted_headers = open_bitcoin_network::HeaderStore::default();
+    admitted_headers
+        .insert_header(genesis.header.clone())
+        .expect("mined genesis");
+    admitted_headers
+        .insert_header(child.header.clone())
+        .expect("mined child");
+    source.seed_header_store(admitted_headers);
     source.add_inbound_peer(7).expect("source peer");
 
     let mut sink = PeerManager::new(local_config(2));

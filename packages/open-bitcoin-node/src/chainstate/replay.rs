@@ -4,6 +4,8 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 //! Apply-only interrupted-flush replay (`ReplayBlocks` shape) in the node crate.
+//! The returned coins view is recovered data, not earned-work lineage. Matching
+//! coins B, exact metadata or a BASIC receipt cannot turn replay into acceptance.
 
 use std::collections::HashSet;
 

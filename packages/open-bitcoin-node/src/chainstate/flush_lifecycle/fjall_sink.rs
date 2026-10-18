@@ -114,7 +114,7 @@ pub(super) mod proof_tests {
         chainstate
             .connect_block_with_current_time(
                 &genesis,
-                1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                 1_001,
                 ScriptVerifyFlags::P2SH,
                 ConsensusParams::default(),
@@ -132,6 +132,10 @@ pub(super) mod proof_tests {
             BasicFilterStartupMode::Enabled,
         )
         .expect("configured recovered runtime");
+        runtime
+            .network_handle()
+            .adopt_live_fixture_owner(chainstate)
+            .expect("retained genuine genesis owner");
         (path, runtime, genesis)
     }
 
@@ -184,6 +188,18 @@ pub(super) mod proof_tests {
         ManagedChainstate<FjallChainstateStore, FjallCoinsView>,
         Block,
     ) {
+        managed_fixture_with_params(name, ConsensusParams::default())
+    }
+
+    pub(in crate::chainstate) fn managed_fixture_with_params(
+        name: &str,
+        params: ConsensusParams,
+    ) -> (
+        std::path::PathBuf,
+        FjallNodeStore,
+        ManagedChainstate<FjallChainstateStore, FjallCoinsView>,
+        Block,
+    ) {
         let (path, runtime, genesis) = runtime(name);
         let store = runtime.store().clone();
         drop(runtime);
@@ -205,12 +221,24 @@ pub(super) mod proof_tests {
             store.load_all_undo_records().expect("undo"),
             counts,
         );
-        let managed = ManagedChainstate::from_recovered_chainstate(
+        let mut managed = ManagedChainstate::from_recovered_chainstate(
             FjallChainstateStore::from_store(store.clone()),
             state,
             lifecycle,
         )
         .expect("exact recovered constructor");
+        let mut genuine = Chainstate::new();
+        genuine
+            .connect_block(
+                &genesis,
+                open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+                ScriptVerifyFlags::P2SH,
+                params,
+            )
+            .expect("actual complete fixture prefix revalidation");
+        managed
+            .adopt_live_fixture_owner(genuine)
+            .expect("complete matching revalidated prefix");
         (path, store, managed, genesis)
     }
 
@@ -224,7 +252,7 @@ pub(super) mod proof_tests {
             let prepared = managed
                 .prepare_connect_block_with_current_time(
                     &child,
-                    2,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     1_101,
                     ScriptVerifyFlags::P2SH,
                     ConsensusParams::default(),
@@ -234,7 +262,7 @@ pub(super) mod proof_tests {
         } else {
             managed.connect_block_with_current_time(
                 &child,
-                2,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                 1_101,
                 ScriptVerifyFlags::P2SH,
                 ConsensusParams::default(),
@@ -531,7 +559,7 @@ pub(super) mod proof_tests {
             managed
                 .connect_block_with_current_time(
                     &invalid,
-                    2,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     1_101,
                     ScriptVerifyFlags::P2SH,
                     ConsensusParams::default()

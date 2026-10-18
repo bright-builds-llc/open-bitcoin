@@ -426,6 +426,12 @@ fn open(handoff: &Phase162Handoff, config: SyncRuntimeConfig) -> DurableSyncRunt
         runtime.config().network.consensus_params(),
         handoff.recipe.params
     );
+    super::fixtures::admit_retained_header_proof(
+        &network,
+        runtime.store(),
+        &handoff.provenance.receipts,
+        handoff.recipe.params,
+    );
     assert!(
         FjallNodeStore::open(&handoff.path).is_err(),
         "runtime physically owns datadir"

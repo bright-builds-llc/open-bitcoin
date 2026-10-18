@@ -240,7 +240,8 @@ pub(super) fn progress_guarantee_status_snapshot(
         kind: ProgressCreditKind::ValidatedDurableActiveChain,
         credited_validated_active_chain_height: height,
         credited_validated_active_chain_hash: "11".repeat(32),
-        credited_validated_active_chain_work: "900001".to_string(),
+        credited_validated_active_chain_work:
+            "00000000000000000000000000000000000000000000000000000000000dbba1".to_string(),
         source_unix_seconds: 1_777_300_060,
         rejected_activity: vec![RejectedProgressActivity {
             kind: RejectedProgressActivityKind::HeaderDownload,

@@ -24,6 +24,7 @@ fn phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network
     };
     let all_headers = blocks
         .iter()
+        .skip(1)
         .map(|block| block.header.clone())
         .collect::<Vec<_>>();
     let first_peer_blocks = blocks
@@ -59,6 +60,8 @@ fn phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network
     assert!(config.dns_seeds.is_empty());
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, config.clone()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &blocks[0]);
     let mut transport = ScriptedTransport::new(vec![first_peer_script, second_peer_script]);
     let load_pressure = |runtime: &DurableSyncRuntime| {
         let metadata = runtime
@@ -93,6 +96,7 @@ fn phase71_synthetic_long_chain_exercises_resource_bounds_without_public_network
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
     let mut reopened_runtime =
         DurableSyncRuntime::open(reopened_store, config).expect("reopened runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&reopened_runtime);
     let reopened_summary = reopened_runtime.snapshot_summary();
     let connected_index =
         usize::try_from(reopened_summary.best_block_height).expect("connected height fits usize");

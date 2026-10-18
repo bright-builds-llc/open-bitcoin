@@ -14,6 +14,8 @@ fn durable_tip_direct_sync_emits_only_final_durable_best_tip() {
     let child = build_block(block_hash(&genesis.header), 1);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
     let captured = durable_tip_capture(&mut runtime);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
@@ -22,7 +24,7 @@ fn durable_tip_direct_sync_emits_only_final_durable_best_tip() {
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis.header.clone(), child.header.clone()],
+            headers: vec![child.header.clone()],
         }),
         WireNetworkMessage::Block(genesis),
         WireNetworkMessage::Block(child.clone()),
@@ -56,14 +58,19 @@ fn durable_tip_live_reconcile_collapses_multiple_blocks_to_final_tip() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let grandchild = build_block(block_hash(&child.header), 2);
-    save_chain_headers_snapshot_and_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1), (&grandchild, 2)],
         &[(&genesis, 0)],
-        &[(&genesis, 0), (&child, 1), (&grandchild, 2)],
     );
     let store = FjallNodeStore::open(&path).expect("store");
+    for block in [&child, &grandchild] {
+        store
+            .save_block(block, PersistMode::Sync)
+            .expect("retain actual inactive reconciliation body");
+    }
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let captured = durable_tip_capture(&mut runtime);
 
     // Act

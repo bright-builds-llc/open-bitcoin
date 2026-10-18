@@ -116,6 +116,9 @@ impl From<StorageError> for SyncRuntimeError {
 impl From<ManagedNetworkError> for SyncRuntimeError {
     fn from(value: ManagedNetworkError) -> Self {
         match value {
+            ManagedNetworkError::Chainstate(ChainstateError::ReplacementBlock {
+                source, ..
+            }) => Self::from(ManagedNetworkError::Chainstate(*source)),
             ManagedNetworkError::Network(error) => Self::from(error),
             ManagedNetworkError::Chainstate(error) if chainstate_error_is_peer_data(&error) => {
                 Self::InvalidData {

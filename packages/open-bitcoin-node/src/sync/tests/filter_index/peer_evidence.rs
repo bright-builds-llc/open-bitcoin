@@ -12,6 +12,39 @@ use crate::network::{
 use open_bitcoin_network::{GetCFCheckpt, GetCFHeaders, GetCFilters, ParsedNetworkMessage};
 use std::io::{Read, Write};
 
+impl PeerFilterFixture {
+    pub fn hash(&self, height: usize) -> BlockHash {
+        self.history.history.records[height].identity().block_hash()
+    }
+
+    pub fn cleanup(self) {
+        let Self { history, runtime } = self;
+        drop(runtime);
+        history.history.cleanup();
+    }
+}
+
+pub(in crate::sync::tests) fn complete_peer_handshake(runtime: &DurableSyncRuntime, peer: u64) {
+    for message in [
+        WireNetworkMessage::Version(open_bitcoin_network::VersionMessage {
+            nonce: 999,
+            ..Default::default()
+        }),
+        WireNetworkMessage::Verack,
+    ] {
+        runtime
+            .network
+            .receive_sync_message(
+                peer,
+                message,
+                50_000,
+                runtime.verify_flags,
+                runtime.consensus_params,
+            )
+            .expect("genuine peer handshake");
+    }
+}
+
 pub(in crate::sync::tests) fn with_accepted_stale_for_negative(
     action: impl FnOnce(&mut DurableSyncRuntime, BlockHash, u32),
 ) {
@@ -32,6 +65,13 @@ pub(in crate::sync::tests) fn with_accepted_stale_for_negative(
     fixture.apply(&second);
     fixture.finish();
     fixture.flush();
+    assert!(
+        fixture
+            .runtime
+            .network
+            .has_earned_fixture_work()
+            .expect("same live source")
+    );
     action(&mut fixture.runtime, stop, time);
     fixture.cleanup();
 }
@@ -363,6 +403,16 @@ fn phase160_peer_evidence_genuine_retained_competing_branch_actual_outbound() {
     let second = fixture.fork(10, 9, 0x62);
     fixture.apply(&second);
     fixture.finish();
+    let network = &fixture.runtime.network;
+    assert!(network.has_earned_fixture_work().expect("same live source"));
+    let headers = network.header_entries().expect("accepted branch headers");
+    for branch in [&first, &second] {
+        assert!(branch.records.iter().all(|record| {
+            headers
+                .iter()
+                .any(|header| header.block_hash == record.identity().block_hash())
+        }));
+    }
     // Act
     let actual = observe_runtime(
         &fixture.runtime,

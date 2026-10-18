@@ -112,30 +112,34 @@ impl DurableSyncRuntime {
         maybe_block: Option<&Block>,
         disposition: BlockConnectDisposition,
         was_requested: bool,
-        is_best_chain: bool,
+        _is_best_chain: bool,
     ) -> Result<(), SyncRuntimeError> {
+        // Requested side and pending bodies must survive for later branch reconciliation.
+        if was_requested && let Some(block) = maybe_block {
+            if let Err(error) = self.store.save_block(block, self.config.persist_mode) {
+                if let Err(notification) = self.network.note_basic_index_failure(
+                    crate::chainstate::filter_index::AcceptedBasicIndexFailure::RequiredBody,
+                ) {
+                    return Err(crate::storage::StorageError::BackendFailure {
+                        namespace: crate::storage::StorageNamespace::BlockIndex,
+                        message: format!("{error}; BASIC failure notification: {notification}"),
+                        action: crate::storage::StorageRecoveryAction::Restart,
+                    }
+                    .into());
+                }
+                return Err(error.into());
+            }
+            self.network
+                .note_local_block_hash(block_hash(&block.header))?;
+        }
         match disposition {
             BlockConnectDisposition::Connected(_) => {
-                if was_requested && is_best_chain {
+                if was_requested {
                     let Some(block) = maybe_block else {
                         return Ok(());
                     };
-                    if let Err(error) = self.store.save_block(block, self.config.persist_mode) {
-                        if let Err(notification) = self.network.note_basic_index_failure(
-                            crate::chainstate::filter_index::AcceptedBasicIndexFailure::RequiredBody,
-                        ) {
-                            return Err(crate::storage::StorageError::BackendFailure {
-                                namespace: crate::storage::StorageNamespace::BlockIndex,
-                                message: format!("{error}; BASIC failure notification: {notification}"),
-                                action: crate::storage::StorageRecoveryAction::Restart,
-                            }.into());
-                        }
-                        return Err(error.into());
-                    }
-                    self.network
-                        .note_local_block_hash(block_hash(&block.header))?;
                     progress.record_accepted_block();
-                    if self.block_is_current_best_tip(block)? {
+                    if self.block_is_current_active_tip(block)? {
                         self.queue_durable_tip_advanced(block.clone());
                     }
                 }
@@ -147,14 +151,10 @@ impl DurableSyncRuntime {
         Ok(())
     }
 
-    fn block_is_current_best_tip(&self, block: &Block) -> Result<bool, SyncRuntimeError> {
+    fn block_is_current_active_tip(&self, block: &Block) -> Result<bool, SyncRuntimeError> {
         let block_hash = block_hash(&block.header);
         let maybe_active_tip = self.network.maybe_chain_tip()?;
-        let maybe_best_header = self.network.best_chain_entries()?.last().cloned();
-        Ok(
-            maybe_active_tip.is_some_and(|tip| tip.block_hash == block_hash)
-                && maybe_best_header.is_some_and(|entry| entry.block_hash == block_hash),
-        )
+        Ok(maybe_active_tip.is_some_and(|tip| tip.block_hash == block_hash))
     }
 
     pub(super) fn queue_durable_tip_advanced(&mut self, block: Block) {

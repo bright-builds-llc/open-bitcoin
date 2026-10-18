@@ -192,7 +192,7 @@ pub(super) fn position(height: u32) -> ChainPosition {
             nonce: height,
         },
         height,
-        u128::from(height),
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::from(height)),
         1_700_000_000,
     )
 }

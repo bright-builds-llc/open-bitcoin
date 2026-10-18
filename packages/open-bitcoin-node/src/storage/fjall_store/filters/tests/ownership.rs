@@ -322,7 +322,12 @@ fn filter_index_changed_generation_and_prepared_branch_refuse_live_work() {
         } else {
             let mut header = positions[1].header.clone();
             header.time += 1;
-            positions[1] = ChainPosition::new(header, 1, 2, 1_001);
+            positions[1] = ChainPosition::new(
+                header,
+                1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+                1_001,
+            );
             seed(&store, &positions);
         }
         let maybe_before_state = store.maybe_basic_filter_state().expect("state");

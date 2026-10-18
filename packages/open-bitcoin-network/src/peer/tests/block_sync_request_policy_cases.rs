@@ -228,7 +228,12 @@ fn request_missing_blocks_skips_known_hashes_and_tracks_requested_inventory() {
     let missing_header = mined_header(known_hash, 2);
     let missing_hash = open_bitcoin_consensus::block_hash(&missing_header);
 
-    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.seed_local_chain(&[ChainPosition::new(
+        genesis_header,
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    )]);
     manager.add_outbound_peer(21, 10).expect("peer");
     assert_eq!(
         manager
@@ -361,7 +366,12 @@ fn request_missing_blocks_respects_capacity_and_returns_none_when_only_skips_rem
     let second_missing = mined_header(first_missing_hash, 3);
     let second_missing_hash = open_bitcoin_consensus::block_hash(&second_missing);
 
-    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.seed_local_chain(&[ChainPosition::new(
+        genesis_header,
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    )]);
     manager.add_outbound_peer(22, 10).expect("peer");
     manager
         .handle_message(
@@ -390,7 +400,12 @@ fn request_missing_blocks_respects_capacity_and_returns_none_when_only_skips_rem
     let mut manager = PeerManager::with_max_blocks_in_flight(local_config(), 2);
     let genesis_header = mined_header(BlockHash::from_byte_array([0_u8; 32]), 11);
     let known_hash = open_bitcoin_consensus::block_hash(&genesis_header);
-    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.seed_local_chain(&[ChainPosition::new(
+        genesis_header,
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    )]);
     manager.add_outbound_peer(23, 10).expect("peer");
     manager
         .handle_message(
@@ -435,7 +450,12 @@ fn request_missing_blocks_stops_once_capacity_is_filled() {
     let second_missing = mined_header(first_missing_hash, 23);
     let second_missing_hash = open_bitcoin_consensus::block_hash(&second_missing);
 
-    manager.seed_local_chain(&[ChainPosition::new(genesis_header, 0, 1, 0)]);
+    manager.seed_local_chain(&[ChainPosition::new(
+        genesis_header,
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    )]);
     manager.add_outbound_peer(24, 10).expect("peer");
     manager
         .handle_message(

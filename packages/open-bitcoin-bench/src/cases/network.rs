@@ -10,7 +10,7 @@ use open_bitcoin_primitives::NetworkMagic;
 
 use crate::{
     error::BenchError,
-    fixtures::BenchFixtures,
+    fixtures::{BenchFixtures, consensus_params},
     registry::{
         BenchCase, BenchDurability, BenchGroupId, BenchMeasurement, NETWORK_WIRE_SYNC_MAPPING,
     },
@@ -50,7 +50,11 @@ fn run_once() -> Result<(), BenchError> {
     }
 
     let mut headers = HeaderStore::default();
-    headers.seed_from_chain(&fixtures.network.active_chain);
+    for position in &fixtures.network.active_chain {
+        headers
+            .insert_header_with_params(position.header.clone(), &consensus_params())
+            .map_err(|error| BenchError::case_failed(CASE_ID, error.to_string()))?;
+    }
     let locator = headers.locator();
     if locator.block_hashes.is_empty() {
         return Err(BenchError::case_failed(

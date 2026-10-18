@@ -40,7 +40,9 @@ fn filter_index_production_reopen_reconciles_only_common_recovered_ancestry() {
             fixture.positions[height] = ChainPosition::new(
                 block.header.clone(),
                 height as u32,
-                height as u128 + 1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    height as u128 + 1,
+                ),
                 i64::from(block.header.time),
             );
         }

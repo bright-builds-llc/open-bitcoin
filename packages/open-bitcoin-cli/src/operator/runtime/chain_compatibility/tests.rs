@@ -15,6 +15,7 @@ use open_bitcoin_node::{
 };
 
 use super::*;
+pub(crate) mod phase165_work;
 use crate::operator::runtime::{OperatorRuntimeError, support::execute_offline_sync_command};
 use crate::operator::{
     NetworkSelection, OperatorOutputFormat, SyncArgs, SyncCommand,

@@ -38,6 +38,7 @@ mod basic_operator;
 pub use basic_operator::BasicPeerScope;
 mod compact_download_state;
 mod compact_relay;
+mod eligibility;
 mod inbound_state;
 mod inventory_state;
 mod message_dispatch;

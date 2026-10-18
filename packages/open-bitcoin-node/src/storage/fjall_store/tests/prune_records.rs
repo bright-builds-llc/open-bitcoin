@@ -266,7 +266,12 @@ fn index_fixture(store: &FjallNodeStore) -> Vec<ChainPosition> {
         open_bitcoin_core::consensus::block_merkle_root(&genesis.transactions)
             .expect("merkle")
             .0;
-    let position = ChainPosition::new(genesis.header.clone(), 0, 1, i64::from(genesis.header.time));
+    let position = ChainPosition::new(
+        genesis.header.clone(),
+        0,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        i64::from(genesis.header.time),
+    );
     let snapshot = ChainstateSnapshot::new(vec![position], Default::default(), Default::default());
     store.seed_coins_from_snapshot(&snapshot).expect("coins");
     store

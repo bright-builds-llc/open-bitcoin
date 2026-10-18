@@ -12,7 +12,7 @@ fn phase69_stale_tip_is_distinct_from_no_progress() {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -26,6 +26,7 @@ fn phase69_stale_tip_is_distinct_from_no_progress() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = runtime.snapshot_summary();
 
     // Act
@@ -73,7 +74,7 @@ fn phase69_tip_evidence_survives_runtime_reopen() {
     let child = build_block(block_hash(&genesis.header), 1);
     let child_hash = block_hash(&child.header);
     let expected_child_hash = block_hash_hex(child_hash);
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&genesis, 0), (&child, 1)],
         &[(&genesis, 0), (&child, 1)],
@@ -87,6 +88,7 @@ fn phase69_tip_evidence_survives_runtime_reopen() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![version_verack_script(1)]);
 
     // Act
@@ -104,6 +106,8 @@ fn phase69_tip_evidence_survives_runtime_reopen() {
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
     let reopened_runtime =
         DurableSyncRuntime::open(reopened_store, sync_config()).expect("reopen runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&reopened_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&reopened_runtime);
     let persisted_after = reopened_runtime
         .store()
         .load_runtime_metadata()
@@ -149,5 +153,6 @@ fn phase69_tip_evidence_survives_runtime_reopen() {
     assert_eq!(reopened_tip.block_hash, expected_child_hash);
     assert_eq!(reopened_tip.freshness, TipFreshnessStatus::Fresh);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&reopened_runtime);
     remove_dir_if_exists(&path);
 }

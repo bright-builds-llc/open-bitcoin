@@ -1,6 +1,7 @@
 #!/usr/bin/env bun
 
 import { afterEach, expect, test } from "bun:test";
+import { phase72SurfaceComparisonMatrix } from "./check-phase72-observability-evidence.ts";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -46,7 +47,7 @@ const COVERAGE_ANCHORS: Record<string, readonly string[]> = {
     "phase70_reorg_records_bounded_persisted_evidence",
     "same_datadir_reopen_connects_best_available_branch_when_blocks_are_already_local",
     "competing_header_branch_wins_after_restart_when_it_extends_farther",
-    "bounded_block_requests_use_validated_best_chain_headers_only",
+    "bounded_block_requests_prioritize_best_headers_and_include_accepted_sides",
     "phase70_notfound_releases_inflight_and_rotates_to_second_peer",
     "block_notfound_is_peer_attributed_no_credit",
     "phase70_duplicate_block_releases_inflight_without_credit",
@@ -444,4 +445,124 @@ function buildParityIndex(requirements: readonly string[]): string {
 function buildChecklist(requirements: readonly string[]): string {
   const requirementText = requirements.map((requirement) => `\`${requirement}\``).join(", ");
   return `| \`phase73-opt-in-uat-deterministic-verification\` | \`done\` | ${requirementText} | fixture evidence |\n`;
+}
+
+test("phase165 observability CLI human status uses canonical live work", () => {
+  // Arrange
+  const expectedWork = (840005).toString(16).padStart(64, "0");
+  // Act
+  const maybeComparison = phase72SurfaceComparisonMatrix().find(row => row.surface === "CLI human status");
+  // Assert
+  expect(expectedWork).toHaveLength(64);
+  expect(maybeComparison?.available.maybe_validated_active_chain_work).toEqual([
+    `validated_active_chain_work=${expectedWork}`,
+  ]);
+});
+
+test("phase165 observability dashboard uses canonical live work", () => {
+  // Arrange
+  const expectedWork = (840005).toString(16).padStart(64, "0");
+  // Act
+  const maybeComparison = phase72SurfaceComparisonMatrix().find(row => row.surface === "Dashboard projection");
+  // Assert
+  expect(expectedWork).toHaveLength(64);
+  expect(maybeComparison?.available.maybe_validated_active_chain_work).toEqual([
+    `validated_active_chain_work=${expectedWork}`,
+  ]);
+});
+
+test("phase165 observability RPC uses canonical live work and exact JSON needle", () => {
+  // Arrange
+  const expectedWork = (840005).toString(16).padStart(64, "0");
+  // Act
+  const maybeComparison = phase72SurfaceComparisonMatrix().find(row => row.surface === "RPC durable sync status");
+  // Assert
+  expect(expectedWork).toHaveLength(64);
+  expect(maybeComparison?.available.maybe_validated_active_chain_work).toEqual([
+    "maybe_validated_active_chain_work", `json!("${expectedWork}")`,
+  ]);
+});
+
+test("phase165 observability metrics and logs use canonical live work", () => {
+  // Arrange
+  const expectedWork = (840005).toString(16).padStart(64, "0");
+  // Act
+  const maybeComparison = phase72SurfaceComparisonMatrix().find(row => row.surface === "Metrics and structured logs");
+  // Assert
+  expect(expectedWork).toHaveLength(64);
+  expect(maybeComparison?.available.maybe_validated_active_chain_work).toEqual([
+    `validated_active_chain_work=${expectedWork}`,
+  ]);
+});
+
+test("phase165 observability support retains its complete raw decimal evidence", () => {
+  // Arrange
+  const expected = {
+    surface: "Support evidence",
+    file: "packages/open-bitcoin-cli/tests/operator_binary.rs",
+    available: {
+      connected_height: ["json!(840_004)"],
+      connected_hash: [`json!("${"1".repeat(64)}")`],
+      connected_work: ["json!(\"840005\")"],
+      validated_active_chain_height: ["json!(840_004)"],
+      maybe_validated_active_chain_hash: [`json!("${"1".repeat(64)}")`],
+      maybe_validated_active_chain_work: ["json!(\"840005\")"],
+      peer_contribution_connected: ["\"connected\": 3"],
+      peer_contribution_failed: ["\"failed\": 1"],
+    },
+    unavailable: {
+      connected_active_chain_work: ["Unavailable: connected active-chain work unavailable"],
+      validated_active_chain_work: ["Unavailable: validated active-chain work unavailable"],
+    },
+  };
+  // Act
+  const maybeComparison = phase72SurfaceComparisonMatrix().find(row => row.surface === "Support evidence");
+  // Assert
+  expect(maybeComparison).toEqual(expected);
+});
+
+test("phase165 observability smoke retains its complete raw decimal evidence", () => {
+  // Arrange
+  const expected = {
+    surface: "Live-smoke summary",
+    file: "scripts/test-run-live-mainnet-smoke.sh",
+    available: {
+      validated_active_chain_height: ["validatedActiveChainHeight", "840004"],
+      maybe_validated_active_chain_hash: ["1".repeat(64)],
+      maybe_validated_active_chain_work: ["840005"],
+      best_known_tip_freshness: ["bestKnownTip?.freshness === \"fresh\""],
+      peer_contribution_connected: ["peerContribution?.connected === 3"],
+      peer_contribution_failed: ["peerContribution?.failed === 1"],
+    },
+    unavailable: {
+      validated_active_chain_height: ["validated active-chain height unavailable"],
+    },
+  };
+  // Act
+  const maybeComparison = phase72SurfaceComparisonMatrix().find(row => row.surface === "Live-smoke summary");
+  // Assert
+  expect(maybeComparison).toEqual(expected);
+});
+
+for (const mode of ["missing", "obsolete-only"] as const) {
+  test(`phase165 current request coverage refuses ${mode}`, async () => {
+    // Arrange
+    const root = await createFixture({});
+    const file = "packages/open-bitcoin-node/src/sync/tests.rs";
+    const needle = "bounded_block_requests_prioritize_best_headers_and_include_accepted_sides";
+    const source = buildFixtureFiles({})[file];
+    expect(source.split(needle)).toHaveLength(2);
+    const changed = source.replace(needle, mode === "missing"
+      ? "" : "bounded_block_requests_use_validated_best_chain_headers_only");
+    expect(changed).not.toBe(source);
+    await writeFile(path.join(root, file), changed);
+    // Act
+    const child = Bun.spawnSync(["bun", "run", CHECKER_PATH], {
+      env: { ...process.env, OPEN_BITCOIN_PHASE73_REPO_ROOT: root },
+      stderr: "pipe", stdout: "pipe",
+    });
+    // Assert
+    expect(child.exitCode).not.toBe(0);
+    expect(child.stderr.toString()).toContain(`best_chain_header_selection in ${file} missing required text: ${needle}`);
+  });
 }

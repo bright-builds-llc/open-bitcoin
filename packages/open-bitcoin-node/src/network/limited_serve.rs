@@ -128,7 +128,7 @@ mod phase161_peer_config_tests {
         let staged = chainstate
             .stage_connect_block_with_current_time(
                 &block,
-                1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                 1_001,
                 ScriptVerifyFlags::P2SH,
                 ConsensusParams::default(),

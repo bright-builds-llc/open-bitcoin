@@ -277,6 +277,19 @@ fn managed_nodes_sync_blocks_and_relay_transactions_in_memory() {
         InboundAdmissionDecision::Admit(_)
     ));
     let sync_timestamp = i64::from(spendable.header.time);
+    let mut root = open_bitcoin_network::HeaderStore::default();
+    root.insert_header(genesis.header.clone())
+        .expect("actual root bytes");
+    sink.try_admit_fixture_headers(root, sync_timestamp, consensus_params())
+        .expect("controlled sink fixture initialization");
+    sink.connect_stored_block(
+        &genesis,
+        source.best_chain_entries()[0].chain_work,
+        sync_timestamp,
+        verify_flags(),
+        consensus_params(),
+    )
+    .expect("controlled sink genesis body before P2P");
     let mut to_source = sink.connect_outbound_peer(7, 1).expect("connect");
     let mut to_sink = deliver(&sink, &mut source, 7, to_source, sync_timestamp);
     to_source = deliver(&source, &mut sink, 7, to_sink, sync_timestamp);
@@ -335,6 +348,31 @@ fn managed_network_rejects_future_block_using_message_timestamp() {
         10_000,
         500_000_000,
     );
+    for message in [
+        WireNetworkMessage::Version(open_bitcoin_network::VersionMessage::default()),
+        WireNetworkMessage::Verack,
+    ] {
+        network
+            .receive_message(
+                9,
+                message,
+                i64::from(future_block.header.time),
+                verify_flags(),
+                consensus_params(),
+            )
+            .expect("actual future-block peer handshake");
+    }
+    network
+        .receive_message(
+            9,
+            WireNetworkMessage::Headers(open_bitcoin_network::HeadersMessage {
+                headers: vec![future_block.header.clone()],
+            }),
+            i64::from(future_block.header.time),
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("future child header admitted at its own valid time");
     let error = network
         .receive_message(
             9,
@@ -347,8 +385,8 @@ fn managed_network_rejects_future_block_using_message_timestamp() {
 
     assert!(matches!(
         error,
-        crate::network::ManagedNetworkError::Chainstate(
-            open_bitcoin_core::chainstate::ChainstateError::BlockValidation { source }
-        ) if source.reject_reason == "time-too-new"
+        crate::network::ManagedNetworkError::Network(
+            open_bitcoin_network::NetworkError::InvalidHeader { reject_reason, .. }
+        ) if reject_reason == "time-too-new"
     ));
 }

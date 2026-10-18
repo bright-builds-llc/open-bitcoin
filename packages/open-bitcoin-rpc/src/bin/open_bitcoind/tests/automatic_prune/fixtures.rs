@@ -73,7 +73,9 @@ pub(super) fn position(height: u32) -> ChainPosition {
             ..BlockHeader::default()
         },
         height,
-        u128::from(height) + 1,
+        open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(
+            u128::from(height) + 1,
+        ),
         1_700_000_000 + i64::from(height),
     )
 }
@@ -86,6 +88,16 @@ pub(super) fn seed(store: &FjallNodeStore) -> ChainstateSnapshot {
     for height in 0..=1_001 {
         let mut header = position(height).header;
         header.previous_block_hash = parent;
+        header.nonce = (0..=u32::MAX)
+            .find(|nonce| {
+                header.nonce = *nonce;
+                open_bitcoin_node::core::consensus::block::check_block_header_with_params(
+                    &header,
+                    &SyncNetwork::Regtest.consensus_params(),
+                )
+                .is_ok()
+            })
+            .expect("actual codec header PoW at selected limit");
         let inserted = headers
             .insert_header(header.clone())
             .expect("parent-linked codec header");
@@ -222,14 +234,39 @@ pub(super) fn save_small(store: &FjallNodeStore, p: &ChainPosition) {
         .expect("undo");
 }
 
-pub(super) fn cache_small(
+pub(super) fn assert_raw_cache_refuses(
+    store: &FjallNodeStore,
     handle: &ManagedNetworkHandle<
         impl open_bitcoin_node::ChainstateStore,
         impl open_bitcoin_node::core::chainstate::CoinsView,
     >,
     p: &ChainPosition,
 ) {
-    handle
+    let facts = || {
+        (
+            handle.chainstate_snapshot().expect("raw core facts"),
+            store
+                .hydrate_chainstate_for_open()
+                .expect("physical metadata and undo"),
+            store
+                .coins_view()
+                .complete_snapshot()
+                .expect("complete physical coins B and heads"),
+            store
+                .load_block(p.block_hash)
+                .expect("physical attempted body"),
+            store
+                .load_undo(p.block_hash)
+                .expect("physical attempted undo"),
+        )
+    };
+    let before = facts();
+    assert!(
+        !handle
+            .cached_block_present(p.block_hash)
+            .expect("raw cache absent")
+    );
+    let error = handle
         .connect_stored_block(
             &small_block(p),
             p.chain_work,
@@ -237,8 +274,45 @@ pub(super) fn cache_small(
             ScriptVerifyFlags::NONE,
             ConsensusParams::default(),
         )
-        .expect("cache existing active block");
-    assert!(handle.cached_block_present(p.block_hash).expect("cache"));
+        .expect_err("raw source refuses before body validity or cache effect");
+    assert!(matches!(
+        error,
+        open_bitcoin_node::ManagedNetworkAuthorityError::Operation(
+            open_bitcoin_node::ManagedNetworkError::Chainstate(
+                ChainstateError::UntrustedWorkLineage
+            )
+        )
+    ));
+    assert_eq!(facts(), before);
+    assert!(
+        !handle
+            .cached_block_present(p.block_hash)
+            .expect("raw cache still absent")
+    );
+}
+
+// Independent encoding of derived public undo facts using the versioned storage
+// schema; no retained-usage measurement supplies its own expected byte count.
+pub(super) fn encoded_undo_size(undo: &BlockUndo) -> u64 {
+    let transactions = undo.transactions.iter().map(|tx| {
+        let restored_inputs = tx.restored_inputs.iter().map(|coin| serde_json::json!({
+            "output": {"value_sats": coin.output.value.to_sats(), "script_pubkey": coin.output.script_pubkey.as_bytes()},
+            "is_coinbase": coin.is_coinbase,
+            "created_height": coin.created_height,
+            "created_median_time_past": coin.created_median_time_past,
+        })).collect::<Vec<_>>();
+        serde_json::json!({"restored_inputs": restored_inputs})
+    }).collect::<Vec<_>>();
+    let value = serde_json::json!({
+        "schema_version": open_bitcoin_node::SchemaVersion::CURRENT.get(),
+        "payload": {"transactions": transactions},
+    });
+    u64::try_from(
+        serde_json::to_vec_pretty(&value)
+            .expect("independent actual undo encoding")
+            .len(),
+    )
+    .expect("bounded undo bytes")
 }
 
 /// One reused ~2.5 MiB body; distinct canonical headers identify nonactive values.
@@ -293,9 +367,15 @@ pub(super) fn populate_threshold(store: &FjallNodeStore, truth: &ChainstateSnaps
             .len(),
     )
     .expect("length");
-    let undo_len = initial.height_sizes[&1]
-        .checked_sub(small_body_len)
-        .expect("measured encoded undo mate");
+    let calibration_undo = store
+        .load_undo(height_one.block_hash)
+        .expect("calibration undo")
+        .expect("retained calibration undo");
+    assert_eq!(
+        initial.height_sizes[&1],
+        small_body_len + encoded_undo_size(&calibration_undo)
+    );
+    let undo_len = encoded_undo_size(&undo);
     let mut encoded_sum = 0;
     let mut count = 0;
     while encoded_sum <= TARGET {
@@ -370,7 +450,7 @@ pub(super) fn metadata_fault_owner(
 
 use open_bitcoin_node::chainstate::FlushPersistSink;
 use open_bitcoin_node::core::{
-    chainstate::{ChainstateError, CoinsBatch},
+    chainstate::{ChainstateError, CoinsBatch, CoinsView},
     primitives::BlockHash,
 };
 use open_bitcoin_node::storage::fjall_store::{

@@ -435,6 +435,14 @@ impl CoinsCache<crate::MemoryCoinsView> {
 }
 
 impl<V: CoinsView> CoinsView for CoinsCache<V> {
+    fn complete_snapshot(&self) -> Result<super::CompleteCoinsSnapshot, ChainstateError> {
+        let mut snapshot = self.parent.complete_snapshot()?;
+        self.overlay.overlay_unspent_into(&mut snapshot.coins);
+        if let Some(best_block) = self.overlay.maybe_best_block {
+            snapshot.maybe_best_block = Some(best_block);
+        }
+        Ok(snapshot)
+    }
     fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
         if let Some(entry) = self.overlay.get(outpoint) {
             return Ok(entry.maybe_coin().cloned());
@@ -472,5 +480,26 @@ impl<V: CoinsView> CoinsView for CoinsCache<V> {
             self.overlay.maybe_best_block = Some(best_block);
         }
         Ok(())
+    }
+}
+
+impl<V: CoinsView> super::CoinsFlush for CoinsCache<V> {
+    fn estimated_cache_bytes(&self) -> u64 {
+        self.estimated_cache_bytes()
+    }
+    fn cache_entry_count(&self) -> u64 {
+        self.cache_entry_count()
+    }
+    fn prepare_current_best_block(&mut self) -> Result<(), ChainstateError> {
+        if let Some(best_block) = self.best_block()? {
+            self.set_best_block(best_block);
+        }
+        Ok(())
+    }
+    fn flush(&mut self) -> Result<(), ChainstateError> {
+        self.flush()
+    }
+    fn sync(&mut self) -> Result<(), ChainstateError> {
+        self.sync()
     }
 }

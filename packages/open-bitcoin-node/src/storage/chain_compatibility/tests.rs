@@ -57,10 +57,17 @@ pub(super) fn ordinary_refusal(path: &Path, chain: CanonicalChain) -> Compatibil
         }
     }
     ORDINARY_BACKEND_OPEN_SPY.set(true);
+    let before = BACKEND_BUILDER_CALLS.get();
     let _spy = Spy;
-    FjallNodeStore::open_ordinary(path, chain)
+    let refusal = FjallNodeStore::open_ordinary(path, chain)
         .err()
-        .expect("ordinary admission refused before backend")
+        .expect("ordinary admission refused before backend");
+    assert_eq!(
+        BACKEND_BUILDER_CALLS.get(),
+        before,
+        "refusal reached backend builder"
+    );
+    refusal
 }
 
 #[test]
@@ -312,6 +319,7 @@ fn chain_compatibility_diagnostics_are_bounded_redacted_and_truthful() {
                 "observed_network=unavailable",
                 "observed_root=unavailable",
                 "observed_work=unavailable",
+                "work_decision=",
                 "scope=identity_only",
                 "ordinary_history=false",
                 "Review existing data",
@@ -335,6 +343,57 @@ fn chain_compatibility_diagnostics_are_bounded_redacted_and_truthful() {
     let refusal = ordinary_refusal(Path::new(&hostile), CanonicalChain::Mainnet);
     assert!(refusal.to_string().len() <= 1024);
     assert!(!refusal.to_string().contains("private-wallet-secret"));
+}
+
+#[test]
+fn chain_compatibility_work_decision_is_exhaustive_and_separate_from_observation() {
+    // Arrange
+    for chain in CHAINS {
+        for (observation, decision, reason) in [
+            (
+                DatadirObservation::Missing,
+                WorkCompatibilityDecision::BootstrapUnavailable,
+                CompatibilityReason::UnsupportedValidationScope,
+            ),
+            (
+                DatadirObservation::EmptyDirectory,
+                WorkCompatibilityDecision::BootstrapUnavailable,
+                CompatibilityReason::UnsupportedValidationScope,
+            ),
+            (
+                DatadirObservation::ExistingUnproved,
+                WorkCompatibilityDecision::ExistingUnproved,
+                CompatibilityReason::ExistingStateUnproved,
+            ),
+            (
+                DatadirObservation::UnsafePath,
+                WorkCompatibilityDecision::UnsafePath,
+                CompatibilityReason::UnsafePath,
+            ),
+            (
+                DatadirObservation::InspectionIoFailure(InspectionIoKind::PermissionDenied),
+                WorkCompatibilityDecision::InspectionIoFailure,
+                CompatibilityReason::InspectionIoFailure,
+            ),
+            (
+                DatadirObservation::InspectionIoFailure(InspectionIoKind::Other),
+                WorkCompatibilityDecision::InspectionIoFailure,
+                CompatibilityReason::InspectionIoFailure,
+            ),
+        ] {
+            // Act
+            let refusal = CompatibilityRefusal::from_observation(chain, observation);
+            // Assert
+            assert_eq!(refusal.work_decision(), decision);
+            assert_eq!(refusal.work_profile(), WorkProfileObservation::Unavailable);
+            assert_eq!(refusal.reason(), reason);
+            assert!(
+                refusal
+                    .to_string()
+                    .ends_with(&format!("work_decision={}", decision.code()))
+            );
+        }
+    }
 }
 
 #[test]

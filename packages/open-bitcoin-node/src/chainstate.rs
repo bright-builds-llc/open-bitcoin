@@ -161,17 +161,19 @@ pub struct ManagedChainstate<S, V: CoinsView = MemoryCoinsView> {
     maybe_validated_lineage: Option<flush_lifecycle::ValidatedChainstateLineage>,
     maybe_basic_index_owner: Option<filter_index::AcceptedBasicIndexOwner>,
     maybe_pending_validation: Option<crate::storage::validation_history::AcceptedValidationBatch>,
+    maybe_body_preference: Option<open_bitcoin_network::BodyEligibilityBinding>,
 }
 
 impl<S: Clone> Clone for ManagedChainstate<S, MemoryCoinsView> {
     fn clone(&self) -> Self {
         Self {
             store: self.store.clone(),
-            chainstate: Chainstate::from_snapshot(self.chainstate.snapshot()),
+            chainstate: self.chainstate.clone(),
             flush_lifecycle: self.flush_lifecycle.clone(),
             maybe_validated_lineage: None,
             maybe_basic_index_owner: None,
             maybe_pending_validation: None,
+            maybe_body_preference: self.maybe_body_preference.clone(),
         }
     }
 }
@@ -199,6 +201,7 @@ impl<S: Eq> Eq for ManagedChainstate<S, MemoryCoinsView> {}
 
 /// Opaque, fully validated replacement for one connected block.
 pub(crate) struct PreparedChainstateConnect {
+    maybe_body_authorization: Option<crate::network::work_authority::ConnectAuthorization>,
     staged: StagedChainstateConnect,
     maybe_history: Option<validation_history::PreparedValidationAcceptance>,
     position: ChainPosition,
@@ -215,6 +218,7 @@ impl PreparedChainstateConnect {
 
 /// Opaque, fully validated replacement for one complete reorg.
 pub(crate) struct PreparedChainstateReorg {
+    authorization: crate::network::work_authority::ReorgAuthorization,
     staged: StagedChainstateReorg,
     maybe_history: Option<validation_history::PreparedValidationAcceptance>,
     transition: ChainTransition,
@@ -248,6 +252,7 @@ impl<S: ChainstateStore> ManagedChainstate<S, MemoryCoinsView> {
             maybe_validated_lineage: None,
             maybe_basic_index_owner: None,
             maybe_pending_validation: None,
+            maybe_body_preference: None,
             flush_lifecycle: FlushLifecycle::ready(
                 FlushPolicyTime::from_unix_seconds(0),
                 FlushPolicyTime::from_unix_seconds(0),
@@ -267,6 +272,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             maybe_validated_lineage: None,
             maybe_basic_index_owner: None,
             maybe_pending_validation: None,
+            maybe_body_preference: None,
         }
     }
 
@@ -281,7 +287,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     pub fn connect_block(
         &mut self,
         block: &Block,
-        chain_work: u128,
+        chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
@@ -297,7 +303,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
     pub fn connect_block_with_current_time(
         &mut self,
         block: &Block,
-        chain_work: u128,
+        chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork,
         current_time: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -312,33 +318,20 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         self.commit_prepared_connect(prepared)
     }
 
-    pub(crate) fn prepare_connect_block(
-        &self,
-        block: &Block,
-        chain_work: u128,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<PreparedChainstateConnect, open_bitcoin_core::chainstate::ChainstateError> {
-        self.prepare_connect_block_with_current_time(
-            block,
-            chain_work,
-            i64::from(block.header.time),
-            verify_flags,
-            consensus_params,
-        )
-    }
-
     pub(crate) fn prepare_connect_block_with_current_time(
         &self,
         block: &Block,
-        chain_work: u128,
+        _chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork,
         current_time: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<PreparedChainstateConnect, open_bitcoin_core::chainstate::ChainstateError> {
+        let derived_work = self.authorize_direct_connect(block, consensus_params)?;
+        #[cfg(test)]
+        work_authority::observe_preparation(0);
         let staged = self.chainstate.stage_connect_block_with_current_time(
             block,
-            chain_work,
+            derived_work,
             current_time,
             verify_flags,
             consensus_params,
@@ -348,6 +341,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             self.admit_validation_acceptance(std::slice::from_ref(staged.position()))?;
         let maybe_filter_facts = self.prepare_basic_filter_facts(block, &staged);
         Ok(PreparedChainstateConnect {
+            maybe_body_authorization: None,
             staged,
             maybe_history,
             position,
@@ -360,6 +354,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         block: &Block,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
         let position = self.chainstate.disconnect_tip(block)?;
+        self.maybe_body_preference = None;
         self.maybe_validated_lineage = None;
         self.invalidate_basic_index_owner();
         self.persist().map_err(map_persist)?;
@@ -383,38 +378,21 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         self.commit_prepared_reorg(prepared)
     }
 
-    pub(crate) fn prepare_reorg(
-        &self,
-        disconnect_blocks: &[Block],
-        replacement_branch: &[AnchoredBlock],
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<PreparedChainstateReorg, open_bitcoin_core::chainstate::ChainstateError> {
-        let staged = self.chainstate.stage_reorg(
-            disconnect_blocks,
-            replacement_branch,
-            verify_flags,
-            consensus_params,
-        )?;
-        let transition = staged.transition().clone();
-        let maybe_history = self.prepare_validation_reorg(&staged)?;
-        let maybe_index = self.prepare_basic_index_reorg(&staged, replacement_branch)?;
-        Ok(PreparedChainstateReorg {
-            staged,
-            maybe_history,
-            transition,
-            maybe_index,
-        })
-    }
-
     pub(crate) fn install_prepared_reorg_preview(
         &mut self,
         prepared: &PreparedChainstateReorg,
     ) -> Result<(), ChainstateError> {
+        prepared
+            .authorization
+            .check_stage(&self.chainstate, &prepared.staged)?;
+        self.chainstate
+            .check_staged_reorg_preview(&prepared.staged)?;
+        #[cfg(test)]
+        work_authority::observe_preparation(3);
         self.freeze_basic_index_reorg(prepared)
             .map_err(map_persist)?;
         self.chainstate
-            .install_staged_reorg_preview(&prepared.staged);
+            .install_staged_reorg_preview(&prepared.staged)?;
         Ok(())
     }
 
@@ -494,7 +472,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
             .flush_lifecycle
             .execute_flush_applying_plan_with_header_checkpoint(
                 &mut self.store,
-                self.chainstate.coins_mut(),
+                &mut self.chainstate,
                 mode,
                 now,
                 disk_free_bytes,
@@ -592,8 +570,12 @@ impl<S, V: CoinsView> ManagedChainstate<S, V> {
 }
 
 pub(crate) mod filter_index;
+#[cfg(test)]
+mod live_fixture;
+
 mod filter_reorg;
 pub(crate) mod validation_history;
+mod work_authority;
 pub(crate) use filter_reorg::preflight::production_budget as basic_filter_turn_budget;
 mod fjall_store;
 pub use fjall_store::FjallChainstateStore;

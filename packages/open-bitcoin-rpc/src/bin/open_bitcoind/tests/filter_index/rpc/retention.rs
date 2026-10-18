@@ -16,6 +16,7 @@ pub(super) fn replace_tip(fixture: &mut DaemonFixture, ancestor: usize, count: u
         .rev()
         .cloned()
         .collect();
+    let count = count.max(disconnect.len() + 1);
     let snapshot = fixture
         .opened
         .network
@@ -50,7 +51,7 @@ pub(super) fn replace_tip(fixture: &mut DaemonFixture, ancestor: usize, count: u
             .expect("ordinary replacement body");
         connected.push(AnchoredBlock {
             block: block.clone(),
-            chain_work: u128::from(height) + 1_000,
+            chain_work: open_bitcoin_node::core::consensus::chain_proof::ProofWork::ZERO,
         });
         parent = block;
     }
@@ -138,7 +139,13 @@ async fn phase159_daemon_rpc_retention_actual_paired_prune_stale_and_all_handle_
     let accepted_missing = fixture.accept_next();
     replace_tip(&mut fixture, 390, 11);
     fixture.finish();
-    let active = block_hash(&fixture.blocks[401].header);
+    let active = block_hash(
+        &fixture
+            .blocks
+            .last()
+            .expect("actual replacement endpoint")
+            .header,
+    );
     assert_ne!(active, stale);
     let original_active = filter(&fixture, active).await;
     assert_eq!(filter(&fixture, stale).await, original_stale);
@@ -191,10 +198,10 @@ async fn phase159_daemon_rpc_retention_actual_paired_prune_stale_and_all_handle_
     );
     assert_eq!(
         invoke(&fixture, "getindexinfo", json!([])).await["result"],
-        json!({"basic block filter index":{"synced":true,"best_block_height":401}})
+        json!({"basic block filter index":{"synced":true,"best_block_height":fixture.blocks.len() - 1}})
     );
     eprintln!(
-        "phase159 daemon retention evidence: initial_accepted=401 accepted_before_reorg=402 replacement=11 deleted_pairs={} target_height=20 logical_payload_bytes_before={before} after={after} loss={} all_handles_closed=true reopened=true exact_active_stale_pruned=true accepted_missing_retained=true",
+        "phase159 daemon retention evidence: initial_accepted=401 accepted_before_reorg=402 replacement=12 deleted_pairs={} target_height=20 logical_payload_bytes_before={before} after={after} loss={} all_handles_closed=true reopened=true exact_active_stale_pruned=true accepted_missing_retained=true",
         deletion.deleted_block_hashes.len(),
         before - after
     );

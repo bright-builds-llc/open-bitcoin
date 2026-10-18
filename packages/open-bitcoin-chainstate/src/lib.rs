@@ -39,6 +39,23 @@ pub use engine::{
     StagedChainstateReorg, prefer_candidate_tip,
 };
 pub use error::ChainstateError;
+
+/// Opaque source identity. It proves a live owner/generation, never branch preference.
+/// ```compile_fail
+/// use open_bitcoin_chainstate::LiveWorkSourceBinding;
+/// fn duplicate(binding: LiveWorkSourceBinding) { let _ = binding.clone(); }
+/// ```
+/// ```compile_fail
+/// use open_bitcoin_chainstate::LiveWorkSourceBinding;
+/// fn mutate(binding: &mut LiveWorkSourceBinding) { binding.maybe_tip = None; }
+/// ```
+#[derive(Debug)]
+pub struct LiveWorkSourceBinding {
+    owner: std::sync::Arc<()>,
+    generation: std::sync::Arc<()>,
+    maybe_tip: Option<ChainPosition>,
+    params: open_bitcoin_consensus::ConsensusParams,
+}
 pub use filter_index::{
     BASIC_INDEX_PRUNE_LOCK, FilterCheckpoint, FilterIndexError, FilterRecordIdentity,
     FilterRecoveryPlan, FilterRecoveryScan, IndexInputProtection, IndexPrefix,
@@ -114,7 +131,11 @@ mod tests {
         let non_genesis_header = sample_header(BlockHash::from_byte_array([9_u8; 32]), 10);
 
         // Act
-        let result = ChainPosition::genesis(non_genesis_header, 1, 10);
+        let result = ChainPosition::genesis(
+            non_genesis_header,
+            crate::ChainPosition::untrusted_fixture_work(1),
+            10,
+        );
 
         // Assert
         assert!(matches!(
@@ -126,9 +147,18 @@ mod tests {
     #[test]
     fn snapshot_tip_returns_the_last_active_position() {
         // Arrange
-        let genesis = ChainPosition::genesis(sample_header(Default::default(), 1), 1, 1)
-            .expect("genesis position");
-        let tip = ChainPosition::new(sample_header(genesis.block_hash, 2), 1, 2, 2);
+        let genesis = ChainPosition::genesis(
+            sample_header(Default::default(), 1),
+            crate::ChainPosition::untrusted_fixture_work(1),
+            1,
+        )
+        .expect("genesis position");
+        let tip = ChainPosition::new(
+            sample_header(genesis.block_hash, 2),
+            1,
+            crate::ChainPosition::untrusted_fixture_work(2),
+            2,
+        );
         let mut utxos = HashMap::new();
         utxos.insert(
             OutPoint {

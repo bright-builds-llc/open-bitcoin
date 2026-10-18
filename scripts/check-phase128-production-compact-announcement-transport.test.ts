@@ -121,7 +121,7 @@ test.each([
   ["block hash before error return", replace(BLOCK_RESPONSE, SAVE_RETURN, `self.network.note_local_block_hash(block_hash(&block.header))?; ${SAVE_RETURN}`)],
   ["queue before error return", replace(BLOCK_RESPONSE, SAVE_RETURN, `self.queue_durable_tip_advanced(block.clone()); ${SAVE_RETURN}`)],
   ["queue before durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, `self.queue_durable_tip_advanced(block.clone()); ${SAVE_ERROR}`)],
-  ["conditional durable save", compose(replace(BLOCK_RESPONSE, SAVE_ERROR, `if false { ${SAVE_ERROR}`), replace(BLOCK_RESPONSE, "self.network\n                        .note_local_block_hash", "} self.network\n                        .note_local_block_hash"))],
+  ["conditional durable save", compose(replace(BLOCK_RESPONSE, SAVE_ERROR, `if false { ${SAVE_ERROR}`), replace(BLOCK_RESPONSE, "self.network\n                .note_local_block_hash", "} self.network\n                .note_local_block_hash"))],
   ["comment-only durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, `/* ${SAVE_ERROR} */ if let Err(error) = Ok::<(), SyncRuntimeError>(()) {`)],
   ["literal-only durable save", replace(BLOCK_RESPONSE, SAVE_ERROR, `let _ = r#"${SAVE_ERROR}"#; if let Err(error) = Ok::<(), SyncRuntimeError>(()) {`)],
   ["test-only block disposition", replace(BLOCK_RESPONSE, "pub(super) fn record_block_disposition(", "#[cfg(test)]\n    pub(super) fn record_block_disposition(")],
@@ -367,6 +367,37 @@ test.each([
   const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
   // Assert
   expect(failures).toEqual([diagnostic]);
+});
+
+test.each([
+  ["Connected-only body persistence", "if was_requested && let Some(block) = maybe_block {", "if matches!(disposition, BlockConnectDisposition::Connected(_)) && was_requested && let Some(block) = maybe_block {"],
+  ["best-header-gated body persistence", "if was_requested && let Some(block) = maybe_block {", "if was_requested && is_best_chain && let Some(block) = maybe_block {"],
+  ["missing local body hash", ".note_local_block_hash(block_hash(&block.header))?;", ".ignore_local_block_hash(block_hash(&block.header))?;"],
+  ["unrequested announcement", "if was_requested {", "if true {"],
+  ["missing Connected qualification", "BlockConnectDisposition::Connected(_) => {", "_ => {"],
+  ["missing actual active-tip predicate", "if self.block_is_current_active_tip(block)? {", "if true {"],
+  ["obsolete best-header tip predicate", "if self.block_is_current_active_tip(block)? {", "if self.block_is_current_best_tip(block)? {"],
+  ["BASIC notification failure falls through", "return Err(crate::storage::StorageError::BackendFailure {", "let _ = Err::<(), _>(crate::storage::StorageError::BackendFailure {"],
+  ["constant active-tip helper", "Ok(maybe_active_tip.is_some_and(|tip| tip.block_hash == block_hash))", "Ok(true)"],
+  ["inverted active-tip identity", "tip.block_hash == block_hash", "tip.block_hash != block_hash"],
+  ["any active tip credited", "Ok(maybe_active_tip.is_some_and(|tip| tip.block_hash == block_hash))", "Ok(maybe_active_tip.is_some())"],
+  ["active-tip lookup error ignored", "let maybe_active_tip = self.network.maybe_chain_tip()?;", "let maybe_active_tip = self.network.maybe_chain_tip().unwrap_or(None);"],
+  ["test-only active-tip helper", "    fn block_is_current_active_tip", "    #[cfg(test)]\n    fn block_is_current_active_tip"],
+  ["unrelated active-tip helper owner", "    fn block_is_current_active_tip", "}\nimpl UnrelatedRuntime {\n    fn block_is_current_active_tip"],
+  ["comment-only active-tip helper", "fn block_is_current_active_tip", "/* fn block_is_current_active_tip */ fn disconnected_active_tip"],
+] as const)("rejects current durable-body mutation: %s", (_name, needle, replacement) => {
+  // Arrange
+  expect(checkPhase128ProductionCompactAnnouncementTransport(createFixture())).toEqual([]);
+  const source = readFileSync(path.join(REPO_ROOT, BLOCK_RESPONSE), "utf8");
+  expect(source.split(needle)).toHaveLength(2);
+  expect(replacement).not.toBe(needle);
+  const root = createFixture(replace(BLOCK_RESPONSE, needle, replacement));
+
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+
+  // Assert
+  expect(failures).toEqual([DURABLE_TRIGGER_FAILURE]);
 });
 
 function createFixture(maybeMutate?: Mutator): string {

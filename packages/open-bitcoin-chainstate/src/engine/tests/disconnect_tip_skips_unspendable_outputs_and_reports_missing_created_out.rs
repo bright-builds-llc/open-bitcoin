@@ -46,26 +46,32 @@ fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs(
             ),
         ],
     );
-    let missing_created_output = Chainstate::from_snapshot(ChainstateSnapshot {
-        active_chain: vec![ChainPosition::new(spend_block.header.clone(), 1, 2, 1)],
-        utxos: HashMap::new(),
-        undo_by_block: HashMap::from([(
-            open_bitcoin_consensus::block_hash(&spend_block.header),
-            BlockUndo {
-                transactions: vec![TxUndo {
-                    restored_inputs: vec![Coin {
-                        output: genesis_block.transactions[0].outputs[0].clone(),
-                        is_coinbase: true,
-                        created_height: 0,
-                        created_median_time_past: 0,
+    let missing_created_output =
+        Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
+            active_chain: vec![ChainPosition::new(
+                spend_block.header.clone(),
+                1,
+                crate::ChainPosition::untrusted_fixture_work(2),
+                1,
+            )],
+            utxos: HashMap::new(),
+            undo_by_block: HashMap::from([(
+                open_bitcoin_consensus::block_hash(&spend_block.header),
+                BlockUndo {
+                    transactions: vec![TxUndo {
+                        restored_inputs: vec![Coin {
+                            output: genesis_block.transactions[0].outputs[0].clone(),
+                            is_coinbase: true,
+                            created_height: 0,
+                            created_median_time_past: 0,
+                        }],
                     }],
-                }],
-            },
-        )]),
-        maybe_confirmed_txid_counts: None,
-    })
-    .disconnect_tip(&spend_block)
-    .expect_err("missing created spendable outputs should fail");
+                },
+            )]),
+            maybe_confirmed_txid_counts: None,
+        })
+        .disconnect_tip(&spend_block)
+        .expect_err("missing created spendable outputs should fail");
     assert!(matches!(
         missing_created_output,
         crate::ChainstateError::DisconnectSpentOutputMismatch { .. }
@@ -112,7 +118,7 @@ fn median_time_past_uses_the_last_window_of_times() {
                     nonce: 0,
                 },
                 index,
-                u128::from(index),
+                crate::ChainPosition::untrusted_fixture_work(u128::from(index)),
                 i64::from(index + 10),
             )
         })
@@ -141,7 +147,7 @@ fn snapshot_round_trip_preserves_accessors() {
     let genesis_position = connect_block(&mut chainstate, &genesis_block, 1);
 
     let snapshot = chainstate.snapshot();
-    let restored = Chainstate::from_snapshot(snapshot.clone());
+    let restored = Chainstate::from_snapshot_for_mechanical_fixture(snapshot.clone());
 
     assert_eq!(snapshot.tip(), Some(&genesis_position));
     assert_eq!(restored.tip(), Some(&genesis_position));
@@ -160,7 +166,7 @@ fn connect_block_rejects_invalid_tip_extensions() {
     let error = chainstate
         .connect_block(
             &block,
-            1,
+            crate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )
@@ -185,8 +191,13 @@ fn disconnect_tip_rejects_missing_tip_and_missing_undo() {
         .expect_err("empty chain should reject disconnect");
     assert!(matches!(missing_tip, crate::ChainstateError::MissingTip));
 
-    let tip = ChainPosition::new(genesis_block.header.clone(), 0, 1, 1);
-    let mut chainstate = Chainstate::from_snapshot(ChainstateSnapshot {
+    let tip = ChainPosition::new(
+        genesis_block.header.clone(),
+        0,
+        crate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
+    let mut chainstate = Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::new(),
@@ -221,9 +232,14 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         1_231_006_600,
         vec![coinbase_transaction(1, 50), spend],
     );
-    let tip = ChainPosition::new(block.header.clone(), 1, 2, 1);
+    let tip = ChainPosition::new(
+        block.header.clone(),
+        1,
+        crate::ChainPosition::untrusted_fixture_work(2),
+        1,
+    );
 
-    let mismatch = Chainstate::from_snapshot(ChainstateSnapshot {
+    let mismatch = Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::new(),
@@ -236,7 +252,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         crate::ChainstateError::DisconnectBlockMismatch { .. }
     ));
 
-    let undo_shape = Chainstate::from_snapshot(ChainstateSnapshot {
+    let undo_shape = Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::new(),
         undo_by_block: HashMap::from([(tip.block_hash, BlockUndo::default())]),
@@ -249,7 +265,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         crate::ChainstateError::UndoMismatch { .. }
     ));
 
-    let inner_undo_shape = Chainstate::from_snapshot(ChainstateSnapshot {
+    let inner_undo_shape = Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::from([
             (
@@ -314,7 +330,12 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
         1_231_006_600,
         vec![coinbase_transaction(1, 50), spend.clone()],
     );
-    let tip = ChainPosition::new(block.header.clone(), 1, 2, 1);
+    let tip = ChainPosition::new(
+        block.header.clone(),
+        1,
+        crate::ChainPosition::untrusted_fixture_work(2),
+        1,
+    );
     let spend_outpoint = spend.inputs[0].previous_output.clone();
     let created_coinbase_outpoint = OutPoint {
         txid: open_bitcoin_consensus::transaction_txid(&block.transactions[0]).expect("txid"),
@@ -325,7 +346,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
         vout: 0,
     };
 
-    let restore_overwrite = Chainstate::from_snapshot(ChainstateSnapshot {
+    let restore_overwrite = Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
         active_chain: vec![tip.clone()],
         utxos: HashMap::from([
             (
@@ -383,13 +404,18 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
         1_231_006_600,
         vec![coinbase_transaction(1, 50)],
     );
-    let mismatch_tip = ChainPosition::new(mismatch_block.header.clone(), 1, 2, 1);
+    let mismatch_tip = ChainPosition::new(
+        mismatch_block.header.clone(),
+        1,
+        crate::ChainPosition::untrusted_fixture_work(2),
+        1,
+    );
     let mismatch_coinbase_outpoint = OutPoint {
         txid: open_bitcoin_consensus::transaction_txid(&mismatch_block.transactions[0])
             .expect("txid"),
         vout: 0,
     };
-    let output_mismatch = Chainstate::from_snapshot(ChainstateSnapshot {
+    let output_mismatch = Chainstate::from_snapshot_for_mechanical_fixture(ChainstateSnapshot {
         active_chain: vec![mismatch_tip],
         utxos: HashMap::from([(
             mismatch_coinbase_outpoint,
@@ -426,7 +452,7 @@ fn reorg_and_tip_preference_cover_remaining_decision_branches() {
             nonce: 0,
         },
         2,
-        5,
+        crate::ChainPosition::untrusted_fixture_work(5),
         2,
     );
     let current_same_work_lower_height = ChainPosition::new(
@@ -439,7 +465,7 @@ fn reorg_and_tip_preference_cover_remaining_decision_branches() {
             nonce: 0,
         },
         1,
-        5,
+        crate::ChainPosition::untrusted_fixture_work(5),
         1,
     );
     assert!(prefer_candidate_tip(
@@ -457,7 +483,7 @@ fn reorg_and_tip_preference_cover_remaining_decision_branches() {
             nonce: 0,
         },
         2,
-        5,
+        crate::ChainPosition::untrusted_fixture_work(5),
         3,
     );
     let candidate_same_height = ChainPosition::new(
@@ -470,7 +496,7 @@ fn reorg_and_tip_preference_cover_remaining_decision_branches() {
             nonce: 0,
         },
         2,
-        5,
+        crate::ChainPosition::untrusted_fixture_work(5),
         4,
     );
     assert_eq!(
@@ -515,7 +541,7 @@ fn stage_reorg_rejects_missing_undo_on_the_disconnected_branch() {
     connect_block(&mut chainstate, &child, 2);
     let mut snapshot = chainstate.snapshot();
     snapshot.undo_by_block.clear();
-    let mut poisoned = Chainstate::from_snapshot(snapshot);
+    let mut poisoned = Chainstate::from_snapshot_for_mechanical_fixture(snapshot);
 
     // Act
     let error = poisoned
@@ -558,6 +584,8 @@ fn stage_reorg_rejects_replacement_branch_that_spends_a_missing_coin() {
         1_231_006_650,
         vec![coinbase_transaction(1, 50), missing_spend],
     );
+    let failing_hash = open_bitcoin_consensus::block_hash(&branch_b.header);
+    let before = chainstate.snapshot();
 
     // Act
     let error = chainstate
@@ -565,7 +593,7 @@ fn stage_reorg_rejects_replacement_branch_that_spends_a_missing_coin() {
             std::slice::from_ref(&branch_a),
             &[AnchoredBlock {
                 block: branch_b,
-                chain_work: 3,
+                chain_work: crate::ChainPosition::untrusted_fixture_work(3),
             }],
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -578,5 +606,8 @@ fn stage_reorg_rejects_replacement_branch_that_spends_a_missing_coin() {
         .expect_err("replacement spend of a missing coin must fail");
 
     // Assert
-    assert!(matches!(error, crate::ChainstateError::MissingCoin { .. }));
+    assert!(
+        matches!(error, crate::ChainstateError::ReplacementBlock { block_hash, source } if block_hash == failing_hash && matches!(*source, crate::ChainstateError::MissingCoin { .. }))
+    );
+    assert_eq!(chainstate.snapshot(), before);
 }

@@ -65,10 +65,10 @@ fn sync_once_rotates_to_alternative_peer_after_stall() {
         },
     )
     .expect("runtime");
-    let mut transport = ScriptedTransport::new(vec![
-        Vec::new(),
-        headers_script(1, vec![header(BlockHash::from_byte_array([0_u8; 32]), 2)]),
-    ]);
+    let root = header(BlockHash::default(), 1);
+    let child = header(block_hash(&root), 2);
+    crate::sync::tests::support_runtime::admit_fixture_runtime_root(&runtime, root);
+    let mut transport = ScriptedTransport::new(vec![Vec::new(), headers_script(1, vec![child])]);
     let mut resolver = ScriptedResolver::new(vec![
         Ok(vec![ResolvedSyncPeerAddress::new(
             SyncPeerAddress::manual("198.51.100.10", 18_444),

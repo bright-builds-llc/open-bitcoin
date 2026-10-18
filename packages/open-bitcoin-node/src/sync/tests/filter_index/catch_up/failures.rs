@@ -69,12 +69,7 @@ fn phase157_turn_mutated_body_pauses_and_retry_preserves_accepted_target() {
 fn phase157_turn_accepted_writer_error_refuses_poison_and_retains_complete_facts() {
     // Arrange
     let history = ValidatedHistory::new("turn-accepted-poison", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = history.live_runtime();
     runtime
         .network
         .force_basic_index_flush_for_test()

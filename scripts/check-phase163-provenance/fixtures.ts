@@ -1,8 +1,8 @@
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { CHECK_FILES as FILES158, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE, PHASE162_COMPLETE,
   PHASE162_IMPLEMENTATION, checkPhase158ValidatedReorg, loadPhase162OptionalSources } from "../check-phase158-validated-reorg.ts";
 import { CHECK_FILES as FILES162, checkPhase162IntegratedFilterProof, loadSources } from "../check-phase162-integrated-filter-proof.ts";
@@ -34,31 +34,168 @@ function maybeLiveHash(file: string): string | undefined {
 }
 const liveHashes = new Map(liveFiles.map(file => [file, maybeLiveHash(file)]));
 
+const JSON_RUNTIME_EVIDENCE = "packages/testdata/phase164/historical-tooling/manifest.json";
+type RuntimeGraph = { sources: Map<string, string>; evidenceImports: Set<string> };
+const runtimeGraphs = new Map<string, RuntimeGraph>();
+
+function relativeFile(root: string, file: string): string {
+  const full = resolve(root, file), normalized = relative(root, full);
+  if (!file || isAbsolute(file) || file.includes("\\") || normalized.startsWith("../") || normalized === ".."
+    || normalized !== file || file.split("/").some(part => part === ".." || part === "." || !part)) {
+    throw new Error(`invalid bounded fixture path: ${file}`);
+  }
+  return full;
+}
+
+function boundedPath(root: string, file: string): string {
+  const full = relativeFile(root, file);
+  const rootStat = lstatSync(root);
+  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error("regular bounded fixture root required");
+  let cursor = root;
+  for (const part of file.split("/")) {
+    cursor = join(cursor, part);
+    const maybeStat = lstatSync(cursor, { throwIfNoEntry: false });
+    if (maybeStat?.isSymbolicLink()) throw new Error(`symlink bounded fixture path: ${file}`);
+    if (maybeStat && cursor !== full && !maybeStat.isDirectory()) throw new Error(`non-directory bounded fixture component: ${file}`);
+    if (maybeStat && cursor === full && !maybeStat.isFile()) throw new Error(`regular bounded fixture file required: ${file}`);
+  }
+  return full;
+}
+
+function regularModule(root: string, file: string): string {
+  const full = boundedPath(root, file);
+  const stat = lstatSync(full);
+  if (!stat.isFile() || stat.size > 512_000 || !file.endsWith(".ts")) throw new Error(`regular bounded TypeScript module required: ${file}`);
+  const source = readFileSync(full, "utf8");
+  if (Buffer.byteLength(source) > 512_000) throw new Error(`runtime module byte bound exceeded: ${file}`);
+  return source;
+}
+
+/** Check computed import calls too: scanImports deliberately lists only literal edges. */
+function assertLiteralRuntimeCalls(source: string, file: string): void {
+  function quoted(start: number): number {
+    const quote = source[start];
+    for (let index = start + 1; index < source.length; index++) {
+      if (source[index] === "\\") { index++; continue; }
+      if (source[index] === quote) return index + 1;
+    }
+    throw new Error(`unterminated runtime string: ${file}`);
+  }
+  function template(start: number): number {
+    for (let index = start + 1; index < source.length; index++) {
+      if (source[index] === "\\") { index++; continue; }
+      if (source[index] === "`") return index + 1;
+      if (source.startsWith("${", index)) index = code(index + 2, true) - 1;
+    }
+    throw new Error(`unterminated runtime template: ${file}`);
+  }
+  function code(start: number, closingBrace = false): number {
+    let depth = 0;
+    for (let index = start; index < source.length; index++) {
+      const char = source[index];
+      if (source.startsWith("//", index)) {
+        const end = source.indexOf("\n", index + 2);
+        index = end < 0 ? source.length : end;
+        continue;
+      }
+      if (source.startsWith("/*", index)) {
+        const end = source.indexOf("*/", index + 2);
+        if (end < 0) throw new Error(`unterminated runtime comment: ${file}`);
+        index = end + 1;
+        continue;
+      }
+      if (char === '"' || char === "'") { index = quoted(index) - 1; continue; }
+      if (char === "`") { index = template(index) - 1; continue; }
+      if (char === "/" && /(?:^|[=(:,!&|?{;]|\breturn|\bthrow)$/.test(source.slice(start, index).trimEnd())) {
+        let characterClass = false;
+        for (index++; index < source.length; index++) {
+          if (source[index] === "\\") { index++; continue; }
+          if (source[index] === "[") characterClass = true;
+          if (source[index] === "]") characterClass = false;
+          if (source[index] === "/" && !characterClass) break;
+        }
+        continue;
+      }
+      if (char === "{") depth++;
+      if (char === "}" && depth-- === 0 && closingBrace) return index + 1;
+      if (char !== "i" && char !== "r") continue;
+      if (index > start && /[\w$]/.test(source[index - 1])) continue;
+      const maybeCall = source.slice(index).match(/^(?:import|require)\s*\(/);
+      if (maybeCall && !/^\s*(["'])[^"'\\\r\n]*\1\s*\)/.test(source.slice(index + maybeCall[0].length))) {
+        throw new Error(`unsupported nonliteral runtime import: ${file}`);
+      }
+    }
+    if (closingBrace) throw new Error(`unterminated runtime interpolation: ${file}`);
+    return source.length;
+  }
+  code(0);
+}
+
+function discoverRuntime(entries: readonly string[], root: string): RuntimeGraph {
+  const graph: RuntimeGraph = { sources: new Map(), evidenceImports: new Set() };
+  const pending = [...entries], transpiler = new Bun.Transpiler({ loader: "ts" });
+  while (pending.length) {
+    const file = pending.pop()!;
+    if (graph.sources.has(file)) continue;
+    if (graph.sources.size >= 32) throw new Error("native fixture import-tree bound exceeded");
+    const source = regularModule(root, file);
+    graph.sources.set(file, source);
+    const parsed = source.replace(/^#![^\n]*/, line => " ".repeat(line.length));
+    assertLiteralRuntimeCalls(transpiler.transformSync(parsed), file);
+    for (const imported of transpiler.scanImports(parsed)) {
+      if (imported.path.startsWith("node:") || imported.path.startsWith("bun:")) continue;
+      if (!imported.path.startsWith(".")) throw new Error(`unsupported runtime package: ${imported.path}`);
+      const child = relative(root, resolve(dirname(resolve(root, file)), imported.path));
+      relativeFile(root, child);
+      if (child === JSON_RUNTIME_EVIDENCE) {
+        graph.evidenceImports.add(child);
+        continue;
+      }
+      if (!child.endsWith(".ts")) throw new Error(`unsupported bounded runtime import: ${child}`);
+      pending.push(child);
+    }
+  }
+  return graph;
+}
+
+/** Fixed roots only; cache the actual live graph lazily, never caller-owned map mutations. */
+export function runtimeSources(entries: readonly string[] = ENTRIES, maybeRoot?: string,
+  maybeEvidence?: ReadonlyMap<string, string>): Map<string, string> {
+  if (!entries.length || new Set(entries).size !== entries.length || entries.some(file => !ENTRIES.includes(file))) {
+    throw new Error("nonempty fixed runtime entry subset required");
+  }
+  const root = resolve(maybeRoot ?? REPO);
+  const stat = lstatSync(root);
+  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("regular runtime repository root required");
+  const key = [...entries].sort().join("\n");
+  let maybeGraph = maybeRoot === undefined ? runtimeGraphs.get(key) : undefined;
+  if (!maybeGraph) {
+    maybeGraph = discoverRuntime(entries, root);
+    if (maybeRoot === undefined) runtimeGraphs.set(key, maybeGraph);
+  }
+  for (const file of maybeGraph.evidenceImports) if (!maybeEvidence?.has(file)) throw new Error(`required fixed runtime evidence missing: ${file}`);
+  return new Map(maybeGraph.sources);
+}
+
+/** Add only absent runtime modules; every supplied evidence key, value and order survives. */
+export function copiedCliSources(sources: ReadonlyMap<string, string>, entries: readonly string[] = ENTRIES): Map<string, string> {
+  const copied = new Map(sources);
+  for (const [file, source] of runtimeSources(entries, undefined, sources)) if (!copied.has(file)) copied.set(file, source);
+  return checkedFixtureSources(copied);
+}
+
+function checkedFixtureSources(sources: ReadonlyMap<string, string>): Map<string, string> {
+  const copied = new Map(sources);
+  if (copied.size > 400) throw new Error("native fixture evidence bound exceeded");
+  for (const file of copied.keys()) relativeFile(REPO, file);
+  return copied;
+}
+
 /** Copy only fixed evidence and the actual entrypoints' finite relative-import tree. */
 function corpus(): Map<string, string> {
   const sources = loadPhase162OptionalSources(REPO);
   for (const file of [...new Set([...FILES158, ...FILES162])]) sources.set(file, readFileSync(resolve(REPO, file), "utf8"));
-  const pending = [...ENTRIES];
-  const visited = new Set<string>();
-  while (pending.length) {
-    const file = pending.pop()!;
-    if (visited.has(file)) continue;
-    visited.add(file);
-    if (visited.size > 32) throw new Error("native fixture import-tree bound exceeded");
-    const full = resolve(REPO, file);
-    if (!lstatSync(full).isFile()) throw new Error(`regular import file required: ${file}`);
-    const source = readFileSync(full, "utf8");
-    sources.set(file, source);
-    for (const match of source.matchAll(/\bfrom\s+["'](\.[^"']+)["']/g)) {
-      const imported = relative(REPO, resolve(dirname(full), match[1]));
-      if (imported === "packages/testdata/phase164/historical-tooling/manifest.json") {
-        if (!sources.has(imported)) throw new Error("required historical tooling manifest missing");
-        continue;
-      }
-      if (imported.startsWith("..") || !imported.endsWith(".ts")) throw new Error(`invalid bounded import: ${imported}`);
-      pending.push(imported);
-    }
-  }
+  for (const [file, source] of runtimeSources(ENTRIES, undefined, sources)) sources.set(file, source);
   if (sources.size > 400) throw new Error("native fixture evidence bound exceeded");
   return sources;
 }
@@ -165,17 +302,33 @@ export function fixtureSources(layout: Layout): Map<string, string> {
   return sources;
 }
 
-function target(root: string, file: string): string {
-  if (!ownedRoots.has(root) || file.startsWith("/") || file.split("/").includes("..")) throw new Error("unowned fixture path");
-  return join(root, file);
+export function writeSources(root: string, sources: ReadonlyMap<string, string>): void {
+  if (!ownedRoots.has(root)) throw new Error("unowned fixture path");
+  writeCopiedSources(root, sources);
 }
 
-export function writeSources(root: string, sources: ReadonlyMap<string, string>): void {
+function writeCopiedSources(root: string, sources: ReadonlyMap<string, string>): void {
+  for (const file of sources.keys()) relativeFile(root, file);
   for (const [file, source] of sources) {
-    const destination = target(root, file);
+    const destination = boundedPath(root, file);
     mkdirSync(dirname(destination), { recursive: true });
-    writeFileSync(destination, source);
+    const descriptor = openSync(destination, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW, 0o600);
+    try {
+      if (!fstatSync(descriptor).isFile()) throw new Error(`regular bounded fixture file required: ${file}`);
+      writeFileSync(descriptor, source);
+    } finally { closeSync(descriptor); }
   }
+}
+
+/** Register caller ownership before writes; the caller retains its own cleanup lifecycle. */
+export function createCopiedFixture(sources: ReadonlyMap<string, string>, registerRoot: (root: string) => void,
+  entries: readonly string[] = ENTRIES, mode: "executable" | "evidence-only" = "executable"): string {
+  if (mode !== "executable" && mode !== "evidence-only") throw new Error("unsupported copied fixture mode");
+  const copied = mode === "executable" ? copiedCliSources(sources, entries) : checkedFixtureSources(sources);
+  const root = mkdtempSync(join(tmpdir(), "phase158-evidence-"));
+  registerRoot(root);
+  writeCopiedSources(root, copied);
+  return root;
 }
 
 export function assertLiveUnchanged(): void {

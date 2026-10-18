@@ -77,7 +77,7 @@ fn phase72_support_verdict_sync_to_tip_requires_validated_tip_match() {
     );
     assert_eq!(
         serialized["connected_active_chain"]["work"],
-        json!("840005")
+        json!("00000000000000000000000000000000000000000000000000000000000cd145")
     );
     assert_eq!(
         serialized["validated_active_chain"]["height"],
@@ -89,7 +89,7 @@ fn phase72_support_verdict_sync_to_tip_requires_validated_tip_match() {
     );
     assert_eq!(
         serialized["validated_active_chain"]["work"],
-        json!("840005")
+        json!("00000000000000000000000000000000000000000000000000000000000cd145")
     );
 }
 

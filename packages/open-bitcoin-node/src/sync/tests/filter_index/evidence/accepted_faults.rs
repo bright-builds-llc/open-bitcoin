@@ -60,12 +60,7 @@ fn phase157_store_fault_ordinary_accepted_later_undo_coins_metadata_errors_reope
     ] {
         // Arrange: the ordinary direct consumer retains the default IfNeeded cadence.
         let history = ValidatedHistory::new("evidence-ordinary-checkpoint-fault", false);
-        let runtime = DurableSyncRuntime::open_configured(
-            history.seed(1),
-            sync_config(),
-            BasicFilterStartupMode::Enabled,
-        )
-        .expect("genuine owner");
+        let runtime = history.live_runtime();
         runtime
             .network
             .connect_local_block(&history.blocks[2], ScriptVerifyFlags::P2SH, params())
@@ -150,10 +145,21 @@ fn phase157_store_fault_ordinary_accepted_later_undo_coins_metadata_errors_reope
 fn phase157_store_fault_requested_body_error_keeps_accepted_target_and_real_old_reopen() {
     // Arrange: remove future body; ordinary requested peer path must attempt its save.
     let history = ValidatedHistory::new("evidence-requested-body-fault", false);
-    drop(history.seed(1));
-    remove_one_mate(&history.path, block_hash(&history.blocks[2].header), true);
-    let mut runtime = configured(&history.path).expect("only old history required");
-    runtime.consensus_params = params();
+    let mut runtime = history.live_runtime();
+    assert_eq!(
+        runtime
+            .network
+            .header_entries()
+            .expect("captured old prefix")
+            .len(),
+        2
+    );
+    assert!(
+        !runtime
+            .store()
+            .has_block(block_hash(&history.blocks[2].header))
+            .expect("future body absent")
+    );
     runtime
         .store()
         .set_basic_filter_fault(FilterPublicationFault::BeforeBody);

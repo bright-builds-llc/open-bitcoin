@@ -196,11 +196,22 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         &mut self,
         prepared: PreparedChainstateConnect,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
+        self.chainstate.validate_live_origin()?;
+        if let Some(authorization) = &prepared.maybe_body_authorization {
+            authorization.check_owner(&self.chainstate)?;
+            authorization.check_position(&prepared.position)?;
+        }
         // D-18: absorb stays infallible. Persist after absorb can fail; mempool
         // still applies the patch when this closure returns Err.
         self.check_validation_acceptance_available()
             .map_err(map_persist)?;
-        let position = self.chainstate.absorb_staged_connect(prepared.staged);
+        let position = self
+            .chainstate
+            .validate_staged_connect(prepared.staged)?
+            .absorb();
+        self.maybe_body_preference = prepared
+            .maybe_body_authorization
+            .map(|authorization| authorization.into_binding());
         self.observe_absorbed_validation(
             prepared
                 .maybe_history
@@ -234,13 +245,21 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         &mut self,
         prepared: PreparedChainstateReorg,
     ) -> Result<ChainTransition, open_bitcoin_core::chainstate::ChainstateError> {
+        prepared
+            .authorization
+            .check_stage(&self.chainstate, &prepared.staged)?;
         self.check_validation_acceptance_available()
             .map_err(map_persist)?;
+        self.chainstate.check_staged_reorg(&prepared.staged)?;
+        #[cfg(test)]
+        super::work_authority::observe_preparation(4);
         self.check_basic_index_reorg(&prepared)
             .map_err(map_persist)?;
         let (transition, accepted) = self
             .chainstate
-            .absorb_staged_reorg_with_receipt(prepared.staged);
+            .validate_staged_reorg(prepared.staged)?
+            .absorb();
+        self.maybe_body_preference = Some(prepared.authorization.into_candidate_binding());
         self.observe_absorbed_validation(
             prepared
                 .maybe_history

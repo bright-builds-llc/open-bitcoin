@@ -219,6 +219,10 @@ fn open_production_announcement_runtime(test_name: &str) -> (DurableSyncRuntime,
         },
     )
     .expect("production announcement runtime");
+    runtime
+        .network
+        .adopt_live_fixture_owner(open_bitcoin_core::chainstate::Chainstate::new())
+        .expect("genuine empty announcement source");
     (runtime, path)
 }
 
@@ -266,6 +270,9 @@ fn seed_live_previous_header_fact(
 }
 
 fn make_durable_and_prepare(runtime: &mut DurableSyncRuntime, block: &Block) {
+    if block.header.previous_block_hash == BlockHash::default() {
+        super::support_runtime::admit_fixture_runtime_root(runtime, block.header.clone());
+    }
     runtime
         .network
         .connect_local_block(block, runtime.verify_flags, runtime.consensus_params)

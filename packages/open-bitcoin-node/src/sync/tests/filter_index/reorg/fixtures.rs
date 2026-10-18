@@ -7,6 +7,10 @@
 
 use super::*;
 
+mod live;
+mod return_branch;
+use live::retain_available_active;
+
 pub(in crate::sync::tests) struct ForkFixture {
     pub history: ValidatedHistory,
     pub runtime: DurableSyncRuntime,
@@ -20,11 +24,24 @@ pub(in crate::sync::tests) struct ForkBranch {
 }
 
 impl ForkFixture {
+    pub fn compact_with_early_branch(
+        prefix: usize,
+        suffix: usize,
+        indexed: usize,
+        ancestor: usize,
+        count: usize,
+        tag: u8,
+    ) -> Self {
+        Self::compact_early(prefix, suffix, indexed, ancestor, count, tag)
+    }
+
     pub fn compact(prefix: usize, suffix: usize, indexed: usize) -> Self {
         let fixture = TurnHistory::new(prefix, suffix, 1);
         let mut runtime = configured(fixture.seed(indexed));
         // Compact cases deliberately retain the existing maturity-one contract.
         runtime.consensus_params.coinbase_maturity = 1;
+        super::super::super::support_runtime::admit_fixture_runtime_headers(&runtime);
+        retain_available_active(&runtime);
         Self {
             history: fixture.history,
             runtime,
@@ -68,7 +85,9 @@ impl ForkFixture {
             let staged = state
                 .stage_connect_block_with_current_time(
                     &block,
-                    u128::from(height) + 1,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                        u128::from(height) + 1,
+                    ),
                     i64::from(block.header.time) + 1,
                     flags,
                     params,
@@ -91,6 +110,8 @@ impl ForkFixture {
             },
         };
         let runtime = configured(fixture.seed(105));
+        super::super::super::support_runtime::admit_fixture_runtime_headers(&runtime);
+        retain_available_active(&runtime);
         assert_eq!(runtime.consensus_params, params);
         assert_eq!(runtime.verify_flags, flags);
         Self {
@@ -106,7 +127,31 @@ impl ForkFixture {
             .network
             .chainstate_snapshot()
             .expect("genuine current chain");
-        let state = Chainstate::from_snapshot(snapshot.clone());
+        let mut state = Chainstate::new();
+        for position in &snapshot.active_chain {
+            let block = self
+                .runtime
+                .store()
+                .load_block(position.block_hash)
+                .expect("oracle retained prefix read")
+                .or_else(|| {
+                    self.history
+                        .blocks
+                        .iter()
+                        .find(|block| block_hash(&block.header) == position.block_hash)
+                        .cloned()
+                })
+                .expect("complete independent oracle recipe; never restores physical sources");
+            state
+                .connect_block_with_current_time(
+                    &block,
+                    open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+                    i64::from(block.header.time),
+                    self.runtime.verify_flags,
+                    self.runtime.consensus_params,
+                )
+                .expect("actual oracle prefix validation");
+        }
         let disconnect: Vec<_> = snapshot.active_chain[ancestor + 1..]
             .iter()
             .rev()
@@ -148,7 +193,9 @@ impl ForkFixture {
             ]);
             connected.push(AnchoredBlock {
                 block: block.clone(),
-                chain_work: u128::from(height) + 1_000,
+                chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1_000,
+                ),
             });
             parent = block;
         }
@@ -161,7 +208,22 @@ impl ForkFixture {
                 self.runtime.consensus_params,
             )
             .expect("oracle genuine fork stage");
-        let mut previous = self.history.records[ancestor].identity();
+        let mut previous = self
+            .runtime
+            .store()
+            .load_basic_filter_record(snapshot.active_chain[ancestor].block_hash)
+            .expect("actual indexed ancestor read")
+            .or_else(|| {
+                self.history
+                    .records
+                    .get(ancestor)
+                    .filter(|record| {
+                        record.identity().block_hash() == snapshot.active_chain[ancestor].block_hash
+                    })
+                    .cloned()
+            })
+            .expect("exact independent or retained ancestor commitment")
+            .identity();
         let mut records = Vec::new();
         for (anchored, expected_scripts) in connected.iter().zip(&expected_spent_scripts) {
             let hash = block_hash(&anchored.block.header);
@@ -252,12 +314,21 @@ impl ForkFixture {
         assert!(flushed.wrote_coins);
         self.runtime
             .network
+            .persist_missing_live_fixture_counts()
+            .expect("exact fixture counts after actual full flush");
+        self.runtime
+            .network
             .drive_basic_filter_index_turn()
             .expect("earned safe checkpoint promotion");
     }
 
     pub fn reopen(self) -> Self {
         self.reopen_inspecting(|_| {})
+    }
+
+    pub fn revalidate_complete_fixture_for_mutation(&self) {
+        super::super::super::support_runtime::admit_fixture_runtime_headers(&self.runtime);
+        retain_available_active(&self.runtime);
     }
 
     pub fn reopen_inspecting(self, inspect: impl FnOnce(&std::path::Path)) -> Self {

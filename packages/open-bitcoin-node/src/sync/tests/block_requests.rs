@@ -6,7 +6,7 @@ use super::*;
 use crate::sync::block_reconcile;
 
 #[test]
-fn bounded_block_requests_use_validated_best_chain_headers_only() {
+fn bounded_block_requests_prioritize_best_headers_and_include_accepted_sides() {
     // Arrange
     let path = temp_store_path("bounded-best-chain-requests");
     remove_dir_if_exists(&path);
@@ -15,6 +15,8 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
     let durable_local_block = build_block(block_hash(&requestable_block.header), 2);
     let inflight_block = build_block(block_hash(&durable_local_block.header), 3);
     let unvalidated_block = build_block(BlockHash::from_byte_array([42_u8; 32]), 99);
+    let side = build_branch_block(block_hash(&active_block.header), 1, 200);
+    let side_hash = block_hash(&side.header);
     let active_hash = block_hash(&active_block.header);
     let requestable_hash = block_hash(&requestable_block.header);
     let durable_local_hash = block_hash(&durable_local_block.header);
@@ -29,25 +31,36 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
                         block_hash: active_hash,
                         header: active_block.header.clone(),
                         height: 0,
-                        chain_work: 1,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                     },
                     HeaderEntry {
                         block_hash: requestable_hash,
                         header: requestable_block.header.clone(),
                         height: 1,
-                        chain_work: 2,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     },
                     HeaderEntry {
                         block_hash: durable_local_hash,
                         header: durable_local_block.header.clone(),
                         height: 2,
-                        chain_work: 3,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
                     },
                     HeaderEntry {
                         block_hash: inflight_hash,
                         header: inflight_block.header.clone(),
                         height: 3,
-                        chain_work: 4,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(4),
+                    },
+                    HeaderEntry {
+                        block_hash: side_hash,
+                        header: side.header.clone(),
+                        height: 1,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(4),
                     },
                 ],
                 PersistMode::Sync,
@@ -59,7 +72,7 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
                     vec![ChainPosition::new(
                         active_block.header.clone(),
                         0,
-                        1,
+                        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                         i64::from(active_block.header.time),
                     )],
                     Default::default(),
@@ -79,7 +92,16 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
             .expect("save durable local block");
     }
     let store = FjallNodeStore::open(&path).expect("reopen store");
-    let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    let mut runtime = DurableSyncRuntime::open(
+        store,
+        SyncRuntimeConfig {
+            max_blocks_in_flight_per_peer: 2,
+            max_blocks_in_flight_total: 3,
+            ..sync_config()
+        },
+    )
+    .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     runtime.inflight_blocks.insert(inflight_hash);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
@@ -101,13 +123,16 @@ fn bounded_block_requests_use_validated_best_chain_headers_only() {
 
     // Assert
     assert_eq!(summary.best_header_height, 3);
-    assert_eq!(requested_hashes, vec![requestable_hash]);
+    assert_eq!(requested_hashes, vec![requestable_hash, side_hash]);
+    assert!(requested_hashes.len() <= runtime.config.max_blocks_in_flight_per_peer);
+    assert!(requested_hashes.len() < runtime.config.max_blocks_in_flight_total);
     assert!(!requested_hashes.contains(&active_hash));
     assert!(!requested_hashes.contains(&durable_local_hash));
     assert!(!requested_hashes.contains(&inflight_hash));
     assert!(!requested_hashes.contains(&unvalidated_hash));
     assert!(runtime.inflight_blocks.contains(&inflight_hash));
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -128,19 +153,22 @@ fn bounded_block_requests_respect_per_peer_and_total_caps() {
                         block_hash: block_hash(&first.header),
                         header: first.header.clone(),
                         height: 0,
-                        chain_work: 1,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&second.header),
                         header: second.header.clone(),
                         height: 1,
-                        chain_work: 2,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&third.header),
                         header: third.header.clone(),
                         height: 2,
-                        chain_work: 3,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
                     },
                 ],
                 PersistMode::Sync,
@@ -157,6 +185,7 @@ fn bounded_block_requests_respect_per_peer_and_total_caps() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     for peer_id in [1, 2, 3] {
         runtime
             .network
@@ -221,6 +250,7 @@ fn bounded_block_requests_respect_per_peer_and_total_caps() {
     );
     assert!(runtime.inflight_blocks.len() <= runtime.config.max_blocks_in_flight_total);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -242,25 +272,29 @@ fn phase110_block_serving_cleanup_never_exceeds_total_inflight_limit() {
                         block_hash: block_hash(&first.header),
                         header: first.header.clone(),
                         height: 0,
-                        chain_work: 1,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&second.header),
                         header: second.header.clone(),
                         height: 1,
-                        chain_work: 2,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&third.header),
                         header: third.header.clone(),
                         height: 2,
-                        chain_work: 3,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&fourth.header),
                         header: fourth.header.clone(),
                         height: 3,
-                        chain_work: 4,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(4),
                     },
                 ],
                 PersistMode::Sync,
@@ -277,6 +311,7 @@ fn phase110_block_serving_cleanup_never_exceeds_total_inflight_limit() {
         },
     )
     .expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     for peer_id in [110, 111, 112] {
         connect_runtime_peer(&mut runtime, peer_id, 3);
     }
@@ -296,6 +331,7 @@ fn phase110_block_serving_cleanup_never_exceeds_total_inflight_limit() {
     assert_eq!(runtime.inflight_blocks.len(), 3);
     assert!(runtime.inflight_blocks.len() <= runtime.config.max_blocks_in_flight_total);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -306,6 +342,7 @@ fn phase110_block_serving_cleanup_releases_block_and_notfound_inflight() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let block_hash = block_hash(&block.header);
     let notfound_hash = BlockHash::from_byte_array([110_u8; 32]);
@@ -319,6 +356,7 @@ fn phase110_block_serving_cleanup_releases_block_and_notfound_inflight() {
     // Assert
     assert!(runtime.inflight_blocks.is_empty());
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -342,6 +380,7 @@ fn notfound_releases_block_inflight_for_retry() {
     ];
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
 
     // Act
@@ -369,6 +408,7 @@ fn notfound_releases_block_inflight_for_retry() {
             .is_none()
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -382,6 +422,7 @@ fn disconnect_clears_runtime_and_peer_block_inflight() {
     let first_peer_script = headers_script(0, vec![block.header.clone()]);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
 
     // Act
@@ -403,6 +444,7 @@ fn disconnect_clears_runtime_and_peer_block_inflight() {
     assert_eq!(summary.downloaded_block_height, 0);
     assert_eq!(summary.best_block_height, 0);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -413,6 +455,7 @@ fn duplicate_outbox_registration_does_not_disconnect_an_existing_peer() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let peer_id = 128_402;
     connect_runtime_peer(&mut runtime, peer_id, 0);
     runtime
@@ -445,6 +488,7 @@ fn duplicate_outbox_registration_does_not_disconnect_an_existing_peer() {
     assert_eq!(snapshots.len(), 1);
     assert_eq!(snapshots[0].peer_id(), peer_id);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -458,6 +502,7 @@ fn phase110_block_serving_cleanup_disconnect_releases_peer_and_runtime_inflight(
     let first_peer_script = headers_script(0, vec![block.header.clone()]);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
     let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
 
     // Act
@@ -478,6 +523,7 @@ fn phase110_block_serving_cleanup_disconnect_releases_peer_and_runtime_inflight(
     assert!(runtime.network.peer_requested_blocks(1).is_err());
     assert_eq!(summary.best_block_height, 0);
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }
 
@@ -490,6 +536,7 @@ fn phase110_block_serving_cleanup_reopen_starts_without_stale_inflight() {
     {
         let store = FjallNodeStore::open(&path).expect("store");
         let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
         connect_runtime_peer(&mut runtime, 110, 0);
         runtime.inflight_blocks.insert(stale_hash);
         assert!(runtime.network.peer_requested_blocks(110).is_ok());
@@ -498,10 +545,12 @@ fn phase110_block_serving_cleanup_reopen_starts_without_stale_inflight() {
 
     // Act
     let runtime = DurableSyncRuntime::open(store, sync_config()).expect("reopen runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
 
     // Assert
     assert!(runtime.inflight_blocks.is_empty());
     assert!(runtime.network.peer_requested_blocks(110).is_err());
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
     remove_dir_if_exists(&path);
 }

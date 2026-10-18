@@ -10,21 +10,18 @@ use std::{
 use open_bitcoin_core::{
     chainstate::{
         AnchoredBlock, ChainPosition, ChainTransition, ChainstateSnapshot, CoinsView, FlushMode,
-        FlushPolicyTime, MemoryCoinsView, PruneMode,
+        FlushPolicyTime, MemoryCoinsView,
     },
     consensus::{CanonicalChain, ConsensusParams, ScriptVerifyFlags},
     mempool::{AdmissionResult, MempoolEntryMetadata, MempoolOutcome},
-    primitives::{Block, BlockHash, NetworkAddress, NetworkMagic, Transaction, Txid},
+    primitives::{Block, BlockHash, Transaction, Txid},
 };
-use open_bitcoin_mempool::{
-    MempoolLifecycleDelta, PolicyConfig, PolicyTime, RelayIntent, ReorgLifecycleContext,
-};
+use open_bitcoin_mempool::{MempoolLifecycleDelta, PolicyTime, RelayIntent, ReorgLifecycleContext};
 use open_bitcoin_network::{
-    BanDecision, BanScope, BlockRelayActivationPolicy, HeaderEntry, InboundAdmissionDecision,
-    InboundAdmissionPolicy, InboundAdmissionRequest, InboundResourceEvent,
-    LocalAdvertisementDecision, LocalPeerConfig, MisbehaviorDecision, PeerBanEntry, PeerId,
-    PeerManager, ReconnectSuppressionInput, RelayActivationConfig, UnbanDecision,
-    WireNetworkMessage, advertised_service_flags,
+    BanDecision, BanScope, HeaderEntry, InboundAdmissionDecision, InboundAdmissionPolicy,
+    InboundAdmissionRequest, InboundResourceEvent, LocalAdvertisementDecision, MisbehaviorDecision,
+    PeerBanEntry, PeerId, PeerManager, ReconnectSuppressionInput, UnbanDecision,
+    WireNetworkMessage,
 };
 
 use crate::{
@@ -55,6 +52,9 @@ mod prune_flush;
 mod recovery;
 mod validation_history;
 pub type MemoryNetworkHandle = ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView>;
+
+#[cfg(test)]
+mod live_fixture;
 
 #[derive(Debug)]
 pub enum ManagedNetworkAuthorityError {
@@ -138,7 +138,42 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     pub fn header_entries(&self) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> { self.read(ManagedPeerNetwork::header_entries) }
 
     #[rustfmt::skip]
+    pub(crate) fn requestable_header_entries(&self, params: ConsensusParams) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> { self.read(|network| network.requestable_header_entries(params)) }
+
+    /// Read all transaction-linked candidates without granting connection authority.
+    pub fn eligible_body_candidates(
+        &self,
+    ) -> Result<Vec<open_bitcoin_network::BodyEligibilityFacts>, ManagedNetworkAuthorityError> {
+        self.read(ManagedPeerNetwork::eligible_body_candidates)
+    }
+
+    pub fn maybe_body_eligibility(
+        &self,
+        hash: BlockHash,
+    ) -> Result<Option<open_bitcoin_network::BodyEligibilityFacts>, ManagedNetworkAuthorityError>
+    {
+        self.read(|network| network.maybe_body_eligibility(hash))
+    }
+
+    #[rustfmt::skip]
+    pub(crate) fn retain_cached_candidate(&self, block: &Block, params: ConsensusParams, timestamp: i64) -> Result<(), ManagedNetworkAuthorityError> { self.try_mutate(|network| network.retain_cached_candidate(block, params, timestamp)) }
+
+    #[rustfmt::skip]
+    pub(crate) fn mark_body_unavailable(&self, hash: BlockHash) -> Result<(), ManagedNetworkAuthorityError> { self.mutate(|network| network.peer_manager.mark_body_unavailable(hash)) }
+
+    #[rustfmt::skip]
     pub fn best_chain_entries(&self) -> Result<Vec<HeaderEntry>, ManagedNetworkAuthorityError> { self.read(ManagedPeerNetwork::best_chain_entries) }
+
+    /// Explicitly re-admits fixture header bytes under the caller's selected parameters.
+    /// Canonical support, immutable binding and actual admission remain owner-enforced.
+    pub fn try_admit_fixture_headers(
+        &self,
+        headers: open_bitcoin_network::HeaderStore,
+        current_time: i64,
+        params: ConsensusParams,
+    ) -> Result<(), ManagedNetworkAuthorityError> {
+        self.try_mutate(|network| network.try_admit_fixture_headers(headers, current_time, params))
+    }
 
     #[rustfmt::skip]
     pub fn peer_manager_snapshot(&self) -> Result<PeerManager, ManagedNetworkAuthorityError> { self.read(|network| network.peer_manager().clone()) }
@@ -384,7 +419,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
     pub fn connect_stored_block(
         &self,
         block: &Block,
-        chain_work: u128,
+        chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork,
         timestamp: i64,
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
@@ -585,40 +620,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         })
         .join();
         assert!(result.is_err());
-    }
-}
-
-impl ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
-    /// Creates an unbound transient authority for lower-level fixtures.
-    /// Canonical binding and supported validation are required for ordinary use.
-    pub fn transient_runtime(
-        magic: NetworkMagic,
-        port: u16,
-        relay_activation: RelayActivationConfig,
-        block_relay_activation: BlockRelayActivationPolicy,
-        inbound_enabled: bool,
-    ) -> Self {
-        let local_config = LocalPeerConfig {
-            magic,
-            services: advertised_service_flags(PruneMode::Disabled),
-            address: NetworkAddress {
-                services: 0,
-                address_bytes: [0_u8; 16],
-                port,
-            },
-            nonce: 0,
-            relay: true,
-            user_agent: "/open-bitcoin:0.1.0/".to_string(),
-        };
-        let network = ManagedPeerNetwork::new_with_block_relay_activation(
-            MemoryChainstateStore::default(),
-            local_config,
-            PolicyConfig::default(),
-            relay_activation,
-            block_relay_activation,
-            inbound_enabled,
-        );
-        Self::new(network)
     }
 }
 

@@ -3,7 +3,17 @@
 // - packages/bitcoin-knots/src/chain.cpp
 
 use super::*;
+use open_bitcoin_consensus::{block_hash, crypto::check_proof_of_work};
 use open_bitcoin_primitives::{BlockHeader, MerkleRoot};
+
+fn mined_header(mut header: BlockHeader) -> BlockHeader {
+    while !check_proof_of_work(block_hash(&header).to_byte_array(), header.bits)
+        .expect("bounded fixture target")
+    {
+        header.nonce = header.nonce.checked_add(1).expect("bounded fixture mining");
+    }
+    header
+}
 
 fn chain(height: u32) -> (HeaderStore, Vec<BlockHash>) {
     let mut store = HeaderStore::default();
@@ -11,14 +21,14 @@ fn chain(height: u32) -> (HeaderStore, Vec<BlockHash>) {
     let mut parent = BlockHash::default();
     for nonce in 0..=height {
         let inserted = store
-            .insert_header(BlockHeader {
+            .insert_header(mined_header(BlockHeader {
                 version: 1,
                 previous_block_hash: parent,
                 merkle_root: MerkleRoot::default(),
                 time: nonce,
                 bits: 0x207f_ffff,
                 nonce,
-            })
+            }))
             .expect("chain");
         parent = inserted.block_hash;
         hashes.push(parent);
@@ -247,17 +257,17 @@ fn phase160_range_policy_stale_signed_timestamp_and_exact_age() {
     };
     let add_best = |store: &mut HeaderStore, time: u32, bits: u32| {
         store
-            .insert_header(BlockHeader {
+            .insert_header(mined_header(BlockHeader {
                 version: 1,
                 previous_block_hash: hashes[0],
                 merkle_root: MerkleRoot::default(),
                 time,
                 bits,
                 nonce: time,
-            })
+            }))
             .expect("best")
     };
-    add_best(&mut store, 2_592_001, 0x1d00_ffff);
+    add_best(&mut store, 2_592_001, 0x1f07_ffff);
     // Act / Assert: equal timestamp age rejects despite small exact-work age.
     assert_eq!(
         validate_filter_request(
@@ -270,7 +280,7 @@ fn phase160_range_policy_stale_signed_timestamp_and_exact_age() {
         Err(FilterRequestInvalid::UnknownOrDisallowedStop)
     );
     let (mut just_below, _) = chain(1);
-    add_best(&mut just_below, 2_592_000, 0x1d00_ffff);
+    add_best(&mut just_below, 2_592_000, 0x1f07_ffff);
     assert!(
         validate_filter_request(
             request,
@@ -283,7 +293,7 @@ fn phase160_range_policy_stale_signed_timestamp_and_exact_age() {
     );
     // A future stale timestamp yields signed negative age, which is allowed.
     let (mut future, future_hashes) = chain(1);
-    add_best(&mut future, 0, 0x1d00_ffff);
+    add_best(&mut future, 0, 0x1f07_ffff);
     let future_request = FilterRequest::Filters {
         filter_type: 0,
         start_height: 1,
@@ -333,24 +343,24 @@ fn phase160_range_policy_nonuniform_proof_rejects_timestamp_and_height_shortcuts
     // Arrange
     let (mut store, hashes) = chain(1);
     let hard = store
-        .insert_header(BlockHeader {
+        .insert_header(mined_header(BlockHeader {
             version: 2,
             previous_block_hash: hashes[0],
             merkle_root: MerkleRoot::default(),
             time: 2,
-            bits: 0x1d00_ffff,
+            bits: 0x1f03_ffff,
             nonce: 999,
-        })
+        }))
         .expect("hard branch");
     let best = store
-        .insert_header(BlockHeader {
+        .insert_header(mined_header(BlockHeader {
             version: 2,
             previous_block_hash: hard.block_hash,
             merkle_root: MerkleRoot::default(),
             time: 3,
             bits: 0x207f_ffff,
             nonce: 1000,
-        })
+        }))
         .expect("easy best header after hard work");
     let request = FilterRequest::Filters {
         filter_type: 0,
@@ -388,14 +398,14 @@ fn phase160_range_policy_uses_stop_branch_and_predecessor() {
     // Arrange
     let (mut store, hashes) = chain(3);
     let stale = store
-        .insert_header(BlockHeader {
+        .insert_header(mined_header(BlockHeader {
             version: 2,
             previous_block_hash: hashes[1],
             merkle_root: MerkleRoot::default(),
             time: 2,
             bits: 0x207f_ffff,
             nonce: 999,
-        })
+        }))
         .expect("fork");
     let request = FilterRequest::Headers {
         filter_type: 0,
@@ -573,16 +583,21 @@ fn phase160_coverage_raw_request_fields_preserve_unsupported_types() {
 fn phase160_coverage_stale_stop_without_exact_proof_fails_with_valid_best() {
     // Arrange
     let (mut store, hashes) = chain(0);
-    let stop = store
-        .insert_header(BlockHeader {
-            version: 1,
-            previous_block_hash: hashes[0],
-            merkle_root: MerkleRoot::default(),
-            time: 1,
-            bits: 0,
-            nonce: 1,
-        })
-        .expect("known malformed target fixture");
+    let stop_header = BlockHeader {
+        version: 1,
+        previous_block_hash: hashes[0],
+        merkle_root: MerkleRoot::default(),
+        time: 1,
+        bits: 0,
+        nonce: 1,
+    };
+    let stop = open_bitcoin_chainstate::ChainPosition::new(
+        stop_header,
+        1,
+        open_bitcoin_consensus::chain_proof::ProofWork::ZERO,
+        0,
+    );
+    store.record_position(&stop);
     let request = FilterRequest::Filters {
         filter_type: 0,
         start_height: 1,

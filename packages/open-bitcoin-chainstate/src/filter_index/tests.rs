@@ -18,7 +18,12 @@ fn positions() -> Vec<ChainPosition> {
         bits: 0x207f_ffff,
         nonce: 0,
     };
-    let genesis = ChainPosition::new(header.clone(), 0, 1, 1);
+    let genesis = ChainPosition::new(
+        header.clone(),
+        0,
+        crate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
     let child = ChainPosition::new(
         BlockHeader {
             previous_block_hash: genesis.block_hash,
@@ -26,7 +31,7 @@ fn positions() -> Vec<ChainPosition> {
             ..header
         },
         1,
-        2,
+        crate::ChainPosition::untrusted_fixture_work(2),
         2,
     );
     vec![genesis, child]
@@ -317,8 +322,18 @@ fn authority_rejects_incompatible_position_facts() {
     let mut cases = vec![chain.clone(); 5];
     cases[0][0].height = 1;
     cases[1][1].block_hash = BlockHash::default();
-    cases[2][1] = ChainPosition::new(chain[0].header.clone(), 1, 2, 2);
-    cases[3][0] = ChainPosition::new(chain[1].header.clone(), 0, 1, 1);
+    cases[2][1] = ChainPosition::new(
+        chain[0].header.clone(),
+        1,
+        crate::ChainPosition::untrusted_fixture_work(2),
+        2,
+    );
+    cases[3][0] = ChainPosition::new(
+        chain[1].header.clone(),
+        0,
+        crate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
     cases[4][1].height = 2;
     // Act / Assert
     for invalid in cases {
@@ -417,7 +432,7 @@ fn reconciles_equal_height_wrong_branch_to_common_genesis() {
             ..chain[1].header.clone()
         },
         1,
-        2,
+        crate::ChainPosition::untrusted_fixture_work(2),
         2,
     );
     let child = identity(&fork, Some(&genesis));
@@ -471,7 +486,7 @@ fn refuses_unrelated_genesis() {
             ..chain[0].header.clone()
         },
         0,
-        1,
+        crate::ChainPosition::untrusted_fixture_work(1),
         1,
     );
     let genesis = identity(&fork, None);

@@ -208,10 +208,21 @@ fn phase160_peer_evidence_seeded_old_timestamp_and_old_proof_are_negative_only()
                     0x207f_ffff
                 };
                 header.nonce = offset;
-                parent = headers
-                    .insert_header(header)
-                    .expect("seeded negative header fact")
-                    .block_hash;
+                let hash = open_bitcoin_core::consensus::block_hash(&header);
+                let parent_entry = headers.entry(&parent).expect("raw negative parent number");
+                let work = parent_entry.chain_work.wrapping_add(
+                    open_bitcoin_core::consensus::chain_proof::block_proof(header.bits)
+                        .expect("raw numerical proof only"),
+                );
+                let height = parent_entry.height + 1;
+                headers.record_position(&open_bitcoin_core::chainstate::ChainPosition {
+                    block_hash: hash,
+                    header,
+                    height,
+                    chain_work: work,
+                    median_time_past: 0,
+                });
+                parent = hash;
             }
             let store = runtime.store().clone();
             let state = Chainstate::from_coins_cache(

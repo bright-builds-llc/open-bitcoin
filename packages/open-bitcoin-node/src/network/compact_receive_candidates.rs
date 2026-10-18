@@ -482,7 +482,9 @@ mod tests {
             chainstate
                 .connect_block(
                     &block,
-                    u128::from(height + 1),
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                        u128::from(height + 1),
+                    ),
                     ScriptVerifyFlags::P2SH
                         | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                         | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,

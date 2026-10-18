@@ -27,7 +27,22 @@ impl TurnHistory {
     fn with_shape(prefix: usize, suffix: usize, script_len: usize, large_reward: bool) -> Self {
         let mut history = ValidatedHistory::new("turn-continuous", false);
         history.path = reserved_filter_path("turn-continuous");
-        let mut state = Chainstate::from_snapshot(history.full.clone());
+        let mut state = Chainstate::new();
+        for block in &history.blocks {
+            state
+                .connect_block_with_current_time(
+                    block,
+                    open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+                    i64::from(block.header.time) + 1,
+                    ScriptVerifyFlags::P2SH,
+                    ConsensusParams {
+                        coinbase_maturity: 1,
+                        ..Default::default()
+                    },
+                )
+                .expect("actual complete fixture prefix validation");
+        }
+        assert_eq!(state.snapshot(), history.full);
         while history.blocks.len() < prefix + suffix {
             let height = history.blocks.len() as u32;
             let previous = history.blocks.last().expect("previous");
@@ -99,7 +114,9 @@ impl TurnHistory {
             let staged = state
                 .stage_connect_block_with_current_time(
                     &block,
-                    u128::from(height) + 1,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                        u128::from(height) + 1,
+                    ),
                     i64::from(block.header.time) + 1,
                     ScriptVerifyFlags::P2SH,
                     ConsensusParams {

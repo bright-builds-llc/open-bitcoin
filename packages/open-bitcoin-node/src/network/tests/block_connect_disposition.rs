@@ -34,7 +34,7 @@ fn connect_stored_block_returns_connected_disposition() {
     let disposition = network
         .connect_stored_block(
             &child,
-            2,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
             i64::from(child.header.time),
             verify_flags(),
             consensus_params(),
@@ -75,7 +75,7 @@ fn connect_stored_block_returns_duplicate_disposition() {
     let disposition = network
         .connect_stored_block(
             &child,
-            2,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
             i64::from(child.header.time),
             verify_flags(),
             consensus_params(),
@@ -115,7 +115,7 @@ fn connect_stored_block_returns_non_extending_disposition() {
     let disposition = network
         .connect_stored_block(
             &side_block,
-            2,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
             i64::from(side_block.header.time),
             verify_flags(),
             consensus_params(),
@@ -149,7 +149,7 @@ fn connect_stored_block_returns_disconnected_disposition() {
     let disposition = network
         .connect_stored_block(
             &disconnected,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             i64::from(disconnected.header.time),
             verify_flags(),
             consensus_params(),

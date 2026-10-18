@@ -338,8 +338,8 @@ fn phase158_manager_reorg_equal_height_restores_owner_without_flush() {
 }
 
 #[test]
-fn phase158_manager_reorg_lower_higher_and_lagging_targets_keep_shared_safe() {
-    for (indexed, count) in [(3, 1), (3, 3), (1, 3)] {
+fn phase158_manager_reorg_equal_higher_and_lagging_targets_keep_shared_safe() {
+    for (indexed, count) in [(3, 2), (3, 3), (1, 3)] {
         // Arrange
         let mut fixture = ReorgFixture::new("manager-heights", indexed);
         let path = fixture.path().to_owned();
@@ -459,7 +459,7 @@ fn phase158_manager_reorg_accepted_publication_error_records_new_identity_and_pe
 }
 
 #[test]
-fn phase158_manager_reorg_full_disconnect_records_absence_without_flush_receipt() {
+fn phase158_manager_explicit_full_disconnect_invalidates_basic_and_retains_physical_rows() {
     // Arrange
     let mut fixture = ReorgFixture::new("manager-empty", 3);
     let path = fixture.path().to_owned();
@@ -481,53 +481,56 @@ fn phase158_manager_reorg_full_disconnect_records_absence_without_flush_receipt(
                 .expect("retained")
         })
         .collect::<Vec<_>>();
+    let checkpoint = fixture
+        .store
+        .maybe_basic_filter_checkpoint()
+        .expect("original checkpoint");
     // Act
-    fixture
-        .manager
-        .reorg(
-            &disconnect,
-            &[],
-            ScriptVerifyFlags::P2SH,
-            ConsensusParams {
-                coinbase_maturity: 1,
-                ..Default::default()
-            },
-        )
-        .expect("full disconnect");
+    for block in &disconnect {
+        fixture
+            .manager
+            .disconnect_tip(block)
+            .expect("explicit managed disconnect");
+    }
     // Assert
     assert!(fixture.manager.chainstate.tip().is_none());
-    assert!(
-        fixture
-            .manager
-            .maybe_basic_index_accepted_target()
-            .is_none()
-    );
     assert_eq!(
+        fixture.manager.maybe_basic_index_failure(),
+        Some(super::super::filter_index::AcceptedBasicIndexFailure::Invalidated)
+    );
+    assert!(matches!(
         fixture
             .manager
-            .maybe_basic_index_owner
-            .as_ref()
-            .expect("owner")
-            .reorg_state,
-        BasicIndexReorgState::AcceptedReplacement { maybe_target: None }
-    );
-    assert!(
-        fixture
-            .manager
-            .maybe_validated_lineage
-            .as_ref()
-            .expect("lineage")
-            .maybe_prepare(None)
-            .expect("empty lineage")
-            .is_none()
-    );
+            .maybe_basic_index_progress()
+            .expect("retained conservative owner")
+            .state(),
+        open_bitcoin_core::chainstate::filter_index::catch_up::BasicIndexState::Paused(_)
+    ));
+    assert!(fixture.manager.maybe_validated_lineage.is_none());
     assert_eq!(
         fixture
             .store
             .maybe_basic_filter_checkpoint()
             .expect("checkpoint"),
-        Some(FilterCheckpoint::new(IndexPrefix::Empty))
+        checkpoint
     );
+    for record in &fixture.records {
+        let hash = record.identity().block_hash();
+        assert_eq!(
+            fixture
+                .store
+                .load_basic_filter_record(hash)
+                .expect("physical row"),
+            Some(record.clone())
+        );
+        assert!(
+            fixture
+                .store
+                .load_block(hash)
+                .expect("retained body")
+                .is_some()
+        );
+    }
     drop(fixture);
     std::fs::remove_dir_all(path).expect("cleanup");
 }

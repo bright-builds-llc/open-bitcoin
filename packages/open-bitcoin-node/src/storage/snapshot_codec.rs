@@ -23,6 +23,7 @@ use crate::{
 mod chain_meta;
 mod mempool;
 mod wallet;
+pub mod work;
 
 pub(crate) use chain_meta::{HydratedChainMeta, decode_chain_meta, encode_chain_meta};
 pub use mempool::{MempoolSnapshotDecodeLimits, decode_mempool_snapshot_with_limits};
@@ -39,6 +40,7 @@ pub(crate) use wallet::{
     decode_wallet_snapshot, encode_selected_wallet, encode_wallet_registry_snapshot,
     encode_wallet_rescan_job, encode_wallet_snapshot,
 };
+pub use work::{ClassifiedWorkRecord, decode_work_record, encode_work_record};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct VersionedSnapshot<T> {
@@ -61,7 +63,7 @@ struct ChainPositionDto {
     block_hash: [u8; 32],
     header: BlockHeaderDto,
     height: u32,
-    chain_work: u128,
+    chain_work: ClassifiedWorkRecord,
     median_time_past: i64,
 }
 
@@ -129,7 +131,7 @@ struct HeaderEntryDto {
     block_hash: [u8; 32],
     header: BlockHeaderDto,
     height: u32,
-    chain_work: u128,
+    chain_work: ClassifiedWorkRecord,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,7 +317,7 @@ impl From<&ChainPosition> for ChainPositionDto {
             block_hash: position.block_hash.to_byte_array(),
             header: BlockHeaderDto::from(&position.header),
             height: position.height,
-            chain_work: position.chain_work,
+            chain_work: ClassifiedWorkRecord::ExactNumber(position.chain_work),
             median_time_past: position.median_time_past,
         }
     }
@@ -327,7 +329,8 @@ impl TryFrom<ChainPositionDto> for ChainPosition {
     fn try_from(dto: ChainPositionDto) -> Result<Self, Self::Error> {
         let stored_hash = BlockHash::from_byte_array(dto.block_hash);
         let header = BlockHeader::from(dto.header);
-        let position = ChainPosition::new(header, dto.height, dto.chain_work, dto.median_time_past);
+        let number = exact_untrusted_number(StorageNamespace::BlockIndex, dto.chain_work)?;
+        let position = ChainPosition::new(header, dto.height, number, dto.median_time_past);
         if position.block_hash != stored_hash {
             return Err(corruption(
                 StorageNamespace::BlockIndex,
@@ -576,7 +579,7 @@ impl From<&HeaderEntry> for HeaderEntryDto {
             block_hash: entry.block_hash.to_byte_array(),
             header: BlockHeaderDto::from(&entry.header),
             height: entry.height,
-            chain_work: entry.chain_work,
+            chain_work: ClassifiedWorkRecord::ExactNumber(entry.chain_work),
         }
     }
 }
@@ -598,10 +601,24 @@ impl TryFrom<HeaderEntryDto> for HeaderEntry {
             block_hash: stored_hash,
             header,
             height: dto.height,
-            chain_work: dto.chain_work,
+            chain_work: exact_untrusted_number(StorageNamespace::Headers, dto.chain_work)?,
         })
     }
 }
 
 #[cfg(test)]
 mod tests;
+
+// Decoding an exact number grants no accepted ancestry or recovery authority.
+fn exact_untrusted_number(
+    namespace: StorageNamespace,
+    record: ClassifiedWorkRecord,
+) -> Result<open_bitcoin_core::consensus::chain_proof::ProofWork, StorageError> {
+    match record {
+        ClassifiedWorkRecord::ExactNumber(number) => Ok(number),
+        ClassifiedWorkRecord::LegacySynthetic(_) => Err(corruption(
+            namespace,
+            "legacy synthetic work requires explicit fixture classification",
+        )),
+    }
+}

@@ -102,7 +102,12 @@ fn durable_genesis() -> (Vec<crate::ChainPosition>, FilterRecordIdentity) {
         bits: 0x207f_ffff,
         nonce: 0,
     };
-    let genesis_position = crate::ChainPosition::new(header.clone(), 0, 1, 1);
+    let genesis_position = crate::ChainPosition::new(
+        header.clone(),
+        0,
+        crate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
     let child = crate::ChainPosition::new(
         open_bitcoin_primitives::BlockHeader {
             previous_block_hash: genesis_position.block_hash,
@@ -110,7 +115,7 @@ fn durable_genesis() -> (Vec<crate::ChainPosition>, FilterRecordIdentity) {
             ..header
         },
         1,
-        2,
+        crate::ChainPosition::untrusted_fixture_work(2),
         2,
     );
     let positions = vec![genesis_position, child];

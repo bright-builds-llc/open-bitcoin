@@ -9,15 +9,12 @@ use super::*;
 use crate::storage::fjall_store::filters::{FilterPublicationFault, query::QueryRecordFault};
 use crate::storage::validation_history::ValidationProvenance;
 use crate::{BasicFilterQuery, BasicFilterQueryError, BasicFilterReadFailure};
-use open_bitcoin_core::chainstate::{FlushMode, FlushPolicyTime};
 use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use std::{
     future::Future,
     pin::Pin,
     task::{Context, Poll, Waker},
 };
-
-static NEXT_FAULT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 #[path = "rpc_faults/captures.rs"]
 mod captures;
@@ -295,41 +292,32 @@ fn phase161_read_fault_callers_absence_unknown_and_cancelled_do_not_poison() {
 
 fn genuine() -> (ValidatedHistory, DurableSyncRuntime) {
     let mut history = ValidatedHistory::new("rpc-owner-fault", false);
-    let id = NEXT_FAULT
-        .fetch_update(
-            std::sync::atomic::Ordering::Relaxed,
-            std::sync::atomic::Ordering::Relaxed,
-            |value| value.checked_add(1),
-        )
-        .expect("checked fixture ID");
-    history.path = std::env::temp_dir().join(format!(
-        "phase159-node-rpc-fault-{}-{id}",
-        std::process::id()
-    ));
-    std::fs::create_dir(&history.path).expect("reserve exclusive fixture");
+    let mut fixture = crate::sync::tests::live_fixture_support::Fixture::from_blocks(
+        history.blocks[..2].to_vec(),
+        params(),
+        true,
+    );
+    history.path = fixture.path.clone();
+    let source = fixture.take();
+    drop(fixture);
     let config = SyncRuntimeConfig {
         network: SyncNetwork::Regtest,
         ..sync_config()
     };
-    let runtime = DurableSyncRuntime::open(
-        FjallNodeStore::open(&history.path).expect("fresh complete store"),
-        config.clone(),
+    let runtime = DurableSyncRuntime::from_live_fixture_source(
+        source,
+        config,
+        params(),
+        crate::chainstate::BasicFilterStartupMode::Enabled,
+        Default::default(),
+        Default::default(),
+        false,
     )
-    .expect("empty ordinary runtime");
-    for block in &history.blocks[..2] {
-        runtime
-            .network
-            .connect_local_block(block, ScriptVerifyFlags::P2SH, params())
-            .expect("genuine managed genesis and child acceptance");
-        runtime
-            .store()
-            .save_block(block, PersistMode::Sync)
-            .expect("ordinary body");
-    }
+    .expect("same genuine configured epoch");
     runtime
         .network
-        .flush_coins(FlushMode::Always, FlushPolicyTime::new(1), u64::MAX)
-        .expect("actual coins fence");
+        .drive_basic_filter_index_turn()
+        .expect("actual old prefix indexing");
     assert!(
         runtime
             .store()
@@ -338,13 +326,6 @@ fn genuine() -> (ValidatedHistory, DurableSyncRuntime) {
             .is_complete()
             .expect("genuine complete coverage")
     );
-    drop(runtime);
-    let runtime = DurableSyncRuntime::open_configured(
-        FjallNodeStore::open(&history.path).expect("all-handle reopen"),
-        config,
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("earned configured epoch");
     runtime
         .network
         .connect_local_block(&history.blocks[2], ScriptVerifyFlags::P2SH, params())

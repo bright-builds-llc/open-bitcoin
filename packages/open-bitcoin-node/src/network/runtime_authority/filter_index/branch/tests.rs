@@ -27,12 +27,15 @@ fn persistent(
             .as_nanos()
     ));
     let store = FjallNodeStore::open(&dir).expect("store");
-    let state = Chainstate::from_coins_cache(
+    let mut state = Chainstate::from_coins_cache(
         CoinsCache::from_parent(store.coins_view()),
         Vec::new(),
         Default::default(),
         None,
     );
+    Chainstate::new()
+        .rebind_into(&mut state)
+        .expect("genuine empty source");
     let manager = ManagedChainstate::from_recovered_chainstate(
         FjallChainstateStore::from_store(store.clone()),
         state,
@@ -60,7 +63,9 @@ fn network<S: ChainstateStore, V: CoinsView>(
         Default::default(),
         false,
     );
-    network.seed_header_store(headers);
+    network
+        .try_admit_fixture_headers(headers, i64::MAX, ConsensusParams::default())
+        .expect("actual selected fixture headers");
     network.set_basic_filter_serving(true);
     network.connect_outbound_peer(1, 0).expect("session");
     ManagedNetworkHandle::new(network)
@@ -80,7 +85,12 @@ fn limit() -> BasicFilterBranchLimit {
 fn phase160_branch_active_uses_own_session_and_direct_identity() {
     // Arrange
     let genesis = block(BlockHash::default(), 0, 0x51);
-    let position = ChainPosition::new(genesis.header.clone(), 0, 1, 0);
+    let position = ChainPosition::new(
+        genesis.header.clone(),
+        0,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
     let state = open_bitcoin_core::chainstate::Chainstate::from_coins_cache(
         open_bitcoin_core::chainstate::CoinsCache::from_parent(
             open_bitcoin_core::chainstate::MemoryCoinsView::default(),
@@ -146,7 +156,7 @@ fn phase160_branch_genuine_disconnected_scripts_valid_survives_paired_pruning() 
     let genesis_position = manager
         .connect_block(
             &genesis,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )
@@ -155,7 +165,7 @@ fn phase160_branch_genuine_disconnected_scripts_valid_survives_paired_pruning() 
     let stale_position = manager
         .connect_block(
             &stale,
-            2,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
             open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )
@@ -230,14 +240,16 @@ fn phase160_branch_header_body_and_legacy_rows_never_grant_scripts_validation() 
     let position = manager
         .connect_block(
             &genesis,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )
         .expect("genuine root");
     let header_only = block(position.block_hash, 1, 0x52);
     let mut headers = HeaderStore::default();
-    headers.record_position(&position);
+    headers
+        .insert_header(genesis.header.clone())
+        .expect("actual root header");
     let stop = headers
         .insert_header(header_only.header.clone())
         .expect("header only")
@@ -295,7 +307,7 @@ fn phase160_branch_invalid_gate_precedence_and_metadata_budget() {
     let position = manager
         .connect_block(
             &root,
-            1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
             open_bitcoin_core::consensus::ScriptVerifyFlags::P2SH,
             ConsensusParams::default(),
         )

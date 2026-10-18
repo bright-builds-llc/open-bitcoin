@@ -34,7 +34,7 @@ pub const CASES: [BenchCase; 2] = [
     BenchCase {
         id: RESTART_CASE_ID,
         group: BenchGroupId::StorageRecovery,
-        description: "Reopens a populated durable store and reloads runtime state after restart.",
+        description: "Reopens raw stored state without promoting numerical headers to accepted work.",
         measurement: BenchMeasurement {
             focus: "restart_recovery",
             fixture: "temp_fjall_store",
@@ -160,10 +160,17 @@ fn run_restart_recovery_case() -> Result<(), BenchError> {
         ));
     };
 
-    if header_store.best_height() != 1 {
+    if header_store.entries().count() != header_entries.len()
+        || header_entries
+            .iter()
+            .any(|entry| header_store.entry(&entry.block_hash) != Some(entry))
+        || header_store.best_tip().is_some()
+        || header_store.best_height() != -1
+        || !header_store.best_chain_entries().is_empty()
+    {
         return Err(BenchError::case_failed(
             RESTART_CASE_ID,
-            "reopened store restored an unexpected header height",
+            "raw header entries must round-trip exactly without accepted best-work authority",
         ));
     }
     if reopened

@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { readFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, posix, resolve } from "node:path";
 import { CONTRACTS, CHECKPOINT_COUNTS, HISTORICAL_COMMANDS, BREADCRUMBS, TS_CONTRACTS, type Contract } from "./check-phase162-integrated-filter-proof/contracts.ts";
@@ -18,6 +18,8 @@ const PIN = "a9aee730466ac67d35a3c03ee24676be5e045878";
 const SHARED = ["packages/testdata/phase162/recipe.rs", "packages/testdata/phase162/process.rs"];
 import { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 export { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
+import { LEGACY_CONTRACT_BUNDLE, legacyFunctionContractView } from "./check-phase164-canonical-identity/fixture-source.ts";
+import { verificationHistoricalBase, legacyToolingBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
 const PROCESS = SHARED[1];
 const UNIX_TESTS = "#[cfg(all(test, unix))]";
 const CHECKPOINTS: Contract[] = CHECKPOINT_CONTRACTS.map((row, index) => ({ ...row, kind: "production", counts: CHECKPOINT_COUNTS[index], assertions: [], facts: [] }));
@@ -52,14 +54,31 @@ export const SHARED_FORMAT = "rustfmt --edition 2024 --check packages/testdata/p
 export const CHECK_FILES = [...new Set([...ROOTS, ...MODULE_EDGES.flatMap(edge => [edge.parent, edge.child]), ...SHARED, ...PHASE162_FILES, ...PHASE162_EVIDENCE,
   ...OWNED, "scripts/phase162-filter-oracle.test.ts", "scripts/check-phase158-validated-reorg.ts", "scripts/check-phase158-validated-reorg.test.ts",
   N + "chainstate/flush_lifecycle/tests/recovery_and_persist.rs", B + "tests/filter_index/peer_serving/evidence.rs",
-  "docs/parity/index.json", "docs/parity/source-breadcrumbs.json", "scripts/verify.sh", "scripts/generate-peer-filter-fixtures.ts", ".gitmodules", "rust-toolchain.toml", ".bun-version"])];
+  "docs/parity/index.json", "docs/parity/source-breadcrumbs.json", "scripts/verify.sh", "scripts/generate-peer-filter-fixtures.ts", ".gitmodules", "rust-toolchain.toml", ".bun-version", LEGACY_CONTRACT_BUNDLE])];
 
 /** Load only fixed current roots and the frozen claim helper's lazy optional outputs. */
 export function loadSources(maybeRoot?: string): Map<string, string> {
   const root = maybeRoot ?? resolve(import.meta.dir, "..");
   const sources = loadPhase162OptionalSources(root);
-  for (const file of CHECK_FILES) sources.set(file, readFileSync(resolve(root, file), "utf8"));
+  for (const file of CHECK_FILES) sources.set(file, file === LEGACY_CONTRACT_BUNDLE ? readLegacyBundle(resolve(root, file)) : readFileSync(resolve(root, file), "utf8"));
   return sources;
+}
+
+function readLegacyBundle(file: string): string {
+  if (!lstatSync(file).isFile()) throw new Error(`${file}: regular legacy input required`);
+  const descriptor = openSync(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+  try {
+    if (!fstatSync(descriptor).isFile()) throw new Error(`${file}: regular legacy input required`);
+    const bytes = Buffer.alloc(512_001);
+    let length = 0;
+    while (length < bytes.length) {
+      const count = readSync(descriptor, bytes, length, bytes.length - length, null);
+      if (count === 0) break;
+      length += count;
+    }
+    if (length > 512_000) throw new Error(`${file}: legacy input byte limit exceeded`);
+    return bytes.subarray(0, length).toString("utf8");
+  } finally { closeSync(descriptor); }
 }
 
 /** Extract only executable assertion spans; masked comments/strings cannot invent a macro. */
@@ -309,16 +328,20 @@ function checkModules(text: (file: string) => string, failures: string[]): void 
 }
 
 function checkNative(source: string, failures: string[]): void {
-  const sections = [source.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "",
-    source.split("\n").map(line => line.trimStart()).filter(line => line.startsWith("run_step ")).map(line => line.replace(/^run_step "[^"]+" /, "")).join("\n")];
+  const sectionsOf = (input: string) => [input.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "",
+    input.split("\n").map(line => line.trimStart()).filter(line => line.startsWith("run_step ")).map(line => line.replace(/^run_step "[^"]+" /, "")).join("\n")];
+  const sections = sectionsOf(source);
+  let historicalSections: string[] = [];
+  try { historicalSections = sectionsOf(verificationHistoricalBase(source)); }
+  catch (error) { failures.push(`scripts/verify.sh: current registration/projection: ${error instanceof Error ? error.message : String(error)}`); }
   for (const [sectionIndex, section] of sections.entries()) {
     const lines = section.split("\n");
     const positions = NATIVE_COMMANDS.map(command => lines.indexOf(command));
     if (NATIVE_COMMANDS.some(command => lines.filter(line => line === command).length !== 1)
       || positions.some((position, index) => index > 0 && position !== positions[index - 1] + 1)) failures.push("scripts/verify.sh: exact once ordered Phase161/162 native commands");
     if (lines.filter(line => line === SHARED_FORMAT).length !== 1) failures.push("scripts/verify.sh: pinned shared fixture format required");
-    const historical = lines.filter(line => line && !NATIVE_COMMANDS.slice(1).includes(line) && line !== SHARED_FORMAT);
-    if (JSON.stringify(historical) !== JSON.stringify(HISTORICAL_COMMANDS[sectionIndex])) failures.push("scripts/verify.sh: complete historical/native command order required");
+    const historical = historicalSections[sectionIndex]?.split("\n").filter(line => line && !NATIVE_COMMANDS.slice(1).includes(line) && line !== SHARED_FORMAT);
+    if (historical && JSON.stringify(historical) !== JSON.stringify(HISTORICAL_COMMANDS[sectionIndex])) failures.push("scripts/verify.sh: complete historical/native command order required");
   }
   for (const command of ["cargo fmt --manifest-path packages/Cargo.toml --all --check", "cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings",
     "cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features", "cargo test --manifest-path packages/Cargo.toml --workspace --all-features",
@@ -334,7 +357,8 @@ export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<st
   for (const file of CHECK_FILES) if (!sources.has(file)) failures.push(`${file}: required current source missing`);
   const historicalText = sourceText(historicalFixtureView(sources));
   const state = checkPhase162ClaimState(historicalText, failures);
-  for (const file of [...new Set(ROOTS)]) failures.push(...checkFunctions(file, text(file)));
+  try { failures.push(...checkPhase162LegacyFunctionControls(legacyFunctionContractView(sources))); }
+  catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
   checkModules(text, failures);
   checkNative(text("scripts/verify.sh"), failures);
   checkScope(text, failures, state, historicalText);
@@ -342,6 +366,11 @@ export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<st
   checkTypeScriptOracle(text("scripts/phase162-filter-oracle.ts"), failures);
   if (!compact(rustCode(text(N + "sync/tests/peer_filter_transport/phase162.rs"))).includes("constPARTIAL:usize=31;")) failures.push("Phase162 outbound physical prefix: exact31-byte constant required");
   return [...new Set(failures)];
+}
+
+/** Synthetic legacy mutation controls only; no claims, receipts, CLI mode or current authority. */
+export function checkPhase162LegacyFunctionControls(sources: ReadonlyMap<string, string>): string[] {
+  return [...new Set(ROOTS)].flatMap(file => checkFunctions(file, sources.get(file) ?? ""));
 }
 
 function checkTypeScriptOracle(source: string, failures: string[]): void {
@@ -383,7 +412,8 @@ function checkFrozenGuards(text: (file: string) => string, failures: string[]): 
   for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "385b6c6d62067ba13e8e4d29d0ea1005252614830430f800b0824ec7ba954fdd"],
     ["scripts/check-phase158-validated-reorg.test.ts", "bebdd0c7f2cc6e787f34502bb82f6ae6fd27c7a5ce5ac9bdd14be73c054193a3"],
     ["scripts/check-phase163-provenance.ts", "e42bd6a3f1660d46ac35c2bb98fe4df44766ac84ee80d7ffae2a766c22dbaa03"]]) {
-    if (createHash("sha256").update(text(file)).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
+    const fingerprintSource = file === "scripts/check-phase163-provenance.ts" ? text(file) : legacyToolingBase(file, text(file));
+    if (createHash("sha256").update(fingerprintSource).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
   }
 }
 

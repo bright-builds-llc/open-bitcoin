@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import "./check-phase127-authoritative-network-state-unification/production-proof-tests.ts";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";

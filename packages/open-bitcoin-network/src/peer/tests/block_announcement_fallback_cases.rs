@@ -153,7 +153,15 @@ fn inventory_requests_and_notfound_paths_cover_tx_and_block_modes() {
     assert!(ignored_inventory.is_empty());
 
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 5);
-    manager.seed_local_chain(&[ChainPosition::new(genesis.clone(), 0, 1, 0)]);
+    seed_mined_fixture_chain(
+        &mut manager,
+        &[ChainPosition::new(
+            genesis.clone(),
+            0,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+            0,
+        )],
+    );
     let next = mined_header(open_bitcoin_consensus::block_hash(&genesis), 6);
     manager
         .handle_message(
@@ -228,7 +236,15 @@ fn received_tx_and_block_clear_requested_inventory() {
         .expect("wtxid inventory");
 
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 7);
-    manager.seed_local_chain(&[ChainPosition::new(genesis.clone(), 0, 1, 0)]);
+    seed_mined_fixture_chain(
+        &mut manager,
+        &[ChainPosition::new(
+            genesis.clone(),
+            0,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+            0,
+        )],
+    );
     let next = mined_header(open_bitcoin_consensus::block_hash(&genesis), 8);
     manager
         .handle_message(
@@ -269,8 +285,13 @@ fn getheaders_headers_tx_and_block_paths_are_explicit() {
     manager.add_inbound_peer(7).expect("peer");
 
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 7);
-    let genesis_position = ChainPosition::new(genesis.clone(), 0, 1, 0);
-    manager.seed_local_chain(std::slice::from_ref(&genesis_position));
+    let genesis_position = ChainPosition::new(
+        genesis.clone(),
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
+    seed_mined_fixture_chain(&mut manager, std::slice::from_ref(&genesis_position));
 
     let getheaders_actions = manager
         .handle_message(

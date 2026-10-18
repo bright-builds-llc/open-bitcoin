@@ -1,493 +1,234 @@
 /** Audited fixed Phase 164 source edges. Digests supplement behavioral tests;
  * they do not claim runtime execution or canonical qualification. Changes require review.
  */
-export const SOURCE_FILES = [
-  "packages/open-bitcoin-cli/src/operator/wallet/name_resolution.rs",
-  "packages/open-bitcoin-cli/src/operator/soak/runtime/chain_compatibility.rs",
-  "packages/open-bitcoin-bench/src/cases.rs",
-  "packages/open-bitcoin-bench/src/cases/rpc_cli.rs",
-  "packages/open-bitcoin-cli/src/operator.rs",
-  "packages/open-bitcoin-cli/src/operator/runtime.rs",
-  "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility.rs",
-  "packages/open-bitcoin-cli/src/operator/runtime/support.rs",
-  "packages/open-bitcoin-cli/src/operator/soak.rs",
-  "packages/open-bitcoin-cli/src/operator/soak/runtime.rs",
-  "packages/open-bitcoin-cli/src/operator/soak/tests.rs",
-  "packages/open-bitcoin-cli/src/operator/soak/tests/recovery_resume_bounds.rs",
-  "packages/open-bitcoin-cli/src/operator/wallet.rs",
-  "packages/open-bitcoin-cli/src/operator/wallet/tests.rs",
-  "packages/open-bitcoin-cli/tests/operator_flows.rs",
-  "packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs",
-  "packages/open-bitcoin-cli/tests/operator_flows/basic_index/captured.rs",
-  "packages/open-bitcoin-cli/tests/operator_flows/rpc_harness.rs",
-  "packages/open-bitcoin-consensus/src/chain_spec.rs",
-  "packages/open-bitcoin-consensus/src/chain_spec/genesis.rs",
-  "packages/open-bitcoin-consensus/src/chain_spec/tests.rs",
-  "packages/open-bitcoin-consensus/src/lib.rs",
-  "packages/open-bitcoin-node/src/network.rs",
-  "packages/open-bitcoin-node/src/network/canonical_admission.rs",
-  "packages/open-bitcoin-node/src/network/canonical_admission/tests.rs",
-  "packages/open-bitcoin-node/src/network/header_sync.rs",
-  "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
-  "packages/open-bitcoin-node/src/network/peer_network_clone.rs",
-  "packages/open-bitcoin-node/src/network/relay_serving.rs",
-  "packages/open-bitcoin-node/src/network/runtime_authority.rs",
-  "packages/open-bitcoin-node/src/network/validation_history.rs",
-  "packages/open-bitcoin-node/src/storage.rs",
-  "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
-  "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs",
-  "packages/open-bitcoin-node/src/storage/chain_compatibility/tests.rs",
-  "packages/open-bitcoin-node/src/storage/fjall_store.rs",
-  "packages/open-bitcoin-node/src/sync.rs",
-  "packages/open-bitcoin-node/src/sync/open_runtime.rs",
-  "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_startup.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/peer_serving.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/inbound_runtime.rs",
-  "packages/open-bitcoin-rpc/src/config.rs",
-  "packages/open-bitcoin-rpc/src/config/tests.rs",
-  "packages/open-bitcoin-rpc/src/config/tests/prune_config.rs",
-  "packages/open-bitcoin-rpc/src/context.rs",
-  "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
-  "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
-  "packages/open-bitcoin-rpc/src/context/network.rs",
-  "packages/open-bitcoin-rpc/src/context/tests.rs",
-  "packages/open-bitcoin-rpc/src/context/tests/construction.rs",
-  "packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs",
-  "packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs",
-  "packages/open-bitcoin-rpc/src/context/wallet_state.rs",
-  "packages/open-bitcoin-rpc/src/dispatch.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/filter_index.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/filter_index/tests.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/prune.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/tests/chain_fixtures.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/tests/network_fixtures.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/tests/permissions.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/tests/storage_fixtures.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/tests/sync_status.rs",
-  "packages/open-bitcoin-rpc/src/http.rs",
-  "packages/open-bitcoin-rpc/src/http/filter_index.rs",
-  "packages/open-bitcoin-rpc/src/http/tests.rs",
-  "packages/open-bitcoin-rpc/src/http/tests/filter_index.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/block_serving.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/envelope_and_resource.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/listener_fixtures.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/phase162.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/preflight_and_advertisement.rs",
-  "packages/open-bitcoin-rpc/src/inbound_listener/tests/reconnect_policy.rs",
-  "packages/open-bitcoin-rpc/tests/black_box_parity.rs",
-  "packages/open-bitcoin-rpc/tests/black_box_parity/open_bitcoin_rpc.rs",
-  "packages/open-bitcoin-rpc/tests/black_box_parity/phase127_composition.rs"
+import { createHash } from "node:crypto";
+export { EDGES, SOURCE_FILES } from "./source-files.ts";
+
+/** Exact current-fixture inverse controls; no historical receipt is regenerated. */
+export const FIXTURE_ATTRIBUTION_MUTATIONS = [
+  ["pub(super) mod live_source {\n    include!(concat!(\n        env!(\"CARGO_MANIFEST_DIR\"),\n        \"/tests/support/phase165_live_source.rs\"\n    ));\n}\n", ""],
+  ["pub(super) mod live_source {\n    include!(concat!(\n        env!(\"CARGO_MANIFEST_DIR\"),\n        \"/tests/support/phase165_live_source.rs\"\n    ));\n}\n", "pub(super) mod live_source {\n    include!(concat!(\n        env!(\"CARGO_MANIFEST_DIR\"),\n        \"/tests/support/phase165_live_source.rs\"\n    ));\n}\npub(super) mod live_source {\n    include!(concat!(\n        env!(\"CARGO_MANIFEST_DIR\"),\n        \"/tests/support/phase165_live_source.rs\"\n    ));\n}\n"],
+  ["        let config = SyncRuntimeConfig {\n            network: SyncNetwork::Regtest,\n            ..Default::default()\n        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let store = FjallNodeStore::open(&path).expect(\"fresh same-Fjall genuine source\");\n        let mut core =\n            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);\n        Chainstate::new()\n            .rebind_into(&mut core)\n            .expect(\"genuine empty source transfer\");\n        let now = FlushPolicyTime::new(0);\n        let mut source = ManagedChainstate::from_chainstate(\n            FjallChainstateStore::from_store(store.clone()),\n            core,\n            FlushLifecycle::ready(now, now, 0, false),\n        );\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            store\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = source\n                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n", ""],
+  ["        let config = SyncRuntimeConfig {\n            network: SyncNetwork::Regtest,\n            ..Default::default()\n        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let store = FjallNodeStore::open(&path).expect(\"fresh same-Fjall genuine source\");\n        let mut core =\n            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);\n        Chainstate::new()\n            .rebind_into(&mut core)\n            .expect(\"genuine empty source transfer\");\n        let now = FlushPolicyTime::new(0);\n        let mut source = ManagedChainstate::from_chainstate(\n            FjallChainstateStore::from_store(store.clone()),\n            core,\n            FlushLifecycle::ready(now, now, 0, false),\n        );\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            store\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = source\n                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n", "        let runtime = DurableSyncRuntime::open(\n            FjallNodeStore::open(&path).expect(\"fresh real Fjall\"),\n            SyncRuntimeConfig {\n                network: SyncNetwork::Regtest,\n                ..Default::default()\n            },\n        )\n        .expect(\"unindexed actual runtime\");\n        let params = runtime.config().network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            runtime\n                .store()\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = runtime\n                .network_handle()\n                .connect_local_block(block, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n"],
+  ["        let config = SyncRuntimeConfig {\n            network: SyncNetwork::Regtest,\n            ..Default::default()\n        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let store = FjallNodeStore::open(&path).expect(\"fresh same-Fjall genuine source\");\n        let mut core =\n            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);\n        Chainstate::new()\n            .rebind_into(&mut core)\n            .expect(\"genuine empty source transfer\");\n        let now = FlushPolicyTime::new(0);\n        let mut source = ManagedChainstate::from_chainstate(\n            FjallChainstateStore::from_store(store.clone()),\n            core,\n            FlushLifecycle::ready(now, now, 0, false),\n        );\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            store\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = source\n                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n", "        let config = SyncRuntimeConfig {\n            network: SyncNetwork::Regtest,\n            ..Default::default()\n        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let store = FjallNodeStore::open(&path).expect(\"fresh same-Fjall genuine source\");\n        let mut core =\n            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);\n        Chainstate::new()\n            .rebind_into(&mut core)\n            .expect(\"genuine empty source transfer\");\n        let now = FlushPolicyTime::new(0);\n        let mut source = ManagedChainstate::from_chainstate(\n            FjallChainstateStore::from_store(store.clone()),\n            core,\n            FlushLifecycle::ready(now, now, 0, false),\n        );\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            store\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = source\n                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n        let config = SyncRuntimeConfig {\n            network: SyncNetwork::Regtest,\n            ..Default::default()\n        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let store = FjallNodeStore::open(&path).expect(\"fresh same-Fjall genuine source\");\n        let mut core =\n            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);\n        Chainstate::new()\n            .rebind_into(&mut core)\n            .expect(\"genuine empty source transfer\");\n        let now = FlushPolicyTime::new(0);\n        let mut source = ManagedChainstate::from_chainstate(\n            FjallChainstateStore::from_store(store.clone()),\n            core,\n            FlushLifecycle::ready(now, now, 0, false),\n        );\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            store\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = source\n                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n"],
+  ["        Phase162Handoff {\n            path,\n            recipe,\n            provenance,\n        }\n    }\n}\n", "        Phase162Handoff {\n            path,\n            recipe,\n            provenance,\n        }\n    }\n}\n\n"],
+  ["recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count)", "recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, 102)"],
+  ["recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count)", "recipe::Recipe::new(params, ScriptVerifyFlags::NONE, count)"],
+  ["for block in &recipe.blocks {", "for block in recipe.blocks.iter().skip(1) {"],
+  ["assert_eq!(receipt.height as usize, receipts.len());", "assert!(true);"],
+  ["assert_eq!(receipt.block_hash, block_hash(&block.header));", "assert_eq!(receipt.block_hash, block_hash(&recipe.blocks[0].header));"],
+  ["/tests/support/phase165_live_source.rs", "/tests/support/redirected.rs"],
+  ["pub(super) mod live_source {", "pub(super) mod live_source { fn unexpected() {}"],
+  ["Chainstate::new()\n            .rebind_into(&mut core)", "Chainstate::from_snapshot(&core.snapshot())\n            .rebind_into(&mut core)"],
+  ["crate::basic_filter_startup_mode(&config),", "open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled,"],
+  [".connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)", ".connect_block(block, ProofWork::ZERO, recipe.flags, Default::default())"],
+  ["assert_eq!(source.chainstate().validate_live_origin(), Ok(()));", "assert!(true);"],
+  ["receipts.push(receipt);", "drop(receipt);"],
+  ["fixture_open_authoritative_network_runtime as open_authoritative_network_runtime", "open_authoritative_network_runtime"],
+  ["ManagedRpcContext::from_fixture_runtime_config_with_network_handle(", "ManagedRpcContext::from_runtime_config_with_network_handle("],
+  ["//! Handle-owning configured fixture and handle-free provenance handoff.", "//! Changed unrelated fixture comment."],
+  ["pub(super) mod live_source {", "// pub(super) mod live_source {"],
+  ["pub(super) mod live_source {", "pub(super) mod live_source {}\npub(super) mod live_source {"],
+  ["        let config = SyncRuntimeConfig {", "        let runtime = DurableSyncRuntime::open();\n        let config = SyncRuntimeConfig {"],
+  ["        let config = SyncRuntimeConfig {", "        let config = SyncRuntimeConfig {};\n        let config = SyncRuntimeConfig {"],
+  ["        .expect(\"actual daemon config parser\");", "        .expect(\"changed unrelated assertion\");"],
 ] as const;
-export const EDGES: readonly (readonly [string, string, number, string, boolean])[] = [
-  ["packages/open-bitcoin-rpc/src/http.rs","read_or_create_cookie_password",0,"5fb5dcdfe49d7e19c47d96a430cf75e96be591be2ff0b6201a1c94a43fe61d39",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","spec",0,"35223c289472d8480bd5c1640bd6348946f28d034eab75231871e50c818254a6",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","name",0,"90175dfbb595063648b351e205486ff6b9175a5413ea6abf08039e18b2a9f17c",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","genesis_header",0,"0a983da0aeef13a9ecb0acae67ee610c66becea7f026ca1a8d2595662f264225",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","genesis_block",0,"0f63ed4d8314fd92193a4839411bb78e07ec768062c2ea43e2cff7c10a7f387f",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","genesis_hash",0,"b8558dd0583eb98604c6abea83549e5d30cab18a632995d44d55ffa994b20f3b",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","validation_scope",0,"d81b5d243aa70722957fec1e57af1755b3a73eed627870b0328de0b8ae362200",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","evidence_class",0,"eba9a8bbca33e19800da674769a000ca9b3fd792608e1463212c991dab5e863f",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","transient_runtime",0,"6192aff7cc4b1e918ddac320308e372a5b76a2875d8fa0b696c1a6fa32cde83a",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","selected_chain",0,"63aa328da8501705fb82242412730b3efe9fdf9804760aa50c42b505436e271d",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","selected_chain",0,"7af51d71786223aa1919f962da2eacc4ece8ac31565654424cd141736fbed9d1",false],
-  ["packages/open-bitcoin-cli/src/operator/wallet/name_resolution.rs","resolve_managed_wallet_name",0,"e1ccf52e569450671df63c10701899d485a371b74080bf1013056284149750ac",false],
-  ["packages/open-bitcoin-cli/src/operator/wallet/name_resolution.rs","maybe_resolve_wallet_name_from_registry",0,"83d1ccff65fb2cc41e1664f3f2a0ae75c3de5dca9654faf48f28d3adab7685ce",false],
-  ["packages/open-bitcoin-cli/src/operator/soak/runtime/chain_compatibility.rs","enrich_soak_resource_bounds_from_store",0,"1cfbf22cd1228997305966be476c89bb85be0081ca1a8cd80ae51e21b6ef772a",false],
-  ["packages/open-bitcoin-cli/src/operator/runtime.rs","execute_operator_cli_inner",0,"6464ecd97f59eb021fa258ad7408c6752887b67f8dd7d3b8fac089a8bb0b85f1",false],
-  ["packages/open-bitcoin-cli/src/operator/runtime.rs","status_runtime_parts",0,"a75cd7591f6cb5010f7b449716e6c3b27effdaa67c71dd5222c79b0576dd16e3",false],
-  ["packages/open-bitcoin-cli/src/operator/wallet.rs","execute_wallet_command",0,"8a0fcea1f64d4836a59decae229b2f0552d303e9aaf940145374f25c33081386",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","maybe_canonical_chain",0,"a64bade62d83c50b9cf52523ada0c4f944ea987bf5be9fb336cea9d6f0e17799",false],
-  ["packages/open-bitcoin-node/src/network/peer_network_clone.rs","clone",0,"a4e50519eb56bf3cd0c413d200866d1fc90411b7747cad919b14212c53a6698a",false],
-  ["packages/open-bitcoin-node/src/network/relay_serving.rs","new_with_block_relay_activation",0,"658c4a6d360dbcb7edca889ba3b798edbdfc414e41a431617f358f0a3f8ce799",false],
-  ["packages/open-bitcoin-node/src/network/relay_serving.rs","from_peer_manager_memory",0,"c7d7c5625261f727b7e83f3d5c1f1a5a235e0aa1da989b674582c71bf29d878b",false],
-  ["packages/open-bitcoin-node/src/network/relay_serving.rs","from_initialized_chainstate",0,"934e994ca90fbab88ec20fc9ff17dbdae2333b23305d34f9bfc330fd4a6c4172",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","clone",0,"529555ddb9fca3a9438b81f0bdc18efe0ebf11cc53bf0f55e83eeaacb60a7cca",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","maybe_canonical_chain",0,"63d30df30c7a890011dd2ab5a2dfc01e6c8a8abc5c439b18a2f9aa25fc92ce8e",false],
-  ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs","main",0,"9ed689b9c8ad60255c3d32dadd701a2732c528c66d88447b9013406f59e5c564",false],
-  ["packages/open-bitcoin-rpc/src/http.rs","clone",0,"5041047d22fcdf29380efa7505677cc571eb1a27e22d7527bdd3423d6c1df257",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener.rs","clone",0,"c3d7d52f13e188f652bc6ea864c05b3e7a58720f5501713d6bda879fb493b86d",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener.rs","clone",1,"f2b967ad552c80e9d47d1e0f317a29d9d7ba682908f6970b1ecfb442f3002ae1",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener.rs","clone",2,"de928fc228ba34c4ef2afd90d50f458e376364801f37b0bdd7eca6cbebd339ea",false],
-  ["packages/open-bitcoin-bench/src/cases/rpc_cli.rs","run_rpc_cli_case",0,"a7eb4c8b4fa0c92c557dc78d50cfeedd0985887f3f624ad0990a1c9aa9a6fea4",false],
-  ["packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility.rs","canonical_chain_from_resolution",0,"dd317097011feb6beb71af5f4e2f327896ff24ae2b341916aef918185bc01f66",false],
-  ["packages/open-bitcoin-cli/src/operator/runtime/support.rs","execute_offline_sync_command",0,"4f98ffa9f779440e0feab55e9b92bbef767f37e349bf90288be456dc1cc1d116",false],
-  ["packages/open-bitcoin-cli/src/operator/wallet.rs","execute_backup_command",0,"ec12620893384eabb82c09f25e3970cf25a706ec6723daabbcf62625476e9bb4",false],
-  ["packages/open-bitcoin-cli/src/operator/wallet/tests.rs","managed_wallet_store",0,"cb6304d5eb8e06cbefff75b4a18f75e78bdef02973e76ee770e6dccbbf6a554c",false],
-  ["packages/open-bitcoin-cli/src/operator/wallet/tests.rs","managed_wallet_resolution_rejects_unknown_wallet_names",0,"de92d1dcd5787cdc494554c5b37b71e90a94f24f954d799038886877a0f14951",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs","assert_wallet_refusal",0,"7a0948c440deb8d63445781c53fcc7f946b3634027756ffc74448d6824097be6",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs","assert_consumers",0,"6837e0b1e7baaf9169b78e76a0bcd9d83225c98d9874ff44ee0669d6056102cc",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs","phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen",0,"267e41f99d9e2cf02b20d36beca6696bc2a5e46d10b1734dc41a49ca8108eea5",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs","phase161_operator_consumers_disabled_no_genesis_and_stopped",0,"04d27c0c5c9d2f4d6f7ba82272918f6af9995c6afeb135e383a8571be93e6b14",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs","phase161_operator_consumers_retained_pruned_stale_and_wallet_body_negatives",0,"7cfd6c2a8420cafe890e73518722d8268260a61d95dc740415eaa69b6c3b67e8",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index/captured.rs","captured_response_server",0,"02419a045e4c1e999eac0cb3738c98ba2fd98a83e715aa6ec9169a8c4faad885",false],
-  ["packages/open-bitcoin-cli/tests/operator_flows/rpc_harness.rs","empty_context",0,"1c30cf2f4b177f0d4b1cd6f95c1dbf8bd9aa3c48b7fbaf1781f0ee69bd980553",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","check_genesis_header",0,"17bb1c6b10bb1e02cb49810d341f2853e1ce28658f49d136dfe1c4846d183fc5",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","check_genesis_block",0,"4a11189dbf4ecd9cc3a4dd435dfb3907f7564b2e5e1eba39c1557182ecd6d173",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","maybe_default_signet_challenge",0,"b2ed19645f7d1c99924c89637ff95a505a31bd8ec8dac35b308b92dd429ba0d3",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","require_ordinary_history",0,"01cc1c61695bdda101f47eb8831530c7df9968bde0617d6cabf28d7c7babcf36",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","ordinary_history",0,"f7587bccff19c73d3cdf5335ebaecb827da05a72b39411cc8c700333a5d63493",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","missing_prerequisites",0,"7195d621741844f5a91a7eaaa7d94b701508ea1e9f7082bab399584ce482b8cb",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec.rs","missing_prerequisites",1,"43f6c880f28b3fe9a7f06c696f5b8c1ca739b2179e7d1df83b333d64b06d3564",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec/genesis.rs","header",0,"fb9e1a911671e283f71b90d295e4d8bc120dafb38e8d130792b91919203f189c",false],
-  ["packages/open-bitcoin-consensus/src/chain_spec/genesis.rs","coinbase",0,"41d5633a8c7e0f18299578972c9ff93d6727b91ac23394b903f499812ce28e04",false],
-  ["packages/open-bitcoin-node/src/network.rs","receive_message",0,"25e0149fcfe52d623091353f09792d628684bf5b6bc48d5b8f12abfc9c1299e2",false],
-  ["packages/open-bitcoin-node/src/network.rs","receive_sync_message",0,"a4f7830d65f975485a49465ca945fc2d0d6bf50f678bee4af4be1779f8382e68",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","require_history",0,"e9cd2408026f8e26302b303fa0357b1cf0f5f72d1c0c49f21ef29ff59aff3aad",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","check_header",0,"b06f393d18cb995099e3f785b538a9116762c5942faa69e1c0b6189e9bf13c21",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","check_body",0,"d893cf406f0495c83fa0d657db00620c84d8252a8066f1793b8f0fd6eb582d16",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","into_canonical_scope",0,"d9ec78485f6fad5118dad596e489a379d8f3e7679b3dcbcf3099ef8a0ef61f9f",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","try_seed_canonical_headers",0,"7ce6e0994796a9084154bbed436b29031247178a7cd933d5a1d984c107e464b9",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","seed_header_store",0,"cdb86d1d4d7ef14ad2a50951c7656f82bc220914f9c3ce49318ace4e67ff411e",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","guard_body",0,"92db804aed25b507654aeb88cbf208206d598c6ec5958d107243f583f76d9202",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","guard_header_batch",0,"35edc7539625f95c36377d30c12781a60ba8da48e325cd508a227121e343b979",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission.rs","guard_message_admission",0,"fdfd22fb4524ba6c152e56f2d28f4793e294d649a48b71844564a28ded4050c3",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission/tests.rs","canonical_chain_owner_fixture_has_no_binding",0,"9db148816025326356e11045a507e2a228e5b4bbdbe02650373f1326f7a41d8f",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission/tests.rs","canonical_chain_owner_preserves_first_binding_across_clones_and_wrapping",0,"e18338cf6645ce93d3e910365971b66816b70ffdd288faa1a345534f21aff16d",false],
-  ["packages/open-bitcoin-node/src/network/canonical_admission/tests.rs","canonical_chain_owner_ordinary_startup_preserves_all_namespace_bytes",0,"02efbc6566628cfba4fd46fff00a475d22502494c57cdff865881d3b1768dfda",false],
-  ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","connect_local_block",0,"d6861de1e5e0efdf578830658e9fcbca0211e58eb2b6b6efebd20ab17b6d1b72",false],
-  ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","connect_stored_block",0,"d74524e2092d4997a4c3032c1b20ab82e00f67be56c3bc8675958ce7e02ffcfe",false],
-  ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","reorg_to_branch",0,"3ab9ff24a4e28251a319159b668a773ce66e9d73a2dfdd96ae137f0333c2dcac",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","receive_sync_message",0,"1b386a4aea27734bbaeb82398694e8e0f32ad9b735d975f44a087817f667df22",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","receive_message",0,"39b0cc9e394d93ffa422bb97062f794e5d606706f8fb8601cb7d306be24b20b5",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","receive_message_for_durable_serving",0,"14304a06652cbc7aee5e6a4781f7c53e6be1d5728856b21332b214b4058f5b24",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","connect_stored_block",0,"232992cad1f704dd785b99b16282652dee87c347ee82c60f543f1bf87e9922cc",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","reorg_to_branch",0,"4dfe800dccb4c46deec78d20eeea148adc3d434e6573f03e2f2c672b415d97cd",false],
-  ["packages/open-bitcoin-node/src/network/runtime_authority.rs","connect_local_block",0,"ffa689dffb24cffa053a31886fdeef9b049bcb11d72e8f95aea9bc9baaed808b",false],
-  ["packages/open-bitcoin-node/src/network/validation_history.rs","handle_validated_headers",0,"1de9bd6c6258058bade95ffe9ee7a9ce4df46a79d961ebbac7209f9b29e032bb",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","open_ordinary",0,"1ddaa42b45d581200c4ae0299d97f0a1db7c04924b234d11f2f9f0662b520846",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","from_observation",0,"baf19a5e4750fe1c56837fef3d7f75398ac15de9e0c47979562c25c652e27bb0",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","observed_identity",0,"19c59308821a6010e69c0dc6e6463c02c291c2190c65730048c389f9a5743281",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","work_profile",0,"f44b6236c793c6feabea7895177df3ec5e60153b2bb45ccb5d2902666e555ba7",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","missing_prerequisites",0,"eb92bb0bea1d6d6ca03edf123028ac05f50eecda2d624805c9e1a847aa12754e",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","inspect_datadir_without_backend",0,"659e46147e02e2314f0041647cec7c23f379610c9d0c33b17e13570e411511aa",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","inspect_with",0,"306217d1f6df4f1132d71e07e1b49f5493551904a37bb90e99146b1aa92f3687",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","maybe_component_refusal",0,"090dfbfded80649311cddee56c6ec717a0bfa4481152a448f25bfa6378133dba",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility.rs","classify_first_entry",0,"0cbded2b39f419f8195c8a5556743be1bad6bc7b432783fe30a3196efda60ab0",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","arrange_schema_one",0,"7459bf81baf85313d1b82a14d0ebbdaad03857006b7a2299a3eac43db2f45d59",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","arrange_pending_prune",0,"3570deba0673511476a4f9f2a5f81ebed1c4c35e5449e99a637f3a714099df4e",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_closed_schema_two_fixture",0,"3f7e84887018b5a7183873983ec96cd31837c94b7f0e9a5725b09ffe1a96c5ed",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_unsafe_paths_and_their_closed_store_targets",0,"ed99e59b0aa746ba4e20f5ad4acc67b2f1bf178d71eb10fcb8c5868b616f8c49",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_closed_store_on_injected_inspection_io_failure",0,"eaba51d054e294fe5cbe7ba48a60567bd9692bc9febff975190be17e5f3af40c",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_schema_one_control_proves_raw_migration",0,"3e3703ec451863837f49da71320d0987f382d9ec20cdefa7ec96c50d32e6a612",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_foreign_canonical_and_synthetic_fixture_roots",0,"fcf938c476e98d1e67341a2d9b08843ef5d5ad606f4733eafd0ba8313e004b8b",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_interrupted_coins_and_recovery_markers",0,"90ce60d1169635d408bbb16957d168a30f783642ff2e433d1b3079529c72a05e",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_valid_malformed_and_interrupted_validation_history",0,"c0d7d443e3c16774d7be104c067419187c852d2c1643adfe5f78157924f595f2",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_prune_control_proves_resume_deletes_both_mates",0,"f354a12e3e5cb73d3d09ccc28169b19f6ff2e882e3b33e59c1d14ebaaff67175",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_valid_and_malformed_basic_artifacts",0,"e66ca676ffd9547e2b5054e8d7bac9ec94ef767f7a78eb9bd9cd7d809170653e",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs","chain_compatibility_preserves_malformed_backend_bytes_without_opening_them",0,"3128c86522172fb2a921a67d479c056fb2eca1bb07ab2a78285ed9a23e00d78f",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests.rs","ordinary_refusal",0,"4bb76488b229a33401c96f88d784ede6be34c6601561744ae68c5335a16c39dc",false],
-  ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests.rs","chain_compatibility_backend_spy_is_live_before_any_backend_effect",0,"3115fc548960a29bdb872c72d10d3fc0c18544ab3062095abf9af1f4868862f8",false],
-  ["packages/open-bitcoin-node/src/storage/fjall_store.rs","open",0,"4984a40ed79a86b7e51daf29331eab77cd9f2417f81cfe39327c1caa9dec89ad",false],
-  ["packages/open-bitcoin-node/src/storage/fjall_store.rs","open_unrecovered",0,"cffa2896f93e77570d3ae01d1ba5be2efd3e2396f7285415b0f27df32b6c6ed9",false],
-  ["packages/open-bitcoin-node/src/storage/fjall_store.rs","open_without_ensure_schema_for_test",0,"c199d5eb9ad0227f2bca779a12e8a3390984dfe023f743044c4f640a0dd9bf6e",true],
-  ["packages/open-bitcoin-node/src/sync.rs","open",0,"dfe8b2525c86592478b61048f197b146ba0ad30037e9489ee88e4f67446904cb",false],
-  ["packages/open-bitcoin-node/src/sync.rs","open_with_block_relay_activation",0,"ed3a47be3782261451d1cbbe8d44d63ff91555a40423f017bd06cc6a785a171d",false],
-  ["packages/open-bitcoin-node/src/sync/open_runtime.rs","open_ordinary_configured",0,"2178d31f094d8200fdcea01b21a617a61b9a8be9507ec6e7097bd2f27476367b",false],
-  ["packages/open-bitcoin-node/src/sync/open_runtime.rs","open_with_runtime_activation",0,"a6892ba861f5f493fea73ac64a507c2a1d23ca563395f0e48c09def5c7ce3802",false],
-  ["packages/open-bitcoin-node/src/sync/open_runtime.rs","open_configured",0,"2bbf254925b3b774a2ce1f13a5c868bb65faa41383c076321e1ae59c7ee29ae6",false],
-  ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs","serve_authoritative_runtime",0,"480ac41238fe78e125d37060e9ebad6df5d0db7320afa573cc1ac8fe27634a04",false],
-  ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs","open_authoritative_network_runtime",0,"e14cf3328d3639a3f0c9ef82933e7ee17f339ad88c4455eb9d9de6970bd77aea",false],
-  ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs","open_runtime_store",0,"2c656fc11f92cc44fb9c2e399e309b4af1a8acb81244cd77a610b70f3f8b5dbc",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs","start_inbound_metrics_worker",0,"948d522f60925d3d4b490bbd3a7a8f95ad4137681c60ceab81298e5ea75aef45",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_startup.rs","start_inbound_listener_for_runtime",0,"699bb42c5e6ad6acce311a3aea8a8d5f6320e40c4a17a7ab19589e46499d8aa2",true],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs","test_sync_runtime",0,"963c8a3fdd8d3dadfa9bd29b8343f185772685ae7ee303ef08c09f86a7f3321f",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs","silent_peer_sync_runtime",0,"dfc2bbebd675d1a6de95304c8d48330ff7f2b74bd30f413912a069790747596d",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs","automatic_prune_offline_keeps_sync_and_listener_workers_disabled",0,"86b9333faebbdab4909cf47cfb2e08c7a1f1870e450fe6b324122efe860ea19d",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs","automatic_prune_genuine_ordinary_retention_and_reopen",0,"d3ee9d3c6c65b462474d8c5866b1cf2a56520071fe7eb1f15860bf7016ca6d3d",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune.rs","assert_wallet_refusals",0,"0b2097612f6f2f888307d838e41f0b5fb6255218b165cc7c4b25d74142111938",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_every_durable_trigger_preserves_closed_store",0,"c2a239dccb894b096b025144d253f2479635367bfa4459a4199e7407dda911c3",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_missing_and_empty_paths_keep_shape_for_all_triggers",0,"6d903b927421f7bc59d6485ffa2491556b7681a65400ec1c83b0a84dc0a58946",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_transient_and_supplied_raw_store_never_grant_authority",0,"31821b4bec21a79e0a40570a4837c9e195fc412e29c28862d2c267fe58387f42",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_metrics_fallback_preserves_closed_store_and_missing_shape",0,"08f5c23029bc728a906afe09a583535fee99de37f01d054582489cca8a5b3529",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_supplied_metrics_handle_does_not_authorize_worker_or_writes",0,"23ae31cd9702643aafa42a596ce6f98098cd8a40c0d99f91c1f3ed23d0eab412",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_absent_datadir_never_silently_succeeds_for_durable_triggers",0,"f69618bb4cfb5cb61e502699f0cd2ce74df2cb44c1cdc6a8502d8af00afcf137",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_inconsistent_selectors_refuse_before_any_store_or_owner",0,"81c1ac56a08327ab09bf6e912203451ef5cb9057a12513ba1d03ea3af913e026",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs","canonical_chain_daemon_unsafe_alias_and_non_directory_preserve_physical_sources",0,"18d7c82fc9ea18557fd9a706b986fbc339c82971396483198ddae0fff00aa0e8",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs","assert_phase162_disabled_daemon",0,"d25eac7b3630778865fdabd62472b2ac04293d935c943490bd4f1f3764ffb1ec",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs","phase162_disabled_network_daemon_durable_and_transient_consumers",0,"4a5d6981ca8e56dfbe563b1b4217eccf39024acf98be771f853d9c67b6708ad2",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs","enabled_sync_preflight_opens_durable_runtime_before_worker_startup",0,"af314cee49687a373e1ed41923fb3a5250a0af3e05135e14daadb8a061ff296b",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs","authoritative_daemon_runtime_migrates_legacy_confirmation_evidence_before_publication",0,"f99d5399c1a500c96ee1784814fae6ef5359da9189a3e956fe23244149f69996",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs","authoritative_daemon_runtime_ignores_leftover_chainstate_with_missing_block",0,"91a28a4d6e321401fb4161aaaa237acaa24d047c6e18f5d9d3c7b65cd4ee29c1",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/daemon_sync.rs","authoritative_network_daemon_composition_shares_runtime_handle_with_rpc",0,"ed68c065904077a8ff72ab85e28feb6b45634e6eb0f3ed2c5cd08c48d651d7b5",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs","phase157_daemon_explicit_zero_preserves_complete_saved_checkpoint_on_reopen",0,"b2fde7bcdf7b2c86dfeffb0aeaf14146d85435510995dbd099aed620d038877b",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs","phase157_daemon_missing_required_body_or_undo_preserves_sources_and_absent_owner",0,"ff53293b50364ea1305f3d48aec2f814f229de1f584edd6079dfd6b6d196bc62",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs","phase157_daemon_enabled_empty_store_refuses_without_index_mutation",0,"8b732f4507571410e73b9092ffc307e5ed6de1e7c49aef4991c481263c00ef2a",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index.rs","phase157_daemon_basic_keeps_actual_sync_and_inbound_workers_off",0,"9c20911a6f0162f3b5de8540e3b610e161561b92c37270344a0c5ed18e942212",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs","seed_with_missing",0,"d8152d1fc20b17fa7407185acf4ddb0acf90e7d1e956ff9bcc8bf99c8bb43bf9",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs","new",1,"375af2cfc0fa9590cfcb859d9576444c2d51d4afe4201784acf7d6b556fe7924",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs","open",0,"9674c463a70b6f9a2f8ddb87ba56be7bf4e15df384f4ebe2194e114c1de112d1",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs","open_serving",0,"86049099d2bfce67ef9f0f149c940e5102d2f11ebf41fa7b9b8a0144c8743f94",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs","open_policy",0,"3ab127a282f88a157e2ca813c9465700496a0eb98a9d540ea6b113b43848acac",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/peer_serving.rs","phase160_startup_general_reaches_real_authority_before_index_catchup",0,"d27a8e76aa79661a513997a3625c2f2963c2dc98977fb8fb43f94e74e74546cf",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/peer_serving.rs","phase160_startup_all_only_actual_loopback_version_without_backend",0,"22d4be7c9fcb731e33ce5ab1b336ba4a5aadb84221d00d566285815cb5a10455",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162.rs","phase162_daemon_fixture_initial_partial_prefix_and_all_handle_close",0,"27d9af0f58721c3cf3a53a5e66c08714b160bc99d777ac0d44ddca9bba1369d7",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs","seed_count",0,"979a063cb3c6a0b26894a17a6e0fd4dcf5160ea6aa71d9b0b40e8010c993a6e8",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs","open",0,"8b8a5a606210f2542756b330a387db915214f2be52150a0d5b4661dde5e680b4",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs","open_with_prune",0,"00300e5aa65169ffcc617c680e15366d27f31d5e9e77839ee09bd67b5327767d",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs","open_serving",0,"03f5d94689bdd2348e3145a99cc308553fa49a00c69f957b44d48b4d1574d27e",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs","open_body_serving",0,"b2d1885858add36d7e1496627aa3157ef1c85fd7c231f73b2dd4dc475726f913",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs","open_policy",0,"753ea136e097e878eddd20df239fee514a12e44e2f14659403fb03f5e65672a6",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs","fixture_open_authoritative_network_runtime",0,"5c4ac1cc6c6209b38eaf265ccc273b98af39ced051fb27a9fadf01ad39a5bffd",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs","fixture_open_runtime_store",0,"fecbd20cb1e308a8fdf83be618f7499b3c9194342ed2a7dc04f890a9a46565f8",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs","fixture_start_inbound_metrics_worker",0,"262b569d6f94be6230a86cad1ee8fe9671bb119c0bc04a951add86c3e1bf5062",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/inbound_runtime.rs","open_bitcoind_inbound_listener_evidence_reaches_shared_rpc_status",0,"0253744e7005e698b694f9b5d50928075da4a9278435faf438b419831417afe8",false],
-  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/inbound_runtime.rs","open_bitcoind_inbound_metrics_worker_persists_sync_disabled_inbound_samples",0,"bd00eec128071648ba95edcbc84f03f493e797090ee93b4083efc47a11a9d971",false],
-  ["packages/open-bitcoin-rpc/src/config/tests/prune_config.rs","fresh_network_handle",0,"3f317375c2425d09d9ecd7794844d0bd6c73754b9a3b04d895dee5e7dcd76ede",false],
-  ["packages/open-bitcoin-rpc/src/config/tests/prune_config.rs","startup_store_applies_manual_only_prune_mode",0,"4f17a2fbced2de40a994e5b1e27c1b053d7807b00435c5f9944b90570bc8d655",false],
-  ["packages/open-bitcoin-rpc/src/config/tests/prune_config.rs","startup_store_default_stays_disabled",0,"7f3422a6df0732d4bd6386027c8f30982afee14074be312a6ee2502ce7f69473",false],
-  ["packages/open-bitcoin-rpc/src/config/tests/prune_config.rs","startup_network_handle_applies_manual_only_prune_mode",0,"060ac12afcb538c65764194398e5b76323f012f01e21d7259f39d0a56a13402d",false],
-  ["packages/open-bitcoin-rpc/src/config/tests/prune_config.rs","later_set_prune_mode_overrides_startup_mode",0,"85a78cbeeb74fce6bc1d8e52e3bdc1469e7dcc835fb27375ebb8841f2a44a3ee",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","require_ordinary_scope",0,"a050a4ce112c2abedb836f9abd3dd7a15b899a1e03ec7aee7bea0c6b9dbb141d",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","try_from_runtime_config_with_store",0,"a14b7d44cf57b8c5c01546b65fedf0f5fc24c4bda7e6e11bf12083f8bd054ed6",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","for_local_operator",0,"9d279c5681a0b209635385cf83516f5553b7055473cc4f16895e44e0710c0f66",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","new",0,"c219777d5ae913bd23b3920c25f53297b8ed236165fa041f537deda635db892e",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","from_fixture_runtime_config",0,"3e3e52c2ed362665c1e1bcb35bede7e383045176aad9f3487f927d47916fb966",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","from_fixture_runtime_config_with_store",0,"a3922f208d58594327f7c842541d5453b2604fd324a29a9c5873c86d285b61ca",false],
-  ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs","for_fixture_local_operator",0,"2ae3dcda3e1f4fe788acc310e9a4de5dd217759d316055351d15a122ca348884",false],
-  ["packages/open-bitcoin-rpc/src/context/mempool_recovery.rs","recover_mempool_snapshot_from_store_handle",0,"01bf42811e837ee530cb7188d307cff747b46cf2594a23dc21847e90d8211c50",false],
-  ["packages/open-bitcoin-rpc/src/context/mempool_recovery.rs","recover_fixture_mempool_snapshot_from_store_handle",0,"0f3dfbff85cdeb806dfbcfee724b6d277c1da9d61cf6f554337b48baa66521c5",false],
-  ["packages/open-bitcoin-rpc/src/context/mempool_recovery.rs","startup_limit_failure_preserves_the_stored_snapshot",0,"aa5ac3f3c43251813253c502e6fba8fae5c1e612a68b5b7df4c2931de3cae478",true],
-  ["packages/open-bitcoin-rpc/src/context/network.rs","from_runtime_config_with_network_handle",0,"dfcf1c47589de646607b9b3b5a3fc26afc5392b35a95815d19b32025ba7af53a",false],
-  ["packages/open-bitcoin-rpc/src/context/network.rs","from_fixture_runtime_config_with_network_handle",0,"017b10acaf13295cd27da317c10be3786d603d882abd84af4d22ab480472ea67",false],
-  ["packages/open-bitcoin-rpc/src/context/network.rs","assemble_fixture_context",0,"a15f43ea0e0d6f05df819106dff0161b645a96d1c5ed10c4911ad2182d2c9755",false],
-  ["packages/open-bitcoin-rpc/src/context/network.rs","connect_local_block",0,"4cc9e46f1c934e6e00610b9bde04c93ebc231a29f3df72a559cddd97b5e50e28",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","managed_rpc_context_loads_durable_mempool_snapshot_on_startup",0,"f64bac5e484333e727ac95203fd93df1d443ecd69f25e625d63eedf4ce7576bb",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","managed_rpc_context_loads_chainstate_before_replaying_mempool_snapshot",0,"00d70f17cba412545dfc932e6ecfac6693c29f4327d01e81420de884d8e71e3b",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","managed_rpc_context_ignores_leftover_snapshot_when_coins_are_empty",0,"763fb0cec95779cca8fb630d1bd85f1629acf79fe50638d6515c1b56d1cbcdc1",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","record_inbound_resource_event_appends_inbound_resource_governance_log_record",0,"696568182acb99e436ba8142ac26a8abafebc74a8802b28f3344915ad89fc42a",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","record_inbound_resource_event_projects_current_inbound_status",0,"573ee5e88226d628894d1a28c6ff183133c046117d564865b4d7a242091a8aaf",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","record_inbound_peer_policy_event_appends_inbound_peer_policy_log_record",0,"9b67295f2117e39ed2366a21dffafc7142abf14d6024220ed24a6b5462a26b78",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","record_peer_policy_runtime_decisions_append_sanitized_logs_automatically",0,"18d2d0b32230c283772b12d0b03c28956aad7698a5965d27186c87e4f37ccaa7",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","record_inbound_peer_policy_runtime_decision_projects_status_and_log",0,"e46ffdce418ffdb616ea9046219b4ca1a59c3333a82270ae6553516540d1de5d",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","current_inbound_status_projects_runtime_peer_policy_bridge",0,"945d4867a0090330dc36a0f9fe3a90b86ccb54b93514c6471aa0ca72696a94c3",false],
-  ["packages/open-bitcoin-rpc/src/context/tests.rs","current_inbound_status_remains_unavailable_without_peer_policy_bridge_evidence",0,"86cc26d208bb1e24ecbd676f6eb030e7df725e3fbaf88fd96f38d909e4398800",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/construction.rs","authoritative_network_sync_mutation_is_visible_to_rpc",0,"71b6ff91f7645044f4590f6c43646879cab68d11895acfb877a160db1b3fdf63",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/construction.rs","managed_rpc_context_builds_from_runtime_config",0,"676a8ebb1e5460fee7145e251cac106c850c2c1777a3a599de2d7fd1f04c3c25",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/construction.rs","managed_rpc_context_builds_from_runtime_config_with_enabled_relay_activation",0,"7c37fa305035295158363586ea664752e88ff16ca132022431886c97650abf08",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/construction.rs","durable_rescan_ignores_disagreeing_leftover_snapshot",0,"b17b7ca41ddd71793ade3f87ea4c9894d6ff3f277d6ce7636766c87fabdba192",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/construction.rs","durable_rescan_missing_block_payload_fails_closed",0,"c562b3c1756ff58db71ea64c6198ae982f273cd1b77dc4949e79352aafad7efd",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs","durable_post_prune_reopen_refuses_poison_leftover",0,"0b092654886d0110f50a5606dfa59209c252e137f5d03346eb2ce0a9546b1cca",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs","durable_post_prune_later_request_rechecks_partial_success_before_and_after_reopen",0,"ea380e3057a66be7e08d589055eb031c71d95ecd4d5b89d7598668dc756ccb64",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility.rs","local_direct_rescan_helper_keeps_supplied_snapshot",0,"93694edf5c3091678aff2f89155f2f49ec39a8062f1298925ee56e1d5c630205",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs","fixture",0,"236aa3ef21918c661e2d505e87baeb1dc0b6713e67dc681c0590d61336f08ad3",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs","context",0,"62c6a9be45d19b51bdfa527f6cd78fa4189480adb4dc7b407ca6caa667db719c",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs","missing_stop_context",0,"5dd6d50b67847a8f6b86c9c33cf27d9b4b68163fbecb9204bb656a5868e82f38",false],
-  ["packages/open-bitcoin-rpc/src/context/tests/rescan_eligibility/fixtures.rs","authority_failure_case",0,"1bb740bd0676ff01db4ba5c20b04d6e4d93a655cfa1be7afcff167ce94dc4162",false],
-  ["packages/open-bitcoin-rpc/src/context/wallet_state.rs","build_wallet_state_with_store",0,"5229522a071b699b4c58bd2acef362b71a46a65d4020d177739552d36b5330ff",false],
-  ["packages/open-bitcoin-rpc/src/context/wallet_state.rs","build_fixture_wallet_state_with_store",0,"bb4497e043707c1fd665735b1d2915557a3f74997cd9f6fe7cbb716c3adebf5f",false],
-  ["packages/open-bitcoin-rpc/src/dispatch.rs","dispatch",0,"968f1c5855b3d5111fa0a53f7e4e4e83d54e2874bd44595bda272022eeacf682",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/filter_index.rs","phase159_filter_rpc_dispatch_disabled_and_summary",0,"9fd94c2e278b413ff7c4f2181223eec20e772f6ef14e105891e5eba6e8ebc35d",true],
-  ["packages/open-bitcoin-rpc/src/dispatch/filter_index/tests.rs","phase159_filter_rpc_dispatch_parameter_precedence_before_disabled",0,"076a306e313d08e01e4aaeec4fdde054c9210d1a17791f3dc7b5d9e9b0cc8ac6",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs","context_with_store",0,"5ea31344fca2311984077508973e94a3515dc38faf2d93b4e1216af632e00f01",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs","metrics_store_does_not_grant_a_transient_authority_lock_write",0,"26c82ca425f1787b9c48a1b7ad876812e0c719d31155ca7ef213c2b8700da0c3",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs","operator_status_reads_locks_from_the_prune_authority",0,"8a8aeba4f502cfd89110b46bb0f8194196ef8355ca7001180adf090a5f63da98",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs","set_replaces_the_same_name_and_survives_reopen",0,"9e2e21cb4261bfe0e22933f2b845f6696063731ac806d6a8ecca9b1a130200e7",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs","invalid_ranges_return_invalid_parameter_and_do_not_write",0,"62f9727b13a0af4d093da97c693dc58a6314e941e06ff1c47d0e561b789e6112",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests.rs","disabled_pruneblockchain_does_not_delete_or_set_have_pruned",0,"31c7e9978a7d27e1e7655b4c52bcaed33abf9309a83a43baa2bac73a564ae012",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs","durable_context",0,"d45396f0b1e9a1face72da58e6c8dd3f3946be84d5201a985f636a3f22a222f5",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs","prune_dispatch_reserved_refuses_absent_active_and_disabled_owners",0,"9c02aa0edc698189e48d188565339b9aa3f2475a2a67c7d3e9de6eacd6a1717f",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/prune/tests/ownership.rs","prune_dispatch_ordinary_crud_preserves_active_owner_through_reopen",0,"8717dccae3f43f7335a3814588dfe8f49100582bc2c3d48f8f0bb140381e6b4c",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/chain_fixtures.rs","empty_context",0,"1c30cf2f4b177f0d4b1cd6f95c1dbf8bd9aa3c48b7fbaf1781f0ee69bd980553",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/network_fixtures.rs","inbound_context",0,"896d499c9d9da04541572d9f1dd9f76a00174554a49b183d7646bacc6f7d6e1a",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/network_fixtures.rs","permission_context_with_limits",0,"76c7208543402772e1ed13e205d1c07d4fd772448ecc60804317b1a8b5b8ad54",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/network_fixtures.rs","address_boundary_context",0,"040c2e1bed39de5bb1d8edbe2f91f83e404634ae5b5508505fb792bb4a8fe2e4",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/permissions.rs","permission_context_defaults_to_ordinary_decision_without_configured_classes",0,"91e36e692d610929d794395c4b1a14708eea18db6a2593fcba0bfdd997e629c1",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/storage_fixtures.rs","durable_wallet_context",0,"dacb2fecb12cb885b03c98d7bde51e2c1791888c4fd2d326ef6ec66e5c17a935",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/sync_status.rs","context_with_runtime_metadata",0,"df7b23201ca7b8b39e0217644f89eddd7e504465e0fd7f285721c5c343065416",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/sync_status.rs","get_blockchain_info_uses_durable_connected_block_height_not_downloaded_height",0,"048da46c05d04bbbd3840d02b2b09ad09d459b64e23b10988b7b55277eacd7a6",false],
-  ["packages/open-bitcoin-rpc/src/dispatch/tests/sync_status.rs","open_bitcoin_sync_status_returns_phase62_metadata_fields",0,"2362e3b606ec78aae6dd5c10195d137740c37aac531732d386d8fe81493d3d20",false],
-  ["packages/open-bitcoin-rpc/src/http/filter_index.rs","phase159_filter_rpc_http_raw_duplicates",0,"a7d8dd5fb04da4b460231c1bac56ce034e362b36855d1bf9206d4188591d8940",true],
-  ["packages/open-bitcoin-rpc/src/http/tests.rs","state",0,"b59581ea999a5e9cddd73d32a7733e28449db6387360cb39b5e2d9b2b6159aaf",false],
-  ["packages/open-bitcoin-rpc/src/http/tests.rs","state_with_wallet_registry",0,"03b7198fbb290ca882f5f8a0c30dab498fad806d55c6799a34ba6bb86957069b",false],
-  ["packages/open-bitcoin-rpc/src/http/tests/filter_index.rs","durable_state",0,"ff1250db5d6d48fb775d023ae62e67d23c549bcd58bfeb839c1e18b373768260",false],
-  ["packages/open-bitcoin-rpc/src/http/tests/filter_index.rs","phase159_filter_rpc_http_auth_before_parse_and_held_context",0,"ccc570e8e113a05fb56f479fbbca5193bb7c7326e02dfa01aaeca53533a5bd09",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs","phase123_block_serving_context",0,"7bac65283609d94e6cf6a85cbf01ed6ba752a2104d77830fa5e03ffcb3b94933",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs","durable_block_serving_context",0,"0a25764d282d3985ada7376949b10526d7ba58334b4c680eeff8f6bd158f5dd9",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs","acknowledged_block_count",0,"33e3f91fa3f9209ba574f2d61ceeb54bdafc6e33b52736b8d63dda0f0416e335",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs","network_fixture",0,"38f915806d5d03f139427f41c8682d5687b29cf4e811b7ef1ece85d4e79d6ef1",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/block_serving.rs","phase123_inbound_written_block_increments_served_once",0,"b3f31f344c4f9e9288572dd39a9c486aed7bc23630a03dab9741dc7263fc2ae7",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/block_serving.rs","phase123_inbound_encoding_failure_does_not_increment_served",0,"70298da64d80a121a2985d781b190aede6428265cb1c41852a64f7e4a96ee5aa",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/block_serving.rs","out_of_window_notfound_closes_the_inbound_socket",0,"10677146bf8e9cd8affd1119e2c44a554b5ad8e185cc7790080b76cbb13b0e2d",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/envelope_and_resource.rs","aggregate_queue_pressure_records_shared_resource_evidence",0,"7ea25fbfa191d88cb7346c3eee77c027d9a74bdfeda1a51894dc0706fa543e55",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/envelope_and_resource.rs","context_records_inbound_resource_event_for_managed_evidence",0,"d037323ca07dccf522840443ca1221c9426a994e933b5768299723e813ea5ae7",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/listener_fixtures.rs","running_loopback_listener_with_config",0,"5545c37ff2810a71456f54c4a7acfa2e564ec963472a0f1243f812563396749a",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/listener_fixtures.rs","running_loopback_listener_with_announcements",0,"971fce0c5a6f47588f2524b535c36b15e04a24f320e09dbe91655966d081bcbf",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/listener_fixtures.rs","receive_message",0,"84b6677ad846564960614fb49bfede5a0318c575ade99a8c943b4df0dd565ea5",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/listener_fixtures.rs","new_with_peer",0,"27cb1b46ed04476cac3010a68e1c1b7a7484c10fa6686781ebf4bad7a0faf01a",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters.rs","drop",0,"ab5d2a0bbfa49718696c88e3634473cddb5504a4eaf322dd5aa79f4c592fd0aa",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/phase162.rs","fixture",0,"3f0c4e16ee697da01754bf08aa2e1278b860c5b3e0d45759d676f4b432cc30d0",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/preflight_and_advertisement.rs","loopback_listener_evidence_is_suppressed_for_public_advertisement",0,"682f2c2cbaf66771d4e3b6bc10595460eb707ceaec8ba002dd59184e8fdcadc6",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/preflight_and_advertisement.rs","public_literal_listener_evidence_can_be_advertisement_candidate_when_allowed",0,"ef58487868815adc2fd881b8e864de807989360b197242bb0068282ba52d490a",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/preflight_and_advertisement.rs","invalid_runtime_bound_evidence_is_suppressed_without_falling_back_to_configured_public_address",0,"d13a325732ae3d6b097b9c23aeecd083fd2fec4cbb0d87478c838ae318f421fd",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/reconnect_policy.rs","reconnect_suppression_uses_matching_remote_policy_state",0,"af169bfd7a5591c66d7a1cf3af4eb116f01bac4b466dd1253a120308ca7e6988",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/reconnect_policy.rs","reconnect_suppression_ignores_non_matching_remote_policy_state",0,"d5482c1b7dcf67da3184b1c2c5454c3d8a0eacbc24a757e590c118ccd6902605",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/reconnect_policy.rs","listener_records_scoped_banned_reconnect_suppression",0,"2a26fe7d56b57016322dda794ab273ab08b06af5cf42b4ae3c0a7ab4cd757b9c",false],
-  ["packages/open-bitcoin-rpc/src/inbound_listener/tests/reconnect_policy.rs","listener_records_scoped_discouraged_reconnect_suppression",0,"48ecb88de21d8c367b7167128d75625891eae076b33b12cfaa69eb2fb06663ba",false],
-  ["packages/open-bitcoin-rpc/tests/black_box_parity/open_bitcoin_rpc.rs","same_black_box_suite_targets_open_bitcoin_rpc",0,"045b74f3d89a6a3854457bd905e8f5db3464cd4bfdd745ffb820cce5af063954",false],
-  ["packages/open-bitcoin-rpc/tests/black_box_parity/phase127_composition.rs","phase127_production_composition_shares_sync_serving_and_operator_authority",0,"ec569416ed60634a0c5fbd390e66f60276e889fc2d77bda9bc32731c0fe2a6d3",false],
+
+export { TEST_MODULES } from "./test-modules.ts";
+
+export type ExactSourceInverse = {
+  readonly currentRawSha: string;
+  readonly restoredRawSha: string;
+  readonly hunks: readonly (readonly [string, string])[];
+};
+
+/** Exact historical attribution only; validate all ORIGINAL spans before replacing. */
+export function maybeRestoreReviewedSource(source: string, inverse: ExactSourceInverse): string | undefined {
+  const sha = (value: string) => createHash("sha256").update(value).digest("hex");
+  if (!inverse || Object.keys(inverse).sort().join() !== "currentRawSha,hunks,restoredRawSha"
+    || !/^[0-9a-f]{64}$/.test(inverse.currentRawSha) || !/^[0-9a-f]{64}$/.test(inverse.restoredRawSha)
+    || sha(source) !== inverse.currentRawSha || !Array.isArray(inverse.hunks) || !inverse.hunks.length) return undefined;
+  const spans: { start: number; end: number; restored: string }[] = [];
+  let previousEnd = 0;
+  for (const pair of inverse.hunks) {
+    if (!Array.isArray(pair) || pair.length !== 2 || typeof pair[0] !== "string" || typeof pair[1] !== "string") return undefined;
+    const [current, restored] = pair;
+    if (!current || current === restored) return undefined;
+    const start = source.indexOf(current);
+    if (start < previousEnd || source.indexOf(current, start + 1) !== -1) return undefined;
+    spans.push({ start, end: start + current.length, restored });
+    previousEnd = start + current.length;
+  }
+  let historical = source;
+  for (const span of spans.toReversed()) historical = historical.slice(0, span.start) + span.restored + historical.slice(span.end);
+  return sha(historical) === inverse.restoredRawSha ? historical : undefined;
+}
+
+export const FIXTURE_ADAPTER_INVERSE: ExactSourceInverse = {
+  currentRawSha: "cec4709ae363dc7fd7d675288d5d45b696f6ac5106a6f81aa68b14d10af6a7ae",
+  restoredRawSha: "b92d2d91da1dd7715e7de37737769f30bd543cb2fd8a7a1eecb92aaf3335f3e3",
+  hunks: [
+    ["import { createHash } from \"node:crypto\";\nimport { PHASE162_SOURCE_INVERSE, maybeRestoreReviewedSource } from \"./contracts.ts\";\n\nexport const MIGRATED_FIXTURE = \"packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs\";\nconst ORIGINAL_FIXTURE_SHA = \"faa009380301d6e6acbf032fd814f5cf9e31ddcbdb629787477fe5fbc5d62615\";\n","import { createHash } from \"node:crypto\";\n\nexport const MIGRATED_FIXTURE = \"packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs\";\nconst ORIGINAL_FIXTURE_SHA = \"faa009380301d6e6acbf032fd814f5cf9e31ddcbdb629787477fe5fbc5d62615\";\n"],
+    ["  const sha = (value: string) => createHash(\"sha256\").update(value).digest(\"hex\");\n  const currentHash = sha(source);\n  if (currentHash === ORIGINAL_FIXTURE_SHA) return { currentHash, historicalHash: currentHash, evidenceClass: \"original-historical\", historicalSource: source };\n  const normalized = currentHash === PHASE162_SOURCE_INVERSE?.currentRawSha\n    ? maybeRestoreReviewedSource(source, PHASE162_SOURCE_INVERSE) : source;\n  if (normalized === undefined) return { currentHash, historicalHash: currentHash, evidenceClass: \"unproved\", historicalSource: source };\n  const once = (needle: string) => normalized.split(needle).length === 2;\n  let candidate = normalized;\n  if (once(NEW_INCLUDE) && once(NEW_SEED) && !normalized.includes(OLD_SEED)\n    && normalized.includes(\"use super::{core_types, recipe};\\n\" + NEW_INCLUDE)\n    && normalized.includes(\"        let started = Instant::now();\\n\" + NEW_SEED + \"        assert!(\\n            runtime\")) {\n    candidate = normalized.replace(NEW_INCLUDE, \"\").replace(NEW_SEED, OLD_SEED);\n  }\n  const maybeHistorical = maybeHistoricalSource(candidate);\n  if (maybeHistorical !== undefined) return { currentHash, historicalHash: sha(maybeHistorical), evidenceClass: \"current-explicit-fixture\", historicalSource: maybeHistorical };\n","  const sha = (value: string) => createHash(\"sha256\").update(value).digest(\"hex\");\n  const currentHash = sha(source);\n  if (currentHash === ORIGINAL_FIXTURE_SHA) return { currentHash, historicalHash: currentHash, evidenceClass: \"original-historical\", historicalSource: source };\n  const once = (needle: string) => source.split(needle).length === 2;\n  let candidate = source;\n  if (once(NEW_INCLUDE) && once(NEW_SEED) && !source.includes(OLD_SEED)\n    && source.includes(\"use super::{core_types, recipe};\\n\" + NEW_INCLUDE)\n    && source.includes(\"        let started = Instant::now();\\n\" + NEW_SEED + \"        assert!(\\n            runtime\")) {\n    candidate = source.replace(NEW_INCLUDE, \"\").replace(NEW_SEED, OLD_SEED);\n  }\n  const maybeHistorical = maybeHistoricalSource(candidate);\n  if (maybeHistorical !== undefined) return { currentHash, historicalHash: sha(maybeHistorical), evidenceClass: \"current-explicit-fixture\", historicalSource: maybeHistorical };\n"],
+    ["    \"packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs\",\n    \"933da5cfb57612c9e93a231967a17da3cc0163e1badcd5f7d44debde78868b18\",\n    15320,\n    \"1c1e5c2fcba87ea6ffda69c3ecfbe569a309d74bc39c011a0648bdc3afa36513\"\n  ],\n  [\n    \"packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/inbound.rs\",\n","    \"packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs\",\n    \"933da5cfb57612c9e93a231967a17da3cc0163e1badcd5f7d44debde78868b18\",\n    15320,\n    \"2d0a7e7d93034333e00f5c90977693bcfb7a03ff8ab704bf834d91fec680d307\"\n  ],\n  [\n    \"packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/inbound.rs\",\n"],
+  ],
+};
+
+export const PHASE162_SOURCE_INVERSE: ExactSourceInverse = {
+  currentRawSha: "1c1e5c2fcba87ea6ffda69c3ecfbe569a309d74bc39c011a0648bdc3afa36513",
+  restoredRawSha: "2d0a7e7d93034333e00f5c90977693bcfb7a03ff8ab704bf834d91fec680d307",
+  hunks: [
+    ["};\nuse core_types::{\n    chainstate::{\n        BasicFilterInputs, ChainPosition, Chainstate, CoinsView, FlushMode, FlushPolicyTime,\n        HistoricalBlockUndo, PruneMode,\n    },\n    consensus::{ScriptVerifyFlags, block_hash, chain_proof::ProofWork},\n};\nuse open_bitcoin_node::{\n    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore, ManagedChainstate,\n    PersistMode, SyncNetwork, SyncRuntimeConfig, chainstate::FlushLifecycle,\n};\nuse open_bitcoin_rpc::{ManagedRpcContext, config::RuntimeConfig, http::RpcHttpState};\nuse std::{path::PathBuf, sync::Arc, time::Instant};\n\ntype SharedContext =\n    Arc<tokio::sync::Mutex<ManagedRpcContext<FjallChainstateStore, FjallCoinsView>>>;\ntype LiveSource = ManagedChainstate<FjallChainstateStore, FjallCoinsView>;\n\nstruct SeedCleanup {\n    maybe_path: Option<PathBuf>,\n","};\nuse core_types::{\n    chainstate::{\n        BasicFilterInputs, ChainPosition, CoinsView, FlushMode, FlushPolicyTime,\n        HistoricalBlockUndo, PruneMode,\n    },\n    consensus::{ScriptVerifyFlags, block_hash},\n};\nuse open_bitcoin_node::{\n    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, FjallNodeStore, PersistMode,\n    SyncNetwork, SyncRuntimeConfig,\n};\nuse open_bitcoin_rpc::{ManagedRpcContext, config::RuntimeConfig, http::RpcHttpState};\nuse std::{path::PathBuf, sync::Arc, time::Instant};\n\ntype SharedContext =\n    Arc<tokio::sync::Mutex<ManagedRpcContext<FjallChainstateStore, FjallCoinsView>>>;\n\nstruct SeedCleanup {\n    maybe_path: Option<PathBuf>,\n"],
+    ["    pub shared: SharedContext,\n}\n\npub(super) fn admit_retained_header_proof(\n    network: &open_bitcoin_node::ManagedNetworkHandle<FjallChainstateStore, FjallCoinsView>,\n    store: &FjallNodeStore,\n    receipts: &[ChainPosition],\n    params: core_types::consensus::ConsensusParams,\n) {\n    use open_bitcoin_network::{HeaderEntry, HeaderStore};\n    let saved = store\n        .hydrate_chainstate_for_open()\n        .expect(\"actual raw serving metadata\")\n        .expect(\"populated serving prefix\");\n    let physical = store\n        .coins_view()\n        .complete_snapshot()\n        .expect(\"actual serving coins B heads\");\n    assert!(saved.maybe_confirmed_txid_counts.is_none());\n    let before = network\n        .peer_manager_snapshot()\n        .expect(\"raw header observations\");\n    assert!(before.header_store().maybe_best_proof_header().is_none());\n    let mut positions = saved.active_chain.clone();\n    for receipt in receipts {\n        if positions\n            .iter()\n            .any(|position| position.block_hash == receipt.block_hash)\n        {\n            continue;\n        }\n        assert!(\n            before\n                .header_store()\n                .maybe_proof_facts(receipt.block_hash)\n                .is_none()\n        );\n        let body = store\n            .load_block(receipt.block_hash)\n            .expect(\"retained actual stale body\")\n            .expect(\"required stale header input\");\n        assert_eq!(block_hash(&body.header), receipt.block_hash);\n        assert_eq!(body.header, receipt.header);\n        positions.push(receipt.clone());\n    }\n    let headers = HeaderStore::from_entries(positions.iter().map(|position| HeaderEntry {\n        block_hash: position.block_hash,\n        header: position.header.clone(),\n        height: position.height,\n        chain_work: position.chain_work,\n    }))\n    .expect(\"actual active and retained receipt headers\");\n    let current_time = positions\n        .iter()\n        .map(|position| i64::from(position.header.time))\n        .max()\n        .expect(\"actual maximum header time\");\n    network\n        .try_admit_fixture_headers(headers, current_time, params)\n        .expect(\"independently checked header-only serving graph\");\n    let checked = network\n        .peer_manager_snapshot()\n        .expect(\"checked serving proof\");\n    assert_eq!(\n        checked\n            .header_store()\n            .maybe_best_proof_header()\n            .expect(\"checked best header\")\n            .block_hash,\n        saved\n            .active_chain\n            .last()\n            .expect(\"actual active endpoint\")\n            .block_hash\n    );\n    assert!(\n        network\n            .eligible_body_candidates()\n            .expect(\"no body candidates\")\n            .is_empty()\n    );\n    for position in &positions {\n        let proof = checked\n            .header_store()\n            .maybe_proof_facts(position.block_hash)\n            .expect(\"checked active or stale stop\");\n        assert_eq!(proof.height, position.height);\n        assert_eq!(proof.cumulative, position.chain_work);\n        assert_eq!(\n            network\n                .maybe_body_eligibility(position.block_hash)\n                .expect(\"header-only body observation\"),\n            None\n        );\n    }\n    assert_eq!(\n        store\n            .hydrate_chainstate_for_open()\n            .expect(\"unchanged serving metadata\"),\n        Some(saved)\n    );\n    assert_eq!(\n        store\n            .coins_view()\n            .complete_snapshot()\n            .expect(\"unchanged serving physical identity\"),\n        physical\n    );\n}\n\nimpl Phase162Fixture {\n    pub fn seed() -> Self {\n        Self::seed_count(1001)\n","    pub shared: SharedContext,\n}\n\nimpl Phase162Fixture {\n    pub fn seed() -> Self {\n        Self::seed_count(1001)\n"],
+    ["        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let store = FjallNodeStore::open(&path).expect(\"fresh same-Fjall genuine source\");\n        let mut core =\n            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);\n        Chainstate::new()\n            .rebind_into(&mut core)\n            .expect(\"genuine empty source transfer\");\n        let now = FlushPolicyTime::new(0);\n        let mut source = ManagedChainstate::from_chainstate(\n            FjallChainstateStore::from_store(store.clone()),\n            core,\n            FlushLifecycle::ready(now, now, 0, false),\n        );\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for block in &recipe.blocks {\n            store\n                .save_block(block, PersistMode::Sync)\n                .expect(\"ordinary body persistence\");\n            let receipt = source\n                .connect_block(block, ProofWork::ZERO, recipe.flags, recipe.params)\n                .expect(\"normal-maturity managed acceptance\");\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n        assert!(source.chainstate().has_earned_work());\n        assert_eq!(source.chainstate().validate_live_origin(), Ok(()));\n        source\n            .chainstate()\n            .bind_live_work_source(recipe.params)\n            .expect(\"full normal source parameters\");\n        assert!(\n            store\n                .hydrate_chainstate_for_open()\n                .expect(\"pre-flush physical metadata\")\n                .is_none_or(|saved| saved.maybe_confirmed_txid_counts.is_none())\n        );\n        let (mut sink, mut core) = source.into_parts();\n        let positions = core.active_chain().to_vec();\n        let undo = core\n            .undo_by_block()\n            .iter()\n            .map(|(hash, undo)| (*hash, undo.clone()))\n            .collect::<Vec<_>>();\n        let mut lifecycle = FlushLifecycle::ready(now, now, 0, false);\n        let flushed = lifecycle\n            .execute_flush(\n                &mut sink,\n                &mut core,\n                FlushMode::Always,\n                FlushPolicyTime::new(500_000),\n                u64::MAX,\n                &undo,\n                &[],\n                &recipe.blocks,\n                &positions,\n            )\n            .expect(\"genuine coins undo metadata flush\");\n        assert!(flushed.wrote_coins);\n        let source = ManagedChainstate::from_chainstate(sink, core, lifecycle);\n        assert!(\n            store\n                .hydrate_chainstate_for_open()\n                .expect(\"saved physical metadata\")\n                .expect(\"complete persisted prefix\")\n                .maybe_confirmed_txid_counts\n                .is_none()\n        );\n        assert_eq!(\n            store.coins_view().best_block().expect(\"durable B\"),\n            receipts.last().map(|position| position.block_hash)\n        );\n        for (height, receipt) in receipts.iter().enumerate().skip(1) {\n            let undo = store\n                .load_undo(receipt.block_hash)\n                .expect(\"persisted undo\")\n                .expect(\"actual accepted undo\");\n","        };\n        let params = config.network.consensus_params();\n        let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, count);\n        let (runtime, genesis): (DurableSyncRuntime, ChainPosition) =\n            live_source::live_genesis_runtime(\n                &path,\n                &recipe.blocks[0],\n                config,\n                params,\n                recipe.flags,\n                open_bitcoin_node::chainstate::BasicFilterStartupMode::Disabled,\n            );\n        live_source::admit_descendant_headers(&runtime, &recipe.blocks[1..], recipe.flags, params);\n        let mut receipts = Vec::with_capacity(recipe.blocks.len());\n        for (height, block) in recipe.blocks.iter().enumerate() {\n            let receipt = if height == 0 {\n                genesis.clone()\n            } else {\n                runtime\n                    .store()\n                    .save_block(block, PersistMode::Sync)\n                    .expect(\"ordinary body persistence\");\n                runtime\n                    .network_handle()\n                    .connect_local_block(block, recipe.flags, recipe.params)\n                    .expect(\"normal-maturity managed acceptance\")\n            };\n            assert_eq!(receipt.height as usize, receipts.len());\n            assert_eq!(receipt.block_hash, block_hash(&block.header));\n            receipts.push(receipt);\n        }\n        assert!(\n            runtime\n                .network_handle()\n                .maybe_basic_index_summary()\n                .expect(\"disabled progress\")\n                .is_none()\n        );\n        let flushed = runtime\n            .network_handle()\n            .flush_coins(FlushMode::Always, FlushPolicyTime::new(500_000), u64::MAX)\n            .expect(\"genuine coins undo metadata flush\");\n        assert!(flushed.wrote_coins);\n        assert_eq!(\n            runtime\n                .store()\n                .coins_view()\n                .best_block()\n                .expect(\"durable B\"),\n            receipts.last().map(|position| position.block_hash)\n        );\n        for (height, receipt) in receipts.iter().enumerate().skip(1) {\n            let undo = runtime\n                .store()\n                .load_undo(receipt.block_hash)\n                .expect(\"persisted undo\")\n                .expect(\"actual accepted undo\");\n"],
+    ["                recipe.spent_scripts[height]\n            );\n        }\n        drop(store);\n        let oracle = if count == 1001 {\n            super::independent_oracle(&recipe)\n        } else {\n","                recipe.spent_scripts[height]\n            );\n        }\n        drop(runtime);\n        let oracle = if count == 1001 {\n            super::independent_oracle(&recipe)\n        } else {\n"],
+    ["            oracle,\n            seed_ms: started.elapsed().as_millis(),\n        };\n        let fixture = Self::open_policy(\n            Phase162Handoff {\n                path,\n                recipe,\n                provenance,\n            },\n            1,\n            false,\n            false,\n            false,\n            &[\"in\"],\n            Some(source),\n        );\n        cleanup.maybe_path = None;\n        fixture\n    }\n","            oracle,\n            seed_ms: started.elapsed().as_millis(),\n        };\n        let fixture = Self::open(Phase162Handoff {\n            path,\n            recipe,\n            provenance,\n        });\n        cleanup.maybe_path = None;\n        fixture\n    }\n"],
+    ["    }\n\n    pub fn open_with_prune(handoff: Phase162Handoff, prune: u64) -> Self {\n        Self::open_policy(handoff, prune, false, false, false, &[\"in\"], None)\n    }\n\n    pub fn open_serving(\n","    }\n\n    pub fn open_with_prune(handoff: Phase162Handoff, prune: u64) -> Self {\n        Self::open_policy(handoff, prune, false, false, false, &[\"in\"])\n    }\n\n    pub fn open_serving(\n"],
+    ["        listener: bool,\n        permissions: &[&str],\n    ) -> Self {\n        let fixture = Self::open_policy(handoff, 550, general, listener, false, permissions, None);\n        admit_retained_header_proof(\n            &fixture.opened.network,\n            &fixture.store,\n            &fixture.provenance.receipts,\n            fixture.recipe.params,\n        );\n        fixture\n    }\n\n    pub fn open_body_serving(handoff: Phase162Handoff) -> Self {\n","        listener: bool,\n        permissions: &[&str],\n    ) -> Self {\n        Self::open_policy(handoff, 550, general, listener, false, permissions)\n    }\n\n    pub fn open_body_serving(handoff: Phase162Handoff) -> Self {\n"],
+    ["            true,\n            true,\n            &[\"in\", \"download\", \"blockfilters\"],\n            None,\n        )\n    }\n\n","            true,\n            true,\n            &[\"in\", \"download\", \"blockfilters\"],\n        )\n    }\n\n"],
+    ["        listener: bool,\n        body_serving: bool,\n        permissions: &[&str],\n        maybe_source: Option<LiveSource>,\n    ) -> Self {\n        assert!(\n            matches!(prune, 1 | 550),\n","        listener: bool,\n        body_serving: bool,\n        permissions: &[&str],\n    ) -> Self {\n        assert!(\n            matches!(prune, 1 | 550),\n"],
+    ["            config.sync.runtime.network.consensus_params(),\n            recipe.params\n        );\n        let (store, opened) = if let Some(source) = maybe_source {\n            let store = source.store().inner().clone();\n            let runtime = DurableSyncRuntime::from_live_fixture_source(\n                source,\n                config.sync.runtime.clone(),\n                recipe.params,\n                crate::basic_filter_startup_mode(&config),\n                config.relay,\n                config.block_serving,\n                config.inbound.enabled,\n            )\n            .expect(\"retained normal-maturity public source\");\n            let opened = crate::assemble_durable_runtime(&config, runtime)\n                .expect(\"same-source configured BASIC startup\")\n                .expect_durable();\n            (store, opened)\n        } else {\n            let store = open_runtime_store(&config)\n                .expect(\"actual store selection\")\n                .expect(\"durable store\");\n            let opened = open_authoritative_network_runtime(&config, Some(store.clone()))\n                .expect(\"configured BASIC startup\")\n                .expect_durable();\n            (store, opened)\n        };\n        let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(\n            &config,\n            opened.network.clone(),\n","            config.sync.runtime.network.consensus_params(),\n            recipe.params\n        );\n        let store = open_runtime_store(&config)\n            .expect(\"actual store selection\")\n            .expect(\"durable store\");\n        let opened = open_authoritative_network_runtime(&config, Some(store.clone()))\n            .expect(\"configured BASIC startup\")\n            .expect_durable();\n        let context = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(\n            &config,\n            opened.network.clone(),\n"],
+  ],
+};
+
+export const FIXTURE_INVERSE_CASES = [
+  ["scripts/check-phase164-canonical-identity/fixture-source.ts", FIXTURE_ADAPTER_INVERSE],
+  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/fixtures.rs", PHASE162_SOURCE_INVERSE],
+] as const;
+
+/** Exact reviewed filter-guard generations; historical data projection only. */
+export const FILTER_GUARD_INVERSES: readonly (readonly [string, ExactSourceInverse])[] = [
+  [
+    "scripts/check-phase159-filter-rpcs.ts",
+    {
+      "currentRawSha": "099f9cd23873167c2c156683afc919f8c0d3561d8b31673763b3ca390ba9e325",
+      "restoredRawSha": "563ec1eb3694e9c3961f705f250596ea68292fc67158f8c85375f07f08184a32",
+      "hunks": [
+        [
+          "  const authority = NODE + \"chainstate/work_authority.rs\";\n  const maybeRefusal = maybeBoundary(text(authority), \"prepare_reorg\", true);\n  if (!maybeRefusal || !supportedOwnership(text(authority), maybeRefusal.start, false)\n    || compact(maybeRefusal.body) !== \"Err(ChainstateError::PreferenceAuthorizationRequired)\") {\n    failures.push(`${authority}:prepare_reorg: unconditional preference authorization refusal`);\n  }\n",
+          ""
+        ]
+      ]
+    }
+  ],
+  [
+    "scripts/check-phase159-filter-rpcs.test.ts",
+    {
+      "currentRawSha": "ad8d0264c4f42f9bcca2e34a372376a3c9d6f0191e65310a868d5640535f6a90",
+      "restoredRawSha": "a4762b5de5ca3c79d1ee2a77d2e48ee77cd29424c6c6a1b44dae1c15944dd59d",
+      "hunks": [
+        [
+          "import { checkPhase161OperatorIndexEvidence, loadSources as loadPhase161Sources } from \"./check-phase161-operator-index-evidence.ts\";\n",
+          ""
+        ],
+        [
+          "  [\"fault fixture raw-seeded\", N + \"sync/tests/filter_index/catch_up/rpc_faults.rs\", \"DurableSyncRuntime::from_live_fixture_source(\", \"DurableSyncRuntime::open_configured(\"],\n",
+          "  [\"fault fixture raw-seeded\", N + \"sync/tests/filter_index/catch_up/rpc_faults.rs\", \".connect_local_block(block, ScriptVerifyFlags::P2SH, params())\", \".seed_coins_from_snapshot(block)\"],\n"
+        ],
+        [
+          "\nfor (const [phase, file, symbol, before, after, kind] of [\n  [159, N + \"chainstate/work_authority.rs\", \"prepare_reorg\", \"Err(ChainstateError::PreferenceAuthorizationRequired)\", \"Err(ChainstateError::UntrustedWorkLineage)\", \"production boundary\"],\n  [159, N + \"chainstate/work_authority.rs\", \"prepare_reorg\", \"Err(ChainstateError::PreferenceAuthorizationRequired)\", \"if authorized { Err(ChainstateError::PreferenceAuthorizationRequired) } else { Ok(prepared) }\", \"unconditional preference authorization refusal\"],\n  [159, N + \"chainstate/work_authority.rs\", \"prepare_reorg\", \"Err(ChainstateError::PreferenceAuthorizationRequired)\", \"Ok(prepared)\", \"unconditional preference authorization refusal\"],\n  [159, N + \"chainstate/work_authority.rs\", \"prepare_reorg\", \"Err(ChainstateError::PreferenceAuthorizationRequired)\", \"note_external_effect(); Err(ChainstateError::PreferenceAuthorizationRequired)\", \"unconditional preference authorization refusal\"],\n  [159, N + \"chainstate/work_authority.rs\", \"prepare_authorized_reorg\", \"authorization.check_before_prepare(\", \"unchecked_authorization(\", \"production boundary\"],\n  [159, N + \"chainstate/work_authority.rs\", \"prepare_authorized_reorg\", \"authorization.check_stage(&self.chainstate, &staged)?;\", \"skip_stage_authorization();\", \"production boundary\"],\n  [159, N + \"chainstate/validation_history.rs\", \"commit_prepared_connect\", \".validate_staged_connect(prepared.staged)?\", \".absorb_staged_connect(prepared.staged)\", \"production boundary\"],\n  [159, N + \"chainstate/validation_history.rs\", \"commit_prepared_connect\", \"authorization.check_owner(&self.chainstate)?;\", \"skip_owner_authorization();\", \"production boundary\"],\n  [159, N + \"chainstate/validation_history.rs\", \"commit_prepared_reorg\", \".validate_staged_reorg(prepared.staged)?\", \".absorb_staged_reorg(prepared.staged)\", \"production boundary\"],\n  [159, N + \"sync/tests/filter_index/catch_up/rpc_faults.rs\", \"genuine\", \"fixture.take()\", \"fixture.raw_snapshot()\", \"actual behavior evidence\"],\n  [159, N + \"sync/tests.rs\", \"from_blocks\", \".execute_flush(\", \".record_unflushed_snapshot(\", \"actual behavior evidence\"],\n  [161, \"packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs\", \"phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen\", \"drop(runtime);\", \"drop(runtime.clone());\", \"actual function edge required\"],\n  [161, \"packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs\", \"phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen\", \"assert_raw_reopen_refuses_work(&runtime);\", \"skip_raw_reopen_refusal(&runtime);\", \"actual function edge required\"],\n  [161, \"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"open_basic_source\", \"DurableSyncRuntime::from_live_fixture_source(\", \"DurableSyncRuntime::open_configured(\", \"actual function edge required\"],\n  [161, \"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"assert_raw_reopen_refuses_work\", \"ChainstateError::UntrustedWorkLineage\", \"ChainstateError::PreferenceAuthorizationRequired\", \"actual function edge required\"],\n  [161, \"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"assert_raw_reopen_refuses_work\", \".has_block(block_hash(&later.header))\", \".has_block(block_hash(&tip.header))\", \"actual function edge required\"],\n] as const) test(`phase165 filter guard${phase}: ${symbol}: ${before} -> ${after}`, () => {\n  // Arrange: unrelated historical-attribution failures cannot satisfy this exact seam.\n  const sources = phase === 159 ? suppliedSources() : loadPhase161Sources();\n  sources.set(file, readFileSync(join(repo, file), \"utf8\"));\n  const check = phase === 159 ? (view: Map<string, string>) => checkPhase159FilterRpcs(undefined, view) : checkPhase161OperatorIndexEvidence;\n  const detail = `${file}:${symbol}: ${kind}`;\n  expect(check(sources)).not.toContain(detail);\n  const source = sources.get(file)!;\n  const region = maybeFunction(source, symbol)!;\n  const body = source.slice(region.start, region.end);\n  expect(body.split(before).length).toBe(2);\n  // Act\n  sources.set(file, source.slice(0, region.start) + body.replace(before, after) + source.slice(region.end));\n  // Assert\n  expect(check(sources)).toContain(detail);\n});\n",
+          ""
+        ]
+      ]
+    }
+  ],
+  [
+    "scripts/check-phase161-operator-index-evidence.ts",
+    {
+      "currentRawSha": "aa3285939ff490a8afed8ddc24f310c6916f76a149521432cc42017a2e67a526",
+      "restoredRawSha": "c3447ae4c4cc07c8a9d2de712b663520aab545f990730ec77e3e93ca7e93ce23",
+      "hunks": [
+        [
+          "  [\"packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs\", \"phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen\", [\"durable_basic_runtime(\", \"assert_consumers(\", \"drive_basic_filter_index_turn()\", \"assert_consumers(\", \".set_prune_mode(\", \"assert_consumers(\", \".connect_local_block(\", \".save_block(\", \"blocks.push(block)\", \"assert_consumers(\", \".drive_basic_filter_index_turn()\", \"assert_consumers(\", \".flush_coins(\", \"FlushMode::Always\", \".drive_basic_filter_index_turn()\", \"let before = runtime\", \".operator_snapshot()\", \".basic_index()\", \".clone()\", \"drop(runtime)\", \"DurableSyncRuntime::open_configured(\", \"FjallNodeStore::open(&store_dir)\", \"BasicFilterStartupMode::Enabled\", \"assert_eq!(\", \".operator_snapshot()\", \".basic_index()\", \"&before\", \"assert_consumers(\", \"assert_raw_reopen_refuses_work(&runtime)\", \".disable_basic_filter_index()\", \"assert_consumers(\"]],\n",
+          "  [\"packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs\", \"phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen\", [\"durable_basic_runtime(\", \"DurableSyncRuntime::open_configured(\", \"assert_consumers(\", \"drive_basic_filter_index_turn()\", \"assert_consumers(\"]],\n"
+        ],
+        [
+          "];\n\n// Helpers carry genuine source and raw-reopen evidence without posing as test registrations.\nconst FIXTURE_HELPERS: readonly Contract[] = [\n  [\"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"durable_basic_runtime\", [\"durable_basic_runtime_with_policy(data_dir, count, Default::default(), Default::default())\"]],\n  [\"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"durable_basic_runtime_with_policy\", [\"let genesis = blocks.first()\", \"open_basic_source(data_dir, genesis, relay, block_relay)\", \"admit_basic_headers(&runtime, &blocks[1..], maybe_replacement.as_ref())\", \"for block in blocks.iter().skip(1)\", \".connect_local_block(block, ScriptVerifyFlags::P2SH, basic_params())\", \".save_block(block, PersistMode::Sync)\", \".flush_coins(FlushMode::Always\"]],\n  [\"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"open_basic_source\", [\"FjallNodeStore::open(data_dir)\", \"Chainstate::from_parent(\", \"Chainstate::new().rebind_into(&mut core)\", \"ManagedChainstate::from_chainstate(\", \".connect_block(genesis, fixture_work(), ScriptVerifyFlags::P2SH, basic_params(),)\", \"source.into_parts()\", \"same_core.active_chain().to_vec()\", \"same_core.undo_by_block()\", \".execute_flush(&mut sink, &mut same_core, FlushMode::Always\", \"&undo\", \"&[]\", \"std::slice::from_ref(genesis)\", \"&positions\", \"ManagedChainstate::from_chainstate(sink, same_core, lifecycle)\", \"DurableSyncRuntime::from_live_fixture_source(source\", \"BasicFilterStartupMode::Enabled\", \"relay\", \"block_relay\", \"false\"]],\n  [\"packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs\", \"assert_raw_reopen_refuses_work\", [\"let before = network.chainstate_snapshot()\", \"let physical = runtime.store().coins_view().complete_snapshot()\", \"let tip = before.tip()\", \"let later = build_block(\", \"assert!(matches!(\", \"network.connect_local_block(&later, ScriptVerifyFlags::P2SH, basic_params())\", \"ChainstateError::UntrustedWorkLineage\", \"assert_eq!(\", \"network.chainstate_snapshot()\", \"before\", \"assert_eq!(\", \"runtime.store().coins_view().complete_snapshot()\", \"physical\", \"assert!(!runtime.store().has_block(block_hash(&later.header))\"]],\n",
+          ""
+        ],
+        [
+          "export const CHECK_FILES = [...new Set([...CONTRACTS, ...TESTS, ...FIXTURE_HELPERS].map(row => row[0]).concat(MODULES.map(row => row[0]), DOCS, PHASE162_FILES, [\"docs/parity/index.json\", \"scripts/verify.sh\"]))];\n",
+          "export const CHECK_FILES = [...new Set([...CONTRACTS, ...TESTS].map(row => row[0]).concat(MODULES.map(row => row[0]), DOCS, PHASE162_FILES, [\"docs/parity/index.json\", \"scripts/verify.sh\"]))];\n"
+        ],
+        [
+          "  for (const [file, symbol, anchors] of [...CONTRACTS, ...TESTS, ...FIXTURE_HELPERS]) {\n",
+          "  for (const [file, symbol, anchors] of [...CONTRACTS, ...TESTS]) {\n"
+        ],
+        [
+          "    if (TESTS.some(row => row[0] === file && row[1] === symbol)\n      && (!maybeBody || !/#\\[(?:tokio::)?test(?:\\]|\\()/.test(maybeBody.attributes) || !meaningfulAssertions(source, maybeBody.body))) failures.push(`${file}:${symbol}: assertive executable caller required`);\n",
+          "    if (!production && (!maybeBody || !/#\\[(?:tokio::)?test(?:\\]|\\()/.test(maybeBody.attributes) || !meaningfulAssertions(source, maybeBody.body))) failures.push(`${file}:${symbol}: assertive executable caller required`);\n"
+        ]
+      ]
+    }
+  ]
 ];
-export const TEST_MODULES: readonly (readonly [string, readonly string[]])[] = [
-  [
-    "packages/open-bitcoin-bench/src/cases.rs",
+
+/** Complete reviewed historical-tooling source inverse; independent of H itself. */
+export const HISTORICAL_TOOLING_INVERSE: ExactSourceInverse = {
+  "currentRawSha": "8ae1aa8824e3e5d8151b62b8cbac3c42d586626b4846a1ffbbd2bf965d49adec",
+  "restoredRawSha": "47bbcd914cf5a632f618310b69b987462551ca2f103bce823a8d0cc6326a5f65",
+  "hunks": [
     [
-      "#[cfg(test)]modtests{"
+      "import { createHash } from \"node:crypto\";\nimport { COPIED_CLI_INVERSES, FILTER_GUARD_INVERSES, maybeRestoreReviewedSource } from \"./contracts.ts\";\n\nexport const MANIFEST_FILE = \"packages/testdata/phase164/historical-tooling/manifest.json\";\n",
+      "import { createHash } from \"node:crypto\";\n\nexport const MANIFEST_FILE = \"packages/testdata/phase164/historical-tooling/manifest.json\";\n"
+    ],
+    [
+      "export const EXPECTED_MANIFEST_SHA = \"9783fa03fdd2df1395445b7752e6c31d84985c351ef44de516656af7f82fc7c0\";\nconst sha = (source: string) => createHash(\"sha256\").update(source).digest(\"hex\");\nconst COPIED_CLI_ORIGINALS: Readonly<Record<string, string>> = {\n  \"scripts/check-phase158-validated-reorg.test.ts\": \"efa71956ef2e4916a94790f9f9855a418e8f6d4b84c953db126654e89fbd85dc\",\n  \"scripts/check-phase163-provenance/fixtures.ts\": \"40a76924ac64135f08f3482c50f8aafd1b5d98fa6d4dfd7052b87e0b6a492615\",\n};\n\n/** Exact mechanical additions only. The original raw script remains historical input. */\n",
+      "export const EXPECTED_MANIFEST_SHA = \"9783fa03fdd2df1395445b7752e6c31d84985c351ef44de516656af7f82fc7c0\";\nconst sha = (source: string) => createHash(\"sha256\").update(source).digest(\"hex\");\n\n/** Exact mechanical additions only. The original raw script remains historical input. */\n"
+    ],
+    [
+      "export function legacyToolingBase(file: string, source: string): string {\n  const maybeCurrent = CURRENT_TOOL_WIRING.find(row => row[0] === file);\n  const maybeCopied = COPIED_CLI_INVERSES.find(row => row[0] === file);\n  let normalized = source;\n  if (maybeCopied) {\n    const inverse = maybeCopied[1], currentHash = sha(source);\n    if (currentHash === COPIED_CLI_ORIGINALS[file]) return source;\n    if (currentHash === inverse.currentRawSha) {\n      const maybeBefore = maybeRestoreReviewedSource(source, inverse);\n      if (maybeBefore === undefined) return source;\n      normalized = maybeBefore;\n    } else if (currentHash !== inverse.restoredRawSha && currentHash !== maybeCurrent?.[1]) {\n      return source;\n    }\n  }\n  let intermediate = normalized;\n  if (maybeCurrent && sha(normalized) !== maybeCurrent[1]) {\n    if (maybeCurrent[2].some(([current]) => normalized.split(current).length !== 2)) return source;\n    for (const [current, previous] of maybeCurrent[2]) intermediate = intermediate.replace(current, () => previous);\n    if (sha(intermediate) !== maybeCurrent[1]) return source;\n",
+      "export function legacyToolingBase(file: string, source: string): string {\n  const maybeCurrent = CURRENT_TOOL_WIRING.find(row => row[0] === file);\n  let intermediate = source;\n  if (maybeCurrent && sha(source) !== maybeCurrent[1]) {\n    if (maybeCurrent[2].some(([current]) => source.split(current).length !== 2)) return source;\n    for (const [current, previous] of maybeCurrent[2]) intermediate = intermediate.replace(current, () => previous);\n    if (sha(intermediate) !== maybeCurrent[1]) return source;\n"
+    ],
+    [
+      "  }\n  const view = new Map(sources);\n  for (const [file, inverse] of FILTER_GUARD_INVERSES) {\n    const maybeSource = sources.get(file);\n    if (maybeSource === undefined) continue;\n    const maybeBinding = manifest.bindings.find(row => row.file === file);\n    const currentHash = sha(maybeSource);\n    if (currentHash === inverse.restoredRawSha || currentHash === maybeBinding?.original_sha) continue;\n    const maybeHistorical = maybeRestoreReviewedSource(maybeSource, inverse);\n    if (maybeHistorical === undefined) throw new Error(`fresh Phase163 VERIFICATION gate/lifecycle/digest: ${file}: unreviewed current tooling fingerprint`);\n    view.set(file, maybeHistorical);\n  }\n  for (const row of manifest.bindings) {\n    const snapshot = sources.get(row.snapshot) ?? \"\";\n    const rawCurrent = view.get(row.file) ?? \"\";\n    const current = row.file === \"scripts/verify.sh\" ? verificationHistoricalBase(rawCurrent) : legacyToolingBase(row.file, rawCurrent);\n    if (sha(snapshot) !== row.original_sha) throw new Error(`fresh Phase163 VERIFICATION gate/lifecycle/digest: ${row.file}: original historical snapshot changed or missing`);\n",
+      "  }\n  const view = new Map(sources);\n  for (const row of manifest.bindings) {\n    const snapshot = sources.get(row.snapshot) ?? \"\";\n    const rawCurrent = sources.get(row.file) ?? \"\";\n    const current = row.file === \"scripts/verify.sh\" ? verificationHistoricalBase(rawCurrent) : legacyToolingBase(row.file, rawCurrent);\n    if (sha(snapshot) !== row.original_sha) throw new Error(`fresh Phase163 VERIFICATION gate/lifecycle/digest: ${row.file}: original historical snapshot changed or missing`);\n"
     ]
+  ]
+};
+
+/** Exact reviewed copier generations; restore complete before bytes before historical wiring. */
+export const COPIED_CLI_INVERSES: readonly (readonly [string, ExactSourceInverse])[] = [
+  [
+    "scripts/check-phase158-validated-reorg.test.ts",
+    {
+      "currentRawSha": "7d6ef29bdcdf43ecc4f43aaf2cd36e56d52efd68eb4851ba5284c65a6e074709",
+      "restoredRawSha": "418479c36f497919cf2ca289d93dcefaa8b009920dae467181cca528365c7f81",
+      "hunks": [
+        [
+          "import { afterEach, expect, test } from \"bun:test\";\nimport { readFileSync, rmSync, unlinkSync, writeFileSync } from \"node:fs\";\nimport { join, resolve } from \"node:path\";\nimport { spawnSync } from \"node:child_process\";\nimport { createHash } from \"node:crypto\";\n",
+          "import { afterEach, expect, test } from \"bun:test\";\nimport { mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from \"node:fs\";\nimport { tmpdir } from \"node:os\";\nimport { dirname, join, resolve } from \"node:path\";\nimport { spawnSync } from \"node:child_process\";\nimport { createHash } from \"node:crypto\";\n"
+        ],
+        [
+          "import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from \"./check-phase163-provenance.ts\";\nimport { v25FixtureSources } from \"./check-phase163-provenance/fixture-controls.ts\";\nimport { createCopiedFixture } from \"./check-phase163-provenance/fixtures.ts\";\n\nconst REPO = resolve(import.meta.dir, \"..\");\n",
+          "import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from \"./check-phase163-provenance.ts\";\nimport { v25FixtureSources } from \"./check-phase163-provenance/fixture-controls.ts\";\n\nconst REPO = resolve(import.meta.dir, \"..\");\n"
+        ],
+        [
+          "}\nfunction fixture(maybeSources?: ReadonlyMap<string, string>): string {\n  return createCopiedFixture(maybeSources ?? currentSources(), root => roots.push(root),\n    [\"scripts/check-phase158-validated-reorg.ts\"], maybeSources === undefined ? \"executable\" : \"evidence-only\");\n}\n\n",
+          "}\nfunction fixture(maybeSources?: ReadonlyMap<string, string>): string {\n  const root = mkdtempSync(join(tmpdir(), \"phase158-evidence-\"));\n  roots.push(root);\n  for (const [file, source] of maybeSources ?? currentSources()) {\n    mkdirSync(dirname(join(root, file)), { recursive: true });\n    writeFileSync(join(root, file), source);\n  }\n  return root;\n}\n\n"
+        ]
+      ]
+    }
   ],
   [
-    "packages/open-bitcoin-cli/src/operator.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility.rs",
-    [
-      "#[cfg(test)]pub(crate)modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-cli/src/operator/runtime/support.rs",
-    [
-      "#[cfg(test)]modtests{"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-cli/src/operator/soak.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-cli/src/operator/wallet.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-consensus/src/chain_spec.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-consensus/src/lib.rs",
-    [
-      "#[cfg(test)]modtests{"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-node/src/network/canonical_admission.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-node/src/network/runtime_authority.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-node/src/storage.rs",
-    [
-      "#[cfg(test)]modtests{"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-node/src/storage/fjall_store.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-node/src/sync.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/config.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/context.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/context/canonical_chain.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/context/mempool_recovery.rs",
-    [
-      "#[cfg(test)]modtests{"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/dispatch.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/dispatch/filter_index.rs",
-    [
-      "#[cfg(test)]modtests;",
-      "#[cfg(test)]modinitial_tests{"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/dispatch/prune.rs",
-    [
-      "#[cfg(test)]pub(crate)modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/http.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/http/filter_index.rs",
-    [
-      "#[cfg(test)]modinitial_tests{"
-    ]
-  ],
-  [
-    "packages/open-bitcoin-rpc/src/inbound_listener.rs",
-    [
-      "#[cfg(test)]modtests;"
-    ]
+    "scripts/check-phase163-provenance/fixtures.ts",
+    {
+      "currentRawSha": "40fd6c50c3bf5d59d3f6e11291857ed99cff9ac23c7c6c2898bd4adc545fc172",
+      "restoredRawSha": "24bf75c09f40d0008bf528a7bd77fa9edf409e15ae967005cae02f6083bb25ae",
+      "hunks": [
+        [
+          "import { spawnSync } from \"node:child_process\";\nimport { createHash } from \"node:crypto\";\nimport { closeSync, constants, existsSync, fstatSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from \"node:fs\";\nimport { tmpdir } from \"node:os\";\nimport { dirname, isAbsolute, join, relative, resolve } from \"node:path\";\nimport { CHECK_FILES as FILES158, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE, PHASE162_COMPLETE,\n  PHASE162_IMPLEMENTATION, checkPhase158ValidatedReorg, loadPhase162OptionalSources } from \"../check-phase158-validated-reorg.ts\";\n",
+          "import { spawnSync } from \"node:child_process\";\nimport { createHash } from \"node:crypto\";\nimport { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from \"node:fs\";\nimport { tmpdir } from \"node:os\";\nimport { dirname, join, relative, resolve } from \"node:path\";\nimport { CHECK_FILES as FILES158, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE, PHASE162_COMPLETE,\n  PHASE162_IMPLEMENTATION, checkPhase158ValidatedReorg, loadPhase162OptionalSources } from \"../check-phase158-validated-reorg.ts\";\n"
+        ],
+        [
+          "const liveHashes = new Map(liveFiles.map(file => [file, maybeLiveHash(file)]));\n\nconst JSON_RUNTIME_EVIDENCE = \"packages/testdata/phase164/historical-tooling/manifest.json\";\ntype RuntimeGraph = { sources: Map<string, string>; evidenceImports: Set<string> };\nconst runtimeGraphs = new Map<string, RuntimeGraph>();\n\nfunction relativeFile(root: string, file: string): string {\n  const full = resolve(root, file), normalized = relative(root, full);\n  if (!file || isAbsolute(file) || file.includes(\"\\\\\") || normalized.startsWith(\"../\") || normalized === \"..\"\n    || normalized !== file || file.split(\"/\").some(part => part === \"..\" || part === \".\" || !part)) {\n    throw new Error(`invalid bounded fixture path: ${file}`);\n  }\n  return full;\n}\n\nfunction boundedPath(root: string, file: string): string {\n  const full = relativeFile(root, file);\n  const rootStat = lstatSync(root);\n  if (!rootStat.isDirectory() || rootStat.isSymbolicLink()) throw new Error(\"regular bounded fixture root required\");\n  let cursor = root;\n  for (const part of file.split(\"/\")) {\n    cursor = join(cursor, part);\n    const maybeStat = lstatSync(cursor, { throwIfNoEntry: false });\n    if (maybeStat?.isSymbolicLink()) throw new Error(`symlink bounded fixture path: ${file}`);\n    if (maybeStat && cursor !== full && !maybeStat.isDirectory()) throw new Error(`non-directory bounded fixture component: ${file}`);\n    if (maybeStat && cursor === full && !maybeStat.isFile()) throw new Error(`regular bounded fixture file required: ${file}`);\n  }\n  return full;\n}\n\nfunction regularModule(root: string, file: string): string {\n  const full = boundedPath(root, file);\n  const stat = lstatSync(full);\n  if (!stat.isFile() || stat.size > 512_000 || !file.endsWith(\".ts\")) throw new Error(`regular bounded TypeScript module required: ${file}`);\n  const source = readFileSync(full, \"utf8\");\n  if (Buffer.byteLength(source) > 512_000) throw new Error(`runtime module byte bound exceeded: ${file}`);\n  return source;\n}\n\n/** Check computed import calls too: scanImports deliberately lists only literal edges. */\nfunction assertLiteralRuntimeCalls(source: string, file: string): void {\n  function quoted(start: number): number {\n    const quote = source[start];\n    for (let index = start + 1; index < source.length; index++) {\n      if (source[index] === \"\\\\\") { index++; continue; }\n      if (source[index] === quote) return index + 1;\n    }\n    throw new Error(`unterminated runtime string: ${file}`);\n  }\n  function template(start: number): number {\n    for (let index = start + 1; index < source.length; index++) {\n      if (source[index] === \"\\\\\") { index++; continue; }\n      if (source[index] === \"`\") return index + 1;\n      if (source.startsWith(\"${\", index)) index = code(index + 2, true) - 1;\n    }\n    throw new Error(`unterminated runtime template: ${file}`);\n  }\n  function code(start: number, closingBrace = false): number {\n    let depth = 0;\n    for (let index = start; index < source.length; index++) {\n      const char = source[index];\n      if (source.startsWith(\"//\", index)) {\n        const end = source.indexOf(\"\\n\", index + 2);\n        index = end < 0 ? source.length : end;\n        continue;\n      }\n      if (source.startsWith(\"/*\", index)) {\n        const end = source.indexOf(\"*/\", index + 2);\n        if (end < 0) throw new Error(`unterminated runtime comment: ${file}`);\n        index = end + 1;\n        continue;\n      }\n      if (char === '\"' || char === \"'\") { index = quoted(index) - 1; continue; }\n      if (char === \"`\") { index = template(index) - 1; continue; }\n      if (char === \"/\" && /(?:^|[=(:,!&|?{;]|\\breturn|\\bthrow)$/.test(source.slice(start, index).trimEnd())) {\n        let characterClass = false;\n        for (index++; index < source.length; index++) {\n          if (source[index] === \"\\\\\") { index++; continue; }\n          if (source[index] === \"[\") characterClass = true;\n          if (source[index] === \"]\") characterClass = false;\n          if (source[index] === \"/\" && !characterClass) break;\n        }\n        continue;\n      }\n      if (char === \"{\") depth++;\n      if (char === \"}\" && depth-- === 0 && closingBrace) return index + 1;\n      if (char !== \"i\" && char !== \"r\") continue;\n      if (index > start && /[\\w$]/.test(source[index - 1])) continue;\n      const maybeCall = source.slice(index).match(/^(?:import|require)\\s*\\(/);\n      if (maybeCall && !/^\\s*([\"'])[^\"'\\\\\\r\\n]*\\1\\s*\\)/.test(source.slice(index + maybeCall[0].length))) {\n        throw new Error(`unsupported nonliteral runtime import: ${file}`);\n      }\n    }\n    if (closingBrace) throw new Error(`unterminated runtime interpolation: ${file}`);\n    return source.length;\n  }\n  code(0);\n}\n\nfunction discoverRuntime(entries: readonly string[], root: string): RuntimeGraph {\n  const graph: RuntimeGraph = { sources: new Map(), evidenceImports: new Set() };\n  const pending = [...entries], transpiler = new Bun.Transpiler({ loader: \"ts\" });\n  while (pending.length) {\n    const file = pending.pop()!;\n    if (graph.sources.has(file)) continue;\n    if (graph.sources.size >= 32) throw new Error(\"native fixture import-tree bound exceeded\");\n    const source = regularModule(root, file);\n    graph.sources.set(file, source);\n    const parsed = source.replace(/^#![^\\n]*/, line => \" \".repeat(line.length));\n    assertLiteralRuntimeCalls(transpiler.transformSync(parsed), file);\n    for (const imported of transpiler.scanImports(parsed)) {\n      if (imported.path.startsWith(\"node:\") || imported.path.startsWith(\"bun:\")) continue;\n      if (!imported.path.startsWith(\".\")) throw new Error(`unsupported runtime package: ${imported.path}`);\n      const child = relative(root, resolve(dirname(resolve(root, file)), imported.path));\n      relativeFile(root, child);\n      if (child === JSON_RUNTIME_EVIDENCE) {\n        graph.evidenceImports.add(child);\n        continue;\n      }\n      if (!child.endsWith(\".ts\")) throw new Error(`unsupported bounded runtime import: ${child}`);\n      pending.push(child);\n    }\n  }\n  return graph;\n}\n\n/** Fixed roots only; cache the actual live graph lazily, never caller-owned map mutations. */\nexport function runtimeSources(entries: readonly string[] = ENTRIES, maybeRoot?: string,\n  maybeEvidence?: ReadonlyMap<string, string>): Map<string, string> {\n  if (!entries.length || new Set(entries).size !== entries.length || entries.some(file => !ENTRIES.includes(file))) {\n    throw new Error(\"nonempty fixed runtime entry subset required\");\n  }\n  const root = resolve(maybeRoot ?? REPO);\n  const stat = lstatSync(root);\n  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error(\"regular runtime repository root required\");\n  const key = [...entries].sort().join(\"\\n\");\n  let maybeGraph = maybeRoot === undefined ? runtimeGraphs.get(key) : undefined;\n  if (!maybeGraph) {\n    maybeGraph = discoverRuntime(entries, root);\n    if (maybeRoot === undefined) runtimeGraphs.set(key, maybeGraph);\n  }\n  for (const file of maybeGraph.evidenceImports) if (!maybeEvidence?.has(file)) throw new Error(`required fixed runtime evidence missing: ${file}`);\n  return new Map(maybeGraph.sources);\n}\n\n/** Add only absent runtime modules; every supplied evidence key, value and order survives. */\nexport function copiedCliSources(sources: ReadonlyMap<string, string>, entries: readonly string[] = ENTRIES): Map<string, string> {\n  const copied = new Map(sources);\n  for (const [file, source] of runtimeSources(entries, undefined, sources)) if (!copied.has(file)) copied.set(file, source);\n  return checkedFixtureSources(copied);\n}\n\nfunction checkedFixtureSources(sources: ReadonlyMap<string, string>): Map<string, string> {\n  const copied = new Map(sources);\n  if (copied.size > 400) throw new Error(\"native fixture evidence bound exceeded\");\n  for (const file of copied.keys()) relativeFile(REPO, file);\n  return copied;\n}\n\n/** Copy only fixed evidence and the actual entrypoints' finite relative-import tree. */\nfunction corpus(): Map<string, string> {\n  const sources = loadPhase162OptionalSources(REPO);\n  for (const file of [...new Set([...FILES158, ...FILES162])]) sources.set(file, readFileSync(resolve(REPO, file), \"utf8\"));\n  for (const [file, source] of runtimeSources(ENTRIES, undefined, sources)) sources.set(file, source);\n  if (sources.size > 400) throw new Error(\"native fixture evidence bound exceeded\");\n  return sources;\n",
+          "const liveHashes = new Map(liveFiles.map(file => [file, maybeLiveHash(file)]));\n\n/** Copy only fixed evidence and the actual entrypoints' finite relative-import tree. */\nfunction corpus(): Map<string, string> {\n  const sources = loadPhase162OptionalSources(REPO);\n  for (const file of [...new Set([...FILES158, ...FILES162])]) sources.set(file, readFileSync(resolve(REPO, file), \"utf8\"));\n  const pending = [...ENTRIES];\n  const visited = new Set<string>();\n  while (pending.length) {\n    const file = pending.pop()!;\n    if (visited.has(file)) continue;\n    visited.add(file);\n    if (visited.size > 32) throw new Error(\"native fixture import-tree bound exceeded\");\n    const full = resolve(REPO, file);\n    if (!lstatSync(full).isFile()) throw new Error(`regular import file required: ${file}`);\n    const source = readFileSync(full, \"utf8\");\n    sources.set(file, source);\n    for (const match of source.matchAll(/\\bfrom\\s+[\"'](\\.[^\"']+)[\"']/g)) {\n      const imported = relative(REPO, resolve(dirname(full), match[1]));\n      if (imported === \"packages/testdata/phase164/historical-tooling/manifest.json\") {\n        if (!sources.has(imported)) throw new Error(\"required historical tooling manifest missing\");\n        continue;\n      }\n      if (imported.startsWith(\"..\") || !imported.endsWith(\".ts\")) throw new Error(`invalid bounded import: ${imported}`);\n      pending.push(imported);\n    }\n  }\n  if (sources.size > 400) throw new Error(\"native fixture evidence bound exceeded\");\n  return sources;\n"
+        ],
+        [
+          "}\n\nexport function writeSources(root: string, sources: ReadonlyMap<string, string>): void {\n  if (!ownedRoots.has(root)) throw new Error(\"unowned fixture path\");\n  writeCopiedSources(root, sources);\n}\n\nfunction writeCopiedSources(root: string, sources: ReadonlyMap<string, string>): void {\n  for (const file of sources.keys()) relativeFile(root, file);\n  for (const [file, source] of sources) {\n    const destination = boundedPath(root, file);\n    mkdirSync(dirname(destination), { recursive: true });\n    const descriptor = openSync(destination, constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW, 0o600);\n    try {\n      if (!fstatSync(descriptor).isFile()) throw new Error(`regular bounded fixture file required: ${file}`);\n      writeFileSync(descriptor, source);\n    } finally { closeSync(descriptor); }\n  }\n}\n\n/** Register caller ownership before writes; the caller retains its own cleanup lifecycle. */\nexport function createCopiedFixture(sources: ReadonlyMap<string, string>, registerRoot: (root: string) => void,\n  entries: readonly string[] = ENTRIES, mode: \"executable\" | \"evidence-only\" = \"executable\"): string {\n  if (mode !== \"executable\" && mode !== \"evidence-only\") throw new Error(\"unsupported copied fixture mode\");\n  const copied = mode === \"executable\" ? copiedCliSources(sources, entries) : checkedFixtureSources(sources);\n  const root = mkdtempSync(join(tmpdir(), \"phase158-evidence-\"));\n  registerRoot(root);\n  writeCopiedSources(root, copied);\n  return root;\n}\n\n",
+          "}\n\nfunction target(root: string, file: string): string {\n  if (!ownedRoots.has(root) || file.startsWith(\"/\") || file.split(\"/\").includes(\"..\")) throw new Error(\"unowned fixture path\");\n  return join(root, file);\n}\n\nexport function writeSources(root: string, sources: ReadonlyMap<string, string>): void {\n  for (const [file, source] of sources) {\n    const destination = target(root, file);\n    mkdirSync(dirname(destination), { recursive: true });\n    writeFileSync(destination, source);\n  }\n}\n\n"
+        ]
+      ]
+    }
   ]
 ];

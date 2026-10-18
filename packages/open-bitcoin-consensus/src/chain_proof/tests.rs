@@ -2,6 +2,8 @@
 // - packages/bitcoin-knots/src/chain.cpp
 // - packages/bitcoin-knots/src/arith_uint256.h
 
+mod phase165_vectors;
+
 use super::{ProofTimeError, ProofWork, block_proof, proof_equivalent_time};
 use crate::ConsensusParams;
 use crate::crypto::CompactTargetError;

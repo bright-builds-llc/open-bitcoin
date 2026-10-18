@@ -2,6 +2,8 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::*;
+use crate::storage::snapshot_codec::{ClassifiedWorkRecord, decode_work_record};
+use crate::storage::snapshot_codec::{decode_chain_meta, encode_chain_meta};
 
 #[test]
 fn encode_block_undo_round_trips_and_is_not_full_snapshot() {
@@ -231,7 +233,7 @@ fn header_entries_round_trip_and_validate_header_hashes() {
         block_hash: open_bitcoin_core::consensus::block_hash(&header),
         header,
         height: 1,
-        chain_work: 2,
+        chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
     };
 
     // Act
@@ -240,6 +242,76 @@ fn header_entries_round_trip_and_validate_header_hashes() {
 
     // Assert
     assert_eq!(decoded.entries, vec![entry]);
+}
+
+#[test]
+fn phase165_work_codec_existing_header_snapshot_retains_legacy_score() {
+    // Arrange
+    let header = header(2);
+    let entry = HeaderEntry {
+        block_hash: open_bitcoin_core::consensus::block_hash(&header),
+        header,
+        height: 1,
+        chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+    };
+    let encoded = encode_header_entries(std::slice::from_ref(&entry)).expect("historic headers");
+    let mut json: serde_json::Value = serde_json::from_slice(&encoded).expect("historic JSON");
+    json["payload"]["entries"][0]["chain_work"] = serde_json::json!(2);
+    let encoded = serde_json::to_vec(&json).expect("historic header fixture");
+    let score = serde_json::to_vec(&json["payload"]["entries"][0]["chain_work"])
+        .expect("historic low score bytes");
+
+    // Act
+    let classification = decode_work_record(StorageNamespace::Headers, &score)
+        .expect("historic work classification");
+    let decoded = decode_header_entries(&encoded);
+
+    // Assert
+    assert_eq!(score, b"2");
+    assert_eq!(classification, ClassifiedWorkRecord::LegacySynthetic(2));
+    assert!(matches!(decoded, Err(StorageError::Corruption { .. })));
+}
+
+#[test]
+fn phase165_exact_snapshot_and_chain_meta_preserve_high_work_limbs() {
+    // Arrange
+    let mut snapshot = chainstate_snapshot();
+    let mut bytes = [0; 32];
+    bytes[31] = 0x80;
+    bytes[16] = 0x7f;
+    bytes[0] = 0x55;
+    let number = open_bitcoin_core::consensus::chain_proof::ProofWork::from_le_bytes(bytes);
+    snapshot.active_chain[0].chain_work = number;
+
+    // Act
+    let encoded = encode_chainstate_snapshot(&snapshot).expect("exact snapshot");
+    let decoded = decode_chainstate_snapshot(&encoded).expect("exact snapshot read");
+    let meta = encode_chain_meta(&snapshot.active_chain, None).expect("exact chain meta");
+    let (chain, _) = decode_chain_meta(&meta).expect("exact chain meta read");
+
+    // Assert
+    assert_eq!(decoded.active_chain[0].chain_work.to_le_bytes(), bytes);
+    assert_eq!(chain[0].chain_work, number);
+    assert!(
+        String::from_utf8(encoded)
+            .expect("JSON")
+            .contains("exact_number")
+    );
+}
+
+#[test]
+fn phase165_legacy_chain_work_refuses_default_hydration() {
+    // Arrange
+    let encoded = encode_chainstate_snapshot(&chainstate_snapshot()).expect("snapshot");
+    let mut json: serde_json::Value = serde_json::from_slice(&encoded).expect("JSON");
+    json["payload"]["active_chain"][0]["chain_work"] = serde_json::json!(1);
+    let historic = serde_json::to_vec(&json).expect("historic fixture");
+
+    // Act
+    let decoded = decode_chainstate_snapshot(&historic);
+
+    // Assert
+    assert!(matches!(decoded, Err(StorageError::Corruption { .. })));
 }
 
 #[test]

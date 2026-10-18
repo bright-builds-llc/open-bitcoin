@@ -48,6 +48,7 @@ bun run scripts/check-phase63-service-lifecycle.ts
 bun run scripts/check-phase64-service-restart-resume.ts
 bun run scripts/check-phase65-support-review.ts
 bun run scripts/check-phase66-compatibility-wrapper.ts
+bun test ./scripts/check-phase68-active-chain-persistence.test.ts
 bun run scripts/check-phase68-active-chain-persistence.ts
 bun run scripts/check-phase69-tip-stay-current.ts
 bun run scripts/check-phase70-reorg-recovery.ts
@@ -156,6 +157,8 @@ bun test ./scripts/check-phase163-provenance.test.ts
 bun test ./scripts/check-phase163-provenance/native.test.ts
 bun test ./scripts/check-phase164-canonical-identity.test.ts
 bun run scripts/check-phase164-canonical-identity.ts
+bun test ./scripts/check-phase165-shared-exact-work.test.ts
+bun run scripts/check-phase165-shared-exact-work.ts
 bun test ./scripts/generate-peer-filter-fixtures.test.ts
 bun run scripts/generate-peer-filter-fixtures.ts --check
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
@@ -246,6 +249,7 @@ run_step "check Phase 63 service lifecycle" bun run scripts/check-phase63-servic
 run_step "check Phase 64 service restart resume" bun run scripts/check-phase64-service-restart-resume.ts
 run_step "check Phase 65 support review" bun run scripts/check-phase65-support-review.ts
 run_step "check Phase 66 compatibility wrapper" bun run scripts/check-phase66-compatibility-wrapper.ts
+run_step "test Phase 68 active chain persistence" bun test ./scripts/check-phase68-active-chain-persistence.test.ts
 run_step "check Phase 68 active chain persistence" bun run scripts/check-phase68-active-chain-persistence.ts
 run_step "check Phase 69 tip stay current" bun run scripts/check-phase69-tip-stay-current.ts
 run_step "check Phase 70 reorg recovery" bun run scripts/check-phase70-reorg-recovery.ts
@@ -354,6 +358,8 @@ run_step "test Phase 163 milestone provenance" bun test ./scripts/check-phase163
 run_step "test Phase 163 native archive transitions" bun test ./scripts/check-phase163-provenance/native.test.ts
 run_step "test Phase 164 canonical identity boundary" bun test ./scripts/check-phase164-canonical-identity.test.ts
 run_step "check Phase 164 canonical identity boundary" bun run scripts/check-phase164-canonical-identity.ts
+run_step "test Phase 165 shared exact work" bun test ./scripts/check-phase165-shared-exact-work.test.ts
+run_step "check Phase 165 shared exact work" bun run scripts/check-phase165-shared-exact-work.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts

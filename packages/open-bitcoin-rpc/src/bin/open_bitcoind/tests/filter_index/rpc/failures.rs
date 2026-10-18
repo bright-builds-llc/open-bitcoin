@@ -31,7 +31,7 @@ async fn phase159_daemon_rpc_failures_known_header_only_is_never_connected() {
             ),
             1_000_000,
             ScriptVerifyFlags::P2SH,
-            open_bitcoin_node::SyncNetwork::Regtest.consensus_params(),
+            super::super::fixtures::params(),
         )
         .expect("genuine header-only insertion");
     // Assert

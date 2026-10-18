@@ -90,6 +90,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 | WireNetworkMessage::BlockTxn(_)
         );
         let actions = match message {
+            WireNetworkMessage::Headers(headers_message) => self
+                .handle_validated_headers_with_policy(
+                    peer_id,
+                    headers_message,
+                    timestamp,
+                    consensus_params,
+                    super::HeaderSyncPolicy::HeadersAndBlocks,
+                )?,
             WireNetworkMessage::CompactBlock(payload) => {
                 self.handle_compact_block_receive(peer_id, payload, timestamp)?
             }
@@ -337,6 +345,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 }
                 PeerAction::ReceivedBlock(block) => {
                     self.guard_body(&block)?;
+                    let chain_work = self.next_chain_work(&block.header)?;
                     // Clear matching volatile compact in-flight across all peers before
                     // connect so a connect failure cannot leave stale multi-peer slots (D-08).
                     let connected_hash = block_hash(&block.header);
@@ -351,7 +360,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     }
                     maybe_block_disposition = Some(self.connect_stored_block(
                         &block,
-                        self.next_chain_work(),
+                        chain_work,
                         timestamp,
                         verify_flags,
                         consensus_params,

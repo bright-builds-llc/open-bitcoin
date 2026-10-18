@@ -12,6 +12,7 @@ import { historicalFixtureView } from "./check-phase164-canonical-identity/fixtu
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";
 import { PHASE163_DOC, PROVENANCE_CLAIMS } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
+import { checkPhase161OperatorIndexEvidence, loadSources as loadPhase161Sources } from "./check-phase161-operator-index-evidence.ts";
 
 const roots: string[] = [];
 const repo = resolve(import.meta.dir, "..");
@@ -231,7 +232,7 @@ const mutations: [string, string, string, string][] = [
   ["live-lock refusal removed", R + "bin/open_bitcoind/tests/filter_index/rpc/retention.rs", "FjallNodeStore::open(&fixture.path).is_err()", "true"],
   ["retention never closes all handles", R + "bin/open_bitcoind/tests/filter_index/rpc/retention.rs", "fixture.close()", "fixture.clone_path()"],
   ["reopen stale comparison weakened", R + "bin/open_bitcoind/tests/filter_index/rpc/retention.rs", "assert_eq!(filter(&fixture, stale).await, original_stale);", "assert!(true);"],
-  ["fault fixture raw-seeded", N + "sync/tests/filter_index/catch_up/rpc_faults.rs", ".connect_local_block(block, ScriptVerifyFlags::P2SH, params())", ".seed_coins_from_snapshot(block)"],
+  ["fault fixture raw-seeded", N + "sync/tests/filter_index/catch_up/rpc_faults.rs", "DurableSyncRuntime::from_live_fixture_source(", "DurableSyncRuntime::open_configured("],
   ["private query fault no longer injected", N + "sync/tests/filter_index/catch_up/rpc_faults.rs", ".inject_query_record_fault_for_test(hash, fault)", ".unrelated_no_fault(hash, fault)"],
   ["backend read assertion weakened", N + "sync/tests/filter_index/catch_up/rpc_faults.rs", "StorageError::BackendFailure", "StorageError::Corruption"],
   ["lost first publication fault", N + "sync/tests/filter_index/catch_up/rpc_faults.rs", "publication(FilterPublicationFault::BeforeRecords)", "assert!(true)"],
@@ -586,4 +587,38 @@ test("Appendguard fixture earns genuine configured recovery", () => {
   edit(root, file, source => source.replace(".configure_basic_filter_index_before_prune(", ".install_fake_recovered_proof("));
   // Act / Assert
   expect(checkPhase159FilterRpcs(root).some(failure => failure.includes(file))).toBe(true);
+});
+
+for (const [phase, file, symbol, before, after, kind] of [
+  [159, N + "chainstate/work_authority.rs", "prepare_reorg", "Err(ChainstateError::PreferenceAuthorizationRequired)", "Err(ChainstateError::UntrustedWorkLineage)", "production boundary"],
+  [159, N + "chainstate/work_authority.rs", "prepare_reorg", "Err(ChainstateError::PreferenceAuthorizationRequired)", "if authorized { Err(ChainstateError::PreferenceAuthorizationRequired) } else { Ok(prepared) }", "unconditional preference authorization refusal"],
+  [159, N + "chainstate/work_authority.rs", "prepare_reorg", "Err(ChainstateError::PreferenceAuthorizationRequired)", "Ok(prepared)", "unconditional preference authorization refusal"],
+  [159, N + "chainstate/work_authority.rs", "prepare_reorg", "Err(ChainstateError::PreferenceAuthorizationRequired)", "note_external_effect(); Err(ChainstateError::PreferenceAuthorizationRequired)", "unconditional preference authorization refusal"],
+  [159, N + "chainstate/work_authority.rs", "prepare_authorized_reorg", "authorization.check_before_prepare(", "unchecked_authorization(", "production boundary"],
+  [159, N + "chainstate/work_authority.rs", "prepare_authorized_reorg", "authorization.check_stage(&self.chainstate, &staged)?;", "skip_stage_authorization();", "production boundary"],
+  [159, N + "chainstate/validation_history.rs", "commit_prepared_connect", ".validate_staged_connect(prepared.staged)?", ".absorb_staged_connect(prepared.staged)", "production boundary"],
+  [159, N + "chainstate/validation_history.rs", "commit_prepared_connect", "authorization.check_owner(&self.chainstate)?;", "skip_owner_authorization();", "production boundary"],
+  [159, N + "chainstate/validation_history.rs", "commit_prepared_reorg", ".validate_staged_reorg(prepared.staged)?", ".absorb_staged_reorg(prepared.staged)", "production boundary"],
+  [159, N + "sync/tests/filter_index/catch_up/rpc_faults.rs", "genuine", "fixture.take()", "fixture.raw_snapshot()", "actual behavior evidence"],
+  [159, N + "sync/tests.rs", "from_blocks", ".execute_flush(", ".record_unflushed_snapshot(", "actual behavior evidence"],
+  [161, "packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs", "phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen", "drop(runtime);", "drop(runtime.clone());", "actual function edge required"],
+  [161, "packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs", "phase161_operator_consumers_genuine_catchup_current_lag_ahead_reopen", "assert_raw_reopen_refuses_work(&runtime);", "skip_raw_reopen_refusal(&runtime);", "actual function edge required"],
+  [161, "packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "open_basic_source", "DurableSyncRuntime::from_live_fixture_source(", "DurableSyncRuntime::open_configured(", "actual function edge required"],
+  [161, "packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "assert_raw_reopen_refuses_work", "ChainstateError::UntrustedWorkLineage", "ChainstateError::PreferenceAuthorizationRequired", "actual function edge required"],
+  [161, "packages/open-bitcoin-cli/tests/operator_flows/domain_fixtures.rs", "assert_raw_reopen_refuses_work", ".has_block(block_hash(&later.header))", ".has_block(block_hash(&tip.header))", "actual function edge required"],
+] as const) test(`phase165 filter guard${phase}: ${symbol}: ${before} -> ${after}`, () => {
+  // Arrange: unrelated historical-attribution failures cannot satisfy this exact seam.
+  const sources = phase === 159 ? suppliedSources() : loadPhase161Sources();
+  sources.set(file, readFileSync(join(repo, file), "utf8"));
+  const check = phase === 159 ? (view: Map<string, string>) => checkPhase159FilterRpcs(undefined, view) : checkPhase161OperatorIndexEvidence;
+  const detail = `${file}:${symbol}: ${kind}`;
+  expect(check(sources)).not.toContain(detail);
+  const source = sources.get(file)!;
+  const region = maybeFunction(source, symbol)!;
+  const body = source.slice(region.start, region.end);
+  expect(body.split(before).length).toBe(2);
+  // Act
+  sources.set(file, source.slice(0, region.start) + body.replace(before, after) + source.slice(region.end));
+  // Assert
+  expect(check(sources)).toContain(detail);
 });

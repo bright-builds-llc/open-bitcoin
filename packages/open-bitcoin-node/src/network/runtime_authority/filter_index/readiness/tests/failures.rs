@@ -312,7 +312,7 @@ fn phase159_basic_readiness_owner_reorg_invalidates_exact_branch_and_keeps_latch
             .save_undo(*hash, undo, PersistMode::Sync)
             .expect("retain actual undo");
     }
-    let next = fixture.fork(10, 13, 0x62);
+    let next = fixture.fork(10, 15, 0x62);
     // Act
     fixture.apply(&next);
     // Assert

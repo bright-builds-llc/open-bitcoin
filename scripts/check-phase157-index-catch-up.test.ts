@@ -83,6 +83,63 @@ function mutateFunction(root: string, file: string, symbol: string, transform: (
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
+const CURRENT_STARTUP = NODE + "sync/open_runtime.rs";
+const CURRENT_HISTORY = NODE + "chainstate/validation_history.rs";
+const GENUINE_HELPERS = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/fixtures.rs";
+for (const [label, assertion] of [
+  ["retained BASIC error", /assert!\(\s*(matches!\(result, Err\(CoinsFlushError::BasicFilter\(_\)\)\)),\s*"[^"]*"\s*\);/g],
+  ["joined shutdown error", /assert!\(\s*(matches!\(result, Err\(DaemonCheckpointError::ShutdownCheckpoint\)\)),\s*"[^"]*"\s*\);/g],
+  ["outer typed error", /assert!\(\s*(matches!\(\s*result\s*\.expect_err\("failure remains visible"\)\s*\.downcast_ref::<DaemonCheckpointError>\(\),\s*Some\(DaemonCheckpointError::ShutdownCheckpoint\)\s*\))\s*\);/g],
+] as const) {
+  test(`current shutdown error requires assertion wrapper: ${label}`, () => {
+    // Arrange
+    const root = fixture();
+    const file = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests/filter_index.rs";
+    const symbol = "phase157_shutdown_retained_basic_error_settles_all_workers_without_clean_marker";
+    expect(checkPhase157IndexCatchUp(root)).toEqual([]);
+    mutateFunction(root, file, symbol, body => {
+      expect([...body.matchAll(assertion)]).toHaveLength(1);
+      return body.replace(assertion, "$1;");
+    });
+    // Act
+    const failures = checkPhase157IndexCatchUp(root);
+    // Assert
+    expect(failures).toContain(`D-11: concrete evidence missing ${file}:${symbol}`);
+  });
+}
+for (const [label, file, symbol, before, after, category] of [
+  ["typed stage", CURRENT_HISTORY, "commit_prepared_connect", ".validate_staged_connect(prepared.staged)?", ".unchecked_connect(prepared.staged)", "T-157-30/D-07"],
+  ["propagated stage error", CURRENT_HISTORY, "commit_prepared_connect", ".validate_staged_connect(prepared.staged)?", ".validate_staged_connect(prepared.staged)", "T-157-30/D-07"],
+  ["history seal", CURRENT_HISTORY, "commit_prepared_connect", "history.seal_connect(&position)", "history.dummy(&position)", "T-157-30/D-07"],
+  ["publication error", CURRENT_HISTORY, "commit_prepared_connect", "return Err(map_persist(error));", "discard(error);", "T-157-30/D-07"],
+  ["prepare forwarding", CURRENT_STARTUP, "open_with_configured_runtime_activation", "Self::prepare_initialized_network(\n            &store,", "Self::prepare_initialized_network(\n            &other_store,", "T-157-30/D-08"],
+  ["finish forwarding", CURRENT_STARTUP, "open_with_configured_runtime_activation", "store, network, config, consensus_params", "store, other_network, config, consensus_params", "T-157-30/D-08"],
+  ["authoritative handle", CURRENT_STARTUP, "finish_initialized_runtime", "ManagedNetworkHandle::new(network)", "DummyHandle::new(network)", "T-157-30/D-08"],
+  ["initialization error", CURRENT_STARTUP, "finish_initialized_runtime", "network.initialize_basic_filter_index_owner()?;", "network.initialize_basic_filter_index_owner();", "T-157-30/D-08"],
+  ["late initialization", CURRENT_STARTUP, "finish_initialized_runtime", "network.initialize_basic_filter_index_owner()?;\n        network.drive_basic_filter_index_turn()?;", "network.drive_basic_filter_index_turn()?;\n        network.initialize_basic_filter_index_owner()?;", "T-157-30/D-08"],
+  ["genuine open", "packages/open-bitcoin-rpc/src/bin/open_bitcoind/coins_flush/tests/filter_index.rs", "phase157_shutdown_retained_basic_error_settles_all_workers_without_clean_marker", "history.open_genuine(&config)", "history.open_raw(&config)", "D-11"],
+  ["genuine helper edge", GENUINE_HELPERS, "open_genuine", "genuine_runtime(store.clone(), &self.blocks, config)", "raw_runtime(store.clone(), &self.blocks, config)", "D-11"],
+  ["genuine acceptance", GENUINE_HELPERS, "genuine_runtime", ".connect_block(block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params())", ".seed_block(block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params())", "D-11"],
+  ["physical Always", GENUINE_HELPERS, "genuine_runtime", "FlushMode::Always", "FlushMode::Periodic", "D-11"],
+  ["same accepted source", GENUINE_HELPERS, "genuine_runtime", "ManagedChainstate::from_chainstate(sink, core, lifecycle)", "ManagedChainstate::dummy()", "D-11"],
+  ["consuming constructor", GENUINE_HELPERS, "configured_source", "DurableSyncRuntime::from_live_fixture_source(", "DurableSyncRuntime::open(", "D-11"],
+  ["configured forwarding", GENUINE_HELPERS, "configured_source", "config.inbound.enabled,", "false,", "D-11"],
+] as const) {
+  test(`current typed startup and shutdown refuses missing ${label}`, () => {
+    // Arrange
+    const root = fixture();
+    expect(checkPhase157IndexCatchUp(root)).toEqual([]);
+    mutateFunction(root, file, symbol, body => {
+      expect(body.split(before)).toHaveLength(label === "publication error" ? 3 : 2);
+      return body.replaceAll(before, after);
+    });
+    // Act
+    const failures = checkPhase157IndexCatchUp(root);
+    // Assert
+    expect(failures.some(item => item.includes(category) && item.includes(`${file}:${symbol}`))).toBe(true);
+  });
+}
+
 const LIFECYCLE = NODE + "storage/fjall_store/filters/lifecycle.rs";
 const RETENTION = NODE + "storage/fjall_store/filters/retention.rs";
 const FRESH_PREFLIGHT = "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;";

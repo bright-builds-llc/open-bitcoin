@@ -29,6 +29,74 @@ function append(root: string, file: string, added: string): void {
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
 
+const DENSE_PROOF = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/index_protection.rs";
+test("genuine payload comparison refuses an assert-true helper stub", () => {
+  // Arrange
+  const root = fixture();
+  expect(checkPhase156PruneCoordination(root)).toEqual([]);
+  const target = join(root, DENSE_PROOF);
+  const source = readFileSync(target, "utf8");
+  const declaration = /^    fn assert_payloads\([^\n]*\) \{[\s\S]*?^    }/gm;
+  expect([...source.matchAll(declaration)]).toHaveLength(1);
+  writeFileSync(target, source.replace(declaration, "    fn assert_payloads() { assert!(true); }"));
+  // Act
+  const failures = checkPhase156PruneCoordination(root);
+  // Assert
+  expect(failures.some(item => item.includes("concrete fault/reopen/ordinary evidence: assert_payloads"))).toBe(true);
+});
+for (const [label, before, after] of [
+  ["body comparison", "store.load_block(position.block_hash)", "dummy_body(position.block_hash)"],
+  ["undo comparison", "store.load_undo(position.block_hash)", "dummy_undo(position.block_hash)"],
+  ["retained predicates", "height >= first_retained", "height < first_retained"],
+  ["expected body", "self.blocks[height].clone()", "Block::default()"],
+  ["derived expected undo", "self.truth.undo_by_block[&position.block_hash].clone()", "BlockUndo::default()"],
+] as const) {
+  test(`genuine payload comparison refuses missing ${label}`, () => {
+    // Arrange
+    const root = fixture();
+    expect(checkPhase156PruneCoordination(root)).toEqual([]);
+    expect(readFileSync(join(root, DENSE_PROOF), "utf8").split(before)).toHaveLength(label === "retained predicates" ? 3 : 2);
+    mutate(root, DENSE_PROOF, before, after);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("concrete fault/reopen/ordinary evidence: assert_payloads"))).toBe(true);
+  });
+}
+for (const [label, before, after] of [
+  ["normal maturity", "assert_eq!(params.coinbase_maturity, 100);", "assert_eq!(params.coinbase_maturity, 1);"],
+  ["genuine transfer", ".rebind_into(&mut core)", ".dummy_transfer(&mut core)"],
+  ["inclusive root", "for height in 0..=1_001", "for height in 1..=1_001"],
+  ["actual acceptance", ".connect_block(&block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params)", ".seed_block(&block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params)"],
+  ["accepted height", "assert_eq!(accepted.height, height);", "assert_eq!(height, height);"],
+  ["accepted hash", "assert_eq!(accepted.block_hash, block_hash(&block.header));", "assert_eq!(accepted.block_hash, accepted.block_hash);"],
+  ["admission snapshot", ".admission_snapshot()", ".snapshot()"],
+  ["all active positions", "assert_eq!(truth.active_chain.len(), 1_002);", "assert_eq!(truth.active_chain.len(), 1_001);"],
+  ["root undo", "assert_eq!(truth.undo_by_block.len(), 1_002);", "assert_eq!(truth.undo_by_block.len(), 1_001);"],
+  ["physical flush", "FlushPolicyTime::new(1),", "FlushPolicyTime::new(0),"],
+  ["measured bytes", "assert_eq!(measured.current_usage_bytes, body_bytes + undo_bytes);", "assert_eq!(body_bytes, body_bytes);"],
+  ["consuming source", "DurableSyncRuntime::from_live_fixture_source(", "DurableSyncRuntime::open("],
+  ["seed helper edge", "DenseHistory::seed(&store)", "DenseHistory::dummy(&store)"],
+  ["threshold assertion", "assert!(initial_bytes > TARGET);", "assert!(initial_bytes > 0);"],
+  ["runtime assembly", "crate::assemble_durable_runtime(&runtime_config, runtime)", "crate::dummy_runtime(&runtime_config, runtime)"],
+  ["actual deletion", "assert_deletion(&store, &handle, &history, initial_bytes, deleted, disabled)", "dummy_deletion(&store, &handle, &history, initial_bytes, deleted, disabled)"],
+  ["paired receipts", "assert_eq!(deleted.deleted_block_hashes, expected);", "assert_eq!(expected, expected);"],
+  ["closed handle", "drop(handle);", "retain(handle);"],
+  ["disabled reopen", "assert_disabled_reopen(&runtime_config, &history, disabled, remaining_bytes);", "assert!(remaining_bytes > 0);"],
+] as const) {
+  test(`current genuine prune proof refuses missing ${label}`, () => {
+    // Arrange
+    const root = fixture();
+    expect(checkPhase156PruneCoordination(root)).toEqual([]);
+    expect(readFileSync(join(root, DENSE_PROOF), "utf8").split(before)).toHaveLength(2);
+    mutate(root, DENSE_PROOF, before, after);
+    // Act
+    const failures = checkPhase156PruneCoordination(root);
+    // Assert
+    expect(failures.some(item => item.includes("T-156-23") || item.includes("concrete fault/reopen/ordinary evidence"))).toBe(true);
+  });
+}
+
 const STARTUP = "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs";
 const LIFECYCLE = "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs";
 const FRESH_PREFLIGHT = "self.preflight_basic_filter_history(IndexInputProtection::FromHeight(0), fence)?;";

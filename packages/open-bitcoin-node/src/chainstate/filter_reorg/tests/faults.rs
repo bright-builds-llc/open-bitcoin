@@ -68,7 +68,7 @@ fn phase158_manager_reorg_next_genuine_connect_advances_visible_accepted_target(
         .manager
         .connect_block_with_current_time(
             &block,
-            20,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(20),
             i64::from(block.header.time) + 1,
             ScriptVerifyFlags::P2SH,
             ConsensusParams {

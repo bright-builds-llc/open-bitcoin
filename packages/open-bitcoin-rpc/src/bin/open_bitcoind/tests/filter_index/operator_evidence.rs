@@ -223,38 +223,47 @@ async fn phase161_operator_rpc_retained_pruned_stale_rows_and_reopen() {
             open_bitcoin_node::PersistMode::Sync,
         )
         .expect("disconnect undo");
-    let mut replacement = super::fixtures::daemon_block(Some(&original[399]), 400);
-    replacement.header.time += 1;
-    replacement.header.nonce = (0..=u32::MAX)
-        .find(|nonce| {
-            replacement.header.nonce = *nonce;
-            check_block_header(&replacement.header).is_ok()
-        })
-        .expect("replacement proof of work");
-    fixture
-        .store
-        .save_block(&replacement, open_bitcoin_node::PersistMode::Sync)
-        .expect("replacement body");
+    let mut replacement = Vec::new();
+    let mut parent = original[399].clone();
+    for height in 400..=401 {
+        let mut block = super::fixtures::daemon_block(Some(&parent), height);
+        block.header.time += 1;
+        block.header.nonce = (0..=u32::MAX)
+            .find(|nonce| {
+                block.header.nonce = *nonce;
+                check_block_header(&block.header).is_ok()
+            })
+            .expect("replacement proof of work");
+        fixture
+            .store
+            .save_block(&block, open_bitcoin_node::PersistMode::Sync)
+            .expect("replacement body");
+        replacement.push(AnchoredBlock {
+            block: block.clone(),
+            chain_work: open_bitcoin_node::core::consensus::chain_proof::ProofWork::ZERO,
+        });
+        parent = block;
+    }
     fixture
         .opened
         .network
         .reorg_to_branch(
             &[original[400].clone()],
-            &[AnchoredBlock {
-                block: replacement.clone(),
-                chain_work: 1_400,
-            }],
+            &replacement,
             open_bitcoin_mempool::ReorgLifecycleContext::new(
                 open_bitcoin_mempool::PolicyTime::from_unix_seconds(50_000),
             ),
             ScriptVerifyFlags::P2SH,
             super::fixtures::params(),
         )
-        .expect("actual same-height branch replacement");
-    fixture.blocks[400] = replacement.clone();
+        .expect("actual strictly stronger branch replacement");
+    fixture.blocks.truncate(400);
+    fixture
+        .blocks
+        .extend(replacement.iter().map(|row| row.block.clone()));
     let replaced = captured(&fixture).await;
     assert_eq!(replaced["initial_sync_complete"]["value"], true);
-    assert_eq!(replaced["lag_blocks"]["value"], 1);
+    assert_eq!(replaced["lag_blocks"]["value"], replacement.len());
     fixture
         .opened
         .network
@@ -264,7 +273,10 @@ async fn phase161_operator_rpc_retained_pruned_stale_rows_and_reopen() {
     let settled = captured(&fixture).await;
     // Assert: independent enumeration of every known actual immutable query row.
     let mut payload_bytes = 0_u64;
-    for block in original.iter().chain(std::iter::once(&replacement)) {
+    for block in original
+        .iter()
+        .chain(replacement.iter().map(|row| &row.block))
+    {
         let open_bitcoin_node::BasicFilterQuery::Found(row) = fixture
             .opened
             .network
@@ -277,13 +289,14 @@ async fn phase161_operator_rpc_retained_pruned_stale_rows_and_reopen() {
         payload_bytes += row.encoded_bytes().len() as u64;
     }
     let measurement = &settled["retention"]["value"];
-    assert_eq!(measurement["retained_record_count"], 402);
+    let retained = original.len() + replacement.len();
+    assert_eq!(measurement["retained_record_count"], retained);
     assert_eq!(measurement["encoded_filter_payload_bytes"], payload_bytes);
     // v1 persisted envelope is 170 bytes; actual record keys are prefix + 64 hex bytes.
     let key_bytes = "basic_filter:v1:record:".len() as u64 + 64;
     assert_eq!(
         measurement["retained_record_key_value_bytes"],
-        payload_bytes + 402 * (170 + key_bytes)
+        payload_bytes + retained as u64 * (170 + key_bytes)
     );
     assert_eq!(fixture.store.load_block(pruned).expect("pruned body"), None);
     assert_eq!(fixture.store.load_undo(pruned).expect("pruned undo"), None);
@@ -306,8 +319,8 @@ async fn phase161_operator_rpc_retained_pruned_stale_rows_and_reopen() {
         None
     );
     eprintln!(
-        "phase161 operator RPC retained evidence: accepted=401 replacement=1 immutable_rows=402 payload_bytes={payload_bytes} key_value_bytes={} legal_manual_prune_height=20 all_handles_closed=true",
-        payload_bytes + 402 * (170 + key_bytes)
+        "phase161 operator RPC retained evidence: accepted=401 replacement=2 immutable_rows={retained} payload_bytes={payload_bytes} key_value_bytes={} legal_manual_prune_height=20 all_handles_closed=true",
+        payload_bytes + retained as u64 * (170 + key_bytes)
     );
     fixture.cleanup();
 }

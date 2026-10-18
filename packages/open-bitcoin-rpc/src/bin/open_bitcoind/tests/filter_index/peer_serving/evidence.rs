@@ -427,7 +427,7 @@ async fn phase160_peer_evidence_configured_retained_stale_and_paired_body_absenc
     // Arrange:401 genuinely accepted blocks, complete persisted index and real configured listener.
     let seed = DaemonFixture::new(401);
     let (path, blocks) = seed.close();
-    let fixture = DaemonFixture::open_serving(path, blocks, true, true, &["in"]);
+    let fixture = DaemonFixture::open_serving(path, blocks, true, true, &["in"]).requalify();
     fixture.finish();
     let bodyless = block_hash(&fixture.blocks[20].header);
     let expected_bodyless = expectations(&fixture, 20, 20);
@@ -491,7 +491,7 @@ async fn phase160_peer_evidence_configured_retained_stale_and_paired_body_absenc
             .expect("retained competing body");
         connected.push(AnchoredBlock {
             block: block.clone(),
-            chain_work: u128::from(height) + 1000,
+            chain_work: open_bitcoin_node::core::consensus::chain_proof::ProofWork::ZERO,
         });
         parent = block;
     }

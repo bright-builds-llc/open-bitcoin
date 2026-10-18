@@ -21,19 +21,22 @@ fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_parti
                         block_hash: block_hash(&genesis.header),
                         header: genesis.header.clone(),
                         height: 0,
-                        chain_work: 1,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&child_one.header),
                         header: child_one.header.clone(),
                         height: 1,
-                        chain_work: 2,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
                     },
                     HeaderEntry {
                         block_hash: block_hash(&child_two.header),
                         header: child_two.header.clone(),
                         height: 2,
-                        chain_work: 3,
+                        chain_work:
+                            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
                     },
                 ],
                 PersistMode::Sync,
@@ -49,6 +52,7 @@ fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_parti
 
     let store = FjallNodeStore::open(&path).expect("reopen store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![version_verack_script(2)]);
 
     // Act
@@ -79,7 +83,9 @@ fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_parti
             maybe_downloaded_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             maybe_connected_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             maybe_validated_active_chain_hash: Some(block_hash_hex(block_hash(&child_one.header))),
-            maybe_validated_active_chain_work: Some("2".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000004".to_string()
+            ),
             progress_ratio: 0.5,
             messages_processed: 2,
             headers_received: 0,
@@ -113,7 +119,9 @@ fn same_datadir_reopen_reports_downloaded_and_connected_block_hashes_after_parti
             maybe_downloaded_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             maybe_connected_block_hash: Some(block_hash_hex(block_hash(&child_one.header))),
             maybe_validated_active_chain_hash: Some(block_hash_hex(block_hash(&child_one.header))),
-            maybe_validated_active_chain_work: Some("2".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000004".to_string()
+            ),
             progress_ratio: 0.5,
             messages_processed: 2,
             headers_received: 0,
@@ -140,12 +148,13 @@ fn invalid_block_body_is_peer_attributed_and_not_persisted() {
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis.header.clone()],
+            headers: vec![build_block(genesis_hash, 1).header],
         }),
         WireNetworkMessage::Block(invalid_genesis),
     ];
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut transport = ScriptedTransport::new(vec![script]);
 
     // Act

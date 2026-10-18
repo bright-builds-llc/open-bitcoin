@@ -6,7 +6,9 @@
 use std::collections::HashMap;
 
 use open_bitcoin_core::{
-    chainstate::{BlockUndo, ChainstateSnapshot, Coin, CoinsBatch, CoinsCacheEntry, TxUndo},
+    chainstate::{
+        BlockUndo, ChainstateSnapshot, Coin, CoinsBatch, CoinsCacheEntry, TxUndo, coins::CoinsFlush,
+    },
     consensus::{
         ConsensusParams, ScriptVerifyFlags, block_hash, block_merkle_root, check_block_header,
         transaction_txid,
@@ -169,7 +171,12 @@ fn sample_coin(created_height: u32, created_median_time_past: i64) -> Coin {
 fn connect_genesis(managed: &mut ManagedChainstate<MemoryChainstateStore>) -> (Block, OutPoint) {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
     managed
-        .connect_block(&genesis, 1, ScriptVerifyFlags::P2SH, mature_params())
+        .connect_block(
+            &genesis,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            ScriptVerifyFlags::P2SH,
+            mature_params(),
+        )
         .expect("genesis should connect");
     let genesis_txid = transaction_txid(&genesis.transactions[0]).expect("txid");
     (
@@ -311,7 +318,12 @@ fn managed_chainstate_persists_after_connect() {
 
     // Act
     let position = managed
-        .connect_block(&genesis, 1, ScriptVerifyFlags::P2SH, mature_params())
+        .connect_block(
+            &genesis,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            ScriptVerifyFlags::P2SH,
+            mature_params(),
+        )
         .expect("managed chainstate should persist connected snapshot");
 
     // Assert
@@ -333,8 +345,13 @@ fn prepare_connect_does_not_change_live_utxos_or_best_block() {
     let orphan = build_block(BlockHash::from_byte_array([7_u8; 32]), 1, 50);
 
     // Act
-    let result =
-        managed.prepare_connect_block(&orphan, 2, ScriptVerifyFlags::P2SH, mature_params());
+    let result = managed.prepare_connect_block_with_current_time(
+        &orphan,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+        i64::from(orphan.header.time),
+        ScriptVerifyFlags::P2SH,
+        mature_params(),
+    );
 
     // Assert
     let Err(error) = result else {
@@ -357,30 +374,74 @@ fn prepare_connect_then_drop_leaves_parent_unpopulated() {
     // Arrange
     let mut seeded = ManagedChainstate::from_store(MemoryChainstateStore::default());
     let (genesis, genesis_outpoint) = connect_genesis(&mut seeded);
-    let snapshot = seeded.chainstate().snapshot();
-    let rematerialized =
-        ManagedChainstate::from_store(MemoryChainstateStore::from_snapshot(snapshot));
+    let lifecycle = seeded.flush_lifecycle.clone();
+    let (store, mut core) = seeded.into_parts();
+    core.prepare_current_best_block()
+        .expect("prepare genuine coins B");
+    core.flush().expect("flush genuine coins to their parent");
+    let rematerialized = ManagedChainstate::from_chainstate(store, core, lifecycle);
+    assert_eq!(rematerialized.chainstate().validate_live_origin(), Ok(()));
+    assert!(rematerialized.chainstate().has_earned_work());
+    rematerialized
+        .chainstate()
+        .bind_live_work_source(mature_params())
+        .expect("same genuine core retains complete selected params");
+    assert_eq!(rematerialized.chainstate().cache_entry_count(), 0);
     assert!(
         !rematerialized
             .chainstate()
             .have_coin_in_cache(&genesis_outpoint),
-        "from_snapshot hydrates parent-only coins"
+        "closed flush leaves the genuine coin parent-only"
+    );
+    assert!(
+        rematerialized
+            .chainstate()
+            .have_coin(&genesis_outpoint)
+            .expect("genuine genesis coin is present in the parent")
+    );
+    assert_eq!(rematerialized.chainstate().cache_entry_count(), 0);
+    let missing_second = OutPoint {
+        txid: Txid::from_byte_array([9_u8; 32]),
+        vout: 0,
+    };
+    assert!(
+        !rematerialized
+            .chainstate()
+            .have_coin(&missing_second)
+            .expect("missing second coin")
     );
     let spend = spend_transaction(genesis_outpoint.txid, genesis_outpoint.vout, 40, true);
+    assert_eq!(spend.inputs.len(), 2);
+    assert_eq!(spend.inputs[0].previous_output, genesis_outpoint);
+    assert_eq!(spend.inputs[1].previous_output, missing_second);
     let failing = build_block_with_transactions(
         block_hash(&genesis.header),
         1,
         vec![coinbase_transaction(1, 50), spend],
     );
+    let before = rematerialized.chainstate().snapshot();
+    let tip_before = rematerialized.chainstate().tip().cloned();
+    let best_before = rematerialized.chainstate().coins_best_block();
 
     // Act
-    let result =
-        rematerialized.prepare_connect_block(&failing, 2, ScriptVerifyFlags::P2SH, mature_params());
+    let result = rematerialized.prepare_connect_block_with_current_time(
+        &failing,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+        i64::from(failing.header.time),
+        ScriptVerifyFlags::P2SH,
+        mature_params(),
+    );
 
     // Assert
-    let Err(_) = result else {
+    let Err(error) = result else {
         panic!("missing second input must fail after peeking the parent coin");
     };
+    assert_eq!(
+        error,
+        open_bitcoin_core::chainstate::ChainstateError::MissingCoin {
+            outpoint: missing_second,
+        }
+    );
 
     // Assert
     assert!(
@@ -395,6 +456,10 @@ fn prepare_connect_then_drop_leaves_parent_unpopulated() {
             .have_coin(&genesis_outpoint)
             .expect("parent-only genesis coin stays spendable")
     );
+    assert_eq!(rematerialized.chainstate().cache_entry_count(), 0);
+    assert_eq!(rematerialized.chainstate().snapshot(), before);
+    assert_eq!(rematerialized.chainstate().tip(), tip_before.as_ref());
+    assert_eq!(rematerialized.chainstate().coins_best_block(), best_before);
 }
 
 #[test]
@@ -403,7 +468,13 @@ fn commit_prepared_connect_flushes_and_persists_snapshot_blob() {
     let mut managed = ManagedChainstate::from_store(MemoryChainstateStore::default());
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 50);
     let prepared = managed
-        .prepare_connect_block(&genesis, 1, ScriptVerifyFlags::P2SH, mature_params())
+        .prepare_connect_block_with_current_time(
+            &genesis,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+            i64::from(genesis.header.time),
+            ScriptVerifyFlags::P2SH,
+            mature_params(),
+        )
         .expect("genesis should prepare");
 
     // Act
@@ -517,12 +588,15 @@ fn prepare_chainstate_failure_does_not_warm_live_cache_before_mempool_prepare() 
     let utxos_before = network.chainstate().chainstate().utxos();
 
     // Act
-    let result = network.chainstate().prepare_connect_block(
-        &orphan,
-        2,
-        ScriptVerifyFlags::P2SH,
-        mature_params(),
-    );
+    let result = network
+        .chainstate()
+        .prepare_connect_block_with_current_time(
+            &orphan,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+            i64::from(orphan.header.time),
+            ScriptVerifyFlags::P2SH,
+            mature_params(),
+        );
 
     // Assert
     let Err(_) = result else {

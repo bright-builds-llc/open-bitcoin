@@ -8,6 +8,18 @@ use open_bitcoin_primitives::{BlockHash, OutPoint};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChainstateError {
+    UntrustedWorkLineage,
+    WorkParametersMismatch,
+    StageOwnerMismatch,
+    StaleStage,
+    CompleteCoinsSnapshotUnavailable,
+    WorkRebindMismatch,
+    PreferenceAuthorizationRequired,
+    BranchNotPreferred,
+    ReplacementBlock {
+        block_hash: BlockHash,
+        source: Box<ChainstateError>,
+    },
     MissingCoin {
         outpoint: OutPoint,
     },
@@ -72,6 +84,24 @@ pub enum ChainstateError {
 impl fmt::Display for ChainstateError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::UntrustedWorkLineage => write!(f, "untrusted work lineage"),
+            Self::WorkParametersMismatch => write!(f, "work authority parameters mismatch"),
+            Self::StageOwnerMismatch => write!(f, "stage belongs to a different chainstate owner"),
+            Self::StaleStage => write!(f, "stage source tip or generation is stale"),
+            Self::CompleteCoinsSnapshotUnavailable => {
+                write!(f, "complete coins snapshot unavailable")
+            }
+            Self::WorkRebindMismatch => write!(f, "work authority transfer state mismatch"),
+            Self::PreferenceAuthorizationRequired => {
+                write!(f, "managed preference authorization required")
+            }
+            Self::BranchNotPreferred => write!(
+                f,
+                "replacement branch is not preferred by earned work and body eligibility"
+            ),
+            Self::ReplacementBlock { block_hash, source } => {
+                write!(f, "replacement block {block_hash:?}: {source}")
+            }
             Self::MissingCoin { outpoint } => {
                 write!(
                     f,

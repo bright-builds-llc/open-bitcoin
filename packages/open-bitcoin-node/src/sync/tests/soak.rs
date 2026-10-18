@@ -49,6 +49,7 @@ fn header_block_scripts(blocks: &[Block]) -> Vec<Vec<WireNetworkMessage>> {
                 .saturating_sub(1);
             let headers = chunk
                 .iter()
+                .filter(|block| block.header.previous_block_hash != BlockHash::default())
                 .map(|block| block.header.clone())
                 .collect::<Vec<_>>();
             let mut script = headers_script(end_height as i32, headers);
@@ -75,13 +76,14 @@ fn phase78_header_and_download_activity_do_not_credit_soak_progress() {
     let path = temp_store_path("phase78-soak-false-progress");
     remove_dir_if_exists(&path);
     let blocks = synthetic_soak_blocks();
-    save_best_chain_with_active_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &path,
         &[(&blocks[0], 0), (&blocks[1], 1), (&blocks[2], 2)],
         &[(&blocks[0], 0), (&blocks[1], 1)],
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, synthetic_soak_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let mut credited_summary = runtime.snapshot_summary();
     credited_summary.messages_processed = 3;
     credited_summary.headers_received = 1;
@@ -140,7 +142,8 @@ fn phase78_header_and_download_activity_do_not_credit_soak_progress() {
         Some(block_hash_hex(block_hash(&blocks[2].header)));
     evidence_only_summary.maybe_connected_block_hash =
         Some(block_hash_hex(block_hash(&blocks[1].header)));
-    evidence_only_summary.maybe_validated_active_chain_work = Some("2".to_string());
+    evidence_only_summary.maybe_validated_active_chain_work =
+        Some("0000000000000000000000000000000000000000000000000000000000000002".to_string());
     evidence_only_summary.messages_processed = 2;
     evidence_only_summary.headers_received = 1;
     evidence_only_summary.blocks_received = 1;
@@ -209,6 +212,7 @@ fn phase75_synthetic_soak_long_run_reaches_target_height_without_public_network(
     assert_eq!(config.max_rounds, 64);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, config).expect("runtime");
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &blocks[0]);
     let mut transport = ScriptedTransport::new(header_block_scripts(&blocks));
     let mut resolver = ScriptedResolver::new(Vec::new());
 
@@ -247,7 +251,7 @@ fn phase75_synthetic_soak_reopen_preserves_resume_progress_without_duplicate_get
     remove_dir_if_exists(&path);
     let blocks = synthetic_soak_blocks();
     let config = synthetic_soak_config();
-    let mut first_peer_script = headers_script(95, all_headers(&blocks));
+    let mut first_peer_script = headers_script(95, all_headers(&blocks[1..]));
     first_peer_script.extend(
         blocks
             .iter()
@@ -266,6 +270,7 @@ fn phase75_synthetic_soak_reopen_preserves_resume_progress_without_duplicate_get
     );
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, config.clone()).expect("runtime");
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &blocks[0]);
     let mut transport = ScriptedTransport::new(vec![first_peer_script, second_peer_script]);
     let mut resolver = ScriptedResolver::new(Vec::new());
     let partial_summary = runtime
@@ -282,6 +287,8 @@ fn phase75_synthetic_soak_reopen_preserves_resume_progress_without_duplicate_get
     let reopened_store = FjallNodeStore::open(&path).expect("reopen store");
     let mut reopened_runtime =
         DurableSyncRuntime::open(reopened_store, config).expect("reopened runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&reopened_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&reopened_runtime);
     let reopened_summary = reopened_runtime.snapshot_summary();
     let connected_index =
         usize::try_from(reopened_summary.best_block_height).expect("connected height fits usize");
@@ -324,7 +331,7 @@ fn phase75_synthetic_soak_reopen_preserves_resume_progress_without_duplicate_get
     );
     assert_eq!(
         reopened_summary.maybe_validated_active_chain_work,
-        Some("19".to_string())
+        Some("0000000000000000000000000000000000000000000000000000000000000026".to_string())
     );
     assert!(!requested_hashes.contains(&connected_hash));
     assert!(requested_hashes.contains(&next_missing_hash));
@@ -333,6 +340,7 @@ fn phase75_synthetic_soak_reopen_preserves_resume_progress_without_duplicate_get
         reopened_summary.best_block_height
     );
 
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&reopened_runtime);
     drop(reopened_runtime);
     remove_dir_if_exists(&path);
 }
@@ -344,6 +352,7 @@ fn phase75_synthetic_soak_resource_stop_uses_shared_status_evidence() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let runtime = DurableSyncRuntime::open(store, synthetic_soak_config()).expect("runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers(&runtime);
     let summary = SyncRunSummary::empty(0, 0, 2);
 
     // Act

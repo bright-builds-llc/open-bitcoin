@@ -144,7 +144,7 @@ fn connect_block_maps_coinbase_overpay_to_block_validation_error() {
     let genesis_position = chainstate
         .connect_block(
             &genesis_block,
-            1,
+            crate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -169,7 +169,7 @@ fn connect_block_maps_coinbase_overpay_to_block_validation_error() {
     let error = chainstate
         .connect_block_with_current_time(
             &block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(block.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -218,7 +218,7 @@ fn connect_block_accepts_exact_coinbase_reward_limit() {
     let genesis_position = chainstate
         .connect_block(
             &genesis_block,
-            1,
+            crate::ChainPosition::untrusted_fixture_work(1),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -243,7 +243,7 @@ fn connect_block_accepts_exact_coinbase_reward_limit() {
     let position = chainstate
         .connect_block_with_current_time(
             &block,
-            2,
+            crate::ChainPosition::untrusted_fixture_work(2),
             i64::from(block.header.time),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY

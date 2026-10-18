@@ -385,6 +385,7 @@ impl<S: ChainstateStore> ManagedPeerNetwork<S> {
         Self {
             chainstate,
             admission_scope: super::canonical_admission::AdmissionScope::Fixture,
+            maybe_header_consensus_params: None,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
             known_peers: Default::default(),
@@ -460,6 +461,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         Self {
             chainstate,
             admission_scope: super::canonical_admission::AdmissionScope::Fixture,
+            maybe_header_consensus_params: None,
             mempool: ManagedMempool::new(mempool_config),
             peer_manager,
             known_peers: Default::default(),

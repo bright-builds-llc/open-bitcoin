@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use fjall::PersistMode as FjallPersistMode;
+use fjall::{PersistMode as FjallPersistMode, Readable};
 use open_bitcoin_core::{
     chainstate::{ChainstateError, Coin, CoinsBatch, CoinsView},
     primitives::{BlockHash, OutPoint},
@@ -174,32 +174,7 @@ impl FjallCoinsView {
         let maybe_heads = self.coins_get(&encode_head_blocks_key())?;
         let maybe_best = self.coins_get(&encode_best_block_key())?;
 
-        let Some(heads_bytes) = maybe_heads else {
-            return match maybe_best {
-                Some(best_bytes) => Ok(MarkerState::Consistent {
-                    best_block: decode_best_block_value(&best_bytes)?,
-                }),
-                None => Ok(MarkerState::Empty),
-            };
-        };
-
-        let heads = decode_head_blocks_value(&heads_bytes)?;
-        match (heads.len(), maybe_best) {
-            (2, None) => Ok(MarkerState::Interrupted {
-                new: heads[0],
-                old: heads[1],
-            }),
-            (2, Some(_)) => Err(coins_corruption(
-                "head_blocks still present after best-block write",
-            )),
-            (0, Some(best_bytes)) => Ok(MarkerState::Consistent {
-                best_block: decode_best_block_value(&best_bytes)?,
-            }),
-            (0, None) => Ok(MarkerState::Empty),
-            (count, _) => Err(coins_corruption(format!(
-                "unexpected head_blocks count {count}"
-            ))),
-        }
+        classify_marker_bytes(maybe_heads.as_deref(), maybe_best.as_deref())
     }
 
     fn batch_write_capped(
@@ -312,6 +287,44 @@ impl FjallNodeStore {
 }
 
 impl CoinsView for FjallCoinsView {
+    fn complete_snapshot(
+        &self,
+    ) -> Result<open_bitcoin_core::chainstate::coins::CompleteCoinsSnapshot, ChainstateError> {
+        let snapshot = self.db.snapshot();
+        let maybe_heads = snapshot
+            .get(&self.coins, encode_head_blocks_key())
+            .map_err(coins_backend_failure)
+            .map_err(map_storage)?;
+        let maybe_best = snapshot
+            .get(&self.coins, encode_best_block_key())
+            .map_err(coins_backend_failure)
+            .map_err(map_storage)?;
+        let marker = classify_marker_bytes(maybe_heads.as_deref(), maybe_best.as_deref())
+            .map_err(map_storage)?;
+        let (maybe_best_block, head_blocks) = match marker {
+            MarkerState::Empty => (None, Vec::new()),
+            MarkerState::Consistent { best_block } => (Some(best_block), Vec::new()),
+            MarkerState::Interrupted { new, old } => (None, vec![new, old]),
+        };
+        let mut coins = HashMap::new();
+        for guard in snapshot.prefix(&self.coins, [DB_COIN]) {
+            let (key, value) = guard
+                .into_inner()
+                .map_err(coins_backend_failure)
+                .map_err(map_storage)?;
+            coins.insert(
+                decode_coin_key(&key).map_err(map_storage)?,
+                decode_coin_value(&value).map_err(map_storage)?,
+            );
+        }
+        Ok(
+            open_bitcoin_core::chainstate::coins::CompleteCoinsSnapshot {
+                coins,
+                maybe_best_block,
+                head_blocks,
+            },
+        )
+    }
     fn get_coin(&self, outpoint: &OutPoint) -> Result<Option<Coin>, ChainstateError> {
         let maybe_bytes = map_optional_read(self.coins_get(&encode_coin_key(outpoint)))?;
         let Some(bytes) = maybe_bytes else {
@@ -379,6 +392,38 @@ impl CoinsView for FjallCoinsView {
             utxos.insert(outpoint, coin);
         }
         Ok(utxos)
+    }
+}
+
+fn classify_marker_bytes(
+    maybe_heads: Option<&[u8]>,
+    maybe_best: Option<&[u8]>,
+) -> Result<MarkerState, StorageError> {
+    let Some(heads_bytes) = maybe_heads else {
+        return match maybe_best {
+            Some(best_bytes) => Ok(MarkerState::Consistent {
+                best_block: decode_best_block_value(best_bytes)?,
+            }),
+            None => Ok(MarkerState::Empty),
+        };
+    };
+
+    let heads = decode_head_blocks_value(heads_bytes)?;
+    match (heads.len(), maybe_best) {
+        (2, None) => Ok(MarkerState::Interrupted {
+            new: heads[0],
+            old: heads[1],
+        }),
+        (2, Some(_)) => Err(coins_corruption(
+            "head_blocks still present after best-block write",
+        )),
+        (0, Some(best_bytes)) => Ok(MarkerState::Consistent {
+            best_block: decode_best_block_value(best_bytes)?,
+        }),
+        (0, None) => Ok(MarkerState::Empty),
+        (count, _) => Err(coins_corruption(format!(
+            "unexpected head_blocks count {count}"
+        ))),
     }
 }
 

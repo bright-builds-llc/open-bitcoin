@@ -3,24 +3,31 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
-//! Real ordinary daemon retention. Dense ancestry and historical correspondence
-//! are codec-valid deletion evidence, not consensus-accepted sync history.
+//! Explicit accepted same-Fjall fixture history exercises real cache eviction and
+//! physical retention. This is not ordinary canonical startup qualification.
 
 use super::*;
 use open_bitcoin_node::core::{
     chainstate::{
-        BasicFilterInputs, BlockUndo, ChainPosition, ChainstateSnapshot, FilterCheckpoint,
-        HistoricalBlockUndo, IndexInputProtection, IndexPrefix,
+        Chainstate, ChainstateSnapshot, FilterCheckpoint, FlushMode, FlushPolicyTime,
+        IndexInputProtection, IndexPrefix,
         filter_index::lifecycle::{EffectiveIndexOwnership, IndexGeneration, IndexLifecycle},
     },
-    consensus::{ConsensusParams, ScriptVerifyFlags, block_merkle_root},
+    consensus::{
+        ConsensusParams, ScriptVerifyFlags,
+        block::{block_subsidy, check_block_header_with_params},
+        block_hash, block_merkle_root,
+        chain_proof::ProofWork,
+    },
     primitives::{
-        Amount, Block, BlockHash, OutPoint, ScriptBuf, ScriptWitness, Transaction,
-        TransactionInput, TransactionOutput,
+        Block, BlockHash, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,
+        TransactionOutput,
     },
 };
 use open_bitcoin_node::{
-    FjallChainstateStore, FjallCoinsView, ManagedNetworkHandle, chainstate::PruneProtectionSnapshot,
+    DurableSyncRuntime, FjallChainstateStore, FjallCoinsView, ManagedChainstate,
+    ManagedNetworkHandle, SyncNetwork, SyncRuntimeConfig,
+    chainstate::{BasicFilterStartupMode, FlushLifecycle, PruneProtectionSnapshot},
 };
 use std::collections::HashMap;
 
@@ -35,106 +42,153 @@ struct DenseHistory {
 }
 
 impl DenseHistory {
-    fn seed(store: &FjallNodeStore) -> Self {
-        let mut positions = Vec::new();
+    fn block(parent: BlockHash, height: u32, params: &ConsensusParams) -> Block {
+        let mut number = height.to_le_bytes().to_vec();
+        while number.last() == Some(&0) {
+            number.pop();
+        }
+        if number.last().is_some_and(|byte| byte & 0x80 != 0) {
+            number.push(0);
+        }
+        let mut script = vec![u8::try_from(number.len()).expect("bounded script number")];
+        script.extend(number);
+        script.push(0x51);
+        let transactions = vec![Transaction {
+            version: 1,
+            inputs: vec![TransactionInput {
+                previous_output: OutPoint::null(),
+                script_sig: ScriptBuf::from_bytes(script).expect("minimal full height"),
+                sequence: TransactionInput::SEQUENCE_FINAL,
+                witness: ScriptWitness::default(),
+            }],
+            outputs: vec![TransactionOutput {
+                value: block_subsidy(height, params),
+                script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("true script"),
+            }],
+            lock_time: 0,
+        }];
+        let mut header = position(height).header;
+        header.previous_block_hash = parent;
+        header.merkle_root = block_merkle_root(&transactions).expect("actual merkle").0;
+        header.nonce = (0..=u32::MAX)
+            .find(|nonce| {
+                header.nonce = *nonce;
+                check_block_header_with_params(&header, params).is_ok()
+            })
+            .expect("selected valid PoW");
+        Block {
+            header,
+            transactions,
+        }
+    }
+
+    fn seed(store: &FjallNodeStore) -> (Self, DurableSyncRuntime) {
+        let params = SyncNetwork::Regtest.consensus_params();
+        assert_eq!(params.coinbase_maturity, 100);
+        let now = FlushPolicyTime::new(0);
+        let mut core = Chainstate::from_parent(store.coins_view(), vec![], HashMap::new(), None);
+        Chainstate::new()
+            .rebind_into(&mut core)
+            .expect("genuine empty transfer");
+        let mut managed = ManagedChainstate::from_chainstate(
+            FjallChainstateStore::from_store(store.clone()),
+            core,
+            FlushLifecycle::ready(now, now, 0, false),
+        );
         let mut blocks = Vec::new();
-        let mut parent = BlockHash::default();
-        let undo = BlockUndo::default();
-        let mut body_bytes = 0;
         for height in 0..=1_001 {
-            let transactions = vec![Transaction {
-                version: 1,
-                inputs: vec![TransactionInput {
-                    previous_output: OutPoint::null(),
-                    script_sig: ScriptBuf::from_bytes(vec![1, height as u8])
-                        .expect("bounded script"),
-                    sequence: TransactionInput::SEQUENCE_FINAL,
-                    witness: ScriptWitness::default(),
-                }],
-                outputs: vec![TransactionOutput {
-                    value: Amount::from_sats(5_000_000_000).expect("amount"),
-                    script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("script"),
-                }],
-                lock_time: 0,
-            }];
-            let mut header = position(height).header;
-            header.previous_block_hash = parent;
-            header.merkle_root = block_merkle_root(&transactions).expect("merkle").0;
-            let block = Block {
-                header,
-                transactions,
-            };
-            let position = ChainPosition::new(
-                block.header.clone(),
-                height,
-                u128::from(height) + 1,
-                i64::from(block.header.time),
-            );
-            let maybe_history = (height != 0).then_some(HistoricalBlockUndo {
-                block_hash: position.block_hash,
-                undo: &undo,
+            let parent = blocks.last().map_or(BlockHash::default(), |block: &Block| {
+                block_hash(&block.header)
             });
-            BasicFilterInputs::from_historical(&block, &position, maybe_history)
-                .expect("body/position/undo correspondence");
-            body_bytes += u64::try_from(
-                open_bitcoin_codec::encode_block(&block)
-                    .expect("encoded body")
-                    .len(),
-            )
-            .expect("body length");
-            store
-                .save_block(&block, PersistMode::Buffered)
-                .expect("real body value");
-            if height != 0 {
-                store
-                    .save_undo(position.block_hash, &undo, PersistMode::Buffered)
-                    .expect("real non-genesis undo");
-            }
-            parent = position.block_hash;
-            positions.push(position);
+            let block = Self::block(parent, height, &params);
+            let accepted = managed
+                .connect_block(&block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params)
+                .expect("actual dense acceptance");
+            assert_eq!(accepted.height, height);
+            assert_eq!(accepted.block_hash, block_hash(&block.header));
             blocks.push(block);
         }
-        let truth = ChainstateSnapshot::new(positions, HashMap::new(), HashMap::new());
-        store
-            .seed_coins_from_snapshot(&truth)
-            .expect("compatible durable B and metadata");
-        let measured = store
-            .retained_payload_usage(&truth.active_chain)
-            .expect("actual encoded pair sizes");
-        let one_body = u64::try_from(
-            open_bitcoin_codec::encode_block(&blocks[1])
-                .expect("body")
-                .len(),
-        )
-        .expect("length");
-        let undo_bytes = measured.height_sizes[&1]
-            .checked_sub(one_body)
-            .expect("actual encoded undo length");
-        let pair_sizes: Vec<_> = blocks
+        let (mut sink, mut core) = managed.into_parts();
+        let truth = core
+            .admission_snapshot()
+            .expect("complete actually derived dense facts");
+        assert_eq!(truth.active_chain.len(), 1_002);
+        assert_eq!(truth.undo_by_block.len(), 1_002);
+        let mut body_bytes = 0;
+        let mut undo_bytes = 0;
+        let pair_sizes = blocks
             .iter()
-            .enumerate()
-            .map(|(height, block)| {
-                let body =
-                    u64::try_from(open_bitcoin_codec::encode_block(block).expect("body").len())
-                        .expect("length");
-                body + if height == 0 { 0 } else { undo_bytes }
+            .map(|block| {
+                let body = u64::try_from(
+                    open_bitcoin_codec::encode_block(block)
+                        .expect("actual body encoding")
+                        .len(),
+                )
+                .expect("body bytes");
+                let undo = truth
+                    .undo_by_block
+                    .get(&block_hash(&block.header))
+                    .expect("derived undo INCLUDING root");
+                let encoded_undo = encoded_undo_size(undo);
+                body_bytes += body;
+                undo_bytes += encoded_undo;
+                body + encoded_undo
             })
-            .collect();
-        assert_eq!(
-            measured.current_usage_bytes,
-            body_bytes + 1_001 * undo_bytes
+            .collect::<Vec<_>>();
+        let positions = truth.active_chain.clone();
+        let undo = truth
+            .undo_by_block
+            .iter()
+            .map(|(hash, undo)| (*hash, undo.clone()))
+            .collect::<Vec<_>>();
+        let mut lifecycle = FlushLifecycle::ready(now, now, 0, false);
+        assert!(
+            lifecycle
+                .execute_flush(
+                    &mut sink,
+                    &mut core,
+                    FlushMode::Always,
+                    FlushPolicyTime::new(1),
+                    u64::MAX,
+                    &undo,
+                    &[],
+                    &blocks,
+                    &positions,
+                )
+                .expect("genuine root-inclusive physical flush")
+                .wrote_coins
         );
+        let measured = store
+            .retained_payload_usage(&positions)
+            .expect("actual encoded pair sizes");
+        assert_eq!(measured.current_usage_bytes, body_bytes + undo_bytes);
         assert_eq!(
             measured.height_sizes.values().copied().collect::<Vec<_>>(),
             pair_sizes
         );
-        Self {
-            truth,
-            blocks,
-            body_bytes,
-            undo_bytes,
-            pair_sizes,
-        }
+        let runtime = DurableSyncRuntime::from_live_fixture_source(
+            ManagedChainstate::from_chainstate(sink, core, lifecycle),
+            SyncRuntimeConfig {
+                network: SyncNetwork::Regtest,
+                ..Default::default()
+            },
+            params,
+            BasicFilterStartupMode::Disabled,
+            Default::default(),
+            Default::default(),
+            false,
+        )
+        .expect("same genuine dense fixture without a startup index turn");
+        (
+            Self {
+                truth,
+                blocks,
+                body_bytes,
+                undo_bytes,
+                pair_sizes,
+            },
+            runtime,
+        )
     }
 
     fn assert_payloads(&self, store: &FjallNodeStore, first_retained: usize) {
@@ -146,7 +200,8 @@ impl DenseHistory {
             );
             assert_eq!(
                 store.load_undo(position.block_hash).expect("actual undo"),
-                (height != 0 && height >= first_retained).then(BlockUndo::default),
+                (height >= first_retained)
+                    .then(|| self.truth.undo_by_block[&position.block_hash].clone()),
                 "undo height {height}"
             );
         }
@@ -159,8 +214,8 @@ impl DenseHistory {
                 &self.blocks[height],
                 position.chain_work,
                 position.median_time_past,
-                ScriptVerifyFlags::NONE,
-                ConsensusParams::default(),
+                ScriptVerifyFlags::P2SH,
+                SyncNetwork::Regtest.consensus_params(),
             )
             .expect("already active block cache");
         assert!(
@@ -194,7 +249,7 @@ fn assert_unearned(store: &FjallNodeStore) {
 }
 
 #[test]
-fn index_protection_ordinary_legal_target_retains_then_deletes_only_after_disable() {
+fn index_protection_genuine_fixture_retains_then_deletes_only_after_disable() {
     // Arrange: one bounded dense fixture and one reusable nonactive bulk buffer.
     let temp = TempDir::new("index-protection-legal-target");
     let runtime_config = config(&temp);
@@ -203,11 +258,11 @@ fn index_protection_ordinary_legal_target_retains_then_deletes_only_after_disabl
     let store = open_runtime_store(&runtime_config)
         .expect("store")
         .expect("durable");
-    let history = DenseHistory::seed(&store);
+    let (history, runtime) = DenseHistory::seed(&store);
     let initial_bytes = populate_threshold(&store, &history.truth);
     assert!(initial_bytes > TARGET);
-    let opened = open_authoritative_network_runtime(&runtime_config, Some(store.clone()))
-        .expect("ordinary production runtime")
+    let opened = crate::assemble_durable_runtime(&runtime_config, runtime)
+        .expect("configured explicit genuine fixture")
         .expect_durable();
     let handle = opened.network.clone();
     handle
@@ -325,7 +380,7 @@ fn index_protection_ordinary_legal_target_retains_then_deletes_only_after_disabl
     assert_disabled_reopen(&runtime_config, &history, disabled, remaining_bytes);
     let deleted_bytes: u64 = history.pair_sizes[..=713].iter().sum();
     eprintln!(
-        "index protection legal target: target={TARGET} logical_before={initial_bytes} logical_after={} active_body_bytes={} undo_value_bytes={} active_pairs=1002 deleted_pairs=714 deleted_bytes={deleted_bytes}",
+        "index protection legal target: target={TARGET} logical_before={initial_bytes} logical_after={} active_body_bytes={} undo_total_bytes={} active_pairs=1002 deleted_pairs=714 deleted_bytes={deleted_bytes}",
         remaining_bytes, history.body_bytes, history.undo_bytes
     );
 }

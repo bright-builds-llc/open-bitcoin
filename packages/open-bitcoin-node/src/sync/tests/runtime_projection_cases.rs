@@ -38,7 +38,7 @@ fn open_authoritative_block_relay_runtime(
     store: FjallNodeStore,
     config: SyncRuntimeConfig,
 ) -> DurableSyncRuntime {
-    DurableSyncRuntime::open_with_block_relay_activation(
+    let runtime = DurableSyncRuntime::open_with_block_relay_activation(
         store,
         config,
         BlockRelayActivationPolicy {
@@ -46,7 +46,12 @@ fn open_authoritative_block_relay_runtime(
             compact_relay: CompactRelayActivationConfig { enabled: true },
         },
     )
-    .expect("runtime")
+    .expect("runtime");
+    runtime
+        .network
+        .adopt_live_fixture_owner(open_bitcoin_core::chainstate::Chainstate::new())
+        .expect("genuine empty projection source");
+    runtime
 }
 
 fn record_compact_activity_and_nine_block_writes(runtime: &mut DurableSyncRuntime) {
@@ -76,6 +81,7 @@ fn record_compact_activity_and_nine_block_writes(runtime: &mut DurableSyncRuntim
     }
 
     let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    super::support_runtime::admit_fixture_runtime_root(runtime, block.header.clone());
     runtime
         .network
         .connect_local_block(&block, runtime.verify_flags, runtime.consensus_params)

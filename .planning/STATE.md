@@ -2,15 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v2.6
 milestone_name: Canonical Chain Bootstrap and Validation Parity
-status: planning
-stopped_at: Phase 164 verified complete; strict normal-hook Git finalization pending
-last_updated: "2026-10-14T10:40:49.347Z"
-last_activity: "2026-10-14"
+status: ready
+stopped_at: Phase165 verified complete; stop before Phase166
+last_updated: "2026-10-18T13:08:12.294174+00:00"
+last_activity: "2026-10-18"
 progress:
   total_phases: 8
-  completed_phases: 1
-  total_plans: 13
-  completed_plans: 13
+  completed_phases: 2
+  total_plans: 54
+  completed_plans: 54
   percent: 100
 ---
 
@@ -21,22 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-13). Latest archived milestone audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 165 — Shared Exact Work Authority (not started)
+**Current focus:** Phase 165 verified; strict Git finalization, then stop before Phase 166
 
 ## Current Position
 
 Milestone: v2.6 Canonical Chain Bootstrap and Validation Parity
 Phase: 165 (Shared Exact Work Authority)
-Plan: Not started
-**Status:** Ready to plan
-Last activity: 2026-10-14
-Last Activity Description: Phase 164 complete, transitioned to Phase 165
+Plan: 41 of 41 complete (final closure: 165-14)
+**Status:** Verified complete; normal-hook saving transaction follows this snapshot
+Last activity: 2026-10-18
+Last Activity Description: All41 plans accepted. Full default native R5 exited0; Rootd464b6d9 closes9504 input states/28512 proof rows/10 outputs and fresh eight-crate coverage. Original false31b postprocessor receipt remains preserved; only its proven tuple/JSON-list comparison is resolved by the independent data-only audit. Canonical code/security/formal reports close344 reviewed files,184 threats and146 plan truth entries plus4 roadmap criteria. CWOR01/02/03/05 complete; CWOR04 belongs to166. Normal-hook main commit/push remains the strict-wrapper transaction; no later phase starts.
 
-Milestone progress: 1/8 phases verified; 13/13 currently planned execution plans complete.
+Milestone progress: 2/8 phases verified; 54/54 currently planned execution plans complete (Phase 164: 13; Phase 165: 41). Later phases remain unstarted.
 
-The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 across 13 verified plans. Ordinary history remains refused for all four selectors pending Phases 165–167.
+The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 across 13 verified plans. Ordinary history remains refused for all four selectors pending canonical bootstrap and contextual prerequisites in Phases 166–167.
 
-Next action after this single-phase Git transaction: `/gsd-discuss-phase 165`, then `/gsd-plan-phase 165`; Phase 165 has not started. Historical phase directories remain tracked because native verifiers consume them.
+Current single-phase transaction: verified Phase165 candidate is ready for normal-hook commit/push on main; actual Git outcomes are derived from repository history and the hook log. Stop before Phase 166. Historical phase directories remain tracked because native verifiers consume them.
 
 ## Performance Metrics
 
@@ -88,7 +88,7 @@ Next action after this single-phase Git transaction: `/gsd-discuss-phase 165`, t
 | 161     |    11 |     - |        - |
 | 162     |    16 |     - |        - |
 | 163     |     5 |     - |        - |
-| 164 | 13 | - | - |
+| 164     |    13 |     - |        - |
 
 ### Plan Execution History
 
@@ -629,10 +629,30 @@ Next action after this single-phase Git transaction: `/gsd-discuss-phase 165`, t
 
 ## Session Continuity
 
-Last session: 2026-10-14T10:43:05.753751Z
-Stopped at: Phase 164 verified complete; strict normal-hook Git finalization pending
-Resume file: .planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md
+Last session: 2026-10-18T13:08:12.294174+00:00
+Stopped at: Phase165 verified complete; stop before Phase166
+Resume file: .planning/ROADMAP.md
 
 Historical v2.5 source acceptance for the original 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and milestone archival remain separately attributable; archived controls now select all three versioned roots. Runtime, resource, networking and funds-safety limits are unchanged.
 
 Phase 164 identity/refusal acceptance: full default native exit0 (1h0m21.973s), 27/27 formal truths, clean 146-file source review and 30 closed security controls. Original v2.5 receipts retain their own source and scope. Normal-hook commit/push outcome is derived from Git and the hook log; no Phase 165 work is performed by this transaction.
+
+R2 native and checked35 capacity (2026-10-17): Actual second ENTIRE default native exits1 at73 after4300ms, log6b892fd4/proof964e133b; all17 unit cases and72CLI pass but obsolete73 coverage selector remains. Serial81 source CLIs69pass/12fail; actual159628pass/9fail includes one absent-anchor mutant and161147pass/2fail is stale baseline only. Preserve both native failures and all diagnostic logs. Complete344-body before a6f23987 authenticates every remaining source repair. Independent35check3663ac23 accepts ONLY unchanged160-row data move, oldhostprefix/fullinverse/455+554caps/279pin80dca, no guard repair. Root14frontmatter/context only, all originalTaskXML/commands exact. Totals33/35phase and46/48milestone; later independently checked guard plans and fresh native/code/security/formal/normal-hook Git remain mandatory. No staging, commit or push;166unstarted.
+
+Plan35 completion and checked36-39 repair release (2026-10-17): Summary447b7c00 independentlyvalid/selfcheckPASSED/commitsfalse, Rootf58c042f. Exacttwo-file data move455/554 preserves160SOURCE/88TEST/279INPUT80dca andallarrays/types/history;178tests0fail/0ignored/10commands0. Root940fe6bc authenticatesall4936canonicalpresencebytesSHA/all10actualLOGSHAs;39static/14CLI/603freshreads and171currentfactory4602789B/de741b6a are boundedcurrent evidence. Both native failures and12guardfailures remain failed. Independently checked36/37 report0c662dc0 has0blockers/oneRoot-accepted11-owner scopewarning; revised38/39 report43a1f02d has0blockers/oneRoot-accepted10-owner scopewarning, initialwrongDensehelpernames preservedandlocalizedfixverified. Root14wave39depends39, ALLoriginalTaskXML/commands andallotheroldplans unchangedexceptreviewed38paragraph. Checkedtail35→36→37→38→39→14; source-beforepins/strictwholeinverse/PASSEDH-Egeneration/partial-mapcontracts/caps/rawclosures remainmandatory. Totals34/39phase,47/52milestone. No staging, commit or push; fullnative/reviews/security/formal/normalhooks pending;166unstarted.
+
+Plan36 completion (2026-10-17): Summaryc3514a28 independentlypasses11/11/selfcheck/commitsfalse; onlyliteral-backslashparagraphclarifiedbyRoot withoriginal69ddbodyretained. RealRED→full73/75/123/127GREEN19/27/102/31(all146oldcases+33new),4actualCLIs0,correct129ONLYP128pending; typo129retainedsetupnotRED. Independentbd048CLEAN/root33dec sourceaccept BEFOREdigests; actual1SOURCErenew+8ordinaryappends168/88/287/cda7, realoldpinrefusal1, full2activationinversehost442831/entry92c545. Root40d8ac25 independentlyclosesall5018canonicalpresencebytesSHA/all10LOGSHA,178focused0/18currentownercontrols/789freshobservations/57static/14CLI/339knownTS;all4936retained14priorapproveddeltas,7dynamichelpersfixedmembership. Currentfactory171/4603966B/de229111 remainsboundedcurrent only, allhistoryimmutable. Totals35/39phase,48/52milestone. Checked37before59815295isreadypureprep; actualdurable/authorizedguardsnext,38/39andENTIREfresh14/native/reviews/security/formal/normalhookGitmandatory. No staging, commit or push;166unstarted.
+
+Plan37 completion (2026-10-17): Summary1ee45f14 independentlypasses5/5/selfcheck/errors[]/commitsfalse. ActualsourceRED→first92/293/12GREEN; independentcall-onlytipgapreproduced3genuineREDthenfixedwithordinarysameowner/activehash/error/helperdecoys, final99/293/12GREEN+4CLIs0. Independent829e02CLEAN/rootd670 sourceBEFOREdigests;5ordinaryappends173/88/292/c800, actualoldpin1, twofullinversehost4ced/entryb8ff. Rootd3310d6d authenticatesall5096canonicalpresencebytesSHA/all18LOGSHA/178focused0/10freshownercontrols, all5018retained9priorapproveddeltas;81static/14CLI/340known/980freshreads(978+2archivesalreadycovered)/7helpermembership. Currentfactory171/4604749B/618d7128 boundedcurrent only; allhistoricreceipts/pins immutable. Totals36/39phase,49/52milestone. Checked38before2c552cdd preparedactualgenuine155/156/157chains;39history/currentgates andENTIREfresh14/native/coverage/Bazel/review/security/formal/normalhookGit remainmandatory. No staging, commit or push;166unstarted.
+
+Plan38 completion (2026-10-17): Summary9236313f independentlypasses7/7/selfcheck/errors[]/commitsfalse. SourceV2 full161/152/755GREEN and Task3 same1068/2829 assertions are overlapping receipts; independentpayload/assertiongaps six/three realRED fixedbeforeCLEANece666/sourceaccept986dde. Sevenordinaryappends180/88/299/5e6b, actualoldpin1/94ms, fulltwoactivationinverses9971/0f31. Rootd2b305b4 authenticatesall5221canonicalrawstates/all16LOGSHA/fullthree plus178focus/490 and14loadedownercontrols; all5096carry/twelveapproveddeltas. Fresh1036observations/89static/14CLI/340known/7daemonhelpers, all149source-stage paths included; RootreaderR1failclosed c078 preserved before boundedR2/89d47b. Currentfactory171/4,605,681B/0d127f boundedcurrentonly; allhistory/Rust exact. Totals37/39phase,50/52milestone. Checked39 stableeightbefore71bd51 independentlyreauthenticated; actual159/161/historicalgates next, thenENTIREfresh14/native/coverage/Bazel/code/security/formal/normalhookGit. No staging, commit or push;166unstarted.
+
+Plan39 bounded unconditional-refusal amendment (2026-10-17): Actual13 current-semantic RED cases0/13/log0ba90ba9 closed5227generation4fbff818, setupTypeErrors excluded; only159test621/321e9758 changed and all637olddefinitions remain. Data-onlyorderedanchors cannotprovecompleteunconditionalprepare_reorg Err, so Rootrejectstoken-onlyweakening. Independentlychecked39plan17d4abed/ledger1f98653f/report7eecdabc PASS0blockers/oneexplicitlyaccepted11-owner4/5/2scopewarning addsONLYexisting159main317/563ec exactbodycheck and necessarythirdstrictpresent-onlyhistoricalinverse tooriginal563ec afterfour-sourceCLEAN. All38otherplans/full14TaskXML/commands exact; noRust/newmodule/fixedread/E/manifest/snapshot/historicaltarget/acceptancereduction. Rootrenewedsourceapproval retainsCLEAN-beforeinverse/Hsource-beforeHdescriptor/final11-beforeordinarypins andeveryfullnative/security/formal/normalhook gate. Countsremain37/39phase50/52milestone; noGit,166unstarted.
+
+Plan39 source checkpoints (2026-10-17): IndependentTask1CLEAN7aef/Rootafc548 accepts4actualsources323/439/624/164, original589-line159body reconstructs exactly withsingleacceptedno-opfix;16semanticGREEN/48assert, genuineweakconditional/pre-effect identicalfullarrayRED, currentCLIhistoryfailures10/16retained. Roote443 independentlyauthenticates9logs/staged5227/5239generations andcurrentonly4sourcedeltas; Rootmetadata-schema replan859a preservedlegacyfields withoutreceiptchange. HcheckpointCLEANf108/Root4b27 audit accepts224-lineH/164-linecontracts/167-linehistorytest, original97contractsprefixstricthelper/E/Rustdata exact,1/3/5guardhunksrestore563ec/a476/c344. Rootactualimportb351 provesliteral/helperrestoration/118-mapand114-partialprojection withunchangedinput. Newpurecontrols24/6RED→30/0;fullhistory84/0/128 andoriginal159filteredtransition1/0, all4commandsclose5273rawstates. Howninverse nowmaybederived ONLYafterRootHsourceacceptance; fullcurrent164/165PASSEDH/E+guardgeneration/classifiercredit/copies andfinal11source-beforeordinarypins/full159/161 remainpending. Counts37/39phase50/52milestone; final14ENTIREnative/coverage/Bazel/code/security/formal/normalhookGitmandatory;166unstarted.
+
+Plan39 completion (2026-10-17): Summary10733757 independentlypasses7/7/selfcheck/errors[]/commitsfalse. All11sources CLEANee41/Root664fe before10ordinaryappends190/88/307/625975; old180rows and299inputrelativeorder exact, nohostselfhash andentryselfrowderivedafteractualpin. Genuineweakconditional/pre-effectRED andV1optional164scopebug are retained; exacthistorical1/3/5/3hunksrestoreallfourwholeoriginalbodies. Full159654/0/2051assert,161149/0/180,history118/0/262; selected164180/0/858 includesall31copiedcases,16568/0/295 covers7families. Rootd20f authenticates5431canonicalrawstates/all16LOGSHA/20nonexecutedownercontrols/caps; carries5221/5348/5393. Activationwindow5926 correctlyrefusedonecollectorfill, Root9348+externalf89c+freeze4267 authorizesexactlaterclosure; no2-onlywindowclaim. BothR1/R2nativefailures remainfailed; final14ENTIREfreshdefaultnative/coverage/Bazel/code/security/formal/lifecycle/normalhookmainGit mandatory. Counts38/39phase51/52milestone; noGit,166unstarted.
+
+Plan40 bounded replan (2026-10-17): ENTIREnativeR3FAILEDlog68b9692b/resultd8daba73/Root5089c818, full158899pass/1fail/2112assert/900cases709.54s; actualcopiedCLIomits3runtimehelpers andfailsbeforestrictmissing-evidencecategory. All81sourceCLIsactuallypassed, all5550rawexact; noRust/coverage/Bazelreachedandobservercapturedfalse. Actualgraph15811/158+16214, existing163boundedcorpusreused; Rootbeforefbac389bodies/340scripts/39plans exact. Independent40plan172366/ledger2dc429/check326d5254 PASS0blockers/oneexplicitlyaccepted9existingowner3taskscopeflag. CopierSOURCECLEANbefore2strictbeforeinverses, HsourceCLEANbeforeexternal47bbinverse, allCODECLEANbeforeordinarydata; newcopierfamilyseparateoriginal3FILTER/31copied/fouroptionaloutcomes, E/Rust/manifestexact. Allstagecommandscarry5550raw/fulloutputclosure. RootchangesONLY14frontmatter/contextwave40depend40and3metadata; original14TaskXML/commands/all38otheroldplans exact. Totals38/40phase51/53milestone; firstsourcecommandawaitsreviewedstagegeneration. ENTIREfresh14R4/reviews/security/formal/lifecycle/normalhookmainGitmandatory; noGit,166unstarted.
+
+Phase165 terminal acceptance (2026-10-18): all41 execution summaries and current yolo lifecycle agree; canonical REVIEW/SECURITY/VERIFICATION close the bounded exact-work goal. The full native run and separate capture-serialization audit retain their exact outcomes, all R1–R4 failures remain failed, and later166–168 ownership/default-off/four-selector refusals remain intact. Strict Git finalization is recorded by Git and the normal hook, rather than fabricated in its own candidate snapshot.

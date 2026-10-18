@@ -14,6 +14,8 @@
 
 use std::{cell::Cell, net::IpAddr};
 
+mod phase165_rebind;
+
 use open_bitcoin_codec::{CompactBlockPayload, PrefilledTransaction, SendCompactMessage};
 use open_bitcoin_core::consensus::crypto::hash160;
 use open_bitcoin_core::{
@@ -71,6 +73,9 @@ mod maintenance_tick_cases;
 mod mempool_lifecycle_cases;
 mod package_bridge_cases;
 mod package_fanout_cases;
+mod phase165_eligibility;
+mod phase165_headers;
+mod phase165_work_authority;
 mod recovery_cases;
 mod relay_fanout_cases;
 mod relay_local_submission_cases;

@@ -255,7 +255,7 @@ impl RealProtectionFixture {
             let position = ChainPosition::new(
                 block.header.clone(),
                 height,
-                u128::from(height) + 1,
+                ChainPosition::untrusted_fixture_work(u128::from(height) + 1),
                 i64::from(block.header.time),
             );
             let undo = BlockUndo::default();

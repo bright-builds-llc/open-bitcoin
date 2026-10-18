@@ -5,9 +5,13 @@
 
 //! Genuine accepted spend histories, durable coins, immutable rows and peer sessions.
 
-pub(in crate::sync::tests) use super::peer_evidence::with_accepted_stale_for_negative;
+pub(in crate::sync::tests) use super::peer_evidence::{
+    complete_peer_handshake, with_accepted_stale_for_negative,
+};
 use super::{catch_up::fixtures::TurnHistory, *};
 use crate::chainstate::BasicFilterStartupMode;
+#[cfg(test)]
+mod phase165_source;
 
 pub(in crate::sync::tests) struct PeerFilterFixture {
     pub(in crate::sync::tests::filter_index) history: TurnHistory,
@@ -18,27 +22,6 @@ pub(in crate::sync::tests) struct PeerSparseFixture {
     pub(in crate::sync::tests::filter_index) history: TurnHistory,
     pub store: FjallNodeStore,
     pub network: crate::DurableNetworkHandle,
-}
-
-pub(in crate::sync::tests) fn complete_peer_handshake(runtime: &DurableSyncRuntime, peer: u64) {
-    for message in [
-        WireNetworkMessage::Version(open_bitcoin_network::VersionMessage {
-            nonce: 999,
-            ..Default::default()
-        }),
-        WireNetworkMessage::Verack,
-    ] {
-        runtime
-            .network
-            .receive_sync_message(
-                peer,
-                message,
-                50_000,
-                runtime.verify_flags,
-                runtime.consensus_params,
-            )
-            .expect("genuine peer handshake");
-    }
 }
 
 impl PeerSparseFixture {
@@ -67,82 +50,7 @@ impl PeerFilterFixture {
     }
 
     pub fn large() -> Self {
-        use open_bitcoin_core::{
-            chainstate::Chainstate,
-            consensus::{ConsensusParams, ScriptVerifyFlags},
-        };
-        let mut history = TurnHistory::new(16, 0, 1);
-        let mut state = Chainstate::from_snapshot(history.history.full.clone());
-        let mut block = fixture_block(
-            history
-                .history
-                .records
-                .last()
-                .expect("parent")
-                .identity()
-                .block_hash(),
-            16,
-        );
-        block.transactions[0].inputs[0].script_sig =
-            ScriptBuf::from_bytes(vec![1, 16, 0x51]).expect("height");
-        for number in 0..40_000_u32 {
-            let mut script = vec![4];
-            script.extend_from_slice(&number.to_le_bytes());
-            script.extend([0x75, 0x51]);
-            block.transactions[0].outputs.push(TransactionOutput {
-                value: Amount::ZERO,
-                script_pubkey: ScriptBuf::from_bytes(script).expect("distinct legal script"),
-            });
-        }
-        block.header.time = 2_600;
-        block.header.merkle_root = block_merkle_root(&block.transactions).expect("merkle").0;
-        block.header.nonce = (0..=u32::MAX)
-            .find(|nonce| {
-                block.header.nonce = *nonce;
-                check_block_header(&block.header).is_ok()
-            })
-            .expect("genuine easy POW");
-        let staged = state
-            .stage_connect_block_with_current_time(
-                &block,
-                17,
-                2_601,
-                ScriptVerifyFlags::P2SH,
-                ConsensusParams {
-                    coinbase_maturity: 1,
-                    ..Default::default()
-                },
-            )
-            .expect("genuine consensus-valid large block");
-        state
-            .commit_staged_connect(staged)
-            .expect("commit large block");
-        let position = state.tip().expect("tip");
-        let inputs = BasicFilterInputs::from_historical(
-            &block,
-            position,
-            Some(HistoricalBlockUndo {
-                block_hash: position.block_hash,
-                undo: &state.undo_by_block()[&position.block_hash],
-            }),
-        )
-        .expect("complete genuine history");
-        history.history.records.push(
-            StoredFilterRecord::generate(
-                &inputs,
-                position,
-                history
-                    .history
-                    .records
-                    .last()
-                    .map(StoredFilterRecord::identity)
-                    .as_ref(),
-            )
-            .expect("genuine generated filter"),
-        );
-        history.history.blocks.push(block);
-        history.history.full = state.snapshot();
-        Self::from_history(history)
+        Self::from_history(phase165_source::large_history())
     }
 
     pub fn sparse(count: usize) -> PeerSparseFixture {
@@ -211,7 +119,15 @@ impl PeerFilterFixture {
         );
         let mut header_store = open_bitcoin_network::HeaderStore::default();
         header_store.seed_from_chain(&history.history.full.active_chain);
-        network.seed_header_store(header_store);
+        assert!(!network.chainstate().chainstate().has_earned_work());
+        network
+            .try_admit_fixture_headers(
+                header_store,
+                i64::MAX,
+                SyncNetwork::Regtest.consensus_params(),
+            )
+            .expect("actual selected sparse fixture headers");
+        assert!(!network.chainstate().chainstate().has_earned_work());
         network.set_basic_filter_serving(true);
         network
             .connect_outbound_peer(1, 0)
@@ -238,6 +154,9 @@ impl PeerFilterFixture {
             BasicFilterStartupMode::Enabled,
         )
         .expect("genuine recovered node");
+        crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
+        crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&runtime);
+        crate::sync::tests::support_runtime::assert_fixture_work_unearned(&runtime);
         runtime
             .network
             .configure_basic_peer_serving(true)
@@ -255,16 +174,6 @@ impl PeerFilterFixture {
         drop(runtime);
         let runtime = Self::open(&history);
         Self { history, runtime }
-    }
-
-    pub fn hash(&self, height: usize) -> BlockHash {
-        self.history.history.records[height].identity().block_hash()
-    }
-
-    pub fn cleanup(self) {
-        let Self { history, runtime } = self;
-        drop(runtime);
-        history.history.cleanup();
     }
 }
 
@@ -294,6 +203,13 @@ fn phase160_managed_completeness_genuine_displaced_branch_survives_reorg() {
     fixture.apply(&first);
     fixture.finish();
     fixture.flush();
+    assert!(
+        fixture
+            .runtime
+            .network
+            .has_earned_fixture_work()
+            .expect("same live source")
+    );
     let stop = first
         .records
         .last()
@@ -320,6 +236,23 @@ fn phase160_managed_completeness_genuine_displaced_branch_survives_reorg() {
         panic!("complete prepared A");
     };
     let second = fixture.fork(10, 9, 0x62);
+    fixture
+        .runtime
+        .network
+        .receive_sync_message(
+            1,
+            WireNetworkMessage::Headers(HeadersMessage {
+                headers: second
+                    .connected
+                    .iter()
+                    .map(|candidate| candidate.block.header.clone())
+                    .collect(),
+            }),
+            50_000,
+            fixture.runtime.verify_flags,
+            fixture.runtime.consensus_params,
+        )
+        .expect("actual competing headers before replacement");
     // Act: actual branch replacement revokes the earlier complete preparation.
     fixture.apply(&second);
     assert!(

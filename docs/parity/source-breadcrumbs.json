@@ -12,6 +12,179 @@
   },
   "groups": [
     {
+      "label": "phase165-peer-genuine-source",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/peer_fixtures/phase165_source.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-rpc-live-fixture-source",
+      "files": [
+        "packages/open-bitcoin-rpc/tests/support/phase165_live_source.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-live-fixture-source-assembly",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/live_fixture.rs",
+        "packages/open-bitcoin-node/src/sync/tests/phase165_live_fixture.rs",
+        "packages/open-bitcoin-node/tests/phase165_live_fixture.rs",
+        "packages/open-bitcoin-node/tests/phase165_live_fixture/requalification.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-real-daemon-work-startup",
+      "files": [
+        "packages/open-bitcoin-rpc/tests/phase165_work_startup.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase165-adapter-work-refusal",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/phase165_work.rs",
+        "packages/open-bitcoin-cli/src/operator/runtime/chain_compatibility/tests/phase165_work.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase165-explicit-manual-lifecycle-controls",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/branches/manual_lifecycle.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-live-basic-fixtures",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/fixtures/live.rs",
+        "packages/open-bitcoin-node/src/sync/tests/filter_index/reorg/fixtures/return_branch.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase158-sync-preflight-relocation",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase158_preflight.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/headerssync.cpp",
+        "packages/bitcoin-knots/src/sync.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-cached-body-order",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store/eligibility/tests/phase165_cached_order.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-sync-candidates",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase165_candidates.rs",
+        "packages/open-bitcoin-node/src/sync/tests/phase165_candidates/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase165-managed-work-authority",
+      "files": [
+        "packages/open-bitcoin-node/src/network/tests/phase165_work_authority.rs",
+        "packages/open-bitcoin-node/src/network/tests/phase165_work_authority/fixtures.rs",
+        "packages/open-bitcoin-node/src/network/work_authority.rs",
+        "packages/open-bitcoin-node/src/chainstate/work_authority.rs",
+        "packages/open-bitcoin-node/src/chainstate/validation_history/tests/phase165_work_authority.rs",
+        "packages/open-bitcoin-node/src/chainstate/fjall_store/tests/fixture/managed.rs",
+        "packages/open-bitcoin-node/src/network/tests/phase165_work_authority/history.rs",
+        "packages/open-bitcoin-node/src/network/tests/phase165_work_authority/freshness.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.h"
+      ]
+    },
+    {
+      "label": "phase165-chainstate-stage-authority",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/work_authority.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase165_tests.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase165_rebind.rs",
+        "packages/open-bitcoin-node/src/network/tests/phase165_rebind.rs",
+        "packages/open-bitcoin-node/src/chainstate/live_fixture.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/live_fixture.rs",
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase165_work_authority.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.cpp"
+      ]
+    },
+    {
+      "label": "phase165-body-eligibility",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store/eligibility.rs",
+        "packages/open-bitcoin-network/src/header_store/eligibility/tests.rs",
+        "packages/open-bitcoin-network/src/peer/eligibility.rs",
+        "packages/open-bitcoin-node/src/network/candidate_eligibility.rs",
+        "packages/open-bitcoin-node/src/network/tests/phase165_eligibility.rs",
+        "packages/open-bitcoin-network/src/header_store/eligibility/tests/phase165_authority.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase165-managed-header-admission-controls",
+      "files": [
+        "packages/open-bitcoin-node/src/network/tests/phase165_headers.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/pow.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
       "label": "phase164-cli-soak-compatibility-observation",
       "files": [
         "packages/open-bitcoin-cli/src/operator/soak/runtime/chain_compatibility.rs"
@@ -97,6 +270,7 @@
       "files": [
         "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
         "packages/open-bitcoin-node/src/storage/chain_compatibility/tests.rs",
+        "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/phase165_work.rs",
         "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs"
       ],
       "breadcrumbs": []
@@ -473,6 +647,16 @@
       ]
     },
     {
+      "label": "phase165-header-authority-controls",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store/tests/phase165_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
       "label": "phase160-header-proof-facts",
       "files": [
         "packages/open-bitcoin-network/src/header_store/proof.rs",
@@ -480,7 +664,9 @@
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/chain.cpp",
-        "packages/bitcoin-knots/src/net_processing.cpp"
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
       ]
     },
     {
@@ -509,6 +695,7 @@
     {
       "label": "phase160-header-store-existing-tests",
       "files": [
+        "packages/open-bitcoin-network/src/header_store.rs",
         "packages/open-bitcoin-network/src/header_store/tests.rs"
       ],
       "breadcrumbs": [
@@ -518,7 +705,9 @@
         "packages/bitcoin-knots/src/node/txdownloadman_impl.cpp",
         "packages/bitcoin-knots/src/node/txdownloadman.h",
         "packages/bitcoin-knots/test/functional/p2p_handshake.py",
-        "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py"
+        "packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
       ]
     },
     {
@@ -584,7 +773,8 @@
       "label": "phase160-exact-chain-proof",
       "files": [
         "packages/open-bitcoin-consensus/src/chain_proof.rs",
-        "packages/open-bitcoin-consensus/src/chain_proof/tests.rs"
+        "packages/open-bitcoin-consensus/src/chain_proof/tests.rs",
+        "packages/open-bitcoin-consensus/src/chain_proof/tests/phase165_vectors.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/chain.cpp",
@@ -1737,7 +1927,19 @@
         "packages/bitcoin-knots/src/crypto/siphash.h",
         "packages/bitcoin-knots/src/crypto/siphash.cpp",
         "packages/bitcoin-knots/src/blockencodings.cpp",
-        "packages/bitcoin-knots/src/consensus/merkle.cpp"
+        "packages/bitcoin-knots/src/consensus/merkle.cpp",
+        "packages/bitcoin-knots/src/arith_uint256.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
+      "label": "phase165-compact-target-admission",
+      "files": [
+        "packages/open-bitcoin-consensus/src/crypto/tests/phase165_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/arith_uint256.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
       ]
     },
     {
@@ -2215,7 +2417,6 @@
       "label": "network-peer-sync",
       "files": [
         "packages/open-bitcoin-network/src/compatibility.rs",
-        "packages/open-bitcoin-network/src/header_store.rs",
         "packages/open-bitcoin-network/src/peer.rs",
         "packages/open-bitcoin-network/src/peer/inventory_state.rs",
         "packages/open-bitcoin-network/src/peer/tests.rs",
@@ -3053,6 +3254,16 @@
         "packages/bitcoin-knots/src/node/blockstorage.cpp",
         "packages/bitcoin-knots/src/node/blockstorage.h",
         "packages/bitcoin-knots/src/validation.h"
+      ]
+    },
+    {
+      "label": "node-exact-work-record",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/work.rs",
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/work/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/arith_uint256.h"
       ]
     },
     {

@@ -4,31 +4,68 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use super::*;
-use open_bitcoin_core::chainstate::{Chainstate, PruneMode};
+use open_bitcoin_core::chainstate::PruneMode;
 
-/// Derive an earlier real coins checkpoint using every genuine disconnect undo.
-fn seed_at_checkpoint(fixture: &TurnHistory, prefix: usize, height: usize) -> FjallNodeStore {
-    let store = fixture.seed(prefix);
-    let mut state = Chainstate::from_snapshot(fixture.history.full.clone());
-    for block in fixture.history.blocks[height + 1..].iter().rev() {
-        state.disconnect_tip(block).expect("genuine validated undo");
-    }
-    store
-        .seed_coins_from_snapshot(&state.snapshot())
-        .expect("earlier validated coins/metadata");
-    store
+/// Accept exactly the desired durable prefix before retaining later effects.
+fn seed_at_checkpoint(
+    fixture: &mut TurnHistory,
+    prefix: usize,
+    height: usize,
+) -> DurableSyncRuntime {
+    let mut source = crate::sync::tests::live_fixture_support::Fixture::from_blocks(
+        fixture.history.blocks[..=height].to_vec(),
+        params(),
+        true,
+    );
+    fixture.history.path = source.path.clone();
+    let positions = source.source().chainstate().active_chain();
+    source
+        .store
+        .initialize_basic_filter_state(&fence(positions))
+        .expect("actual checkpoint index");
+    let cp = checkpoint(&fixture.history.records[prefix - 1]);
+    publish_current(
+        &source.store,
+        &fence(positions),
+        cp,
+        cp.input_protection(),
+        &fixture.history.records[..prefix],
+    )
+    .expect("retained old safe prefix");
+    assert_eq!(
+        source
+            .store
+            .maybe_basic_filter_checkpoint()
+            .expect("before normal startup"),
+        Some(cp)
+    );
+    let owned = source.take();
+    drop(source);
+    let runtime = DurableSyncRuntime::from_live_fixture_source(
+        owned,
+        sync_config(),
+        params(),
+        BasicFilterStartupMode::Enabled,
+        Default::default(),
+        Default::default(),
+        false,
+    )
+    .expect("same genuine checkpoint owner");
+    assert_eq!(
+        runtime
+            .store()
+            .maybe_basic_filter_checkpoint()
+            .expect("old prefix"),
+        Some(checkpoint(&fixture.history.records[height]))
+    );
+    runtime
 }
 
 #[test]
 fn phase157_store_retention_accepted_unflushed_reopen_loses_only_uncheckpointed_tip() {
     // Arrange
     let history = ValidatedHistory::new("evidence-accepted-unflushed", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        BasicFilterStartupMode::Enabled,
-    )
-    .expect("old recovered owner");
+    let runtime = history.live_runtime();
     // Act: default connect must not force the 442 MiB coins policy to write.
     runtime
         .network
@@ -98,18 +135,26 @@ fn phase157_store_retention_accepted_unflushed_reopen_loses_only_uncheckpointed_
 fn phase157_store_retention_normal_periodic_and_always_checkpoint_then_safe_manual_release() {
     for mode in [FlushMode::Periodic, FlushMode::Always] {
         // Arrange: tip 19 is genuinely durable; 20..400 are ordinary later accepts.
-        let fixture = TurnHistory::new(16, 385, 1);
-        let runtime = DurableSyncRuntime::open_configured(
-            seed_at_checkpoint(&fixture, 16, 19),
-            sync_config(),
-            BasicFilterStartupMode::Enabled,
-        )
-        .expect("old recovered owner");
+        let mut fixture = TurnHistory::new(16, 385, 1);
+        let runtime = seed_at_checkpoint(&mut fixture, 16, 19);
         for block in &fixture.history.blocks[20..] {
             runtime
                 .network
                 .connect_local_block(block, ScriptVerifyFlags::P2SH, params())
                 .expect("ordinary contiguous accepted block");
+            let hash = block_hash(&block.header);
+            runtime
+                .store()
+                .save_block(block, PersistMode::Sync)
+                .expect("actual accepted body");
+            let accepted = runtime
+                .network
+                .chainstate_snapshot()
+                .expect("actual accepted undo");
+            runtime
+                .store()
+                .save_undo(hash, &accepted.undo_by_block[&hash], PersistMode::Sync)
+                .expect("actual accepted undo retained");
         }
         finish(&runtime);
         let progress = runtime

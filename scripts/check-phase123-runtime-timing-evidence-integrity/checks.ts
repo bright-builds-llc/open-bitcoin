@@ -49,17 +49,50 @@ export function verifyProductionActivation(
     "P123 runtime compatibility activation",
     failures,
   );
+  const configured = rustFunction(openRuntime, "pub fn open_with_configured_runtime_activation(");
   requireOrdered(
-    normalizeWhitespace(rustFunction(openRuntime, "pub fn open_with_configured_runtime_activation(")),
+    normalizeRust(configured),
     [
       "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;",
       "store.load_chain_meta_for_open()?;",
       "store.load_all_undo_records()?;",
       "Chainstate::from_coins_cache(cache, active_chain, undo_by_block, maybe_counts)",
       "ManagedChainstate::from_recovered_chainstate( FjallChainstateStore::from_store(store.clone()), chainstate, lifecycle, )?;",
-      "ManagedPeerNetwork::from_initialized_chainstate( managed, local_config, PolicyConfig::default(), config.max_blocks_in_flight_per_peer, relay_activation, block_relay_activation, inbound_enabled, )",
-    ],
+      "let network = Self::prepare_initialized_network(",
+      "let consensus_params = config.network.consensus_params();",
+      "Self::finish_initialized_runtime(store, network, config, consensus_params)",
+    ].map(normalizeRust),
     "P123 configured sync production activation",
+    failures,
+  );
+  const prepareCalls = rustCallArguments(configured, "Self::prepare_initialized_network");
+  const finishCalls = rustCallArguments(configured, "Self::finish_initialized_runtime");
+  const prepareArguments = ["&store", "managed", "&config", "basic_filter_mode", "relay_activation", "block_relay_activation", "inbound_enabled"];
+  const finishArguments = ["store", "network", "config", "consensus_params"];
+  if (prepareCalls.length !== 1 || prepareCalls[0]?.map(normalizeRust).join("|") !== prepareArguments.join("|")
+    || finishCalls.length !== 1 || finishCalls[0]?.map(normalizeRust).join("|") !== finishArguments.join("|")) {
+    failures.push("P123 configured sync production activation must preserve preparation and finish arguments");
+  }
+  const prepare = rustFunction(openRuntime, "pub(super) fn prepare_initialized_network(");
+  const networkCalls = rustCallArguments(prepare, "ManagedPeerNetwork::from_initialized_chainstate");
+  const networkArguments = ["managed", "local_config", "PolicyConfig::default()", "config.max_blocks_in_flight_per_peer", "relay_activation", "block_relay_activation", "inbound_enabled"];
+  if (networkCalls.length !== 1 || networkCalls[0]?.map(normalizeRust).join("|") !== networkArguments.join("|")) {
+    failures.push("P123 configured network activation must preserve initialized constructor arguments");
+  }
+  requireOrdered(
+    normalizeRust(prepare),
+    [
+      "let maybe_configured_basic_indexing = match basic_filter_mode {",
+      "BasicFilterStartupMode::Enabled => Some(true),",
+      "BasicFilterStartupMode::Disabled => Some(false),",
+      "BasicFilterStartupMode::PreserveSaved => { store.resolved_basic_filter_indexing_after_startup()? }",
+      "let local_config = progress::local_peer_config(config);",
+      "let mut network = ManagedPeerNetwork::from_initialized_chainstate(",
+      "network.record_basic_indexing_configuration(maybe_configured_basic_indexing);",
+      "if let Some(header_store) = store.load_header_store()? { network.seed_header_store(header_store); }",
+      "Ok(network)",
+    ].map(normalizeRust),
+    "P123 configured network production activation",
     failures,
   );
   const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";

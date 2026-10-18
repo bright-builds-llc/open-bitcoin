@@ -6,31 +6,39 @@
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+// - packages/bitcoin-knots/src/pow.cpp
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use open_bitcoin_chainstate::ChainPosition;
-use open_bitcoin_consensus::block_hash;
+use open_bitcoin_consensus::{
+    ConsensusParams, block_hash,
+    chain_proof::block_proof,
+    crypto::{check_proof_of_work, check_proof_of_work_with_params},
+};
 use open_bitcoin_primitives::{BlockHash, BlockHeader, BlockLocator, Hash32};
 
 use crate::error::NetworkError;
 
 mod proof;
 pub use proof::HeaderProofFacts;
+mod eligibility;
+pub use eligibility::{BodyEligibilityError, BodyEligibilityFacts};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeaderEntry {
     pub block_hash: BlockHash,
     pub header: BlockHeader,
     pub height: u32,
-    pub chain_work: u128,
+    pub chain_work: open_bitcoin_consensus::chain_proof::ProofWork,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct InsertedHeader {
     pub block_hash: BlockHash,
     pub height: u32,
-    pub chain_work: u128,
+    pub chain_work: open_bitcoin_consensus::chain_proof::ProofWork,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -38,11 +46,35 @@ pub struct HeaderStore {
     entries: BTreeMap<BlockHash, HeaderEntry>,
     parents: BTreeMap<BlockHash, Option<BlockHash>>,
     best_tip: Option<BlockHash>,
-    proof_facts: BTreeMap<BlockHash, HeaderProofFacts>,
-    maybe_best_proof: Option<BlockHash>,
+    accepted_headers: BTreeSet<BlockHash>,
+    maybe_consensus_params: Option<ConsensusParams>,
+    maybe_unproved_fixture_tip: Option<BlockHash>,
+    body_eligibility: eligibility::BodyEligibilityRegistry,
 }
 
 impl HeaderStore {
+    /// Project selected admitted proofs in existing best-chain order, then retained sides.
+    /// Generic/unbound and imported numerical facts never authorize body requests.
+    pub fn requestable_header_entries(&self, params: &ConsensusParams) -> Vec<HeaderEntry> {
+        if self.maybe_consensus_params.as_ref() != Some(params) {
+            return Vec::new();
+        }
+        let mut entries = self.best_chain_entries();
+        entries.retain(|entry| self.maybe_proof_facts(entry.block_hash).is_some());
+        let best: BTreeSet<_> = entries.iter().map(|entry| entry.block_hash).collect();
+        entries.extend(
+            self.entries
+                .values()
+                .filter(|entry| {
+                    !best.contains(&entry.block_hash)
+                        && self.maybe_proof_facts(entry.block_hash).is_some()
+                })
+                .cloned(),
+        );
+        entries
+    }
+
+    /// Import numerical/legacy entries without proving ancestry or reception order.
     pub fn from_entries(
         entries: impl IntoIterator<Item = HeaderEntry>,
     ) -> Result<Self, NetworkError> {
@@ -67,9 +99,8 @@ impl HeaderStore {
         }
 
         for block_hash in store.entries.keys().copied().collect::<Vec<_>>() {
-            store.update_best_tip(block_hash);
+            store.update_unproved_fixture_tip(block_hash);
         }
-        store.rebuild_proof_facts();
 
         Ok(store)
     }
@@ -82,16 +113,22 @@ impl HeaderStore {
         self.entries.clear();
         self.parents.clear();
         self.best_tip = None;
-        self.proof_facts.clear();
-        self.maybe_best_proof = None;
+        self.accepted_headers.clear();
+        self.maybe_consensus_params = None;
+        self.maybe_unproved_fixture_tip = None;
+        self.body_eligibility = eligibility::BodyEligibilityRegistry::default();
 
         for position in active_chain {
             self.record_position(position);
         }
     }
 
+    /// Record an unproved position; never overwrite an accepted header or select it.
     pub fn record_position(&mut self, position: &ChainPosition) {
         let block_hash = position.block_hash;
+        if self.accepted_headers.contains(&block_hash) {
+            return;
+        }
         self.parents.insert(
             block_hash,
             if position.height == 0 {
@@ -109,13 +146,48 @@ impl HeaderStore {
                 chain_work: position.chain_work,
             },
         );
-        self.update_best_tip(block_hash);
-        self.record_proof_facts(block_hash);
+        if self.accepted_headers.is_empty() {
+            self.update_unproved_fixture_tip(block_hash);
+        }
     }
 
+    /// Admit hash/target-checked ancestry without asserting a selected network limit.
     pub fn insert_header(&mut self, header: BlockHeader) -> Result<InsertedHeader, NetworkError> {
+        self.admit_header(header, None)
+    }
+
+    /// Admit hash/target-checked ancestry for the selected numerical consensus parameters.
+    /// Contextual difficulty and canonical history gates remain adapter responsibilities.
+    pub fn insert_header_with_params(
+        &mut self,
+        header: BlockHeader,
+        params: &ConsensusParams,
+    ) -> Result<InsertedHeader, NetworkError> {
+        self.admit_header(header, Some(params))
+    }
+
+    fn admit_header(
+        &mut self,
+        header: BlockHeader,
+        maybe_params: Option<&ConsensusParams>,
+    ) -> Result<InsertedHeader, NetworkError> {
         let block_hash = block_hash(&header);
+        if self
+            .maybe_consensus_params
+            .is_some_and(|selected| maybe_params != Some(&selected))
+        {
+            return Err(invalid_header("header-consensus-params-mismatch"));
+        }
+        if maybe_params.is_some()
+            && !self.accepted_headers.is_empty()
+            && self.maybe_consensus_params.is_none()
+        {
+            return Err(invalid_header("unbound-header-ancestry"));
+        }
         if let Some(existing) = self.entries.get(&block_hash) {
+            if !self.accepted_headers.contains(&block_hash) {
+                return Err(invalid_header("unproved-header"));
+            }
             return Ok(InsertedHeader {
                 block_hash: existing.block_hash,
                 height: existing.height,
@@ -133,13 +205,40 @@ impl HeaderStore {
             let Some(parent) = self.entries.get(&parent_hash) else {
                 return Err(NetworkError::MissingHeaderAncestor(parent_hash));
             };
+            if !self.accepted_headers.contains(&parent_hash)
+                || parent.block_hash != open_bitcoin_consensus::block_hash(&parent.header)
+            {
+                return Err(invalid_header("unproved-header-parent"));
+            }
             (
-                parent.height.saturating_add(1),
-                parent.chain_work.saturating_add(header_work_score(&header)),
+                parent
+                    .height
+                    .checked_add(1)
+                    .ok_or_else(|| invalid_header("header-height-overflow"))?,
+                parent.chain_work.wrapping_add(
+                    block_proof(header.bits).map_err(|_| invalid_header("bad-diffbits"))?,
+                ),
             )
         } else {
-            (0, header_work_score(&header))
+            if !self.entries.is_empty() {
+                return Err(invalid_header("bad-prevblk"));
+            }
+            (
+                0,
+                block_proof(header.bits).map_err(|_| invalid_header("bad-diffbits"))?,
+            )
         };
+
+        let valid_hash = match maybe_params {
+            Some(params) => {
+                check_proof_of_work_with_params(block_hash.to_byte_array(), header.bits, params)
+            }
+            None => check_proof_of_work(block_hash.to_byte_array(), header.bits),
+        }
+        .map_err(|_| invalid_header("bad-diffbits"))?;
+        if !valid_hash {
+            return Err(invalid_header("high-hash"));
+        }
 
         self.parents.insert(block_hash, maybe_parent_hash);
         self.entries.insert(
@@ -151,8 +250,9 @@ impl HeaderStore {
                 chain_work,
             },
         );
+        self.accepted_headers.insert(block_hash);
+        self.maybe_consensus_params = maybe_params.copied();
         self.update_best_tip(block_hash);
-        self.record_proof_facts(block_hash);
 
         Ok(InsertedHeader {
             block_hash,
@@ -179,6 +279,24 @@ impl HeaderStore {
         self.best_tip.and_then(|hash| self.entries.get(&hash))
     }
 
+    /// Numerical fixture projection only. Import/restart reception order is unproved.
+    pub fn maybe_unproved_fixture_tip(&self) -> Option<&HeaderEntry> {
+        self.maybe_unproved_fixture_tip
+            .and_then(|hash| self.entries.get(&hash))
+    }
+
+    fn update_unproved_fixture_tip(&mut self, candidate_hash: BlockHash) {
+        let Some(candidate) = self.entries.get(&candidate_hash) else {
+            return;
+        };
+        if self
+            .maybe_unproved_fixture_tip()
+            .is_none_or(|current| candidate.chain_work > current.chain_work)
+        {
+            self.maybe_unproved_fixture_tip = Some(candidate_hash);
+        }
+    }
+
     pub fn best_chain_entries(&self) -> Vec<HeaderEntry> {
         self.best_chain_hashes()
             .into_iter()
@@ -196,13 +314,14 @@ impl HeaderStore {
             return None;
         }
 
-        loop {
+        for _ in 0..self.entries.len() {
             if current.height == target_height {
                 return Some(current);
             }
             let parent_hash = self.parents.get(&current.block_hash).copied().flatten()?;
             current = self.entries.get(&parent_hash)?;
         }
+        None
     }
 
     pub fn median_time_past(&self, tip_hash: BlockHash) -> Option<i64> {
@@ -288,7 +407,7 @@ impl HeaderStore {
         };
 
         let mut chain = Vec::new();
-        loop {
+        for _ in 0..self.entries.len() {
             chain.push(current);
             let Some(parent) = self.parents.get(&current).copied().flatten() else {
                 break;
@@ -306,24 +425,23 @@ impl HeaderStore {
         let replace = self
             .best_tip
             .and_then(|hash| self.entries.get(&hash))
-            .is_none_or(|current| {
-                if candidate.chain_work != current.chain_work {
-                    return candidate.chain_work > current.chain_work;
-                }
-                if candidate.height != current.height {
-                    return candidate.height > current.height;
-                }
-                candidate.block_hash > current.block_hash
-            });
+            .is_none_or(|current| candidate.chain_work > current.chain_work);
         if replace {
             self.best_tip = Some(candidate_hash);
         }
     }
 }
 
-fn header_work_score(_header: &BlockHeader) -> u128 {
-    1
+fn invalid_header(reason: &str) -> NetworkError {
+    NetworkError::InvalidHeader {
+        reject_reason: reason.to_owned(),
+        maybe_debug_message: None,
+    }
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "header_store/tests/phase165_tests.rs"]
+mod phase165_tests;

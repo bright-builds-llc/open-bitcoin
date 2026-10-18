@@ -7,10 +7,16 @@
 // - packages/bitcoin-knots/src/crypto/siphash.cpp
 // - packages/bitcoin-knots/src/blockencodings.cpp
 // - packages/bitcoin-knots/src/consensus/merkle.cpp
+// - packages/bitcoin-knots/src/arith_uint256.cpp
+// - packages/bitcoin-knots/src/pow.cpp
 
 mod ripemd160;
 mod sha256;
 mod siphash;
+
+#[cfg(test)]
+#[path = "crypto/tests/phase165_tests.rs"]
+mod phase165_tests;
 
 use core::cmp::Ordering;
 
@@ -123,13 +129,16 @@ pub fn block_merkle_root(transactions: &[Transaction]) -> Result<(MerkleRoot, bo
 
 pub fn compact_target_bytes(bits: u32) -> Result<[u8; 32], CompactTargetError> {
     let exponent = (bits >> 24) as usize;
-    let mantissa = bits & 0x007f_ffff;
-
-    if (bits & 0x0080_0000) != 0 {
-        return Err(CompactTargetError::Negative);
+    let mut mantissa = bits & 0x007f_ffff;
+    if exponent <= 3 {
+        mantissa >>= 8 * (3 - exponent);
     }
+
     if mantissa == 0 {
         return Err(CompactTargetError::Zero);
+    }
+    if (bits & 0x0080_0000) != 0 {
+        return Err(CompactTargetError::Negative);
     }
     if exponent > 34
         || (mantissa > 0x0000_ffff && exponent > 32)
@@ -140,9 +149,8 @@ pub fn compact_target_bytes(bits: u32) -> Result<[u8; 32], CompactTargetError> {
 
     let mut target = [0_u8; 32];
     if exponent <= 3 {
-        let value = mantissa >> (8 * (3 - exponent));
         for (index, slot) in target.iter_mut().take(exponent).enumerate() {
-            *slot = ((value >> (8 * index)) & 0xff) as u8;
+            *slot = ((mantissa >> (8 * index)) & 0xff) as u8;
         }
         return Ok(target);
     }
@@ -164,6 +172,22 @@ pub fn compact_target_bytes(bits: u32) -> Result<[u8; 32], CompactTargetError> {
 
 pub fn check_proof_of_work(hash: [u8; 32], bits: u32) -> Result<bool, CompactTargetError> {
     let target = compact_target_bytes(bits)?;
+    Ok(compare_little_endian(&hash, &target) != Ordering::Greater)
+}
+
+/// Check normalized target range and hash against the selected consensus powLimit.
+///
+/// This does not establish contextual difficulty or accepted chain ancestry.
+pub fn check_proof_of_work_with_params(
+    hash: [u8; 32],
+    bits: u32,
+    params: &crate::ConsensusParams,
+) -> Result<bool, CompactTargetError> {
+    let target = compact_target_bytes(bits)?;
+    let limit = compact_target_bytes(params.pow_limit_bits)?;
+    if compare_little_endian(&target, &limit) == Ordering::Greater {
+        return Ok(false);
+    }
     Ok(compare_little_endian(&hash, &target) != Ordering::Greater)
 }
 
@@ -356,7 +380,7 @@ mod tests {
         );
         assert_eq!(
             compact_target_bytes(0x0180_0000),
-            Err(CompactTargetError::Negative),
+            Err(CompactTargetError::Zero),
         );
         assert_eq!(
             compact_target_bytes(0x2301_0000),

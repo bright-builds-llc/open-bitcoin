@@ -166,5 +166,7 @@ mod daemon_sync;
 pub(crate) mod filter_index;
 #[path = "tests/inbound_runtime.rs"]
 mod inbound_runtime;
+#[path = "tests/phase165_work.rs"]
+mod phase165_work;
 #[path = "tests/retry.rs"]
 mod retry;

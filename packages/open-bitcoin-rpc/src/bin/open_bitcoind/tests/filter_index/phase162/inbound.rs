@@ -10,6 +10,7 @@ use super::core_types::{
     codec::encode_block,
     consensus::{ScriptVerifyFlags, block_hash, crypto::Sha256},
 };
+use super::fixtures::live_source;
 use super::{
     decode_hex,
     fixtures::{Phase162Fixture, Phase162Handoff, Provenance},
@@ -20,8 +21,8 @@ use open_bitcoin_network::{
     WireNetworkMessage,
 };
 use open_bitcoin_node::{
-    DurableSyncRuntime, FjallNodeStore, PersistMode, SyncNetwork, SyncRuntimeConfig,
-    core::primitives::NetworkMagic, network::filter_transport::FilterTransportSnapshot,
+    FjallNodeStore, PersistMode, SyncNetwork, SyncRuntimeConfig, core::primitives::NetworkMagic,
+    network::filter_transport::FilterTransportSnapshot,
 };
 use serde_json::{Value, json};
 use std::{io, process::Command, sync::Arc, time::Duration};
@@ -312,23 +313,16 @@ async fn handshake(stream: &TcpStream, magic: NetworkMagic) -> ServiceFlags {
 }
 
 async fn physical_session(fixture: &Phase162Fixture, exchanges: Vec<Exchange>, granted: bool) {
-    let expected_frames = if granted {
-        exchanges
-            .iter()
-            .map(|exchange| exchange.expected.len())
-            .sum()
-    } else {
-        0
-    };
-    let expected_bytes = if granted {
-        exchanges
-            .iter()
-            .flat_map(|exchange| &exchange.expected)
-            .map(Vec::len)
-            .sum()
-    } else {
-        0
-    };
+    let expected_exchanges = if granted { exchanges.as_slice() } else { &[] };
+    let expected_frames = expected_exchanges
+        .iter()
+        .map(|exchange| exchange.expected.len())
+        .sum();
+    let expected_bytes = expected_exchanges
+        .iter()
+        .flat_map(|exchange| &exchange.expected)
+        .map(Vec::len)
+        .sum();
     let mut listener =
         crate::inbound_startup::start_inbound_listener_for_runtime_with_context_and_announcements(
             &fixture.config,
@@ -438,11 +432,10 @@ async fn physical_session(fixture: &Phase162Fixture, exchanges: Vec<Exchange>, g
         client.abort();
         let _cancelled = client.await;
     }
+    let network = &fixture.opened.network;
     let clean = tokio::time::timeout(Duration::from_secs(5), async {
         loop {
-            if fixture
-                .opened
-                .network
+            if network
                 .peer_manager_snapshot()
                 .expect("disconnect observation")
                 .inbound_admission_counters()
@@ -464,9 +457,7 @@ async fn physical_session(fixture: &Phase162Fixture, exchanges: Vec<Exchange>, g
         .expect("finite physical session")
         .expect("physical peer assertions");
     assert_eq!(
-        fixture
-            .opened
-            .network
+        network
             .basic_filter_transport_snapshot()
             .expect("final released charges"),
         FilterTransportSnapshot::default()
@@ -551,26 +542,35 @@ async fn phase162_inbound_no_grant_all_families() {
     let path = crate::tests::temp_store_path("phase162-no-grant");
     std::fs::create_dir(&path).expect("unique denial datadir");
     let cleanup = Cleanup(path.clone());
-    let runtime = DurableSyncRuntime::open(
-        FjallNodeStore::open(&path).expect("fresh Fjall"),
-        SyncRuntimeConfig {
-            network: SyncNetwork::Regtest,
-            ..Default::default()
-        },
-    )
-    .expect("ordinary runtime");
-    let params = runtime.config().network.consensus_params();
+    let config = SyncRuntimeConfig {
+        network: SyncNetwork::Regtest,
+        ..Default::default()
+    };
+    let params = config.network.consensus_params();
     let recipe = recipe::Recipe::new(params, ScriptVerifyFlags::P2SH, 102);
+    let (runtime, genesis) = live_source::live_genesis_runtime(
+        &path,
+        &recipe.blocks[0],
+        config,
+        params,
+        recipe.flags,
+        open_bitcoin_node::chainstate::BasicFilterStartupMode::Disabled,
+    );
+    live_source::admit_descendant_headers(&runtime, &recipe.blocks[1..], recipe.flags, params);
     assert_eq!(recipe.params.coinbase_maturity, 100);
     let mut receipts = Vec::new();
     let mut inputs = Vec::new();
     let store = runtime.store();
     let handle = runtime.network_handle();
     for (height, block) in recipe.blocks.iter().enumerate() {
-        store.save_block(block, PersistMode::Sync).expect("body");
-        let receipt = handle
-            .connect_local_block(block, recipe.flags, params)
-            .expect("accept");
+        let receipt = if height == 0 {
+            genesis.clone()
+        } else {
+            store.save_block(block, PersistMode::Sync).expect("body");
+            handle
+                .connect_local_block(block, recipe.flags, params)
+                .expect("accept")
+        };
         assert_eq!(receipt.height as usize, height);
         assert_eq!(receipt.block_hash, block_hash(&block.header));
         receipts.push(receipt);

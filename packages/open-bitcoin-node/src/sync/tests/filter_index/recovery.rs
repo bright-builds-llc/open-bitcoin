@@ -38,7 +38,9 @@ impl ValidatedHistory {
             let staged = chainstate
                 .stage_connect_block_with_current_time(
                     block,
-                    height as u128 + 1,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                        height as u128 + 1,
+                    ),
                     i64::from(block.header.time) + 1,
                     ScriptVerifyFlags::P2SH
                         | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -50,7 +52,7 @@ impl ValidatedHistory {
                 )
                 .expect("actual consensus stage");
             if height == 2 {
-                assert_eq!(staged.undo.transactions.len(), 2);
+                assert_eq!(staged.undo().transactions.len(), 2);
                 let inputs = staged
                     .basic_filter_inputs(block)
                     .expect("validated spend inputs");

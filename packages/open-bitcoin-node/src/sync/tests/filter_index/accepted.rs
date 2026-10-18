@@ -5,12 +5,13 @@
 
 use super::{recovery::ValidatedHistory, *};
 use crate::chainstate::{ManagedChainstate, MemoryChainstateStore};
+use crate::{FjallChainstateStore, FjallCoinsView};
 use open_bitcoin_core::{
     chainstate::filter_index::{
         catch_up::{AcceptedIndexTarget, BasicIndexProgress},
         lifecycle::IndexGeneration,
     },
-    consensus::{ConsensusParams, ScriptVerifyFlags},
+    consensus::{ConsensusParams, ScriptVerifyFlags, chain_proof::ProofWork},
 };
 
 fn owner(history: &ValidatedHistory, behind: bool) -> BasicIndexProgress {
@@ -34,14 +35,78 @@ fn params() -> ConsensusParams {
     }
 }
 
+impl ValidatedHistory {
+    pub(super) fn live_source(&self) -> ManagedChainstate<FjallChainstateStore, FjallCoinsView> {
+        use crate::chainstate::FlushLifecycle;
+        use open_bitcoin_core::chainstate::{Chainstate, FlushMode, FlushPolicyTime};
+        let store = FjallNodeStore::open(&self.path).expect("fresh source store");
+        let mut core =
+            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+        Chainstate::new()
+            .rebind_into(&mut core)
+            .expect("genuine empty source");
+        let now = FlushPolicyTime::new(0);
+        let mut source = ManagedChainstate::from_chainstate(
+            crate::FjallChainstateStore::from_store(store.clone()),
+            core,
+            FlushLifecycle::ready(now, now, 0, false),
+        );
+        for block in &self.blocks[..2] {
+            source
+                .connect_block(block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params())
+                .expect("actual old prefix acceptance");
+            store
+                .save_block(block, PersistMode::Sync)
+                .expect("actual old prefix body");
+        }
+        source
+            .flush_with_mode(FlushMode::Always, now, u64::MAX)
+            .expect("real same-core flush");
+        source
+    }
+
+    pub(super) fn live_runtime(&self) -> DurableSyncRuntime {
+        let runtime = DurableSyncRuntime::from_live_fixture_source(
+            self.live_source(),
+            sync_config(),
+            params(),
+            crate::chainstate::BasicFilterStartupMode::Enabled,
+            Default::default(),
+            Default::default(),
+            false,
+        )
+        .expect("same genuine prefix BASIC assembly");
+        runtime
+            .network
+            .drive_basic_filter_index_turn()
+            .expect("actual old prefix indexing");
+        let store = runtime.store();
+        let maybe_cursor = store.maybe_basic_filter_checkpoint().expect("old cursor");
+        assert_eq!(maybe_cursor, Some(checkpoint(&self.records[1])));
+        runtime
+    }
+}
+
+fn memory_source(history: &ValidatedHistory) -> ManagedChainstate<MemoryChainstateStore> {
+    let mut core = open_bitcoin_core::chainstate::Chainstate::new();
+    for block in &history.blocks[..2] {
+        core.connect_block(block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params())
+            .expect("actual memory prefix acceptance");
+    }
+    let now = open_bitcoin_core::chainstate::FlushPolicyTime::new(0);
+    ManagedChainstate::from_chainstate(
+        MemoryChainstateStore::default(),
+        core,
+        crate::chainstate::FlushLifecycle::ready(now, now, 0, false),
+    )
+}
+
 #[test]
 fn phase157_accepted_direct_and_staged_capture_historical_and_same_block_scripts() {
     for staged in [false, true] {
         // Arrange
         let history = ValidatedHistory::new("accepted-complete", false);
-        let mut managed = ManagedChainstate::from_store(MemoryChainstateStore::from_snapshot(
-            history.old.clone(),
-        ));
+        let mut managed = memory_source(&history);
         managed
             .install_basic_index_owner(owner(&history, false))
             .expect("owner");
@@ -49,12 +114,23 @@ fn phase157_accepted_direct_and_staged_capture_historical_and_same_block_scripts
         // Act
         if staged {
             let prepared = managed
-                .prepare_connect_block(block, 3, ScriptVerifyFlags::P2SH, params())
+                .prepare_connect_block_with_current_time(
+                    block,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
+                    i64::from(block.header.time),
+                    ScriptVerifyFlags::P2SH,
+                    params(),
+                )
                 .expect("prepare");
             managed.commit_prepared_connect(prepared).expect("absorb");
         } else {
             managed
-                .connect_block(block, 3, ScriptVerifyFlags::P2SH, params())
+                .connect_block(
+                    block,
+                    open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
+                    ScriptVerifyFlags::P2SH,
+                    params(),
+                )
                 .expect("direct");
         }
         // Assert
@@ -102,14 +178,18 @@ fn phase157_accepted_direct_and_staged_capture_historical_and_same_block_scripts
 fn phase157_accepted_behind_target_does_not_retain_out_of_order_facts() {
     // Arrange
     let history = ValidatedHistory::new("accepted-behind", false);
-    let mut managed =
-        ManagedChainstate::from_store(MemoryChainstateStore::from_snapshot(history.old.clone()));
+    let mut managed = memory_source(&history);
     managed
         .install_basic_index_owner(owner(&history, true))
         .expect("owner");
     // Act
     managed
-        .connect_block(&history.blocks[2], 3, ScriptVerifyFlags::P2SH, params())
+        .connect_block(
+            &history.blocks[2],
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
+            ScriptVerifyFlags::P2SH,
+            params(),
+        )
         .expect("accepted");
     // Assert
     let progress = managed.maybe_basic_index_progress().expect("owner");
@@ -123,13 +203,7 @@ fn phase157_accepted_behind_target_does_not_retain_out_of_order_facts() {
 fn phase157_accepted_later_metadata_failure_pauses_same_owner_without_erasing_tip() {
     // Arrange
     let history = ValidatedHistory::new("accepted-late-metadata", false);
-    let store = history.seed(1);
-    let runtime = DurableSyncRuntime::open_configured(
-        store,
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("actual configured runtime");
+    let runtime = history.live_runtime();
     runtime
         .network
         .install_basic_index_owner_for_test(owner(&history, false))
@@ -138,7 +212,7 @@ fn phase157_accepted_later_metadata_failure_pauses_same_owner_without_erasing_ti
         .network
         .connect_stored_block(
             &history.blocks[2],
-            3,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
             i64::from(history.blocks[2].header.time),
             ScriptVerifyFlags::P2SH,
             params(),
@@ -188,13 +262,7 @@ fn phase157_accepted_ordinary_local_persist_faults_keep_complete_facts_and_saved
     ] {
         // Arrange
         let history = ValidatedHistory::new("accepted-local-fault", false);
-        let store = history.seed(1);
-        let runtime = DurableSyncRuntime::open_configured(
-            store,
-            sync_config(),
-            crate::chainstate::BasicFilterStartupMode::Enabled,
-        )
-        .expect("actual runtime");
+        let runtime = history.live_runtime();
         runtime
             .network
             .install_basic_index_owner_for_test(owner(&history, false))
@@ -294,29 +362,21 @@ fn requested_failure(fault: crate::storage::fjall_store::filters::FilterPublicat
         _ => panic!("unexpected requested fixture fault"),
     };
     let history = ValidatedHistory::new(name, false);
-    let store = history.seed(1);
-    drop(store);
-    raw_index(&history.path, |index| {
-        let key = codec::record_key(block_hash(&history.blocks[2].header)).replacen(
-            codec::RECORD_PREFIX,
-            "block:",
-            1,
-        );
-        index.remove(key).expect("future unrequested body absent");
-    });
-    let store = FjallNodeStore::open(&history.path).expect("real reopen without future body");
+    let mut runtime = history.live_runtime();
     assert!(
-        !store
+        !runtime
+            .store()
             .has_block(block_hash(&history.blocks[2].header))
             .expect("absent future body")
     );
-    let mut runtime = DurableSyncRuntime::open_configured(
-        store,
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("actual runtime");
-    runtime.consensus_params = params();
+    assert_eq!(
+        runtime
+            .network
+            .header_entries()
+            .expect("captured prefix headers")
+            .len(),
+        2
+    );
     runtime
         .network
         .install_basic_index_owner_for_test(owner(&history, false))
@@ -392,11 +452,9 @@ fn requested_failure(fault: crate::storage::fjall_store::filters::FilterPublicat
 
 #[test]
 fn phase157_accepted_genuine_direct_persist_faults_keep_target_before_error() {
-    use crate::chainstate::{
-        BasicFilterStartupMode, FjallChainstateStore, FlushLifecycle, initialize_configured,
-    };
+    use crate::chainstate::{BasicFilterStartupMode, FlushLifecycle, initialize_configured};
     use crate::storage::fjall_store::filters::FilterPublicationFault;
-    use open_bitcoin_core::chainstate::{Chainstate, FlushPolicyTime};
+    use open_bitcoin_core::chainstate::FlushPolicyTime;
     for fault in [
         FilterPublicationFault::BeforeUndo,
         FilterPublicationFault::BeforeCoins,
@@ -404,9 +462,10 @@ fn phase157_accepted_genuine_direct_persist_faults_keep_target_before_error() {
     ] {
         // Arrange
         let history = ValidatedHistory::new("accepted-direct-fault", false);
-        let store = history.seed(1);
+        let source = history.live_source();
+        let store = source.store().inner().clone();
         let now = FlushPolicyTime::from_unix_seconds(0);
-        let (_, _, cache) = initialize_configured(
+        initialize_configured(
             &store,
             now,
             now,
@@ -416,26 +475,32 @@ fn phase157_accepted_genuine_direct_persist_faults_keep_target_before_error() {
             BasicFilterStartupMode::Enabled,
         )
         .expect("genuine initialization");
-        let (positions, counts) = store.load_chain_meta_for_open().expect("metadata");
-        let state = Chainstate::from_coins_cache(
-            cache,
-            positions,
-            store.load_all_undo_records().expect("undo"),
-            counts,
-        );
+        let (sink, state) = source.into_parts();
         let mut managed = ManagedChainstate::from_recovered_chainstate(
-            FjallChainstateStore::from_store(store.clone()),
+            sink,
             state,
             FlushLifecycle::ready_for_test(0, 0, now, false),
         )
         .expect("same genuine recovered parent");
+        publish_current(
+            &store,
+            &fence(&history.old.active_chain),
+            checkpoint(&history.records[1]),
+            IndexInputProtection::FromHeight(2),
+            &history.records[..2],
+        )
+        .expect("actual old index prefix");
         managed
             .install_basic_index_owner(owner(&history, false))
             .expect("owner");
         store.set_basic_filter_fault(fault);
         // Act
-        let result =
-            managed.connect_block(&history.blocks[2], 3, ScriptVerifyFlags::P2SH, params());
+        let result = managed.connect_block(
+            &history.blocks[2],
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(3),
+            ScriptVerifyFlags::P2SH,
+            params(),
+        );
         // Assert
         assert!(result.is_err());
         assert_eq!(managed.chainstate().tip().expect("accepted").height, 2);
@@ -474,13 +539,7 @@ fn phase157_accepted_genuine_direct_persist_faults_keep_target_before_error() {
 fn phase157_accepted_persist_failure_still_applies_dependent_mempool_projection() {
     // Arrange
     let history = ValidatedHistory::new("accepted-mempool-fault", false);
-    let store = history.seed(1);
-    let runtime = DurableSyncRuntime::open_configured(
-        store,
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = history.live_runtime();
     runtime
         .network
         .install_basic_index_owner_for_test(owner(&history, false))

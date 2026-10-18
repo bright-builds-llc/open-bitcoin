@@ -24,7 +24,7 @@ fn legacy_daemon_chainstate(block: &Block) -> ChainstateSnapshot {
         vec![ChainPosition::new(
             block.header.clone(),
             0,
-            1,
+            open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(1),
             i64::from(block.header.time),
         )],
         HashMap::new(),

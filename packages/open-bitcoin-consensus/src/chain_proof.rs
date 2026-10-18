@@ -12,6 +12,50 @@ impl ProofWork {
     /// The initial cumulative work before any headers are accumulated.
     pub const ZERO: Self = Self([0; 4]);
 
+    /// Import all 256 unsigned bits in little-endian order, without validation provenance.
+    pub fn from_le_bytes(bytes: [u8; 32]) -> Self {
+        let mut limbs = [0; 4];
+        for (index, chunk) in bytes.chunks_exact(8).enumerate() {
+            let mut limb = [0; 8];
+            limb.copy_from_slice(chunk);
+            limbs[index] = u64::from_le_bytes(limb);
+        }
+        Self(limbs)
+    }
+
+    /// Export all 256 unsigned bits in little-endian order.
+    pub fn to_le_bytes(self) -> [u8; 32] {
+        let mut bytes = [0; 32];
+        for (chunk, limb) in bytes.chunks_exact_mut(8).zip(self.0) {
+            chunk.copy_from_slice(&limb.to_le_bytes());
+        }
+        bytes
+    }
+
+    /// Parse exactly 64 ASCII hex digits, most significant first, without provenance.
+    /// Prefixes, signs and whitespace are refused; either letter case is accepted.
+    pub fn from_hex(input: &str) -> Result<Self, ProofWorkParseError> {
+        if input.len() != 64 {
+            return Err(ProofWorkParseError::InvalidLength);
+        }
+        let mut bytes = [0; 32];
+        for (index, digit) in input.bytes().enumerate() {
+            let value = match digit {
+                b'0'..=b'9' => digit - b'0',
+                b'a'..=b'f' => digit - b'a' + 10,
+                b'A'..=b'F' => digit - b'A' + 10,
+                _ => return Err(ProofWorkParseError::InvalidDigit),
+            };
+            bytes[31 - index / 2] |= value << (4 * (1 - index % 2));
+        }
+        Ok(Self::from_le_bytes(bytes))
+    }
+
+    /// Render exactly 64 lowercase hex digits, most significant first.
+    pub fn to_hex(self) -> String {
+        self.to_string()
+    }
+
     /// Accumulate work modulo 2^256, matching Knots `arith_uint256`.
     pub fn wrapping_add(self, other: Self) -> Self {
         let mut limbs = [0; 4];
@@ -77,6 +121,43 @@ impl ProofWork {
     }
 }
 
+/// Invalid fixed-width, unsigned work encoding; no partial import is returned.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ProofWorkParseError {
+    /// Work hex must contain exactly 64 bytes of ASCII digits.
+    InvalidLength,
+    /// Only ASCII hexadecimal digits are allowed.
+    InvalidDigit,
+}
+
+impl core::fmt::Display for ProofWorkParseError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_str(match self {
+            Self::InvalidLength => "work hex must contain exactly 64 digits",
+            Self::InvalidDigit => "work hex contains a non-hexadecimal digit",
+        })
+    }
+}
+
+impl std::error::Error for ProofWorkParseError {}
+
+impl core::fmt::Display for ProofWork {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        for limb in self.0.iter().rev() {
+            write!(formatter, "{limb:016x}")?;
+        }
+        Ok(())
+    }
+}
+
+impl core::str::FromStr for ProofWork {
+    type Err = ProofWorkParseError;
+
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        Self::from_hex(input)
+    }
+}
+
 impl Ord for ProofWork {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.0.iter().rev().cmp(other.0.iter().rev())
@@ -90,18 +171,9 @@ impl PartialOrd for ProofWork {
 }
 
 /// Derive exact work from a positive, nonzero compact target; no chain validity is implied.
+/// Knots `GetBlockProof` maps invalid targets to zero; this API returns the decode error.
 pub fn block_proof(bits: u32) -> Result<ProofWork, CompactTargetError> {
-    let bytes = compact_target_bytes(bits)?;
-    let mut limbs = [0; 4];
-    for (index, chunk) in bytes.chunks_exact(8).enumerate() {
-        let mut limb = [0; 8];
-        limb.copy_from_slice(chunk);
-        limbs[index] = u64::from_le_bytes(limb);
-    }
-    let target = ProofWork(limbs);
-    if target == ProofWork::ZERO {
-        return Err(CompactTargetError::Zero);
-    }
+    let target = ProofWork::from_le_bytes(compact_target_bytes(bits)?);
     let one = ProofWork([1, 0, 0, 0]);
     let numerator = ProofWork(target.0.map(|limb| !limb));
     // A compact target cannot encode 2^256 - 1, so target + 1 is nonzero.

@@ -37,7 +37,12 @@ fn phase157_accepted_direct_advances_target_without_forcing_flush() {
     let next = build_block(block_hash(&genesis.header), 1, 50);
     // Act
     managed
-        .connect_block(&next, 2, ScriptVerifyFlags::P2SH, mature_params())
+        .connect_block(
+            &next,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+            ScriptVerifyFlags::P2SH,
+            mature_params(),
+        )
         .expect("connect");
     // Assert
     let progress = managed.maybe_basic_index_progress().expect("owner");
@@ -60,7 +65,12 @@ fn phase157_accepted_rejected_prepare_leaves_owner_unchanged() {
     let before = managed.maybe_basic_index_progress();
     let invalid = build_block(BlockHash::from_byte_array([9; 32]), 1, 50);
     // Act
-    let result = managed.connect_block(&invalid, 2, ScriptVerifyFlags::P2SH, mature_params());
+    let result = managed.connect_block(
+        &invalid,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+        ScriptVerifyFlags::P2SH,
+        mature_params(),
+    );
     // Assert
     assert!(result.is_err());
     assert_eq!(managed.maybe_basic_index_progress(), before);

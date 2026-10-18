@@ -16,12 +16,12 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     sync::Mutex,
 };
-
 mod action_translation;
 mod admission_bridge;
 mod announcement_transport;
 mod block_relay_evidence;
 mod block_serving;
+mod candidate_eligibility;
 mod canonical_admission;
 pub use canonical_admission::CanonicalAdmissionError;
 mod chainstate_durability_evidence;
@@ -45,7 +45,7 @@ mod relay_serving;
 mod runtime_authority;
 mod types;
 pub(crate) mod validation_history;
-
+pub(crate) mod work_authority;
 pub use announcement_transport::{
     AnnouncementPreparationOutcome, PeerEmission, PeerEmissionReceipt, PeerEmissionWriteCapability,
     PeerOutboxSnapshot,
@@ -111,7 +111,6 @@ pub use types::{
 };
 
 type ManagedResult<T> = Result<T, ManagedNetworkError>;
-
 static LAST_AUTHORITY_EPOCH: Mutex<lifecycle_projection::AuthorityEpoch> =
     Mutex::new(lifecycle_projection::AuthorityEpoch::INITIAL);
 
@@ -128,6 +127,7 @@ fn allocate_authority_epoch() -> lifecycle_projection::AuthorityEpoch {
 
 pub struct ManagedPeerNetwork<S, V: CoinsView = MemoryCoinsView> {
     admission_scope: canonical_admission::AdmissionScope,
+    maybe_header_consensus_params: Option<ConsensusParams>,
     chainstate: ManagedChainstate<S, V>,
     mempool: ManagedMempool,
     peer_manager: PeerManager,
@@ -389,6 +389,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 | WireNetworkMessage::BlockTxn(_)
         );
         let actions = match message {
+            WireNetworkMessage::Headers(headers_message) => self
+                .handle_validated_headers_with_policy(
+                    peer_id,
+                    headers_message,
+                    timestamp,
+                    consensus_params,
+                    HeaderSyncPolicy::HeadersAndBlocks,
+                )?,
             WireNetworkMessage::CompactBlock(payload) => {
                 self.handle_compact_block_receive(peer_id, payload, timestamp)?
             }
@@ -423,9 +431,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     ) -> Result<ManagedSyncMessageResult, ManagedNetworkError> {
         self.guard_message_admission(&message)?;
         let actions = match message {
-            WireNetworkMessage::Headers(headers_message) => {
-                self.handle_headers_message(peer_id, headers_message, timestamp, consensus_params)?
-            }
+            WireNetworkMessage::Headers(headers_message) => self.handle_validated_headers(
+                peer_id,
+                headers_message,
+                timestamp,
+                consensus_params,
+            )?,
             WireNetworkMessage::CompactBlock(payload) => {
                 let actions = self.handle_compact_block_receive(peer_id, payload, timestamp)?;
                 self.note_block_relay_observed();
@@ -595,16 +606,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         self.peer_manager
             .announce_transaction(peer_id, transaction)
             .map_err(ManagedNetworkError::from)
-    }
-
-    fn handle_headers_message(
-        &mut self,
-        peer_id: PeerId,
-        headers_message: HeadersMessage,
-        timestamp: i64,
-        consensus_params: ConsensusParams,
-    ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
-        self.handle_validated_headers(peer_id, headers_message, timestamp, consensus_params)
     }
 }
 

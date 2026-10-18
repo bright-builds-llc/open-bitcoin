@@ -5,6 +5,30 @@
 use super::*;
 
 #[test]
+fn phase165_tip_projections_render_all_256_work_bits() {
+    // Arrange
+    let mut bytes = [0; 32];
+    bytes[31] = 0x80;
+    bytes[16] = 0x7f;
+    bytes[0] = 0x55;
+    let number = open_bitcoin_core::consensus::chain_proof::ProofWork::from_le_bytes(bytes);
+    let point = super::super::runtime_state::BlockProgressPoint {
+        height: 3,
+        block_hash: BlockHash::default(),
+        chain_work: number,
+    };
+
+    // Act
+    let connected = super::super::tip::connected_tip_from_progress(point);
+
+    // Assert
+    assert_eq!(
+        connected.work,
+        "8000000000000000000000000000007f00000000000000000000000000000055"
+    );
+}
+
+#[test]
 fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
     // Arrange
     let downloaded_hash =
@@ -25,7 +49,9 @@ fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
         best_block_height: 25,
         maybe_downloaded_block_hash: Some(downloaded_hash.clone()),
         maybe_connected_block_hash: Some(connected_hash.clone()),
-        maybe_validated_active_chain_work: Some("26".to_string()),
+        maybe_validated_active_chain_work: Some(
+            "000000000000000000000000000000000000000000000000000000000000001a".to_string(),
+        ),
         peer_outcomes: Vec::new(),
         health_signals: Vec::new(),
         maybe_stop_reason: None,
@@ -47,7 +73,9 @@ fn sync_summary_status_keeps_connected_height_alias_with_hashes() {
             maybe_downloaded_block_hash: Some(downloaded_hash),
             maybe_connected_block_hash: Some(connected_hash.clone()),
             maybe_validated_active_chain_hash: Some(connected_hash),
-            maybe_validated_active_chain_work: Some("26".to_string()),
+            maybe_validated_active_chain_work: Some(
+                "000000000000000000000000000000000000000000000000000000000000001a".to_string()
+            ),
             progress_ratio: 25.0 / 30.0,
             messages_processed: 9,
             headers_received: 7,
@@ -222,7 +250,7 @@ fn phase69_sync_status_serializes_tip_and_stay_current_fields() {
         source: BestKnownTipSource::HeaderStore,
         height: 2,
         block_hash: "aa".to_string(),
-        work: "3".to_string(),
+        work: "0000000000000000000000000000000000000000000000000000000000000003".to_string(),
         block_time_unix_seconds: 1_777_225_000,
         observed_at_unix_seconds: 1_777_225_010,
         freshness: TipFreshnessStatus::Fresh,
@@ -232,7 +260,9 @@ fn phase69_sync_status_serializes_tip_and_stay_current_fields() {
             status: PeerTipAgreementStatus::Agrees,
             maybe_height: Some(2),
             maybe_hash: Some("aa".to_string()),
-            maybe_work: Some("3".to_string()),
+            maybe_work: Some(
+                "0000000000000000000000000000000000000000000000000000000000000003".to_string(),
+            ),
             maybe_last_activity_unix_seconds: Some(1_777_225_010),
         }],
     });

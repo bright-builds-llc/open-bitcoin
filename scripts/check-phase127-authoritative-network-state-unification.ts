@@ -349,13 +349,23 @@ function checkIntegrationAndParity(
     ".sync_once(&mut transport",
     ".load_block(expected_hash)",
     "start_inbound_accept_loop(",
-    "WireNetworkMessage::Block(ref served_block)",
     "phase127_mixed_missing_transaction_block_request",
     "let mixed_block_response = peer.receive().await;",
     "let mixed_not_found_response = peer.receive().await;",
     'sorted_result_keys(&status_response),\n        [\n            "basic_index",\n            "block_relay",\n            "chainstate_durability",\n            "inbound",\n            "mempool",\n            "metrics",\n            "prune",\n            "relay",\n        ]',
   ];
-  if (!integrationAnchors.every((anchor) => integration.includes(anchor))) {
+  const blockHelper = normalizeRust(rustFunction(integration, "pub(super) fn matches_block("));
+  const expectedBlockHelper = normalizeRust(`pub(super) fn matches_block(message: &WireNetworkMessage, expected_hash: BlockHash) -> bool {
+    matches!(message, WireNetworkMessage::Block(block) if block_hash(&block.header) == expected_hash)
+  }`);
+  const composition = normalizeRust(rustFunction(integration, "async fn phase127_production_composition_shares_sync_serving_and_operator_authority("));
+  const servedAssertions = [
+    "assert!(matches_block(&served, expected_hash));",
+    "assert!(matches_block(&mixed_block_response, expected_hash));",
+  ];
+  if (!integrationAnchors.every((anchor) => integration.includes(anchor))
+    || blockHelper !== expectedBlockHelper
+    || !servedAssertions.every(assertion => composition.includes(normalizeRust(assertion)))) {
     failures.push(
       "P127 production proof: integration must cover shared mutation, restart serving, frozen schemas, and redaction",
     );

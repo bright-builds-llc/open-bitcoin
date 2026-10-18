@@ -9,13 +9,14 @@ fn block_inflight_invalid_block_releases_runtime_and_peer_inflight_for_retry() {
     // Arrange
     let path = temp_store_path("block-inflight-invalid");
     remove_dir_if_exists(&path);
-    let valid_block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let genesis = build_block(BlockHash::default(), 0);
+    let valid_block = build_block(block_hash(&genesis.header), 1);
     let block_hash = block_hash(&valid_block.header);
     let mut invalid_block = valid_block.clone();
     invalid_block.transactions[0].outputs[0].value = Amount::from_sats(51).expect("valid amount");
     let first_peer_script = vec![
         WireNetworkMessage::Version(VersionMessage {
-            start_height: 0,
+            start_height: 1,
             ..VersionMessage::default()
         }),
         WireNetworkMessage::Verack,
@@ -26,7 +27,8 @@ fn block_inflight_invalid_block_releases_runtime_and_peer_inflight_for_retry() {
     ];
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
-    let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(0)]);
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
+    let mut transport = ScriptedTransport::new(vec![first_peer_script, version_verack_script(1)]);
 
     // Act
     let summary = runtime
@@ -66,13 +68,15 @@ fn block_inflight_malformed_block_releases_runtime_and_peer_inflight_for_retry()
     // Arrange
     let path = temp_store_path("block-inflight-malformed");
     remove_dir_if_exists(&path);
-    let block = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let genesis = build_block(BlockHash::default(), 0);
+    let block = build_block(block_hash(&genesis.header), 1);
     let block_hash = block_hash(&block.header);
-    let first_peer_script = headers_script(0, vec![block.header.clone()]);
+    let first_peer_script = headers_script(1, vec![block.header.clone()]);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, two_peer_sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
     let mut transport = ErrorAfterMessagesTransport::new(
-        vec![first_peer_script, version_verack_script(0)],
+        vec![first_peer_script, version_verack_script(1)],
         SyncRuntimeError::Network {
             message: "malformed block payload".to_string(),
         },

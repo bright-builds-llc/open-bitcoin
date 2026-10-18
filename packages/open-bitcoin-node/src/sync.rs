@@ -14,6 +14,7 @@ use std::{
 
 mod block_reconcile;
 mod block_response;
+mod live_fixture;
 mod metrics;
 mod open_runtime;
 mod progress;

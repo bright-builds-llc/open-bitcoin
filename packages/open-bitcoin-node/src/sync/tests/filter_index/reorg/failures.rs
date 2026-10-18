@@ -150,7 +150,7 @@ fn finish_recovered(
 #[test]
 fn phase158_reorg_failure_configured_reopen_index_ahead_of_old_coins_rebinds_conflicting_rows() {
     // Arrange
-    let fixture = ForkFixture::compact(16, 24, 40);
+    let fixture = ForkFixture::compact_early(16, 24, 40, 10, 29, 0x71);
     let old = fixture.history.records.clone();
     let branch = fixture.fork(10, 29, 0x71);
     fixture.apply(&branch);
@@ -177,30 +177,14 @@ fn phase158_reorg_failure_configured_reopen_index_ahead_of_old_coins_rebinds_con
 
 #[test]
 fn phase158_reorg_failure_configured_reopen_rewinds_checkpoint_with_conflicting_suffix() {
-    // Arrange: A -> B own flush, then B -> A index-only; coins still B.
-    let fixture = ForkFixture::compact(16, 24, 40);
+    // Arrange: earlier B39 earns equal-work acceptance, then stronger A40; coins stay B39.
+    let fixture = ForkFixture::compact_early(16, 24, 40, 10, 29, 0x72);
     let old = fixture.history.records.clone();
     let branch = fixture.fork(10, 29, 0x72);
     fixture.apply(&branch);
     fixture.finish();
     fixture.flush();
-    let original = ForkBranch {
-        disconnect: branch
-            .connected
-            .iter()
-            .rev()
-            .map(|a| a.block.clone())
-            .collect(),
-        connected: fixture.history.blocks[11..]
-            .iter()
-            .enumerate()
-            .map(|(offset, block)| AnchoredBlock {
-                block: block.clone(),
-                chain_work: offset as u128 + 2_000,
-            })
-            .collect(),
-        records: old[11..].to_vec(),
-    };
+    let original = fixture.extended_original(&branch, 1);
     fixture.apply(&original);
     fixture.finish();
     assert_eq!(
@@ -214,13 +198,26 @@ fn phase158_reorg_failure_configured_reopen_rewinds_checkpoint_with_conflicting_
     );
     let canonical: Vec<_> = old[..=10].iter().chain(&branch.records).cloned().collect();
     // Act / Assert
-    finish_recovered(fixture, &old, &branch.records, &canonical, Some(&old[11]));
+    let extension = original.records.last().expect("genuine A40 extension");
+    let retained_replacements: Vec<_> = branch
+        .records
+        .iter()
+        .chain(std::iter::once(extension))
+        .cloned()
+        .collect();
+    finish_recovered(
+        fixture,
+        &old,
+        &retained_replacements,
+        &canonical,
+        Some(&old[11]),
+    );
 }
 
 #[test]
 fn phase158_reorg_failure_configured_reopen_new_coins_partial_replacement_projection() {
     // Arrange: only first replacement turn overwrites A, while B earns own coins.
-    let fixture = ForkFixture::compact(16, 24, 40);
+    let fixture = ForkFixture::compact_early(16, 24, 40, 10, 29, 0x73);
     let old = fixture.history.records.clone();
     let branch = fixture.fork(10, 29, 0x73);
     fixture.apply(&branch);
@@ -252,11 +249,12 @@ fn phase158_reorg_failure_configured_reopen_new_coins_partial_replacement_projec
 fn phase158_reorg_failure_deep_required_body_and_undo_loss_precedes_preview_and_mempool() {
     for undo in [false, true] {
         // Arrange: build the genuine branch before deleting one actual durable mate.
-        let fixture = ForkFixture::compact(128, 32, 160);
+        let fixture = ForkFixture::compact_early(128, 32, 160, 127, 33, 0x76);
         let mut before_rows = Vec::new();
         let fixture = fixture.reopen_inspecting(|path| before_rows = snapshot_basic(path));
+        fixture.revalidate_complete_fixture_for_mutation();
         let old = fixture.history.records.clone();
-        let branch = fixture.fork(127, 32, 0x76);
+        let branch = fixture.fork(127, 33, 0x76);
         save_branch(&fixture, &branch);
         let state = fixture
             .runtime
@@ -327,13 +325,22 @@ fn phase158_reorg_failure_deep_required_body_and_undo_loss_precedes_preview_and_
         let error = reorg(&fixture, &branch)
             .expect_err("reopened cache cannot conceal loss")
             .to_string();
-        assert!(
-            error.contains(if undo {
-                "missing undo data"
-            } else {
-                "required body"
-            }),
-            "{error}"
+        assert!(error.contains("untrusted work lineage"), "{error}");
+        assert_eq!(
+            fixture
+                .runtime
+                .store()
+                .has_block(hash)
+                .expect("physical body remains missing"),
+            undo
+        );
+        assert_eq!(
+            fixture
+                .runtime
+                .store()
+                .has_undo(hash)
+                .expect("physical undo remains missing"),
+            !undo
         );
         retained(&fixture, &old);
         fixture.cleanup();
@@ -343,7 +350,7 @@ fn phase158_reorg_failure_deep_required_body_and_undo_loss_precedes_preview_and_
 #[test]
 fn phase158_reorg_failure_preview_mempool_refusal_has_no_accepted_receipt() {
     // Arrange
-    let fixture = ForkFixture::compact(16, 8, 24);
+    let fixture = ForkFixture::compact_early(16, 8, 24, 10, 13, 0x77);
     let branch = fixture.fork(10, 13, 0x77);
     save_branch(&fixture, &branch);
     let old = fixture.history.records.clone();
@@ -403,12 +410,15 @@ fn phase158_reorg_failure_preview_mempool_refusal_has_no_accepted_receipt() {
         fixture.runtime.store().load_prune_locks().expect("after"),
         locks
     );
-    assert!(
-        fixture
-            .runtime
-            .network
-            .drive_basic_filter_index_turn()
-            .is_err()
+    let paused = fixture
+        .runtime
+        .network
+        .drive_basic_filter_index_turn()
+        .expect("invalidated preview pauses before store work");
+    assert_eq!(paused.work.blocks, 0);
+    assert_eq!(
+        paused.maybe_accepted_target,
+        Some(progress.accepted_target())
     );
     retained(&fixture, &old);
     finish_recovered(fixture, &old, &[], &old, None);
@@ -514,7 +524,7 @@ fn phase158_reorg_failure_rewind_publication_faults_preserve_actual_accepted_tip
         FilterPublicationFault::AfterCommit,
     ] {
         // Arrange
-        let fixture = ForkFixture::compact(16, 8, 24);
+        let fixture = ForkFixture::compact_early(16, 8, 24, 10, 13, 0x74);
         let old = fixture.history.records.clone();
         let branch = fixture.fork(10, 13, 0x74);
         save_branch(&fixture, &branch);
@@ -564,7 +574,7 @@ fn phase158_reorg_failure_first_and_subsequent_append_faults_reopen_old_canonica
             FilterPublicationFault::AfterCommit,
         ] {
             // Arrange
-            let fixture = ForkFixture::compact(16, 24, 40);
+            let fixture = ForkFixture::compact_early(16, 24, 40, 10, 29, 0x75);
             let old = fixture.history.records.clone();
             let branch = fixture.fork(10, 29, 0x75);
             fixture.apply(&branch);

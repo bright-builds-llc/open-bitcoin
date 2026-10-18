@@ -474,3 +474,17 @@ pub(super) fn encoded_hash(block_hash: BlockHash) -> String {
     }
     encoded
 }
+
+pub(super) fn matches_block(message: &WireNetworkMessage, expected_hash: BlockHash) -> bool {
+    matches!(message, WireNetworkMessage::Block(block) if block_hash(&block.header) == expected_hash)
+}
+
+pub(super) fn matches_transaction(message: &WireNetworkMessage, expected: &Transaction) -> bool {
+    matches!(message, WireNetworkMessage::Tx(transaction) if transaction_txid(transaction) == transaction_txid(expected))
+}
+
+pub(super) fn matches_missing(message: &WireNetworkMessage, byte: u8) -> bool {
+    matches!(message, WireNetworkMessage::NotFound(inventory)
+        if inventory.inventory.len() == 1
+            && inventory.inventory[0].object_hash == Txid::from_byte_array([byte; 32]).into())
+}

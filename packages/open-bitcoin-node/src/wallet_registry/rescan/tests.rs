@@ -26,7 +26,9 @@ fn fixture() -> (Wallet, ChainstateSnapshot) {
                     nonce: height,
                 },
                 height,
-                u128::from(height) + 1,
+                open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                    u128::from(height) + 1,
+                ),
                 i64::from(height),
             )
         })

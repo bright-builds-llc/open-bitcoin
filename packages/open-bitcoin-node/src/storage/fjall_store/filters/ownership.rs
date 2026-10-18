@@ -127,6 +127,14 @@ pub(crate) struct BasicFilterWorkToken {
 }
 
 impl FjallNodeStore {
+    #[cfg(test)]
+    #[rustfmt::skip]
+    pub(crate) fn check_fixture_append_proof_guarded(&self, proof: &BasicFilterAppendProof, control: &PublicationControl) -> Result<(), StorageError> {
+        if control.maybe_reorg_suspension.is_some() { return Err(index_corruption("BASIC append suspended for reorg preview")); }
+        let mut work = proof.preparation_work();
+        self.check_basic_filter_append_proof_guarded_counted(proof, control, &mut work).map(|_| ())
+    }
+
     pub(crate) fn shares_basic_filter_store(&self, other: &Self) -> bool {
         Arc::ptr_eq(&self.filter_publication, &other.filter_publication)
     }

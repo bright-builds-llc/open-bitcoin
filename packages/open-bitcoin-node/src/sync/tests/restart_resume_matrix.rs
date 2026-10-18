@@ -23,6 +23,8 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
         .expect("save clean shutdown metadata");
     let clean_runtime =
         DurableSyncRuntime::open(clean_store, sync_config()).expect("clean runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&clean_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&clean_runtime);
 
     let unclean_shutdown = "unclean_shutdown";
     let unclean_path = temp_store_path(unclean_shutdown);
@@ -39,6 +41,8 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
         .expect("save unclean shutdown metadata");
     let unclean_runtime =
         DurableSyncRuntime::open(unclean_store, sync_config()).expect("unclean runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&unclean_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&unclean_runtime);
 
     let mid_download_interruption = "mid_download_interruption";
     let mid_download_path = temp_store_path(mid_download_interruption);
@@ -46,7 +50,7 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
     let mid_download_genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
     let mid_download_child_one = build_block(block_hash(&mid_download_genesis.header), 1);
     let mid_download_child_two = build_block(block_hash(&mid_download_child_one.header), 2);
-    save_chain_headers_snapshot_and_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &mid_download_path,
         &[
             (&mid_download_genesis, 0),
@@ -54,7 +58,6 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
             (&mid_download_child_two, 2),
         ],
         &[(&mid_download_genesis, 0)],
-        &[(&mid_download_genesis, 0), (&mid_download_child_one, 1)],
     );
 
     let mid_connect_interruption = "mid_connect_interruption";
@@ -65,14 +68,13 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
     let mid_connect_missing = build_block(block_hash(&mid_connect_child.header), 2);
     let mid_connect_child_hash = block_hash(&mid_connect_child.header);
     let mid_connect_missing_hash = block_hash(&mid_connect_missing.header);
-    save_chain_headers_snapshot_and_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &mid_connect_path,
         &[
             (&mid_connect_genesis, 0),
             (&mid_connect_child, 1),
             (&mid_connect_missing, 2),
         ],
-        &[(&mid_connect_genesis, 0), (&mid_connect_child, 1)],
         &[(&mid_connect_genesis, 0), (&mid_connect_child, 1)],
     );
 
@@ -83,10 +85,9 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
     let stale_child = build_block(block_hash(&stale_genesis.header), 1);
     let stale_missing = build_block(block_hash(&stale_child.header), 2);
     let stale_missing_hash = block_hash(&stale_missing.header);
-    save_chain_headers_snapshot_and_blocks(
+    crate::sync::tests::support_runtime::seed_genuine_fixture_history(
         &stale_inflight_path,
         &[(&stale_genesis, 0), (&stale_child, 1), (&stale_missing, 2)],
-        &[(&stale_genesis, 0), (&stale_child, 1)],
         &[(&stale_genesis, 0), (&stale_child, 1)],
     );
 
@@ -109,8 +110,13 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
         .expect("unclean shutdown state");
 
     let mid_download_store = FjallNodeStore::open(&mid_download_path).expect("mid-download store");
+    mid_download_store
+        .save_block(&mid_download_child_one, PersistMode::Sync)
+        .expect("retain actual downloaded inactive body");
     let mid_download_runtime =
         DurableSyncRuntime::open(mid_download_store, sync_config()).expect("mid-download runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&mid_download_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&mid_download_runtime);
     let mid_download_summary = mid_download_runtime.snapshot_summary();
     let mid_download_state = mid_download_runtime
         .durable_sync_state_for_summary(
@@ -124,6 +130,8 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
     let mid_connect_store = FjallNodeStore::open(&mid_connect_path).expect("mid-connect store");
     let mut mid_connect_runtime =
         DurableSyncRuntime::open(mid_connect_store, sync_config()).expect("mid-connect runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&mid_connect_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&mid_connect_runtime);
     let mid_connect_summary_before = mid_connect_runtime.snapshot_summary();
     let mut mid_connect_transport = ScriptedTransport::new(vec![version_verack_script(2)]);
     let mid_connect_summary_after = mid_connect_runtime
@@ -137,6 +145,8 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
     let stale_store = FjallNodeStore::open(&stale_inflight_path).expect("stale in-flight store");
     let mut stale_runtime =
         DurableSyncRuntime::open(stale_store, sync_config()).expect("stale in-flight runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(&stale_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&stale_runtime);
     stale_runtime.inflight_blocks.insert(stale_missing_hash);
     let stale_summary = SyncRunSummary::empty(1, 1, 1);
     let stale_state = stale_runtime
@@ -152,9 +162,15 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
         FjallNodeStore::open(&stale_inflight_path).expect("reopened stale store");
     let reopened_stale_runtime = DurableSyncRuntime::open(reopened_stale_store, sync_config())
         .expect("reopened stale runtime");
+    crate::sync::tests::support_runtime::admit_fixture_runtime_headers_only(
+        &reopened_stale_runtime,
+    );
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&reopened_stale_runtime);
     let reopened_stale_summary = reopened_stale_runtime.snapshot_summary();
 
     // Assert
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&mid_connect_runtime);
+    crate::sync::tests::support_runtime::assert_fixture_work_unearned(&reopened_stale_runtime);
     assert_eq!(
         clean_state.sync.recovery_category,
         FieldAvailability::available(SyncRecoveryCategory::CleanShutdown),
@@ -188,7 +204,7 @@ fn phase71_same_datadir_resume_matrix_covers_clean_unclean_mid_download_mid_conn
     );
     assert_eq!(
         mid_connect_summary_before.maybe_validated_active_chain_work,
-        Some("2".to_string())
+        Some("0000000000000000000000000000000000000000000000000000000000000004".to_string())
     );
     assert_eq!(mid_connect_summary_after.best_block_height, 1);
     assert!(!mid_connect_requested.contains(&mid_connect_child_hash));

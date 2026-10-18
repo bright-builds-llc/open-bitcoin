@@ -84,11 +84,22 @@ pub(super) fn header_chain(count: usize) -> Vec<BlockHeader> {
     let mut headers = Vec::new();
     let mut previous = BlockHash::from_byte_array([0_u8; 32]);
     for index in 0..count {
-        let next = header(previous, index as u32 + 1);
+        let next = mined_header(previous, index as u32 + 1);
         previous = open_bitcoin_consensus::block_hash(&next);
         headers.push(next);
     }
     headers
+}
+
+pub(super) fn seed_mined_fixture_chain(manager: &mut PeerManager, positions: &[ChainPosition]) {
+    manager.seed_local_chain(positions);
+    let mut headers = HeaderStore::default();
+    for position in positions {
+        headers
+            .insert_header(position.header.clone())
+            .expect("mined fixture ancestry");
+    }
+    manager.seed_header_store(headers);
 }
 
 pub(super) fn hash_from_index(index: usize) -> Hash32 {

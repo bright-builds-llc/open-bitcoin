@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { CONTRACTS, type Contract } from "./check-phase162-integrated-filter-proof/contracts.ts";
 import { checkPhase162IntegratedFilterProof, loadSources, assertionSpans, CHECK_FILES, MODULE_EDGES,
   NATIVE_COMMANDS, SHARED_FORMAT, factSpans, processOwnershipView, defaultRustTestAttributes,
-  typeScriptFunction, typeScriptCallSpans, maskTypeScript } from "./check-phase162-integrated-filter-proof.ts";
+  typeScriptFunction, typeScriptCallSpans, maskTypeScript, checkPhase162LegacyFunctionControls } from "./check-phase162-integrated-filter-proof.ts";
 import { CHECKPOINT_COUNTS, TS_CONTRACTS } from "./check-phase162-integrated-filter-proof/contracts.ts";
 import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
@@ -13,7 +13,17 @@ import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, ORIGINAL_AUDITS
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 
 const real = loadSources();
+for (const file of ["scripts/check-phase158-validated-reorg.ts", "scripts/check-phase158-validated-reorg.test.ts", "scripts/check-phase163-provenance.ts"]) test(`phase165 current158 fingerprint owner ${file}`, () => {
+  // Arrange: the current baseline must pass before the selected raw-source tamper.
+  expect(checkPhase162IntegratedFilterProof(real)).toEqual([]);
+  const source = real.get(file)!;
+  const sources = new Map(real).set(file, source + "\n// unreviewed fingerprint\n");
+  // Act / Assert: a version/claim error elsewhere cannot satisfy this control.
+  expect(checkPhase162IntegratedFilterProof(sources)).toContain(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
+});
 import { historicalFixtureView, fixtureSourceAttribution, MIGRATED_FIXTURE } from "./check-phase162-integrated-filter-proof.ts";
+import { legacyFunctionSources } from "./check-phase164-canonical-identity/fixture-source.ts";
+const legacyPending = () => legacyFunctionSources(pending());
 const historicalSha = (sources: Map<string, string>, file: string) => sha(historicalFixtureView(sources).get(file)!);
 
 test("explicit fixture wiring retains unequal current and original historical digests", () => {
@@ -224,10 +234,11 @@ for (const change of ["remove", "different", "duplicate", "variant", "nest", "co
   expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(PROCESS) && /ownership|registration/.test(failure))).toBe(true);
 });
 test("the exact Unix registration cannot normalize another source file", () => {
-  const sources = pending();
+  const sources = legacyPending();
+  expect(checkPhase162LegacyFunctionControls(sources)).toEqual([]);
   const file = CONTRACTS[0].file;
   mutate(sources, file, source => UNIX + "\n" + source);
-  expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(file) && failure.includes("Unix ownership/registration"))).toBe(true);
+  expect(checkPhase162LegacyFunctionControls(sources).some(failure => failure.includes(file) && failure.includes("Unix ownership/registration"))).toBe(true);
 });
 test("Unix helper no-op and fake assertion cannot satisfy original process behavior", () => {
   const sources = pending();
@@ -378,7 +389,7 @@ const RUST_MUTATIONS: [string, string, string, string][] = [
   ["SocketFilterWriter::write", "filter_serving.rs", "self.queue.clear_pending_write();", "self.queue = &mut RuntimeQueuePressureState::default();"],
 ];
 for (const [symbol, suffix, before, after] of RUST_MUTATIONS) test(`semantic Rust ${symbol}: ${before}`, () => {
-  const sources = pending();
+  const sources = legacyPending();
   const row = rows.find(row => row.symbol === symbol && row.file.endsWith(suffix))!;
   expect(row).toBeDefined();
   mutate(sources, row.file, source => {
@@ -398,7 +409,7 @@ function anchorSpan(source: string, row: Contract, anchor: string): [number, num
   return [open + offsets[start], open + offsets[start + compact(anchor).length - 1] + 1];
 }
 function rejectsFunction(sources: Map<string, string>, row: Contract): void {
-  expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(`${row.file}:${row.symbol}:`))).toBe(true);
+  expect(checkPhase162LegacyFunctionControls(sources).some(failure => failure.includes(`${row.file}:${row.symbol}:`))).toBe(true);
 }
 
 test("genuine Pending bootstrap uses current executable roots without future proof", () => {
@@ -420,7 +431,7 @@ test("hermetic formal proof requires all fresh source-bound reports", () => {
 const rows: Contract[] = [...CONTRACTS, ...CHECKPOINT_CONTRACTS.map((row, index) => ({ ...row, kind: "production" as const, counts: CHECKPOINT_COUNTS[index], assertions: [], facts: [] }))];
 for (const row of rows) {
   test(`executable selector remains ${row.file}:${row.symbol}`, () => {
-    const sources = pending();
+    const sources = legacyPending();
     mutate(sources, row.file, source => {
       const start = maybeSelector(source, row.symbol, row.kind === "production")!.start;
       return source.slice(0, start) + source.slice(start).replace(new RegExp(`\\bfn\\s+${row.symbol.split("::").at(-1)}\\b`), "fn removed_selector");
@@ -428,7 +439,7 @@ for (const row of rows) {
     rejectsFunction(sources, row);
   });
   for (const [index, anchor] of row.anchors.entries()) test(`independent caller ${row.symbol} edge${index}: ${anchor}`, () => {
-    const sources = pending();
+    const sources = legacyPending();
     mutate(sources, row.file, source => {
       const [start, end] = anchorSpan(source, row, anchor);
       return source.slice(0, start) + "/* removed caller */" + source.slice(end);
@@ -436,7 +447,7 @@ for (const row of rows) {
     rejectsFunction(sources, row);
   });
   for (const [index, assertion] of row.assertions.entries()) test(`independent assertion ${row.symbol} #${index}`, () => {
-    const sources = pending();
+    const sources = legacyPending();
     mutate(sources, row.file, source => {
       const span = assertionSpans(source, row.symbol, row.kind === "production")[index];
       expect(compact(span.raw)).toBe(compact(assertion));
@@ -445,7 +456,7 @@ for (const row of rows) {
     rejectsFunction(sources, row);
   });
   for (const [index, fact] of row.facts.entries()) test(`independent protocol matrix ${row.symbol} #${index}`, () => {
-    const sources = pending();
+    const sources = legacyPending();
     mutate(sources, row.file, source => {
       const span = factSpans(source, row.symbol, row.kind === "production")[index];
       expect(compact(span.raw)).toBe(compact(fact));
@@ -454,7 +465,7 @@ for (const row of rows) {
     rejectsFunction(sources, row);
   });
   if (row.kind === "test") for (const attribute of ["#[ignore]", '#[ignore = "fake evidence"]', "#[cfg(any())]"]) test(`default test ownership ${row.symbol}: ${attribute}`, () => {
-    const sources = pending();
+    const sources = legacyPending();
     mutate(sources, row.file, source => {
       const start = maybeSelector(source, row.symbol)!.start;
       return source.slice(0, start) + attribute + "\n" + source.slice(start);
@@ -466,7 +477,7 @@ for (const row of rows) {
 for (const symbol of ["phase162_integrated_lifecycle", "denied_disconnect", "run", "partial_case", "socket_case", "send_response"]) {
   const row = rows.find(row => row.symbol === symbol)!;
   for (const disguise of ["return;", "#[cfg(any())] {", "if false {"]) test(`dead executable evidence ${symbol}: ${disguise}`, () => {
-    const sources = pending();
+    const sources = legacyPending();
     mutate(sources, row.file, source => {
       const fn = maybeSelector(source, symbol, row.kind === "production")!;
       const open = rustCode(source).indexOf("{", fn.start) + 1;
@@ -482,13 +493,13 @@ test("outbound physical prefix constant cannot move from31bytes", () => {
   expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes("exact31-byte constant"))).toBe(true);
 });
 for (const row of CONTRACTS.filter(row => /(?:peer_filter_transport|peer_filters)\/phase162\.rs$/.test(row.file) && ["run", "partial_case"].includes(row.symbol))) test(`manual CF write receipt refuses ${row.file}:${row.symbol}`, () => {
-  const sources = pending();
+  const sources = legacyPending();
   mutate(sources, row.file, source => {
     const fn = maybeSelector(source, row.symbol)!;
     const open = rustCode(source).indexOf("{", fn.start) + 1;
     return source.slice(0, open) + "frame.acknowledge_write();" + source.slice(open);
   });
-  expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(`${row.file}:${row.symbol}: production executor alone`))).toBe(true);
+  expect(checkPhase162LegacyFunctionControls(sources).some(failure => failure.includes(`${row.file}:${row.symbol}: production executor alone`))).toBe(true);
 });
 for (const file of CHECK_FILES) test(`hermetic mandatory current root ${file}`, () => {
   const sources = pending();
@@ -596,7 +607,7 @@ for (const executed of [false, true]) {
         if (mode === "replace") lines[index] = lines[index].replace(command, command.includes("--edition") ? command.replace("--edition 2024", "--edition 2021") : command.includes("./scripts/") ? command.replace("./scripts/", "scripts/") : command.replace(".ts", ".removed.ts"));
         return lines.join("\n");
       });
-      expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes("scripts/verify.sh:"))).toBe(true);
+      expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(command === SHARED_FORMAT ? "pinned shared fixture format required" : "exact once ordered Phase161/162 native commands"))).toBe(true);
     });
   }
   test(`native reordered ${executed ? "executed" : "documented"} checker/oracle`, () => {

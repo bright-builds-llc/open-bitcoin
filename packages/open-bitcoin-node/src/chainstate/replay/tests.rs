@@ -82,7 +82,9 @@ fn header_entry(block_header: BlockHeader, height: u32, chain_work: u128) -> Hea
         block_hash: block_hash(&block_header),
         header: block_header,
         height,
-        chain_work,
+        chain_work: open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+            chain_work,
+        ),
     }
 }
 

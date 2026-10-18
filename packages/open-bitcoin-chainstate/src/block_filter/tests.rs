@@ -48,7 +48,12 @@ fn coinbase_block(height: u32) -> (Block, ChainPosition) {
     block.header.merkle_root = block_merkle_root(&block.transactions)
         .expect("fixture merkle root")
         .0;
-    let position = ChainPosition::new(block.header.clone(), height, 1, 0);
+    let position = ChainPosition::new(
+        block.header.clone(),
+        height,
+        crate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
     (block, position)
 }
 
@@ -81,7 +86,7 @@ fn unchanged_validated_body_succeeds_but_changed_transaction_refuses_same_header
                 open_bitcoin_primitives::Txid::from_byte_array([9; 32]);
         }
         // Act
-        let historical_error = historical_error(&altered, &staged.position, &staged.undo);
+        let historical_error = historical_error(&altered, staged.position(), staged.undo());
         let staged_error = staged
             .basic_filter_inputs(&altered)
             .expect_err("changed body must refuse");
@@ -99,12 +104,12 @@ fn genuine_merkle_mutation_refuses_even_matching_root_and_position() {
     let fixture = fixtures::spending_chain();
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
     let mut block = fixture.spending.clone();
-    let mut position = staged.position.clone();
+    let mut position = staged.position().clone();
     block.transactions.push(block.transactions[2].clone());
     rebind_body(&mut block, &mut position);
     assert_eq!(block.header, fixture.spending.header);
-    assert_eq!(position, staged.position);
-    let mut undo = staged.undo.clone();
+    assert_eq!(&position, staged.position());
+    let mut undo = staged.undo().clone();
     undo.transactions.push(undo.transactions[1].clone());
     // Act
     let error = historical_error(&block, &position, &undo);
@@ -118,7 +123,7 @@ fn repeated_real_subtree_refuses_a_root_preserving_body_substitution() {
     let fixture = fixtures::spending_chain();
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
     let mut original = fixture.spending.clone();
-    let mut position = staged.position.clone();
+    let mut position = staged.position().clone();
     for lock_time in 1..=3 {
         let mut transaction = original.transactions[2].clone();
         transaction.lock_time = lock_time;
@@ -130,7 +135,7 @@ fn repeated_real_subtree_refuses_a_root_preserving_body_substitution() {
         .transactions
         .extend_from_slice(&original.transactions[4..6]);
     let (root, mutated) = block_merkle_root(&altered.transactions).expect("mutated subtree root");
-    let mut undo = staged.undo.clone();
+    let mut undo = staged.undo().clone();
     let extra_undo = undo.transactions[1].clone();
     undo.transactions
         .resize(altered.transactions.len() - 1, extra_undo);
@@ -364,11 +369,11 @@ fn historical_undo_transaction_count_requires_exact_correspondence() {
     let fixture = fixtures::spending_chain();
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
     for count in [1, 3] {
-        let mut undo = staged.undo.clone();
+        let mut undo = staged.undo().clone();
         undo.transactions.resize(count, TxUndo::default());
         // Act / Assert
         assert_eq!(
-            historical_error(&fixture.spending, &staged.position, &undo),
+            historical_error(&fixture.spending, staged.position(), &undo),
             BasicFilterInputError::TransactionCount {
                 expected: 2,
                 actual: count
@@ -383,12 +388,12 @@ fn historical_undo_input_counts_require_exact_correspondence() {
     let fixture = fixtures::spending_chain();
     let staged = fixtures::stage(&fixture.chainstate, &fixture.spending, 3);
     for (index, count) in [(0, 0), (1, 2)] {
-        let mut undo = staged.undo.clone();
+        let mut undo = staged.undo().clone();
         let coin = undo.transactions[index].restored_inputs[0].clone();
         undo.transactions[index].restored_inputs.resize(count, coin);
         // Act / Assert
         assert_eq!(
-            historical_error(&fixture.spending, &staged.position, &undo),
+            historical_error(&fixture.spending, staged.position(), &undo),
             BasicFilterInputError::InputCount {
                 index: index + 1,
                 expected: 1,

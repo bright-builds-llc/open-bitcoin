@@ -9,6 +9,7 @@ use super::*;
 use crate::storage::validation_history::{
     AdmittedValidationHeaders, BlockValidationIdentity, ValidationProvenance,
 };
+use open_bitcoin_network::NetworkError;
 
 pub(crate) struct TrustedHeaderAdmission {
     store: crate::FjallNodeStore,
@@ -60,6 +61,23 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         timestamp: i64,
         params: ConsensusParams,
     ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
+        self.handle_validated_headers_with_policy(
+            peer_id,
+            message,
+            timestamp,
+            params,
+            HeaderSyncPolicy::HeadersOnly,
+        )
+    }
+
+    pub(super) fn handle_validated_headers_with_policy(
+        &mut self,
+        peer_id: PeerId,
+        message: HeadersMessage,
+        timestamp: i64,
+        params: ConsensusParams,
+        policy: HeaderSyncPolicy,
+    ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
         if message.headers.len() > open_bitcoin_network::MAX_HEADERS_RESULTS {
             return Err(open_bitcoin_core::codec::CodecError::LengthOutOfRange {
                 field: "headers count",
@@ -69,20 +87,51 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         }
         // Refuse the entire ordinary batch before peer bookkeeping or prefix publication.
         self.guard_header_batch(&message.headers)?;
+        if self
+            .maybe_header_consensus_params
+            .is_some_and(|selected| selected != params)
+        {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "header-consensus-params-mismatch".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        super::header_sync::validate_header_batch_proof(&message.headers, params)?;
+        // Initialization is an explicit fixture/qualified canonical operation, never P2P.
+        if self.maybe_header_consensus_params.is_none() {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "unbound-header-owner".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        if let Some(first) = message.headers.first()
+            && self
+                .peer_manager
+                .header_store()
+                .maybe_proof_facts(first.previous_block_hash)
+                .is_none()
+        {
+            return Err(NetworkError::MissingHeaderAncestor(first.previous_block_hash).into());
+        }
+        self.peer_manager
+            .peer_state(peer_id)
+            .ok_or(NetworkError::UnknownPeer(peer_id))?;
         let admission_scope = self.admission_scope;
         let maybe_store = self.chainstate.store().maybe_validation_history_store();
         let mut identities = Vec::new();
         let result = self.peer_manager.handle_headers_with_policy(
             peer_id,
             message,
-            HeaderSyncPolicy::HeadersOnly,
+            policy,
             |headers, header| {
                 admission_scope
                     .check_header(header)
                     .map_err(|error| error.network_error())?;
                 validate_header_for_sync(headers, header, timestamp, params)?;
                 let was_known = headers.entry(&block_hash(header)).is_some();
-                let inserted = headers.insert_header(header.clone())?;
+                let inserted = headers.insert_header_with_params(header.clone(), &params)?;
                 if !was_known && maybe_store.is_some() {
                     let entry = headers.entry(&inserted.block_hash).ok_or(
                         open_bitcoin_network::NetworkError::MissingHeaderAncestor(
@@ -106,7 +155,16 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 Ok(inserted)
             },
         );
-        // A rejected suffix does not erase genuinely admitted prefix headers.
+        // A continuous PoW-valid contextual failure retains the accepted prefix and its order.
+        self.publish_admitted_header_identities(identities)?;
+        result.map_err(Into::into)
+    }
+
+    pub(super) fn publish_admitted_header_identities(
+        &self,
+        identities: Vec<BlockValidationIdentity>,
+    ) -> ManagedResult<()> {
+        let maybe_store = self.chainstate.store().maybe_validation_history_store();
         if let Some(store) = maybe_store {
             let recovered = store
                 .recovered_validation_history()
@@ -147,7 +205,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 }
             }
         }
-        result.map_err(Into::into)
+        Ok(())
     }
 
     pub(crate) fn persist_validation_header_snapshot(&self) -> Result<(), ManagedNetworkError> {

@@ -159,13 +159,13 @@ impl AcceptedBasicFilterFacts {
         block: &Block,
         staged: &StagedChainstateConnect,
     ) -> Result<Self, AcceptedBasicIndexFailure> {
-        let work = fact_work(block, &staged.undo)?;
+        let work = fact_work(block, staged.undo())?;
         staged
             .basic_filter_inputs(block)
             .map_err(|_| AcceptedBasicIndexFailure::InvalidFacts)?;
         Ok(Self {
             block: clone_basic_body(block),
-            undo: staged.undo.clone(),
+            undo: staged.undo().clone(),
             position: staged.position().clone(),
             work,
         })

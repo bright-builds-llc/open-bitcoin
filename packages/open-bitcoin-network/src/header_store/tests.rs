@@ -6,6 +6,8 @@
 // - packages/bitcoin-knots/src/node/txdownloadman.h
 // - packages/bitcoin-knots/test/functional/p2p_handshake.py
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
+// - packages/bitcoin-knots/src/node/blockstorage.cpp
+// - packages/bitcoin-knots/src/pow.cpp
 
 use open_bitcoin_chainstate::ChainPosition;
 use open_bitcoin_consensus::block_hash;
@@ -14,14 +16,23 @@ use open_bitcoin_primitives::{BlockHash, BlockHeader, BlockLocator, Hash32, Merk
 use crate::{HeaderStore, NetworkError};
 
 fn header(previous_block_hash: BlockHash, nonce: u32) -> BlockHeader {
-    BlockHeader {
+    let mut header = BlockHeader {
         version: 1,
         previous_block_hash,
         merkle_root: MerkleRoot::from_byte_array([nonce as u8; 32]),
         time: nonce,
         bits: 0x207f_ffff,
         nonce,
+    };
+    while !open_bitcoin_consensus::crypto::check_proof_of_work(
+        block_hash(&header).to_byte_array(),
+        header.bits,
+    )
+    .expect("bounded target")
+    {
+        header.nonce = header.nonce.checked_add(1).expect("bounded mining");
     }
+    header
 }
 
 #[test]
@@ -30,10 +41,16 @@ fn header_store_builds_exponential_locators() {
     let mut previous = BlockHash::from_byte_array([0_u8; 32]);
     for height in 0..15_u32 {
         let current_header = header(previous, height + 1);
-        let position =
-            ChainPosition::new(current_header.clone(), height, u128::from(height + 1), 0);
+        let position = ChainPosition::new(
+            current_header.clone(),
+            height,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(u128::from(height + 1)),
+            0,
+        );
         previous = position.block_hash;
-        store.record_position(&position);
+        store
+            .insert_header(current_header)
+            .expect("accepted header");
     }
 
     let locator = store.locator();
@@ -96,6 +113,7 @@ fn empty_duplicate_and_missing_ancestor_paths_are_covered() {
     assert_eq!(store.best_height(), -1);
     assert!(store.best_tip().is_none());
     store.update_best_tip(BlockHash::from_byte_array([42_u8; 32]));
+    store.update_unproved_fixture_tip(BlockHash::from_byte_array([42_u8; 32]));
     assert!(store.best_tip().is_none());
     store.best_tip = Some(BlockHash::from_byte_array([43_u8; 32]));
     store
@@ -134,37 +152,78 @@ fn empty_duplicate_and_missing_ancestor_paths_are_covered() {
 }
 
 #[test]
-fn seed_and_tie_break_paths_prefer_the_expected_tip() {
+fn unproved_seed_tie_keeps_the_first_numeric_projection() {
     let genesis_header = header(BlockHash::from_byte_array([0_u8; 32]), 1);
-    let genesis_position = ChainPosition::new(genesis_header.clone(), 0, 1, 0);
+    let genesis_position = ChainPosition::new(
+        genesis_header.clone(),
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
     let child_a_header = header(genesis_position.block_hash, 2);
     let child_b_header = header(genesis_position.block_hash, 3);
-    let child_a_position = ChainPosition::new(child_a_header.clone(), 1, 2, 0);
-    let child_b_position = ChainPosition::new(child_b_header.clone(), 1, 2, 0);
+    let child_a_position = ChainPosition::new(
+        child_a_header.clone(),
+        1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
+        0,
+    );
+    let child_b_position = ChainPosition::new(
+        child_b_header.clone(),
+        1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
+        0,
+    );
 
     let mut store = HeaderStore::default();
     store.seed_from_chain(&[genesis_position.clone(), child_a_position.clone()]);
     store.record_position(&child_b_position);
 
-    let expected_tip = child_a_position.block_hash.max(child_b_position.block_hash);
-    assert_eq!(store.best_tip().expect("best tip").block_hash, expected_tip);
+    let expected_tip = child_a_position.block_hash;
+    assert_eq!(
+        store
+            .maybe_unproved_fixture_tip()
+            .expect("fixture tip")
+            .block_hash,
+        expected_tip
+    );
+    assert!(store.best_tip().is_none());
+    assert!(store.maybe_best_proof_header().is_none());
 }
 
 #[test]
-fn higher_height_wins_when_work_is_equal() {
+fn unproved_equal_work_height_does_not_replace_the_projection() {
     let genesis_header = header(BlockHash::from_byte_array([0_u8; 32]), 1);
-    let genesis_position = ChainPosition::new(genesis_header, 0, 1, 0);
+    let genesis_position = ChainPosition::new(
+        genesis_header,
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
     let child_header = header(genesis_position.block_hash, 2);
     let descendant_header = header(block_hash(&child_header), 3);
 
     let mut store = HeaderStore::default();
     store.record_position(&genesis_position);
-    store.record_position(&ChainPosition::new(child_header.clone(), 1, 2, 0));
-    store.record_position(&ChainPosition::new(descendant_header.clone(), 2, 2, 0));
+    store.record_position(&ChainPosition::new(
+        child_header.clone(),
+        1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
+        0,
+    ));
+    store.record_position(&ChainPosition::new(
+        descendant_header.clone(),
+        2,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
+        0,
+    ));
 
     assert_eq!(
-        store.best_tip().expect("best tip").block_hash,
-        block_hash(&descendant_header),
+        store
+            .maybe_unproved_fixture_tip()
+            .expect("fixture tip")
+            .block_hash,
+        block_hash(&child_header),
     );
 }
 
@@ -212,9 +271,19 @@ fn best_chain_entries_follow_the_selected_tip_order() {
 fn header_store_rebuilds_from_persisted_entries() {
     // Arrange
     let genesis_header = header(BlockHash::from_byte_array([0_u8; 32]), 1);
-    let genesis = ChainPosition::new(genesis_header.clone(), 0, 1, 0);
+    let genesis = ChainPosition::new(
+        genesis_header.clone(),
+        0,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+        0,
+    );
     let child_header = header(genesis.block_hash, 2);
-    let child = ChainPosition::new(child_header, 1, 2, 0);
+    let child = ChainPosition::new(
+        child_header,
+        1,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
+        0,
+    );
     let original_entries = [
         crate::HeaderEntry {
             block_hash: child.block_hash,
@@ -235,9 +304,13 @@ fn header_store_rebuilds_from_persisted_entries() {
     let rebuilt_entries = store.entries().cloned().collect::<Vec<_>>();
 
     // Assert
-    assert_eq!(store.best_height(), 1);
+    assert_eq!(store.best_height(), -1);
+    assert!(store.best_tip().is_none());
     assert_eq!(
-        store.best_tip().expect("best tip").block_hash,
+        store
+            .maybe_unproved_fixture_tip()
+            .expect("fixture tip")
+            .block_hash,
         child.block_hash
     );
     assert_eq!(rebuilt_entries.len(), 2);
@@ -254,7 +327,7 @@ fn header_store_rebuild_rejects_missing_parent() {
         block_hash: block_hash(&orphan_header),
         header: orphan_header,
         height: 1,
-        chain_work: 2,
+        chain_work: open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
     };
 
     // Act

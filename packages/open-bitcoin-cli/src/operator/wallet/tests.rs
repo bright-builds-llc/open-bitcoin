@@ -222,7 +222,7 @@ fn managed_wallet_resolution_rejects_unknown_wallet_names() {
 }
 
 #[test]
-fn chain_compatibility_wallet_name_refuses_without_guessing_or_source_mutation() {
+fn phase165_chain_compatibility_wallet_name_refuses_without_guessing_or_source_mutation() {
     use crate::operator::runtime::chain_compatibility::tests::{CHAINS, SHAPES, SourceFixture};
     for maybe_name in [None, Some("alpha")] {
         assert!(
@@ -246,6 +246,8 @@ fn chain_compatibility_wallet_name_refuses_without_guessing_or_source_mutation()
                     panic!("typed compatibility refusal");
                 };
                 assert_eq!(refusal.selected_chain(), chain);
+                assert_eq!(refusal.work_profile(), open_bitcoin_node::storage::chain_compatibility::WorkProfileObservation::Unavailable);
+                assert!(refusal.to_string().contains("work_decision="));
                 assert_eq!(fixture.snapshot(), before);
             }
         }
@@ -253,11 +255,14 @@ fn chain_compatibility_wallet_name_refuses_without_guessing_or_source_mutation()
 }
 
 #[test]
-fn chain_compatibility_wallet_backup_preserves_source_and_every_destination() {
-    use crate::operator::runtime::chain_compatibility::tests::{CHAINS, SHAPES, SourceFixture};
+fn phase165_chain_compatibility_wallet_backup_preserves_source_and_every_destination() {
+    use crate::operator::runtime::chain_compatibility::tests::{CHAINS, SHAPES};
     for shape in SHAPES {
         // Arrange
-        let fixture = SourceFixture::new(shape);
+        let fixture =
+            crate::operator::runtime::chain_compatibility::tests::phase165_work::forged_source(
+                shape,
+            );
         fs::write(
             fixture.root.join("existing.json"),
             b"original backup sentinel",
@@ -289,6 +294,8 @@ fn chain_compatibility_wallet_backup_preserves_source_and_every_destination() {
                             panic!("typed compatibility refusal");
                         };
                         assert_eq!(refusal.selected_chain(), chain);
+                        assert_eq!(refusal.work_profile(), open_bitcoin_node::storage::chain_compatibility::WorkProfileObservation::Unavailable);
+                        assert!(refusal.to_string().contains("work_decision="));
                         assert_eq!(fixture.snapshot(), before, "{shape} {chain}");
                     }
                 }

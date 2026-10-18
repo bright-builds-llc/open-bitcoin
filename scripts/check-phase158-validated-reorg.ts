@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { fixtureSourceAttribution, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { PHASE163_DOC, PROVENANCE_FILES, PROVENANCE_CODE, PROVENANCE_CLAIMS, resolveV25Provenance, provenanceClaimView } from "./check-phase163-provenance.ts";
 
 const NODE = "packages/open-bitcoin-node/src/";
@@ -17,8 +18,8 @@ const APPEND = NODE + "storage/fjall_store/filters/append.rs";
 const REORG = NODE + "storage/fjall_store/filters/reorg.rs";
 const PREFLIGHT = NODE + "chainstate/filter_reorg/preflight.rs";
 const TEST = NODE + "sync/tests/filter_index/reorg/";
-type Contract = { file: string; symbol: string; anchors: string[]; maybeTest?: boolean; maybeImpl?: string };
-const row = (file: string, symbol: string, anchors: string[], maybeTest?: boolean, maybeImpl?: string): Contract => ({ file, symbol, anchors, maybeTest, maybeImpl });
+type Contract = { file: string; symbol: string; anchors: string[]; maybeTest?: boolean; maybeImpl?: string; maybeClauses?: string[] };
+const row = (file: string, symbol: string, anchors: string[], maybeTest?: boolean, maybeImpl?: string, maybeClauses?: string[]): Contract => ({ file, symbol, anchors, maybeTest, maybeImpl, maybeClauses });
 
 export const PHASE162 = ".planning/phases/162-real-prune-retention-and-integrated-parity-proof/";
 export const PHASE162_DOC = "docs/parity/v2-5-integrated-filter-proof.md";
@@ -161,13 +162,23 @@ export function checkPhase162ExcludedClaims(source: string, file: string, failur
 /** Fixed actual callers and guarded callees; lexical checks supplement executed Rust behavior. */
 export const CONTRACTS: Contract[] = [
   row(CORE + "engine/stage.rs", "stage_reorg", ["disconnect_blocks", "apply_connect_on_overlay(", "Ok(StagedChainstateReorg"]),
-  row(CORE + "engine/stage.rs", "absorb_staged_reorg_with_receipt", ["self.absorb_overlay(overlay, maybe_best_block)", "self.active_chain = next_active_chain", "self.undo_by_block = next_undo_by_block", "let receipt = AcceptedChainstateReorg", "(transition, receipt)"]),
+  row(CORE + "engine/stage.rs", "absorb_staged_reorg_with_receipt", ["Ok(self.validate_staged_reorg(staged)?.absorb())"]),
+  row(CORE + "engine/stage.rs", "validate_staged_reorg", ["self.check_staged_reorg(&staged)?", "Ok(ValidatedChainstateReorg", "owner: self", "staged"]),
+  row(CORE + "engine/stage.rs", "check_staged_reorg", ["self.work_authority.check(&staged.binding, self.tip(), true)"]),
+  row(CORE + "engine/work_authority.rs", "check", ["!Arc::ptr_eq(&self.owner, &binding.owner)", "return Err(ChainstateError::StageOwnerMismatch)", "if allow_preview", "self.maybe_preview.as_ref().is_some_and(|seal| Arc::ptr_eq(seal, &binding.seal))", "return Ok(())", "!Arc::ptr_eq(&self.generation, &binding.generation)", "maybe_tip != binding.maybe_tip.as_ref()", "return Err(ChainstateError::StaleStage)"], false, undefined, [
+    "if !Arc::ptr_eq(&self.owner, &binding.owner) { return Err(ChainstateError::StageOwnerMismatch); }",
+    "if allow_preview && self.maybe_preview.as_ref().is_some_and(|seal| Arc::ptr_eq(seal, &binding.seal)) { return Ok(()); }",
+    "if !Arc::ptr_eq(&self.generation, &binding.generation) || maybe_tip != binding.maybe_tip.as_ref() { return Err(ChainstateError::StaleStage); }",
+  ]),
+  row(CORE + "engine/stage.rs", "absorb", ["self.owner.absorb_validated_reorg(self.staged)"], false, "ValidatedChainstateReorg<'_, V>"),
+  row(CORE + "engine/stage.rs", "absorb_validated_reorg", ["self.absorb_overlay(overlay, maybe_best_block)", "self.active_chain = next_active_chain", "self.undo_by_block = next_undo_by_block", "self.maybe_confirmed_txid_counts = next_confirmed_txid_counts", "self.work_authority.accept(&binding)", "let receipt = AcceptedChainstateReorg", "(transition, receipt)"]),
   row(NODE + "network/runtime_authority.rs", "reorg_to_branch", ["self.try_mutate", "network.reorg_to_branch("]),
   row(NODE + "network/mempool_lifecycle.rs", "reorg_to_branch", ["filter_index::reorg::prepare_reorg(", "install_prepared_reorg_preview(&prepared_chainstate)?", "apply_reorg_mempool_lifecycle(", "commit_prepared_reorg(prepared_chainstate)"]),
-  row(NODE + "network/runtime_authority/filter_index/reorg.rs", "prepare_reorg", ["manager.prepare_reorg(disconnect, replacements, flags, params)"]),
-  row(NODE + "chainstate.rs", "prepare_reorg", ["self.chainstate.stage_reorg(", "prepare_basic_index_reorg(&staged, replacement_branch)?", "Ok(PreparedChainstateReorg"]),
+  row(NODE + "network/runtime_authority/filter_index/reorg.rs", "prepare_reorg", ["manager.prepare_authorized_reorg(authorization, disconnect, replacements, flags, params)"]),
+  row(NODE + "chainstate/work_authority.rs", "prepare_reorg", ["Err(ChainstateError::PreferenceAuthorizationRequired)"]),
+  row(NODE + "chainstate/work_authority.rs", "prepare_authorized_reorg", ["authorization.check_before_prepare(", "self.chainstate.stage_reorg(", "authorization.check_stage(&self.chainstate, &staged)?", "self.prepare_validation_reorg(&staged)?", "self.prepare_basic_index_reorg(&staged, replacement_branch)?", "Ok(PreparedChainstateReorg", "authorization,"]),
   row(NODE + "chainstate.rs", "install_prepared_reorg_preview", ["self.freeze_basic_index_reorg(prepared)", "install_staged_reorg_preview(&prepared.staged)"]),
-  row(NODE + "chainstate/validation_history.rs", "commit_prepared_reorg", ["check_basic_index_reorg(&prepared)", "absorb_staged_reorg_with_receipt(prepared.staged)", "accept_basic_index_reorg(accepted, prepared.maybe_index)", "note_basic_index_failure(", "self.persist()"]),
+  row(NODE + "chainstate/validation_history.rs", "commit_prepared_reorg", ["prepared.authorization.check_stage(&self.chainstate, &prepared.staged)?", "self.check_validation_acceptance_available()", "self.chainstate.check_staged_reorg(&prepared.staged)?", "check_basic_index_reorg(&prepared)", "validate_staged_reorg(prepared.staged)?", ".absorb()", "self.maybe_body_preference = Some(prepared.authorization.into_candidate_binding())", "self.observe_absorbed_validation(", "self.publish_pending_validation_history()", "accept_basic_index_reorg(accepted, prepared.maybe_index)", "note_basic_index_failure(", "self.persist()"]),
   row(NODE + "chainstate/filter_reorg.rs", "prepare_basic_index_reorg", ["lineage.prepare_reorg_storage(staged)", "preflight_required_sources(", "replace_validated_branch(BasicIndexReplacementFacts", "AcceptedBasicFilterFacts::capture_reorg(", "checked_add(preflight_work)"]),
   row(NODE + "chainstate/filter_reorg.rs", "freeze_basic_index_reorg", ["index.validate_work_bound()?", "lineage.freeze_index_reorg(&index.storage)?", "self.invalidate_basic_index_owner()", "BasicIndexReorgState::PreviewFrozen"]),
   row(NODE + "chainstate/filter_reorg.rs", "accept_basic_index_reorg", ["self.invalidate_basic_index_owner()", "BasicIndexReorgState::AcceptedReplacement", "accepted.maybe_new_endpoint()", "lineage.complete_index_reorg(&accepted, index.storage)?", "owner.progress = trial"]),
@@ -219,34 +230,95 @@ export const CHECKPOINT_CONTRACTS: Contract[] = [
 ];
 
 export const TESTS: [string, string][] = [
-  ...["equal_height_index_before_ancestor", "equal_height_index_within_displaced_suffix", "equal_height_index_at_old_tip", "longer_replacement", "shorter_replacement", "shorter_unflushed_return_preserves_coins_fence_and_reopens", "disconnect_only_to_common_ancestor", "full_disconnect_has_empty_checkpoint_and_no_fabricated_target", "stale_owned_turn_cannot_publish", "return_to_original_then_subsequent_stored_connect", "actual_default_maturity_spends_flush_and_reopen", "sync_reconciliation_and_ordinary_live_resume"].map(name => [TEST + "branches.rs", "phase158_validated_reorg_" + name] as [string, string]),
+  ...["equal_height_index_before_ancestor", "equal_height_index_within_displaced_suffix", "equal_height_index_at_old_tip", "longer_replacement", "stronger_unflushed_extended_return_preserves_coins_fence_and_reopens", "stale_owned_turn_cannot_publish", "return_to_original_then_subsequent_stored_connect", "actual_default_maturity_spends_flush_and_reopen", "sync_reconciliation_and_ordinary_live_resume"].map(name => [TEST + "branches.rs", "phase158_validated_reorg_" + name] as [string, string]),
+  ...["weaker_shorter_refuses_without_effects", "explicit_disconnect_to_ancestor_invalidates_basic_without_fabrication", "explicit_full_disconnect_preserves_physical_checkpoint"].map(name => [TEST + "branches/manual_lifecycle.rs", "phase158_validated_reorg_" + name] as [string, string]),
   ...["displaced_exact_records_survive_real_reopen", "pruned_shared_source_survives_repeated_indexed_branches", "missing_consensus_body_refuses_despite_indexed_record", "missing_consensus_undo_refuses_despite_indexed_record", "continuous_startup_protection_precedes_interrupted_prune"].map(name => [TEST + "retention.rs", "phase158_validated_reorg_" + name] as [string, string]),
   ...["configured_reopen_index_ahead_of_old_coins_rebinds_conflicting_rows", "configured_reopen_rewinds_checkpoint_with_conflicting_suffix", "configured_reopen_new_coins_partial_replacement_projection", "deep_required_body_and_undo_loss_precedes_preview_and_mempool", "preview_mempool_refusal_has_no_accepted_receipt", "accepted_body_undo_coins_metadata_boundaries_reopen_truthfully", "rewind_publication_faults_preserve_actual_accepted_tip_and_reopen", "first_and_subsequent_append_faults_reopen_old_canonical_branch"].map(name => [TEST + "failures.rs", "phase158_reorg_failure_" + name] as [string, string]),
   ...["interrupted_intent_refuses_after_reorg_before_deletion", "reserved_crud_and_ifneeded_preserve_unflushed_coins", "preplanned_manual_required_source_skips_after_generation_change", "automatic_prune_remeasures_new_generation_and_earns_own_flush"].map(name => [TEST + "protection.rs", "phase158_reorg_protection_" + name] as [string, string]),
   ...["fixed_depth_complete_preparation_and_turns_do_not_scan_prefix", "exact_and_one_under_record_acquisition_preserve_effects", "retained_over_budget_gap_refuses_before_preview", "absolute_acquisition_exhaustion_refuses_before_effects"].map(name => [TEST + "measurements.rs", "phase158_reorg_measurement_" + name] as [string, string]),
 ];
 const GUARDS = ["scripts/check-phase158-validated-reorg.ts", "scripts/check-phase158-validated-reorg.test.ts",
+  "scripts/check-phase159-filter-rpcs/evidence.ts", "scripts/check-phase159-filter-rpcs/contracts.ts",
   "scripts/check-phase157-index-catch-up/rust-evidence.ts", "scripts/check-phase156-prune-coordination/rust-evidence.ts"];
 const UPSTREAM = ["index/base.cpp", "index/blockfilterindex.cpp", "validation.cpp", "undo.h"].map(file => "packages/bitcoin-knots/src/" + file);
 export const REGISTRATIONS: [string, string][] = [[NODE + "sync/tests/filter_index.rs", "mod reorg;"],
+  [TEST + "branches.rs", "mod manual_lifecycle;"], [CORE + "engine.rs", "mod stage;"],
+  [CORE + "engine.rs", "mod work_authority;"], [NODE + "chainstate.rs", "mod work_authority;"],
   ...["branches", "retention", "failures", "protection", "measurements"].map(name => [NODE + "sync/tests/filter_index/reorg.rs", `mod ${name};`] as [string, string])];
-const SEALED: [string, string][] = [[CORE + "engine.rs", "StagedChainstateReorg"], [CORE + "engine.rs", "AcceptedChainstateReorg"],
+export const SEALED: [string, string][] = [[CORE + "engine/stage.rs", "StagedChainstateReorg"], [CORE + "engine/stage.rs", "AcceptedChainstateReorg"],
+  [CORE + "engine/stage.rs", "ValidatedChainstateReorg"],
   [BRIDGE, "ValidatedBasicFilterReorg"], [BRIDGE, "ValidatedBasicFilterAppendPositions"], [NODE + "storage/fjall_store/filters/ownership.rs", "BasicFilterAppendProof"]];
+export const REORG_FIELDS = {
+  StagedChainstateReorg: ["binding", "overlay", "transition", "next_active_chain", "next_undo_by_block", "next_confirmed_txid_counts", "maybe_old_tip", "maybe_common_ancestor"],
+  AcceptedChainstateReorg: ["maybe_old_endpoint", "maybe_new_endpoint", "maybe_common_ancestor_endpoint"],
+};
+export const SEALED_FIELD_CASES = [...Object.entries(REORG_FIELDS).flatMap(([symbol, fields]) => fields.map(field => [symbol, field])),
+  ["ValidatedChainstateReorg", "owner"], ["ValidatedChainstateReorg", "staged"], ["ValidatedBasicFilterReorg", "facts"], ["ValidatedBasicFilterAppendPositions", "positions"],
+  ...["publication", "preparation_work", "maybe_maximum_work"].map(field => ["BasicFilterAppendProof", field])];
+export const CURRENT_REORG_ORDER = [
+  ...["prepared.authorization.check_stage(&self.chainstate, &prepared.staged)?;", "self.check_validation_acceptance_available().map_err(map_persist)?;", "self.chainstate.check_staged_reorg(&prepared.staged)?;", "self.check_basic_index_reorg(&prepared).map_err(map_persist)?;"].map(guard => [NODE + "chainstate/validation_history.rs", "commit_prepared_reorg", guard, "self.maybe_body_preference ="]),
+  [NODE + "chainstate/work_authority.rs", "prepare_authorized_reorg", "authorization.check_stage(&self.chainstate, &staged)?;", "Ok(PreparedChainstateReorg"],
+  [CORE + "engine/stage.rs", "absorb_validated_reorg", "self.work_authority.accept(&binding);", "(transition, receipt)"],
+];
+export const CURRENT_REORG_DECLARATIONS = [
+  [CORE + "engine/stage.rs", "absorb", "pub fn absorb(self) -> (ChainTransition, AcceptedChainstateReorg)", "pub fn absorb(&mut self) -> (ChainTransition, AcceptedChainstateReorg)"],
+  [CORE + "engine/stage.rs", "absorb_validated_reorg", "    fn absorb_validated_reorg(", "    pub fn absorb_validated_reorg("],
+  ...["#[cfg(any())]", "#[cfg(test)]"].map(attribute => [CORE + "engine/stage.rs", "absorb", "impl<V: CoinsView> ValidatedChainstateReorg<'_, V> {", attribute + "\nimpl<V: CoinsView> ValidatedChainstateReorg<'_, V> {"]),
+  ...[
+    ["if !Arc::ptr_eq(&self.owner, &binding.owner)", "if Arc::ptr_eq(&self.owner, &binding.owner)"],
+    ["if allow_preview &&", "if allow_preview ||"],
+    ["if !Arc::ptr_eq(&self.generation, &binding.generation)", "if Arc::ptr_eq(&self.generation, &binding.generation)"],
+    ["|| maybe_tip != binding.maybe_tip.as_ref()", "&& maybe_tip != binding.maybe_tip.as_ref()"],
+    ["maybe_tip != binding.maybe_tip.as_ref()", "maybe_tip == binding.maybe_tip.as_ref()"],
+  ].map(([before, after]) => [CORE + "engine/work_authority.rs", "check", before, after]),
+];
 export const CHECK_FILES = [...new Set([...CONTRACTS.map(row => row.file), ...CHECKPOINT_CONTRACTS.map(row => row.file), ...TESTS.map(([file]) => file), ...REGISTRATIONS.map(([file]) => file),
   ...SEALED.map(([file]) => file), ...PHASE162_FILES, ...GUARDS, ...UPSTREAM, DOC, "README.md", "packages/README.md", "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json", "scripts/verify.sh", PHASE + "158-UAT.md", PHASE + "158-REORG-MEASUREMENTS.md",
   ...["01", "02", "03", "04", "05", "06"].map(plan => PHASE + `158-${plan}-SUMMARY.md`)])];
 
+/** Original CFIX evidence iteration, including repetitions; current inputs earn separate evidence. */
+export const HISTORICAL_PARITY_EVIDENCE = [DOC, CORE + "engine/stage.rs",
+  ...["network/runtime_authority.rs", "network/mempool_lifecycle.rs", "network/runtime_authority/filter_index/reorg.rs", "chainstate.rs", "chainstate/validation_history.rs", "chainstate/filter_reorg.rs", "chainstate/fjall_store/reorg.rs", "chainstate/filter_index.rs", "network/runtime_authority/filter_index/catch_up.rs", "storage/fjall_store/filters/append.rs", "storage/fjall_store/filters/reorg.rs", "chainstate/filter_reorg/preflight.rs", "storage/fjall_store/filters/turn_inputs.rs", "storage/fjall_store/filters/turn_inputs/undo.rs", "storage/fjall_store/filters/ownership/proofs.rs", "storage/fjall_store/filters/ownership.rs", "storage/fjall_store/filters.rs", "chainstate/flush_lifecycle.rs", "chainstate/fjall_store.rs", "storage/fjall_store/prune.rs", "storage/fjall_store/prune/records.rs"].map(file => NODE + file),
+  CORE + "filter_index/catch_up/reorg.rs", ...["fixtures", "failures", "branches", "retention", "failures", "protection", "measurements"].map(file => TEST + file + ".rs"),
+  PHASE + "158-UAT.md", PHASE + "158-REORG-MEASUREMENTS.md", ...GUARDS.slice(0, 2)];
+
 /** Select one actual impl when the same method name occurs on distinct sealed types. */
 export function maybeBoundary(source: string, contract: Contract): ReturnType<typeof maybeFunction> {
   if (!contract.maybeImpl) return maybeFunction(source, contract.symbol, !contract.maybeTest);
   const code = ordinaryRust(source);
-  const marker = `impl ${contract.maybeImpl} {`;
-  const start = code.indexOf(marker);
-  if (start < 0 || code.indexOf(marker, start + marker.length) >= 0) return undefined;
-  const next = code.indexOf("\nimpl ", start + marker.length);
-  const maybeBody = maybeFunction(source.slice(start, next < 0 ? undefined : next), contract.symbol, true);
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const headers = [...code.matchAll(new RegExp(`\\bimpl(?:<[^{}]*>)?\\s+${escape(contract.maybeImpl)}\\s*\\{`, "g"))];
+  if (headers.length !== 1) return undefined;
+  const start = headers[0].index;
+  if (!supportedOwnership(source, start, Boolean(contract.maybeTest))) return undefined;
+  let end = start + headers[0][0].length, depth = 1;
+  for (; end < code.length && depth; end++) { if (code[end] === "{") depth++; if (code[end] === "}") depth--; }
+  if (depth) return undefined;
+  const maybeBody = maybeFunction(source.slice(start, end), contract.symbol, true);
   return maybeBody ? { ...maybeBody, start: maybeBody.start + start, end: maybeBody.end + start } : undefined;
+}
+
+/** Select exactly one real declaration, retaining source offsets for changed-field controls. */
+export function maybeSealedFields(source: string, symbol: string): { start: number; end: number; fields: string } | undefined {
+  const matches = [...ordinaryRust(source).matchAll(new RegExp(`\\bstruct ${symbol}(?:<[^{}]*>)?\\s*\\{([^}]+)\\}`, "g"))];
+  if (matches.length !== 1) return undefined;
+  const match = matches[0];
+  return { start: match.index, end: match.index + match[0].length, fields: match[1] };
+}
+function sealedFieldsValid(text: (file: string) => string, file: string, symbol: string): boolean {
+  const maybeDeclaration = maybeSealedFields(text(file), symbol);
+  if (!maybeDeclaration || !supportedOwnership(text(file), maybeDeclaration.start, false)) return false;
+  const fields = maybeDeclaration.fields;
+  const expected = REORG_FIELDS[symbol as keyof typeof REORG_FIELDS];
+  if (expected) {
+    const declarations = [...fields.matchAll(/^\s*pub\s*\(\s*super\s*\)\s+(\w+)\s*:[^\n]+/gm)];
+    return JSON.stringify(declarations.map(match => match[1])) === JSON.stringify(expected)
+      && !fields.replace(/^\s*pub\s*\(\s*super\s*\)\s+\w+\s*:[^\n]+/gm, "").trim()
+      && !new RegExp(`\\bstruct ${symbol}\\b`).test(ordinaryRust(text(CORE + "engine.rs")));
+  }
+  if (symbol === "ValidatedChainstateReorg" && JSON.stringify([...fields.matchAll(/^\s*(\w+)\s*:/gm)].map(match => match[1])) !== '["owner","staged"]') return false;
+  return !/\bpub\b/.test(symbol === "BasicFilterAppendProof" ? fields.replace(/\bpub\s*\(\s*super\s*\)\s+identity\s*:/g, "identity:") : fields);
 }
 
 /** Inspect bounded current roots without archive discovery or future completion prerequisites. */
@@ -261,31 +333,50 @@ export function checkPhase158ValidatedReorg(maybeRoot?: string, maybeSources?: R
   }
   const text = sourceText(texts);
   const claimState = checkPhase162ClaimState(text, failures);
+  failures.push(...checkCurrentReorgBoundaries(text));
+  checkBreadcrumbs(text, failures);
+  checkDocuments(text, failures, claimState);
+  checkParity(text, failures, claimState);
+  checkVerifier(text("scripts/verify.sh"), failures);
+  return [...new Set(failures)];
+}
+
+/** Raw current semantics only; historical claims and source loading remain separate. */
+export function checkCurrentReorgBoundaries(text: (file: string) => string): string[] {
+  const failures: string[] = [];
   for (const contract of CONTRACTS) {
     const maybeBody = maybeBoundary(text(contract.file), contract);
-    if (!maybeBody || !hasOrderedCode(maybeBody.body, contract.anchors)) failures.push(`T-158-07-01: actual boundary ${contract.file}:${contract.symbol}`);
+    const currentOwner = [CORE + "engine/stage.rs", CORE + "engine/work_authority.rs", NODE + "chainstate/work_authority.rs", NODE + "chainstate/validation_history.rs", NODE + "network/runtime_authority/filter_index/reorg.rs"].includes(contract.file);
+    const declaration = ordinaryRust(text(contract.file)).slice(maybeBody?.start, maybeBody?.end);
+    if (!maybeBody || (currentOwner && !supportedOwnership(text(contract.file), maybeBody.start, Boolean(contract.maybeTest)))
+      || (contract.maybeImpl === "ValidatedChainstateReorg<'_, V>" && !compact(declaration).startsWith("fnabsorb(self)->"))
+      || (contract.symbol === "absorb_validated_reorg" && /\bpub\b/.test(maybeBody.attributes))
+      || !hasOrderedCode(maybeBody.body, contract.anchors)
+      || (contract.maybeClauses && !hasOrderedCode(maybeBody.body, contract.maybeClauses))
+      || (contract.file.endsWith("chainstate/work_authority.rs") && contract.symbol === "prepare_reorg"
+        && compact(maybeBody.body) !== "Err(ChainstateError::PreferenceAuthorizationRequired)")) failures.push(`T-158-07-01: actual boundary ${contract.file}:${contract.symbol}`);
   }
   checkCheckpointEdges(text, failures);
   for (const [file, name] of TESTS) {
     const maybeTest = maybeFunction(text(file), name);
     if (!maybeTest || !/#\[(?:tokio::)?test(?:\]|\()/.test(maybeTest.attributes)
-      || /#\[\s*ignore\b/.test(maybeTest.attributes) || !hasAssertions(text(file), maybeTest.body)) failures.push(`T-158-07-01: executable behavior ${file}:${name}`);
+      || /#\[\s*ignore\b/.test(maybeTest.attributes) || !supportedOwnership(text(file), maybeTest.start, true)
+      || !hasAssertions(text(file), maybeTest.body)) failures.push(`T-158-07-01: executable behavior ${file}:${name}`);
   }
-  for (const [file, module] of REGISTRATIONS) if (!compact(rustCode(text(file))).includes(compact(module))) failures.push(`T-158-07-01: module registration ${file}:${module}`);
+  for (const [file, module] of REGISTRATIONS) {
+    const code = rustCode(text(file));
+    const matches = [...code.matchAll(new RegExp(`\\b${module.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "g"))];
+    const prefix = code.slice(0, matches[0]?.index).replace(/\bpub(?:\([^)]*\))?\s*$/, "");
+    const attributes = prefix.match(/(?:#\s*\[[^\]]*\]\s*)+$/)?.[0] ?? "";
+    if (matches.length !== 1 || /#\s*\[\s*path\b/.test(attributes)
+      || !supportedOwnership(text(file), matches[0].index, file.includes("/tests/"))) failures.push(`T-158-07-01: module registration ${file}:${module}`);
+  }
   for (const [file, symbol] of SEALED) {
-    const maybeFields = ordinaryRust(text(file)).match(new RegExp(`struct ${symbol}(?:<'a>)?\\s*\\{([^}]+)\\}`))?.[1];
-    const maybePrivateFields = symbol === "BasicFilterAppendProof"
-      ? maybeFields?.replace(/\bpub\s*\(\s*super\s*\)\s+identity\s*:/g, "identity:")
-      : maybeFields;
-    if (!maybePrivateFields || /\bpub\b/.test(maybePrivateFields)) failures.push(`T-158-07-01: private ${symbol} fields required`);
+    if (!sealedFieldsValid(text, file, symbol)) failures.push(`T-158-07-01: private ${symbol} fields required`);
   }
   for (const file of [CORE + "engine/stage.rs", CORE + "filter_index/catch_up/reorg.rs"]) {
     if (/std::(?:fs|io|net|time|process)|(?:fjall|tokio)::|SystemTime/.test(ordinaryRust(text(file)))) failures.push(`T-158-07-01: pure core effects ${file}`);
   }
-  checkBreadcrumbs(text, failures);
-  checkDocuments(text, failures, claimState);
-  checkParity(text, failures, claimState);
-  checkVerifier(text("scripts/verify.sh"), failures);
   return [...new Set(failures)];
 }
 
@@ -365,7 +456,7 @@ function checkParity(text: (file: string) => string, failures: string[], claimSt
     if (index.baseline !== "29.3.knots20260210" || owners.length !== 1 || owners[0].id !== SURFACE) { failures.push("T-158-07-01: unique pinned CFIX-03 parity owner"); return; }
     const surface = owners[0];
     if (!["in_progress", "done"].includes(surface.status) || surface.requirements.length !== 1) failures.push("T-158-07-01: parity scope/status");
-    for (const file of [DOC, ...new Set(CONTRACTS.map(row => row.file)), ...new Set(TESTS.map(([file]) => file)), PHASE + "158-UAT.md", PHASE + "158-REORG-MEASUREMENTS.md", ...GUARDS.slice(0, 2)]) {
+    for (const file of HISTORICAL_PARITY_EVIDENCE) {
       if (!surface.evidence.includes(file)) failures.push(`T-158-07-01: parity evidence ${file}`);
     }
     for (const file of UPSTREAM) if (!surface.upstream.sources.includes(file)) failures.push(`T-158-07-01: pinned upstream ${file}`);

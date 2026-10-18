@@ -73,6 +73,12 @@ function maybeBoundary(source: string, symbol: string, production: boolean) {
 }
 
 function checkSource(text: Texts, failures: string[]): void {
+  const authority = NODE + "chainstate/work_authority.rs";
+  const maybeRefusal = maybeBoundary(text(authority), "prepare_reorg", true);
+  if (!maybeRefusal || !supportedOwnership(text(authority), maybeRefusal.start, false)
+    || compact(maybeRefusal.body) !== "Err(ChainstateError::PreferenceAuthorizationRequired)") {
+    failures.push(`${authority}:prepare_reorg: unconditional preference authorization refusal`);
+  }
   for (const file of NEW_RUST.filter(file => !/(?:\/tests(?:\/|\.rs)|_tests\.rs)/.test(file))) {
     // Owning #[cfg(test)] modules/functions are masked, including public test helpers.
     const code = ordinaryRust(text(file));

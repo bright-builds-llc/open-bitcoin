@@ -23,6 +23,10 @@ use super::{
 use crate::coins::{CoinsCache, CoinsOverlay, MemoryCoinsView};
 use crate::{AnchoredBlock, BlockUndo, ChainPosition, ChainstateError, Coin, TxUndo};
 
+mod phase165_rebind;
+mod phase165_tests;
+mod phase165_work_authority;
+
 fn hashmap_parent(utxos: &HashMap<OutPoint, Coin>) -> CoinsCache<MemoryCoinsView> {
     CoinsCache::from_parent(MemoryCoinsView::from_coins(utxos.clone(), None))
 }
@@ -256,7 +260,7 @@ fn connect_block(chainstate: &mut Chainstate, block: &Block, chain_work: u128) -
     chainstate
         .connect_block(
             block,
-            chain_work,
+            crate::ChainPosition::untrusted_fixture_work(chain_work),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,

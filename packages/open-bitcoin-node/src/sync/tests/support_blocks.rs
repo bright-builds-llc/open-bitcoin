@@ -140,25 +140,38 @@ pub(super) fn save_chain_headers_snapshot_and_blocks(
     stored_blocks: &[(&Block, u32)],
 ) {
     let store = FjallNodeStore::open(path).expect("store");
+    // These are raw fixture numbers, never acceptance or durable recovery receipts.
+    let mut header_work = open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO;
     let header_entries = best_chain
         .iter()
-        .map(|(block, height)| HeaderEntry {
-            block_hash: block_hash(&block.header),
-            header: block.header.clone(),
-            height: *height,
-            chain_work: u128::from(*height).saturating_add(1),
+        .map(|(block, height)| {
+            header_work = header_work.wrapping_add(
+                open_bitcoin_core::consensus::chain_proof::block_proof(block.header.bits)
+                    .expect("fixture target proof"),
+            );
+            HeaderEntry {
+                block_hash: block_hash(&block.header),
+                header: block.header.clone(),
+                height: *height,
+                chain_work: header_work,
+            }
         })
         .collect::<Vec<_>>();
     store
         .save_header_entries(&header_entries, PersistMode::Sync)
         .expect("save best-chain headers");
+    let mut active_work = open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO;
     let active_positions = active_chain
         .iter()
         .map(|(block, height)| {
+            active_work = active_work.wrapping_add(
+                open_bitcoin_core::consensus::chain_proof::block_proof(block.header.bits)
+                    .expect("fixture target proof"),
+            );
             ChainPosition::new(
                 block.header.clone(),
                 *height,
-                u128::from(*height).saturating_add(1),
+                active_work,
                 i64::from(block.header.time),
             )
         })
@@ -211,17 +224,14 @@ pub(super) fn phase70_save_reorg_ready_branch(
             }),
             WireNetworkMessage::Verack,
             WireNetworkMessage::Headers(HeadersMessage {
-                headers: vec![
-                    genesis.header.clone(),
-                    branch_a_one.header.clone(),
-                    branch_a_two.header.clone(),
-                ],
+                headers: vec![branch_a_one.header.clone(), branch_a_two.header.clone()],
             }),
             WireNetworkMessage::Block(genesis.clone()),
             WireNetworkMessage::Block(branch_a_one.clone()),
             WireNetworkMessage::Block(branch_a_two.clone()),
         ]]);
         let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        super::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
         runtime
             .sync_once(&mut transport, i64::from(branch_a_two.header.time))
             .expect("initial branch sync");
@@ -245,6 +255,7 @@ pub(super) fn phase70_save_reorg_ready_branch(
             }),
         ]]);
         let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+        super::support_runtime::admit_fixture_runtime_headers(&runtime);
         runtime
             .sync_once(&mut transport, i64::from(branch_b_three.header.time))
             .expect("persist better branch headers");

@@ -20,7 +20,12 @@ pub(crate) fn durable_context(
 ) -> (DurableContext, DurableHandle, FjallNodeStore) {
     let store = FjallNodeStore::open(path).expect("store");
     let genesis = build_block(BlockHash::default(), 0, 500_000_000, p2sh_script());
-    let position = ChainPosition::new(genesis.header.clone(), 0, 1, i64::from(genesis.header.time));
+    let position = ChainPosition::new(
+        genesis.header.clone(),
+        0,
+        open_bitcoin_node::core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        i64::from(genesis.header.time),
+    );
     if store
         .coins_view()
         .best_block()

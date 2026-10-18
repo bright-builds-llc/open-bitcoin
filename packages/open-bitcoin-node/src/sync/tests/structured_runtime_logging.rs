@@ -3,6 +3,7 @@
 // - packages/bitcoin-knots/test/functional/p2p_initial_headers_sync.py
 
 use super::*;
+use open_bitcoin_core::consensus::chain_proof::block_proof;
 
 #[test]
 fn write_block_relay_log_emits_when_status_available() {
@@ -112,21 +113,27 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
-    let genesis_hash = block_hash(&genesis.header);
+    let child = build_block(block_hash(&genesis.header), 1);
+    let child_hash = block_hash(&child.header);
+    let expected_work = block_proof(genesis.header.bits)
+        .expect("actual root proof")
+        .wrapping_add(block_proof(child.header.bits).expect("actual child proof"))
+        .to_hex();
     let script = vec![
         WireNetworkMessage::Version(VersionMessage {
-            start_height: 0,
+            start_height: 1,
             ..VersionMessage::default()
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis.header.clone()],
+            headers: vec![child.header.clone()],
         }),
-        WireNetworkMessage::Block(genesis),
+        WireNetworkMessage::Block(child),
     ];
     let mut transport = ScriptedTransport::new(vec![script]);
     let mut runtime =
         DurableSyncRuntime::open(store, sync_config_with_log_dir(&log_dir)).expect("runtime");
+    super::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
 
     // Act
     let summary = runtime
@@ -140,15 +147,15 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
     assert_eq!(
         summary.sync_status(SyncNetwork::Regtest).sync_progress,
         FieldAvailability::available(SyncProgress {
-            header_height: 0,
-            block_height: 0,
-            downloaded_block_height: 0,
-            connected_block_height: 0,
-            validated_active_chain_height: 0,
-            maybe_downloaded_block_hash: Some(block_hash_hex(genesis_hash)),
-            maybe_connected_block_hash: Some(block_hash_hex(genesis_hash)),
-            maybe_validated_active_chain_hash: Some(block_hash_hex(genesis_hash)),
-            maybe_validated_active_chain_work: Some("1".to_string()),
+            header_height: 1,
+            block_height: 1,
+            downloaded_block_height: 1,
+            connected_block_height: 1,
+            validated_active_chain_height: 1,
+            maybe_downloaded_block_hash: Some(block_hash_hex(child_hash)),
+            maybe_connected_block_hash: Some(block_hash_hex(child_hash)),
+            maybe_validated_active_chain_hash: Some(block_hash_hex(child_hash)),
+            maybe_validated_active_chain_work: Some(expected_work),
             progress_ratio: 1.0,
             messages_processed: 4,
             headers_received: 1,
@@ -162,9 +169,9 @@ fn sync_status_and_log_records_include_message_header_block_counters() {
             && record.message.contains("messages_processed=4")
             && record.message.contains("headers_received=1")
             && record.message.contains("blocks_received=1")
-            && record.message.contains("header=0")
-            && record.message.contains("downloaded=0")
-            && record.message.contains("connected=0")
+            && record.message.contains("header=1")
+            && record.message.contains("downloaded=1")
+            && record.message.contains("connected=1")
             && record.message.contains("progress_signal=block_progress")
     }));
 
@@ -178,19 +185,21 @@ fn peer_contribution_counts_only_accepted_headers_and_blocks() {
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let child = build_block(block_hash(&genesis.header), 1);
     let script = vec![
         WireNetworkMessage::Version(VersionMessage {
-            start_height: 0,
+            start_height: 1,
             ..VersionMessage::default()
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis.header.clone()],
+            headers: vec![child.header.clone()],
         }),
-        WireNetworkMessage::Block(genesis),
+        WireNetworkMessage::Block(child),
     ];
     let mut transport = ScriptedTransport::new(vec![script]);
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    super::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
 
     // Act
     let summary = runtime

@@ -9,7 +9,7 @@ use open_bitcoin_core::chainstate::{PruneLockInfo, PruneMode, PrunePlan};
 #[test]
 fn phase158_reorg_protection_interrupted_intent_refuses_after_reorg_before_deletion() {
     // Arrange: replacement is accepted/indexed ahead of the old coins fence.
-    let fixture = ForkFixture::compact(64, 1, 16);
+    let fixture = ForkFixture::compact_early(64, 1, 16, 30, 34, 0x81);
     let branch = fixture.fork(30, 34, 0x81);
     fixture.apply(&branch);
     fixture.finish();
@@ -68,7 +68,7 @@ fn phase158_reorg_protection_interrupted_intent_refuses_after_reorg_before_delet
 fn phase158_reorg_protection_reserved_crud_and_ifneeded_preserve_unflushed_coins() {
     for count in [13, 16] {
         // Arrange
-        let fixture = ForkFixture::compact(16, 8, 24);
+        let fixture = ForkFixture::compact_early(16, 8, 24, 10, count, 0x79);
         let branch = fixture.fork(10, count, 0x79);
         let maybe_coins = fixture
             .runtime
@@ -163,7 +163,7 @@ fn phase158_reorg_protection_reserved_crud_and_ifneeded_preserve_unflushed_coins
 #[test]
 fn phase158_reorg_protection_preplanned_manual_required_source_skips_after_generation_change() {
     // Arrange: a bounded shared backlog keeps preflight inside existing caps.
-    let fixture = ForkFixture::compact(64, 1, 16);
+    let fixture = ForkFixture::compact_early(64, 1, 16, 30, 34, 0x7a);
     let branch = fixture.fork(30, 34, 0x7a);
     let old = fixture
         .runtime

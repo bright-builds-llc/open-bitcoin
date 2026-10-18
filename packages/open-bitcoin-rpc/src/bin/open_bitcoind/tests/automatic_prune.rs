@@ -123,8 +123,8 @@ fn automatic_prune_offline_without_datadir_retains_transient_selection() {
 }
 
 #[test]
-fn automatic_prune_genuine_ordinary_retention_and_reopen() {
-    // Arrange: seed consistent sparse chain truth before opening the production owner.
+fn automatic_prune_codec_retention_and_reopen() {
+    // Arrange: sparse codec-only physical truth remains an unearned source.
     let started = std::time::Instant::now();
     let temp = TempDir::new("genuine-retention");
     let mut runtime = config(&temp);
@@ -148,7 +148,7 @@ fn automatic_prune_genuine_ordinary_retention_and_reopen() {
         })
         .expect("committed lock and ten-block buffer");
     for p in &truth.active_chain {
-        cache_small(&handle, p);
+        assert_raw_cache_refuses(&store, &handle, p);
     }
     let mut rpc = ManagedRpcContext::from_fixture_runtime_config_with_network_handle(
         &runtime,
@@ -220,7 +220,11 @@ fn automatic_prune_genuine_ordinary_retention_and_reopen() {
         let hash = truth.active_chain[i].block_hash;
         assert!(store.has_block(hash).expect("protected body"));
         assert!(store.has_undo(hash).expect("protected undo"));
-        assert!(handle.cached_block_present(hash).expect("protected cache"));
+        assert!(
+            !handle
+                .cached_block_present(hash)
+                .expect("unearned protected cache absent")
+        );
     }
     let retained = store
         .retained_payload_usage(&truth.active_chain)
@@ -276,7 +280,7 @@ fn assert_later_error_and_reopen(
     store: FjallNodeStore,
     truth: &open_bitcoin_node::core::chainstate::ChainstateSnapshot,
 ) {
-    // Replenish one same-tip value, then reopen with real undo and cache before later error.
+    // Replenish one same-tip value; reopened and fault owners remain raw and uncached.
     save_small(&store, &truth.active_chain[0]);
     drop(store);
     let store = open_runtime_store(runtime)
@@ -285,7 +289,7 @@ fn assert_later_error_and_reopen(
     let reopened = open_authoritative_network_runtime(runtime, Some(store.clone()))
         .expect("successful checkpoint reopens")
         .expect_durable();
-    cache_small(&reopened.network, &truth.active_chain[0]);
+    assert_raw_cache_refuses(&store, &reopened.network, &truth.active_chain[0]);
     assert!(
         reopened
             .network
@@ -296,7 +300,7 @@ fn assert_later_error_and_reopen(
     );
     drop(reopened);
     let (fault_owner, fail_metadata) = metadata_fault_owner(&store);
-    cache_small(&fault_owner, &truth.active_chain[0]);
+    assert_raw_cache_refuses(&store, &fault_owner, &truth.active_chain[0]);
     let failure = flush_cycle(
         &fault_owner,
         FlushMode::Periodic,

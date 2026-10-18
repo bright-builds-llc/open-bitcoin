@@ -109,28 +109,12 @@ fn phase158_validated_reorg_pruned_shared_source_survives_repeated_indexed_branc
             .load_have_pruned()
             .expect("earned prune")
     );
-    let branch = fixture.fork(390, 10, 0x67);
+    let branch = fixture.fork(390, 11, 0x67);
     // Act: pruned shared height is never a disconnected consensus input.
     fixture.apply(&branch);
     fixture.finish();
     fixture.flush();
-    let original = ForkBranch {
-        disconnect: branch
-            .connected
-            .iter()
-            .rev()
-            .map(|a| a.block.clone())
-            .collect(),
-        connected: fixture.history.blocks[391..]
-            .iter()
-            .enumerate()
-            .map(|(offset, block)| AnchoredBlock {
-                block: block.clone(),
-                chain_work: offset as u128 + 2_000,
-            })
-            .collect(),
-        records: fixture.history.records[391..].to_vec(),
-    };
+    let original = fixture.extended_original(&branch, 2);
     fixture.apply(&original);
     let reuse = fixture
         .runtime
@@ -183,7 +167,7 @@ fn phase158_validated_reorg_pruned_shared_source_survives_repeated_indexed_branc
 
 fn required_consensus_loss(undo: bool) {
     // Arrange: indexed rows cannot replace an actual disconnect body or undo.
-    let fixture = ForkFixture::compact(16, 8, 24);
+    let fixture = ForkFixture::compact_early(16, 8, 24, 10, 13, 0x68);
     let branch = fixture.fork(10, 13, 0x68);
     let before = fixture
         .runtime

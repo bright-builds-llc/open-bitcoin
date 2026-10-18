@@ -14,7 +14,53 @@ use open_bitcoin_mempool::{PolicyTime, ReorgLifecycleContext};
 use open_bitcoin_network::policy::{BranchWorkLimit, FilterRequest, FilterRequestInvalid};
 
 mod faults;
-use faults::{settle, snapshots};
+use faults::{settle, snapshots, stale_runtime};
+
+fn runtime(name: &str) -> (std::path::PathBuf, DurableSyncRuntime) {
+    static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+    let unique = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let (dir, runtime) = super::runtime(&format!("{name}-{unique}"));
+    runtime
+        .network_handle()
+        .adopt_live_fixture_owner(open_bitcoin_core::chainstate::Chainstate::new())
+        .expect("genuine empty fixture source");
+    (dir, runtime)
+}
+
+fn live_source(
+    store: crate::FjallNodeStore,
+    blocks: &[open_bitcoin_core::primitives::Block],
+) -> crate::ManagedChainstate<crate::FjallChainstateStore, crate::FjallCoinsView> {
+    use crate::chainstate::FlushLifecycle;
+    use open_bitcoin_core::chainstate::Chainstate;
+    let mut core = Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+    Chainstate::new()
+        .rebind_into(&mut core)
+        .expect("genuine empty transfer");
+    let now = FlushPolicyTime::new(0);
+    let mut source = crate::ManagedChainstate::from_chainstate(
+        crate::FjallChainstateStore::from_store(store.clone()),
+        core,
+        FlushLifecycle::ready(now, now, 0, false),
+    );
+    for block in blocks {
+        source
+            .connect_block(
+                block,
+                open_bitcoin_core::consensus::chain_proof::ProofWork::ZERO,
+                ScriptVerifyFlags::P2SH,
+                SyncNetwork::Regtest.consensus_params(),
+            )
+            .expect("actual normal-maturity prefix acceptance");
+        store
+            .save_block(block, crate::PersistMode::Sync)
+            .expect("actual retained prefix body");
+    }
+    source
+        .flush_with_mode(FlushMode::Always, now, u64::MAX)
+        .expect("same genuine prefix flush");
+    source
+}
 
 #[test]
 fn phase162_header_checkpoint_due_periodic_manual_and_automatic_caller_wiring() {
@@ -89,6 +135,7 @@ fn phase162_header_checkpoint_admitted_header_ahead_and_successor_survive_withou
         .expect("genuine genesis acceptance");
     settle(&runtime).expect("normal accepted header checkpoint");
     let child = block(block_hash(&genesis.header), 1, 0x51);
+    headers(&runtime, vec![child.header.clone()]).expect("actual successor header before body");
     handle
         .connect_local_block(
             &child,
@@ -274,12 +321,15 @@ fn phase162_header_checkpoint_selected_pressure_uses_real_durable_handle() {
     )
     .expect("pressure initialization");
     drop(view);
-    let chainstate = open_bitcoin_core::chainstate::Chainstate::from_coins_cache(
+    let mut chainstate = open_bitcoin_core::chainstate::Chainstate::from_coins_cache(
         cache,
         Vec::new(),
         Default::default(),
         None,
     );
+    open_bitcoin_core::chainstate::Chainstate::new()
+        .rebind_into(&mut chainstate)
+        .expect("genuine empty pressure source");
     let managed = crate::ManagedChainstate::from_recovered_chainstate(
         crate::FjallChainstateStore::from_store(store.clone()),
         chainstate,
@@ -478,6 +528,22 @@ fn phase162_header_checkpoint_reopen() {
     )
     .expect("cold runtime");
     let handle = reopened.network_handle();
+    assert!(
+        handle
+            .best_chain_entries()
+            .expect("unproved cold import")
+            .is_empty()
+    );
+    handle
+        .try_admit_fixture_headers(
+            open_bitcoin_network::HeaderStore::from_entries(
+                handle.header_entries().expect("raw saved bytes"),
+            )
+            .expect("complete actual ancestry"),
+            i64::MAX,
+            params,
+        )
+        .expect("explicit model readmission; cold reopening alone grants no proof");
     handle
         .configure_basic_peer_serving(true)
         .expect("explicit cold capability");
@@ -508,110 +574,4 @@ fn phase162_header_checkpoint_reopen() {
     drop(handle);
     drop(reopened);
     std::fs::remove_dir_all(dir).expect("all handles dropped before cleanup");
-}
-
-fn stale_runtime() -> (std::path::PathBuf, DurableSyncRuntime, BlockHash) {
-    stale_runtime_configured(false)
-}
-
-fn stale_runtime_configured(indexed: bool) -> (std::path::PathBuf, DurableSyncRuntime, BlockHash) {
-    // Arrange: ordinary mined coinbase-only history, with no maturity override.
-    let params = SyncNetwork::Regtest.consensus_params();
-    assert_eq!(params.coinbase_maturity, 100);
-    let (dir, runtime) = runtime("phase162-stale-normal");
-    let handle = runtime.network_handle();
-    handle.disconnect_peer(1).expect("replace initial session");
-    handle
-        .configure_basic_peer_serving(true)
-        .expect("explicit BASIC capability");
-    handle
-        .connect_outbound_peer(2, 10_000)
-        .expect("advertising peer");
-    let genesis = block(BlockHash::default(), 0, 0x51);
-    let old = block(block_hash(&genesis.header), 1, 0x51);
-    let stale_hash = block_hash(&old.header);
-    for accepted in [&genesis, &old] {
-        runtime
-            .store()
-            .save_block(accepted, crate::PersistMode::Sync)
-            .expect("ordinary body");
-        handle
-            .connect_local_block(accepted, ScriptVerifyFlags::P2SH, params)
-            .expect("genuine accept");
-    }
-    handle
-        .flush_coins(
-            FlushMode::Always,
-            FlushPolicyTime::from_unix_seconds(20_000),
-            u64::MAX,
-        )
-        .expect("old durable coins fence");
-    drop(handle);
-    let runtime = if indexed {
-        drop(runtime);
-        DurableSyncRuntime::open_configured(
-            crate::FjallNodeStore::open(&dir).expect("closed indexed reopen"),
-            crate::SyncRuntimeConfig {
-                network: SyncNetwork::Regtest,
-                ..Default::default()
-            },
-            crate::chainstate::BasicFilterStartupMode::Enabled,
-        )
-        .expect("genuine accepted BASIC owner")
-    } else {
-        runtime
-    };
-    let handle = runtime.network_handle();
-    if indexed {
-        handle.configure_basic_peer_serving(true).expect("BASIC");
-        handle.connect_outbound_peer(2, 10_000).expect("new peer");
-    }
-    assert_eq!(
-        runtime
-            .store()
-            .validation_provenance(stale_hash)
-            .expect("accepted provenance"),
-        ValidationProvenance::ScriptsValid
-    );
-    assert!(
-        handle
-            .peer_manager_snapshot()
-            .expect("live accepted headers")
-            .header_store()
-            .entry(&stale_hash)
-            .is_some()
-    );
-    let alternate = block(block_hash(&genesis.header), 1, 0x52);
-    let extension = block(block_hash(&alternate.header), 2, 0x52);
-    let replacement = vec![
-        AnchoredBlock {
-            block: alternate,
-            chain_work: 3,
-        },
-        AnchoredBlock {
-            block: extension,
-            chain_work: 4,
-        },
-    ];
-    for accepted in &replacement {
-        runtime
-            .store()
-            .save_block(&accepted.block, crate::PersistMode::Sync)
-            .expect("competing body");
-    }
-
-    // Genuine managed reorg leaves old h1 admitted but stale.
-    let transition = handle
-        .reorg_to_branch(
-            &[old],
-            &replacement,
-            ReorgLifecycleContext::new(PolicyTime::from_unix_seconds(20_001)),
-            ScriptVerifyFlags::P2SH,
-            params,
-        )
-        .expect("genuine reorg");
-    assert_eq!(transition.disconnected.len(), 1);
-    assert_eq!(transition.connected.len(), 2);
-    drop(handle);
-    (dir, runtime, stale_hash)
 }

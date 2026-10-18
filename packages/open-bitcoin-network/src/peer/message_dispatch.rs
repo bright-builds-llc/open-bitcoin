@@ -284,7 +284,7 @@ impl PeerManager {
     where
         F: FnMut(&mut HeaderStore, &BlockHeader) -> Result<InsertedHeader, NetworkError>,
     {
-        let previous_best_height = self.headers.best_height();
+        let maybe_previous_best_work = self.headers.best_tip().map(|tip| tip.chain_work);
         let header_count = headers_message.headers.len();
         let mut requested_inventory = Vec::new();
         for header in headers_message.headers {
@@ -304,7 +304,10 @@ impl PeerManager {
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.getheaders_in_flight = false;
 
-        let header_progressed = best_height > previous_best_height;
+        let header_progressed = self
+            .headers
+            .best_tip()
+            .is_some_and(|tip| maybe_previous_best_work.is_none_or(|work| tip.chain_work > work));
         let should_request_more_headers = header_count > 0
             && header_progressed
             && (header_count == crate::MAX_HEADERS_RESULTS

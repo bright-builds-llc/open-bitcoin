@@ -40,9 +40,18 @@ fn same_datadir_reopen_tip_matches_coins_best_block() {
     // Arrange
     let path = temp_store_path("reopen-from-coins-b");
     remove_dir_if_exists(&path);
-    let coins_tip = ChainPosition::new(header(BlockHash::from_byte_array([0_u8; 32]), 1), 0, 1, 1);
-    let leftover_tip =
-        ChainPosition::new(header(BlockHash::from_byte_array([0x11; 32]), 2), 1, 2, 2);
+    let coins_tip = ChainPosition::new(
+        header(BlockHash::from_byte_array([0_u8; 32]), 1),
+        0,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
+    let leftover_tip = ChainPosition::new(
+        header(BlockHash::from_byte_array([0x11; 32]), 2),
+        1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(2),
+        2,
+    );
     let coins_outpoint = OutPoint {
         txid: open_bitcoin_core::primitives::Txid::from_byte_array([0xab; 32]),
         vout: 0,
@@ -121,7 +130,12 @@ fn persist_progress_does_not_write_leftover_and_reopen_ignores_leftover_utxos() 
     // Arrange
     let path = temp_store_path("persist-no-leftover-write");
     remove_dir_if_exists(&path);
-    let tip = ChainPosition::new(header(BlockHash::from_byte_array([0_u8; 32]), 1), 0, 1, 1);
+    let tip = ChainPosition::new(
+        header(BlockHash::from_byte_array([0_u8; 32]), 1),
+        0,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
     let coins_outpoint = OutPoint {
         txid: open_bitcoin_core::primitives::Txid::from_byte_array([0xcd; 32]),
         vout: 1,
@@ -212,6 +226,7 @@ fn persist_progress_does_not_credit_when_coins_b_lags_memory_tip() {
     let child = build_block(block_hash(&genesis.header), 1);
     let store = FjallNodeStore::open(&path).expect("store");
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
+    crate::sync::tests::support_runtime::initialize_fixture_runtime_genesis(&runtime, &genesis);
     let mut transport = ScriptedTransport::new(vec![vec![
         WireNetworkMessage::Version(VersionMessage {
             start_height: 1,
@@ -219,7 +234,7 @@ fn persist_progress_does_not_credit_when_coins_b_lags_memory_tip() {
         }),
         WireNetworkMessage::Verack,
         WireNetworkMessage::Headers(HeadersMessage {
-            headers: vec![genesis.header.clone(), child.header.clone()],
+            headers: vec![child.header.clone()],
         }),
         WireNetworkMessage::Block(genesis.clone()),
         WireNetworkMessage::Block(child.clone()),

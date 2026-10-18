@@ -39,7 +39,9 @@ fn protected_store(
         positions.push(ChainPosition::new(
             body.header,
             height,
-            u128::from(height) + 1,
+            open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(
+                u128::from(height) + 1,
+            ),
             1,
         ));
         parent = hash;

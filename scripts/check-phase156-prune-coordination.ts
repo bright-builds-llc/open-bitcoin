@@ -167,8 +167,55 @@ function checkConcreteProof(text: (file: string) => string, failures: string[]):
     [NODE + "sync/tests/filter_index/lifecycle.rs", "filter_index_production_host_disable_faults_recover_valid_retained_lifecycle", [
       "FilterPublicationFault::BeforeDisable", "FilterPublicationFault::AfterDisable", "FilterPublicationFault::BeforeRelease", "FilterPublicationFault::AfterRelease"]],
     [NODE + "sync/tests/filter_index/prune_coordination.rs", "filter_index_runtime_direct_and_resume_required_genesis_and_height_one_refuse", ["[0_usize, 1]", "commit_paired_delete(", "resume_prune_intent("]],
-    [RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs", "index_protection_ordinary_legal_target_retains_then_deletes_only_after_disable", [
-      "populate_threshold(", "FlushMode::Periodic", "FlushMode::Always", "disable_basic_filter_index()"]],
+    [RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs", "index_protection_genuine_fixture_retains_then_deletes_only_after_disable", [
+      "DenseHistory::seed(&store)", "populate_threshold(&store, &history.truth)", "assert!(initial_bytes > TARGET)",
+      "crate::assemble_durable_runtime(&runtime_config, runtime)", "let handle = opened.network.clone()",
+      ".enable_basic_filter_index()", "IndexGeneration::new(0)", "Some(IndexInputProtection::FromHeight(0))",
+      "FlushMode::Periodic", "assert!(!stalled.wrote_coins)", "assert!(stalled.deleted_block_hashes.is_empty())",
+      "FlushMode::Always", "assert!(always.wrote_coins)", "assert!(always.deleted_block_hashes.is_empty())",
+      ".disable_basic_filter_index()", ".enable_basic_filter_index()", "IndexGeneration::new(2)",
+      "assert!(!reenabled.wrote_coins)", "assert!(reenabled.deleted_block_hashes.is_empty())",
+      ".disable_basic_filter_index()", "IndexGeneration::new(3)", "FlushMode::Periodic",
+      "assert_deletion(&store, &handle, &history, initial_bytes, deleted, disabled)",
+      "drop(handle)", "drop(opened)", "drop(store)", "assert_disabled_reopen(&runtime_config, &history, disabled, remaining_bytes)"]],
+    [RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs", "seed", [
+      "let params = SyncNetwork::Regtest.consensus_params()", "assert_eq!(params.coinbase_maturity, 100)",
+      "Chainstate::from_parent(store.coins_view(), vec![], HashMap::new(), None)", "Chainstate::new()", ".rebind_into(&mut core)",
+      "ManagedChainstate::from_chainstate(", "FjallChainstateStore::from_store(store.clone())", "core,",
+      "for height in 0..=1_001", "Self::block(parent, height, &params)",
+      ".connect_block(&block, ProofWork::ZERO, ScriptVerifyFlags::P2SH, params)",
+      "assert_eq!(accepted.height, height)", "assert_eq!(accepted.block_hash, block_hash(&block.header))",
+      "managed.into_parts()", ".admission_snapshot()", "assert_eq!(truth.active_chain.len(), 1_002)",
+      "assert_eq!(truth.undo_by_block.len(), 1_002)", "open_bitcoin_codec::encode_block(block)",
+      ".undo_by_block", ".get(&block_hash(&block.header))", "encoded_undo_size(undo)",
+      "body_bytes += body", "undo_bytes += encoded_undo", "let positions = truth.active_chain.clone()",
+      "let undo = truth", ".undo_by_block", "assert!(", ".execute_flush(", "&mut sink,", "&mut core,",
+      "FlushMode::Always,", "FlushPolicyTime::new(1),", "&undo,", "&[],", "&blocks,", "&positions,", ".wrote_coins",
+      ".retained_payload_usage(&positions)", "assert_eq!(measured.current_usage_bytes, body_bytes + undo_bytes)",
+      "assert_eq!(measured.height_sizes.values().copied().collect::<Vec<_>>(), pair_sizes)",
+      "DurableSyncRuntime::from_live_fixture_source(", "ManagedChainstate::from_chainstate(sink, core, lifecycle)",
+      "network: SyncNetwork::Regtest", "params,", "BasicFilterStartupMode::Disabled"]],
+    [RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs", "assert_payloads", [
+      "for (height, position) in self.truth.active_chain.iter().enumerate()",
+      "assert_eq!(store.load_block(position.block_hash).expect(), (height >= first_retained).then(|| self.blocks[height].clone()),",
+      "assert_eq!(store.load_undo(position.block_hash).expect(), (height >= first_retained).then(|| self.truth.undo_by_block[&position.block_hash].clone()),"]],
+    [RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs", "assert_deletion", [
+      "history.truth.active_chain[..=713]", "assert!(deleted.wrote_coins,", "assert_eq!(deleted.deleted_block_hashes, expected)",
+      "history.assert_payloads(store, 714)", ".chainstate_snapshot()", "for height in [0, 1, 713]",
+      ".cached_block_present(hash)", "assert!(!snapshot.undo_by_block.contains_key(&hash))",
+      ".cached_block_present(history.truth.active_chain[714].block_hash)",
+      ".contains_key(&history.truth.active_chain[714].block_hash)", "history.pair_sizes[..=713].iter().sum()",
+      "assert_eq!(remaining.current_usage_bytes, initial_bytes - deleted_bytes)",
+      "assert_eq!(counts.successful_batch_count, 1)", "assert_eq!(counts.pruned_height_count, 714)",
+      "assert_eq!(counts.maybe_last_prune_height, Some(713))", "FlushMode::Always",
+      "assert!(repeated.deleted_block_hashes.is_empty())", "assert_eq!(owned(store), disabled)"]],
+    [RPC + "bin/open_bitcoind/tests/automatic_prune/index_protection.rs", "assert_disabled_reopen", [
+      "open_runtime_store(runtime_config)", "open_authoritative_network_runtime(runtime_config, Some(store.clone()))",
+      ".expect_durable()", "assert_eq!(counts.successful_batch_count, 1)", "assert_eq!(counts.pruned_height_count, 714)",
+      "history.assert_payloads(&store, 714)", "assert_eq!(owned(&store), disabled)",
+      ".enable_basic_filter_index()", ".expect_err(", "assert!(error.to_string().contains(",
+      "assert_eq!(owned(&store), disabled)", ".retained_payload_usage(&history.truth.active_chain)",
+      "remaining_bytes", ".wallet_scan_chainstate_snapshot()", "history.truth.active_chain"]],
   ];
   for (const [file, name, anchors] of required) {
     const maybeTest = maybeRustFunction(text(file), name);

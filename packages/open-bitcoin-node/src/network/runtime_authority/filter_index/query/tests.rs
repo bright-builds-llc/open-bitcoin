@@ -155,12 +155,7 @@ fn phase159_basic_query_authority_found_during_initial_catch_up_and_legacy_missi
 fn phase159_basic_query_authority_captures_unflushed_target_and_summary_processed_latch() {
     // Arrange
     let history = ValidatedHistory::new("query-unflushed", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = history.live_runtime();
     let before = runtime
         .network
         .maybe_basic_index_summary()
@@ -264,12 +259,7 @@ fn phase159_basic_query_authority_captures_unflushed_target_and_summary_processe
 fn phase159_basic_query_authority_pending_identity_survives_before_history_commit() {
     // Arrange
     let history = ValidatedHistory::new("query-pending-history", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = history.live_runtime();
     runtime.store().set_validation_history_fault(
         crate::storage::fjall_store::validation_history::HistoryPublicationFault::BeforeCommit,
     );
@@ -313,12 +303,7 @@ fn phase159_basic_query_authority_empty_processed_summary_uses_zero_and_initial_
     use open_bitcoin_core::chainstate::filter_index::catch_up::BasicIndexProgress;
     // Arrange
     let history = ValidatedHistory::new("query-zero", false);
-    let runtime = DurableSyncRuntime::open_configured(
-        history.seed(1),
-        sync_config(),
-        crate::chainstate::BasicFilterStartupMode::Enabled,
-    )
-    .expect("runtime");
+    let runtime = history.live_runtime();
     let progress = runtime
         .network
         .maybe_basic_index_progress()

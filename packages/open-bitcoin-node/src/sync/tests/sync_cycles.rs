@@ -10,7 +10,8 @@ fn scripted_headers_sync_persists_progress_and_status() {
     let path = temp_store_path("headers");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
-    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 1);
+    let root = header(BlockHash::from_byte_array([0_u8; 32]), 0);
+    let genesis = header(block_hash(&root), 1);
     let child = header(block_hash(&genesis), 2);
     let script = vec![
         WireNetworkMessage::Version(VersionMessage {
@@ -25,6 +26,8 @@ fn scripted_headers_sync_persists_progress_and_status() {
     let mut transport = ScriptedTransport::new(vec![script]);
     let mut runtime = DurableSyncRuntime::open(store, sync_config()).expect("runtime");
 
+    crate::sync::tests::support_runtime::admit_fixture_runtime_root(&runtime, root);
+
     // Act
     let summary = runtime
         .sync_once(&mut transport, 1_777_225_022)
@@ -34,7 +37,7 @@ fn scripted_headers_sync_persists_progress_and_status() {
     assert_eq!(summary.connected_peers, 1);
     assert_eq!(summary.peer_outcomes[0].state, PeerSyncState::Connected);
     assert_eq!(summary.headers_received, 2);
-    assert_eq!(summary.best_header_height, 1);
+    assert_eq!(summary.best_header_height, 2);
     assert_eq!(summary.best_block_height, 0);
     assert_eq!(
         summary
@@ -42,7 +45,7 @@ fn scripted_headers_sync_persists_progress_and_status() {
             .sync_progress
             .clone(),
         crate::FieldAvailability::available(SyncProgress {
-            header_height: 1,
+            header_height: 2,
             block_height: 0,
             downloaded_block_height: 0,
             connected_block_height: 0,
@@ -65,7 +68,7 @@ fn scripted_headers_sync_persists_progress_and_status() {
             .expect("headers")
             .entries
             .len(),
-        2
+        3
     );
     assert!(
         transport
@@ -89,7 +92,8 @@ fn sync_until_idle_continues_equal_message_rounds_when_heights_advance() {
     let path = temp_store_path("until-idle-progress");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
-    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 21);
+    let root = header(BlockHash::from_byte_array([0_u8; 32]), 20);
+    let genesis = header(block_hash(&root), 21);
     let child = header(block_hash(&genesis), 22);
     let grandchild = header(block_hash(&child), 23);
     let mut runtime = DurableSyncRuntime::open(
@@ -101,11 +105,13 @@ fn sync_until_idle_continues_equal_message_rounds_when_heights_advance() {
     )
     .expect("runtime");
     let mut transport = ScriptedTransport::new(vec![
-        headers_script(0, vec![genesis]),
-        headers_script(1, vec![child]),
-        headers_script(2, vec![grandchild]),
+        headers_script(1, vec![genesis]),
+        headers_script(2, vec![child]),
+        headers_script(3, vec![grandchild]),
         Vec::new(),
     ]);
+
+    crate::sync::tests::support_runtime::admit_fixture_runtime_root(&runtime, root);
 
     // Act
     let summary = runtime
@@ -113,8 +119,8 @@ fn sync_until_idle_continues_equal_message_rounds_when_heights_advance() {
         .expect("sync until idle");
 
     // Assert
-    assert_eq!(summary.best_header_height, 2);
-    assert_eq!(runtime.snapshot_summary().best_header_height, 2);
+    assert_eq!(summary.best_header_height, 3);
+    assert_eq!(runtime.snapshot_summary().best_header_height, 3);
 
     remove_dir_if_exists(&path);
 }
@@ -125,24 +131,27 @@ fn sync_until_idle_stops_at_configured_header_target_after_multiple_batches() {
     let path = temp_store_path("until-idle-header-target");
     remove_dir_if_exists(&path);
     let store = FjallNodeStore::open(&path).expect("store");
-    let genesis = header(BlockHash::from_byte_array([0_u8; 32]), 31);
+    let root = header(BlockHash::from_byte_array([0_u8; 32]), 30);
+    let genesis = header(block_hash(&root), 31);
     let child = header(block_hash(&genesis), 32);
     let grandchild = header(block_hash(&child), 33);
     let mut runtime = DurableSyncRuntime::open(
         store,
         SyncRuntimeConfig {
-            maybe_target_header_height: Some(2),
+            maybe_target_header_height: Some(3),
             max_rounds: 5,
             ..sync_config()
         },
     )
     .expect("runtime");
     let mut transport = ScriptedTransport::new(vec![
-        headers_script(0, vec![genesis]),
-        headers_script(1, vec![child]),
-        headers_script(2, vec![grandchild]),
-        headers_script(3, Vec::new()),
+        headers_script(1, vec![genesis]),
+        headers_script(2, vec![child]),
+        headers_script(3, vec![grandchild]),
+        headers_script(4, Vec::new()),
     ]);
+
+    crate::sync::tests::support_runtime::admit_fixture_runtime_root(&runtime, root);
 
     // Act
     let summary = runtime
@@ -153,12 +162,12 @@ fn sync_until_idle_stops_at_configured_header_target_after_multiple_batches() {
         .expect("durable status");
 
     // Assert
-    assert_eq!(summary.best_header_height, 2);
+    assert_eq!(summary.best_header_height, 3);
     assert_eq!(
         summary.maybe_stop_reason,
         Some(SyncStopReason::TargetHeaderReached {
-            target_header_height: 2,
-            best_header_height: 2,
+            target_header_height: 3,
+            best_header_height: 3,
         })
     );
     assert!(summary.health_signals.iter().any(|signal| {

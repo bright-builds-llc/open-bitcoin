@@ -46,7 +46,7 @@ fn leftover_snapshot() -> (ChainstateSnapshot, OutPoint, Coin, BlockHash, BlockH
             nonce: 1,
         },
         0,
-        1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
         1,
     );
     let tip_hash = tip.block_hash;
@@ -480,7 +480,8 @@ fn decode_versioned_accepts_blob_schema_one_after_current_is_two() {
     let encoded = encode_chainstate_snapshot(&snapshot).expect("encode current");
     let mut value: serde_json::Value = serde_json::from_slice(&encoded).expect("json");
     value["schema_version"] = serde_json::json!(1);
-    let schema_one = serde_json::to_vec_pretty(&value).expect("schema 1 bytes");
+    // Preserve the compact work-record lexical bound while changing only the schema tag.
+    let schema_one = serde_json::to_vec(&value).expect("schema 1 bytes");
 
     // Act
     let decoded = decode_chainstate_snapshot(&schema_one).expect("decode schema 1 blob");

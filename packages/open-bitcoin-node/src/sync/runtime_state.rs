@@ -41,7 +41,7 @@ const MAX_HEADER_REQUESTS_IN_FLIGHT_PER_PEER: u64 = 1;
 pub(super) struct BlockProgressPoint {
     pub(super) height: u64,
     pub(super) block_hash: BlockHash,
-    pub(super) chain_work: u128,
+    pub(super) chain_work: open_bitcoin_core::consensus::chain_proof::ProofWork,
 }
 
 impl DurableSyncRuntime {

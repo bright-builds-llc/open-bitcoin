@@ -80,7 +80,7 @@ fn dashboard_sections_surface_sync_progress_and_peer_counts() {
             .find(|row| row.label == "Progress")
             .expect("progress row")
             .value,
-        "99.99% headers=840100 downloaded_blocks=840006 connected_blocks=840004 validated_active_chain_height=840004 validated_active_chain_hash=1111111111111111111111111111111111111111111111111111111111111111 validated_active_chain_work=840005"
+        "99.99% headers=840100 downloaded_blocks=840006 connected_blocks=840004 validated_active_chain_height=840004 validated_active_chain_hash=1111111111111111111111111111111111111111111111111111111111111111 validated_active_chain_work=00000000000000000000000000000000000000000000000000000000000cd145"
     );
     assert_eq!(
         sync_rows
@@ -170,7 +170,7 @@ fn dashboard_sections_surface_phase78_progress_guarantee_fields() {
     for (label, expected) in [
         (
             "Progress credit",
-            "kind=validated_durable_active_chain height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005 source_unix_seconds=1717000020 rejected_activity_count=1",
+            "kind=validated_durable_active_chain height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=00000000000000000000000000000000000000000000000000000000000cd145 source_unix_seconds=1717000020 rejected_activity_count=1",
         ),
         (
             "Expected progress window",
@@ -182,7 +182,7 @@ fn dashboard_sections_surface_phase78_progress_guarantee_fields() {
         ),
         (
             "Last useful work",
-            "kind=current_at_best_known_tip height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005 source_unix_seconds=1717000025 rejected_activity_count=0",
+            "kind=current_at_best_known_tip height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=00000000000000000000000000000000000000000000000000000000000cd145 source_unix_seconds=1717000025 rejected_activity_count=0",
         ),
         (
             "Last peer contribution",
@@ -259,7 +259,7 @@ fn phase72_dashboard_projects_full_sync_truth_contract() {
         source: BestKnownTipSource::HeaderStore,
         height: 840_004,
         block_hash: "11".repeat(32),
-        work: "840005".to_string(),
+        work: "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
         block_time_unix_seconds: 1_717_000_010,
         observed_at_unix_seconds: 1_717_000_020,
         freshness: TipFreshnessStatus::Fresh,
@@ -269,7 +269,9 @@ fn phase72_dashboard_projects_full_sync_truth_contract() {
             status: PeerTipAgreementStatus::Agrees,
             maybe_height: Some(840_004),
             maybe_hash: Some("11".repeat(32)),
-            maybe_work: Some("840005".to_string()),
+            maybe_work: Some(
+                "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
+            ),
             maybe_last_activity_unix_seconds: Some(1_717_000_020),
         }],
     });
@@ -326,7 +328,7 @@ fn phase72_dashboard_projects_full_sync_truth_contract() {
     for expected in [
         "validated_active_chain_height=840004",
         "validated_active_chain_hash=1111111111111111111111111111111111111111111111111111111111111111",
-        "validated_active_chain_work=840005",
+        "validated_active_chain_work=00000000000000000000000000000000000000000000000000000000000cd145",
     ] {
         assert!(progress.value.contains(expected), "missing {expected}");
     }

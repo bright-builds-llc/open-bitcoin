@@ -275,7 +275,7 @@ impl FilterListenerFixture {
         maybe_endpoint: Option<std::net::SocketAddr>,
     ) -> Self {
         use open_bitcoin_node::core::{
-            chainstate::{FlushMode, FlushPolicyTime},
+            chainstate::{Chainstate, FlushMode, FlushPolicyTime},
             consensus::{ConsensusParams, ScriptVerifyFlags},
         };
         let id = NEXT_DURABLE_BLOCK_SERVING_DIR.fetch_add(1, Ordering::Relaxed);
@@ -297,8 +297,17 @@ impl FilterListenerFixture {
             max_peer_retries: 0,
             ..Default::default()
         };
-        let seed =
-            DurableSyncRuntime::open(store.clone(), sync.clone()).expect("new real authority");
+        let mut core =
+            Chainstate::from_parent(store.coins_view(), vec![], Default::default(), None);
+        Chainstate::new()
+            .rebind_into(&mut core)
+            .expect("genuine empty source");
+        let now = FlushPolicyTime::new(0);
+        let mut source = open_bitcoin_node::ManagedChainstate::from_chainstate(
+            FjallChainstateStore::from_store(store.clone()),
+            core,
+            open_bitcoin_node::chainstate::FlushLifecycle::ready(now, now, 0, false),
+        );
         let mut blocks: Vec<Block> = Vec::new();
         for height in 0..40_u32 {
             let mut block = phase123_mined_block();
@@ -324,27 +333,51 @@ impl FilterListenerFixture {
                     check_block_header(&block.header).is_ok()
                 })
                 .expect("easy PoW");
-            seed.network_handle()
-                .connect_local_block(&block, ScriptVerifyFlags::P2SH, ConsensusParams::default())
+            source
+                .connect_block(
+                    &block,
+                    open_bitcoin_node::core::consensus::chain_proof::ProofWork::ZERO,
+                    ScriptVerifyFlags::P2SH,
+                    ConsensusParams::default(),
+                )
                 .expect("actual validated acceptance");
             store
                 .save_block(&block, PersistMode::Sync)
                 .expect("retained input body");
             blocks.push(block);
         }
-        seed.network_handle()
-            .flush_coins(FlushMode::Always, FlushPolicyTime::new(1), u64::MAX)
+        let (mut sink, mut core) = source.into_parts();
+        let undo = core
+            .undo_by_block()
+            .iter()
+            .map(|(hash, undo)| (*hash, undo.clone()))
+            .collect::<Vec<_>>();
+        let positions = core.active_chain().to_vec();
+        let mut lifecycle =
+            open_bitcoin_node::chainstate::FlushLifecycle::ready(now, now, 0, false);
+        lifecycle
+            .execute_flush(
+                &mut sink,
+                &mut core,
+                FlushMode::Always,
+                FlushPolicyTime::new(1),
+                u64::MAX,
+                &undo,
+                &[],
+                &blocks,
+                &positions,
+            )
             .expect("actual durable fence");
-        drop(seed);
-        let runtime = DurableSyncRuntime::open_with_configured_runtime_activation(
-            store.clone(),
+        let runtime = DurableSyncRuntime::from_live_fixture_source(
+            open_bitcoin_node::ManagedChainstate::from_chainstate(sink, core, lifecycle),
             sync,
+            ConsensusParams::default(),
+            open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled,
             Default::default(),
             Default::default(),
             true,
-            open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled,
         )
-        .expect("configured real BASIC owner");
+        .expect("same genuine BASIC owner");
         runtime
             .network_handle()
             .configure_basic_peer_serving(general)

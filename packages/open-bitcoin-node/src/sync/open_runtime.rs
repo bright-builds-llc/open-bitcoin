@@ -11,13 +11,13 @@ use std::sync::Arc;
 
 use open_bitcoin_core::{
     chainstate::{Chainstate, FlushPolicyTime},
-    consensus::ScriptVerifyFlags,
+    consensus::{ConsensusParams, ScriptVerifyFlags},
 };
 use open_bitcoin_mempool::PolicyConfig;
 use open_bitcoin_network::{BlockRelayActivationPolicy, RelayActivationConfig};
 
 use crate::{
-    FjallChainstateStore, FjallNodeStore, ManagedChainstate, ManagedNetworkHandle,
+    FjallChainstateStore, FjallCoinsView, FjallNodeStore, ManagedChainstate, ManagedNetworkHandle,
     ManagedPeerNetwork,
     chainstate::{BasicFilterStartupMode, initialize_configured},
 };
@@ -96,13 +96,6 @@ impl DurableSyncRuntime {
         let now = FlushPolicyTime::from_unix_seconds(0);
         let (lifecycle, _view, cache) =
             initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;
-        let maybe_configured_basic_indexing = match basic_filter_mode {
-            BasicFilterStartupMode::Enabled => Some(true),
-            BasicFilterStartupMode::Disabled => Some(false),
-            BasicFilterStartupMode::PreserveSaved => {
-                store.resolved_basic_filter_indexing_after_startup()?
-            }
-        };
         let (active_chain, maybe_counts) = store.load_chain_meta_for_open()?;
         let undo_by_block = store.load_all_undo_records()?;
         let chainstate =
@@ -112,7 +105,36 @@ impl DurableSyncRuntime {
             chainstate,
             lifecycle,
         )?;
-        let local_config = progress::local_peer_config(&config);
+        let network = Self::prepare_initialized_network(
+            &store,
+            managed,
+            &config,
+            basic_filter_mode,
+            relay_activation,
+            block_relay_activation,
+            inbound_enabled,
+        )?;
+        let consensus_params = config.network.consensus_params();
+        Self::finish_initialized_runtime(store, network, config, consensus_params)
+    }
+
+    pub(super) fn prepare_initialized_network(
+        store: &FjallNodeStore,
+        managed: ManagedChainstate<FjallChainstateStore, FjallCoinsView>,
+        config: &SyncRuntimeConfig,
+        basic_filter_mode: BasicFilterStartupMode,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_enabled: bool,
+    ) -> Result<ManagedPeerNetwork<FjallChainstateStore, FjallCoinsView>, SyncRuntimeError> {
+        let maybe_configured_basic_indexing = match basic_filter_mode {
+            BasicFilterStartupMode::Enabled => Some(true),
+            BasicFilterStartupMode::Disabled => Some(false),
+            BasicFilterStartupMode::PreserveSaved => {
+                store.resolved_basic_filter_indexing_after_startup()?
+            }
+        };
+        let local_config = progress::local_peer_config(config);
         let mut network = ManagedPeerNetwork::from_initialized_chainstate(
             managed,
             local_config,
@@ -126,6 +148,15 @@ impl DurableSyncRuntime {
         if let Some(header_store) = store.load_header_store()? {
             network.seed_header_store(header_store);
         }
+        Ok(network)
+    }
+
+    pub(super) fn finish_initialized_runtime(
+        store: FjallNodeStore,
+        network: ManagedPeerNetwork<FjallChainstateStore, FjallCoinsView>,
+        config: SyncRuntimeConfig,
+        consensus_params: ConsensusParams,
+    ) -> Result<Self, SyncRuntimeError> {
         let network = ManagedNetworkHandle::new(network);
         network.initialize_basic_filter_index_owner()?;
         network.drive_basic_filter_index_turn()?;
@@ -139,7 +170,6 @@ impl DurableSyncRuntime {
             announcement_outboxes_for_sink.enqueue_prepared(&announcement_network, outcomes)
         });
 
-        let consensus_params = config.network.consensus_params();
         Ok(Self {
             store,
             network,

@@ -300,8 +300,18 @@ fn applying_plan_ordering_writes_coins_after_unlink() {
         )
         .expect("dirty overlay");
     let eligible_header = header(BlockHash::from_byte_array([0_u8; 32]), 3);
-    let eligible = ChainPosition::new(eligible_header.clone(), 1, 1, 1);
-    let tip = ChainPosition::new(header(eligible.block_hash, 4), 400, 400, 1);
+    let eligible = ChainPosition::new(
+        eligible_header.clone(),
+        1,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(1),
+        1,
+    );
+    let tip = ChainPosition::new(
+        header(eligible.block_hash, 4),
+        400,
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(400),
+        1,
+    );
     let body = Block {
         header: eligible_header.clone(),
         transactions: Vec::new(),
@@ -357,7 +367,7 @@ fn plant_position(store: &FjallNodeStore, height: u32, nonce: u32) -> ChainPosit
     let position = ChainPosition::new(
         block_header.clone(),
         height,
-        u128::from(height),
+        open_bitcoin_core::chainstate::ChainPosition::untrusted_fixture_work(u128::from(height)),
         1_700_000_000,
     );
     let body = Block {

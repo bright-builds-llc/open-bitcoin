@@ -136,7 +136,7 @@ fn connect_block(chainstate: &mut Chainstate, block: &Block, chain_work: u128) {
     chainstate
         .connect_block(
             block,
-            chain_work,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(chain_work),
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
                 | ScriptVerifyFlags::CHECKSEQUENCEVERIFY,
@@ -150,7 +150,7 @@ fn connect_block(chainstate: &mut Chainstate, block: &Block, chain_work: u128) {
 
 #[test]
 fn connect_disconnect_and_reorg_preserve_phase_four_outcomes() {
-    let mut chainstate = Chainstate::new();
+    let mut chainstate = Chainstate::new_for_mechanical_fixture();
     let genesis_coinbase = coinbase_transaction(0, 50);
     let genesis_block = build_block(
         BlockHash::from_byte_array([0_u8; 32]),
@@ -180,7 +180,7 @@ fn connect_disconnect_and_reorg_preserve_phase_four_outcomes() {
     let branch_b_tip = ChainPosition::new(
         branch_b.header.clone(),
         1,
-        3,
+        open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(3),
         i64::from(branch_b.header.time),
     );
     assert!(prefer_candidate_tip(&branch_a_tip, &branch_b_tip));
@@ -190,7 +190,7 @@ fn connect_disconnect_and_reorg_preserve_phase_four_outcomes() {
             std::slice::from_ref(&branch_a),
             &[AnchoredBlock {
                 block: branch_b.clone(),
-                chain_work: 3,
+                chain_work: open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(3),
             }],
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY
@@ -241,7 +241,18 @@ fn bip30_style_output_overwrites_are_rejected() {
         1_231_006_500,
         vec![duplicate_coinbase.clone()],
     );
-    connect_block(&mut chainstate, &genesis_block, 1);
+    chainstate
+        .connect_block(
+            &genesis_block,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(1),
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                enforce_bip34_height_in_coinbase: false,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("genesis uses the same BIP34 rule");
 
     let duplicate_block = build_block(
         open_bitcoin_consensus::block_hash(&genesis_block.header),
@@ -251,7 +262,7 @@ fn bip30_style_output_overwrites_are_rejected() {
     let error = chainstate
         .connect_block(
             &duplicate_block,
-            2,
+            open_bitcoin_chainstate::ChainPosition::untrusted_fixture_work(2),
             ScriptVerifyFlags::P2SH,
             ConsensusParams {
                 coinbase_maturity: 1,

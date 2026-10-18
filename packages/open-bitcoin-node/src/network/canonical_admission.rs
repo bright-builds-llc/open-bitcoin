@@ -5,13 +5,17 @@
 //! Identity and support checks precede managed admission effects.
 
 use super::{ManagedNetworkError, ManagedNetworkHandle, ManagedPeerNetwork, ManagedResult};
-use crate::ChainstateStore;
+use crate::{ChainstateStore, MemoryChainstateStore};
 use open_bitcoin_core::{
-    chainstate::CoinsView,
+    chainstate::{CoinsView, MemoryCoinsView, PruneMode},
     consensus::{CanonicalChain, RootIdentityError, UnsupportedValidationScope},
-    primitives::{Block, BlockHeader},
+    primitives::{Block, BlockHeader, NetworkAddress, NetworkMagic},
 };
-use open_bitcoin_network::{HeaderStore, NetworkError, WireNetworkMessage};
+use open_bitcoin_mempool::PolicyConfig;
+use open_bitcoin_network::{
+    BlockRelayActivationPolicy, HeaderStore, LocalPeerConfig, NetworkError, RelayActivationConfig,
+    WireNetworkMessage, advertised_service_flags,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum AdmissionScope {
@@ -106,6 +110,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
     pub fn into_canonical_scope(mut self, chain: CanonicalChain) -> Self {
         if self.admission_scope == AdmissionScope::Fixture {
             self.admission_scope = AdmissionScope::Canonical(chain);
+            // Fixture receipts cannot transfer to another immutable root/network owner.
+            self.peer_manager.seed_header_store(HeaderStore::default());
+            self.maybe_header_consensus_params = None;
         }
         self
     }
@@ -134,9 +141,89 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
 
     /// Lower-level fixture import; cannot overwrite a canonical owner's store.
     pub fn seed_header_store(&mut self, headers: HeaderStore) {
-        if self.admission_scope == AdmissionScope::Fixture {
-            self.peer_manager.seed_header_store(headers);
+        if self.admission_scope == AdmissionScope::Fixture
+            && self.maybe_header_consensus_params.is_none()
+        {
+            let mut imported = HeaderStore::default();
+            for entry in headers.entries() {
+                imported.record_position(&open_bitcoin_core::chainstate::ChainPosition {
+                    block_hash: entry.block_hash,
+                    header: entry.header.clone(),
+                    height: entry.height,
+                    chain_work: entry.chain_work,
+                    median_time_past: 0,
+                });
+            }
+            self.peer_manager.seed_header_store(imported);
+            // An import cannot replace the already selected parameter binding.
         }
+    }
+
+    /// Re-admits actual fixture headers under explicit parameters, without importing scores.
+    /// Canonical support and root checks still run first; this grants no body lineage.
+    /// A bound owner receives further headers through ingress, preserving earned tie order.
+    pub fn try_admit_fixture_headers(
+        &mut self,
+        headers: HeaderStore,
+        current_time: i64,
+        params: open_bitcoin_core::consensus::ConsensusParams,
+    ) -> ManagedResult<()> {
+        let candidates: Vec<_> = headers
+            .entries()
+            .map(|entry| entry.header.clone())
+            .collect();
+        self.guard_header_batch(&candidates)?;
+        if self
+            .maybe_header_consensus_params
+            .is_some_and(|selected| selected != params)
+        {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "header-consensus-params-mismatch".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        if self.maybe_header_consensus_params.is_some() {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "header-owner-already-bound".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        let admitted = super::header_sync::readmit_fixture_headers(&headers, current_time, params)?;
+        if let Some(root) = self
+            .peer_manager
+            .header_store()
+            .best_chain_entries()
+            .first()
+            && admitted
+                .best_chain_entries()
+                .first()
+                .is_none_or(|candidate| candidate.block_hash != root.block_hash)
+        {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "header-root-mismatch".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        let identities = admitted
+            .entries()
+            .map(|entry| {
+                crate::storage::validation_history::BlockValidationIdentity::new(
+                    entry.block_hash,
+                    entry.header.previous_block_hash,
+                    entry.height,
+                )
+                .map_err(|_| NetworkError::InvalidHeader {
+                    reject_reason: "invalid-validation-identity".to_owned(),
+                    maybe_debug_message: None,
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.peer_manager.seed_header_store(admitted);
+        self.maybe_header_consensus_params = Some(params);
+        self.publish_admitted_header_identities(identities)
     }
 
     pub(super) fn guard_body(&self, block: &Block) -> ManagedResult<()> {
@@ -188,6 +275,40 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         chain: CanonicalChain,
     ) -> Self {
         Self::new(network.into_canonical_scope(chain))
+    }
+}
+
+impl ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
+    /// Creates an unbound transient authority for lower-level fixtures.
+    /// Canonical binding and supported validation are required for ordinary use.
+    pub fn transient_runtime(
+        magic: NetworkMagic,
+        port: u16,
+        relay_activation: RelayActivationConfig,
+        block_relay_activation: BlockRelayActivationPolicy,
+        inbound_enabled: bool,
+    ) -> Self {
+        let local_config = LocalPeerConfig {
+            magic,
+            services: advertised_service_flags(PruneMode::Disabled),
+            address: NetworkAddress {
+                services: 0,
+                address_bytes: [0_u8; 16],
+                port,
+            },
+            nonce: 0,
+            relay: true,
+            user_agent: "/open-bitcoin:0.1.0/".to_string(),
+        };
+        let network = ManagedPeerNetwork::new_with_block_relay_activation(
+            MemoryChainstateStore::default(),
+            local_config,
+            PolicyConfig::default(),
+            relay_activation,
+            block_relay_activation,
+            inbound_enabled,
+        );
+        Self::new(network)
     }
 }
 

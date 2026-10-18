@@ -336,10 +336,10 @@ fn status_render_includes_phase78_progress_guarantee_fields() {
 
     // Assert
     for expected in [
-        "Sync progress credit: kind=validated_durable_active_chain height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005 source_unix_seconds=1717000020 rejected_activity_count=1",
+        "Sync progress credit: kind=validated_durable_active_chain height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=00000000000000000000000000000000000000000000000000000000000cd145 source_unix_seconds=1717000020 rejected_activity_count=1",
         "Sync expected progress window: expected_progress_window_seconds=300 retry_backoff_seconds=30 max_sync_rounds=8 tip_freshness_threshold_seconds=600",
         "Sync no-progress threshold: state=within_window threshold_seconds=300 elapsed_since_last_useful_work_seconds=12 evaluated_at_unix_seconds=1717000032",
-        "Sync last useful work: kind=current_at_best_known_tip height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=840005 source_unix_seconds=1717000025 rejected_activity_count=0",
+        "Sync last useful work: kind=current_at_best_known_tip height=840004 hash=1111111111111111111111111111111111111111111111111111111111111111 work=00000000000000000000000000000000000000000000000000000000000cd145 source_unix_seconds=1717000025 rejected_activity_count=0",
         "Sync last peer contribution: peer=peer-1 endpoint=203.0.113.10:8333 kind=headers_and_blocks messages=7 headers=3 blocks=1 last_activity_unix_seconds=1717000028 failure=Unavailable: no peer failure recorded",
         "Sync stalled subsystem: stalled_subsystem=at_tip_waiting confidence=high basis=stay_current,current_tip next_action=No operator action required. no_progress_diagnosis=current_at_best_known_tip recovery_category=Unavailable: no recovery category latest_stop_reason=best_known_tip_reached",
     ] {
@@ -376,7 +376,7 @@ fn phase72_cli_status_renders_full_sync_truth_contract() {
         source: BestKnownTipSource::HeaderStore,
         height: 840_004,
         block_hash: "11".repeat(32),
-        work: "840005".to_string(),
+        work: "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
         block_time_unix_seconds: 1_717_000_010,
         observed_at_unix_seconds: 1_717_000_020,
         freshness: TipFreshnessStatus::Fresh,
@@ -386,7 +386,9 @@ fn phase72_cli_status_renders_full_sync_truth_contract() {
             status: PeerTipAgreementStatus::Agrees,
             maybe_height: Some(840_004),
             maybe_hash: Some("11".repeat(32)),
-            maybe_work: Some("840005".to_string()),
+            maybe_work: Some(
+                "00000000000000000000000000000000000000000000000000000000000cd145".to_string(),
+            ),
             maybe_last_activity_unix_seconds: Some(1_717_000_020),
         }],
     });
@@ -444,7 +446,7 @@ fn phase72_cli_status_renders_full_sync_truth_contract() {
         "connected_blocks=840004",
         "validated_active_chain_height=840004",
         "validated_active_chain_hash=1111111111111111111111111111111111111111111111111111111111111111",
-        "validated_active_chain_work=840005",
+        "validated_active_chain_work=00000000000000000000000000000000000000000000000000000000000cd145",
     ] {
         assert!(sync_line.contains(expected), "missing {expected}");
     }

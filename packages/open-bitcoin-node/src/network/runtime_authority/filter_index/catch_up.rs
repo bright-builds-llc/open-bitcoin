@@ -151,6 +151,20 @@ fn drive_turn(
         #[cfg(test)]
         indexed_point_reads: 0,
     };
+    let actual_target = manager.chainstate().tip().map(|position| {
+        open_bitcoin_core::chainstate::filter_index::catch_up::AcceptedIndexTarget::new(
+            position.height,
+            position.block_hash,
+        )
+    });
+    if manager.maybe_basic_index_failure()
+        == Some(crate::chainstate::filter_index::AcceptedBasicIndexFailure::Invalidated)
+        && outcome.maybe_accepted_target != actual_target
+    {
+        // The runtime authority holds both observations; saved index identity
+        // cannot resume an invalidated owner on a different actual active branch.
+        return Ok(outcome);
+    }
     let Some(progress) = outcome.maybe_progress else {
         return Ok(outcome);
     };

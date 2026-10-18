@@ -200,7 +200,7 @@ const DOC_AND_PARITY_ANCHORS = {
     "soak resume --run-id <run-id> --checkpoint-interval-seconds 300",
     "soak stop --run-id <run-id> --reason operator-stop",
     "soak report --run-id <run-id>",
-    "The durable source of truth is <datadir>/soak/run-index.json plus <datadir>/soak/runs/<run_id>/events.jsonl.",
+    "The durable source of truth is <datadir>/soak/run-index.json plus <datadir>/soak/runs/\\<run_id>/events.jsonl.",
     "A soak run can prove bounded opt-in full-sync soak behavior, durable resume evidence, or diagnosed blocker evidence; it does not prove inbound serving, relay, production-funds wallet safety, migration apply mode, signed packages, GUI readiness, hosted dashboards, or broad production-node readiness.",
   ],
   "docs/architecture/status-snapshot.md": [

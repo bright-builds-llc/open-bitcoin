@@ -18,14 +18,8 @@ use open_bitcoin_node::core::consensus::ScriptVerifyFlags;
 fn phase157_shutdown_retained_basic_error_settles_all_workers_without_clean_marker() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=1"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     let handle = opened.network.clone();
     let successor = next_block(history.blocks.last(), 40);
     let accepted = handle
@@ -160,14 +154,8 @@ fn phase157_shutdown_retained_basic_error_settles_all_workers_without_clean_mark
 fn phase157_idle_always_shutdown_advances_real_accepted_fence_before_reopen() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=1"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     let handle = opened.network.clone();
     handle
         .set_coins_next_write(FlushPolicyTime::new(u64::MAX))
@@ -242,14 +230,8 @@ fn phase157_idle_always_shutdown_advances_real_accepted_fence_before_reopen() {
 fn phase157_idle_injected_elapsed_ticks_advance_without_receives_and_yield() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=1"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     let handle = opened.network.clone();
     handle
         .set_coins_next_write(FlushPolicyTime::new(u64::MAX))
@@ -304,14 +286,8 @@ fn phase157_idle_injected_elapsed_ticks_advance_without_receives_and_yield() {
 fn phase157_idle_shutdown_performs_always_without_an_index_turn() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=basic"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     let handle = opened.network.clone();
     let owner = store.load_prune_protection().expect("saved owner");
     // Act
@@ -346,14 +322,8 @@ fn phase157_idle_shutdown_performs_always_without_an_index_turn() {
 fn phase157_idle_ordered_turns_extend_target_then_genuine_periodic_fence_releases() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=1"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     let handle = opened.network.clone();
     handle
         .set_coins_next_write(FlushPolicyTime::new(u64::MAX))
@@ -487,14 +457,8 @@ fn phase157_idle_ordered_turns_extend_target_then_genuine_periodic_fence_release
 fn phase157_idle_explicit_disable_refuses_stale_turn_and_keeps_always_cleanup() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=1"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     let handle = opened.network.clone();
     handle
         .disable_basic_filter_index()
@@ -537,14 +501,8 @@ fn phase157_idle_explicit_disable_refuses_stale_turn_and_keeps_always_cleanup() 
 fn phase157_idle_offline_activation_starts_existing_worker_and_joins() {
     // Arrange
     let history = History::new(40);
-    drop(history.seed());
     let config = history.config(Some("-blockfilterindex=basic"));
-    let store = open_runtime_store(&config)
-        .expect("store")
-        .expect("durable");
-    let opened = open_authoritative_network_runtime(&config, Some(store.clone()))
-        .expect("startup")
-        .expect_durable();
+    let (store, opened) = history.open_genuine(&config);
     // Act
     let worker = start_coins_flush_worker(opened.network.clone(), Some(store.clone()))
         .expect("index-only durable worker");

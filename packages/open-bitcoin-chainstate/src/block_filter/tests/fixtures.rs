@@ -105,7 +105,7 @@ pub fn stage(chainstate: &Chainstate, block: &Block, work: u128) -> StagedChains
     chainstate
         .stage_connect_block_with_current_time(
             block,
-            work,
+            crate::ChainPosition::untrusted_fixture_work(work),
             i64::from(block.header.time) + 1,
             ScriptVerifyFlags::P2SH
                 | ScriptVerifyFlags::CHECKLOCKTIMEVERIFY

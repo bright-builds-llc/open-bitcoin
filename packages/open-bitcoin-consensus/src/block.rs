@@ -16,7 +16,10 @@ use crate::context::{
     BlockValidationContext, ConsensusParams, SpentOutput, TransactionValidationContext,
     is_final_transaction,
 };
-use crate::crypto::{block_hash, block_merkle_root, check_proof_of_work, transaction_txid};
+use crate::crypto::{
+    CompactTargetError, block_hash, block_merkle_root, check_proof_of_work,
+    check_proof_of_work_with_params, transaction_txid,
+};
 use crate::script::{count_legacy_sigops, count_p2sh_sigops, count_witness_sigops};
 use crate::transaction::{
     check_transaction, validate_transaction, validate_transaction_with_context,
@@ -84,14 +87,35 @@ pub fn enforce_coinbase_reward_limit(
 }
 
 pub fn check_block_header(header: &BlockHeader) -> Result<(), BlockValidationError> {
-    let valid =
-        check_proof_of_work(block_hash(header).to_byte_array(), header.bits).map_err(|error| {
-            block_error(
-                BlockValidationResult::InvalidHeader,
-                "bad-diffbits",
-                Some(error.to_string()),
-            )
-        })?;
+    check_header_proof_result(check_proof_of_work(
+        block_hash(header).to_byte_array(),
+        header.bits,
+    ))
+}
+
+/// Admit a header's target and hash under the selected consensus powLimit.
+/// Contextual difficulty, timestamps and ancestry remain separate checks.
+pub fn check_block_header_with_params(
+    header: &BlockHeader,
+    params: &ConsensusParams,
+) -> Result<(), BlockValidationError> {
+    check_header_proof_result(check_proof_of_work_with_params(
+        block_hash(header).to_byte_array(),
+        header.bits,
+        params,
+    ))
+}
+
+fn check_header_proof_result(
+    result: Result<bool, CompactTargetError>,
+) -> Result<(), BlockValidationError> {
+    let valid = result.map_err(|error| {
+        block_error(
+            BlockValidationResult::InvalidHeader,
+            "bad-diffbits",
+            Some(error.to_string()),
+        )
+    })?;
     if !valid {
         return Err(block_error(
             BlockValidationResult::InvalidHeader,
