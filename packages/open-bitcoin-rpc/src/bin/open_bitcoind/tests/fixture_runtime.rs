@@ -61,6 +61,7 @@ pub(crate) fn fixture_open_authoritative_network_runtime(
         })?;
     Ok(OpenedAuthoritativeRuntime::Transient(
         AuthoritativeNetworkRuntime {
+            maybe_prebuilt_context: None,
             network,
             peer_identity_authority: PeerIdentityAuthority::default(),
             announcement_outboxes: Default::default(),

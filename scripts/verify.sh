@@ -9,6 +9,9 @@ verify_start_milliseconds=""
 coverage_report=""
 verify_mode="full"
 verify_invocation="full"
+# Canonicalize the existing process-local temporary parent before any fixture work.
+TMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"
+export TMPDIR
 print_timings=0
 step_labels=()
 step_durations=()
@@ -159,6 +162,9 @@ bun test ./scripts/check-phase164-canonical-identity.test.ts
 bun run scripts/check-phase164-canonical-identity.ts
 bun test ./scripts/check-phase165-shared-exact-work.test.ts
 bun run scripts/check-phase165-shared-exact-work.ts
+bun run scripts/phase166-genesis-vectors.ts --check
+bun test ./scripts/check-phase166-canonical-bootstrap.test.ts
+bun run scripts/check-phase166-canonical-bootstrap.ts
 bun test ./scripts/generate-peer-filter-fixtures.test.ts
 bun run scripts/generate-peer-filter-fixtures.ts --check
 bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
@@ -360,6 +366,9 @@ run_step "test Phase 164 canonical identity boundary" bun test ./scripts/check-p
 run_step "check Phase 164 canonical identity boundary" bun run scripts/check-phase164-canonical-identity.ts
 run_step "test Phase 165 shared exact work" bun test ./scripts/check-phase165-shared-exact-work.test.ts
 run_step "check Phase 165 shared exact work" bun run scripts/check-phase165-shared-exact-work.ts
+run_step "check Phase 166 source-derived genesis vectors" bun run scripts/phase166-genesis-vectors.ts --check
+run_step "test Phase 166 canonical bootstrap boundary" bun test ./scripts/check-phase166-canonical-bootstrap.test.ts
+run_step "check Phase 166 canonical bootstrap boundary" bun run scripts/check-phase166-canonical-bootstrap.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts

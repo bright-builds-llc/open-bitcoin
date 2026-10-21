@@ -2,7 +2,7 @@
 
 **Milestone:** v2.6 Canonical Chain Bootstrap and Validation Parity
 **Defined:** 2026-10-13
-**Status:** Approved by the user on 2026-10-13; seven requirements Complete after verified Phases 164 and 165; 23 remain Pending.
+**Status:** Approved by the user on 2026-10-13; ten requirements Complete after verified Phases 164–166; 20 remain Pending.
 **Core Value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 
 ## Scope and Evidence Contract
@@ -18,8 +18,8 @@ Preserve one active Fjall chainstate, first-party Bitcoin domain ownership, func
 ### Canonical Bootstrap
 
 - [x] **CBOT-01**: An operator's selected existing network binds the accepted root to pinned canonical genesis header/body identity; a different null-parent root is rejected.
-- [ ] **CBOT-02**: An operator can initialize and reopen an empty durable datadir with canonical genesis as best block, while the genesis coinbase contributes no spendable UTXOs and interrupted initialization never publishes partial authority.
-- [ ] **CBOT-03**: An operator can enable BASIC indexing on a fresh canonical datadir, obtain its genesis filter and zero-predecessor commitment, and continue ordinary indexing without seeded history or implicit public-network activation.
+- [x] **CBOT-02**: An operator can initialize and reopen an empty durable datadir with canonical genesis as best block, while the genesis coinbase contributes no spendable UTXOs and interrupted initialization never publishes partial authority.
+- [x] **CBOT-03**: An operator can enable BASIC indexing on a fresh canonical datadir, obtain its genesis filter and zero-predecessor commitment, and continue ordinary indexing without seeded history or implicit public-network activation.
 - [x] **CBOT-04**: An operator opening a foreign-network or noncanonical-root datadir receives a bounded diagnostic before automatic coins/schema migration, initialization, prune resume or index mutation; prior durable data remains intact.
 
 ### Network and Historical Validation
@@ -36,7 +36,7 @@ Preserve one active Fjall chainstate, first-party Bitcoin domain ownership, func
 - [x] **CWOR-01**: A contributor obtains exact target-derived 256-bit block proof and cumulative work with pinned compact-target validity and cumulative-arithmetic semantics, including values beyond 128 bits; any additional overflow refusal is documented as an intentional difference rather than silently changing the reference arithmetic.
 - [x] **CWOR-02**: An operator's live header best-chain selection follows verified cumulative proof of work rather than header count; defined equal-work arrival/activation behavior matches the pinned reference, while genuinely ambiguous internal ties remain explicitly bounded.
 - [x] **CWOR-03**: An operator's connected-chain and reorg selection consume the same internally verified work authority as accepted headers; caller-supplied work cannot authorize a stronger active branch.
-- [ ] **CWOR-04**: An operator can checkpoint and reopen exact cumulative work without truncation, and recovered work is bound to stored headers, network identity and the recovered coins best block.
+- [x] **CWOR-04**: An operator can checkpoint and reopen exact cumulative work without truncation, and recovered work is bound to stored headers, network identity and the recovered coins best block.
 - [x] **CWOR-05**: An operator opening legacy synthetic-work state receives an explicit compatibility decision before automatic coins/schema migration or live/durable authority changes; unprovable state refuses without silent reinterpretation, destructive conversion or automatic repair.
 
 ### Genuine Knots Differential Harness
@@ -104,8 +104,8 @@ The approved roadmap maps every active requirement to exactly one phase beginnin
 | Requirement | Phase     | Status  |
 | ----------- | --------- | ------- |
 | CBOT-01     | Phase 164 | Complete |
-| CBOT-02     | Phase 166 | Pending |
-| CBOT-03     | Phase 166 | Pending |
+| CBOT-02     | Phase 166 | Complete |
+| CBOT-03     | Phase 166 | Complete |
 | CBOT-04     | Phase 164 | Complete |
 | CVLD-01     | Phase 167 | Pending |
 | CVLD-02     | Phase 167 | Pending |
@@ -116,7 +116,7 @@ The approved roadmap maps every active requirement to exactly one phase beginnin
 | CWOR-01     | Phase 165 | Complete |
 | CWOR-02     | Phase 165 | Complete |
 | CWOR-03     | Phase 165 | Complete |
-| CWOR-04     | Phase 166 | Pending |
+| CWOR-04     | Phase 166 | Complete |
 | CWOR-05     | Phase 165 | Complete |
 | CDIF-01     | Phase 168 | Pending |
 | CDIF-02     | Phase 168 | Pending |

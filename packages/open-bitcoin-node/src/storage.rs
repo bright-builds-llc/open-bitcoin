@@ -7,6 +7,7 @@ use core::fmt;
 
 use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
+pub(crate) mod canonical_bootstrap;
 pub mod chain_compatibility;
 pub mod coins_codec;
 pub mod coins_view;
@@ -17,8 +18,9 @@ pub mod mempool_snapshot;
 pub mod snapshot_codec;
 pub(crate) mod validation_history;
 
+pub use canonical_bootstrap::CanonicalBootstrapRefusal;
 pub use coins_view::FjallCoinsView;
-pub use fjall_store::FjallNodeStore;
+pub use fjall_store::{FjallNodeStore, OpenedCanonicalGenesis};
 pub use lock_probe::{FJALL_LOCK_FILE_NAME, probe_fjall_lock};
 pub use mempool_snapshot::{
     MempoolRecoveryRecord, MempoolRecoveryStatus, MempoolSnapshot, MempoolSnapshotRecord,

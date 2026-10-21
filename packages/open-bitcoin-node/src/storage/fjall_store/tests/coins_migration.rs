@@ -23,6 +23,9 @@ use crate::storage::coins_codec::{
 use crate::storage::coins_view::FjallCoinsView;
 use crate::storage::snapshot_codec::{decode_chainstate_snapshot, encode_chainstate_snapshot};
 
+#[path = "checkpoint_metadata.rs"]
+mod checkpoint_metadata;
+
 fn sample_coin(height: u32, mtp: i64) -> Coin {
     Coin {
         output: TransactionOutput {

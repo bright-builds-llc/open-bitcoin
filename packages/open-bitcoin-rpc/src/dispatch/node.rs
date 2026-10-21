@@ -71,9 +71,11 @@ where
         chain: context.chain_name().to_string(),
         blocks: maybe_tip.as_ref().map_or(0, |tip| tip.height),
         headers: maybe_tip.as_ref().map_or(0, |tip| tip.height),
-        maybe_best_block_hash: maybe_tip
-            .as_ref()
-            .map(|tip| decode::encode_hex(tip.block_hash.as_bytes())),
+        maybe_best_block_hash: maybe_tip.as_ref().map(|tip| {
+            let mut display = tip.block_hash.to_byte_array();
+            display.reverse();
+            decode::encode_hex(&display)
+        }),
         maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
         verificationprogress: if maybe_tip.is_some() { 1.0 } else { 0.0 },
         initialblockdownload: false,
@@ -118,9 +120,11 @@ where
         chain: context.chain_name().to_string(),
         blocks,
         headers,
-        maybe_best_block_hash: maybe_tip
-            .as_ref()
-            .map(|tip| decode::encode_hex(tip.block_hash.as_bytes())),
+        maybe_best_block_hash: maybe_tip.as_ref().map(|tip| {
+            let mut display = tip.block_hash.to_byte_array();
+            display.reverse();
+            decode::encode_hex(&display)
+        }),
         maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
         verificationprogress: durable_verification_progress(maybe_sync_progress),
         initialblockdownload: durable_initial_block_download(headers, blocks, lifecycle),

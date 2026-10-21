@@ -12,6 +12,10 @@ import {
   sameFields,
   statementHasDisablingAttribute,
   contextStartupIsOrdered,
+  canonicalWorkerLifecycle,
+  ordinaryWorkerLifecycle,
+  productionBody,
+  shutdownCallIsExact,
 } from "./check-phase135-snapshot-recovery/source";
 import { checkPersistedInputContract } from "./check-phase135-snapshot-recovery/persisted-input";
 import {
@@ -434,11 +438,15 @@ export function checkPhase135SnapshotRecovery(
   );
 
   const daemon = get(FILES.daemon);
-  const shutdown = body(daemonCheckpoint, "pub(super) fn settle_daemon_shutdown<");
-  const serve = body(daemon, "async fn serve_authoritative_runtime<");
+  const shutdown = productionBody(daemonCheckpoint, "pub(super) fn settle_daemon_shutdown<");
+  const serve = productionBody(daemon, "async fn serve_authoritative_runtime<");
   const shutdownCall = directStatementIndex(serve, "settle_daemon_shutdown(");
   const syncJoin = serve.indexOf("maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())");
-  const retryJoin = serve.indexOf("|| Ok(retry_worker.shutdown()?),");
+  const optionalRetry = "|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),";
+  const mandatoryRetry = "|| Ok(retry_worker.shutdown()?),";
+  const canonicalWorkers = canonicalWorkerLifecycle(serve);
+  const retry = canonicalWorkers ? optionalRetry : mandatoryRetry;
+  const retryJoin = serve.indexOf(retry);
   const finalCheckpoint = serve.indexOf("maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())");
   const settlements = directStatementIndex(shutdown, "let results = [sync(), coins(), retry(), checkpoint(), serve_result];");
   const failureGate = directStatementIndex(shutdown, "if let Some(error) = maybe_error {");
@@ -447,6 +455,8 @@ export function checkPhase135SnapshotRecovery(
     failures,
     shutdownCall < 0 || syncJoin < shutdownCall || retryJoin < syncJoin ||
       finalCheckpoint < retryJoin ||
+      !shutdownCallIsExact(serve.slice(shutdownCall), retry) ||
+      (!canonicalWorkers && !ordinaryWorkerLifecycle(serve)) ||
       !serve.includes("maybe_coins_flush_worker.map_or(Ok(()), |worker| worker.shutdown_always())") ||
       !serve.includes("store.mark_clean_shutdown(open_bitcoin_node::PersistMode::Sync)") ||
       settlements < 0 || failureGate < settlements || clean < failureGate ||

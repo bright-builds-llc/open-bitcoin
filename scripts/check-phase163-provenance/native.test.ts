@@ -37,21 +37,29 @@ for (const layout of LAYOUTS.filter(layout => layout !== "gap-pending")) {
 }
 
 for (const layout of ["archive-only", "next-active"] as const) {
-  test(`historical native builders execute all ten layouts from ${layout} checkout controls`, () => {
-    // Arrange
-    const sources = fixtureSources(layout);
-    // Act / Assert
-    withFixture(sources, root => {
-      const result = spawnSync(process.execPath, ["test", "./scripts/check-phase163-provenance/native.test.ts",
-        "--test-name-pattern", "^actual CLI/filesystem/map agreement: |^actual native entrypoints and hermetic maps accept linked Pending without future receipts$"],
-      { cwd: root, encoding: "utf8", timeout: 55_000, maxBuffer: 256 * 1024 });
-      expect(result.error).toBeUndefined();
-      expect(result.signal).toBeNull();
-      expect(result.status, result.stderr).toBe(0);
-      expect(result.stderr).toContain("10 pass");
-      expect(result.stderr).toContain("0 fail");
-    });
-  }, 60_000);
+  for (const selectedLayout of LAYOUTS) {
+    test(`historical native builders execute ${selectedLayout} from ${layout} checkout controls`, () => {
+      // Arrange
+      const sources = fixtureSources(layout);
+      const selected = selectedLayout === "gap-pending"
+        ? "actual native entrypoints and hermetic maps accept linked Pending without future receipts"
+        : `actual CLI/filesystem/map agreement: ${selectedLayout}`;
+      // Act / Assert
+      withFixture(sources, root => {
+        const result = spawnSync(process.execPath, ["test", "./scripts/check-phase163-provenance/native.test.ts",
+          "--test-name-pattern", `^${selected}$`],
+        { cwd: root, encoding: "utf8", timeout: 55_000, maxBuffer: 256 * 1024 });
+        expect(result.error, result.stdout + result.stderr).toBeUndefined();
+        expect(result.signal).toBeNull();
+        expect(result.status, result.stderr).toBe(0);
+        const completed = [...result.stderr.matchAll(/^\(pass\) (.+) \[[^\n]*\]$/gm)].map(match => match[1]);
+        expect(completed, result.stderr).toEqual([selected]);
+        expect(result.stderr).toMatch(/^\s*1 pass$/m);
+        expect(result.stderr).toMatch(/^\s*0 fail$/m);
+        expect(result.stdout).toContain("Phase163 native fixtures: 1 owned roots removed;");
+      });
+    }, 60_000);
+  }
 }
 
 for (const [name, file, operation] of [

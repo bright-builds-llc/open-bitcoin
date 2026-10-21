@@ -13,7 +13,8 @@ import {
   rustStructLiteralFieldInitializers,
   stripRustNonCode,
 } from "./rust-source-invariants";
-import { readSourceCorpus } from "./source-corpus";
+import { hasCanonicalDaemonComposition } from "./check-phase128-production-compact-announcement-transport/durable-trigger.ts";
+import { readSourceCorpus, readSourceRoot } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE127_TEST =
@@ -24,12 +25,14 @@ const PHASE126_CHECK =
   "bun run scripts/check-phase126-compact-relay-residual-hardening.ts";
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
+const RUNTIME_PROOF = "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts";
 
 export const PHASE127_DAEMON_HELPER_DIR =
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind";
 
 export const PHASE127_TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
   "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
   "packages/open-bitcoin-rpc/src/context.rs",
@@ -46,6 +49,7 @@ export const PHASE127_TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
   "scripts/check-phase127-authoritative-network-state-unification.ts",
+  RUNTIME_PROOF,
   "scripts/rust-source-invariants.ts",
   "scripts/verify.sh",
 ] as const;
@@ -62,8 +66,9 @@ export function checkPhase127AuthoritativeNetworkStateUnification(
       DEFAULT_REPO_ROOT,
   );
   const failures: string[] = [];
-  const texts = loadCorpus(repoRoot, failures);
-  checkProductionAuthority(repoRoot, texts, failures);
+  const helpers = productionDaemonHelperSources(repoRoot);
+  const texts = loadCorpus(repoRoot, failures, helpers);
+  checkProductionAuthority(texts, failures, helpers);
   checkDurableServing(texts, failures);
   checkOperatorProjection(texts, failures);
   checkIntegrationAndParity(texts, failures);
@@ -71,7 +76,7 @@ export function checkPhase127AuthoritativeNetworkStateUnification(
   return failures;
 }
 
-function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
+function loadCorpus(repoRoot: string, failures: string[], helpers: Map<string, string>): TextCorpus {
   const texts = new Map<TargetFile, string>();
   for (const file of PHASE127_TARGET_FILES) {
     const absolutePath = path.join(repoRoot, file);
@@ -80,26 +85,34 @@ function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
       texts.set(file, "");
       continue;
     }
-    texts.set(file, readSourceCorpus(repoRoot, file));
+    const helper = helpers.get(file);
+    const raw = file === "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs"
+      || file === "scripts/check-phase127-authoritative-network-state-unification.ts" || file === RUNTIME_PROOF;
+    texts.set(file, helper ?? (raw ? readSourceRoot(repoRoot, file) : readSourceCorpus(repoRoot, file)));
   }
   return texts;
 }
 
 function checkProductionAuthority(
-  repoRoot: string,
   texts: TextCorpus,
   failures: string[],
+  helpers: Map<string, string>,
 ): void {
   const daemon =
     texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
-  const main = rustFunction(
+  const legacyMain = maybeProductionFunction(
     daemon,
     "async fn main() -> Result<(), Box<dyn std::error::Error>>",
-  );
-  const serve = rustFunction(
+  ) ?? "";
+  const application = maybeProductionFunction(daemon, "async fn run_application() -> Result<(), Box<dyn std::error::Error>>") ?? "";
+  const main = legacyMain || application;
+  const currentEntry = normalizeRust(maybeProductionFunction(daemon, "fn main() -> Result<(), Box<dyn std::error::Error>>") ?? "");
+  const ordinaryContext = "ManagedRpcContext::from_runtime_config_with_network_handle(&runtime,authoritative_runtime.network.clone(),maybe_runtime_store.clone(),)?";
+  const canonicalContext = `matchauthoritative_runtime.maybe_prebuilt_context.take(){Some(context)=>context,None=>${ordinaryContext},}`;
+  const serve = maybeProductionFunction(
     daemon,
     "async fn serve_authoritative_runtime<",
-  );
+  ) ?? "";
   const authoritativeRuntimeInitializers = rustLetInitializers(
     serve,
     "authoritative_runtime",
@@ -110,17 +123,23 @@ function checkProductionAuthority(
     "context",
   );
   const sharedContextInitializers = rustLetInitializers(serve, "shared_context");
-  const authorityFactory = rustFunction(
+  const contextInitializer = normalizeRust(contextInitializers[0] ?? "");
+  const declaresCanonical = /\b(?:canonical_startup|maybe_prebuilt_context|run_application)\b/.test(stripRustNonCode(daemon));
+  const ordinary = !declaresCanonical && contextInitializer === ordinaryContext;
+  const canonical = contextInitializer === canonicalContext && hasCanonicalDaemonComposition(
+    daemon, texts.get("packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs") ?? "",
+  );
+  const authorityFactory = maybeProductionFunction(
     daemon,
     "fn open_authoritative_network_runtime(",
-  );
+  ) ?? "";
   const daemonCodeWithoutAuthorityFactory = stripRustNonCode(daemon).replace(
     authorityFactory,
     "",
   );
   const productionDaemonCode = [
     daemonCodeWithoutAuthorityFactory,
-    ...productionDaemonHelperSources(repoRoot).map(stripRustNonCode),
+    ...[...helpers.values()].map(stripRustNonCode),
   ].join("\n");
   const handleConstructors = rustAssociatedCallMethods(
     productionDaemonCode,
@@ -131,14 +150,16 @@ function checkProductionAuthority(
     "ManagedPeerNetwork",
   );
   if (
+    (!legacyMain && currentEntry !== "fnmain()->Result<(),Box<dynstd::error::Error>>{ifletSome(code)=FjallNodeStore::maybe_run_inspection_worker(){std::process::exit(code);}run_application()}") ||
     countOccurrences(main, "open_authoritative_network_runtime(") !== 1 ||
     countOccurrences(main, "serve_authoritative_runtime(") !== 2 ||
     !main.includes("OpenedAuthoritativeRuntime::Durable") ||
     !main.includes("OpenedAuthoritativeRuntime::Transient") ||
     authoritativeRuntimeInitializers.length !== 0 ||
+    !productionDeclaration(serve.slice(serve.indexOf("{") + 1, -1), "let context =") ||
+    !productionDeclaration(serve.slice(serve.indexOf("{") + 1, -1), "let shared_context =") ||
     contextInitializers.length !== 1 ||
-    normalizeRust(contextInitializers[0] ?? "") !==
-      "ManagedRpcContext::from_runtime_config_with_network_handle(&runtime,authoritative_runtime.network.clone(),maybe_runtime_store.clone(),)?" ||
+    (!ordinary && !canonical) ||
     sharedContextInitializers.length !== 1 ||
     normalizeRust(sharedContextInitializers[0] ?? "") !==
       "Arc::new(tokio::sync::Mutex::new(context))" ||
@@ -177,6 +198,21 @@ function checkProductionAuthority(
       "P127 fresh RPC chainstate: injected production context must retain the supplied network handle",
     );
   }
+}
+
+function maybeProductionFunction(source: string, signature: string): string | undefined {
+  if (!productionDeclaration(source, signature)) return undefined;
+  return rustFunction(source, signature);
+}
+
+function productionDeclaration(source: string, signature: string): boolean {
+  const code = stripRustNonCode(source);
+  const start = code.indexOf(signature);
+  if (start < 0 || countOccurrences(code, signature) !== 1) return false;
+  const prefix = code.slice(0, start);
+  if (countOccurrences(prefix, "{") !== countOccurrences(prefix, "}")) return false;
+  const attributes = prefix.slice(Math.max(prefix.lastIndexOf(";"), prefix.lastIndexOf("}")) + 1);
+  return !/#\[\s*cfg\s*\(/.test(attributes);
 }
 
 function checkDurableServing(texts: TextCorpus, failures: string[]): void {
@@ -449,10 +485,11 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
     );
   }
 
-  const checker =
+  const checker = [
     texts.get(
       "scripts/check-phase127-authoritative-network-state-unification.ts",
-    ) ?? "";
+    ) ?? "", texts.get(RUNTIME_PROOF) ?? "",
+  ].join("\n");
   for (const forbidden of [
     "fetch" + "(",
     "Bun." + "spawn",
@@ -469,13 +506,13 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
   }
 }
 
-function productionDaemonHelperSources(repoRoot: string): string[] {
+function productionDaemonHelperSources(repoRoot: string): Map<string, string> {
   const helperRoot = path.join(
     repoRoot,
     "packages/open-bitcoin-rpc/src/bin/open_bitcoind",
   );
-  if (!existsSync(helperRoot)) return [];
-  return rustSourcePaths(helperRoot)
+  if (!existsSync(helperRoot)) return new Map();
+  return new Map(rustSourcePaths(helperRoot)
     .filter(
       (sourcePath) =>
         path.basename(sourcePath) !== "tests.rs" &&
@@ -484,7 +521,7 @@ function productionDaemonHelperSources(repoRoot: string): string[] {
           .split(path.sep)
           .includes("tests"),
     )
-    .map((sourcePath) => readFileSync(sourcePath, "utf8"));
+    .map((sourcePath) => [path.relative(repoRoot, sourcePath).split(path.sep).join("/"), readFileSync(sourcePath, "utf8")]));
 }
 
 function rustSourcePaths(directory: string): string[] {

@@ -178,7 +178,12 @@ function checkParity(text: (file: string) => string, root: string, failures: str
       const owners = index.checklist.surfaces.filter(row => row.requirements.includes(requirement));
       if (owners.length !== 1 || owners[0].id !== SURFACE) failures.push(`T-157-29: unique requirement owner missing ${requirement}`);
     }
-    for (const file of [...new Set([...CONTRACTS.filter(row => !row.maybeFixture).map(row => row.file), ...TESTS.map(([file]) => file), DOC, PHASE + "157-TURN-MEASUREMENTS.md", PHASE + "157-UAT.md", ...GUARDS.slice(0, 4)])]) {
+    // These reviewed current helpers succeeded the daemon boundary; they do not
+    // become retrospectively executed Phase157 parity evidence.
+    const startupSuccessors = [RPC + "bin/open_bitcoind/canonical_startup.rs", RPC + "context/canonical_genesis.rs"];
+    const historicalOwners = CONTRACTS.filter(row => !row.maybeFixture).map(row =>
+      startupSuccessors.includes(row.file) ? RPC + "bin/open-bitcoind.rs" : row.file);
+    for (const file of [...new Set([...historicalOwners, ...TESTS.map(([file]) => file), DOC, PHASE + "157-TURN-MEASUREMENTS.md", PHASE + "157-UAT.md", ...GUARDS.slice(0, 4)])]) {
       if (!row.evidence.includes(file)) failures.push(`T-157-29: parity evidence missing ${file}`);
     }
     // Current cfg-test wiring is regression evidence, never renewed ordinary parity qualification.

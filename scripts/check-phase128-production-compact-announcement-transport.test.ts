@@ -26,6 +26,9 @@ const CONNECTION_RUNTIME = "packages/open-bitcoin-rpc/src/inbound_listener/conne
 const FILTER_SERVING = "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs";
 const OUTBOUND_FAILURE = "P128 outbound write boundary: receipt completion must follow the session send";
 const INBOUND_FAILURE = "P128 inbound write boundary: receipt completion must occur only after Written";
+const DAEMON = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
+const CANONICAL = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs";
+const COMPOSITION_FAILURE = "P128 production composition: outbound and inbound sessions must share authoritative outboxes";
 type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
 type Mutator = (files: Map<TargetFile, string>) => void;
 const tempRoots: string[] = [];
@@ -46,6 +49,154 @@ test("passes with the complete Phase 128 production transport corpus", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("declared GEN composition cannot fall back to the ordinary context", () => {
+  // Arrange
+  const root = createFixture(files => {
+    replace(CANONICAL, "authoritative.maybe_prebuilt_context = Some(context);", "authoritative.maybe_prebuilt_context = Some(default_context());")(files);
+    replace(DAEMON, `let context = match authoritative_runtime.maybe_prebuilt_context.take() {
+        Some(context) => context,
+        None => ManagedRpcContext::from_runtime_config_with_network_handle(
+            &runtime,
+            authoritative_runtime.network.clone(),
+            maybe_runtime_store.clone(),
+        )?,
+    };`, "let context = ManagedRpcContext::from_runtime_config_with_network_handle(&runtime, authoritative_runtime.network.clone(), maybe_runtime_store.clone(),)?;")(files);
+  });
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toContain(COMPOSITION_FAILURE);
+});
+
+test("retains ordinary inline outbox composition without GEN declarations", () => {
+  // Arrange
+  const root = createFixture(files => files.set(DAEMON, `async fn main() {
+    open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;
+  }
+  fn open_authoritative_network_runtime(sync_runtime: DurableSyncRuntime) {
+    AuthoritativeNetworkRuntime {
+      network: sync_runtime.network_handle(),
+      peer_identity_authority: sync_runtime.peer_identity_authority(),
+      announcement_outboxes: sync_runtime.announcement_outboxes(),
+      maybe_sync_runtime: Some(sync_runtime),
+    }
+  }
+  async fn serve_authoritative_runtime<S, V>() {
+    let mut inbound_listener = start_inbound_listener_for_runtime_with_context_and_announcements(
+      &runtime, Arc::clone(&shared_context), authoritative_runtime.peer_identity_authority,
+      authoritative_runtime.announcement_outboxes, authoritative_runtime.network,
+    ).await;
+  }`));
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("runtime helper effects remain within the deterministic checker scope", () => {
+  // Arrange
+  const helper = "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts";
+  const root = createFixture(append(helper, "Bun.spawnSync([]);"));
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toContain("P128 deterministic scope: checker must remain local and public-network-free");
+});
+
+test("missing runtime helper fails closed", () => {
+  // Arrange
+  const root = createFixture();
+  const helper = "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts";
+  rmSync(path.join(root, helper));
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toContain(`P128 missing target: ${helper}`);
+});
+
+test.each([
+  ["path", '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', '#[path = "open_bitcoind/disconnected.rs"]\nmod canonical_startup;'],
+  ["tokio", "#[tokio::main]\nasync fn run_application(", "async fn run_application("],
+].flatMap(([label, expected, replacement]) => ["comment", "literal"].map(mode => [label, mode, expected, replacement] as const)))(
+  "rejects real %s owner mutation with expected %s attribute decoy", (_label, mode, expected, replacement) => {
+    // Arrange
+    const root = createFixture(files => {
+      const source = files.get(DAEMON) ?? "";
+      expect(source.split(expected)).toHaveLength(2);
+      const changed = source.replace(expected, () => replacement);
+      expect(changed).not.toBe(source);
+      const decoy = mode === "comment" ? `/* ${expected} */` : `const DECOY: &str = r###"${expected}"###;`;
+      files.set(DAEMON, `${decoy}\n${changed}`);
+    });
+    // Act
+    const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+    // Assert
+    expect(failures).toEqual([COMPOSITION_FAILURE]);
+  },
+);
+
+test.each([
+  ["cross-runtime outboxes", CANONICAL, "announcement_outboxes: sync_runtime.announcement_outboxes(),", "announcement_outboxes: other_runtime.announcement_outboxes(),"],
+  ["default outboxes", CANONICAL, "announcement_outboxes: sync_runtime.announcement_outboxes(),", "announcement_outboxes: AnnouncementOutboxRegistry::default(),"],
+  ["cross-runtime peer epoch", CANONICAL, "peer_identity_authority: sync_runtime.peer_identity_authority(),", "peer_identity_authority: other_runtime.peer_identity_authority(),"],
+  ["cross-runtime network", CANONICAL, "let mut network = sync_runtime.network_handle();", "let mut network = other_runtime.network_handle();"],
+  ["network reassignment", CANONICAL, "let mut network = sync_runtime.network_handle();", "let mut network = sync_runtime.network_handle(); network = other_network;"],
+  ["discarded sync owner", CANONICAL, "maybe_sync_runtime: Some(sync_runtime),", "maybe_sync_runtime: None,"],
+  ["cross-owner assembly", CANONICAL, "assemble_durable_runtime(runtime, sync_runtime)?", "assemble_durable_runtime(runtime, other_runtime)?"],
+  ["forged prebuilt context", CANONICAL, "authoritative.maybe_prebuilt_context = Some(context);", "authoritative.maybe_prebuilt_context = Some(default_context());"],
+  ["missing-owner refusal replaced", CANONICAL, "let Some(opened) = maybe_opened else {\n        // There is no earned transient canonical owner in this phase.\n        return Err(compatibility_refusal(runtime, chain));\n    };", "let Some(opened) = maybe_opened else { return Ok(forged_runtime()); };"],
+  ["factory preflight removed", CANONICAL, "let chain = preflight(runtime)?;\n    let Some(opened) = maybe_opened", "let chain = chain_without_preflight(runtime);\n    let Some(opened) = maybe_opened"],
+  ["ordinary activation bypass", CANONICAL, "if activation {", "if false {"],
+  ["test-only assembly", CANONICAL, "pub(super) fn assemble_durable_runtime(", "#[cfg(test)]\n#[allow(dead_code)]\npub(super) fn assemble_durable_runtime("],
+  ["disconnected module", DAEMON, '#[path = "open_bitcoind/canonical_startup.rs"]', '#[path = "open_bitcoind/disconnected.rs"]'],
+  ["test-only module", DAEMON, '#[path = "open_bitcoind/canonical_startup.rs"]', '#[cfg(test)]\n#[allow(dead_code)]\n#[path = "open_bitcoind/canonical_startup.rs"]'],
+  ["test-only import", DAEMON, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "#[cfg(test)]\nuse canonical_startup::{open_authoritative_network_runtime, open_runtime_store};"],
+  ["listener outboxes replaced", DAEMON, "        authoritative_runtime.announcement_outboxes,", "        other_outboxes,"],
+  ["listener peer epoch replaced", DAEMON, "        authoritative_runtime.peer_identity_authority,", "        other_epoch,"],
+  ["listener network replaced", DAEMON, "        authoritative_runtime.network,", "        other_network,"],
+] as const)("rejects actual authoritative outbox mutation: %s", (_label, file, needle, replacement) => {
+  // Arrange
+  expect(checkPhase128ProductionCompactAnnouncementTransport(REPO_ROOT)).toEqual([]);
+  expect(readFileSync(path.join(REPO_ROOT, file), "utf8").split(needle)).toHaveLength(2);
+  expect(replacement).not.toBe(needle);
+  const root = createFixture(replace(file, needle, replacement));
+  expect(readFileSync(path.join(root, file), "utf8")).not.toBe(readFileSync(path.join(REPO_ROOT, file), "utf8"));
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toEqual([COMPOSITION_FAILURE]);
+});
+
+test.each([
+  [CANONICAL, "pub(super) fn open_authoritative_network_runtime(", "\n#[cfg(test)]\npub(super) fn basic_filter_startup_mode", "Some(context)", "Some(default_context())"],
+  [CANONICAL, "pub(super) fn assemble_durable_runtime(", "", "announcement_outboxes: sync_runtime.announcement_outboxes(),", "announcement_outboxes: other_runtime.announcement_outboxes(),"],
+  [DAEMON, "async fn run_application()", "\nasync fn serve_authoritative_runtime<", "match opened {", "match other_opened {"],
+  [DAEMON, "async fn serve_authoritative_runtime<", "\n#[derive(Debug, Clone, PartialEq, Eq)]\nstruct DaemonSyncPreflightError", "        authoritative_runtime.announcement_outboxes,", "        other_outboxes,"],
+].flatMap(([file, marker, boundary, needle, replacement]) =>
+  ["test", "dead", "comment", "literal"].map(mode => [`${marker} ${mode}`, file, marker, boundary, needle, replacement, mode] as const),
+))("rejects real outbox mutation despite expected decoy: %s", (_label, file, marker, boundary, needle, replacement, mode) => {
+  // Arrange
+  const root = createFixture(files => {
+    const original = files.get(file as TargetFile) ?? "";
+    const start = original.indexOf(marker);
+    const end = boundary === "" ? original.length : original.indexOf(boundary, start);
+    expect(start).toBeGreaterThan(-1);
+    expect(end).toBeGreaterThan(start);
+    expect(original.split(needle)).toHaveLength(2);
+    const expected = original.slice(start, end);
+    const changed = original.replace(needle, () => replacement);
+    expect(changed).not.toBe(original);
+    const decoy = mode === "test" ? `#[cfg(test)]\n${expected}`
+      : mode === "dead" ? `fn disconnected_owner() { ${expected} }`
+      : mode === "comment" ? `/* ${expected} */` : `const DECOY: &str = r###"${expected}"###;`;
+    files.set(file as TargetFile, changed.slice(0, start) + decoy + "\n" + changed.slice(start));
+  });
+  // Act
+  const failures = checkPhase128ProductionCompactAnnouncementTransport(root);
+  // Assert
+  expect(failures).toEqual([COMPOSITION_FAILURE]);
 });
 
 test("rejects test-only implementation ownership with an intervening attribute", () => {

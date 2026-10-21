@@ -143,14 +143,31 @@ export function sourceDigest(source: string): string {
   return createHash("sha256").update(source).digest("hex");
 }
 
-function reviewedOwnership(file: string, source: string, start: number, symbol: string): boolean {
+export function reviewedOwnership(file: string, source: string, start: number, symbol: string): boolean {
+  const lease = "packages/open-bitcoin-node/src/storage/fjall_store/open_lease.rs";
+  const prefix = rustCode(source).slice(0, start);
+  if (file === lease && symbol === "open_without_ensure_schema_for_test") {
+    // regions() retains its mechanical non-test bucket for cfg(test) impls.
+    // This one relocated helper must still compile only in the exact test impl.
+    const maybeOwner = prefix.match(/((?:#\[[^\]]*\]\s*)+)impl\s+super::FjallNodeStore\s*\{\s*pub\(crate\)\s*$/);
+    if (!maybeOwner || compact(maybeOwner[1]) !== "#[cfg(test)]") return false;
+    return supportedOwnership(source, start, true);
+  }
+  if (file === lease && symbol === "acquire") {
+    const candidates = regions(source).filter(row => row.symbol === "acquire");
+    const maybeAttributes = prefix.match(/((?:#\[[^\]]*\]\s*)+)pub\(super\)\s*$/);
+    if (candidates.length !== 2 || candidates[1].start !== start
+      || !maybeAttributes || compact(maybeAttributes[1]) !== "#[cfg(unix)]") return false;
+    const index = prefix.lastIndexOf("#[cfg(unix)]");
+    const view = source.slice(0, index) + " ".repeat("#[cfg(unix)]".length) + source.slice(index + "#[cfg(unix)]".length);
+    return supportedOwnership(view, start, true);
+  }
   if (supportedOwnership(source, start, true)) return true;
   // Two existing Unix-only physical symlink tests, under separately checked cfg(test) roots.
   const unixTests = [
     ["packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs", "chain_compatibility_preserves_unsafe_paths_and_their_closed_store_targets"],
     ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/canonical_chain.rs", "canonical_chain_daemon_unsafe_alias_and_non_directory_preserve_physical_sources"],
   ];
-  const prefix = rustCode(source).slice(0, start);
   if (!unixTests.some(row => row[0] === file && row[1] === symbol) || !compact(prefix).endsWith("#[cfg(unix)]#[test]")) return false;
   const index = prefix.lastIndexOf("#[cfg(unix)]");
   const view = source.slice(0, index) + "#[cfg(test)]" + source.slice(index + "#[cfg(unix)]".length);

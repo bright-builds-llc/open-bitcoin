@@ -3,6 +3,7 @@ import path from "node:path";
 import { TargetFile } from "./constants.ts";
 
 const SPLIT_CHILDREN = new Map<TargetFile, readonly string[]>([
+  ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs"]],
   [
     "packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs",
     [
@@ -38,11 +39,14 @@ export function readText(repoRoot: string, file: TargetFile, failures: string[])
     failures.push(`P123 missing required corpus file: ${file}`);
     return "";
   }
-  const texts = [readFileSync(absolutePath, "utf8")];
+  const parent = readFileSync(absolutePath, "utf8");
+  const texts = [parent];
   for (const child of SPLIT_CHILDREN.get(file) ?? []) {
     const childPath = path.join(repoRoot, child);
     if (existsSync(childPath)) {
       texts.push(readFileSync(childPath, "utf8"));
+    } else if (file === "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs" && /\bmod\s+canonical_startup\s*;/.test(parent)) {
+      failures.push(`P123 missing required declared canonical startup child: ${child}`);
     }
   }
   return texts.join("\n");

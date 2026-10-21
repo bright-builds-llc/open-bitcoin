@@ -30,55 +30,68 @@ order stays UNKNOWN; later real events do not recreate old arrival order.
 [consumer evidence](../../.planning/phases/165-shared-exact-work-authority/165-31-SUMMARY.md)
 record the bounded path. This is not automatic raw reopen or canonical recovery.
 
-Ordinary history is currently refused for all four selectors: mainnet, testnet
-(testnet3), default Signet and default regtest. Their
-[identity-only support/refusal matrix](../../docs/parity/v2-6-canonical-chain-identity.md)
-remains authoritative. Observed stored work is unavailable; the filesystem-only
-gate appends `work_decision` before any backend open, migration, recovery or BASIC
-write. Preserve existing data and review it separately; an empty/separate datadir
-also refuses. Networking remains default off.
+## Current Phase 166 canonical genesis boundary
 
-Phase 166 retains canonical bootstrap, exact checkpoint/all-handle reopen and
-genesis BASIC; Phase 167 retains contextual completeness; Phase 168 retains actual
-pinned-Knots differential qualification. Local Open Bitcoin refusal processes and
-explicit synthetic fixture lifecycles do not grant those capabilities or a
-whole-chain, production-service or production-funds claim.
+Canonical genesis bootstrap and reopen are supported for all four selectors.
 
-## Local inspection and verification
+The local genesis route proves the complete pinned header/body, height-zero
+header/block/coins best block and all 32 bytes of internally derived work.
+Genesis coinbase outputs stay absent from UTXOs. Explicit BASIC indexing uses
+the genesis transaction's output script and the zero predecessor commitment.
+The selector `testnet` means testnet3; Signet and regtest use their default profiles.
+The genesis RPC context has no wallet authority: wallet operations refuse.
 
-From the repository root, inspect an isolated stopped configuration without
-starting public networking. Set up the disposable paths once in the same shell:
+Ordinary history remains refused pending Phase 167, including Signet challenge
+validation. Sync, inbound, transaction relay, block serving and compact relay
+activation remain refused before storage opening. Networking remains default off.
+Actual pinned Knots-daemon differential qualification remains deferred to Phase 168.
+Local Cargo/Bazel process evidence concerns Open Bitcoin's own products.
+
+Use the [bounded genesis evidence and exact operator commands](../../docs/parity/v2-6-canonical-durable-bootstrap.md).
+Daemon startup requires an existing explicit datadir and an existing durable
+trigger such as `-blockfilterindex=1`; a missing configured datadir still fails
+the parser. After Ctrl-C/SIGINT shutdown, offline `sync status` only reopens
+existing proved genesis and preserves the saved BASIC mode. It creates no saved
+status/progress record. An admitted Fjall open can have filesystem effects;
+physical preservation is established by tested refusal/pre-admission controls.
+
+Cooperating application leases cover the supported Unix route; actual process
+evidence is macOS. Finite private-copy inspection, child completion and cleanup
+limits are documented with the evidence. No repair, conversion, import or
+automatic history acquisition is offered. Whole-chain parity, public defaults,
+production service and production-funds readiness remain outside the claim.
+
+## Local observation and verification
+
+Follow the [complete disposable startup/reopen procedure](../../docs/parity/v2-6-canonical-durable-bootstrap.md#operator-reproduction)
+from the repository root. It creates an existing `data` directory, a valid
+`open-bitcoin.jsonc`, and a local daemon with explicit `-blockfilterindex=1`.
+After Ctrl-C/SIGINT and complete daemon exit, use either form serially in the
+same shell where `genesis_review_dir` was created:
 
 ```bash
-node_review_dir=$(mktemp -d /tmp/open-bitcoin-node-review.XXXXXX)
+bun run scripts/command-timings.ts run --key phase166-docs-cargo-status -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --config "$genesis_review_dir/open-bitcoin.jsonc" --datadir "$genesis_review_dir/data" --network regtest --format json sync status
+bun run scripts/command-timings.ts run --key phase166-docs-bazel-status -- bazel run //packages/open-bitcoin-cli:open_bitcoin -- --config "$genesis_review_dir/open-bitcoin.jsonc" --datadir "$genesis_review_dir/data" --network regtest --format json sync status
 ```
 
-Use either repository-local form, serially:
+Offline status is existing-only and does not save synthesized status/progress.
+An admitted backend open can recover/update filesystem state. Pre-admission
+inspection and incompatible-source refusal preserve the source within the
+documented bounds. Fixture constructors above retain their separate authority.
+Use `bash scripts/verify.sh` for first-party pre-commit/release verification.
+Phase166 final native verification and generated LOC freshness belong to Plan14
+and normal hooks; focused results alone do not close those gates.
 
-```bash
-bun run scripts/command-timings.ts run --key phase165-node-cargo-status -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --config "$node_review_dir/absent.jsonc" --datadir "$node_review_dir/empty" --network regtest --format json status
-bun run scripts/command-timings.ts run --key phase165-node-bazel-status -- bazel run //packages/open-bitcoin-cli:open_bitcoin -- --config "$node_review_dir/absent.jsonc" --datadir "$node_review_dir/empty" --network regtest --format json status
-```
-
-Status can report compatibility unavailability; it does not open accepted history
-or prove indexing/recovery. For first-party pre-commit/release verification use
-`bash scripts/verify.sh`. Focused evidence and its limits live in the
-[work parity record](../../docs/parity/v2-6-shared-exact-work.md).
-
-Current fixture-source and guard-repair receipts are linked from the
+Historical Phase165 fixture-source and guard-repair receipts are linked from the
 [work parity record](../../docs/parity/v2-6-shared-exact-work.md). The
 [acceptance record](../../.planning/phases/165-shared-exact-work-authority/165-ACCEPTANCE.md)
 separately records actual native attempts and final verification gates.
 Complete-prefix fixture requalification does not make raw reopen or ordinary
 canonical startup eligible.
 
-The accepted [Plan41 source checkpoint](../../.planning/phases/165-shared-exact-work-authority/165-41-SUMMARY.md)
-preserves independent historical refusal diagnostics while current source
-qualification stays gated. These source-policy results retain the support limits
-above. Fresh whole-repository native verification and final acceptance remain
-separately tracked in the acceptance record above.
-
-The full default repository verifier completed with exit 0. The acceptance record
-preserves native and fresh-coverage evidence, the original postprocessing error
-and the separate acceptance decisions. Follow its canonical verification links
-for phase status and scope. The support boundaries above remain unchanged.
+The [Phase165 Plan41 source checkpoint](../../.planning/phases/165-shared-exact-work-authority/165-41-SUMMARY.md)
+preserves refusal diagnostics for its original source. The Phase165 acceptance
+record above records its full default verifier exit 0, fresh-coverage evidence,
+original postprocessing error and separate acceptance decisions. Those results
+retain their original scope; consult the Phase166 verification/acceptance
+records for current gate outcomes.

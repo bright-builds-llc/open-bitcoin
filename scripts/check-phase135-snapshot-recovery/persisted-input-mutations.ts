@@ -308,3 +308,61 @@ export function persistedInputMutations(
     ],
   ];
 }
+
+/** Source-only producer controls keep the final persisted snapshot behind quiescence. */
+export function producerLifecycleMutations(daemon: string, diagnostic: string): readonly Phase135Mutation[] {
+  const cases = [
+    ["unearned genesis marker", "let canonical_genesis = authoritative_runtime.maybe_prebuilt_context.is_some();", "let canonical_genesis = true;"],
+    ["default genesis marker", "let canonical_genesis = authoritative_runtime.maybe_prebuilt_context.is_some();", "let canonical_genesis = Default::default();"],
+    ["inverted retry predicate", "(!canonical_genesis).then(|| start_initial_broadcast_retry_worker(handle))", "canonical_genesis.then(|| start_initial_broadcast_retry_worker(handle))"],
+    ["false retry predicate", "(!canonical_genesis).then(|| start_initial_broadcast_retry_worker(handle))", "false.then(|| start_initial_broadcast_retry_worker(handle))"],
+    ["ordinary checkpoint disabled", "start_mempool_checkpoint_worker(handle.clone(), store.clone())", "None"],
+    ["ordinary coins flush disabled", "start_coins_flush_worker(handle.clone(), store)", "None"],
+    ["ordinary retry disabled", "(!canonical_genesis).then(|| start_initial_broadcast_retry_worker(handle))", "None"],
+    ["retry shutdown replaced by success", "|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),", "|| maybe_retry_worker.map_or(Ok(()), |_worker| Ok(())),"],
+    ["false conditional retry join", "|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),", "|| if false { maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)) } else { Ok(()) },"],
+    ["test-only retry declaration", "    let maybe_retry_worker =", "    #[cfg(test)]\n    let maybe_retry_worker ="],
+    ["test-only shutdown closure", "    settle_daemon_shutdown(", "    #[cfg(test)]\n    settle_daemon_shutdown("],
+    ["checkpoint before optional retry", "|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),", "|| Ok(maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())?),"],
+  ] as const;
+  const optional = cases.map(([name, search, replacement]): Phase135Mutation => [
+    `optional producer ${name}`, diagnostic,
+    files => files.set(daemon, uniqueLiteralReplacement(files.get(daemon) ?? "", search, replacement)),
+    false,
+  ]);
+  const decoys = ["test", "dead", "comment", "literal"].map((mode): Phase135Mutation => [
+    `optional join despite expected ${mode} decoy`, diagnostic, files => {
+      const original = files.get(daemon) ?? "";
+      const marker = "async fn serve_authoritative_runtime<";
+      const start = original.indexOf(marker);
+      const end = original.indexOf("\n#[derive(Debug, Clone, PartialEq, Eq)]\nstruct DaemonSyncPreflightError", start);
+      if (start < 0 || end <= start) throw new Error("missing owning daemon function");
+      const expected = original.slice(start, end);
+      const changed = uniqueLiteralReplacement(original,
+        "|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),", "|| Ok(()),");
+      const decoy = mode === "test" ? `#[cfg(test)]\n${expected}`
+        : mode === "dead" ? `fn disconnected_owner() { ${expected} }`
+        : mode === "comment" ? `/* ${expected} */` : `const DECOY: &str = r###"${expected}"###;`;
+      files.set(daemon, changed.slice(0, start) + decoy + "\n" + changed.slice(start));
+    }, false,
+  ]);
+  const declaredGenesis: Phase135Mutation = ["declared GEN cannot choose mandatory ordinary workers", diagnostic, files => {
+    const changes = [
+      ["let maybe_checkpoint_worker = if canonical_genesis {\n        None\n    } else {\n        start_mempool_checkpoint_worker(handle.clone(), store.clone())\n    };", "let maybe_checkpoint_worker = start_mempool_checkpoint_worker(handle.clone(), store.clone());"],
+      ["let maybe_coins_flush_worker = if canonical_genesis {\n        None\n    } else {\n        start_coins_flush_worker(handle.clone(), store)\n    };", "let maybe_coins_flush_worker = start_coins_flush_worker(handle.clone(), store);"],
+      ["let maybe_retry_worker =\n        (!canonical_genesis).then(|| start_initial_broadcast_retry_worker(handle));", "let retry_worker = start_initial_broadcast_retry_worker(handle);"],
+      ["|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),", "|| Ok(retry_worker.shutdown()?),"],
+    ] as const;
+    let source = files.get(daemon) ?? "";
+    for (const [search, replacement] of changes) source = uniqueLiteralReplacement(source, search, replacement);
+    files.set(daemon, source);
+  }, false];
+  return [...optional, ...decoys, declaredGenesis];
+}
+
+function uniqueLiteralReplacement(source: string, search: string, replacement: string): string {
+  if (source.split(search).length !== 2) throw new Error("ambiguous producer mutation anchor");
+  const changed = source.replace(search, () => replacement);
+  if (changed === source) throw new Error("producer mutation left source unchanged");
+  return changed;
+}

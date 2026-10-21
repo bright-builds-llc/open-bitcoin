@@ -7,7 +7,9 @@
 use core::fmt;
 use open_bitcoin_primitives::{Block, BlockHash, BlockHeader};
 
+pub mod bootstrap;
 mod genesis;
+pub use bootstrap::CanonicalGenesisProof;
 
 /// The four pinned profiles already exposed by Open Bitcoin's selectors.
 /// Signet denotes the default challenge only; custom Signets are outside this contract.
@@ -59,7 +61,7 @@ impl ChainSpec {
         genesis::header(self.chain)
     }
 
-    /// Exact pinned body, without connecting its unspendable coinbase to any UTXO set.
+    /// Exact pinned body; genesis outputs are excluded from the UTXO set by special handling.
     pub fn genesis_block(&self) -> Block {
         genesis::block(self.chain)
     }

@@ -236,3 +236,44 @@ export function contextStartupIsOrdered(canonical: string, network: string): boo
     && before(fixtureHandle, "recover_fixture_mempool_snapshot_from_store_handle(", "Self::assemble_context(")
     && body(network, "fn assemble_context(").includes("Self {");
 }
+
+export function canonicalWorkerLifecycle(serve: string): boolean {
+  const code = serve.replace(/\s+/g, "");
+  return ["let canonical_genesis =", "let maybe_checkpoint_worker =", "let maybe_coins_flush_worker =", "let maybe_retry_worker ="]
+    .every(marker => directStatementIndex(serve, marker) >= 0)
+    && (code.match(/canonical_genesis=/g) ?? []).length === 1
+    && code.includes("letcanonical_genesis=authoritative_runtime.maybe_prebuilt_context.is_some();")
+    && code.includes("letmaybe_checkpoint_worker=ifcanonical_genesis{None}else{start_mempool_checkpoint_worker(handle.clone(),store.clone())};")
+    && code.includes("letmaybe_coins_flush_worker=ifcanonical_genesis{None}else{start_coins_flush_worker(handle.clone(),store)};")
+    && code.includes("letmaybe_retry_worker=(!canonical_genesis).then(||start_initial_broadcast_retry_worker(handle));")
+    && (code.match(/letmaybe_(?:checkpoint|coins_flush|retry)_worker=/g) ?? []).length === 3;
+}
+
+export function productionBody(source: string, marker: string): string {
+  const masked = body(`fn phase135_source() {\n${source}\n}`, "fn phase135_source()");
+  const start = directStatementIndex(masked, marker);
+  if (start < 0 || count(masked, marker) !== 1) return "";
+  return body(masked.slice(start), marker);
+}
+
+export function ordinaryWorkerLifecycle(serve: string): boolean {
+  const code = serve.replace(/\s+/g, "");
+  return !/\b(?:canonical_genesis|maybe_prebuilt_context)\b/.test(serve)
+    && code.includes("letmaybe_checkpoint_worker=start_mempool_checkpoint_worker(handle.clone(),store.clone());")
+    && code.includes("letmaybe_coins_flush_worker=start_coins_flush_worker(handle.clone(),store);")
+    && code.includes("letretry_worker=start_initial_broadcast_retry_worker(handle);");
+}
+
+export function shutdownCallIsExact(call: string, retry: string): boolean {
+  const expected = `settle_daemon_shutdown(
+    serve_result.map_err(Into::into),
+    || Ok(maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())?),
+    || Ok(maybe_coins_flush_worker.map_or(Ok(()), |worker| worker.shutdown_always())?),
+    ${retry}
+    || Ok(maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())?),
+    || { maybe_runtime_store.map_or(Ok(()), |store| {
+      store.mark_clean_shutdown(open_bitcoin_node::PersistMode::Sync)
+    }) },
+  )`;
+  return call.replace(/\s+/g, "") === expected.replace(/\s+/g, "");
+}

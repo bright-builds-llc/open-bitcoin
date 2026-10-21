@@ -22,6 +22,7 @@ use super::canonical_chain::selected_chain;
 use super::{CanonicalContextError, ManagedRpcContext};
 
 pub(super) enum WalletState {
+    Unavailable,
     Local(ManagedWallet<MemoryWalletStore>),
     DurableNamedRegistry {
         store: FjallNodeStore,
@@ -32,18 +33,13 @@ pub(super) enum WalletState {
 impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainstate::CoinsView>
     ManagedRpcContext<S, V>
 {
-    pub fn wallet_info(&self) -> ManagedWalletInfo {
-        self.selected_wallet_info().unwrap_or(ManagedWalletInfo {
-            network: self.chain,
-            descriptor_count: 0,
-            utxo_count: 0,
-            maybe_tip_height: None,
-            maybe_tip_median_time_past: None,
-        })
+    pub fn wallet_info(&self) -> Result<ManagedWalletInfo, RpcFailure> {
+        self.selected_wallet_info()
     }
 
     pub fn selected_wallet_info(&self) -> Result<ManagedWalletInfo, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => Ok(wallet.wallet_info()),
             WalletState::DurableNamedRegistry { store, .. } => {
                 let wallet = self.selected_wallet_from_store(store)?;
@@ -61,6 +57,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn selected_wallet_name(&self) -> Result<Option<String>, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(_) => Ok(None),
             WalletState::DurableNamedRegistry { store, .. } => {
                 let registry = load_wallet_registry(store)?;
@@ -71,6 +68,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn require_wallet_selection(&self) -> Result<(), RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(_) => Ok(()),
             WalletState::DurableNamedRegistry { store, .. } => {
                 let registry = load_wallet_registry(store)?;
@@ -96,6 +94,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn wallet_balance(&self, coinbase_maturity: u32) -> Result<WalletBalance, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .balance(coinbase_maturity)
                 .map_err(wallet_error_to_failure),
@@ -108,6 +107,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn wallet_utxos(&self) -> Result<Vec<WalletUtxo>, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => Ok(wallet.utxos().to_vec()),
             WalletState::DurableNamedRegistry { store, .. } => {
                 Ok(self.selected_wallet_from_store(store)?.utxos().to_vec())
@@ -117,6 +117,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn descriptor_address(&self, descriptor_id: u32) -> Result<Address, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .wallet()
                 .address_for_descriptor(descriptor_id)
@@ -135,6 +136,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         descriptor_text: &str,
     ) -> Result<u32, RpcFailure> {
         match &mut self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .import_descriptor(label, role, descriptor_text)
                 .map_err(wallet_error_to_failure),
@@ -161,6 +163,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn allocate_receive_address(&mut self) -> Result<Address, RpcFailure> {
         match &mut self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .allocate_receive_address()
                 .map_err(wallet_error_to_failure),
@@ -187,6 +190,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn allocate_change_address(&mut self) -> Result<Address, RpcFailure> {
         match &mut self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .allocate_change_address()
                 .map_err(wallet_error_to_failure),
@@ -216,6 +220,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         snapshot: &open_bitcoin_node::core::chainstate::ChainstateSnapshot,
     ) -> Result<(), RpcFailure> {
         match &mut self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .rescan_chainstate(snapshot)
                 .map_err(wallet_error_to_failure),
@@ -231,6 +236,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         coinbase_maturity: u32,
     ) -> Result<BuiltTransaction, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .build_transaction(request, coinbase_maturity)
                 .map_err(wallet_error_to_failure),
@@ -247,6 +253,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         coinbase_maturity: u32,
     ) -> Result<BuiltTransaction, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .build_and_sign(request, coinbase_maturity)
                 .map_err(wallet_error_to_failure),
@@ -259,6 +266,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub fn sign_transaction(&self, built: &BuiltTransaction) -> Result<Transaction, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => wallet
                 .sign_transaction(built)
                 .map_err(wallet_error_to_failure),
@@ -273,6 +281,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         &self,
     ) -> Result<open_bitcoin_node::core::wallet::WalletSnapshot, RpcFailure> {
         match &self.wallet_state {
+            WalletState::Unavailable => Err(unavailable_wallet()),
             WalletState::Local(wallet) => Ok(wallet.snapshot()),
             WalletState::DurableNamedRegistry { store, .. } => {
                 Ok(self.selected_wallet_from_store(store)?.snapshot())
@@ -282,6 +291,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
 
     pub(super) fn request_wallet_name(&self) -> Option<&str> {
         match &self.wallet_state {
+            WalletState::Unavailable => None,
             WalletState::Local(_) => None,
             WalletState::DurableNamedRegistry {
                 maybe_request_wallet_name,
@@ -294,12 +304,19 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         &self,
         store: &FjallNodeStore,
     ) -> Result<Wallet, RpcFailure> {
+        if matches!(self.wallet_state, WalletState::Unavailable) {
+            return Err(unavailable_wallet());
+        }
         let registry = load_wallet_registry(store)?;
         let wallet_name = resolve_selected_wallet_name(self.request_wallet_name(), &registry)?;
         registry
             .wallet(&wallet_name)
             .map_err(wallet_registry_error_to_failure)
     }
+}
+
+pub(super) fn unavailable_wallet() -> RpcFailure {
+    RpcFailure::wallet_error("wallet unavailable: canonical genesis history is not qualified")
 }
 
 pub(super) fn build_wallet_state_with_store(
@@ -423,5 +440,139 @@ pub(super) fn wallet_registry_error_to_failure(error: WalletRegistryError) -> Rp
             RpcFailure::wallet_error(error.to_string())
         }
         _ => RpcFailure::wallet_error(error.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn unavailable_fixture() -> ManagedRpcContext {
+        // Memory-only state-machine evidence; this grants no durable authority.
+        let mut context = ManagedRpcContext::from_fixture_runtime_config(&RuntimeConfig::default());
+        context.wallet_state = WalletState::Unavailable;
+        context
+    }
+
+    #[test]
+    fn phase166_unavailable_wallet_queries_refuse() {
+        // Arrange
+        let context = unavailable_fixture();
+        let expected = RpcFailure::wallet_error(
+            "wallet unavailable: canonical genesis history is not qualified",
+        );
+        // Act / Assert
+        assert_eq!(context.wallet_info().map(|_| ()), Err(expected.clone()));
+        assert_eq!(
+            context.selected_wallet_info().map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(
+            context.selected_wallet_name().map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(context.require_wallet_selection(), Err(expected.clone()));
+        assert_eq!(
+            context.wallet_balance(100).map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(context.wallet_utxos().map(|_| ()), Err(expected.clone()));
+        assert_eq!(context.wallet_snapshot().map(|_| ()), Err(expected.clone()));
+        assert_eq!(
+            context.wallet_rescan_job().map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(context.wallet_freshness().map(|_| ()), Err(expected));
+    }
+
+    #[test]
+    fn phase166_unavailable_wallet_rescan_calls_no_effects() {
+        // Arrange
+        let mut context = unavailable_fixture();
+        let calls = std::cell::Cell::new(0);
+        // Act
+        let result = context.rescan_wallet_range_with(
+            None,
+            None,
+            |_| {
+                calls.set(calls.get() + 1);
+                panic!("guard must not run")
+            },
+            |_, _, _, _, _| {
+                calls.set(calls.get() + 1);
+                panic!("prepare must not run")
+            },
+            |_, _, _| {
+                calls.set(calls.get() + 1);
+                panic!("save_failed must not run")
+            },
+        );
+        // Assert
+        assert_eq!(
+            result,
+            Err(RpcFailure::wallet_error(
+                "wallet unavailable: canonical genesis history is not qualified",
+            ))
+        );
+        assert_eq!(calls.get(), 0);
+    }
+
+    #[test]
+    fn phase166_unavailable_wallet_mutations_refuse() {
+        // Arrange
+        let mut context = unavailable_fixture();
+        let expected = unavailable_wallet();
+        let request = BuildRequest {
+            recipients: vec![],
+            fee_rate: open_bitcoin_node::core::mempool::FeeRate::from_sats_per_kvb(1000),
+            maybe_change_descriptor_id: None,
+            maybe_lock_time: None,
+            enable_rbf: false,
+        };
+        let built = BuiltTransaction {
+            transaction: Transaction::default(),
+            selected_inputs: vec![],
+            fee: open_bitcoin_node::core::primitives::Amount::from_sats(0).expect("zero fee"),
+            change_output_index: None,
+        };
+        let snapshot = open_bitcoin_node::core::chainstate::ChainstateSnapshot::new(
+            vec![],
+            Default::default(),
+            Default::default(),
+        );
+        // Act / Assert
+        assert_eq!(
+            context.descriptor_address(0).map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(
+            context.import_descriptor("private", DescriptorRole::External, "invalid"),
+            Err(expected.clone())
+        );
+        assert_eq!(
+            context.allocate_receive_address().map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(
+            context.allocate_change_address().map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(context.rescan_wallet(&snapshot), Err(expected.clone()));
+        assert_eq!(
+            context.build_transaction(&request, 100).map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(
+            context
+                .build_and_sign_transaction(&request, 100)
+                .map(|_| ()),
+            Err(expected.clone())
+        );
+        assert_eq!(context.sign_transaction(&built).map(|_| ()), Err(expected));
+        context.set_request_wallet_name(Some("private".into()));
+        assert_eq!(context.request_wallet_name(), None);
+        context.clear_request_wallet_name();
+        assert_eq!(context.request_wallet_name(), None);
+        assert!(format!("{context:?}").contains("\"unavailable\""));
     }
 }

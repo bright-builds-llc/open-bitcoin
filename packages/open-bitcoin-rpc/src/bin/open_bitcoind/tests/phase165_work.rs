@@ -4,6 +4,7 @@
 
 use super::canonical_chain::{NETWORKS, config, manifest, owned_path};
 use super::*;
+use open_bitcoin_node::core::chainstate::CoinsView;
 use open_bitcoin_rpc::config::load_runtime_config_for_args;
 
 static NEXT_SOURCE_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
@@ -66,6 +67,7 @@ fn closed_source(shape: &str) -> PathBuf {
 
 #[test]
 fn phase165_daemon_loaded_startup_refuses_forged_sources_before_rpc_bind() {
+    let _scenario = super::canonical_chain::scenario();
     for shape in ["durable", "malformed"] {
         // Arrange
         let path = closed_source(shape);
@@ -105,6 +107,7 @@ fn phase165_daemon_loaded_startup_refuses_forged_sources_before_rpc_bind() {
 
 #[test]
 fn phase165_daemon_missing_empty_and_metrics_fallback_keep_closed_shapes() {
+    let _scenario = super::canonical_chain::scenario();
     for (address, sync, selected) in NETWORKS {
         for empty in [false, true] {
             // Arrange
@@ -142,6 +145,7 @@ fn phase165_daemon_missing_empty_and_metrics_fallback_keep_closed_shapes() {
 
 #[test]
 fn phase165_daemon_metrics_cannot_promote_forged_exact_work() {
+    let _scenario = super::canonical_chain::scenario();
     // Arrange
     let path = closed_source("durable");
     let before = manifest(&path);
@@ -160,4 +164,72 @@ fn phase165_daemon_metrics_cannot_promote_forged_exact_work() {
         assert_eq!(manifest(&path), before);
     }
     remove_dir_if_exists(&path);
+}
+
+#[test]
+fn phase166_daemon_local_durable_triggers_initialize_and_reopen_all_selectors() {
+    let _scenario = super::canonical_chain::scenario();
+    for (address, sync, selected) in NETWORKS {
+        for triggers in [4, 8, 16] {
+            for empty in [false, true] {
+                // Arrange
+                let path = owned_path("phase166-local");
+                if empty {
+                    fs::create_dir(&path).expect("explicit empty source");
+                }
+                let runtime = config(&path, address, sync, triggers);
+                for _ in 0..2 {
+                    // Act
+                    let opened = crate::open_runtime_store(&runtime).expect("canonical opener");
+                    let authoritative = crate::open_authoritative_network_runtime(&runtime, opened)
+                        .expect("canonical authority")
+                        .expect_durable();
+                    // Assert
+                    let tip = authoritative
+                        .network
+                        .maybe_chain_tip()
+                        .expect("tip")
+                        .expect("proved genesis");
+                    assert_eq!(tip.height, 0, "{selected}");
+                    assert_eq!(
+                        tip.block_hash,
+                        open_bitcoin_rpc::config::selected_canonical_chain(&runtime)
+                            .expect("selection")
+                            .spec()
+                            .genesis_hash()
+                    );
+                    assert!(
+                        !authoritative
+                            .network
+                            .relay_activation_enabled()
+                            .expect("relay flag")
+                    );
+                    assert!(authoritative.maybe_prebuilt_context.is_some());
+                    let sync_runtime = authoritative
+                        .maybe_sync_runtime
+                        .as_ref()
+                        .expect("retained runtime");
+                    assert!(
+                        FjallNodeStore::open_ordinary(
+                            &path,
+                            open_bitcoin_rpc::config::selected_canonical_chain(&runtime)
+                                .expect("chain")
+                        )
+                        .is_err()
+                    );
+                    assert_eq!(
+                        sync_runtime
+                            .store()
+                            .coins_view()
+                            .complete_snapshot()
+                            .expect("coins")
+                            .maybe_best_block,
+                        Some(tip.block_hash)
+                    );
+                    drop(authoritative);
+                }
+                remove_dir_if_exists(&path);
+            }
+        }
+    }
 }

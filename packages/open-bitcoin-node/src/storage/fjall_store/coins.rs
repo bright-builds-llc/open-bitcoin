@@ -72,6 +72,18 @@ impl FjallNodeStore {
             super::filters::BasicFilterWriterInterleave::BeforeMetadata,
         )?;
         let mut control = self.filter_publication_guard()?;
+        // Counts describe the entire stored ancestry. Preserve only an existing
+        // decoded map for an identical checkpoint; absence never means empty.
+        let maybe_counts = self
+            .get_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY)?
+            .map(|bytes| decode_chain_meta(&bytes))
+            .transpose()?
+            .and_then(|(stored, maybe_counts)| {
+                if stored.as_slice() == active_chain {
+                    return maybe_counts;
+                }
+                None
+            });
         let maybe_pending = control.maybe_pending_coins;
         self.check_validation_coverage_for_metadata(active_chain)?;
         control.invalidate_append()?;
@@ -112,7 +124,7 @@ impl FjallNodeStore {
             }
             _ => None,
         };
-        let bytes = encode_chain_meta(active_chain, None)?;
+        let bytes = encode_chain_meta(active_chain, maybe_counts.as_ref())?;
         self.put_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY, bytes, mode)?;
         // A publicly callable sink cannot confer live authority. Only the actual
         // managed validated flush owner can confirm these achieved pending facts.

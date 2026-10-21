@@ -14,6 +14,7 @@ import {
 } from "./check-phase135-snapshot-recovery/source";
 import {
   persistedInputMutations,
+  producerLifecycleMutations,
   type Phase135Mutation,
   type Phase135Mutator,
 } from "./check-phase135-snapshot-recovery/persisted-input-mutations";
@@ -41,6 +42,29 @@ test("passes with the complete Phase 135 corpus", () => {
   // Act
   const failures = checkPhase135SnapshotRecovery(root);
 
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("retains the ordinary mandatory retry lifecycle", () => {
+  // Arrange
+  const file = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
+  const changes = [
+    ["    let canonical_genesis = authoritative_runtime.maybe_prebuilt_context.is_some();\n", ""],
+    ["let context = match authoritative_runtime.maybe_prebuilt_context.take() {\n        Some(context) => context,\n        None => ManagedRpcContext::from_runtime_config_with_network_handle(\n            &runtime,\n            authoritative_runtime.network.clone(),\n            maybe_runtime_store.clone(),\n        )?,\n    };", "let context = ManagedRpcContext::from_runtime_config_with_network_handle(&runtime, authoritative_runtime.network.clone(), maybe_runtime_store.clone(),)?;"],
+    ["let maybe_checkpoint_worker = if canonical_genesis {\n        None\n    } else {\n        start_mempool_checkpoint_worker(handle.clone(), store.clone())\n    };", "let maybe_checkpoint_worker = start_mempool_checkpoint_worker(handle.clone(), store.clone());"],
+    ["let maybe_coins_flush_worker = if canonical_genesis {\n        None\n    } else {\n        start_coins_flush_worker(handle.clone(), store)\n    };", "let maybe_coins_flush_worker = start_coins_flush_worker(handle.clone(), store);"],
+    ["let maybe_retry_worker =\n        (!canonical_genesis).then(|| start_initial_broadcast_retry_worker(handle));", "let retry_worker = start_initial_broadcast_retry_worker(handle);"],
+    ["|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),", "|| Ok(retry_worker.shutdown()?),"],
+  ] as const;
+  const root = createFixture(files => {
+    for (const [needle, replacement] of changes) {
+      expect(requireFile(files, file).split(needle)).toHaveLength(2);
+      replace(file, needle, replacement)(files);
+    }
+  });
+  // Act
+  const failures = checkPhase135SnapshotRecovery(root);
   // Assert
   expect(failures).toEqual([]);
 });
@@ -159,6 +183,7 @@ function contractMutations(): Mutation[] {
   } as const;
 
   return [
+    ...producerLifecycleMutations(files.daemon, PHASE135_DIAGNOSTICS.shutdown),
     ...persistedInputMutations(files, PHASE135_DIAGNOSTICS, replace),
     [
       "v2 stores a derived fee",
@@ -429,7 +454,12 @@ function contractMutations(): Mutation[] {
     [
       "retry producer remains unjoined",
       PHASE135_DIAGNOSTICS.shutdown,
-      replace(files.daemon, "|| Ok(retry_worker.shutdown()?),", "|| Ok(()),"),
+      (sources) => {
+        const needle = "|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),";
+        expect(requireFile(sources, files.daemon).split(needle)).toHaveLength(2);
+        replace(files.daemon, needle, "|| Ok(()),")(sources);
+        expect(requireFile(sources, files.daemon)).not.toBe(readSourceRoot(REPO_ROOT, files.daemon));
+      },
     ],
     [
       "clean marker ignores retained failure",

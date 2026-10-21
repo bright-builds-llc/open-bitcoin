@@ -14,6 +14,7 @@ use std::{
 
 mod block_reconcile;
 mod block_response;
+mod canonical_genesis;
 mod live_fixture;
 mod metrics;
 mod open_runtime;
@@ -253,6 +254,13 @@ impl DurableSyncRuntime {
         clock: &mut C,
         should_cancel: &mut K,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
+        if let Some(chain) = self.network.maybe_canonical_chain()? {
+            chain.spec().require_ordinary_history().map_err(|error| {
+                SyncRuntimeError::InvalidData {
+                    message: error.to_string(),
+                }
+            })?;
+        }
         self.maybe_reconcile_progress = None;
         block_reconcile::validate_block_limits(self)?;
         block_reconcile::reconcile_and_persist_best_chain(self, timestamp)?;

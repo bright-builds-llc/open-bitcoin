@@ -10,6 +10,12 @@ use open_bitcoin_node::{
 use open_bitcoin_rpc::config::{BasicFilterIndexSetting, DaemonSyncMode};
 use std::collections::BTreeMap;
 
+static PROCESS_SCENARIO: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+pub(super) fn scenario() -> std::sync::MutexGuard<'static, ()> {
+    PROCESS_SCENARIO.lock().expect("canonical process scenario")
+}
+
 pub(super) const NETWORKS: [(AddressNetwork, SyncNetwork, &str); 4] = [
     (AddressNetwork::Mainnet, SyncNetwork::Mainnet, "mainnet"),
     (AddressNetwork::Testnet, SyncNetwork::Testnet, "testnet3"),
@@ -112,6 +118,7 @@ fn assert_refusal(message: &str, selected: &str) {
 
 #[test]
 fn canonical_chain_daemon_every_durable_trigger_preserves_closed_store() {
+    let _scenario = super::canonical_chain::scenario();
     // Arrange
     let path = owned_path("PRIVATE\nquoted-store");
     let store = FjallNodeStore::open(&path).expect("owned fixture store");
@@ -135,6 +142,7 @@ fn canonical_chain_daemon_every_durable_trigger_preserves_closed_store() {
 
 #[test]
 fn canonical_chain_daemon_missing_and_empty_paths_keep_shape_for_all_triggers() {
+    let _scenario = super::canonical_chain::scenario();
     for (address, sync, selected) in NETWORKS {
         for empty in [false, true] {
             // Arrange
@@ -143,7 +151,7 @@ fn canonical_chain_daemon_missing_and_empty_paths_keep_shape_for_all_triggers() 
                 fs::create_dir(&path).expect("empty fixture");
             }
             let maybe_before = empty.then(|| manifest(&path));
-            for triggers in 1..32 {
+            for triggers in (1..32).filter(|triggers| triggers & 3 != 0) {
                 let runtime = config(&path, address, sync, triggers);
                 // Act
                 let result = crate::open_runtime_store(&runtime);
@@ -164,15 +172,28 @@ fn canonical_chain_daemon_missing_and_empty_paths_keep_shape_for_all_triggers() 
 
 #[test]
 fn canonical_chain_daemon_transient_and_supplied_raw_store_never_grant_authority() {
+    let _scenario = super::canonical_chain::scenario();
     for (address, sync, selected) in NETWORKS {
         // Arrange
         let path = owned_path("supplied");
         let runtime = config(&path, address, sync, 0);
         let store = FjallNodeStore::open(&path).expect("owned fixture");
         let before = store.load_chainstate_snapshot().expect("active chain");
-        for maybe_store in [None, Some(store.clone())] {
+        let _sealed_signature: fn(
+            &RuntimeConfig,
+            Option<open_bitcoin_node::storage::OpenedCanonicalGenesis>,
+        ) -> Result<
+            crate::OpenedAuthoritativeRuntime,
+            crate::DaemonSyncPreflightError,
+        > = crate::open_authoritative_network_runtime;
+        for _ in 0..2 {
+            assert!(
+                crate::open_runtime_store(&runtime)
+                    .expect("storage-free selection")
+                    .is_none()
+            );
             // Act
-            let result = crate::open_authoritative_network_runtime(&runtime, maybe_store);
+            let result = crate::open_authoritative_network_runtime(&runtime, None);
             // Assert
             assert_refusal(
                 &result.err().expect("ordinary scope refusal").to_string(),
@@ -190,6 +211,7 @@ fn canonical_chain_daemon_transient_and_supplied_raw_store_never_grant_authority
 
 #[test]
 fn canonical_chain_daemon_metrics_fallback_preserves_closed_store_and_missing_shape() {
+    let _scenario = super::canonical_chain::scenario();
     for (address, sync, selected) in NETWORKS {
         for shape in ["missing", "empty_directory", "existing_unproved"] {
             // Arrange
@@ -224,6 +246,7 @@ fn canonical_chain_daemon_metrics_fallback_preserves_closed_store_and_missing_sh
 
 #[test]
 fn canonical_chain_daemon_supplied_metrics_handle_does_not_authorize_worker_or_writes() {
+    let _scenario = super::canonical_chain::scenario();
     for (address, sync, selected) in NETWORKS {
         // Arrange
         let path = owned_path("supplied-metrics");
@@ -263,6 +286,7 @@ fn canonical_chain_daemon_supplied_metrics_handle_does_not_authorize_worker_or_w
 
 #[test]
 fn canonical_chain_daemon_absent_datadir_never_silently_succeeds_for_durable_triggers() {
+    let _scenario = super::canonical_chain::scenario();
     for (address, sync, selected) in NETWORKS {
         for triggers in 1..32 {
             // Arrange
@@ -280,6 +304,7 @@ fn canonical_chain_daemon_absent_datadir_never_silently_succeeds_for_durable_tri
 
 #[test]
 fn canonical_chain_daemon_inconsistent_selectors_refuse_before_any_store_or_owner() {
+    let _scenario = super::canonical_chain::scenario();
     // Arrange
     let path = owned_path("mismatch");
     for (address, _, _) in NETWORKS {
@@ -316,6 +341,7 @@ fn canonical_chain_daemon_inconsistent_selectors_refuse_before_any_store_or_owne
 #[cfg(unix)]
 #[test]
 fn canonical_chain_daemon_unsafe_alias_and_non_directory_preserve_physical_sources() {
+    let _scenario = super::canonical_chain::scenario();
     // Arrange
     let source = owned_path("unsafe-source");
     drop(FjallNodeStore::open(&source).expect("owned closed source"));

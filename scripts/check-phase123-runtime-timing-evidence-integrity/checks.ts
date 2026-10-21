@@ -4,7 +4,7 @@ import { readText } from "./filesystem.ts";
 import { verifySuccessfulWriteEvidence, verifyPrivateProjection, verifyAuthoritativeRuntime, verifyFocusedTests } from "./evidence.ts";
 import { verifyPhase121Compatibility, verifyParity, verifyBreadcrumbs, verifyVerifierWiring } from "./parity.ts";
 import { normalizeWhitespace, requireContains, requireAbsent, requireOrdered } from "./helpers.ts";
-import { normalizeRust, rustCallArguments, rustFunction } from "../rust-source-invariants.ts";
+import { normalizeRust, rustCallArguments, rustFunction, rustLetInitializers, stripRustNonCode } from "../rust-source-invariants.ts";
 import { maybeFunction } from "../check-phase157-index-catch-up/rust-evidence.ts";
 
 export function checkPhase123RuntimeTimingEvidenceIntegrity(
@@ -96,16 +96,7 @@ export function verifyProductionActivation(
     failures,
   );
   const daemon = texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
-  const daemonCalls = rustCallArguments(
-    rustFunction(daemon, "fn open_authoritative_network_runtime("),
-    "DurableSyncRuntime::open_ordinary_configured",
-  );
-  const expectedArguments = [
-    "store", "runtime.sync.runtime.clone()", "basic_filter_startup_mode(runtime)",
-  ];
-  if (daemonCalls.length !== 1 || daemonCalls[0]?.map(normalizeRust).join("|") !== expectedArguments.join("|")) {
-    failures.push("P123 daemon sync activation wiring must preserve configured activation arguments");
-  }
+  verifyDaemonActivation(daemon, failures);
   const fixture = texts.get("packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs") ?? "";
   const fixtureCalls = rustCallArguments(rustFunction(fixture, "pub(crate) fn fixture_open_authoritative_network_runtime("), "DurableSyncRuntime::open_with_configured_runtime_activation");
   const fixtureArguments = ["store", "runtime.sync.runtime.clone()", "runtime.relay", "runtime.block_serving", "runtime.inbound.enabled", "basic_filter_startup_mode(runtime)"];
@@ -138,6 +129,64 @@ export function verifyProductionActivation(
   ]) {
     requireContains(inboundTests, needle, "P123 inbound production activation tests", failures);
   }
+}
+
+function verifyDaemonActivation(daemon: string, failures: string[]): void {
+  const code = stripRustNonCode(daemon);
+  const fail = () => failures.push("P123 daemon sync activation wiring must preserve configured activation arguments");
+  if (!/\bcanonical_startup\b|\brun_application\s*\(/.test(code)) {
+    const calls = rustCallArguments(rustFunction(daemon, "fn open_authoritative_network_runtime("), "DurableSyncRuntime::open_ordinary_configured");
+    const args = ["store", "runtime.sync.runtime.clone()", "basic_filter_startup_mode(runtime)"];
+    if (calls.length !== 1 || calls[0].map(normalizeRust).join("|") !== args.join("|")) fail();
+    return;
+  }
+  const declarations = [...daemon.matchAll(/#\[path = "open_bitcoind\/canonical_startup\.rs"\]\s*mod canonical_startup;/g)]
+    .filter(match => code.slice(match.index).startsWith("#[path"));
+  const imports = [...code.matchAll(/\buse\s+canonical_startup\s*::\s*\{\s*open_authoritative_network_runtime\s*,\s*open_runtime_store\s*\}\s*;/g)];
+  const unconditional = (start: number) => !code.slice(Math.max(code.lastIndexOf(";", start - 1), code.lastIndexOf("}", start - 1)) + 1, start).trim();
+  const owner = (name: string, attributes: string) => {
+    const maybeOwner = maybeFunction(daemon, name, true);
+    return maybeOwner && normalizeRust(maybeOwner.attributes) === attributes ? maybeOwner : undefined;
+  };
+  const main = owner("main", ""), application = owner("run_application", "#[tokio::main]async");
+  const serve = owner("serve_authoritative_runtime", "async"), opened = owner("open_authoritative_network_runtime", "pub(super)");
+  const preflight = owner("preflight", "");
+  if (declarations.length !== 1 || imports.length !== 1 || !unconditional(declarations[0].index) || !unconditional(imports[0].index)
+    || !main || !application || !serve || !opened || !preflight) { fail(); return; }
+  const exactInitializer = (body: string, binding: string, expression: string) => {
+    const initializers = rustLetInitializers(body, binding);
+    return initializers.length === 1 && normalizeRust(initializers[0]) === normalizeRust(expression);
+  };
+  const mainBody = "if let Some(code) = FjallNodeStore::maybe_run_inspection_worker() { std::process::exit(code); } run_application()";
+  const ordinaryContext = "match authoritative_runtime.maybe_prebuilt_context.take() { Some(context) => context, None => ManagedRpcContext::from_runtime_config_with_network_handle(&runtime, authoritative_runtime.network.clone(), maybe_runtime_store.clone(),)?, }";
+  const serveArgs = ["runtime", "bind_address", "auth", "maybe_runtime_store", "authoritative_runtime"];
+  const serveCalls = rustCallArguments(application.body, "serve_authoritative_runtime");
+  const stores = rustLetInitializers(application.body, "maybe_runtime_store").map(normalizeRust);
+  const contexts = rustLetInitializers(serve.body, "context").map(normalizeRust);
+  const projectedStore = "match &opened { OpenedAuthoritativeRuntime::Durable(authoritative) => authoritative.maybe_sync_runtime.as_ref().map(|sync| sync.store().clone()), #[cfg(test)] OpenedAuthoritativeRuntime::Transient(_) => None, }";
+  if (normalizeRust(main.body) !== normalizeRust(mainBody)
+    || !exactInitializer(application.body, "runtime", "load_runtime_config()?")
+    || stores.length !== 2 || stores[0] !== normalizeRust("open_runtime_store(&runtime)?") || stores[1] !== normalizeRust(projectedStore)
+    || !exactInitializer(application.body, "opened", "open_authoritative_network_runtime(&runtime, maybe_runtime_store)?")
+    || serveCalls.length !== 2 || serveCalls.some(args => args.map(normalizeRust).join("|") !== serveArgs.join("|"))
+    || contexts.length !== 2 || contexts[0] !== normalizeRust(ordinaryContext) || contexts[1] !== "shared_context.lock().await") fail();
+  // This closed capability flow supplements, never replaces, ordinary and fixture activation checks.
+  const expectedOpener = `fn open_authoritative_network_runtime(runtime: &RuntimeConfig, maybe_opened: Option<OpenedCanonicalGenesis>,) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
+    let chain = preflight(runtime)?;
+    let Some(opened) = maybe_opened else { return Err(compatibility_refusal(runtime, chain)); };
+    let (context, sync_runtime) = ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened).map_err(|_| compatibility_refusal(runtime, chain))?;
+    match assemble_durable_runtime(runtime, sync_runtime)? {
+      OpenedAuthoritativeRuntime::Durable(mut authoritative) => { authoritative.maybe_prebuilt_context = Some(context); Ok(OpenedAuthoritativeRuntime::Durable(authoritative)) }
+      #[cfg(test)] OpenedAuthoritativeRuntime::Transient(_) => Err(compatibility_refusal(runtime, chain)),
+    }
+  }`;
+  const expectedPreflight = `runtime.validate_peer_block_filters().map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    let chain = selected_canonical_chain(runtime).map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
+    let activation = runtime.sync.is_enabled() || runtime.inbound.enabled || runtime.relay.enabled || runtime.block_serving.block_serving.enabled || runtime.block_serving.compact_relay.enabled;
+    if activation { chain.spec().require_ordinary_history().map_err(|_| compatibility_refusal(runtime, chain))?; }
+    Ok(chain)`;
+  if (normalizeRust(stripRustNonCode(daemon.slice(opened.start, opened.end))) !== normalizeRust(expectedOpener)
+    || normalizeRust(preflight.body) !== normalizeRust(expectedPreflight)) fail();
 }
 
 export function verifyTypedReceiveAndTcp(

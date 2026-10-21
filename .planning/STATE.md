@@ -3,14 +3,14 @@ gsd_state_version: "1.0"
 milestone: v2.6
 milestone_name: Canonical Chain Bootstrap and Validation Parity
 status: ready
-stopped_at: Phase165 verified complete; stop before Phase166
-last_updated: "2026-10-18T13:08:12.294174+00:00"
-last_activity: "2026-10-18"
+stopped_at: Phase166 verified complete; strict normal-hook saving follows; stop before Phase167
+last_updated: "2026-10-21T11:10:24.459661+00:00"
+last_activity: "2026-10-21"
 progress:
   total_phases: 8
-  completed_phases: 2
-  total_plans: 54
-  completed_plans: 54
+  completed_phases: 3
+  total_plans: 70
+  completed_plans: 70
   percent: 100
 ---
 
@@ -21,22 +21,22 @@ progress:
 See: `.planning/PROJECT.md` (updated 2026-10-13). Latest archived milestone audit: `.planning/milestones/v2.5-MILESTONE-AUDIT.md`.
 
 **Core value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-**Current focus:** Phase 165 verified; strict Git finalization, then stop before Phase 166
+**Current focus:** Phase 166 verified; strict Git finalization, then stop before Phase 167
 
 ## Current Position
 
 Milestone: v2.6 Canonical Chain Bootstrap and Validation Parity
-Phase: 165 (Shared Exact Work Authority)
-Plan: 41 of 41 complete (final closure: 165-14)
+Phase: 166 (Canonical Durable Bootstrap and Genesis BASIC)
+Plan: 16 of 16 complete (final closure: 166-14)
 **Status:** Verified complete; normal-hook saving transaction follows this snapshot
-Last activity: 2026-10-18
-Last Activity Description: All41 plans accepted. Full default native R5 exited0; Rootd464b6d9 closes9504 input states/28512 proof rows/10 outputs and fresh eight-crate coverage. Original false31b postprocessor receipt remains preserved; only its proven tuple/JSON-list comparison is resolved by the independent data-only audit. Canonical code/security/formal reports close344 reviewed files,184 threats and146 plan truth entries plus4 roadmap criteria. CWOR01/02/03/05 complete; CWOR04 belongs to166. Normal-hook main commit/push remains the strict-wrapper transaction; no later phase starts.
+Last activity: 2026-10-21
+Last Activity Description: All16 plans accepted. Complete default manual05 passed with unchanged113-file reviewed source, full4957 workspace tests and fresh8package1832-test coverage/no uncovered lines. CanonicalCODE has zero actionable findings; security closes42 threats with3 accepted limits; goal verifies50 plan truths plus4 mandatory criteria. CBOT-02/03 and CWOR-04 are complete. Normal-hook main commit/push remains the strict-wrapper transaction; no later phase starts.
 
-Milestone progress: 2/8 phases verified; 54/54 currently planned execution plans complete (Phase 164: 13; Phase 165: 41). Later phases remain unstarted.
+Milestone progress: 3/8 phases verified;70/70 currently planned execution plans complete (Phase164:13; Phase165:41; Phase166:16). Later phases remain unstarted.
 
-The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 across 13 verified plans. Ordinary history remains refused for all four selectors pending canonical bootstrap and contextual prerequisites in Phases 166–167.
+The archived v2.5 retains all 22 completed requirements, 10 phases, 90 plans and 220 plan tasks. Its original proof and versioned controls remain preserved; Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 across 13 verified plans. Canonical genesis bootstrap/reopen is verified in Phase166. Ordinary history remains refused for all four selectors pending contextual prerequisites in Phase167.
 
-Current single-phase transaction: verified Phase165 candidate is ready for normal-hook commit/push on main; actual Git outcomes are derived from repository history and the hook log. Stop before Phase 166. Historical phase directories remain tracked because native verifiers consume them.
+Current single-phase transaction: verified Phase166 candidate is ready for normal-hook commit/push on main; actual Git outcomes are derived from repository history and the hook log. Stop before Phase167. Historical phase directories remain tracked because native verifiers consume them.
 
 ## Performance Metrics
 
@@ -629,8 +629,8 @@ Current single-phase transaction: verified Phase165 candidate is ready for norma
 
 ## Session Continuity
 
-Last session: 2026-10-18T13:08:12.294174+00:00
-Stopped at: Phase165 verified complete; stop before Phase166
+Last session: 2026-10-21T11:11:10.709999+00:00
+Stopped at: Phase166 verified complete; strict normal-hook main saving follows; stop before Phase167
 Resume file: .planning/ROADMAP.md
 
 Historical v2.5 source acceptance for the original 21-input digest `14fa9cc5` includes all 176 default-verifier stages, four layout suites of 5,032 tests each, clean independent review, 16 verified security mitigations, functional activation, the renewed audit, readiness execution and final SC1–SC5 verification. All 22 requirements have unique Complete owners; all five phase plans, 90 milestone plans and ten phases are complete. Earlier e0 acceptance and failed or interrupted receipts retain their original sources, dates and outcomes. Normal-hook source saving and milestone archival remain separately attributable; archived controls now select all three versioned roots. Runtime, resource, networking and funds-safety limits are unchanged.

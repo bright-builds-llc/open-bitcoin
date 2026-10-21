@@ -54,6 +54,7 @@ fn effective_context_store(
     wallet_state: &WalletState,
 ) -> Option<FjallNodeStore> {
     match wallet_state {
+        WalletState::Unavailable => maybe_store,
         WalletState::Local(_) => maybe_store,
         WalletState::DurableNamedRegistry { store, .. } => Some(store.clone()),
     }
@@ -158,7 +159,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         Ok(())
     }
 
-    fn assemble_context(
+    pub(super) fn assemble_context(
         config: &RuntimeConfig,
         network: ManagedNetworkHandle<S, V>,
         effective_store: Option<FjallNodeStore>,

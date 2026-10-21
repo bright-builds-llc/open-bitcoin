@@ -17,6 +17,9 @@ use open_bitcoin_rpc::{
 use serde_json::{Value, json};
 use ureq::Agent;
 
+mod canonical_genesis;
+use canonical_genesis::observe_canonical_genesis;
+
 use super::chain_compatibility::canonical_chain_from_resolution;
 use super::{
     OperatorCommandOutcome, OperatorOutputFormat, OperatorRuntimeError, SyncArgs, SyncCommand,
@@ -74,6 +77,9 @@ pub(super) fn execute_offline_sync_command(
     args: &SyncArgs,
     format: OperatorOutputFormat,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
+    if matches!(args.command, SyncCommand::Status) {
+        return observe_canonical_genesis(data_dir, selected_chain, format);
+    }
     let store = FjallNodeStore::open_ordinary(data_dir, selected_chain)
         .map_err(|refusal| OperatorRuntimeError::CompatibilityRefused { refusal })?;
     let mut metadata = store

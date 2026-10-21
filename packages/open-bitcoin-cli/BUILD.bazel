@@ -38,6 +38,7 @@ rust_binary(
     version = "0.1.0",
     deps = [
         ":open_bitcoin_cli_lib",
+        "//packages/open-bitcoin-node:open_bitcoin_node_lib",
         "@crate_index//:clap",
     ],
     visibility = ["//visibility:public"],

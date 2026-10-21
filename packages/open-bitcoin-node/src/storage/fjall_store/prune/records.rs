@@ -14,7 +14,7 @@ use open_bitcoin_core::chainstate::{BASIC_INDEX_PRUNE_LOCK, PruneLockInfo};
 use super::super::{FjallNodeStore, StorageError, StorageNamespace, backend_failure, corruption};
 
 /// Fixed block-index key for the whole prune-lock map.
-pub(in crate::storage::fjall_store) const PRUNE_LOCKS_KEY: &str = "prune_locks";
+pub(in crate::storage) const PRUNE_LOCKS_KEY: &str = "prune_locks";
 
 /// Fixed block-index key for the support-evidence summary.
 pub(in crate::storage::fjall_store) const PRUNE_SUMMARY_KEY: &str = "prune_summary";
@@ -130,7 +130,7 @@ impl FjallNodeStore {
     }
 }
 
-pub(in crate::storage::fjall_store) fn encode_prune_locks(
+pub(in crate::storage) fn encode_prune_locks(
     locks: &[PruneLockInfo],
 ) -> Result<Vec<u8>, StorageError> {
     refuse_duplicate_names(locks)?;
@@ -154,7 +154,7 @@ pub(in crate::storage::fjall_store) fn encode_prune_locks(
     Ok(bytes)
 }
 
-pub(in crate::storage::fjall_store) fn decode_prune_locks(
+pub(in crate::storage) fn decode_prune_locks(
     bytes: &[u8],
 ) -> Result<Vec<PruneLockInfo>, StorageError> {
     let mut cursor = ByteCursor::new(bytes);

@@ -119,7 +119,7 @@ test("architecture rejects later v1.2 sync language", () => {
   replaceInFixture(
     root,
     ".planning/ARCHITECTURE.md",
-    "These are review boundaries, not public defaults:",
+    "These are not public defaults and do not authorize the\ncurrent canonical route.",
     "These remain later v1.2 phases:",
   );
 

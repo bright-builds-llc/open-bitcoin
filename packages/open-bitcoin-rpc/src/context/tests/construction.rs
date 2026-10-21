@@ -60,7 +60,7 @@ fn managed_rpc_context_builds_from_runtime_config() {
     // Act
     let context = ManagedRpcContext::from_fixture_runtime_config(&runtime);
     let network_info = context.network_info().expect("authoritative network info");
-    let wallet_info = context.wallet_info();
+    let wallet_info = context.wallet_info().expect("fixture wallet info");
     let snapshot = context
         .blockchain_snapshot()
         .expect("authoritative chainstate snapshot");

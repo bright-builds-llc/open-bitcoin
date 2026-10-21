@@ -113,6 +113,8 @@ impl OperatorCommandOutcome {
 /// Runtime error contract for operator command execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OperatorRuntimeError {
+    /// Existing canonical storage could not provide bounded observation evidence.
+    CanonicalObservationUnavailable,
     /// Selected canonical support or source identity is unproved before backend access.
     CompatibilityRefused {
         /// Bounded typed facts with no source paths or backend text.
@@ -138,6 +140,9 @@ pub enum OperatorRuntimeError {
 impl fmt::Display for OperatorRuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::CanonicalObservationUnavailable => {
+                f.write_str("canonical genesis observation unavailable")
+            }
             Self::CompatibilityRefused { refusal } => refusal.fmt(f),
             Self::InvalidRequest { message } => f.write_str(message),
             Self::UnsupportedCommand { command } => {

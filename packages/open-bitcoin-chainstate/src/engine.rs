@@ -20,6 +20,7 @@ use crate::{
 };
 
 mod apply;
+pub mod canonical_genesis;
 mod overlay_apply;
 mod stage;
 mod work_authority;

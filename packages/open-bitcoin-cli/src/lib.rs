@@ -21,6 +21,9 @@ pub mod getinfo;
 pub mod operator;
 pub mod startup;
 
+#[cfg(test)]
+open_bitcoin_node::register_inspection_worker!();
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CliError {
     message: String,

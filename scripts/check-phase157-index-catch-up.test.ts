@@ -582,9 +582,32 @@ test("outer shutdown rejects missing real retry join despite unrelated settlemen
   // Arrange
   const root = fixture();
   const file = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
-  mutateFunction(root, file, "serve_authoritative_runtime", body => body.replace("retry_worker.shutdown()?", "Ok(())"));
+  mutateFunction(root, file, "serve_authoritative_runtime", body => {
+    const before = "maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?))";
+    const after = "maybe_retry_worker.map_or(Ok(()), |_worker| Ok(()))";
+    expect(body.split(before)).toHaveLength(2);
+    expect(before).not.toBe(after);
+    const changed = body.replace(before, after);
+    expect(changed).not.toBe(body);
+    return changed;
+  });
   // Act
   const failures = checkPhase157IndexCatchUp(root);
   // Assert
   expect(failures.some(item => item.includes(`${file}:serve_authoritative_runtime`))).toBe(true);
 });
+for (const missing of ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", DOC]) {
+  test(`current startup successors retain original parity evidence owner: ${missing}`, () => {
+    // Arrange
+    const root = fixture();
+    edit(root, "docs/parity/index.json", source => {
+      const index = JSON.parse(source);
+      const surface = index.checklist.surfaces.find((row: { id: string }) => row.id === SURFACE);
+      expect(surface.evidence.filter((file: string) => file === missing)).toHaveLength(1);
+      surface.evidence = surface.evidence.filter((file: string) => file !== missing);
+      return JSON.stringify(index);
+    });
+    // Act / Assert
+    expect(checkPhase157IndexCatchUp(root)).toContain(`T-157-29: parity evidence missing ${missing}`);
+  });
+}

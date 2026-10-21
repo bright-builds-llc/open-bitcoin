@@ -53,6 +53,9 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
     ManagedRpcContext<S, V>
 {
     pub fn wallet_rescan_job(&self) -> Result<Option<WalletRescanJob>, RpcFailure> {
+        if matches!(self.wallet_state, WalletState::Unavailable) {
+            return Err(super::wallet_state::unavailable_wallet());
+        }
         let WalletState::DurableNamedRegistry { store, .. } = &self.wallet_state else {
             return Ok(None);
         };
@@ -139,6 +142,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
     ) -> Result<WalletRescanExecution, RpcFailure> {
         // Resolve the persisted checkpoint before any fallible authority read.
         let mut maybe_durable = match &self.wallet_state {
+            WalletState::Unavailable => return Err(super::wallet_state::unavailable_wallet()),
             WalletState::Local(_) => None,
             WalletState::DurableNamedRegistry { store, .. } => {
                 let registry = load_wallet_registry(store)?;

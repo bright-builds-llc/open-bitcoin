@@ -6,7 +6,7 @@
 **Granularity:** Fine
 **Goal:** Start from an empty datadir, validate canonical Bitcoin histories with network-correct rules and cumulative proof of work, and demonstrate matching results against pinned Bitcoin Knots `29.3.knots20260210` (`a9aee730466ac67d35a3c03ee24676be5e045878`).
 
-This user-approved roadmap maps all 30 requirements to eight phases, continuing after shipped Phase 163. Phases 164 and 165 close seven requirements across 54 verified plans; the remaining 23 requirements and Phases 166–171 remain pending. Approval, phase execution and full ordinary-history qualification remain separate gates.
+This user-approved roadmap maps all 30 requirements to eight phases, continuing after shipped Phase 163. Phases 164–166 close ten requirements across 70 verified plans; the remaining 20 requirements and Phases 167–171 remain pending. Approval, phase execution and full ordinary-history qualification remain separate gates.
 
 ## Scope and Delivery Gates
 
@@ -22,7 +22,7 @@ This user-approved roadmap maps all 30 requirements to eight phases, continuing 
 
 - [x] **Phase 164: Canonical Chain Identity and Compatibility Gates** - Bind existing network selectors to canonical roots and refuse incompatible state before mutation. (completed 2026-10-14)
 - [x] **Phase 165: Shared Exact Work Authority** - Select headers and connected branches using verified target-derived 256-bit work.
-- [ ] **Phase 166: Canonical Durable Bootstrap and Genesis BASIC** - Initialize and reopen canonical genesis, exact work and BASIC without seeded history.
+- [x] **Phase 166: Canonical Durable Bootstrap and Genesis BASIC** - Initialize and reopen canonical genesis, exact work and BASIC without seeded history.
 - [ ] **Phase 167: Candidate-History Validation Rules** - Apply pinned network and branch-history rules through ordinary durable validation.
 - [ ] **Phase 168: Actual Pinned-Knots Differential Qualification** - Compare identical canonical regtest histories against an identity-verified Knots daemon.
 - [ ] **Phase 169: Differential Fork Selection and Durable Recovery** - Compare competing branches and prove earned authority through disconnects and actual reopen.
@@ -74,7 +74,7 @@ This user-approved roadmap maps all 30 requirements to eight phases, continuing 
 1. Enabling BASIC on a fresh canonical datadir yields its genesis filter and zero-predecessor commitment and permits ordinary indexing without seeded history or implicit public-network activation. [CBOT-03]
 1. A checkpoint/all-handle reopen preserves exact cumulative work without truncation, binding it to stored headers, network identity and recovered coins best block; inconsistent bindings cannot become authority. [CWOR-04]
 
-**Plans**: 0 plans (not yet planned)
+**Plans:** 16/16 plans executed
 
 ### Phase 167: Candidate-History Validation Rules
 
@@ -154,20 +154,20 @@ Historical fixture prerequisites are established here for Phase 171. Canonical o
 
 ## Progress
 
-The requirements and roadmap were approved on 2026-10-13. The acceptance dependency order is 164 → 165 → 166 → 167 → 168 → 169 → 170 → 171. Early runner design and historical fixture selection do not remove those acceptance dependencies. Phase 164 passed full native, source/security and 27/27 goal verification. Phase 165 passed full native, independent code/security and all 146 plan truth entries plus four mandatory roadmap criteria; Phases 166–171 have not started.
+The requirements and roadmap were approved on 2026-10-13. The acceptance dependency order is 164 → 165 → 166 → 167 → 168 → 169 → 170 → 171. Early runner design and historical fixture selection do not remove those acceptance dependencies. Phase 164 passed full native, source/security and 27/27 goal verification. Phase 165 passed full native, independent code/security and all 146 plan truth entries plus four mandatory roadmap criteria. Phase 166 passed the complete default native contract, independent code/security review and all 50 plan truth entries plus four mandatory roadmap criteria; Phases 167–171 have not started.
 
 | Phase                                                  | Plans Complete | Status      | Completed  |
 | ------------------------------------------------------ | -------------- | ----------- | ---------- |
 | 164. Canonical Chain Identity and Compatibility Gates  | 13/13          | Complete    | 2026-10-14 |
 | 165. Shared Exact Work Authority                       | 41/41          | Complete    | 2026-10-18 |
-| 166. Canonical Durable Bootstrap and Genesis BASIC     | 0/0            | Not started | -          |
+| 166. Canonical Durable Bootstrap and Genesis BASIC     | 16/16          | Complete    | 2026-10-21 |
 | 167. Candidate-History Validation Rules                | 0/0            | Not started | -          |
 | 168. Actual Pinned-Knots Differential Qualification    | 0/0            | Not started | -          |
 | 169. Differential Fork Selection and Durable Recovery  | 0/0            | Not started | -          |
 | 170. Canonical Prune and Retained BASIC Integration    | 0/0            | Not started | -          |
 | 171. Classified Historical Contexts and Parity Closure | 0/0            | Not started | -          |
 
-Coverage: 30/30 active requirements mapped exactly once; no orphaned or duplicate owners. Later integration phases exercise foundations without reassigning their ownership. Phase 164 contains 13 accepted plans/summaries and Phase 165 contains 41, with their canonical verification records. Phases 166–171 await subsequent workflows.
+Coverage: 30/30 active requirements mapped exactly once; no orphaned or duplicate owners. Later integration phases exercise foundations without reassigning their ownership. Phase 164 contains 13 accepted plans/summaries, Phase 165 contains 41 and Phase 166 contains 16, with their canonical verification records. Phases 167–171 await subsequent workflows.
 
 ## Historical Milestones and Guidance
 

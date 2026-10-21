@@ -19,6 +19,9 @@ use clap::Parser;
 use open_bitcoin_cli::operator::{OperatorCli, runtime::execute_operator_cli};
 
 fn main() -> ExitCode {
+    if let Some(code) = open_bitcoin_node::FjallNodeStore::maybe_run_inspection_worker() {
+        std::process::exit(code);
+    }
     let cli = OperatorCli::parse();
     let outcome = execute_operator_cli(cli);
     if !outcome.stdout.text.is_empty() {
@@ -29,3 +32,6 @@ fn main() -> ExitCode {
     }
     ExitCode::from(outcome.exit_code.code())
 }
+
+#[cfg(test)]
+open_bitcoin_node::register_inspection_worker!();

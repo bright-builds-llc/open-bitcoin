@@ -345,9 +345,11 @@ async fn phase127_production_composition_shares_sync_serving_and_operator_author
     };
 
     // Assert
+    let mut display_bytes = previous_block_hash.to_byte_array();
+    display_bytes.reverse();
     assert_eq!(
         chain_response["result"]["bestblockhash"],
-        json!(encoded_hash(previous_block_hash))
+        json!(display_bytes.map(|byte| format!("{byte:02x}")).concat())
     );
     assert_eq!(
         sorted_result_keys(&chain_response),

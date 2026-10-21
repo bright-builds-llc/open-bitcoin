@@ -5,13 +5,15 @@
       "id": "canonical-ordinary-history-refused-pending-prerequisites",
       "surfaces": [
         "v2-6-canonical-chain-identity",
+        "v2-6-canonical-durable-bootstrap",
         "datadir",
         "validation",
         "operator-docs"
       ],
-      "summary": "Phase 164 recognizes only the four exact pinned mainnet/testnet3/default-Signet/default-regtest genesis identities, with identity-only source-derived evidence. Unlike pinned Knots canonical startup/validation, every ordinary history mode currently refuses: all existing nonempty unproved stores refuse without backend open, and missing/empty sources refuse because canonical_bootstrap, exact_work and candidate_history are absent; Signet also lacks signet_challenge_validation. Observed stored network/root/work remain unavailable rather than invented wrong-network facts. No repair, conversion, reindex, positive canonical reopen or bootstrap is provided.",
+      "summary": "Phase164's identity-only source-derived record retains its original all-refusal receipts. Every ordinary history mode currently refuses, including Signet challenge validation. Existing unproved/foreign/legacy stores refuse before backend open. The separate genesis-only route binds retained header/body/coins/work and explicit BASIC, while ordinary descendants, repair, conversion, import and actual Knots-daemon differential qualification remain deferred. See v2-6-canonical-durable-bootstrap for the current local genesis scope.",
       "evidence": [
         "docs/parity/v2-6-canonical-chain-identity.md",
+        "docs/parity/v2-6-canonical-durable-bootstrap.md",
         "packages/open-bitcoin-consensus/src/chain_spec.rs",
         "packages/open-bitcoin-consensus/src/chain_spec/tests.rs",
         "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
@@ -27,9 +29,10 @@
         "compact-filter-index",
         "config"
       ],
-      "summary": "Unlike pinned Knots fresh-start indexing, enabled empty Open Bitcoin storage refuses validated genesis history required. Existing SyncNetwork consensus authority identifies network genesis but does not install a complete canonical genesis body/validated chainstate bootstrap for indexing. Actual retained genesis body binding and normal validated history are prerequisites; no fabricated anchor, download, import or repair is introduced.",
+      "summary": "The historical generic BASIC path refuses empty unvalidated history. The separate genesis route consumes a sealed opener, uses the existing validated BASIC owner and publishes exact genesis filter/zero-predecessor commitment only when explicitly enabled. Disabled mode creates no index and unspecified mode preserves proved saved settings. Ordinary continuation and public/default filter serving remain gated; no fabricated anchor, download, import or repair is introduced.",
       "evidence": [
         "packages/open-bitcoin-node/src/storage/fjall_store/filters/startup.rs",
+        "docs/parity/v2-6-canonical-durable-bootstrap.md",
         "packages/open-bitcoin-node/src/storage/fjall_store/filters/lifecycle.rs",
         "packages/open-bitcoin-node/src/sync/types.rs",
         "packages/open-bitcoin-chainstate/src/block_filter.rs",
@@ -556,6 +559,10 @@
   },
   "surfaces": [
     {
+      "name": "v2-6-canonical-durable-bootstrap",
+      "status": "done"
+    },
+    {
       "name": "v2-6-canonical-chain-identity",
       "status": "done"
     },
@@ -882,6 +889,47 @@
       "out_of_scope"
     ],
     "surfaces": [
+      {
+        "id": "v2-6-canonical-durable-bootstrap",
+        "title": "Canonical durable genesis and explicit BASIC observations",
+        "status": "done",
+        "requirements": [
+          "CBOT-02",
+          "CBOT-03",
+          "CWOR-04"
+        ],
+        "evidence": [
+          "docs/parity/v2-6-canonical-durable-bootstrap.md",
+          "docs/parity/fixtures/phase166-genesis-vectors.json",
+          "packages/open-bitcoin-node/src/storage/canonical_bootstrap/proof.rs",
+          "packages/open-bitcoin-node/src/storage/fjall_store/canonical_genesis.rs",
+          "packages/open-bitcoin-node/src/sync/canonical_genesis.rs",
+          "packages/open-bitcoin-rpc/src/context/canonical_genesis.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs",
+          "packages/open-bitcoin-cli/src/operator/runtime/support/canonical_genesis.rs",
+          "packages/open-bitcoin-rpc/tests/phase166_canonical_startup.rs",
+          "scripts/check-phase166-canonical-bootstrap.ts"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/chain.cpp",
+            "packages/bitcoin-knots/src/arith_uint256.h",
+            "packages/bitcoin-knots/src/blockfilter.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+          ]
+        },
+        "rationale": "Source-derived pinned genesis/BASIC vectors, actual durable software controls and local Open Bitcoin Cargo/Bazel product processes. Full native and independent phase verification remain separate gates.",
+        "intentional_differences": [
+          "The bounded inspection route accepts only the proved genesis record set within finite private-copy bounds and cooperating Unix leases. Ordinary history remains refused. Admitted engine opening may have filesystem effects; physical source preservation applies to refusal/pre-admission controls.",
+          "The genesis RPC context has no wallet authority and activation requests remain refused before storage opening."
+        ],
+        "known_gaps": [
+          "Ordinary descendants and Signet challenge validation remain Phase167-owned; actual pinned Knots-daemon differential qualification remains Phase168-owned.",
+          "No whole-chain, arbitrary-writer, hardware power-loss, public/default network, production-service or production-funds readiness claim."
+        ]
+      },
       {
         "id": "v2-6-shared-exact-work",
         "title": "Exact numerical work, earned live branch authority and non-opening legacy refusal",

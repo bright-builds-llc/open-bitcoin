@@ -45,6 +45,12 @@ use open_bitcoin_rpc::{
     inbound_listener::{InboundListenerState, InboundListenerWorker},
 };
 
+#[path = "open_bitcoind/canonical_startup.rs"]
+mod canonical_startup;
+#[cfg(test)]
+use canonical_startup::{assemble_durable_runtime, basic_filter_startup_mode};
+use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};
+
 #[path = "open_bitcoind/checkpoint.rs"]
 mod checkpoint;
 #[path = "open_bitcoind/coins_flush.rs"]
@@ -81,8 +87,18 @@ use runtime_control::{
 use sync_seed::{DaemonSyncPreflight, daemon_sync_preflight_message};
 use sync_seed::{preflight_daemon_sync, report_daemon_sync_preflight, seed_initial_sync_state};
 
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(code) = FjallNodeStore::maybe_run_inspection_worker() {
+        std::process::exit(code);
+    }
+    run_application()
+}
+
+#[cfg(test)]
+open_bitcoin_node::register_inspection_worker!();
+
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn run_application() -> Result<(), Box<dyn std::error::Error>> {
     let runtime = load_runtime_config()?;
     if !runtime.rpc_server.enabled {
         return Err("RPC server is disabled by configuration".into());
@@ -90,7 +106,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let bind_address = runtime.rpc_server.bind_address;
     let auth = runtime.rpc_server.auth.clone();
     let maybe_runtime_store = open_runtime_store(&runtime)?;
-    match open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())? {
+    let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;
+    let maybe_runtime_store = match &opened {
+        OpenedAuthoritativeRuntime::Durable(authoritative) => authoritative
+            .maybe_sync_runtime
+            .as_ref()
+            .map(|sync| sync.store().clone()),
+        #[cfg(test)]
+        OpenedAuthoritativeRuntime::Transient(_) => None,
+    };
+    match opened {
         OpenedAuthoritativeRuntime::Durable(authoritative_runtime) => {
             serve_authoritative_runtime(
                 runtime,
@@ -132,11 +157,15 @@ where
     {
         report_daemon_sync_preflight(&preflight);
     }
-    let context = ManagedRpcContext::from_runtime_config_with_network_handle(
-        &runtime,
-        authoritative_runtime.network.clone(),
-        maybe_runtime_store.clone(),
-    )?;
+    let canonical_genesis = authoritative_runtime.maybe_prebuilt_context.is_some();
+    let context = match authoritative_runtime.maybe_prebuilt_context.take() {
+        Some(context) => context,
+        None => ManagedRpcContext::from_runtime_config_with_network_handle(
+            &runtime,
+            authoritative_runtime.network.clone(),
+            maybe_runtime_store.clone(),
+        )?,
+    };
     let shared_context = Arc::new(tokio::sync::Mutex::new(context));
     let maybe_sync_worker = start_daemon_sync_worker(
         &runtime,
@@ -145,9 +174,18 @@ where
     )?;
     let handle = authoritative_runtime.network.clone();
     let store = maybe_runtime_store.clone();
-    let maybe_checkpoint_worker = start_mempool_checkpoint_worker(handle.clone(), store.clone());
-    let maybe_coins_flush_worker = start_coins_flush_worker(handle.clone(), store);
-    let retry_worker = start_initial_broadcast_retry_worker(handle);
+    let maybe_checkpoint_worker = if canonical_genesis {
+        None
+    } else {
+        start_mempool_checkpoint_worker(handle.clone(), store.clone())
+    };
+    let maybe_coins_flush_worker = if canonical_genesis {
+        None
+    } else {
+        start_coins_flush_worker(handle.clone(), store)
+    };
+    let maybe_retry_worker =
+        (!canonical_genesis).then(|| start_initial_broadcast_retry_worker(handle));
     if let Some(worker) = maybe_sync_worker.as_ref() {
         let mut context = shared_context.lock().await;
         context.set_daemon_sync_control(worker.control.clone());
@@ -187,7 +225,7 @@ where
         serve_result.map_err(Into::into),
         || Ok(maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())?),
         || Ok(maybe_coins_flush_worker.map_or(Ok(()), |worker| worker.shutdown_always())?),
-        || Ok(retry_worker.shutdown()?),
+        || maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),
         || Ok(maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())?),
         || {
             maybe_runtime_store.map_or(Ok(()), |store| {
@@ -210,6 +248,7 @@ struct DaemonSyncWorker {
 }
 
 struct AuthoritativeNetworkRuntime<S, V: CoinsView> {
+    maybe_prebuilt_context: Option<ManagedRpcContext<S, V>>,
     network: ManagedNetworkHandle<S, V>,
     peer_identity_authority: PeerIdentityAuthority,
     announcement_outboxes: AnnouncementOutboxRegistry,
@@ -302,104 +341,6 @@ impl core::fmt::Display for DaemonSyncPreflightError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result { f.write_str(&self.message) }
 }
 impl Error for DaemonSyncPreflightError {}
-
-fn open_authoritative_network_runtime(
-    runtime: &RuntimeConfig,
-    maybe_store: Option<FjallNodeStore>,
-) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
-    runtime
-        .validate_peer_block_filters()
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    let chain = selected_canonical_chain(runtime)
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    chain
-        .spec()
-        .require_ordinary_history()
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    let Some(store) = maybe_store else {
-        return Err(DaemonSyncPreflightError::new(
-            "canonical_bootstrap: ordinary daemon authority requires a proved durable store",
-        ));
-    };
-    let sync_runtime = DurableSyncRuntime::open_ordinary_configured(
-        store,
-        runtime.sync.runtime.clone(),
-        basic_filter_startup_mode(runtime),
-    )
-    .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    assemble_durable_runtime(runtime, sync_runtime)
-}
-
-fn basic_filter_startup_mode(
-    runtime: &RuntimeConfig,
-) -> open_bitcoin_node::chainstate::BasicFilterStartupMode {
-    if runtime.block_filter_index.is_enabled() {
-        open_bitcoin_node::chainstate::BasicFilterStartupMode::Enabled
-    } else {
-        open_bitcoin_node::chainstate::BasicFilterStartupMode::Disabled
-    }
-}
-
-fn assemble_durable_runtime(
-    runtime: &RuntimeConfig,
-    sync_runtime: DurableSyncRuntime,
-) -> Result<OpenedAuthoritativeRuntime, DaemonSyncPreflightError> {
-    let mut network = sync_runtime.network_handle();
-    network
-        .set_prune_network(runtime.sync.runtime.network)
-        .map_err(|error| {
-            DaemonSyncPreflightError::new(format!("failed to configure prune network: {error}"))
-        })?;
-    network
-        .set_prune_mode(runtime.prune_mode)
-        .map_err(|error| {
-            DaemonSyncPreflightError::new(format!("failed to configure prune mode: {error}"))
-        })?;
-    network
-        .configure_basic_peer_serving(runtime.peer_block_filters)
-        .map_err(|error| {
-            DaemonSyncPreflightError::new(format!(
-                "failed to configure BASIC peer serving: {error}"
-            ))
-        })?;
-    Ok(OpenedAuthoritativeRuntime::Durable(
-        AuthoritativeNetworkRuntime {
-            network,
-            peer_identity_authority: sync_runtime.peer_identity_authority(),
-            announcement_outboxes: sync_runtime.announcement_outboxes(),
-            maybe_sync_runtime: Some(sync_runtime),
-        },
-    ))
-}
-
-fn open_runtime_store(
-    runtime: &RuntimeConfig,
-) -> Result<Option<FjallNodeStore>, DaemonSyncPreflightError> {
-    runtime
-        .validate_peer_block_filters()
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    let chain = selected_canonical_chain(runtime)
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))?;
-    let has_durable_trigger = runtime.sync.is_enabled()
-        || runtime.inbound.enabled
-        || runtime.prune_mode != open_bitcoin_node::core::chainstate::PruneMode::Disabled
-        || runtime.block_filter_index.is_explicit();
-    if !has_durable_trigger {
-        return Ok(None);
-    }
-
-    let Some(data_dir) = runtime.maybe_data_dir.as_ref() else {
-        return Err(DaemonSyncPreflightError::new(
-            open_bitcoin_node::storage::chain_compatibility::CompatibilityRefusal::from_observation(
-                chain, open_bitcoin_node::storage::chain_compatibility::DatadirObservation::Missing,
-            ).to_string(),
-        ));
-    };
-
-    FjallNodeStore::open_ordinary(data_dir, chain)
-        .map(Some)
-        .map_err(|error| DaemonSyncPreflightError::new(error.to_string()))
-}
 
 fn start_daemon_sync_worker<S, V>(
     runtime: &RuntimeConfig,

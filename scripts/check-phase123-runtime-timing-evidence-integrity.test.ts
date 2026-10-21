@@ -1,60 +1,51 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-
 import { checkPhase123RuntimeTimingEvidenceIntegrity } from "./check-phase123-runtime-timing-evidence-integrity";
 import { readText } from "./check-phase123-runtime-timing-evidence-integrity/filesystem.ts";
 import { TARGET_FILES, type TargetFile } from "./check-phase123-runtime-timing-evidence-integrity/constants.ts";
-type Mutator = (files: Map<TargetFile, string>) => void;
+import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
+const daemonFile = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
+const canonicalFile = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs";
+type CorpusFile = TargetFile | typeof canonicalFile;
+type Mutator = (files: Map<CorpusFile, string>) => void;
 const tempRoots: string[] = [];
-
 afterEach(() => {
   for (const root of tempRoots.splice(0)) rmSync(root, { force: true, recursive: true });
 });
-
 test("complete synthetic Phase 123 corpus passes", () => {
   // Arrange
   const root = createFixture();
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: root });
-
   // Assert
   expect(failures).toEqual([]);
 });
-
 test("phase123_real_repository_corpus_passes", () => {
   // Arrange
   const repositoryRoot = path.resolve(import.meta.dir, "..");
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({
     rootDir: repositoryRoot,
   });
-
   // Assert
   expect(failures).toEqual([]);
 });
-
 test("Phase 123 immutable live source snapshot passes", () => {
   // Arrange
   const root = writeFixture(liveFiles());
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: root });
-
   // Assert
   expect(failures).toEqual([]);
 });
-
 const terminalFile = "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs";
 const inboundFile = "packages/open-bitcoin-rpc/src/context/inbound_wire.rs";
 const listenerFile = "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs";
 const tcpFile = "packages/open-bitcoin-node/src/sync/tcp.rs";
 const exactSend = "session.send_encoded(buffer.bytes(), self.config.network.magic())?;";
 const blockAck = "self.network.acknowledge_wire_message_written(message)?;";
-
 test.each([
   ["ordinary ack before exact send", terminalFile, `${exactSend}\n            ${blockAck}`, `${blockAck}\n            ${exactSend}`, "P123 sync send-before-ack"],
   ["missing ordinary write", terminalFile, exactSend, "", "P123 sync send-before-ack"],
@@ -92,14 +83,11 @@ test.each([
   const files = liveFiles();
   expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
   replaceRequired(files, file, from, to);
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
-
   // Assert
   expect(failures.some((failure) => failure.startsWith(diagnostic))).toBe(true);
 });
-
 test.each(["comment", "literal", "disconnected", "test-only"] as const)(
   "rejects exact-send %s decoy in current production corpus", (kind) => {
     // Arrange
@@ -111,15 +99,12 @@ test.each(["comment", "literal", "disconnected", "test-only"] as const)(
       : `fn disconnected() { ${exactSend} }`;
     replaceRequired(files, terminalFile, exactSend, "");
     files.set(terminalFile, `${files.get(terminalFile)}\n${decoy}`);
-
     // Act
     const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
-
     // Assert
     expect(failures.some((failure) => failure.startsWith("P123 sync send-before-ack"))).toBe(true);
   },
 );
-
 test.each([
   ["configured daemon constructor removed", "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs", "DurableSyncRuntime::open_with_configured_runtime_activation(", "DurableSyncRuntime::open_with_runtime_activation("],
   ["daemon relay policy defaulted", "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs", "runtime.relay,", "RelayActivationConfig::default(),"],
@@ -152,14 +137,11 @@ test.each([
   const files = liveFiles();
   expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
   replaceRequired(files, file, from, to);
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
-
   // Assert
   expect(failures.some((failure) => /P123 .*activation/.test(failure))).toBe(true);
 });
-
 test("rejects initialization moved after configured network construction", () => {
   // Arrange
   const files = liveFiles();
@@ -167,52 +149,26 @@ test("rejects initialization moved after configured network construction", () =>
   const initialization = "let (lifecycle, _view, cache) =\n            initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;";
   replaceRequired(files, file, initialization, "");
   replaceRequired(files, file, "        if let Some(header_store)", `${initialization}\n        if let Some(header_store)`);
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
-
   // Assert
   expect(failures.some((failure) => failure.startsWith("P123 configured sync production activation"))).toBe(true);
 });
-
 test("commented configured initialization cannot satisfy the production guard", () => {
   // Arrange
   const files = liveFiles();
   const call = "initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;";
   replaceRequired(files, "packages/open-bitcoin-node/src/sync/open_runtime.rs", call, `/* ${call} */ initialize(&store, now, now, 0, false, u64::MAX)?;`);
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) });
-
   // Assert
   expect(failures.some((failure) => failure.startsWith("P123 configured sync production activation"))).toBe(true);
 });
-
 test.each([
-  [
-    "Idle collapsed into Closed",
-    "P123 typed receive outcomes missing Idle",
-    mutate("packages/open-bitcoin-node/src/sync/types.rs", "Idle", "Closed"),
-  ],
-  [
-    "idle clock removed",
-    "P123 idle clock target send order missing or out of order current_timestamp = (controls.0)();",
-    mutate("packages/open-bitcoin-node/src/sync/session.rs", "current_timestamp = (controls.0)();", "current_timestamp = timestamp;"),
-  ],
-  [
-    "message receive clock removed",
-    "P123 message receive clock missing or out of order messages_received = messages_received.saturating_add(1);",
-    mutateFirst(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1);",
-      "SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1);",
-    ),
-  ],
-  [
-    "idle target guard removed",
-    "P123 idle clock target send order missing or out of order .any(|(target_peer_id, _message)| *target_peer_id != peer_id)",
-    mutate("packages/open-bitcoin-node/src/sync/session.rs", ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)", ".is_empty()"),
-  ],
+  ["Idle collapsed into Closed", "P123 typed receive outcomes missing Idle", mutate("packages/open-bitcoin-node/src/sync/types.rs", "Idle", "Closed")],
+  ["idle clock removed", "P123 idle clock target send order missing or out of order current_timestamp = (controls.0)();", mutate("packages/open-bitcoin-node/src/sync/session.rs", "current_timestamp = (controls.0)();", "current_timestamp = timestamp;")],
+  ["message receive clock removed", "P123 message receive clock missing or out of order messages_received = messages_received.saturating_add(1);", mutateFirst("packages/open-bitcoin-node/src/sync/session.rs", "SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1);", "SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1);")],
+  ["idle target guard removed", "P123 idle clock target send order missing or out of order .any(|(target_peer_id, _message)| *target_peer_id != peer_id)", mutate("packages/open-bitcoin-node/src/sync/session.rs", ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)", ".is_empty()")],
   [
     "session timestamp propagation removed",
     "P123 session timestamp propagation missing progress.record_activity(current_timestamp);",
@@ -440,21 +396,69 @@ test.each([
 ] as const)("fails the %s mutation", (_label, expectedFailure, maybeMutate) => {
   // Arrange
   const root = createFixture(maybeMutate as Mutator);
-
   // Act
   const failures = checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: root });
-
   // Assert
   expect(failures).toContain(expectedFailure);
 });
-
 function createFixture(maybeMutate?: Mutator): string {
   const files = completeFiles();
   maybeMutate?.(files);
   return writeFixture(files);
 }
-
-function writeFixture(files: Map<TargetFile, string>): string {
+test.each([
+  ["dispatcher", daemonFile, "    run_application()\n}", "    unused_application()\n}"],
+  ["missing declaration", daemonFile, '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', ""],
+  ["wrong declaration", daemonFile, 'path = "open_bitcoind/canonical_startup.rs"', 'path = "open_bitcoind/wrong.rs"'],
+  ["declaration comment decoy", daemonFile, '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', '/* #[path = "open_bitcoind/canonical_startup.rs"] mod canonical_startup; */\n#[path = "open_bitcoind/wrong.rs"] mod canonical_startup;'],
+  ["missing import", daemonFile, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", ""],
+  ["disabled declaration", daemonFile, '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', '#[cfg(any())]\n#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;'],
+  ["disabled import", daemonFile, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "#[cfg(any())]\nuse canonical_startup::{open_authoritative_network_runtime, open_runtime_store};"],
+  ["wrong import", daemonFile, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "use canonical_startup::{wrong_runtime, open_runtime_store};"],
+  ["disabled application", daemonFile, "#[tokio::main]", "#[cfg(any())]\n#[tokio::main]"],
+  ["borrowed capability", canonicalFile, "maybe_opened: Option<OpenedCanonicalGenesis>", "maybe_opened: Option<&OpenedCanonicalGenesis>"],
+  ["missing opener preflight", canonicalFile, "let chain = preflight(runtime)?;\n    let Some(opened)", "let chain = selected_canonical_chain(runtime)?;\n    let Some(opened)"],
+  ["missing capability refusal", canonicalFile, "let Some(opened) = maybe_opened else {\n        // There is no earned transient canonical owner in this phase.\n        return Err(compatibility_refusal(runtime, chain));\n    };", "let opened = maybe_opened.unwrap_or_default();"],
+  ["wrong factory", canonicalFile, "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)", "ManagedRpcContext::from_runtime_config_with_network_handle(runtime, opened)"],
+  ["test-only decoy with raw factory", canonicalFile, "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)", "ManagedRpcContext::from_runtime_config_with_network_handle(runtime, opened)", true],
+  ["test-only decoy with default factory", canonicalFile, "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)", "ManagedRpcContext::from_runtime_config(runtime, opened)", true],
+  ["test-only decoy with fixture factory", canonicalFile, "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)", "ManagedRpcContext::from_fixture_runtime_config_with_network_handle(runtime, opened)", true],
+  ["wrong factory owner", canonicalFile, "from_canonical_genesis_runtime_config(runtime, opened)", "from_canonical_genesis_runtime_config(runtime, borrowed)"],
+  ["wrong assembled runtime", canonicalFile, "assemble_durable_runtime(runtime, sync_runtime)?", "assemble_durable_runtime(runtime, other_runtime)?"],
+  ["wrong prebuilt context", canonicalFile, "authoritative.maybe_prebuilt_context = Some(context);", "authoritative.maybe_prebuilt_context = Some(other_context);"],
+  ["ordinary runtime arguments", daemonFile, "&runtime,\n            authoritative_runtime.network.clone(),", "&RuntimeConfig::default(),\n            authoritative_runtime.network.clone(),"],
+  ["ordinary network arguments", daemonFile, "authoritative_runtime.network.clone(),\n            maybe_runtime_store.clone(),", "other_network.clone(),\n            maybe_runtime_store.clone(),"],
+  ["ordinary store arguments", daemonFile, "maybe_runtime_store.clone(),\n        )?,", "None,\n        )?,"],
+  ["context substitution", daemonFile, "Some(context) => context,", "Some(context) => other_context,"],
+  ["activation bypass", canonicalFile, "if activation {", "if false {"],
+  ["test-only owner", canonicalFile, "pub(super) fn open_authoritative_network_runtime(", "#[cfg(test)]\npub(super) fn open_authoritative_network_runtime("],
+  ["projected store substitution", daemonFile, ".map(|sync| sync.store().clone())", ".map(|sync| other_store.clone())"],
+] as const)("current canonical startup refuses %s", (...args) => {
+  const [_label, file, from, to, maybeDecoy] = args;
+  // Arrange: each mutation targets one actual live span after a clean baseline.
+  const files = liveFiles();
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
+  expect(files.get(file)!.split(from)).toHaveLength(2);
+  expect(from).not.toBe(to);
+  const source = files.get(file)!;
+  files.set(file, files.get(file)!.replace(from, () => to));
+  if (maybeDecoy === true) {
+    const owner = maybeFunction(source, "open_authoritative_network_runtime", true)!;
+    files.set(file, "#[cfg(test)]\npub(super) " + source.slice(owner.start, owner.end) + "\n" + files.get(file)!);
+    expect(maybeFunction(files.get(file)!, "open_authoritative_network_runtime", true)!.body).toContain(to);
+  }
+  // Act / Assert
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toContain("P123 daemon sync activation wiring must preserve configured activation arguments");
+});
+test("declared canonical startup requires its actual fixed physical child", () => {
+  // Arrange
+  const files = liveFiles();
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
+  expect(files.delete(canonicalFile)).toBe(true);
+  // Act / Assert
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toContain(`P123 missing required declared canonical startup child: ${canonicalFile}`);
+});
+function writeFixture(files: Map<CorpusFile, string>): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase123-"));
   tempRoots.push(root);
   for (const [relativePath, contents] of files) {
@@ -464,21 +468,20 @@ function writeFixture(files: Map<TargetFile, string>): string {
   }
   return root;
 }
-
-function liveFiles(): Map<TargetFile, string> {
+function liveFiles(): Map<CorpusFile, string> {
   const failures: string[] = [];
-  const files = new Map(TARGET_FILES.map((file) => [file, readText(path.resolve(import.meta.dir, ".."), file, failures)]));
+  const repo = path.resolve(import.meta.dir, "..");
+  const files = new Map<CorpusFile, string>(TARGET_FILES.map((file) => [file, file === daemonFile ? readFileSync(path.join(repo, file), "utf8") : readText(repo, file, failures)]));
+  files.set(canonicalFile, readFileSync(path.join(repo, canonicalFile), "utf8"));
   expect(failures).toEqual([]);
   return files;
 }
-
 function replaceRequired(files: Map<TargetFile, string>, file: TargetFile, from: string, to: string): void {
   const source = files.get(file) ?? "";
   expect(source).toContain(from);
   files.set(file, source.replace(from, to));
 }
-
-function completeFiles(): Map<TargetFile, string> {
+function completeFiles(): Map<CorpusFile, string> {
   const timingTests = [
     "phase123_tcp_zero_progress_timeout_is_idle",
     "phase123_tcp_clean_eof_is_closed",
@@ -548,7 +551,7 @@ bun run scripts/check-phase122-compact-relay-peer-completion.ts
 bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
 bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
 bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
-  return new Map<TargetFile, string>([
+  return new Map<CorpusFile, string>([
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
     ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame } impl SyncPeerSession for TcpPeerSession { fn send_encoded() { self.stream .write_all(bytes) .map_err(|error| error) } }"],
     ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation() { Self::open_with_runtime_activation( store, config, RelayActivationConfig::default(), block_relay_activation, false, ) } maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot()? let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?; self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); pub fn sync_until_idle_with_clock_and_cancel`],
@@ -610,18 +613,15 @@ function breadcrumb(file: string, includeFunctional: boolean) {
   if (includeFunctional) anchors.push("packages/bitcoin-knots/test/functional/p2p_compactblocks.py");
   return { files: [file], breadcrumbs: anchors };
 }
-
 function mutate(file: TargetFile, from: string, to: string): Mutator {
   return (files) => {
     expect(files.get(file)).toContain(from);
     files.set(file, (files.get(file) ?? "").replaceAll(from, to));
   };
 }
-
 function mutateFirst(file: TargetFile, from: string, to: string): Mutator {
   return (files) => replaceRequired(files, file, from, to);
 }
-
 function append(file: TargetFile, addition: string): Mutator {
   return (files) => files.set(file, `${files.get(file) ?? ""}\n${addition}`);
 }

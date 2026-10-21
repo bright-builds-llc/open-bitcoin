@@ -8,7 +8,8 @@ import "./check-phase164-canonical-identity/historical.test.ts";
 
 import { CLI_MODULES, expectCopiedAdapterCase, COPIED_ADAPTER_MUTATIONS } from "./check-phase165-shared-exact-work/test-support.ts";
 import { checkPhase165, loadInputs as load165Inputs } from "./check-phase165-shared-exact-work.ts";
-const real = loadInputs();
+import { checkPhase166, loadInputs as load166Inputs, DAEMON as CANONICAL_STARTUP, OBSERVER as CANONICAL_OBSERVER } from "./check-phase166-canonical-bootstrap.ts";
+const real = new Map([...load166Inputs(), ...loadInputs()]);
 
 test("phase165 C fixture attribution exact reviewed current source", () => {
   // Arrange / Act: actual edited fixture, never handcrafted current source.
@@ -223,21 +224,21 @@ for (const [file, before, after] of [
 }
 
 for (const [file, before, after] of [
-  [R + "bin/open-bitcoind.rs", "FjallNodeStore::open_ordinary(data_dir, chain)", "FjallNodeStore::open(data_dir)"],
+  [CANONICAL_STARTUP, "FjallNodeStore::open_canonical_genesis(data_dir, chain)", "FjallNodeStore::open(data_dir)"],
   [R + "bin/open_bitcoind/tests/phase165_work.rs", "assert_eq!(manifest(&path), before);", "assert!(true);"],
   [R + "bin/open_bitcoind/tests/phase165_work.rs", "crate::open_runtime_store(&runtime)", "Ok(None)"],
   [R + "bin/open_bitcoind/tests/phase165_work.rs", '"work_decision={decision}"', '"observed_work=unavailable"'],
   [C + "runtime/chain_compatibility/tests/phase165_work.rs", "execute_operator_cli_with_default_data_dir(cli, fixture.root.clone())", "OperatorCommandOutcome::success(\"\")"],
   [C + "runtime/chain_compatibility/tests/phase165_work.rs", "assert_eq!(fixture.snapshot(), before,", "assert_ne!(fixture.snapshot(), before,"],
 ]) {
-  test(`actual adapter work evidence rejects changed route or assertion: ${file}: ${before}`, () => {
+  test(`actual adapter work evidence rejects changed route or assertion: ${file}: ${before}`, async () => {
     // Arrange
-    expect(real.get(file)?.includes(before)).toBe(true);
     const inputs = mutation(file, before, after);
     // Act
     const findings = checkPhase164(inputs);
     // Assert
     expect(findings.some(row => row.file === file && row.rule === "boundary")).toBe(true);
+    if (file === CANONICAL_STARTUP) expect((await checkPhase166(inputs)).some(row => row.file === file && row.rule === "daemon-sealed-opener")).toBe(true);
   });
 }
 
@@ -278,9 +279,10 @@ for (const [before, after] of [
 function mutation(file: string, before: string, after: string): Map<string, string> {
   const source = real.get(file)!;
   expect(source.includes(before)).toBe(true);
-  return new Map(real).set(file, source.replace(before, after));
+  const changed = source.replace(before, after);
+  if (file === CANONICAL_STARTUP || file === CANONICAL_OBSERVER) expect([source.split(before).length, before === after, changed === source]).toEqual([2, false, false]);
+  return new Map(real).set(file, changed);
 }
-
 test("current ordinary boundary and explicit fixture corpus pass", () => {
   // Arrange
   const inputs = loadInputs();
@@ -446,10 +448,10 @@ const mutations = [
   [R + "context/network.rs", "network.maybe_canonical_chain()?", "Some(chain)"],
   [R + "context/network.rs", "return Err(CanonicalContextError::UnprovedOwner);", "return Self::from_fixture_runtime_config_with_network_handle(config, network, maybe_store);"],
   [R + "context/canonical_chain.rs", "Self::try_from_runtime_config(&RuntimeConfig", "Ok(Self::for_fixture_local_operator(network)); Self::try_from_runtime_config(&RuntimeConfig"],
-  [R + "bin/open-bitcoind.rs", "FjallNodeStore::open_ordinary(data_dir, chain)", "FjallNodeStore::open(data_dir)"],
-  [R + "bin/open-bitcoind.rs", "DurableSyncRuntime::open_ordinary_configured(", "DurableSyncRuntime::open_configured("],
+  [CANONICAL_STARTUP, "FjallNodeStore::open_canonical_genesis(data_dir, chain)", "FjallNodeStore::open(data_dir)"],
+  [CANONICAL_STARTUP, "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)", "ManagedRpcContext::from_fixture_runtime_config(runtime)"],
   [R + "bin/open_bitcoind/inbound_metrics.rs", ".require_ordinary_history()", ".ordinary_history()"],
-  [C + "runtime/support.rs", "FjallNodeStore::open_ordinary(data_dir, selected_chain)", "FjallNodeStore::open(data_dir)"],
+  [CANONICAL_OBSERVER, "FjallNodeStore::reopen_canonical_genesis_existing(data_dir, selected_chain)", "FjallNodeStore::open(data_dir)"],
   [C + "wallet/name_resolution.rs", "FjallNodeStore::open_ordinary(data_dir, selected_chain)", "FjallNodeStore::open(data_dir)"],
   [C + "wallet.rs", "FjallNodeStore::open_ordinary(data_dir, selected_chain)", "FjallNodeStore::open(data_dir)"],
   [C + "soak/runtime/chain_compatibility.rs", "FjallNodeStore::open_ordinary(datadir, chain)", "FjallNodeStore::open(datadir)"],
@@ -461,13 +463,14 @@ const mutations = [
   ["packages/open-bitcoin-consensus/src/chain_spec/genesis.rs", "The Times 03/Jan/2009", "The  Times 03/Jan/2009"],
 ] as const;
 for (const [file, before, after] of mutations) {
-  test(`actual early-boundary mutation: ${file}: ${before}`, () => {
+  test(`actual early-boundary mutation: ${file}: ${before}`, async () => {
     // Arrange
     const inputs = mutation(file, before, after);
     // Act
     const findings = checkPhase164(inputs);
     // Assert
-    expect(findings.some(row => row.file === file)).toBe(true);
+    expect(findings.some(row => row.file === file && (!(file === CANONICAL_STARTUP || file === CANONICAL_OBSERVER) || row.rule === "boundary"))).toBe(true);
+    if (file === CANONICAL_STARTUP || file === CANONICAL_OBSERVER) expect((await checkPhase166(inputs)).some(row => row.file === file && row.rule === (file === CANONICAL_OBSERVER ? "existing-observation" : before.startsWith("FjallNodeStore") ? "daemon-sealed-opener" : "daemon-consumption"))).toBe(true);
   });
 }
 

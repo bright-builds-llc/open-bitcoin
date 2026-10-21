@@ -4,10 +4,11 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { hasInboundAnnouncementPrefix } from "./check-phase134-authoritative-lifecycle.ts";
 
-import { hasDurableSaveBeforeTip } from "./check-phase128-production-compact-announcement-transport/durable-trigger.ts";
+import { hasCanonicalDaemonComposition, hasDurableSaveBeforeTip } from "./check-phase128-production-compact-announcement-transport/durable-trigger.ts";
 import {
   compact,
   maybeFunction,
+  rustCode,
 } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
@@ -42,9 +43,11 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
   "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs",
   ".planning/ROADMAP.md",
   ".planning/PROJECT.md",
   "scripts/check-phase128-production-compact-announcement-transport.ts",
+  "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts",
   "scripts/verify.sh",
 ] as const;
 
@@ -344,13 +347,41 @@ function checkProductionWriteBoundaries(
   const daemon =
     texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
   if (
-    !daemon.includes("announcement_outboxes: sync_runtime.announcement_outboxes(),") ||
-    !daemon.includes("authoritative_runtime.announcement_outboxes,")
+    !hasAuthoritativeOutboxComposition(daemon, texts.get(
+      "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs",
+    ) ?? "")
   ) {
     failures.push(
       "P128 production composition: outbound and inbound sessions must share authoritative outboxes",
     );
   }
+}
+
+function hasAuthoritativeOutboxComposition(daemon: string, helper: string): boolean {
+  const legacy = maybeFunction(daemon, "open_authoritative_network_runtime", true);
+  const main = maybeFunction(daemon, "main", true);
+  const declaresCanonical = /\b(?:canonical_startup|maybe_prebuilt_context|run_application)\b/.test(rustCode(daemon));
+  const ordinary = !declaresCanonical && legacy !== undefined
+    && (main?.body.match(/\bopen_authoritative_network_runtime\s*\(/g) ?? []).length === 1
+    && legacy.body.includes("announcement_outboxes: sync_runtime.announcement_outboxes(),");
+  const serve = maybeFunction(daemon, "serve_authoritative_runtime", true);
+  return (ordinary || hasCanonicalDaemonComposition(daemon, helper))
+    && productionDeclaration(serve?.body ?? "", "let mut inbound_listener =")
+    && compact(serve?.body ?? "").includes(compact(`
+      let mut inbound_listener = start_inbound_listener_for_runtime_with_context_and_announcements(
+        &runtime, Arc::clone(&shared_context), authoritative_runtime.peer_identity_authority,
+        authoritative_runtime.announcement_outboxes, authoritative_runtime.network,
+      ).await;
+    `));
+}
+
+function productionDeclaration(source: string, marker: string): boolean {
+  const code = rustCode(source);
+  const start = code.indexOf(marker);
+  if (start < 0 || code.split(marker).length !== 2) return false;
+  const prefix = code.slice(0, start);
+  if (prefix.split("{").length !== prefix.split("}").length) return false;
+  return !/#\[\s*cfg\s*\(/.test(prefix.slice(Math.max(prefix.lastIndexOf(";"), prefix.lastIndexOf("}")) + 1));
 }
 
 function checkPostWriteEvidence(
@@ -496,10 +527,11 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
     );
   }
 
-  const checker =
+  const checker = [
     texts.get(
       "scripts/check-phase128-production-compact-announcement-transport.ts",
-    ) ?? "";
+    ) ?? "", texts.get("scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts") ?? "",
+  ].join("\n");
   const forbiddenTokens = [
     "fetch" + "(",
     "Bun." + "spawn",

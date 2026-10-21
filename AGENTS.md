@@ -104,7 +104,7 @@ Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust, built
 - `open-bitcoin-node` owns adapter-facing runtime orchestration, durable storage, status, metrics, logs, sync foundations, and wallet rescans.
 - `open-bitcoin-rpc` owns JSON-RPC dispatch and the current `open-bitcoind` local RPC server binary.
 - `open-bitcoin-cli` owns `open-bitcoin-cli` for baseline-compatible RPC calls and `open-bitcoin` for Open Bitcoin-specific operator workflows.
-- `DurableSyncRuntime` is wired into `open-bitcoind` only as an explicit mainnet sync activation/preflight path; it is not yet an unattended public-mainnet full-sync daemon loop.
+- `open-bitcoind` consumes proved canonical genesis into a local `DurableSyncRuntime`/RPC context with explicit BASIC support and an unavailable wallet; offline `sync status` reopens existing proved genesis. Ordinary history and network activation remain refused; unattended full sync and actual pinned-daemon differential qualification remain deferred.
 - Full architecture notes live in `.planning/ARCHITECTURE.md`.
 
 <!-- GSD:architecture-end -->

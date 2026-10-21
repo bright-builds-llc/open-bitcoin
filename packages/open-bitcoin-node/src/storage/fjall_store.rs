@@ -38,10 +38,15 @@ use super::{
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
 mod blocks;
+pub(crate) mod canonical_genesis;
+pub use canonical_genesis::OpenedCanonicalGenesis;
 mod coins;
 mod coins_access;
 pub(crate) mod filters;
+pub(super) mod inspection;
 mod mempool;
+mod open_lease;
+mod opening;
 mod payload_usage;
 mod prune;
 pub(crate) mod validation_history;
@@ -51,6 +56,7 @@ pub use prune::PairedDeleteOutcome;
 pub(crate) use prune::resume_prune_intent;
 #[cfg(test)]
 pub(crate) use prune::{HAVE_PRUNED_KEY, PruneIntent};
+pub(in crate::storage) use prune::{PRUNE_LOCKS_KEY, decode_prune_locks, encode_prune_locks};
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";
@@ -77,49 +83,15 @@ pub struct FjallNodeStore {
     validation_history: Arc<Mutex<validation_history::HistoryControl>>,
     #[cfg(test)]
     filter_integrity_reads: Arc<std::sync::atomic::AtomicUsize>,
+    // Rust drops fields in declaration order: all engine owners must drop first.
+    _lease: Arc<open_lease::OperationLease>,
 }
 
 impl FjallNodeStore {
-    /// Lower-level storage/fixture infrastructure: opens, recovers and may migrate.
-    /// This generic API provides no canonical identity or ordinary-admission guarantee.
-    /// Ordinary product paths must use [`Self::open_ordinary`].
-    pub fn open(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        let store = Self::open_unrecovered(path)?;
-        store.recover_validation_history()?;
-        store.ensure_schema()?;
-        Ok(store)
-    }
-
-    fn open_unrecovered(path: impl AsRef<Path>) -> Result<Self, StorageError> {
-        #[cfg(test)]
-        super::chain_compatibility::record_backend_builder_call();
-        #[cfg(test)]
-        assert!(
-            !super::chain_compatibility::ORDINARY_BACKEND_OPEN_SPY.get(),
-            "backend reached during ordinary refusal"
-        );
-        let db = Database::builder(path.as_ref())
-            .open()
-            .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
-
-        Ok(Self {
-            payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
-            filter_publication: Arc::new(Mutex::new(filters::PublicationControl::default())),
-            validation_history: Arc::default(),
-            #[cfg(test)]
-            filter_integrity_reads: Arc::default(),
-            path: path.as_ref().to_path_buf(),
-            headers: open_keyspace(&db, StorageNamespace::Headers)?,
-            block_index: open_keyspace(&db, StorageNamespace::BlockIndex)?,
-            chainstate: open_keyspace(&db, StorageNamespace::Chainstate)?,
-            coins: open_keyspace(&db, StorageNamespace::Coins)?,
-            wallet: open_keyspace(&db, StorageNamespace::Wallet)?,
-            metrics: open_keyspace(&db, StorageNamespace::Metrics)?,
-            mempool: open_keyspace(&db, StorageNamespace::Mempool)?,
-            runtime: open_keyspace(&db, StorageNamespace::Runtime)?,
-            schema: open_keyspace(&db, StorageNamespace::Schema)?,
-            db,
-        })
+    /// Internal same-executable dispatch; call before application startup.
+    #[doc(hidden)]
+    pub fn maybe_run_inspection_worker() -> Option<i32> {
+        inspection::maybe_run()
     }
 
     /// Filesystem root used when opening this store.
@@ -539,13 +511,6 @@ impl FjallNodeStore {
             PersistMode::Sync,
         )
     }
-
-    #[cfg(test)]
-    pub(crate) fn open_without_ensure_schema_for_test(
-        path: impl AsRef<std::path::Path>,
-    ) -> Result<Self, StorageError> {
-        Self::open_unrecovered(path)
-    }
 }
 
 fn open_keyspace(db: &Database, namespace: StorageNamespace) -> Result<Keyspace, StorageError> {
@@ -561,7 +526,7 @@ fn fjall_persist_mode(mode: PersistMode) -> Option<FjallPersistMode> {
     }
 }
 
-fn block_key(block_hash: BlockHash) -> String {
+pub(in crate::storage) fn block_key(block_hash: BlockHash) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
 
     let mut key = String::with_capacity("block:".len() + 64);

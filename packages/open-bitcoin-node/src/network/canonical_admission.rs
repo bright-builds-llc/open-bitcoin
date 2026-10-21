@@ -100,6 +100,55 @@ impl AdmissionScope {
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
+    /// Install an earned genesis header root for the same proved managed owner.
+    /// This grants no ordinary-history or network-activation capability.
+    pub(crate) fn from_canonical_genesis_initialized(
+        managed: crate::ManagedChainstate<S, V>,
+        local_config: LocalPeerConfig,
+        max_blocks_in_flight: usize,
+        proof: &open_bitcoin_core::consensus::chain_spec::CanonicalGenesisProof,
+    ) -> ManagedResult<Self> {
+        let state = managed.chainstate();
+        let params =
+            open_bitcoin_core::chainstate::engine::canonical_genesis::consensus_params(proof);
+        let magic = match proof.chain() {
+            CanonicalChain::Mainnet => NetworkMagic::MAINNET,
+            CanonicalChain::Testnet3 => NetworkMagic::from_bytes([0x0b, 0x11, 0x09, 0x07]),
+            CanonicalChain::Signet => NetworkMagic::from_bytes([0x0a, 0x03, 0xcf, 0x40]),
+            CanonicalChain::Regtest => NetworkMagic::from_bytes([0xfa, 0xbf, 0xb5, 0xda]),
+        };
+        state.validate_live_origin()?;
+        state.bind_live_work_source(params)?;
+        if state.active_chain().len() != 1
+            || state.tip().is_none_or(|tip| {
+                tip.height != 0
+                    || tip.block_hash != proof.hash()
+                    || &tip.header != proof.header()
+                    || tip.chain_work != proof.work()
+            })
+            || state.coins_best_block()? != Some(proof.hash())
+            || local_config.magic != magic
+        {
+            return Err(ManagedNetworkError::LifecycleEffect(
+                "canonical genesis owner binding mismatch",
+            ));
+        }
+        let headers = HeaderStore::from_canonical_genesis(proof)?;
+        let mut network = Self::from_initialized_chainstate(
+            managed,
+            local_config,
+            PolicyConfig::default(),
+            max_blocks_in_flight,
+            RelayActivationConfig::default(),
+            BlockRelayActivationPolicy::default(),
+            false,
+        );
+        network.admission_scope = AdmissionScope::Canonical(proof.chain());
+        network.peer_manager.seed_header_store(headers);
+        network.maybe_header_consensus_params = Some(params);
+        Ok(network)
+    }
+
     pub(super) const fn maybe_canonical_chain(&self) -> Option<CanonicalChain> {
         match self.admission_scope {
             AdmissionScope::Fixture => None,
@@ -314,3 +363,160 @@ impl ManagedNetworkHandle<MemoryChainstateStore, MemoryCoinsView> {
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod canonical_genesis_tests {
+    use super::*;
+    use crate::{FjallNodeStore, ManagedChainstate, chainstate::BasicFilterStartupMode};
+
+    fn source() -> std::path::PathBuf {
+        let mut nonce = [0_u8; 16];
+        getrandom::fill(&mut nonce).expect("fixture nonce");
+        std::fs::canonicalize(std::env::temp_dir())
+            .expect("canonical parent")
+            .join(format!(
+                "phase166-network-owner-{:x}",
+                u128::from_le_bytes(nonce)
+            ))
+    }
+
+    #[test]
+    fn phase166_runtime_network_constructor_keeps_all_activation_flags_disabled() {
+        for (chain, selector) in [
+            (CanonicalChain::Mainnet, crate::sync::SyncNetwork::Mainnet),
+            (CanonicalChain::Testnet3, crate::sync::SyncNetwork::Testnet),
+            (CanonicalChain::Signet, crate::sync::SyncNetwork::Signet),
+            (CanonicalChain::Regtest, crate::sync::SyncNetwork::Regtest),
+        ] {
+            // Arrange
+            let source = source();
+            let (store, recovered) = FjallNodeStore::open_canonical_genesis(&source, chain)
+                .expect("proved")
+                .into_parts()
+                .expect("token");
+            let (managed, proof) = ManagedChainstate::from_canonical_genesis(
+                store,
+                recovered,
+                BasicFilterStartupMode::Disabled,
+            )
+            .expect("manager");
+            let config = LocalPeerConfig {
+                magic: selector.magic(),
+                ..Default::default()
+            };
+            // Act
+            let network =
+                ManagedPeerNetwork::from_canonical_genesis_initialized(managed, config, 16, &proof)
+                    .expect("earned network owner");
+            // Assert
+            assert_eq!(network.relay_activation, RelayActivationConfig::default());
+            assert_eq!(
+                network.block_relay_activation,
+                BlockRelayActivationPolicy::default()
+            );
+            assert!(!network.inbound_serving_enabled);
+            assert_eq!(network.maybe_canonical_chain(), Some(chain));
+            assert_eq!(network.best_chain_entries().len(), 1);
+            drop(network);
+            std::fs::remove_dir_all(source).expect("cleanup");
+        }
+    }
+
+    #[test]
+    fn phase166_runtime_network_constructor_rejects_foreign_proof_or_magic() {
+        for foreign_proof in [false, true] {
+            // Arrange
+            let source = source();
+            let (store, recovered) =
+                FjallNodeStore::open_canonical_genesis(&source, CanonicalChain::Mainnet)
+                    .expect("proved")
+                    .into_parts()
+                    .expect("token");
+            let (managed, proof) = ManagedChainstate::from_canonical_genesis(
+                store,
+                recovered,
+                BasicFilterStartupMode::Disabled,
+            )
+            .expect("manager");
+            let other = open_bitcoin_core::consensus::chain_spec::CanonicalGenesisProof::prove(
+                CanonicalChain::Testnet3.spec(),
+                &CanonicalChain::Testnet3.spec().genesis_block(),
+            )
+            .expect("other proof");
+            let config = LocalPeerConfig {
+                magic: if foreign_proof {
+                    NetworkMagic::MAINNET
+                } else {
+                    NetworkMagic::from_bytes([0xfa, 0xbf, 0xb5, 0xda])
+                },
+                ..Default::default()
+            };
+            // Act
+            let result = ManagedPeerNetwork::from_canonical_genesis_initialized(
+                managed,
+                config,
+                16,
+                if foreign_proof { &other } else { &proof },
+            );
+            // Assert
+            assert!(result.is_err());
+            drop(result);
+            std::fs::remove_dir_all(source).expect("cleanup");
+        }
+    }
+
+    #[test]
+    fn phase166_runtime_mechanical_append_proof_cannot_promote_raw_chainstate() {
+        use open_bitcoin_core::chainstate::{Chainstate, CoinsCache};
+        // Arrange
+        let source = source();
+        let (store, recovered) =
+            FjallNodeStore::open_canonical_genesis(&source, CanonicalChain::Mainnet)
+                .expect("proved")
+                .into_parts()
+                .expect("token");
+        let (genuine, proof) = ManagedChainstate::from_canonical_genesis(
+            store,
+            recovered,
+            BasicFilterStartupMode::Enabled,
+        )
+        .expect("genuine manager");
+        let store = genuine.store().inner().clone();
+        assert!(
+            store
+                .maybe_basic_filter_append_proof()
+                .expect("mechanical append proof")
+                .is_some()
+        );
+        let raw = Chainstate::from_coins_cache(
+            CoinsCache::from_parent(store.coins_view()),
+            genuine.chainstate().active_chain().to_vec(),
+            Default::default(),
+            None,
+        );
+        let reconstructed = ManagedChainstate::from_recovered_chainstate(
+            crate::FjallChainstateStore::from_store(store),
+            raw,
+            genuine.flush_lifecycle.clone(),
+        )
+        .expect("mechanical recovered fixture");
+        // Act
+        let result = ManagedPeerNetwork::from_canonical_genesis_initialized(
+            reconstructed,
+            LocalPeerConfig {
+                magic: NetworkMagic::MAINNET,
+                ..Default::default()
+            },
+            16,
+            &proof,
+        );
+        // Assert
+        assert!(
+            result.is_err(),
+            "index ownership alone cannot earn core genesis authority"
+        );
+        drop(result);
+        drop(genuine);
+        std::fs::remove_dir_all(source).expect("cleanup");
+    }
+}

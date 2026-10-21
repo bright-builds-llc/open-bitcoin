@@ -36,6 +36,7 @@ use crate::{RpcFailure, RpcFailureKind};
 
 mod address_boundary;
 mod canonical_chain;
+mod canonical_genesis;
 mod filter_index;
 mod inbound_status;
 mod inbound_wire;
@@ -272,6 +273,7 @@ impl<S, V: open_bitcoin_node::core::chainstate::CoinsView> core::fmt::Debug
 {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let wallet_mode = match &self.wallet_state {
+            WalletState::Unavailable => "unavailable",
             WalletState::Local(_) => "local",
             WalletState::DurableNamedRegistry { .. } => "durable",
         };

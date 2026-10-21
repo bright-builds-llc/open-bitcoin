@@ -35,13 +35,14 @@ enum MarkerState {
 
 /// Disk-backed coins parent. Application consistency is `H` then coins then `B`.
 pub struct FjallCoinsView {
-    filter_store: FjallNodeStore,
     db: fjall::Database,
     coins: fjall::Keyspace,
     #[cfg(test)]
     simulate_crash_after_partial: bool,
     #[cfg(test)]
     partial_buffered_commits: std::cell::Cell<u32>,
+    // Retain the application lease until every extracted engine handle drops.
+    filter_store: FjallNodeStore,
 }
 
 impl FjallCoinsView {

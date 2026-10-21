@@ -14,6 +14,8 @@ use crate::storage::{StorageNamespace, StorageRecoveryAction};
 use open_bitcoin_core::chainstate::AcceptedChainstateReorg;
 use open_bitcoin_core::chainstate::{Chainstate, filter_index::lifecycle::IndexGeneration};
 
+mod canonical_genesis;
+
 /// Opaque achieved completion; only a tracked manager's own successful flush creates it.
 pub struct CompletedValidatedFlush {
     pending: PendingValidatedFlush,

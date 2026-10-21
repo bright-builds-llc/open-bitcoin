@@ -39,3 +39,6 @@ pub use envelope::{
 };
 pub use error::{RpcErrorCode, RpcErrorDetail, RpcFailure, RpcFailureKind};
 pub use method::{MethodOrigin, SupportedMethod};
+
+#[cfg(test)]
+open_bitcoin_node::register_inspection_worker!();

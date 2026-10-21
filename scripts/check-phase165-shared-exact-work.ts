@@ -4,7 +4,7 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "
 import { resolve } from "node:path";
 import { INPUT_FILES as IDENTITY_INPUTS, historicalFixtureAdapter, HISTORICAL_TOOLING_INVERSE, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
-import { CLAIM_FILES, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
+import { CLAIM_FILES, affirmativeScopeClaims, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { historicalToolingView, MANIFEST_FILE, CURRENT_VERIFY_ADDITIONS, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
 import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
@@ -13,7 +13,7 @@ import { CORPUS_FILE, CORPUS_SHA, HISTORICAL_IDENTITIES, CURRENT_BRIDGE_DATA, SO
 export type Finding = { file: string; rule: string; detail: string };
 type Fail = (file: string, rule: string, detail: string) => void;
 export const MAX_FILE_BYTES = 512_000;
-const INPUT_INVENTORY_SHA = "625975bfe720b4d08d05429a31a0c2dd0d76cb044c0675617754ffa4cc1ce6bb";
+const INPUT_INVENTORY_SHA = "a9dd9428ce03f38d35972f6b14a07daf48fb5da17062231ed229abe292bb4a56";
 export const INPUT_FILES = [...new Set([
   ...IDENTITY_INPUTS, ...SOURCE_CONTRACTS.map(row => row[0]),
   ...HISTORICAL_IDENTITIES.map(row => row[0]), CORPUS_FILE, WORK_CLAIM_FILE,
@@ -84,7 +84,7 @@ export function checkPhase165(inputs: ReadonlyMap<string, string>): readonly Fin
     for (const prose of claimTexts(file, text(file), fail)) {
       for (const claim of affirmativeScopeClaims(prose)) {
         if (claim.phase) fail(file, "claim", "later bootstrap/context/pinned-daemon qualification remains deferred");
-        else if (file === WORK_CLAIM_FILE) fail(file, "claim", "unearned daemon, restart-tie or canonical acceptance claim");
+        else fail(file, "claim", "unearned daemon, restart-tie, ordinary history or canonical acceptance claim");
       }
     }
   }
@@ -114,37 +114,6 @@ function checkWorkClaims(source: string, fail: Fail): void {
   }
 }
 
-/** Every known subject owns only its following predicates, never unrelated context. */
-function affirmativeScopeClaims(source: string): { phase: boolean }[] {
-  const claims: { phase: boolean }[] = [];
-  const subjects = /\b(?:Phase\s*16[678]|canonical(?=[^.!?;]*\b(?:bootstrap|reopen)\b)|(?:deterministic\s+)?(?:restart|reopen)(?=[^.!?;]*\b(?:tie|ordering|order)\b)|(?:actual\s+)?(?:pinned[- ]?)?Knots(?=[^.!?;]*\b(?:daemon|differential|qualification)\b))\b/gi;
-  for (const sentence of source.replaceAll("\n", " ").split(/[.!?;](?:\s|$)|\b(?:but|however)\b/i)) {
-    const plain = sentence.replace(/[`*_#>]/g, "");
-    const targets = [...plain.matchAll(subjects)];
-    let phaseScope = false;
-    let inheritedNo = false;
-    for (let index = 0; index < targets.length; index++) {
-      const target = targets[index];
-      const previous = targets[index - 1];
-      const connector = previous ? plain.slice(previous.index + previous[0].length, target.index) : "";
-      phaseScope = /^Phase\b/i.test(target[0]) || (phaseScope && !/\b(?:is|are|was|were|has|have|will|can|does|do)\b/i.test(connector));
-      const predicate = plain.slice(target.index + target[0].length, targets[index + 1]?.index ?? plain.length);
-      const attachedNo = (inheritedNo && !/\b(?:is|are|was|were|has|have|will|can|does|do)\b/i.test(connector)) || /(?:^|,)\s*(?:no|never|without)\s+(?:(?:actual|deterministic|whole-chain|production-service|production-funds|public-default|networking|and|or)[,\s-]*)*$/i.test(plain.slice(0, target.index));
-      inheritedNo = attachedNo;
-      for (const status of predicate.matchAll(/\b(?:qualified|proven|passed|delivered|complete|established|supported|accepted|deterministic|ready|achieved|available)\b/gi)) {
-        const before = predicate.slice(0, status.index);
-        const localPrefix = before.split(/\band\b|,/i).at(-1) ?? "";
-        const denied = /\b(?:not|never)\s*(?:yet\s*)?$/i.test(localPrefix)
-          || /\bnot\s+(?:an?\s+)?(?:evidence|proof|claim)\s+for\s+(?:a\s+)?$/i.test(localPrefix)
-          || /\b(?:only after|until)\b/i.test(localPrefix)
-          || /\b(?:remains?|is|are)\s+deferred\b/i.test(localPrefix)
-          || (attachedNo && !/\band\b|,/i.test(before));
-        if (!denied) claims.push({ phase: phaseScope });
-      }
-    }
-  }
-  return claims;
-}
 
 /** Exact immediate attribute range; replacing it leaves async/public modifiers untouched. */
 export function maybeTestDeclaration(source: string, functionStart: number): { start: number; end: number; registration: string } | undefined {

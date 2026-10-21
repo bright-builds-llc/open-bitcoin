@@ -4,31 +4,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase127-authoritative-network-state-unification";
-import { readSourceCorpus } from "./source-corpus";
+import { PHASE127_TARGET_FILES, checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase127-authoritative-network-state-unification";
+import { readSourceCorpus, readSourceRoot } from "./source-corpus";
 
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
-const TARGET_FILES = [
-  "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/inbound_metrics.rs",
-  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/sync_seed.rs",
-  "packages/open-bitcoin-rpc/src/context.rs",
-  "packages/open-bitcoin-rpc/src/context/inbound_wire.rs",
-  "packages/open-bitcoin-rpc/src/context/network.rs",
-  "packages/open-bitcoin-rpc/src/context/inbound_status.rs",
-  "packages/open-bitcoin-rpc/src/dispatch/node.rs",
-  "packages/open-bitcoin-node/src/network/runtime_authority.rs",
-  "packages/open-bitcoin-node/src/storage/fjall_store.rs",
-  "packages/open-bitcoin-node/src/sync.rs",
-  "packages/open-bitcoin-rpc/tests/black_box_parity.rs",
-  "packages/open-bitcoin-cli/src/operator/dashboard/model/tests.rs",
-  "packages/open-bitcoin-cli/src/operator/support/tests.rs",
-  "docs/parity/catalog/p2p.md",
-  "docs/parity/index.json",
-  "scripts/check-phase127-authoritative-network-state-unification.ts",
-  "scripts/rust-source-invariants.ts",
-  "scripts/verify.sh",
-] as const;
+const TARGET_FILES = PHASE127_TARGET_FILES;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type FixtureOptions = { maybeMutate?: (files: Map<TargetFile, string>) => void };
@@ -49,6 +29,7 @@ test("passes_when_phase127_authoritative_composition_is_intact", () => {
   // Assert
   expect(failures).toEqual([]);
 });
+
 test("fails_when_frozen_status_keys_omit_basic_index", () => {
   // Arrange
   const root = createFixture({
@@ -75,15 +56,12 @@ test("fails_when_production_constructs_a_duplicate_network_authority", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
-      replace(
+      replaceUnique(
         files,
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-        "match open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?",
-        [
-          "let _duplicate =",
-          "            open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?;",
-          "        match open_authoritative_network_runtime(&runtime, maybe_runtime_store.clone())?",
-        ].join("\n"),
+        "let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;",
+        `let _duplicate = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;
+    let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;`,
       );
     },
   });
@@ -253,16 +231,17 @@ test("fails_when_dead_context_anchor_hides_aliased_helper_authority", () => {
   // Arrange
   const root = createFixture({
     maybeMutate(files) {
-      replace(
+      replaceUnique(
         files,
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-        [
-          "let context = ManagedRpcContext::from_runtime_config_with_network_handle(",
-          "        &runtime,",
-          "        authoritative_runtime.network.clone(),",
-          "        maybe_runtime_store.clone(),",
-          "    )?;",
-        ].join("\n"),
+        `let context = match authoritative_runtime.maybe_prebuilt_context.take() {
+        Some(context) => context,
+        None => ManagedRpcContext::from_runtime_config_with_network_handle(
+            &runtime,
+            authoritative_runtime.network.clone(),
+            maybe_runtime_store.clone(),
+        )?,
+    };`,
         [
           "let context = if false {",
           "        ManagedRpcContext::from_runtime_config_with_network_handle(",
@@ -594,7 +573,10 @@ function createFixture(options: FixtureOptions = {}): string {
   tempRoots.push(root);
   const files = new Map<TargetFile, string>();
   for (const file of TARGET_FILES) {
-    files.set(file, readSourceCorpus(REPO_ROOT, file));
+    files.set(file, file === "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs"
+      || file === "scripts/check-phase127-authoritative-network-state-unification.ts"
+      || file === "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts"
+      ? readSourceRoot(REPO_ROOT, file) : readSourceCorpus(REPO_ROOT, file));
   }
   options.maybeMutate?.(files);
   for (const [file, text] of files) {
@@ -603,6 +585,13 @@ function createFixture(options: FixtureOptions = {}): string {
     writeFileSync(absolutePath, text);
   }
   return root;
+}
+
+function replaceUnique(files: Map<TargetFile, string>, file: TargetFile, needle: string, replacement: string): void {
+  expect((files.get(file) ?? "").split(needle)).toHaveLength(2);
+  expect(replacement).not.toBe(needle);
+  replace(files, file, needle, replacement);
+  expect(files.get(file)).not.toBe(readSourceRoot(REPO_ROOT, file));
 }
 
 function replace(

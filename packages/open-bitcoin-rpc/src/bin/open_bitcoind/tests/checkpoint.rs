@@ -386,7 +386,7 @@ fn daemon_shutdown_orders_all_producer_joins_before_checkpoint_settlement() {
         .find("maybe_sync_worker.map_or(Ok(()), |worker| worker.shutdown())")
         .expect("sync join callback");
     let retry_join = daemon_source
-        .find("|| Ok(retry_worker.shutdown()?),")
+        .find("|| maybe_retry_worker.map_or(Ok(()), |worker| Ok(worker.shutdown()?)),")
         .expect("retry producer join callback");
     let checkpoint_settle = daemon_source
         .find("maybe_checkpoint_worker.map_or(Ok(()), |worker| worker.shutdown_settle())")

@@ -28,6 +28,53 @@ pub mod sync;
 pub mod wallet;
 pub mod wallet_registry;
 
+/// Register the reserved same-executable storage worker in a test harness root.
+#[macro_export]
+macro_rules! register_inspection_worker {
+    () => {
+        #[test]
+        fn __open_bitcoin_storage_inspection_worker() {
+            if let Some(code) = $crate::FjallNodeStore::maybe_run_inspection_worker() {
+                std::process::exit(code);
+            }
+        }
+        #[test]
+        fn phase166_inspection_entrypoint_exact_no_job_and_near_match() {
+            // Arrange
+            let executable = std::env::current_exe().expect("harness executable");
+            // Act
+            let exact = std::process::Command::new(&executable)
+                .args([
+                    "--exact",
+                    "__open_bitcoin_storage_inspection_worker",
+                    "--nocapture",
+                    "--test-threads=1",
+                ])
+                .stdin(std::process::Stdio::null())
+                .output()
+                .expect("worker invocation");
+            let near = std::process::Command::new(&executable)
+                .args([
+                    "--exact",
+                    "__open_bitcoin_storage_inspection_worker",
+                    "--nocapture",
+                    "--test-threads=2",
+                ])
+                .stdin(std::process::Stdio::null())
+                .output()
+                .expect("near-match invocation");
+            // Assert: this proves routing only, not storage recovery.
+            assert_eq!(exact.status.code(), Some(78));
+            assert!(exact.stderr.is_empty());
+            assert!(near.status.success());
+            assert!($crate::FjallNodeStore::maybe_run_inspection_worker().is_none());
+        }
+    };
+}
+
+#[cfg(test)]
+register_inspection_worker!();
+
 pub use chainstate::{
     ChainstateStore, FjallChainstateStore, ManagedChainstate, MemoryChainstateStore,
 };

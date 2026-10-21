@@ -36,6 +36,8 @@ pub enum CanonicalContextError {
     UnsupportedValidationScope(UnsupportedValidationScope),
     UnprovedOwner,
     ChainMismatch,
+    InvalidGenesisConfiguration,
+    GenesisRuntime(open_bitcoin_node::SyncRuntimeError),
     Storage(StorageError),
     Authority(ManagedNetworkAuthorityError),
 }
@@ -51,6 +53,10 @@ impl core::fmt::Display for CanonicalContextError {
             Self::ChainMismatch => formatter
                 .write_str("chain_mismatch: configured selectors and canonical owner must agree"),
             Self::Storage(_) => formatter.write_str("context_storage_unavailable"),
+            Self::InvalidGenesisConfiguration => {
+                formatter.write_str("canonical_genesis_configuration_unavailable")
+            }
+            Self::GenesisRuntime(_) => formatter.write_str("canonical_genesis_runtime_unavailable"),
             Self::Authority(_) => formatter.write_str("context_authority_unavailable"),
         }
     }
@@ -168,9 +174,14 @@ impl ManagedRpcContext {
 
     #[allow(
         clippy::expect_used,
-        reason = "explicit memory fixture construction has no durable migration boundary"
+        reason = "explicit fixture setup intentionally panics; a fallible constructor is available"
     )]
     /// Synthetic/source-derived regression evidence only; never ordinary canonical authorization.
+    ///
+    /// # Panics
+    ///
+    /// Panics if fixture configuration, storage, network setup, or fixture recovery fails.
+    /// Use [`Self::from_fixture_runtime_config_with_store`] with `None` to handle errors.
     pub fn from_fixture_runtime_config(config: &RuntimeConfig) -> Self {
         Self::from_fixture_runtime_config_with_store(config, None)
             .expect("memory-only context has no durable migration boundary")
@@ -217,6 +228,7 @@ impl ManagedRpcContext {
         };
         let policy = PolicyConfig::default();
         let effective_store = match wallet_state {
+            WalletState::Unavailable => None,
             super::wallet_state::WalletState::Local(_) => maybe_store,
             super::wallet_state::WalletState::DurableNamedRegistry { store, .. } => {
                 Some(store.clone())

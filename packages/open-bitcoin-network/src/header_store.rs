@@ -21,6 +21,7 @@ use open_bitcoin_primitives::{BlockHash, BlockHeader, BlockLocator, Hash32};
 
 use crate::error::NetworkError;
 
+mod canonical_genesis;
 mod proof;
 pub use proof::HeaderProofFacts;
 mod eligibility;

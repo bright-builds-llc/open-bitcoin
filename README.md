@@ -20,42 +20,48 @@ auditable, and modular.
 
 ## Current source: canonical identity and ordinary refusal
 
-Phase 164 recognizes the exact pinned mainnet, testnet3, default Signet and
-default regtest genesis header/body identities. The existing CLI `testnet`
-selector means testnet3. Evidence is identity-only and source-derived;
-**ordinary history is currently refused for all four selectors** pending
-canonical bootstrap and candidate-history validation in Phases 166–167. Signet
-also lacks challenge validation. Phase 165 adds the
-[shared exact-work foundation](./docs/parity/v2-6-shared-exact-work.md): exact
-256-bit proof/wrapping accumulation, accepted-header preference, checked-body
-eligibility and owner-bound activation. Numbers alone grant no lineage; ordinary
-profiles still report `exact_work` missing until canonical authority is available.
-
-Every existing nonempty unproved datadir refuses without backend open; missing
-and empty sources refuse too. Stored network/root/work remain unavailable,
-not proved wrong-network facts. Offline sync controls, managed-wallet lookup
-and backup refuse; soak start reports bounded compatibility unavailability
-before ledger/index writes. Separately authenticated live RPC
-status/index/send/control paths remain separate and open no local store.
-Work diagnostics append `work_decision` while observed work stays unavailable.
-Actual local Open Bitcoin daemon refusal processes are distinct from deferred
-pinned-Knots differential qualification in Phase 168; networking remains default off.
-
-Use the [exact identity/support/refusal matrix and repo-local Cargo/Bazel UAT](./docs/parity/v2-6-canonical-chain-identity.md)
-and [support classification](./docs/parity/support-matrix.md#current-phase-164-source-boundary).
-[Phase 164 verification](./.planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md) passed 27/27 after the full native contract; this remains identity-only/refusal evidence.
-Preserve existing data and review it separately; a separate datadir becomes a
-usable next step only after the missing prerequisites are implemented and
-verified. No automatic repair, conversion, reindex, canonical bootstrap/reopen
-or actual Knots daemon qualification is provided. Full phase verification and
-requirement closure remain separate from these focused implementation results.
+Phase 164's [identity-only record](./docs/parity/v2-6-canonical-chain-identity.md)
+retains its pinned mainnet, testnet3, default Signet and default regtest identities
+and original refusal evidence. Ordinary history is currently refused for all four selectors.
+Phase 165's [shared exact-work foundation](./docs/parity/v2-6-shared-exact-work.md)
+separates exact numerical work from earned live authority. Numbers, fixture
+factories and historical receipts alone confer no canonical lineage.
 
 The release records and earlier phase sections below retain their original
-historical evidence. v2.5's synthetic roots, caller-selected work, original
-maturity limits and halving difference remain bounded regression evidence;
-named fixture factories do not enable ordinary canonical acceptance. This
-change does not establish whole-chain, full-node, public-default,
-production-service, production-readiness or production-funds readiness.
+historical scope. v2.5 synthetic roots, caller-selected work, maturity limits and
+halving differences remain bounded regression evidence. Preserve existing
+unproved data for separate review.
+
+## Current Phase 166 canonical genesis boundary
+
+Canonical genesis bootstrap and reopen are supported for all four selectors.
+
+The local genesis route proves the complete pinned header/body, height-zero
+header/block/coins best block and all 32 bytes of internally derived work.
+Genesis coinbase outputs stay absent from UTXOs. Explicit BASIC indexing uses
+the genesis transaction's output script and the zero predecessor commitment.
+The selector `testnet` means testnet3; Signet and regtest use their default profiles.
+The genesis RPC context has no wallet authority: wallet operations refuse.
+
+Ordinary history remains refused pending Phase 167, including Signet challenge
+validation. Sync, inbound, transaction relay, block serving and compact relay
+activation remain refused before storage opening. Networking remains default off.
+Actual pinned Knots-daemon differential qualification remains deferred to Phase 168.
+Local Cargo/Bazel process evidence concerns Open Bitcoin's own products.
+
+Use the [bounded genesis evidence and exact operator commands](./docs/parity/v2-6-canonical-durable-bootstrap.md).
+Daemon startup requires an existing explicit datadir and an existing durable
+trigger such as `-blockfilterindex=1`; a missing configured datadir still fails
+the parser. After Ctrl-C/SIGINT shutdown, offline `sync status` only reopens
+existing proved genesis and preserves the saved BASIC mode. It creates no saved
+status/progress record. An admitted Fjall open can have filesystem effects;
+physical preservation is established by tested refusal/pre-admission controls.
+
+Cooperating application leases cover the supported Unix route; actual process
+evidence is macOS. Finite private-copy inspection, child completion and cleanup
+limits are documented with the evidence. No repair, conversion, import or
+automatic history acquisition is offered. Whole-chain parity, public defaults,
+production service and production-funds readiness remain outside the claim.
 
 > Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).
 > Archive date: 2026-10-13. Scope: 22 requirements, 10 phases, 90 plans and 220 completed plan tasks. Audit: 31/31 seams and 18/18 flows, with no blocking gaps.
@@ -496,18 +502,11 @@ v1.9 boundary and historical v1.7 review posture, use the runtime guide with
 [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md),
 [`docs/parity/index.json`](./docs/parity/index.json), and
 [`docs/parity/checklist.md`](./docs/parity/checklist.md).
-The preview commands below start the current local RPC/operator surfaces; they
-are not a production-node claim. `open-bitcoind` now has an opt-in mainnet sync
-loop plus durable header-and-block sync foundations, truthful operator-facing
-sync status, and explicit `open-bitcoin sync pause|resume|status` controls.
-Status evidence also includes bounded branch/reorg details through
-`sync.latest_reorg` and typed no-progress guidance through
-`sync.no_progress_diagnosis` plus `sync.no_progress_next_action`.
-Explicit live-mainnet smoke evidence now lives in
-[`scripts/run-live-mainnet-smoke.ts`](./scripts/run-live-mainnet-smoke.ts),
-which writes local JSON and Markdown reports under
-`packages/target/live-mainnet-smoke-reports` without changing the default
-hermetic verification contract.
+The local preview below stays at canonical genesis with explicitly enabled BASIC.
+Ordinary sync and network activation remain refused. Earlier sync, branch/reorg,
+soak and live-mainnet smoke records retain their historical fixture/infrastructure
+scope; they do not authorize the present canonical route. See the
+[current genesis boundary](#current-phase-166-canonical-genesis-boundary).
 
 v1.6 remains historical source-built, explicit opt-in full-sync completion
 evidence. v1.7 remains historical source-built, explicit opt-in full-sync soak and recovery hardening evidence without broadening release claims. It preserves bounded opt-in
@@ -521,58 +520,41 @@ mode, signed packaging, Windows service integration, hosted dashboards, GUI
 parity, public-network default checks, public-network CI, release-blocking live
 sync, automatic support-bundle upload, destructive repair, or broad production-node readiness.
 
-The commands below are a minimal regtest preview. Create a scratch data
-directory, start the RPC server, then call it from another shell:
+Create a disposable existing directory and explicit configuration in one shell:
 
 ```bash
-mkdir -p /tmp/open-bitcoin-preview
-cat > /tmp/open-bitcoin-preview/bitcoin.conf <<'EOF'
-regtest=1
-rpcconnect=127.0.0.1
-rpcport=18443
-rpcuser=preview
-rpcpassword=preview
-EOF
-
-cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- \
-  -datadir=/tmp/open-bitcoin-preview
+genesis_review_dir=$(mktemp -d /tmp/open-bitcoin-genesis-review.XXXXXX) || exit 1
+genesis_review_dir=$(cd -- "$genesis_review_dir" && pwd -P) || exit 1
+mkdir "$genesis_review_dir/data" || exit 1
+printf '{}\n' > "$genesis_review_dir/open-bitcoin.jsonc" || exit 1
 ```
+
+Start the local Regtest genesis/BASIC daemon using either build route, serially.
+These commands use disposable loopback-only RPC credentials and port 18443;
+choose another free local port if that port is occupied.
 
 ```bash
-cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli -- \
-  -rpcconnect=127.0.0.1 -rpcport=18443 \
-  -rpcuser=preview -rpcpassword=preview getblockchaininfo
+bun run scripts/command-timings.ts run --key phase166-docs-cargo-daemon -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind -- -datadir="$genesis_review_dir/data" -chain=regtest -server=1 -rpcbind=127.0.0.1 -rpcport=18443 -rpcuser=preview -rpcpassword=preview -blockfilterindex=1
+# Alternative, after the first process has stopped:
+bun run scripts/command-timings.ts run --key phase166-docs-bazel-daemon -- bazel run //packages/open-bitcoin-rpc:open_bitcoind -- -datadir="$genesis_review_dir/data" -chain=regtest -server=1 -rpcbind=127.0.0.1 -rpcport=18443 -rpcuser=preview -rpcpassword=preview -blockfilterindex=1
 ```
 
-`open-bitcoind` CLI flags are not automatically rediscoverable by later
-operator commands. `open-bitcoin status` and `open-bitcoin dashboard` need a
-normal RPC auth source they can resolve themselves from the selected datadir,
-such as `bitcoin.conf` or a discoverable `.cookie`.
-
-The Open Bitcoin-specific operator binary exposes status, config discovery, and
-first-run onboarding flows:
+Ctrl-C/SIGINT is the existing graceful shutdown contract. Wait for the daemon to
+exit before opening its store offline. Repeating startup against that same path
+reopens proved genesis. Run either exact operator form after shutdown:
 
 ```bash
-cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
-  --datadir=/tmp/open-bitcoin-preview --network regtest status --format human --no-color
+bun run scripts/command-timings.ts run --key phase166-docs-cargo-status -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --config "$genesis_review_dir/open-bitcoin.jsonc" --datadir "$genesis_review_dir/data" --network regtest --format json sync status
+bun run scripts/command-timings.ts run --key phase166-docs-bazel-status -- bazel run //packages/open-bitcoin-cli:open_bitcoin -- --config "$genesis_review_dir/open-bitcoin.jsonc" --datadir "$genesis_review_dir/data" --network regtest --format json sync status
 ```
 
-```bash
-cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
-  --datadir=/tmp/open-bitcoin-preview sync status --format json
-```
-
-```bash
-cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- \
-  --network regtest --datadir=/tmp/open-bitcoin-preview \
-  --config=/tmp/open-bitcoin-preview/open-bitcoin.jsonc \
-  onboard --non-interactive --approve-write --detect-existing
-```
-
-`onboard` writes only `open-bitcoin.jsonc`; it intentionally does not create or
-modify `bitcoin.conf`. If you start `open-bitcoind` separately and want later
-`open-bitcoin status` calls to reach live RPC, keep the baseline-compatible RPC
-auth in `bitcoin.conf` or an equivalent discoverable `.cookie`.
+Expected facts are selected Regtest, validated active-chain height 0, exact work
+`0000000000000000000000000000000000000000000000000000000000000002`, and one
+retained BASIC record with safe durable height 0. These are genesis observations.
+Wallet operations and `sync pause|resume` still refuse. The
+[companion procedure](./docs/parity/v2-6-canonical-durable-bootstrap.md#operator-reproduction)
+includes the missing-storage control and distinguishes offline storage opening
+from separately authenticated live RPC. No new bootstrap command is introduced.
 
 Operators with an existing Core or Knots install can also generate a dry-run
 migration plan before any later cutover work:

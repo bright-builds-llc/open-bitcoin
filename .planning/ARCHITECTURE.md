@@ -67,15 +67,30 @@ preserves the three accepted recovery/sink/counter advisories and fixture limits
 
 ## Sync Boundary
 
-`DurableSyncRuntime` now provides the explicit opt-in full-sync path with
-durable state integration, peer lifecycle, header-first IBD, block
-download/connect, telemetry, restart/resume evidence, and live-mainnet smoke
-review. The same shell composes bounded, explicit, default-off inbound serving,
-v2.0 transaction relay, v2.1 block serving, and v2.1 compact-block relay.
-These are review boundaries, not public defaults: unattended public-network
-operation, public serving or relay defaults, production service/deployment,
-production full-node readiness, and production-funds wallet use remain outside
-the current claim.
+The configured local daemon path consumes proved canonical genesis into its
+`DurableSyncRuntime`/RPC context for all four existing selectors. An explicit
+durable trigger such as BASIC initializes an admissible empty datadir; actual
+daemon parsing requires the explicitly supplied directory to exist. Reopen
+independently proves complete genesis/header/coins/work bindings. Explicit BASIC
+uses validated genesis lineage and its zero-predecessor commitment. The genesis
+context carries an unavailable wallet; ordinary maintenance workers stay absent.
+
+Offline operator `sync status` reopens existing proved genesis and preserves saved
+BASIC settings without saving synthesized status/progress. An admitted Fjall
+open can have filesystem effects. Bounded private-copy inspection and refusal
+preservation remain separate from successful backend recovery. Cooperating
+application leases cover supported Unix; recorded process evidence is macOS.
+
+Ordinary history and sync/inbound/relay/serving activation remain refused pending
+contextual prerequisites, including Signet challenge validation. Historical
+infrastructure includes the explicit opt-in full-sync path, bounded, explicit,
+default-off inbound serving, v2.0 transaction relay, v2.1 block serving and
+v2.1 compact-block relay. These are not public defaults and do not authorize the
+current canonical route. Older fixture, sync, reorg, soak and live-smoke machinery
+retains its historical evidence scope.
+Actual pinned Knots-daemon differential qualification belongs to Phase168.
+Public defaults, unattended full sync, production service and production-funds
+readiness remain outside the claim. See the [current genesis evidence](../docs/parity/v2-6-canonical-durable-bootstrap.md).
 
 ## Migration Boundary
 

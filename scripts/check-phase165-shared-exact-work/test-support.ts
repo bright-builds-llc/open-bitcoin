@@ -184,7 +184,7 @@ export function expectCopiedAdapterCase(
     } else if (before) {
       const source = readFileSync(join(root, file), "utf8");
       expect(source.split(before).length).toBe(2);
-      writeFileSync(join(root, file), source.replace(before, after));
+      writeFileSync(join(root, file), source.replace(before, () => after));
     }
     // Act / Assert: imported checks cannot hide old PASSED bytes behind a new global adapter.
     for (const [entry, check] of entries) {
