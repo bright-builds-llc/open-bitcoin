@@ -58,6 +58,7 @@ fn disconnect_tip_skips_unspendable_outputs_and_reports_missing_created_outputs(
             undo_by_block: HashMap::from([(
                 open_bitcoin_consensus::block_hash(&spend_block.header),
                 BlockUndo {
+                    overwrites: Vec::new(),
                     transactions: vec![TxUndo {
                         restored_inputs: vec![Coin {
                             output: genesis_block.transactions[0].outputs[0].clone(),
@@ -298,6 +299,7 @@ fn disconnect_tip_detects_mismatches_and_corrupt_undo_shapes() {
         undo_by_block: HashMap::from([(
             tip.block_hash,
             BlockUndo {
+                overwrites: Vec::new(),
                 transactions: vec![TxUndo::default()],
             },
         )]),
@@ -380,6 +382,7 @@ fn disconnect_tip_detects_restore_and_output_integrity_failures() {
         undo_by_block: HashMap::from([(
             tip.block_hash,
             BlockUndo {
+                overwrites: Vec::new(),
                 transactions: vec![TxUndo {
                     restored_inputs: vec![Coin {
                         output: genesis_block.transactions[0].outputs[0].clone(),

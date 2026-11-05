@@ -75,14 +75,22 @@ independently proves complete genesis/header/coins/work bindings. Explicit BASIC
 uses validated genesis lineage and its zero-predecessor commitment. The genesis
 context carries an unavailable wallet; ordinary maintenance workers stay absent.
 
-Offline operator `sync status` reopens existing proved genesis and preserves saved
-BASIC settings without saving synthesized status/progress. An admitted Fjall
-open can have filesystem effects. Bounded private-copy inspection and refusal
+Offline operator `sync status` reopens existing proved genesis for all four
+selectors. For default Regtest only, it can consume complete sealed retained history.
+Actual local process evidence compares 301 accepted descendants, height/hash,
+exact work and BASIC endpoints, without saving synthesized status/progress.
+An admitted Fjall open can have filesystem effects. Bounded private-copy inspection and refusal
 preservation remain separate from successful backend recovery. Cooperating
 application leases cover supported Unix; recorded process evidence is macOS.
 
-Ordinary history and sync/inbound/relay/serving activation remain refused pending
-contextual prerequisites, including Signet challenge validation. Historical
+The [Phase 167 candidate-history boundary](../docs/parity/v2-6-candidate-history-validation.md)
+keeps selected immutable rules and structural/independently seeded branch
+context distinct from the earned canonical header, coins and work owners.
+Mainnet, testnet3 and Signet ordinary configuration remain refused; default
+Signet challenge validation is still missing. The generic ordinary-history
+qualification gate remains false for every selector. Sync/inbound/relay/serving
+activation stays default off and does not follow from local private submission.
+Historical
 infrastructure includes the explicit opt-in full-sync path, bounded, explicit,
 default-off inbound serving, v2.0 transaction relay, v2.1 block serving and
 v2.1 compact-block relay. These are not public defaults and do not authorize the
@@ -90,7 +98,8 @@ current canonical route. Older fixture, sync, reorg, soak and live-smoke machine
 retains its historical evidence scope.
 Actual pinned Knots-daemon differential qualification belongs to Phase168.
 Public defaults, unattended full sync, production service and production-funds
-readiness remain outside the claim. See the [current genesis evidence](../docs/parity/v2-6-canonical-durable-bootstrap.md).
+readiness remain outside the claim. See the [current bounded history evidence](../docs/parity/v2-6-candidate-history-validation.md)
+and [Phase 166 genesis record](../docs/parity/v2-6-canonical-durable-bootstrap.md).
 
 ## Migration Boundary
 

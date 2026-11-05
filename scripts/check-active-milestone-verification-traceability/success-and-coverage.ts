@@ -10,7 +10,22 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { checkActiveMilestoneVerificationTraceability } from "../check-active-milestone-verification-traceability";
-import { REQUIREMENTS, REQUIREMENTS_FILE, PHASE115_SUMMARY, PHASE125_VERIFICATION, createFixture, orphanFailure, replaceInFile, appendToFile, insertBefore } from "./test-fixtures.ts";
+import { REQUIREMENTS, REQUIREMENTS_FILE, PHASE115_DIR, PHASE115_LIFECYCLE_ID, PHASE115_SUMMARY, PHASE125_VERIFICATION, createFixture, orphanFailure, replaceInFile, appendToFile, insertBefore, verificationText } from "./test-fixtures.ts";
+
+function completeRequirement(files: Map<string, string>, id: string): void {
+  replaceInFile(
+    files,
+    REQUIREMENTS_FILE,
+    `- [ ] **${id}**`,
+    `- [x] **${id}**`,
+  );
+  replaceInFile(
+    files,
+    REQUIREMENTS_FILE,
+    `| ${id} | Phase 125 | Pending |`,
+    `| ${id} | Phase 125 | Complete |`,
+  );
+}
 
 test("complete fixture succeeds", () => {
   // Arrange
@@ -23,6 +38,67 @@ test("complete fixture succeeds", () => {
 
   // Assert
   expect(failures).toEqual([]);
+});
+
+test("pending summarized requirements need no premature verification", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      files.delete(PHASE125_VERIFICATION);
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("completed requirement with owning phase verification succeeds", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-04");
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
+test("completed requirement needs its owning phase verification", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-04");
+      replaceInFile(
+        files,
+        PHASE125_VERIFICATION,
+        "Verified RCN-04.",
+        "No first requirement token.",
+      );
+      files.set(
+        `${PHASE115_DIR}/115-VERIFICATION.md`,
+        verificationText(["RCN-04"], PHASE115_LIFECYCLE_ID),
+      );
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([orphanFailure("RCN-04")]);
 });
 
 test("current milestone headings and sibling phases section succeed", () => {
@@ -96,6 +172,7 @@ test("missing RCN-04 verification fails independently", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-04");
       replaceInFile(
         files,
         PHASE125_VERIFICATION,
@@ -118,6 +195,7 @@ test("missing RCN-05 verification fails independently", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-05");
       replaceInFile(
         files,
         PHASE125_VERIFICATION,
@@ -140,6 +218,7 @@ test("missing RCN-06 verification fails independently", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-06");
       replaceInFile(
         files,
         PHASE125_VERIFICATION,

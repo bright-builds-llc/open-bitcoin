@@ -62,6 +62,50 @@ fn verify_script_rejects_empty_stack_after_execution() {
 }
 
 #[test]
+fn eval_script_ifdup_requires_one_stack_item() {
+    // Arrange
+    let mut stack = Vec::new();
+    // Act
+    let error = eval_script(&mut stack, &script(&[0x73])).expect_err("empty IFDUP stack");
+    // Assert
+    assert_eq!(error, ScriptError::InvalidStackOperation);
+}
+
+#[test]
+fn eval_script_ifdup_leaves_false_and_negative_zero_unchanged() {
+    for value in [Vec::new(), vec![0x80], vec![0x00, 0x80]] {
+        // Arrange
+        let mut stack = vec![value.clone()];
+        // Act
+        eval_script(&mut stack, &script(&[0x73])).expect("false IFDUP");
+        // Assert
+        assert_eq!(stack, vec![value]);
+    }
+}
+
+#[test]
+fn eval_script_ifdup_duplicates_truthy_bytes() {
+    for value in [vec![0x01], vec![0x42, 0x80]] {
+        // Arrange
+        let mut stack = vec![value.clone()];
+        // Act
+        eval_script(&mut stack, &script(&[0x73])).expect("truthy IFDUP");
+        // Assert
+        assert_eq!(stack, vec![value.clone(), value]);
+    }
+}
+
+#[test]
+fn eval_script_ifdup_in_skipped_branch_has_no_stack_effect() {
+    // Arrange
+    let mut stack = Vec::new();
+    // Act
+    eval_script(&mut stack, &script(&[0x00, 0x63, 0x73, 0x68])).expect("skipped conditional IFDUP");
+    // Assert
+    assert!(stack.is_empty());
+}
+
+#[test]
 fn verify_script_rejects_op_return() {
     let error = verify_script(&script(&[]), &script(&[0x6a])).expect_err("OP_RETURN must fail");
 
@@ -402,8 +446,9 @@ fn eval_script_rejects_opcount_and_pushdata_errors() {
         ScriptError::TruncatedPushData,
     );
     assert_eq!(
-        count_legacy_sigops(&script(&[0x01])).expect_err("bad push must fail"),
-        ScriptError::TruncatedPushData,
+        // GetSigOpCount stops at malformed syntax; execution errors above remain enforced.
+        count_legacy_sigops(&script(&[0x01])),
+        Ok(0),
     );
 }
 

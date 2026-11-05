@@ -1,11 +1,19 @@
 const DOC = "docs/parity/v2-6-canonical-chain-identity.md";
 export const CLAIM_FILES = [DOC, "README.md", "docs/parity/support-matrix.md", "docs/parity/index.json"];
-export const QUALIFICATION_STATUS = /\b(?:qualified|proved|proven|passed|delivered|complete|established|supported|accepted|deterministic|ready|achieved|available)\b/gi;
-const IDENTITY_ONLY_STATUS = /\b(?:qualified|supported|ready|proven|complete|accepted)\b/gi;
+export const QUALIFICATION_STATUS = /\b(?:qualified|proved|proven|passed|delivered|complete|established|implemented|supported|accepted|deterministic|ready|achieved|available)\b/gi;
+const IDENTITY_ONLY_STATUS = /\b(?:qualified|implemented|supported|ready|proven|complete|accepted)\b/gi;
 const WORK_SUBJECTS = /\b(?:Phase\s*16[678]|canonical(?=[^.!?;]*\b(?:bootstrap|reopen)\b)|ordinary[- ]history|bootstrap|reopen|(?:deterministic\s+)?(?:restart|reopen)(?=[^.!?;]*\b(?:tie|ordering|order)\b)|(?:actual\s+)?(?:pinned[- ]?)?Knots(?=[^.!?;]*\b(?:daemon|differential|qualification)\b))\b/gi;
 const LEGACY_IDENTITY_SUBJECTS = /\b(?:bootstrap|reopen|whole.chain|production|Knots qualification)\b/gi;
 const IDENTITY_CONTEXT_SUBJECTS = new RegExp(WORK_SUBJECTS.source + "|\\b(?:whole.chain|production)\\b", "gi");
 const SUBJECT_QUALIFIERS = new RegExp("(?:" + QUALIFICATION_STATUS.source + "\\s*)+$", "i");
+const PHASE167_HEADING = "## Current Phase 167 bounded default-Regtest scope";
+const PRODUCT_CLAIM = "Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence";
+const SEEDED_CLAIM = "Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence";
+const PHASE167_DENIALS = [
+  "Mainnet, testnet3 and Signet ordinary configuration remain refused",
+  "Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred",
+  "Wallet authority remains unavailable",
+];
 
 /** Current identity/refusal copy only; historical release sections retain their original scope. */
 export function checkCurrentClaims(text: (file: string) => string, fail: (file: string, rule: string, detail: string) => void): void {
@@ -30,12 +38,30 @@ export function checkCurrentClaims(text: (file: string) => string, fail: (file: 
   for (const [file, heading] of [["README.md", "## Current source: canonical identity and ordinary refusal"],
     ["docs/parity/support-matrix.md", "## Current Phase 164 source boundary"]]) {
     const section = text(file).split(heading)[1]?.split(/\n## /)[0] ?? "";
-    if (!section.includes("identity-only") || !section.replaceAll("\n", " ").includes("currently refused for all four selectors")) fail(file, "evidence", "current identity-only refusal section required");
+    const hasPhase167 = checkPhase167Sections(text(file), file, fail);
+    const oldRefusal = section.replaceAll("\n", " ").includes("currently refused for all four selectors");
+    if (!section.includes("identity-only") || !oldRefusal && !hasPhase167) fail(file, "evidence", "current identity and bounded history scope required");
     rejectClaims(section, file, fail);
     for (const current of text(file).split("## Current Phase 166 canonical genesis boundary").slice(1)) {
       rejectClaims(current.split(/\n## /)[0], file, fail);
     }
   }
+  checkPhase167Sections(doc, DOC, fail);
+}
+
+function checkPhase167Sections(source: string, file: string, fail: (file: string, rule: string, detail: string) => void): boolean {
+  const sections = source.split(PHASE167_HEADING).slice(1).map(section => section.split(/\n## /)[0]);
+  for (const section of sections) checkPhase167Section(section, file, fail);
+  return sections.length > 0;
+}
+
+function checkPhase167Section(section: string, file: string, fail: (file: string, rule: string, detail: string) => void): void {
+  const clauses = identitySectionSentences(section).map(sentence => sentence.replace(/[`*_#>]/g, "").trim().replace(/\s+/g, " "));
+  if (!clauses.includes(PRODUCT_CLAIM) || !clauses.includes(SEEDED_CLAIM)
+    || PHASE167_DENIALS.some(denial => !clauses.includes(denial))) {
+    fail(file, "evidence", "exact bounded product, separate fixture evidence and retained refusal scope required");
+  }
+  rejectClaims(section, file, fail);
 }
 
 function rejectClaims(source: string, file: string, fail: (file: string, rule: string, detail: string) => void,
@@ -47,6 +73,12 @@ function rejectClaims(source: string, file: string, fail: (file: string, rule: s
 export function boundedGenesisClaim(source: string): boolean {
   const plain = source.replace(/[`*_#>]/g, "").trim().replace(/\s+/g, " ");
   return /^(?:Phase\s*166\s+)?canonical\s+genesis(?:-only)?\s+(?:bootstrap(?:\s+and\s+reopen)?|reopen)\s+(?:is|are)\s+(?:supported|available|proved|proven|accepted)(?:\s+for\s+all\s+four\s+selectors)?$/i.test(plain);
+}
+
+/** Product and seeded fixture evidence are distinct exact clauses. */
+export function boundedPhase167Claim(source: string): boolean {
+  const plain = source.replace(/[`*_#>]/g, "").trim().replace(/\s+/g, " ");
+  return plain === PRODUCT_CLAIM || plain === SEEDED_CLAIM;
 }
 
 /** Conditional readiness concerns its immediately following subject, never another clause. */
@@ -68,13 +100,13 @@ export function currentQualificationClaims(source: string): { phase: boolean }[]
 function withoutGenesisHeading(source: string): string {
   const lines = source.split("\n");
   return lines.map((line, index) => {
-    if (line.trimEnd() !== "## Current Phase 166 canonical genesis boundary") return line;
+    if (line.trimEnd() !== "## Current Phase 166 canonical genesis boundary" && line.trimEnd() !== PHASE167_HEADING) return line;
     let next = index + 1;
     while (next < lines.length && !lines[next].trim()) next++;
     const paragraph: string[] = [];
     while (next < lines.length && lines[next].trim() && !lines[next].startsWith("## ")) paragraph.push(lines[next++]);
     const firstClause = paragraph.join(" ").split(/[.!?;](?:\s|$)/)[0];
-    return boundedGenesisClaim(firstClause) ? "." : line;
+    return boundedGenesisClaim(firstClause) || boundedPhase167Claim(firstClause) ? "." : line;
   }).join("\n");
 }
 
@@ -126,7 +158,7 @@ function subjectOwners(plain: string, subjects: RegExp): readonly SubjectOwner[]
 function workScopeClaims(source: string): { phase: boolean }[] {
   const claims: { phase: boolean }[] = [];
   for (const sentence of withoutGenesisHeading(source).replaceAll("\n", " ").split(/[.!?;](?:\s|$)|\b(?:but|however)\b/i)) {
-    if (boundedGenesisClaim(sentence)) continue;
+    if (boundedGenesisClaim(sentence) || boundedPhase167Claim(sentence)) continue;
     const plain = sentence.replace(/[`*_#>]/g, "");
     const owners = subjectOwners(plain, WORK_SUBJECTS);
     for (const [index, owner] of owners.entries()) {
@@ -173,7 +205,7 @@ function legacyIdentityPositive(sentence: string): boolean {
 function identityClaims(source: string, sentences: (source: string) => readonly string[]): { phase: boolean }[] {
   const claims: { phase: boolean }[] = [];
   for (const sentence of sentences(source)) {
-    if (boundedGenesisClaim(sentence)) continue;
+    if (boundedGenesisClaim(sentence) || boundedPhase167Claim(sentence)) continue;
     const following = workScopeClaims(sentence);
     if (following.length) claims.push(...following);
     else if (legacyIdentityPositive(sentence)) claims.push({ phase: false });

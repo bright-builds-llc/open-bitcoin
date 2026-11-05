@@ -19,6 +19,7 @@ use open_bitcoin_mempool::{
     MempoolRejectionCategory, MempoolTransition, PolicyTime, PreparedMempoolTransition,
     ReorgLifecycleContext,
 };
+use open_bitcoin_network::CompactDownloadCleanupCause;
 
 use super::{BlockConnectDisposition, ManagedNetworkError, ManagedPeerNetwork, ManagedResult};
 use crate::ChainstateStore;
@@ -78,6 +79,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             sealed_lifecycle,
         )
         .map_err(maintenance_lifecycle_error)?;
+        self.finish_bookkeeping(block);
         Ok(position)
     }
 
@@ -93,8 +95,9 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         self.chainstate
             .chainstate()
             .bind_live_work_source(consensus_params)?;
-        self.retain_checked_candidate(block, consensus_params, timestamp)?;
         let block_hash = block_hash(&block.header);
+        let maybe_retained_body = self.blocks_by_hash.get(&block_hash).cloned();
+        self.retain_checked_candidate(block, consensus_params, timestamp)?;
         if self
             .chainstate
             .chainstate()
@@ -102,8 +105,10 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             .iter()
             .any(|position| position.block_hash == block_hash)
         {
-            self.blocks_by_hash.insert(block_hash, block.clone());
+            let retained = maybe_retained_body.unwrap_or_else(|| block.clone());
+            self.blocks_by_hash.insert(block_hash, retained.clone());
             self.peer_manager.note_local_block_hash(block_hash);
+            self.finish_bookkeeping(&retained);
             return Ok(BlockConnectDisposition::Duplicate(block_hash));
         }
 
@@ -115,6 +120,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         if maybe_tip.is_some() && !extends_tip {
             self.blocks_by_hash.insert(block_hash, block.clone());
             self.peer_manager.note_local_block_hash(block_hash);
+            self.finish_bookkeeping(block);
             return Ok(BlockConnectDisposition::NonExtending {
                 block_hash,
                 previous_block_hash: block.header.previous_block_hash,
@@ -152,6 +158,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             sealed_lifecycle,
         )
         .map_err(maintenance_lifecycle_error)?;
+        self.finish_bookkeeping(block);
         Ok(BlockConnectDisposition::Connected(position))
     }
 
@@ -164,11 +171,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         consensus_params: ConsensusParams,
     ) -> ManagedResult<ChainTransition> {
         for candidate in replacement_branch {
-            self.guard_body(&candidate.block)?;
+            if candidate.block.header.previous_block_hash.to_byte_array() == [0; 32] {
+                self.guard_body(&candidate.block)?;
+            }
         }
-        self.admission_scope
-            .require_history()
-            .map_err(|error| error.network_error())?;
+        self.require_owned_history()?;
+        self.admit_replacement_contexts(disconnect_blocks, replacement_branch)?;
         let mut authorization =
             self.authorize_reorg(disconnect_blocks, replacement_branch, consensus_params)?;
         self.retain_authorized_reorg(&mut authorization)?;
@@ -215,7 +223,113 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         self.chainstate
             .commit_prepared_reorg(prepared_chainstate)
             .map_err(ManagedNetworkError::Chainstate)?;
+        for candidate in replacement_branch {
+            self.finish_bookkeeping(&candidate.block);
+        }
         Ok(transition)
+    }
+
+    /// Clear requests only for an actual retained body with current linkage evidence.
+    pub(in crate::network) fn finish_bookkeeping(&mut self, block: &Block) -> bool {
+        let hash = block_hash(&block.header);
+        let headers = self.peer_manager.header_store();
+        let Some(entry) = headers.entry(&hash) else {
+            return false;
+        };
+        let Some(binding) = headers.maybe_body_eligibility_binding(hash) else {
+            return false;
+        };
+        let facts = binding.facts();
+        let maybe_cached = self.blocks_by_hash.get(&hash);
+        let retained_body_matches = maybe_cached == Some(block)
+            || (maybe_cached.is_none()
+                && self.maybe_canonical_chain().is_some_and(|chain| {
+                    let spec = chain.spec();
+                    hash == spec.genesis_hash()
+                        && *block == spec.genesis_block()
+                        && self.chainstate.chainstate().maybe_canonical_chain() == Some(chain)
+                        && self
+                            .chainstate
+                            .chainstate()
+                            .active_chain()
+                            .first()
+                            .is_some_and(|root| {
+                                root.height == 0
+                                    && root.block_hash == hash
+                                    && root.header == block.header
+                            })
+                }));
+        if entry.header != block.header
+            || entry.block_hash != hash
+            || entry.chain_work != facts.chain_work
+            || facts.block_hash != hash
+            || !facts.available
+            || facts.failed
+            || !headers.body_eligibility_epoch().is_current()
+            || !retained_body_matches
+            || !self
+                .eligible_body_candidates()
+                .iter()
+                .any(|candidate| candidate.block_hash == hash)
+        {
+            return false;
+        }
+        let removed = self.peer_manager.finish_block_requests(hash);
+        if removed > 0 {
+            self.record_compact_cleanup(CompactDownloadCleanupCause::BlockConnected, removed);
+        }
+        true
+    }
+
+    fn admit_replacement_contexts(
+        &mut self,
+        disconnect: &[Block],
+        replacements: &[AnchoredBlock],
+    ) -> ManagedResult<()> {
+        let Some(chain) = self.maybe_canonical_chain() else {
+            return Ok(());
+        };
+        let active = self.chainstate.chainstate().active_chain();
+        let retained = active
+            .len()
+            .checked_sub(disconnect.len())
+            .and_then(|len| len.checked_sub(1))
+            .and_then(|index| active.get(index))
+            .ok_or(
+                open_bitcoin_core::chainstate::ChainstateError::PreferenceAuthorizationRequired,
+            )?;
+        let mut previous = retained.block_hash;
+        let headers = self.peer_manager.header_store();
+        let mut candidates = Vec::with_capacity(replacements.len());
+        for candidate in replacements {
+            let header = &candidate.block.header;
+            let hash = block_hash(header);
+            let history = headers.canonical_header_history(hash)?;
+            let context = headers.canonical_header_validation_context(header)?;
+            if history.network_rules().chain() != chain
+                || history.candidate() != header
+                || history.candidate_hash() != hash
+                || history.parent().block_hash != previous
+                || header.previous_block_hash != previous
+                || context.previous_header != history.parent().header
+                || context.consensus_params != history.rules().consensus_params()
+            {
+                return Err(open_bitcoin_network::NetworkError::InvalidHeader {
+                    reject_reason: "canonical-reorg-context-mismatch".to_owned(),
+                    maybe_debug_message: None,
+                }
+                .into());
+            }
+            candidates.push((header.clone(), context.current_time));
+            previous = hash;
+        }
+        let disconnect: Vec<_> = disconnect
+            .iter()
+            .map(|block| block.header.clone())
+            .collect();
+        self.chainstate
+            .admit_canonical_body_reorg(&disconnect, &candidates)?;
+        Ok(())
     }
 
     #[cfg(test)]

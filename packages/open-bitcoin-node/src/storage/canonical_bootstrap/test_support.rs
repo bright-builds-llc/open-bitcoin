@@ -3,6 +3,7 @@
 // - packages/bitcoin-knots/src/chain.cpp
 // - packages/bitcoin-knots/src/txdb.cpp
 
+use crate::storage::fjall_store::tracked::Keyspace;
 use crate::storage::{snapshot_codec, validation_history as history};
 use crate::{
     DurableSyncRuntime, FjallNodeStore, StorageNamespace, SyncNetwork, SyncRuntimeConfig,
@@ -246,7 +247,7 @@ pub(super) fn numeric_work(value: &serde_json::Value) -> ProofWork {
     ProofWork::from_hex(value.as_str().expect("fixed numerical hex")).expect("256-bit number")
 }
 
-pub(super) fn keyspace(store: &FjallNodeStore, namespace: StorageNamespace) -> fjall::Keyspace {
+pub(super) fn keyspace(store: &FjallNodeStore, namespace: StorageNamespace) -> Keyspace {
     store
         .database()
         .keyspace(namespace.as_str(), fjall::KeyspaceCreateOptions::default)

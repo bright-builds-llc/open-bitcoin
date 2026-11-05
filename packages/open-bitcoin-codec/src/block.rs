@@ -9,7 +9,12 @@ use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, MerkleRoot};
 use crate::compact_size::{compact_size_to_usize, read_compact_size, write_compact_size};
 use crate::error::CodecError;
 use crate::primitives::{Reader, write_i32_le, write_u32_le};
-use crate::transaction::{TransactionEncoding, encode_transaction, parse_transaction_from_reader};
+use crate::transaction::{
+    DecodeMode, DomainMode, TransactionEncoding, encode_transaction_view, parse_transaction_mode,
+    push_decoded,
+};
+
+pub mod wire;
 
 pub fn parse_block_header(bytes: &[u8]) -> Result<BlockHeader, CodecError> {
     let mut reader = Reader::new(bytes);
@@ -50,24 +55,39 @@ pub fn parse_block(bytes: &[u8]) -> Result<Block, CodecError> {
 }
 
 fn parse_block_from_reader(reader: &mut Reader<'_>) -> Result<Block, CodecError> {
-    let header = parse_block_header_from_reader(reader)?;
-    let count = compact_size_to_usize(read_compact_size(reader)?, "block transaction count");
-    let mut transactions = Vec::with_capacity(count);
-    for _ in 0..count {
-        transactions.push(parse_transaction_from_reader(reader, true)?);
-    }
+    let (header, transactions) = parse_block_parts::<DomainMode<false>>(reader)?;
     Ok(Block {
         header,
         transactions,
     })
 }
 
+pub(crate) fn parse_block_parts<M: DecodeMode>(
+    reader: &mut Reader<'_>,
+) -> Result<(BlockHeader, Vec<M::Transaction>), CodecError> {
+    let header = parse_block_header_from_reader(reader)?;
+    let count = compact_size_to_usize(read_compact_size(reader)?, "block transaction count");
+    let mut transactions = Vec::new();
+    #[cfg(test)]
+    crate::transaction::wire::tests::observe("transactions", transactions.capacity());
+    for _ in 0..count {
+        let transaction = parse_transaction_mode::<M>(reader, true)?;
+        push_decoded(&mut transactions, transaction, "transactions")?;
+    }
+    Ok((header, transactions))
+}
+
 pub fn encode_block(block: &Block) -> Result<Vec<u8>, CodecError> {
-    let mut out = encode_block_header(&block.header);
-    write_compact_size(&mut out, block.transactions.len() as u64)?;
-    for transaction in &block.transactions {
+    encode_block_view(block)
+}
+
+/// Serialize borrowed block facts with witness; no validity or authority is implied.
+pub fn encode_block_view(block: &impl wire::BlockView) -> Result<Vec<u8>, CodecError> {
+    let mut out = encode_block_header(block.header());
+    write_compact_size(&mut out, block.transactions().len() as u64)?;
+    for transaction in block.transactions() {
         let encoded_transaction =
-            encode_transaction(transaction, TransactionEncoding::WithWitness)?;
+            encode_transaction_view(transaction, TransactionEncoding::WithWitness)?;
         out.extend_from_slice(&encoded_transaction);
     }
     Ok(out)

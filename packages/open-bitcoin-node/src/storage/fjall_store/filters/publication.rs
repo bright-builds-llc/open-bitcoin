@@ -7,6 +7,7 @@
 use super::super::{
     FjallNodeStore, StorageError, StorageNamespace, StorageRecoveryAction, backend_failure,
     prune::{PRUNE_LOCKS_KEY, encode_prune_locks},
+    tracked::OwnedWriteBatch,
 };
 use super::{BasicFilterWorkToken, ownership::BasicFilterAppendIdentity};
 use crate::storage::filter_index::{
@@ -558,7 +559,7 @@ impl FjallNodeStore {
 
     pub(super) fn finish_basic_filter_batch(
         &self,
-        batch: fjall::OwnedWriteBatch,
+        batch: OwnedWriteBatch,
         control: &mut PublicationControl,
     ) -> Result<(), StorageError> {
         #[cfg(test)]

@@ -546,6 +546,7 @@ fn phase165_live_fixture_public_changed_undo_refuses() {
     let hash = block_hash(&root.header);
     let (store, source) = genuine(&dir, &[root], params());
     let changed = open_bitcoin_node::core::chainstate::BlockUndo {
+        overwrites: Vec::new(),
         transactions: vec![open_bitcoin_node::core::chainstate::TxUndo::default()],
     };
     store

@@ -59,9 +59,9 @@ test("fails_when_production_constructs_a_duplicate_network_authority", () => {
       replaceUnique(
         files,
         "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-        "let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;",
-        `let _duplicate = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;
-    let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;`,
+        "open_authoritative_network_runtime(&runtime, maybe_runtime_store)?",
+        `let _duplicate = open_authoritative_network_runtime(&runtime, None)?;
+            open_authoritative_network_runtime(&runtime, maybe_runtime_store)?`,
       );
     },
   });

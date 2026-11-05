@@ -4,23 +4,25 @@
 // - packages/bitcoin-knots/src/kernel/chainparams.cpp
 
 use super::*;
-use open_bitcoin_consensus::CanonicalChain;
 use open_bitcoin_consensus::chain_spec::CanonicalGenesisProof;
 
-/// Existing selected-network parameters for genesis owner binding only.
+/// Complete selected-network parameters at height zero for genesis owner binding only.
 /// This does not qualify contextual history or implement Signet challenge checks.
 pub fn consensus_params(proof: &CanonicalGenesisProof) -> ConsensusParams {
-    let (pow_limit_bits, allow_min_difficulty_blocks, no_pow_retargeting) = match proof.chain() {
-        CanonicalChain::Mainnet => (0x1d00_ffff, false, false),
-        CanonicalChain::Testnet3 => (0x1d00_ffff, true, false),
-        CanonicalChain::Signet => (0x1e03_77ae, false, false),
-        CanonicalChain::Regtest => (0x207f_ffff, true, true),
-    };
+    let rules = proof.spec().rules();
     ConsensusParams {
-        pow_limit_bits,
-        allow_min_difficulty_blocks,
-        no_pow_retargeting,
-        ..ConsensusParams::default()
+        coinbase_maturity: rules.coinbase_maturity(),
+        subsidy_halving_interval: rules.subsidy_halving_interval(),
+        locktime_threshold: rules.locktime_threshold(),
+        sequence_locktime_granularity: rules.sequence_locktime_granularity(),
+        pow_limit_bits: rules.pow_limit_bits(),
+        pow_target_spacing_seconds: rules.pow_target_spacing_seconds(),
+        pow_target_timespan_seconds: rules.pow_target_timespan_seconds(),
+        allow_min_difficulty_blocks: rules.allow_min_difficulty_blocks(),
+        no_pow_retargeting: rules.no_pow_retargeting(),
+        enforce_bip34_height_in_coinbase: rules.bip34_height() == 0,
+        enforce_bip113_median_time_past: rules.csv_height() == 0,
+        enforce_segwit: rules.segwit_height() == 0,
     }
 }
 
@@ -47,6 +49,7 @@ impl<V: CoinsView> Chainstate<V> {
         let mut work_authority = WorkAuthority::new(WorkOrigin::Live);
         let binding = work_authority.bind(Some(&position), consensus_params(proof));
         work_authority.accept(&binding);
+        work_authority.maybe_canonical_rules = Some(proof.spec().rules());
         // Knots skips genesis transaction connection entirely, including its outputs.
         Ok(Self {
             work_authority,

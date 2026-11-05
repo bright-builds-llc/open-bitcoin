@@ -11,6 +11,15 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{HeaderStore, NetworkError};
 
+/// Observe time at the shell boundary; peer/caller timestamps are not clock evidence.
+pub(super) fn shell_observed_now() -> Result<i64, NetworkError> {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
+        .ok_or_else(|| invalid_import("header-shell-clock-unavailable"))
+}
+
 /// Contextual fixture validation only; the managed owner checks canonical scope first.
 pub(super) fn validate_header_for_sync(
     header_store: &HeaderStore,

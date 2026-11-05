@@ -2,7 +2,10 @@
 // - packages/bitcoin-knots/src/kernel/chainparams.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-use super::{CanonicalChain, MissingValidationPrerequisite, ValidationEvidenceClass};
+use super::{
+    CanonicalChain, LocalOrdinaryImplementation, MissingImplementationPrerequisite,
+    MissingValidationPrerequisite, ValidationEvidenceClass,
+};
 use open_bitcoin_codec::{
     TransactionEncoding, encode_block, encode_block_header, encode_transaction, parse_block,
 };
@@ -492,4 +495,127 @@ fn canonical_chain_support_names_testnet_identity_as_testnet3() {
     let name = chain.to_string();
     // Assert
     assert_eq!(name, "testnet3");
+}
+
+#[test]
+fn phase167_support_scope_separates_bounded_regtest_implementation_from_qualification() {
+    // Arrange
+    let expected: [(
+        CanonicalChain,
+        LocalOrdinaryImplementation,
+        &[MissingImplementationPrerequisite],
+    ); 4] = [
+        (
+            CanonicalChain::Mainnet,
+            LocalOrdinaryImplementation::Unavailable,
+            &[
+                MissingImplementationPrerequisite::HistoricalRules,
+                MissingImplementationPrerequisite::CheckpointContext,
+            ][..],
+        ),
+        (
+            CanonicalChain::Testnet3,
+            LocalOrdinaryImplementation::Unavailable,
+            &[
+                MissingImplementationPrerequisite::HistoricalRules,
+                MissingImplementationPrerequisite::CheckpointContext,
+            ][..],
+        ),
+        (
+            CanonicalChain::Signet,
+            LocalOrdinaryImplementation::Unavailable,
+            &[
+                MissingImplementationPrerequisite::HistoricalRules,
+                MissingImplementationPrerequisite::SignetChallengeValidation,
+            ][..],
+        ),
+        (
+            CanonicalChain::Regtest,
+            LocalOrdinaryImplementation::BoundedDefaultRegtest,
+            &[][..],
+        ),
+    ];
+    // Act / Assert
+    for (chain, implementation, missing) in expected {
+        let spec = chain.spec();
+        let scope = spec.validation_scope();
+        assert_eq!(scope.local_ordinary_implementation(), implementation);
+        assert_eq!(scope.missing_implementation_prerequisites(), missing);
+        assert_eq!(
+            implementation.retained_body_reopen_bound(),
+            chain == CanonicalChain::Regtest
+        );
+        assert_eq!(
+            scope.evidence_class(),
+            ValidationEvidenceClass::IdentityOnly
+        );
+        assert!(!scope.ordinary_history());
+        assert!(!scope.actual_daemon_differential_qualified());
+        assert!(spec.require_ordinary_history().is_err());
+    }
+}
+
+#[test]
+fn phase167_support_scope_fixture_parameter_mutation_cannot_change_immutable_selection() {
+    // Arrange
+    let selected = CanonicalChain::Regtest.spec().validation_scope();
+    // Act: these public parameters are caller fixtures, not the selected chain profile.
+    let fixture = crate::context::ConsensusParams {
+        coinbase_maturity: 1,
+        no_pow_retargeting: false,
+        enforce_bip113_median_time_past: false,
+        ..Default::default()
+    };
+    // Assert
+    assert_eq!(fixture.coinbase_maturity, 1);
+    assert!(!fixture.no_pow_retargeting);
+    assert!(!fixture.enforce_bip113_median_time_past);
+    assert_eq!(
+        selected.local_ordinary_implementation(),
+        LocalOrdinaryImplementation::BoundedDefaultRegtest
+    );
+    assert!(selected.missing_implementation_prerequisites().is_empty());
+    assert!(!selected.ordinary_history());
+    assert!(!selected.actual_daemon_differential_qualified());
+    assert!(
+        CanonicalChain::Regtest
+            .spec()
+            .require_ordinary_history()
+            .is_err()
+    );
+}
+
+#[test]
+fn implementation_status_codes_follow_bounded_selector_facts() {
+    // Arrange
+    let codes = [
+        LocalOrdinaryImplementation::Unavailable.code(),
+        LocalOrdinaryImplementation::BoundedDefaultRegtest.code(),
+    ];
+    let prerequisites = [
+        MissingImplementationPrerequisite::HistoricalRules.code(),
+        MissingImplementationPrerequisite::CheckpointContext.code(),
+        MissingImplementationPrerequisite::SignetChallengeValidation.code(),
+    ];
+
+    // Act / Assert
+    assert_eq!(codes, ["unavailable", "bounded_default_regtest"]);
+    assert_eq!(
+        prerequisites,
+        [
+            "historical_rules",
+            "checkpoint_context",
+            "signet_challenge_validation"
+        ]
+    );
+    for (chain, code) in [
+        (CanonicalChain::Mainnet, "unavailable"),
+        (CanonicalChain::Testnet3, "unavailable"),
+        (CanonicalChain::Signet, "unavailable"),
+        (CanonicalChain::Regtest, "bounded_default_regtest"),
+    ] {
+        let scope = chain.spec().validation_scope();
+        assert_eq!(scope.local_ordinary_implementation().code(), code);
+        assert!(!scope.ordinary_history());
+    }
 }

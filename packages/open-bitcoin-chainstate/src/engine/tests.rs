@@ -26,6 +26,11 @@ use crate::{AnchoredBlock, BlockUndo, ChainPosition, ChainstateError, Coin, TxUn
 mod phase165_rebind;
 mod phase165_tests;
 mod phase165_work_authority;
+pub(super) mod phase167_bip30;
+mod phase167_context;
+mod phase167_locktime;
+mod phase167_policy;
+mod phase167_scripts;
 
 fn hashmap_parent(utxos: &HashMap<OutPoint, Coin>) -> CoinsCache<MemoryCoinsView> {
     CoinsCache::from_parent(MemoryCoinsView::from_coins(utxos.clone(), None))
@@ -55,14 +60,20 @@ fn apply_non_coinbase_transaction(
 ) -> Result<Amount, ChainstateError> {
     let parent = hashmap_parent(next_utxos);
     let mut overlay = CoinsOverlay::new();
+    let context = super::apply::build_transaction_context(
+        &overlay,
+        &parent,
+        transaction,
+        block_time,
+        verify_flags,
+        block_context,
+    )?;
     let fee = super::apply::apply_non_coinbase_transaction(
         &mut overlay,
         &parent,
         block_undo,
         transaction,
-        block_time,
-        verify_flags,
-        block_context,
+        &context,
     )?;
     write_overlay_into_hashmap(next_utxos, overlay);
     Ok(fee)

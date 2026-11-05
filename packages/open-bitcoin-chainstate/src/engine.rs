@@ -20,8 +20,10 @@ use crate::{
 };
 
 mod apply;
+mod candidate_rules;
 pub mod canonical_genesis;
 mod overlay_apply;
+mod overwrite_undo;
 mod stage;
 mod work_authority;
 
@@ -259,6 +261,10 @@ impl<V: CoinsView> Chainstate<V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<StagedChainstateConnect, ChainstateError> {
+        let consensus_params = self.work_authority.bound_params(consensus_params);
+        self.check_admission_batch(&[], std::slice::from_ref(&block.header))?;
+        let selected =
+            self.selected_candidate_context(&self.active_chain, &block.header, &[], 0)?;
         let derive_work = self
             .work_authority
             .check_parent(&self.active_chain, consensus_params)?;
@@ -275,6 +281,7 @@ impl<V: CoinsView> Chainstate<V> {
             current_time,
             verify_flags,
             consensus_params,
+            selected.as_ref().map(|(history, now)| (history, *now)),
         )?;
         overlay.set_best_block(position.block_hash);
         let mut next_active_chain = self.active_chain.clone();
@@ -527,7 +534,7 @@ pub(super) fn compute_median_time_past(
     let mut times: Vec<u32> = active_chain
         .iter()
         .rev()
-        .take(MEDIAN_TIME_PAST_WINDOW)
+        .take(MEDIAN_TIME_PAST_WINDOW - usize::from(maybe_new_time.is_some()))
         .map(|position| position.header.time)
         .collect();
     if let Some(new_time) = maybe_new_time {

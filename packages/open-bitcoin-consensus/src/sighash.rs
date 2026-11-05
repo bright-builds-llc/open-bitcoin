@@ -10,6 +10,7 @@ use crate::context::{
     TransactionValidationContext,
 };
 use crate::crypto::{Sha256, double_sha256};
+use crate::script::strip_legacy_codeseparators;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SigVersion {
@@ -74,7 +75,7 @@ pub fn legacy_sighash(
         encoded.extend_from_slice(input.previous_output.txid.as_bytes());
         encoded.extend_from_slice(&input.previous_output.vout.to_le_bytes());
         let script = if index == input_index {
-            remove_codeseparators(script_code)
+            strip_legacy_codeseparators(script_code)
         } else {
             Vec::new()
         };
@@ -261,15 +262,6 @@ pub fn taproot_sighash(
     }
 
     Some(taproot_tagged_hash("TapSighash", &preimage))
-}
-
-fn remove_codeseparators(script: &ScriptBuf) -> Vec<u8> {
-    script
-        .as_bytes()
-        .iter()
-        .copied()
-        .filter(|byte| *byte != 0xab)
-        .collect()
 }
 
 fn is_valid_taproot_sighash_type(sighash_type: SigHashType) -> bool {

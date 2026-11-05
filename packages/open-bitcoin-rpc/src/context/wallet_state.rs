@@ -18,8 +18,11 @@ use open_bitcoin_node::{
 use crate::config::{RuntimeConfig, WalletRuntimeScope};
 use crate::error::{RpcErrorCode, RpcErrorDetail, RpcFailure, RpcFailureKind};
 
+#[cfg(test)]
+use super::CanonicalContextError;
+use super::ManagedRpcContext;
+#[cfg(test)]
 use super::canonical_chain::selected_chain;
-use super::{CanonicalContextError, ManagedRpcContext};
 
 pub(super) enum WalletState {
     Unavailable,
@@ -319,6 +322,7 @@ pub(super) fn unavailable_wallet() -> RpcFailure {
     RpcFailure::wallet_error("wallet unavailable: canonical genesis history is not qualified")
 }
 
+#[cfg(test)]
 pub(super) fn build_wallet_state_with_store(
     config: &RuntimeConfig,
     maybe_store: Option<FjallNodeStore>,

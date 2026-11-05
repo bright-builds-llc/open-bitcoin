@@ -13,7 +13,7 @@ mod tests;
 
 use std::collections::HashMap;
 
-use open_bitcoin_primitives::{BlockHash, OutPoint};
+use open_bitcoin_primitives::{BlockHash, OutPoint, Txid};
 
 use crate::error::ChainstateError;
 use crate::types::Coin;
@@ -37,6 +37,12 @@ pub struct CompleteCoinsSnapshot {
 
 /// Closed persistence operations that cannot inject coins or a caller-selected B.
 pub trait CoinsFlush {
+    /// Borrow complete canonical occurrences; ancestryless caches remain unknown.
+    fn maybe_canonical_confirmed_txid_counts(
+        &self,
+    ) -> Result<Option<&HashMap<Txid, u32>>, ChainstateError> {
+        Ok(None)
+    }
     fn estimated_cache_bytes(&self) -> u64;
     fn cache_entry_count(&self) -> u64;
     fn prepare_current_best_block(&mut self) -> Result<(), ChainstateError>;
@@ -174,5 +180,22 @@ impl CoinsCacheEntry {
 
     pub fn is_spent(&self) -> bool {
         self.maybe_coin.is_none()
+    }
+}
+
+#[cfg(test)]
+mod phase167_canonical_count_observation {
+    use super::*;
+
+    #[test]
+    fn ancestryless_cache_remains_unknown_and_unchanged() {
+        // Arrange
+        let cache = CoinsCache::from_parent(MemoryCoinsView::default());
+        let before = cache.complete_snapshot().expect("complete cache");
+        // Act
+        let observed = cache.maybe_canonical_confirmed_txid_counts();
+        // Assert
+        assert_eq!(observed, Ok(None));
+        assert_eq!(cache.complete_snapshot().expect("unchanged"), before);
     }
 }

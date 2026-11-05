@@ -1,11 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import {
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -29,6 +23,11 @@ const INBOUND_FAILURE = "P128 inbound write boundary: receipt completion must oc
 const DAEMON = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
 const CANONICAL = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs";
 const COMPOSITION_FAILURE = "P128 production composition: outbound and inbound sessions must share authoritative outboxes";
+const GENESIS_PREBUILT = `authoritative.maybe_prebuilt_context = Some(context);
+            Ok(OpenedAuthoritativeRuntime::Durable(authoritative))`;
+const GENESIS_ASSEMBLY = `from_canonical_genesis_runtime_config(runtime, opened)
+            .map_err(|_| compatibility_refusal(runtime, chain))?;
+    match assemble_durable_runtime(runtime, sync_runtime)?`;
 type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
 type Mutator = (files: Map<TargetFile, string>) => void;
 const tempRoots: string[] = [];
@@ -115,7 +114,6 @@ test("missing runtime helper fails closed", () => {
   // Assert
   expect(failures).toContain(`P128 missing target: ${helper}`);
 });
-
 test.each([
   ["path", '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', '#[path = "open_bitcoind/disconnected.rs"]\nmod canonical_startup;'],
   ["tokio", "#[tokio::main]\nasync fn run_application(", "async fn run_application("],
@@ -144,15 +142,23 @@ test.each([
   ["cross-runtime network", CANONICAL, "let mut network = sync_runtime.network_handle();", "let mut network = other_runtime.network_handle();"],
   ["network reassignment", CANONICAL, "let mut network = sync_runtime.network_handle();", "let mut network = sync_runtime.network_handle(); network = other_network;"],
   ["discarded sync owner", CANONICAL, "maybe_sync_runtime: Some(sync_runtime),", "maybe_sync_runtime: None,"],
-  ["cross-owner assembly", CANONICAL, "assemble_durable_runtime(runtime, sync_runtime)?", "assemble_durable_runtime(runtime, other_runtime)?"],
-  ["forged prebuilt context", CANONICAL, "authoritative.maybe_prebuilt_context = Some(context);", "authoritative.maybe_prebuilt_context = Some(default_context());"],
+  ["cross-owner assembly", CANONICAL, GENESIS_ASSEMBLY,
+    GENESIS_ASSEMBLY.replace("sync_runtime)?", "other_runtime)?")],
+  ["forged prebuilt context", CANONICAL, GENESIS_PREBUILT,
+    GENESIS_PREBUILT.replace("Some(context)", "Some(default_context())")],
   ["missing-owner refusal replaced", CANONICAL, "let Some(opened) = maybe_opened else {\n        // There is no earned transient canonical owner in this phase.\n        return Err(compatibility_refusal(runtime, chain));\n    };", "let Some(opened) = maybe_opened else { return Ok(forged_runtime()); };"],
   ["factory preflight removed", CANONICAL, "let chain = preflight(runtime)?;\n    let Some(opened) = maybe_opened", "let chain = chain_without_preflight(runtime);\n    let Some(opened) = maybe_opened"],
   ["ordinary activation bypass", CANONICAL, "if activation {", "if false {"],
   ["test-only assembly", CANONICAL, "pub(super) fn assemble_durable_runtime(", "#[cfg(test)]\n#[allow(dead_code)]\npub(super) fn assemble_durable_runtime("],
   ["disconnected module", DAEMON, '#[path = "open_bitcoind/canonical_startup.rs"]', '#[path = "open_bitcoind/disconnected.rs"]'],
   ["test-only module", DAEMON, '#[path = "open_bitcoind/canonical_startup.rs"]', '#[cfg(test)]\n#[allow(dead_code)]\n#[path = "open_bitcoind/canonical_startup.rs"]'],
-  ["test-only import", DAEMON, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "#[cfg(test)]\nuse canonical_startup::{open_authoritative_network_runtime, open_runtime_store};"],
+  ["test-only import", DAEMON,
+    `use canonical_startup::{
+    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,
+};`,
+    `#[cfg(test)]\nuse canonical_startup::{
+    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,
+};`],
   ["listener outboxes replaced", DAEMON, "        authoritative_runtime.announcement_outboxes,", "        other_outboxes,"],
   ["listener peer epoch replaced", DAEMON, "        authoritative_runtime.peer_identity_authority,", "        other_epoch,"],
   ["listener network replaced", DAEMON, "        authoritative_runtime.network,", "        other_network,"],
@@ -184,9 +190,9 @@ test.each([
     const end = boundary === "" ? original.length : original.indexOf(boundary, start);
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
-    expect(original.split(needle)).toHaveLength(2);
     const expected = original.slice(start, end);
-    const changed = original.replace(needle, () => replacement);
+    expect(expected.split(needle)).toHaveLength(2);
+    const changed = original.slice(0, start) + expected.replace(needle, replacement) + original.slice(end);
     expect(changed).not.toBe(original);
     const decoy = mode === "test" ? `#[cfg(test)]\n${expected}`
       : mode === "dead" ? `fn disconnected_owner() { ${expected} }`
@@ -376,10 +382,36 @@ test.each([
     "bounded session outbox",
     "P128 bounded transport: preparation and session outboxes must enforce queue limits",
     replace(
-      "packages/open-bitcoin-node/src/sync/session.rs",
+      "packages/open-bitcoin-node/src/sync/session/outbox.rs",
       "if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES",
       "if false",
     ),
+  ],
+  [
+    "bounded aggregate outbox",
+    "P128 bounded transport: preparation and session outboxes must enforce queue limits",
+    replace(
+      "packages/open-bitcoin-node/src/sync/session/outbox.rs",
+      "if aggregate_queued >= PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES",
+      "if false",
+    ),
+  ],
+  [
+    "unreachable session outbox caps",
+    "P128 bounded transport: preparation and session outboxes must enforce queue limits",
+    replace("packages/open-bitcoin-node/src/sync/session/outbox.rs",
+      "if aggregate_queued >= PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES",
+      "return Ok(()); if aggregate_queued >= PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES"),
+  ],
+  [
+    "disabled session outbox",
+    "P128 bounded transport: preparation and session outboxes must enforce queue limits",
+    replace("packages/open-bitcoin-node/src/sync/session.rs", "mod outbox;", "#[cfg(test)] mod outbox;"),
+  ],
+  [
+    "redirected session outbox",
+    "P128 bounded transport: preparation and session outboxes must enforce queue limits",
+    replace("packages/open-bitcoin-node/src/sync/session.rs", "mod outbox;", '#[path = "other.rs"] mod outbox;'),
   ],
   [
     "outbound post-write receipt",
@@ -592,7 +624,5 @@ function append(file: TargetFile, value: string): Mutator {
 }
 
 function compose(...mutators: Mutator[]): Mutator {
-  return (files) => {
-    for (const mutate of mutators) mutate(files);
-  };
+  return (files) => mutators.forEach((mutate) => mutate(files));
 }

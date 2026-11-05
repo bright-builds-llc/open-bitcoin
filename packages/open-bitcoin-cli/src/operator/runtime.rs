@@ -141,7 +141,7 @@ impl fmt::Display for OperatorRuntimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::CanonicalObservationUnavailable => {
-                f.write_str("canonical genesis observation unavailable")
+                f.write_str("canonical status observation unavailable")
             }
             Self::CompatibilityRefused { refusal } => refusal.fmt(f),
             Self::InvalidRequest { message } => f.write_str(message),

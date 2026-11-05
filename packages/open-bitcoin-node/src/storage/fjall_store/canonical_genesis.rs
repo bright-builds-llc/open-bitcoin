@@ -11,6 +11,8 @@ use crate::storage::{
     },
     chain_compatibility::{DatadirObservation, inspect_datadir_without_backend},
 };
+#[cfg(test)]
+use fjall::Database;
 use open_bitcoin_core::{
     chainstate::ChainPosition,
     consensus::chain_spec::{CanonicalChain, CanonicalGenesisProof},
@@ -25,7 +27,7 @@ pub struct OpenedCanonicalGenesis {
 /// Unforgeable evidence bound to one live database instance and write generation.
 pub(crate) struct RecoveredCanonicalGenesis {
     publication: Arc<Mutex<filters::PublicationControl>>,
-    sequence: u64,
+    stamp: tracked::MutationStamp,
     proof: ProvedGenesisRecords,
 }
 
@@ -54,9 +56,9 @@ impl RecoveredCanonicalGenesis {
             return Err(Refusal::ChangedStore);
         }
         let _guard = store.filter_publication_guard().map_err(unavailable)?;
-        if store.db.seqno() != self.sequence
+        if store.db.check_stamp(&self.stamp).is_err()
             || prove_live(store, self.proof.genesis().chain())? != self.proof
-            || store.db.seqno() != self.sequence
+            || store.db.check_stamp(&self.stamp).is_err()
         {
             return Err(Refusal::ChangedStore);
         }
@@ -178,6 +180,7 @@ fn prove_detached(
     records: &inspection::InspectedRecords,
     selected: CanonicalChain,
 ) -> Result<ProvedGenesisRecords, Refusal> {
+    inspection::require_existing_namespaces(records).map_err(unavailable)?;
     bootstrap::validate_genesis_records(selected, &CanonicalGenesisRecords::decode(records)?)
 }
 
@@ -203,7 +206,7 @@ fn seal(
     }
     let recovered = RecoveredCanonicalGenesis {
         publication: Arc::clone(&store.filter_publication),
-        sequence: store.db.seqno(),
+        stamp: store.db.stamp().map_err(|_| Refusal::ChangedStore)?,
         proof,
     };
     Ok(OpenedCanonicalGenesis { store, recovered })
@@ -211,6 +214,117 @@ fn seal(
 
 fn unavailable<T>(_: T) -> Refusal {
     Refusal::StorageUnavailable
+}
+
+/// Exclusive descendant storage after copied full replay and original reproof.
+pub struct OpenedCanonicalHistory {
+    store: FjallNodeStore,
+    recovered: RecoveredCanonicalHistory,
+}
+
+pub(crate) struct RecoveredCanonicalHistory {
+    publication: Arc<Mutex<filters::PublicationControl>>,
+    stamp: tracked::MutationStamp,
+    selected: CanonicalChain,
+    records: crate::storage::canonical_history::records::CanonicalHistoryRecords,
+    proof: crate::storage::canonical_history::ProvedHistoryRecords,
+}
+
+pub(crate) type HistoryOwners = (
+    CanonicalGenesisProof,
+    open_bitcoin_network::HeaderStore,
+    open_bitcoin_core::chainstate::Chainstate<open_bitcoin_core::chainstate::MemoryCoinsView>,
+);
+
+impl OpenedCanonicalHistory {
+    /// Selected chain checked by both full replay operations.
+    pub fn selected(&self) -> CanonicalChain {
+        self.recovered.selected
+    }
+
+    pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalHistory), Refusal> {
+        self.recovered.check(&self.store)?;
+        Ok((self.store, self.recovered))
+    }
+}
+
+impl RecoveredCanonicalHistory {
+    fn check(&self, store: &FjallNodeStore) -> Result<(), Refusal> {
+        if !Arc::ptr_eq(&self.publication, &store.filter_publication) {
+            return Err(Refusal::ChangedStore);
+        }
+        let _guard = store.filter_publication_guard().map_err(unavailable)?;
+        if store.db.check_stamp(&self.stamp).is_err() {
+            return Err(Refusal::ChangedStore);
+        }
+        let actual = inspection::InspectedRecords::read_existing(&store.db).map_err(unavailable)?;
+        let actual =
+            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode(&actual)?;
+        if actual.source_digest() != self.records.source_digest()
+            || store.db.check_stamp(&self.stamp).is_err()
+        {
+            return Err(Refusal::ChangedStore);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn into_parts(self, store: &FjallNodeStore) -> Result<HistoryOwners, Refusal> {
+        self.check(store)?;
+        let owners = self.proof.into_parts(&self.records)?;
+        // This is the first recovery effect; actual original proof was consumed.
+        store.recover_validation_history().map_err(unavailable)?;
+        Ok(owners)
+    }
+}
+
+impl FjallNodeStore {
+    /// Reopen existing complete history without repair, migration or raw fallback.
+    pub fn reopen_canonical_history_existing(
+        path: impl AsRef<Path>,
+        selected: CanonicalChain,
+    ) -> Result<OpenedCanonicalHistory, Refusal> {
+        let lease = open_lease::OperationLease::acquire(path.as_ref()).map_err(unavailable)?;
+        if inspect_datadir_without_backend(lease.source()) != DatadirObservation::ExistingUnproved {
+            return Err(Refusal::MissingRecord);
+        }
+        let expected = inspection::canonical_history::inspect_history(&lease, selected)
+            .map_err(unavailable)?;
+        // No original backend is opened until child completion and source gates.
+        let store = Self::open_with_lease(lease).map_err(unavailable)?;
+        let stamp = store.db.stamp().map_err(|_| Refusal::ChangedStore)?;
+        let actual = inspection::InspectedRecords::read_existing(&store.db).map_err(unavailable)?;
+        if !expected.namespaces().eq(actual.namespaces())
+            || expected
+                .namespaces()
+                .any(|name| expected.maybe_records(name) != actual.maybe_records(name))
+        {
+            return Err(Refusal::ChangedStore);
+        }
+        let records =
+            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode(&actual)?;
+        let expected =
+            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode(&expected)?;
+        if records.source_digest() != expected.source_digest() {
+            return Err(Refusal::ChangedStore);
+        }
+        let proof = bootstrap::validate_history_records(selected, &records)?;
+        if store.db.check_stamp(&stamp).is_err() {
+            return Err(Refusal::ChangedStore);
+        }
+        let recovered = RecoveredCanonicalHistory {
+            publication: Arc::clone(&store.filter_publication),
+            stamp,
+            selected,
+            records,
+            proof,
+        };
+        Ok(OpenedCanonicalHistory { store, recovered })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn history_worker_observation_for_test() -> (Option<u8>, std::time::Duration) {
+        inspection::canonical_history::observation_for_test()
+    }
 }
 
 #[cfg(test)]

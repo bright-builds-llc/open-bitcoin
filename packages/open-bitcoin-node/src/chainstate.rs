@@ -123,6 +123,25 @@ impl ChainstateStore for MemoryChainstateStore {
 }
 
 impl FlushPersistSink for MemoryChainstateStore {
+    fn check_chain_meta_counts_support(
+        &self,
+        _maybe_counts: Option<&HashMap<open_bitcoin_core::primitives::Txid, u32>>,
+    ) -> Result<(), StorageError> {
+        Ok(())
+    }
+    fn persist_chain_meta_with_counts(
+        &mut self,
+        active_chain: &[ChainPosition],
+        maybe_counts: Option<&HashMap<open_bitcoin_core::primitives::Txid, u32>>,
+    ) -> Result<(), StorageError> {
+        if let Some(counts) = maybe_counts
+            && let Some(snapshot) = self.maybe_snapshot.as_mut()
+        {
+            snapshot.active_chain = active_chain.to_vec();
+            snapshot.maybe_confirmed_txid_counts = Some(counts.clone());
+        }
+        Ok(())
+    }
     fn load_prune_protection(&self) -> Result<PruneProtectionSnapshot, StorageError> {
         Ok(PruneProtectionSnapshot::no_index(Vec::new()))
     }
@@ -291,13 +310,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
-        self.connect_block_with_current_time(
+        let prepared = self.prepare_connect_block_with_current_time(
             block,
             chain_work,
             i64::from(block.header.time),
             verify_flags,
             consensus_params,
-        )
+        )?;
+        self.commit_prepared_connect(prepared)
     }
 
     pub fn connect_block_with_current_time(
@@ -308,6 +328,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<ChainPosition, open_bitcoin_core::chainstate::ChainstateError> {
+        self.admit_direct_canonical_header(&block.header)?;
         let prepared = self.prepare_connect_block_with_current_time(
             block,
             chain_work,

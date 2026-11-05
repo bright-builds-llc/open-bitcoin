@@ -100,6 +100,18 @@ test("archived verification token collision remains excluded", () => {
     maybeMutateFiles(files) {
       replaceInFile(
         files,
+        REQUIREMENTS_FILE,
+        "- [ ] **RCN-04**",
+        "- [x] **RCN-04**",
+      );
+      replaceInFile(
+        files,
+        REQUIREMENTS_FILE,
+        "| RCN-04 | Phase 125 | Pending |",
+        "| RCN-04 | Phase 125 | Complete |",
+      );
+      replaceInFile(
+        files,
         PHASE125_VERIFICATION,
         "Verified RCN-04.",
         "No active first requirement token.",

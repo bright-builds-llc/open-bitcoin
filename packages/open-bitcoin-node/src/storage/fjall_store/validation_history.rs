@@ -115,8 +115,14 @@ impl FjallNodeStore {
         if !snapshot.belongs_to(self) {
             return Err(history_corruption("foreign trusted header snapshot"));
         }
-        let headers = super::encode_header_entries(snapshot.entries())?;
-        let index = super::encode_block_index_entries(snapshot.entries())?;
+        let headers = super::bounded_rows::prepare(
+            super::bounded_rows::RowFamily::Headers,
+            super::encode_header_entries(snapshot.entries())?,
+        )?;
+        let index = super::bounded_rows::prepare(
+            super::bounded_rows::RowFamily::BlockIndex,
+            super::encode_block_index_entries(snapshot.entries())?,
+        )?;
         let _publication = self.filter_publication_guard()?;
         let mut control = self.history_guard()?;
         #[cfg(test)]
@@ -139,8 +145,8 @@ impl FjallNodeStore {
             }
         }
         let mut batch = self.db.batch().durability(Some(FjallPersistMode::SyncAll));
-        batch.insert(&self.headers, super::SNAPSHOT_KEY, headers);
-        batch.insert(&self.block_index, super::SNAPSHOT_KEY, index);
+        super::bounded_rows::append_replacement(self, &mut batch, headers)?;
+        super::bounded_rows::append_replacement(self, &mut batch, index)?;
         #[cfg(test)]
         {
             control.snapshot_attempts[3] += 1;

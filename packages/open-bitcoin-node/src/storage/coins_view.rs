@@ -8,7 +8,7 @@
 
 use std::collections::HashMap;
 
-use fjall::{PersistMode as FjallPersistMode, Readable};
+use fjall::PersistMode as FjallPersistMode;
 use open_bitcoin_core::{
     chainstate::{ChainstateError, Coin, CoinsBatch, CoinsView},
     primitives::{BlockHash, OutPoint},
@@ -22,6 +22,7 @@ use super::{
         encode_best_block_value, encode_coin_key, encode_coin_value, encode_head_blocks_key,
         encode_head_blocks_value, estimated_encoded_bytes,
     },
+    fjall_store::tracked::{Database, Keyspace, OwnedWriteBatch},
 };
 
 #[cfg(test)]
@@ -35,8 +36,8 @@ enum MarkerState {
 
 /// Disk-backed coins parent. Application consistency is `H` then coins then `B`.
 pub struct FjallCoinsView {
-    db: fjall::Database,
-    coins: fjall::Keyspace,
+    db: Database,
+    coins: Keyspace,
     #[cfg(test)]
     simulate_crash_after_partial: bool,
     #[cfg(test)]
@@ -448,7 +449,7 @@ fn map_optional_read<T>(
     }
 }
 
-fn commit_batch(batch: fjall::OwnedWriteBatch, mode: PersistMode) -> Result<(), StorageError> {
+fn commit_batch(batch: OwnedWriteBatch, mode: PersistMode) -> Result<(), StorageError> {
     let batch = match fjall_persist_mode(mode) {
         Some(fjall_mode) => batch.durability(Some(fjall_mode)),
         None => batch,

@@ -56,16 +56,40 @@ export function checkActiveMilestoneVerificationTraceability(
     activatedIds,
     failures,
   );
-  const coveredIds = lifecycleValidCoverage(
-    phaseCorpora,
-    activatedIds,
-    failures,
-  );
+  const coveredIds = new Set<string>();
+  for (const corpus of phaseCorpora) {
+    const ownerActivatedIds = new Set(
+      traceabilityRows
+        .filter(
+          (row) =>
+            row.phase === corpus.phase &&
+            ownedRequirementIds.has(row.id) &&
+            activatedIds.has(row.id),
+        )
+        .map((row) => row.id),
+    );
+    for (const id of lifecycleValidCoverage(
+      [corpus],
+      ownerActivatedIds,
+      failures,
+    )) {
+      coveredIds.add(id);
+    }
+  }
 
-  for (const requirementId of [...activatedIds].sort()) {
-    if (!coveredIds.has(requirementId)) {
+  for (const requirement of activeRequirements) {
+    const owner = traceabilityRows.find((row) => row.id === requirement.id);
+    if (
+      !ownedRequirementIds.has(requirement.id) ||
+      !activatedIds.has(requirement.id) ||
+      !requirement.checked ||
+      owner?.status !== "Complete"
+    ) {
+      continue;
+    }
+    if (!coveredIds.has(requirement.id)) {
       failures.push(
-        `activated requirement ${requirementId} is missing lifecycle-valid active-phase verification coverage`,
+        `activated requirement ${requirement.id} is missing lifecycle-valid active-phase verification coverage`,
       );
     }
   }

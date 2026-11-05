@@ -3,7 +3,39 @@ const H = "packages/open-bitcoin-network/src/header_store";
 const E = "packages/open-bitcoin-chainstate/src/engine";
 const P = "packages/open-bitcoin-consensus/src/";
 
-export { SOURCE_CONTRACTS, TEST_OWNERS } from "../check-phase164-canonical-identity/test-modules.ts";
+import { SOURCE_CONTRACTS as PHASE164_SOURCE_CONTRACTS, TEST_OWNERS } from "../check-phase164-canonical-identity/test-modules.ts";
+export { TEST_OWNERS };
+
+const CURRENT_SOURCE_ROWS = [
+  ["scripts/check-phase164-canonical-identity/historical-tooling.ts",
+    "b6b7e98700a2a348725ec4c67db920a7856cd57ff6692ba9fa9b1a5a482235ff",
+    "a0a2a8df363baf6f7d238715b0e980021266dbcde2a18a1291819cdfd2ec6f79"],
+  ["scripts/check-phase164-canonical-identity/contracts.ts",
+    "0b1ff1dbf481c3d6f9a69d00228e5b9483ad2571fa12124be5c0e009f17906e4",
+    "4d4f33a19474701bdda9aea07b4eda3b9996974ff2e4caf74a7d4371c6198753"],
+  ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs",
+    "cd4df12f5658e95ff212ce0f9b6205f58e194ebba2ad0976b39ec65ec957af2c",
+    "54c8fc65f6c4cdc4a541d11a8e0c90f645db12b3e7fd9c4e59608aa2c20def77"],
+  ["packages/open-bitcoin-network/src/header_store/tests.rs",
+    "4fe8415c3fdbdf913a58336ba70275b3382bba1da9120cb21436716d16cb2886",
+    "7fededfdcee4385620e2c45ddbca8d226d1bb382ebe38b1c5076399757b2d5f5"],
+  ["packages/open-bitcoin-network/src/header_store/eligibility/tests.rs",
+    "90c19c90080b7d704c0f43229c845d36196ca433fd7d878aff758e312f722ecd",
+    "9f54294764e1c54f445c7f8510a65c76af7c7979b8b5adf87ab5228c0806e7b5"],
+  ["packages/open-bitcoin-consensus/src/block.rs",
+    "0de87f0031dd2ad9dea887bd5466908b43b7f57cba1c354ce3a34a8d5b1b45aa",
+    "ace16730e06effe36e825c9dee20e65e5e6c4a839beff73b623e3e49d2b6aee6"],
+] as const;
+for (const [file, prior] of CURRENT_SOURCE_ROWS) {
+  if (PHASE164_SOURCE_CONTRACTS.find(row => row[0] === file)?.[2] !== prior) {
+    throw new Error(`${file}: reviewed Phase164 source row changed`);
+  }
+}
+/** Keep frozen Phase164 rows while binding only reviewed current source generations. */
+export const SOURCE_CONTRACTS: readonly (readonly [string, string, string])[] = PHASE164_SOURCE_CONTRACTS.map(row => {
+  const maybeCurrent = CURRENT_SOURCE_ROWS.find(([file]) => file === row[0]);
+  return maybeCurrent ? [row[0], row[1], maybeCurrent[2]] : row;
+});
 
 export const WORK_CLAIM_FILE = "docs/parity/v2-6-shared-exact-work.md";
 export const WORK_CLAIM_FACTS = [

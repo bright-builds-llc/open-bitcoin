@@ -11,7 +11,6 @@ import { CHECKPOINT_CONTRACTS, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE,
   PHASE162_IMPLEMENTATION, PHASE162_COMPLETE } from "./check-phase158-validated-reorg.ts";
 import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, ORIGINAL_AUDITS, READINESS_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
-
 const real = loadSources();
 for (const file of ["scripts/check-phase158-validated-reorg.ts", "scripts/check-phase158-validated-reorg.test.ts", "scripts/check-phase163-provenance.ts"]) test(`phase165 current158 fingerprint owner ${file}`, () => {
   // Arrange: the current baseline must pass before the selected raw-source tamper.
@@ -25,7 +24,6 @@ import { historicalFixtureView, fixtureSourceAttribution, MIGRATED_FIXTURE } fro
 import { legacyFunctionSources } from "./check-phase164-canonical-identity/fixture-source.ts";
 const legacyPending = () => legacyFunctionSources(pending());
 const historicalSha = (sources: Map<string, string>, file: string) => sha(historicalFixtureView(sources).get(file)!);
-
 test("explicit fixture wiring retains unequal current and original historical digests", () => {
   // Arrange
   const current = real.get(MIGRATED_FIXTURE)!;
@@ -39,7 +37,6 @@ test("explicit fixture wiring retains unequal current and original historical di
   expect(fixtureSourceAttribution(attribution.historicalSource).evidenceClass).toBe("original-historical");
   expect(real.get(MIGRATED_FIXTURE)).toBe(current);
 });
-
 for (const edit of [
   (source: string) => source + "\n",
   (source: string) => source.replace("Self::seed_count(1001)", "Self::seed_count(1000)"),
@@ -63,7 +60,6 @@ const sha = (source: string) => createHash("sha256").update(source).digest("hex"
 const reports = [["VERIFICATION", "passed", "gsd-verifier"], ["NATIVE-EVIDENCE", "passed", "gsd-execute-phase"],
   ["REVIEW", "clean", "gsd-code-reviewer"], ["SECURITY", "verified", "gsd-security-auditor"]];
 const ORIGINAL_PENDING_CLAIM = "Phase 162 scoped proof remains pending; v2.5 remains unaudited and unshipped.";
-
 function normalizeOriginalClaims(sources: Map<string, string>, sentence: string): void {
   for (const file of ["docs/parity/index.json", PHASE162_DOC, "README.md", "packages/README.md"]) {
     const maybeSource = sources.get(file);
@@ -72,7 +68,6 @@ function normalizeOriginalClaims(sources: Map<string, string>, sentence: string)
       .reduce((view, claim) => view.replaceAll(claim, sentence), maybeSource));
   }
 }
-
 test("actual live provenance accepts every valid closure state", () => {
   expect(checkPhase162IntegratedFilterProof(real)).toEqual([]);
 });
@@ -128,7 +123,6 @@ test("transitive provenance helper alone is frozen to reviewed replacement bytes
   sources.set(file, sources.get(file)! + "\n// helper-only mutation\n");
   expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(file) && failure.includes("frozen"))).toBe(true);
 });
-
 function pending(): Map<string, string> {
   const sources = gapPending();
   sources.delete(PHASE163_DOC);
@@ -175,7 +169,6 @@ function implementation(complete = false): Map<string, string> {
   }
   return sources;
 }
-
 function rebindProof(sources: Map<string, string>): void {
   let proof = sources.get(PHASE162_DOC)!;
   for (const file of PHASE162_EVIDENCE) {
@@ -192,14 +185,12 @@ function rebindProof(sources: Map<string, string>): void {
     if (sources.has(file)) sources.set(file, sources.get(file)!.replace(/^source_digest: .+$/m, `source_digest: ${digest}`));
   }
 }
-
 function mutate(sources: Map<string, string>, file: string, edit: (source: string) => string): void {
   const before = sources.get(file)!;
   const after = edit(before);
   expect(after).not.toBe(before);
   sources.set(file, after);
 }
-
 const PROCESS = "packages/testdata/phase162/process.rs";
 const UNIX = "#[cfg(all(test, unix))]";
 test("original Unix view preserves length newlines functions and raw assertions", () => {
@@ -247,7 +238,6 @@ test("Unix helper no-op and fake assertion cannot satisfy original process behav
   mutate(sources, PROCESS, source => source.slice(0, open + 1) + " assert!(true); " + source.slice(body.end - 1));
   expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(`${PROCESS}:refused:`))).toBe(true);
 });
-
 const ORACLE = "scripts/phase162-filter-oracle.ts";
 test("TS extraction preserves original offsets across braces escaped quotes and nested templates", () => {
   const source = 'const other = `brace } escaped \\` ${ {value: `nested ${"}" + `{${1}}`}`} }`;\n'
@@ -266,7 +256,6 @@ for (const source of [
 ]) test(`TS extraction refuses fake owner/syntax ${source}`, () => {
   expect(() => typeScriptFunction(source, "owned")).toThrow();
 });
-
 for (const row of TS_CONTRACTS) {
   for (const [index, anchor] of row.anchors.entries()) for (const state of ["pending", "implementation", "complete"]) test(`TS intended ${row.symbol} edge${index} ${state}`, () => {
     // Arrange
@@ -305,7 +294,6 @@ for (const row of TS_CONTRACTS) {
     expect(failures.some(failure => /source hash|source_digest/.test(failure))).toBe(false);
   });
 }
-
 const TS_MUTATIONS = [
   ["validateRecipe", 'keys(recipe, ["recipe_id", "network_magic", "blocks"])', 'keys(recipe, ["recipe_id", "network_magic", "blocks", "filter", "header"])'],
   ["validateRecipe", 'keys(row, ["name", "previous_name", "raw_block"])', 'keys(row, ["name", "previous_name", "raw_block", "spent", "hash"])'],
@@ -369,7 +357,6 @@ for (const [symbol, before, after] of TS_MUTATIONS) for (const state of ["pendin
   expect(failures.some(failure => failure.includes(`${ORACLE}:${symbol}: actual raw-oracle caller/argument`))).toBe(true);
   expect(failures.some(failure => /source hash|source_digest/.test(failure))).toBe(false);
 });
-
 const RUST_MUTATIONS: [string, string, string, string][] = [
   ["seed_count", "fixtures.rs", "let params = runtime.config().network.consensus_params();", "let mut params = runtime.config().network.consensus_params(); params.coinbase_maturity = 1;"],
   ["seed_count", "fixtures.rs", "FjallNodeStore::open", "MemoryChainstateStore::open"],
@@ -411,13 +398,11 @@ function anchorSpan(source: string, row: Contract, anchor: string): [number, num
 function rejectsFunction(sources: Map<string, string>, row: Contract): void {
   expect(checkPhase162LegacyFunctionControls(sources).some(failure => failure.includes(`${row.file}:${row.symbol}:`))).toBe(true);
 }
-
 test("genuine Pending bootstrap uses current executable roots without future proof", () => {
   const sources = pending();
   expect(sources.has(PHASE162_DOC)).toBe(false);
   expect(checkPhase162IntegratedFilterProof(sources)).toEqual([]);
 });
-
 test("actual checkout claim state and fixed current roots pass", () => {
   expect(checkPhase162IntegratedFilterProof(real)).toEqual([]);
 });
@@ -427,7 +412,25 @@ test("hermetic implementation proof passes without future reports", () => {
 test("hermetic formal proof requires all fresh source-bound reports", () => {
   expect(checkPhase162IntegratedFilterProof(implementation(true))).toEqual([]);
 });
-
+for (const [file, symbol, before, after] of [
+  ["packages/open-bitcoin-node/src/sync/session.rs", "run_peer_messages", "turn.requests.expire(self, timestamp)?", "Vec::new()"],
+  ["packages/open-bitcoin-node/src/sync/session.rs", "process_peer_message", "let mut outbound = requests.handoff(", "let mut outbound = drop_manager_packets("],
+  ["packages/open-bitcoin-node/src/sync/session.rs", "process_peer_message", "filter_serving::send_filter_plans(", "outbound.clear(); filter_serving::send_filter_plans("],
+  ["packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "handoff_core", "if !requested.contains(&hash) {", "if false && !requested.contains(&hash) {"],
+  ["packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "handoff_core", "if hashes.difference(inflight).count() > cap.saturating_sub(inflight.len()) {", "if false && hashes.difference(inflight).count() > cap.saturating_sub(inflight.len()) {"],
+  ["packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "expire", ".expire(timestamp)", ".expire(timestamp); let targeted = Vec::new(); owner.expire(timestamp)"],
+  ["packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "settle_authorized", "let receipt_cleanup = release_unrequested_hashes(runtime, receipt);", "let receipt_cleanup = if result.is_ok() { release_unrequested_hashes(runtime, receipt) } else { Ok(()) };"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/validation_history.rs", "save_trusted_header_snapshot", "if !snapshot.belongs_to(self) {", "if false && !snapshot.belongs_to(self) {"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/validation_history.rs", "save_trusted_header_snapshot", "super::bounded_rows::RowFamily::BlockIndex,", "super::bounded_rows::RowFamily::Headers,"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/validation_history.rs", "save_trusted_header_snapshot", "super::bounded_rows::append_replacement(self, &mut batch, index)?;", "let _ = index;"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows.rs", "append_replacement", "batch.remove(keyspace, key);", "let _ = key;"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows/codec.rs", "prepare", "count + 1 > MAX_ENTRIES", "false"],
+] as const) test(`current Phase167 bridge refuses ${symbol}: ${before}`, () => {
+  const sources = loadSources();
+  expect(sources.get(file)).toContain(before);
+  sources.set(file, sources.get(file)!.replace(before, after));
+  expect(checkPhase162IntegratedFilterProof(sources)).toContain(`${file}:${symbol}: reviewed current Phase167 production delegate changed`);
+});
 const rows: Contract[] = [...CONTRACTS, ...CHECKPOINT_CONTRACTS.map((row, index) => ({ ...row, kind: "production" as const, counts: CHECKPOINT_COUNTS[index], assertions: [], facts: [] }))];
 for (const row of rows) {
   test(`executable selector remains ${row.file}:${row.symbol}`, () => {
@@ -473,7 +476,6 @@ for (const row of rows) {
     rejectsFunction(sources, row);
   });
 }
-
 for (const symbol of ["phase162_integrated_lifecycle", "denied_disconnect", "run", "partial_case", "socket_case", "send_response"]) {
   const row = rows.find(row => row.symbol === symbol)!;
   for (const disguise of ["return;", "#[cfg(any())] {", "if false {"]) test(`dead executable evidence ${symbol}: ${disguise}`, () => {
@@ -506,12 +508,16 @@ for (const file of CHECK_FILES) test(`hermetic mandatory current root ${file}`, 
   sources.delete(file);
   expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(file))).toBe(true);
 });
-for (const edge of MODULE_EDGES) test(`owning registration ${edge.parent}:${edge.symbol}`, () => {
+const currentModuleEdges = [
+  { parent: "packages/open-bitcoin-node/src/sync/block_reconcile.rs", symbol: "peer_requests" },
+  { parent: "packages/open-bitcoin-node/src/storage/fjall_store.rs", symbol: "bounded_rows" },
+  { parent: "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows.rs", symbol: "codec" },
+];
+for (const edge of [...MODULE_EDGES, ...currentModuleEdges]) for (const variant of currentModuleEdges.includes(edge) ? ["removed", "cfg(test)", "path"] : ["removed"]) test(variant === "removed" ? `owning registration ${edge.parent}:${edge.symbol}` : `enabled current registration ${edge.parent}:${edge.symbol}:${variant}`, () => {
   const sources = pending();
-  mutate(sources, edge.parent, source => source.replace(new RegExp(`\\bmod\\s+${edge.symbol}\\s*;`), "/* removed owning declaration */"));
+  mutate(sources, edge.parent, source => source.replace(new RegExp(`\\bmod\\s+${edge.symbol}\\s*;`), variant === "removed" ? "/* removed owning declaration */" : variant === "path" ? `#[path = "other.rs"] mod ${edge.symbol};` : `#[cfg(test)] mod ${edge.symbol};`));
   expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes(edge.parent) && failure.includes("registration"))).toBe(true);
 });
-
 for (const state of [false, true]) {
   for (const field of ["phase_lifecycle_id", "lifecycle_mode", "implementation_status", "generated_at"]) test(`published proof field ${field} complete=${state}`, () => {
     const sources = implementation(state);
@@ -593,7 +599,6 @@ for (const claim of ["BIP37 is supported.", "V0 serving is enabled.", "assumeutx
     expect(checkPhase162IntegratedFilterProof(sources).some(failure => failure.includes("unsupported claim"))).toBe(true);
   });
 }
-
 for (const executed of [false, true]) {
   for (const command of [...NATIVE_COMMANDS.slice(1), SHARED_FORMAT]) {
     for (const mode of ["remove", "duplicate", "replace"]) test(`native ${executed ? "executed" : "documented"} ${mode} ${command}`, () => {

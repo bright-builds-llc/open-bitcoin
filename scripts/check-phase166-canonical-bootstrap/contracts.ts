@@ -10,7 +10,7 @@ export const FACTORY = RPC + "context/canonical_genesis.rs";
 export const OBSERVER = CLI + "operator/runtime/support/canonical_genesis.rs";
 export const OPENER = NODE + "storage/fjall_store/canonical_genesis.rs";
 export const INSPECTION = NODE + "storage/fjall_store/inspection.rs";
-export const CHECKPOINT = NODE + "storage/fjall_store/coins.rs";
+export const CHECKPOINT = NODE + "storage/fjall_store/chain_meta.rs";
 export type Contract = {
   file: string; symbol: string; rule: string; anchors: readonly string[];
   maybeTopLevel?: readonly string[]; maybeForbidden?: readonly string[];
@@ -89,12 +89,12 @@ export const CONTRACTS: readonly Contract[] = [
   ]),
   row(OPENER, "check", "store-generation", [
     "!Arc::ptr_eq(&self.publication, &store.filter_publication)", "store.filter_publication_guard()",
-    "store.db.seqno() != self.sequence", "prove_live(store, self.proof.genesis().chain())? != self.proof",
-    "store.db.seqno() != self.sequence", "Ok(self.proof.genesis())",
+    "store.db.check_stamp(&self.stamp).is_err()", "prove_live(store, self.proof.genesis().chain())? != self.proof",
+    "store.db.check_stamp(&self.stamp).is_err()", "Ok(self.proof.genesis())",
   ], [
     "if !Arc::ptr_eq(&self.publication, &store.filter_publication) { return Err(Refusal::ChangedStore); }",
-    `if store.db.seqno() != self.sequence || prove_live(store, self.proof.genesis().chain())? != self.proof
-      || store.db.seqno() != self.sequence { return Err(Refusal::ChangedStore); }`,
+    `if store.db.check_stamp(&self.stamp).is_err() || prove_live(store, self.proof.genesis().chain())? != self.proof
+      || store.db.check_stamp(&self.stamp).is_err() { return Err(Refusal::ChangedStore); }`,
   ], ["return Ok("]),
   row(OPENER, "open_selected", "atomic-publication", [
     "open_lease::OperationLease::acquire(path)", "inspect_datadir_without_backend(lease.source())",
@@ -116,12 +116,15 @@ export const CONTRACTS: readonly Contract[] = [
     ".recheck(source)", "if !reaped", "scratch.cleanup()?;", "source_check?;", "recovered_check?;", "validate(result?)",
   ], ["scratch.cleanup()?;", "source_check?;", "recovered_check?;", "validate(result?)"]),
   row(INSPECTION, "lock_source", "engine-lock", ["identity.check_opened(&file, &path)?;", "file.try_lock()"]),
-  row(NODE + "storage/fjall_store/inspection/worker.rs", "recover", "child-process", [
+  row(NODE + "storage/fjall_store/inspection/worker.rs", "recover", "child-process-delegate", [
+    "recover_operation(scratch, None)",
+  ]),
+  row(NODE + "storage/fjall_store/inspection/worker.rs", "recover_operation", "child-process", [
     "std::env::current_exe()", "Command::new(executable)", ".args(ARGS)", "command.spawn()",
-    "monitor(&mut child, &job, started, &receiver)", "Completion::Uncertain(_)", "writer.join()",
+    "monitor(&mut child, &operation, started, &receiver)", "Completion::Uncertain(_)", "writer.join()",
   ], undefined, ["raw_recover("]),
   row(NODE + "storage/fjall_store/inspection/worker.rs", "finish", "child-result", [
-    "if !status.success() || !delivered", "return Err(refused());", "protocol::read_result(&file, length, job)?",
+    "if !status.success() || !delivered", "return Err(refused());", "operation.read_result(&file, length)?",
   ]),
   row(NODE + "storage/fjall_store/inspection/worker.rs", "terminate", "child-reaping", [
     "child.try_wait()", "child.kill().is_err()", "child.wait()",
@@ -141,12 +144,15 @@ export const CONTRACTS: readonly Contract[] = [
     "store.resolved_basic_filter_indexing_after_startup()? == Some(true)",
     "return Ok(BasicFilterStartupMode::Enabled);", "Ok(requested)",
   ]),
-  row(CHECKPOINT, "save_validated_chain_meta", "checkpoint-counts", [
-    "self.filter_publication_guard()?", ".get_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY)?",
+  row(CHECKPOINT, "save_validated_chain_meta", "checkpoint-delegate", [
+    "self.save_validated_chain_meta_with_counts(active_chain, None, mode)",
+  ]),
+  row(CHECKPOINT, "save_validated_chain_meta_with_counts", "checkpoint-counts", [
+    "maybe_live_counts.is_some_and", "self.filter_publication_guard()?", ".read_chain_meta_bytes()?",
     ".map(|bytes| decode_chain_meta(&bytes))", ".transpose()?", "if stored.as_slice() == active_chain",
     "return maybe_counts;", "None", "self.check_validation_coverage_for_metadata(active_chain)?;",
-    "control.invalidate_append()?;", "encode_chain_meta(active_chain, maybe_counts.as_ref())?",
-    "self.put_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY, bytes, mode)?;",
+    "control.invalidate_append()?;", "encode_chain_meta(active_chain, maybe_live_counts.or(maybe_counts.as_ref()))?",
+    "self.replace_chain_meta_bytes(bytes, mode)?;",
   ], undefined, ["unwrap_or_default", "Some(HashMap::new())"]),
   row(DAEMON, "preflight", "activation-before-open", [
     "runtime.validate_peer_block_filters()", "selected_canonical_chain(runtime)",
@@ -163,11 +169,17 @@ export const CONTRACTS: readonly Contract[] = [
     "preflight(runtime)?", "let Some(opened) = maybe_opened", "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)",
     "assemble_durable_runtime(runtime, sync_runtime)?", "authoritative.maybe_prebuilt_context = Some(context)",
   ], undefined, ["from_fixture", "DurableSyncRuntime::open_configured"]),
+  row(DAEMON, "open_configured_history_runtime", "daemon-bounded-history", [
+    "let chain = preflight(runtime)?;", "chain != CanonicalChain::Regtest || !trigger", "return Ok(None);",
+    "ManagedRpcContext::from_canonical_history_runtime_config(runtime)",
+    "assemble_durable_runtime(runtime, sync_runtime)?", "authoritative.maybe_prebuilt_context = Some(context)",
+  ], undefined, ["from_fixture", "open_ordinary_configured"]),
   row(RPC + "bin/open-bitcoind.rs", "main", "pre-tokio-dispatch", [
     "FjallNodeStore::maybe_run_inspection_worker()", "std::process::exit(code)", "run_application()",
   ], ["run_application()"]),
   row(RPC + "bin/open-bitcoind.rs", "run_application", "daemon-wiring", [
-    "load_runtime_config()?", "open_runtime_store(&runtime)?", "open_authoritative_network_runtime(&runtime, maybe_runtime_store)?",
+    "load_runtime_config()?", "open_configured_history_runtime(&runtime)?", "open_runtime_store(&runtime)?",
+    "open_authoritative_network_runtime(&runtime, maybe_runtime_store)?",
     "serve_authoritative_runtime(",
   ]),
   row(RPC + "bin/open-bitcoind.rs", "serve_authoritative_runtime", "genesis-maintenance", [
@@ -180,11 +192,16 @@ export const CONTRACTS: readonly Contract[] = [
   ]),
   row(FACTORY, "from_canonical_genesis_runtime_config", "sealed-rpc-factory", [
     "preflight(config, &opened)?;", "let params = consensus_params(opened.genesis());",
-    "DurableSyncRuntime::open_canonical_genesis_configured(", "opened,", "startup_mode(config.block_filter_index)",
-    "bound_config.maybe_data_dir = Some(runtime.store().datadir().to_path_buf());",
-    "Self::assemble_context(", "Some(runtime.store().clone())", "WalletState::Unavailable",
-    "context.consensus_params = params;", "Ok((context, runtime))",
+    "DurableSyncRuntime::open_genesis_submission_configured(", "opened,", "startup_mode(config.block_filter_index)",
+    "CanonicalSubmissionBridge", "command.submit(wire)",
+    "super::canonical_history::assemble(config, &runtime, params, maybe_bridge)?", "Ok((context, runtime))",
   ], ["preflight(config, &opened)?;"], ["from_fixture", "build_wallet_state_with_store", "recover_mempool", "WalletState::Local", "return Ok("]),
+  row(RPC + "context/canonical_history.rs", "assemble", "sealed-rpc-assembly", [
+    "runtime.network_handle()", "network.configure_basic_peer_serving(config.peer_block_filters)?;",
+    "bound_config.maybe_data_dir = Some(runtime.store().datadir().to_path_buf());",
+    "ManagedRpcContext::assemble_context(", "Some(runtime.store().clone())", "WalletState::Unavailable",
+    "context.consensus_params = params;", "context.maybe_canonical_submission = maybe_bridge;",
+  ], undefined, ["from_fixture", "WalletState::Local"]),
   row(FACTORY, "preflight", "rpc-selected-history", [
     "selected_chain(config)?", "config.validate_peer_block_filters()", "opened.genesis().chain() != chain",
     "return Err(CanonicalContextError::ChainMismatch);", "config.sync.is_enabled()", "config.inbound.enabled",
@@ -206,12 +223,14 @@ export const CONTRACTS: readonly Contract[] = [
     "FjallNodeStore::maybe_run_inspection_worker()", "std::process::exit(code)", "OperatorCli::parse()", "execute_operator_cli(cli)",
   ]),
   row(CLI + "operator/runtime/support.rs", "execute_offline_sync_command", "status-only", [
-    "if matches!(args.command, SyncCommand::Status)", "return observe_canonical_genesis(data_dir, selected_chain, format);",
+    "if matches!(args.command, SyncCommand::Status)", "return observe_canonical_status(data_dir, selected_chain, format);",
     "FjallNodeStore::open_ordinary(data_dir, selected_chain)",
   ]),
-  row(OBSERVER, "observe_canonical_genesis", "existing-observation", [
+  row(OBSERVER, "observe_canonical_status", "existing-observation", [
     "FjallNodeStore::reopen_canonical_genesis_existing(data_dir, selected_chain)",
     "DurableSyncRuntime::open_canonical_genesis_configured(", "opened,", "BasicFilterStartupMode::PreserveSaved",
+    "selected_chain == CanonicalChain::Regtest", "FjallNodeStore::reopen_canonical_history_existing(data_dir, selected_chain)",
+    "DurableSyncRuntime::open_canonical_history_configured(",
     "runtime.durable_sync_state(", "runtime.network_handle().operator_snapshot()",
   ], undefined, ["FjallNodeStore::open(", "FjallNodeStore::open_canonical_genesis(", "save_runtime_metadata", "from_fixture"]),
 ];
@@ -263,7 +282,7 @@ export const DEPTH_GUARDS: readonly (readonly [string, string, string, string, n
     "let source_check = inventory.recheck(source).and_then(|()| check_source_path(source));", 0],
   [NODE + "storage/fjall_store/inspection/worker.rs", "finish", "child-result",
     "if !status.success() || !delivered { return Err(refused()); }", 0],
-  [NODE + "storage/fjall_store/inspection/worker.rs", "recover", "child-process",
+  [NODE + "storage/fjall_store/inspection/worker.rs", "recover_operation", "child-process",
     "if matches!(outcome, Completion::Uncertain(_)) { return outcome; }", 0],
   [NODE + "storage/fjall_store/inspection/worker.rs", "terminate", "child-reaping", `if child.kill().is_err() {
     return Completion::Uncertain(inspection_error(
@@ -282,14 +301,14 @@ export const DEPTH_GUARDS: readonly (readonly [string, string, string, string, n
     chain.spec().require_ordinary_history().map_err(|_| compatibility_refusal(runtime, chain))?;
   }`, 0],
   [DAEMON, "open_runtime_store", "daemon-sealed-opener", "if !has_durable_trigger { return Ok(None); }", 0],
-  [CHECKPOINT, "save_validated_chain_meta", "checkpoint-counts", `.and_then(|(stored, maybe_counts)| {
+  [CHECKPOINT, "save_validated_chain_meta_with_counts", "checkpoint-counts", `.and_then(|(stored, maybe_counts)| {
     if stored.as_slice() == active_chain { return maybe_counts; }
     None
   });`, 0],
   [RPC + "context/wallet_state.rs", "selected_wallet_from_store", "wallet-unavailable",
     "if matches!(self.wallet_state, WalletState::Unavailable) { return Err(unavailable_wallet()); }", 0],
   [CLI + "operator/runtime/support.rs", "execute_offline_sync_command", "status-only",
-    "if matches!(args.command, SyncCommand::Status) { return observe_canonical_genesis(data_dir, selected_chain, format); }", 0],
+    "if matches!(args.command, SyncCommand::Status) { return observe_canonical_status(data_dir, selected_chain, format); }", 0],
 ];
 
 /** Mandatory first operations keep proof and dispatch ahead of early effects or exits. */
@@ -334,8 +353,8 @@ export const REGISTRATIONS: readonly (readonly [string, string])[] = [
   [NODE + "sync/canonical_genesis.rs", "#[cfg(test)] mod basic_tests;"],
   [RPC + "context.rs", "mod canonical_genesis;"],
   [RPC + "bin/open-bitcoind.rs", '#[path = "open_bitcoind/canonical_startup.rs"] mod canonical_startup;'],
-  [RPC + "bin/open-bitcoind.rs", "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};"],
-  [CLI + "operator/runtime/support.rs", "mod canonical_genesis; use canonical_genesis::observe_canonical_genesis;"],
+  [RPC + "bin/open-bitcoind.rs", "use canonical_startup::{ open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store, };"],
+  [CLI + "operator/runtime/support.rs", "mod canonical_genesis; use canonical_genesis::observe_canonical_status;"],
   [NODE + "lib.rs", "#[cfg(test)] register_inspection_worker!();"],
   ...[RPC + "lib.rs", CLI + "lib.rs", RPC + "bin/open-bitcoind.rs", CLI + "bin/open-bitcoin.rs"].map(file =>
     [file, "#[cfg(test)] open_bitcoin_node::register_inspection_worker!();"] as const),

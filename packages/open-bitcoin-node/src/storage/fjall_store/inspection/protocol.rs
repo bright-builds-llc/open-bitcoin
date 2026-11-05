@@ -20,6 +20,79 @@ pub(super) const MAX_JOB: u64 = 16 * 1024;
 pub(super) const MAX_RESULT: u64 = copy::MAX_BYTES + copy::MAX_ENTRIES as u64 * 24 + 64;
 const MAGIC: &[u8; 8] = b"OBIR\x01\0\0\0";
 
+mod history;
+
+pub(super) enum WorkerJob {
+    Generic(OwnedScratchJob),
+    History(history::HistoryJob),
+}
+
+impl WorkerJob {
+    pub(super) fn history(
+        owned: OwnedScratchJob,
+        selected: open_bitcoin_core::consensus::CanonicalChain,
+    ) -> Self {
+        Self::History(history::HistoryJob::new(owned, selected))
+    }
+
+    pub(super) fn owned(&self) -> &OwnedScratchJob {
+        match self {
+            Self::Generic(job) => job,
+            Self::History(job) => job.owned(),
+        }
+    }
+
+    pub(super) fn maybe_history_selection(
+        &self,
+    ) -> Option<open_bitcoin_core::consensus::CanonicalChain> {
+        match self {
+            Self::Generic(_) => None,
+            Self::History(job) => Some(job.selected()),
+        }
+    }
+
+    pub(super) fn encode(&self) -> Result<Vec<u8>, StorageError> {
+        match self {
+            Self::Generic(job) => job.encode(),
+            Self::History(job) => job.encode(),
+        }
+    }
+
+    pub(super) fn decode(input: impl Read) -> Result<Self, StorageError> {
+        let mut bytes = Vec::new();
+        io(input.take(MAX_JOB + 1).read_to_end(&mut bytes))?;
+        if bytes.len() as u64 > MAX_JOB {
+            return Err(refused());
+        }
+        if bytes.starts_with(MAGIC) {
+            return OwnedScratchJob::decode(bytes.as_slice()).map(Self::Generic);
+        }
+        history::HistoryJob::decode(&bytes).map(Self::History)
+    }
+
+    pub(super) fn write_result(
+        &self,
+        output: &mut impl Write,
+        records: &InspectedRecords,
+    ) -> Result<(), StorageError> {
+        match self {
+            Self::Generic(job) => write_result(output, job, records),
+            Self::History(job) => history::write_result(output, job, records),
+        }
+    }
+
+    pub(super) fn read_result(
+        &self,
+        input: impl Read,
+        length: u64,
+    ) -> Result<InspectedRecords, StorageError> {
+        match self {
+            Self::Generic(job) => read_result(input, length, job),
+            Self::History(job) => history::read_result(input, length, job),
+        }
+    }
+}
+
 pub(super) struct OwnedScratchJob {
     pub(super) root: PathBuf,
     pub(super) device: u64,

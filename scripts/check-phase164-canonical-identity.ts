@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 import { resolve } from "node:path";
-import { EDGES, SOURCE_FILES, TEST_MODULES, PHASE162_SOURCE_INVERSE, FIXTURE_ADAPTER_INVERSE, HISTORICAL_TOOLING_INVERSE, FILTER_GUARD_INVERSES, COPIED_CLI_INVERSES, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity/contracts.ts";
+import { EDGES, SOURCE_FILES, TEST_MODULES, PHASE162_SOURCE_INVERSE, FIXTURE_ADAPTER_INVERSE, HISTORICAL_TOOLING_INVERSE, FILTER_GUARD_INVERSES, PHASE162_SUPPORT_INVERSES, COPIED_CLI_INVERSES, PHASE158_CURRENT_TEST_INVERSE, PHASE158_PRIOR_COPIED_INVERSE, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity/contracts.ts";
 import { regions, SENSITIVE_CALLS } from "./check-phase164-canonical-identity/regions.ts";
 import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
@@ -14,7 +14,7 @@ export type Finding = { file: string; rule: string; detail: string };
 export const NATIVE_COMMAND = "bun run scripts/check-phase164-canonical-identity.ts";
 const GENESIS = "packages/open-bitcoin-consensus/src/chain_spec/genesis.rs";
 const SPEC = "packages/open-bitcoin-consensus/src/chain_spec.rs";
-export const INPUT_FILES = [...new Set([...SOURCE_FILES, ...CLAIM_FILES, "scripts/verify.sh", ...CURRENT_TOOLING_FILES, ...HISTORICAL_TOOLING_FILES, LEGACY_CONTRACT_BUNDLE])];
+export const INPUT_FILES = [...new Set([...SOURCE_FILES, ...CLAIM_FILES, "scripts/verify.sh", ...CURRENT_TOOLING_FILES, ...HISTORICAL_TOOLING_FILES, LEGACY_CONTRACT_BUNDLE, "scripts/check-phase160-peer-filter-serving.ts"])];
 const MAX_FILE_BYTES = 512_000;
 
 /** Thin read-only shell: fixed local inputs, bounded bytes, no archive walk or network. */
@@ -113,9 +113,16 @@ export function historicalFixtureAdapter(inputs: ReadonlyMap<string, string>): s
   for (const [file, inverse] of FILTER_GUARD_INVERSES) {
     const maybeGuard = inputs.get(file);
     if (maybeGuard === undefined && file !== "scripts/check-phase159-filter-rpcs.test.ts") continue;
-    if (maybeGuard === undefined || sha(maybeGuard) !== inverse.currentRawSha
-      || maybeRestoreReviewedSource(maybeGuard, inverse) === undefined) {
+    const maybeRestored = maybeGuard === undefined ? undefined : maybeRestoreReviewedSource(maybeGuard, inverse);
+    if (maybeGuard === undefined || sha(maybeGuard) !== inverse.currentRawSha || maybeRestored === undefined) {
       throw new Error(`${file}: reviewed current filter guard generation and complete exact inverse required`);
+    }
+  }
+  for (const [file, inverse] of PHASE162_SUPPORT_INVERSES) {
+    const maybeSupport = inputs.get(file);
+    if (maybeSupport === undefined || sha(maybeSupport) !== inverse.currentRawSha
+      || maybeRestoreReviewedSource(maybeSupport, inverse) === undefined) {
+      throw new Error(`${file}: reviewed current support guard generation and complete exact inverse required`);
     }
   }
   for (const [file, inverse] of COPIED_CLI_INVERSES) {
@@ -123,6 +130,13 @@ export function historicalFixtureAdapter(inputs: ReadonlyMap<string, string>): s
     if (maybeCopier === undefined || sha(maybeCopier) !== inverse.currentRawSha
       || maybeRestoreReviewedSource(maybeCopier, inverse) === undefined) {
       throw new Error(`${file}: reviewed current copied CLI generation and complete exact inverse required`);
+    }
+    if (file === "scripts/check-phase158-validated-reorg.test.ts") {
+      const maybePrior = maybeRestoreReviewedSource(maybeCopier, PHASE158_CURRENT_TEST_INVERSE);
+      const maybeBefore = maybePrior && maybeRestoreReviewedSource(maybePrior, PHASE158_PRIOR_COPIED_INVERSE);
+      if (!maybeBefore || maybeBefore !== maybeRestoreReviewedSource(maybeCopier, inverse)) {
+        throw new Error(`${file}: reviewed current copied CLI generation and complete exact inverse required`);
+      }
     }
   }
   const source = inputs.get(MIGRATED_FIXTURE) ?? "";
@@ -255,7 +269,7 @@ function checkAdapterWorkRegistration(text: (file: string) => string, fail: (fil
 function checkFacts(text: (file: string) => string, fail: (file: string, rule: string, detail: string) => void): void {
   const spec = text(SPEC);
   const prerequisites = spec.slice(spec.indexOf("const MISSING_HISTORY"), spec.indexOf("/// Read-only support facts"));
-  if (sourceDigest(prerequisites) !== "35e0a42f2b3139c540d733df57c2f7a891f3df4110a1b1ac88e447c20ef01989") fail(SPEC, "scope", "complete immutable prerequisite rows required");
+  if (sourceDigest(prerequisites) !== "f5ba1fe8abf194b313f0b83bda91173e991b795b850a3d61165e8f14ea5d1596") fail(SPEC, "scope", "complete immutable prerequisite rows required");
   const constants = text(GENESIS).split("pub(super) fn header")[0];
   if (sourceDigest(constants) !== "37c23358fcba308e080816e02b978cd46219f862ae8f79fba8dccf188037011b") fail(GENESIS, "identity", "exact common merkle, output-script and Signet challenge constants required");
   const genesis = compact(rustCode(text(GENESIS)));
@@ -267,6 +281,15 @@ function checkFacts(text: (file: string) => string, fail: (file: string, rule: s
   ]) if (!genesis.includes(row)) fail(GENESIS, "identity", `exact pinned vector ${row}`);
   for (const name of ["ChainSpec", "ValidationScope"]) {
     if (!compact(rustCode(text(SPEC))).includes(`pubstruct${name}{chain:CanonicalChain,}`)) fail(SPEC, "scope", "immutable private identity-only support required");
+  }
+  const functions = regions(spec);
+  const body = (symbol: string) => compact(functions.find(row => row.symbol === symbol)?.code ?? "");
+  if (!body("require_ordinary_history").includes("Err(UnsupportedValidationScope{scope:self.validation_scope(),})")
+    || !body("ordinary_history").includes("false")
+    || !body("actual_daemon_differential_qualified").includes("false")
+    || !body("local_ordinary_implementation").includes("CanonicalChain::Regtest=>LocalOrdinaryImplementation::BoundedDefaultRegtest")
+    || !body("local_ordinary_implementation").includes("CanonicalChain::Mainnet|CanonicalChain::Testnet3|CanonicalChain::Signet=>{LocalOrdinaryImplementation::Unavailable}")) {
+    fail(SPEC, "scope", "bounded default-Regtest implementation must not promote generic ordinary qualification");
   }
 }
 
@@ -297,7 +320,7 @@ if (import.meta.main) {
       console.error("Phase164 current-source identity boundary failed:\n" + findings.map(row => `${row.file}: ${row.rule}: ${row.detail}`).join("\n"));
       process.exit(1);
     }
-    console.log(`Phase164: ${SOURCE_FILES.length} fixed Rust inputs; ${EDGES.length} reviewed source edges; identity-only ordinary refusal. No canonical qualification receipt generated.`);
+    console.log(`Phase164: ${SOURCE_FILES.length} fixed Rust inputs; ${EDGES.length} reviewed source edges; identity-only ordinary refusal with bounded default-Regtest local implementation. No canonical qualification receipt generated.`);
   } catch (error) {
     console.error(`Phase164 required input failure: ${error instanceof Error ? error.message : String(error)}`);
     process.exit(1);

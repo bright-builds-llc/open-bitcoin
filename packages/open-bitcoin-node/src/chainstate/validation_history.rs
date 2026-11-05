@@ -7,6 +7,73 @@
 #[cfg(test)]
 pub(crate) mod tests;
 
+#[cfg(test)]
+mod phase167_duplicates {
+    use super::*;
+    use open_bitcoin_core::primitives::{
+        Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput,
+        TransactionOutput,
+    };
+    use tests::phase167::{accepted, assert_unaccepted, child, connect, remine, with_manager};
+
+    #[test]
+    fn phase167_managed_connect_bip30_rejects_live_duplicate_before_missing_spent_input() {
+        with_manager(|mut manager, store, params| {
+            // Arrange
+            let mut maybe_funding = None;
+            let mut maybe_spend = None;
+            for height in 1..=101 {
+                let mut block = child(&manager.chainstate().tip().expect("parent").header, height);
+                if height == 1 {
+                    maybe_funding = Some(OutPoint {
+                        txid: open_bitcoin_core::consensus::transaction_txid(
+                            &block.transactions[0],
+                        )
+                        .expect("txid"),
+                        vout: 0,
+                    });
+                }
+                if height == 101 {
+                    let spend = Transaction {
+                        version: 2,
+                        lock_time: 0,
+                        inputs: vec![TransactionInput {
+                            previous_output: maybe_funding.clone().expect("actually matured coin"),
+                            script_sig: ScriptBuf::default(),
+                            sequence: u32::MAX,
+                            witness: ScriptWitness::default(),
+                        }],
+                        outputs: vec![TransactionOutput {
+                            value: Amount::from_sats(4_999_999_999).expect("amount"),
+                            script_pubkey: ScriptBuf::from_bytes(vec![0x51]).expect("true"),
+                        }],
+                    };
+                    block.transactions.push(spend.clone());
+                    maybe_spend = Some(spend);
+                    remine(&mut block);
+                }
+                connect(&mut manager, &block, params)
+                    .expect("genuine canonical maturity and spend");
+            }
+            let mut duplicate = child(&manager.chainstate().tip().expect("parent").header, 102);
+            duplicate
+                .transactions
+                .push(maybe_spend.expect("accepted transaction with live output"));
+            remine(&mut duplicate);
+            let before = accepted(&manager, &store);
+            // Act
+            let error =
+                connect(&mut manager, &duplicate, params).expect_err("live duplicate must refuse");
+            // Assert
+            assert!(
+                matches!(error, ChainstateError::OutputOverwrite { .. }),
+                "{error}"
+            );
+            assert_unaccepted(&manager, &store, &duplicate, &before);
+        });
+    }
+}
+
 use super::*;
 use crate::storage::validation_history::{
     AcceptedValidationBatch, BlockValidationIdentity, ValidationProvenance, history_corruption,
@@ -83,6 +150,82 @@ impl PreparedValidationAcceptance {
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
+    /// Conditional test corpus execution through the same coins/undo and durable flush
+    /// kernel. This never publishes canonical provenance, BASIC or live work.
+    #[cfg(test)]
+    pub(crate) fn connect_seeded_historical_fixture(
+        &mut self,
+        block: &Block,
+        history: &open_bitcoin_core::consensus::CandidateHistory,
+        original_shell_now: i64,
+    ) -> Result<ChainPosition, ChainstateError> {
+        if self.maybe_validated_lineage.is_some()
+            || self.maybe_basic_index_owner.is_some()
+            || self.has_pending_validation_history()
+        {
+            return Err(ChainstateError::UntrustedWorkLineage);
+        }
+        let staged =
+            self.chainstate
+                .stage_seeded_historical_block(block, history, original_shell_now)?;
+        let position = self.chainstate.absorb_staged_connect(staged)?;
+        self.flush_with_mode(
+            FlushMode::Always,
+            FlushPolicyTime::new(0),
+            self.store.disk_free_bytes(),
+        )
+        .map_err(map_persist)?;
+        Ok(position)
+    }
+
+    pub(super) fn admit_direct_canonical_header(
+        &mut self,
+        header: &open_bitcoin_core::primitives::BlockHeader,
+    ) -> Result<(), ChainstateError> {
+        if self.chainstate.maybe_canonical_chain().is_none() {
+            return Ok(());
+        }
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .ok()
+            .and_then(|elapsed| i64::try_from(elapsed.as_secs()).ok())
+            .ok_or_else(|| ChainstateError::Serialization {
+                context: "canonical direct admission clock",
+                reason: "shell UNIX time unavailable".to_owned(),
+            })?;
+        self.chainstate.admit_canonical_header(header, now)
+    }
+
+    /// Recheck the exact held header on this coins owner's own branch and generation.
+    pub(crate) fn admit_canonical_body_header(
+        &mut self,
+        header: &open_bitcoin_core::primitives::BlockHeader,
+        original_shell_now: i64,
+    ) -> Result<(), ChainstateError> {
+        // The network adapter already checked its own exact held history and clock.
+        // Side bodies earn eligibility only; activation must admit the whole fork.
+        if self.chainstate.maybe_canonical_chain()
+            == Some(open_bitcoin_core::consensus::CanonicalChain::Regtest)
+            && self
+                .chainstate
+                .tip()
+                .is_some_and(|tip| tip.block_hash != header.previous_block_hash)
+        {
+            return Ok(());
+        }
+        self.chainstate
+            .admit_canonical_header(header, original_shell_now)
+    }
+
+    pub(crate) fn admit_canonical_body_reorg(
+        &mut self,
+        disconnect: &[open_bitcoin_core::primitives::BlockHeader],
+        candidates: &[(open_bitcoin_core::primitives::BlockHeader, i64)],
+    ) -> Result<(), ChainstateError> {
+        self.chainstate
+            .admit_canonical_reorg_headers(disconnect, candidates)
+    }
+
     pub(super) fn admit_validation_acceptance(
         &self,
         positions: &[ChainPosition],

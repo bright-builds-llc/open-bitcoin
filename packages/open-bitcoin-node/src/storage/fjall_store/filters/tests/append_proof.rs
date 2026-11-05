@@ -29,6 +29,7 @@ fn recovered(store: &FjallNodeStore, positions: &[ChainPosition]) {
                 .save_undo(
                     position.block_hash,
                     &BlockUndo {
+                        overwrites: Vec::new(),
                         transactions: Vec::new(),
                     },
                     PersistMode::Sync,

@@ -145,9 +145,14 @@ pub(super) fn phase115_compact_payload_with_missing_short_id()
 -> (CompactBlockPayload, Transaction, Wtxid) {
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
     let tip = mined_header(block_hash(&genesis), 2);
-    let header = mined_header(block_hash(&tip), 3);
-    let coinbase = phase115_coinbase_transaction();
     let missing = phase115_sample_transaction(0x22);
+    let body = crate::test_block_commitments::coherent_body(
+        mined_header(block_hash(&tip), 3),
+        vec![phase115_coinbase_transaction(), missing.clone()],
+        true,
+    );
+    let header = body.header;
+    let coinbase = body.transactions[0].clone();
     let wtxid = transaction_wtxid(&missing).expect("wtxid");
     let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&header, 42);
     let short_id = open_bitcoin_consensus::compact_short_id_for_wtxid(selector, &wtxid);
@@ -192,10 +197,19 @@ pub(super) fn phase119_compact_payload_with_one_matched_and_one_missing()
 -> (CompactBlockPayload, Transaction, Wtxid, Transaction, Wtxid) {
     let genesis = mined_header(BlockHash::from_byte_array([0_u8; 32]), 1);
     let tip = mined_header(block_hash(&genesis), 2);
-    let header = mined_header(block_hash(&tip), 3);
-    let coinbase = phase115_coinbase_transaction();
     let matched = phase115_sample_transaction(0x31);
     let still_missing = phase115_sample_transaction(0x32);
+    let body = crate::test_block_commitments::coherent_body(
+        mined_header(block_hash(&tip), 3),
+        vec![
+            phase115_coinbase_transaction(),
+            matched.clone(),
+            still_missing.clone(),
+        ],
+        true,
+    );
+    let header = body.header;
+    let coinbase = body.transactions[0].clone();
     let matched_wtxid = transaction_wtxid(&matched).expect("matched wtxid");
     let missing_wtxid = transaction_wtxid(&still_missing).expect("missing wtxid");
     let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&header, 42);
@@ -239,4 +253,28 @@ pub(super) fn compact_block_inventory(count: usize) -> InventoryList {
             })
             .collect(),
     )
+}
+
+#[test]
+fn phase167_compact_fixture_peer_complete_bodies_are_coherent() {
+    // Arrange
+    let (payload, matched, _, missing, _) =
+        phase119_compact_payload_with_one_matched_and_one_missing();
+    let body = Block {
+        header: payload.header,
+        transactions: vec![
+            payload.prefilled_transactions[0].transaction.clone(),
+            matched,
+            missing,
+        ],
+    };
+    // Act / Assert
+    crate::test_block_commitments::assert_coherent(&body);
+    assert!(check_block_header(&body.header).is_ok());
+    assert!(
+        body.transactions
+            .iter()
+            .skip(1)
+            .all(Transaction::has_witness)
+    );
 }

@@ -1,21 +1,29 @@
-import { afterEach, expect, test } from "bun:test";
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { expect, test } from "bun:test";
 import path from "node:path";
 
 import { checkActiveMilestoneVerificationTraceability } from "../check-active-milestone-verification-traceability";
-import { PHASE125_LIFECYCLE_ID, REQUIREMENTS, PHASE115_SUMMARY, PHASE125_CONTEXT, PHASE125_VERIFICATION, createFixture, orphanFailure, replaceInFile } from "./test-fixtures.ts";
+import { REQUIREMENTS_FILE, PHASE125_LIFECYCLE_ID, PHASE115_SUMMARY, PHASE125_CONTEXT, PHASE125_VERIFICATION, createFixture, orphanFailure, replaceInFile } from "./test-fixtures.ts";
+
+function completeRequirement(files: Map<string, string>, id: string): void {
+  replaceInFile(
+    files,
+    REQUIREMENTS_FILE,
+    `- [ ] **${id}**`,
+    `- [x] **${id}**`,
+  );
+  replaceInFile(
+    files,
+    REQUIREMENTS_FILE,
+    `| ${id} | Phase 125 | Pending |`,
+    `| ${id} | Phase 125 | Complete |`,
+  );
+}
 
 test("malformed CONTEXT lifecycle metadata fails closed", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-04");
       replaceInFile(
         files,
         PHASE125_CONTEXT,
@@ -41,6 +49,7 @@ test("malformed VERIFICATION lifecycle metadata fails closed", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-05");
       replaceInFile(
         files,
         PHASE125_VERIFICATION,
@@ -65,10 +74,37 @@ test("malformed VERIFICATION lifecycle metadata fails closed", () => {
   expect(failures).toContain(orphanFailure("RCN-05"));
 });
 
+test("pending verification still requires valid lifecycle metadata", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      replaceInFile(
+        files,
+        PHASE125_VERIFICATION,
+        "lifecycle_validated: true",
+        "lifecycle_validated: false",
+      );
+    },
+  });
+
+  // Act
+  const failures = checkActiveMilestoneVerificationTraceability({
+    maybeRootDir: root,
+  });
+
+  // Assert
+  expect(failures).toEqual([
+    `${PHASE125_VERIFICATION} requires lifecycle_validated: true`,
+  ]);
+});
+
 test("invalid lifecycle verification cannot mask its only token", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      for (const id of ["RCN-04", "RCN-05", "RCN-06"]) {
+        completeRequirement(files, id);
+      }
       replaceInFile(
         files,
         PHASE125_VERIFICATION,
@@ -96,6 +132,7 @@ test("RCN-040 near-token collision does not cover RCN-04", () => {
   // Arrange
   const root = createFixture({
     maybeMutateFiles(files) {
+      completeRequirement(files, "RCN-04");
       replaceInFile(
         files,
         PHASE125_VERIFICATION,
@@ -141,12 +178,9 @@ test("block-list requirements-completed has lifecycle-valid coverage", () => {
   expect(failures).toEqual([]);
 });
 
-test("real repository reports only the documented staged orphans", () => {
+test("real repository has no completed verification orphans", () => {
   // Arrange
   const repoRoot = path.resolve(import.meta.dir, "../..");
-  const verificationExists = existsSync(
-    path.join(repoRoot, PHASE125_VERIFICATION),
-  );
 
   // Act
   const failures = checkActiveMilestoneVerificationTraceability({
@@ -154,9 +188,5 @@ test("real repository reports only the documented staged orphans", () => {
   });
 
   // Assert
-  if (verificationExists) {
-    expect(failures).toEqual([]);
-    return;
-  }
-  expect(failures).toEqual(REQUIREMENTS.map(orphanFailure));
+  expect(failures).toEqual([]);
 });

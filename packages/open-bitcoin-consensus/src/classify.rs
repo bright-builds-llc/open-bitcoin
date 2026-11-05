@@ -188,7 +188,7 @@ pub fn extract_script_sig_pushes(script: &ScriptBuf) -> Option<Vec<Vec<u8>>> {
 pub fn extract_redeem_script(script_sig: &ScriptBuf) -> Option<ScriptBuf> {
     let pushes = extract_script_sig_pushes(script_sig)?;
     let redeem_script = pushes.last()?.clone();
-    ScriptBuf::from_bytes(redeem_script).ok()
+    Some(ScriptBuf::from_serialized_bytes(redeem_script))
 }
 
 fn classify_pay_to_pubkey(bytes: &[u8]) -> Option<ScriptPubKeyType> {
@@ -325,6 +325,20 @@ mod tests {
 
     fn script(bytes: &[u8]) -> ScriptBuf {
         ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_raw_redeem_preserves_wide_bytes() {
+        // Arrange
+        let redeem = vec![0xac; 10_001];
+        let mut encoded = vec![0x4d, 0x11, 0x27];
+        encoded.extend_from_slice(&redeem);
+        let script_sig = ScriptBuf::from_serialized_bytes(encoded);
+        // Act
+        let maybe_extracted = extract_redeem_script(&script_sig);
+        // Assert
+        assert_eq!(maybe_extracted.map(ScriptBuf::into_bytes), Some(redeem));
+        assert!(is_push_only(&script_sig));
     }
 
     #[test]

@@ -153,7 +153,31 @@ fn phase166_runtime_config_mismatch_refuses_before_initialization() {
 
 #[test]
 fn phase166_runtime_descendant_routes_refuse_without_owner_or_storage_effects() {
+    use open_bitcoin_network::NetworkError;
+    let unproved = || NetworkError::InvalidHeader {
+        reject_reason: "unproved-canonical-header".to_owned(),
+        maybe_debug_message: None,
+    };
     for (chain, selector) in SELECTORS {
+        let assert_refusal = |error: crate::ManagedNetworkAuthorityError,
+                              regtest_expected: &NetworkError| {
+            let crate::ManagedNetworkAuthorityError::Operation(
+                crate::ManagedNetworkError::Network(actual),
+            ) = error
+            else {
+                panic!("expected precise network refusal: {error:?}");
+            };
+            if chain == CanonicalChain::Regtest {
+                assert_eq!(&actual, regtest_expected);
+            } else {
+                match actual {
+                    NetworkError::InvalidHeader { reject_reason, .. } => {
+                        assert_eq!(reject_reason, "unsupported-validation-scope");
+                    }
+                    other => panic!("expected unsupported selector refusal: {other:?}"),
+                }
+            }
+        };
         // Arrange
         let source = source();
         let opened = FjallNodeStore::open_canonical_genesis(&source, chain).expect("proved");
@@ -199,6 +223,17 @@ fn phase166_runtime_descendant_routes_refuse_without_owner_or_storage_effects() 
                 transactions: vec![],
             }),
         ] {
+            let regtest_expected = match &message {
+                WireNetworkMessage::Headers(_) => NetworkError::InvalidHeader {
+                    reject_reason: "high-hash".to_owned(),
+                    maybe_debug_message: Some("proof of work failed".to_owned()),
+                },
+                WireNetworkMessage::Block(_) => unproved(),
+                WireNetworkMessage::CompactBlock(_) | WireNetworkMessage::BlockTxn(_) => {
+                    NetworkError::UnknownPeer(1)
+                }
+                _ => unreachable!("closed fixture message set"),
+            };
             let error = handle
                 .receive_sync_message(
                     1,
@@ -208,21 +243,25 @@ fn phase166_runtime_descendant_routes_refuse_without_owner_or_storage_effects() 
                     params,
                 )
                 .expect_err("ordinary history refused");
-            assert!(error.to_string().contains("unsupported-validation-scope"));
+            if chain != CanonicalChain::Regtest {
+                assert!(error.to_string().contains("unsupported-validation-scope"));
+            }
+            assert_refusal(error, &regtest_expected);
             assert_unchanged();
-            assert!(
+            assert_refusal(
                 handle
                     .receive_message(
                         1,
                         message.clone(),
                         2_000_000_000,
                         ScriptVerifyFlags::P2SH,
-                        params
+                        params,
                     )
-                    .is_err()
+                    .expect_err("unconnected/unadmitted candidate refused"),
+                &regtest_expected,
             );
             assert_unchanged();
-            assert!(
+            assert_refusal(
                 handle
                     .receive_message_for_durable_serving(
                         1,
@@ -230,51 +269,59 @@ fn phase166_runtime_descendant_routes_refuse_without_owner_or_storage_effects() 
                         2_000_000_000,
                         ScriptVerifyFlags::P2SH,
                         params,
-                        |_| panic!("refuse before durable payload access")
+                        |_| panic!("refuse before durable payload access"),
                     )
-                    .is_err()
+                    .expect_err("unconnected/unadmitted candidate refused"),
+                &regtest_expected,
             );
             assert_unchanged();
         }
-        assert!(
+        assert_refusal(
             handle
                 .connect_stored_block(
                     &child,
                     ProofWork::ZERO,
                     2_000_000_000,
                     ScriptVerifyFlags::P2SH,
-                    params
+                    params,
                 )
-                .is_err()
+                .expect_err("unadmitted body refused"),
+            &unproved(),
         );
         assert_unchanged();
-        assert!(
+        assert_refusal(
             handle
                 .connect_local_block(&child, ScriptVerifyFlags::P2SH, params)
-                .is_err()
+                .expect_err("unadmitted body refused"),
+            &unproved(),
         );
         assert_unchanged();
-        assert!(
+        assert_refusal(
             handle
                 .try_admit_fixture_headers(HeaderStore::default(), 2_000_000_000, params)
-                .is_err()
+                .expect_err("fixture input cannot replace canonical owner"),
+            &NetworkError::InvalidHeader {
+                reject_reason: "unsupported-validation-scope".to_owned(),
+                maybe_debug_message: Some("ordinary history validation is unsupported for regtest: canonical_bootstrap, exact_work, candidate_history".to_owned()),
+            },
         );
         assert_unchanged();
-        assert!(
+        assert_refusal(
             handle
                 .reorg_to_branch(
                     &[],
                     &[AnchoredBlock {
                         block: child,
-                        chain_work: ProofWork::ZERO
+                        chain_work: ProofWork::ZERO,
                     }],
                     open_bitcoin_mempool::ReorgLifecycleContext::new(
-                        open_bitcoin_mempool::PolicyTime::from_unix_seconds(1)
+                        open_bitcoin_mempool::PolicyTime::from_unix_seconds(1),
                     ),
                     ScriptVerifyFlags::P2SH,
-                    params
+                    params,
                 )
-                .is_err()
+                .expect_err("unadmitted replacement refused"),
+            &unproved(),
         );
         assert_unchanged();
         drop(handle);

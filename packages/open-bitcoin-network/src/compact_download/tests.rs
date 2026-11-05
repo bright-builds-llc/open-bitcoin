@@ -30,12 +30,13 @@ use super::{
     ScheduleMissingTransactionOutcome, ScheduleMissingTransactionSuppressionReason,
     build_get_block_transactions_request, cleanup_compact_download_on_block_connected,
     cleanup_compact_download_peer, compact_download_actions_to_peer_actions,
-    complete_applied_download, completed_or_fallback_init, completion_actions_from_outcome,
-    evaluate_compact_block_download_eligibility, expire_stale_compact_downloads,
-    finalize_ready_init, finish_applied_handle, handle_block_transactions,
-    init_compact_block_download, peer_supports_compact_download,
+    complete_applied_download_selected, completed_or_fallback_init_selected,
+    completion_actions_from_outcome, evaluate_compact_block_download_eligibility,
+    expire_stale_compact_downloads, finalize_ready_init, finish_applied_handle_selected,
+    handle_block_transactions_selected, init_compact_block_download,
+    init_compact_block_download_selected, peer_supports_compact_download,
     schedule_missing_transaction_request, scheduled_init_request, take_in_flight_download,
-    try_complete_compact_download,
+    try_complete_compact_download_selected,
 };
 
 fn eligible_input(header: &BlockHeader) -> CompactBlockDownloadEligibilityInput {
@@ -102,9 +103,14 @@ fn sample_transaction(previous_txid_byte: u8) -> Transaction {
 }
 
 fn compact_payload_with_missing_short_id() -> (CompactBlockPayload, Transaction, Wtxid) {
-    let header = sample_header();
-    let coinbase = coinbase_transaction();
     let missing = sample_transaction(0x22);
+    let body = crate::test_block_commitments::coherent_body(
+        sample_header(),
+        vec![coinbase_transaction(), missing.clone()],
+        false,
+    );
+    let header = body.header;
+    let coinbase = body.transactions[0].clone();
     let wtxid = transaction_wtxid(&missing).expect("wtxid");
     let selector = open_bitcoin_codec::short_id_selector_from_header_and_nonce(&header, 42);
     let short_id = open_bitcoin_consensus::compact_short_id_for_wtxid(selector, &wtxid);
@@ -127,3 +133,60 @@ mod completion_cases;
 mod initialization_cases;
 mod lifecycle_cases;
 mod scheduling_cases;
+
+#[test]
+fn phase167_compact_fixture_complete_missing_body_is_coherent() {
+    // Arrange
+    let (payload, missing, wtxid) = compact_payload_with_missing_short_id();
+    let mut partial = PartialCompactBlock::new();
+    let _ = init_partial_compact_block(
+        &mut partial,
+        &payload,
+        std::iter::empty::<(&Wtxid, &Transaction)>(),
+        [(&wtxid, &missing)],
+    );
+    let reconstructed = fill_block(&partial).expect("complete committed fixture body");
+    let body = open_bitcoin_primitives::Block {
+        header: payload.header,
+        transactions: vec![
+            payload.prefilled_transactions[0].transaction.clone(),
+            missing,
+        ],
+    };
+    // Act / Assert
+    assert_eq!(reconstructed, body);
+    crate::test_block_commitments::assert_coherent(&body);
+    assert!(body.transactions[1].has_witness());
+}
+
+#[test]
+fn phase167_compact_fixture_commitment_controls_reject_each_incoherence() {
+    // Arrange
+    let (payload, missing, _) = compact_payload_with_missing_short_id();
+    let original = open_bitcoin_primitives::Block {
+        header: payload.header,
+        transactions: vec![
+            payload.prefilled_transactions[0].transaction.clone(),
+            missing,
+        ],
+    };
+    for case in 0..6 {
+        let mut body = original.clone();
+        match case {
+            0 => body.transactions[0].inputs[0].witness = ScriptWitness::default(),
+            1 => body.transactions[0].inputs[0].witness = ScriptWitness::new(vec![vec![1; 32]]),
+            2 => {
+                body.transactions[0].outputs.pop();
+            }
+            3 => {
+                body.transactions.pop();
+            }
+            4 => body.transactions[1].lock_time += 1,
+            _ => body.header.merkle_root = Default::default(),
+        }
+        // Act
+        let mutated = open_bitcoin_consensus::block::is_block_mutated(&body, true);
+        // Assert
+        assert_eq!(mutated, Ok(true), "coherence control {case}");
+    }
+}

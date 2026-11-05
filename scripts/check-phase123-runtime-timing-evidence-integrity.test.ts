@@ -5,10 +5,10 @@ import path from "node:path";
 import { checkPhase123RuntimeTimingEvidenceIntegrity } from "./check-phase123-runtime-timing-evidence-integrity";
 import { readText } from "./check-phase123-runtime-timing-evidence-integrity/filesystem.ts";
 import { TARGET_FILES, type TargetFile } from "./check-phase123-runtime-timing-evidence-integrity/constants.ts";
+import { completeFiles, type CorpusFile } from "./check-phase123-runtime-timing-evidence-integrity/test-fixtures.ts";
 import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
 const daemonFile = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
 const canonicalFile = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs";
-type CorpusFile = TargetFile | typeof canonicalFile;
 type Mutator = (files: Map<CorpusFile, string>) => void;
 const tempRoots: string[] = [];
 afterEach(() => {
@@ -77,7 +77,7 @@ test.each([
   ["unreachable Written delegation", listenerFile, "    acknowledge_encoded_wire_response(\n", "    return true;\n    acknowledge_encoded_wire_response(\n", "P123 inbound Written-only delegation"],
   ["intent gate made unconditional", inboundFile, "let outcome = if was_written", "let outcome = if true", "P123 inbound Written-only acknowledgement"],
   ["early duplicate credit", terminalFile, exactSend, `${blockAck}\n            ${exactSend}`, "P123 ordinary single post-write acknowledgement"],
-  ["idle cancellation forwarding removed", "packages/open-bitcoin-node/src/sync/session.rs", "&outbound,\n                            controls.1,", "&outbound,\n                            &mut || false,", "P123 idle clock target send order"],
+  ["idle cancellation forwarding removed", "packages/open-bitcoin-node/src/sync/session.rs", "&outbound,\n                        controls.1,", "&outbound,\n                        &mut || false,", "P123 idle clock target send order"],
 ] as const)("rejects current production transport mutation: %s", (_label, file, from, to, diagnostic) => {
   // Arrange
   const files = liveFiles();
@@ -166,90 +166,18 @@ test("commented configured initialization cannot satisfy the production guard", 
 });
 test.each([
   ["Idle collapsed into Closed", "P123 typed receive outcomes missing Idle", mutate("packages/open-bitcoin-node/src/sync/types.rs", "Idle", "Closed")],
-  ["idle clock removed", "P123 idle clock target send order missing or out of order current_timestamp = (controls.0)();", mutate("packages/open-bitcoin-node/src/sync/session.rs", "current_timestamp = (controls.0)();", "current_timestamp = timestamp;")],
-  ["message receive clock removed", "P123 message receive clock missing or out of order messages_received = messages_received.saturating_add(1);", mutateFirst("packages/open-bitcoin-node/src/sync/session.rs", "SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1);", "SyncPeerReceiveOutcome::Message(message) => messages_received = messages_received.saturating_add(1);")],
-  ["idle target guard removed", "P123 idle clock target send order missing or out of order .any(|(target_peer_id, _message)| *target_peer_id != peer_id)", mutate("packages/open-bitcoin-node/src/sync/session.rs", ".any(|(target_peer_id, _message)| *target_peer_id != peer_id)", ".is_empty()")],
-  [
-    "session timestamp propagation removed",
-    "P123 session timestamp propagation missing progress.record_activity(current_timestamp);",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "progress.record_activity(current_timestamp);",
-      "progress.record_activity(timestamp);",
-    ),
-  ],
-  [
-    "response-work session retention removed",
-    "P123 idle clock target send order missing or out of order if !self.peer_has_pending_download_work(peer_id)",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "if !self.peer_has_pending_download_work(peer_id)",
-      "if true",
-    ),
-  ],
-  [
-    "compact fallback ordinary tracking removed",
-    "P123 idle clock target send order missing or out of order block_reconcile::request_tracked_blocks(",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "block_reconcile::request_tracked_blocks(",
-      "block_reconcile::request_missing_blocks(",
-    ),
-  ],
-  [
-    "peer-targeted fallback send removed",
-    "P123 idle clock target send order missing or out of order self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?;",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?;",
-      "self.send_all(&mut session, &outbound)?;",
-    ),
-  ],
-  [
-    "live-session reconciliation removed",
-    "P123 session timestamp propagation missing block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?",
-      "block_reconcile::reconcile_best_chain(self, current_timestamp)?",
-    ),
-  ],
-  [
-    "post-durable progress dispatch removed",
-    "P123 requested fallback response consumption missing or out of order self.persist_progress_and_dispatch_tip()?;",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "self.persist_progress_and_dispatch_tip()?;",
-      "self.persist_progress()?;",
-    ),
-  ],
-  [
-    "peer emission completion moved before write",
-    "P123 sync peer emission post-write completion missing or out of order capability.acknowledge_write()",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
-      "capability.acknowledge_write()",
-      "drop(capability)",
-    ),
-  ],
-  [
-    "ordinary response retention removed",
-    "P123 response-work-aware idle yield missing .peer_requested_blocks(peer_id)",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      ".peer_requested_blocks(peer_id)",
-      ".peer_requested_blocks(PeerId::MAX)",
-    ),
-  ],
-  [
-    "compact fallback active-tip classification removed",
-    "P123 compact fallback active-tip response classification missing || self.block_extends_active_tip(block)",
-    mutate(
-      "packages/open-bitcoin-node/src/sync/session.rs",
-      "|| self.block_extends_active_tip(block)",
-      "|| false",
-    ),
-  ],
+  ["idle clock removed", "P123 idle clock target send order missing or out of order lettimestamp=(controls.0)();", mutateFirst("packages/open-bitcoin-node/src/sync/session.rs", "SyncPeerReceiveOutcome::Idle => { let timestamp =\n(controls.0)();", "SyncPeerReceiveOutcome::Idle => { let timestamp = timestamp;")],
+  ["message receive clock removed", "P123 message receive clock missing or out of order lettimestamp=(controls.0)();", mutateFirst("packages/open-bitcoin-node/src/sync/session.rs", "SyncPeerReceiveOutcome::Message(message) => {\nlet timestamp = (controls.0)();", "SyncPeerReceiveOutcome::Message(message) => {\nlet timestamp = timestamp;")],
+  ["idle target guard removed", "P123 whole-batch request accounting missing or out of order targeted.iter().any(|(target,_)|*target!=owner.peer())", mutate("packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "targeted.iter().any(|(target, _)| *target != owner.peer())", "false")],
+  ["session timestamp propagation removed", "P123 manager receive ordering missing or out of order progress.record_activity(timestamp)", mutateFirst("packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "progress.record_activity(timestamp);", "progress.record_activity(other_timestamp);")],
+  ["response-work session retention removed", "P123 idle clock target send order missing or out of order turn.requests.pending(self)", mutate("packages/open-bitcoin-node/src/sync/session.rs", "turn.requests.pending(self)", "false")],
+  ["compact fallback ordinary tracking removed", "P123 timeout packets must flow unchanged into handoff", mutate("packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let targeted = owner.expire(timestamp).map_err(ManagedNetworkAuthorityError::from)?;\n    handoff_core(", "let targeted = owner.expire(timestamp).map_err(ManagedNetworkAuthorityError::from)?;\n    let targeted = Vec::new(); handoff_core(")],
+  ["peer-targeted fallback send removed", "P123 idle clock target send order missing or out of order self.send_all_for_registered_peer_with_cancel(", mutateFirst("packages/open-bitcoin-node/src/sync/session.rs", "!self.send_all_for_registered_peer_with_cancel( session, turn.peer_id, &outbound, controls.1, turn.registration, turn.requests, )?", "!self.send_untracked(session, &outbound)?")],
+  ["live-session reconciliation removed", "P123 post-manager message wake missing or out of order block_reconcile::reconcile_best_chain_for_live_session(self,current_timestamp)?", mutate("packages/open-bitcoin-node/src/sync/session.rs", "block_reconcile::reconcile_best_chain_for_live_session(self, current_timestamp)?;", "block_reconcile::reconcile_best_chain(self, current_timestamp)?;")],
+  ["post-durable progress dispatch removed", "P123 post-manager message wake missing or out of order self.persist_progress_and_dispatch_tip()?;", mutate("packages/open-bitcoin-node/src/sync/session.rs", "self.persist_progress_and_dispatch_tip()?;", "self.persist_progress()?;")],
+  ["peer emission completion moved before write", "P123 sync peer emission post-write completion missing or out of order capability.acknowledge_write()", mutate(terminalFile, "capability.acknowledge_write()", "drop(capability)")],
+  ["ordinary response retention removed", "P123 pending response retention missing or out of order runtime.inflight_blocks.contains(hash)", mutate("packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "runtime.inflight_blocks.contains(hash)", "false")],
+  ["compact fallback active-tip classification removed", "P123 session timestamp propagation missing self.block_extends_active_tip(block)?", mutate("packages/open-bitcoin-node/src/sync/session.rs", "self.block_extends_active_tip(block)?", "false")],
   [
     "five-second compact cadence regression removed",
     "P123 runtime timing tests missing phase123_compact_download_survives_five_second_idle_cadence_until_timeout",
@@ -308,7 +236,7 @@ test.each([
   [
     "sync acknowledgement moved before send",
     "P123 sync send-before-ack missing or out of order self.network.acknowledge_wire_message_written(message)?;",
-    mutate(terminalFile, `${exactSend} ${blockAck}`, `${blockAck} ${exactSend}`),
+    mutate(terminalFile, `${exactSend}\n            ${blockAck}`, `${blockAck}\n            ${exactSend}`),
   ],
   [
     "inbound Written acknowledgement removed",
@@ -355,8 +283,8 @@ test.each([
     "P123 daemon sync activation wiring must preserve configured activation arguments",
     mutate(
       "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-      "runtime.sync.runtime.clone()",
-      "SyncRuntimeConfig::default()",
+      "open_configured_history_runtime(&runtime)?",
+      "None",
     ),
   ],
   [
@@ -411,10 +339,10 @@ test.each([
   ["missing declaration", daemonFile, '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', ""],
   ["wrong declaration", daemonFile, 'path = "open_bitcoind/canonical_startup.rs"', 'path = "open_bitcoind/wrong.rs"'],
   ["declaration comment decoy", daemonFile, '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', '/* #[path = "open_bitcoind/canonical_startup.rs"] mod canonical_startup; */\n#[path = "open_bitcoind/wrong.rs"] mod canonical_startup;'],
-  ["missing import", daemonFile, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", ""],
+  ["missing import", daemonFile, "use canonical_startup::{\n    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,\n};", ""],
   ["disabled declaration", daemonFile, '#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;', '#[cfg(any())]\n#[path = "open_bitcoind/canonical_startup.rs"]\nmod canonical_startup;'],
-  ["disabled import", daemonFile, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "#[cfg(any())]\nuse canonical_startup::{open_authoritative_network_runtime, open_runtime_store};"],
-  ["wrong import", daemonFile, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "use canonical_startup::{wrong_runtime, open_runtime_store};"],
+  ["disabled import", daemonFile, "use canonical_startup::{\n    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,\n};", "#[cfg(any())]\nuse canonical_startup::{\n    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,\n};"],
+  ["wrong import", daemonFile, "use canonical_startup::{\n    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,\n};", "use canonical_startup::{wrong_runtime, open_runtime_store};"],
   ["disabled application", daemonFile, "#[tokio::main]", "#[cfg(any())]\n#[tokio::main]"],
   ["borrowed capability", canonicalFile, "maybe_opened: Option<OpenedCanonicalGenesis>", "maybe_opened: Option<&OpenedCanonicalGenesis>"],
   ["missing opener preflight", canonicalFile, "let chain = preflight(runtime)?;\n    let Some(opened)", "let chain = selected_canonical_chain(runtime)?;\n    let Some(opened)"],
@@ -438,10 +366,13 @@ test.each([
   // Arrange: each mutation targets one actual live span after a clean baseline.
   const files = liveFiles();
   expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
-  expect(files.get(file)!.split(from)).toHaveLength(2);
-  expect(from).not.toBe(to);
   const source = files.get(file)!;
-  files.set(file, files.get(file)!.replace(from, () => to));
+  const maybeOwner = file === canonicalFile ? maybeFunction(source, "open_authoritative_network_runtime", true) : undefined;
+  const target = maybeOwner?.body.includes(from) ? source.slice(maybeOwner.start, maybeOwner.end) : source;
+  expect(target.split(from)).toHaveLength(2);
+  expect(from).not.toBe(to);
+  const changed = target.replace(from, () => to);
+  files.set(file, target === source ? changed : source.slice(0, maybeOwner!.start) + changed + source.slice(maybeOwner!.end));
   if (maybeDecoy === true) {
     const owner = maybeFunction(source, "open_authoritative_network_runtime", true)!;
     files.set(file, "#[cfg(test)]\npub(super) " + source.slice(owner.start, owner.end) + "\n" + files.get(file)!);
@@ -457,6 +388,142 @@ test("declared canonical startup requires its actual fixed physical child", () =
   expect(files.delete(canonicalFile)).toBe(true);
   // Act / Assert
   expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toContain(`P123 missing required declared canonical startup child: ${canonicalFile}`);
+});
+for (const [name, file, from, to, diagnostic] of [
+  ["unrequested membership bypass", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "if !requested.contains(&hash) {", "if false && !requested.contains(&hash) {", "P123 whole-batch request membership: exact reachable branch required"],
+  ["new-at-cap bypass", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "if hashes.difference(inflight).count() > cap.saturating_sub(inflight.len()) {", "if false && hashes.difference(inflight).count() > cap.saturating_sub(inflight.len()) {", "P123 whole-batch request capacity: exact reachable branch required"],
+  ["all-peer release bypass", "packages/open-bitcoin-node/src/sync/block_reconcile.rs", "if !retained.contains(hash) {", "if false && !retained.contains(hash) {", "P123 all-peer post-manager release: exact reachable branch required"],
+  ["Regtest activation bypass", canonicalFile, "if chain != CanonicalChain::Regtest || !trigger {", "if false { if chain != CanonicalChain::Regtest || !trigger { return Ok(None); } } if false {", "P123 daemon bounded Regtest activation gate: exact reachable branch required"],
+  ["wrong target bypass", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "if targeted.iter().any(|(target, _)| *target != owner.peer()) {", "if false && targeted.iter().any(|(target, _)| *target != owner.peer()) {", "P123 whole-batch request target: exact reachable branch required"],
+  ["duplicate slot charge", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "hashes.difference(inflight).count() > cap.saturating_sub(inflight.len())", "hashes.len() > cap.saturating_sub(inflight.len())", "P123 whole-batch request capacity: exact reachable branch required"],
+  ["already-accounted resend denied at cap", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let requested: BTreeSet<_> = owner.requested()?.into_iter().collect();", "if cap.saturating_sub(inflight.len()) == 0 { return Err(SyncRuntimeError::ResourceLimit { message: \"full\".to_owned(), }); }\n    let requested: BTreeSet<_> = owner.requested()?.into_iter().collect();", "P123 already-accounted resend must remain available at capacity"],
+  ["already-accounted resend denied by length precheck", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let requested: BTreeSet<_> = owner.requested()?.into_iter().collect();", "if inflight.len() >= cap { return Err(SyncRuntimeError::ResourceLimit { message: \"full\".to_owned(), }); }\n    let requested: BTreeSet<_> = owner.requested()?.into_iter().collect();", "P123 already-accounted resend must remain available at capacity"],
+  ["already-accounted resend dropped by empty result", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let requested: BTreeSet<_> = owner.requested()?.into_iter().collect();", "let requested: BTreeSet<_> = owner.requested()?.into_iter().collect(); if inflight.len() >= cap { return Ok(Vec::new()); }", "P123 whole-batch request accounting: reviewed production body changed"],
+  ["target packet payload changed", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "targeted.into_iter().map(|(_, message)| message).collect()", "targeted.into_iter().filter_map(|(_, message)| Some(message)).collect()", "P123 whole-batch request accounting missing or out of order targeted.into_iter().map(|(_,message)|message).collect()"],
+  ["witness block membership omitted", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "InventoryType::Block | InventoryType::WitnessBlock", "InventoryType::Block", "P123 whole-batch request accounting missing or out of order InventoryType::Block|InventoryType::WitnessBlock"],
+  ["ordinary nonempty batch exits before write", terminalFile, "let buffers = messages", "if !messages.is_empty() { return Ok(()); } let buffers = messages", "P123 ordinary reviewed send body changed before exact write"],
+] as const) {
+  test(`current reviewed branch refuses ${name}`, () => {
+    const files = liveFiles();
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toEqual([]);
+    replaceRequired(files, file, from, to);
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toContain(diagnostic);
+  });
+}
+for (const kind of ["comment", "literal", "disconnected", "test-only"] as const) {
+  test(`current request membership refuses ${kind} decoy`, () => {
+    const files = liveFiles();
+    const file = "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs";
+    const predicate = "if !requested.contains(&hash) {";
+    replaceRequired(files, file, predicate, "if false && !requested.contains(&hash) {");
+    const decoy = kind === "comment" ? `/* ${predicate} */`
+      : kind === "literal" ? `let decoy = r#"${predicate}"#;`
+      : kind === "test-only" ? `#[cfg(test)] fn decoy() { ${predicate} } }`
+      : `fn decoy() { ${predicate} } }`;
+    files.set(file, `${files.get(file)}\n${decoy}`);
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }))
+      .toContain("P123 whole-batch request membership: exact reachable branch required");
+  });
+}
+for (const [name, from, to, diagnostic] of [
+  ["wrong registration", "Some((registration, requests)),", "Some((foreign_registration, requests)),", "P123 registered peer must forward its exact registration, requests and cancellation"],
+  ["disabled cancellation", "should_cancel,\n            Some((registration, requests)),", "&mut || false,\n            Some((registration, requests)),", "P123 registered peer must forward its exact registration, requests and cancellation"],
+  ["wrong outbox peer", "take_registration(\n                        owned_peer,", "take_registration(\n                        foreign_peer,", "P123 registered send must use the token outbox and propagate its result before emission"],
+  ["direct unregistered take", "self.announcement_outboxes.take_registration(", "self.announcement_outboxes.take_peer_emissions(", "P123 registered send must use the token outbox and propagate its result before emission"],
+  ["early registered completion", "Some((registration, requests)) => {", "Some((registration, requests)) => { return Ok(false);", "P123 registered send must use the token outbox and propagate its result before emission"],
+] as const) {
+  test(`registered production send refuses ${name}`, () => {
+    const files = liveFiles();
+    replaceRequired(files, terminalFile, from, to);
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toContain(diagnostic);
+  });
+}
+for (const kind of ["comment", "literal", "disconnected", "test-only"] as const) {
+  test(`registered production send refuses ${kind} decoy`, () => {
+    const files = liveFiles();
+    const actual = "self.announcement_outboxes.take_registration(";
+    replaceRequired(files, terminalFile, actual, "self.announcement_outboxes.take_peer_emissions(");
+    const decoy = kind === "comment" ? `/* ${actual} */`
+      : kind === "literal" ? `let decoy = r#"${actual}"#;`
+      : kind === "test-only" ? `#[cfg(test)] fn decoy() { ${actual} }`
+      : `fn decoy() { ${actual} }`;
+    files.set(terminalFile, `${files.get(terminalFile)}\n${decoy}`);
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }))
+      .toContain("P123 registered send must use the token outbox and propagate its result before emission");
+  });
+}
+for (const [name, file, from, to, diagnostic] of [
+  ["same hash held by another peer", "packages/open-bitcoin-node/src/sync/block_reconcile.rs", "if !retained.contains(hash) {", "if !retained.contains(hash) || true {", "P123 all-peer post-manager release: exact reachable branch required"],
+  ["manager Ok receipt cleanup skipped", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let receipt_cleanup = release_unrequested_hashes(runtime, receipt);", "let receipt_cleanup = if result.is_err() { release_unrequested_hashes(runtime, receipt) } else { Ok(()) };", "P123 post-manager Ok/Err receipt cleanup must propagate both results"],
+  ["manager Err receipt cleanup skipped", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let receipt_cleanup = release_unrequested_hashes(runtime, receipt);", "let receipt_cleanup = if result.is_ok() { release_unrequested_hashes(runtime, receipt) } else { Ok(()) };", "P123 post-manager Ok/Err receipt cleanup must propagate both results"],
+  ["unrequested Block cleanup skipped", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "request_cleanup_result(\n            observation_cleanup,\n            release_unrequested_hashes(runtime, receipt),", "request_cleanup_result(\n            observation_cleanup,\n            if false { release_unrequested_hashes(runtime, receipt) } else { Ok(()) },", "P123 unrequested Block cleanup must propagate both results"],
+  ["disconnect cleanup skipped", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let observed = runtime.network.finish_sync_peer(&self.token)?;\n        self.reconcile(runtime, observed).map(|_| ())", "let observed = runtime.network.finish_sync_peer(&self.token)?;\n        Ok(())", "P123 disconnect cleanup must preserve retained and denied request ownership"],
+  ["dual errors hidden", "packages/open-bitcoin-node/src/sync/session.rs", "(Err(error), Err(cleanup)) => Err(SyncRuntimeError::Network {", "(Err(error), Err(_cleanup)) => Err(SyncRuntimeError::Network {", "P123 primary and cleanup failures must remain visible together"],
+  ["pre-manager raw release", "packages/open-bitcoin-node/src/sync/session.rs", "let received =\n            requests.dispatch", "block_reconcile::release_inflight_for_message(self, &message);\n        let received =\n            requests.dispatch", "P123 raw pre-manager release must not contain block_reconcile::release_inflight_for_message"],
+  ["all-peer collector truncated", "packages/open-bitcoin-node/src/sync/block_reconcile.rs", ".peer_ids()\n        .into_iter()\n        .filter_map", ".peer_ids()\n        .into_iter()\n        .take(1)\n        .filter_map", "P123 all-peer retained membership must be complete"],
+  ["all-peer retained set shadowed", "packages/open-bitcoin-node/src/sync/block_reconcile.rs", ".collect();\n    for hash in hashes", ".collect();\n    let retained = retained.into_iter().take(1).collect::<BTreeSet<_>>();\n    for hash in hashes", "P123 all-peer post-manager release: reviewed production body changed"],
+  ["retained set release omitted", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let previous = release_unrequested_hashes(runtime, &self.retained);", "let previous = Ok(());", "P123 retained and current request release must propagate through absence and presence"],
+  ["current set release omitted", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "let current = release_unrequested_hashes(runtime, &requests);", "let current = Ok(());", "P123 retained and current request release must propagate through absence and presence"],
+  ["absent peer hides prior cleanup", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "previous?;\n            self.maybe_peer = None;", "let _ = previous;\n            self.maybe_peer = None;", "P123 retained and current request release must propagate through absence and presence"],
+  ["manager handoff packets cleared", "packages/open-bitcoin-node/src/sync/session.rs", "        filter_serving::send_filter_plans(", "        outbound.clear();\n        filter_serving::send_filter_plans(", "P123 manager handoff packets must remain intact until registered send"],
+  ["manager handoff packets reassigned", "packages/open-bitcoin-node/src/sync/session.rs", "        filter_serving::send_filter_plans(", "        outbound = Vec::new();\n        filter_serving::send_filter_plans(", "P123 reviewed post-manager message flow: reviewed production body changed"],
+  ["Idle targeted packets shadowed", "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", "                .map_err(ManagedNetworkAuthorityError::from)?;\n            handoff_core(", "                .map_err(ManagedNetworkAuthorityError::from)?;\n            let targeted = Vec::new();\n            handoff_core(", "P123 timeout packets must flow unchanged into handoff"],
+  ["ordinary TCP write made dead", terminalFile, "session.send_encoded(buffer.bytes(), self.config.network.magic())?;", "if false { session.send_encoded(buffer.bytes(), self.config.network.magic())?; }", "P123 ordinary exact write must execute before acknowledgement in the same loop"],
+] as const) {
+  test(`current request cleanup refuses ${name}`, () => {
+    const files = liveFiles();
+    replaceRequired(files, file, from, to);
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) })).toContain(diagnostic);
+  });
+}
+for (const [name, message] of [
+  ["wrong-target error", "compact timeout action target does not match connected session"],
+  ["missing membership error", "request batch lacks retained peer membership"],
+  ["global capacity error", "request batch exceeds global in-flight capacity"],
+] as const) {
+  test(`current request error literal refuses ${name}`, () => {
+    const files = liveFiles();
+    replaceRequired(files, "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs", message, "misleading request failure");
+    expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }))
+      .toContain("P123 whole-batch request error literals changed");
+  });
+}
+test("current PeerRequests handoff refuses a disconnected impl owner", () => {
+  const files = liveFiles();
+  const file = "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs";
+  replaceRequired(files, file, "impl PeerRequests {", "impl DisconnectedRequests {");
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }))
+    .toContain("P123 message target handoff: unique enabled production owner required");
+});
+test("current free handoff refuses a disconnected module owner", () => {
+  const files = liveFiles();
+  const file = "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs";
+  const source = files.get(file)!;
+  const handoff = maybeFunction(source, "handoff_core", true)!;
+  files.set(file, source.slice(0, handoff.start) + "mod disconnected {\n" + source.slice(handoff.start, handoff.end)
+    + "\n}\n" + source.slice(handoff.end));
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }))
+    .toContain("P123 whole-batch request accounting: unique enabled production owner required");
+});
+test("current ordinary writer refuses a disabled impl owner", () => {
+  const files = liveFiles();
+  replaceRequired(files, terminalFile, "impl super::DurableSyncRuntime {", "#[cfg(any())]\nimpl super::DurableSyncRuntime {");
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }).some(row =>
+    row.startsWith("P123 ordinary transport runtime owner"))).toBe(true);
+});
+test("current peer emission refuses dead TCP write before completion", () => {
+  const files = liveFiles();
+  const branch = `if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {
+            drop(buffer);
+            drop(buffers);
+            return combined_error(
+                write_error,
+                abort_current_and_suffix(network, capability, emissions),
+            );
+        }`;
+  replaceRequired(files, terminalFile, branch, `if false { ${branch} }`);
+  expect(checkPhase123RuntimeTimingEvidenceIntegrity({ rootDir: writeFixture(files) }))
+    .toContain("P123 peer emission write before completion: exact reachable branch required");
 });
 function writeFixture(files: Map<CorpusFile, string>): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase123-"));
@@ -476,142 +543,10 @@ function liveFiles(): Map<CorpusFile, string> {
   expect(failures).toEqual([]);
   return files;
 }
-function replaceRequired(files: Map<TargetFile, string>, file: TargetFile, from: string, to: string): void {
+function replaceRequired(files: Map<CorpusFile, string>, file: CorpusFile, from: string, to: string): void {
   const source = files.get(file) ?? "";
   expect(source).toContain(from);
   files.set(file, source.replace(from, to));
-}
-function completeFiles(): Map<CorpusFile, string> {
-  const timingTests = [
-    "phase123_tcp_zero_progress_timeout_is_idle",
-    "phase123_tcp_clean_eof_is_closed",
-    "phase123_partial_frame_timeout_is_not_clean_idle",
-    "phase123_partial_frame_eof_is_not_clean_closed",
-    "phase123_idle_before_timeout_retains_session_without_fallback_or_progress",
-    "phase123_idle_after_fake_clock_emits_same_peer_full_block_fallback",
-    "phase123_idle_wake_does_not_consume_message_budget",
-    "phase123_message_after_idle_uses_session_clock_for_compact_timeout",
-    "phase123_idle_session_without_compact_work_yields_after_first_wake",
-    "phase123_compact_download_survives_five_second_idle_cadence_until_timeout",
-    "phase123_compact_timeout_fallback_consumes_matching_block_before_yield",
-    "phase123_slow_messages_without_idle_timestamp_compact_at_receipt",
-    "phase123_closed_receive_ends_session",
-    "phase123_target_mismatch_is_not_written_to_current_session",
-  ].join(" ");
-  const writeTests = [
-    "phase123_sync_block_write_success_increments_served_once",
-    "phase123_sync_block_write_failure_does_not_increment_served",
-    "phase123_sync_non_block_write_does_not_increment_served",
-    "phase123_sync_partial_batch_counts_each_successful_block_before_failure",
-    "phase123_sync_two_successful_blocks_before_later_failure_count_two",
-  ].join(" ");
-  const projectionTests = [
-    "phase123_unobserved_authoritative_network_omits_block_relay_metrics_and_log",
-    "phase123_sync_network_compact_activity_projects_same_snapshot_to_metrics_and_log",
-    "phase123_inbound_metric_provider_remains_unchanged",
-  ].join(" ");
-  const parityNarrative = [
-    "receive-independent idle expiration",
-    "successful typed Block writes",
-    "runtime-only served evidence",
-    "unchanged public status",
-    "one authoritative sync-network snapshot",
-    "packages/bitcoin-knots/src/net.cpp",
-    "packages/bitcoin-knots/src/net_processing.cpp",
-    "packages/bitcoin-knots/test/functional/p2p_compactblocks.py",
-    "default-off package relay filter serving public-network CI production service",
-    "production full-node readiness production-funds blocking runtime existing timeout constant",
-  ].join(" ");
-  const parityIndex = JSON.stringify({
-    surfaces: [{ name: "v2-1-runtime-timing-evidence-integrity", status: "done" }],
-    checklist: {
-      surfaces: [{
-        id: "v2-1-runtime-timing-evidence-integrity",
-        title: "v2.1 Runtime Timing and Evidence Integrity",
-        status: "done",
-        requirements: ["HARD-02", "HARD-03", "HARD-04"],
-        evidence: ["scripts/check-phase123-runtime-timing-evidence-integrity.ts"],
-        rationale: parityNarrative,
-        upstream: {
-          sources: ["packages/bitcoin-knots/src/net.cpp", "packages/bitcoin-knots/src/net_processing.cpp"],
-          tests: ["packages/bitcoin-knots/test/functional/p2p_compactblocks.py"],
-        },
-        known_gaps: ["blocking runtime existing timeout constant"],
-        suspected_unknowns: ["default-off package relay filter serving public-network CI production service production full-node readiness production-funds"],
-      }],
-    },
-  });
-  const breadcrumbs = JSON.stringify({ groups: [
-    breadcrumb("packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs", true),
-    breadcrumb("packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs", false),
-    breadcrumb("packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs", true),
-  ] });
-  const verifyRegion = `
-bun run scripts/check-phase122-compact-relay-peer-completion.ts
-bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
-bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
-bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
-  return new Map<CorpusFile, string>([
-    ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
-    ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame } impl SyncPeerSession for TcpPeerSession { fn send_encoded() { self.stream .write_all(bytes) .map_err(|error| error) } }"],
-    ["packages/open-bitcoin-node/src/sync.rs", `pub fn open_with_block_relay_activation() { Self::open_with_runtime_activation( store, config, RelayActivationConfig::default(), block_relay_activation, false, ) } maybe_inbound_metric_status_provider self.network.block_relay_runtime_evidence_snapshot()? let maybe_block_relay_snapshot = self.maybe_authoritative_block_relay_snapshot()?; self.persist_metrics(&summary, maybe_block_relay_snapshot.as_ref(), timestamp); self.write_block_relay_log(&mut summary, maybe_block_relay_snapshot.as_ref(), timestamp); pub fn sync_until_idle_with_clock_and_cancel`],
-    ["packages/open-bitcoin-node/src/sync/open_runtime.rs", `pub fn open_with_runtime_activation() { Self::open_with_configured_runtime_activation( store, config, relay_activation, block_relay_activation, inbound_enabled, BasicFilterStartupMode::PreserveSaved, ) }
-pub fn open_with_configured_runtime_activation() {
- initialize_configured(&store, now, now, 0, false, u64::MAX, basic_filter_mode)?;
- store.load_chain_meta_for_open()?;
- store.load_all_undo_records()?;
- Chainstate::from_coins_cache(cache, active_chain, undo_by_block, maybe_counts);
- ManagedChainstate::from_recovered_chainstate( FjallChainstateStore::from_store(store.clone()), chainstate, lifecycle, )?;
- let network = Self::prepare_initialized_network(&store, managed, &config, basic_filter_mode, relay_activation, block_relay_activation, inbound_enabled,)?;
- let consensus_params = config.network.consensus_params();
- Self::finish_initialized_runtime(store, network, config, consensus_params) }
-pub(super) fn prepare_initialized_network() {
- let maybe_configured_basic_indexing = match basic_filter_mode { BasicFilterStartupMode::Enabled => Some(true), BasicFilterStartupMode::Disabled => Some(false), BasicFilterStartupMode::PreserveSaved => { store.resolved_basic_filter_indexing_after_startup()? } };
- let local_config = progress::local_peer_config(config);
- let mut network = ManagedPeerNetwork::from_initialized_chainstate(managed, local_config, PolicyConfig::default(), config.max_blocks_in_flight_per_peer, relay_activation, block_relay_activation, inbound_enabled,);
- network.record_basic_indexing_configuration(maybe_configured_basic_indexing);
- if let Some(header_store) = store.load_header_store()? { network.seed_header_store(header_store); }
- Ok(network) }`],
-    ["packages/open-bitcoin-node/src/sync/session.rs", `fn sync_connected_peer_with_cancel() { SyncPeerReceiveOutcome::Message(message) => current_timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); SyncPeerReceiveOutcome::Idle => current_timestamp = (controls.0)(); .expire_compact_download_timeouts(current_timestamp)? .any(|(target_peer_id, _message)| *target_peer_id != peer_id) let fallback_block_hashes = targeted block_reconcile::request_tracked_blocks( self.send_all_for_peer_with_cancel( &mut session, peer_id, &outbound, controls.1, )?; if !self.peer_has_pending_download_work(peer_id) self.complete_peer_session_progress(&mut progress, peer_id); return Ok(()); continue; SyncPeerReceiveOutcome::Closed => progress.record_activity(current_timestamp); let block_response_was_requested = || self.block_extends_active_tip(block) block_reconcile::release_inflight_for_message(self, &message); self.network.receive_sync_message( peer_id, message, current_timestamp, self.verify_flags self.record_block_disposition( let reconcile_progress = block_reconcile::reconcile_best_chain_for_live_session( self, current_timestamp, )?; self.record_reconcile_progress(reconcile_progress); self.persist_progress_and_dispatch_tip()?; } fn peer_has_pending_download_work .compact_download_peer_state(peer_id) .is_some_and(|state| !state.in_flight.is_empty()) .peer_requested_blocks(peer_id) .any(|block_hash| self.inflight_blocks.contains(block_hash)) pub(super) fn send_all_for_peer self.send_all(session, messages)?; let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;`],
-    ["packages/open-bitcoin-node/src/sync/session/emission_terminal.rs", "\nimpl super::DurableSyncRuntime {\n fn send_all_with_cancel() {\n  let buffers = messages .iter() .map(|message| {\n   self.network .encode_pending_network_message(peer_id, message)\n  }) .collect::<Result<Vec<_>, _>>() .map_err(super::filter_serving::transport_error)?;\n  for (message, buffer) in messages.iter().zip(buffers) {\n   if should_cancel() { return Ok(()); }\n   session.send_encoded(buffer.bytes(), self.config.network.magic())?; self.network.acknowledge_wire_message_written(message)?;\n  }\n }\n fn send_all_for_peer_with_cancel() {\n  self.send_all_with_cancel(session, peer_id, messages, should_cancel)?;\n  let emissions = self.announcement_outboxes.take_peer_emissions(peer_id)?;\n  send_peer_emissions( &self.network, session, peer_id, self.config.network.magic(), emissions, should_cancel, )\n }\n}\nfn send_peer_emissions() {\n let preparation = emissions.iter().try_for_each(|emission| {\n  network.encode_pending_network_message(peer_id, emission.message());\n  buffers.push_back(buffer);\n });\n while let Some(emission) = emissions.pop_front() {\n  if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {\n   return combined_error( write_error, abort_current_and_suffix(network, capability, emissions), );\n  }\n  let receipt = capability.acknowledge_write();\n  network.complete_peer_emission(receipt);\n }\n}"],
-    ["packages/open-bitcoin-node/src/sync/block_reconcile.rs", `pub(super) fn request_tracked_blocks .request_missing_blocks(peer_id, &requested)? .inflight_blocks .insert(BlockHash::from(item.object_hash))`],
-    ["packages/open-bitcoin-node/src/sync/block_response.rs", `fn block_extends_active_tip`],
-    ["packages/open-bitcoin-node/src/lib.rs", "SyncPeerReceiveOutcome"],
-    ["packages/open-bitcoin-bench/src/runtime_fixtures.rs", "Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
-    ["packages/open-bitcoin-node/src/network/block_relay_evidence.rs", "pub(crate) struct BlockRelayRuntimeEvidenceSnapshot { pub(crate) served_count: u64 } pub(super) struct ManagedBlockRelayEvidenceState { served_count: u64 } record_wire_message_written WireNetworkMessage::Block(_)"],
-    ["packages/open-bitcoin-node/src/metrics/block_relay.rs", "served_count: u64 MetricKind::BlockServedCount served_count as f64"],
-    ["packages/open-bitcoin-node/src/logging.rs", "pub fn block_relay_log_record served_count: u64 served_count,"],
-    ["packages/open-bitcoin-node/src/status/block_relay_evidence.rs", "pub struct BlockRelayEvidenceStatus {}"],
-    ["packages/open-bitcoin-rpc/src/context.rs", ""],
-    ["packages/open-bitcoin-rpc/src/context/inbound_wire.rs", "\npub(crate) struct EncodedWireResponse { pub(crate) message: WireNetworkMessage, pub(crate) bytes: GenericPendingBuffer }\nimpl ResolvedInboundWireResponses {\n fn push_encoded() {\n  match network.encode_pending_network_message(peer_id, &message) {\n   Ok(bytes) => self.responses.push(InboundWireStep::Encoded(Box::new(EncodedWireResponse { message, bytes, maybe_block_serve_intent, maybe_tx_write_capability, }))),\n   Err(_) => { self.failed = true; }\n  }\n }\n}\nimpl<S: ChainstateStore, V: CoinsView> InboundWireResponsePlan<S, V> {\n fn resolve() {\n  for response in core::mem::take(&mut self.responses) {\n   resolved.push_encoded(message, None, None, &self.network, self.peer_id);\n   self.resolve_block_intent(intent, &mut resolved);\n  }\n  resolved\n }\n fn resolve_block_intent() { resolved.push_encoded(response, Some(intent), None, &self.network, self.peer_id); }\n}\nasync fn resolve_inbound_wire_responses() {\n context.prepare_inbound_wire_message(peer_id, message, timestamp);\n let mut resolved = plan.resolve();\n if resolved.failed { return None; }\n Some(resolved.responses)\n}\nasync fn acknowledge_encoded_wire_response() {\n let context = context.lock().await;\n if let Some(capability) = response.maybe_tx_write_capability.take() {\n  return if was_written { context.complete_peer_emission(capability.acknowledge_write()).is_ok() }\n  else { context.abort_peer_emission(capability).is_ok() };\n }\n let Some(intent) = response.maybe_block_serve_intent.take() else {\n  return !was_written || context .acknowledge_wire_message_written(&response.message) .is_ok();\n };\n let outcome = if was_written { ManagedBlockServeCompletionOutcome::Written } else { ManagedBlockServeCompletionOutcome::TransportFailed };\n context.complete_block_serves(&[intent.completion(outcome)]).is_ok()\n}"],
-    ["packages/open-bitcoin-rpc/src/context/network.rs", "ManagedPeerNetwork::new_with_block_relay_activation( config.block_serving let encoded = self.network.encode_messages(&responses)?; .into_iter() .zip(encoded) EncodedWireResponse { message, bytes }"],
-    ["packages/open-bitcoin-rpc/src/context/canonical_chain.rs", "pub(super) fn build_context_network() { ManagedPeerNetwork::new_with_block_relay_activation(config.block_serving); }"],
-    ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/fixture_runtime.rs", "pub(crate) fn fixture_open_authoritative_network_runtime() { DurableSyncRuntime::open_with_configured_runtime_activation(store, runtime.sync.runtime.clone(), runtime.relay, runtime.block_serving, runtime.inbound.enabled, basic_filter_startup_mode(runtime),); }"],
-    ["packages/open-bitcoin-rpc/src/inbound_listener.rs", ""],
-    ["packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs", "\nasync fn handle_inbound_stream() {\n let encoded_responses = resolve_inbound_wire_responses();\n let steps = Batch { steps: VecDeque::from(encoded_responses) };\n while let Some(step) = steps.steps.pop_front() {\n  let write_result = tokio::select! { result = write_all_for_state( &stream, response.bytes.bytes(), ) => result };\n  if !acknowledge_inbound_response_write(&write_result, &mut response, &context).await { break; }\n }\n}\nasync fn acknowledge_inbound_response_write() {\n acknowledge_encoded_wire_response(matches!(write_result, Ok(WriteWireMessageOutcome::Written)), response, context,).await\n}"],
-    ["packages/open-bitcoin-rpc/src/inbound_listener/tests.rs", "phase123_inbound_encoding_failure_does_not_increment_served phase123_enabled_runtime_config_serves_and_acknowledges_inbound_block phase123_disabled_runtime_config_does_not_serve_inbound_block"],
-    ["packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs", "fn open_authoritative_network_runtime() { DurableSyncRuntime::open_ordinary_configured( store, runtime.sync.runtime.clone(), basic_filter_startup_mode(runtime), ) } set_inbound_metric_status_provider let mut shutdown_latched = false; let mut should_cancel = || daemon_sync_shutdown_requested(&shutdown_receiver) sync_until_idle_with_clock_and_cancel( if shutdown_latched"],
-    ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests.rs", "phase123_daemon_shutdown_cancels_live_silent_peer_session"],
-    ["packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs", `DurableSyncRuntime::open_with_block_relay_activation( Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${timingTests} outcomes.extend((0..13) WireNetworkMessage::Block( compact_block.clone(), ) summary.peer_outcomes[0].contribution.blocks_received, 1 .load_block(expected_hash)`],
-    ["packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs", `Result<SyncPeerReceiveOutcome, SyncRuntimeError> ${writeTests}`],
-    ["packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs", `DurableSyncRuntime::open_with_block_relay_activation( ${projectionTests}`],
-    ["scripts/check-phase121-block-relay-metrics-log-runtime.ts", "P121 authoritative snapshot P121 activation omission P121 same snapshot reuse P121 obsolete provider wiring P121 no-claim boundary"],
-    ["docs/architecture/operator-observability.md", "runtime-only non-serialized not the sync projection source"],
-    ["docs/parity/index.json", parityIndex],
-    ["docs/parity/checklist.md", parityNarrative],
-    ["docs/parity/catalog/p2p.md", parityNarrative],
-    ["docs/parity/source-breadcrumbs.json", breadcrumbs],
-    ["scripts/verify.sh", `${verifyRegion}\n${verifyRegion}\nrun_step "test Phase 123 runtime timing and evidence integrity checker"\nrun_step "check Phase 123 runtime timing and evidence integrity"`],
-  ]);
-}
-
-function breadcrumb(file: string, includeFunctional: boolean) {
-  const anchors = [
-    "packages/bitcoin-knots/src/net.cpp",
-    "packages/bitcoin-knots/src/net_processing.cpp",
-  ];
-  if (includeFunctional) anchors.push("packages/bitcoin-knots/test/functional/p2p_compactblocks.py");
-  return { files: [file], breadcrumbs: anchors };
 }
 function mutate(file: TargetFile, from: string, to: string): Mutator {
   return (files) => {

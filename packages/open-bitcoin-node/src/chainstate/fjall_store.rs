@@ -16,6 +16,9 @@ use open_bitcoin_core::chainstate::{Chainstate, filter_index::lifecycle::IndexGe
 
 mod canonical_genesis;
 
+#[cfg(test)]
+mod phase167_undo_tests;
+
 /// Opaque achieved completion; only a tracked manager's own successful flush creates it.
 pub struct CompletedValidatedFlush {
     pending: PendingValidatedFlush,
@@ -346,6 +349,22 @@ impl FlushPersistSink for FjallChainstateStore {
 
     fn disk_free_bytes(&self) -> u64 {
         FlushPersistSink::disk_free_bytes(&self.store)
+    }
+
+    fn check_chain_meta_counts_support(
+        &self,
+        maybe_counts: Option<&std::collections::HashMap<open_bitcoin_core::primitives::Txid, u32>>,
+    ) -> Result<(), StorageError> {
+        self.store.check_chain_meta_counts_support(maybe_counts)
+    }
+
+    fn persist_chain_meta_with_counts(
+        &mut self,
+        active_chain: &[ChainPosition],
+        maybe_counts: Option<&std::collections::HashMap<open_bitcoin_core::primitives::Txid, u32>>,
+    ) -> Result<(), StorageError> {
+        self.store
+            .persist_chain_meta_with_counts(active_chain, maybe_counts)
     }
 
     fn commit_paired_unlink(

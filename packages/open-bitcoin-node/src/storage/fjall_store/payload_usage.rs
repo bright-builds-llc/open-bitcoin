@@ -12,7 +12,6 @@ use std::{
     },
 };
 
-use fjall::Readable;
 use open_bitcoin_core::chainstate::ChainPosition;
 
 use super::{

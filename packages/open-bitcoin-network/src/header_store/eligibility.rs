@@ -114,8 +114,75 @@ impl HeaderStore {
         params: ConsensusParams,
         current_time: i64,
     ) -> Result<(), NetworkError> {
-        self.check_body_eligibility_inner(block, params, current_time, false)
+        self.check_body_eligibility_detailed(block, params, current_time)
             .map_err(BodyEligibilityError::into_network_error)
+    }
+
+    /// Live arrival-order checks retaining the actual validation failure category.
+    pub fn check_body_eligibility_detailed(
+        &mut self,
+        block: &Block,
+        params: ConsensusParams,
+        current_time: i64,
+    ) -> Result<(), BodyEligibilityError> {
+        self.check_body_eligibility_inner(block, params, current_time, false)
+    }
+
+    /// Cache only genuine contextual consensus failure after owned header and intrinsic gates.
+    pub fn check_submission_body_eligibility_detailed(
+        &mut self,
+        block: &Block,
+        params: ConsensusParams,
+        current_time: i64,
+    ) -> Result<(), BodyEligibilityError> {
+        let hash = block_hash(&block.header);
+        if self.maybe_consensus_params != Some(params) {
+            return Err(invalid_header("body-consensus-params-mismatch").into());
+        }
+        let history = self.canonical_header_history(hash)?;
+        let context = self.canonical_header_validation_context(&block.header)?;
+        if history.candidate() != &block.header
+            || Some(history.network_rules().chain()) != self.maybe_canonical_chain()
+        {
+            return Err(invalid_header("unproved-canonical-body-header").into());
+        }
+        history
+            .check_header_rules(context.current_time)
+            .map_err(BodyEligibilityError::Validation)?;
+        open_bitcoin_consensus::block::check_block(block)
+            .map_err(BodyEligibilityError::Validation)?;
+        let result = self.check_body_eligibility_inner(block, params, current_time, false);
+        if matches!(&result, Err(BodyEligibilityError::Validation(source)) if source.result == open_bitcoin_consensus::BlockValidationResult::Consensus)
+        {
+            self.retain_submission_failure(hash)?;
+        }
+        result
+    }
+
+    #[cfg(test)]
+    pub(super) fn replace_submission_capacity_for_test(&mut self, capacity: usize) -> usize {
+        std::mem::replace(&mut self.body_eligibility.capacity, capacity)
+    }
+
+    #[cfg(test)]
+    pub(super) fn retain_submission_failure_for_test(
+        &mut self,
+        hash: BlockHash,
+    ) -> Result<(), BodyEligibilityError> {
+        self.retain_submission_failure(hash)
+    }
+
+    fn retain_submission_failure(&mut self, hash: BlockHash) -> Result<(), BodyEligibilityError> {
+        if !self.body_eligibility.bodies.contains_key(&hash) {
+            if self.body_eligibility.bodies.len() >= self.body_eligibility.capacity {
+                return Err(invalid_header("body-eligibility-capacity").into());
+            }
+            self.body_eligibility
+                .bodies
+                .insert(hash, BodyState::default());
+        }
+        self.mark_body_failed(hash);
+        Ok(())
     }
 
     fn check_body_eligibility_inner(
@@ -135,6 +202,49 @@ impl HeaderStore {
         }
         if self.entries.contains_key(&hash) && self.maybe_proof_facts(hash).is_none() {
             return Err(invalid_header("unproved-body-header").into());
+        }
+        if let Some(chain) = self.maybe_canonical_chain() {
+            if !self.is_canonically_admitted(hash)
+                || self
+                    .entries
+                    .get(&hash)
+                    .is_none_or(|entry| entry.header != block.header)
+            {
+                return Err(invalid_header("unproved-canonical-body-header").into());
+            }
+            if hash == chain.spec().genesis_hash() {
+                let proof = open_bitcoin_consensus::chain_spec::CanonicalGenesisProof::prove(
+                    chain.spec(),
+                    block,
+                )
+                .map_err(|_| invalid_header("noncanonical-genesis-body"))?;
+                if self
+                    .entries
+                    .get(&hash)
+                    .is_none_or(|entry| entry.height != 0 || entry.chain_work != proof.work())
+                {
+                    return Err(invalid_header("unproved-canonical-genesis-body").into());
+                }
+                open_bitcoin_consensus::block::check_block_header_with_params(
+                    &block.header,
+                    &params,
+                )
+                .map_err(BodyEligibilityError::Validation)?;
+                open_bitcoin_consensus::block::check_block(block)
+                    .map_err(BodyEligibilityError::Validation)?;
+            } else {
+                let history = self.canonical_header_history(hash)?;
+                let context = self.canonical_header_validation_context(&block.header)?;
+                open_bitcoin_consensus::block::check_block_with_candidate_history(
+                    block,
+                    &history,
+                    context.current_time,
+                )
+                .map_err(BodyEligibilityError::Validation)?;
+            }
+            self.body_eligibility
+                .record_with_order(hash, self.parents[&hash], order_unknown)?;
+            return Ok(());
         }
         let context = self.header_validation_context(&block.header, current_time, params)?;
         open_bitcoin_consensus::block::check_block_header_with_params(&block.header, &params)

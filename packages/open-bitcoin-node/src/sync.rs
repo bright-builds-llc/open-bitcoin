@@ -15,6 +15,7 @@ use std::{
 mod block_reconcile;
 mod block_response;
 mod canonical_genesis;
+mod canonical_history;
 mod live_fixture;
 mod metrics;
 mod open_runtime;

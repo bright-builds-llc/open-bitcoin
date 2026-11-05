@@ -1,0 +1,11 @@
+# Plan02 executable key-link metadata amendment
+
+## amendment-offline-link | 2026-10-21T20:26:12Z
+
+The completed corpus/source checks and summary remain accepted evidence, pending this bounded metadata gate. Root's `verify key-links` returned0/1 because its default scanner expected the literal complete contexts path inside source. The producer constructs that path from DATA and contexts.json; the actual offline `check()` calls `checkContexts(context, corpus.blocks)` at line207. No source change is needed or made.
+
+The exact pre-edit plan is preserved at `.local/open-bitcoin-dev/phase167/plan02-key-link-amendment/before-PLAN.md`, SHA256 `85ab9cba41dbb678279ca5f52af12da9b19576a6c2bcdf62617e09e326181f73`. The sole plan change adds the plain regex `checkContexts\(context, corpus\.blocks\)` to the existing real producer→contexts.json key link. It identifies actual offline validation rather than a comment or unused string. Original tasks, actions, owners, wave/dependencies, requirements, truths, generated_at and lifecycle167-2026-10-21T16-38-23/yolo remain byte-identical after removing this one added line.
+
+The source's check() reads the context file, checks its source-bound hash/schema, then executes this real call. Full offline data checks and55 focused tests were completed before this metadata correction. All six source/data owners and acquisition logs remain unchanged. No Cargo/Bazel, source fix, evidence reduction, source-guard renewal, staging, commit or push occurs here. Root's independent checker must review the exact delta and verify the current link before Plan02 acceptance. This note does not claim whole-phase verification or actual-daemon qualification.
+
+Independent review passed with zero blockers/warnings; the append-only20:26:36Z review is in167-PLAN-CHECK.md. Exact pre-edit snapshot digest and one-line normalization pass; actual offline call and current key link validate1/1. The original snapshot was also rerun unchanged against source to retain the reproducible0/1 metadata result at plan02-key-link-amendment/reproduced-original-key-link.json, alongside final-key-link.json. That later reproduction is distinct from the original tool transcript and is not behavioral RED. No source/data/test result changed.

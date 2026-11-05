@@ -7,7 +7,9 @@ use std::collections::BTreeSet;
 use std::mem::size_of;
 
 use open_bitcoin_core::{
-    codec::{TransactionEncoding, encode_transaction, parse_transaction},
+    codec::{
+        TransactionEncoding, encode_transaction, transaction::wire::parse_serialized_transaction,
+    },
     consensus::{transaction_txid as canonical_txid, transaction_wtxid},
     primitives::{OutPoint, Transaction, Txid, Wtxid},
 };
@@ -27,6 +29,8 @@ use crate::{StorageError, StorageNamespace};
 
 mod decode;
 mod representability;
+#[cfg(test)]
+mod serialized_tests;
 
 pub(crate) use representability::assert_mempool_snapshot_representable;
 #[cfg(test)]
@@ -415,7 +419,8 @@ fn encode_canonical_transaction(transaction: &Transaction) -> Result<Vec<u8>, St
 }
 
 fn decode_canonical_transaction(bytes: &[u8]) -> Result<Transaction, StorageError> {
-    parse_transaction(bytes).map_err(|_| snapshot_failure(MempoolSnapshotError::DecodeFailure))
+    parse_serialized_transaction(bytes)
+        .map_err(|_| snapshot_failure(MempoolSnapshotError::DecodeFailure))
 }
 
 fn canonical_member_identity(

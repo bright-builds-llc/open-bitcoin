@@ -18,6 +18,7 @@
 
 pub mod block;
 pub mod block_filter;
+pub mod candidate_history;
 pub mod chain_proof;
 pub mod chain_spec;
 pub mod classify;
@@ -37,6 +38,10 @@ pub use block::{
 pub use block_filter::{
     BasicFilter, FilterHeaderError, FilterHeaderPredecessor, compute_filter_header,
     filter_hash_display_hex, filter_header_display_hex,
+};
+pub use candidate_history::{
+    Bip30Disposition, Bip34Context, CandidateHistory, CandidateRules, HistoryError, HistoryHeader,
+    HistoryOrigin,
 };
 pub use chain_proof::{ProofTimeError, ProofWork, block_proof, proof_equivalent_time};
 pub use chain_spec::{

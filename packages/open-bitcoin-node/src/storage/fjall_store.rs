@@ -8,10 +8,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use fjall::{Database, Keyspace, KeyspaceCreateOptions, PersistMode as FjallPersistMode};
+use fjall::{KeyspaceCreateOptions, PersistMode as FjallPersistMode};
 use open_bitcoin_core::{
     chainstate::ChainstateSnapshot,
-    codec::{encode_block, parse_block},
+    codec::{block::wire::parse_serialized_block, encode_block},
     consensus::block_hash,
     primitives::{Block, BlockHash},
     wallet::WalletSnapshot,
@@ -38,8 +38,12 @@ use super::{
 use crate::{SelectedWalletRecord, WalletRegistrySnapshot, WalletRescanJob};
 
 mod blocks;
+pub(in crate::storage) mod bounded_rows;
+#[cfg(test)]
+pub(crate) use bounded_rows::{DurableRowsMeasurement, measure_detached_rows_for_test};
 pub(crate) mod canonical_genesis;
 pub use canonical_genesis::OpenedCanonicalGenesis;
+mod chain_meta;
 mod coins;
 mod coins_access;
 pub(crate) mod filters;
@@ -49,6 +53,7 @@ mod open_lease;
 mod opening;
 mod payload_usage;
 mod prune;
+pub(in crate::storage) mod tracked;
 pub(crate) mod validation_history;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
 pub use payload_usage::{PayloadUsageRevision, RetainedPayloadUsage};
@@ -57,6 +62,7 @@ pub(crate) use prune::resume_prune_intent;
 #[cfg(test)]
 pub(crate) use prune::{HAVE_PRUNED_KEY, PruneIntent};
 pub(in crate::storage) use prune::{PRUNE_LOCKS_KEY, decode_prune_locks, encode_prune_locks};
+use tracked::{Database, Keyspace};
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";
@@ -118,41 +124,6 @@ impl FjallNodeStore {
             .transpose()
     }
 
-    /// Persist header metadata and the block-index projection atomically.
-    pub fn save_header_entries(
-        &self,
-        entries: &[HeaderEntry],
-        mode: PersistMode,
-    ) -> Result<(), StorageError> {
-        let header_bytes = encode_header_entries(entries)?;
-        let block_index_bytes = encode_block_index_entries(entries)?;
-        let _publication = self.filter_publication_guard()?;
-        self.invalidate_validation_coverage()?;
-        let mut batch = self.db.batch();
-        if let Some(mode) = fjall_persist_mode(mode) {
-            batch = batch.durability(Some(mode));
-        }
-        batch.insert(&self.headers, SNAPSHOT_KEY, header_bytes);
-        batch.insert(&self.block_index, SNAPSHOT_KEY, block_index_bytes);
-        batch
-            .commit()
-            .map_err(|error| backend_failure(StorageNamespace::Headers, error))
-    }
-
-    /// Load persisted header entries.
-    pub fn load_header_entries(&self) -> Result<Option<StoredHeaderEntries>, StorageError> {
-        self.get_bytes(StorageNamespace::Headers, SNAPSHOT_KEY)?
-            .map(|bytes| decode_header_entries(&bytes))
-            .transpose()
-    }
-
-    /// Load persisted block-index entries.
-    pub fn load_block_index_entries(&self) -> Result<Option<StoredHeaderEntries>, StorageError> {
-        self.get_bytes(StorageNamespace::BlockIndex, SNAPSHOT_KEY)?
-            .map(|bytes| decode_block_index_entries(&bytes))
-            .transpose()
-    }
-
     /// Persist a downloaded block under its canonical block hash.
     pub fn save_block(&self, block: &Block, mode: PersistMode) -> Result<BlockHash, StorageError> {
         #[cfg(test)]
@@ -174,7 +145,8 @@ impl FjallNodeStore {
     pub fn load_block(&self, block_hash: BlockHash) -> Result<Option<Block>, StorageError> {
         self.get_bytes(StorageNamespace::BlockIndex, &block_key(block_hash))?
             .map(|bytes| {
-                parse_block(&bytes).map_err(|error| corruption(StorageNamespace::BlockIndex, error))
+                parse_serialized_block(&bytes)
+                    .map_err(|error| corruption(StorageNamespace::BlockIndex, error))
             })
             .transpose()
     }
@@ -588,5 +560,7 @@ fn recovery_marker_corruption(error: StorageError) -> StorageError {
     }
 }
 
+#[cfg(test)]
+mod serialized_body_tests;
 #[cfg(test)]
 mod tests;

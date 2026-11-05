@@ -144,6 +144,7 @@ pub(super) fn chainstate_snapshot() -> ChainstateSnapshot {
     undo_by_block.insert(
         position.block_hash,
         BlockUndo {
+            overwrites: Vec::new(),
             transactions: vec![TxUndo {
                 restored_inputs: vec![coin],
             }],
@@ -152,6 +153,8 @@ pub(super) fn chainstate_snapshot() -> ChainstateSnapshot {
 
     ChainstateSnapshot::new(vec![position], utxos, undo_by_block)
 }
+
+mod phase167_undo;
 
 pub(super) fn wallet_snapshot() -> WalletSnapshot {
     let mut wallet = Wallet::new(AddressNetwork::Regtest);

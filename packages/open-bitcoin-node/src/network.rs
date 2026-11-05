@@ -43,6 +43,10 @@ mod recovery;
 mod relay_fanout;
 mod relay_serving;
 mod runtime_authority;
+pub(crate) use runtime_authority::{
+    ContinuationDenied, SyncPeerAuthorized, SyncPeerContinuation, SyncPeerDispatchOutcome,
+    SyncPeerLifetime, SyncPeerObservation, SyncPeerRequestAuthority,
+};
 mod types;
 pub(crate) mod validation_history;
 pub(crate) mod work_authority;
@@ -333,19 +337,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             wtxidrelay_peers,
             header_preferring_peers,
         }
-    }
-
-    pub fn connect_outbound_peer(
-        &mut self,
-        peer_id: PeerId,
-        timestamp: i64,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkError> {
-        let next_session_generation = self.next_peer_session_generation(peer_id)?;
-        let actions = self.peer_manager.add_outbound_peer(peer_id, timestamp)?;
-        self.peer_session_generations
-            .insert(peer_id, next_session_generation);
-        self.known_peers.insert(peer_id);
-        self.collect_outbound(actions)
     }
 
     fn peer_session_generation(&self, peer_id: PeerId) -> lifecycle_effects::PeerSessionGeneration {

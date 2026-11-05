@@ -79,24 +79,6 @@ impl AdmissionScope {
                 .map_err(CanonicalAdmissionError::UnsupportedValidationScope),
         }
     }
-
-    pub(super) fn check_header(self, header: &BlockHeader) -> Result<(), CanonicalAdmissionError> {
-        if let Self::Canonical(chain) = self
-            && header.previous_block_hash.to_byte_array() == [0; 32]
-        {
-            chain.spec().check_genesis_header(header)?;
-        }
-        self.require_history()
-    }
-
-    pub(super) fn check_body(self, block: &Block) -> Result<(), CanonicalAdmissionError> {
-        if let Self::Canonical(chain) = self
-            && block.header.previous_block_hash.to_byte_array() == [0; 32]
-        {
-            chain.spec().check_genesis_block(block)?;
-        }
-        self.require_history()
-    }
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
@@ -133,7 +115,15 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 "canonical genesis owner binding mismatch",
             ));
         }
-        let headers = HeaderStore::from_canonical_genesis(proof)?;
+        let mut headers = HeaderStore::from_canonical_genesis(proof)?;
+        if proof.chain() == CanonicalChain::Regtest {
+            // Header lineage alone has no body seal. This adapter holds the full proved root.
+            headers.check_body_eligibility(
+                proof.block(),
+                params,
+                i64::from(proof.header().time),
+            )?;
+        }
         let mut network = Self::from_initialized_chainstate(
             managed,
             local_config,
@@ -181,10 +171,48 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                     .map_err(|error| CanonicalAdmissionError::from(error).network_error())?;
             }
         }
-        self.admission_scope
-            .require_history()
-            .map_err(|error| error.network_error())?;
-        self.peer_manager.seed_header_store(headers);
+        self.require_owned_history()?;
+        let proof = open_bitcoin_core::consensus::chain_spec::CanonicalGenesisProof::prove(
+            chain.spec(),
+            &chain.spec().genesis_block(),
+        )
+        .map_err(|error| CanonicalAdmissionError::from(error).network_error())?;
+        // Resolve order from actual parent identities, never supplied heights/scores.
+        let mut pending: Vec<_> = headers.entries().cloned().collect();
+        let mut ordered = Vec::with_capacity(pending.len());
+        let mut known = std::collections::BTreeSet::from([proof.hash()]);
+        while !pending.is_empty() {
+            let Some(index) = pending.iter().position(|entry| {
+                entry.header == *proof.header() || known.contains(&entry.header.previous_block_hash)
+            }) else {
+                return Err(NetworkError::InvalidHeader {
+                    reject_reason: "unlinked-canonical-header-import".to_owned(),
+                    maybe_debug_message: None,
+                }
+                .into());
+            };
+            let entry = pending.remove(index);
+            let hash = open_bitcoin_core::consensus::block_hash(&entry.header);
+            if hash != entry.block_hash {
+                return Err(NetworkError::InvalidHeader {
+                    reject_reason: "unproved-header-identity".to_owned(),
+                    maybe_debug_message: None,
+                }
+                .into());
+            }
+            known.insert(hash);
+            ordered.push(entry);
+        }
+        let now = super::header_sync::shell_observed_now()?;
+        HeaderStore::readmit_canonical_entries(&proof, ordered.clone(), now)?;
+        // Retain prior successful clock observations and arrival order on this owner.
+        let mut admitted = self.peer_manager.header_store().clone();
+        for entry in ordered {
+            if entry.header != *proof.header() {
+                admitted.insert_canonical_header(entry.header, now)?;
+            }
+        }
+        self.peer_manager.seed_header_store(admitted);
         Ok(())
     }
 
@@ -222,6 +250,14 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             .map(|entry| entry.header.clone())
             .collect();
         self.guard_header_batch(&candidates)?;
+        if self.admission_scope != AdmissionScope::Fixture {
+            self.admission_scope
+                .require_history()
+                .map_err(|error| error.network_error())?;
+            return Err(ManagedNetworkError::LifecycleEffect(
+                "canonical owner refuses fixture admission",
+            ));
+        }
         if self
             .maybe_header_consensus_params
             .is_some_and(|selected| selected != params)
@@ -275,38 +311,60 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         self.publish_admitted_header_identities(identities)
     }
 
-    pub(super) fn guard_body(&self, block: &Block) -> ManagedResult<()> {
-        self.admission_scope
-            .check_body(block)
-            .map_err(|error| error.network_error().into())
-    }
-
-    pub(super) fn guard_header_batch(&self, headers: &[BlockHeader]) -> ManagedResult<()> {
-        for header in headers {
-            self.admission_scope
-                .check_header(header)
-                .map_err(|error| error.network_error())?;
+    pub(super) fn require_owned_history(&self) -> ManagedResult<()> {
+        if self.maybe_canonical_chain() == Some(CanonicalChain::Regtest)
+            && self.chainstate.chainstate().maybe_canonical_chain() == Some(CanonicalChain::Regtest)
+            && self.peer_manager.header_store().maybe_canonical_chain()
+                == Some(CanonicalChain::Regtest)
+        {
+            return Ok(());
         }
         self.admission_scope
             .require_history()
             .map_err(|error| error.network_error().into())
     }
 
+    pub(super) fn guard_body(&mut self, block: &Block) -> ManagedResult<()> {
+        if self.admission_scope == AdmissionScope::Fixture {
+            return Ok(());
+        }
+        if let Some(chain) = self.maybe_canonical_chain()
+            && block.header.previous_block_hash.to_byte_array() == [0; 32]
+        {
+            chain
+                .spec()
+                .check_genesis_block(block)
+                .map_err(|error| CanonicalAdmissionError::from(error).network_error())?;
+        }
+        self.require_owned_history()?;
+        self.admit_canonical_body_context(block)
+    }
+
+    pub(super) fn guard_header_batch(&self, headers: &[BlockHeader]) -> ManagedResult<()> {
+        for header in headers {
+            if let Some(chain) = self.maybe_canonical_chain()
+                && header.previous_block_hash.to_byte_array() == [0; 32]
+            {
+                chain
+                    .spec()
+                    .check_genesis_header(header)
+                    .map_err(|error| CanonicalAdmissionError::from(error).network_error())?;
+            }
+        }
+        self.require_owned_history()
+    }
+
     pub(super) fn guard_message_admission(
-        &self,
+        &mut self,
         message: &WireNetworkMessage,
     ) -> ManagedResult<()> {
         match message {
             WireNetworkMessage::Headers(message) => self.guard_header_batch(&message.headers),
             WireNetworkMessage::Block(block) => self.guard_body(block),
-            WireNetworkMessage::CompactBlock(payload) => self
-                .admission_scope
-                .check_header(&payload.header)
-                .map_err(|error| error.network_error().into()),
-            WireNetworkMessage::BlockTxn(_) => self
-                .admission_scope
-                .require_history()
-                .map_err(|error| error.network_error().into()),
+            WireNetworkMessage::CompactBlock(payload) => {
+                self.guard_header_batch(std::slice::from_ref(&payload.header))
+            }
+            WireNetworkMessage::BlockTxn(_) => self.require_owned_history(),
             _ => Ok(()),
         }
     }

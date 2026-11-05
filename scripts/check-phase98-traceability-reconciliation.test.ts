@@ -82,6 +82,21 @@ test("passes with complete Phase 98 traceability corpus", () => {
   expect(failures).toEqual([]);
 });
 
+test("historical seventeen pending does not masquerade as stale seven pending", () => {
+  // Arrange
+  const root = createFixture({
+    maybeMutateFiles(files) {
+      appendToFile(files, ".planning/STATE.md", "fresh30 all17 pending;168 unstarted");
+    },
+  });
+
+  // Act
+  const failures = checkPhase98TraceabilityReconciliation({ rootDir: root });
+
+  // Assert
+  expect(failures).toEqual([]);
+});
+
 test("fails stale Phase 90 canonical ownership", () => {
   // Arrange
   const root = createFixture({

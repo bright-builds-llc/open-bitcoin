@@ -1,0 +1,1412 @@
+{
+  "schema": "phase167-historical-results-v1",
+  "status": "all_39_attributable_observations_passed_pending_root_review",
+  "task2_source_execution_released": true,
+  "source_pin": {
+    "bitcoin_knots_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
+    "corpus_sha256": {
+      "blocks.json": "6e81f7f06037d8c1e18b75ddef67d16aa6ab09a505ca616db612de1f29e0c335",
+      "contexts.json": "3067e98fb235c97226482a6c1b9fad2484fe58610f5ed1c25e8860a0a970fd5a",
+      "manifest.json": "16649d2cee73bfd769632bd8b59a06af50ee2d8bb69a2a71dcaad8be88d53b09",
+      "bip30-fixtures.txt": "7b91df3ceee0f702c46f98911f4dc92a85c85a0327697e424810c46a379fff5a"
+    },
+    "accepted_final15_sha256": "898a20a004047259b6def19e47cc550a84c5b1569c511043e76b83567ff219e8"
+  },
+  "required_command": {
+    "task1": "bun run scripts/command-timings.ts run --key phase167-16-task1 -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node phase167_historical_scripts -- --test-threads=1",
+    "task2": "bun run scripts/command-timings.ts run --key phase167-16-task2 -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node phase167_historical_bip30 -- --test-threads=1",
+    "actual_receipt": {
+      "task1_log": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task1-isolated.log",
+      "task2_exact_log": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task2-isolated.log",
+      "task2_case_log": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/case-observations-final.log"
+    },
+    "nonzero_named_discovery": {
+      "task1": 16,
+      "task2": 7
+    }
+  },
+  "contract_note": "Complete overwritten Coin restoration exceeds Knots normal overwrite undo and is not a historical disconnect parity claim. Synthetic rechecks are pure contextual evidence only.",
+  "cases": [
+    {
+      "id": "RG16-BIP30-91842-MANAGED",
+      "evidence_class": "real_seeded_body",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "managed seeded connect accepts exact repeat; complete old Coin overwritten by complete new Coin; no earned/canonical/BASIC authority",
+      "observed": {
+        "first_outcome": "Exact seeded managed connect accepted; single complete overwrite batch contains the prior and new Coin; disk-backed restore test independently reopened the endpoint.",
+        "evidence_class": "real_seeded_body",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_exact_repeats_preserve_complete_old_coin",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-MANAGED PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Exact seeded managed connect accepted; single complete overwrite batch contains the prior and new Coin; disk-backed restore test independently reopened the endpoint.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-FULLY-SPENT",
+      "evidence_class": "real_seeded_body",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "managed connect accepts exact body after old outpoint is fully spent; one captured empty overwrite batch",
+      "observed": {
+        "first_outcome": "Managed connect accepted after the original outpoint was removed; captured overwrite batch is present and empty.",
+        "evidence_class": "real_seeded_body",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_exact_repeats_preserve_complete_old_coin",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-FULLY-SPENT PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Managed connect accepted after the original outpoint was removed; captured overwrite batch is present and empty.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-RESTORE",
+      "evidence_class": "physical_restore",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "checkpoint; all handles released; mechanical reopen; managed disconnect restores entire prior snapshot and old Coin; physical reopen; managed reconnect restores entire connected endpoint; physical reopen",
+      "observed": {
+        "first_outcome": "Connected endpoint reopened from Fjall; managed disconnect restored all active positions, work, MTP and full prior Coins; restored endpoint reopened; same exact body reconnected and reopened.",
+        "evidence_class": "physical_restore",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_both_repeats_restore_across_physical_reopen",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-RESTORE PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Connected endpoint reopened from Fjall; managed disconnect restored all active positions, work, MTP and full prior Coins; restored endpoint reopened; same exact body reconnected and reopened.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-WRONG-HEIGHT",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed HEIGHT branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-WRONG-HEIGHT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-WRONG-HASH",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed HASH branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-WRONG-HASH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-WRONG-NETWORK",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed NETWORK branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-WRONG-NETWORK PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-WRONG-ANCESTOR",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed ANCESTOR branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-WRONG-ANCESTOR PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91842-MISSING-UNDO",
+      "evidence_class": "durable_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "missing durable body/undo or standalone undo refuses; durable accepted endpoint unchanged; pre-injection comparison proves only deliberate row changed, and post-attempt manifest equals post-injection pre-attempt manifest",
+      "observed": {
+        "first_outcome": "Only the logical undo row was removed while body remained; managed disconnect refused, accepted endpoint and post-injection physical manifest stayed unchanged.",
+        "evidence_class": "durable_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_missing_and_corrupt_undo_refuse_without_accepted_change",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-MISSING-UNDO PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Only the logical undo row was removed while body remained; managed disconnect refused, accepted endpoint and post-injection physical manifest stayed unchanged.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed.",
+      "pre_injection_manifest": null,
+      "post_injection_pre_attempt_manifest": null,
+      "post_attempt_manifest": null
+    },
+    {
+      "id": "RG16-BIP30-91842-MALFORMED-UNDO",
+      "evidence_class": "durable_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91842,
+        "block_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+        "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+        "original_height": 91812,
+        "original_block_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+        "original_raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e"
+      },
+      "expected": "malformed physical undo decode/binding refuses; durable accepted endpoint unchanged; pre-injection comparison proves only deliberate row changed, and post-attempt manifest equals post-injection pre-attempt manifest",
+      "observed": {
+        "first_outcome": "Both decode corruption and decodable wrong transaction binding refused; all other logical rows and post-injection physical manifests stayed unchanged.",
+        "evidence_class": "durable_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_missing_and_corrupt_undo_refuse_without_accepted_change",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91842-MALFORMED-UNDO PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Both decode corruption and decodable wrong transaction binding refused; all other logical rows and post-injection physical manifests stayed unchanged.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed.",
+      "pre_injection_manifest": null,
+      "post_injection_pre_attempt_manifest": null,
+      "post_attempt_manifest": null
+    },
+    {
+      "id": "RG16-BIP30-91880-MANAGED",
+      "evidence_class": "real_seeded_body",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "managed seeded connect accepts exact repeat; complete old Coin overwritten by complete new Coin; no earned/canonical/BASIC authority",
+      "observed": {
+        "first_outcome": "Exact seeded managed connect accepted; single complete overwrite batch contains the prior and new Coin; disk-backed restore test independently reopened the endpoint.",
+        "evidence_class": "real_seeded_body",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_exact_repeats_preserve_complete_old_coin",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-MANAGED PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Exact seeded managed connect accepted; single complete overwrite batch contains the prior and new Coin; disk-backed restore test independently reopened the endpoint.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-FULLY-SPENT",
+      "evidence_class": "real_seeded_body",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "managed connect accepts exact body after old outpoint is fully spent; one captured empty overwrite batch",
+      "observed": {
+        "first_outcome": "Managed connect accepted after the original outpoint was removed; captured overwrite batch is present and empty.",
+        "evidence_class": "real_seeded_body",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_exact_repeats_preserve_complete_old_coin",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-FULLY-SPENT PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Managed connect accepted after the original outpoint was removed; captured overwrite batch is present and empty.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-RESTORE",
+      "evidence_class": "physical_restore",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "checkpoint; all handles released; mechanical reopen; managed disconnect restores entire prior snapshot and old Coin; physical reopen; managed reconnect restores entire connected endpoint; physical reopen",
+      "observed": {
+        "first_outcome": "Connected endpoint reopened from Fjall; managed disconnect restored all active positions, work, MTP and full prior Coins; restored endpoint reopened; same exact body reconnected and reopened.",
+        "evidence_class": "physical_restore",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_both_repeats_restore_across_physical_reopen",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-RESTORE PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Connected endpoint reopened from Fjall; managed disconnect restored all active positions, work, MTP and full prior Coins; restored endpoint reopened; same exact body reconnected and reopened.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-WRONG-HEIGHT",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed HEIGHT branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-WRONG-HEIGHT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-WRONG-HASH",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed HASH branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-WRONG-HASH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-WRONG-NETWORK",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed NETWORK branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-WRONG-NETWORK PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-WRONG-ANCESTOR",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "refuses before accepted mutation at first actual gate",
+      "observed": {
+        "first_outcome": "CandidateHistory::check_seeded refused at typed ANCESTOR branch fact before storage was opened.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_wrong_network_height_hash_and_ancestor_refuse_first",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-WRONG-ANCESTOR PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-91880-MISSING-UNDO",
+      "evidence_class": "durable_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "missing durable body/undo or standalone undo refuses; durable accepted endpoint unchanged; pre-injection comparison proves only deliberate row changed, and post-attempt manifest equals post-injection pre-attempt manifest",
+      "observed": {
+        "first_outcome": "Only the logical undo row was removed while body remained; managed disconnect refused, accepted endpoint and post-injection physical manifest stayed unchanged.",
+        "evidence_class": "durable_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_missing_and_corrupt_undo_refuse_without_accepted_change",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-MISSING-UNDO PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Only the logical undo row was removed while body remained; managed disconnect refused, accepted endpoint and post-injection physical manifest stayed unchanged.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed.",
+      "pre_injection_manifest": null,
+      "post_injection_pre_attempt_manifest": null,
+      "post_attempt_manifest": null
+    },
+    {
+      "id": "RG16-BIP30-91880-MALFORMED-UNDO",
+      "evidence_class": "durable_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "original_height": 91722,
+        "original_block_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+        "original_raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e"
+      },
+      "expected": "malformed physical undo decode/binding refuses; durable accepted endpoint unchanged; pre-injection comparison proves only deliberate row changed, and post-attempt manifest equals post-injection pre-attempt manifest",
+      "observed": {
+        "first_outcome": "Both decode corruption and decodable wrong transaction binding refused; all other logical rows and post-injection physical manifests stayed unchanged.",
+        "evidence_class": "durable_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_missing_and_corrupt_undo_refuse_without_accepted_change",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-MALFORMED-UNDO PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "Both decode corruption and decodable wrong transaction binding refused; all other logical rows and post-injection physical manifests stayed unchanged.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed.",
+      "pre_injection_manifest": null,
+      "post_injection_pre_attempt_manifest": null,
+      "post_attempt_manifest": null
+    },
+    {
+      "id": "RG16-BIP30-91880-EXTERNAL-SPEND",
+      "evidence_class": "real_seeded_body",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 91880,
+        "block_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+        "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+        "external_outpoint": "cae24697a15419b1de45c99a41149101c252c2dbd3fd0bbce06ac5809d4547e3:1"
+      },
+      "expected": "exact external P2PKH Coin is spent and complete input Coin restored on disconnect",
+      "observed": {
+        "first_outcome": "The source-bound external outpoint was spent on connected endpoint and restored with the full prior snapshot on disconnect.",
+        "evidence_class": "real_seeded_body",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_both_repeats_restore_across_physical_reopen",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-91880-EXTERNAL-SPEND PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "The source-bound external outpoint was spent on connected endpoint and restored with the full prior snapshot on disconnect.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-UNRELATED-LIVE-DUPLICATE",
+      "evidence_class": "real_seeded_body",
+      "source_identity": {
+        "network": "mainnet",
+        "height": null,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "actual apply kernel returns OutputOverwrite; accepted and physical state unchanged",
+      "observed": {
+        "first_outcome": "A separately seeded live output of the non-coinbase transaction produced OutputOverwrite; accepted and durable prior endpoints stayed unchanged.",
+        "evidence_class": "real_seeded_body",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_exact_repeats_preserve_complete_old_coin",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-UNRELATED-LIVE-DUPLICATE PASS"
+      },
+      "accepted_before": "Independently seeded complete prior snapshot with old Coin, positions, work and source-bound external input when present.",
+      "accepted_after": "A separately seeded live output of the non-coinbase transaction produced OutputOverwrite; accepted and durable prior endpoints stayed unchanged.",
+      "durable_before": "Fresh isolated Fjall store seeded from complete prior mechanical snapshot; exact body retained for connected and restoration paths.",
+      "durable_after": "Isolated physical reopen or post-injection manifest assertions passed in named test; no canonical/BASIC ScriptsValid authority claimed.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-MAINNET-1983701-MATCH",
+      "evidence_class": "checked_synthetic_rule",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 1983701,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "match"
+      },
+      "expected": "valid selected BIP34 seed yields IndependentlySeeded context; CandidateRules requires_bip30_scan = false; synthetic checked context only, no body acceptance",
+      "observed": {
+        "first_outcome": "Matching valid selected-height seed yielded IndependentlySeeded and scan=false; synthetic checked context only.",
+        "evidence_class": "checked_synthetic_rule",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-MAINNET-1983701-MATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-MAINNET-1983701-MISMATCH",
+      "evidence_class": "checked_synthetic_rule",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 1983701,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "mismatch"
+      },
+      "expected": "valid different BIP34 seed yields IndependentlySeeded context; CandidateRules requires_bip30_scan = true; synthetic checked context only, no body acceptance",
+      "observed": {
+        "first_outcome": "Different valid selected-height seed yielded IndependentlySeeded and scan=true; synthetic checked context only.",
+        "evidence_class": "checked_synthetic_rule",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-MAINNET-1983701-MISMATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-MAINNET-1983701-ABSENT",
+      "evidence_class": "checked_context_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 1983701,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "absent"
+      },
+      "expected": "CandidateHistory::check_seeded without required BIP34 seed returns MissingAncestor at selected BIP34 height before CandidateRules exists; no scan disposition is derived",
+      "observed": {
+        "first_outcome": "Missing selected BIP34 seed returned typed MissingAncestor at selected activation height before CandidateRules construction.",
+        "evidence_class": "checked_context_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-MAINNET-1983701-ABSENT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-MAINNET-1983702-MATCH",
+      "evidence_class": "checked_context_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 1983702,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "match"
+      },
+      "expected": "CandidateHistory::check_seeded with supplied BIP34 seed returns UnexpectedBip34Seed before CandidateRules exists; any separately tested scan=true formula is pure facts only, not this checked result",
+      "observed": {
+        "first_outcome": "Unexpected supplied seed returned typed UnexpectedBip34Seed before CandidateRules construction.",
+        "evidence_class": "checked_context_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-MAINNET-1983702-MATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-MAINNET-1983702-MISMATCH",
+      "evidence_class": "checked_context_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 1983702,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "mismatch"
+      },
+      "expected": "CandidateHistory::check_seeded with supplied BIP34 seed returns UnexpectedBip34Seed before CandidateRules exists; any separately tested scan=true formula is pure facts only, not this checked result",
+      "observed": {
+        "first_outcome": "Unexpected supplied seed returned typed UnexpectedBip34Seed before CandidateRules construction.",
+        "evidence_class": "checked_context_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-MAINNET-1983702-MISMATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-MAINNET-1983702-ABSENT",
+      "evidence_class": "checked_synthetic_rule",
+      "source_identity": {
+        "network": "mainnet",
+        "height": 1983702,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "absent"
+      },
+      "expected": "CandidateHistory::check_seeded with no BIP34 seed yields UnneededAtRecheck; CandidateRules requires_bip30_scan = true; synthetic checked context only, no body acceptance",
+      "observed": {
+        "first_outcome": "At recheck, no seed yielded UnneededAtRecheck and scan=true; synthetic checked context only.",
+        "evidence_class": "checked_synthetic_rule",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-MAINNET-1983702-ABSENT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-TESTNET3-1983701-MATCH",
+      "evidence_class": "checked_synthetic_rule",
+      "source_identity": {
+        "network": "testnet3",
+        "height": 1983701,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "match"
+      },
+      "expected": "valid selected BIP34 seed yields IndependentlySeeded context; CandidateRules requires_bip30_scan = false; synthetic checked context only, no body acceptance",
+      "observed": {
+        "first_outcome": "Matching valid selected-height seed yielded IndependentlySeeded and scan=false; synthetic checked context only.",
+        "evidence_class": "checked_synthetic_rule",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-TESTNET3-1983701-MATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-TESTNET3-1983701-MISMATCH",
+      "evidence_class": "checked_synthetic_rule",
+      "source_identity": {
+        "network": "testnet3",
+        "height": 1983701,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "mismatch"
+      },
+      "expected": "valid different BIP34 seed yields IndependentlySeeded context; CandidateRules requires_bip30_scan = true; synthetic checked context only, no body acceptance",
+      "observed": {
+        "first_outcome": "Different valid selected-height seed yielded IndependentlySeeded and scan=true; synthetic checked context only.",
+        "evidence_class": "checked_synthetic_rule",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-TESTNET3-1983701-MISMATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-TESTNET3-1983701-ABSENT",
+      "evidence_class": "checked_context_refusal",
+      "source_identity": {
+        "network": "testnet3",
+        "height": 1983701,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "absent"
+      },
+      "expected": "CandidateHistory::check_seeded without required BIP34 seed returns MissingAncestor at selected BIP34 height before CandidateRules exists; no scan disposition is derived",
+      "observed": {
+        "first_outcome": "Missing selected BIP34 seed returned typed MissingAncestor at selected activation height before CandidateRules construction.",
+        "evidence_class": "checked_context_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-TESTNET3-1983701-ABSENT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-TESTNET3-1983702-MATCH",
+      "evidence_class": "checked_context_refusal",
+      "source_identity": {
+        "network": "testnet3",
+        "height": 1983702,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "match"
+      },
+      "expected": "CandidateHistory::check_seeded with supplied BIP34 seed returns UnexpectedBip34Seed before CandidateRules exists; any separately tested scan=true formula is pure facts only, not this checked result",
+      "observed": {
+        "first_outcome": "Unexpected supplied seed returned typed UnexpectedBip34Seed before CandidateRules construction.",
+        "evidence_class": "checked_context_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-TESTNET3-1983702-MATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-TESTNET3-1983702-MISMATCH",
+      "evidence_class": "checked_context_refusal",
+      "source_identity": {
+        "network": "testnet3",
+        "height": 1983702,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "mismatch"
+      },
+      "expected": "CandidateHistory::check_seeded with supplied BIP34 seed returns UnexpectedBip34Seed before CandidateRules exists; any separately tested scan=true formula is pure facts only, not this checked result",
+      "observed": {
+        "first_outcome": "Unexpected supplied seed returned typed UnexpectedBip34Seed before CandidateRules construction.",
+        "evidence_class": "checked_context_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-TESTNET3-1983702-MISMATCH PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP34-TESTNET3-1983702-ABSENT",
+      "evidence_class": "checked_synthetic_rule",
+      "source_identity": {
+        "network": "testnet3",
+        "height": 1983702,
+        "block_hash": null,
+        "raw_block_sha256": null,
+        "ancestor_case": "absent"
+      },
+      "expected": "CandidateHistory::check_seeded with no BIP34 seed yields UnneededAtRecheck; CandidateRules requires_bip30_scan = true; synthetic checked context only, no body acceptance",
+      "observed": {
+        "first_outcome": "At recheck, no seed yielded UnneededAtRecheck and scan=true; synthetic checked context only.",
+        "evidence_class": "checked_synthetic_rule",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_bip34_checked_synthetic_recheck_boundary",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP34-TESTNET3-1983702-ABSENT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-SOURCE-ALTERED-BODY",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": null,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "fallible source verification refuses before any store effect",
+      "observed": {
+        "first_outcome": "Altered selected bytes with updated manifest digest returned a checked source error before store open; altered header-list response also refreshed both digests and refused on timestamp; pinned source files remained byte-identical.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_checked_source_refuses_altered_body_context_and_envelope",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-SOURCE-ALTERED-BODY PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No store opened; original source bytes were re-read and found byte-identical.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-SOURCE-ALTERED-CONTEXT",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": null,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "fallible source verification refuses before any store effect",
+      "observed": {
+        "first_outcome": "Altered selected bytes with updated manifest digest returned a checked source error before store open; altered header-list response also refreshed both digests and refused on timestamp; pinned source files remained byte-identical.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_checked_source_refuses_altered_body_context_and_envelope",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-SOURCE-ALTERED-CONTEXT PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No store opened; original source bytes were re-read and found byte-identical.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-BIP30-SOURCE-MISSING-ENVELOPE",
+      "evidence_class": "source_refusal",
+      "source_identity": {
+        "network": "mainnet",
+        "height": null,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "fallible source verification refuses before any store effect",
+      "observed": {
+        "first_outcome": "Altered selected bytes with updated manifest digest returned a checked source error before store open; altered header-list response also refreshed both digests and refused on timestamp; pinned source files remained byte-identical.",
+        "evidence_class": "source_refusal",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_bip30_checked_source_refuses_altered_body_context_and_envelope",
+      "receipt": {
+        "owner": "Task2",
+        "exact_command_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+        "exact_command_log_sha256": "0af6007ec057f3b57a77a68aba1c264bd8d3dfca757c999d6d4018a57a04c035",
+        "case_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+        "case_log_sha256": "e3e5777ba89e76f6023d4f61d3059b1b0e0b10c6d2cf0d071654ec547ad301b3",
+        "discovered_named_tests": 7,
+        "case_marker": "CASE RG16-BIP30-SOURCE-MISSING-ENVELOPE PASS"
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "No product accepted state mutation; refused inputs retain prior mechanical state.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No store opened; original source bytes were re-read and found byte-identical.",
+      "failure_or_retry": "Earlier setup/scaffold and fixture-wiring failures are retained under task2-attempt-v1; final exact and captured runs passed."
+    },
+    {
+      "id": "RG16-CREATING-MISSING",
+      "evidence_class": "task1_actual_kernel",
+      "source_identity": {
+        "network": "regtest",
+        "height": 201,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "actual seeded creating-MTP kernel refusal",
+      "observed": {
+        "first_outcome": "Accepted Task1 actual seeded Coins kernel returned MissingAncestor for absent creating-height parent; source snapshot unchanged.",
+        "evidence_class": "task1_actual_kernel",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_scripts_creating_missing_complete_actual_kernel",
+      "receipt": {
+        "owner": "accepted Task1",
+        "acceptance": ".local/open-bitcoin-dev/phase167/plan16/root-task1-acceptance-v1/task1-source-acceptance.json",
+        "acceptance_sha256": "c8254cae943db2a7476db740822d80723db4148941ee35e8ebe9772e483ff102",
+        "final_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task1-final.log",
+        "final_log_sha256": "3ba5e88e4b6aa319eb93102732d0907f8b2e7bd2194f656b8faa38205a88d703",
+        "discovered_named_tests": 16
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "Accepted Task1 actual seeded Coins kernel returned MissingAncestor for absent creating-height parent; source snapshot unchanged.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Task2 source-boundary first rerun rejected duplicate script purpose; corrected and final Task1 rerun passed. Original accepted Task1 receipt remains authoritative."
+    },
+    {
+      "id": "RG16-CREATING-COMPLETE",
+      "evidence_class": "task1_actual_kernel",
+      "source_identity": {
+        "network": "regtest",
+        "height": 201,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "actual seeded complete-history kernel accepts same candidate/prevout",
+      "observed": {
+        "first_outcome": "Accepted Task1 actual seeded Coins kernel staged and absorbed the same height201 candidate with complete creating history; mechanical origin remained unearned.",
+        "evidence_class": "task1_actual_kernel",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_scripts_creating_missing_complete_actual_kernel",
+      "receipt": {
+        "owner": "accepted Task1",
+        "acceptance": ".local/open-bitcoin-dev/phase167/plan16/root-task1-acceptance-v1/task1-source-acceptance.json",
+        "acceptance_sha256": "c8254cae943db2a7476db740822d80723db4148941ee35e8ebe9772e483ff102",
+        "final_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task1-final.log",
+        "final_log_sha256": "3ba5e88e4b6aa319eb93102732d0907f8b2e7bd2194f656b8faa38205a88d703",
+        "discovered_named_tests": 16
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "Accepted Task1 actual seeded Coins kernel staged and absorbed the same height201 candidate with complete creating history; mechanical origin remained unearned.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Task2 source-boundary first rerun rejected duplicate script purpose; corrected and final Task1 rerun passed. Original accepted Task1 receipt remains authoritative."
+    },
+    {
+      "id": "RG16-CREATING-MTP-MISMATCH",
+      "evidence_class": "task1_actual_kernel",
+      "source_identity": {
+        "network": "regtest",
+        "height": 201,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "actual seeded kernel returns creating-ancestor-mtp-mismatch",
+      "observed": {
+        "first_outcome": "Accepted Task1 actual seeded Coins kernel returned creating-ancestor-mtp-mismatch for changed prior Coin metadata; snapshot unchanged.",
+        "evidence_class": "task1_actual_kernel",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_scripts_creating_mtp_actual_kernel",
+      "receipt": {
+        "owner": "accepted Task1",
+        "acceptance": ".local/open-bitcoin-dev/phase167/plan16/root-task1-acceptance-v1/task1-source-acceptance.json",
+        "acceptance_sha256": "c8254cae943db2a7476db740822d80723db4148941ee35e8ebe9772e483ff102",
+        "final_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task1-final.log",
+        "final_log_sha256": "3ba5e88e4b6aa319eb93102732d0907f8b2e7bd2194f656b8faa38205a88d703",
+        "discovered_named_tests": 16
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "Accepted Task1 actual seeded Coins kernel returned creating-ancestor-mtp-mismatch for changed prior Coin metadata; snapshot unchanged.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Task2 source-boundary first rerun rejected duplicate script purpose; corrected and final Task1 rerun passed. Original accepted Task1 receipt remains authoritative."
+    },
+    {
+      "id": "RG16-CREATING-MTP-MATCH",
+      "evidence_class": "task1_actual_kernel",
+      "source_identity": {
+        "network": "regtest",
+        "height": 201,
+        "block_hash": null,
+        "raw_block_sha256": null
+      },
+      "expected": "actual seeded matching metadata accepts same candidate/prevout",
+      "observed": {
+        "first_outcome": "Accepted Task1 actual seeded Coins kernel staged the same candidate with matching prior Coin metadata; mechanical origin remained unearned.",
+        "evidence_class": "task1_actual_kernel",
+        "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878"
+      },
+      "status": "passed",
+      "test_name": "phase167_historical_scripts_creating_mtp_actual_kernel",
+      "receipt": {
+        "owner": "accepted Task1",
+        "acceptance": ".local/open-bitcoin-dev/phase167/plan16/root-task1-acceptance-v1/task1-source-acceptance.json",
+        "acceptance_sha256": "c8254cae943db2a7476db740822d80723db4148941ee35e8ebe9772e483ff102",
+        "final_log": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task1-final.log",
+        "final_log_sha256": "3ba5e88e4b6aa319eb93102732d0907f8b2e7bd2194f656b8faa38205a88d703",
+        "discovered_named_tests": 16
+      },
+      "accepted_before": "No durable product owner opened; checked imported or synthetic mechanical state only.",
+      "accepted_after": "Accepted Task1 actual seeded Coins kernel staged the same candidate with matching prior Coin metadata; mechanical origin remained unearned.",
+      "durable_before": "No durable product datadir opened for this checked control.",
+      "durable_after": "No product durable state written by this checked or mechanical case.",
+      "failure_or_retry": "Task2 source-boundary first rerun rejected duplicate script purpose; corrected and final Task1 rerun passed. Original accepted Task1 receipt remains authoritative."
+    }
+  ],
+  "attempt_history": [
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/red.log",
+      "classification": "compile setup failure; no behavioral RED credit"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/behavior-red.log",
+      "classification": "explicit unimplemented source-check stub; scaffold failure, no behavioral RED credit"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/green2.log",
+      "classification": "memory-view fixture wiring failed physical reopen; no product RED credit"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/green7.log",
+      "classification": "binding fault injection rejected by integrity; setup failure, corrected"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task1-rerun.log",
+      "classification": "source check incorrectly required unique purpose; corrected"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task2-rerun.log",
+      "classification": "host default-target ReadDir stall; terminated only after two spaced stack samples in __getdirentries64"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task1-rerun2.log",
+      "classification": "earlier source-check correction passed before header-list refinement"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/header-list-diagnosis.log",
+      "classification": "header-list helper falsely rejected testnet genesis null previousblockhash; diagnosed and corrected"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task1-isolated.log",
+      "classification": "final Task1 exact command passed"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/final-original-task2-isolated.log",
+      "classification": "final Task2 exact command passed"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/task2-attempt-v1/case-observations-final.log",
+      "classification": "final Task2 captured case run passed"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task1-final.log",
+      "classification": "formatted final-source Task1 literal command passed 16/16"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-final.log",
+      "classification": "formatted final-source Task2 literal command passed 7/7"
+    },
+    {
+      "path": ".local/open-bitcoin-dev/phase167/plan16/root-final-format-v1/task2-cases-final.log",
+      "classification": "formatted final-source Task2 case capture passed 35 markers"
+    }
+  ]
+}

@@ -25,113 +25,18 @@ use crate::storage::coins_codec::{
     encode_coin_value, estimated_encoded_bytes,
 };
 use crate::storage::coins_view::FjallCoinsView;
-use crate::storage::snapshot_codec::{
-    HydratedChainMeta, decode_block_undo, decode_chain_meta, encode_block_undo, encode_chain_meta,
-};
+use crate::storage::snapshot_codec::{decode_block_undo, encode_block_undo};
 
 const UNDO_KEY_PREFIX: &str = "undo:";
-const CHAIN_META_KEY: &str = "chain_meta";
 
 impl FjallNodeStore {
-    pub fn save_chain_meta(
-        &self,
-        active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
-        mode: PersistMode,
-    ) -> Result<(), StorageError> {
-        self.save_unverified_chain_meta(active_chain, None, mode)
+    /// Encode the actual undo row for observation, without publishing it.
+    pub(crate) fn submission_undo_row(
+        block_hash: BlockHash,
+        undo: &BlockUndo,
+    ) -> Result<(String, Vec<u8>), StorageError> {
+        Ok((undo_key(block_hash), encode_block_undo(undo)?))
     }
-
-    fn save_unverified_chain_meta(
-        &self,
-        active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
-        maybe_counts: Option<&HashMap<open_bitcoin_core::primitives::Txid, u32>>,
-        mode: PersistMode,
-    ) -> Result<(), StorageError> {
-        let mut control = self.filter_publication_guard()?;
-        self.invalidate_validation_coverage()?;
-        control.invalidate_append()?;
-        control.chain_meta_fault()?;
-        let meta_bytes = encode_chain_meta(active_chain, maybe_counts)?;
-        self.put_bytes(
-            StorageNamespace::Chainstate,
-            CHAIN_META_KEY,
-            meta_bytes,
-            mode,
-        )
-    }
-
-    /// Flush-only publication of already validated live ancestry. Full ancestry
-    /// validation belongs to this full metadata writer, never to an index turn.
-    pub(crate) fn save_validated_chain_meta(
-        &self,
-        active_chain: &[open_bitcoin_core::chainstate::ChainPosition],
-        mode: PersistMode,
-    ) -> Result<(), StorageError> {
-        #[cfg(test)]
-        self.run_basic_filter_writer_interleave(
-            super::filters::BasicFilterWriterInterleave::BeforeMetadata,
-        )?;
-        let mut control = self.filter_publication_guard()?;
-        // Counts describe the entire stored ancestry. Preserve only an existing
-        // decoded map for an identical checkpoint; absence never means empty.
-        let maybe_counts = self
-            .get_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY)?
-            .map(|bytes| decode_chain_meta(&bytes))
-            .transpose()?
-            .and_then(|(stored, maybe_counts)| {
-                if stored.as_slice() == active_chain {
-                    return maybe_counts;
-                }
-                None
-            });
-        let maybe_pending = control.maybe_pending_coins;
-        self.check_validation_coverage_for_metadata(active_chain)?;
-        control.invalidate_append()?;
-        control.chain_meta_fault()?;
-        let view = self.coins_view();
-        if !view.head_blocks().map_err(map_heads_error)?.is_empty() {
-            return Err(interrupted_coins_write());
-        }
-        let maybe_refresh = match maybe_pending {
-            Some(coins)
-                if coins.completed
-                    && coins.previous.revision.checked_add(1) == Some(coins.revision)
-                    && coins.revision.checked_add(1) == Some(control.revision) =>
-            {
-                let mut identity = coins.previous;
-                let fence = open_bitcoin_core::chainstate::VerifiedChainstateFence::new(
-                    view.best_block().map_err(map_heads_error)?,
-                    Some(active_chain),
-                )
-                .map_err(crate::storage::filter_index::index_corruption)?;
-                if fence.tip().block_hash != coins.new_tip
-                    || (!identity.maybe_replacement.is_some_and(|replacement| {
-                        replacement.maybe_displaced_fence
-                            == Some((identity.durable_height, identity.durable_hash))
-                    }) && fence
-                        .maybe_position(identity.durable_height)
-                        .map(|p| p.block_hash)
-                        != Some(identity.durable_hash))
-                {
-                    return Err(crate::storage::filter_index::index_corruption(
-                        "incompatible BASIC durable metadata publication",
-                    ));
-                }
-                identity.durable_height = fence.tip().height;
-                identity.durable_hash = fence.tip().block_hash;
-                identity.revision = control.revision;
-                Some(super::filters::publication::CompletedMetadataPublication { coins, identity })
-            }
-            _ => None,
-        };
-        let bytes = encode_chain_meta(active_chain, maybe_counts.as_ref())?;
-        self.put_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY, bytes, mode)?;
-        // A publicly callable sink cannot confer live authority. Only the actual
-        // managed validated flush owner can confirm these achieved pending facts.
-        control.maybe_completed_metadata = maybe_refresh;
-        Ok(())
-    }
-
     pub fn save_undo(
         &self,
         block_hash: BlockHash,
@@ -140,13 +45,8 @@ impl FjallNodeStore {
     ) -> Result<(), StorageError> {
         #[cfg(test)]
         self.check_basic_filter_payload_fault(super::filters::FilterPublicationFault::BeforeUndo)?;
-        let bytes = encode_block_undo(undo)?;
-        self.put_bytes(
-            StorageNamespace::Chainstate,
-            &undo_key(block_hash),
-            bytes,
-            mode,
-        )
+        let (key, bytes) = Self::submission_undo_row(block_hash, undo)?;
+        self.put_bytes(StorageNamespace::Chainstate, &key, bytes, mode)
     }
 
     pub fn load_undo(&self, block_hash: BlockHash) -> Result<Option<BlockUndo>, StorageError> {
@@ -483,23 +383,6 @@ impl FjallNodeStore {
         Ok(undo_by_block)
     }
 
-    pub(crate) fn load_chain_meta_for_open(&self) -> Result<HydratedChainMeta, StorageError> {
-        if let Some(bytes) = self.get_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY)? {
-            return decode_chain_meta(&bytes);
-        }
-        Ok((Vec::new(), Some(HashMap::new())))
-    }
-
-    fn load_hydrate_chain_meta(&self) -> Result<HydratedChainMeta, StorageError> {
-        if let Some(bytes) = self.get_bytes(StorageNamespace::Chainstate, CHAIN_META_KEY)? {
-            return decode_chain_meta(&bytes);
-        }
-        let Some(leftover) = self.load_chainstate_snapshot()? else {
-            return Ok((Vec::new(), None));
-        };
-        Ok((leftover.active_chain, leftover.maybe_confirmed_txid_counts))
-    }
-
     fn write_schema_version(&self, version: SchemaVersion) -> Result<(), StorageError> {
         self.put_bytes(
             StorageNamespace::Schema,
@@ -561,7 +444,7 @@ fn parse_schema_version(bytes: &[u8]) -> Result<SchemaVersion, StorageError> {
     SchemaVersion::new(version)
 }
 
-fn map_heads_error(error: ChainstateError) -> StorageError {
+pub(super) fn map_heads_error(error: ChainstateError) -> StorageError {
     match error {
         ChainstateError::InterruptedWrite { .. } => interrupted_coins_write(),
         ChainstateError::CoinsStorage { detail } => StorageError::Corruption {
@@ -577,7 +460,7 @@ fn map_heads_error(error: ChainstateError) -> StorageError {
     }
 }
 
-fn interrupted_coins_write() -> StorageError {
+pub(super) fn interrupted_coins_write() -> StorageError {
     StorageError::InterruptedWrite {
         namespace: StorageNamespace::Coins,
         action: StorageRecoveryAction::Reindex,

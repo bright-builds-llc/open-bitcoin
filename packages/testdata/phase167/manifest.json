@@ -1,0 +1,172 @@
+{
+  "schema": 1,
+  "pin": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "sources": [
+    {
+      "file": "src/validation.cpp",
+      "sha256": "5bb31c7417ef3fe06a2afefee8a1c32607aed737fdd623368cdc4be72d23d495"
+    },
+    {
+      "file": "src/kernel/chainparams.cpp",
+      "sha256": "17170008ef7abe50f1fbde9a854e443b7d0b1119780c8a58329538e8ee038485"
+    },
+    {
+      "file": "src/consensus/tx_verify.cpp",
+      "sha256": "8fbc9bde843c2cfb0577ae7d179ad11f928b09bf8b0fc3e43a9ede7dc34a7370"
+    },
+    {
+      "file": "src/pow.cpp",
+      "sha256": "9b27f47410b0906b30f12ead4a95e4d345f7832606838f1440ef35b84c708fe2"
+    },
+    {
+      "file": "src/arith_uint256.cpp",
+      "sha256": "33099a41d032d02f49f2d0269f31749c6b9d7cee3fdc8ce0c3cadfe46786d1a8"
+    },
+    {
+      "file": "src/coins.cpp",
+      "sha256": "12bce0202076a4dd462f16833a6a8f650fe1f6cb283cb2e9955d31542128a95d"
+    },
+    {
+      "file": "src/chain.h",
+      "sha256": "c0188574b418a1b67b66d17b4cdb46eb1738bc6e6155514c3d11cc3235db5b1c"
+    },
+    {
+      "file": "src/deploymentstatus.h",
+      "sha256": "7cb50f0350d1a0dfa3d10ecd9c9c74106505662e921c695e6932d69a312dbe09"
+    },
+    {
+      "file": "src/script/interpreter.h",
+      "sha256": "885ccdca3743cdbd659ae82cd6b77aca299472c6b0d8deb014e4775d8bfdbed3"
+    },
+    {
+      "file": "src/clientversion.h",
+      "sha256": "a4ba67ee83b0debad634e7ea7316c6392a8a35dfa130af126313a059413736fa"
+    },
+    {
+      "file": "src/clientversion.cpp",
+      "sha256": "e4c8dab790024c5221faaac423d7fbc42ec9e12e4a660272592babaaf199c568"
+    },
+    {
+      "file": "CMakeLists.txt",
+      "sha256": "91e3f514a72f254e1728f4e9c306cb0a1cd669cff08f7d24b3ae99097f08947b"
+    }
+  ],
+  "evidence_class": "independently-seeded-historical",
+  "required": [
+    {
+      "network": "mainnet",
+      "hash": "00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22",
+      "purpose": "script-p2sh-exception"
+    },
+    {
+      "network": "mainnet",
+      "hash": "0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad",
+      "purpose": "script-taproot-exception"
+    },
+    {
+      "network": "testnet3",
+      "hash": "00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105",
+      "purpose": "script-p2sh-exception"
+    },
+    {
+      "network": "mainnet",
+      "hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "purpose": "bip30-repeat-91842"
+    },
+    {
+      "network": "mainnet",
+      "hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "purpose": "bip30-repeat-91880"
+    },
+    {
+      "network": "mainnet",
+      "hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+      "purpose": "bip30-original-91722"
+    },
+    {
+      "network": "mainnet",
+      "hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+      "purpose": "bip30-original-91812"
+    }
+  ],
+  "blocks_sha256": "6e81f7f06037d8c1e18b75ddef67d16aa6ab09a505ca616db612de1f29e0c335",
+  "downloaded_bytes": 29883014,
+  "attempts": [
+    {
+      "url": "https://blockstream.info/api/block/00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22/raw",
+      "acquired_at": "2026-10-21T17:30:26.988Z",
+      "outcome": "success",
+      "bytes": 13894,
+      "hash": "00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22",
+      "height": 170060
+    },
+    {
+      "url": "https://blockstream.info/api/block/0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad/raw",
+      "acquired_at": "2026-10-21T17:30:27.350Z",
+      "outcome": "success",
+      "bytes": 1428602,
+      "hash": "0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad",
+      "height": 692261
+    },
+    {
+      "url": "https://blockstream.info/testnet/api/block/00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105/raw",
+      "acquired_at": "2026-10-21T17:30:28.129Z",
+      "outcome": "success",
+      "bytes": 470,
+      "hash": "00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105",
+      "height": 394
+    },
+    {
+      "url": "https://blockstream.info/api/block/00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec/raw",
+      "acquired_at": "2026-10-21T17:30:28.320Z",
+      "outcome": "success",
+      "bytes": 214,
+      "hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "height": 91842
+    },
+    {
+      "url": "https://blockstream.info/api/block/00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721/raw",
+      "acquired_at": "2026-10-21T17:30:28.445Z",
+      "outcome": "success",
+      "bytes": 472,
+      "hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "height": 91880
+    },
+    {
+      "url": "https://blockstream.info/api/block/00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e/raw",
+      "acquired_at": "2026-10-21T17:30:28.575Z",
+      "outcome": "success",
+      "bytes": 214,
+      "hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+      "height": 91722
+    },
+    {
+      "url": "https://blockstream.info/api/block/00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f/raw",
+      "acquired_at": "2026-10-21T17:30:28.704Z",
+      "outcome": "success",
+      "bytes": 616,
+      "hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+      "height": 91812
+    }
+  ],
+  "limits": {
+    "download": 536870912,
+    "corpus": 134217728,
+    "response": 4194304,
+    "headers": 4096,
+    "timeout": 30000
+  },
+  "contexts_sha256": "3067e98fb235c97226482a6c1b9fad2484fe58610f5ed1c25e8860a0a970fd5a",
+  "expectations_sha256": "4dddecfbb11a93eac11474d23f80bfff08736713a02941f7f21feb32b7a88c24",
+  "resource_fit": {
+    "max_header_walk": 394,
+    "headers": 13230,
+    "previous_transactions": 5263,
+    "utxos": 6223,
+    "ancestry_authority": "seeded-segments-only",
+    "utxo_scope": "candidate-inputs-and-known-overwrites",
+    "actual_daemon": false,
+    "whole_chain": false
+  },
+  "corpus_bytes": 80190547
+}

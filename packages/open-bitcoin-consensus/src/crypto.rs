@@ -20,9 +20,10 @@ mod phase165_tests;
 
 use core::cmp::Ordering;
 
+use open_bitcoin_codec::transaction::{encode_transaction_view, wire::TransactionView};
 use open_bitcoin_codec::{
     CodecError, ShortId, ShortIdSelector, TransactionEncoding, encode_block_header,
-    encode_transaction, short_id_from_masked_u64, short_id_selector_from_header_and_nonce,
+    short_id_from_masked_u64, short_id_selector_from_header_and_nonce,
 };
 use open_bitcoin_primitives::{BlockHash, BlockHeader, MerkleRoot, Transaction, Txid, Wtxid};
 
@@ -69,17 +70,22 @@ pub fn hash160(bytes: &[u8]) -> [u8; 20] {
 }
 
 pub fn transaction_txid(transaction: &Transaction) -> Result<Txid, CodecError> {
-    let encoded = encode_transaction(transaction, TransactionEncoding::WithoutWitness)?;
+    transaction_txid_view(transaction)
+}
+
+/// Hash exact stripped serialization facts, including signed output bytes.
+pub fn transaction_txid_view(transaction: &impl TransactionView) -> Result<Txid, CodecError> {
+    let encoded = encode_transaction_view(transaction, TransactionEncoding::WithoutWitness)?;
     Ok(Txid::from_byte_array(double_sha256(&encoded)))
 }
 
 pub fn transaction_wtxid(transaction: &Transaction) -> Result<Wtxid, CodecError> {
-    let encoding = if transaction.has_witness() {
-        TransactionEncoding::WithWitness
-    } else {
-        TransactionEncoding::WithoutWitness
-    };
-    let encoded = encode_transaction(transaction, encoding)?;
+    transaction_wtxid_view(transaction)
+}
+
+/// Hash exact witness serialization facts without normalization.
+pub fn transaction_wtxid_view(transaction: &impl TransactionView) -> Result<Wtxid, CodecError> {
+    let encoded = encode_transaction_view(transaction, TransactionEncoding::WithWitness)?;
     Ok(Wtxid::from_byte_array(double_sha256(&encoded)))
 }
 
@@ -88,13 +94,20 @@ pub fn block_hash(header: &BlockHeader) -> BlockHash {
 }
 
 pub fn block_merkle_root(transactions: &[Transaction]) -> Result<(MerkleRoot, bool), CodecError> {
+    block_merkle_root_view(transactions)
+}
+
+/// Compute the pinned merkle tree and mutation flag from exact stripped identities.
+pub fn block_merkle_root_view(
+    transactions: &[impl TransactionView],
+) -> Result<(MerkleRoot, bool), CodecError> {
     if transactions.is_empty() {
         return Ok((MerkleRoot::from_byte_array([0_u8; 32]), false));
     }
 
     let mut level = Vec::with_capacity(transactions.len());
     for transaction in transactions {
-        level.push(transaction_txid(transaction)?.to_byte_array());
+        level.push(transaction_txid_view(transaction)?.to_byte_array());
     }
 
     let mut maybe_mutated = false;
@@ -245,6 +258,91 @@ mod tests {
             }],
             lock_time: 0,
         }
+    }
+
+    #[test]
+    fn phase167_submission_wire_transaction_literal_signed_identities() {
+        use open_bitcoin_codec::block::wire::parse_submission_block_prefix;
+        use open_bitcoin_codec::transaction::encode_transaction_view;
+        // Arrange: independently hashed literal layouts, not product-generated expectations.
+        let cases = [
+            (
+                i64::MIN,
+                "6a4b26492bd79bde4144aa9dee578b2289a169d3c10b73639f8c7b1348642227",
+                "ebc740dfcdc6232fd6d6b9f40eec701007dd776d0bc9af81a0f6c0fc07dedd92",
+            ),
+            (
+                -1,
+                "56acafcd6b7b378f9a378d1963d2d557ea848a9466794bdc1a3fc32f0f6f4ea6",
+                "6d1aea85efd4b05aaefa3ade3168532eb9c70ee5db2e588f07557be12b439661",
+            ),
+            (
+                open_bitcoin_primitives::MAX_MONEY + 1,
+                "5b7534ef2c798d31939825adccce91cd45428cbbebb33ad79b8e2256cb213c6a",
+                "1667376cae72702f3b3e55ac7a0cc77b11fa60622f61b801c532f0d13a0044d3",
+            ),
+            (
+                i64::MAX,
+                "73ae0129c98d4593418c0cd51465d3e6973a97b1f388ae10e57fa77051909697",
+                "7971bbd0003773ac7abe33e88ea5953285641a1addd123b97134904e7f4453f2",
+            ),
+        ];
+        let mut transactions = Vec::new();
+        for (value, expected_txid, expected_wtxid) in cases {
+            let mut stripped = decode_hex(
+                "010000000102020202020202020202020202020202020202020202020202020202020202020000000000ffffffff01",
+            );
+            stripped.extend_from_slice(&value.to_le_bytes());
+            stripped.extend_from_slice(&decode_hex("015100000000"));
+            let mut witness = stripped.clone();
+            witness.splice(4..4, [0, 1]);
+            witness.splice(witness.len() - 4..witness.len() - 4, [1, 2, 7, 8]);
+            let mut block = vec![0; 80];
+            block.push(1);
+            block.extend_from_slice(&witness);
+            // Act
+            let (wire, _) = parse_submission_block_prefix(&block).expect("raw signed wire");
+            let transaction = &wire.transactions[0];
+            // Assert
+            assert_eq!(
+                super::transaction_txid_view(transaction)
+                    .expect("txid")
+                    .as_bytes()
+                    .as_slice(),
+                decode_hex(expected_txid)
+            );
+            assert_eq!(
+                super::transaction_wtxid_view(transaction)
+                    .expect("wtxid")
+                    .as_bytes()
+                    .as_slice(),
+                decode_hex(expected_wtxid)
+            );
+            assert_eq!(
+                encode_transaction_view(
+                    transaction,
+                    open_bitcoin_codec::TransactionEncoding::WithoutWitness
+                )
+                .expect("stripped"),
+                stripped
+            );
+            transactions.push(transaction.clone());
+        }
+        let (root, mutated) = super::block_merkle_root_view(&transactions[..2]).expect("merkle");
+        assert_eq!(
+            root.as_bytes().as_slice(),
+            decode_hex("3f4fb46b6a83665a4627ca8613dc97118524b85528267b71dc48bfd20b5730c8")
+        );
+        assert!(!mutated);
+        let mut wide = transactions[1].clone();
+        wide.outputs[0].script_pubkey = ScriptBuf::from_serialized_bytes(vec![0x51; 10001]);
+        assert_eq!(
+            super::transaction_txid_view(&wide)
+                .expect("wide exact txid")
+                .as_bytes()
+                .as_slice(),
+            decode_hex("e84c8c6d45b84586e5bd0eb038e75163351c1d3c43c9bc843973e5eeae2588dc")
+        );
     }
 
     #[test]

@@ -184,16 +184,24 @@ function checkProductionAuthority(
     context,
     "pub fn from_runtime_config_with_network_handle(",
   );
-  if (
-    !injected.includes("network: ManagedNetworkHandle") ||
-    !injected.includes("network,") ||
-    [
-      "MemoryChainstateStore",
-      "ManagedPeerNetwork::new",
-      "ManagedNetworkHandle::transient_runtime(",
-      "ManagedNetworkHandle::from_network_fixture(",
-    ].some((forbidden) => injected.includes(forbidden))
-  ) {
+  if (normalizeRust(injected) !== normalizeRust(`
+    pub fn from_runtime_config_with_network_handle(
+        config: &RuntimeConfig,
+        network: ManagedNetworkHandle<S, V>,
+        maybe_store: Option<FjallNodeStore>,
+    ) -> Result<Self, CanonicalContextError> {
+        let chain = selected_chain(config)?;
+        let Some(owner_chain) = network.maybe_canonical_chain()? else {
+            return Err(CanonicalContextError::UnprovedOwner);
+        };
+        if owner_chain != chain {
+            return Err(CanonicalContextError::ChainMismatch);
+        }
+        require_ordinary_scope(chain)?;
+        let _ = maybe_store;
+        Err(CanonicalContextError::UnprovedOwner)
+    }
+  `)) {
     failures.push(
       "P127 fresh RPC chainstate: injected production context must retain the supplied network handle",
     );

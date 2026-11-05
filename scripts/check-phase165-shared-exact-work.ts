@@ -13,7 +13,7 @@ import { CORPUS_FILE, CORPUS_SHA, HISTORICAL_IDENTITIES, CURRENT_BRIDGE_DATA, SO
 export type Finding = { file: string; rule: string; detail: string };
 type Fail = (file: string, rule: string, detail: string) => void;
 export const MAX_FILE_BYTES = 512_000;
-const INPUT_INVENTORY_SHA = "a9dd9428ce03f38d35972f6b14a07daf48fb5da17062231ed229abe292bb4a56";
+const INPUT_INVENTORY_SHA = "652660d33b8064a9c4c97a95f483982c7821b10b86754b21d31316a93c39ba98";
 export const INPUT_FILES = [...new Set([
   ...IDENTITY_INPUTS, ...SOURCE_CONTRACTS.map(row => row[0]),
   ...HISTORICAL_IDENTITIES.map(row => row[0]), CORPUS_FILE, WORK_CLAIM_FILE,
@@ -208,8 +208,8 @@ function checkHistory(inputs: ReadonlyMap<string, string>, fail: Fail): boolean 
   catch (error) { fail(MANIFEST_FILE, "history", error instanceof Error ? error.message : String(error)); }
   const file = "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs";
   const source = inputs.get(file) ?? "";
-  if (Buffer.byteLength(source) !== 20_688
-    || sha(source) !== "e6cb5740cb5c83655aed14c43b1206847d264431d944741a365771c3e8d76f5b") {
+  if (Buffer.byteLength(source) !== 20_736
+    || sha(source) !== "f0d7d56fe2abd6858336e03e65d25719e65a96c5df33783b12351ca23e7a0ec3") {
     fail(file, "history", "mechanically adapted preservation source changed; original 20556-byte 3d004f91 attribution is separate");
   }
   return maybeHistoricalAdapter !== undefined;

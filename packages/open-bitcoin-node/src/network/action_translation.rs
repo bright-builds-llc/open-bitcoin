@@ -13,7 +13,7 @@
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
 use open_bitcoin_core::chainstate::CoinsView;
-use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags, block_hash};
+use open_bitcoin_core::consensus::{ConsensusParams, ScriptVerifyFlags};
 use open_bitcoin_core::primitives::BlockHash;
 use open_bitcoin_network::{
     CompactDownloadCleanupCause, DisconnectReason, InventoryList, MisbehaviorDecision,
@@ -222,6 +222,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         let mut outbound = Vec::new();
         let mut targeted_outbound = Vec::new();
         let mut maybe_block_disposition = None;
+        let mut maybe_completed_block = None;
         let mut inbound_response_plan = Vec::new();
         let mut package_admissions = Vec::new();
 
@@ -346,18 +347,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 PeerAction::ReceivedBlock(block) => {
                     self.guard_body(&block)?;
                     let chain_work = self.next_chain_work(&block.header)?;
-                    // Clear matching volatile compact in-flight across all peers before
-                    // connect so a connect failure cannot leave stale multi-peer slots (D-08).
-                    let connected_hash = block_hash(&block.header);
-                    let removed_count = self
-                        .peer_manager
-                        .on_compact_download_block_connected(connected_hash);
-                    if removed_count > 0 {
-                        self.record_compact_cleanup(
-                            CompactDownloadCleanupCause::BlockConnected,
-                            removed_count,
-                        );
-                    }
                     maybe_block_disposition = Some(self.connect_stored_block(
                         &block,
                         chain_work,
@@ -365,6 +354,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                         verify_flags,
                         consensus_params,
                     )?);
+                    maybe_completed_block = Some(block);
                 }
                 PeerAction::Disconnect(reason) => {
                     if reason == DisconnectReason::SelfConnection {
@@ -386,6 +376,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             outbound,
             targeted_outbound,
             maybe_block_disposition,
+            maybe_completed_block,
             inbound_response_plan,
             package_admissions,
         })

@@ -217,6 +217,7 @@ fn chainstate_snapshot() -> ChainstateSnapshot {
     undo_by_block.insert(
         position.block_hash,
         BlockUndo {
+            overwrites: Vec::new(),
             transactions: vec![TxUndo {
                 restored_inputs: vec![coin],
             }],

@@ -108,13 +108,8 @@ impl ManagedRpcContext {
     ) -> Result<Self, CanonicalContextError> {
         let chain = selected_chain(config)?;
         require_ordinary_scope(chain)?;
-        let wallet_state =
-            super::wallet_state::build_wallet_state_with_store(config, maybe_store.clone())?;
-        let (network, maybe_store) =
-            Self::build_context_network(config, maybe_store, &wallet_state)?;
-        let network =
-            open_bitcoin_node::ManagedNetworkHandle::from_canonical_network(network, chain);
-        Self::from_runtime_config_with_network_handle(config, network, maybe_store)
+        let _ = maybe_store;
+        Err(CanonicalContextError::UnprovedOwner)
     }
 
     /// Fallible ordinary alias; fixture callers must explicitly select their evidence scope.
@@ -169,6 +164,7 @@ impl ManagedRpcContext {
             maybe_daemon_sync_control: None,
             manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
             wallet_state: super::wallet_state::WalletState::Local(wallet),
+            maybe_canonical_submission: None,
         }
     }
 

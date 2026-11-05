@@ -395,6 +395,16 @@ function contractMutations(): Mutation[] {
       replace(files.startupCanonical, "require_ordinary_scope(chain)?;", "let _ = require_ordinary_scope(chain);"),
     ],
     [
+      "ordinary context promotes an unproved fixture owner",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(files.startupCanonical, "Err(CanonicalContextError::UnprovedOwner)", "Ok(Self::from_fixture_runtime_config(config))"),
+    ],
+    [
+      "ordinary network context ignores owner chain mismatch",
+      PHASE135_DIAGNOSTICS.startup,
+      replace(files.startupContext, "if owner_chain != chain {", "if false {"),
+    ],
+    [
       "fixture context publishes before its recovery",
       PHASE135_DIAGNOSTICS.startup,
       replace(files.startupContext, "recover_fixture_mempool_snapshot_from_store_handle(", "publish_before_fixture_recovery("),

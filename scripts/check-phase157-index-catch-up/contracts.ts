@@ -112,7 +112,7 @@ export const CONTRACTS: Contract[] = [
   row("D-14", PRODUCTION_BUDGET, "production_budget", ["BasicIndexTurnBudget::new("]),
   row("D-14", APPEND, "complete_basic_filter_append", ["self.filter_publication_guard()?", "check_basic_filter_append_proof_guarded_counted(", "load_basic_filter_append_locks(", "SyncAll", "self.finish_basic_filter_batch("], SCANS),
   row("D-06", APPEND, "earned_basic_filter_safe_checkpoint", ["prepared.proof.durable_tip()", "processed.height() < height", "maybe_basic_filter_append_projection(", "endpoint.height() != height || endpoint.block_hash() != hash"], SCANS),
-  row("D-14", NODE + "storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", ["bytes.len() > 4_000_000", "bytes.len() as u64 > remaining_body_bytes", "if !admit(work)?", "body_work(", "codec::parse_block("], SCANS),
+  row("D-14", NODE + "storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", ["bytes.len() > 4_000_000", "bytes.len() as u64 > remaining_body_bytes", "if !admit(work)?", "body_work(", "open_bitcoin_core::codec::block::wire::parse_serialized_block("], SCANS),
 ];
 export const TESTS: [string, string][] = [
   [RPC + "config/tests/blockfilter.rs", "phase157_blockfilter_loader_repeated_cli_matches_scalar_list_table"],

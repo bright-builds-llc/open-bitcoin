@@ -351,6 +351,7 @@ fn genesis_refuses_nonempty_explicit_undo() {
     // Arrange
     let (block, position) = coinbase_block(0);
     let undo = BlockUndo {
+        overwrites: Vec::new(),
         transactions: vec![TxUndo::default()],
     };
     // Act / Assert

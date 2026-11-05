@@ -9,7 +9,9 @@ use open_bitcoin_primitives::{Block, BlockHash, BlockHeader};
 
 pub mod bootstrap;
 mod genesis;
+mod rules;
 pub use bootstrap::CanonicalGenesisProof;
+pub use rules::{NetworkRules, ScriptFlagException};
 
 /// The four pinned profiles already exposed by Open Bitcoin's selectors.
 /// Signet denotes the default challenge only; custom Signets are outside this contract.
@@ -97,7 +99,7 @@ impl ChainSpec {
         }
     }
 
-    /// Identity evidence does not establish the rules needed for ordinary history.
+    /// Selected identity and qualification facts, separate from local implementation.
     pub const fn validation_scope(&self) -> ValidationScope {
         ValidationScope { chain: self.chain }
     }
@@ -110,10 +112,51 @@ impl ChainSpec {
     }
 }
 
-/// The available evidence proves root identity only.
+/// Selected identity alone proves no ordinary-history qualification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ValidationEvidenceClass {
     IdentityOnly,
+}
+
+/// Local implementation is not an admission capability or differential qualification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LocalOrdinaryImplementation {
+    Unavailable,
+    BoundedDefaultRegtest,
+}
+
+impl LocalOrdinaryImplementation {
+    /// The retained-body replay and safe reopen bound exists only for default Regtest.
+    pub const fn retained_body_reopen_bound(self) -> bool {
+        matches!(self, Self::BoundedDefaultRegtest)
+    }
+
+    /// Stable status spelling that does not imply network activation.
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::Unavailable => "unavailable",
+            Self::BoundedDefaultRegtest => "bounded_default_regtest",
+        }
+    }
+}
+
+/// Implementation work still missing outside the bounded default-Regtest path.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MissingImplementationPrerequisite {
+    HistoricalRules,
+    CheckpointContext,
+    SignetChallengeValidation,
+}
+
+impl MissingImplementationPrerequisite {
+    /// Stable bounded code for operator support diagnostics.
+    pub const fn code(self) -> &'static str {
+        match self {
+            Self::HistoricalRules => "historical_rules",
+            Self::CheckpointContext => "checkpoint_context",
+            Self::SignetChallengeValidation => "signet_challenge_validation",
+        }
+    }
 }
 
 /// Required checks that are not yet implemented and qualified for ordinary history.
@@ -154,6 +197,15 @@ const MISSING_SIGNET_HISTORY: [MissingValidationPrerequisite; 4] = [
     MissingValidationPrerequisite::CandidateHistory,
     MissingValidationPrerequisite::SignetChallengeValidation,
 ];
+const MISSING_CHECKPOINT_IMPLEMENTATION: [MissingImplementationPrerequisite; 2] = [
+    MissingImplementationPrerequisite::HistoricalRules,
+    MissingImplementationPrerequisite::CheckpointContext,
+];
+const MISSING_SIGNET_IMPLEMENTATION: [MissingImplementationPrerequisite; 2] = [
+    MissingImplementationPrerequisite::HistoricalRules,
+    MissingImplementationPrerequisite::SignetChallengeValidation,
+];
+const NO_MISSING_IMPLEMENTATION: [MissingImplementationPrerequisite; 0] = [];
 
 /// Read-only support facts derived solely from the selected canonical profile.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -167,13 +219,41 @@ impl ValidationScope {
         self.chain
     }
 
-    /// Root recognition is the only evidence currently provided.
+    /// Selected identity does not make local implementation a canonical owner.
     pub const fn evidence_class(&self) -> ValidationEvidenceClass {
         ValidationEvidenceClass::IdentityOnly
     }
 
     /// Whether ordinary history is qualified; currently false for every profile.
     pub const fn ordinary_history(&self) -> bool {
+        false
+    }
+
+    /// Bounded local implementation facts; a sealed runtime remains required for acceptance.
+    pub const fn local_ordinary_implementation(&self) -> LocalOrdinaryImplementation {
+        match self.chain {
+            CanonicalChain::Regtest => LocalOrdinaryImplementation::BoundedDefaultRegtest,
+            CanonicalChain::Mainnet | CanonicalChain::Testnet3 | CanonicalChain::Signet => {
+                LocalOrdinaryImplementation::Unavailable
+            }
+        }
+    }
+
+    /// Missing implementation work is distinct from generic qualification prerequisites.
+    pub const fn missing_implementation_prerequisites(
+        &self,
+    ) -> &'static [MissingImplementationPrerequisite] {
+        match self.chain {
+            CanonicalChain::Mainnet | CanonicalChain::Testnet3 => {
+                &MISSING_CHECKPOINT_IMPLEMENTATION
+            }
+            CanonicalChain::Signet => &MISSING_SIGNET_IMPLEMENTATION,
+            CanonicalChain::Regtest => &NO_MISSING_IMPLEMENTATION,
+        }
+    }
+
+    /// No actual pinned-daemon differential qualification has been performed.
+    pub const fn actual_daemon_differential_qualified(&self) -> bool {
         false
     }
 

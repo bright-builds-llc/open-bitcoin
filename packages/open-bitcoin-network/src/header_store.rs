@@ -22,6 +22,7 @@ use open_bitcoin_primitives::{BlockHash, BlockHeader, BlockLocator, Hash32};
 use crate::error::NetworkError;
 
 mod canonical_genesis;
+mod canonical_history;
 mod proof;
 pub use proof::HeaderProofFacts;
 mod eligibility;
@@ -51,6 +52,7 @@ pub struct HeaderStore {
     maybe_consensus_params: Option<ConsensusParams>,
     maybe_unproved_fixture_tip: Option<BlockHash>,
     body_eligibility: eligibility::BodyEligibilityRegistry,
+    maybe_canonical_history: Option<canonical_history::CanonicalHistory>,
 }
 
 impl HeaderStore {
@@ -118,6 +120,7 @@ impl HeaderStore {
         self.maybe_consensus_params = None;
         self.maybe_unproved_fixture_tip = None;
         self.body_eligibility = eligibility::BodyEligibilityRegistry::default();
+        self.maybe_canonical_history = None;
 
         for position in active_chain {
             self.record_position(position);
@@ -167,12 +170,29 @@ impl HeaderStore {
         self.admit_header(header, Some(params))
     }
 
+    /// Admit a canonical descendant using shared selected header rules and
+    /// this owner's contextually admitted parent lineage. The shell supplies now.
+    pub fn insert_canonical_header(
+        &mut self,
+        header: BlockHeader,
+        shell_observed_now: i64,
+    ) -> Result<InsertedHeader, NetworkError> {
+        self.admit_canonical_header(header, shell_observed_now)
+    }
+
     fn admit_header(
         &mut self,
         header: BlockHeader,
         maybe_params: Option<&ConsensusParams>,
     ) -> Result<InsertedHeader, NetworkError> {
         let block_hash = block_hash(&header);
+        if self.maybe_canonical_history.is_some()
+            && header.previous_block_hash.to_byte_array() != [0; 32]
+        {
+            return Err(invalid_header(
+                "canonical-header-requires-contextual-admission",
+            ));
+        }
         if self
             .maybe_consensus_params
             .is_some_and(|selected| maybe_params != Some(&selected))
@@ -325,16 +345,28 @@ impl HeaderStore {
         None
     }
 
+    /// Complete numerical MTP window; canonical admission separately checks row hashes.
     pub fn median_time_past(&self, tip_hash: BlockHash) -> Option<i64> {
-        let mut times = Vec::new();
-        let mut maybe_current = Some(tip_hash);
-        while let Some(current_hash) = maybe_current {
+        let tip = self.entries.get(&tip_hash)?;
+        let count = (tip.height.min(10) + 1) as usize;
+        let mut times = Vec::with_capacity(count);
+        let mut current_hash = tip_hash;
+        let mut expected_height = tip.height;
+        for index in 0..count {
             let entry = self.entries.get(&current_hash)?;
+            if entry.height != expected_height {
+                return None;
+            }
             times.push(i64::from(entry.header.time));
-            if times.len() == 11 {
+            if index + 1 == count {
                 break;
             }
-            maybe_current = self.parents.get(&current_hash).copied().flatten();
+            let parent_hash = self.parents.get(&current_hash).copied().flatten()?;
+            if parent_hash != entry.header.previous_block_hash {
+                return None;
+            }
+            current_hash = parent_hash;
+            expected_height = expected_height.checked_sub(1)?;
         }
         times.sort_unstable();
         Some(times[times.len() / 2])

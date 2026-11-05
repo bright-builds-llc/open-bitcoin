@@ -34,12 +34,21 @@ impl std::error::Error for ScriptError {}
 pub struct ScriptBuf(Vec<u8>);
 
 impl ScriptBuf {
+    /// Store bytes with the legacy 10,000-byte bound; this does not prove execution validity.
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Self, ScriptError> {
         if bytes.len() > MAX_SCRIPT_SIZE {
             return Err(ScriptError::TooLarge(bytes.len()));
         }
 
         Ok(Self(bytes))
+    }
+
+    /// Preserve serialized script bytes without claiming execution validity.
+    ///
+    /// Transport and record owners must bound allocations. The interpreter applies
+    /// version-specific execution limits, and Coins applies its own exclusion rule.
+    pub fn from_serialized_bytes(bytes: Vec<u8>) -> Self {
+        Self(bytes)
     }
 
     pub fn as_bytes(&self) -> &[u8] {

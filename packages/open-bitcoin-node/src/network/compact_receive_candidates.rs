@@ -224,6 +224,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         payload: CompactBlockPayload,
         timestamp: i64,
     ) -> Result<Vec<PeerAction>, ManagedNetworkError> {
+        if !self
+            .peer_manager
+            .compact_download_enabled_for_peer(peer_id)?
+        {
+            return Ok(Vec::new());
+        }
         let (candidate_owned, extra_owned) = self.collect_compact_receive_owned();
         let candidate_refs: Vec<(&Wtxid, &Transaction)> = candidate_owned
             .iter()
@@ -235,9 +241,44 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             candidates: &candidate_refs,
             extra: &extra_refs,
         };
-        Ok(self
-            .peer_manager
-            .handle_compact_block_download(peer_id, payload, facts, timestamp)?)
+        let maybe_scope = self.maybe_canonical_chain();
+        let maybe_core = self.chainstate.chainstate().maybe_canonical_chain();
+        let maybe_headers = self.peer_manager.header_store().maybe_canonical_chain();
+        let maybe_params = self.maybe_header_consensus_params;
+        if maybe_scope.is_some() || maybe_core.is_some() || maybe_headers.is_some() {
+            let Some(chain) = maybe_scope else {
+                return Err(ManagedNetworkError::LifecycleEffect(
+                    "compact canonical owner binding mismatch",
+                ));
+            };
+            if maybe_core != Some(chain) || maybe_headers != Some(chain) {
+                return Err(ManagedNetworkError::LifecycleEffect(
+                    "compact canonical owner binding mismatch",
+                ));
+            }
+            let Some(params) = maybe_params else {
+                return Err(ManagedNetworkError::LifecycleEffect(
+                    "missing selected compact parameters",
+                ));
+            };
+            let _binding = self.chainstate.chainstate().bind_live_work_source(params)?;
+            self.admit_compact_header(&payload.header)?;
+            return Ok(self
+                .peer_manager
+                .handle_compact_block_download(peer_id, payload, facts, timestamp)?);
+        }
+        let Some(params) = maybe_params else {
+            return Err(ManagedNetworkError::LifecycleEffect(
+                "missing selected compact parameters",
+            ));
+        };
+        Ok(self.peer_manager.handle_fixture_compact_block_download(
+            peer_id,
+            payload,
+            facts,
+            timestamp,
+            params.enforce_segwit,
+        )?)
     }
 
     #[cfg(test)]

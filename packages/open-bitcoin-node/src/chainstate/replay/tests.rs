@@ -231,6 +231,7 @@ fn two_branch_fixture(persist_new_body: bool, persist_old_undo: bool) -> BranchF
             .save_undo(
                 old_hash,
                 &BlockUndo {
+                    overwrites: Vec::new(),
                     transactions: vec![TxUndo {
                         restored_inputs: vec![restored_coin.clone()],
                     }],

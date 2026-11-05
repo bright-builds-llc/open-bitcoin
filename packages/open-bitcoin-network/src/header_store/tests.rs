@@ -66,6 +66,91 @@ fn header_store_builds_exponential_locators() {
 }
 
 #[test]
+fn median_time_past_refuses_corrupt_retained_height_without_changing_root() {
+    // Arrange
+    let mut store = HeaderStore::default();
+    let genesis = store
+        .insert_header(header(BlockHash::default(), 1))
+        .expect("genesis");
+    let child = store
+        .insert_header(header(genesis.block_hash, 2))
+        .expect("child");
+    let tip = store
+        .insert_header(header(child.block_hash, 3))
+        .expect("tip");
+    let root_before = store.entry(&genesis.block_hash).expect("root row").clone();
+    store
+        .entries
+        .get_mut(&child.block_hash)
+        .expect("child row")
+        .height = 9;
+
+    // Act
+    let mtp = store.median_time_past(tip.block_hash);
+
+    // Assert
+    assert_eq!(mtp, None);
+    assert_eq!(store.entry(&genesis.block_hash), Some(&root_before));
+}
+
+#[test]
+fn median_time_past_refuses_retained_parent_link_mismatch_without_changing_root() {
+    // Arrange
+    let mut store = HeaderStore::default();
+    let genesis = store
+        .insert_header(header(BlockHash::default(), 4))
+        .expect("genesis");
+    let child = store
+        .insert_header(header(genesis.block_hash, 5))
+        .expect("child");
+    let tip = store
+        .insert_header(header(child.block_hash, 6))
+        .expect("tip");
+    let root_before = store.entry(&genesis.block_hash).expect("root row").clone();
+    store
+        .parents
+        .insert(tip.block_hash, Some(genesis.block_hash));
+
+    // Act
+    let mtp = store.median_time_past(tip.block_hash);
+
+    // Assert
+    assert_eq!(mtp, None);
+    assert_eq!(store.entry(&genesis.block_hash), Some(&root_before));
+}
+
+#[test]
+fn canonical_admission_distinguishes_missing_admitted_parent_row_from_absent_parent() {
+    use super::canonical_history::CanonicalHeaderAdmissionError;
+    use open_bitcoin_consensus::chain_spec::{CanonicalChain, CanonicalGenesisProof};
+
+    // Arrange
+    let spec = CanonicalChain::Regtest.spec();
+    let proof = CanonicalGenesisProof::prove(spec, &spec.genesis_block()).expect("proved root");
+    let mut store = HeaderStore::from_canonical_genesis(&proof).expect("canonical owner");
+    let root_hash = proof.hash();
+    store.entries.remove(&root_hash).expect("retained root row");
+    let before = store.clone();
+
+    // Act
+    let missing_row = store
+        .insert_canonical_header_detailed(header(root_hash, 7), 2_000_000_000)
+        .expect_err("admitted parent row was removed");
+    let absent_hash = BlockHash::from_byte_array([0xef; 32]);
+    let absent = store
+        .insert_canonical_header_detailed(header(absent_hash, 8), 2_000_000_000)
+        .expect_err("unrecorded parent is absent");
+
+    // Assert
+    assert!(matches!(missing_row,
+        CanonicalHeaderAdmissionError::Network(NetworkError::MissingHeaderAncestor(hash))
+            if hash == root_hash));
+    assert!(matches!(absent,
+        CanonicalHeaderAdmissionError::MissingParent { hash, .. } if hash == absent_hash));
+    assert_eq!(store, before);
+}
+
+#[test]
 fn headers_after_locator_returns_following_headers() {
     let mut store = HeaderStore::default();
     let genesis_header = header(BlockHash::from_byte_array([0_u8; 32]), 1);

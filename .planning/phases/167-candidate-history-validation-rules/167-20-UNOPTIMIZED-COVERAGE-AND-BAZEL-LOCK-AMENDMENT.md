@@ -1,0 +1,22 @@
+---
+phase: 167-candidate-history-validation-rules
+plan: "20"
+type: checked-execution-amendment
+generated_by: gsd-execute-plan
+generated_at: "2026-11-02T03:01:36Z"
+lifecycle_mode: yolo
+phase_lifecycle_id: 167-2026-10-21T16-38-23
+commits: false
+---
+
+# Plan 20 coverage profile and Bazel lock freshness
+
+The third complete default verifier on frozen 43-owner source passed all pinned Bun guards, nine 16-thread stress families, the scoped four-thread complete workspace/CLI native suites (including node 2,410/zero/four ignored, RPC 426/zero/one ignored and daemon 120/zero/one ignored), benchmark smoke/report, all six Bazel targets and Bazel build provenance. Pure-core `cargo llvm-cov` tests also passed, but the unchanged zero-uncovered gate failed: its report listed 159 uncovered lines across 20 pure-core files. The tracked workspace `[profile.test] opt-level = 2` was required to keep actual physical copy/recovery and worker deadlines under the controlled native suite; coverage currently inherits that optimized test profile. This broad line-mapping gap is not proof that 159 behavioral branches lack tests. The failed default run earns no full verifier or phase acceptance credit.
+
+First run one **diagnostic-only** clean pure-core coverage invocation on the same source with explicit installed cargo-llvm-cov 0.8.5 `--profile dev`, the exact eight packages from `scripts/pure-core-crates.txt`, `--show-missing-lines --text`, pinned Bun/cooperative Cargo lock, and no target/feature/toolchain override. `dev` uses unoptimized default codegen while the normal native test profile remains opt-level2. Capture a fresh locked `cargo llvm-cov clean --manifest-path packages/Cargo.toml --workspace` before the diagnostic, all raw output, actual uncovered-lines result and source before/after. A diagnostic pass is not final default-verifier credit. If uncovered lines remain, stop for exact line/coverage diagnosis rather than changing the zero-uncovered rule, excluding files or adding mirror tests.
+
+Bazel's successful v13 build regenerated tracked `MODULE.bazel.lock` with exactly one `recordedFileInputs` SHA change for `packages/Cargo.toml`, from its original `2b18fb528f59dbec2141299545cd536e0e61a5ee8eea3b3f88c0190bfa98f14d` to the live opt-level2 manifest `6fc738138972ed88e5624b3b8ab2c1c629b409acb08bc93596e1cb2faa09bf2b`. No other lockfile hunk is present. This is required generated freshness, not unowned product behavior; preserve the exact before/current lock bytes and inspect the one-line diff. Do not revert or rewrite unrelated lock entries. A subsequent Bazel build must leave it byte-identical and pass provenance.
+
+If clean dev-profile coverage shows **zero uncovered lines**, ROOT adds exactly two direct Task1 owners: `scripts/verify/helpers.sh` (the existing `run_coverage_report` helper) and `MODULE.bazel.lock` (tracked generated lockfile). Capture exact originals/current values and a fresh source frame, issue a supplementary ROOT source release and obtain independent review before editing. Plan20 then has 45 direct owners (Task1 42, Task2 three) and 1,788 protected original product paths. In both package-selected and no-package branches of `run_coverage_report`, add only explicit `--profile dev` to the `cargo llvm-cov` invocation. Keep `scripts/verify.sh`'s existing eight selected packages, clean/report ordering, zero-uncovered grep, native opt-level2 test profile, nine 16-thread stress selectors, scoped four-thread workspace/CLI steps and inherited-environment restoration unchanged. Do not use an ambient `CARGO_PROFILE_TEST_OPT_LEVEL` override that could leak into native tests or coverage evidence. The lockfile is accepted only as the one exact Bazel-generated hash update described above.
+
+Independently review the exact helper/lock delta and 45-owner frame. Run the helper/coverage-specific current guards and tests, fresh dev-profile pure-core coverage with zero uncovered lines, and Bazel six-target build/provenance with unchanged lock bytes. Then regenerate provisional worktree LOC, clean coverage and run complete default `bash scripts/verify.sh` on a new frozen source, including all native, benchmark, Bazel and zero-uncovered gates. Preserve v13's failed coverage report and Bazel lock mutation as honest history. Any new uncovered line, Bazel lock drift, source-pin failure or native regression blocks and requires separate checked diagnosis. Independent final source/security/goal reports, lifecycle, ROOT staged-index LOC/normal hooks, commit and push remain mandatory. Stop before Phase168.

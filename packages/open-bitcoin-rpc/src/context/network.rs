@@ -40,14 +40,10 @@ use super::CanonicalContextError;
 #[cfg(test)]
 use super::EncodedWireResponse;
 use super::canonical_chain::{require_ordinary_scope, selected_chain};
-use super::mempool_recovery::{
-    recover_fixture_mempool_snapshot_from_store_handle, recover_mempool_snapshot_from_store_handle,
-};
-use super::wallet_state::{
-    WalletState, build_fixture_wallet_state_with_store, build_wallet_state_with_store,
-};
+use super::mempool_recovery::recover_fixture_mempool_snapshot_from_store_handle;
+use super::wallet_state::{WalletState, build_fixture_wallet_state_with_store};
 use super::{ManagedRpcContext, address_boundary::local_advertisement_decisions};
-use crate::{config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
+use crate::{RpcFailure, config::RuntimeConfig, inbound_listener::InboundListenerEvidence};
 
 fn effective_context_store(
     maybe_store: Option<FjallNodeStore>,
@@ -81,7 +77,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
     /// Validate selected canonical ownership and support before any startup mutation.
     pub fn from_runtime_config_with_network_handle(
         config: &RuntimeConfig,
-        mut network: ManagedNetworkHandle<S, V>,
+        network: ManagedNetworkHandle<S, V>,
         maybe_store: Option<FjallNodeStore>,
     ) -> Result<Self, CanonicalContextError> {
         let chain = selected_chain(config)?;
@@ -92,23 +88,8 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
             return Err(CanonicalContextError::ChainMismatch);
         }
         require_ordinary_scope(chain)?;
-        Self::configure_context_network(config, &mut network)?;
-        let wallet_state = build_wallet_state_with_store(config, maybe_store.clone())?;
-        let effective_store = effective_context_store(maybe_store, &wallet_state);
-        recover_mempool_snapshot_from_store_handle(
-            config,
-            effective_store.as_ref(),
-            &network,
-            &PolicyConfig::default(),
-            default_verify_flags(),
-            context_consensus_params(config),
-        )?;
-        Ok(Self::assemble_context(
-            config,
-            network,
-            effective_store,
-            wallet_state,
-        ))
+        let _ = maybe_store;
+        Err(CanonicalContextError::UnprovedOwner)
     }
 
     /// Synthetic/source-derived regression evidence only; never ordinary canonical authorization.
@@ -186,6 +167,7 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
             maybe_daemon_sync_control: None,
             manual_prune: open_bitcoin_node::status::ManualPruneSurface::None,
             wallet_state,
+            maybe_canonical_submission: None,
         }
     }
 
@@ -225,6 +207,21 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
         ManagedNetworkAuthorityError,
     > {
         self.network.maybe_chain_tip()
+    }
+
+    pub(crate) fn maybe_canonical_active_tip(
+        &self,
+    ) -> Result<Option<open_bitcoin_node::core::chainstate::ChainPosition>, RpcFailure> {
+        self.maybe_canonical_submission
+            .as_ref()
+            .map(|bridge| (bridge.active_tip)())
+            .transpose()
+    }
+
+    pub(crate) fn best_header_height(&self) -> Result<Option<u32>, ManagedNetworkAuthorityError> {
+        self.network
+            .best_chain_entries()
+            .map(|entries| entries.last().map(|entry| entry.height))
     }
 
     pub fn current_durable_sync_state(

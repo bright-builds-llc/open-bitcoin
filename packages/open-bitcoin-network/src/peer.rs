@@ -36,6 +36,7 @@ use std::collections::{BTreeMap, BTreeSet};
 mod address_boundary;
 mod basic_operator;
 pub use basic_operator::BasicPeerScope;
+mod block_requests;
 mod compact_download_state;
 mod compact_relay;
 mod eligibility;
@@ -232,6 +233,7 @@ pub struct PeerManager {
     peer_policy_runtime_state: PeerPolicyRuntimeState,
     block_relay_activation: BlockRelayActivationPolicy,
     compact_download_states: BTreeMap<PeerId, CompactDownloadPeerState>,
+    block_requests: block_requests::BlockRequestOrder,
 }
 
 impl PeerManager {
@@ -303,6 +305,7 @@ impl PeerManager {
             peer_policy_runtime_state: PeerPolicyRuntimeState::default(),
             block_relay_activation: BlockRelayActivationPolicy::default(),
             compact_download_states: BTreeMap::new(),
+            block_requests: block_requests::BlockRequestOrder::default(),
         }
     }
 

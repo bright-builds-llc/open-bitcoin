@@ -5,7 +5,7 @@
 // - packages/bitcoin-knots/src/script/script_error.h
 // - packages/bitcoin-knots/src/test/data/script_tests.json
 
-use open_bitcoin_primitives::{MAX_OPS_PER_SCRIPT, ScriptBuf, Transaction};
+use open_bitcoin_primitives::{MAX_OPS_PER_SCRIPT, MAX_SCRIPT_SIZE, ScriptBuf, Transaction};
 
 use crate::context::{ScriptExecutionData, ScriptVerifyFlags, TransactionInputContext};
 use crate::crypto::{Sha256, double_sha256, hash160};
@@ -18,9 +18,9 @@ use super::opcodes::{
     MAX_PUBKEYS_PER_MULTISIG, OP_0NOTEQUAL, OP_1, OP_1ADD, OP_1NEGATE, OP_1SUB, OP_16, OP_ADD,
     OP_BOOLAND, OP_BOOLOR, OP_CHECKMULTISIG, OP_CHECKMULTISIGVERIFY, OP_CHECKSIG, OP_CHECKSIGADD,
     OP_CHECKSIGVERIFY, OP_CODESEPARATOR, OP_DROP, OP_DUP, OP_ELSE, OP_ENDIF, OP_EQUAL,
-    OP_EQUALVERIFY, OP_GREATERTHAN, OP_HASH160, OP_HASH256, OP_IF, OP_LESSTHAN, OP_MAX, OP_MIN,
-    OP_NEGATE, OP_NOP, OP_NOT, OP_NOTIF, OP_NUMEQUAL, OP_NUMEQUALVERIFY, OP_NUMNOTEQUAL, OP_OVER,
-    OP_RETURN, OP_RIPEMD160, OP_SHA256, OP_SIZE, OP_SUB, OP_SWAP, OP_VERIFY, OP_WITHIN,
+    OP_EQUALVERIFY, OP_GREATERTHAN, OP_HASH160, OP_HASH256, OP_IF, OP_IFDUP, OP_LESSTHAN, OP_MAX,
+    OP_MIN, OP_NEGATE, OP_NOP, OP_NOT, OP_NOTIF, OP_NUMEQUAL, OP_NUMEQUALVERIFY, OP_NUMNOTEQUAL,
+    OP_OVER, OP_RETURN, OP_RIPEMD160, OP_SHA256, OP_SIZE, OP_SUB, OP_SWAP, OP_VERIFY, OP_WITHIN,
     is_disabled_opcode,
 };
 use super::stack::{
@@ -49,6 +49,15 @@ pub(super) fn eval_script_internal(
     mut maybe_execution_data: Option<&mut ScriptExecutionData>,
 ) -> Result<(), ScriptError> {
     let bytes = script.as_bytes();
+    let has_legacy_limits = maybe_context.is_none_or(|context| {
+        matches!(
+            context.sig_version,
+            SigVersion::Base | SigVersion::WitnessV0
+        )
+    });
+    if has_legacy_limits && bytes.len() > MAX_SCRIPT_SIZE {
+        return Err(ScriptError::ScriptSize);
+    }
     let mut pc = 0;
     let mut op_count = 0;
     let mut condition_stack = ConditionStack::default();
@@ -56,7 +65,7 @@ pub(super) fn eval_script_internal(
 
     while pc < bytes.len() {
         let instruction = read_instruction(bytes, &mut pc)?;
-        if instruction.opcode > OP_16 {
+        if has_legacy_limits && instruction.opcode > OP_16 {
             op_count += 1;
             if op_count > MAX_OPS_PER_SCRIPT {
                 return Err(ScriptError::OpCount);
@@ -123,6 +132,12 @@ pub(super) fn eval_script_internal(
                 push_stack(stack, encode_script_num(value))?;
             }
             OP_NOP => {}
+            super::opcodes::OP_CHECKLOCKTIMEVERIFY => {
+                super::locktime::check_lock_time(stack, maybe_context)?;
+            }
+            super::opcodes::OP_CHECKSEQUENCEVERIFY => {
+                super::locktime::check_sequence(stack, maybe_context)?;
+            }
             OP_VERIFY => {
                 if !cast_to_bool(&pop_bytes(stack)?) {
                     return Err(ScriptError::VerifyFailed);
@@ -130,6 +145,15 @@ pub(super) fn eval_script_internal(
             }
             OP_DROP => {
                 pop_bytes(stack)?;
+            }
+            OP_IFDUP => {
+                let value = stack
+                    .last()
+                    .cloned()
+                    .ok_or(ScriptError::InvalidStackOperation)?;
+                if cast_to_bool(&value) {
+                    push_stack(stack, value)?;
+                }
             }
             OP_DUP => {
                 let value = stack

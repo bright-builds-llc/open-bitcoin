@@ -18,7 +18,7 @@ use crate::sighash::{SigVersion, taproot_tagged_hash};
 use crate::signature::TransactionSignatureChecker;
 
 use super::ScriptError;
-use super::encoding::{read_instruction, serialized_witness_size, write_compact_size};
+use super::encoding::{read_instruction_syntax, serialized_witness_size, write_compact_size};
 use super::legacy::{
     LegacyExecutionContext, eval_script_internal, map_signature_error, verify_top_stack_true,
 };
@@ -181,8 +181,7 @@ pub(super) fn verify_taproot_program(
     if leaf_version == TAPROOT_LEAF_TAPSCRIPT {
         execution_data.maybe_validation_weight_left =
             Some(serialized_witness_size(witness) as i64 + VALIDATION_WEIGHT_OFFSET);
-        let exec_script =
-            ScriptBuf::from_bytes(script_bytes).map_err(|_| ScriptError::WitnessProgramMismatch)?;
+        let exec_script = ScriptBuf::from_serialized_bytes(script_bytes);
         return execute_tapscript(
             stack,
             transaction,
@@ -222,7 +221,7 @@ pub(super) fn execute_tapscript(
     let bytes = exec_script.as_bytes();
     let mut pc = 0;
     while pc < bytes.len() {
-        let instruction = read_instruction(bytes, &mut pc)?;
+        let instruction = read_instruction_syntax(bytes, &mut pc)?;
         if is_op_success(instruction.opcode) {
             if verify_flags.contains(ScriptVerifyFlags::DISCOURAGE_OP_SUCCESS) {
                 return Err(ScriptError::UnsupportedOpcode(instruction.opcode));
@@ -337,4 +336,188 @@ pub(super) fn execute_tapscript_checksig(
         return Err(ScriptError::UnsupportedOpcode(OP_CHECKSIGADD));
     }
     Ok(is_valid_signature)
+}
+
+#[cfg(test)]
+mod serialized_tests {
+    use super::*;
+    use crate::script::serialized_tests::{context, transaction};
+
+    fn execute(
+        bytes: Vec<u8>,
+        items: Vec<Vec<u8>>,
+        flags: ScriptVerifyFlags,
+        weight: i64,
+    ) -> Result<Vec<Vec<u8>>, ScriptError> {
+        let transaction = transaction();
+        let (spent, validation, precomputed) = context(&transaction);
+        let mut stack = Vec::new();
+        let mut data = ScriptExecutionData {
+            maybe_validation_weight_left: Some(weight),
+            ..Default::default()
+        };
+        execute_tapscript(
+            &mut stack,
+            &transaction,
+            0,
+            &spent,
+            &validation,
+            &precomputed,
+            flags,
+            &mut data,
+            &ScriptBuf::from_serialized_bytes(bytes),
+            items,
+            &Secp256k1::verification_only(),
+        )?;
+        Ok(stack)
+    }
+
+    fn program(bytes: Vec<u8>, corrupt: bool) -> Result<(), ScriptError> {
+        let secp = Secp256k1::new();
+        let secret = secp256k1::SecretKey::from_byte_array([31; 32]).expect("fixed key");
+        let keypair = secp256k1::Keypair::from_secret_key(&secp, &secret);
+        let (internal, _) = XOnlyPublicKey::from_keypair(&keypair);
+        let leaf = compute_tapleaf_hash(0xc0, &bytes);
+        let mut preimage = internal.serialize().to_vec();
+        preimage.extend_from_slice(&leaf);
+        let tweak =
+            Scalar::from_be_bytes(taproot_tagged_hash("TapTweak", &preimage).to_byte_array())
+                .expect("fixed tweak");
+        let tweaked = keypair
+            .add_xonly_tweak(&secp, &tweak)
+            .expect("fixed output");
+        let (output, parity) = XOnlyPublicKey::from_keypair(&tweaked);
+        let mut control = vec![0xc0 | u8::from(parity == Parity::Odd)];
+        control.extend_from_slice(&internal.serialize());
+        let mut bytes = bytes;
+        if corrupt {
+            bytes[0] ^= 1;
+        }
+        let witness = ScriptWitness::new(vec![bytes, control]);
+        let transaction = transaction();
+        let (spent, validation, precomputed) = context(&transaction);
+        verify_taproot_program(
+            &mut Vec::new(),
+            &witness,
+            &transaction,
+            0,
+            &spent,
+            &validation,
+            &precomputed,
+            ScriptVerifyFlags::TAPROOT,
+            &mut ScriptExecutionData::default(),
+            &output.serialize(),
+            &Secp256k1::verification_only(),
+        )
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_taproot_committed_wide_script_executes() {
+        // Arrange
+        let mut bytes = vec![0x61; 10_001];
+        bytes.push(0x51);
+        // Act
+        let result = program(bytes, false);
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_taproot_keeps_commitment_check() {
+        // Arrange
+        let bytes = vec![0x61; 10_001];
+        // Act
+        let result = program(bytes, true);
+        // Assert
+        assert_eq!(result, Err(ScriptError::WitnessProgramMismatch));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_success_after_large_push_precedes_limits() {
+        // Arrange
+        let mut bytes = vec![0x4d, 0x09, 0x02];
+        bytes.extend(vec![0xff; 521]);
+        bytes.extend_from_slice(&[0x50, 0x4e]);
+        // Act
+        let result = execute(bytes, vec![vec![0; 521]; 1001], ScriptVerifyFlags::NONE, 0);
+        // Assert
+        assert_eq!(result, Ok(vec![vec![1]]));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_malformed_before_success_fails() {
+        // Arrange
+        let bytes = vec![0x4d, 0x02, 0x00, 0x50];
+        // Act
+        let result = execute(bytes, Vec::new(), ScriptVerifyFlags::NONE, 0);
+        // Assert
+        assert_eq!(result, Err(ScriptError::TruncatedPushData));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_pushed_success_is_data() {
+        // Arrange
+        let bytes = vec![1, 0x50, 0x75, 0];
+        // Act
+        let result = execute(bytes, Vec::new(), ScriptVerifyFlags::NONE, 0);
+        // Assert
+        assert_eq!(result, Err(ScriptError::EvalFalse));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_success_policy_still_refuses() {
+        // Arrange
+        let bytes = vec![0x50, 0x4e];
+        // Act
+        let result = execute(
+            bytes,
+            Vec::new(),
+            ScriptVerifyFlags::DISCOURAGE_OP_SUCCESS,
+            0,
+        );
+        // Assert
+        assert_eq!(result, Err(ScriptError::UnsupportedOpcode(0x50)));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_no_success_keeps_initial_stack_limit() {
+        // Arrange
+        let bytes = vec![0x51];
+        // Act
+        let result = execute(bytes, vec![vec![]; 1001], ScriptVerifyFlags::NONE, 0);
+        // Assert
+        assert_eq!(result, Err(ScriptError::StackOverflow(1001)));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_no_success_keeps_initial_element_limit() {
+        // Arrange
+        let bytes = vec![0x51];
+        // Act
+        let result = execute(bytes, vec![vec![0; 521]], ScriptVerifyFlags::NONE, 0);
+        // Assert
+        assert_eq!(result, Err(ScriptError::PushSize(521)));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_no_success_keeps_validation_weight() {
+        // Arrange
+        let items = vec![vec![1], vec![1]];
+        // Act
+        let rejected = execute(vec![0xac], items.clone(), ScriptVerifyFlags::NONE, 49);
+        let accepted = execute(vec![0xac], items, ScriptVerifyFlags::NONE, 50);
+        // Assert
+        assert_eq!(rejected, Err(ScriptError::VerifyFailed));
+        assert_eq!(accepted, Ok(vec![vec![1]]));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_no_success_keeps_signature_validation() {
+        // Arrange
+        let items = vec![vec![1], vec![2; 32]];
+        // Act
+        let result = execute(vec![0xac], items, ScriptVerifyFlags::NONE, 50);
+        // Assert
+        assert_eq!(result, Err(ScriptError::SigDer));
+    }
 }

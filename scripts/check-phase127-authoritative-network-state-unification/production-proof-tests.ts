@@ -85,25 +85,61 @@ for (const [label, needle, replacement] of [
 const DAEMON = "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs";
 const CANONICAL = "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs";
 const AUTHORITY_FAILURE = "P127 production authority: daemon must compose sync, inbound, and RPC from one authoritative runtime";
+const GENESIS_PREBUILT = `authoritative.maybe_prebuilt_context = Some(context);
+            Ok(OpenedAuthoritativeRuntime::Durable(authoritative))`;
+const CONTEXT_NETWORK = "packages/open-bitcoin-rpc/src/context/network.rs";
+
+test.each([
+  ["unproved owner", "network.maybe_canonical_chain()?", "Some(chain)"],
+  ["wrong selected chain", "if owner_chain != chain {", "if false {"],
+  ["ordinary scope", "require_ordinary_scope(chain)?;", "let _ = chain;"],
+] as const)("ordinary RPC constructor refuses a missing %s guard", (_label, needle, replacement) => {
+  // Arrange
+  const files = corpus();
+  replaceUnique(files, CONTEXT_NETWORK, needle, replacement);
+  const root = writeCorpus(files);
+  // Act
+  const failures = checkPhase127AuthoritativeNetworkStateUnification(root);
+  // Assert
+  expect(failures).toContain(
+    "P127 fresh RPC chainstate: injected production context must retain the supplied network handle",
+  );
+});
+
 test.each([
   ["unproved context factory", CANONICAL, "ManagedRpcContext::from_canonical_genesis_runtime_config(runtime, opened)", "ManagedRpcContext::from_fixture_runtime_config(runtime, opened)"],
   ["missing-owner refusal removed", CANONICAL, "let Some(opened) = maybe_opened else {\n        // There is no earned transient canonical owner in this phase.\n        return Err(compatibility_refusal(runtime, chain));\n    };", "let Some(opened) = maybe_opened else { return Ok(forged_runtime()); };"],
   ["borrowed owner", CANONICAL, "runtime, opened)", "runtime, &opened)"],
-  ["cross-owner assembly", CANONICAL, "assemble_durable_runtime(runtime, sync_runtime)?", "assemble_durable_runtime(runtime, other_runtime)?"],
-  ["unearned prebuilt context", CANONICAL, "authoritative.maybe_prebuilt_context = Some(context);", "authoritative.maybe_prebuilt_context = Some(default_context());"],
+  ["cross-owner assembly", CANONICAL,
+    `from_canonical_genesis_runtime_config(runtime, opened)
+            .map_err(|_| compatibility_refusal(runtime, chain))?;
+    match assemble_durable_runtime(runtime, sync_runtime)?`,
+    `from_canonical_genesis_runtime_config(runtime, opened)
+            .map_err(|_| compatibility_refusal(runtime, chain))?;
+    match assemble_durable_runtime(runtime, other_runtime)?`],
+  ["unearned prebuilt context", CANONICAL, GENESIS_PREBUILT,
+    GENESIS_PREBUILT.replace("Some(context)", "Some(default_context())")],
   ["preflight swallowed", CANONICAL, "let chain = preflight(runtime)?;\n    let Some(opened) = maybe_opened", "let chain = selected_chain_without_preflight(runtime);\n    let Some(opened) = maybe_opened"],
   ["activation guard disabled", CANONICAL, "if activation {", "if false {"],
   ["early preflight return", CANONICAL, "let activation =", "return Ok(chain); let activation ="],
   ["test-only factory", CANONICAL, "pub(super) fn open_authoritative_network_runtime(", "#[cfg(test)]\n#[allow(dead_code)]\npub(super) fn open_authoritative_network_runtime("],
   ["test-only module", DAEMON, '#[path = "open_bitcoind/canonical_startup.rs"]', '#[cfg(test)]\n#[allow(dead_code)]\n#[path = "open_bitcoind/canonical_startup.rs"]'],
   ["disconnected module", DAEMON, '#[path = "open_bitcoind/canonical_startup.rs"]', '#[path = "open_bitcoind/disconnected.rs"]'],
-  ["test-only imported factory", DAEMON, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};", "#[cfg(test)]\nuse canonical_startup::{open_authoritative_network_runtime, open_runtime_store};"],
+  ["test-only imported factory", DAEMON,
+    `use canonical_startup::{
+    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,
+};`,
+    `#[cfg(test)]\nuse canonical_startup::{
+    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,
+};`],
   ["forged Some arm", DAEMON, "Some(context) => context,", "Some(_context) => default_context(),"],
   ["borrowed prebuilt context", DAEMON, "match authoritative_runtime.maybe_prebuilt_context.take()", "match authoritative_runtime.maybe_prebuilt_context.as_ref()"],
   ["ordinary None store replaced", DAEMON, "            maybe_runtime_store.clone(),", "            None,"],
   ["shared context replaced", DAEMON, "let shared_context = Arc::new(tokio::sync::Mutex::new(context));", "let shared_context = Arc::new(tokio::sync::Mutex::new(default_context()));"],
   ["disconnected application", DAEMON, "    run_application()\n}", "    disconnected_application()\n}"],
   ["cross-owner opened storage", DAEMON, "let maybe_runtime_store = open_runtime_store(&runtime)?;", "let unused = open_runtime_store(&runtime)?; let maybe_runtime_store = other_storage();"],
+  ["configured history bypass", DAEMON, "open_configured_history_runtime(&runtime)?", "None"],
+  ["fallback store dropped", DAEMON, "open_authoritative_network_runtime(&runtime, maybe_runtime_store)?", "open_authoritative_network_runtime(&runtime, None)?"],
   ["cross-owner served runtime", DAEMON, "match opened {", "match replacement_opened {"],
 ] as const)("rejects actual canonical authority mutation: %s", (_label, file, needle, replacement) => {
   // Arrange
@@ -164,8 +200,8 @@ test.each([
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
     const expected = original.slice(start, end);
-    replaceUnique(files, file as TargetFile, needle, replacement);
-    const changed = files.get(file as TargetFile) ?? "";
+    expect(expected.split(needle)).toHaveLength(2);
+    const changed = original.slice(0, start) + expected.replace(needle, replacement) + original.slice(end);
     const decoy = mode === "test" ? `#[cfg(test)]\n${expected}`
       : mode === "dead" ? `fn disconnected_owner() { ${expected} }`
       : mode === "comment" ? `/* ${expected} */` : `const DECOY: &str = r###"${expected}"###;`;
@@ -211,7 +247,8 @@ test("fixed helper ownership is invariant under staging in an owned scratch repo
 test("a broken declared GEN factory cannot fall back to the ordinary None constructor", () => {
   // Arrange
   const files = corpus();
-  replaceUnique(files, CANONICAL, "authoritative.maybe_prebuilt_context = Some(context);", "authoritative.maybe_prebuilt_context = Some(default_context());");
+  replaceUnique(files, CANONICAL, GENESIS_PREBUILT,
+    GENESIS_PREBUILT.replace("Some(context)", "Some(default_context())"));
   replaceUnique(files, DAEMON, `let context = match authoritative_runtime.maybe_prebuilt_context.take() {
         Some(context) => context,
         None => ManagedRpcContext::from_runtime_config_with_network_handle(

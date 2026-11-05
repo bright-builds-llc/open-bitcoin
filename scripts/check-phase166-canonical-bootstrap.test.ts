@@ -16,11 +16,9 @@ import { reviewedOwnership } from "./check-phase164-canonical-identity.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { checkPhase166, INPUT_FILES, loadInputs } from "./check-phase166-canonical-bootstrap.ts";
 import { CHECKPOINT, CLI, CONSENSUS, CORE, DAEMON, FACTORY, INSPECTION, NODE, OBSERVER, OPENER, RPC, VECTOR } from "./check-phase166-canonical-bootstrap/contracts.ts";
-
 const real = loadInputs();
 const PROCESS = "packages/open-bitcoin-rpc/tests/phase165_work_startup.rs";
 const ORIGINAL_PROCESS_IDENTITY = "ac6c248cd76324da26c5bf3850718df60d4fb790a13288ebfbc6eccc2e8272a3";
-
 // Literal forms and statuses inventoried independently from the original 164/165 guards.
 const legacyClaimFamilies = [
   { owner: 164, subjects: ["Bootstrap", "Reopen", "Whole-chain parity", "Production", "Knots qualification"],
@@ -87,7 +85,6 @@ for (const [file, claim] of [
   checkCurrentClaims(file => inputs.get(file)!, (file, rule, detail) => findings.push({ file, rule, detail }));
   expect(findings.some(row => row.file === file && row.rule === "claim")).toBe(true);
 });
-
 const CURRENT_GENESIS_HEADING = "## Current Phase 166 canonical genesis boundary";
 for (const [claim, allowed] of [
   ...["supported", "available", "proved"].flatMap(status => [
@@ -125,7 +122,6 @@ for (const file of ["README.md", "docs/parity/support-matrix.md"]) for (const ba
     });
   }
 }
-
 test("current verifier inverse preserves the complete reviewed base and original historical snapshot", () => {
   // Arrange
   const inputs = loadWorkInputs();
@@ -137,7 +133,6 @@ test("current verifier inverse preserves the complete reviewed base and original
   expect(createHash("sha256").update(projected).digest("hex")).toBe(VERIFY_BASE_SHA);
   expect(historical.get("scripts/verify.sh")).toBe(inputs.get("packages/testdata/phase164/historical-tooling/verify.txt"));
 });
-
 const NATIVE_SOURCE = "scripts/check-phase163-provenance/native.test.ts";
 const TOOLING_SOURCE = "scripts/check-phase164-canonical-identity/historical-tooling.ts";
 const NATIVE_MANIFEST_CURRENT_SHA = "5297898680a15de12f79b7e6c9c8a814fdd0276522bfd071b96cd7b3a6f7ac16";
@@ -172,7 +167,6 @@ test("native timeout isolation restores exact manifest-current source and origin
   expect(Buffer.byteLength(maybeTooling!)).toBe(104671);
   expect(historical.get(NATIVE_SOURCE)).toBe(inputs.get("packages/testdata/phase164/historical-tooling/phase163-native-tests.txt"));
 });
-
 for (const [name, before, after] of [
   ["deadline", "timeout: 55_000", "timeout: 54_000"],
   ["broad selection", '`^${selected}$`', '`^actual `'],
@@ -189,7 +183,6 @@ for (const [name, before, after] of [
   expect(legacyToolingBase(NATIVE_SOURCE, changed)).toBe(changed);
   expect(() => historicalToolingView(inputs)).toThrow(`${NATIVE_SOURCE}: unreviewed current tooling fingerprint`);
 });
-
 for (const mode of ["missing", "wrong destination", "altered current span"] as const) {
   test(`native timeout isolation refuses actual copied ${mode} mapping`, () => {
     // Arrange: run the changed mapping module itself, independently of current owner pins.
@@ -222,7 +215,6 @@ for (const mode of ["missing", "wrong destination", "altered current span"] as c
     } finally { rmSync(root, { recursive: true }); }
   });
 }
-
 for (const [name, transform] of [
   ["missing", (source: string) => source.replace(CURRENT_TEMP_PREPARATION, "")],
   ["duplicate", (source: string) => source.replace(CURRENT_TEMP_PREPARATION, CURRENT_TEMP_PREPARATION.repeat(2))],
@@ -260,7 +252,6 @@ test("verifier temporary-directory preparation resolves aliases and fails before
     expect(refused.stdout).toBe("");
   } finally { rmSync(root, { recursive: true }); }
 });
-
 for (const [name, before, after] of [
   ["closed physical preservation", "                    manifest(root),\n                    before,", "                    manifest(root),\n                    manifest(root),"],
   ["diagnostic redaction", 'assert!(!message.contains(secret), "{message}");', 'assert!(true, "{message}");'],
@@ -283,7 +274,6 @@ for (const [name, before, after] of [
   expect(checkPhase164(inputs).some(row => row.file === PROCESS && row.rule === "boundary")).toBe(true);
   expect(checkPhase165(inputs).some(row => row.file === PROCESS && row.rule === "ownership")).toBe(true);
 });
-
 test("reviewed process contract refuses its original stale row in an isolated current checker", () => {
   // Arrange: only copied checker data changes; tracked contracts remain untouched.
   const root = mkdtempSync(join(tmpdir(), "phase166-stale-process-"));
@@ -305,7 +295,6 @@ test("reviewed process contract refuses its original stale row in an isolated cu
     expect(result.stderr).not.toContain("input inventory");
   } finally { rmSync(root, { recursive: true }); }
 });
-
 for (const [claim, allowed] of [
   ["Canonical genesis bootstrap and reopen are supported for all four selectors", true],
   ["Phase 166 canonical genesis bootstrap and reopen are supported for all four selectors", true],
@@ -338,7 +327,6 @@ for (const [claim, allowed] of [
   expect(findings.some(row => row.file === file && row.rule === "claim")).toBe(!allowed);
   expect(workFindings.some(row => row.file === file && row.rule === "claim")).toBe(!allowed);
 });
-
 for (const status of ["supported", "available", "proved"]) for (const file of ["README.md", "docs/parity/support-matrix.md", "docs/parity/v2-6-canonical-chain-identity.md"]) {
   for (const [claim, allowed] of [
     [`Canonical genesis bootstrap and reopen are ${status} for all four selectors`, true],
@@ -361,7 +349,6 @@ for (const status of ["supported", "available", "proved"]) for (const file of ["
     expect(workFindings.some(row => row.file === file && row.rule === "claim")).toBe(!allowed);
   });
 }
-
 for (const status of ["supported", "available", "proved"]) for (const file of ["docs/parity/v2-6-shared-exact-work.md", "docs/parity/index.json"]) {
   for (const subject of ["Canonical bootstrap", "Reopen", "Ordinary history", "Actual pinned Knots daemon differential qualification"]) {
     test(`fixed work/JSON claim entrypoint refuses ${file}: ${subject} is ${status}`, () => {
@@ -385,7 +372,6 @@ for (const status of ["supported", "available", "proved"]) for (const file of ["
     });
   }
 }
-
 test("original identity and work claim ownership preserves actual historical production-source facts", () => {
   // Arrange: this is an existing Phase165 source-preservation fact, not current production qualification.
   const source = readFileSync("docs/parity/v2-6-shared-exact-work.md", "utf8");
@@ -396,7 +382,6 @@ test("original identity and work claim ownership preserves actual historical pro
   expect(currentQualificationClaims("Production is complete.").length).toBeGreaterThan(0);
   expect(currentQualificationClaims("Whole-chain parity is accepted.").length).toBeGreaterThan(0);
 });
-
 test("current Phase165 copied membership refuses an unapproved sixth input before source-root I/O", () => {
   // Arrange: copy actual current modules, then change their exported read-set membership.
   const root = mkdtempSync(join(tmpdir(), "phase166-reader-membership-"));
@@ -423,7 +408,6 @@ const LEASE = NODE + "storage/fjall_store/open_lease.rs";
 const lease = real.get(LEASE)!;
 const unixDeclaration = "#[cfg(unix)]\n    pub(super) fn acquire(source:";
 const helperDeclaration = "#[cfg(test)]\nimpl super::FjallNodeStore {";
-
 test("exact relocated Unix and test-impl ownership retain their real mechanical regions", () => {
   // Arrange
   const entries = regions(lease);
@@ -472,8 +456,8 @@ const mutants: readonly (readonly [string, string, string, string, string])[] = 
   ["stored BASIC full body and no undo", NODE + "storage/canonical_bootstrap/proof.rs", "BasicFilterInputs::from_historical(genesis.block(), position, None)", "BasicFilterInputs::from_historical(&fixture, position, None)", "stored-basic"],
   ["strict explicit counts", NODE + "storage/canonical_bootstrap/records.rs", "maybe_counts.ok_or(Refusal::MissingRecord)?", "maybe_counts.unwrap_or_default()", "strict-records"],
   ["no C or H inventory", NODE + "storage/canonical_bootstrap/records.rs", '"coins" => key == "B",', '"coins" => true,', "no-genesis-coins"],
-  ["live instance binding", OPENER, "!Arc::ptr_eq(&self.publication, &store.filter_publication)", "false", "store-generation"],
-  ["consuming capability recheck", OPENER, "self.recovered.check(&self.store)?;", "let _ignored = &self.recovered;", "consuming-owner"],
+  ["live instance binding", OPENER, "pub(crate) fn check(&self, store: &FjallNodeStore) -> Result<&CanonicalGenesisProof, Refusal> {\n        if !Arc::ptr_eq(&self.publication, &store.filter_publication)", "pub(crate) fn check(&self, store: &FjallNodeStore) -> Result<&CanonicalGenesisProof, Refusal> {\n        if false", "store-generation"],
+  ["consuming capability recheck", OPENER, "pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalGenesis), Refusal> {\n        self.recovered.check(&self.store)?;", "pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalGenesis), Refusal> {\n        let _ignored = &self.recovered;", "consuming-owner"],
   ["atomic SyncAll publication", OPENER, "store.db.batch().durability(Some(FjallPersistMode::SyncAll))", "store.db.batch().durability(None)", "atomic-publication"],
   ["uncertain commit refuses capability", OPENER, "batch.commit().map_err(|_| Refusal::CommitUncertain)?;", "let _ignored = batch.commit();", "atomic-publication"],
   ["pre-original detached proof", OPENER, "prove_detached(records, selected)", "prove_fixture(records, selected)", "pre-effect-proof"],
@@ -494,7 +478,8 @@ const mutants: readonly (readonly [string, string, string, string, string])[] = 
   ["checkpoint full ancestry", CHECKPOINT, "stored.as_slice() == active_chain", "stored.last() == active_chain.last()", "checkpoint-counts"],
   ["checkpoint malformed propagation", CHECKPOINT, ".transpose()?", ".transpose().unwrap_or_default()", "checkpoint-counts"],
   ["checkpoint before invalidation", CHECKPOINT, "// Counts describe the entire stored ancestry.", "control.invalidate_append()?; // Counts describe the entire stored ancestry.", "checkpoint-counts"],
-  ["no inferred empty checkpoint counts", CHECKPOINT, "encode_chain_meta(active_chain, maybe_counts.as_ref())?", "encode_chain_meta(active_chain, Some(&HashMap::new()))?", "checkpoint-counts"],
+  ["no inferred empty checkpoint counts", CHECKPOINT, "encode_chain_meta(active_chain, maybe_live_counts.or(maybe_counts.as_ref()))?", "encode_chain_meta(active_chain, Some(&HashMap::new()))?", "checkpoint-counts"],
+  ["checkpoint delegate dead branch", CHECKPOINT, "self.save_validated_chain_meta_with_counts(active_chain, None, mode)", "if false { self.save_validated_chain_meta_with_counts(active_chain, None, mode) } else { Ok(()) }", "checkpoint-delegate"],
   ["activation history gate", DAEMON, ".require_ordinary_history()", ".ordinary_history()", "activation-before-open"],
   ["activation relay default boundary", DAEMON, "|| runtime.relay.enabled", "|| false", "activation-before-open"],
   ["raw daemon opener substitution", DAEMON, "FjallNodeStore::open_canonical_genesis(data_dir, chain)", "FjallNodeStore::open(data_dir)", "daemon-sealed-opener"],
@@ -505,7 +490,7 @@ const mutants: readonly (readonly [string, string, string, string, string])[] = 
   ["CLI dispatch moved after parser", CLI + "bin/open-bitcoin.rs", "    if let Some(code) = open_bitcoin_node::FjallNodeStore::maybe_run_inspection_worker() {\n        std::process::exit(code);\n    }\n    let cli = OperatorCli::parse();", "    let cli = OperatorCli::parse(); if let Some(code) = open_bitcoin_node::FjallNodeStore::maybe_run_inspection_worker() { std::process::exit(code); }", "pre-parser-dispatch"],
   ["qualified genesis excludes ordinary maintenance", RPC + "bin/open-bitcoind.rs", "let maybe_checkpoint_worker = if canonical_genesis", "let maybe_checkpoint_worker = if false", "genesis-maintenance"],
   ["RPC selected params", FACTORY, "consensus_params(opened.genesis())", "config.sync.runtime.network.consensus_params()", "sealed-rpc-factory"],
-  ["RPC wallet unavailable", FACTORY, "WalletState::Unavailable,", "WalletState::Local(Wallet::default()),", "sealed-rpc-factory"],
+  ["RPC wallet unavailable", RPC + "context/canonical_history.rs", "WalletState::Unavailable,", "WalletState::Local(Wallet::default()),", "sealed-rpc-assembly"],
   ["RPC borrowed capability", FACTORY, "opened: OpenedCanonicalGenesis,", "opened: &OpenedCanonicalGenesis,", "sealed-signature"],
   ["RPC recovery before proof", FACTORY, "preflight(config, &opened)?;", "recover_mempool_snapshot_from_store_handle(&store)?; preflight(config, &opened)?;", "sealed-rpc-factory"],
   ["RPC wrong selected network", FACTORY, "opened.genesis().chain() != chain", "false", "rpc-selected-history"],
@@ -523,7 +508,7 @@ const mutants: readonly (readonly [string, string, string, string, string])[] = 
   ["reviewed predicate family: delivered result", NODE + "storage/fjall_store/inspection/worker.rs", "if !status.success() || !delivered {", "if !status.success() || !delivered && false {", "child-result"],
   ["reviewed predicate family: selected runtime", NODE + "sync/canonical_genesis.rs", "if opened.genesis().chain() != selected {", "if opened.genesis().chain() != selected && false {", "runtime-owner"],
   ["reviewed predicate family: saved BASIC recovery", NODE + "sync/canonical_genesis/basic.rs", "store.resolved_basic_filter_indexing_after_startup()? == Some(true)\n    {", "store.resolved_basic_filter_indexing_after_startup()? == Some(true) && false\n    {", "saved-basic-owner"],
-  ["reviewed predicate family: capability early success", OPENER, "self.recovered.check(&self.store)?;", "if true { return Ok((self.store, self.recovered)); } self.recovered.check(&self.store)?;", "consuming-owner"],
+  ["reviewed predicate family: capability early success", OPENER, "pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalGenesis), Refusal> {\n        self.recovered.check(&self.store)?;", "pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalGenesis), Refusal> {\n        if true { return Ok((self.store, self.recovered)); } self.recovered.check(&self.store)?;", "consuming-owner"],
   ["reviewed predicate family: activation branch", DAEMON, "if activation {", "if activation && false {", "activation-before-open"],
   ["reviewed predicate family: checkpoint counts", CHECKPOINT, "if stored.as_slice() == active_chain {", "if stored.as_slice() == active_chain || true {", "checkpoint-counts"],
   ["predicate audit: unavailable wallet branch", RPC + "context/wallet_state.rs", "if matches!(self.wallet_state, WalletState::Unavailable) {", "if matches!(self.wallet_state, WalletState::Unavailable) && false {", "wallet-unavailable"],
@@ -536,36 +521,34 @@ const mutants: readonly (readonly [string, string, string, string, string])[] = 
   ["predicate audit: daemon dispatch branch", RPC + "bin/open-bitcoind.rs", "if let Some(code) = FjallNodeStore::maybe_run_inspection_worker() {", "if let Some(code) = FjallNodeStore::maybe_run_inspection_worker() && false {", "pre-tokio-dispatch"],
   ["predicate audit: CLI dispatch branch", CLI + "bin/open-bitcoin.rs", "if let Some(code) = open_bitcoin_node::FjallNodeStore::maybe_run_inspection_worker() {", "if let Some(code) = open_bitcoin_node::FjallNodeStore::maybe_run_inspection_worker() && false {", "pre-parser-dispatch"],
 ];
-
 for (const [file, start, rule] of [
   [CORE + "engine/canonical_genesis.rs", "if snapshot.maybe_best_block != Some(proof.hash())", "complete-coins"],
   [NODE + "storage/canonical_bootstrap/proof.rs", "if records.identity_hash != genesis.hash()", "stored-authority"],
   [NODE + "storage/canonical_bootstrap/proof.rs", "if records.headers[0] != expected_header", "stored-authority"],
   [OPENER, "if !Arc::ptr_eq(&self.publication, &store.filter_publication)", "store-generation"],
-  [OPENER, "if store.db.seqno() != self.sequence", "store-generation"],
+  [OPENER, "if store.db.check_stamp(&self.stamp).is_err()", "store-generation"],
   [FACTORY, "if opened.genesis().chain() != chain", "rpc-selected-history"],
   [FACTORY, "if config.sync.is_enabled()", "rpc-selected-history"],
 ] as const) {
   test(`conditional guard bypass refuses ${file}:${start}`, async () => {
     // Arrange: wrap the actual entire condition; every old predicate token remains.
-    const source = real.get(file)!;
+    const original = real.get(file)!;
+    const source = file === OPENER ? original.slice(0, original.indexOf("impl OpenedCanonicalHistory")) : original;
     expect(source.split(start)).toHaveLength(2);
     const offset = source.indexOf(start);
     const before = source.slice(offset, source.indexOf("{", offset) + 1);
     const after = `if false && (${before.slice(3, -1).trim()}) {`;
     expect(source.split(before)).toHaveLength(2);
     expect(before).not.toBe(after);
-    const changed = source.replace(before, after);
-    expect(changed).not.toBe(source);
+    const changed = original.slice(0, offset) + after + original.slice(offset + before.length);
+    expect(changed).not.toBe(original);
     // Act / Assert
     expect((await checkPhase166(new Map(real).set(file, changed))).some(row => row.file === file && row.rule === rule)).toBe(true);
   });
 }
-
 test("current bounded source and independently reproduced vectors pass", async () => {
   expect(await checkPhase166(real)).toEqual([]);
 }, 30_000);
-
 for (const [name, file, before, after, rule] of mutants) {
   test(`semantic mutant refuses ${name}`, async () => {
     // Arrange
@@ -581,7 +564,29 @@ for (const [name, file, before, after, rule] of mutants) {
     expect(findings.some(row => row.file === file && row.rule === rule)).toBe(true);
   });
 }
-
+for (const [name, before, after, rule] of [
+  ["wrong Genesis impl owner", "impl OpenedCanonicalGenesis {", "impl DisconnectedOwner {", "consuming-owner"],
+  ["disabled Genesis impl", "impl OpenedCanonicalGenesis {", "#[cfg(any())]\nimpl OpenedCanonicalGenesis {", "consuming-owner"],
+  ["test-only Genesis method", "pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalGenesis)", "#[cfg(test)]\n    pub(crate) fn into_parts(self) -> Result<(FjallNodeStore, RecoveredCanonicalGenesis)", "consuming-owner"],
+  ["duplicate Genesis impl", "impl OpenedCanonicalGenesis {", "impl OpenedCanonicalGenesis {}\nimpl OpenedCanonicalGenesis {", "consuming-owner"],
+  ["commented Genesis impl", "impl OpenedCanonicalGenesis {", "/* impl OpenedCanonicalGenesis {} */\nimpl DisconnectedOwner {", "consuming-owner"],
+  ["nested Genesis impl", "impl OpenedCanonicalGenesis {", "fn disconnected() { impl OpenedCanonicalGenesis {} }\nimpl DisconnectedOwner {", "consuming-owner"],
+  ["string Genesis impl", "impl OpenedCanonicalGenesis {", "const DECOY: &str = \"impl OpenedCanonicalGenesis {}\";\nimpl DisconnectedOwner {", "consuming-owner"],
+  ["wrong recovered impl owner", "impl RecoveredCanonicalGenesis {", "impl DisconnectedOwner {", "store-generation"],
+  ["disabled recovered impl", "impl RecoveredCanonicalGenesis {", "#[cfg(any())]\nimpl RecoveredCanonicalGenesis {", "store-generation"],
+  ["test-only recovered method", "pub(crate) fn check(&self, store: &FjallNodeStore) -> Result<&CanonicalGenesisProof, Refusal>", "#[cfg(test)]\n    pub(crate) fn check(&self, store: &FjallNodeStore) -> Result<&CanonicalGenesisProof, Refusal>", "store-generation"],
+  ["duplicate recovered impl", "impl RecoveredCanonicalGenesis {", "impl RecoveredCanonicalGenesis {}\nimpl RecoveredCanonicalGenesis {", "store-generation"],
+  ["commented recovered impl", "impl RecoveredCanonicalGenesis {", "/* impl RecoveredCanonicalGenesis {} */\nimpl DisconnectedOwner {", "store-generation"],
+  ["nested recovered impl", "impl RecoveredCanonicalGenesis {", "fn disconnected() { impl RecoveredCanonicalGenesis {} }\nimpl DisconnectedOwner {", "store-generation"],
+  ["string recovered impl", "impl RecoveredCanonicalGenesis {", "const DECOY: &str = \"impl RecoveredCanonicalGenesis {}\";\nimpl DisconnectedOwner {", "store-generation"],
+] as const) {
+  test(`exact Genesis owner refuses ${name}`, async () => {
+    const source = real.get(OPENER)!;
+    expect(source.split(before)).toHaveLength(2);
+    const findings = await checkPhase166(new Map(real).set(OPENER, source.replace(before, after)));
+    expect(findings.some(row => row.file === OPENER && row.rule === rule)).toBe(true);
+  });
+}
 for (const field of ["body", "proof", "filter", "predecessor", "evidence-class"]) {
   test(`independent frozen vector rejects changed ${field}`, async () => {
     // Arrange
@@ -597,7 +602,6 @@ for (const field of ["body", "proof", "filter", "predecessor", "evidence-class"]
     expect(findings.some(row => row.file === VECTOR && row.rule === "vectors")).toBe(true);
   }, 30_000);
 }
-
 test("missing required input refuses visibly", async () => {
   // Arrange
   const inputs = new Map(real);
@@ -607,13 +611,11 @@ test("missing required input refuses visibly", async () => {
   // Assert
   expect(findings.some(row => row.file === OPENER && row.rule === "input")).toBe(true);
 });
-
 test("bounded inventory has unique fixed membership", () => {
   expect(new Set(INPUT_FILES).size).toBe(INPUT_FILES.length);
   expect(INPUT_FILES.length).toBeLessThan(60);
   expect(INPUT_FILES.some(file => file.includes(".planning/"))).toBe(false);
 });
-
 test("import is silent and does not run the CLI or oracle", () => {
   // Arrange / Act
   const result = spawnSync(process.execPath, ["-e", 'await import("./scripts/check-phase166-canonical-bootstrap.ts");'],

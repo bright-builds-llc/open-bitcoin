@@ -53,10 +53,35 @@ where
     let maybe_durable_sync_state = context
         .current_durable_sync_state()
         .map_err(|_| RpcFailure::client_not_connected("durable sync metadata unavailable"))?;
-    if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
-        return durable_blockchain_info(context, durable_sync_state);
+    // Preserve existing metadata/network/prune failures before new factual reads.
+    let mut response = if let Some(durable_sync_state) = maybe_durable_sync_state.as_ref() {
+        durable_blockchain_info(context, durable_sync_state)?
+    } else {
+        live_blockchain_info(context)?
+    };
+    if let Some(tip) = context.maybe_canonical_active_tip()? {
+        // This is a separate read after the detached observer has released its guards.
+        let headers = context
+            .best_header_height()
+            .map_err(network_authority_error_to_failure)?
+            .ok_or_else(|| RpcFailure::verify_error("canonical best header unavailable"))?;
+        response.blocks = tip.height;
+        response.headers = headers;
+        let mut display = tip.block_hash.to_byte_array();
+        display.reverse();
+        response.maybe_best_block_hash = Some(decode::encode_hex(&display));
+        response.maybe_median_time_past = Some(tip.median_time_past);
     }
+    Ok(response)
+}
 
+fn live_blockchain_info<S, V>(
+    context: &ManagedRpcContext<S, V>,
+) -> Result<GetBlockchainInfoResponse, RpcFailure>
+where
+    S: open_bitcoin_node::ChainstateStore,
+    V: open_bitcoin_node::core::chainstate::CoinsView,
+{
     let maybe_tip = context
         .maybe_chain_tip()
         .map_err(network_authority_error_to_failure)?;

@@ -8,6 +8,45 @@ use open_bitcoin_primitives::{
     Amount, OutPoint, ScriptBuf, ScriptWitness, Transaction, TransactionInput, TransactionOutput,
 };
 
+fn proved_regtest_root() -> (HeaderStore, Block, BlockHash, ConsensusParams) {
+    let chain = open_bitcoin_consensus::CanonicalChain::Regtest;
+    let block = chain.spec().genesis_block();
+    let proof =
+        open_bitcoin_consensus::chain_spec::CanonicalGenesisProof::prove(chain.spec(), &block)
+            .expect("proved root");
+    let store = HeaderStore::from_canonical_genesis(&proof).expect("canonical owner");
+    let params = store.maybe_consensus_params.expect("selected params");
+    (store, block, proof.hash(), params)
+}
+
+#[test]
+fn canonical_genesis_body_refuses_tampered_height_and_work_without_receipt() {
+    for wrong_height in [true, false] {
+        // Arrange
+        let (mut store, block, hash, params) = proved_regtest_root();
+        let entry = store.entries.get_mut(&hash).expect("retained genesis row");
+        if wrong_height {
+            entry.height = 1;
+        } else {
+            entry.chain_work = ProofWork::ZERO;
+        }
+        let before = store.clone();
+
+        // Act
+        let error = store
+            .check_body_eligibility_detailed(&block, params, 2_000_000_000)
+            .expect_err("tampered retained genesis row");
+
+        // Assert
+        assert!(
+            matches!(error, BodyEligibilityError::Network(NetworkError::InvalidHeader { reject_reason, .. })
+            if reject_reason == "unproved-canonical-genesis-body")
+        );
+        assert_eq!(store, before);
+        assert!(store.maybe_body_eligibility(hash).is_none());
+    }
+}
+
 fn hash(marker: u8) -> BlockHash {
     Hash32::from_byte_array([marker; 32]).into()
 }

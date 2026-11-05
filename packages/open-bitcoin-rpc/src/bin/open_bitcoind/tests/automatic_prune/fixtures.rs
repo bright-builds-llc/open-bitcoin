@@ -294,18 +294,60 @@ pub(super) fn assert_raw_cache_refuses(
 // Independent encoding of derived public undo facts using the versioned storage
 // schema; no retained-usage measurement supplies its own expected byte count.
 pub(super) fn encoded_undo_size(undo: &BlockUndo) -> u64 {
-    let transactions = undo.transactions.iter().map(|tx| {
-        let restored_inputs = tx.restored_inputs.iter().map(|coin| serde_json::json!({
-            "output": {"value_sats": coin.output.value.to_sats(), "script_pubkey": coin.output.script_pubkey.as_bytes()},
+    let coin_json = |coin: &Coin| {
+        serde_json::json!({
+            "output": {
+                "value_sats": coin.output.value.to_sats(),
+                "script_pubkey": coin.output.script_pubkey.as_bytes(),
+            },
             "is_coinbase": coin.is_coinbase,
             "created_height": coin.created_height,
             "created_median_time_past": coin.created_median_time_past,
-        })).collect::<Vec<_>>();
-        serde_json::json!({"restored_inputs": restored_inputs})
-    }).collect::<Vec<_>>();
+        })
+    };
+    let transactions = undo
+        .transactions
+        .iter()
+        .map(|tx| {
+            let restored_inputs = tx
+                .restored_inputs
+                .iter()
+                .map(&coin_json)
+                .collect::<Vec<_>>();
+            serde_json::json!({"restored_inputs": restored_inputs})
+        })
+        .collect::<Vec<_>>();
+    let overwrites = undo
+        .overwrites
+        .iter()
+        .map(|batch| {
+            let overwritten = batch
+                .overwritten
+                .iter()
+                .map(|entry| {
+                    serde_json::json!({
+                        "transaction_index": entry.transaction_index,
+                        "outpoint": {
+                            "txid": entry.outpoint.txid.to_byte_array(),
+                            "vout": entry.outpoint.vout,
+                        },
+                        "previous_coin": coin_json(&entry.previous_coin),
+                        "new_coin": coin_json(&entry.new_coin),
+                    })
+                })
+                .collect::<Vec<_>>();
+            serde_json::json!({
+                "block_hash": batch.block_hash.to_byte_array(),
+                "height": batch.height,
+                "creating_median_time_past": batch.creating_median_time_past,
+                "overwritten": overwritten,
+                "integrity": batch.integrity,
+            })
+        })
+        .collect::<Vec<_>>();
     let value = serde_json::json!({
         "schema_version": open_bitcoin_node::SchemaVersion::CURRENT.get(),
-        "payload": {"transactions": transactions},
+        "payload": {"transactions": transactions, "overwrites": overwrites},
     });
     u64::try_from(
         serde_json::to_vec_pretty(&value)

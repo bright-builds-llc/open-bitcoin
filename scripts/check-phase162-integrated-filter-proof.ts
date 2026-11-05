@@ -20,7 +20,11 @@ import { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } fro
 export { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { LEGACY_CONTRACT_BUNDLE, legacyFunctionContractView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { verificationHistoricalBase, legacyToolingBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { FILTER_GUARD_INVERSES, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity/contracts.ts";
 const PROCESS = SHARED[1];
+const PEER_REQUESTS = N + "sync/block_reconcile/peer_requests.rs";
+const BOUNDED_ROWS = N + "storage/fjall_store/bounded_rows.rs";
+const BOUNDED_CODEC = N + "storage/fjall_store/bounded_rows/codec.rs";
 const UNIX_TESTS = "#[cfg(all(test, unix))]";
 const CHECKPOINTS: Contract[] = CHECKPOINT_CONTRACTS.map((row, index) => ({ ...row, kind: "production", counts: CHECKPOINT_COUNTS[index], assertions: [], facts: [] }));
 const ROOTS = [...CONTRACTS, ...CHECKPOINTS].map(row => row.file);
@@ -52,6 +56,7 @@ export const NATIVE_COMMANDS = [
 ];
 export const SHARED_FORMAT = "rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs";
 export const CHECK_FILES = [...new Set([...ROOTS, ...MODULE_EDGES.flatMap(edge => [edge.parent, edge.child]), ...SHARED, ...PHASE162_FILES, ...PHASE162_EVIDENCE,
+  N + "sync/block_reconcile.rs", PEER_REQUESTS, BOUNDED_ROWS, BOUNDED_CODEC,
   ...OWNED, "scripts/phase162-filter-oracle.test.ts", "scripts/check-phase158-validated-reorg.ts", "scripts/check-phase158-validated-reorg.test.ts",
   N + "chainstate/flush_lifecycle/tests/recovery_and_persist.rs", B + "tests/filter_index/peer_serving/evidence.rs",
   "docs/parity/index.json", "docs/parity/source-breadcrumbs.json", "scripts/verify.sh", "scripts/generate-peer-filter-fixtures.ts", ".gitmodules", "rust-toolchain.toml", ".bun-version", LEGACY_CONTRACT_BUNDLE])];
@@ -359,6 +364,7 @@ export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<st
   const state = checkPhase162ClaimState(historicalText, failures);
   try { failures.push(...checkPhase162LegacyFunctionControls(legacyFunctionContractView(sources))); }
   catch (error) { failures.push(error instanceof Error ? error.message : String(error)); }
+  checkCurrentPhase167Seams(text, failures);
   checkModules(text, failures);
   checkNative(text("scripts/verify.sh"), failures);
   checkScope(text, failures, state, historicalText);
@@ -366,6 +372,67 @@ export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<st
   checkTypeScriptOracle(text("scripts/phase162-filter-oracle.ts"), failures);
   if (!compact(rustCode(text(N + "sync/tests/peer_filter_transport/phase162.rs"))).includes("constPARTIAL:usize=31;")) failures.push("Phase162 outbound physical prefix: exact31-byte constant required");
   return [...new Set(failures)];
+}
+
+/** Reviewed current Phase167 delegates; frozen Phase162 receipt rows stay in the historical view. */
+function checkCurrentPhase167Seams(text: (file: string) => string, failures: string[]): void {
+  const rows: readonly (readonly [string, string, string | null, string, readonly string[]])[] = [
+    [N + "sync/session.rs", "sync_connected_peer_with_cancel", "DurableSyncRuntime", "19c4dd911638c44315513b524ab63c4fafa1020344f835e7122b9a7455dba0bb", ["PeerRequests::new(token)", "self.run_peer_messages(", "requests.finish(self)", "request_cleanup_result("]],
+    [N + "sync/session.rs", "run_peer_messages", "DurableSyncRuntime", "c1d7fe1522d29dfef4ab69e5a45ec78ae579f3da27b843866c3202d139d3038e", ["turn.requests.request_missing(self)?", "turn.requests.renew(self, &outbound)?", "SyncPeerReceiveOutcome::Idle", "turn.requests.expire(self, timestamp)?", "self.send_all_for_registered_peer_with_cancel("]],
+    [N + "sync/session.rs", "process_peer_message", "DurableSyncRuntime", "b4699e6c8cd85d8a0d42aab843a76866126253c8baa593cfca701169ee7db97a", ["inflight_receipt_hashes(&message, &self.inflight_blocks)", "requests.dispatch(self, message", "requests.handoff(", "filter_serving::send_filter_plans(", "outbound.extend(requests.request_missing(self)?)", "self.send_all_for_registered_peer_with_cancel("]],
+    [N + "sync/session.rs", "request_cleanup_result", null, "ad713ec795b225ed3f95020098060a9de9f38ed7205f164f849e7aa6ed29529a", ["match (result, cleanup)", "(Err(error), Err(cleanup))"]],
+    [PEER_REQUESTS, "handoff_core", null, "12026d6e72e6526ba792a7d99c68c14f1981a8575a16cce1bcd9038538ca154a", ["targeted.iter().any", "owner.requested()?", "if !requested.contains(&hash)", "hashes.difference(inflight).count()", "inflight.extend(hashes)", "targeted.into_iter()"]],
+    [PEER_REQUESTS, "expire", "PeerRequests", "79ec249fdf63cc825a1323573d8ce31ff4fe0e571018586302da1b53173714a9", ["owner.expire(timestamp)", "handoff_core(", "targeted,"]],
+    [PEER_REQUESTS, "reconcile", "PeerRequests", "8cab3e1ce3c7a1cbe620439e690407f316867e873da98ab5d2181f373632f7fa", ["release_unrequested_hashes(runtime, &self.retained)", "release_unrequested_hashes(runtime, &requests)", "request_cleanup_result(previous, current)?"]],
+    [PEER_REQUESTS, "settle_authorized", "PeerRequests", "21c006e6952af702d171f7e5c5b90f4a365348013d831f270a610514531656cb", ["authorized.into_parts()", "self.reconcile(runtime, observed)", "release_unrequested_hashes(runtime, receipt)", "request_cleanup_result("]],
+    [N + "storage/fjall_store/validation_history.rs", "save_trusted_header_snapshot", "FjallNodeStore", "ab2a6e663c28c9ada47bc227201bd90fb596750be391b708cca131d19655a738", ["snapshot.belongs_to(self)", "RowFamily::Headers", "RowFamily::BlockIndex", "ValidationCoverage::Complete", "FjallPersistMode::SyncAll", "append_replacement(self, &mut batch, headers)", "append_replacement(self, &mut batch, index)", "batch.commit()"]],
+    [BOUNDED_ROWS, "prepare", null, "403af3fc21b2c860f06dda3170177bb8ba22b70287df934cf6cc82dd495d9b95", ["codec::prepare(family, bytes)"]],
+    [BOUNDED_ROWS, "append_replacement", null, "38e8d8c372cc9b76f130de11b73af68784a5979d79c20585777c28bfc6c805a9", ["snapshot.prefix(keyspace, family.root())", "keys.len() >= MAX_ENTRIES", "batch.remove(keyspace, key)", "batch.insert(keyspace, key, value)"]],
+    [BOUNDED_CODEC, "prepare", null, "19cd2f0675bb4e5de3ffb7859ddffebb047c86fb5b4564d3b03ae6ab9b3abb38", ["bytes.len() > MAX_BYTES", "count + 1 > MAX_ENTRIES", "rows.insert(family.manifest_key()", "bytes.chunks(ROW_BYTES)"]],
+  ];
+  for (const [file, symbol, maybeOwner, digest, anchors] of rows) {
+    const source = text(file);
+    const maybeBody = maybeSelector(source, symbol, true);
+    const actual = maybeBody?.body ?? "";
+    if (!maybeBody || !supportedOwnership(source, maybeBody.start, false)
+      || maybeOwner !== null && !directImplOwner(source, maybeBody.start, maybeOwner)
+      || !hasOrderedCode(actual, anchors)
+      || createHash("sha256").update(compact(actual)).digest("hex") !== digest) {
+      failures.push(`${file}:${symbol}: reviewed current Phase167 production delegate changed`);
+    }
+  }
+  for (const [file, declaration] of [
+    [N + "sync/block_reconcile.rs", "mod peer_requests;"],
+    [N + "storage/fjall_store.rs", "mod bounded_rows;"],
+    [BOUNDED_ROWS, "mod codec;"],
+  ]) if (!enabledModule(text(file), declaration.match(/\bmod\s+(\w+)/)?.[1] ?? "")) {
+    failures.push(`${file}: current Phase167 helper module registration required`);
+  }
+}
+
+function enabledModule(source: string, symbol: string): boolean {
+  if (!symbol) return false;
+  const code = rustCode(source);
+  const matches = [...code.matchAll(new RegExp(`\\bmod\\s+${symbol}\\s*;`, "g"))];
+  if (matches.length !== 1) return false;
+  const offset = matches[0].index;
+  const depth = [...code.slice(0, offset)].reduce((value, char) => value + Number(char === "{") - Number(char === "}"), 0);
+  const prefix = code.slice(Math.max(code.lastIndexOf(";", offset - 1), code.lastIndexOf("}", offset - 1)) + 1, offset);
+  return depth === 0 && !/#\s*\[\s*(?:cfg(?:_attr)?|path)\b/.test(prefix);
+}
+
+function directImplOwner(source: string, offset: number, owner: string): boolean {
+  const code = rustCode(source);
+  const matches = [...code.matchAll(new RegExp(`\\bimpl\\s+${owner}\\s*\\{`, "g"))];
+  if (matches.length !== 1) return false;
+  const open = code.indexOf("{", matches[0].index);
+  let depth = 1;
+  for (let index = open + 1; index < code.length; index++) {
+    depth += Number(code[index] === "{") - Number(code[index] === "}");
+    if (index === offset && depth !== 1) return false;
+    if (depth === 0) return offset > open && offset < index;
+  }
+  return false;
 }
 
 /** Synthetic legacy mutation controls only; no claims, receipts, CLI mode or current authority. */
@@ -412,7 +479,13 @@ function checkFrozenGuards(text: (file: string) => string, failures: string[]): 
   for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "385b6c6d62067ba13e8e4d29d0ea1005252614830430f800b0824ec7ba954fdd"],
     ["scripts/check-phase158-validated-reorg.test.ts", "bebdd0c7f2cc6e787f34502bb82f6ae6fd27c7a5ce5ac9bdd14be73c054193a3"],
     ["scripts/check-phase163-provenance.ts", "e42bd6a3f1660d46ac35c2bb98fe4df44766ac84ee80d7ffae2a766c22dbaa03"]]) {
-    const fingerprintSource = file === "scripts/check-phase163-provenance.ts" ? text(file) : legacyToolingBase(file, text(file));
+    const inverse = FILTER_GUARD_INVERSES.find(([current]) => current === file)?.[1];
+    const reviewedCurrent = inverse ? maybeRestoreReviewedSource(text(file), inverse) : text(file);
+    if (reviewedCurrent === undefined) {
+      failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
+      continue;
+    }
+    const fingerprintSource = file === "scripts/check-phase163-provenance.ts" ? reviewedCurrent : legacyToolingBase(file, reviewedCurrent);
     if (createHash("sha256").update(fingerprintSource).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
   }
 }

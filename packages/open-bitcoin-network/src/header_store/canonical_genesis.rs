@@ -12,6 +12,8 @@ impl HeaderStore {
     pub fn from_canonical_genesis(proof: &CanonicalGenesisProof) -> Result<Self, NetworkError> {
         let mut store = Self::default();
         store.insert_header_with_params(proof.header().clone(), &consensus_params(proof))?;
+        store.maybe_canonical_history =
+            Some(canonical_history::CanonicalHistory::from_genesis(proof));
         Ok(store)
     }
 }

@@ -9,6 +9,10 @@ const BOOT = ROOT + "storage/canonical_bootstrap";
 const SYNC = ROOT + "sync/canonical_genesis";
 const LIVE = ROOT + "lib.rs";
 const crash = 'fn fixture() { None::<u8>.expect("test fixture"); }';
+const DURABLE = ROOT + "storage/fjall_store/bounded_rows";
+const INSPECTION = ROOT + "storage/fjall_store/inspection";
+const PROOF = ROOT + "chainstate/flush_lifecycle/fjall_sink";
+const RPC = "packages/open-bitcoin-rpc/src/bin/open_bitcoind";
 
 function fixture(): Map<string,string> {
   return new Map([
@@ -27,6 +31,82 @@ test("three split files earn their actual transitive test ownership", () => {
   const sources = fixture();
   // Act / Assert
   expect(checkPanicSites(sources, "")).toEqual([]);
+});
+
+test("live checkout test children and inline modules have verified test owners", () => {
+  // Arrange
+  const root = join(import.meta.dir, "..");
+  const sources = new Map(sourceFiles(root).map(file => [file, readFileSync(join(root, file), "utf8")]));
+  const allowlist = readFileSync(join(root, "scripts/panic-sites.allowlist"), "utf8");
+  // Act
+  const findings = checkPanicSites(sources, allowlist);
+  // Assert
+  expect(findings).toEqual([]);
+});
+
+test.each([
+  [DURABLE+".rs", DURABLE+"/durable_tests.rs", "#[cfg(test)]\nmod durable_tests;"],
+  [INSPECTION+".rs", INSPECTION+"/phase167_tests.rs", "#[cfg(all(test, unix))]\nmod phase167_tests;\n#[cfg(all(test, unix))] mod namespace_tests { fn fixture() { panic!(\"test\"); } }"],
+  [PROOF+".rs", PROOF+"/proof_tests.rs", "#[cfg(test)]\npub(super) mod proof_tests;"],
+] as const)("registered test child is excluded: %s", (parent, child, declaration) => {
+  // Arrange
+  const sources = fixture();
+  sources.set(parent, declaration);
+  sources.set(child, crash);
+  // Act / Assert
+  expect(checkPanicSites(sources, "")).toEqual([]);
+});
+
+test("explicit RPC path remains a test-only child", () => {
+  // Arrange
+  const sources = fixture();
+  sources.set("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+    '#[cfg(test)]\n#[path = "open_bitcoind/phase167_tests.rs"]\nmod phase167_tests;');
+  sources.set(RPC+"/phase167_tests.rs", crash);
+  // Act / Assert
+  expect(checkPanicSites(sources, "")).toEqual([]);
+});
+
+test.each([
+  ["ordinary", "mod durable_tests;"],
+  ["dead", "#[cfg(any())]\n#[cfg(test)]\nmod durable_tests;"],
+  ["cfg_attr", "#[cfg_attr(test, cfg(test))]\nmod durable_tests;"],
+  ["cfg_attr path", '#[cfg(test)]\n#[cfg_attr(test, path = "other.rs")]\nmod durable_tests;'],
+  ["extra gate", '#[cfg(test)]\n#[cfg(feature = "optional")]\nmod durable_tests;'],
+  ["comment", "/* #[cfg(test)] */\nmod durable_tests;"],
+  ["redirect", '#[cfg(test)]\n#[path = "other.rs"]\nmod durable_tests;'],
+  ["duplicate", "#[cfg(test)]\nmod durable_tests;\n#[cfg(test)]\nmod durable_tests;"],
+] as const)("test child rejects %s registrar", (_name, declaration) => {
+  // Arrange
+  const sources = fixture();
+  sources.set(DURABLE+".rs", declaration);
+  sources.set(DURABLE+"/durable_tests.rs", crash);
+  // Act / Assert
+  expect(() => checkPanicSites(sources, "")).toThrow();
+});
+
+test.each(["module", "include"] as const)("ordinary %s alias cannot borrow new test child", kind => {
+  // Arrange
+  const sources = fixture();
+  sources.set(DURABLE+".rs", "#[cfg(test)]\nmod durable_tests;");
+  sources.set(DURABLE+"/durable_tests.rs", crash);
+  sources.set(LIVE, kind === "module"
+    ? '#[path = "storage/fjall_store/bounded_rows/durable_tests.rs"]\nmod alias;'
+    : 'include!("storage/fjall_store/bounded_rows/durable_tests.rs");');
+  // Act / Assert
+  expect(() => checkPanicSites(sources, "")).toThrow("ordinary");
+});
+
+test.each(["module", "include"] as const)("test-gated %s alias cannot duplicate a selected child", kind => {
+  // Arrange
+  const sources = fixture();
+  sources.set(DURABLE+".rs", "#[cfg(test)]\nmod durable_tests;");
+  sources.set(DURABLE+"/durable_tests.rs", crash);
+  sources.set(LIVE, kind === "module"
+    ? '#[cfg(test)]\n#[path = "storage/fjall_store/bounded_rows/durable_tests.rs"]\nmod alias;'
+    : '#[cfg(test)]\nmod alias { include!("storage/fjall_store/bounded_rows/durable_tests.rs"); }');
+  // Act / Assert
+  expect(() => checkPanicSites(sources, "")).toThrow("additional test");
 });
 
 test.each([

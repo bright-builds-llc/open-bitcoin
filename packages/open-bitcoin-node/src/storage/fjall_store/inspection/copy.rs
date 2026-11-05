@@ -4,13 +4,12 @@
 use super::{StorageError, inspection_error};
 use open_bitcoin_core::consensus::crypto::Sha256;
 #[cfg(unix)]
-use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
 use std::{
     collections::BTreeMap,
     fs::{self, File, OpenOptions},
     io::{Read, Write},
     path::{Component, Path, PathBuf},
-    time::SystemTime,
 };
 
 // Root counts as one entry at depth zero; only regular-file contents count as bytes.
@@ -19,6 +18,67 @@ pub(super) const MAX_BYTES: u64 = 512 * 1024 * 1024;
 pub(super) const MAX_DEPTH: usize = 16;
 pub(super) const MAX_PATH_BYTES: usize = 4096;
 const CHUNK_BYTES: usize = 64 * 1024;
+
+#[derive(Debug)]
+pub(super) enum CopyFailure {
+    Changed(StorageError),
+    Refused(StorageError),
+}
+
+impl CopyFailure {
+    pub(super) fn original(self) -> StorageError {
+        match self {
+            Self::Changed(error) | Self::Refused(error) => error,
+        }
+    }
+}
+
+impl From<StorageError> for CopyFailure {
+    fn from(error: StorageError) -> Self {
+        Self::Refused(error)
+    }
+}
+
+#[derive(Debug, Default)]
+pub(super) struct WorkLedger {
+    pub(super) visits: u64,
+    pub(super) content: u64,
+    pub(super) probes: u64,
+}
+
+impl WorkLedger {
+    pub(super) fn reserve(counter: &mut u64, amount: u64, cap: u64) -> Result<(), CopyFailure> {
+        let next = counter
+            .checked_add(amount)
+            .ok_or_else(|| inspection_error("inspection work arithmetic overflow"))?;
+        if next > cap {
+            return Err(inspection_error("inspection work limit exceeded").into());
+        }
+        *counter = next;
+        Ok(())
+    }
+
+    pub(super) fn visit(&mut self) -> Result<(), CopyFailure> {
+        Self::reserve(&mut self.visits, 1, 2 * MAX_ENTRIES as u64)
+    }
+
+    pub(super) fn content(&mut self, amount: u64) -> Result<(), CopyFailure> {
+        Self::reserve(&mut self.content, amount, 2 * MAX_BYTES)
+    }
+
+    pub(super) fn probe(&mut self) -> Result<(), CopyFailure> {
+        Self::reserve(&mut self.probes, 1, 2 * MAX_ENTRIES as u64)
+    }
+}
+
+fn source_io(error: std::io::Error, message: &'static str, known: bool) -> CopyFailure {
+    let original = inspection_error(message);
+    if known && error.kind() == std::io::ErrorKind::NotFound {
+        CopyFailure::Changed(original)
+    } else {
+        CopyFailure::Refused(original)
+    }
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub(super) struct Inventory {
@@ -54,107 +114,52 @@ struct Entry {
     maybe_digest: Option<[u8; 32]>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-pub(super) struct Identity {
-    directory: bool,
-    length: u64,
-    modified: SystemTime,
-    #[cfg(unix)]
-    device: u64,
-    #[cfg(unix)]
-    inode: u64,
-    #[cfg(unix)]
-    mode: u32,
-    #[cfg(unix)]
-    links: u64,
-}
-
-impl Identity {
-    pub(super) fn read(path: &Path) -> Result<Self, StorageError> {
-        Self::from_metadata(
-            &fs::symlink_metadata(path)
-                .map_err(|_| inspection_error("inspection source metadata unavailable"))?,
-        )
-    }
-
-    fn from_metadata(metadata: &fs::Metadata) -> Result<Self, StorageError> {
-        if (!metadata.is_dir() && !metadata.is_file()) || metadata.file_type().is_symlink() {
-            return Err(inspection_error("unsafe inspection source entry"));
-        }
-        #[cfg(unix)]
-        if metadata.is_file() && metadata.nlink() != 1 {
-            return Err(inspection_error("unsafe inspection source hardlink"));
-        }
-        Ok(Self {
-            directory: metadata.is_dir(),
-            length: metadata.len(),
-            modified: metadata
-                .modified()
-                .map_err(|_| inspection_error("inspection source timestamp unavailable"))?,
-            #[cfg(unix)]
-            device: metadata.dev(),
-            #[cfg(unix)]
-            inode: metadata.ino(),
-            #[cfg(unix)]
-            mode: metadata.mode(),
-            #[cfg(unix)]
-            links: metadata.nlink(),
-        })
-    }
-
-    pub(super) fn check_path(&self, path: &Path) -> Result<(), StorageError> {
-        if *self != Self::read(path)? {
-            return Err(inspection_error("inspection source changed"));
-        }
-        Ok(())
-    }
-
-    pub(super) fn open_file(&self, path: &Path) -> Result<File, StorageError> {
-        if self.directory {
-            return Err(inspection_error("unsafe inspection source file"));
-        }
-        self.check_path(path)?;
-        let file = OpenOptions::new()
-            .read(true)
-            .write(false)
-            .open(path)
-            .map_err(|_| inspection_error("inspection source file unavailable"))?;
-        self.check_opened(&file, path)?;
-        Ok(file)
-    }
-
-    pub(super) fn check_opened(&self, file: &File, path: &Path) -> Result<(), StorageError> {
-        let opened = Self::from_metadata(
-            &file
-                .metadata()
-                .map_err(|_| inspection_error("inspection source file metadata unavailable"))?,
-        )?;
-        if *self != opened {
-            return Err(inspection_error("inspection source changed"));
-        }
-        self.check_path(path)
-    }
-}
+mod identity;
+pub(super) use identity::Identity;
 
 impl Inventory {
     pub(super) fn capture(source: &Path) -> Result<Self, StorageError> {
+        Self::capture_typed(source, &mut None).map_err(CopyFailure::original)
+    }
+
+    pub(super) fn capture_typed(
+        source: &Path,
+        maybe_work: &mut Option<&mut WorkLedger>,
+    ) -> Result<Self, CopyFailure> {
         validate_path(source)?;
+        if let Some(work) = maybe_work.as_mut() {
+            work.visit()?;
+        }
         if !Identity::read(source)?.directory {
-            return Err(inspection_error("unsafe inspection source root"));
+            return Err(inspection_error("unsafe inspection source root").into());
         }
         let mut inventory = Self {
             entries: BTreeMap::new(),
             budget: Budget::default(),
         };
-        inventory.visit(source, Path::new(""), 0)?;
+        inventory.visit(source, Path::new(""), 0, maybe_work)?;
+        #[cfg(test)]
+        inventory.observe_walk(maybe_work, false);
         Ok(inventory)
     }
 
-    fn visit(&mut self, root: &Path, relative: &Path, depth: usize) -> Result<(), StorageError> {
+    fn visit(
+        &mut self,
+        root: &Path,
+        relative: &Path,
+        depth: usize,
+        maybe_work: &mut Option<&mut WorkLedger>,
+    ) -> Result<(), CopyFailure> {
         validate_path(relative)?;
         let path = root.join(relative);
         validate_path(&path)?;
-        let identity = Identity::read(&path)?;
+        let descendant = !relative.as_os_str().is_empty();
+        if descendant && let Some(work) = maybe_work.as_mut() {
+            work.visit()?;
+        }
+        #[cfg(test)]
+        super::live::observe(super::live::Point::BeforeMetadata, &path);
+        let identity = Identity::read_typed(&path, descendant)?;
         self.budget.add(
             if identity.directory {
                 0
@@ -164,8 +169,10 @@ impl Inventory {
             depth,
         )?;
         let maybe_digest = if identity.directory {
+            #[cfg(test)]
+            super::live::observe(super::live::Point::DirectoryRead, &path);
             for child in fs::read_dir(&path)
-                .map_err(|_| inspection_error("inspection directory unavailable"))?
+                .map_err(|error| source_io(error, "inspection directory unavailable", descendant))?
             {
                 let child = child
                     .map_err(|_| inspection_error("inspection directory entry unavailable"))?;
@@ -176,12 +183,13 @@ impl Inventory {
                     depth
                         .checked_add(1)
                         .ok_or_else(|| inspection_error("inspection depth overflow"))?,
+                    maybe_work,
                 )?;
             }
-            identity.check_path(&path)?;
+            identity.check_path_typed(&path, descendant)?;
             None
         } else {
-            Some(file_digest(&identity, &path, None)?)
+            Some(file_digest_typed(&identity, &path, None, maybe_work)?)
         };
         self.entries.insert(
             relative.to_path_buf(),
@@ -219,10 +227,61 @@ impl Inventory {
     }
 
     pub(super) fn recheck(&self, source: &Path) -> Result<(), StorageError> {
-        if *self != Self::capture(source)? {
-            return Err(inspection_error("inspection source changed"));
+        self.recheck_typed(source, &mut None)
+            .map_err(CopyFailure::original)
+    }
+
+    pub(super) fn recheck_typed(
+        &self,
+        source: &Path,
+        maybe_work: &mut Option<&mut WorkLedger>,
+    ) -> Result<(), CopyFailure> {
+        let actual = Self::capture_typed(source, maybe_work)?;
+        if *self == actual {
+            #[cfg(test)]
+            actual.observe_walk(maybe_work, true);
+            return Ok(());
         }
-        Ok(())
+        let original = inspection_error("inspection source changed");
+        if self.entries.iter().any(|(name, before)| {
+            actual.entries.get(name).is_some_and(|after| {
+                #[cfg(all(test, unix))]
+                if name.as_os_str().is_empty() && before.identity.directory && after.identity.directory
+                    && before.identity.links != after.identity.links {
+                    super::live::record_root_links(before.identity.links, after.identity.links);
+                }
+                let refused = before.identity.safety_differs(&after.identity);
+                #[cfg(test)]
+                if refused {
+                    eprintln!(
+                        "LIVE_COMMON_ENTRY_REFUSED stage=whole_inventory path={:?} relative={name:?} typed=Refused before={:?} after={:?}",
+                        source.join(name), before.identity, after.identity
+                    );
+                }
+                refused
+            })
+        }) {
+            return Err(CopyFailure::Refused(original));
+        }
+        Err(CopyFailure::Changed(original))
+    }
+
+    #[cfg(test)]
+    fn observe_walk(&self, maybe_work: &Option<&mut WorkLedger>, equal: bool) {
+        if let Some(work) = maybe_work {
+            super::live::record_walk(
+                (
+                    self.budget.entries,
+                    self.budget.bytes,
+                    self.entries
+                        .values()
+                        .filter(|entry| entry.maybe_digest.is_some())
+                        .count(),
+                ),
+                (work.visits, work.content, work.probes),
+                equal,
+            );
+        }
     }
 
     #[cfg(test)]
@@ -302,9 +361,24 @@ pub(super) fn create_private_directory(path: &Path) -> Result<(), StorageError> 
 fn file_digest(
     identity: &Identity,
     path: &Path,
-    mut maybe_copy: Option<&mut File>,
+    maybe_copy: Option<&mut File>,
 ) -> Result<[u8; 32], StorageError> {
-    let mut file = identity.open_file(path)?;
+    file_digest_typed(identity, path, maybe_copy, &mut None).map_err(CopyFailure::original)
+}
+
+fn file_digest_typed(
+    identity: &Identity,
+    path: &Path,
+    mut maybe_copy: Option<&mut File>,
+    maybe_work: &mut Option<&mut WorkLedger>,
+) -> Result<[u8; 32], CopyFailure> {
+    let mut file = if maybe_work.is_some() {
+        identity.open_file_typed(path)?
+    } else {
+        identity.open_file(path)?
+    };
+    #[cfg(test)]
+    super::live::observe(super::live::Point::Opened, path);
     let mut remaining = identity.length;
     let mut digest = [0_u8; 32];
     let mut buffer = [0_u8; CHUNK_BYTES];
@@ -319,14 +393,13 @@ fn file_digest(
         };
         #[cfg(test)]
         if maybe_fault == Some(CopyIoFault::Read) {
-            return Err(inspection_error("inspection source read failed"));
+            return Err(inspection_error("inspection source read failed").into());
         }
-        file.read_exact(&mut buffer[..count])
-            .map_err(|_| inspection_error("inspection source read failed"))?;
+        read_requested(&mut file, &mut buffer[..count], maybe_work)?;
         if let Some(copy) = maybe_copy.as_mut() {
             #[cfg(test)]
             if maybe_fault == Some(CopyIoFault::Write) {
-                return Err(inspection_error("inspection private copy failed"));
+                return Err(inspection_error("inspection private copy failed").into());
             }
             copy.write_all(&buffer[..count])
                 .map_err(|_| inspection_error("inspection private copy failed"))?;
@@ -336,19 +409,45 @@ fn file_digest(
         pair[..32].copy_from_slice(&digest);
         pair[32..].copy_from_slice(&Sha256::digest(&buffer[..count]));
         digest = Sha256::digest(&pair);
+        #[cfg(test)]
+        super::live::record_io(count as u64, 0);
         remaining = remaining
             .checked_sub(count as u64)
             .ok_or_else(|| inspection_error("inspection copy arithmetic overflow"))?;
     }
-    if file
-        .read(&mut buffer[..1])
-        .map_err(|_| inspection_error("inspection source read failed"))?
-        != 0
-    {
-        return Err(inspection_error("inspection source content changed"));
+    if let Some(work) = maybe_work.as_mut() {
+        work.probe()?;
     }
-    identity.check_opened(&file, path)?;
+    let tail = file
+        .read(&mut buffer[..1])
+        .map_err(|_| inspection_error("inspection source read failed"))?;
+    #[cfg(test)]
+    super::live::record_io(0, 1);
+    if tail != 0 {
+        return Err(CopyFailure::Changed(inspection_error(
+            "inspection source content changed",
+        )));
+    }
+    identity.check_opened_typed(&file, path)?;
     Ok(digest)
+}
+
+pub(super) fn read_requested(
+    file: &mut File,
+    buffer: &mut [u8],
+    maybe_work: &mut Option<&mut WorkLedger>,
+) -> Result<(), CopyFailure> {
+    if let Some(work) = maybe_work.as_mut() {
+        work.content(buffer.len() as u64)?;
+    }
+    file.read_exact(buffer).map_err(|error| {
+        let original = inspection_error("inspection source read failed");
+        if error.kind() == std::io::ErrorKind::UnexpectedEof {
+            CopyFailure::Changed(original)
+        } else {
+            CopyFailure::Refused(original)
+        }
+    })
 }
 
 #[cfg(test)]

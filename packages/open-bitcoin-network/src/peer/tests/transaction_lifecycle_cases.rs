@@ -3,6 +3,8 @@
 // - packages/bitcoin-knots/src/txorphanage.cpp
 
 use super::*;
+
+const FIXTURE_ENFORCE_SEGWIT: bool = true;
 use crate::{
     AcceptedPeerPackageFingerprint, PeerTransactionIdentity, PeerTransactionLifecycleInput,
     PeerTransactionLifecyclePreparationError,
@@ -568,7 +570,13 @@ fn lifecycle_apply_cleans_partial_compact_slots() {
         extra: &[],
     };
     let _ = manager
-        .handle_compact_block_download(peer_id, payload, facts, 1_000)
+        .handle_fixture_compact_block_download(
+            peer_id,
+            payload,
+            facts,
+            1_000,
+            FIXTURE_ENFORCE_SEGWIT,
+        )
         .expect("compact download");
     let prepared = manager
         .prepare_transaction_lifecycle(lifecycle_input(Vec::new(), vec![target]))

@@ -17,7 +17,7 @@ adapters can back honestly.
   `getblockfilter`, `getindexinfo`,
   `getblockchaininfo`, `listprunelocks`, `setprunelock`, `pruneblockchain`,
   `getmempoolinfo`,
-  `getnetworkinfo`, `sendrawtransaction`, `testmempoolaccept`, `submitpackage`,
+  `getnetworkinfo`, `sendrawtransaction`, `submitblock`, `testmempoolaccept`, `submitpackage`,
   `deriveaddresses`, `sendtoaddress`, `getnewaddress`, `getrawchangeaddress`,
   `listdescriptors`, `getwalletinfo`, `getbalances`, `listunspent`,
   `importdescriptors`, and `rescanblockchain`
@@ -31,9 +31,18 @@ adapters can back honestly.
   `importdescriptors` -> `rescanblockchain` -> `getbalances` ->
   `listunspent` -> `buildandsigntransaction` -> `sendrawtransaction`
 
-The current registry contains 29 methods: 21 baseline-backed methods and eight
+The current registry contains 30 methods: 22 baseline-backed methods and eight
 Open Bitcoin extension methods. The two Phase 159 additions are baseline-backed;
 the extension set is unchanged.
+
+`submitblock` is the pinned baseline method name; its current Open Bitcoin
+product route is only bounded private default-Regtest canonical submission
+through a sealed local history owner. Source-bound seeded historical cases do
+not authorize ordinary Mainnet or testnet3, and Signet ordinary configuration
+still refuses. Actual pinned-Knots daemon differential, whole-chain,
+public-default networking, production service/funds and wallet authority are
+not qualified. The [current candidate-history record](../v2-6-candidate-history-validation.md)
+separates that local evidence from the method name and historical fixtures.
 
 ## Current v2.4 operator prune
 
@@ -49,6 +58,7 @@ GetPruneHeight is the last pruned height, and the info field pruneheight is that
 - [`packages/bitcoin-knots/src/bitcoin-cli.cpp`](../../../packages/bitcoin-knots/src/bitcoin-cli.cpp)
 - [`packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py`](../../../packages/bitcoin-knots/test/functional/interface_bitcoin_cli.py)
 - [`packages/bitcoin-knots/test/functional/rpc_deriveaddresses.py`](../../../packages/bitcoin-knots/test/functional/rpc_deriveaddresses.py)
+- [`packages/bitcoin-knots/src/rpc/mining.cpp`](../../../packages/bitcoin-knots/src/rpc/mining.cpp) — pinned `submitblock` method and result-shape anchor
 
 ## First-party implementation
 
@@ -59,6 +69,7 @@ GetPruneHeight is the last pruned height, and the info field pruneheight is that
 - [`packages/open-bitcoin-cli/src/startup.rs`](../../../packages/open-bitcoin-cli/src/startup.rs)
 - [`packages/open-bitcoin-rpc/src/http.rs`](../../../packages/open-bitcoin-rpc/src/http.rs)
 - [`packages/open-bitcoin-rpc/src/method.rs`](../../../packages/open-bitcoin-rpc/src/method.rs)
+- [`packages/open-bitcoin-rpc/src/dispatch/submit_block.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/submit_block.rs)
 - [`packages/open-bitcoin-rpc/src/method/package.rs`](../../../packages/open-bitcoin-rpc/src/method/package.rs)
 - [`packages/open-bitcoin-rpc/src/dispatch/package.rs`](../../../packages/open-bitcoin-rpc/src/dispatch/package.rs)
 - [`packages/open-bitcoin-rpc/src/package_projection.rs`](../../../packages/open-bitcoin-rpc/src/package_projection.rs)

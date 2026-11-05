@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { hasInboundAnnouncementPrefix } from "./check-phase134-authoritative-lifecycle.ts";
@@ -20,6 +21,7 @@ const PHASE128_CHECK =
   "bun run scripts/check-phase128-production-compact-announcement-transport.ts";
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
+const ENQUEUE_BODY_SHA = "c00de395e2714593d08eab42038cfbcdd3d391a63ae8784f4dfb6edbc19a7356";
 const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 
 export const PHASE128_TARGET_FILES = [
@@ -37,6 +39,7 @@ export const PHASE128_TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/block_response.rs",
   "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
   "packages/open-bitcoin-node/src/sync/session.rs",
+  "packages/open-bitcoin-node/src/sync/session/outbox.rs",
   "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
   "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
   "packages/open-bitcoin-rpc/src/inbound_listener.rs",
@@ -277,14 +280,22 @@ function checkLiveFactsAndBoundedEmissions(
 
   const session =
     texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const outbox =
+    texts.get("packages/open-bitcoin-node/src/sync/session/outbox.rs") ?? "";
+  const enqueue = compact(maybeFunction(outbox, "enqueue_prepared", true)?.body ?? "");
   if (
     !transport.includes("PHASE94_MAX_PEER_QUEUED_MESSAGES") ||
     !transport.includes("if outbox.is_full() {") ||
-    !session.includes("BTreeMap<PeerId, AnnouncementOutbox>") ||
-    !session.includes("emissions: VecDeque<PeerEmission>") ||
-    !session.includes(
-      "if outbox.emissions.len() >= PHASE94_MAX_PEER_QUEUED_MESSAGES",
-    )
+    !productionDeclaration(session, "mod outbox;") ||
+    !session.includes("pub use outbox::{AnnouncementOutboxNotification, AnnouncementOutboxRegistry};") ||
+    !outbox.includes("BTreeMap<PeerId, AnnouncementOutbox>") ||
+    !outbox.includes("emissions: VecDeque<PeerEmission>") ||
+    createHash("sha256").update(enqueue).digest("hex") !== ENQUEUE_BODY_SHA ||
+    !orderedFragments(enqueue, [
+      "ifaggregate_queued>=PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES{aborted_emissions.push(*emission);continue;}",
+      "ifoutbox.emissions.len()>=PHASE94_MAX_PEER_QUEUED_MESSAGES{aborted_emissions.push(*emission);continue;}",
+      "outbox.emissions.push_back(*emission);",
+    ])
   ) {
     failures.push(
       "P128 bounded transport: preparation and session outboxes must enforce queue limits",
@@ -381,7 +392,7 @@ function productionDeclaration(source: string, marker: string): boolean {
   if (start < 0 || code.split(marker).length !== 2) return false;
   const prefix = code.slice(0, start);
   if (prefix.split("{").length !== prefix.split("}").length) return false;
-  return !/#\[\s*cfg\s*\(/.test(prefix.slice(Math.max(prefix.lastIndexOf(";"), prefix.lastIndexOf("}")) + 1));
+  return !/#\[\s*(?:cfg\s*\(|path\s*=)/.test(prefix.slice(Math.max(prefix.lastIndexOf(";"), prefix.lastIndexOf("}")) + 1));
 }
 
 function checkPostWriteEvidence(

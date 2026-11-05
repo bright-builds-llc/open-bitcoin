@@ -9,6 +9,7 @@ use crate::storage::snapshot_codec::{decode_chain_meta, encode_chain_meta};
 fn encode_block_undo_round_trips_and_is_not_full_snapshot() {
     // Arrange
     let undo = BlockUndo {
+        overwrites: Vec::new(),
         transactions: vec![TxUndo {
             restored_inputs: vec![Coin {
                 output: output(5_000),

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { COPIED_CLI_INVERSES, FILTER_GUARD_INVERSES, maybeRestoreReviewedSource } from "./contracts.ts";
+import { COPIED_CLI_INVERSES, FILTER_GUARD_INVERSES, PHASE162_SUPPORT_INVERSES, maybeRestoreReviewedSource } from "./contracts.ts";
 
 export const MANIFEST_FILE = "packages/testdata/phase164/historical-tooling/manifest.json";
 const TOOLING_BINDINGS = [
@@ -41,13 +41,65 @@ export const CURRENT_VERIFY_ADDITIONS = [
   'run_step "check Phase 166 source-derived genesis vectors" bun run scripts/phase166-genesis-vectors.ts --check',
   'run_step "test Phase 166 canonical bootstrap boundary" bun test ./scripts/check-phase166-canonical-bootstrap.test.ts',
   'run_step "check Phase 166 canonical bootstrap boundary" bun run scripts/check-phase166-canonical-bootstrap.ts',
+  'bun run scripts/phase167-historical-corpus.ts --check',
+  'bun test ./scripts/phase167-historical-corpus.test.ts',
+  'bun run scripts/phase167-bip30-fixtures.ts --check',
+  'bun test ./scripts/phase167-bip30-fixtures.test.ts',
+  'bun run scripts/phase167-regtest-corpus.ts --check',
+  'bun test ./scripts/phase167-regtest-corpus.test.ts',
+  'bun test ./scripts/check-phase167-candidate-history.test.ts',
+  'bun run scripts/check-phase167-candidate-history.ts',
+  'run_step "check Phase 167 historical corpus" bun run scripts/phase167-historical-corpus.ts --check',
+  'run_step "test Phase 167 historical corpus" bun test ./scripts/phase167-historical-corpus.test.ts',
+  'run_step "check Phase 167 BIP30 fixtures" bun run scripts/phase167-bip30-fixtures.ts --check',
+  'run_step "test Phase 167 BIP30 fixtures" bun test ./scripts/phase167-bip30-fixtures.test.ts',
+  'run_step "check Phase 167 Regtest corpus" bun run scripts/phase167-regtest-corpus.ts --check',
+  'run_step "test Phase 167 Regtest corpus" bun test ./scripts/phase167-regtest-corpus.test.ts',
+  'run_step "test Phase 167 candidate history boundary" bun test ./scripts/check-phase167-candidate-history.test.ts',
+  'run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts',
 ];
 
 export const CURRENT_TEMP_PREPARATION = '# Canonicalize the existing process-local temporary parent before any fixture work.\nTMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"\nexport TMPDIR\n';
 
+export const CONTROLLED_NATIVE_PREFIX = [
+  "# Exercise the contended native paths at the original 16-thread harness setting.",
+  "run_step \"stress node local submission 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_local_submission_reopen_bound -- --test-threads=16",
+  "run_step \"stress node opened unlink 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_live_physical_opened_unlink -- --test-threads=16",
+  "run_step \"stress node journal pressure 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_journal_pressure_retires_cold_genesis_journal_preserving_authority -- --test-threads=16",
+  "run_step \"stress node runtime reopen 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_runtime_reopen -- --test-threads=16",
+  "run_step \"stress node durable copies 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_durable -- --test-threads=16",
+  "run_step \"stress node filter transport 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase160_filter -- --test-threads=16",
+  "run_step \"stress node peer filter 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase160_peer -- --test-threads=16",
+  "run_step \"stress node peer session 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_peer_session -- --test-threads=16",
+  "run_step \"stress CLI history 16 threads\" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --lib --all-features phase167_cli -- --test-threads=16",
+  "",
+  "# Preserve the caller's test setting outside the two complete native suites.",
+  "saved_rust_test_threads=\"${RUST_TEST_THREADS-}\"",
+  "had_rust_test_threads=\"${RUST_TEST_THREADS+x}\"",
+  "export RUST_TEST_THREADS=4",
+].join("\n") + "\n";
+export const CONTROLLED_NATIVE_SUFFIX = [
+  "if [[ \"$had_rust_test_threads\" == x ]]; then",
+  "  export RUST_TEST_THREADS=\"$saved_rust_test_threads\"",
+  "else",
+  "  unset RUST_TEST_THREADS",
+  "fi",
+].join("\n") + "\n";
+export const CONTROLLED_NATIVE_STEPS = CONTROLLED_NATIVE_PREFIX.split("\n").filter(line => line.startsWith("run_step "));
+
 /** Refuse partial/duplicate/reordered additions; every unrelated byte stays pinned. */
 export function verificationHistoricalBase(source: string): string {
   let projected = source;
+  if (source.includes("RUST_TEST_THREADS") || source.includes("--test-threads=16")) {
+    const workspace = 'run_step "cargo test" cargo test --manifest-path packages/Cargo.toml --workspace --all-features';
+    const client = 'run_step "cargo test CLI RPC client binary" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features';
+    if (source.split(CONTROLLED_NATIVE_PREFIX).length !== 2
+      || source.split(CONTROLLED_NATIVE_SUFFIX).length !== 2
+      || !source.includes(CONTROLLED_NATIVE_PREFIX + workspace + "\n" + client + "\n" + CONTROLLED_NATIVE_SUFFIX)) {
+      throw new Error("exact current 16-thread selectors and scoped native test environment required");
+    }
+    projected = projected.replace(CONTROLLED_NATIVE_PREFIX, "").replace(CONTROLLED_NATIVE_SUFFIX, "");
+  }
   if (source.includes("TMPDIR")) {
     if (source.split(CURRENT_TEMP_PREPARATION).length !== 2
       || !source.includes('verify_invocation="full"\n' + CURRENT_TEMP_PREPARATION + 'print_timings=0\n')) {
@@ -64,6 +116,8 @@ export function verificationHistoricalBase(source: string): string {
     throw new Error("current verification registrations missing or duplicated");
   }
   const groups = [
+    [CURRENT_VERIFY_ADDITIONS.slice(12, 20).join("\n"), CURRENT_VERIFY_ADDITIONS[8], false],
+    [CURRENT_VERIFY_ADDITIONS.slice(20, 28).join("\n"), CURRENT_VERIFY_ADDITIONS[11], false],
     [CURRENT_VERIFY_ADDITIONS.slice(6, 9).join("\n"), CURRENT_VERIFY_ADDITIONS[2], false],
     [CURRENT_VERIFY_ADDITIONS.slice(9, 12).join("\n"), CURRENT_VERIFY_ADDITIONS[5], false],
     [CURRENT_VERIFY_ADDITIONS[0], 'bun run scripts/check-phase68-active-chain-persistence.ts', true],
@@ -206,6 +260,12 @@ export function legacyToolingBase(file: string, source: string): string {
       return source;
     }
   }
+  const maybeGuard = [...FILTER_GUARD_INVERSES, ...PHASE162_SUPPORT_INVERSES].find(row => row[0] === file);
+  if (maybeGuard && sha(normalized) === maybeGuard[1].currentRawSha) {
+    const maybePrior = maybeRestoreReviewedSource(normalized, maybeGuard[1]);
+    if (maybePrior === undefined) return source;
+    normalized = maybePrior;
+  }
   let intermediate = normalized;
   if (maybeCurrent && sha(normalized) !== maybeCurrent[1]) {
     if (maybeCurrent[2].some(([current]) => normalized.split(current).length !== 2)) return source;
@@ -232,7 +292,7 @@ export function historicalToolingView(sources: ReadonlyMap<string, string>): Map
     throw new Error("historical tooling binding inventory changed");
   }
   const view = new Map(sources);
-  for (const [file, inverse] of FILTER_GUARD_INVERSES) {
+  for (const [file, inverse] of [...FILTER_GUARD_INVERSES, ...PHASE162_SUPPORT_INVERSES]) {
     const maybeSource = sources.get(file);
     if (maybeSource === undefined) continue;
     const maybeBinding = manifest.bindings.find(row => row.file === file);

@@ -14,6 +14,18 @@ evidence is linked below; historical Phase 162 source/security, full native and 
 historical; synthetic genesis/maturity-one/manual owner-plan evidence does not
 establish ordinary prune-RPC, automatic-threshold or production/funds safety.
 
+Current Phase 167 [candidate-history evidence](../docs/parity/v2-6-candidate-history-validation.md)
+binds selected consensus rules and earned chainstate/network/store owners.
+An actual local default-Regtest route accepts 301 descendants after proved
+genesis and reopens retained history through a sealed, bounded owner. Separate
+seeded Mainnet/Testnet3 script cases, Mainnet BIP30 repeats and Regtest flag
+fixtures are non-authoritative test evidence. Mainnet, testnet3 and Signet
+ordinary configuration still refuse; the canonical wallet is unavailable.
+Networking stays default off, and actual pinned-Knots daemon differential,
+whole-chain/public-default and production-funds claims remain outside this
+bounded local implementation. The [node operator commands](open-bitcoin-node/README.md#local-observation-and-verification)
+use repo-local Cargo and Bazel forms with an isolated closed datadir.
+
 Phase 161 adds one shared `basic_index` projection from the existing authority
 through `openbitcoinnetworkstatus`, status, dashboard and redacted support.
 Configured capability, earned initial sync, current lag, processed/safe durable

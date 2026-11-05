@@ -32,6 +32,56 @@ fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
 }
 
+fn code_separator_fixture_transaction() -> Transaction {
+    Transaction {
+        version: 1,
+        inputs: vec![TransactionInput {
+            previous_output: open_bitcoin_primitives::OutPoint {
+                txid: Txid::from_byte_array([2_u8; 32]),
+                vout: 0,
+            },
+            script_sig: ScriptBuf::default(),
+            sequence: u32::MAX,
+            witness: Default::default(),
+        }],
+        outputs: vec![TransactionOutput {
+            value: Amount::from_sats(1).expect("valid amount"),
+            script_pubkey: script(&[0x51]),
+        }],
+        lock_time: 0,
+    }
+}
+
+#[test]
+fn legacy_sighash_preserves_pushed_code_separator_byte() {
+    // Arrange: 0xab is push data; only the final 0xab is an opcode.
+    let transaction = code_separator_fixture_transaction();
+    let script_code = script(&[0x02, 0xab, 0x51, 0xab]);
+    let expected: [u8; 32] =
+        decode_hex("bffb30ea9d765e56684ecaf73542472352cda95e769676bad1548ecc83340a12")
+            .try_into()
+            .expect("independent double-SHA256 digest");
+    // Act
+    let digest = legacy_sighash(&script_code, &transaction, 0, SigHashType::ALL);
+    // Assert
+    assert_eq!(digest.to_byte_array(), expected);
+}
+
+#[test]
+fn legacy_sighash_preserves_malformed_push_suffix() {
+    // Arrange: Knots GetOp stops at the truncated push and retains its bytes.
+    let transaction = code_separator_fixture_transaction();
+    let script_code = script(&[0x02, 0xab]);
+    let expected: [u8; 32] =
+        decode_hex("f4dd003260d3bb01e623940de45c8c62f72921bba6f3f79f68885b79f75976c3")
+            .try_into()
+            .expect("independent double-SHA256 digest");
+    // Act
+    let digest = legacy_sighash(&script_code, &transaction, 0, SigHashType::ALL);
+    // Assert
+    assert_eq!(digest.to_byte_array(), expected);
+}
+
 #[test]
 fn legacy_sighash_matches_upstream_vectors() {
     let transaction = parse_transaction_without_witness(&decode_hex("73107cbd025c22ebc8c3e0a47b2a760739216a528de8d4dab5d45cbeb3051cebae73b01ca10200000007ab6353656a636affffffffe26816dffc670841e6a6c8c61c586da401df1261a330a6c6b3dd9f9a0789bc9e000000000800ac6552ac6aac51ffffffff0174a8f0010000000004ac52515100000000")).expect("tx");

@@ -28,9 +28,11 @@ impl FjallNodeStore {
             !super::super::chain_compatibility::ORDINARY_BACKEND_OPEN_SPY.get(),
             "backend reached during ordinary refusal"
         );
-        let db = Database::builder(lease.source())
+        let raw = fjall::Database::builder(lease.source())
+            .max_journaling_size(64 * 1024 * 1024)
             .open()
             .map_err(|error| backend_failure(StorageNamespace::Runtime, error))?;
+        let db = Database::from_raw_opened(raw);
 
         Ok(Self {
             payload_usage: Arc::new(Mutex::new(payload_usage::PayloadUsageState::new())),
@@ -53,3 +55,6 @@ impl FjallNodeStore {
         })
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -22,8 +22,8 @@ use crate::{
 };
 
 use super::{
-    DurableSyncRuntime, PeerCapabilitySummary, PeerRetryState, ResolvedSyncPeerAddress,
-    SyncPeerAddress, SyncPeerResolver, SyncRunSummary, SyncRuntimeError, tip,
+    DurableSyncRuntime, PeerRetryState, ResolvedSyncPeerAddress, SyncPeerAddress, SyncPeerResolver,
+    SyncRunSummary, SyncRuntimeError, tip,
 };
 
 mod helpers;
@@ -304,18 +304,6 @@ impl DurableSyncRuntime {
             }
         }
         resolved
-    }
-
-    pub(super) fn peer_capabilities(&self, peer_id: PeerId) -> Option<PeerCapabilitySummary> {
-        let peer_manager = self.network.peer_manager_snapshot().ok()?;
-        let peer = peer_manager.peer_state(peer_id)?;
-        Some(PeerCapabilitySummary {
-            services_bits: peer.remote_services_bits,
-            user_agent: peer.remote_user_agent.clone(),
-            start_height: peer.remote_start_height,
-            wtxidrelay: peer.remote_wtxidrelay,
-            prefers_headers: peer.remote_prefers_headers,
-        })
     }
 
     pub(super) fn maybe_peer_backoff(

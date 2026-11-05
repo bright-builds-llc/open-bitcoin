@@ -7,17 +7,29 @@
 
 use std::collections::BTreeMap;
 
-use open_bitcoin_codec::{BlockTransactions, BlockTransactionsRequest, CompactBlockPayload};
-use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, Transaction, Wtxid};
+use open_bitcoin_codec::{
+    BlockTransactions, BlockTransactionsRequest, CodecError, CompactBlockPayload,
+};
+use open_bitcoin_primitives::{Block, BlockHash, BlockHeader, InventoryType, Transaction, Wtxid};
 
 pub const MAX_COMPACT_BLOCK_DOWNLOAD_DEPTH: u32 = 6;
 pub const COMPACT_BLOCK_DOWNLOAD_TIMEOUT_SECONDS: i64 = 60;
 
 use crate::block_serving::BlockRelayActivationPolicy;
 use crate::compact_reconstruction::{
-    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionFailureReason,
-    CompactReconstructionInvalidReason, CompactReconstructionOutcome, PartialCompactBlock,
-    apply_block_transactions, fill_block, init_partial_compact_block,
+    CompactBlockTxnMisbehavior, CompactBlockTxnOutcome, CompactReconstructionInvalidReason,
+    CompactReconstructionOutcome, PartialCompactBlock, apply_block_transactions, fill_block,
+    init_partial_compact_block,
+};
+
+mod completion;
+#[cfg(test)]
+use completion::completion_actions_from_outcome;
+pub(crate) use completion::{
+    compact_download_actions_to_peer_actions_selected, complete_applied_download_selected,
+    completed_or_fallback_init_selected, finish_applied_handle_selected,
+    handle_block_transactions_selected, init_compact_block_download_selected,
+    try_complete_compact_download_selected,
 };
 
 #[cfg(test)]
@@ -294,115 +306,34 @@ pub fn schedule_missing_transaction_request(
 pub fn try_complete_compact_download(
     block_hash: BlockHash,
     in_flight: &CompactDownloadInFlight,
-) -> CompactDownloadCompletionOutcome {
-    match fill_block(&in_flight.partial) {
-        Ok(block) => CompactDownloadCompletionOutcome::Completed(block),
-        Err(CompactReconstructionInvalidReason::IncompleteTransactions) => {
-            CompactDownloadCompletionOutcome::Suppressed(
-                CompactDownloadSuppressionReason::CompactReconstructionFailed,
-            )
-        }
-        Err(_) => CompactDownloadCompletionOutcome::Fallback(FullBlockFetch { block_hash }),
-    }
+    check_witness_root: bool,
+) -> Result<CompactDownloadCompletionOutcome, CodecError> {
+    try_complete_compact_download_selected(block_hash, in_flight, check_witness_root)
 }
 
 pub fn compact_download_actions_to_peer_actions(
     actions: Vec<CompactDownloadAction>,
+    inventory_type: InventoryType,
 ) -> Vec<crate::PeerAction> {
-    actions
-        .into_iter()
-        .map(|action| match action {
-            CompactDownloadAction::SendGetBlockTxn(request) => {
-                crate::PeerAction::Send(crate::WireNetworkMessage::GetBlockTxn(request))
-            }
-            CompactDownloadAction::RequestFullBlock(fetch) => {
-                crate::PeerAction::Send(crate::WireNetworkMessage::GetData(
-                    crate::InventoryList::new(vec![open_bitcoin_primitives::InventoryVector {
-                        inventory_type: open_bitcoin_primitives::InventoryType::Block,
-                        object_hash: fetch.block_hash.into(),
-                    }]),
-                ))
-            }
-            CompactDownloadAction::ReceivedBlock(block) => crate::PeerAction::ReceivedBlock(block),
-        })
-        .collect()
+    compact_download_actions_to_peer_actions_selected(actions, inventory_type)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn init_compact_block_download<'a>(
-    activation: BlockRelayActivationPolicy,
-    peer_compact_capable: bool,
+    relay: (BlockRelayActivationPolicy, bool),
     peer_state: &mut CompactDownloadPeerState,
     payload: &CompactBlockPayload,
-    eligibility: CompactBlockDownloadEligibilityInput,
-    now_unix_seconds: i64,
+    selection: (CompactBlockDownloadEligibilityInput, i64, bool),
     candidates: impl IntoIterator<Item = (&'a Wtxid, &'a Transaction)>,
     extra_transactions: impl IntoIterator<Item = (&'a Wtxid, &'a Transaction)>,
-) -> CompactBlockInitOutcome {
-    if !activation.compact_relay.enabled {
-        return CompactBlockInitOutcome::Suppressed(
-            CompactDownloadSuppressionReason::CompactPeerIneligible,
-        );
-    }
-
-    if !peer_supports_compact_download(peer_compact_capable) {
-        return CompactBlockInitOutcome::Suppressed(
-            CompactDownloadSuppressionReason::CompactPeerIneligible,
-        );
-    }
-
-    let block_hash = open_bitcoin_consensus::block_hash(&payload.header);
-
-    if evaluate_compact_block_download_eligibility(&payload.header, eligibility)
-        != CompactBlockDownloadEligibility::Eligible
-    {
-        return CompactBlockInitOutcome::Fallback(FullBlockFetch { block_hash });
-    }
-
-    let mut partial = PartialCompactBlock::new();
-    let outcome = init_partial_compact_block(&mut partial, payload, candidates, extra_transactions);
-
-    if peer_state.in_flight.contains_key(&block_hash) {
-        return CompactBlockInitOutcome::Suppressed(
-            CompactDownloadSuppressionReason::CompactBlockAlreadyInFlight,
-        );
-    }
-
-    match outcome {
-        CompactReconstructionOutcome::Ready { missing_indexes } => {
-            if missing_indexes.is_empty() {
-                return completed_or_fallback_init(block_hash, &partial);
-            }
-
-            peer_state.in_flight.insert(
-                block_hash,
-                CompactDownloadInFlight {
-                    partial,
-                    getblocktxn_in_flight: false,
-                    requested_indexes: Vec::new(),
-                    started_at_unix: now_unix_seconds,
-                },
-            );
-
-            let schedule = schedule_missing_transaction_request(
-                activation,
-                peer_compact_capable,
-                peer_state,
-                block_hash,
-            );
-
-            finalize_ready_init(block_hash, peer_state, schedule)
-        }
-        CompactReconstructionOutcome::Invalid(reason) => {
-            CompactBlockInitOutcome::Misbehavior(reason)
-        }
-        CompactReconstructionOutcome::Failed(
-            CompactReconstructionFailureReason::ShortIdCollision,
-        )
-        | CompactReconstructionOutcome::Failed(
-            CompactReconstructionFailureReason::ShortIdBucketOverload,
-        ) => CompactBlockInitOutcome::Fallback(FullBlockFetch { block_hash }),
-    }
+) -> Result<CompactBlockInitOutcome, CodecError> {
+    init_compact_block_download_selected(
+        relay,
+        peer_state,
+        payload,
+        selection,
+        candidates,
+        extra_transactions,
+    )
 }
 
 pub fn handle_block_transactions(
@@ -410,67 +341,15 @@ pub fn handle_block_transactions(
     peer_compact_capable: bool,
     peer_state: &mut CompactDownloadPeerState,
     response: &BlockTransactions,
-) -> CompactBlockTxnHandleOutcome {
-    let Some(in_flight) = peer_state.in_flight.get_mut(&response.block_hash) else {
-        return CompactBlockTxnHandleOutcome::NoMatchingInFlight;
-    };
-
-    if !in_flight.getblocktxn_in_flight {
-        return CompactBlockTxnHandleOutcome::Misbehavior(
-            CompactBlockTxnMisbehavior::DuplicateResponse,
-        );
-    }
-
-    let expected_block_hash = in_flight
-        .partial
-        .block_hash()
-        .unwrap_or(response.block_hash);
-    let apply_outcome =
-        apply_block_transactions(&mut in_flight.partial, response, expected_block_hash);
-
-    in_flight.getblocktxn_in_flight = false;
-    in_flight.requested_indexes.clear();
-
-    match apply_outcome {
-        CompactBlockTxnOutcome::Applied { still_missing } => {
-            let block_hash = expected_block_hash;
-            if still_missing.is_empty() {
-                finish_applied_handle(peer_state, response.block_hash, expected_block_hash)
-            } else {
-                let schedule = schedule_missing_transaction_request(
-                    activation,
-                    peer_compact_capable,
-                    peer_state,
-                    block_hash,
-                );
-
-                match schedule {
-                    ScheduleMissingTransactionOutcome::Scheduled { request } => {
-                        CompactBlockTxnHandleOutcome::Progress {
-                            actions: vec![CompactDownloadAction::SendGetBlockTxn(request)],
-                        }
-                    }
-                    ScheduleMissingTransactionOutcome::Suppressed(_) => {
-                        peer_state.in_flight.remove(&block_hash);
-                        CompactBlockTxnHandleOutcome::Progress {
-                            actions: vec![CompactDownloadAction::RequestFullBlock(
-                                FullBlockFetch { block_hash },
-                            )],
-                        }
-                    }
-                }
-            }
-        }
-        CompactBlockTxnOutcome::Misbehavior(reason) => {
-            peer_state.in_flight.remove(&response.block_hash);
-            match reason {
-                CompactBlockTxnMisbehavior::UnexpectedBlockHash => {
-                    CompactBlockTxnHandleOutcome::UnexpectedBlockHash
-                }
-                _ => CompactBlockTxnHandleOutcome::Misbehavior(reason),
-            }
-        }
-    }
+    check_witness_root: bool,
+) -> Result<CompactBlockTxnHandleOutcome, CodecError> {
+    handle_block_transactions_selected(
+        activation,
+        peer_compact_capable,
+        peer_state,
+        response,
+        check_witness_root,
+    )
 }
 
 pub fn cleanup_compact_download_peer(
@@ -485,16 +364,6 @@ pub fn cleanup_compact_download_on_block_connected(
     connected_block_hash: BlockHash,
 ) -> bool {
     peer_state.cleanup_block(connected_block_hash)
-}
-
-fn completed_or_fallback_init(
-    block_hash: BlockHash,
-    partial: &PartialCompactBlock,
-) -> CompactBlockInitOutcome {
-    match fill_block(partial) {
-        Ok(block) => CompactBlockInitOutcome::Completed { block },
-        Err(_) => CompactBlockInitOutcome::Fallback(FullBlockFetch { block_hash }),
-    }
 }
 
 fn scheduled_init_request(
@@ -529,48 +398,7 @@ fn finalize_ready_init(
     }
 }
 
-fn complete_applied_download(
-    peer_state: &mut CompactDownloadPeerState,
-    response_block_hash: BlockHash,
-    expected_block_hash: BlockHash,
-) -> Result<Vec<CompactDownloadAction>, CompactBlockTxnHandleOutcome> {
-    let in_flight = take_in_flight_download(peer_state, response_block_hash)?;
-    Ok(completion_actions_from_outcome(
-        expected_block_hash,
-        try_complete_compact_download(expected_block_hash, &in_flight),
-    ))
-}
-
-fn finish_applied_handle(
-    peer_state: &mut CompactDownloadPeerState,
-    response_block_hash: BlockHash,
-    expected_block_hash: BlockHash,
-) -> CompactBlockTxnHandleOutcome {
-    match complete_applied_download(peer_state, response_block_hash, expected_block_hash) {
-        Ok(actions) => CompactBlockTxnHandleOutcome::Progress { actions },
-        Err(outcome) => outcome,
-    }
-}
-
-fn completion_actions_from_outcome(
-    block_hash: BlockHash,
-    outcome: CompactDownloadCompletionOutcome,
-) -> Vec<CompactDownloadAction> {
-    match outcome {
-        CompactDownloadCompletionOutcome::Completed(block) => {
-            vec![CompactDownloadAction::ReceivedBlock(block)]
-        }
-        CompactDownloadCompletionOutcome::Fallback(fetch) => {
-            vec![CompactDownloadAction::RequestFullBlock(fetch)]
-        }
-        CompactDownloadCompletionOutcome::Suppressed(_) => {
-            vec![CompactDownloadAction::RequestFullBlock(FullBlockFetch {
-                block_hash,
-            })]
-        }
-    }
-}
-
+#[cfg(test)]
 fn take_in_flight_download(
     peer_state: &mut CompactDownloadPeerState,
     block_hash: BlockHash,
@@ -579,4 +407,12 @@ fn take_in_flight_download(
         .in_flight
         .remove(&block_hash)
         .ok_or(CompactBlockTxnHandleOutcome::NoMatchingInFlight)
+}
+
+#[cfg(test)]
+fn activated_policy() -> BlockRelayActivationPolicy {
+    BlockRelayActivationPolicy {
+        compact_relay: crate::block_serving::CompactRelayActivationConfig { enabled: true },
+        ..BlockRelayActivationPolicy::default()
+    }
 }

@@ -6,14 +6,16 @@
       "surfaces": [
         "v2-6-canonical-chain-identity",
         "v2-6-canonical-durable-bootstrap",
+        "v2-6-candidate-history-validation",
         "datadir",
         "validation",
         "operator-docs"
       ],
-      "summary": "Phase164's identity-only source-derived record retains its original all-refusal receipts. Every ordinary history mode currently refuses, including Signet challenge validation. Existing unproved/foreign/legacy stores refuse before backend open. The separate genesis-only route binds retained header/body/coins/work and explicit BASIC, while ordinary descendants, repair, conversion, import and actual Knots-daemon differential qualification remain deferred. See v2-6-canonical-durable-bootstrap for the current local genesis scope.",
+      "summary": "Phase164's identity-only source-derived record retains its original all-refusal receipts. Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence. The local retained-history observation covers 301 descendants after selected genesis and a sealed existing-store inspection. Mainnet, testnet3 and Signet ordinary configuration remain refused. Existing unproved/foreign/legacy stores refuse before acceptance. Source-bound seeded Mainnet/Testnet3 scripts, Mainnet BIP30 repeats and Regtest flag cases remain non-authoritative regression evidence. Open Bitcoin restores the complete prior Coin after exact BIP30 disconnect as an explicit stronger difference from pinned Knots normal disconnect. Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred. Wallet authority remains unavailable. See v2-6-candidate-history-validation for the current bounded scope.",
       "evidence": [
         "docs/parity/v2-6-canonical-chain-identity.md",
         "docs/parity/v2-6-canonical-durable-bootstrap.md",
+        "docs/parity/v2-6-candidate-history-validation.md",
         "packages/open-bitcoin-consensus/src/chain_spec.rs",
         "packages/open-bitcoin-consensus/src/chain_spec/tests.rs",
         "packages/open-bitcoin-node/src/storage/chain_compatibility.rs",
@@ -559,6 +561,10 @@
   },
   "surfaces": [
     {
+      "name": "v2-6-candidate-history-validation",
+      "status": "done"
+    },
+    {
       "name": "v2-6-canonical-durable-bootstrap",
       "status": "done"
     },
@@ -889,6 +895,59 @@
       "out_of_scope"
     ],
     "surfaces": [
+      {
+        "id": "v2-6-candidate-history-validation",
+        "title": "Source-bound candidate history and bounded local default-Regtest canonical continuation",
+        "status": "done",
+        "requirements": [
+          "CVLD-01",
+          "CVLD-02",
+          "CVLD-03",
+          "CVLD-04",
+          "CVLD-06"
+        ],
+        "evidence": [
+          "docs/parity/v2-6-candidate-history-validation.md",
+          "docs/parity/source-breadcrumbs.json",
+          "packages/testdata/phase167/manifest.json",
+          "packages/testdata/phase167/blocks.json",
+          "packages/testdata/phase167/contexts.json",
+          "packages/testdata/phase167/bip30-fixtures.txt",
+          "packages/testdata/phase167/regtest-history.json",
+          "docs/parity/fixtures/phase167-rule-expectations.json",
+          "docs/parity/fixtures/phase167-historical-results.json",
+          "docs/parity/fixtures/phase167-regtest-expectations.json",
+          "packages/open-bitcoin-consensus/src/chain_spec/rules.rs",
+          "packages/open-bitcoin-consensus/src/candidate_history/rules.rs",
+          "packages/open-bitcoin-chainstate/src/engine/overwrite_undo.rs",
+          "packages/open-bitcoin-node/src/storage/canonical_history/proof.rs",
+          "packages/open-bitcoin-node/src/sync/canonical_history.rs",
+          "packages/open-bitcoin-cli/src/operator/runtime/support/phase167_tests.rs",
+          "scripts/check-phase167-candidate-history.ts",
+          ".planning/phases/167-candidate-history-validation-rules/167-14-SUMMARY.md",
+          ".planning/phases/167-candidate-history-validation-rules/167-16-SUMMARY.md"
+        ],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+            "packages/bitcoin-knots/src/pow.cpp",
+            "packages/bitcoin-knots/src/coins.cpp",
+            "packages/bitcoin-knots/src/undo.h",
+            "packages/bitcoin-knots/src/script/interpreter.cpp"
+          ]
+        },
+        "rationale": "Selected-rule and corpus hashes, source-bound seeded historical regressions, and actual local Open Bitcoin default-Regtest 301-descendant RPC/CLI/reopen evidence. Plan20 default native, fresh zero-uncovered pure-core coverage, Bazel/provenance and independent source, security and goal records are available for this bounded scope.",
+        "intentional_differences": [
+          "Pinned Knots normal BIP30 disconnect does not restore an overwritten old coinbase; Open Bitcoin captures and restores the complete prior Coin with integrity and exact binding.",
+          "Only bounded private default-Regtest canonical continuation is implemented locally; the generic ordinary-history qualification gate and other selector product routes remain refused."
+        ],
+        "known_gaps": [
+          "Actual pinned Knots-daemon differential, whole-chain/mainnet replay, public/default networking, unattended full sync, production service and production-funds readiness are not qualified.",
+          "Canonical wallet authority remains unavailable; default Signet challenge validation and other selector ordinary routes are refused."
+        ]
+      },
       {
         "id": "v2-6-canonical-durable-bootstrap",
         "title": "Canonical durable genesis and explicit BASIC observations",

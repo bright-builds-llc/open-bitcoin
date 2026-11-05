@@ -1,8 +1,9 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
+use super::super::tracked::{RecordSource, sealed};
 use super::{StorageError, copy, inspection_error};
-use fjall::{Database, KeyspaceCreateOptions};
+use fjall::{Database, KeyspaceCreateOptions, Readable};
 use std::collections::BTreeMap;
 
 /// Complete untrusted logical bytes, with missing namespaces and rows preserved.
@@ -11,6 +12,19 @@ pub(in crate::storage) struct InspectedRecords {
 }
 
 impl InspectedRecords {
+    /// Apply the existing streamed reader budget to detached prospective bytes.
+    pub(in crate::storage) fn check_submission_budget(
+        namespaces: &BTreeMap<String, BTreeMap<Vec<u8>, Vec<u8>>>,
+    ) -> Result<(), StorageError> {
+        let mut budget = copy::Budget::default();
+        for (name, rows) in namespaces {
+            budget.add(name.len() as u64, 0)?;
+            for (key, value) in rows {
+                budget.add(record_length(key, value)?, 0)?;
+            }
+        }
+        Ok(())
+    }
     pub(in crate::storage) fn namespaces(&self) -> impl Iterator<Item = &str> {
         self.namespaces.keys().map(String::as_str)
     }
@@ -23,7 +37,18 @@ impl InspectedRecords {
     }
 
     /// Uses only enumerated, already existing keyspaces and returns no engine owners.
-    pub(in crate::storage) fn read_existing(database: &Database) -> Result<Self, StorageError> {
+    pub(in crate::storage) fn read_existing(
+        database: &impl RecordSource,
+    ) -> Result<Self, StorageError> {
+        database.read_existing_records()
+    }
+}
+
+impl sealed::Sealed for Database {}
+
+impl RecordSource for Database {
+    fn read_existing_records(&self) -> Result<InspectedRecords, StorageError> {
+        let database = self;
         if database.keyspace_count() > copy::MAX_ENTRIES {
             return Err(inspection_error(
                 "inspection logical namespace limit exceeded",
@@ -31,6 +56,7 @@ impl InspectedRecords {
         }
         let mut budget = copy::Budget::default();
         let mut namespaces = BTreeMap::new();
+        let snapshot = database.snapshot();
         for name in database.list_keyspace_names() {
             budget.add(name.len() as u64, 0)?;
             if !database.keyspace_exists(&name) {
@@ -42,20 +68,22 @@ impl InspectedRecords {
                 .keyspace(&name, KeyspaceCreateOptions::default)
                 .map_err(|_| inspection_error("inspection existing namespace unreadable"))?;
             let mut records = BTreeMap::new();
-            for guard in keyspace.iter() {
+            for guard in snapshot.iter(&keyspace) {
                 let (key, value) = guard
                     .into_inner()
                     .map_err(|_| inspection_error("inspection existing record unreadable"))?;
-                let bytes = key
-                    .len()
-                    .checked_add(value.len())
-                    .and_then(|length| u64::try_from(length).ok())
-                    .ok_or_else(|| inspection_error("inspection logical arithmetic overflow"))?;
-                budget.add(bytes, 0)?;
+                budget.add(record_length(&key, &value)?, 0)?;
                 records.insert(key.to_vec(), value.to_vec());
             }
             namespaces.insert(name.to_string(), records);
         }
-        Ok(Self { namespaces })
+        Ok(InspectedRecords { namespaces })
     }
+}
+
+fn record_length(key: &[u8], value: &[u8]) -> Result<u64, StorageError> {
+    key.len()
+        .checked_add(value.len())
+        .and_then(|length| u64::try_from(length).ok())
+        .ok_or_else(|| inspection_error("inspection logical arithmetic overflow"))
 }

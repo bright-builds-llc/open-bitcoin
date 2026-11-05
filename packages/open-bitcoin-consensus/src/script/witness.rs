@@ -219,8 +219,7 @@ pub(super) fn verify_witness_program(
             if Sha256::digest(script_bytes) != *program {
                 return Err(ScriptError::WitnessProgramMismatch);
             }
-            let exec_script = ScriptBuf::from_bytes(script_bytes.clone())
-                .map_err(|_| ScriptError::WitnessProgramMismatch)?;
+            let exec_script = ScriptBuf::from_serialized_bytes(script_bytes.clone());
             execute_witness_script(
                 stack,
                 transaction,
@@ -326,4 +325,59 @@ fn execute_witness_script(
 
 fn single_push_script(script: &ScriptBuf) -> Vec<u8> {
     encode_push_data(script.as_bytes())
+}
+
+#[cfg(test)]
+mod serialized_tests {
+    use super::*;
+    use crate::script::serialized_tests::{context, transaction};
+
+    fn p2wsh(bytes: Vec<u8>) -> Result<(), ScriptError> {
+        let transaction = transaction();
+        let (spent, validation, precomputed) = context(&transaction);
+        let mut program = vec![0, 32];
+        program.extend_from_slice(&Sha256::digest(&bytes));
+        verify_input_script(ScriptInputVerificationContext {
+            script_sig: &ScriptBuf::default(),
+            script_pubkey: &ScriptBuf::from_bytes(program).expect("fixed witness program"),
+            witness: &ScriptWitness::new(vec![bytes]),
+            transaction: &transaction,
+            input_index: 0,
+            spent_input: &spent,
+            validation_context: &validation,
+            spent_amount: spent.spent_output.value,
+            verify_flags: ScriptVerifyFlags::WITNESS,
+            precomputed: &precomputed,
+            execution_data: &mut ScriptExecutionData::default(),
+        })
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_p2wsh_reaches_v0_size_guard() {
+        // Arrange
+        let bytes = vec![0xff; 10_001];
+        // Act
+        let result = p2wsh(bytes);
+        // Assert
+        assert_eq!(result, Err(ScriptError::ScriptSize));
+    }
+
+    #[test]
+    fn phase167_serialized_script_paths_p2wsh_10000_executes() {
+        // Arrange
+        let mut bytes = Vec::new();
+        for _ in 0..19 {
+            bytes.extend_from_slice(&[0x4d, 0x08, 0x02]);
+            bytes.extend(vec![0; 520]);
+            bytes.push(0x75);
+        }
+        bytes.extend_from_slice(&[0x4c, 40]);
+        bytes.extend(vec![0; 40]);
+        bytes.extend_from_slice(&[0x75, 0x51]);
+        assert_eq!(bytes.len(), 10_000);
+        // Act
+        let result = p2wsh(bytes);
+        // Assert
+        assert_eq!(result, Ok(()));
+    }
 }

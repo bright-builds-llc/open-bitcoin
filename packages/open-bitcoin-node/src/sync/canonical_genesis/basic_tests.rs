@@ -5,7 +5,9 @@
 use super::*;
 use crate::storage::fjall_store::filters::FilterPublicationFault as Fault;
 use crate::{FjallNodeStore, StorageNamespace, storage::filter_index};
-use open_bitcoin_core::{chainstate::CoinsView, primitives::OutPoint};
+use open_bitcoin_core::{
+    chainstate::CoinsView, consensus::ScriptVerifyFlags, primitives::OutPoint,
+};
 use std::path::{Path, PathBuf};
 
 const SELECTORS: [(CanonicalChain, SyncNetwork, &str); 4] = [
@@ -512,4 +514,114 @@ fn runtime_for_regtest(source: &Path) -> DurableSyncRuntime {
         SyncNetwork::Regtest,
         BasicFilterStartupMode::Enabled,
     )
+}
+
+#[test]
+fn phase167_basic_continuation_actual_runtime_factory_retains_selected_descendant_owner() {
+    use crate::chainstate::validation_history::tests::phase167::child;
+    use open_bitcoin_network::{HeadersMessage, WireNetworkMessage};
+    for mode in [
+        BasicFilterStartupMode::Enabled,
+        BasicFilterStartupMode::Disabled,
+    ] {
+        // Arrange
+        DurableSyncRuntime::with_phase167_runtime(mode, |runtime| {
+            let handle = runtime.network_handle();
+            handle
+                .connect_outbound_peer(1, 0)
+                .expect("socket-free peer");
+            let mut previous = runtime
+                .store
+                .load_basic_filter_record(CanonicalChain::Regtest.spec().genesis_hash())
+                .expect("genesis record");
+            // Act
+            for height in 1..=2 {
+                let block = child(
+                    &handle
+                        .maybe_chain_tip()
+                        .expect("tip")
+                        .expect("parent")
+                        .header,
+                    height,
+                );
+                handle
+                    .receive_message(
+                        1,
+                        WireNetworkMessage::Headers(HeadersMessage {
+                            headers: vec![block.header.clone()],
+                        }),
+                        i64::MIN,
+                        ScriptVerifyFlags::NONE,
+                        runtime.consensus_params,
+                    )
+                    .expect("genuine selected admission");
+                handle
+                    .connect_local_block(&block, ScriptVerifyFlags::NONE, runtime.consensus_params)
+                    .expect("genuine descendant absorption");
+                runtime
+                    .store
+                    .save_block(&block, crate::PersistMode::Sync)
+                    .expect("retained accepted body");
+                handle
+                    .drive_basic_filter_index_turn()
+                    .expect("accepted continuation");
+                // Assert
+                let record = runtime
+                    .store
+                    .load_basic_filter_record(open_bitcoin_core::consensus::block_hash(
+                        &block.header,
+                    ))
+                    .expect("record");
+                if let Some(record) = record {
+                    assert_eq!(
+                        record.identity().previous_header(),
+                        previous
+                            .expect("exact predecessor")
+                            .identity()
+                            .filter_header()
+                    );
+                    previous = Some(record);
+                } else {
+                    assert!(matches!(mode, BasicFilterStartupMode::Disabled));
+                    assert!(
+                        handle
+                            .maybe_basic_index_progress()
+                            .expect("disabled owner")
+                            .is_none()
+                    );
+                    assert_eq!(
+                        runtime
+                            .store
+                            .basic_filter_artifacts()
+                            .expect("disabled artifacts"),
+                        (false, false)
+                    );
+                }
+            }
+            handle
+                .flush_coins(
+                    open_bitcoin_core::chainstate::FlushMode::Always,
+                    open_bitcoin_core::chainstate::FlushPolicyTime::new(10),
+                    u64::MAX,
+                )
+                .expect("complete durable coins and undo");
+            handle
+                .drive_basic_filter_index_turn()
+                .expect("same-owner durable safe checkpoint");
+            if let Some(record) = previous {
+                assert_eq!(
+                    handle
+                        .maybe_basic_index_progress()
+                        .expect("progress")
+                        .expect("owner")
+                        .maybe_safe_durable_endpoint(),
+                    Some(record.identity())
+                );
+            }
+            assert_eq!(
+                handle.maybe_canonical_chain().expect("immutable selection"),
+                Some(CanonicalChain::Regtest)
+            );
+        });
+    }
 }

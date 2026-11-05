@@ -1,6 +1,7 @@
 // Parity breadcrumbs:
 // - packages/bitcoin-knots/src/key.h
 // - packages/bitcoin-knots/src/pubkey.h
+// - packages/bitcoin-knots/src/pubkey.cpp
 // - packages/bitcoin-knots/src/script/interpreter.cpp
 // - packages/bitcoin-knots/src/script/sign.cpp
 
@@ -173,9 +174,12 @@ impl<'a, C: Verification> TransactionSignatureChecker<'a, C> {
             _ => return Err(SignatureError::UnsupportedSigVersion),
         };
         let message = Message::from_digest(digest.to_byte_array());
+        // Bitcoin permits high-S without LOW_S; libsecp requires a normalized copy.
+        let mut verification_signature = parsed_signature.signature;
+        verification_signature.normalize_s();
         Ok(self
             .secp
-            .verify_ecdsa(message, &parsed_signature.signature, &public_key)
+            .verify_ecdsa(message, &verification_signature, &public_key)
             .is_ok())
     }
 

@@ -307,6 +307,7 @@ fn phase165_live_fixture_unit_changed_undo_refuses() {
         .save_undo(
             block_hash(&fixture.blocks[0].header),
             &BlockUndo {
+                overwrites: Vec::new(),
                 transactions: vec![TxUndo::default()],
             },
             PersistMode::Sync,

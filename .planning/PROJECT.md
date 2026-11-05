@@ -61,7 +61,7 @@ Historical phase directories remain tracked because repository verifiers referen
 
 **Goal:** Start from an empty datadir, validate canonical Bitcoin histories with network-correct rules and cumulative proof of work, and demonstrate matching results against pinned Bitcoin Knots `29.3.knots20260210`.
 
-**Status:** Goals, 30 requirements and the eight-phase roadmap were approved by the user on 2026-10-13. Phase 164 completed 13 plans and passed 27/27 goal verification after full native acceptance, clean source review and 30 closed security controls. CBOT-01, CBOT-04 and CVLD-05 are closed. Phase 165 has not started; ordinary histories remain refused for all four selectors pending the remaining prerequisites.
+**Status:** Goals, 30 requirements and the eight-phase roadmap were approved by the user on 2026-10-13. Phase 164 completed 13 plans and passed 27/27 goal verification after full native acceptance, clean source review and 30 closed security controls. CBOT-01, CBOT-04 and CVLD-05 closed there; Phases 165 and 166 subsequently passed their own verification and closed seven more scoped requirements. Current [Phase 167 source and local evidence](../docs/parity/v2-6-candidate-history-validation.md) demonstrates 301 default-Regtest descendants after proved genesis and complete retained-history reopen within a reviewed finite 306-position envelope, with selected network rules and validated ancestry bound to the route. Seeded Mainnet/Testnet3 script, Mainnet BIP30 and Regtest flag cases remain non-authoritative. Mainnet, testnet3 and default Signet ordinary canonical product routes refuse; public networking remains default off and the canonical-history runtime wallet is unavailable. Phase 167 passed its complete default native, coverage, Bazel and independent source/security/goal acceptance gates for this bounded scope; CVLD-01/02/03/04/06 are Complete. Actual pinned-Knots daemon differential qualification remains Phase 168.
 
 **Target features:**
 
@@ -279,7 +279,7 @@ All 22 v2.5 requirements are validated with unique archived ownership in [the re
 - [ ] Differential forks, rejection and durable recovery.
 - [ ] Canonical-history pruning, retained BASIC serving and auditable parity closure.
 
-These user-approved v2.6 goals are decomposed into 30 approved atomic requirements in `.planning/REQUIREMENTS.md`, with exactly-once phase ownership in `.planning/ROADMAP.md`. Phase 164 closes CBOT-01, CBOT-04 and CVLD-05 for identity/refusal scope; the remaining 27 requirements stay Pending. Ordinary history remains refused pending the later prerequisites.
+These user-approved v2.6 goals are decomposed into 30 approved atomic requirements in `.planning/REQUIREMENTS.md`, with exactly-once phase ownership in `.planning/ROADMAP.md`. Phases 164–167 closed 15 scoped requirements; the other 15 remain Pending for later phases. The [current Phase 167 evidence](../docs/parity/v2-6-candidate-history-validation.md) supports only bounded local default-Regtest 301-descendant admission and complete retained reopen; seeded historical cases confer no ordinary canonical authority on other selectors.
 
 ### Out of Scope
 

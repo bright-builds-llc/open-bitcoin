@@ -4,6 +4,7 @@
 
 //! Complete immediate persisted preparation, with no transport or indexing effects.
 
+use super::super::peer_sessions::{SyncContinuationFailure, SyncPeerLifetime};
 use super::branch::{
     self, BasicFilterBranchCapture, BasicFilterBranchLimit, BasicFilterBranchOutcome,
 };
@@ -29,6 +30,8 @@ use open_bitcoin_network::{
     },
     policy::{BranchWorkLimit, FilterRequest},
 };
+
+mod disconnect;
 
 struct CompleteRead {
     lease: FilterRequestLease,
@@ -67,6 +70,62 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         Ok(result)
     }
 
+    pub(in crate::network::runtime_authority) fn resolve_basic_filter_intents_for_sync(
+        &self,
+        token: &SyncPeerLifetime,
+        mut result: crate::network::ManagedSyncMessageResult,
+        params: ConsensusParams,
+    ) -> Result<crate::network::ManagedSyncMessageResult, SyncContinuationFailure> {
+        use crate::network::ManagedInboundResponsePlanItem as Item;
+        for item in &mut result.inbound_response_plan {
+            let Item::FilterRequestIntent(request) = item else {
+                continue;
+            };
+            *item = self.prepare_sync_basic_intent(token, *request, params)?;
+        }
+        Ok(result)
+    }
+
+    fn prepare_sync_basic_intent(
+        &self,
+        token: &SyncPeerLifetime,
+        request: FilterRequest,
+        params: ConsensusParams,
+    ) -> Result<crate::network::ManagedInboundResponsePlanItem, SyncContinuationFailure> {
+        use crate::network::ManagedInboundResponsePlanItem as Item;
+        use SyncContinuationFailure::Denied;
+        let denied = |denial| Denied {
+            denial: Box::new(denial),
+            maybe_primary: None,
+        };
+        let network = self.lock_authority().map_err(denied)?;
+        // The short registry guard drops in this call before existing bounded BASIC I/O.
+        let peer = self
+            .require_sync_peer_locked(&network, token)
+            .map_err(denied)?;
+        let prepared = self.prepare_basic_filter_response_locked(
+            &network,
+            peer,
+            request,
+            params,
+            &mut BasicPeerServeBudget::default(),
+            |_| {},
+        );
+        match prepared {
+            BasicFilterPrepareOutcome::Prepared(response) => {
+                Ok(Item::PreparedFilterServe(response))
+            }
+            BasicFilterPrepareOutcome::Unavailable(reason) => {
+                Ok(Item::FilterServeUnavailable(reason))
+            }
+            BasicFilterPrepareOutcome::InvalidDisconnect(_reason) => {
+                let pending =
+                    disconnect::PendingDisconnect::begin(self, network, token).map_err(denied)?;
+                Err(pending.release().finish())
+            }
+        }
+    }
+
     /// Prepare one complete immutable family immediately, without RPC readiness waits.
     pub fn prepare_basic_filter_response(
         &self,
@@ -87,39 +146,57 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         before_handoff: impl FnOnce(bool),
     ) -> Result<BasicFilterPrepareOutcome, ManagedNetworkAuthorityError> {
         self.read(|network| {
-            let completed = self.prepare_filter_locked(network, peer, request, params, budget);
-            let CompleteRead {
-                lease,
-                capture,
-                epoch,
-                frames,
-            } = match completed {
-                Ok(completed) => completed,
-                Err(outcome) => return outcome,
-            };
-            #[cfg(test)]
-            before_handoff(self.authority.try_lock().is_err());
-            #[cfg(not(test))]
-            before_handoff(true);
-            // Publication is released; authority still serializes revocation and
-            // admission until locally owned buffers transfer into the lease registry.
-            if let Err(error) = lease.resize_suffix(budget.work().get(Axis::EncodedSuffixBytes)) {
-                drop(frames);
-                drop(lease);
-                return unavailable(transport_failure(error));
-            }
-            if let Err(error) =
-                self.bind_basic_filter_response_locked(network, &lease, &capture, epoch)
-            {
-                drop(frames);
-                drop(lease);
-                return unavailable(transport_failure(error));
-            }
-            match lease.prepare(frames) {
-                Ok(response) => BasicFilterPrepareOutcome::Prepared(Box::new(response)),
-                Err(error) => unavailable(transport_failure(error)),
-            }
+            self.prepare_basic_filter_response_locked(
+                network,
+                peer,
+                request,
+                params,
+                budget,
+                before_handoff,
+            )
         })
+    }
+
+    fn prepare_basic_filter_response_locked(
+        &self,
+        network: &ManagedPeerNetwork<S, V>,
+        peer: PeerId,
+        request: FilterRequest,
+        params: ConsensusParams,
+        budget: &mut BasicPeerServeBudget,
+        before_handoff: impl FnOnce(bool),
+    ) -> BasicFilterPrepareOutcome {
+        let completed = self.prepare_filter_locked(network, peer, request, params, budget);
+        let CompleteRead {
+            lease,
+            capture,
+            epoch,
+            frames,
+        } = match completed {
+            Ok(completed) => completed,
+            Err(outcome) => return outcome,
+        };
+        #[cfg(test)]
+        before_handoff(self.authority.try_lock().is_err());
+        #[cfg(not(test))]
+        before_handoff(true);
+        // Publication is released; authority still serializes revocation and
+        // admission until locally owned buffers transfer into the lease registry.
+        if let Err(error) = lease.resize_suffix(budget.work().get(Axis::EncodedSuffixBytes)) {
+            drop(frames);
+            drop(lease);
+            return unavailable(transport_failure(error));
+        }
+        if let Err(error) = self.bind_basic_filter_response_locked(network, &lease, &capture, epoch)
+        {
+            drop(frames);
+            drop(lease);
+            return unavailable(transport_failure(error));
+        }
+        match lease.prepare(frames) {
+            Ok(response) => BasicFilterPrepareOutcome::Prepared(Box::new(response)),
+            Err(error) => unavailable(transport_failure(error)),
+        }
     }
 
     #[cfg(test)]

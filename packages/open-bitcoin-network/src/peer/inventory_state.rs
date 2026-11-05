@@ -187,9 +187,7 @@ impl PeerManager {
         for item in inventory.inventory {
             match item.inventory_type {
                 InventoryType::Block | InventoryType::WitnessBlock => {
-                    let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-                    peer.requested_blocks
-                        .remove(&BlockHash::from(item.object_hash));
+                    self.release_block_request(peer_id, BlockHash::from(item.object_hash));
                 }
                 InventoryType::Transaction => {
                     transaction_actions.extend(self.tx_download.record_notfound(
@@ -217,28 +215,18 @@ impl PeerManager {
         peer_id: PeerId,
         block_hashes: &[BlockHash],
     ) -> Result<Option<WireNetworkMessage>, NetworkError> {
-        let known_blocks = self.known_blocks.clone();
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         if !peer.remote_verack_received || !peer.local_verack_sent {
             return Ok(None);
         }
 
-        let available_slots = self
-            .max_blocks_in_flight_per_peer
-            .saturating_sub(peer.requested_blocks.len());
-        if available_slots == 0 {
-            return Ok(None);
-        }
-
         let mut inventory = Vec::new();
         for block_hash in block_hashes.iter().copied() {
-            if inventory.len() >= available_slots {
-                break;
-            }
-            if known_blocks.contains(&block_hash) || peer.requested_blocks.contains(&block_hash) {
+            if self.known_blocks.contains(&block_hash)
+                || !self.register_block_request(peer_id, block_hash, None, usize::MAX)?
+            {
                 continue;
             }
-            peer.requested_blocks.insert(block_hash);
             inventory.push(InventoryVector {
                 inventory_type: InventoryType::Block,
                 object_hash: block_hash.into(),
@@ -286,9 +274,8 @@ impl PeerManager {
     ) -> Result<Vec<PeerAction>, NetworkError> {
         let hash = block_hash(&block.header);
 
-        let peer = Self::peer_mut(&mut self.peers, peer_id)?;
-        peer.requested_blocks.remove(&hash);
-        self.on_compact_download_block_connected(hash);
+        Self::peer_mut(&mut self.peers, peer_id)?;
+        self.release_block_request(peer_id, hash);
 
         Ok(vec![PeerAction::ReceivedBlock(block)])
     }
@@ -339,6 +326,7 @@ impl PeerManager {
         peer_id: PeerId,
         now_unix_seconds: i64,
     ) -> Result<Vec<PeerAction>, NetworkError> {
+        self.release_peer_block_requests(peer_id);
         self.compact_download_disconnect_cleanup(peer_id);
         let Some(peer) = self.peers.remove(&peer_id) else {
             return Err(NetworkError::UnknownPeer(peer_id));

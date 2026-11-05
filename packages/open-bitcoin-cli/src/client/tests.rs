@@ -599,3 +599,30 @@ fn phase159_filter_rpc_client_filter_method_uses_authenticated_root_endpoint() {
         }]
     );
 }
+
+#[test]
+fn phase167_submitblock_client_envelope_uses_normalized_hexdata() {
+    // Arrange
+    use open_bitcoin_rpc::method::RequestParameters;
+    let cases = [
+        RequestParameters::Positional(vec![json!("00")]),
+        RequestParameters::Positional(vec![json!("00"), json!("compat")]),
+        RequestParameters::Named(vec![
+            ("hexdata".to_owned(), json!("00")),
+            ("dummy".to_owned(), json!("compat")),
+        ]),
+        RequestParameters::Mixed {
+            positional: vec![json!("00")],
+            named: vec![("dummy".to_owned(), json!("compat"))],
+        },
+    ];
+    let expected =
+        json!({"jsonrpc": "2.0", "method": "submitblock", "params": {"hexdata": "00"}, "id": 9});
+    for params in cases {
+        // Act
+        let request = super::build_request_envelope("submitblock", params, 9)
+            .expect("normalized submitblock envelope");
+        // Assert
+        assert_eq!(serde_json::to_value(request).expect("wire JSON"), expected);
+    }
+}

@@ -253,6 +253,7 @@ fn method_call_to_json(call: MethodCall) -> Result<Value, CliCommandFailure> {
         MethodCall::BuildAndSignTransaction(request) => to_json_value(request),
         MethodCall::TestMempoolAccept(request) => to_json_value(request),
         MethodCall::SubmitPackage(request) => to_json_value(request),
+        MethodCall::SubmitBlock(request) => Ok(serde_json::json!({"hexdata": request.hexdata})),
         MethodCall::OpenBitcoinPackage(request) => to_json_value(request),
     }
 }

@@ -9,11 +9,29 @@ import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS
 import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 import { createCopiedFixture } from "./check-phase163-provenance/fixtures.ts";
-
 const REPO = resolve(import.meta.dir, "..");
 const roots: string[] = [];
 test("phase165 current158 semantic actual raw baseline", () => {
   expect(checkCurrentReorgBoundaries(file => readFileSync(resolve(REPO, file), "utf8"))).toEqual([]);
+});
+for (const [file, symbol, before, after] of [
+  ["packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", "parse_serialized_block(bytes.as_ref())", "parse_block(bytes.as_ref())"],
+  ["packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", "cache.prepare_current_best_block().map_err(map_chainstate)?;", "let _ = cache;"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", "if !admit(work)? {", "if false && !admit(work)? {"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", "let observed = body_work(bytes.as_ref())?;", "let observed = /* body_work(bytes.as_ref())? */ TurnWork::default();"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", "parse_serialized_block(bytes.as_ref())", "{ let decoy = r#\"parse_serialized_block(bytes.as_ref())\"#; parse_block(bytes.as_ref()) }"],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", "impl FjallNodeStore {\n    pub(crate) fn maybe_basic_filter_turn_body", "impl DisconnectedStore {\n    pub(crate) fn maybe_basic_filter_turn_body"],
+  ["packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", "cache.prepare_current_best_block().map_err(map_chainstate)?;", "if false { cache.prepare_current_best_block().map_err(map_chainstate)?; }"],
+  ["packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", "cache.sync().map_err(map_chainstate)?", "cache.flush().map_err(map_chainstate)?"],
+  ["packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", "sink.persist_chain_meta_with_counts(", "sink.persist_chain_meta("],
+  ["packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", ".maybe_canonical_confirmed_txid_counts()", ".no_counts()"],
+  ["packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", "pub(super) fn complete_coins_write", "#[cfg(test)]\npub(super) fn complete_coins_write"],
+] as const) test(`current Phase167 Phase158 contract refuses ${symbol}`, () => {
+  const sources = currentSources();
+  const source = sources.get(file) ?? readFileSync(resolve(REPO, file), "utf8");
+  expect(source).toContain(before);
+  sources.set(file, source.replace(before, after));
+  expect(checkCurrentReorgBoundaries(path => sources.get(path) ?? "").some(row => row.includes(`actual boundary ${file}:${symbol}`))).toBe(true);
 });
 for (const [file, module] of REGISTRATIONS) for (const replacement of [`#[cfg(any())]\n${module}`, '#[path = "other.rs"]\n' + module, module + "\n" + module]) test(`phase165 current158 semantic owning ${file}:${replacement}`, () => {
   const sources = currentSources();
@@ -34,7 +52,6 @@ for (const file of HISTORICAL_PARITY_EVIDENCE) test(`phase165 current158 semanti
   });
   expect(failures).toContain(`T-158-07-01: parity evidence ${file}`);
 });
-
 function transitionSources(maybeBase?: ReadonlyMap<string, string>): Map<string, string> {
   const historicalFiles = new Set([...CHECK_FILES, ...PHASE162_EVIDENCE, ".planning/REQUIREMENTS.md", ".planning/ROADMAP.md"]);
   const selected = v25FixtureSources(maybeBase ?? currentSources());
@@ -54,7 +71,6 @@ function transitionSources(maybeBase?: ReadonlyMap<string, string>): Map<string,
   sources.set("README.md", sources.get("README.md")! + "\n" + PHASE162_IMPLEMENTATION);
   return sources;
 }
-
 test("current implementation transition requires linked source evidence without future formal output", () => {
   // Arrange
   const sources = transitionSources();
@@ -63,7 +79,6 @@ test("current implementation transition requires linked source evidence without 
   expect(checkPhase162ClaimState(file => sources.get(file) ?? "", [])).toBe("implementation");
   expect(sources.has(PHASE162 + "162-VERIFICATION.md")).toBe(false);
 });
-
 test("source binding accepts GFM table alignment without weakening hash identity", () => {
   // Arrange
   const sources = transitionSources();
@@ -71,7 +86,6 @@ test("source binding accepts GFM table alignment without weakening hash identity
   // Act / Assert
   expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
 });
-
 for (const mutation of ["proof prose alone", "removed raw input", "removed paired undo", "removed reopen", "premature activation", "duplicate owner", "missing evidence root", "stale source hash", "stale lifecycle"]) {
   test(`current transition refuses ${mutation}`, () => {
     // Arrange
@@ -97,7 +111,6 @@ for (const mutation of ["proof prose alone", "removed raw input", "removed paire
     expect(failures.some(failure => failure.includes("T-162-10"))).toBe(true);
   });
 }
-
 test("formal scoped completion requires all consistent fresh formal gates", () => {
   // Arrange
   const sources = transitionSources();
@@ -106,7 +119,6 @@ test("formal scoped completion requires all consistent fresh formal gates", () =
   // Act / Assert
   expect(checkPhase158ValidatedReorg(undefined, sources).some(failure => failure.includes("T-162-10"))).toBe(true);
 });
-
 for (const claim of ["BIP37 serving is supported.", "V0 is enabled.", "Assumeutxo is supported.", "Repair is enabled.", "Archive-scale is proven.", "Public defaults are enabled.", "Public-network CI is enabled.", "Production service is ready.", "Production-funds safety is proven.", "v2.5 is shipped."]) {
   for (const file of [PHASE162_DOC, "docs/parity/index.json", PHASE + "158-REORG-MEASUREMENTS.md", PHASE + "158-06-SUMMARY.md"]) {
     test(`scoped current evidence cannot authorize historical/excluded ${claim} in ${file}`, () => {
@@ -122,7 +134,6 @@ for (const claim of ["BIP37 serving is supported.", "V0 is enabled.", "Assumeutx
     });
   }
 }
-
 function formalSources(): Map<string, string> {
   const sources = transitionSources();
   for (const [file, source] of sources) sources.set(file, source.replaceAll(PHASE162_IMPLEMENTATION, PHASE162_COMPLETE));
@@ -141,14 +152,12 @@ function formalSources(): Map<string, string> {
   sources.set("docs/parity/index.json", JSON.stringify(index));
   return sources;
 }
-
 test("current formal fixture requires scoped completion consistency while milestone stays unaudited", () => {
   // Arrange: in-memory gate contracts, never persisted as executed reports.
   const sources = formalSources();
   // Act / Assert
   expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
 });
-
 test("native evidence cannot collide with GSD formal verification suffix selection", () => {
   // Arrange
   const sources = formalSources();
@@ -173,7 +182,6 @@ for (const name of ["VERIFICATION", "NATIVE-EVIDENCE", "REVIEW", "SECURITY"]) {
     });
   }
 }
-
 for (const [name, file, before, after] of [
   ["fast-only native command", "NATIVE-EVIDENCE", "bash scripts/verify.sh", "bash scripts/verify.sh --fast"],
   ["invalid lifecycle result", "VERIFICATION", "lifecycle_validated: true", "lifecycle_validated: false"],
@@ -192,7 +200,6 @@ function fixture(maybeSources?: ReadonlyMap<string, string>): string {
   return createCopiedFixture(maybeSources ?? currentSources(), root => roots.push(root),
     ["scripts/check-phase158-validated-reorg.ts"], maybeSources === undefined ? "executable" : "evidence-only");
 }
-
 for (const state of ["implementation", "formal"]) {
   test(`filesystem loader permits current ${state} evidence without losing optional roots`, () => {
     // Arrange
@@ -236,7 +243,6 @@ function functionMutation(file: string, symbol: string, transform: (body: string
   return checkCurrentReorgBoundaries(file => readFileSync(join(root, file), "utf8"));
 }
 afterEach(() => { for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true }); });
-
 const CHAINSTATE = "packages/open-bitcoin-node/src/chainstate.rs";
 const LIFECYCLE = "packages/open-bitcoin-node/src/chainstate/flush_lifecycle.rs";
 const PRUNE_FLUSH = "packages/open-bitcoin-node/src/network/runtime_authority/prune_flush.rs";
@@ -260,6 +266,7 @@ const CHECKPOINT_MUTATIONS: [string, string, string, (body: string) => string][]
   ["literal-only delegate", CHAINSTATE, "flush_applying_plan_with_header_checkpoint", body => body.replace(pattern("self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("), '"self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint("; removed_delegate(')],
   ["removed checkpoint", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "")],
   ["checkpoint before prefix", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "").replace("persist_ordered_prefix(sink,", "checkpoint(sink)?; persist_ordered_prefix(sink,")],
+  ["counts support after prefix", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => { const gate = "sink.check_chain_meta_counts_support(\n            cache\n                .maybe_canonical_confirmed_txid_counts()\n                .map_err(map_chainstate)?,\n        )?;"; return body.replace(gate, "").replace("persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?;", "persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?; " + gate); }],
   ["checkpoint after unlink", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "").replace("complete_coins_write(sink,", "checkpoint(sink)?; complete_coins_write(sink,")],
   ["swallowed checkpoint failure", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("checkpoint(sink)?;", "let _ = checkpoint(sink);")],
   ["untyped checkpoint result", LIFECYCLE, "execute_flush_applying_plan_with_header_checkpoint", body => body.replace("FnMut(&S) -> Result<(), StorageError>", "FnMut(&S) -> Result<(), OtherError>")],
@@ -283,7 +290,6 @@ for (const row of CHECKPOINT_CONTRACTS) for (const anchor of row.anchors) {
     expect(failures.some(item => item.includes("T-162-15") && item.includes(`${row.file}:${row.symbol}`))).toBe(true);
   });
 }
-
 test("current bounded roots pass without changing evidence", () => {
   // Arrange
   const root = fixture();
@@ -533,7 +539,6 @@ test("missing current root exits with bounded category diagnostics", () => {
   expect(result.stderr).toContain("cannot read required evidence");
   expect(result.stderr.length).toBeLessThan(10_000);
 });
-
 function currentSources(): Map<string, string> {
   const sources = loadPhase162OptionalSources(REPO);
   for (const file of CHECK_FILES) sources.set(file, readFileSync(join(REPO, file), "utf8"));

@@ -28,6 +28,7 @@ pub(crate) mod filter_index;
 mod node;
 mod package;
 mod prune;
+mod submit_block;
 #[cfg(test)]
 pub(crate) use prune::tests::ownership::durable_context;
 #[cfg(test)]
@@ -43,6 +44,7 @@ where
     V: open_bitcoin_node::core::chainstate::CoinsView,
 {
     match call {
+        MethodCall::SubmitBlock(request) => submit_block::submit(context, request),
         MethodCall::GetBlockFilter(request) => {
             filter_index::completed(filter_index::prepare_filter(context, request)?)
         }

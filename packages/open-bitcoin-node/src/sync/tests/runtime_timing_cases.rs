@@ -332,7 +332,7 @@ fn is_full_block_getdata(message: &WireNetworkMessage) -> bool {
     matches!(
         message,
         WireNetworkMessage::GetData(inventory)
-            if inventory.inventory.iter().any(|item| item.inventory_type == InventoryType::Block)
+            if inventory.inventory.iter().any(|item| item.inventory_type == InventoryType::WitnessBlock)
     )
 }
 
@@ -341,7 +341,7 @@ fn is_full_block_getdata_for_hash(message: &WireNetworkMessage, expected_hash: B
         message,
         WireNetworkMessage::GetData(inventory)
             if inventory.inventory.iter().any(|item| {
-                item.inventory_type == InventoryType::Block
+                item.inventory_type == InventoryType::WitnessBlock
                     && BlockHash::from(item.object_hash) == expected_hash
             })
     )

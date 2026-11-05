@@ -200,7 +200,7 @@ export const CONTRACTS: Contract[] = [
   row(PREFLIGHT, "required_sources", ["production_budget()?", "staged.transition().disconnected", "historical_source(", "maybe_basic_filter_reusable_record(", "historical_source(", "staged.maybe_replacement_undo", "BasicFilterInputs::from_historical("]),
   row(PREFLIGHT, "historical_source", ["maybe_basic_filter_turn_body(", "old_undo", "basic_filter_required_undo(", "BasicFilterInputs::from_historical("]),
   row(PREFLIGHT, "charge", ["work.checked_add(cost)", "!total.fits(maximum)", "return Err(", "*work = total"]),
-  row(NODE + "storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", ["self.block_index", ".get(", "if bytes.len() > 4_000_000", "remaining_body_bytes", "if !admit(work)?", "body_work(bytes.as_ref())?", "parse_block(bytes.as_ref())"]),
+  row(NODE + "storage/fjall_store/filters/turn_inputs.rs", "maybe_basic_filter_turn_body", ["self.block_index", ".get(", "if bytes.len() > 4_000_000", "remaining_body_bytes", "let work = TurnWork", "if !admit(work)?", "body_work(bytes.as_ref())?", "parse_serialized_block(bytes.as_ref())", ".map(|block| Some((block, observed)))", ".map_err(index_corruption)"]),
   row(NODE + "storage/fjall_store/filters/turn_inputs/undo.rs", "basic_filter_required_undo", ["self.chainstate", ".get(", "undo_key(hash)", "let len = bytes.len() as u64", "charge_append_work(", "undo_bytes: len", "decode_block_undo(bytes.as_ref())", "if &undo != expected", "return Err("]),
   row(NODE + "storage/fjall_store/filters/ownership/proofs.rs", "maybe_basic_filter_append_proof_with_limits", ["self.filter_publication_guard()?", "control.maybe_reorg_suspension.is_some()", "self.maybe_basic_filter_reorg_proof_guarded("]),
   row(NODE + "storage/fjall_store/filters/ownership.rs", "install_recovered_basic_filter_append_guarded", ["owner.checkpoint().checkpoint()", "control.maybe_append_identity = Some(", "processed: checkpoint", "safe_checkpoint: checkpoint", "BasicFilterProjectionAuthority::RecoveredPrefix"]),
@@ -208,7 +208,7 @@ export const CONTRACTS: Contract[] = [
   row(NODE + "storage/fjall_store/filters.rs", "load_basic_filter_record", ["codec::record_key(hash)", "codec::record_parent(", "while height != 0", "ancestors.into_iter().rev()", "codec::decode_record("]),
   row(NODE + "chainstate.rs", "flush_applying_plan", ["self.flush_applying_plan_with_header_checkpoint(", "mode, now, disk_free_bytes, plan, locks,", "&mut |_| Ok(())"]),
   row(NODE + "chainstate.rs", "flush_applying_plan_with_header_checkpoint", ["lineage.maybe_prepare(self.chainstate.tip())", "self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint(", "checkpoint,", "execution.wrote_coins", "pending", ".complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?", "self.store.confirm_validated_flush(completed)?", "self.note_basic_index_reorg_durable()"]),
-  row(NODE + "chainstate/flush_lifecycle.rs", "complete_coins_write", ["coins_write_kind(decision)", "wrote_coins: false", "cache.flush()", "cache.sync()", "sink.persist_chain_meta(active_chain)?", "wrote_coins: true"]),
+  row(NODE + "chainstate/flush_lifecycle/metadata.rs", "complete_coins_write", ["coins_write_kind(decision)", "wrote_coins: false", "cache.prepare_current_best_block().map_err(map_chainstate)?", "cache.flush()", "cache.sync()", "sink.persist_chain_meta_with_counts(", "cache.maybe_canonical_confirmed_txid_counts()", "wrote_coins: true"]),
   row(NODE + "chainstate/fjall_store.rs", "complete", ["!self.store.shares_basic_filter_store(&lineage.store)", "Some(self.accepted) != lineage.maybe_accepted", "lineage.preview_frozen", "self.proof.generation() != lineage.generation", "self.proof.branch_identity() != lineage.branch", "Ok(CompletedValidatedFlush"]),
   row(NODE + "storage/fjall_store/filters/ownership.rs", "confirm_basic_filter_flush", ["control.maybe_reorg_suspension.is_some()", "!completed.belongs_to(self)", "pending.coins.previous != work.identity", "!pending.coins.completed", "work.identity.revision.checked_add(2) != Some(control.revision)", "completed.metadata_revision() != control.revision", "completed.accepted_endpoint()", "view.best_block()", "replacement.maybe_displaced_fence = None", "control.maybe_append_identity = Some(identity)"]),
   row(NODE + "storage/fjall_store/prune.rs", "commit_paired_delete_observing", ["self.filter_publication_guard()?", "self.check_prune_candidate_guarded(", "self.with_payload_mutation(|| self.commit_paired_delete_guarded("]),
@@ -225,7 +225,7 @@ export const CHECKPOINT_CONTRACTS: Contract[] = [
   row(NODE + "chainstate.rs", "persist", ["self.flush_with_mode(", "FlushMode::IfNeeded,", "self.store.disk_free_bytes()", ".map(|_| ())"]),
   row(NODE + "chainstate.rs", "flush_with_mode", ["self.flush_applying_plan(mode, now, disk_free_bytes, &PrunePlan::default(), &[])", ".map_err(|failure| failure.error)"]),
   row(NODE + "chainstate.rs", "flush_applying_plan_with_header_checkpoint", ["lineage.maybe_prepare(self.chainstate.tip())", "self.flush_lifecycle.execute_flush_applying_plan_with_header_checkpoint(", "checkpoint,", "execution.wrote_coins", "pending", ".complete(self.maybe_validated_lineage.as_ref(), self.chainstate.tip())?", "self.store.confirm_validated_flush(completed)?", "self.note_basic_index_reorg_durable()", "result.map_err(|error| FlushApplyError", "error,", "deleted_block_hashes: deleted"]),
-  row(NODE + "chainstate/flush_lifecycle.rs", "execute_flush_applying_plan_with_header_checkpoint", ["if self.readiness != ManagerReadiness::ReadyToFlush", "return Err(coins_corruption(", "let decision = decide_flush(", "if plan.heights.is_empty() && coins_write_kind(decision).is_none()", "return Err(refuse_disk_space())", "return Ok(FlushExecution", "persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?", "checkpoint(sink)?;", "apply_prune_plan(sink, plan, locks, active_chain, on_deleted)?", "complete_coins_write(sink, cache, decision, active_chain, deleted_block_hashes)"]),
+  row(NODE + "chainstate/flush_lifecycle.rs", "execute_flush_applying_plan_with_header_checkpoint", ["if self.readiness != ManagerReadiness::ReadyToFlush", "return Err(coins_corruption(", "let decision = decide_flush(", "if plan.heights.is_empty() && coins_write_kind(decision).is_none()", "return Err(refuse_disk_space())", "return Ok(FlushExecution", "sink.check_chain_meta_counts_support(cache.maybe_canonical_confirmed_txid_counts().map_err(map_chainstate)?,)?;", "persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?", "checkpoint(sink)?;", "apply_prune_plan(sink, plan, locks, active_chain, on_deleted)?", "complete_coins_write(sink, cache, decision, active_chain, deleted_block_hashes)"]),
   row(NODE + "network/runtime_authority/prune_flush.rs", "flush_and_evict_pruned_blocks", ["let ManagedPeerNetwork", "chainstate.flush_applying_plan_with_header_checkpoint(", "&mut |sink: &S|", "sink.maybe_validation_history_store()", "TrustedHeaderSnapshot::maybe_capture(", "store, peer_manager.header_store()", "snapshot.persist()", "let deleted = match &outcome", "Err(failure) => failure.deleted_block_hashes.clone()", "network.blocks_by_hash.remove(hash)", "outcome.map_err(|failure| failure.error)"]),
 ];
 
@@ -242,6 +242,8 @@ const GUARDS = ["scripts/check-phase158-validated-reorg.ts", "scripts/check-phas
   "scripts/check-phase157-index-catch-up/rust-evidence.ts", "scripts/check-phase156-prune-coordination/rust-evidence.ts"];
 const UPSTREAM = ["index/base.cpp", "index/blockfilterindex.cpp", "validation.cpp", "undo.h"].map(file => "packages/bitcoin-knots/src/" + file);
 export const REGISTRATIONS: [string, string][] = [[NODE + "sync/tests/filter_index.rs", "mod reorg;"],
+  [NODE + "chainstate/flush_lifecycle.rs", "mod metadata;"],
+  [NODE + "chainstate/flush_lifecycle.rs", "use metadata::{coins_write_kind, complete_coins_write};"],
   [TEST + "branches.rs", "mod manual_lifecycle;"], [CORE + "engine.rs", "mod stage;"],
   [CORE + "engine.rs", "mod work_authority;"], [NODE + "chainstate.rs", "mod work_authority;"],
   ...["branches", "retention", "failures", "protection", "measurements"].map(name => [NODE + "sync/tests/filter_index/reorg.rs", `mod ${name};`] as [string, string])];
@@ -346,12 +348,19 @@ export function checkCurrentReorgBoundaries(text: (file: string) => string): str
   const failures: string[] = [];
   for (const contract of CONTRACTS) {
     const maybeBody = maybeBoundary(text(contract.file), contract);
-    const currentOwner = [CORE + "engine/stage.rs", CORE + "engine/work_authority.rs", NODE + "chainstate/work_authority.rs", NODE + "chainstate/validation_history.rs", NODE + "network/runtime_authority/filter_index/reorg.rs"].includes(contract.file);
+    const currentOwner = [CORE + "engine/stage.rs", CORE + "engine/work_authority.rs", NODE + "chainstate/work_authority.rs", NODE + "chainstate/validation_history.rs", NODE + "network/runtime_authority/filter_index/reorg.rs", NODE + "storage/fjall_store/filters/turn_inputs.rs", NODE + "chainstate/flush_lifecycle/metadata.rs"].includes(contract.file);
+    const currentDigest = contract.file === NODE + "storage/fjall_store/filters/turn_inputs.rs" && contract.symbol === "maybe_basic_filter_turn_body"
+      ? "b43e38732094296003e9aa5ea82c1504127e656a3ea79ababf638083b7aa5b17"
+      : contract.file === NODE + "chainstate/flush_lifecycle/metadata.rs" && contract.symbol === "complete_coins_write"
+        ? "44668c79b3d2ee7cc09b33158e7718d6cbffe1618f7a0d5eeb20dc652458283c" : undefined;
+    const currentImpl = contract.file === NODE + "storage/fjall_store/filters/turn_inputs.rs" ? "FjallNodeStore" : null;
     const declaration = ordinaryRust(text(contract.file)).slice(maybeBody?.start, maybeBody?.end);
     if (!maybeBody || (currentOwner && !supportedOwnership(text(contract.file), maybeBody.start, Boolean(contract.maybeTest)))
       || (contract.maybeImpl === "ValidatedChainstateReorg<'_, V>" && !compact(declaration).startsWith("fnabsorb(self)->"))
       || (contract.symbol === "absorb_validated_reorg" && /\bpub\b/.test(maybeBody.attributes))
       || !hasOrderedCode(maybeBody.body, contract.anchors)
+      || currentDigest !== undefined && (createHash("sha256").update(compact(maybeBody.body)).digest("hex") !== currentDigest
+        || !directCurrentOwner(text(contract.file), maybeBody.start, currentImpl))
       || (contract.maybeClauses && !hasOrderedCode(maybeBody.body, contract.maybeClauses))
       || (contract.file.endsWith("chainstate/work_authority.rs") && contract.symbol === "prepare_reorg"
         && compact(maybeBody.body) !== "Err(ChainstateError::PreferenceAuthorizationRequired)")) failures.push(`T-158-07-01: actual boundary ${contract.file}:${contract.symbol}`);
@@ -378,6 +387,24 @@ export function checkCurrentReorgBoundaries(text: (file: string) => string): str
     if (/std::(?:fs|io|net|time|process)|(?:fjall|tokio)::|SystemTime/.test(ordinaryRust(text(file)))) failures.push(`T-158-07-01: pure core effects ${file}`);
   }
   return [...new Set(failures)];
+}
+
+function directCurrentOwner(source: string, offset: number, maybeImpl: string | null): boolean {
+  const code = ordinaryRust(source);
+  const depth = (text: string) => [...text].reduce((value, char) => value + Number(char === "{") - Number(char === "}"), 0);
+  if (maybeImpl === null) return depth(code.slice(0, offset)) === 0;
+  const matches = [...code.matchAll(new RegExp(`\\bimpl\\s+${maybeImpl}\\s*\\{`, "g"))];
+  return matches.some(match => {
+    if (depth(code.slice(0, match.index)) !== 0 || !supportedOwnership(source, match.index, false)) return false;
+    const open = code.indexOf("{", match.index);
+    let level = 1;
+    for (let index = open + 1; index < code.length; index++) {
+      if (index === offset) return level === 1;
+      level += Number(code[index] === "{") - Number(code[index] === "}");
+      if (level === 0) return false;
+    }
+    return false;
+  });
 }
 
 function checkCheckpointEdges(text: (file: string) => string, failures: string[]): void {

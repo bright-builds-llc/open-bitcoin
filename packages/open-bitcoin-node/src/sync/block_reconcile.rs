@@ -9,9 +9,10 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use open_bitcoin_core::{
     chainstate::{AnchoredBlock, ChainPosition, ChainstateError},
-    consensus::block_hash,
-    primitives::{BlockHash, InventoryType},
+    primitives::BlockHash,
 };
+#[cfg(test)]
+use open_bitcoin_core::{consensus::block_hash, primitives::InventoryType};
 use open_bitcoin_mempool::{PolicyTime, ReorgLifecycleContext};
 use open_bitcoin_network::{HeaderEntry, PeerId, WireNetworkMessage};
 
@@ -20,6 +21,11 @@ use crate::{
     ManagedNetworkAuthorityError, ManagedNetworkError, StorageError, StorageNamespace,
     StorageRecoveryAction, network::BlockConnectDisposition,
 };
+
+mod peer_requests;
+pub(super) use peer_requests::PeerRequests;
+#[cfg(test)]
+pub(super) use peer_requests::{handoff_requested_messages, request_missing_blocks};
 
 pub(super) fn validate_block_limits(runtime: &DurableSyncRuntime) -> Result<(), SyncRuntimeError> {
     if runtime.config.max_blocks_in_flight_per_peer == 0 {
@@ -37,81 +43,30 @@ pub(super) fn validate_block_limits(runtime: &DurableSyncRuntime) -> Result<(), 
     Ok(())
 }
 
-pub(super) fn request_missing_blocks(
+/// Release only observed hashes without any remaining actual manager requester.
+pub(super) fn release_unrequested_hashes(
     runtime: &mut DurableSyncRuntime,
-    peer_id: PeerId,
-) -> Result<Vec<WireNetworkMessage>, SyncRuntimeError> {
-    let available_global = runtime
-        .config
-        .max_blocks_in_flight_total
-        .saturating_sub(runtime.inflight_blocks.len());
-    if available_global == 0 {
-        return Ok(Vec::new());
+    hashes: &[BlockHash],
+) -> Result<(), SyncRuntimeError> {
+    if hashes.is_empty() {
+        return Ok(());
     }
-
-    let active_chain_hashes = runtime
-        .network
-        .chainstate_snapshot()?
-        .active_chain
+    let manager = runtime.network.peer_manager_snapshot()?;
+    let retained: BTreeSet<_> = manager
+        .peer_ids()
         .into_iter()
-        .map(|position| position.block_hash)
-        .collect::<BTreeSet<_>>();
-    let mut requested = Vec::new();
-    for entry in runtime
-        .network
-        .requestable_header_entries(runtime.consensus_params)?
-    {
-        if requested.len() >= available_global
-            || active_chain_hashes.contains(&entry.block_hash)
-            || runtime.inflight_blocks.contains(&entry.block_hash)
-        {
-            continue;
-        }
-        if runtime.store.load_block(entry.block_hash)?.is_some() {
-            runtime.network.note_local_block_hash(entry.block_hash)?;
-            continue;
-        }
-        requested.push(entry.block_hash);
-    }
-
-    request_tracked_blocks(runtime, peer_id, &requested)
-}
-
-pub(super) fn request_tracked_blocks(
-    runtime: &mut DurableSyncRuntime,
-    peer_id: PeerId,
-    block_hashes: &[BlockHash],
-) -> Result<Vec<WireNetworkMessage>, SyncRuntimeError> {
-    let available_global = runtime
-        .config
-        .max_blocks_in_flight_total
-        .saturating_sub(runtime.inflight_blocks.len());
-    let requested = block_hashes
-        .iter()
-        .copied()
-        .filter(|block_hash| !runtime.inflight_blocks.contains(block_hash))
-        .take(available_global)
-        .collect::<Vec<_>>();
-    let outbound = runtime
-        .network
-        .request_missing_blocks(peer_id, &requested)?;
-    for message in &outbound {
-        if let WireNetworkMessage::GetData(inventory) = message {
-            for item in &inventory.inventory {
-                if matches!(
-                    item.inventory_type,
-                    InventoryType::Block | InventoryType::WitnessBlock
-                ) {
-                    runtime
-                        .inflight_blocks
-                        .insert(BlockHash::from(item.object_hash));
-                }
-            }
+        .filter_map(|peer| manager.peer_state(peer))
+        .flat_map(|peer| peer.requested_blocks.iter().copied())
+        .collect();
+    for hash in hashes {
+        if !retained.contains(hash) {
+            runtime.inflight_blocks.remove(hash);
         }
     }
-    Ok(outbound)
+    Ok(())
 }
 
+#[cfg(test)]
 pub(super) fn release_inflight_for_message(
     runtime: &mut DurableSyncRuntime,
     message: &WireNetworkMessage,

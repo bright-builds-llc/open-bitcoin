@@ -215,6 +215,7 @@ fn memory_store_from_snapshot_serves_coins_from_view_not_later_snapshot_utxos() 
     let coin = sample_coin(4, 9);
     let undo_hash = BlockHash::from_byte_array([2; 32]);
     let undo = BlockUndo {
+        overwrites: Vec::new(),
         transactions: vec![TxUndo {
             restored_inputs: vec![coin.clone()],
         }],
@@ -287,6 +288,7 @@ fn memory_store_save_undo_round_trips_without_snapshot() {
     let mut store = MemoryChainstateStore::default();
     let block_hash = BlockHash::from_byte_array([4; 32]);
     let undo = BlockUndo {
+        overwrites: Vec::new(),
         transactions: vec![TxUndo {
             restored_inputs: vec![sample_coin(4, 9)],
         }],

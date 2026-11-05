@@ -14,7 +14,7 @@ use open_bitcoin_core::{
         FlushPolicyInput, FlushPolicyTime, PruneLockInfo, PrunePlan, RecoveryDecision,
         decide_flush, decide_recovery, filter_index::lifecycle::EffectiveIndexOwnership,
     },
-    primitives::{Block, BlockHash},
+    primitives::{Block, BlockHash, Txid},
 };
 use open_bitcoin_network::HeaderEntry;
 
@@ -35,10 +35,12 @@ use crate::storage::{
 mod tests;
 
 mod fjall_sink;
+mod metadata;
 pub use super::fjall_store::CompletedValidatedFlush;
 pub(super) use super::fjall_store::ValidatedChainstateLineage;
 #[cfg(test)]
 pub(super) use fjall_sink::proof_tests::{managed_fixture, managed_fixture_with_params};
+use metadata::{coins_write_kind, complete_coins_write};
 mod prune_apply;
 
 use prune_apply::apply_prune_plan;
@@ -143,6 +145,31 @@ pub trait FlushPersistSink {
     fn persist_undo(&mut self, hash: BlockHash, undo: &BlockUndo) -> Result<(), StorageError>;
     fn persist_header_entries(&mut self, entries: &[HeaderEntry]) -> Result<(), StorageError>;
     fn persist_chain_meta(&mut self, active_chain: &[ChainPosition]) -> Result<(), StorageError>;
+    /// Refuse known counts unless the sink explicitly preserves the complete map.
+    fn check_chain_meta_counts_support(
+        &self,
+        maybe_counts: Option<&std::collections::HashMap<Txid, u32>>,
+    ) -> Result<(), StorageError> {
+        if maybe_counts.is_some() {
+            return Err(StorageError::UnavailableNamespace {
+                namespace: StorageNamespace::Chainstate,
+            });
+        }
+        Ok(())
+    }
+    /// Compatibility publication is safe only when complete counts are unknown.
+    fn persist_chain_meta_with_counts(
+        &mut self,
+        active_chain: &[ChainPosition],
+        maybe_counts: Option<&std::collections::HashMap<Txid, u32>>,
+    ) -> Result<(), StorageError> {
+        if maybe_counts.is_some() {
+            return Err(StorageError::UnavailableNamespace {
+                namespace: StorageNamespace::Chainstate,
+            });
+        }
+        self.persist_chain_meta(active_chain)
+    }
     fn disk_free_bytes(&self) -> u64 {
         u64::MAX
     }
@@ -448,6 +475,11 @@ impl FlushLifecycle {
             });
         }
 
+        sink.check_chain_meta_counts_support(
+            cache
+                .maybe_canonical_confirmed_txid_counts()
+                .map_err(map_chainstate)?,
+        )?;
         persist_ordered_prefix(sink, block_payloads, undo_window, header_entries)?;
         checkpoint(sink)?;
         let deleted_block_hashes = if plan.heights.is_empty() {
@@ -537,51 +569,6 @@ fn annotate_fail_closed(error: StorageError, interrupted: bool) -> StorageError 
         detail,
         action,
     }
-}
-
-enum CoinsWriteKind {
-    Flush,
-    Sync,
-}
-
-const fn coins_write_kind(decision: FlushDecision) -> Option<CoinsWriteKind> {
-    match decision {
-        FlushDecision::Flush(_) => Some(CoinsWriteKind::Flush),
-        FlushDecision::Sync(_) => Some(CoinsWriteKind::Sync),
-        FlushDecision::None(_) | FlushDecision::RefuseDiskSpace(_) => None,
-    }
-}
-
-fn complete_coins_write<S: FlushPersistSink>(
-    sink: &mut S,
-    cache: &mut impl CoinsFlush,
-    decision: FlushDecision,
-    active_chain: &[ChainPosition],
-    deleted_block_hashes: Vec<BlockHash>,
-) -> Result<FlushExecution, StorageError> {
-    let Some(write_kind) = coins_write_kind(decision) else {
-        if matches!(decision, FlushDecision::RefuseDiskSpace(_)) {
-            return Err(refuse_disk_space());
-        }
-        return Ok(FlushExecution {
-            decision,
-            wrote_coins: false,
-            deleted_block_hashes,
-        });
-    };
-    // An opened or previously flushed cache has no staged tip. Carry current
-    // coins authority into the write without changing a newer overlay tip.
-    cache.prepare_current_best_block().map_err(map_chainstate)?;
-    match write_kind {
-        CoinsWriteKind::Flush => cache.flush().map_err(map_chainstate)?,
-        CoinsWriteKind::Sync => cache.sync().map_err(map_chainstate)?,
-    }
-    sink.persist_chain_meta(active_chain)?;
-    Ok(FlushExecution {
-        decision,
-        wrote_coins: true,
-        deleted_block_hashes,
-    })
 }
 
 fn persist_ordered_prefix<S: FlushPersistSink>(

@@ -22,6 +22,7 @@ use crate::{
 
 mod chain_meta;
 mod mempool;
+mod overwrite_undo;
 mod wallet;
 pub mod work;
 
@@ -101,6 +102,7 @@ struct TxUndoDto {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct BlockUndoDto {
     transactions: Vec<TxUndoDto>,
+    overwrites: Vec<overwrite_undo::BlockOverwriteUndoDto>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -152,22 +154,23 @@ pub struct StoredHeaderEntries {
 pub(crate) fn encode_chainstate_snapshot(
     snapshot: &ChainstateSnapshot,
 ) -> Result<Vec<u8>, StorageError> {
-    encode_versioned(
-        StorageNamespace::Chainstate,
-        &ChainstateSnapshotDto::from(snapshot),
-    )
+    overwrite_undo::validate_snapshot(snapshot)?;
+    overwrite_undo::encode_carrier(&ChainstateSnapshotDto::from(snapshot))
 }
 
 pub(crate) fn decode_chainstate_snapshot(bytes: &[u8]) -> Result<ChainstateSnapshot, StorageError> {
+    overwrite_undo::check_bytes(bytes)?;
     let dto: ChainstateSnapshotDto = decode_versioned(StorageNamespace::Chainstate, bytes)?;
     dto.try_into()
 }
 
 pub(crate) fn encode_block_undo(undo: &BlockUndo) -> Result<Vec<u8>, StorageError> {
-    encode_versioned(StorageNamespace::Chainstate, &BlockUndoDto::from(undo))
+    overwrite_undo::validate_undo(undo)?;
+    overwrite_undo::encode_carrier(&BlockUndoDto::from(undo))
 }
 
 pub(crate) fn decode_block_undo(bytes: &[u8]) -> Result<BlockUndo, StorageError> {
+    overwrite_undo::check_bytes(bytes)?;
     let dto: BlockUndoDto = decode_versioned(StorageNamespace::Chainstate, bytes)?;
     BlockUndo::try_from(dto)
 }
@@ -455,11 +458,13 @@ impl TryFrom<ChainstateSnapshotDto> for ChainstateSnapshot {
     type Error = StorageError;
 
     fn try_from(dto: ChainstateSnapshotDto) -> Result<Self, Self::Error> {
+        overwrite_undo::check_snapshot_counts(&dto)?;
         let active_chain = dto
             .active_chain
             .into_iter()
             .map(ChainPosition::try_from)
             .collect::<Result<Vec<_>, _>>()?;
+        let utxo_count = dto.utxos.len();
         let utxos = dto
             .utxos
             .into_iter()
@@ -470,6 +475,13 @@ impl TryFrom<ChainstateSnapshotDto> for ChainstateSnapshot {
                 ))
             })
             .collect::<Result<HashMap<_, _>, StorageError>>()?;
+        if utxos.len() != utxo_count {
+            return Err(corruption(
+                StorageNamespace::Chainstate,
+                "duplicate snapshot outpoint",
+            ));
+        }
+        let undo_count = dto.undo_by_block.len();
         let undo_by_block = dto
             .undo_by_block
             .into_iter()
@@ -480,6 +492,12 @@ impl TryFrom<ChainstateSnapshotDto> for ChainstateSnapshot {
                 ))
             })
             .collect::<Result<HashMap<_, _>, StorageError>>()?;
+        if undo_by_block.len() != undo_count {
+            return Err(corruption(
+                StorageNamespace::Chainstate,
+                "duplicate block undo record",
+            ));
+        }
 
         if dto.maybe_confirmed_txids.is_some() && dto.maybe_confirmed_txid_counts.is_some() {
             return Err(corruption(
@@ -525,29 +543,8 @@ impl TryFrom<ChainstateSnapshotDto> for ChainstateSnapshot {
 
         let mut snapshot = Self::new(active_chain, utxos, undo_by_block);
         snapshot.maybe_confirmed_txid_counts = maybe_confirmed_txid_counts;
+        overwrite_undo::validate_snapshot(&snapshot)?;
         Ok(snapshot)
-    }
-}
-
-impl From<&TxUndo> for TxUndoDto {
-    fn from(undo: &TxUndo) -> Self {
-        Self {
-            restored_inputs: undo.restored_inputs.iter().map(CoinDto::from).collect(),
-        }
-    }
-}
-
-impl TryFrom<TxUndoDto> for TxUndo {
-    type Error = StorageError;
-
-    fn try_from(dto: TxUndoDto) -> Result<Self, Self::Error> {
-        Ok(Self {
-            restored_inputs: dto
-                .restored_inputs
-                .into_iter()
-                .map(Coin::try_from)
-                .collect::<Result<Vec<_>, _>>()?,
-        })
     }
 }
 
@@ -555,21 +552,24 @@ impl From<&BlockUndo> for BlockUndoDto {
     fn from(undo: &BlockUndo) -> Self {
         Self {
             transactions: undo.transactions.iter().map(TxUndoDto::from).collect(),
+            overwrites: overwrite_undo::encode_overwrite_records(&undo.overwrites),
         }
     }
 }
-
 impl TryFrom<BlockUndoDto> for BlockUndo {
     type Error = StorageError;
-
     fn try_from(dto: BlockUndoDto) -> Result<Self, Self::Error> {
-        Ok(Self {
+        overwrite_undo::check_count(dto.transactions.len())?;
+        let undo = Self {
             transactions: dto
                 .transactions
                 .into_iter()
                 .map(TxUndo::try_from)
                 .collect::<Result<Vec<_>, _>>()?,
-        })
+            overwrites: overwrite_undo::decode_overwrite_records(dto.overwrites)?,
+        };
+        overwrite_undo::validate_undo(&undo)?;
+        Ok(undo)
     }
 }
 

@@ -176,7 +176,9 @@ function verifyStaleStatus(texts: Map<TargetFile, string>, failures: string[]): 
   for (const file of filesToScan) {
     const text = texts.get(file) ?? "";
     for (const phrase of STALE_STATUS_PHRASES) {
-      if (text.includes(phrase)) {
+      // The historical "all17 pending" is not the obsolete seven-pending state.
+      const stale = phrase === "7 pending" ? /(?:^|\W)7 pending\b/.test(text) : text.includes(phrase);
+      if (stale) {
         failures.push(`P98 stale status in ${file}: ${phrase}`);
       }
     }

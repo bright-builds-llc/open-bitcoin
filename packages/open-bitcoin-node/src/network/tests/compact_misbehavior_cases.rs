@@ -357,10 +357,10 @@ fn live_short_id_collision_falls_back_to_getdata() {
             message,
             WireNetworkMessage::GetData(inventory)
                 if inventory.inventory.len() == 1
-                    && inventory.inventory[0].inventory_type == InventoryType::Block
+                    && inventory.inventory[0].inventory_type == InventoryType::WitnessBlock
                     && inventory.inventory[0].object_hash == expected_hash.into()
         )),
-        "short-id collision must emit GetData(Block) Fallback; outbound={outbound:?}"
+        "short-id collision must emit GetData(WitnessBlock) fallback; outbound={outbound:?}"
     );
     assert!(network.peer_manager().peer_state(peer_id).is_some());
     assert_eq!(network.peer_policy_info().misbehavior_observations, 0);

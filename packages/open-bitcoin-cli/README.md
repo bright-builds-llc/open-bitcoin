@@ -23,17 +23,19 @@ the genesis transaction's output script and the zero predecessor commitment.
 The selector `testnet` means testnet3; Signet and regtest use their default profiles.
 The genesis RPC context has no wallet authority: wallet operations refuse.
 
-Ordinary history remains refused pending Phase 167, including Signet challenge
-validation. Sync, inbound, transaction relay, block serving and compact relay
-activation remain refused before storage opening. Networking remains default off.
+Generic ordinary-history opening remains refused. Phase 167 adds only bounded
+default-Regtest history through a separate complete replay proof; Mainnet,
+testnet3 and Signet descendants remain outside this route. Signet challenge
+validation is unavailable. Networking remains default off, and a selected
+network or local implementation fact never authorizes a generic store opener.
 Actual pinned Knots-daemon differential qualification remains deferred to Phase 168.
 Local Cargo/Bazel process evidence concerns Open Bitcoin's own products.
 
 Use the [bounded genesis evidence and exact operator commands](../../docs/parity/v2-6-canonical-durable-bootstrap.md).
 Daemon startup requires an existing explicit datadir and an existing durable
 trigger such as `-blockfilterindex=1`; a missing configured datadir still fails
-the parser. After Ctrl-C/SIGINT shutdown, offline `sync status` only reopens
-existing proved genesis and preserves the saved BASIC mode. It creates no saved
+the parser. After Ctrl-C/SIGINT shutdown, offline `sync status` reopens existing
+proved genesis or complete default-Regtest history and preserves the saved BASIC mode. It creates no saved
 status/progress record. An admitted Fjall open can have filesystem effects;
 physical preservation is established by tested refusal/pre-admission controls.
 
@@ -73,4 +75,34 @@ observed work. Missing/empty sources do not initialize through offline status.
 Successful existing-only observation saves no synthesized progress, but an
 admitted Fjall open is not physically read-only. Managed-wallet adapters and sync
 pause/resume keep ordinary-history gates. Use `bash scripts/verify.sh` for the
-native contract; final verification/LOC/hooks remain Plan14/root-owned.
+native contract; final verification/LOC/hooks remain Plan20/root-owned.
+
+## Bounded default-Regtest descendant status
+
+On a closed, physically prepared Phase 167 default-Regtest datadir with 301
+accepted descendants, offline `sync status` consumes the complete copied and
+original history proof. It reports the actual accepted height, raw-order tip
+hash, full work, and saved BASIC endpoint. The `support` object separately
+describes observed proof class, selected identity, bounded local
+implementation, and unavailable
+pinned Knots-daemon differential qualification. Other selectors retain their
+proved-genesis route; a mismatched or missing history source refuses.
+
+Set `phase167_dir` to the absolute path of a disposable prepared directory
+containing the existing `open-bitcoin.jsonc` and closed `data` store. These
+commands do not create or acquire history:
+
+```bash
+phase167_dir=/absolute/path/to/prepared-phase167-regtest
+test -f "$phase167_dir/open-bitcoin.jsonc"
+test -d "$phase167_dir/data"
+bun run scripts/command-timings.ts run --key phase167-docs-cargo-status -- cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- --config "$phase167_dir/open-bitcoin.jsonc" --datadir "$phase167_dir/data" --network regtest --format json sync status
+bun run scripts/command-timings.ts run --key phase167-docs-bazel-status -- bazel run //packages/open-bitcoin-cli:open_bitcoin -- --config "$phase167_dir/open-bitcoin.jsonc" --datadir "$phase167_dir/data" --network regtest --format json sync status
+```
+
+For a correctly proved 301-descendant fixture, expect accepted height 301,
+full work `000000000000000000000000000000000000000000000000000000000000025c`,
+and a safe BASIC height of 301. Confirm these values in the actual status
+output for the prepared store. These fields describe local Open Bitcoin
+behavior; no actual pinned-daemon qualification, automatic sync activation, wallet
+availability, migration, or repair is implied.

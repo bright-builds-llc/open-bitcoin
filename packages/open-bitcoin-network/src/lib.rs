@@ -218,3 +218,6 @@ mod tests {
         assert!(crate_ready());
     }
 }
+
+#[cfg(test)]
+mod test_block_commitments;

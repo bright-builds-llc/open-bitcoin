@@ -201,6 +201,7 @@ fn arrange_pending_prune(source: &Path) -> BlockHash {
                 .save_undo(
                     current.block_hash,
                     &BlockUndo {
+                        overwrites: Vec::new(),
                         transactions: Vec::new(),
                     },
                     PersistMode::Sync,

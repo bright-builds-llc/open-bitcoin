@@ -37,6 +37,7 @@ use crate::{RpcFailure, RpcFailureKind};
 mod address_boundary;
 mod canonical_chain;
 mod canonical_genesis;
+mod canonical_history;
 mod filter_index;
 mod inbound_status;
 mod inbound_wire;
@@ -77,6 +78,87 @@ pub struct ManagedRpcContext<S = MemoryChainstateStore, V: CoinsView = MemoryCoi
     maybe_daemon_sync_control: Option<DaemonSyncControl>,
     manual_prune: ManualPruneSurface,
     wallet_state: WalletState,
+    maybe_canonical_submission: Option<CanonicalSubmissionBridge>,
+}
+
+#[cfg(test)]
+type CanonicalObserver = Box<
+    dyn Fn(
+            &[open_bitcoin_node::core::primitives::BlockHash],
+        ) -> Result<CanonicalObservation, RpcFailure>
+        + Send
+        + Sync,
+>;
+
+#[cfg(test)]
+type StoredBasicMetadata = (
+    Option<(u32, open_bitcoin_node::core::primitives::BlockHash)>,
+    u32,
+    open_bitcoin_node::core::primitives::BlockHash,
+    open_bitcoin_node::core::chainstate::IndexInputProtection,
+);
+
+struct CanonicalSubmissionBridge {
+    active_tip: Box<
+        dyn Fn() -> Result<open_bitcoin_node::core::chainstate::ChainPosition, RpcFailure>
+            + Send
+            + Sync,
+    >,
+    submit: Box<
+        dyn Fn(open_bitcoin_codec::block::wire::WireBlock) -> Result<serde_json::Value, RpcFailure>
+            + Send
+            + Sync,
+    >,
+    #[cfg(test)]
+    observe: CanonicalObserver,
+}
+
+#[cfg(test)]
+#[derive(Debug, PartialEq, Eq)]
+struct CanonicalObservation {
+    coins: (
+        open_bitcoin_node::core::chainstate::ChainstateSnapshot,
+        Option<open_bitcoin_node::core::primitives::BlockHash>,
+        open_bitcoin_node::core::chainstate::coins::CompleteCoinsSnapshot,
+    ),
+    maybe_progress:
+        Option<open_bitcoin_node::core::chainstate::filter_index::catch_up::BasicIndexProgress>,
+    maybe_stored_basic: Option<StoredBasicMetadata>,
+    rows: std::collections::BTreeMap<String, std::collections::BTreeMap<Vec<u8>, Vec<u8>>>,
+    provenance: std::collections::BTreeMap<
+        open_bitcoin_node::core::primitives::BlockHash,
+        (
+            open_bitcoin_node::network::BasicBlockValidationProvenance,
+            open_bitcoin_node::network::BasicBlockValidationProvenance,
+        ),
+    >,
+}
+
+impl<S, V: CoinsView> ManagedRpcContext<S, V> {
+    #[cfg(test)]
+    fn observe_canonical_state(
+        &self,
+        hashes: &[open_bitcoin_node::core::primitives::BlockHash],
+    ) -> Result<CanonicalObservation, RpcFailure> {
+        let Some(bridge) = &self.maybe_canonical_submission else {
+            return Err(RpcFailure::verify_error(
+                "canonical observation owner unavailable",
+            ));
+        };
+        (bridge.observe)(hashes)
+    }
+
+    pub(crate) fn submit_canonical_block(
+        &self,
+        block: open_bitcoin_codec::block::wire::WireBlock,
+    ) -> Result<serde_json::Value, RpcFailure> {
+        let Some(bridge) = &self.maybe_canonical_submission else {
+            return Err(RpcFailure::verify_error(
+                "canonical submission owner unavailable",
+            ));
+        };
+        (bridge.submit)(block)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

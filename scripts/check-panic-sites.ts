@@ -15,7 +15,30 @@ const BOOT = BASE + "storage/canonical_bootstrap";
 const SYNC = BASE + "sync/canonical_genesis";
 const CHILDREN = [BOOT + "/qualification_tests.rs", BOOT + "/test_support.rs", SYNC + "/basic_tests.rs"];
 const TEST_OWNER = BOOT + "/tests.rs";
-const AUTHORITY_FILES = [...CHILDREN,TEST_OWNER];
+const CHAIN = "packages/open-bitcoin-chainstate/src/";
+const CLI = "packages/open-bitcoin-cli/src/";
+const CONSENSUS = "packages/open-bitcoin-consensus/src/";
+const NETWORK = "packages/open-bitcoin-network/src/";
+const RPC = "packages/open-bitcoin-rpc/src/";
+/** Exact module edges proven in the current source; names alone grant no exemption. */
+const TEST_CHILDREN = [
+  [CHAIN+"engine/apply/serialized_tests.rs", CHAIN+"engine/apply.rs", "serialized_tests", null],
+  [CLI+"operator/runtime/support/phase167_tests.rs", CLI+"operator/runtime/support.rs", "phase167_tests", null],
+  [CONSENSUS+"block/phase167_tests.rs", CONSENSUS+"block.rs", "phase167_tests", null],
+  [CONSENSUS+"script/serialized_tests.rs", CONSENSUS+"script.rs", "serialized_tests", null],
+  [NETWORK+"test_block_commitments.rs", NETWORK+"lib.rs", "test_block_commitments", null],
+  [BASE+"chainstate/filter_index/phase167_tests.rs", BASE+"chainstate/filter_index.rs", "phase167_tests", null],
+  [BASE+"chainstate/fjall_store/phase167_undo_tests.rs", BASE+"chainstate/fjall_store.rs", "phase167_undo_tests", null],
+  [BASE+"chainstate/flush_lifecycle/fjall_sink/proof_tests.rs", BASE+"chainstate/flush_lifecycle/fjall_sink.rs", "proof_tests", null],
+  [BASE+"network/runtime_authority/filter_index/phase167_tests.rs", BASE+"network/runtime_authority/filter_index.rs", "phase167_tests", null],
+  [BASE+"network/runtime_authority/peer_sessions/basic_tests.rs", BASE+"network/runtime_authority/peer_sessions.rs", "basic_tests", null],
+  [BASE+"storage/fjall_store/bounded_rows/durable_tests.rs", BASE+"storage/fjall_store/bounded_rows.rs", "durable_tests", null],
+  [BASE+"storage/fjall_store/inspection/phase167_tests.rs", BASE+"storage/fjall_store/inspection.rs", "phase167_tests", null],
+  [BASE+"storage/fjall_store/serialized_body_tests.rs", BASE+"storage/fjall_store.rs", "serialized_body_tests", null],
+  [BASE+"storage/snapshot_codec/mempool/serialized_tests.rs", BASE+"storage/snapshot_codec/mempool.rs", "serialized_tests", null],
+  [RPC+"bin/open_bitcoind/phase167_tests.rs", RPC+"bin/open-bitcoind.rs", "phase167_tests", "open_bitcoind/phase167_tests.rs"],
+] as const;
+const AUTHORITY_FILES = [...CHILDREN,TEST_OWNER,...TEST_CHILDREN.map(([child])=>child)];
 const absoluteSourcePath = (path: string) => isAbsolute(path) || /^[A-Za-z]:[\\/]|^\\\\/.test(path);
 
 function close(code: string, start: number): number {
@@ -92,7 +115,7 @@ function parse(source: string): Parsed {
       cursor = end;
       while (/\s/.test(code[cursor] ?? "")) cursor++;
     }
-    const test = attributes.some(a => compact(a) === "#[cfg(test)]")
+    const test = attributes.some(a => ["#[cfg(test)]", "#[cfg(all(test,unix))]"].includes(compact(a)))
       || attributes.some(a => compact(a) === "#[test]") && /^(?:pub(?:\([^)]*\))?\s+)?(?:async\s+)?fn\b/.test(code.slice(cursor));
     const dead = attributes.some(a => compact(a) === "#[cfg(any())]");
     if(!test&&!dead&&!attributes.some(a=>/^#\s*\[\s*path\s*=/.test(a)))continue;
@@ -113,13 +136,15 @@ function modulePath(source: Parsed, start: number): string | null {
   return path;
 }
 
-function selectedModule(parsed: Parsed, name: string, path: string | null, test: boolean): number {
+function selectedModule(parsed: Parsed, name: string, path: string | null, test: boolean, gate = test ? "#[cfg(test)]" : ""): number {
   const matches = [...parsed.code.matchAll(new RegExp(`\\bmod\\s+${name}\\s*;`,"g"))];
   if (matches.length !== 1) throw Error(`missing or ambiguous test owner ${name}`);
   const at = matches[0].index;
   const depth = [...parsed.code.slice(0,at)].reduce((n,c) => n+(c==="{"?1:c==="}"?-1:0),0);
-  const item = parsed.items.find(i => i.declaration === at);
-  if (depth !== 0 || !item || item.dead || item.test !== test || modulePath(parsed,at) !== path) {
+  const item = parsed.items.find(i => i.declaration === at || /^pub(?:\([^)]*\))?\s+$/.test(parsed.code.slice(i.declaration,at)));
+  const expectedAttributes = gate + (path === null ? "" : `#[path = "${path}"]`);
+  if (depth !== 0 || !item || item.dead || item.test !== test || modulePath(parsed,at) !== path ||
+    compact(item.attributes.join("")) !== compact(expectedAttributes)) {
     throw Error(`test owner ${name} has changed gating or path`);
   }
   return at;
@@ -155,6 +180,14 @@ function testChildren(parsed: ReadonlyMap<string,Parsed>): Set<string> {
     if (!parent) throw Error("missing canonical genesis test owner");
     expected.set(CHILDREN[2],{parent:SYNC+".rs",at:selectedModule(parent,"basic_tests",null,true)});
   }
+  for (const [child, parentPath, moduleName, modulePathValue] of TEST_CHILDREN) {
+    if (!parsed.has(child)) continue;
+    const parent = parsed.get(parentPath);
+    if (!parent) throw Error(`${child}: missing test owner ${parentPath}`);
+    const gate = child === BASE+"storage/fjall_store/inspection/phase167_tests.rs"
+      ? "#[cfg(all(test,unix))]" : "#[cfg(test)]";
+    expected.set(child,{parent:parentPath,at:selectedModule(parent,moduleName,modulePathValue,true,gate)});
+  }
   for (const [file,value] of parsed) {
     const inline = [...value.code.matchAll(/\bmod\s+(\w+)\s*\{/g)].map(m => ({start:m.index,end:close(value.code,value.code.indexOf("{",m.index)),name:m[1]}));
     if(inline.some(m=>modulePath(value,m.start)!==null))throw Error(`${file}: unsupported inline module path ownership`);
@@ -167,14 +200,17 @@ function testChildren(parsed: ReadonlyMap<string,Parsed>): Set<string> {
       for (const child of AUTHORITY_FILES.filter(p=>candidates.includes(p))) {
         const owner = expected.get(child);
         if (owner?.parent === file && owner.at === match.index) { accepted.add(child); continue; }
-        if (!inside(value.items.filter(i=>i.test&&!i.dead),match.index)) throw Error(`${child}: ordinary inbound module alias in ${file}`);
+        const gated = legacyTestFile(file) || inside(value.items.filter(i=>i.test&&!i.dead),match.index);
+        throw Error(`${child}: ${gated ? "additional test" : "ordinary"} inbound module alias in ${file}`);
       }
     }
     for (const match of value.code.matchAll(/\binclude!\s*\(/g)) {
-      if (inside(value.items.filter(i=>i.test),match.index) || legacyTestFile(file)) continue;
       const open=value.code.indexOf("(",match.index),end=close(value.code,open);
       const child=includePath(value.source.slice(open+1,end-1),file);
-      if (AUTHORITY_FILES.includes(child)) throw Error(`${child}: ordinary include! alias in ${file}`);
+      if (AUTHORITY_FILES.includes(child)) {
+        const gated = legacyTestFile(file) || inside(value.items.filter(i=>i.test&&!i.dead),match.index);
+        throw Error(`${child}: ${gated ? "additional test" : "ordinary"} include! alias in ${file}`);
+      }
     }
   }
   for (const child of expected.keys()) if (!accepted.has(child)) throw Error(`unresolved test child ${child}`);

@@ -22,7 +22,9 @@ auditable, and modular.
 
 Phase 164's [identity-only record](./docs/parity/v2-6-canonical-chain-identity.md)
 retains its pinned mainnet, testnet3, default Signet and default regtest identities
-and original refusal evidence. Ordinary history is currently refused for all four selectors.
+and original refusal evidence. At that Phase 164 boundary, ordinary history
+was refused for all four selectors. The current Phase 167 bounded local
+default-Regtest route has separate evidence below.
 Phase 165's [shared exact-work foundation](./docs/parity/v2-6-shared-exact-work.md)
 separates exact numerical work from earned live authority. Numbers, fixture
 factories and historical receipts alone confer no canonical lineage.
@@ -43,8 +45,9 @@ the genesis transaction's output script and the zero predecessor commitment.
 The selector `testnet` means testnet3; Signet and regtest use their default profiles.
 The genesis RPC context has no wallet authority: wallet operations refuse.
 
-Ordinary history remains refused pending Phase 167, including Signet challenge
-validation. Sync, inbound, transaction relay, block serving and compact relay
+At the Phase 166 checkpoint, ordinary descendants remained refused pending
+contextual validation; Signet challenge validation remains missing. Sync,
+inbound, transaction relay, block serving and compact relay
 activation remain refused before storage opening. Networking remains default off.
 Actual pinned Knots-daemon differential qualification remains deferred to Phase 168.
 Local Cargo/Bazel process evidence concerns Open Bitcoin's own products.
@@ -52,8 +55,8 @@ Local Cargo/Bazel process evidence concerns Open Bitcoin's own products.
 Use the [bounded genesis evidence and exact operator commands](./docs/parity/v2-6-canonical-durable-bootstrap.md).
 Daemon startup requires an existing explicit datadir and an existing durable
 trigger such as `-blockfilterindex=1`; a missing configured datadir still fails
-the parser. After Ctrl-C/SIGINT shutdown, offline `sync status` only reopens
-existing proved genesis and preserves the saved BASIC mode. It creates no saved
+the parser. At the Phase 166 checkpoint, offline `sync status` was limited to
+the existing genesis record and saved BASIC mode. It created no saved
 status/progress record. An admitted Fjall open can have filesystem effects;
 physical preservation is established by tested refusal/pre-admission controls.
 
@@ -62,6 +65,28 @@ evidence is macOS. Finite private-copy inspection, child completion and cleanup
 limits are documented with the evidence. No repair, conversion, import or
 automatic history acquisition is offered. Whole-chain parity, public defaults,
 production service and production-funds readiness remain outside the claim.
+
+## Current Phase 167 bounded default-Regtest scope
+
+Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence.
+
+Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence.
+
+Mainnet, testnet3 and Signet ordinary configuration remain refused.
+
+Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred.
+
+Wallet authority remains unavailable.
+
+The [current candidate-history evidence and repo-local Cargo/Bazel status
+commands](./docs/parity/v2-6-candidate-history-validation.md) describe the
+301-descendant local default-Regtest result, retained source inspection,
+exact historical case identities and finite source limits. Use only a disposable,
+already proved and closed datadir for operator review. Networking stays off by
+default; no unattended acquisition or wallet authority follows from the
+local route.
+
+## Archived releases and historical scope
 
 > Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).
 > Archive date: 2026-10-13. Scope: 22 requirements, 10 phases, 90 plans and 220 completed plan tasks. Audit: 31/31 seams and 18/18 flows, with no blocking gaps.

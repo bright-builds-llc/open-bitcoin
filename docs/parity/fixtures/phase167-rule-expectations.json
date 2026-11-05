@@ -1,0 +1,904 @@
+{
+  "schema": 1,
+  "pin": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "evidence_class": "source-derived-expectations",
+  "source_functions": [
+    "GetBlockScriptFlags",
+    "ConnectBlock",
+    "GetNextWorkRequired",
+    "CalculateSequenceLocks",
+    "ContextualCheckBlockHeader",
+    "IsThisSoftwareExpired"
+  ],
+  "bip30_pairs": [
+    {
+      "repeat_height": 91842,
+      "repeat_hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "original_height": 91812,
+      "original_hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+      "coinbase_txid": "d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599"
+    },
+    {
+      "repeat_height": 91880,
+      "repeat_hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "original_height": 91722,
+      "original_hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+      "coinbase_txid": "e3bf3d07d4b0375638d5f1db5255fe07ba2c4cb067cd81b84ee974b6585fb468"
+    }
+  ],
+  "flags": [
+    {
+      "network": "mainnet",
+      "height": 0,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 1,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 227930,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 227931,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 2,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 363724,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 2,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 363725,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG"
+      ],
+      "minimum_version": 3,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 388380,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG"
+      ],
+      "minimum_version": 3,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 388381,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 419327,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 419328,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 481823,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": false
+    },
+    {
+      "network": "mainnet",
+      "height": 481824,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY",
+        "NULLDUMMY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": true
+    },
+    {
+      "network": "testnet3",
+      "height": 0,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 1,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 21110,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 21111,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 2,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 330775,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 2,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 330776,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG"
+      ],
+      "minimum_version": 3,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 581884,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG"
+      ],
+      "minimum_version": 3,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 581885,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 770111,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 770112,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 834623,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": false
+    },
+    {
+      "network": "testnet3",
+      "height": 834624,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY",
+        "NULLDUMMY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": true
+    },
+    {
+      "network": "signet",
+      "height": 0,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": false
+    },
+    {
+      "network": "signet",
+      "height": 1,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY",
+        "NULLDUMMY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": true
+    },
+    {
+      "network": "regtest",
+      "height": 0,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "NULLDUMMY"
+      ],
+      "minimum_version": 1,
+      "finality_time": "candidate-time",
+      "sequence_locks": false,
+      "witness_commitment": true
+    },
+    {
+      "network": "regtest",
+      "height": 1,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY",
+        "NULLDUMMY"
+      ],
+      "minimum_version": 4,
+      "finality_time": "parent-mtp",
+      "sequence_locks": true,
+      "witness_commitment": true
+    },
+    {
+      "network": "mainnet",
+      "height": 170060,
+      "hash": "00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22",
+      "flags": []
+    },
+    {
+      "network": "testnet3",
+      "height": 170060,
+      "hash": "00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ]
+    },
+    {
+      "network": "mainnet",
+      "height": 692261,
+      "hash": "0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY",
+        "CHECKSEQUENCEVERIFY",
+        "NULLDUMMY"
+      ]
+    },
+    {
+      "network": "testnet3",
+      "height": 692261,
+      "hash": "0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT",
+        "DERSIG",
+        "CHECKLOCKTIMEVERIFY"
+      ]
+    },
+    {
+      "network": "mainnet",
+      "height": 394,
+      "hash": "00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ]
+    },
+    {
+      "network": "testnet3",
+      "height": 394,
+      "hash": "00000000dd30457c001f4095d208cc1296b0eed002427aa599874af7a432b105",
+      "flags": []
+    },
+    {
+      "network": "mainnet",
+      "height": 91842,
+      "hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ]
+    },
+    {
+      "network": "mainnet",
+      "height": 91880,
+      "hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ]
+    },
+    {
+      "network": "mainnet",
+      "height": 91722,
+      "hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ]
+    },
+    {
+      "network": "mainnet",
+      "height": 91812,
+      "hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+      "flags": [
+        "P2SH",
+        "WITNESS",
+        "TAPROOT"
+      ]
+    }
+  ],
+  "bip30": [
+    {
+      "network": "mainnet",
+      "height": 227931,
+      "ancestor": "matching",
+      "case_class": "conditional-source-formula",
+      "context_admission": "refuse-inconsistent-parent-height",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 227931,
+      "ancestor": "wrong",
+      "case_class": "conditional-source-formula",
+      "context_admission": "refuse-inconsistent-parent-height",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 227931,
+      "ancestor": "absent",
+      "case_class": "conditional-source-formula",
+      "context_admission": "seeded-condition-only",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 227932,
+      "ancestor": "matching",
+      "case_class": "conditional-source-formula",
+      "context_admission": "seeded-condition-only",
+      "enforce": false
+    },
+    {
+      "network": "mainnet",
+      "height": 227932,
+      "ancestor": "wrong",
+      "case_class": "conditional-source-formula",
+      "context_admission": "seeded-condition-only",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 227932,
+      "ancestor": "unavailable",
+      "case_class": "conditional-source-formula",
+      "context_admission": "refuse-missing-required-history",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 1983701,
+      "ancestor": "matching",
+      "case_class": "conditional-source-formula",
+      "context_admission": "seeded-condition-only",
+      "enforce": false
+    },
+    {
+      "network": "mainnet",
+      "height": 1983701,
+      "ancestor": "wrong",
+      "case_class": "conditional-source-formula",
+      "context_admission": "seeded-condition-only",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 1983701,
+      "ancestor": "unavailable",
+      "case_class": "conditional-source-formula",
+      "context_admission": "refuse-missing-required-history",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 1983702,
+      "ancestor": "matching",
+      "case_class": "conditional-source-formula",
+      "context_admission": "anchor-unneeded-for-BIP30",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 1983702,
+      "ancestor": "wrong",
+      "case_class": "conditional-source-formula",
+      "context_admission": "anchor-unneeded-for-BIP30",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 1983702,
+      "ancestor": "unavailable",
+      "case_class": "conditional-source-formula",
+      "context_admission": "anchor-unneeded-for-BIP30",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 91842,
+      "hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "ancestor": "absent",
+      "enforce": false
+    },
+    {
+      "network": "testnet3",
+      "height": 91842,
+      "hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "ancestor": "absent",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 91842,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ancestor": "absent",
+      "enforce": true
+    },
+    {
+      "network": "testnet3",
+      "height": 91842,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ancestor": "absent",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 91880,
+      "hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "ancestor": "absent",
+      "enforce": false
+    },
+    {
+      "network": "testnet3",
+      "height": 91880,
+      "hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "ancestor": "absent",
+      "enforce": true
+    },
+    {
+      "network": "mainnet",
+      "height": 91880,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ancestor": "absent",
+      "enforce": true
+    },
+    {
+      "network": "testnet3",
+      "height": 91880,
+      "hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "ancestor": "absent",
+      "enforce": true
+    }
+  ],
+  "retarget": [
+    {
+      "bits": 16842752,
+      "elapsed": 0,
+      "expected": 0
+    },
+    {
+      "bits": 453248203,
+      "elapsed": 0,
+      "expected": 453050674
+    },
+    {
+      "bits": 486604799,
+      "elapsed": 0,
+      "expected": 473956288
+    },
+    {
+      "bits": 16842752,
+      "elapsed": 302399,
+      "expected": 0
+    },
+    {
+      "bits": 453248203,
+      "elapsed": 302399,
+      "expected": 453050674
+    },
+    {
+      "bits": 486604799,
+      "elapsed": 302399,
+      "expected": 473956288
+    },
+    {
+      "bits": 16842752,
+      "elapsed": 302400,
+      "expected": 0
+    },
+    {
+      "bits": 453248203,
+      "elapsed": 302400,
+      "expected": 453050674
+    },
+    {
+      "bits": 486604799,
+      "elapsed": 302400,
+      "expected": 473956288
+    },
+    {
+      "bits": 16842752,
+      "elapsed": 1209601,
+      "expected": 16842752
+    },
+    {
+      "bits": 453248203,
+      "elapsed": 1209601,
+      "expected": 453248203
+    },
+    {
+      "bits": 486604799,
+      "elapsed": 1209601,
+      "expected": 486604799
+    },
+    {
+      "bits": 16842752,
+      "elapsed": 4838400,
+      "expected": 17039360
+    },
+    {
+      "bits": 453248203,
+      "elapsed": 4838400,
+      "expected": 454038316
+    },
+    {
+      "bits": 486604799,
+      "elapsed": 4838400,
+      "expected": 486604799
+    },
+    {
+      "bits": 16842752,
+      "elapsed": 4838401,
+      "expected": 17039360
+    },
+    {
+      "bits": 453248203,
+      "elapsed": 4838401,
+      "expected": 454038316
+    },
+    {
+      "bits": 486604799,
+      "elapsed": 4838401,
+      "expected": 486604799
+    }
+  ],
+  "minimum_difficulty": [
+    {
+      "delta": 1199,
+      "parent_bits": 486604799,
+      "recovery_bits": 470955094,
+      "expected": 470955094
+    },
+    {
+      "delta": 1200,
+      "parent_bits": 486604799,
+      "recovery_bits": 470955094,
+      "expected": 470955094
+    },
+    {
+      "delta": 1201,
+      "parent_bits": 486604799,
+      "recovery_bits": 470955094,
+      "expected": 486604799
+    }
+  ],
+  "expiry": [
+    {
+      "candidate": 1857151480,
+      "older_mtp": 1857151481,
+      "reject": false
+    },
+    {
+      "candidate": 1857151481,
+      "older_mtp": 1857151480,
+      "reject": false
+    },
+    {
+      "candidate": 1857151481,
+      "older_mtp": 1857151481,
+      "reject": true
+    }
+  ],
+  "locks": {
+    "absolute": [
+      {
+        "lock": 500000001,
+        "cutoff": 500000001,
+        "all_final": false,
+        "final": false
+      },
+      {
+        "lock": 500000000,
+        "cutoff": 500000001,
+        "all_final": false,
+        "final": true
+      },
+      {
+        "lock": 500000001,
+        "cutoff": 500000001,
+        "all_final": true,
+        "final": true
+      }
+    ],
+    "relative": [
+      {
+        "created_mtp": 1000,
+        "sequence": 4194305,
+        "minimum_time": 1511,
+        "parent_mtp": 1511,
+        "valid": false
+      },
+      {
+        "created_mtp": 1000,
+        "sequence": 4194305,
+        "minimum_time": 1511,
+        "parent_mtp": 1512,
+        "valid": true
+      },
+      {
+        "created_height": 100,
+        "sequence": 1,
+        "minimum_height": 100,
+        "candidate_height": 100,
+        "valid": false
+      },
+      {
+        "created_height": 100,
+        "sequence": 1,
+        "minimum_height": 100,
+        "candidate_height": 101,
+        "valid": true
+      }
+    ]
+  },
+  "disconnect": {
+    "repeats": "lossless-overwrite-undo-required-by-open-bitcoin",
+    "pinned_knots": "does-not-restore-overwritten-original",
+    "originals_tolerated": [
+      91722,
+      91812
+    ]
+  }
+}

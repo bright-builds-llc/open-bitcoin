@@ -2,7 +2,7 @@
 
 **Milestone:** v2.6 Canonical Chain Bootstrap and Validation Parity
 **Defined:** 2026-10-13
-**Status:** Approved by the user on 2026-10-13; ten requirements Complete after verified Phases 164–166; 20 remain Pending.
+**Status:** Approved by the user on 2026-10-13; 15 requirements Complete after verified Phases 164–167; 15 remain Pending.
 **Core Value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
 
 ## Scope and Evidence Contract
@@ -24,12 +24,12 @@ Preserve one active Fjall chainstate, first-party Bitcoin domain ownership, func
 
 ### Network and Historical Validation
 
-- [ ] **CVLD-01**: A contributor observes the pinned subsidy schedule for each supported validation mode, including default-regtest halvings at heights 150 and 300 and ordinary coinbase maturity.
-- [ ] **CVLD-02**: A contributor observes contextual block and transaction decisions derived from the selected network and validated deployment history, including BIP34 height, BIP65/BIP66 block-version constraints, BIP113/sequence-lock context and Segwit commitment rules, without caller-selected blanket activation switches.
-- [ ] **CVLD-03**: A contributor observes pinned `GetBlockScriptFlags` behavior, including its baseline flags, block-hash exceptions and deployment-dependent additions, through the actual durable connect path.
-- [ ] **CVLD-04**: A contributor observes pinned network difficulty and contextual time decisions at supported retarget, minimum-difficulty and median-time boundaries; header admission and body connection use the same validated network authority.
+- [x] **CVLD-01**: A contributor observes the pinned subsidy schedule for each supported validation mode, including default-regtest halvings at heights 150 and 300 and ordinary coinbase maturity.
+- [x] **CVLD-02**: A contributor observes contextual block and transaction decisions derived from the selected network and validated deployment history, including BIP34 height, BIP65/BIP66 block-version constraints, BIP113/sequence-lock context and Segwit commitment rules, without caller-selected blanket activation switches.
+- [x] **CVLD-03**: A contributor observes pinned `GetBlockScriptFlags` behavior, including its baseline flags, block-hash exceptions and deployment-dependent additions, through the actual durable connect path.
+- [x] **CVLD-04**: A contributor observes pinned network difficulty and contextual time decisions at supported retarget, minimum-difficulty and median-time boundaries; header admission and body connection use the same validated network authority.
 - [x] **CVLD-05**: An operator can identify the exact supported validation/evidence scope of existing mainnet, testnet3, signet and regtest selectors; any mode lacking required consensus checks, including Signet challenge validation, refuses before accepting unsupported blocks rather than using another network's defaults.
-- [ ] **CVLD-06**: A contributor observes pinned duplicate-coinbase/BIP30 and coin-overwrite behavior in the supported historical contexts, with the required ancestor/hash facts and correct disconnect restoration rather than a global permissive exception.
+- [x] **CVLD-06**: A contributor observes pinned duplicate-coinbase/BIP30 and coin-overwrite behavior in the supported historical contexts, with the required ancestor/hash facts and correct disconnect restoration rather than a global permissive exception.
 
 ### Exact Cumulative Work
 
@@ -99,7 +99,7 @@ Full address relay/address-manager persistence and wallet PSBT/multisig/multiwal
 
 ## Traceability
 
-The approved roadmap maps every active requirement to exactly one phase beginning at 164. Phase 164 uniquely closes CBOT-01, CBOT-04 and CVLD-05 after full native and 27/27 goal verification. Phase 165 closes CWOR-01, CWOR-02, CWOR-03 and CWOR-05 after its full native and formal goal verification; the other 23 requirements remain Pending. This identity/refusal closure grants no ordinary accepted-history qualification.
+The approved roadmap maps every active requirement to exactly one phase beginning at 164. Phases 164–166 closed ten requirements under their scoped verification reports. Phase 167 closes CVLD-01, CVLD-02, CVLD-03, CVLD-04 and CVLD-06 for the bounded local default-Regtest route and source-bound seeded historical cases; 15 later-phase requirements remain Pending. This closure grants no actual pinned-Knots daemon differential or ordinary Mainnet, testnet3 or Signet product admission.
 
 | Requirement | Phase     | Status  |
 | ----------- | --------- | ------- |
@@ -107,12 +107,12 @@ The approved roadmap maps every active requirement to exactly one phase beginnin
 | CBOT-02     | Phase 166 | Complete |
 | CBOT-03     | Phase 166 | Complete |
 | CBOT-04     | Phase 164 | Complete |
-| CVLD-01     | Phase 167 | Pending |
-| CVLD-02     | Phase 167 | Pending |
-| CVLD-03     | Phase 167 | Pending |
-| CVLD-04     | Phase 167 | Pending |
+| CVLD-01     | Phase 167 | Complete |
+| CVLD-02     | Phase 167 | Complete |
+| CVLD-03     | Phase 167 | Complete |
+| CVLD-04     | Phase 167 | Complete |
 | CVLD-05     | Phase 164 | Complete |
-| CVLD-06     | Phase 167 | Pending |
+| CVLD-06     | Phase 167 | Complete |
 | CWOR-01     | Phase 165 | Complete |
 | CWOR-02     | Phase 165 | Complete |
 | CWOR-03     | Phase 165 | Complete |
@@ -134,4 +134,4 @@ The approved roadmap maps every active requirement to exactly one phase beginnin
 | CPAR-01     | Phase 171 | Pending |
 | CPAR-02     | Phase 171 | Pending |
 
-*Requirements defined: 2026-10-13. Last updated: 2026-10-13 after user approval of v2.6 requirements and phase traceability.*
+*Requirements defined: 2026-10-13. Phase 167 bounded requirement closure recorded 2026-11-05 after revised-config full native and independent review evidence.*

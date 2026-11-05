@@ -19,10 +19,11 @@ pub(crate) mod replacement;
 pub(crate) mod truc;
 
 use open_bitcoin_codec::{TransactionEncoding, encode_transaction};
-use open_bitcoin_consensus::script::{count_p2sh_sigops, count_witness_sigops};
+use open_bitcoin_consensus::script::{
+    legacy_sigops_count, p2sh_sigops_count, witness_sigops_count,
+};
 use open_bitcoin_consensus::{
-    ScriptPubKeyType, TransactionInputContext, classify_script_pubkey, count_legacy_sigops,
-    is_push_only,
+    ScriptPubKeyType, TransactionInputContext, classify_script_pubkey, is_push_only,
 };
 use open_bitcoin_primitives::{Transaction, TransactionInput};
 
@@ -73,40 +74,25 @@ pub fn transaction_sigops_cost(
 
     let mut sigops = 0_usize;
     for input in &transaction.inputs {
-        sigops = sigops.saturating_add(count_legacy_sigops(&input.script_sig).map_err(
-            |source: open_bitcoin_consensus::ScriptError| MempoolError::NonStandard {
-                reason: source.to_string(),
-            },
-        )?);
+        sigops = sigops.saturating_add(legacy_sigops_count(&input.script_sig));
     }
     for output in &transaction.outputs {
-        sigops = sigops.saturating_add(count_legacy_sigops(&output.script_pubkey).map_err(
-            |source: open_bitcoin_consensus::ScriptError| MempoolError::NonStandard {
-                reason: source.to_string(),
-            },
-        )?);
+        sigops = sigops.saturating_add(legacy_sigops_count(&output.script_pubkey));
     }
     for (input, input_context) in transaction.inputs.iter().zip(input_contexts) {
         sigops = sigops
-            .saturating_add(
-                count_p2sh_sigops(&input.script_sig, &input_context.spent_output.script_pubkey)
-                    .map_err(|source| MempoolError::NonStandard {
-                        reason: source.to_string(),
-                    })?,
-            )
-            .saturating_add(
-                count_witness_sigops(
-                    &input.script_sig,
-                    &input_context.spent_output.script_pubkey,
-                    &input.witness,
-                    open_bitcoin_consensus::ScriptVerifyFlags::P2SH
-                        | open_bitcoin_consensus::ScriptVerifyFlags::WITNESS
-                        | open_bitcoin_consensus::ScriptVerifyFlags::TAPROOT,
-                )
-                .map_err(|source| MempoolError::NonStandard {
-                    reason: source.to_string(),
-                })?,
-            );
+            .saturating_add(p2sh_sigops_count(
+                &input.script_sig,
+                &input_context.spent_output.script_pubkey,
+            ))
+            .saturating_add(witness_sigops_count(
+                &input.script_sig,
+                &input_context.spent_output.script_pubkey,
+                &input.witness,
+                open_bitcoin_consensus::ScriptVerifyFlags::P2SH
+                    | open_bitcoin_consensus::ScriptVerifyFlags::WITNESS
+                    | open_bitcoin_consensus::ScriptVerifyFlags::TAPROOT,
+            ));
     }
 
     Ok(sigops.saturating_mul(4))
@@ -368,18 +354,20 @@ mod tests {
     }
 
     #[test]
-    fn transaction_sigops_cost_maps_script_parsing_errors_from_all_sources() {
+    fn transaction_sigops_cost_stops_at_malformed_scripts_from_all_sources() {
         let mut bad_input = standard_transaction();
         bad_input.inputs[0].script_sig = script(&[0x4c]);
-        let error = transaction_sigops_cost(&bad_input, &[input_context()])
-            .expect_err("legacy input parse should fail");
-        assert!(matches!(error, crate::MempoolError::NonStandard { .. }));
+        assert_eq!(
+            transaction_sigops_cost(&bad_input, &[input_context()]),
+            Ok(0)
+        );
 
         let mut bad_output = standard_transaction();
         bad_output.outputs[0].script_pubkey = script(&[0x4c]);
-        let error = transaction_sigops_cost(&bad_output, &[input_context()])
-            .expect_err("legacy output parse should fail");
-        assert!(matches!(error, crate::MempoolError::NonStandard { .. }));
+        assert_eq!(
+            transaction_sigops_cost(&bad_output, &[input_context()]),
+            Ok(0)
+        );
 
         let bad_p2sh = Transaction {
             inputs: vec![TransactionInput {
@@ -388,9 +376,10 @@ mod tests {
             }],
             ..standard_transaction()
         };
-        let error = transaction_sigops_cost(&bad_p2sh, &[input_context()])
-            .expect_err("p2sh parse should fail");
-        assert!(matches!(error, crate::MempoolError::NonStandard { .. }));
+        assert_eq!(
+            transaction_sigops_cost(&bad_p2sh, &[input_context()]),
+            Ok(0)
+        );
 
         let bad_witness = Transaction {
             inputs: vec![TransactionInput {
@@ -420,9 +409,10 @@ mod tests {
             created_height: 1,
             created_median_time_past: 1,
         };
-        let error = transaction_sigops_cost(&bad_witness, &[witness_context])
-            .expect_err("witness parse should fail");
-        assert!(matches!(error, crate::MempoolError::NonStandard { .. }));
+        assert_eq!(
+            transaction_sigops_cost(&bad_witness, &[witness_context]),
+            Ok(0)
+        );
     }
 
     #[test]

@@ -31,11 +31,11 @@ use crate::status::FieldAvailability;
 use crate::status::relay_evidence::RelayEvidenceField;
 use crate::{ManagedPeerNetwork, MemoryChainstateStore};
 
-fn txid(transaction: &Transaction) -> Txid {
+pub(super) fn txid(transaction: &Transaction) -> Txid {
     transaction_txid(transaction).expect("txid")
 }
 
-fn build_block_with_transactions(
+pub(super) fn build_block_with_transactions(
     previous_block_hash: BlockHash,
     height: u32,
     extra_transactions: Vec<Transaction>,
@@ -49,7 +49,7 @@ fn build_block_with_transactions(
     block
 }
 
-fn compact_payload_from_block(block: &Block, nonce: u64) -> CompactBlockPayload {
+pub(super) fn compact_payload_from_block(block: &Block, nonce: u64) -> CompactBlockPayload {
     assert!(block.transactions.len() >= 2);
     let wtxid = transaction_wtxid(&block.transactions[1]).expect("wtxid");
     let selector =
@@ -67,7 +67,10 @@ fn compact_payload_from_block(block: &Block, nonce: u64) -> CompactBlockPayload 
     }
 }
 
-fn handshake_and_sendcmpct(network: &mut ManagedPeerNetwork<MemoryChainstateStore>, peer_id: u64) {
+pub(super) fn handshake_and_sendcmpct(
+    network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
+    peer_id: u64,
+) {
     network
         .connect_outbound_peer(peer_id, 1)
         .expect("connect outbound");
@@ -103,7 +106,7 @@ fn handshake_and_sendcmpct(network: &mut ManagedPeerNetwork<MemoryChainstateStor
         .expect("sendcmpct");
 }
 
-fn tip_chain(network: &mut ManagedPeerNetwork<MemoryChainstateStore>) -> (Block, Block) {
+pub(super) fn tip_chain(network: &mut ManagedPeerNetwork<MemoryChainstateStore>) -> (Block, Block) {
     let genesis = build_block(BlockHash::from_byte_array([0_u8; 32]), 0, 500_000_000);
     let spendable = build_block(block_hash(&genesis.header), 1, 500_000_000);
     network
@@ -115,7 +118,7 @@ fn tip_chain(network: &mut ManagedPeerNetwork<MemoryChainstateStore>) -> (Block,
     (genesis, spendable)
 }
 
-fn assert_in_flight(
+pub(super) fn assert_in_flight(
     network: &ManagedPeerNetwork<MemoryChainstateStore>,
     peer_id: u64,
     expected_hash: BlockHash,
@@ -128,7 +131,7 @@ fn assert_in_flight(
     );
 }
 
-fn assert_no_in_flight_hash(
+pub(super) fn assert_no_in_flight_hash(
     network: &ManagedPeerNetwork<MemoryChainstateStore>,
     peer_id: u64,
     expected_hash: BlockHash,
@@ -143,7 +146,7 @@ fn assert_no_in_flight_hash(
     );
 }
 
-fn start_shared_compact_on_peer(
+pub(super) fn start_shared_compact_on_peer(
     network: &mut ManagedPeerNetwork<MemoryChainstateStore>,
     peer_id: u64,
     payload: CompactBlockPayload,

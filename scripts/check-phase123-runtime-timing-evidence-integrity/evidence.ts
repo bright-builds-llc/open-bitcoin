@@ -1,4 +1,5 @@
 import { TargetFile } from "./constants.ts";
+import { createHash } from "node:crypto";
 import { normalizeWhitespace, requireContains, requireAbsent, requireExactCount, requireOrdered } from "./helpers.ts";
 import { maybeFunction, ordinaryRust } from "../check-phase157-index-catch-up/rust-evidence.ts";
 import { normalizeRust, rustCallArguments, rustFunction } from "../rust-source-invariants.ts";
@@ -7,7 +8,7 @@ function ordinaryOwner(source: string, owner: string): string {
   const code = ordinaryRust(source);
   const escaped = owner.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const maybeOwner = new RegExp(`(?:^|[};])\\s*((?:#\\[[^\\]]*\\]\\s*)*)${escaped}\\s*\\{`).exec(code);
-  if (maybeOwner === null || normalizeRust(maybeOwner[1] ?? "").includes("#[cfg(test)]")) return "";
+  if (maybeOwner === null || /#\s*\[\s*cfg(?:_attr)?\b/.test(maybeOwner[1] ?? "")) return "";
   return rustFunction(code, owner);
 }
 
@@ -36,11 +37,32 @@ export function verifySuccessfulWriteEvidence(
     failures,
   );
   requireExactCount(session, "acknowledge_wire_message_written(", 1, "P123 ordinary single post-write acknowledgement", failures);
-  requireOrdered(body(runtimeOwner, "send_all_for_peer_with_cancel"), [
+  const exactWriteLoop = "for(message,buffer)inmessages.iter().zip(buffers){ifshould_cancel(){returnOk(());}session.send_encoded(buffer.bytes(),self.config.network.magic())?;self.network.acknowledge_wire_message_written(message)?;}";
+  if (!normalizeRust(session).includes(exactWriteLoop)) {
+    failures.push("P123 ordinary exact write must execute before acknowledgement in the same loop");
+  }
+  if (createHash("sha256").update(normalizeRust(session)).digest("hex")
+    !== "271fb500cbb8c6d4906b5702d5c68d5abb35f0d47090dafa6ddafd84f1a2193b") {
+    failures.push("P123 ordinary reviewed send body changed before exact write");
+  }
+  const registered = body(runtimeOwner, "send_all_for_registered_peer_with_cancel");
+  requireOrdered(registered, [
+    "self.send_all_for_registration( session, peer_id, messages, should_cancel, Some((registration, requests)), )",
+  ], "P123 governed outbound production delegation", failures);
+  if (normalizeRust(registered) !== "self.send_all_for_registration(session,peer_id,messages,should_cancel,Some((registration,requests)),)") {
+    failures.push("P123 registered peer must forward its exact registration, requests and cancellation");
+  }
+  const registeredSend = body(runtimeOwner, "send_all_for_registration");
+  requireOrdered(registeredSend, [
     "self.send_all_with_cancel(session, peer_id, messages, should_cancel)?;",
-    "self.announcement_outboxes.take_peer_emissions(peer_id)?;",
+    "requests.with_outbox(&self.network, |owned_peer|",
+    "self.announcement_outboxes.take_registration( owned_peer, registration, false, false, )",
     "send_peer_emissions( &self.network, session, peer_id, self.config.network.magic(), emissions, should_cancel, )",
   ], "P123 governed outbound production delegation", failures);
+  const exactRegisteredSend = "self.send_all_with_cancel(session,peer_id,messages,should_cancel)?;letemissions=matchmaybe_registration{Some((registration,requests))=>{letSome(emissions)=requests.with_outbox(&self.network,|owned_peer|{self.announcement_outboxes.take_registration(owned_peer,registration,false,false,)})?else{returnOk(false);};emissions?}None=>self.announcement_outboxes.take_peer_emissions(peer_id)?,};send_peer_emissions(&self.network,session,peer_id,self.config.network.magic(),emissions,should_cancel,)?;Ok(true)";
+  if (normalizeRust(registeredSend) !== exactRegisteredSend) {
+    failures.push("P123 registered send must use the token outbox and propagate its result before emission");
+  }
   const tcp = texts.get("packages/open-bitcoin-node/src/sync/tcp.rs") ?? "";
   const tcpOwner = ordinaryOwner(tcp, "impl SyncPeerSession for TcpPeerSession");
   requireContains(tcpOwner, "impl SyncPeerSession for TcpPeerSession", "P123 concrete exact transport owner", failures);

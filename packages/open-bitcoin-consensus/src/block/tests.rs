@@ -252,3 +252,78 @@ fn reward_limit_transaction_context(
 mod contextual_block_checks_cover_context_mapping_and_nonfinal_rejection;
 mod contextual_helpers_cover_merkle_height_and_weight_edges;
 mod genesis_header_fixture_passes_pow_check;
+
+#[test]
+fn owned_oversized_witness_maps_codec_refusal_before_commitment_comparison() {
+    // Arrange
+    let (mut block, _) = valid_block();
+    let mut commitment_script = vec![0x6a, 0x24, 0xaa, 0x21, 0xa9, 0xed];
+    commitment_script.extend_from_slice(&[0; 32]);
+    block.transactions[0].outputs.push(TransactionOutput {
+        value: Amount::ZERO,
+        script_pubkey: ScriptBuf::from_serialized_bytes(commitment_script),
+    });
+    block.transactions[0].inputs[0].witness = ScriptWitness::new(vec![vec![0; 32]]);
+    block.transactions[1].inputs[0].witness =
+        ScriptWitness::new(vec![vec![
+            0;
+            usize::try_from(open_bitcoin_codec::MAX_SIZE + 1)
+                .expect("bounded codec oversize")
+        ]]);
+    block.header.merkle_root = block_merkle_root(&block.transactions)
+        .expect("real txid root")
+        .0;
+    mine_header(&mut block);
+    let mut context = reward_limit_block_context(&block);
+    context.consensus_params.enforce_segwit = true;
+    let header_before = block.header.clone();
+
+    // Act
+    let error = super::witness::check_witness_commitment(&block, &context)
+        .expect_err("owned oversized witness must fail encoding");
+
+    // Assert
+    assert_eq!(error.result, BlockValidationResult::Consensus);
+    assert_eq!(error.reject_reason, "bad-blk-serialization");
+    assert_eq!(block.header, header_before);
+    assert_eq!(
+        block.transactions[1].inputs[0].witness.stack()[0].len(),
+        usize::try_from(open_bitcoin_codec::MAX_SIZE + 1).expect("bounded size")
+    );
+}
+
+#[test]
+fn contextual_p2sh_sigop_budget_rejects_only_after_intrinsic_and_header_checks() {
+    // Arrange
+    let redeem = p2sh_sigop_heavy_redeem_script(199);
+    let redeem_len = u8::try_from(redeem.as_bytes().len()).expect("bounded PUSHDATA1 length");
+    let mut pushed_redeem = vec![0x4c, redeem_len];
+    pushed_redeem.extend_from_slice(redeem.as_bytes());
+    let mut transactions = vec![coinbase_transaction()];
+    let mut contexts = Vec::new();
+    for index in 1..=101_u8 {
+        let (mut transaction, context) = p2sh_sigop_heavy_transaction(index, 199);
+        transaction.inputs[0].script_sig = script(&pushed_redeem);
+        transactions.push(transaction);
+        contexts.push(context);
+    }
+    let block = mined_block(transactions);
+    let block_context = reward_limit_block_context(&block);
+    let before = block.clone();
+
+    // Act
+    let intrinsic = check_block(&block);
+    let contextual = check_block_contextual(&block, &block_context);
+    let result = validate_block_with_context(&block, &contexts, &block_context);
+
+    // Assert
+    assert_eq!(intrinsic, Ok(()));
+    assert_eq!(contextual, Ok(()));
+    assert_eq!(
+        result
+            .expect_err("P2SH cost exceeds the block limit")
+            .reject_reason,
+        "bad-blk-sigops"
+    );
+    assert_eq!(block, before);
+}

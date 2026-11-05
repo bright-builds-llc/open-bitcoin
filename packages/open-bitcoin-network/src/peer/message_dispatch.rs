@@ -298,9 +298,6 @@ impl PeerManager {
         }
         let best_height = self.headers.best_height();
         let locator = self.headers.locator();
-        let max_blocks_in_flight_per_peer = self
-            .max_blocks_in_flight_per_peer
-            .min(crate::PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER);
         let peer = Self::peer_mut(&mut self.peers, peer_id)?;
         peer.getheaders_in_flight = false;
 
@@ -324,16 +321,20 @@ impl PeerManager {
         }
 
         if policy == HeaderSyncPolicy::HeadersAndBlocks {
-            let available_slots =
-                max_blocks_in_flight_per_peer.saturating_sub(peer.requested_blocks.len());
-            requested_inventory.truncate(available_slots);
-            for item in &requested_inventory {
-                peer.requested_blocks
-                    .insert(BlockHash::from(item.object_hash));
+            let mut registered_inventory = Vec::new();
+            for item in requested_inventory {
+                if self.register_block_request(
+                    peer_id,
+                    BlockHash::from(item.object_hash),
+                    None,
+                    crate::PHASE94_MAX_INBOUND_BLOCK_REQUESTS_PER_PEER,
+                )? {
+                    registered_inventory.push(item);
+                }
             }
-            if !requested_inventory.is_empty() {
+            if !registered_inventory.is_empty() {
                 actions.push(PeerAction::Send(WireNetworkMessage::GetData(
-                    InventoryList::new(requested_inventory),
+                    InventoryList::new(registered_inventory),
                 )));
             }
         }

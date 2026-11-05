@@ -20,6 +20,7 @@ pub(super) const OP_ELSE: u8 = 0x67;
 pub(super) const OP_ENDIF: u8 = 0x68;
 pub(super) const OP_VERIFY: u8 = 0x69;
 pub(super) const OP_RETURN: u8 = 0x6a;
+pub(super) const OP_IFDUP: u8 = 0x73;
 pub(super) const OP_DROP: u8 = 0x75;
 pub(super) const OP_DUP: u8 = 0x76;
 pub(super) const OP_OVER: u8 = 0x78;
@@ -53,6 +54,8 @@ pub(super) const OP_CHECKSIG: u8 = 0xac;
 pub(super) const OP_CHECKSIGVERIFY: u8 = 0xad;
 pub(super) const OP_CHECKMULTISIG: u8 = 0xae;
 pub(super) const OP_CHECKMULTISIGVERIFY: u8 = 0xaf;
+pub(super) const OP_CHECKLOCKTIMEVERIFY: u8 = 0xb1;
+pub(super) const OP_CHECKSEQUENCEVERIFY: u8 = 0xb2;
 pub(super) const OP_CHECKSIGADD: u8 = 0xba;
 pub(super) const MAX_PUBKEYS_PER_MULTISIG: usize = 20;
 

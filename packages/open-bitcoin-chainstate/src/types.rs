@@ -39,6 +39,31 @@ pub struct TxUndo {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BlockUndo {
     pub transactions: Vec<TxUndo>,
+    /// Exactly one complete batch from connection; empty means provenance unavailable.
+    /// A complete batch with no entries explicitly proves captured no-overwrite.
+    pub overwrites: Vec<BlockOverwriteUndo>,
+}
+
+/// Complete prior and new occurrences of one permitted coinbase outpoint.
+/// These imported facts never establish canonical lineage or block acceptance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OverwrittenCoin {
+    pub transaction_index: u32,
+    pub outpoint: OutPoint,
+    pub previous_coin: Coin,
+    pub new_coin: Coin,
+}
+
+/// A complete, exact-block-bound overwrite scan, including a captured empty scan.
+/// The integrity digest detects missing/modified records; it is not an authority seal.
+/// Durable codecs must preserve every field and digest without missing-field defaults.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlockOverwriteUndo {
+    pub block_hash: BlockHash,
+    pub height: u32,
+    pub creating_median_time_past: i64,
+    pub overwritten: Vec<OverwrittenCoin>,
+    pub integrity: [u8; 32],
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

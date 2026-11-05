@@ -5,7 +5,7 @@
 
 use super::{
     InspectedRecords, OperationLease, ScratchGuard, StorageError, copy, inspection_error,
-    protocol::{self, OwnedScratchJob},
+    protocol::{self, OwnedScratchJob, WorkerJob},
 };
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
@@ -52,7 +52,8 @@ pub(in crate::storage::fjall_store) fn maybe_run() -> Option<i32> {
 }
 
 fn run_child() -> Result<(), StorageError> {
-    let job = OwnedScratchJob::decode(std::io::stdin().lock())?;
+    let operation = WorkerJob::decode(std::io::stdin().lock())?;
+    let job = operation.owned();
     job.check_root()?;
     let mut names = std::collections::BTreeSet::new();
     for entry in fs::read_dir(&job.root).map_err(|_| refused())? {
@@ -67,7 +68,7 @@ fn run_child() -> Result<(), StorageError> {
         return Err(refused());
     }
     #[cfg(test)]
-    tests::child_before_read(&job)?;
+    tests::child_before_read(job)?;
     let database = job.root.join("database");
     let inventory = copy::Inventory::capture(&database)?;
     #[cfg(unix)]
@@ -79,14 +80,30 @@ fn run_child() -> Result<(), StorageError> {
     };
     // DatabaseInner::drop stops and joins Fjall workers before returning. No
     // database/keyspace/lease owner escapes the scope above, even on refusal.
+    if let Some(selected) = operation.maybe_history_selection() {
+        #[cfg(test)]
+        history_stage(job, 1)?;
+        super::canonical_history::validate_in_child(selected, &records)?;
+        #[cfg(test)]
+        history_stage(job, 2)?;
+    }
     let mut output = job.result_file(true)?;
     #[cfg(test)]
-    if tests::child_output(&job, &mut output)? {
+    if tests::child_output(job, &mut output)? {
         return Ok(());
     }
-    protocol::write_result(&mut output, &job, &records)?;
+    operation.write_result(&mut output, &records)?;
     output.sync_all().map_err(|_| refused())?;
     drop(output);
+    #[cfg(test)]
+    if operation.maybe_history_selection().is_some() {
+        if job.fault == 22 {
+            thread::sleep(Duration::from_secs(60));
+        }
+        if job.fault == 23 {
+            std::process::exit(79);
+        }
+    }
     Ok(())
 }
 
@@ -146,9 +163,27 @@ fn job(scratch: &ScratchGuard) -> Result<OwnedScratchJob, StorageError> {
 }
 
 pub(super) fn recover(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
+    recover_operation(scratch, None)
+}
+
+pub(super) fn recover_history(
+    scratch: &ScratchGuard,
+    selected: open_bitcoin_core::consensus::CanonicalChain,
+) -> Completion<InspectedRecords> {
+    recover_operation(scratch, Some(selected))
+}
+
+fn recover_operation(
+    scratch: &ScratchGuard,
+    maybe_selected: Option<open_bitcoin_core::consensus::CanonicalChain>,
+) -> Completion<InspectedRecords> {
     let result = (|| {
         let job = job(scratch)?;
-        let bytes = job.encode()?;
+        let operation = match maybe_selected {
+            None => WorkerJob::Generic(job),
+            Some(selected) => WorkerJob::history(job, selected),
+        };
+        let bytes = operation.encode()?;
         let executable = std::env::current_exe().map_err(|_| refused())?;
         let mut command = Command::new(executable);
         command
@@ -157,12 +192,12 @@ pub(super) fn recover(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
             .stdout(Stdio::null())
             .stderr(Stdio::null());
         #[cfg(test)]
-        tests::configure_command(&mut command, job.fault);
+        tests::configure_command(&mut command, operation.owned().fault);
         let started = Instant::now();
         let child = command.spawn().map_err(|_| refused())?;
-        Ok((job, bytes, child, started))
+        Ok((operation, bytes, child, started))
     })();
-    let (job, bytes, mut child, started) = match result {
+    let (operation, bytes, mut child, started) = match result {
         Ok(value) => value,
         Err(error) => return Completion::Reaped(Err(error)),
     };
@@ -173,7 +208,7 @@ pub(super) fn recover(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
     #[cfg(test)]
     let (cancel_send, cancel_receive) = mpsc::sync_channel::<()>(0);
     #[cfg(test)]
-    let fault = job.fault;
+    let fault = operation.owned().fault;
     let writer = thread::spawn(move || {
         #[cfg(test)]
         if tests::input_stalled(fault) {
@@ -187,7 +222,20 @@ pub(super) fn recover(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
         // Receiver may have left only after an uncertain child-lifecycle error.
         let _maybe_delivery = sender.send(result);
     });
-    let outcome = monitor(&mut child, &job, started, &receiver);
+    let outcome = monitor(&mut child, &operation, started, &receiver);
+    #[cfg(test)]
+    if maybe_selected.is_some() {
+        let stage = fs::read(scratch.root.join("history-stage"))
+            .ok()
+            .and_then(|bytes| {
+                if bytes.len() == 1 {
+                    Some(bytes[0])
+                } else {
+                    None
+                }
+            });
+        HISTORY_OBSERVATION.set((stage, started.elapsed()));
+    }
     #[cfg(test)]
     drop(cancel_send);
     if matches!(outcome, Completion::Uncertain(_)) {
@@ -201,10 +249,11 @@ pub(super) fn recover(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
 
 fn monitor(
     child: &mut Child,
-    job: &OwnedScratchJob,
+    operation: &WorkerJob,
     started: Instant,
     receiver: &mpsc::Receiver<std::io::Result<()>>,
 ) -> Completion<InspectedRecords> {
+    let job = operation.owned();
     let mut delivered = false;
     loop {
         match receiver.try_recv() {
@@ -233,7 +282,7 @@ fn monitor(
         }
         match child.try_wait() {
             Ok(Some(status)) if delivered || !status.success() => {
-                return Completion::Reaped(finish(status, delivered, job));
+                return Completion::Reaped(finish(status, delivered, operation));
             }
             Ok(Some(_)) => thread::sleep(Duration::from_millis(5)),
             Ok(None) => thread::sleep(Duration::from_millis(5)),
@@ -245,14 +294,15 @@ fn monitor(
 fn finish(
     status: ExitStatus,
     delivered: bool,
-    job: &OwnedScratchJob,
+    operation: &WorkerJob,
 ) -> Result<InspectedRecords, StorageError> {
+    let job = operation.owned();
     if !status.success() || !delivered {
         return Err(refused());
     }
     let file = job.result_file(false)?;
     let length = file.metadata().map_err(|_| refused())?.len();
-    let records = protocol::read_result(&file, length, job)?;
+    let records = operation.read_result(&file, length)?;
     // Recheck both opened and selected metadata after bounded decoding.
     let selected = job.result_file(false)?;
     if selected.metadata().map_err(|_| refused())?.len() != length {
@@ -286,3 +336,32 @@ fn terminate<T>(child: &mut Child, failure: StorageError) -> Completion<T> {
 
 #[cfg(all(test, unix))]
 mod tests;
+
+#[cfg(all(test, unix))]
+pub(super) fn history_fault(fault: u8) {
+    tests::FAULT.set(fault);
+}
+
+#[cfg(test)]
+thread_local! {
+    pub(super) static HISTORY_OBSERVATION: std::cell::Cell<(Option<u8>, Duration)> = const {
+        std::cell::Cell::new((None, Duration::ZERO))
+    };
+}
+
+#[cfg(test)]
+fn history_stage(job: &OwnedScratchJob, stage: u8) -> Result<(), StorageError> {
+    let mut options = OpenOptions::new();
+    options.write(true).create(true).truncate(true);
+    #[cfg(unix)]
+    options.mode(0o600);
+    options
+        .open(job.root.join("history-stage"))
+        .map_err(|_| refused())?
+        .write_all(&[stage])
+        .map_err(|_| refused())?;
+    if (stage == 1 && job.fault == 20) || (stage == 2 && job.fault == 21) {
+        thread::sleep(Duration::from_secs(60));
+    }
+    Ok(())
+}

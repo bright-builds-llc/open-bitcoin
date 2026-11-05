@@ -31,6 +31,9 @@ pub(in crate::network) mod reorg;
 pub use catch_up::BasicFilterTurnOutcome;
 
 #[cfg(test)]
+mod phase167_tests;
+
+#[cfg(test)]
 pub(crate) struct AcceptedBasicFactsTestEvidence {
     pub(crate) spent_scripts: Vec<Vec<u8>>,
     pub(crate) work: open_bitcoin_core::chainstate::filter_index::catch_up::TurnWork,

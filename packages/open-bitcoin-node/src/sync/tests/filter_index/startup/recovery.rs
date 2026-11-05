@@ -109,9 +109,35 @@ fn filter_index_production_reopen_reconciles_only_common_recovered_ancestry() {
 fn filter_index_production_reopen_refuses_missing_durable_metadata() {
     // Arrange
     let fixture = FilterStartupFixture::new("filter-missing-metadata", 20, Some(1));
-    raw_namespace(&fixture.path, "chainstate", |space| {
-        space.remove("chain_meta").expect("missing metadata");
-    });
+    let store = FjallNodeStore::open(&fixture.path).expect("inspect metadata");
+    let (positions, maybe_counts) = store.load_chain_meta_for_open().expect("complete metadata");
+    assert_eq!(positions.len(), 401);
+    assert_eq!(positions, fixture.positions);
+    assert!(maybe_counts.is_none());
+    let namespaces = store.basic_operator_namespaces_for_test();
+    assert_eq!(namespaces.len(), 9);
+    let chainstate = &namespaces[2];
+    assert!(!chainstate.iter().any(|(key, _)| key == b"chain_meta"));
+    assert!(
+        chainstate
+            .iter()
+            .any(|(key, _)| key == b"chain_meta:segments:v1")
+    );
+    assert!(
+        chainstate
+            .iter()
+            .any(|(key, _)| key.starts_with(b"chain_meta:segment:v1:"))
+    );
+    assert!(chainstate.iter().any(|(key, _)| key.starts_with(b"undo:")));
+    drop(store);
+    remove_metadata_family(&fixture.path);
+    let store = FjallNodeStore::open(&fixture.path).expect("inspect absent metadata");
+    let (positions, maybe_counts) = store.load_chain_meta_for_open().expect("absent metadata");
+    assert!(positions.is_empty());
+    assert!(maybe_counts.is_some_and(|counts| counts.is_empty()));
+    let tampered_namespaces = store.basic_operator_namespaces_for_test();
+    assert_eq!(tampered_namespaces.len(), 9);
+    drop(store);
     let before = snapshot_index(&fixture.path);
     // Act
     let result = fixture.open_runtime();
@@ -119,6 +145,10 @@ fn filter_index_production_reopen_refuses_missing_durable_metadata() {
     assert_filter_refusal(result, "durable active metadata is absent or empty");
     assert_eq!(snapshot_index(&fixture.path), before);
     let store = FjallNodeStore::open(&fixture.path).expect("inspect");
+    assert_eq!(
+        store.basic_operator_namespaces_for_test(),
+        tampered_namespaces
+    );
     assert_payload(&store, &fixture, true, true);
     assert_eq!(
         store.maybe_prune_intent().expect("intent"),
@@ -126,6 +156,92 @@ fn filter_index_production_reopen_refuses_missing_durable_metadata() {
     );
     drop(store);
     fixture.cleanup();
+}
+
+fn is_metadata_key(key: &[u8]) -> bool {
+    key == b"chain_meta" || key.starts_with(b"chain_meta:")
+}
+
+fn remove_metadata_family(path: &Path) {
+    raw_namespace(path, "chainstate", |space| {
+        let read_rows = || {
+            space
+                .iter()
+                .map(|guard| {
+                    let (key, value) = guard.into_inner().expect("chainstate row");
+                    (key.to_vec(), value.to_vec())
+                })
+                .collect::<Vec<_>>()
+        };
+        let before = read_rows();
+        let owned: Vec<_> = before
+            .iter()
+            .filter(|(key, _)| is_metadata_key(key))
+            .collect();
+        assert!(!owned.is_empty(), "metadata removal must change real rows");
+        for (key, _) in owned {
+            space
+                .remove(key.as_slice())
+                .expect("remove metadata family row");
+        }
+        let after = read_rows();
+        assert!(!after.iter().any(|(key, _)| is_metadata_key(key)));
+        let unrelated: Vec<_> = before
+            .into_iter()
+            .filter(|(key, _)| !is_metadata_key(key))
+            .collect();
+        assert_eq!(after, unrelated, "every unrelated chainstate byte survives");
+    });
+}
+
+#[test]
+fn filter_index_metadata_family_removal_preserves_legacy_prefix_collision() {
+    // Arrange
+    let path = reserved_filter_path("filter-legacy-metadata-family");
+    let block = fixture_block(BlockHash::default(), 0);
+    let position = ChainPosition::new(
+        block.header.clone(),
+        0,
+        ChainPosition::untrusted_fixture_work(1),
+        i64::from(block.header.time),
+    );
+    let store = FjallNodeStore::open(&path).expect("fresh legacy store");
+    store
+        .save_chain_meta(std::slice::from_ref(&position), PersistMode::Sync)
+        .expect("genuine legacy metadata writer");
+    assert_eq!(
+        store.load_chain_meta_for_open().expect("legacy metadata").0,
+        vec![position]
+    );
+    drop(store);
+    raw_namespace(&path, "chainstate", |space| {
+        assert!(space.get("chain_meta").expect("legacy root").is_some());
+        assert!(
+            space
+                .get("chain_meta:segments:v1")
+                .expect("no manifest")
+                .is_none()
+        );
+        space
+            .insert("chain_metadata", b"preserved unrelated bytes".as_slice())
+            .expect("prefix collision");
+    });
+    // Act
+    remove_metadata_family(&path);
+    // Assert
+    let store = FjallNodeStore::open(&path).expect("inspect legacy absence");
+    let (positions, maybe_counts) = store.load_chain_meta_for_open().expect("absent metadata");
+    assert!(positions.is_empty());
+    assert!(maybe_counts.is_some_and(|counts| counts.is_empty()));
+    let namespaces = store.basic_operator_namespaces_for_test();
+    assert_eq!(namespaces.len(), 9);
+    assert!(namespaces[2].contains(&(
+        b"chain_metadata".to_vec(),
+        b"preserved unrelated bytes".to_vec()
+    )));
+    assert!(!namespaces[2].iter().any(|(key, _)| is_metadata_key(key)));
+    drop(store);
+    fs::remove_dir_all(path).expect("cleanup fresh legacy fixture");
 }
 
 #[test]

@@ -49,7 +49,12 @@ use open_bitcoin_rpc::{
 mod canonical_startup;
 #[cfg(test)]
 use canonical_startup::{assemble_durable_runtime, basic_filter_startup_mode};
-use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};
+use canonical_startup::{
+    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,
+};
+#[cfg(test)]
+#[path = "open_bitcoind/phase167_tests.rs"]
+mod phase167_tests;
 
 #[path = "open_bitcoind/checkpoint.rs"]
 mod checkpoint;
@@ -105,8 +110,13 @@ async fn run_application() -> Result<(), Box<dyn std::error::Error>> {
     }
     let bind_address = runtime.rpc_server.bind_address;
     let auth = runtime.rpc_server.auth.clone();
-    let maybe_runtime_store = open_runtime_store(&runtime)?;
-    let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;
+    let opened = match open_configured_history_runtime(&runtime)? {
+        Some(opened) => opened,
+        None => {
+            let maybe_runtime_store = open_runtime_store(&runtime)?;
+            open_authoritative_network_runtime(&runtime, maybe_runtime_store)?
+        }
+    };
     let maybe_runtime_store = match &opened {
         OpenedAuthoritativeRuntime::Durable(authoritative) => authoritative
             .maybe_sync_runtime

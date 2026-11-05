@@ -17,12 +17,14 @@ use open_bitcoin_node::status::SyncRecoveryCategory;
 use open_bitcoin_node::storage::fjall_store::MempoolSnapshotDecodeLimits;
 use open_bitcoin_node::{FjallNodeStore, ManagedNetworkAuthorityError, ManagedNetworkHandle};
 
+#[cfg(test)]
 use super::{
     CanonicalContextError,
     canonical_chain::{require_ordinary_scope, selected_chain},
 };
 use crate::config::RuntimeConfig;
 
+#[cfg(test)]
 pub(super) fn recover_mempool_snapshot_from_store_handle<S, V>(
     config: &RuntimeConfig,
     maybe_store: Option<&FjallNodeStore>,

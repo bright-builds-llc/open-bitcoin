@@ -371,7 +371,7 @@ fn add_bytes(counter: &mut u64, bytes: usize) -> Result<(), AcceptedBasicIndexFa
     Ok(())
 }
 
-/// Count before allocating clones, including witness and all restored input scripts.
+/// Count the BASIC body and complete retained undo before allocating clones.
 fn fact_work(block: &Block, undo: &BlockUndo) -> Result<TurnWork, AcceptedBasicIndexFailure> {
     let mut work = TurnWork::default();
     add_bytes(&mut work.body_bytes, std::mem::size_of::<Block>())?;
@@ -393,18 +393,7 @@ fn fact_work(block: &Block, undo: &BlockUndo) -> Result<TurnWork, AcceptedBasicI
             count_script(&mut work, output.script_pubkey.as_bytes().len())?;
         }
     }
-    add_bytes(&mut work.undo_bytes, std::mem::size_of::<BlockUndo>())?;
-    for tx in &undo.transactions {
-        add_bytes(&mut work.undo_bytes, std::mem::size_of_val(tx))?;
-        for coin in &tx.restored_inputs {
-            add_bytes(&mut work.undo_bytes, std::mem::size_of_val(coin))?;
-            add_bytes(
-                &mut work.undo_bytes,
-                coin.output.script_pubkey.as_bytes().len(),
-            )?;
-            count_script(&mut work, coin.output.script_pubkey.as_bytes().len())?;
-        }
-    }
+    add_undo_work(&mut work, undo)?;
     work.cloned_bytes = work
         .body_bytes
         .checked_add(work.undo_bytes)
@@ -414,6 +403,37 @@ fn fact_work(block: &Block, undo: &BlockUndo) -> Result<TurnWork, AcceptedBasicI
         return Err(AcceptedBasicIndexFailure::FactLimit);
     }
     Ok(work)
+}
+
+/// Count logical undo allocations; inline fields and Vec headers belong to their owner.
+fn add_undo_work(work: &mut TurnWork, undo: &BlockUndo) -> Result<(), AcceptedBasicIndexFailure> {
+    add_bytes(&mut work.undo_bytes, std::mem::size_of::<BlockUndo>())?;
+    for tx in &undo.transactions {
+        add_bytes(&mut work.undo_bytes, std::mem::size_of_val(tx))?;
+        for coin in &tx.restored_inputs {
+            add_bytes(&mut work.undo_bytes, std::mem::size_of_val(coin))?;
+            add_bytes(
+                &mut work.undo_bytes,
+                coin.output.script_pubkey.as_bytes().len(),
+            )?;
+            count_script(work, coin.output.script_pubkey.as_bytes().len())?;
+        }
+    }
+    for batch in &undo.overwrites {
+        add_bytes(&mut work.undo_bytes, std::mem::size_of_val(batch))?;
+        for entry in &batch.overwritten {
+            add_bytes(&mut work.undo_bytes, std::mem::size_of_val(entry))?;
+            add_bytes(
+                &mut work.undo_bytes,
+                entry.previous_coin.output.script_pubkey.as_bytes().len(),
+            )?;
+            add_bytes(
+                &mut work.undo_bytes,
+                entry.new_coin.output.script_pubkey.as_bytes().len(),
+            )?;
+        }
+    }
+    Ok(())
 }
 
 /// Witnesses are already consensus validated and do not participate in txids,
@@ -448,24 +468,8 @@ pub(crate) fn borrowed_undo_work(
 ) -> Result<TurnWork, crate::StorageError> {
     let mut work = TurnWork::default();
     if let Some(undo) = maybe_undo {
-        add_bytes(&mut work.undo_bytes, std::mem::size_of::<BlockUndo>())
+        add_undo_work(&mut work, undo)
             .map_err(|_| crate::storage::filter_index::index_corruption("BASIC undo bound"))?;
-        for tx in &undo.transactions {
-            add_bytes(&mut work.undo_bytes, std::mem::size_of_val(tx))
-                .map_err(|_| crate::storage::filter_index::index_corruption("BASIC undo bound"))?;
-            for coin in &tx.restored_inputs {
-                add_bytes(&mut work.undo_bytes, std::mem::size_of_val(coin)).map_err(|_| {
-                    crate::storage::filter_index::index_corruption("BASIC undo bound")
-                })?;
-                let len = coin.output.script_pubkey.as_bytes().len();
-                add_bytes(&mut work.undo_bytes, len).map_err(|_| {
-                    crate::storage::filter_index::index_corruption("BASIC undo bound")
-                })?;
-                count_script(&mut work, len).map_err(|_| {
-                    crate::storage::filter_index::index_corruption("BASIC undo bound")
-                })?;
-            }
-        }
     }
     Ok(work)
 }
@@ -480,6 +484,9 @@ fn count_script(work: &mut TurnWork, len: usize) -> Result<(), AcceptedBasicInde
     }
     add_bytes(&mut work.script_bytes, len)
 }
+
+#[cfg(test)]
+mod phase167_tests;
 
 #[cfg(test)]
 mod tests {

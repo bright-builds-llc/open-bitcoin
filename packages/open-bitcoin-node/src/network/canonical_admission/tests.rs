@@ -61,6 +61,8 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_network::{HeaderEntry, HeaderStore, HeadersMessage};
 
+mod phase167;
+
 fn snapshot<S: crate::ChainstateStore, V: open_bitcoin_core::chainstate::CoinsView>(
     network: &ManagedPeerNetwork<S, V>,
 ) -> String {

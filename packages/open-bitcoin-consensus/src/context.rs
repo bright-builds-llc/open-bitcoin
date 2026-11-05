@@ -139,6 +139,56 @@ pub struct TransactionValidationContext {
 }
 
 impl TransactionValidationContext {
+    /// Derive exact consensus flags, finality and BIP68 creating times from one branch.
+    /// Input coins must be supplied by their owner; this data transform confers no authority.
+    /// Stored creating MTP is replaced by the candidate ancestor's MTP when BIP68 needs it.
+    pub fn from_candidate_history(
+        transaction: &Transaction,
+        mut inputs: Vec<TransactionInputContext>,
+        history: &crate::CandidateHistory,
+    ) -> Result<Self, TxValidationError> {
+        if inputs.len() != transaction.inputs.len() {
+            return Err(tx_error(
+                TxValidationResult::MissingInputs,
+                "bad-txns-inputs-missingorspent",
+                None,
+            ));
+        }
+        let rules = history.rules();
+        for (input, coin) in transaction.inputs.iter().zip(&mut inputs) {
+            if coin.created_height > history.height() {
+                return Err(tx_error(
+                    TxValidationResult::Consensus,
+                    "bad-txns-input-height",
+                    None,
+                ));
+            }
+            if transaction.version >= 2
+                && rules.enforce_sequence_locks()
+                && input.sequence & TransactionInput::SEQUENCE_LOCKTIME_DISABLE_FLAG == 0
+                && input.sequence & TransactionInput::SEQUENCE_LOCKTIME_TYPE_FLAG != 0
+            {
+                coin.created_median_time_past = history
+                    .median_time_past_at(coin.created_height.saturating_sub(1))
+                    .map_err(|error| {
+                        tx_error(
+                            TxValidationResult::MissingInputs,
+                            "bad-txns-input-ancestor",
+                            Some(error.to_string()),
+                        )
+                    })?;
+            }
+        }
+        Ok(Self {
+            inputs,
+            spend_height: history.height(),
+            block_time: rules.finality_cutoff(),
+            median_time_past: history.parent_median_time_past(),
+            verify_flags: rules.script_flags(),
+            consensus_params: rules.consensus_params(),
+        })
+    }
+
     pub fn precompute(
         &self,
         transaction: &Transaction,
@@ -299,7 +349,12 @@ pub fn calculate_sequence_locks(
                     & open_bitcoin_primitives::TransactionInput::SEQUENCE_LOCKTIME_MASK)
                     << open_bitcoin_primitives::TransactionInput::SEQUENCE_LOCKTIME_GRANULARITY,
             );
-            min_time = min_time.max(input_context.created_median_time_past + relative - 1);
+            let last_invalid_time = input_context
+                .created_median_time_past
+                .checked_add(relative)
+                .and_then(|time| time.checked_sub(1))
+                .ok_or_else(|| tx_error(TxValidationResult::Consensus, "non-BIP68-final", None))?;
+            min_time = min_time.max(last_invalid_time);
         } else {
             min_height = min_height.max(
                 i64::from(input_context.created_height)

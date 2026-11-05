@@ -1,0 +1,67 @@
+---
+phase: 167-candidate-history-validation-rules
+generated_by: gsd-plan-phase
+lifecycle_mode: yolo
+phase_lifecycle_id: 167-2026-10-21T16-38-23
+generated_at: "2026-10-22T13:20:00Z"
+requirements: [CVLD-03, CVLD-06]
+commits: false
+status: candidate-awaiting-independent-check
+source_execution_released: false
+---
+
+# Plan34 actual runtime timeout handoff
+
+Root release `.local/open-bitcoin-dev/phase167/compact-runtime-plan/root-planning-release.json` SHA256 `bd76166293f9e36b4c6effc85b38febb2b24d8e65640d8a6fbf67449bf6e8716` authorizes planning only. Source/build/SUMMARY acceptance remains held for independent check/root release. Root explicitly accepts the seventeen-owner/five-task scope warning ONLY for the coherent actual consumer closure below; it does not waive source\<=628, tests, original evidence or future B–E obligations. No source, Cargo/Bazel, actual source formatting, Git, metadata/guard/canonical report edit or approval is performed here.
+
+## Actual failure and immutable history
+
+The original fourteen-source final freeze is `59b229fde31acab5736a0e55f9d1d0873beb01171edfaf195c29d1051e73412f`. All thirteen required commands passed, as did694 complete network cases. Supplementary Node compact log `.local/open-bitcoin-dev/phase167/plan34/execution/2026-10-22T13-03-14.365Z-final-node-compact.log` SHA256 `c2e739a632685d4baa91c731a71b88589d57b1b60cbd82d90edb0a67993fa124` records79pass/3fail and exit101. It remains failure evidence, not waived by focused passes. Independent WR-01 review is `c0670dddd290df68f0ab180e291454e1da33ee3d4910992f51b9a8582171eb18`, with source/evidence hashes `d364ab59fcc5879a806700bcda2fc0dcdd81111dbd9aec6503c73708ab62404f`.
+
+Actual manager timeout expiry retains a genuine request/order and produces GetData. Idle session.rs311–347 discards that packet, extracts hashes and calls ordinary request_tracked_blocks/request_missing_blocks. Correct ordinary dedup returns no new message. Runtime global in-flight accounting stays empty; after expiry cleared the partial, pending-response detection yields early. Existing failures are absent fallback at compact_timeout.rs51,17clock calls versus19 at108, and unowned idle_sessions.rs127. Their assertions and all existing test bodies remain unchanged.
+
+The old failing job fenced only its then-declared fourteen sources. The new three actual source observations are post-failure/pre-fix evidence, never retroactive job fences. After checked release, the executor must rerun these unchanged failures with NEW all17before/after source fences before production correction to establish attributable behavioral RED. Root's source-before-v2 observation is not a fabricated old-job checksum. All failures/setup attempts remain recorded.
+
+## Exact new owner closure
+
+Append only:
+
+- packages/open-bitcoin-node/src/sync/session.rs —617lines, source `0ea5072d0c00bea06f25261fcd4bf626003dcd9d77029fbd604b1c2b181af912`
+- packages/open-bitcoin-node/src/sync/block_reconcile.rs —547lines, source `96341ba6541be2f3ed99d7a96745dbd88ce6ed254e4f5c01059fc4c21e2d70f0`
+- packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases/compact_timeout.rs —163lines, source `9a05bd081de39352346b7878f3161dfde098270ea8169d08e101ba237e2fb604`
+
+Task5 lists exactly these three. All original four Task XML and thirteen commands remain byte-exact. Only Plan34 frontmatter/context and appended Task5 plus this new refinement change. Other33plans remain whole-exact; dependencies/wave17 unchanged and inventory34plans/67tasks/28waves. Final-scope/SUMMARY numbers in the earlier text now require seventeen sources/five tasks; the original fourteen-owner/four-task contribution and its valid passes are preserved.
+
+No new parent/type/export/registrar is required: existing sync child functions are pub(super), existing runtime error has ResourceLimit, existing PeerManager data exposes real requested membership and the timing child is already registered. The original ordinary request register/dedup and manager ordinary-origin flag are NOT changed to force a resend. Promoting a compact request to ordinary would alter cleanup/provenance and can re-emit; it does not repair the discarded-packet cause. Any genuinely necessary original14API change requires later explicit execution release, renewed freeze and all13 reruns, not a hidden planning owner.
+
+## Chosen actual packet and capacity policy
+
+One private block_reconcile helper accepts actual manager-authorized peer-targeted messages. Idle passes expiry's actual packet batch. Message wake passes actual same-peer sync_result.outbound, which can contain merged timeout or initial full fallback; sync receive uses HeadersOnly and ordinary missing-block scheduling follows later. Before any delivery/runtime insertion, preflight the entire batch: current target binding, actual manager requested membership for block/WitnessBlock items, and UNIQUE hashes not already in runtime.inflight_blocks across duplicate inventory entries/packets. Preserve exact message/inventory type/hash/order and nonblock messages.
+
+Already runtime-inflight target hashes may resend at global capacity with no extra slot or manager order mutation. Novel runtime hashes must fit actual remaining global capacity. Insufficient capacity atomically returns existing typed ResourceLimit before any packet is delivered or runtime accounting inserted. Existing real session outbox/disconnect teardown cancels that retained obligation; this is a documented operational terminal outcome, not silent deferral. No new retry queue, consumed sentinel/lifetime, cap raise, timer reset, partial batch send or fake ordinary provenance. Expired partials and genuine earlier network effects remain achieved; no rollback claim.
+
+Message-wake accounting runs BEFORE later request_missing_blocks, so fresh scheduling sees actual occupancy and cannot steal those slots. Preserve existing packet order when appending ordinary output and avoid double charging at send. Existing ordinary request_tracked_blocks can share the same accounting helper for its already-created outbound loop; it retains normal fresh-registration/dedup. Foreign Idle targets keep explicit Network refusal before runtime mutation/delivery; no cross-peer transmission on the current socket.
+
+## Actual teardown and shared pending hashes
+
+Old session cleanup globally removes all current-peer hashes before disconnect, even when another peer genuinely retains the same hash. Task5 captures actual departing-peer outstanding hashes fallibly, executes existing disconnect, then uses a fresh manager snapshot to remove only hashes not requested by ANY remaining registered peer. Same-hash other-peer retention is mandatory; a different-hash-only test does not establish this property. Other pending hashes/order remain unchanged, no whole-set reset. On disconnect/snapshot failure, conservatively preserve unresolved accounting and surface existing operational error. This is request bookkeeping, not a new storage success hook or canonical authority.
+
+Receipt cleanup follows the same membership rule, not teardown alone. Remove the unconditional pre-manager Block/NotFound global release from the session path. Capture actual requested/progress facts and bounded actual receipt data before manager processing, then reconcile its observed hashes against ALL post-manager peer membership on BOTH successful and ERROR receive_sync_message results, before fresh scheduling. Sender/hash NotFound must preserve another peer's SAME hash; an unrequested-Block early branch must not erase it. Manager processing may release sender membership then fail, so teardown's later empty departing list cannot clean the stale global entry. Snapshot failure conservatively retains unresolved accounting; preserve/surface the original receive error and cleanup error. Root explicitly permits the old void release_inflight_for_message with unchanged signature/logic under #[cfg(test)] solely for the ONE existing phase110 raw-counter fixture test/two unowned calls, which assert raw removal and fixture work unearned. Production stops using it. This is legitimate legacy test-helper isolation, not allow(dead_code), a dummy production call, ignored Result or waived test. Production uses the shared fallible actual post-manager membership helper for a small captured Block/NotFound hash list on BOTH Ok/Err outcomes and teardown. No synthetic packet or receipt authority is created. This explicit root clarification supersedes earlier wording requiring a real production use or prohibiting this specific test-helper isolation. Actual receipt data is bookkeeping, not stored-success E, a queue or authority. Add real same-hash NotFound, unrequested Block and error-after-release controls.
+
+Required new bounded tests use actual timing transport/manager registration and runtime accounting: intact Idle and Message batches; unique-new hash count for duplicate inventories; existing-hash resend at cap without reorder; atomic novel-at-cap ResourceLimit/no delivery/no runtime insertion followed by real cleanup; genuine same-hash/different-hash pending on disconnect; current/foreign target and retained membership; nonblock/packet order; Message accounting before ordinary scheduling. The existing three failing cases, all three original functions in compact_timeout.rs, and unowned idle_sessions.rs remain byte-exact. Preserve strict age>60/backward-clock, message limits and per-peer/global capacity definitions.
+
+## Bounded implementation and final gates
+
+Original605/594 projections and the later629/628/610 exploratory receipt layouts remain immutable historical syntax/layout evidence, not a claim that they implement the final selected helper isolation. Root's final contract reuses the fallible membership-aware hash-list cleanup for receipts and teardown, and retains the old raw utility only as the explicitly approved legacy test fixture. The long Idle extraction is removed and ordinary outbound accounting is shared, leaving a coherent bounded three-owner implementation; no additional prototype is an execution pass. Every actual normally formatted source must stay\<=628 or stop for checked repartition, with no packing/new owner/suppression. The163-line timing child has room for bounded cases. Root active audits/metadata/other work remain excluded; all B–E/cap/timer/scheduler/final gates and source-held status remain.
+
+After GREEN, rerun all original thirteen commands, named new filter, all three unchanged failures, full Node compact and runtime timing, and full network all-features on a final seventeen-source before/after freeze. Source/evidence review must cover all17 and close WR-01; passing694network/focused tests alone is insufficient. Local Plan34 source/SUMMARY acceptance requires WR-01 closed, all20 planned commands and final independent review of all17 source owners. PHASE acceptance/Git and guard renewal remain blocked by their full mandatory global gates; no global check is waived.
+
+Unit A remains structural. No full mutation/first-later retry/consumed lifetime/service-fetch flag/stored-success E/pin batch timer/16-3/optimistic scheduler or broad differential qualification is claimed. Remaining B–E still need actual32/30 reconciliation and checked plans before final17/20 phase acceptance. Root owns metadata/Git; independent checker alone appends after the preserved308164-byte canonical prefix `d50d0077dc004fef23c907dd31a0a3bcfa664bc84503966f0dc180700fe66619`.
+
+Before/inverse/projection/static receipts are under `.local/open-bitcoin-dev/phase167/compact-runtime-plan/plan/`. The full Plan34 inverse restores `d3d71c035bd00204fdecbd1939430c0afe7cd151c5214c858e933b934442d12f`; this new refinement inverts to absence. Original14freeze, failure log, independent review and cited planning history remain immutable. Root active captures/audits/metadata and other executor work are excluded from preservation claims. This candidate awaits independent check; no source/build release or approval follows.
+
+The frozen021eff972c42c2f5b1af1d419a5160ea7230b871e70cd691191b63b512bb5ec3 proposal,38161986 Plan34,53ba1864 refinement and all index/inverse receipts remain immutable superseded history, bound by the new index. Supersession adds only this same-owner receipt/error contract; original4TaskXML/13commands and17owners/5tasks/34plans67tasks28waves remain exact.
+
+## Mandatory later Phase123 guard reconciliation
+
+Mandatory pending guard ownership: independent checker/root identified scripts/check-phase123-runtime-timing-evidence-integrity/checks.ts:253–275 pinning fallback_block_hashes/request_tracked_blocks lossy Idle shape and:325 pinning the old pre-manager release_inflight_for_message shape; scripts/check-phase123-runtime-timing-evidence-integrity.test.ts:575 pins its fixture. verify.sh:378–379 runs both. Correct Task5 source must NOT retain dummy production needles to satisfy them. Root will formally assign these exact two guard/test paths to expanded17 or a coherent separately checked guard unit AFTER independent actual17-source adjudication and BEFORE Plan17 renewal, full native/Plan20/phase acceptance. This is a mandatory pending gate, not a stale-guard waiver or current Task5 owner/permission. It does not block the bounded source correction after this planning check/root release, and does not weaken native/fresh-coverage/Bazel/security/goal/lifecycle/Git gates. No guard edits/prototypes are authorized here.

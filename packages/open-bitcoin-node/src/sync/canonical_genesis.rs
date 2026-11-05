@@ -62,6 +62,13 @@ impl DurableSyncRuntime {
     }
 }
 
+pub(super) fn resolve_history_startup_mode(
+    store: &crate::FjallNodeStore,
+    mode: BasicFilterStartupMode,
+) -> Result<BasicFilterStartupMode, crate::StorageError> {
+    basic::resolve_startup_mode(store, mode)
+}
+
 mod basic;
 #[cfg(test)]
 mod basic_tests;

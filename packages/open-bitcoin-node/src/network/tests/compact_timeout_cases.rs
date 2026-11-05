@@ -145,7 +145,7 @@ fn assert_getdata_block(message: &WireNetworkMessage, expected_hash: BlockHash) 
         message,
         WireNetworkMessage::GetData(inventory)
             if inventory.inventory.len() == 1
-                && inventory.inventory[0].inventory_type == InventoryType::Block
+                && inventory.inventory[0].inventory_type == InventoryType::WitnessBlock
                 && inventory.inventory[0].object_hash == expected_hash.into()
     )
 }
@@ -168,7 +168,7 @@ fn expire_compact_download_timeouts_returns_getdata_and_clears_in_flight() {
     assert_eq!(expired[0].0, peer_id);
     assert!(
         assert_getdata_block(&expired[0].1, block_hash),
-        "expire must return peer-targeted GetData(Block); got={:?}",
+        "expire must return peer-targeted GetData(WitnessBlock); got={:?}",
         expired[0].1
     );
     let maybe_state = network.peer_manager().compact_download_peer_state(peer_id);
@@ -208,7 +208,7 @@ fn receive_sync_message_past_timeout_emits_getdata_and_timeout_evidence() {
             .outbound
             .iter()
             .any(|message| assert_getdata_block(message, block_hash)),
-        "receive_sync_message must emit same-peer GetData(Block) after timeout; outbound={:?}",
+        "receive_sync_message must emit same-peer GetData(WitnessBlock) after timeout; outbound={:?}",
         result.outbound
     );
     let timeout_after = match network.block_relay_evidence_status().cleanup {

@@ -10,11 +10,13 @@ use super::retention::check_envelope_bounds;
 use super::{
     BasicFilterAppendProof, FjallNodeStore, StorageError, StorageNamespace, codec, index_corruption,
 };
-use crate::storage::fjall_store::prune::{PRUNE_LOCKS_KEY, encode_prune_locks};
+use crate::storage::fjall_store::prune::PRUNE_LOCKS_KEY;
 use open_bitcoin_core::chainstate::{
     BASIC_INDEX_PRUNE_LOCK, FilterCheckpoint, FilterRecordIdentity, IndexPrefix,
     filter_index::catch_up::{BASIC_INDEX_MAX_SINGLETON_ENCODED_BYTES, TurnWork},
 };
+
+mod rows;
 
 /// Private prepared bytes cannot be altered or moved to another store/frontier.
 pub(crate) struct PreparedBasicFilterAppend {
@@ -255,36 +257,29 @@ impl FjallNodeStore {
                 batch_bytes: 0,
             });
         }
-        let protection = if prepared.safe_checkpoint == identity.safe_checkpoint {
+        let maximum_work = prepared.proof.maybe_maximum_work();
+        let locks = self.load_basic_filter_append_locks(&mut prepared.work, maximum_work)?;
+        let checkpoint = rows::checkpoint_rows(
+            identity.safe_checkpoint,
+            prepared.safe_checkpoint,
             identity
                 .owner
                 .maybe_effective_protection()
-                .unwrap_or(identity.owner.saved_protection())
-        } else {
-            prepared.safe_checkpoint.input_protection()
-        };
-        let maximum_work = prepared.proof.maybe_maximum_work();
-        let mut locks = self.load_basic_filter_append_locks(&mut prepared.work, maximum_work)?;
-        locks.retain(|lock| lock.name != BASIC_INDEX_PRUNE_LOCK);
-        if let Some(lock) = protection.maybe_prune_lock() {
-            locks.push(lock);
-        }
-        let state = codec::StoredFilterState {
-            maybe_endpoint: maybe_checkpoint_endpoint(prepared.safe_checkpoint),
-            fence_height: identity.durable_height,
-            fence_hash: identity.durable_hash,
-            protection,
-        };
-        let count = locks.len() as u64;
-        let lock_size = locks.iter().try_fold(4_u64, |size, lock| {
-            size.checked_add(lock.name.len() as u64 + 10)
-                .ok_or_else(|| index_corruption("BASIC lock-map encoded overflow"))
-        })?;
+                .unwrap_or(identity.owner.saved_protection()),
+            identity.durable_height,
+            identity.durable_hash,
+            locks,
+        )?;
+        let protection = checkpoint.protection;
+        let locks = &checkpoint.locks;
         // Encoding includes another duplicate-name check; reserve its comparison
         // ceiling and output bytes before constructing the lock-map buffer.
         charge_append_work(
             &mut prepared.work,
-            super::ownership::basic_filter_lock_map_cost(count, lock_size)?,
+            super::ownership::basic_filter_lock_map_cost(
+                checkpoint.lock_count,
+                checkpoint.lock_size,
+            )?,
             maximum_work,
         )?;
         charge_append_work(
@@ -296,8 +291,7 @@ impl FjallNodeStore {
             },
             maximum_work,
         )?;
-        let state_bytes = codec::encode_state(state);
-        let lock_bytes = encode_prune_locks(&locks)?;
+        let (state_bytes, lock_bytes) = checkpoint.encode()?;
         // Construct achieved ownership before effects so no fallible reconstruction follows commit.
         let owner = open_bitcoin_core::chainstate::filter_index::lifecycle::EffectiveIndexOwnership::maybe_from_artifacts(
             Some(identity.owner.lifecycle()),

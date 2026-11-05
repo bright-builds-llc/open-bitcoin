@@ -21,6 +21,7 @@ export const TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/session.rs",
   "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
   "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
+  "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs",
   "packages/open-bitcoin-node/src/sync/block_response.rs",
   "packages/open-bitcoin-node/src/lib.rs",
   "packages/open-bitcoin-bench/src/runtime_fixtures.rs",

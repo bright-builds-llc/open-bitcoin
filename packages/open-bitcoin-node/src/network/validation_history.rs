@@ -9,6 +9,7 @@ use super::*;
 use crate::storage::validation_history::{
     AdmittedValidationHeaders, BlockValidationIdentity, ValidationProvenance,
 };
+use open_bitcoin_core::primitives::BlockHeader;
 use open_bitcoin_network::NetworkError;
 
 pub(crate) struct TrustedHeaderAdmission {
@@ -54,6 +55,77 @@ impl TrustedHeaderSnapshot {
 }
 
 impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
+    pub(super) fn admit_compact_header(&mut self, header: &BlockHeader) -> ManagedResult<()> {
+        self.guard_header_batch(std::slice::from_ref(header))?;
+        self.require_owned_history()?;
+        let hash = block_hash(header);
+        let current = self.peer_manager.header_store();
+        if current.is_canonically_admitted(hash)
+            && current
+                .entry(&hash)
+                .is_some_and(|entry| entry.header == *header)
+        {
+            return Ok(());
+        }
+        if self.maybe_header_consensus_params.is_none() {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "unbound-header-owner".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        let now = super::header_sync::shell_observed_now()?;
+        let mut headers = current.clone();
+        let admitted = headers
+            .insert_canonical_header_detailed(header.clone(), now)
+            .map_err(|error| error.into_network_error())?;
+        let identity =
+            BlockValidationIdentity::new(hash, header.previous_block_hash, admitted.height)
+                .map_err(|_| NetworkError::InvalidHeader {
+                    reject_reason: "invalid-validation-identity".to_owned(),
+                    maybe_debug_message: None,
+                })?;
+        self.peer_manager.seed_header_store(headers);
+        self.publish_admitted_header_identities(vec![identity])?;
+        self.persist_validation_header_snapshot()?;
+        Ok(())
+    }
+
+    pub(super) fn admit_canonical_body_context(&mut self, block: &Block) -> ManagedResult<()> {
+        self.require_owned_history()?;
+        let headers = self.peer_manager.header_store();
+        let hash = block_hash(&block.header);
+        let history = headers.canonical_header_history(hash)?;
+        let context = headers.canonical_header_validation_context(&block.header)?;
+        if Some(history.network_rules().chain()) != self.maybe_canonical_chain()
+            || history.candidate() != &block.header
+            || history.candidate_hash() != hash
+            || history.parent().block_hash != block.header.previous_block_hash
+            || context.previous_header != history.parent().header
+            || context.consensus_params != history.rules().consensus_params()
+        {
+            return Err(NetworkError::InvalidHeader {
+                reject_reason: "canonical-body-context-mismatch".to_owned(),
+                maybe_debug_message: None,
+            }
+            .into());
+        }
+        // Duplicate accepted bodies need no new generation admission. Their bytes still
+        // pass the ordinary checked-body linkage path before duplicate disposition.
+        if self
+            .chainstate
+            .chainstate()
+            .active_chain()
+            .iter()
+            .any(|position| position.block_hash == hash && position.header == block.header)
+        {
+            return Ok(());
+        }
+        self.chainstate
+            .admit_canonical_body_header(&block.header, context.current_time)?;
+        Ok(())
+    }
+
     pub(super) fn handle_validated_headers(
         &mut self,
         peer_id: PeerId,
@@ -119,6 +191,12 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             .peer_state(peer_id)
             .ok_or(NetworkError::UnknownPeer(peer_id))?;
         let admission_scope = self.admission_scope;
+        let maybe_now = match admission_scope {
+            super::canonical_admission::AdmissionScope::Fixture => None,
+            super::canonical_admission::AdmissionScope::Canonical(_) => {
+                Some(super::header_sync::shell_observed_now()?)
+            }
+        };
         let maybe_store = self.chainstate.store().maybe_validation_history_store();
         let mut identities = Vec::new();
         let result = self.peer_manager.handle_headers_with_policy(
@@ -126,12 +204,13 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
             message,
             policy,
             |headers, header| {
-                admission_scope
-                    .check_header(header)
-                    .map_err(|error| error.network_error())?;
-                validate_header_for_sync(headers, header, timestamp, params)?;
                 let was_known = headers.entry(&block_hash(header)).is_some();
-                let inserted = headers.insert_header_with_params(header.clone(), &params)?;
+                let inserted = if let Some(now) = maybe_now {
+                    headers.insert_canonical_header(header.clone(), now)?
+                } else {
+                    validate_header_for_sync(headers, header, timestamp, params)?;
+                    headers.insert_header_with_params(header.clone(), &params)?
+                };
                 if !was_known && maybe_store.is_some() {
                     let entry = headers.entry(&inserted.block_hash).ok_or(
                         open_bitcoin_network::NetworkError::MissingHeaderAncestor(

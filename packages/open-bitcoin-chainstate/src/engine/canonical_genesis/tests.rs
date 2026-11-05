@@ -269,16 +269,28 @@ fn phase166_genesis_source_binds_selected_parameters_and_independent_owner() {
         ));
         assert_eq!(wrong_owner, Err(ChainstateError::StageOwnerMismatch));
         assert_eq!(params.coinbase_maturity, 100);
-        assert_eq!(params.subsidy_halving_interval, 210_000);
+        assert_eq!(
+            params.subsidy_halving_interval,
+            if chain == CanonicalChain::Regtest {
+                150
+            } else {
+                210_000
+            }
+        );
         assert_eq!(params.locktime_threshold, 500_000_000);
         assert_eq!(params.sequence_locktime_granularity, 9);
         assert_eq!(params.pow_target_spacing_seconds, 600);
-        assert_eq!(params.pow_target_timespan_seconds, 1_209_600);
-        assert!(
-            params.enforce_bip34_height_in_coinbase
-                && params.enforce_bip113_median_time_past
-                && params.enforce_segwit
+        assert_eq!(
+            params.pow_target_timespan_seconds,
+            if chain == CanonicalChain::Regtest {
+                86_400
+            } else {
+                1_209_600
+            }
         );
+        assert!(!params.enforce_bip34_height_in_coinbase);
+        assert!(!params.enforce_bip113_median_time_past);
+        assert_eq!(params.enforce_segwit, chain == CanonicalChain::Regtest);
         let expected = match chain {
             CanonicalChain::Mainnet => (0x1d00_ffff, false, false),
             CanonicalChain::Testnet3 => (0x1d00_ffff, true, false),
@@ -312,4 +324,140 @@ fn phase166_genesis_public_coins_mutation_invalidates_earned_lineage() {
         state.check_live_work_source(&source),
         Err(ChainstateError::UntrustedWorkLineage)
     );
+}
+
+#[test]
+fn phase167_genesis_params_complete_selected_mapping_for_all_networks() {
+    for (chain, halving, bits, timespan, min_difficulty, no_retarget, segwit) in [
+        (
+            CanonicalChain::Mainnet,
+            210_000,
+            0x1d00_ffff,
+            1_209_600,
+            false,
+            false,
+            false,
+        ),
+        (
+            CanonicalChain::Testnet3,
+            210_000,
+            0x1d00_ffff,
+            1_209_600,
+            true,
+            false,
+            false,
+        ),
+        (
+            CanonicalChain::Signet,
+            210_000,
+            0x1e03_77ae,
+            1_209_600,
+            false,
+            false,
+            false,
+        ),
+        (
+            CanonicalChain::Regtest,
+            150,
+            0x207f_ffff,
+            86_400,
+            true,
+            true,
+            true,
+        ),
+    ] {
+        // Arrange
+        let proof = proof(chain);
+        let expected = ConsensusParams {
+            coinbase_maturity: 100,
+            subsidy_halving_interval: halving,
+            locktime_threshold: 500_000_000,
+            sequence_locktime_granularity: 9,
+            pow_limit_bits: bits,
+            pow_target_spacing_seconds: 600,
+            pow_target_timespan_seconds: timespan,
+            allow_min_difficulty_blocks: min_difficulty,
+            no_pow_retargeting: no_retarget,
+            enforce_bip34_height_in_coinbase: false,
+            enforce_bip113_median_time_past: false,
+            enforce_segwit: segwit,
+        };
+        // Act
+        let params = consensus_params(&proof);
+        // Assert
+        assert_eq!(params, expected, "{chain}");
+        assert_eq!(
+            params.pow_target_timespan_seconds / params.pow_target_spacing_seconds,
+            if chain == CanonicalChain::Regtest {
+                144
+            } else {
+                2016
+            }
+        );
+    }
+}
+
+#[test]
+fn phase167_genesis_params_regtest_subsidy_boundaries_and_exhaustion() {
+    // Arrange
+    let params = consensus_params(&proof(CanonicalChain::Regtest));
+    // Act / Assert
+    for (height, sats) in [
+        (149, 5_000_000_000),
+        (150, 2_500_000_000),
+        (299, 2_500_000_000),
+        (300, 1_250_000_000),
+        (150 * 64, 0),
+        (u32::MAX, 0),
+    ] {
+        assert_eq!(
+            open_bitcoin_consensus::block::block_subsidy(height, &params).to_sats(),
+            sats
+        );
+    }
+}
+
+#[test]
+fn phase167_genesis_params_fixture_override_cannot_bind_canonical_owner() {
+    // Arrange
+    let proof = proof(CanonicalChain::Regtest);
+    let state = Chainstate::from_canonical_genesis(&proof, cache(&proof)).expect("earned root");
+    let params = consensus_params(&proof);
+    let mut premature = params;
+    premature.coinbase_maturity = 1;
+    let mut mainnet_halving = params;
+    mainnet_halving.subsidy_halving_interval = 210_000;
+    // Act / Assert
+    for fixture in [premature, mainnet_halving, ConsensusParams::default()] {
+        assert!(matches!(
+            state.bind_live_work_source(fixture),
+            Err(ChainstateError::WorkParametersMismatch)
+        ));
+    }
+    assert!(state.bind_live_work_source(params).is_ok());
+    assert_eq!(state.tip().expect("root").block_hash, proof.hash());
+    assert_eq!(state.tip().expect("root").chain_work, proof.work());
+    assert!(
+        state
+            .coins()
+            .complete_snapshot()
+            .expect("complete")
+            .coins
+            .is_empty()
+    );
+    assert!(state.undo_by_block().is_empty());
+    assert_eq!(consensus_params(&proof), params);
+}
+
+#[test]
+fn phase167_genesis_params_generic_fixture_defaults_remain_compatible() {
+    // Arrange / Act
+    let fixture = ConsensusParams::default();
+    // Assert
+    assert_eq!(fixture.coinbase_maturity, 100);
+    assert_eq!(fixture.subsidy_halving_interval, 210_000);
+    assert_eq!(fixture.pow_target_timespan_seconds, 1_209_600);
+    assert!(fixture.enforce_bip34_height_in_coinbase);
+    assert!(fixture.enforce_bip113_median_time_past);
+    assert!(fixture.enforce_segwit);
 }

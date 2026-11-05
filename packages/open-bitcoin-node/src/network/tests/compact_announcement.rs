@@ -308,9 +308,10 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
             .any(|message| matches!(message, WireNetworkMessage::Block(_)))
     );
 
+    let fixture_enforce_segwit = consensus_params().enforce_segwit;
     let actions = network
         .peer_manager
-        .handle_compact_block_download(
+        .handle_fixture_compact_block_download(
             peer_id,
             compact_payload_with_missing_short_id(block_hash(&genesis.header)),
             open_bitcoin_network::CompactBlockReceiveFacts {
@@ -318,6 +319,7 @@ fn phase116_block_relay_evidence_projects_negotiation_serving_download_and_clean
                 extra: &[],
             },
             4,
+            fixture_enforce_segwit,
         )
         .expect("compact block");
     network.note_block_relay_observed();

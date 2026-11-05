@@ -112,7 +112,14 @@ pub(super) fn decode_small_num(bytes: &[u8]) -> Result<usize, ScriptError> {
 }
 
 pub(super) fn decode_script_num(bytes: &[u8]) -> Result<i64, ScriptError> {
-    if bytes.len() > 4 {
+    decode_bounded_script_num(bytes, 4)
+}
+
+pub(super) fn decode_bounded_script_num(
+    bytes: &[u8],
+    max_bytes: usize,
+) -> Result<i64, ScriptError> {
+    if bytes.len() > max_bytes {
         return Err(ScriptError::NumOverflow(bytes.len()));
     }
     if bytes.is_empty() {

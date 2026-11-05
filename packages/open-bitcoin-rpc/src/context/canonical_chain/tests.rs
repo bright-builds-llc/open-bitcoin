@@ -358,3 +358,29 @@ fn canonical_chain_typed_storage_errors_do_not_render_backend_secrets() {
         CanonicalContextError::Storage(StorageError::BackendFailure { .. })
     ));
 }
+
+#[test]
+fn phase167_support_scope_regtest_implementation_does_not_authorize_generic_rpc_owner() {
+    use open_bitcoin_node::core::consensus::chain_spec::LocalOrdinaryImplementation;
+
+    // Arrange
+    let scope = CanonicalChain::Regtest.spec().validation_scope();
+    let handle = memory_handle(Some(CanonicalChain::Regtest));
+    let before = owner_snapshot(&handle);
+    // Act
+    let result = ManagedRpcContext::from_runtime_config_with_network_handle(
+        &config(AddressNetwork::Regtest, SyncNetwork::Regtest),
+        handle.clone(),
+        None,
+    );
+    // Assert
+    assert_eq!(
+        scope.local_ordinary_implementation(),
+        LocalOrdinaryImplementation::BoundedDefaultRegtest
+    );
+    assert!(matches!(
+        result,
+        Err(CanonicalContextError::UnsupportedValidationScope(_))
+    ));
+    assert_eq!(owner_snapshot(&handle), before);
+}

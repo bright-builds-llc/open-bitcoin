@@ -219,7 +219,7 @@ const mutations: [string, string, string, string][] = [
   ["lost accepted reorg fence", N + "chainstate/validation_history.rs", "self.accept_basic_index_reorg(accepted, prepared.maybe_index)", "unrelated_reorg(accepted, prepared.maybe_index)"],
   ["lost prepare admission", N + "chainstate.rs", "self.admit_validation_acceptance(", "self.unchecked_validation_acceptance("],
   ["raw seed coverage laundering", N + "storage/fjall_store/coins.rs", "self.invalidate_validation_coverage()?;\n            control.invalidate_append()?;", "control.invalidate_append()?;"],
-  ["raw flush sink coverage laundering", N + "storage/fjall_store/coins.rs", "self.check_validation_coverage_for_metadata(active_chain)?;", "skip_validation_coverage(active_chain);"],
+  ["raw flush sink coverage laundering", N + "storage/fjall_store/chain_meta.rs", "self.check_validation_coverage_for_metadata(active_chain)?;", "skip_validation_coverage(active_chain);"],
   ["parent fields substitute integrity", N + "storage/fjall_store/filters/query.rs", "codec::parse_record(&parent_key, &parent_bytes),", "codec::parse_record_fields(&parent_key, &parent_bytes),"],
   ["lost read bound", N + "storage/fjall_store/filters/query.rs", "*size <= BASIC_FILTER_QUERY_MAX_READ_BYTES", "true"],
   ["lost original captured provenance", N + "network/runtime_authority/filter_index/readiness/owner.rs", "provenance: completion.request.provenance", "provenance: BasicBlockValidationProvenance::NeverConnected"],

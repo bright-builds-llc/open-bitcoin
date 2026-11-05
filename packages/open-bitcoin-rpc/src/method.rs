@@ -43,6 +43,8 @@ pub enum MethodScope {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SupportedMethod {
+    #[serde(rename = "submitblock")]
+    SubmitBlock,
     #[serde(rename = "getblockfilter")]
     GetBlockFilter,
     #[serde(rename = "getindexinfo")]
@@ -106,6 +108,7 @@ pub enum SupportedMethod {
 impl SupportedMethod {
     pub const fn all() -> &'static [Self] {
         &[
+            Self::SubmitBlock,
             Self::GetBlockFilter,
             Self::GetIndexInfo,
             Self::GetBlockchainInfo,
@@ -140,6 +143,7 @@ impl SupportedMethod {
 
     pub const fn name(self) -> &'static str {
         match self {
+            Self::SubmitBlock => "submitblock",
             Self::GetBlockFilter => "getblockfilter",
             Self::GetIndexInfo => "getindexinfo",
             Self::GetBlockchainInfo => "getblockchaininfo",
@@ -199,7 +203,8 @@ impl SupportedMethod {
             | Self::RescanBlockchain
             | Self::BuildTransaction
             | Self::BuildAndSignTransaction => MethodScope::Wallet,
-            Self::GetBlockFilter
+            Self::SubmitBlock
+            | Self::GetBlockFilter
             | Self::GetIndexInfo
             | Self::GetBlockchainInfo
             | Self::GetMempoolInfo
@@ -252,6 +257,7 @@ impl RequestParameters {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum MethodCall {
+    SubmitBlock(SubmitBlockRequest),
     GetBlockFilter(GetBlockFilterRequest),
     GetIndexInfo(GetIndexInfoRequest),
     GetBlockchainInfo(GetBlockchainInfoRequest),
@@ -297,7 +303,8 @@ impl MethodCall {
             | Self::RescanBlockchain(_)
             | Self::BuildTransaction(_)
             | Self::BuildAndSignTransaction(_) => MethodScope::Wallet,
-            Self::GetBlockFilter(_)
+            Self::SubmitBlock(_)
+            | Self::GetBlockFilter(_)
             | Self::GetIndexInfo(_)
             | Self::GetBlockchainInfo(_)
             | Self::GetMempoolInfo(_)
@@ -328,6 +335,9 @@ pub fn normalize_method_call(
     };
 
     match method {
+        SupportedMethod::SubmitBlock => {
+            SubmitBlockRequest::normalize_pinned(params).map(MethodCall::SubmitBlock)
+        }
         SupportedMethod::GetBlockFilter => {
             normalize_getblockfilter(params).map(MethodCall::GetBlockFilter)
         }
@@ -503,4 +513,10 @@ pub fn normalize_method_call(
             .map(MethodCall::BuildAndSignTransaction)
         }
     }
+}
+
+/// Exact required hexadecimal input after pinned RPC argument normalization.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SubmitBlockRequest {
+    pub hexdata: String,
 }

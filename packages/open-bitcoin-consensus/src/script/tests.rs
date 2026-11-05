@@ -209,5 +209,39 @@ mod verify_input_script_accepts_pay_to_pubkey_signatures;
 mod verify_input_script_enforces_witness_malleation_and_pubkey_rules;
 mod verify_input_script_keeps_non_witness_p2sh_redeems_on_the_legacy_path;
 mod verify_input_script_rejects_invalid_bare_multisig_forms;
+
+#[test]
+fn negative_cltv_operand_reports_stable_script_error() {
+    // Arrange
+    let transaction = legacy_transaction(0x44);
+    let (spent_input, validation_context, precomputed) = legacy_context(
+        script(&[0x51]),
+        &transaction,
+        ScriptVerifyFlags::CHECKLOCKTIMEVERIFY,
+    );
+    let verify_secp = Secp256k1::verification_only();
+    let context = LegacyExecutionContext {
+        checker: TransactionSignatureChecker::new(&verify_secp, &validation_context, &precomputed),
+        transaction: &transaction,
+        input_index: 0,
+        spent_input: &spent_input,
+        verify_flags: ScriptVerifyFlags::CHECKLOCKTIMEVERIFY,
+        sig_version: SigVersion::Base,
+    };
+    let mut stack = vec![vec![0x81]];
+
+    // Act
+    let error = eval_script_internal(
+        &mut stack,
+        &script(&[super::opcodes::OP_CHECKLOCKTIMEVERIFY]),
+        Some(&context),
+        None,
+    )
+    .expect_err("negative CLTV operand");
+
+    // Assert
+    assert_eq!(error, ScriptError::NegativeLockTime);
+    assert_eq!(error.to_string(), "negative locktime");
+}
 mod verify_script_matches_knots_equal_vector;
 mod witness_and_sigop_helpers_are_covered;

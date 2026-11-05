@@ -5,35 +5,59 @@
 // - packages/bitcoin-knots/src/validation.cpp
 
 mod difficulty;
+pub mod intrinsic;
+mod mutation;
+pub mod sigops;
 mod witness;
 
-use open_bitcoin_codec::{
-    CodecError, TransactionEncoding, encode_block_header, encode_transaction,
-};
+use open_bitcoin_codec::CodecError;
 use open_bitcoin_primitives::{Amount, Block, BlockHeader, COIN, MAX_MONEY};
 
 use crate::context::{
     BlockValidationContext, ConsensusParams, SpentOutput, TransactionValidationContext,
     is_final_transaction,
 };
+#[cfg(test)]
+use crate::crypto::block_merkle_root;
 use crate::crypto::{
-    CompactTargetError, block_hash, block_merkle_root, check_proof_of_work,
-    check_proof_of_work_with_params, transaction_txid,
+    CompactTargetError, block_hash, check_proof_of_work, check_proof_of_work_with_params,
+    transaction_txid,
 };
-use crate::script::{count_legacy_sigops, count_p2sh_sigops, count_witness_sigops};
-use crate::transaction::{
-    check_transaction, validate_transaction, validate_transaction_with_context,
-};
+use crate::transaction::{validate_transaction, validate_transaction_with_context};
 use crate::validation::{
     BlockValidationError, BlockValidationResult, TxValidationError, block_error,
 };
 use crate::{MAX_BLOCK_SIGOPS_COST, MAX_BLOCK_WEIGHT, WITNESS_SCALE_FACTOR};
 use difficulty::next_work_required;
+use sigops::BlockSigopBudget;
+#[cfg(test)]
+use sigops::legacy_sigop_cost;
 use witness::check_witness_commitment;
 #[cfg(test)]
 use witness::{block_witness_merkle_root, witness_commitment_index};
 
 const MAX_FUTURE_BLOCK_TIME_SECONDS: i64 = 7_200;
+
+/// Classify exact serialized mutation facts without validating consensus or granting authority.
+pub fn is_block_mutated(
+    block: &impl open_bitcoin_codec::block::wire::BlockView,
+    check_witness_root: bool,
+) -> Result<bool, CodecError> {
+    mutation::is_block_mutated(block, check_witness_root)
+}
+
+/// Compute the shared witness tree with a zero coinbase leaf; this is a data fact only.
+pub fn witness_merkle_root(
+    block: &impl open_bitcoin_codec::block::wire::BlockView,
+) -> Result<open_bitcoin_primitives::MerkleRoot, CodecError> {
+    mutation::witness_merkle_root(block)
+}
+
+/// Fill only an absent coinbase witness reserve under the earned candidate rules.
+/// Intrinsic validation and contextual header admission remain the caller's gates.
+pub fn update_uncommitted_block_structures(block: &mut Block, rules: &crate::CandidateRules) {
+    witness::update_uncommitted_block_structures(block, rules);
+}
 
 /// Returns the block subsidy for `height` using the configured halving interval.
 pub fn block_subsidy(height: u32, consensus_params: &ConsensusParams) -> Amount {
@@ -129,80 +153,7 @@ fn check_header_proof_result(
 
 pub fn check_block(block: &Block) -> Result<(), BlockValidationError> {
     check_block_header(&block.header)?;
-
-    let (merkle_root, maybe_mutated) =
-        block_merkle_root(&block.transactions).map_err(map_codec_error)?;
-    if block.header.merkle_root != merkle_root {
-        return Err(block_error(
-            BlockValidationResult::Mutated,
-            "bad-txnmrklroot",
-            Some("hashMerkleRoot mismatch".to_string()),
-        ));
-    }
-    if maybe_mutated {
-        return Err(block_error(
-            BlockValidationResult::Mutated,
-            "bad-txns-duplicate",
-            Some("duplicate transaction".to_string()),
-        ));
-    }
-
-    if block.transactions.is_empty() {
-        return Err(consensus_error(
-            "bad-blk-length",
-            Some("size limits failed".to_string()),
-        ));
-    }
-
-    let stripped_size = serialized_block_size(block, false).map_err(map_codec_error)?;
-    if block
-        .transactions
-        .len()
-        .saturating_mul(WITNESS_SCALE_FACTOR)
-        > MAX_BLOCK_WEIGHT
-        || stripped_size.saturating_mul(WITNESS_SCALE_FACTOR) > MAX_BLOCK_WEIGHT
-    {
-        return Err(consensus_error(
-            "bad-blk-length",
-            Some("size limits failed".to_string()),
-        ));
-    }
-
-    if !block.transactions[0].is_coinbase() {
-        return Err(consensus_error(
-            "bad-cb-missing",
-            Some("first tx is not coinbase".to_string()),
-        ));
-    }
-    if block
-        .transactions
-        .iter()
-        .skip(1)
-        .any(|transaction| transaction.is_coinbase())
-    {
-        return Err(consensus_error(
-            "bad-cb-multiple",
-            Some("more than one coinbase".to_string()),
-        ));
-    }
-
-    for transaction in &block.transactions {
-        check_transaction(transaction)
-            .map_err(|error| consensus_error(error.reject_reason, error.debug_message.clone()))?;
-    }
-
-    let mut sigops = 0_usize;
-    for transaction in &block.transactions {
-        for input in &transaction.inputs {
-            sigops += count_legacy_sigops(&input.script_sig).map_err(map_script_error)?;
-        }
-        for output in &transaction.outputs {
-            sigops += count_legacy_sigops(&output.script_pubkey).map_err(map_script_error)?;
-        }
-    }
-    enforce_sigop_cost_limit(sigops.saturating_mul(WITNESS_SCALE_FACTOR))?;
-
-    Ok(())
+    intrinsic::check_block_view(block)
 }
 
 pub fn validate_block(
@@ -265,9 +216,22 @@ pub fn check_block_header_contextual(
     Ok(())
 }
 
+/// Generic fixture validation. Legacy small-height byte pushes remain supported here;
+/// selected history validation additionally requires the exact CScript integer prefix.
 pub fn check_block_contextual(
     block: &Block,
     context: &BlockValidationContext,
+) -> Result<(), BlockValidationError> {
+    check_block_contextual_rules(block, context, |block, height| {
+        coinbase_has_height_prefix(block, height)
+            || coinbase_has_prefix(block, &serialized_script_num(i64::from(height)))
+    })
+}
+
+fn check_block_contextual_rules(
+    block: &Block,
+    context: &BlockValidationContext,
+    has_height_prefix: fn(&Block, u32) -> bool,
 ) -> Result<(), BlockValidationError> {
     check_block(block)?;
     check_block_header_contextual(&block.header, context)?;
@@ -293,7 +257,7 @@ pub fn check_block_contextual(
     }
 
     if context.consensus_params.enforce_bip34_height_in_coinbase
-        && !coinbase_has_height_prefix(block, context.height)
+        && !has_height_prefix(block, context.height)
     {
         return Err(block_error(
             BlockValidationResult::Consensus,
@@ -318,6 +282,24 @@ pub fn check_block_contextual(
     }
 
     Ok(())
+}
+
+/// Check a body against the exact selected structural branch and shell clock.
+/// This pure check grants no header lineage, coins ownership or acceptance receipt.
+pub fn check_block_with_candidate_history(
+    block: &Block,
+    history: &crate::CandidateHistory,
+    shell_observed_now: i64,
+) -> Result<(), BlockValidationError> {
+    if &block.header != history.candidate() {
+        return Err(consensus_error("bad-candidate-context", None));
+    }
+    history.check_header_rules(shell_observed_now)?;
+    check_block_contextual_rules(
+        block,
+        &history.block_validation_context(shell_observed_now),
+        coinbase_has_height_prefix,
+    )
 }
 
 pub fn validate_block_with_context(
@@ -356,16 +338,24 @@ pub fn validate_block_with_context(
         &block_context.consensus_params,
     )?;
 
-    let mut sigop_cost = 0_usize;
-    for transaction in &block.transactions {
-        sigop_cost = sigop_cost.saturating_add(legacy_sigop_cost(transaction)?);
+    let mut sigop_budget = BlockSigopBudget::new();
+    for coinbase in block.transactions.iter().take(1) {
+        sigop_budget.add_transaction(coinbase, &[], crate::ScriptVerifyFlags::NONE)?;
     }
     for (transaction, transaction_context) in
         block.transactions.iter().skip(1).zip(transaction_contexts)
     {
-        sigop_cost = sigop_cost.saturating_add(split_sigop_cost(transaction, transaction_context)?);
+        let spent_outputs: Vec<_> = transaction_context
+            .inputs
+            .iter()
+            .map(|input| input.spent_output.clone())
+            .collect();
+        sigop_budget.add_transaction(
+            transaction,
+            &spent_outputs,
+            transaction_context.verify_flags,
+        )?;
     }
-    enforce_sigop_cost_limit(sigop_cost)?;
 
     Ok(())
 }
@@ -376,55 +366,24 @@ fn accumulated_fee_out_of_range() -> BlockValidationError {
         Some("accumulated fee in the block out of range".to_string()),
     )
 }
-fn legacy_sigop_cost(
-    transaction: &open_bitcoin_primitives::Transaction,
-) -> Result<usize, BlockValidationError> {
-    let mut sigops = 0_usize;
-    for input in &transaction.inputs {
-        sigops = sigops
-            .saturating_add(count_legacy_sigops(&input.script_sig).map_err(map_script_error)?);
-    }
-    for output in &transaction.outputs {
-        sigops = sigops
-            .saturating_add(count_legacy_sigops(&output.script_pubkey).map_err(map_script_error)?);
-    }
-    Ok(sigops.saturating_mul(WITNESS_SCALE_FACTOR))
-}
+#[cfg(test)]
 fn split_sigop_cost(
     transaction: &open_bitcoin_primitives::Transaction,
     transaction_context: &TransactionValidationContext,
 ) -> Result<usize, BlockValidationError> {
-    let mut sigops = 0_usize;
-    for (input, input_context) in transaction.inputs.iter().zip(&transaction_context.inputs) {
-        sigops = sigops.saturating_add(
-            count_p2sh_sigops(&input.script_sig, &input_context.spent_output.script_pubkey)
-                .map_err(map_script_error)?
-                .saturating_mul(WITNESS_SCALE_FACTOR),
-        );
-        sigops = sigops.saturating_add(
-            count_witness_sigops(
-                &input.script_sig,
-                &input_context.spent_output.script_pubkey,
-                &input.witness,
-                transaction_context.verify_flags,
-            )
-            .map_err(map_script_error)?,
-        );
-    }
-    Ok(sigops)
+    let spent_outputs: Vec<_> = transaction_context
+        .inputs
+        .iter()
+        .map(|input| input.spent_output.clone())
+        .collect();
+    sigops::split_sigop_cost(
+        transaction,
+        &spent_outputs,
+        transaction_context.verify_flags,
+    )
 }
 fn serialized_block_size(block: &Block, include_witness: bool) -> Result<usize, CodecError> {
-    let mut size = encode_block_header(&block.header).len();
-    size += compact_size_len(block.transactions.len() as u64);
-    for transaction in &block.transactions {
-        let encoding = if include_witness {
-            TransactionEncoding::WithWitness
-        } else {
-            TransactionEncoding::WithoutWitness
-        };
-        size += encode_transaction(transaction, encoding)?.len();
-    }
-    Ok(size)
+    intrinsic::serialized_block_size(block, include_witness)
 }
 
 fn compact_size_len(value: u64) -> usize {
@@ -459,6 +418,14 @@ fn map_transaction_validation_error(
 }
 
 fn coinbase_has_height_prefix(block: &Block, height: u32) -> bool {
+    let expected_prefix = match height {
+        1..=16 => vec![0x50 + height as u8],
+        _ => serialized_script_num(i64::from(height)),
+    };
+    coinbase_has_prefix(block, &expected_prefix)
+}
+
+fn coinbase_has_prefix(block: &Block, expected_prefix: &[u8]) -> bool {
     let Some(coinbase_input) = block
         .transactions
         .first()
@@ -466,11 +433,9 @@ fn coinbase_has_height_prefix(block: &Block, height: u32) -> bool {
     else {
         return false;
     };
-    let expected_prefix = serialized_script_num(height as i64);
     let script_sig = coinbase_input.script_sig.as_bytes();
 
-    script_sig.len() >= expected_prefix.len()
-        && script_sig[..expected_prefix.len()] == expected_prefix
+    script_sig.starts_with(expected_prefix)
 }
 
 fn serialized_script_num(value: i64) -> Vec<u8> {
@@ -530,5 +495,7 @@ fn enforce_sigop_cost_limit(sigop_cost: usize) -> Result<(), BlockValidationErro
     Ok(())
 }
 
+#[cfg(test)]
+mod phase167_tests;
 #[cfg(test)]
 mod tests;

@@ -4,7 +4,9 @@
 
 use std::sync::Arc;
 
+use super::candidate_rules::PendingAdmission;
 use open_bitcoin_consensus::chain_proof::{ProofWork, block_proof};
+use open_bitcoin_consensus::chain_spec::NetworkRules;
 use open_bitcoin_consensus::{ConsensusParams, block_hash};
 use open_bitcoin_primitives::BlockHash;
 
@@ -40,6 +42,8 @@ pub(super) struct WorkAuthority {
     origin: WorkOrigin,
     maybe_params: Option<ConsensusParams>,
     maybe_preview: Option<Arc<()>>,
+    pub(super) maybe_canonical_rules: Option<NetworkRules>,
+    pub(super) maybe_admission: Option<PendingAdmission>,
 }
 
 #[derive(Debug)]
@@ -53,6 +57,12 @@ pub(super) struct StageBinding {
 }
 
 impl WorkAuthority {
+    pub(super) fn maybe_bound_params(&self) -> Option<ConsensusParams> {
+        self.maybe_params
+    }
+    pub(super) fn is_mechanical_fixture(&self) -> bool {
+        self.origin == WorkOrigin::MechanicalFixture
+    }
     pub(super) fn new(origin: WorkOrigin) -> Self {
         Self {
             owner: Arc::new(()),
@@ -60,19 +70,24 @@ impl WorkAuthority {
             origin,
             maybe_params: None,
             maybe_preview: None,
+            maybe_canonical_rules: None,
+            maybe_admission: None,
         }
     }
 
     pub(super) fn invalidate_stages(&mut self) {
         self.generation = Arc::new(());
+        self.maybe_admission = None;
         if self.maybe_preview.take().is_some() {
             self.origin = WorkOrigin::Untrusted;
+            self.maybe_canonical_rules = None;
         }
     }
 
     pub(super) fn invalidate_coins_authority(&mut self) {
         self.invalidate_stages();
         self.origin = WorkOrigin::Untrusted;
+        self.maybe_canonical_rules = None;
     }
 
     pub(super) fn bind(
@@ -116,9 +131,11 @@ impl WorkAuthority {
     }
 
     pub(super) fn accept(&mut self, binding: &StageBinding) {
+        let maybe_canonical_rules = self.maybe_canonical_rules;
         self.maybe_params = Some(binding.params);
         self.invalidate_stages();
         self.origin = binding.origin;
+        self.maybe_canonical_rules = maybe_canonical_rules;
     }
 
     pub(super) fn preview(&mut self, binding: &StageBinding) {
@@ -181,6 +198,10 @@ impl Clone for Chainstate<MemoryCoinsView> {
         };
         independent.work_authority = WorkAuthority::new(origin);
         independent.work_authority.maybe_params = self.work_authority.maybe_params;
+        if origin == WorkOrigin::Live {
+            independent.work_authority.maybe_canonical_rules =
+                self.work_authority.maybe_canonical_rules;
+        }
         independent
     }
 }
@@ -277,6 +298,7 @@ impl<V: CoinsView> Chainstate<V> {
         target.maybe_confirmed_txid_counts = self.maybe_confirmed_txid_counts;
         target.work_authority = WorkAuthority::new(WorkOrigin::Live);
         target.work_authority.maybe_params = self.work_authority.maybe_params;
+        target.work_authority.maybe_canonical_rules = self.work_authority.maybe_canonical_rules;
         Ok(())
     }
 
@@ -332,6 +354,18 @@ impl<V: CoinsView> Chainstate<V> {
 }
 
 impl<V: CoinsView> crate::coins::CoinsFlush for Chainstate<V> {
+    fn maybe_canonical_confirmed_txid_counts(
+        &self,
+    ) -> Result<Option<&HashMap<Txid, u32>>, ChainstateError> {
+        if self.work_authority.maybe_canonical_rules.is_none() {
+            return Ok(None);
+        }
+        self.validate_live_origin()?;
+        self.maybe_confirmed_txid_counts
+            .as_ref()
+            .map(Some)
+            .ok_or(ChainstateError::WorkRebindMismatch)
+    }
     fn estimated_cache_bytes(&self) -> u64 {
         self.coins.estimated_cache_bytes()
     }
@@ -357,5 +391,144 @@ impl<V: CoinsView> crate::coins::CoinsFlush for Chainstate<V> {
         }
         self.work_authority.invalidate_stages();
         self.coins.sync()
+    }
+}
+
+#[cfg(test)]
+mod phase167_canonical_count_observation {
+    use super::*;
+    use crate::coins::CoinsFlush;
+    use open_bitcoin_consensus::{CanonicalChain, chain_spec::CanonicalGenesisProof};
+
+    fn canonical() -> Chainstate {
+        let spec = CanonicalChain::Regtest.spec();
+        let proof = CanonicalGenesisProof::prove(spec, &spec.genesis_block()).expect("proof");
+        Chainstate::from_canonical_genesis(
+            &proof,
+            CoinsCache::from_parent(MemoryCoinsView::from_coins(
+                HashMap::new(),
+                Some(proof.hash()),
+            )),
+        )
+        .expect("genuine canonical owner")
+    }
+
+    #[test]
+    fn generic_live_and_explicit_seeded_owners_remain_unknown() {
+        // Arrange
+        let generic = Chainstate::new();
+        let seeded = Chainstate::from_snapshot_for_mechanical_fixture(canonical().snapshot());
+        // Act / Assert
+        for state in [generic, seeded] {
+            let before = state.snapshot();
+            assert_eq!(state.maybe_canonical_confirmed_txid_counts(), Ok(None));
+            assert_eq!(state.snapshot(), before);
+        }
+    }
+
+    #[test]
+    fn proved_genesis_has_explicit_empty_map() {
+        // Arrange
+        let state = canonical();
+        let before = state.snapshot();
+        // Act
+        let observed = state.maybe_canonical_confirmed_txid_counts();
+        // Assert
+        assert_eq!(observed, Ok(Some(&HashMap::new())));
+        assert_eq!(state.snapshot(), before);
+    }
+
+    #[test]
+    fn admitted_connection_observes_the_exact_existing_nonempty_map() {
+        // Arrange
+        let mut state = canonical();
+        let mut block = CanonicalChain::Regtest.spec().genesis_block();
+        block.header.previous_block_hash = state.tip().expect("tip").block_hash;
+        block.header.version = 4;
+        block.header.time += 1;
+        block.transactions[0].inputs[0].script_sig =
+            open_bitcoin_primitives::ScriptBuf::from_bytes(vec![0x51, 0]).expect("height one");
+        block.transactions[0].outputs[0].script_pubkey =
+            open_bitcoin_primitives::ScriptBuf::from_bytes(vec![0x51]).expect("true");
+        block.header.merkle_root = open_bitcoin_consensus::block_merkle_root(&block.transactions)
+            .expect("merkle")
+            .0;
+        block.header.nonce = 0;
+        while open_bitcoin_consensus::check_block_header(&block.header).is_err() {
+            block.header.nonce += 1;
+        }
+        state
+            .admit_canonical_header(&block.header, i64::from(block.header.time))
+            .expect("admission");
+        let work = derive_child_work(state.tip().expect("parent").chain_work, block.header.bits)
+            .expect("work");
+        state
+            .connect_block_with_current_time(
+                &block,
+                work,
+                i64::MIN,
+                open_bitcoin_consensus::ScriptVerifyFlags::NONE,
+                ConsensusParams::default(),
+            )
+            .expect("actual admitted connect");
+        let before = state.snapshot();
+        let expected = HashMap::from([(
+            open_bitcoin_consensus::transaction_txid(&block.transactions[0]).expect("txid"),
+            1,
+        )]);
+        // Act
+        let observed = state
+            .maybe_canonical_confirmed_txid_counts()
+            .expect("known")
+            .expect("canonical");
+        // Assert
+        assert_eq!(observed, &expected);
+        assert!(std::ptr::eq(
+            observed,
+            state
+                .maybe_confirmed_txid_counts
+                .as_ref()
+                .expect("same owner")
+        ));
+        assert_eq!(state.snapshot(), before);
+    }
+
+    #[test]
+    fn canonical_marker_with_invalid_origin_refuses_without_mutation() {
+        // Arrange
+        let mut state = canonical();
+        state.work_authority.origin = WorkOrigin::Untrusted;
+        let before = state.snapshot();
+        // Act
+        let observed = state.maybe_canonical_confirmed_txid_counts();
+        // Assert
+        assert_eq!(observed, Err(ChainstateError::UntrustedWorkLineage));
+        assert_eq!(state.snapshot(), before);
+    }
+
+    #[test]
+    fn canonical_marker_with_preview_refuses_without_mutation() {
+        // Arrange
+        let mut state = canonical();
+        state.work_authority.maybe_preview = Some(Arc::new(()));
+        let before = state.snapshot();
+        // Act
+        let observed = state.maybe_canonical_confirmed_txid_counts();
+        // Assert
+        assert_eq!(observed, Err(ChainstateError::UntrustedWorkLineage));
+        assert_eq!(state.snapshot(), before);
+    }
+
+    #[test]
+    fn canonical_marker_with_missing_complete_map_refuses_without_mutation() {
+        // Arrange
+        let mut state = canonical();
+        state.maybe_confirmed_txid_counts = None;
+        let before = state.snapshot();
+        // Act
+        let observed = state.maybe_canonical_confirmed_txid_counts();
+        // Assert
+        assert_eq!(observed, Err(ChainstateError::WorkRebindMismatch));
+        assert_eq!(state.snapshot(), before);
     }
 }

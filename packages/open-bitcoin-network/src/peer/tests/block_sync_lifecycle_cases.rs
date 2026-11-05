@@ -10,6 +10,111 @@
 use super::*;
 
 #[test]
+fn phase167_compact_provenance_headers_all_producer_permutations_and_scoped_cleanup() {
+    let cases: [([u8; 3], [PeerId; 3]); 6] = [
+        ([0, 1, 2], [90, 2, 7]),
+        ([0, 2, 1], [90, 7, 2]),
+        ([1, 0, 2], [2, 90, 7]),
+        ([1, 2, 0], [2, 7, 90]),
+        ([2, 0, 1], [7, 90, 2]),
+        ([2, 1, 0], [7, 2, 90]),
+    ];
+    for (producers, expected) in cases {
+        // Arrange
+        let (mut manager, payload, _, hash) = phase115_prepare_compact_download_manager(90);
+        for peer in [2, 7] {
+            manager.add_outbound_peer(peer, 0).expect("peer");
+            complete_outbound_handshake(&mut manager, peer, 2);
+            process_high_bandwidth_sendcmpct(&mut manager, peer);
+        }
+        let unrelated = BlockHash::from(hash_from_index(991));
+        manager
+            .request_missing_blocks(7, &[unrelated])
+            .expect("unrelated request");
+        let fixture_enforce_segwit = false;
+        // Act
+        for (index, producer) in producers.into_iter().enumerate() {
+            match producer {
+                0 => {
+                    manager
+                        .request_missing_blocks(90, &[hash])
+                        .expect("explicit");
+                }
+                1 => {
+                    manager
+                        .handle_fixture_compact_block_download(
+                            2,
+                            payload.clone(),
+                            explicit_empty_compact_receive_facts(),
+                            [100, 100, -100][index],
+                            fixture_enforce_segwit,
+                        )
+                        .expect("compact");
+                }
+                _ => {
+                    manager
+                        .handle_headers_with_policy(
+                            7,
+                            HeadersMessage {
+                                headers: vec![payload.header.clone()],
+                            },
+                            HeaderSyncPolicy::HeadersAndBlocks,
+                            |store, header| store.insert_header(header.clone()),
+                        )
+                        .expect("header-driven request");
+                }
+            }
+        }
+        // Assert
+        assert_eq!(manager.block_request_peer_order(hash), expected.to_vec());
+        for peer in [90, 2, 7] {
+            assert!(
+                manager
+                    .peer_requested_blocks(peer)
+                    .expect("membership")
+                    .contains(&hash)
+            );
+        }
+        manager.cleanup_all_compact_downloads(CompactDownloadCleanupCause::Reorg);
+        let mut surviving: Vec<_> = expected.into_iter().filter(|peer| *peer != 2).collect();
+        assert_eq!(manager.block_request_peer_order(hash), surviving);
+        assert!(
+            manager
+                .compact_download_peer_state(2)
+                .expect("cleared partial")
+                .in_flight
+                .is_empty()
+        );
+        manager
+            .request_missing_blocks(2, &[hash])
+            .expect("ordinary re-enrollment");
+        surviving.push(2);
+        assert_eq!(manager.block_request_peer_order(hash), surviving);
+        manager
+            .handle_message(
+                7,
+                WireNetworkMessage::NotFound(InventoryList::new(vec![InventoryVector {
+                    inventory_type: InventoryType::WitnessBlock,
+                    object_hash: hash.into(),
+                }])),
+                -100,
+            )
+            .expect("sender-scoped release");
+        surviving.retain(|peer| *peer != 7);
+        assert_eq!(manager.block_request_peer_order(hash), surviving);
+        manager.remove_peer(90).expect("disconnect");
+        assert_eq!(manager.block_request_peer_order(hash), vec![2]);
+        assert_eq!(manager.block_request_peer_order(unrelated), vec![7]);
+        assert_eq!(
+            manager
+                .peer_requested_blocks(7)
+                .expect("unrelated membership"),
+            vec![unrelated]
+        );
+    }
+}
+
+#[test]
 fn phase110_block_notfound_releases_requested_block_without_clearing_tx_inflight() {
     // Arrange
     let mut manager = relay_download_manager(true);

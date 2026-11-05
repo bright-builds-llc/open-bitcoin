@@ -18,10 +18,9 @@ use open_bitcoin_core::{
 };
 use open_bitcoin_mempool::{MempoolLifecycleDelta, PolicyTime, RelayIntent, ReorgLifecycleContext};
 use open_bitcoin_network::{
-    BanDecision, BanScope, HeaderEntry, InboundAdmissionDecision, InboundAdmissionPolicy,
-    InboundAdmissionRequest, InboundResourceEvent, LocalAdvertisementDecision, MisbehaviorDecision,
-    PeerBanEntry, PeerId, PeerManager, ReconnectSuppressionInput, UnbanDecision,
-    WireNetworkMessage,
+    BanDecision, BanScope, HeaderEntry, InboundAdmissionPolicy, InboundResourceEvent,
+    LocalAdvertisementDecision, MisbehaviorDecision, PeerBanEntry, PeerId, PeerManager,
+    ReconnectSuppressionInput, UnbanDecision, WireNetworkMessage,
 };
 
 use crate::{
@@ -37,6 +36,11 @@ use super::{
     ManagedSyncMessageResult, PeerOutboxSnapshot,
 };
 
+mod peer_sessions;
+pub(crate) use peer_sessions::{
+    ContinuationDenied, SyncPeerAuthorized, SyncPeerContinuation, SyncPeerDispatchOutcome,
+    SyncPeerLifetime, SyncPeerObservation, SyncPeerRequestAuthority,
+};
 mod effects;
 pub use effects::{CheckpointAbortDispatchError, CheckpointCompletionDispatchError};
 mod error;
@@ -67,6 +71,7 @@ pub enum ManagedNetworkAuthorityError {
 pub struct ManagedNetworkHandle<S = MemoryChainstateStore, V: CoinsView = MemoryCoinsView> {
     authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>,
     automatic_prune: Arc<Mutex<automatic_prune::AutomaticPruneState>>,
+    peer_sessions: Arc<Mutex<peer_sessions::PeerSessions>>,
     basic_filter_readiness: Arc<filter_index::readiness::ReadinessOwner>,
     basic_filter_transport: Arc<super::filter_transport::FilterTransportOwner>,
     #[cfg(test)]
@@ -77,6 +82,7 @@ impl<S, V: CoinsView> Clone for ManagedNetworkHandle<S, V> {
     fn clone(&self) -> Self {
         Self {
             authority: Arc::clone(&self.authority),
+            peer_sessions: Arc::clone(&self.peer_sessions),
             automatic_prune: Arc::clone(&self.automatic_prune),
             basic_filter_readiness: Arc::clone(&self.basic_filter_readiness),
             basic_filter_transport: Arc::clone(&self.basic_filter_transport),
@@ -97,6 +103,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         network.install_authority_incarnation();
         Self {
             authority: Arc::new(Mutex::new(network)),
+            peer_sessions: Arc::default(),
             automatic_prune: Arc::new(Mutex::new(automatic_prune::AutomaticPruneState::default())),
             basic_filter_readiness: Arc::default(),
             basic_filter_transport: Arc::default(),
@@ -290,45 +297,6 @@ impl<S: ChainstateStore, V: CoinsView> ManagedNetworkHandle<S, V> {
         now_unix_seconds: i64,
     ) -> Result<ReconnectSuppressionInput, ManagedNetworkAuthorityError> {
         self.read(|network| network.reconnect_suppression_input_for_ip(remote_ip, now_unix_seconds))
-    }
-
-    pub fn admit_inbound_peer(
-        &self,
-        request: InboundAdmissionRequest,
-    ) -> Result<InboundAdmissionDecision, ManagedNetworkAuthorityError> {
-        self.mutate(|network| network.admit_inbound_peer(request))
-    }
-
-    pub fn add_inbound_peer(&self, peer_id: PeerId) -> Result<(), ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| network.add_inbound_peer(peer_id))
-    }
-
-    pub fn connect_outbound_peer(
-        &self,
-        peer_id: PeerId,
-        timestamp: i64,
-    ) -> Result<Vec<WireNetworkMessage>, ManagedNetworkAuthorityError> {
-        self.try_mutate(|network| network.connect_outbound_peer(peer_id, timestamp))
-    }
-
-    pub fn receive_sync_message(
-        &self,
-        peer_id: PeerId,
-        message: WireNetworkMessage,
-        timestamp: i64,
-        verify_flags: ScriptVerifyFlags,
-        consensus_params: ConsensusParams,
-    ) -> Result<ManagedSyncMessageResult, ManagedNetworkAuthorityError> {
-        let result = self.try_mutate(|network| {
-            network.receive_sync_message(
-                peer_id,
-                message,
-                timestamp,
-                verify_flags,
-                consensus_params,
-            )
-        })?;
-        self.resolve_basic_filter_intents(peer_id, result, consensus_params)
     }
 
     pub fn receive_message(

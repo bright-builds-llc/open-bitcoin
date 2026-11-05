@@ -61,15 +61,16 @@ fn duplicate_in_flight_getblocktxn_request_is_suppressed() {
     let (payload, _, _) = compact_payload_with_missing_short_id();
     let block_hash = block_hash(&payload.header);
     let mut peer_state = CompactDownloadPeerState::new();
-    let _ = init_compact_block_download(
-        activated_policy(),
-        true,
+    let initialized = init_compact_block_download(
+        (activated_policy(), true),
         &mut peer_state,
         &payload,
-        eligible_input(&payload.header),
-        1_000,
+        (eligible_input(&payload.header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
+    );
+    assert!(
+        matches!(initialized, Ok(CompactBlockInitOutcome::Ready { block_hash: hash, .. }) if hash == block_hash)
     );
 
     assert_eq!(
@@ -92,20 +93,99 @@ fn old_block_far_from_tip_falls_back_to_full_block_fetch() {
     };
 
     let outcome = init_compact_block_download(
-        activated_policy(),
-        true,
+        (activated_policy(), true),
         &mut peer_state,
         &payload,
-        eligibility,
-        1_000,
+        (eligibility, 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
 
     assert!(matches!(
         outcome,
-        CompactBlockInitOutcome::Fallback(fetch) if fetch.block_hash == block_hash
+        Ok(CompactBlockInitOutcome::Fallback(fetch)) if fetch.block_hash == block_hash
     ));
+    assert!(peer_state.in_flight.is_empty());
+}
+
+#[test]
+fn phase167_compact_public_init_mutated_prefilled_falls_back() {
+    // Arrange
+    let body = crate::test_block_commitments::coherent_body(
+        sample_header(),
+        vec![coinbase_transaction()],
+        false,
+    );
+    let mut changed_coinbase = body.transactions[0].clone();
+    changed_coinbase.lock_time += 1;
+    let payload = CompactBlockPayload {
+        header: body.header,
+        nonce: 5,
+        short_ids: Vec::new(),
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: changed_coinbase,
+        }],
+    };
+    let original_payload = payload.clone();
+    let block_hash = block_hash(&payload.header);
+    let mut peer_state = CompactDownloadPeerState::new();
+
+    // Act
+    let result = init_compact_block_download(
+        (activated_policy(), true),
+        &mut peer_state,
+        &payload,
+        (eligible_input(&payload.header), 1_000, true),
+        std::iter::empty::<(&Wtxid, &Transaction)>(),
+        std::iter::empty(),
+    );
+
+    // Assert
+    assert_eq!(
+        result,
+        Ok(CompactBlockInitOutcome::Fallback(FullBlockFetch {
+            block_hash
+        }))
+    );
+    assert!(peer_state.in_flight.is_empty());
+    assert_eq!(payload, original_payload);
+}
+
+#[test]
+fn phase167_compact_public_init_matched_prefilled_completes() {
+    // Arrange
+    let body = crate::test_block_commitments::coherent_body(
+        sample_header(),
+        vec![coinbase_transaction()],
+        false,
+    );
+    let payload = CompactBlockPayload {
+        header: body.header.clone(),
+        nonce: 5,
+        short_ids: Vec::new(),
+        prefilled_transactions: vec![PrefilledTransaction {
+            index_delta: 0,
+            transaction: body.transactions[0].clone(),
+        }],
+    };
+    let mut peer_state = CompactDownloadPeerState::new();
+
+    // Act
+    let result = init_compact_block_download(
+        (activated_policy(), true),
+        &mut peer_state,
+        &payload,
+        (eligible_input(&payload.header), 1_000, true),
+        std::iter::empty::<(&Wtxid, &Transaction)>(),
+        std::iter::empty(),
+    );
+
+    // Assert
+    assert_eq!(
+        result,
+        Ok(CompactBlockInitOutcome::Completed { block: body })
+    );
     assert!(peer_state.in_flight.is_empty());
 }
 
@@ -119,11 +199,14 @@ fn compact_download_actions_to_peer_actions_maps_all_variants() {
         transactions: vec![coinbase_transaction()],
     };
 
-    let actions = compact_download_actions_to_peer_actions(vec![
-        CompactDownloadAction::SendGetBlockTxn(request.clone()),
-        CompactDownloadAction::RequestFullBlock(FullBlockFetch { block_hash }),
-        CompactDownloadAction::ReceivedBlock(block.clone()),
-    ]);
+    let actions = compact_download_actions_to_peer_actions(
+        vec![
+            CompactDownloadAction::SendGetBlockTxn(request.clone()),
+            CompactDownloadAction::RequestFullBlock(FullBlockFetch { block_hash }),
+            CompactDownloadAction::ReceivedBlock(block.clone()),
+        ],
+        open_bitcoin_primitives::InventoryType::Block,
+    );
 
     assert_eq!(actions.len(), 3);
     assert!(matches!(
@@ -132,11 +215,30 @@ fn compact_download_actions_to_peer_actions_maps_all_variants() {
     ));
     assert!(matches!(
         &actions[1],
-        crate::PeerAction::Send(crate::WireNetworkMessage::GetData(_))
+        crate::PeerAction::Send(crate::WireNetworkMessage::GetData(inventory))
+            if inventory.inventory == vec![open_bitcoin_primitives::InventoryVector {
+                inventory_type: open_bitcoin_primitives::InventoryType::Block,
+                object_hash: block_hash.into(),
+            }]
     ));
     assert!(matches!(
         &actions[2],
         crate::PeerAction::ReceivedBlock(received) if received == &block
+    ));
+
+    let witness_actions = compact_download_actions_to_peer_actions(
+        vec![CompactDownloadAction::RequestFullBlock(FullBlockFetch {
+            block_hash,
+        })],
+        open_bitcoin_primitives::InventoryType::WitnessBlock,
+    );
+    assert!(matches!(
+        witness_actions.as_slice(),
+        [crate::PeerAction::Send(crate::WireNetworkMessage::GetData(inventory))]
+            if inventory.inventory == vec![open_bitcoin_primitives::InventoryVector {
+                inventory_type: open_bitcoin_primitives::InventoryType::WitnessBlock,
+                object_hash: block_hash.into(),
+            }]
     ));
 }
 
@@ -147,64 +249,59 @@ fn init_compact_block_download_suppressed_when_ineligible_or_duplicate() {
     let mut peer_state = CompactDownloadPeerState::new();
 
     let disabled_outcome = init_compact_block_download(
-        BlockRelayActivationPolicy::default(),
-        true,
+        (BlockRelayActivationPolicy::default(), true),
         &mut peer_state,
         &payload,
-        eligible_input(&payload.header),
-        1_000,
+        (eligible_input(&payload.header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
     assert!(matches!(
         disabled_outcome,
-        CompactBlockInitOutcome::Suppressed(
+        Ok(CompactBlockInitOutcome::Suppressed(
             CompactDownloadSuppressionReason::CompactPeerIneligible
-        )
+        ))
     ));
 
     let peer_ineligible = init_compact_block_download(
-        activated_policy(),
-        false,
+        (activated_policy(), false),
         &mut peer_state,
         &payload,
-        eligible_input(&payload.header),
-        1_000,
+        (eligible_input(&payload.header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
     assert!(matches!(
         peer_ineligible,
-        CompactBlockInitOutcome::Suppressed(
+        Ok(CompactBlockInitOutcome::Suppressed(
             CompactDownloadSuppressionReason::CompactPeerIneligible
-        )
+        ))
     ));
 
-    let _ = init_compact_block_download(
-        activated_policy(),
-        true,
+    let initialized = init_compact_block_download(
+        (activated_policy(), true),
         &mut peer_state,
         &payload,
-        eligible_input(&payload.header),
-        1_000,
+        (eligible_input(&payload.header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
+    assert!(
+        matches!(initialized, Ok(CompactBlockInitOutcome::Ready { block_hash: hash, .. }) if hash == block_hash)
+    );
     let duplicate = init_compact_block_download(
-        activated_policy(),
-        true,
+        (activated_policy(), true),
         &mut peer_state,
         &payload,
-        eligible_input(&payload.header),
-        1_001,
+        (eligible_input(&payload.header), 1_001, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
     assert!(matches!(
         duplicate,
-        CompactBlockInitOutcome::Suppressed(
+        Ok(CompactBlockInitOutcome::Suppressed(
             CompactDownloadSuppressionReason::CompactBlockAlreadyInFlight
-        )
+        ))
     ));
     assert!(peer_state.in_flight.contains_key(&block_hash));
 }
@@ -221,18 +318,18 @@ fn init_compact_block_download_misbehaves_on_invalid_reconstruction() {
         prefilled_transactions: Vec::new(),
     };
     let invalid = init_compact_block_download(
-        activated_policy(),
-        true,
+        (activated_policy(), true),
         &mut peer_state,
         &empty_payload,
-        eligible_input(&header),
-        1_000,
+        (eligible_input(&header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
     assert_eq!(
         invalid,
-        CompactBlockInitOutcome::Misbehavior(CompactReconstructionInvalidReason::EmptyCompactBlock)
+        Ok(CompactBlockInitOutcome::Misbehavior(
+            CompactReconstructionInvalidReason::EmptyCompactBlock
+        ))
     );
     assert!(peer_state.in_flight.is_empty());
 }
@@ -254,17 +351,15 @@ fn init_compact_block_download_falls_back_on_short_id_collision() {
         }],
     };
     let failed = init_compact_block_download(
-        activated_policy(),
-        true,
+        (activated_policy(), true),
         &mut peer_state,
         &collision_payload,
-        eligible_input(&collision_payload.header),
-        1_000,
+        (eligible_input(&collision_payload.header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty(),
     );
     assert!(matches!(
         failed,
-        CompactBlockInitOutcome::Fallback(fetch) if fetch.block_hash == expected_block_hash
+        Ok(CompactBlockInitOutcome::Fallback(fetch)) if fetch.block_hash == expected_block_hash
     ));
 }

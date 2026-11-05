@@ -10,8 +10,8 @@ import { CURRENT_VERIFY_ADDITIONS, historicalToolingView, legacyToolingBase, ver
 import { checkPhase164 } from "./check-phase164-canonical-identity.ts";
 import { rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { createHash } from "node:crypto";
+import { affirmativeScopeClaims, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { LEGACY_CONTRACT_BUNDLE, legacyFunctionContractView, legacyFunctionSources, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
-
 import { loadSources as loadLegacyBridgeInputs, checkPhase162IntegratedFilterProof, checkPhase162LegacyFunctionControls, assertionSpans, factSpans, NATIVE_COMMANDS, SHARED_FORMAT } from "./check-phase162-integrated-filter-proof.ts";
 const real = loadInputs();
 const bridgeReal = loadLegacyBridgeInputs();
@@ -219,16 +219,13 @@ for (const [file, symbol, before, after] of DOWNSTREAM_SOURCE_MUTATIONS) {
     expect(checkPhase165(inputs).some(row => row.file === file && row.rule === "work-owner")).toBe(true);
   });
 }
-
 const N = "packages/open-bitcoin-node/src/";
 const H = "packages/open-bitcoin-network/src/header_store";
 const E = "packages/open-bitcoin-chainstate/src/engine";
 const P = "packages/open-bitcoin-consensus/src/";
-
 const LIVE = N + "sync/live_fixture.rs";
 const LIVE_UNIT = N + "sync/tests/phase165_live_fixture.rs";
 const LIVE_EXTERNAL = "packages/open-bitcoin-node/tests/phase165_live_fixture.rs";
-
 for (const [before, after] of LIVE_SOURCE_MUTATIONS) {
   test(`phase165 live fixture guard: ${before} -> ${after}`, () => {
     // Arrange: every mutation starts from the actual unchanged loaded baseline.
@@ -238,7 +235,6 @@ for (const [before, after] of LIVE_SOURCE_MUTATIONS) {
     rejects(inputs, LIVE, "work-owner");
   });
 }
-
 for (const file of [LIVE_UNIT, LIVE_EXTERNAL]) {
   for (const change of ["ignore", "disable", "remove"]) {
     test(`phase165 live fixture guard: ${file} enabled tests ${change}`, () => {
@@ -280,7 +276,6 @@ for (const file of [LIVE_UNIT, LIVE_EXTERNAL]) {
     });
   }
 }
-
 for (const [file, before, after, rule] of [
   [N + "sync.rs", "mod live_fixture;", "#[cfg(test)] mod live_fixture;", "work-owner"],
   [N + "sync/tests.rs", "mod phase165_live_fixture;", "#[cfg(any())] mod phase165_live_fixture;", "ownership"],
@@ -294,12 +289,10 @@ for (const [file, before, after, rule] of [
     rejects(mutation(file, before, after), file, rule);
   });
 }
-
 test("current ordered fixed inventory passes before reads", () => {
   // Arrange / Act / Assert
   expect(() => assertInputInventory(INPUT_FILES)).not.toThrow();
 });
-
 for (const files of [
   ["../../outside-input", ...INPUT_FILES.slice(1)],
   [...INPUT_FILES, "README-extra.md"],
@@ -311,7 +304,6 @@ for (const files of [
     expect(() => assertInputInventory(files)).toThrow("before any source read");
   });
 }
-
 function mutation(file: string, before: string, after: string): Map<string, string> {
   const source = real.get(file)!;
   expect(source).toBeDefined();
@@ -319,12 +311,10 @@ function mutation(file: string, before: string, after: string): Map<string, stri
   expect(before).not.toBe(after);
   return new Map(real).set(file, source.replace(before, after));
 }
-
 function rejects(inputs: ReadonlyMap<string, string>, file: string, rule: string): void {
   const findings = checkPhase165(inputs);
   expect(findings.some(row => row.file === file && row.rule === rule)).toBe(true);
 }
-
 test("actual current source satisfies the exact-work contracts", () => {
   // Arrange
   const inputs = loadInputs();
@@ -337,7 +327,6 @@ for (const [file] of TOOLING_INVERSE_CASES) test(`phase165 reviewed current158 h
   expect(checkPhase165(real)).toEqual([]);
   expect(checkPhase165(new Map(real).set(file, real.get(file)! + "\n"))).toContainEqual(expect.objectContaining({ file: "packages/testdata/phase164/historical-tooling/manifest.json", rule: "history", detail: expect.stringContaining(file) }));
 });
-
 for (const change of [...OWNER_SOURCE_MUTATIONS, ...PEER_SOURCE_MUTATIONS, ...PUBLIC_REQUALIFICATION_MUTATIONS, ...CONSUMER_SOURCE_MUTATIONS, ...DAEMON_SOURCE_MUTATIONS, ...PRUNE_SOURCE_MUTATIONS, ...PREPARATION_SOURCE_MUTATIONS]) {
   const [file, before, after] = change;
   test(`actual owner mutation refuses: ${file}: ${after}`, () => {
@@ -348,13 +337,11 @@ for (const change of [...OWNER_SOURCE_MUTATIONS, ...PEER_SOURCE_MUTATIONS, ...PU
     rejects(inputs, file, SOURCE_CONTRACTS.find(row => row[0] === file)![1]);
   });
 }
-
 function replaceTestAttributes(source: string, functionStart: number, attribute: string): string {
   const declaration = maybeTestDeclaration(source, functionStart)!;
   expect(declaration).toBeDefined();
   return source.slice(0, declaration.start) + attribute + source.slice(declaration.end);
 }
-
 test("phase165 named attribute offset preserves earlier enabled tests", () => {
   // Arrange: the second named test shares the first test's attribute text.
   const source = real.get(LIVE_UNIT)!;
@@ -367,7 +354,6 @@ test("phase165 named attribute offset preserves earlier enabled tests", () => {
   expect(changed.slice(0, attributeStart)).toBe(source.slice(0, attributeStart));
   expect(changed.slice(attributeStart, attributeStart + 24)).toStartWith("#[ignore]\n#[test]\n");
 });
-
 for (const [file] of TEST_OWNERS) {
   const source = real.get(file)!;
   const code = rustCode(source);
@@ -409,7 +395,6 @@ for (const [file] of TEST_OWNERS) {
     expect(findings).toEqual([]);
   });
 }
-
 for (const [file, declaration] of TEST_REGISTRATIONS) {
   for (const replacement of ["", `/* ${declaration} */`, `#[cfg(any())]\n${declaration}`, '#[path = "spoofed.rs"]\n' + declaration]) {
     test(`real test registration refuses: ${file}:${replacement}`, () => {
@@ -421,7 +406,6 @@ for (const [file, declaration] of TEST_REGISTRATIONS) {
     });
   }
 }
-
 for (const line of CURRENT_VERIFY_ADDITIONS) {
   for (const replacement of ["", line + "\n" + line, "# " + line, "false && " + line]) {
     test(`both current guards refuse missing/duplicate/commented/disabled registration: ${line}:${replacement}`, () => {
@@ -435,7 +419,6 @@ for (const line of CURRENT_VERIFY_ADDITIONS) {
     });
   }
 }
-
 test("every old verification byte is still pinned", () => {
   // Arrange
   const inputs = mutation("scripts/verify.sh", "set -euo pipefail", "set -eu");
@@ -443,7 +426,6 @@ test("every old verification byte is still pinned", () => {
   rejects(inputs, "scripts/verify.sh", "registration");
   expect(() => historicalToolingView(inputs)).toThrow();
 });
-
 test("older guard independently prevents removal of all six new mandatory lines", () => {
   // Arrange
   expect(checkPhase164(real)).toEqual([]);
@@ -457,7 +439,6 @@ test("older guard independently prevents removal of all six new mandatory lines"
   expect(findings.some(row => row.rule === "input")).toBe(false);
   expect(findings.some(row => row.file === "scripts/verify.sh" && row.rule === "registration")).toBe(true);
 });
-
 test("preference cannot move behind staged BASIC preparation", () => {
   // Arrange
   const file = N + "chainstate/work_authority.rs";
@@ -469,7 +450,6 @@ test("preference cannot move behind staged BASIC preparation", () => {
   // Act / Assert
   rejects(inputs, file, "work-owner");
 });
-
 for (const [file] of HISTORICAL_IDENTITIES) {
   test(`historical raw receipt/tooling remains immutable: ${file}`, () => {
     // Arrange
@@ -478,7 +458,18 @@ for (const [file] of HISTORICAL_IDENTITIES) {
     rejects(inputs, file, "history");
   });
 }
-
+for (const [name, before, after] of [
+  ["old current preservation body", "overwrites: Vec::new(),", ""],
+  ["altered physical preservation assertion", "assert_eq!(before, after, \"physical source changed for {chain}\");", "assert_ne!(before, after, \"physical source changed for {chain}\");"],
+] as const) {
+  test(`current preservation pin refuses ${name}`, () => {
+    const file = "packages/open-bitcoin-node/src/storage/chain_compatibility/tests/preservation.rs";
+    expect(checkPhase165(real)).toEqual([]);
+    expect(real.get(file)!.split(before)).toHaveLength(2);
+    const inputs = new Map(real).set(file, real.get(file)!.replace(before, after));
+    expect(checkPhase165(inputs).some(row => row.file === file && row.rule === "history")).toBe(true);
+  });
+}
 test("historical source digest cannot be renewed to claim current acceptance", () => {
   // Arrange
   const file = HISTORICAL_IDENTITIES.find(row => row[0].endsWith("163-VERIFICATION.md"))![0];
@@ -487,7 +478,6 @@ test("historical source digest cannot be renewed to claim current acceptance", (
   // Act / Assert
   rejects(inputs, file, "history");
 });
-
 for (const [key, value] of [["evidence_class", "actual-daemon-differential"], ["proof_hex", "0".repeat(64)], ["commit", "0".repeat(40)]] as const) {
   test(`independent corpus refuses changed ${key}`, () => {
     // Arrange
@@ -499,7 +489,6 @@ for (const [key, value] of [["evidence_class", "actual-daemon-differential"], ["
     rejects(inputs, CORPUS_FILE, "corpus");
   });
 }
-
 for (const phase of [166, 167, 168]) {
   test(`current claims cannot deliver deferred Phase${phase}`, () => {
     // Arrange
@@ -509,7 +498,6 @@ for (const phase of [166, 167, 168]) {
     rejects(inputs, file, "claim");
   });
 }
-
 for (const [before, after] of WORK_DOC_OVERCLAIMS) {
   test(`actual work document overclaim refuses: ${after}`, () => {
     // Arrange
@@ -524,6 +512,19 @@ for (const [before, after] of WORK_DOC_OVERCLAIMS) {
     rejects(inputs, WORK_CLAIM_FILE, "claim");
   });
 }
+test("current bounded Phase 167 sections separate product and fixture authority", () => {
+  const product = "Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence";
+  const seeded = "Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence";
+  const section = `\n\n## Current Phase 167 bounded default-Regtest scope\n\n${product}. ${seeded}. Mainnet, testnet3 and Signet ordinary configuration remain refused; Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred; Wallet authority remains unavailable.\n`;
+  const inputs = new Map(real);
+  for (const file of ["README.md", "docs/parity/support-matrix.md"]) {
+    inputs.set(file, inputs.get(file)!.replace("currently refused for all four selectors", "historical Phase 164 refusal") + section);
+  }
+  const failures: string[] = [];
+  checkCurrentClaims(file => inputs.get(file) ?? "", (file, rule, detail) => failures.push(`${file}:${rule}:${detail}`));
+  expect(failures).toEqual([]);
+  expect(affirmativeScopeClaims(section)).toEqual([]);
+});
 
 for (const claim of CLAIM_SCOPE_REFUSALS) {
   test(`phase165 claim negation scope rejects appended ${claim}`, () => {

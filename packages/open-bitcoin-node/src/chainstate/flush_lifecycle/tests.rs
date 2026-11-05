@@ -7,6 +7,7 @@ mod durability;
 mod error_map;
 mod execute_flush;
 mod initialize;
+mod phase167_counts;
 mod recovery_and_persist;
 
 use std::{

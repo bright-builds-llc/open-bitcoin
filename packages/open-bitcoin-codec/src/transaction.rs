@@ -13,6 +13,105 @@ use crate::compact_size::{compact_size_to_usize, read_compact_size, write_compac
 use crate::error::CodecError;
 use crate::primitives::{Reader, write_i32_le, write_i64_le, write_u32_le};
 
+pub mod wire;
+use wire::{TransactionView, WireOutput, WireTransaction};
+
+pub(crate) trait DecodeMode {
+    const SERIALIZED_SCRIPT: bool;
+    type Value;
+    type Output;
+    type Transaction;
+    fn value(sats: i64) -> Result<Self::Value, CodecError>;
+    fn output(value: Self::Value, script_pubkey: ScriptBuf) -> Self::Output;
+    fn transaction(
+        version: i32,
+        inputs: Vec<TransactionInput>,
+        outputs: Vec<Self::Output>,
+        lock_time: u32,
+    ) -> Self::Transaction;
+}
+
+pub(crate) struct DomainMode<const SERIALIZED: bool>;
+impl<const SERIALIZED: bool> DecodeMode for DomainMode<SERIALIZED> {
+    const SERIALIZED_SCRIPT: bool = SERIALIZED;
+    type Value = Amount;
+    type Output = TransactionOutput;
+    type Transaction = Transaction;
+    fn value(sats: i64) -> Result<Amount, CodecError> {
+        Ok(Amount::from_sats(sats)?)
+    }
+    fn output(value: Amount, script_pubkey: ScriptBuf) -> TransactionOutput {
+        TransactionOutput {
+            value,
+            script_pubkey,
+        }
+    }
+    fn transaction(
+        version: i32,
+        inputs: Vec<TransactionInput>,
+        outputs: Vec<TransactionOutput>,
+        lock_time: u32,
+    ) -> Transaction {
+        Transaction {
+            version,
+            inputs,
+            outputs,
+            lock_time,
+        }
+    }
+}
+
+pub(crate) struct SubmissionWire;
+impl DecodeMode for SubmissionWire {
+    const SERIALIZED_SCRIPT: bool = true;
+    type Value = i64;
+    type Output = WireOutput;
+    type Transaction = WireTransaction;
+    fn value(sats: i64) -> Result<i64, CodecError> {
+        Ok(sats)
+    }
+    fn output(value_sats: i64, script_pubkey: ScriptBuf) -> WireOutput {
+        WireOutput {
+            value_sats,
+            script_pubkey,
+        }
+    }
+    fn transaction(
+        version: i32,
+        inputs: Vec<TransactionInput>,
+        outputs: Vec<WireOutput>,
+        lock_time: u32,
+    ) -> WireTransaction {
+        WireTransaction {
+            version,
+            inputs,
+            outputs,
+            lock_time,
+        }
+    }
+}
+
+pub(crate) fn push_decoded<T>(
+    values: &mut Vec<T>,
+    value: T,
+    field: &'static str,
+) -> Result<(), CodecError> {
+    #[cfg(test)]
+    let additional = wire::tests::reserve_growth(field);
+    #[cfg(not(test))]
+    let additional = 1;
+    values
+        .try_reserve(additional)
+        .map_err(|_| CodecError::LengthOutOfRange {
+            field,
+            value: values.len() as u64 + 1,
+        })?;
+    values.push(value);
+    #[cfg(test)]
+    wire::tests::observe(field, values.capacity());
+    Ok(())
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TransactionEncoding {
     WithWitness,
@@ -37,21 +136,28 @@ pub(crate) fn parse_transaction_from_reader(
     reader: &mut Reader<'_>,
     allow_witness: bool,
 ) -> Result<Transaction, CodecError> {
+    parse_transaction_mode::<DomainMode<false>>(reader, allow_witness)
+}
+
+pub(crate) fn parse_transaction_mode<M: DecodeMode>(
+    reader: &mut Reader<'_>,
+    allow_witness: bool,
+) -> Result<M::Transaction, CodecError> {
     let version = reader.read_i32_le()?;
-    let mut inputs = parse_inputs(reader)?;
+    let mut inputs = parse_inputs::<M>(reader)?;
     let outputs;
     let mut flags = 0_u8;
 
     if inputs.is_empty() && allow_witness {
         flags = reader.read_u8()?;
         if flags != 0 {
-            inputs = parse_inputs(reader)?;
-            outputs = parse_outputs(reader)?;
+            inputs = parse_inputs::<M>(reader)?;
+            outputs = parse_outputs::<M>(reader)?;
         } else {
             outputs = Vec::new();
         }
     } else {
-        outputs = parse_outputs(reader)?;
+        outputs = parse_outputs::<M>(reader)?;
     }
 
     if (flags & 1) != 0 && allow_witness {
@@ -70,56 +176,75 @@ pub(crate) fn parse_transaction_from_reader(
 
     let lock_time = reader.read_u32_le()?;
 
-    Ok(Transaction {
-        version,
-        inputs,
-        outputs,
-        lock_time,
-    })
+    Ok(M::transaction(version, inputs, outputs, lock_time))
 }
 
 pub fn encode_transaction(
     transaction: &Transaction,
     encoding: TransactionEncoding,
 ) -> Result<Vec<u8>, CodecError> {
-    let mut out = Vec::new();
-    write_i32_le(&mut out, transaction.version);
+    encode_transaction_view(transaction, encoding)
+}
 
-    let include_witness = encoding == TransactionEncoding::WithWitness && transaction.has_witness();
+/// Serialize exact borrowed transaction facts, without validating or normalizing them.
+pub fn encode_transaction_view(
+    transaction: &impl TransactionView,
+    encoding: TransactionEncoding,
+) -> Result<Vec<u8>, CodecError> {
+    let mut out = Vec::new();
+    write_i32_le(&mut out, transaction.version());
+
+    let include_witness = encoding == TransactionEncoding::WithWitness
+        && transaction
+            .inputs()
+            .iter()
+            .any(|input| !input.witness.is_empty());
     if include_witness {
         out.push(0x00);
         out.push(0x01);
     }
 
-    encode_inputs(&mut out, &transaction.inputs)?;
-    encode_outputs(&mut out, &transaction.outputs)?;
+    encode_inputs(&mut out, transaction.inputs())?;
+    write_compact_size(&mut out, transaction.outputs().len() as u64)?;
+    for output in transaction.outputs() {
+        write_i64_le(&mut out, output.value_sats);
+        encode_script(&mut out, output.script_pubkey)?;
+    }
 
     if include_witness {
-        for input in &transaction.inputs {
+        for input in transaction.inputs() {
             encode_witness(&mut out, &input.witness)?;
         }
     }
 
-    write_u32_le(&mut out, transaction.lock_time);
+    write_u32_le(&mut out, transaction.lock_time());
     Ok(out)
 }
 
-fn parse_inputs(reader: &mut Reader<'_>) -> Result<Vec<TransactionInput>, CodecError> {
+fn parse_inputs<M: DecodeMode>(
+    reader: &mut Reader<'_>,
+) -> Result<Vec<TransactionInput>, CodecError> {
     let count = compact_size_to_usize(read_compact_size(reader)?, "transaction input count");
-    let mut inputs = Vec::with_capacity(count);
+    let mut inputs = Vec::new();
+    #[cfg(test)]
+    wire::tests::observe("inputs", inputs.capacity());
     for _ in 0..count {
         let previous_output = OutPoint {
             txid: Txid::from_byte_array(reader.read_array::<32>()?),
             vout: reader.read_u32_le()?,
         };
-        let script_sig = parse_script(reader)?;
+        let script_sig = parse_script::<M>(reader)?;
         let sequence = reader.read_u32_le()?;
-        inputs.push(TransactionInput {
-            previous_output,
-            script_sig,
-            sequence,
-            witness: ScriptWitness::default(),
-        });
+        push_decoded(
+            &mut inputs,
+            TransactionInput {
+                previous_output,
+                script_sig,
+                sequence,
+                witness: ScriptWitness::default(),
+            },
+            "inputs",
+        )?;
     }
     Ok(inputs)
 }
@@ -135,32 +260,26 @@ fn encode_inputs(out: &mut Vec<u8>, inputs: &[TransactionInput]) -> Result<(), C
     Ok(())
 }
 
-fn parse_outputs(reader: &mut Reader<'_>) -> Result<Vec<TransactionOutput>, CodecError> {
+fn parse_outputs<M: DecodeMode>(reader: &mut Reader<'_>) -> Result<Vec<M::Output>, CodecError> {
     let count = compact_size_to_usize(read_compact_size(reader)?, "transaction output count");
-    let mut outputs = Vec::with_capacity(count);
+    let mut outputs = Vec::new();
+    #[cfg(test)]
+    wire::tests::observe("outputs", outputs.capacity());
     for _ in 0..count {
-        let value = Amount::from_sats(reader.read_i64_le()?)?;
-        let script_pubkey = parse_script(reader)?;
-        outputs.push(TransactionOutput {
-            value,
-            script_pubkey,
-        });
+        let value = M::value(reader.read_i64_le()?)?;
+        let script_pubkey = parse_script::<M>(reader)?;
+        push_decoded(&mut outputs, M::output(value, script_pubkey), "outputs")?;
     }
     Ok(outputs)
 }
 
-fn encode_outputs(out: &mut Vec<u8>, outputs: &[TransactionOutput]) -> Result<(), CodecError> {
-    write_compact_size(out, outputs.len() as u64)?;
-    for output in outputs {
-        write_i64_le(out, output.value.to_sats());
-        encode_script(out, &output.script_pubkey)?;
-    }
-    Ok(())
-}
-
-fn parse_script(reader: &mut Reader<'_>) -> Result<ScriptBuf, CodecError> {
+fn parse_script<M: DecodeMode>(reader: &mut Reader<'_>) -> Result<ScriptBuf, CodecError> {
     let len = compact_size_to_usize(read_compact_size(reader)?, "script length");
-    Ok(ScriptBuf::from_bytes(reader.read_vec(len)?)?)
+    let bytes = reader.read_vec(len)?;
+    if M::SERIALIZED_SCRIPT {
+        return Ok(ScriptBuf::from_serialized_bytes(bytes));
+    }
+    Ok(ScriptBuf::from_bytes(bytes)?)
 }
 
 fn encode_script(out: &mut Vec<u8>, script: &ScriptBuf) -> Result<(), CodecError> {
@@ -171,10 +290,13 @@ fn encode_script(out: &mut Vec<u8>, script: &ScriptBuf) -> Result<(), CodecError
 
 fn parse_witness(reader: &mut Reader<'_>) -> Result<ScriptWitness, CodecError> {
     let count = compact_size_to_usize(read_compact_size(reader)?, "witness item count");
-    let mut stack = Vec::with_capacity(count);
+    let mut stack = Vec::new();
+    #[cfg(test)]
+    wire::tests::observe("witness", stack.capacity());
     for _ in 0..count {
         let len = compact_size_to_usize(read_compact_size(reader)?, "witness item length");
-        stack.push(reader.read_vec(len)?);
+        let item = reader.read_vec(len)?;
+        push_decoded(&mut stack, item, "witness")?;
     }
     Ok(ScriptWitness::new(stack))
 }

@@ -135,3 +135,27 @@ pub(super) fn assemble_durable_runtime(
         },
     ))
 }
+
+/// Route selected local history before strict genesis can reject descendant rows.
+pub(super) fn open_configured_history_runtime(
+    runtime: &RuntimeConfig,
+) -> Result<Option<OpenedAuthoritativeRuntime>, DaemonSyncPreflightError> {
+    let chain = preflight(runtime)?;
+    let trigger = runtime.sync.is_enabled()
+        || runtime.inbound.enabled
+        || runtime.prune_mode != open_bitcoin_node::core::chainstate::PruneMode::Disabled
+        || runtime.block_filter_index.is_explicit();
+    if chain != CanonicalChain::Regtest || !trigger {
+        return Ok(None);
+    }
+    let (context, sync_runtime) = ManagedRpcContext::from_canonical_history_runtime_config(runtime)
+        .map_err(|_| compatibility_refusal(runtime, chain))?;
+    match assemble_durable_runtime(runtime, sync_runtime)? {
+        OpenedAuthoritativeRuntime::Durable(mut authoritative) => {
+            authoritative.maybe_prebuilt_context = Some(context);
+            Ok(Some(OpenedAuthoritativeRuntime::Durable(authoritative)))
+        }
+        #[cfg(test)]
+        OpenedAuthoritativeRuntime::Transient(_) => Err(compatibility_refusal(runtime, chain)),
+    }
+}

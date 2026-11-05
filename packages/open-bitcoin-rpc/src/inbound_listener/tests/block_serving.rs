@@ -431,15 +431,27 @@ async fn out_of_window_notfound_closes_the_inbound_socket() {
     let response = tokio::time::timeout(Duration::from_secs(2), receive_any_message(&stream))
         .await
         .expect("out-of-window response should arrive");
-    stream
-        .readable()
-        .await
-        .expect("socket should become readable after NotFound");
     let mut leftover = [0_u8; 64];
-    let read = stream.try_read(&mut leftover);
+    let read = tokio::time::timeout(Duration::from_secs(2), async {
+        loop {
+            stream
+                .readable()
+                .await
+                .expect("socket should become readable after NotFound");
+            match stream.try_read(&mut leftover) {
+                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => continue,
+                result => break result,
+            }
+        }
+    })
+    .await
+    .expect("socket close after NotFound should arrive");
 
     // Assert
     assert!(matches!(response, WireNetworkMessage::NotFound(_)));
-    assert!(matches!(read, Ok(0)));
+    assert!(
+        matches!(&read, Ok(0)),
+        "socket read after NotFound: {read:?}"
+    );
     worker.shutdown().await;
 }

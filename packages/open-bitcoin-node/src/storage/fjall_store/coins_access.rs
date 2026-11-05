@@ -1,9 +1,10 @@
 // Parity breadcrumbs:
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
-use fjall::{Database, Keyspace};
-
-use super::FjallNodeStore;
+use super::{
+    FjallNodeStore,
+    tracked::{Database, Keyspace},
+};
 
 impl FjallNodeStore {
     #[allow(dead_code)]

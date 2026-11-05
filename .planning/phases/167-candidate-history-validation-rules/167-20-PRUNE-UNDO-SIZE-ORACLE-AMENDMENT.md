@@ -1,0 +1,22 @@
+---
+phase: 167-candidate-history-validation-rules
+plan: "20"
+type: checked-execution-amendment
+generated_by: gsd-execute-plan
+generated_at: "2026-11-01T21:56:38Z"
+lifecycle_mode: yolo
+phase_lifecycle_id: 167-2026-10-21T16-38-23
+commits: false
+---
+
+# Plan 20 automatic-prune complete undo-size oracle
+
+The second complete default verifier on the frozen 42-owner source passed every pinned Bun guard, all nine tracked 16-thread native stress selectors, the scoped four-thread workspace node library (2,410 pass/zero fail/four existing ignored), and the RPC library (426 pass/zero fail/one existing ignored), including both corrected socket tests. The following `open_bitcoind` binary suite failed two automatic-prune size assertions: a small retained pair measured 171 bytes versus its fixture's 149-byte expectation, and a genuine 1,002-position dense history measured 1,356,651 bytes versus 214,299. Both exact tests reproduced the same numbers alone on unchanged source. The run exited nonzero before benchmark/Bazel/coverage, so it earns no full verifier or phase acceptance credit.
+
+The production `retained_payload_usage` counts actual Fjall snapshot value sizes for block and undo rows. Current durable `BlockUndoDto` serializes both `transactions` and `overwrites`; the test-only independent `encoded_undo_size` oracle in `packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs` still renders only `transactions`. The missing empty `overwrites` field accounts for the 22-byte small-row gap; complete overwrite batches in the dense genuine history account for the larger gap. Do not change production measurement, undo persistence, BIP30 restoration, prune thresholds or the counted source to fit the stale oracle.
+
+ROOT adds exactly one test-only Task1 owner, `packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs` (546/628 lines, existing parity breadcrumb), after exact whole-original capture and the current 42-owner source frame. ROOT must issue a supplementary release before editing. The expanded direct scope is 43 owners (Task1 40, Task2 three) with 1,790 protected original product paths. Extend only `encoded_undo_size`'s independently constructed pretty-JSON schema to include every `BlockUndo.overwrites` batch: exact block hash, height, creating median time past, every overwritten entry's transaction index/outpoint/previous and new complete Coin fields, and integrity digest. Keep the existing transactions and literal current `schema_version` source anchor. Continue deriving expected lengths independently from the actual undo values; do not call the product `encode_block_undo` as the oracle. Preserve the existing threshold-population loop and every test's retained/protection/reopen assertion. Keep the file within 628 lines and perform one simplification pass to avoid duplicate Coin mapping logic.
+
+The already-owned `scripts/check-phase164-canonical-identity/source-files.ts` has exactly one current digest row for this helper body; renew only that row after independent review of the new oracle. Preserve its frozen historical rows and 627-line shape. The already-owned `scripts/check-phase165-shared-exact-work/contracts.ts` inherits the frozen Phase164 whole-source identity row for this fixture; add only an explicit **current** sourceIdentity override for the reviewed new fixture while keeping the prior row and existing `schema_version` mutation anchor intact. Do not edit `index_protection.rs`, Phase164 `test-modules.ts` prior rows or production storage. Independently review the exact fixture/two-current-guard delta and 43-owner frame before tests. Run both exact previously failing daemon tests with nonzero discovery and matching complete measured/expected byte counts, full `open_bitcoind` binary suite, Phase164/165 current and historical guards/mutation tests, formatting, strict Clippy and all-target build. Then regenerate provisional worktree LOC, clean coverage, and rerun complete default `bash scripts/verify.sh` on a new frozen source. Any remaining size disagreement blocks and requires an exact byte/schema diagnosis; never weaken assertions to a range or ignore overwrite data.
+
+The nine 16-thread stress families, scoped complete native suites, strict `<30s` physical checks, worker30s deadline, fresh zero-uncovered pure-core coverage, Bazel, independent source/security/goal reports, lifecycle, ROOT staged-index LOC and normal-hook commit/push remain mandatory. Stop before Phase168.

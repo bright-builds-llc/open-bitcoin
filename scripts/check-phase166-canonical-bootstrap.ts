@@ -48,10 +48,12 @@ export async function checkPhase166(inputs: ReadonlyMap<string, string>): Promis
   const text = (file: string) => inputs.get(file)!;
   for (const contract of CONTRACTS) {
     const source = text(contract.file);
-    const maybeBody = maybeFunction(source, contract.symbol, true);
+    const maybeBody = productionFunction(source, contract.file, contract.symbol);
     const raw = maybeBody ? source.slice(maybeBody.start, maybeBody.end) : "";
     if (!maybeBody || /\bcfg\s*\(/.test(maybeBody.attributes) || hasUnconditionalReturn(maybeBody.body)
       || !hasOrderedCode(maybeBody.body, contract.anchors.map(rustCode))
+      || (contract.rule === "checkpoint-delegate"
+        && compact(maybeBody.body) !== compact("self.save_validated_chain_meta_with_counts(active_chain, None, mode)"))
       || contract.anchors.some(anchor => anchor.includes('"') && !literalAnchor(raw, anchor))
       || (contract.maybeTopLevel ?? []).some(anchor => !atDepthOnce(maybeBody.body, anchor, 0))
       || (contract.maybeForbidden ?? []).some(anchor => compact(maybeBody.body).includes(compact(anchor)))) {
@@ -59,13 +61,13 @@ export async function checkPhase166(inputs: ReadonlyMap<string, string>): Promis
     }
   }
   for (const [file, symbol, rule, guard, depth] of DEPTH_GUARDS) {
-    const maybeBody = maybeFunction(text(file), symbol, true);
+    const maybeBody = productionFunction(text(file), file, symbol);
     const raw = maybeBody ? text(file).slice(maybeBody.start, maybeBody.end) : "";
     if (!maybeBody || !atDepthOnce(maybeBody.body, guard, depth)
       || (guard.includes('"') && !literalAnchor(raw, guard))) fail(file, rule, `${symbol}: complete guard predicate/body at required depth`);
   }
   for (const [file, symbol, rule, first] of ENTRY_GUARDS) {
-    const body = maybeFunction(text(file), symbol, true)?.body ?? "";
+    const body = productionFunction(text(file), file, symbol)?.body ?? "";
     if (!compact(body).startsWith(compact(rustCode(first)))) fail(file, rule, `${symbol}: mandatory first proof/dispatch operation`);
   }
   for (const [file, anchor] of REGISTRATIONS) {
@@ -85,6 +87,53 @@ export async function checkPhase166(inputs: ReadonlyMap<string, string>): Promis
   try { await checkVectors(JSON.parse(text(VECTOR))); }
   catch { fail(VECTOR, "vectors", "independent pinned complete-genesis/proof/BASIC/evidence-class reproduction failed"); }
   return findings;
+}
+
+type FunctionView = { body: string; attributes: string; start: number; end: number };
+
+/** The two Genesis methods share names with History methods; bind the exact impl. */
+function productionFunction(source: string, file: string, symbol: string): FunctionView | undefined {
+  if (file !== OPENER || (symbol !== "into_parts" && symbol !== "check")) {
+    return maybeFunction(source, symbol, true);
+  }
+  const owner = symbol === "into_parts" ? "OpenedCanonicalGenesis" : "RecoveredCanonicalGenesis";
+  const code = rustCode(source);
+  const declarations = [...code.matchAll(new RegExp(`\\bimpl\\s+${owner}\\s*\\{`, "g"))];
+  if (declarations.length !== 1) return undefined;
+  const declaration = declarations[0];
+  const start = declaration.index;
+  if (braceDepth(code, start) !== 0 || /#\s*\[\s*cfg\b/.test(declarationPrefix(code, start))) return undefined;
+  const open = code.indexOf("{", start);
+  const close = closingBrace(code, open);
+  if (close < 0) return undefined;
+  const methods = regions(source).filter(region => region.symbol === symbol
+    && region.start > open && region.end <= close && braceDepth(code, region.start) === 1);
+  if (methods.length !== 1 || methods[0].test) return undefined;
+  const method = methods[0];
+  const attributes = declarationPrefix(code, method.start);
+  if (/#\s*\[\s*cfg\b/.test(attributes)) return undefined;
+  const bodyOpen = method.code.indexOf("{");
+  if (bodyOpen < 0) return undefined;
+  return { body: method.code.slice(bodyOpen + 1, -1), attributes, start: method.start, end: method.end };
+}
+
+function declarationPrefix(code: string, start: number): string {
+  return code.slice(Math.max(code.lastIndexOf("}", start - 1), code.lastIndexOf(";", start - 1)) + 1, start);
+}
+
+function braceDepth(code: string, end: number): number {
+  let depth = 0;
+  for (const char of code.slice(0, end)) depth += Number(char === "{") - Number(char === "}");
+  return depth;
+}
+
+function closingBrace(code: string, open: number): number {
+  let depth = 1;
+  for (let cursor = open + 1; cursor < code.length; cursor++) {
+    depth += Number(code[cursor] === "{") - Number(code[cursor] === "}");
+    if (depth === 0) return cursor;
+  }
+  return -1;
 }
 
 /** A literal must have executable surrounding tokens at the same offsets, never a comment decoy. */
@@ -167,7 +216,7 @@ function checkOrderAndScope(text: (file: string) => string, fail: Fail): void {
     fail(RPC + "bin/open-bitcoind.rs", "daemon-wiring", "Tokio belongs to the delegated application entry");
   }
   for (const [file, symbol, first, second, rule] of [
-    [CHECKPOINT, "save_validated_chain_meta", "decode_chain_meta(&bytes)", "control.invalidate_append()?;", "checkpoint-counts"],
+    [CHECKPOINT, "save_validated_chain_meta_with_counts", "decode_chain_meta(&bytes)", "control.invalidate_append()?;", "checkpoint-counts"],
     [NODE + "chainstate/fjall_store/canonical_genesis.rs", "from_canonical_genesis", "recovered.check(&store)", "initialize_configured(", "recovery-after-proof"],
   ]) {
     const body = compact(maybeFunction(text(file), symbol, true)?.body ?? "");

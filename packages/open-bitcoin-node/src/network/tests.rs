@@ -62,6 +62,7 @@ mod announcement_transport_cases;
 mod compact_cleanup_cases;
 mod compact_misbehavior_cases;
 mod compact_receive_cases;
+mod compact_stored_body_cases;
 mod compact_timeout_cases;
 mod filter_capability;
 mod getdata_tx_receipt_cases;
@@ -202,7 +203,18 @@ fn mine_header(block: &mut Block) {
 }
 
 fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block {
-    let transactions = vec![coinbase_transaction(height, value)];
+    build_block_with_transactions(
+        previous_block_hash,
+        height,
+        vec![coinbase_transaction(height, value)],
+    )
+}
+
+fn build_block_with_transactions(
+    previous_block_hash: BlockHash,
+    height: u32,
+    transactions: Vec<Transaction>,
+) -> Block {
     let (merkle_root, maybe_mutated) = block_merkle_root(&transactions).expect("merkle root");
     assert!(!maybe_mutated);
 
@@ -222,8 +234,16 @@ fn build_block(previous_block_hash: BlockHash, height: u32, value: i64) -> Block
 }
 
 fn compact_payload_with_missing_short_id(previous_block_hash: BlockHash) -> CompactBlockPayload {
-    let template = build_block(previous_block_hash, 2, 500_000_000);
     let missing = spend_transaction(Txid::from_byte_array([0x22_u8; 32]), 10_000);
+    let template = build_block_with_transactions(
+        previous_block_hash,
+        2,
+        vec![coinbase_transaction(2, 500_000_000), missing.clone()],
+    );
+    assert_eq!(
+        open_bitcoin_core::consensus::block::is_block_mutated(&template, true),
+        Ok(false)
+    );
     let wtxid = transaction_wtxid(&missing).expect("wtxid");
     let selector =
         open_bitcoin_codec::short_id_selector_from_header_and_nonce(&template.header, 42);
@@ -542,3 +562,21 @@ mod pruned_label;
 mod resource_governance;
 mod runtime_projection;
 mod transaction_relay;
+
+#[test]
+fn phase167_compact_fixture_node_missing_body_is_coherent() {
+    // Arrange
+    let payload = compact_payload_with_missing_short_id(BlockHash::from_byte_array([3; 32]));
+    let body = Block {
+        header: payload.header,
+        transactions: vec![
+            payload.prefilled_transactions[0].transaction.clone(),
+            spend_transaction(Txid::from_byte_array([0x22; 32]), 10_000),
+        ],
+    };
+    // Act
+    let mutated = open_bitcoin_core::consensus::block::is_block_mutated(&body, true);
+    // Assert
+    assert_eq!(mutated, Ok(false));
+    assert!(check_block_header(&body.header).is_ok());
+}

@@ -12,7 +12,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "packages/bitcoin-knots/test/functional"))
 from test_framework.crypto.siphash import siphash
-from test_framework.messages import CBlock, CBlockHeader, hash256, ser_compact_size
+from test_framework.messages import CBlock, CBlockHeader, hash256, ser_compact_size, ser_uint256
 from test_framework.messages import (
     msg_getcfilters, msg_cfilter, msg_getcfheaders, msg_cfheaders,
     msg_getcfcheckpt, msg_cfcheckpt,
@@ -57,11 +57,20 @@ def compute(case, predecessors):
         raise ValueError("predecessor must have 32 raw bytes")
     header = hash256(digest + raw_predecessor)
     predecessors[case["name"]] = header.hex()
-    return dict(case, outputs=[script.hex() for script in outputs], block_hash_raw=block_hash.hex(),
-                block_hash_display=block_hash[::-1].hex(), predecessor_raw=predecessor,
-                encoded=encoded.hex(), hash_raw=digest.hex(), hash_display=digest[::-1].hex(),
-                header_raw=header.hex(), header_display=header[::-1].hex(), count=count,
-                k0=str(k0), k1=str(k1), mapped=mapped)
+    result = dict(case, outputs=[script.hex() for script in outputs], block_hash_raw=block_hash.hex(),
+                  block_hash_display=block_hash[::-1].hex(), predecessor_raw=predecessor,
+                  encoded=encoded.hex(), hash_raw=digest.hex(), hash_display=digest[::-1].hex(),
+                  header_raw=header.hex(), header_display=header[::-1].hex(), count=count,
+                  k0=str(k0), k1=str(k1), mapped=mapped)
+    if case.get("include_coinbase_commitment") is True:
+        if not case["raw_block"] or len(block.vtx) != 1:
+            raise ValueError("coinbase commitment requires one raw transaction")
+        txid = hash256(block.vtx[0].serialize_without_witness())
+        merkle_root = ser_uint256(block.calc_merkle_root())
+        if merkle_root != ser_uint256(block.hashMerkleRoot):
+            raise ValueError("raw header merkle commitment mismatch")
+        result.update(coinbase_txid_raw=txid.hex(), merkle_root_raw=merkle_root.hex())
+    return result
 
 
 def peer_wire(case):

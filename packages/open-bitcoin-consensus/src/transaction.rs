@@ -6,12 +6,10 @@
 // - packages/bitcoin-knots/src/test/data/tx_valid.json
 // - packages/bitcoin-knots/src/test/data/tx_invalid.json
 
-use std::collections::HashSet;
+use open_bitcoin_codec::CodecError;
+use open_bitcoin_primitives::{Amount, MAX_MONEY, Transaction};
 
-use open_bitcoin_codec::{CodecError, TransactionEncoding, encode_transaction};
-use open_bitcoin_primitives::{Amount, MAX_MONEY, OutPoint, Transaction};
-
-use crate::MAX_BLOCK_WEIGHT;
+pub mod intrinsic;
 use crate::context::{
     ScriptExecutionData, ScriptVerifyFlags, SpentOutput, TransactionValidationContext,
     check_tx_inputs, is_final_transaction, sequence_locks,
@@ -20,78 +18,7 @@ use crate::script::{ScriptInputVerificationContext, verify_input_script};
 use crate::validation::{TxValidationError, TxValidationResult, tx_error};
 
 pub fn check_transaction(transaction: &Transaction) -> Result<(), TxValidationError> {
-    if transaction.inputs.is_empty() {
-        return Err(tx_error(
-            TxValidationResult::Consensus,
-            "bad-txns-vin-empty",
-            None,
-        ));
-    }
-    if transaction.outputs.is_empty() {
-        return Err(tx_error(
-            TxValidationResult::Consensus,
-            "bad-txns-vout-empty",
-            None,
-        ));
-    }
-
-    let stripped_size = encode_transaction(transaction, TransactionEncoding::WithoutWitness)
-        .map_err(map_codec_error)?
-        .len();
-    if stripped_size.saturating_mul(4) > MAX_BLOCK_WEIGHT {
-        return Err(tx_error(
-            TxValidationResult::Consensus,
-            "bad-txns-oversize",
-            None,
-        ));
-    }
-
-    let mut total_output_value = 0_i64;
-    for output in &transaction.outputs {
-        total_output_value += output.value.to_sats();
-        if !(0..=MAX_MONEY).contains(&total_output_value) {
-            return Err(tx_error(
-                TxValidationResult::Consensus,
-                "bad-txns-txouttotal-toolarge",
-                None,
-            ));
-        }
-    }
-
-    let mut seen_outpoints = HashSet::<OutPoint>::new();
-    for input in &transaction.inputs {
-        if !seen_outpoints.insert(input.previous_output.clone()) {
-            return Err(tx_error(
-                TxValidationResult::Consensus,
-                "bad-txns-inputs-duplicate",
-                None,
-            ));
-        }
-    }
-
-    if transaction.is_coinbase() {
-        let script_len = transaction.inputs[0].script_sig.as_bytes().len();
-        if !(2..=100).contains(&script_len) {
-            return Err(tx_error(
-                TxValidationResult::Consensus,
-                "bad-cb-length",
-                None,
-            ));
-        }
-        return Ok(());
-    }
-
-    for input in &transaction.inputs {
-        if input.previous_output.is_null() {
-            return Err(tx_error(
-                TxValidationResult::Consensus,
-                "bad-txns-prevout-null",
-                None,
-            ));
-        }
-    }
-
-    Ok(())
+    intrinsic::check_transaction_view(transaction)
 }
 
 pub fn validate_transaction_with_context(

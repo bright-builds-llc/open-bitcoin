@@ -3,14 +3,13 @@ import { checkPhase164, loadInputs } from "./check-phase164-canonical-identity.t
 import { EDGES, FIXTURE_ATTRIBUTION_MUTATIONS, FIXTURE_INVERSE_CASES, maybeRestoreReviewedSource, type ExactSourceInverse } from "./check-phase164-canonical-identity/contracts.ts";
 import { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { createHash } from "node:crypto";
+import { affirmativeScopeClaims, boundedPhase167Claim, currentQualificationClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import "./check-phase164-canonical-identity/historical.test.ts";
-
 import { CLI_MODULES, expectCopiedAdapterCase, COPIED_ADAPTER_MUTATIONS } from "./check-phase165-shared-exact-work/test-support.ts";
 import { checkPhase165, loadInputs as load165Inputs } from "./check-phase165-shared-exact-work.ts";
 import { checkPhase166, loadInputs as load166Inputs, DAEMON as CANONICAL_STARTUP, OBSERVER as CANONICAL_OBSERVER } from "./check-phase166-canonical-bootstrap.ts";
 const real = new Map([...load166Inputs(), ...loadInputs()]);
-
 test("phase165 C fixture attribution exact reviewed current source", () => {
   // Arrange / Act: actual edited fixture, never handcrafted current source.
   const source = real.get(MIGRATED_FIXTURE)!;
@@ -45,7 +44,6 @@ for (const [before, after] of FIXTURE_ATTRIBUTION_MUTATIONS) {
     expect(result.currentHash).toBe(createHash("sha256").update(changed).digest("hex"));
   });
 }
-
 test("phase165 downstream fixture guard unchanged actual source", () => {
   expect(checkPhase164(real)).toEqual([]);
 });
@@ -110,16 +108,13 @@ for (const [file, symbol, before, after] of [
     expect(checkPhase164(inputs).some(row => row.file === file && row.rule === "boundary")).toBe(true);
   });
 }
-
 const N = "packages/open-bitcoin-node/src/";
 const R = "packages/open-bitcoin-rpc/src/";
 const C = "packages/open-bitcoin-cli/src/operator/";
-
 test("phase165 live fixture guard actual current source", () => {
   // Arrange / Act / Assert
   expect(checkPhase164(real)).toEqual([]);
 });
-
 for (const [file, symbol, before, after] of [
   [N + "sync/live_fixture.rs", "pure_source_gate", "core.validate_live_origin().map_err(invalid)?;", "// origin omitted"],
   [N + "sync/live_fixture.rs", "pure_source_gate", "core.bind_live_work_source(params)", "core.bind_live_work_source(ConsensusParams::default())"],
@@ -157,7 +152,6 @@ for (const [file, symbol, before, after] of [
       && row.detail.includes(symbol))).toBe(true);
   });
 }
-
 for (const file of [
   R + "bin/open_bitcoind/tests/phase165_work.rs",
   "packages/open-bitcoin-rpc/tests/phase165_work_startup.rs",
@@ -182,7 +176,6 @@ for (const file of [
     expect(findings).toEqual([]);
   });
 }
-
 for (const [file, symbol] of EDGES.filter(row => row[1].startsWith("phase165_") && (
   row[0] === R + "bin/open_bitcoind/tests/phase165_work.rs"
   || row[0] === "packages/open-bitcoin-rpc/tests/phase165_work_startup.rs"
@@ -203,7 +196,6 @@ for (const [file, symbol] of EDGES.filter(row => row[1].startsWith("phase165_") 
     });
   }
 }
-
 for (const [file, before, after] of [
   [R + "bin/open_bitcoind/tests.rs", 'mod phase165_work;', '/* mod phase165_work; */'],
   [R + "bin/open_bitcoind/tests.rs", 'mod phase165_work;', '#[cfg(any())]\nmod phase165_work;'],
@@ -222,7 +214,6 @@ for (const [file, before, after] of [
     expect(findings.some(row => row.file === file && row.rule === "ownership")).toBe(true);
   });
 }
-
 for (const [file, before, after] of [
   [CANONICAL_STARTUP, "FjallNodeStore::open_canonical_genesis(data_dir, chain)", "FjallNodeStore::open(data_dir)"],
   [R + "bin/open_bitcoind/tests/phase165_work.rs", "assert_eq!(manifest(&path), before);", "assert!(true);"],
@@ -241,7 +232,6 @@ for (const [file, before, after] of [
     if (file === CANONICAL_STARTUP) expect((await checkPhase166(inputs)).some(row => row.file === file && row.rule === "daemon-sealed-opener")).toBe(true);
   });
 }
-
 for (const [file, before, after] of [
   [N + "storage/chain_compatibility.rs", "mod phase165_work;", ""],
   [N + "storage/chain_compatibility.rs", "mod phase165_work;", "/* mod phase165_work; */"],
@@ -260,7 +250,6 @@ for (const [file, before, after] of [
     expect(findings.some(row => row.rule === "ownership")).toBe(true);
   });
 }
-
 for (const [before, after] of [
   ["WorkCompatibilityDecision::ExistingUnproved", "WorkCompatibilityDecision::BootstrapUnavailable"],
   ["; {}; work_decision={}", "; {}; observed_work=exact"],
@@ -275,7 +264,6 @@ for (const [before, after] of [
     expect(findings.some(row => row.rule === "boundary")).toBe(true);
   });
 }
-
 function mutation(file: string, before: string, after: string): Map<string, string> {
   const source = real.get(file)!;
   expect(source.includes(before)).toBe(true);
@@ -291,7 +279,6 @@ test("current ordinary boundary and explicit fixture corpus pass", () => {
   // Assert
   expect(findings).toEqual([]);
 });
-
 for (const [file, symbol, ordinal] of EDGES) {
   test(`missing reviewed edge: ${file}:${symbol}[${ordinal}]`, () => {
     // Arrange
@@ -304,7 +291,6 @@ for (const [file, symbol, ordinal] of EDGES) {
     expect(findings.some(row => row.file === file && row.rule === "boundary")).toBe(true);
   });
 }
-
 const mutations = [
   ["packages/open-bitcoin-network/src/header_store.rs", "self.maybe_consensus_params.as_ref() != Some(params)", "false"],
   ["packages/open-bitcoin-network/src/header_store.rs", "self.maybe_proof_facts(entry.block_hash).is_some()", "true"],
@@ -319,7 +305,7 @@ const mutations = [
   ["packages/open-bitcoin-network/src/header_store/eligibility.rs", "left.maybe_sequence\n                    .unwrap_or(u64::MAX)", "left.maybe_sequence\n                    .unwrap_or(0)"],
   [N + "network/work_authority.rs", ".check_cached_body_eligibility(block, params, i64::from(block.header.time))", ".check_body_eligibility(block, params, i64::from(block.header.time))"],
   [N + "network/candidate_eligibility.rs", ".check_cached_body_eligibility_detailed(block, params, current_time)", ".check_body_eligibility(block, params, current_time)"],
-  ["packages/open-bitcoin-network/src/header_store/eligibility.rs", ".map_err(BodyEligibilityError::Validation)?", ".map_err(|error| BodyEligibilityError::Network(invalid_header(error.reject_reason)))?"],
+  ["packages/open-bitcoin-network/src/header_store/eligibility.rs", "check_block_contextual(block, &context)\n            .map_err(BodyEligibilityError::Validation)?", "check_block_contextual(block, &context)\n            .map_err(|error| BodyEligibilityError::Network(invalid_header(error.reject_reason)))?"],
   [N + "sync/block_reconcile.rs", "Err(ActivationFailure::Fatal(error)) => return Err(error),", "Err(ActivationFailure::Fatal(error)) => { maybe_error = Some(error); },"],
   [N + "sync/block_reconcile.rs", "Self::Fatal(error.into())", "Self::Invalid(error.into())"],
   [N + "sync/block_reconcile.rs", "attempted.insert(candidate.block_hash);", "// permit repeated candidate attempts"],
@@ -354,7 +340,7 @@ const mutations = [
   [N + "network/work_authority.rs", ".maybe_checked_headers\n            .take()", ".maybe_checked_headers\n            .clone()"],
   [N + "sync/types/error.rs", "Self::from(ManagedNetworkError::Chainstate(*source))", "Self::Network { message: source.to_string() }"],
   [N + "chainstate/work_authority.rs", "self.chainstate.bind_live_work_source(params)?;", "// skip actual private source binding"],
-  [N + "chainstate/work_authority.rs", "Err(ChainstateError::PreferenceAuthorizationRequired)", "Ok(unqualified_stage)"],
+  [N + "chainstate/work_authority.rs", "Err(ChainstateError::PreferenceAuthorizationRequired)\n    }\n\n    pub(crate) fn prepare_authorized_reorg", "Ok(unqualified_stage)\n    }\n\n    pub(crate) fn prepare_authorized_reorg"],
   [N + "chainstate/work_authority.rs", "authorization.check_before_prepare(", "authorization.skip_before_prepare("],
   [N + "chainstate/work_authority.rs", "authorization.check_stage(&self.chainstate, &staged)?;", "// accept genuine stage without preference"],
   [N + "chainstate.rs", ".check_stage(&self.chainstate, &prepared.staged)?;", ".skip_preference(&self.chainstate, &prepared.staged)?;"],
@@ -431,7 +417,7 @@ const mutations = [
   [N + "storage/chain_compatibility.rs", "fs::symlink_metadata(path)", "fs::metadata(path)"],
   [N + "storage/chain_compatibility.rs", "inspect_datadir_without_backend(path.as_ref())", "{ let _store = Self::open(path.as_ref()); inspect_datadir_without_backend(path.as_ref()) }"],
   [N + "network/validation_history.rs", "self.guard_header_batch(&message.headers)?;", "let _ = self.guard_header_batch(&message.headers);"],
-  [N + "network/validation_history.rs", "let inserted = headers.insert_header_with_params(header.clone(), &params)?;", "let inserted = headers.insert_header_with_params(header.clone(), &params)?; admission_scope.check_header(header)?;"],
+  [N + "network/validation_history.rs", "validate_header_for_sync(headers, header, timestamp, params)?;", "// header validation skipped"],
   [N + "network/canonical_admission.rs", "self.guard_header_batch(&candidates)?;", "let _ignored = self.guard_header_batch(&candidates);"],
   [N + "network/canonical_admission.rs", "self.guard_header_batch(&candidates)?;", "self.peer_manager.seed_header_store(headers.clone()); self.guard_header_batch(&candidates)?;"],
   [N + "network/header_sync.rs", "check_block_header_with_params(", "check_block_header("],
@@ -441,7 +427,7 @@ const mutations = [
   [N + "network/action_translation.rs", ".handle_validated_headers_with_policy(", ".peer_manager.handle_message("],
   ["packages/open-bitcoin-network/src/peer/message_dispatch.rs", "tip.chain_work > work", "tip.height > 0"],
   [N + "network/mempool_lifecycle.rs", "self.guard_body(block)?;", "self.blocks_by_hash.insert(block_hash, block.clone()); self.guard_body(block)?;"],
-  [N + "network/mempool_lifecycle.rs", ".require_history()", ".maybe_canonical_chain()"],
+  [N + "network/mempool_lifecycle.rs", ".require_owned_history()", ".maybe_canonical_chain()"],
   [N + "network/canonical_admission.rs", "Self::Fixture => Ok(())", "Self::Canonical(_) => Ok(())"],
   [N + "network/canonical_admission.rs", "self.admission_scope = AdmissionScope::Canonical(chain)", "self.admission_scope = AdmissionScope::Fixture"],
   [R + "context/network.rs", "require_ordinary_scope(chain)?;", "network.set_prune_mode(config.prune_mode)?; require_ordinary_scope(chain)?;"],
@@ -473,7 +459,6 @@ for (const [file, before, after] of mutations) {
     if (file === CANONICAL_STARTUP || file === CANONICAL_OBSERVER) expect((await checkPhase166(inputs)).some(row => row.file === file && row.rule === (file === CANONICAL_OBSERVER ? "existing-observation" : before.startsWith("FjallNodeStore") ? "daemon-sealed-opener" : "daemon-consumption"))).toBe(true);
   });
 }
-
 for (const file of [R + "bin/open_bitcoind/inbound_startup.rs", R + "dispatch/filter_index.rs", R + "http/filter_index.rs"]) {
   for (const name of ["ordinary", "fixture_named", "tests_looking_like_fixture"]) {
     test(`new product function remains checked in mixed file ${file}:${name}`, () => {
@@ -486,7 +471,6 @@ for (const file of [R + "bin/open_bitcoind/inbound_startup.rs", R + "dispatch/fi
     });
   }
 }
-
 test("string and comment spellings cannot invent product calls", () => {
   // Arrange
   const file = R + "http/filter_index.rs";
@@ -496,7 +480,6 @@ test("string and comment spellings cannot invent product calls", () => {
   // Assert
   expect(findings).toEqual([]);
 });
-
 test("removing actual mixed-file cfg(test) ownership refuses", () => {
   // Arrange
   const inputs = mutation(R + "http/filter_index.rs", "#[cfg(test)]", "#[cfg(any())]");
@@ -505,7 +488,6 @@ test("removing actual mixed-file cfg(test) ownership refuses", () => {
   // Assert
   expect(findings.some(row => row.rule === "ownership" || row.rule === "boundary")).toBe(true);
 });
-
 test("missing named input refuses without discovery", () => {
   // Arrange
   const inputs = new Map(real);
@@ -515,7 +497,6 @@ test("missing named input refuses without discovery", () => {
   // Assert
   expect(findings.some(row => row.rule === "input")).toBe(true);
 });
-
 for (const [before, after] of [
   ['#[path = "chain_compatibility/tests/preservation.rs"]', '#[path = "other/preservation.rs"]'],
   ['#[cfg(test)]\n#[path = "chain_compatibility/tests/preservation.rs"]', '#[cfg(any())]\n#[path = "chain_compatibility/tests/preservation.rs"]\n// #[cfg(test)] #[path = "chain_compatibility/tests/preservation.rs"]'],
@@ -531,7 +512,6 @@ for (const [before, after] of [
     expect(findings.some(row => row.file === file && row.rule === "ownership")).toBe(true);
   });
 }
-
 for (const body of [
   "let raw = FjallNodeStore::open; raw(path)",
   "let factory = ManagedRpcContext::for_fixture_local_operator; factory(network)",
@@ -547,7 +527,6 @@ for (const body of [
     expect(findings.some(row => row.file === file && row.rule === "opener")).toBe(true);
   });
 }
-
 test("production guard with a disabling cfg attribute refuses", () => {
   // Arrange
   const inputs = mutation(R + "context/network.rs", "    pub fn from_runtime_config_with_network_handle(", "    #[cfg(any())]\n    pub fn from_runtime_config_with_network_handle(");
@@ -556,7 +535,6 @@ test("production guard with a disabling cfg attribute refuses", () => {
   // Assert
   expect(findings.some(row => row.rule === "boundary")).toBe(true);
 });
-
 test("missing immutable prerequisite cannot borrow a spelling elsewhere", () => {
   // Arrange
   const file = "packages/open-bitcoin-consensus/src/chain_spec.rs";
@@ -566,20 +544,35 @@ test("missing immutable prerequisite cannot borrow a spelling elsewhere", () => 
   // Assert
   expect(findings.some(row => row.file === file && row.rule === "scope")).toBe(true);
 });
-
 test("ordinary header closure guard moved after insertion refuses", () => {
   // Arrange
   const file = N + "network/validation_history.rs";
-  const guard = "                admission_scope\n                    .check_header(header)\n                    .map_err(|error| error.network_error())?;\n";
+  const guard = "                    validate_header_for_sync(headers, header, timestamp, params)?;\n";
   const inputs = mutation(file, guard, "");
-  inputs.set(file, inputs.get(file)!.replace("let inserted = headers.insert_header(header.clone())?;", "let inserted = headers.insert_header(header.clone())?;\n" + guard));
+  inputs.set(file, inputs.get(file)!.replace("                    headers.insert_header_with_params(header.clone(), &params)?\n", "                    headers.insert_header_with_params(header.clone(), &params)?\n" + guard));
   // Act
   const findings = checkPhase164(inputs);
   // Assert
   expect(findings.some(row => row.file === file && row.rule === "boundary")).toBe(true);
 });
-
-for (const statement of ["Canonical bootstrap is proven.", "Canonical reopen is supported.", "Production whole-chain parity is qualified."]) {
+const boundedSection = `## Current Phase 167 bounded default-Regtest scope\n\nPhase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence. Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence. Mainnet, testnet3 and Signet ordinary configuration remain refused; Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred; Wallet authority remains unavailable.`;
+for (const [statement, expectedRule] of [
+  ["Canonical bootstrap is proven.", "claim"],
+  ["Canonical reopen is supported.", "claim"],
+  ["Production whole-chain parity is qualified.", "claim"],
+  ["Phase 167 bounded Signet private canonical submission for explicitly seeded historical cases is supported by local runtime evidence.", "claim"],
+  ["Phase 167 bounded default-Regtest private canonical submission for explicitly seeded historical cases is supported by actual-daemon evidence.", "claim"],
+  ["Phase 167 bounded default-Regtest private canonical submission for explicitly seeded historical cases is supported by local runtime evidence and mainnet ordinary history is supported.", "claim"],
+  ["Phase 167 default-Regtest private canonical submission is supported by local runtime evidence.", "claim"],
+  ["Phase 167 bounded default-Regtest private canonical submission for explicitly seeded historical cases is supported by local runtime evidence.", "claim"],
+  ["Phase 167 bounded mainnet private canonical submission is supported by local runtime evidence.", "claim"],
+  ["Phase 167 bounded default-Regtest private canonical submission is supported by actual pinned-Knots daemon evidence.", "claim"],
+  ["Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence and public-default network activation is supported.", "claim"],
+  ["Phase 167 explicitly seeded default-Regtest historical script and BIP30 cases are supported by local runtime evidence.", "claim"],
+  ["Phase 167 mainnet ordinary history is implemented.", "claim"],
+  [boundedSection.replace("remain refused", ""), "evidence"],
+  [boundedSection.replace("Wallet authority remains unavailable", ""), "evidence"],
+]) {
   test(`unearned current qualification refuses: ${statement}`, () => {
     // Arrange
     const file = "docs/parity/v2-6-canonical-chain-identity.md";
@@ -587,10 +580,18 @@ for (const statement of ["Canonical bootstrap is proven.", "Canonical reopen is 
     // Act
     const findings = checkPhase164(inputs);
     // Assert
-    expect(findings.some(row => row.rule === "claim")).toBe(true);
+    expect(findings.some(row => row.rule === expectedRule)).toBe(true);
   });
 }
-
+test("bounded Phase 167 clause separates product and fixture evidence", () => {
+  const product = "Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence";
+  const seeded = "Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence";
+  for (const clause of [product, seeded]) {
+    expect(boundedPhase167Claim(clause)).toBe(true);
+    expect(currentQualificationClaims(clause)).toEqual([]);
+    expect(affirmativeScopeClaims(clause)).toEqual([]);
+  }
+});
 for (const replacement of ["", "bun run scripts/check-phase164-canonical-identity.ts || true", "bun run scripts/check-phase164-canonical-identity.ts --fixture"]) {
   test(`default native registration refuses substitution: ${replacement}`, () => {
     // Arrange
@@ -601,7 +602,6 @@ for (const replacement of ["", "bun run scripts/check-phase164-canonical-identit
     expect(findings.some(row => row.rule === "registration")).toBe(true);
   });
 }
-
 for (const [file, inverse] of FIXTURE_INVERSE_CASES) {
   test(`phase165 canonical inverse rejects malformed spans ${file}`, () => {
     // Arrange: complete reviewed current bytes and explicit malformed descriptor shapes.

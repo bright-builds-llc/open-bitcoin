@@ -60,6 +60,7 @@ fn leftover_snapshot() -> (ChainstateSnapshot, OutPoint, Coin, BlockHash, BlockH
     let coin = sample_coin(5, 42);
     let undo_hash = BlockHash::from_byte_array([0xbb; 32]);
     let undo = BlockUndo {
+        overwrites: Vec::new(),
         transactions: vec![TxUndo {
             restored_inputs: vec![coin.clone()],
         }],

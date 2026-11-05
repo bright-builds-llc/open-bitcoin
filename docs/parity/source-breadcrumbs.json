@@ -12,6 +12,931 @@
   },
   "groups": [
     {
+      "label": "phase167-flush-metadata-confirmed-counts",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-inspection-copy-live-safety",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/copy/identity.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/live.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/live/tests.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/live/tests/refusals.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/live/tests/unlinked.rs"
+      ],
+      "breadcrumbs": [],
+      "reason": "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified."
+    },
+    {
+      "label": "phase167-private-history-worker-protocol",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/protocol/history.rs"
+      ],
+      "breadcrumbs": [],
+      "reason": "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified."
+    },
+    {
+      "label": "phase167-opening-physical-observation-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/opening/tests.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/opening/tests/observation.rs"
+      ],
+      "breadcrumbs": [],
+      "reason": "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified."
+    },
+    {
+      "label": "phase167-fjall-mutation-tracking",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/tracked.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/tracked/tests.rs"
+      ],
+      "breadcrumbs": [],
+      "reason": "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified."
+    },
+    {
+      "label": "phase167-validation-history-workflow",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/observation.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/resources.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/workflow.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-canonical-record-projection",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/canonical_history/records/projection.rs",
+        "packages/open-bitcoin-node/src/storage/canonical_history/records/projection/tests.rs",
+        "packages/open-bitcoin-node/src/storage/canonical_history/records/projection/tests/freshness.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-genesis-freshness",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/canonical_genesis/tests/freshness.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-inspection-canonical-history",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/canonical_history.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/inspection/phase167_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-network-peer-compact-order-retry",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/tests/block_request_order_cases.rs",
+        "packages/open-bitcoin-network/src/peer/tests/compact_retry_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-node-compact-stored-body",
+      "files": [
+        "packages/open-bitcoin-node/src/network/tests/compact_stored_body_cases.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-sync-peer-protocol-lifecycle",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/peer_resolution/peer_protocol_failures/lifecycle.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-seeded-historical-context-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical.rs",
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical/contexts.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
+      "label": "phase167-ordinary-history-support-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase167_ordinary.rs",
+        "packages/open-bitcoin-node/src/sync/tests/phase167_support.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
+      "label": "phase167-bounded-fjall-row-family",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows/codec.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-apply-serialized-tests",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/apply/serialized_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-candidate-rules",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/candidate_rules.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-lossless-overwrite-undo",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/overwrite_undo.rs",
+        "packages/open-bitcoin-node/src/chainstate/fjall_store/phase167_undo_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/undo.h"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-phase167-bip30",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase167_bip30.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-phase167-context",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase167_context.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.h"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-phase167-locktime",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase167_locktime.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/primitives/transaction.h"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-phase167-policy",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase167_policy.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/pubkey.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-engine-phase167-scripts",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/tests/phase167_scripts.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp"
+      ]
+    },
+    {
+      "label": "phase167-cli-operator-runtime-support-phase167-tests",
+      "files": [
+        "packages/open-bitcoin-cli/src/operator/runtime/support/phase167_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp"
+      ]
+    },
+    {
+      "label": "phase167-codec-block-wire",
+      "files": [
+        "packages/open-bitcoin-codec/src/block/wire.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/block.h",
+        "packages/bitcoin-knots/src/core_read.cpp",
+        "packages/bitcoin-knots/src/serialize.h"
+      ]
+    },
+    {
+      "label": "phase167-codec-transaction-wire",
+      "files": [
+        "packages/open-bitcoin-codec/src/transaction/wire.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/transaction.h",
+        "packages/bitcoin-knots/src/serialize.h"
+      ]
+    },
+    {
+      "label": "phase167-codec-transaction-wire-tests",
+      "files": [
+        "packages/open-bitcoin-codec/src/transaction/wire/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/primitives/transaction.h",
+        "packages/bitcoin-knots/src/serialize.h",
+        "packages/bitcoin-knots/src/core_read.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-block-intrinsic",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block/intrinsic.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-block-intrinsic-tests",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block/intrinsic/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_check.cpp",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-block-mutation",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block/mutation.rs",
+        "packages/open-bitcoin-consensus/src/block/mutation/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-block-phase167-tests",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block/phase167_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-block-sigops",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block/sigops.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/script/script.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-block-sigops-tests",
+      "files": [
+        "packages/open-bitcoin-consensus/src/block/sigops/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/script/script.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-candidate-history",
+      "files": [
+        "packages/open-bitcoin-consensus/src/candidate_history.rs",
+        "packages/open-bitcoin-consensus/src/candidate_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/pow.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-candidate-history-header-rules",
+      "files": [
+        "packages/open-bitcoin-consensus/src/candidate_history/header_rules.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/clientversion.h",
+        "packages/bitcoin-knots/src/clientversion.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-candidate-history-rules",
+      "files": [
+        "packages/open-bitcoin-consensus/src/candidate_history/rules.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/deploymentstatus.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-candidate-history-rules-tests",
+      "files": [
+        "packages/open-bitcoin-consensus/src/candidate_history/rules/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/deploymentstatus.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-selected-network-rules",
+      "files": [
+        "packages/open-bitcoin-consensus/src/chain_spec/rules.rs",
+        "packages/open-bitcoin-consensus/src/chain_spec/rules/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/consensus/consensus.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-signature-high-s",
+      "files": [
+        "packages/open-bitcoin-consensus/src/signature/tests/high_s.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/pubkey.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-transaction-intrinsic",
+      "files": [
+        "packages/open-bitcoin-consensus/src/transaction/intrinsic.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/consensus/tx_check.cpp",
+        "packages/bitcoin-knots/src/primitives/transaction.h"
+      ]
+    },
+    {
+      "label": "phase167-network-compact-download-completion",
+      "files": [
+        "packages/open-bitcoin-network/src/compact_download/completion.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockencodings.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-canonical-header-store",
+      "files": [
+        "packages/open-bitcoin-network/src/header_store/canonical_history.rs",
+        "packages/open-bitcoin-network/src/header_store/canonical_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.h",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
+      "label": "phase167-network-peer-block-requests",
+      "files": [
+        "packages/open-bitcoin-network/src/peer/block_requests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase167-network-test-block-commitments",
+      "files": [
+        "packages/open-bitcoin-network/src/test_block_commitments.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-node-chainstate-filter-index-phase167-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/filter_index/phase167_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/undo.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-chainstate-flush-lifecycle-fjall-sink-proof-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/fjall_sink/proof_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-chainstate-flush-lifecycle-phase167-counts",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/tests/phase167_counts.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-canonical-validation-history-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/chainstate/validation_history/tests/phase167.rs",
+        "packages/open-bitcoin-node/src/storage/canonical_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/pow.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-network-canonical-admission-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/network/canonical_admission/tests/phase167.rs",
+        "packages/open-bitcoin-node/src/network/canonical_admission/tests/phase167/fixtures.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/pow.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-node-network-canonical-admission-phase167-compact-reconstruction",
+      "files": [
+        "packages/open-bitcoin-node/src/network/canonical_admission/tests/phase167/compact_reconstruction.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-node-network-canonical-admission-phase167-compact-stored-body",
+      "files": [
+        "packages/open-bitcoin-node/src/network/canonical_admission/tests/phase167/compact_stored_body.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_compactblocks.py"
+      ]
+    },
+    {
+      "label": "phase167-node-network-runtime-authority-filter-index-phase167-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/phase167_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-network-runtime-authority-filter-index-serving-disconnect",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/filter_index/serving/disconnect.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "phase167-peer-request-session-lifecycle",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/peer_sessions.rs",
+        "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/net.cpp"
+      ]
+    },
+    {
+      "label": "phase167-peer-request-basic-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/peer_sessions/basic_tests.rs",
+        "packages/open-bitcoin-node/src/sync/block_reconcile/peer_requests/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "phase167-peer-outbox-registration",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/peer_sessions/registry.rs",
+        "packages/open-bitcoin-node/src/sync/session/outbox.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/net.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp"
+      ]
+    },
+    {
+      "label": "phase167-runtime-history-reopen-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/reopen_bound.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/rpc/mining.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-network-runtime-authority-validation-history-compact-download-cleanup",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/compact_download_cleanup.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/src/rpc/mining.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-network-runtime-authority-validation-history-typed-boundaries",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/typed_boundaries.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/validation.h"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-canonical-history",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/canonical_history.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/chain.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
+      "label": "phase167-canonical-history-proof-source",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/canonical_history/proof.rs",
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical/source.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/pow.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-canonical-history-records",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/canonical_history/records.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-fjall-store-bounded-rows-durable-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows/durable_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txdb.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-fjall-store-chain-meta",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/chain_meta.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/txdb.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
+    },
+    {
+      "label": "phase167-filter-append-rows",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/append/rows.rs",
+        "packages/open-bitcoin-node/src/storage/fjall_store/filters/append/rows/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-fjall-store-serialized-body-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/serialized_body_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-snapshot-codec-mempool-serialized-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool/serialized_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/mempool_persist.cpp",
+        "packages/bitcoin-knots/src/policy/policy.cpp",
+        "packages/bitcoin-knots/test/functional/mempool_persist.py"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-snapshot-codec-overwrite-undo",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/overwrite_undo.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/undo.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-storage-snapshot-codec-phase167-undo",
+      "files": [
+        "packages/open-bitcoin-node/src/storage/snapshot_codec/tests/phase167_undo.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/undo.h",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-sync-canonical-history",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/canonical_history.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-sync-canonical-history-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/canonical_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-historical-bip30-replay-tests",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical/bip30_repeats.rs",
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical/bip30_restore.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/coins.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-sync-phase167-historical-ordinary-flags",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical/ordinary_flags.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+        "packages/bitcoin-knots/src/consensus/merkle.cpp"
+      ]
+    },
+    {
+      "label": "phase167-node-sync-phase167-historical-scripts",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/phase167_historical/scripts.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+      ]
+    },
+    {
+      "label": "phase167-rpc-bin-open-bitcoind-phase167-tests",
+      "files": [
+        "packages/open-bitcoin-rpc/src/bin/open_bitcoind/phase167_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/rpc/mining.cpp"
+      ]
+    },
+    {
+      "label": "phase167-rpc-context-canonical-history",
+      "files": [
+        "packages/open-bitcoin-rpc/src/context/canonical_history.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/init.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/rpc/mining.cpp"
+      ]
+    },
+    {
+      "label": "phase167-rpc-context-canonical-history-tests",
+      "files": [
+        "packages/open-bitcoin-rpc/src/context/canonical_history/tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/rpc/mining.cpp",
+        "packages/bitcoin-knots/test/functional/mining_basic.py"
+      ]
+    },
+    {
+      "label": "phase167-rpc-dispatch-submit-block",
+      "files": [
+        "packages/open-bitcoin-rpc/src/dispatch/submit_block.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/mining.cpp",
+        "packages/bitcoin-knots/src/rpc/server.cpp",
+        "packages/bitcoin-knots/src/rpc/util.cpp",
+        "packages/bitcoin-knots/src/core_read.cpp",
+        "packages/bitcoin-knots/src/util/strencodings.cpp"
+      ]
+    },
+    {
+      "label": "phase167-rpc-phase167-canonical-startup",
+      "files": [
+        "packages/open-bitcoin-rpc/tests/phase167_canonical_startup.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/bitcoind.cpp",
+        "packages/bitcoin-knots/src/rpc/mining.cpp",
+        "packages/bitcoin-knots/test/functional/mining_basic.py"
+      ]
+    },
+    {
+      "label": "phase167-rpc-phase167-canonical-startup-basic-evidence",
+      "files": [
+        "packages/open-bitcoin-rpc/tests/phase167_canonical_startup/basic_evidence.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/blockfilter.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "phase167-chainstate-apply-script-context",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/apply.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/coins.h",
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
+      "label": "phase167-consensus-signature-pubkey",
+      "files": [
+        "packages/open-bitcoin-consensus/src/signature.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/key.h",
+        "packages/bitcoin-knots/src/pubkey.h",
+        "packages/bitcoin-knots/src/pubkey.cpp",
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/script/sign.cpp"
+      ]
+    },
+    {
+      "label": "phase167-script-locktime",
+      "files": [
+        "packages/open-bitcoin-consensus/src/script/locktime.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/primitives/transaction.h"
+      ]
+    },
+    {
+      "label": "phase167-script-serialized-tests",
+      "files": [
+        "packages/open-bitcoin-consensus/src/script/serialized_tests.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/script/interpreter.cpp",
+        "packages/bitcoin-knots/src/script/script.h",
+        "packages/bitcoin-knots/src/script/script_error.cpp"
+      ]
+    },
+    {
       "label": "phase166-checkpoint-confirmed-counts",
       "files": [
         "packages/open-bitcoin-node/src/storage/fjall_store/tests/checkpoint_metadata.rs"
@@ -1605,7 +2530,6 @@
       "label": "chainstate-engine",
       "files": [
         "packages/open-bitcoin-chainstate/src/engine/overlay_apply.rs",
-        "packages/open-bitcoin-chainstate/src/engine/apply.rs",
         "packages/open-bitcoin-chainstate/src/coins.rs",
         "packages/open-bitcoin-chainstate/src/coins/cache.rs",
         "packages/open-bitcoin-chainstate/src/coins/memory.rs",
@@ -2157,10 +3081,15 @@
         "packages/open-bitcoin-consensus/src/script/tests/verify_input_script_keeps_non_witness_p2sh_redeems_on_the_legacy_path.rs",
         "packages/open-bitcoin-consensus/src/script/tests/verify_input_script_rejects_invalid_bare_multisig_forms.rs",
         "packages/open-bitcoin-consensus/src/script/tests/verify_script_matches_knots_equal_vector.rs",
-        "packages/open-bitcoin-consensus/src/script/tests/witness_and_sigop_helpers_are_covered.rs"
-      ],
-      "patterns": [
-        "packages/open-bitcoin-consensus/src/script/*.rs"
+        "packages/open-bitcoin-consensus/src/script/tests/witness_and_sigop_helpers_are_covered.rs",
+        "packages/open-bitcoin-consensus/src/script/encoding.rs",
+        "packages/open-bitcoin-consensus/src/script/legacy.rs",
+        "packages/open-bitcoin-consensus/src/script/opcodes.rs",
+        "packages/open-bitcoin-consensus/src/script/sigops.rs",
+        "packages/open-bitcoin-consensus/src/script/stack.rs",
+        "packages/open-bitcoin-consensus/src/script/taproot.rs",
+        "packages/open-bitcoin-consensus/src/script/tests.rs",
+        "packages/open-bitcoin-consensus/src/script/witness.rs"
       ],
       "breadcrumbs": [
         "packages/bitcoin-knots/src/script/script.h",
@@ -2185,7 +3114,6 @@
     {
       "label": "consensus-signature",
       "files": [
-        "packages/open-bitcoin-consensus/src/signature.rs",
         "packages/open-bitcoin-consensus/src/signature/tests.rs",
         "packages/open-bitcoin-consensus/tests/taproot.rs"
       ],

@@ -18,7 +18,9 @@ use serde_json::{Value, json};
 use ureq::Agent;
 
 mod canonical_genesis;
-use canonical_genesis::observe_canonical_genesis;
+use canonical_genesis::observe_canonical_status;
+#[cfg(test)]
+mod phase167_tests;
 
 use super::chain_compatibility::canonical_chain_from_resolution;
 use super::{
@@ -78,7 +80,7 @@ pub(super) fn execute_offline_sync_command(
     format: OperatorOutputFormat,
 ) -> Result<OperatorCommandOutcome, OperatorRuntimeError> {
     if matches!(args.command, SyncCommand::Status) {
-        return observe_canonical_genesis(data_dir, selected_chain, format);
+        return observe_canonical_status(data_dir, selected_chain, format);
     }
     let store = FjallNodeStore::open_ordinary(data_dir, selected_chain)
         .map_err(|refusal| OperatorRuntimeError::CompatibilityRefused { refusal })?;

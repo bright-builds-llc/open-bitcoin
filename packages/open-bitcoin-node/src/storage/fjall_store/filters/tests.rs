@@ -89,6 +89,7 @@ fn fixtures(count: u32) -> (Vec<ChainPosition>, Vec<StoredFilterRecord>) {
             i64::from(block.header.time),
         );
         let undo = BlockUndo {
+            overwrites: Vec::new(),
             transactions: Vec::new(),
         };
         let maybe_history = (height != 0).then_some(HistoricalBlockUndo {

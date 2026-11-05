@@ -97,7 +97,9 @@ export function hasCanonicalDaemonComposition(daemon: string, canonicalSource: s
   const factoryHeader = ordinaryRust(canonicalSource).slice(factory.start, canonicalSource.indexOf("{", factory.start));
   return ownsDeclaration(daemon, "mod canonical_startup;")
     && hasOwningAttribute(daemon, ordinaryRust(daemon).indexOf("mod canonical_startup;"), '#[path = "open_bitcoind/canonical_startup.rs"]')
-    && ownsDeclaration(daemon, "use canonical_startup::{open_authoritative_network_runtime, open_runtime_store};")
+    && ownsDeclaration(daemon, `use canonical_startup::{
+    open_authoritative_network_runtime, open_configured_history_runtime, open_runtime_store,
+};`)
     && hasOwningAttribute(daemon, application.start, "#[tokio::main]")
     && compact(main.body) === compact(`
       if let Some(code) = FjallNodeStore::maybe_run_inspection_worker() { std::process::exit(code); }
@@ -127,13 +129,20 @@ export function hasCanonicalDaemonComposition(daemon: string, canonicalSource: s
     `)
     && ownsDeclaration(application.body, "let opened =")
     && app.includes(compact(`
-      let maybe_runtime_store = open_runtime_store(&runtime)?;
-      let opened = open_authoritative_network_runtime(&runtime, maybe_runtime_store)?;
+      let opened = match open_configured_history_runtime(&runtime)? {
+        Some(opened) => opened,
+        None => {
+          let maybe_runtime_store = open_runtime_store(&runtime)?;
+          open_authoritative_network_runtime(&runtime, maybe_runtime_store)?
+        }
+      };
       let maybe_runtime_store = match &opened {
         OpenedAuthoritativeRuntime::Durable(authoritative) => authoritative.maybe_sync_runtime.as_ref().map(|sync| sync.store().clone()),
         #[cfg(test)] OpenedAuthoritativeRuntime::Transient(_) => None,
       };
     `))
+    && app.split("open_configured_history_runtime(&runtime)?").length === 2
+    && app.split("open_authoritative_network_runtime(&runtime,maybe_runtime_store)?").length === 2
     && ownsDeclaration(application.body, "match opened {")
     && app.endsWith(compact(`match opened {
       OpenedAuthoritativeRuntime::Durable(authoritative_runtime) => {

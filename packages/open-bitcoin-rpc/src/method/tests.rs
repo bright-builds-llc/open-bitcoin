@@ -29,6 +29,7 @@ use super::{
 fn supported_http_methods_match_phase_20_wallet_surface() {
     // Arrange
     let expected = [
+        "submitblock",
         "getblockfilter",
         "getindexinfo",
         "getblockchaininfo",
@@ -504,4 +505,22 @@ fn openbitcoinpackage_unknown_field_is_rejected() {
     assert_eq!(accepted.mode, OpenBitcoinPackageMode::Submit);
     assert_eq!(accepted.raw_txs, vec!["00".to_string()]);
     assert!(rejected.is_err(), "unknown openbitcoinpackage field");
+}
+
+#[test]
+fn phase167_submitblock_is_the_single_added_baseline_node_method() {
+    // Arrange
+    let method = SupportedMethod::SubmitBlock;
+    // Act
+    let call = normalize_method_call(
+        "submitblock",
+        RequestParameters::Positional(vec![json!("00"), json!(null)]),
+    )
+    .expect("pinned params");
+    // Assert
+    assert_eq!(SupportedMethod::all().len(), 30);
+    assert_eq!(method.name(), "submitblock");
+    assert_eq!(method.origin(), MethodOrigin::BaselineParity);
+    assert_eq!(method.scope(), MethodScope::Node);
+    assert!(matches!(call, MethodCall::SubmitBlock(_)));
 }

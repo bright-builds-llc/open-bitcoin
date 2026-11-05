@@ -12,6 +12,10 @@
 // - packages/bitcoin-knots/test/functional/p2p_tx_download.py
 // - packages/bitcoin-knots/test/functional/mempool_accept.py
 
+use super::compact_cleanup_cases::{
+    assert_in_flight, assert_no_in_flight_hash, build_block_with_transactions,
+    compact_payload_from_block, start_shared_compact_on_peer, tip_chain, txid,
+};
 use open_bitcoin_core::consensus::block_hash;
 
 use super::*;
@@ -190,4 +194,180 @@ fn receive_sync_message_reports_block_disposition() {
 
     // Assert
     assert!(result.maybe_block_disposition.is_some());
+}
+
+#[test]
+fn phase167_compact_stored_body_fixture_stale_epoch_preserves_partial_request() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(167_671);
+    let (_, spendable) = tip_chain(&mut network);
+    let spend = spend_transaction(txid(&spendable.transactions[0]), 499_999_000);
+    let block = build_block_with_transactions(block_hash(&spendable.header), 2, vec![spend]);
+    let hash = block_hash(&block.header);
+    start_shared_compact_on_peer(
+        &mut network,
+        167_671,
+        compact_payload_from_block(&block, 17),
+        i64::from(block.header.time),
+    );
+    network
+        .retain_checked_candidate(&block, consensus_params(), i64::from(block.header.time))
+        .expect("actual retained checked candidate");
+    let epoch = network
+        .peer_manager()
+        .header_store()
+        .body_eligibility_epoch();
+    network.peer_manager_mut().mark_body_unavailable(hash);
+    assert!(!epoch.is_current());
+    let before = network.chainstate_snapshot().expect("accepted before");
+
+    // Act
+    let finished = network.finish_bookkeeping(&block);
+
+    // Assert
+    assert!(!finished);
+    assert_eq!(
+        network.chainstate_snapshot().expect("accepted after"),
+        before
+    );
+    assert_eq!(
+        network.peer_manager().block_request_peer_order(hash),
+        vec![167_671]
+    );
+    assert_in_flight(&network, 167_671, hash);
+}
+
+#[test]
+fn phase167_compact_stored_body_consumed_fallback_finishes_once_on_local_success() {
+    // Arrange
+    let mut network = compact_relay_enabled_managed_network(167_681);
+    let (_, spendable) = tip_chain(&mut network);
+    let spend = spend_transaction(txid(&spendable.transactions[0]), 499_999_000);
+    let block = build_block_with_transactions(block_hash(&spendable.header), 2, vec![spend]);
+    let hash = block_hash(&block.header);
+    let unrelated_spend = spend_transaction(txid(&spendable.transactions[0]), 499_997_000);
+    let unrelated =
+        build_block_with_transactions(block_hash(&spendable.header), 3, vec![unrelated_spend]);
+    let unrelated_hash = block_hash(&unrelated.header);
+    let now = i64::from(block.header.time);
+    start_shared_compact_on_peer(
+        &mut network,
+        167_681,
+        compact_payload_from_block(&block, 17),
+        now,
+    );
+    start_shared_compact_on_peer(
+        &mut network,
+        167_682,
+        compact_payload_from_block(&block, 19),
+        now,
+    );
+    start_shared_compact_on_peer(
+        &mut network,
+        167_683,
+        compact_payload_from_block(&unrelated, 23),
+        now,
+    );
+    let wrong = spend_transaction(txid(&spendable.transactions[0]), 499_998_000);
+    let mismatch = WireNetworkMessage::BlockTxn(open_bitcoin_codec::BlockTransactions {
+        block_hash: hash,
+        transactions: vec![wrong],
+    });
+
+    // Act
+    let first = network
+        .receive_message(
+            167_681,
+            mismatch,
+            now + 1,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("real first fallback");
+    let repeated = network
+        .receive_message(
+            167_681,
+            WireNetworkMessage::CompactBlock(compact_payload_from_block(&block, 17)),
+            now + 2,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("consumed attempt suppresses repeat compact fallback");
+    assert!(
+        first
+            .outbound
+            .iter()
+            .any(|item| matches!(item, WireNetworkMessage::GetData(_)))
+    );
+    assert!(
+        !repeated
+            .outbound
+            .iter()
+            .any(|item| matches!(item, WireNetworkMessage::GetData(_)))
+    );
+    assert_eq!(
+        network.peer_manager().block_request_peer_order(hash),
+        vec![167_681, 167_682]
+    );
+    network
+        .connect_local_block(&block, verify_flags(), consensus_params())
+        .expect("real retained local completion");
+
+    // Assert
+    assert!(
+        network
+            .peer_manager()
+            .block_request_peer_order(hash)
+            .is_empty()
+    );
+    for peer in [167_681, 167_682] {
+        assert!(
+            !network
+                .peer_manager()
+                .peer_state(peer)
+                .expect("live peer")
+                .requested_blocks
+                .contains(&hash)
+        );
+        assert_no_in_flight_hash(&network, peer, hash);
+    }
+    assert_eq!(
+        network
+            .peer_manager()
+            .block_request_peer_order(unrelated_hash),
+        vec![167_683]
+    );
+    assert_in_flight(&network, 167_683, unrelated_hash);
+    let reentered = network
+        .receive_message(
+            167_681,
+            WireNetworkMessage::CompactBlock(compact_payload_from_block(&block, 17)),
+            now + 3,
+            verify_flags(),
+            consensus_params(),
+        )
+        .expect("refunded compact slot");
+    assert!(
+        reentered
+            .outbound
+            .iter()
+            .any(|item| matches!(item, WireNetworkMessage::GetBlockTxn(_)))
+    );
+    assert_eq!(
+        network.peer_manager().block_request_peer_order(hash),
+        vec![167_681]
+    );
+    assert!(network.finish_bookkeeping(&block));
+    assert!(
+        network
+            .peer_manager()
+            .block_request_peer_order(hash)
+            .is_empty()
+    );
+    assert_eq!(
+        network
+            .peer_manager()
+            .block_request_peer_order(unrelated_hash),
+        vec![167_683]
+    );
 }

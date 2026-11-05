@@ -16,6 +16,7 @@ use crate::context::{
 
 mod encoding;
 mod legacy;
+mod locktime;
 mod opcodes;
 mod sigops;
 mod stack;
@@ -28,18 +29,39 @@ use self::sigops::{
     count_witness_sigops as count_witness_sigops_impl,
 };
 
+/// Legacy sighash skips decoded separators while retaining pushed bytes and malformed tails.
+pub(crate) fn strip_legacy_codeseparators(script: &ScriptBuf) -> Vec<u8> {
+    let bytes = script.as_bytes();
+    let mut retained = Vec::with_capacity(bytes.len());
+    let mut offset = 0;
+    while offset < bytes.len() {
+        let start = offset;
+        match encoding::read_instruction_syntax(bytes, &mut offset) {
+            Ok(instruction) if instruction.opcode == opcodes::OP_CODESEPARATOR => {}
+            Ok(_) => retained.extend_from_slice(&bytes[start..offset]),
+            Err(_) => {
+                retained.extend_from_slice(&bytes[start..]);
+                break;
+            }
+        }
+    }
+    retained
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScriptError {
     BadOpcode,
     DisabledOpcode(u8),
     EvalFalse,
     InvalidStackOperation,
+    NegativeLockTime,
     NumOverflow(usize),
     OpCount,
     OpReturn,
     PubKeyCount,
     PubKeyType,
     PushSize(usize),
+    ScriptSize,
     SigCount,
     SigDer,
     SigHashType,
@@ -50,6 +72,7 @@ pub enum ScriptError {
     StackOverflow(usize),
     TruncatedPushData,
     UnbalancedConditional,
+    UnsatisfiedLockTime,
     UnsupportedOpcode(u8),
     VerifyFailed,
     WitnessCleanStack,
@@ -69,12 +92,14 @@ impl fmt::Display for ScriptError {
             Self::DisabledOpcode(opcode) => write!(f, "disabled opcode: 0x{opcode:02x}"),
             Self::EvalFalse => write!(f, "script evaluated to false"),
             Self::InvalidStackOperation => write!(f, "invalid stack operation"),
+            Self::NegativeLockTime => write!(f, "negative locktime"),
             Self::NumOverflow(size) => write!(f, "script number overflow: {size} bytes"),
             Self::OpCount => write!(f, "script exceeds opcode limit"),
             Self::OpReturn => write!(f, "OP_RETURN encountered"),
             Self::PubKeyCount => write!(f, "invalid public key count"),
             Self::PubKeyType => write!(f, "invalid public key encoding"),
             Self::PushSize(size) => write!(f, "push exceeds stack element limit: {size} bytes"),
+            Self::ScriptSize => write!(f, "Script is too big"),
             Self::SigCount => write!(f, "invalid signature count"),
             Self::SigDer => write!(f, "invalid DER signature"),
             Self::SigHashType => write!(f, "invalid signature hash type"),
@@ -85,6 +110,7 @@ impl fmt::Display for ScriptError {
             Self::StackOverflow(size) => write!(f, "stack exceeds maximum size: {size}"),
             Self::TruncatedPushData => write!(f, "truncated pushdata"),
             Self::UnbalancedConditional => write!(f, "unbalanced conditional"),
+            Self::UnsatisfiedLockTime => write!(f, "unsatisfied locktime"),
             Self::UnsupportedOpcode(opcode) => write!(f, "unsupported opcode: 0x{opcode:02x}"),
             Self::VerifyFailed => write!(f, "VERIFY failed"),
             Self::WitnessCleanStack => write!(f, "witness script did not leave a clean stack"),
@@ -130,6 +156,11 @@ pub fn verify_input_script(context: ScriptInputVerificationContext<'_>) -> Resul
 }
 
 pub fn count_legacy_sigops(script: &ScriptBuf) -> Result<usize, ScriptError> {
+    Ok(count_legacy_sigops_impl(script))
+}
+
+/// Count legacy signature opcodes from raw syntax without executing the script.
+pub fn legacy_sigops_count(script: &ScriptBuf) -> usize {
     count_legacy_sigops_impl(script)
 }
 
@@ -137,6 +168,11 @@ pub fn count_p2sh_sigops(
     script_sig: &ScriptBuf,
     script_pubkey: &ScriptBuf,
 ) -> Result<usize, ScriptError> {
+    Ok(count_p2sh_sigops_impl(script_sig, script_pubkey))
+}
+
+/// Count P2SH redeem-script signature opcodes without executing the script.
+pub fn p2sh_sigops_count(script_sig: &ScriptBuf, script_pubkey: &ScriptBuf) -> usize {
     count_p2sh_sigops_impl(script_sig, script_pubkey)
 }
 
@@ -146,8 +182,26 @@ pub fn count_witness_sigops(
     witness: &ScriptWitness,
     verify_flags: ScriptVerifyFlags,
 ) -> Result<usize, ScriptError> {
+    Ok(count_witness_sigops_impl(
+        script_sig,
+        script_pubkey,
+        witness,
+        verify_flags,
+    ))
+}
+
+/// Count witness signature opcodes under selected flags without executing the script.
+pub fn witness_sigops_count(
+    script_sig: &ScriptBuf,
+    script_pubkey: &ScriptBuf,
+    witness: &ScriptWitness,
+    verify_flags: ScriptVerifyFlags,
+) -> usize {
     count_witness_sigops_impl(script_sig, script_pubkey, witness, verify_flags)
 }
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod serialized_tests;

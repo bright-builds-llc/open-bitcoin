@@ -27,6 +27,7 @@ pub(crate) use fixtures::block;
 use fixtures::{accept, fresh};
 
 mod phase165_work_authority;
+pub(crate) mod phase167;
 
 #[test]
 fn phase159_validation_history_accept_ordinary_fault_retains_live_bounded_fact_and_refuses_absorb()

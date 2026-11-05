@@ -92,13 +92,28 @@ async fn partial_failure(fail_on: usize) {
         assert_eq!(failure.progress.bytes, 0);
     }
     let mut partial = [0_u8; 13];
-    client.readable().await.expect("actual partial bytes");
-    assert_eq!(
-        client
-            .try_read(&mut partial)
-            .expect("actual partial prefix"),
-        13
-    );
+    let received = tokio::time::timeout(Duration::from_secs(2), async {
+        let mut received = 0;
+        while received < partial.len() {
+            client.readable().await?;
+            match client.try_read(&mut partial[received..]) {
+                Ok(0) => {
+                    return Err(io::Error::new(
+                        io::ErrorKind::UnexpectedEof,
+                        "closed partial prefix",
+                    ));
+                }
+                Ok(count) => received += count,
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
+                Err(error) => return Err(error),
+            }
+        }
+        Ok::<usize, io::Error>(received)
+    })
+    .await
+    .expect("actual partial prefix deadline")
+    .expect("actual partial prefix");
+    assert_eq!(received, 13);
     drop(network);
     fixture.cleanup();
 }

@@ -16,7 +16,7 @@ const PHASE97_CHECKER_COMMAND =
   "bun run scripts/check-phase97-inbound-metrics.ts";
 const CLOSED_FLOW =
   "InboundPeerServingStatus aggregate counters -> fixed MetricSample values -> FjallNodeStore::append_metric_samples -> dashboard/status/support retained history";
-const ORDINARY_CONTEXT_CONTRACTS = [["from_runtime_config_with_store","7b7aff37b15816b509d2c8fd34460af5c2288d8f9d08f46649a483ba746c7e69"],["try_from_runtime_config_with_store","a14b7d44cf57b8c5c01546b65fedf0f5fc24c4bda7e6e11bf12083f8bd054ed6"]];
+const ORDINARY_CONTEXT_CONTRACTS = [["from_runtime_config_with_store","7b7aff37b15816b509d2c8fd34460af5c2288d8f9d08f46649a483ba746c7e69"],["try_from_runtime_config_with_store","4a71cf95172a6cebd02f05abca1075c97a265529360d0320d0791ef7e3dbdf56"]];
 
 const INBOUND_METRIC_VARIANTS = [
   "InboundAdmittedPeerCount",

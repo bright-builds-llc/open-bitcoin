@@ -142,7 +142,7 @@ impl FjallNodeStore {
             return Ok(None);
         }
         let observed = body_work(bytes.as_ref())?;
-        open_bitcoin_core::codec::parse_block(bytes.as_ref())
+        open_bitcoin_core::codec::block::wire::parse_serialized_block(bytes.as_ref())
             .map(|block| Some((block, observed)))
             .map_err(index_corruption)
     }
@@ -260,9 +260,6 @@ impl<'a> Cursor<'a> {
     }
     fn script(&mut self) -> Result<&'a [u8], StorageError> {
         let len = self.size()?;
-        if len > 10_000 {
-            return Err(index_corruption("BASIC body script bound"));
-        }
         self.take(len)
     }
 }

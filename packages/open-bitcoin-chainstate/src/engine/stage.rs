@@ -250,6 +250,29 @@ impl AcceptedChainstateReorg {
 }
 
 impl<V: CoinsView> Chainstate<V> {
+    /// Inspect genuine staged effects without absorbing or granting live authority.
+    /// ```compile_fail
+    /// use open_bitcoin_chainstate::{Chainstate, StagedChainstateConnect};
+    /// fn forge(owner: &Chainstate, stage: &StagedChainstateConnect) {
+    ///     let _: Chainstate = owner.project_staged_connect(stage);
+    /// }
+    /// ```
+    pub fn project_staged_connect(
+        &self,
+        staged: &StagedChainstateConnect,
+    ) -> Result<crate::ChainstateSnapshot, ChainstateError> {
+        self.work_authority
+            .check(&staged.binding, self.tip(), false)?;
+        let mut snapshot = self.admission_snapshot()?;
+        staged.overlay.overlay_unspent_into(&mut snapshot.utxos);
+        snapshot.active_chain = staged.next_active_chain.clone();
+        snapshot.maybe_confirmed_txid_counts = staged.next_confirmed_txid_counts.clone();
+        snapshot
+            .undo_by_block
+            .insert(staged.position.block_hash, staged.undo.clone());
+        Ok(snapshot)
+    }
+
     /// Bind preference to its exact stage, including the stage's own preview continuation.
     pub fn check_reorg_work_source(
         &self,
@@ -269,6 +292,16 @@ impl<V: CoinsView> Chainstate<V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> Result<StagedChainstateReorg, ChainstateError> {
+        let consensus_params = self.work_authority.bound_params(consensus_params);
+        let disconnect_headers: Vec<_> = disconnect_blocks
+            .iter()
+            .map(|block| block.header.clone())
+            .collect();
+        let replacement_headers: Vec<_> = replacement_branch
+            .iter()
+            .map(|anchored| anchored.block.header.clone())
+            .collect();
+        self.check_admission_batch(&disconnect_headers, &replacement_headers)?;
         let derive_work = self
             .work_authority
             .check_parent(&self.active_chain, consensus_params)?;
@@ -298,7 +331,13 @@ impl<V: CoinsView> Chainstate<V> {
             transition.disconnected.push(tip);
         }
         let maybe_common_ancestor = next_active_chain.last().cloned();
-        for anchored_block in replacement_branch {
+        for (index, anchored_block) in replacement_branch.iter().enumerate() {
+            let selected = self.selected_candidate_context(
+                &next_active_chain,
+                &anchored_block.block.header,
+                &disconnect_headers,
+                index,
+            )?;
             let (position, undo, maybe_counts) = apply_connect_on_overlay(
                 &mut overlay,
                 &self.coins,
@@ -310,6 +349,7 @@ impl<V: CoinsView> Chainstate<V> {
                 i64::from(anchored_block.block.header.time),
                 verify_flags,
                 consensus_params,
+                selected.as_ref().map(|(history, now)| (history, *now)),
             )
             .map_err(|source| ChainstateError::ReplacementBlock {
                 block_hash: open_bitcoin_consensus::block_hash(&anchored_block.block.header),
@@ -518,5 +558,64 @@ pub struct ValidatedChainstateReorg<'a, V: CoinsView> {
 impl<V: CoinsView> ValidatedChainstateReorg<'_, V> {
     pub fn absorb(self) -> (ChainTransition, AcceptedChainstateReorg) {
         self.owner.absorb_validated_reorg(self.staged)
+    }
+}
+
+#[cfg(test)]
+mod projection_tests {
+    use super::*;
+    fn stage(owner: &Chainstate) -> StagedChainstateConnect {
+        owner
+            .stage_connect_block_with_current_time(
+                &open_bitcoin_consensus::CanonicalChain::Regtest
+                    .spec()
+                    .genesis_block(),
+                open_bitcoin_consensus::chain_proof::ProofWork::ZERO,
+                2_000_000_000,
+                ScriptVerifyFlags::NONE,
+                ConsensusParams {
+                    enforce_bip34_height_in_coinbase: false,
+                    ..Default::default()
+                },
+            )
+            .expect("mechanical genesis stage")
+    }
+
+    #[test]
+    fn phase167_submission_projection_core_matches_absorption_without_mutation() {
+        // Arrange
+        let mut owner = Chainstate::new_for_mechanical_fixture();
+        let before = owner.admission_snapshot().expect("initial data");
+        let staged = stage(&owner);
+        // Act
+        let projected = owner
+            .project_staged_connect(&staged)
+            .expect("projected data");
+        // Assert
+        assert_eq!(owner.admission_snapshot().expect("unmodified"), before);
+        assert_eq!(projected.utxos.len(), 1);
+        assert_eq!(projected.active_chain.len(), 1);
+        owner
+            .absorb_staged_connect(staged)
+            .expect("actual absorption");
+        assert_eq!(
+            owner.admission_snapshot().expect("achieved data"),
+            projected
+        );
+    }
+
+    #[test]
+    fn phase167_submission_projection_core_foreign_and_stale_bindings_refuse() {
+        // Arrange
+        let mut owner = Chainstate::new_for_mechanical_fixture();
+        let other = Chainstate::new_for_mechanical_fixture();
+        let first = stage(&owner);
+        let stale = stage(&owner);
+        // Act / Assert
+        assert!(other.project_staged_connect(&first).is_err());
+        owner
+            .absorb_staged_connect(first)
+            .expect("advance actual owner");
+        assert!(owner.project_staged_connect(&stale).is_err());
     }
 }

@@ -15,7 +15,7 @@
 use open_bitcoin_core::{
     chainstate::{ChainPosition, ChainstateError},
     codec::CodecError,
-    primitives::{BlockHash, NetworkMagic},
+    primitives::{Block, BlockHash, NetworkMagic},
 };
 use open_bitcoin_mempool::{
     MempoolCapacityEnforcement, MempoolCapacityStatus, MempoolError, PackageShapeError,
@@ -263,6 +263,7 @@ pub struct ManagedSyncMessageResult {
     pub outbound: Vec<WireNetworkMessage>,
     pub targeted_outbound: Vec<(PeerId, WireNetworkMessage)>,
     pub maybe_block_disposition: Option<BlockConnectDisposition>,
+    pub(crate) maybe_completed_block: Option<Block>,
     pub inbound_response_plan: Vec<ManagedInboundResponsePlanItem>,
     pub(super) package_admissions: Vec<super::admission_bridge::ManagedPeerPackageAdmission>,
 }

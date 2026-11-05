@@ -8,6 +8,7 @@ use core::fmt;
 use crate::status::{DurableSyncState, SyncControlState, SyncRecoveryCategory};
 
 pub(crate) mod canonical_bootstrap;
+pub(crate) mod canonical_history;
 pub mod chain_compatibility;
 pub mod coins_codec;
 pub mod coins_view;

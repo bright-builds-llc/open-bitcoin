@@ -2,7 +2,7 @@
 
 Surface id: `v2-6-canonical-chain-identity`. Requirements addressed: CBOT-01,
 CBOT-04 and CVLD-05. Phase 164 implements identity-only recognition and ordinary
-refusal. [Phase verification](../../.planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md) passed 27/27 after full default native acceptance, clean source review and 30 closed security controls. The three requirements are closed for this identity-only/refusal scope; ordinary history remains unsupported.
+refusal. [Phase verification](../../.planning/phases/164-canonical-chain-identity-and-compatibility-gates/164-VERIFICATION.md) passed 27/27 after full default native acceptance, clean source review and 30 closed security controls. The three requirements are closed for this identity-only/refusal scope. Ordinary history was unsupported at that Phase 164 boundary; the [current Phase 167 page](v2-6-candidate-history-validation.md) owns the later bounded local default-Regtest continuation.
 
 ## Source pin and evidence class
 
@@ -25,7 +25,7 @@ records passing exact-vector and adversarial identity tests. No actual Knots
 daemon qualification, canonical accepted history, bootstrap or reopen follows
 from these comparisons. No production dependency or crate was added.
 
-## Exact identities and current support
+## Exact identities and Phase 164 support
 
 All four genesis blocks have version 1, zero previous hash and the same single
 204-byte non-witness coinbase transaction, paying 5,000,000,000 satoshis. Its txid
@@ -53,25 +53,42 @@ Every profile exposes `scope=identity_only` and `ordinary_history=false`, with
 missing `canonical_bootstrap`, `exact_work` and `candidate_history`. Signet also
 requires `signet_challenge_validation`. Phase 165 owns exact work, Phase 166
 canonical durable bootstrap/reopen, and Phase 167 candidate-history validation.
-The [Phase 165 work foundation](v2-6-shared-exact-work.md) now supplies exact
-numeric carriers and earned live-owner checks. The ordinary profile still reports
-`exact_work` missing: no canonical bootstrap or recovered work authority follows
-from that foundation or its fixture evidence.
-Until implemented and verified, ordinary headers, bodies, stored/local connects,
-snapshot import, compact dispatch, reorg and startup refuse before acceptance.
+At the Phase 165 handoff, the [work foundation](v2-6-shared-exact-work.md)
+supplied exact numerical carriers and earned live-owner checks, but its old
+ordinary profile still reported `exact_work` missing. Fixture evidence alone
+did not establish canonical bootstrap or recovered work authority. At the
+original Phase 164 boundary, ordinary headers, bodies, stored/local connects,
+snapshot import, compact dispatch, reorg and startup refused before acceptance.
 An exact genesis match grants no accepted tip, spendable genesis outputs or
 ordinary capability. A raw store, supplied owner, caller-selected work or
 `Complete` fixture coverage cannot upgrade it.
 
-## Intentional current product difference
+## Current Phase 167 bounded default-Regtest scope
 
-Unlike pinned Knots' canonical startup and validation, **every ordinary Open
-Bitcoin history mode currently refuses**. Every existing nonempty unproved
-store refuses without backend open; missing and empty paths also refuse because
-canonical bootstrap/work/context prerequisites are absent. This is an
-intentional fail-closed product difference recorded in [the parity index](index.json).
-It is not wrong-network detection, positive canonical reopen compatibility or
-operational bootstrap. Even canonical-looking files cannot prove stored identity.
+Phase 167 bounded default-Regtest private canonical submission is supported by local runtime evidence.
+
+Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 repeats, and Regtest flag fixtures are supported only as non-authoritative test evidence.
+
+Mainnet, testnet3 and Signet ordinary configuration remain refused.
+
+Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred.
+
+Wallet authority remains unavailable.
+
+The [Phase 167 parity page](v2-6-candidate-history-validation.md)
+records the 301-descendant local observation, finite retained source, exact
+historical identities and the BIP30 prior-Coin restoration difference. The identity table above remains the original Phase 164 result.
+
+## Historical Phase 164 product difference
+
+At the original Phase 164 identity boundary, **every ordinary Open Bitcoin
+history mode refused**. Existing nonempty unproved stores refused without
+backend open; missing and empty paths also refused because canonical
+bootstrap/work/context prerequisites were absent then. This dated fail-closed
+difference remains attributable in [the parity index](index.json), while the
+current bounded default-Regtest route has separate Phase 167 evidence. Those
+older diagnostics did not infer a wrong stored network or grant positive
+canonical reopen. Even canonical-looking files could not prove stored identity.
 
 The [filesystem-only gate](../../packages/open-bitcoin-node/src/storage/chain_compatibility.rs)
 inspects ancestor shape and at most one directory entry. It never opens Fjall,
@@ -103,9 +120,9 @@ unsafe paths use `unsafe_path`, and inspection I/O failures use
 separates actual local Open Bitcoin refusal processes from deferred pinned-Knots
 daemon qualification; it does not grant ordinary history support.
 
-Ordinary daemon and metrics startup, RPC context/fallback construction, offline
-CLI sync status/pause/resume, managed-wallet name lookup and backup use these
-gates. CLI JSON refusal uses `chain_compatibility_refused`; human output retains
+In the dated Phase 164 path, ordinary daemon and metrics startup, RPC
+context/fallback construction, offline CLI sync status/pause/resume,
+managed-wallet name lookup and backup used these gates. CLI JSON refusal uses `chain_compatibility_refused`; human output retains
 the fixed reason. Soak resource enrichment reports bounded
 `chain_compatibility_unavailable`; soak start refuses before any run index,
 ledger or report write. Existing separately authenticated **live RPC**
@@ -113,9 +130,9 @@ status/index/send/control paths retain separate ownership and do not open local
 storage. Their success never authorizes a local store or bootstrap.
 
 Preserve existing data and review it separately. Do not relabel an unavailable
-identity as a wrong network. Use a separate datadir only after the missing
-validation prerequisites are implemented and verified; a new directory currently
-refuses too. No repair, conversion, import or destructive reindex is attempted or
+identity as a wrong network. The original Phase 164 examples required a separate datadir and a new
+directory refused then. Current bounded default-Regtest setup follows the
+separate Phase 167 evidence and still requires its sealed owner. No repair, conversion, import or destructive reindex is attempted or
 recommended as a bypass.
 
 ## Historical evidence remains bounded

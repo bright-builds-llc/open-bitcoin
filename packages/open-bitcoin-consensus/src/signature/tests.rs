@@ -20,6 +20,8 @@ use open_bitcoin_primitives::{
 };
 use secp256k1::{Message, PublicKey, Secp256k1, SecretKey};
 
+mod high_s;
+
 fn script(bytes: &[u8]) -> ScriptBuf {
     ScriptBuf::from_bytes(bytes.to_vec()).expect("valid script")
 }

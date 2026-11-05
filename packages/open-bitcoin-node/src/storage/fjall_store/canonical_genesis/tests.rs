@@ -9,6 +9,7 @@ use std::fs;
 
 #[cfg(unix)]
 mod basic;
+mod freshness;
 
 const CHAINS: [CanonicalChain; 4] = [
     CanonicalChain::Mainnet,

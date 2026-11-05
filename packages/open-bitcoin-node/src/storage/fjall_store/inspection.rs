@@ -12,12 +12,49 @@ use std::{
     path::{Path, PathBuf},
 };
 
+pub(super) mod canonical_history;
 mod copy;
+mod live;
 mod protocol;
 mod reader;
 mod worker;
 pub(in crate::storage) use reader::InspectedRecords;
 pub(super) use worker::maybe_run;
+
+pub(in crate::storage) fn require_existing_namespaces(
+    records: &InspectedRecords,
+) -> Result<(), StorageError> {
+    require_existing_namespace_catalog(records.namespaces())
+}
+
+pub(in crate::storage) fn require_existing_namespace_catalog<'a>(
+    names: impl Iterator<Item = &'a str>,
+) -> Result<(), StorageError> {
+    let names: std::collections::BTreeSet<_> = names.collect();
+    for namespace in [
+        StorageNamespace::Headers,
+        StorageNamespace::BlockIndex,
+        StorageNamespace::Chainstate,
+        StorageNamespace::Coins,
+        StorageNamespace::Wallet,
+        StorageNamespace::Metrics,
+        StorageNamespace::Mempool,
+        StorageNamespace::Runtime,
+        StorageNamespace::Schema,
+    ] {
+        if !names.contains(namespace.as_str()) {
+            return Err(inspection_error("inspection live namespace missing"));
+        }
+    }
+    Ok(())
+}
+
+impl super::FjallNodeStore {
+    /// Observe the current physical copy envelope without reopening the held engine.
+    pub(crate) fn check_submission_physical_inventory(&self) -> Result<(), StorageError> {
+        live::check(self)
+    }
+}
 
 /// Returns detached bytes only after isolated recovery and all parent gates.
 pub(super) fn with_inspection<T>(
@@ -258,3 +295,105 @@ fn inspection_error(message: &'static str) -> StorageError {
 
 #[cfg(all(test, unix))]
 mod tests;
+
+#[cfg(all(test, unix))]
+mod phase167_tests;
+
+#[cfg(all(test, unix))]
+mod namespace_tests {
+    use super::*;
+    use crate::storage::chain_compatibility::BACKEND_BUILDER_CALLS;
+    use crate::storage::fjall_store::FjallNodeStore;
+    use open_bitcoin_core::consensus::CanonicalChain;
+
+    type Rows = std::collections::BTreeMap<String, std::collections::BTreeMap<Vec<u8>, Vec<u8>>>;
+
+    fn genesis_rows(selected: CanonicalChain) -> Rows {
+        let mut rows: Rows = crate::storage::canonical_bootstrap::prepare_genesis_rows(selected)
+            .expect("complete canonical genesis rows")
+            .into_iter()
+            .map(|(name, rows)| (name.to_owned(), rows))
+            .collect();
+        for name in ["wallet", "metrics", "mempool", "runtime"] {
+            rows.entry(name.to_owned()).or_default();
+        }
+        rows
+    }
+
+    fn assert_missing_refuses(source: &Path, missing: &str, history: bool) {
+        // Arrange: remove one genuinely existing empty namespace, then drop all handles.
+        {
+            let db = fjall::Database::builder(source)
+                .open()
+                .expect("owned fixture mutation");
+            assert!(db.keyspace_exists(missing));
+            let records = InspectedRecords::read_existing(&db).expect("complete source");
+            assert!(
+                records
+                    .maybe_records(missing)
+                    .expect("present empty namespace")
+                    .is_empty()
+            );
+            let space = db
+                .keyspace(missing, fjall::KeyspaceCreateOptions::default)
+                .expect("existing");
+            db.delete_keyspace(space)
+                .expect("controlled missing namespace");
+            db.persist(fjall::PersistMode::SyncAll)
+                .expect("durable missing source");
+        }
+        let before = copy::Inventory::capture(source).expect("full before manifest");
+        let calls = BACKEND_BUILDER_CALLS.get();
+        // Act: these public safe producers must refuse before an original backend.
+        let result = if history {
+            FjallNodeStore::reopen_canonical_history_existing(source, CanonicalChain::Regtest)
+                .map(drop)
+        } else {
+            FjallNodeStore::reopen_canonical_genesis_existing(source, CanonicalChain::Regtest)
+                .map(drop)
+        };
+        // Assert: old-source RED must print its actual child stage, delta1 and changed manifest.
+        let after = copy::Inventory::capture(source).expect("full after manifest");
+        eprintln!(
+            "MISSING_NAMESPACE history={history} missing={missing} stage={:?} backend_delta={} manifest_equal={}",
+            worker::HISTORY_OBSERVATION.get().0,
+            BACKEND_BUILDER_CALLS.get() - calls,
+            before == after
+        );
+        assert!(result.is_err());
+        assert_eq!(BACKEND_BUILDER_CALLS.get(), calls);
+        assert_eq!(before, after);
+    }
+
+    #[test]
+    fn phase167_preeffect_history_worker_missing_empty_history_namespaces_refuse() {
+        for missing in ["wallet", "metrics", "mempool", "runtime"] {
+            phase167_tests::with_source(|source| assert_missing_refuses(source, missing, true));
+        }
+    }
+
+    #[test]
+    fn phase167_preeffect_history_missing_empty_genesis_namespaces_refuse() {
+        for missing in ["wallet", "metrics", "mempool", "runtime"] {
+            phase167_tests::with_rows_source(genesis_rows(CanonicalChain::Regtest), |source| {
+                assert_missing_refuses(source, missing, false);
+            });
+        }
+    }
+
+    #[test]
+    fn phase167_preeffect_history_complete_genesis_namespaces_keep_all_selectors() {
+        for selected in [
+            CanonicalChain::Mainnet,
+            CanonicalChain::Testnet3,
+            CanonicalChain::Signet,
+            CanonicalChain::Regtest,
+        ] {
+            phase167_tests::with_rows_source(genesis_rows(selected), |source| {
+                let opened = FjallNodeStore::reopen_canonical_genesis_existing(source, selected)
+                    .expect("unchanged complete source remains supported");
+                assert_eq!(opened.genesis().chain(), selected);
+            });
+        }
+    }
+}

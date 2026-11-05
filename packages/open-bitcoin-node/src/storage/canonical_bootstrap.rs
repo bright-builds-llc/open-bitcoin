@@ -9,6 +9,19 @@ mod proof;
 pub(super) mod records;
 pub(in crate::storage) type ProvedGenesisRecords = proof::ProvedGenesisRecords;
 
+/// Separate descendant proof; fresh shell time never broadens the genesis proof.
+pub(in crate::storage) fn validate_history_records(
+    selected: open_bitcoin_core::consensus::CanonicalChain,
+    records: &super::canonical_history::records::CanonicalHistoryRecords,
+) -> Result<super::canonical_history::ProvedHistoryRecords, CanonicalBootstrapRefusal> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|_| CanonicalBootstrapRefusal::StorageUnavailable)?;
+    let now =
+        i64::try_from(now.as_secs()).map_err(|_| CanonicalBootstrapRefusal::StorageUnavailable)?;
+    super::canonical_history::validate_history_records(selected, records, now)
+}
+
 /// Validate detached data without opening or authorizing any live store.
 pub(in crate::storage) fn validate_genesis_records(
     selected: open_bitcoin_core::consensus::chain_spec::CanonicalChain,

@@ -51,20 +51,23 @@ fn init_compact_block_download_schedules_getblocktxn_for_missing_indexes() {
     let mut peer_state = CompactDownloadPeerState::new();
 
     let outcome = init_compact_block_download(
-        activated_policy(),
-        true,
+        (activated_policy(), true),
         &mut peer_state,
         &payload,
-        eligible_input(&payload.header),
-        1_000,
+        (eligible_input(&payload.header), 1_000, true),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
         std::iter::empty::<(&Wtxid, &Transaction)>(),
     );
 
-    let CompactBlockInitOutcome::Ready { actions, .. } = outcome else {
+    let Ok(CompactBlockInitOutcome::Ready {
+        block_hash: ready_hash,
+        actions,
+    }) = outcome
+    else {
         panic!("expected ready outcome");
     };
 
+    assert_eq!(ready_hash, block_hash);
     assert_eq!(actions.len(), 1);
     assert!(peer_state.in_flight.contains_key(&block_hash));
     let in_flight = peer_state.in_flight.get(&block_hash).expect("in flight");
