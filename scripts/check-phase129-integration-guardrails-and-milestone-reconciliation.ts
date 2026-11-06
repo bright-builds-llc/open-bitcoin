@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase127-authoritative-network-state-unification";
 import { checkPhase128ProductionCompactAnnouncementTransport } from "./check-phase128-production-compact-announcement-transport";
-import { readSourceCorpus } from "./source-corpus";
+import { readSourceCorpus, readSourceRoot } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE128_CHECK =
@@ -115,7 +115,11 @@ function checkNamedFlows(repoRoot: string, failures: string[]): void {
 }
 
 function checkVerifierWiring(repoRoot: string, failures: string[]): void {
-  const verify = readTarget(repoRoot, "scripts/verify.sh");
+  const verifierPath = "scripts/verify.sh";
+  // Command order belongs to the root script; sourced helpers have their own steps.
+  const verify = existsSync(path.join(repoRoot, verifierPath))
+    ? readSourceRoot(repoRoot, verifierPath)
+    : "";
   const heredoc = visibleCommandOrder(verify);
   const requiredVisible = [
     PHASE128_CHECK,

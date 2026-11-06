@@ -426,16 +426,16 @@ test("every old verification byte is still pinned", () => {
   rejects(inputs, "scripts/verify.sh", "registration");
   expect(() => historicalToolingView(inputs)).toThrow();
 });
-test("older guard independently prevents removal of all six new mandatory lines", () => {
+test("new-only verifier rejects removal of every current registration", () => {
   // Arrange
   expect(checkPhase164(real)).toEqual([]);
   const source = real.get("scripts/verify.sh")!;
   const removed = source.split("\n").filter(line => !CURRENT_VERIFY_ADDITIONS.includes(line)).join("\n");
   const inputs = new Map(real).set("scripts/verify.sh", removed);
-  // Act: this invokes only the already mandatory older guard.
+  // Act: this invokes the preserved historical guard on the mutilated current verifier.
   const findings = checkPhase164(inputs);
-  // Assert: raw historical attribution still works, but current execution refuses.
-  expect(() => historicalToolingView(inputs)).not.toThrow();
+  // Assert: a new-only current verifier cannot masquerade as the old historical source.
+  expect(() => historicalToolingView(inputs)).toThrow(/unreviewed current tooling fingerprint/);
   expect(findings.some(row => row.rule === "input")).toBe(false);
   expect(findings.some(row => row.file === "scripts/verify.sh" && row.rule === "registration")).toBe(true);
 });

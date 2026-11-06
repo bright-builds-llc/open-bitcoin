@@ -389,8 +389,8 @@ These are Open Bitcoin design choices, not Knots parity claims:
 - `packages/open-bitcoin-test-harness/` and `packages/open-bitcoin-bench/` provide parity, property, and benchmark infrastructure.
 - `docs/architecture/` records the operator runtime contracts behind the current storage, sync, status, service, dashboard, and migration surfaces.
 - `docs/parity/` tracks parity status and intentional deviations from the pinned baseline.
-- `.githooks/` contains the repo-managed Git hooks used to run the local verification contract before commit.
-- `scripts/verify.sh` is the source-of-truth local verification command for first-party code.
+- `.githooks/` contains the repo-managed quick commit gate and full parity push gate.
+- `scripts/verify.sh` is the source-of-truth full verification command; `--quick` is the local commit gate.
 
 ## Contributor Quickstart
 
@@ -410,11 +410,19 @@ That installer is safe to rerun. `bash scripts/verify.sh` also self-heals the
 local `core.hooksPath` setting when it is missing or wrong, so the repo-managed
 hooks stay active for normal local work.
 
-Run the repo-native verification flow:
+Run the quick local checks while iterating:
+
+```bash
+bash scripts/verify.sh --quick
+```
+
+Run the full repo-native verification flow when needed; the push hook runs it automatically for parity-affecting changes:
 
 ```bash
 bash scripts/verify.sh
 ```
+
+Work on synced local `main` and commit directly after focused tests and diff review. The [current parity workflow](./docs/parity/README.md#current-parity-workflow) explains ledger ownership, evidence classes, the commit and push gates, and the frozen GSD history.
 
 Local verification records overall and per-step durations under the disposable,
 gitignored `.local/open-bitcoin-dev/` directory. Inspect the current runs and

@@ -38,12 +38,12 @@ Use this routing map when deciding what to load next:
 
 - Use `git submodule update --init --recursive` to materialize the pinned Knots baseline under `packages/bitcoin-knots`.
 - Use `rust-toolchain.toml` as the Rust source of truth for local Cargo, CI, and Bazel. The current pinned version is `1.94.1`.
-- Use `bash scripts/verify.sh` as the repo-native verification contract for first-party code, including the Bazel smoke build. Use `bash scripts/verify.sh --profile` to diagnose verifier runtime and `bash scripts/verify.sh --fast` only for local iteration; the default command remains the pre-commit and release contract.
+- Use `bash scripts/verify.sh --quick` for the repo-managed pre-commit gate and the default `bash scripts/verify.sh` for full parity verification before affected pushes and in CI. `--profile` adds full-run timing; the existing `--fast` remains a legacy iteration mode and does not replace the full gate.
 - During UAT, provide copy-pasteable repo-local Cargo and Bazel commands for operator workflows instead of only naming the installed `open-bitcoin` alias. Prefer `cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin -- ...` and `bazel run //packages/open-bitcoin-cli:open_bitcoin -- ...`.
 - Use Bun as the canonical runtime for repo-owned higher-level automation scripts; prefer TypeScript for substantial script logic, and keep Bash for thin orchestration wrappers and simple shell checks.
 - For direct Bun test-file runs, use an explicit path such as `bun test ./scripts/check-phase154-basic-filters.test.ts`; the `./` selects the file without checkout-wide discovery on the pinned Bun runtime.
 - The test-only BASIC oracle in `scripts/basic-filter-oracle.py` imports pinned Knots Python SipHash, block and peer-message helpers and implements source-derived proof formulas for independent protocol evidence; this narrow compatibility exception keeps all filesystem orchestration, pin checks, bounds, corpus validation and fixture rendering in Bun.
-- Use `bash scripts/install-git-hooks.sh` to install the repo-managed Git hooks under `.githooks`; rerunning it is safe and idempotent, and `bash scripts/verify.sh` will self-heal missing local hook installation outside CI.
+- Use `bash scripts/install-git-hooks.sh` to install the repo-managed commit and push hooks under `.githooks`; rerunning it is safe and idempotent, and the verifier self-heals missing local hook installation outside CI.
 - Treat `docs/metrics/lines-of-code.md` as an intentionally tracked generated artifact. Expect it to change when hooks or verification regenerate it, and treat stale LOC updates as required freshness changes rather than incidental noise.
 - Record intentional in-scope behavior differences from Bitcoin Knots in `docs/parity/index.json` and companion docs under `docs/parity/`.
 - When adding first-party Rust source or test files under `packages/open-bitcoin-*/src` or `packages/open-bitcoin-*/tests`, add the required parity breadcrumb block through `docs/parity/source-breadcrumbs.json` and `scripts/check-parity-breadcrumbs.ts`; use the explicit `none` breadcrumb only when no defensible Bitcoin Knots source anchor exists.
@@ -51,93 +51,18 @@ Use this routing map when deciding what to load next:
 - Run ad-hoc Cargo and Bazel work through `bun run scripts/command-timings.ts run --key <stable-key> -- <command>` so local duration history and the checkout-scoped cooperative build lock stay effective. Do not overlap Cargo jobs against the same target directory.
 - Treat a quiet command, tool yield, or client polling interval as different from a command timeout. Poll resumable verification sessions at least every 60 seconds, do not interrupt solely because an estimate was exceeded, and capture liveness evidence before terminating an apparently stalled build or test.
 
-<!-- GSD:project-start source:PROJECT.md -->
+## Project and Parity Boundaries
 
-## Project
+Open Bitcoin is a headless Rust node and wallet. The behavioral reference is Bitcoin Knots `29.3.knots20260210`, pinned by `packages/bitcoin-knots`; keep externally observable in-scope behavior auditable through `docs/parity/`. Pure Bitcoin domain rules belong in functional-core crates; filesystem, process, network, terminal, RPC, service-manager, and durable-storage effects belong in shell adapters. Keep dependencies minimal and avoid existing Rust Bitcoin libraries in the production path. GUI, public-default operation, production service, and production-funds claims require separate evidence.
 
-**Open Bitcoin**
+- Read `docs/parity/index.json` for current capability status, evidence classes, intentional differences, and limits. Read `docs/parity/requirements.md` for approved v2.6 requirement wording. `docs/parity/README.md` defines the contributor workflow and evidence standard.
+- `open-bitcoind` consumes proved canonical genesis for all four selectors into a local `DurableSyncRuntime`/RPC context with explicit BASIC support. The [bounded local route](docs/parity/v2-6-candidate-history-validation.md) admits 301 default-Regtest descendants under selected network rules and validated ancestry, then reopens complete retained history through offline `sync status`. Seeded Mainnet/Testnet3 script and Mainnet BIP30 cases remain non-authoritative; Mainnet, testnet3 and default Signet ordinary canonical product routes refuse. Public networking stays default off, the canonical-history runtime wallet remains unavailable, and actual pinned-Knots daemon differential qualification remains future parity work.
+- Treat `.planning/` as read-only historical evidence. Preserve its referenced records and create no new GSD plans, summaries, verification reports, or state updates. A later reference-audited cleanup may prune it.
 
-Open Bitcoin is a headless Bitcoin node and wallet implementation in Rust, built to preserve externally observable behavior from Bitcoin Knots `29.3.knots20260210` across the in-scope consensus, validation, chainstate, mempool, networking, wallet, RPC, CLI, and configuration surfaces. It is for contributors who want a reference-grade node with a cleaner, more type-safe internal architecture, auditable parity, and a strict separation between pure domain logic and effectful adapters.
+## Direct-Main Parity Workflow
 
-**Core Value:** When a behavior is in scope, Open Bitcoin must behave like the pinned Knots baseline on the outside while staying simpler and safer on the inside.
-
-### Constraints
-
-- **Behavioral baseline**: Match Bitcoin Knots `29.3.knots20260210` for all in-scope surfaces — parity claims must be auditable.
-- **Architecture**: Follow functional core / imperative shell boundaries — pure business logic stays free of direct I/O and runtime side effects.
-- **Dependency policy**: Keep dependencies minimal and security-conscious, and do not use existing Rust Bitcoin libraries in the production path — the project owns its own domain model and implementation surface.
-- **Build tooling**: Use Bazelisk and Bazel with Bzlmod for first-party workspace builds — multi-package growth should remain manageable from the repo root.
-- **Verification**: Enforce formatting, linting, build, testing, coverage, and architecture-policy checks in pre-commit and CI — regressions should fail early.
-- **Scope**: Ship a headless node and wallet first — GUI work is explicitly deferred.
-
-<!-- GSD:project-end -->
-
-<!-- GSD:stack-start source:STACK.md -->
-
-## Technology Stack
-
-- Rust `1.94.1` and Rust 2024 edition are pinned by `rust-toolchain.toml` and `packages/Cargo.toml`.
-- Cargo workspace crates live under `packages/open-bitcoin-*`; Bazel/Bzlmod with `rules_rust` provides the top-level smoke build.
-- Bun is pinned by `.bun-version` and is used as a runtime for repo-owned TypeScript automation in `scripts/`; this repo has no `package.json`, so there is no `bun install` bootstrap step.
-- Current runtime dependencies include Fjall for durable storage, Tokio/Axum for the JSON-RPC server, clap for the operator CLI, Ratatui/Crossterm for the terminal dashboard, jsonc-parser for Open Bitcoin JSONC config, and serde/serde_json for stable data shapes.
-- Full stack notes live in `.planning/STACK.md`.
-
-<!-- GSD:stack-end -->
-
-<!-- GSD:conventions-start source:CONVENTIONS.md -->
-
-## Conventions
-
-- Preserve externally observable Bitcoin Knots `29.3.knots20260210` behavior for in-scope surfaces and keep parity evidence auditable through `docs/parity/`.
-- Keep pure Bitcoin domain behavior in functional-core crates and isolate filesystem, process, network, terminal, RPC, service-manager, and durable-storage effects in shell adapters.
-- Use `bash scripts/verify.sh` as the repo-native verification contract before marking work complete.
-- Treat migration as dry-run-first and backup-aware; do not imply source datadir, service, config, or wallet mutation without an explicit future plan.
-- Full conventions live in `.planning/CONVENTIONS.md`.
-
-<!-- GSD:conventions-end -->
-
-<!-- GSD:architecture-start source:ARCHITECTURE.md -->
-
-## Architecture
-
-- Pure-core crates cover primitives, codec, consensus, chainstate, mempool, networking, and wallet behavior.
-- `open-bitcoin-node` owns adapter-facing runtime orchestration, durable storage, status, metrics, logs, sync foundations, and wallet rescans.
-- `open-bitcoin-rpc` owns JSON-RPC dispatch and the current `open-bitcoind` local RPC server binary.
-- `open-bitcoin-cli` owns `open-bitcoin-cli` for baseline-compatible RPC calls and `open-bitcoin` for Open Bitcoin-specific operator workflows.
-- `open-bitcoind` consumes proved canonical genesis for all four selectors into a local `DurableSyncRuntime`/RPC context with explicit BASIC support. The [bounded Phase 167 route](docs/parity/v2-6-candidate-history-validation.md) admits 301 default-Regtest descendants under selected network rules and validated ancestry, then reopens complete retained history through offline `sync status`. Seeded Mainnet/Testnet3 script and Mainnet BIP30 cases remain non-authoritative; Mainnet, testnet3 and default Signet ordinary canonical product routes refuse. Public networking stays default off, the canonical-history runtime wallet remains unavailable, and actual pinned-Knots daemon differential qualification remains Phase 168.
-- Full architecture notes live in `.planning/ARCHITECTURE.md`.
-
-<!-- GSD:architecture-end -->
-
-<!-- GSD:skills-start source:skills/ -->
-
-## Project Skills
-
-No project skills found. Add skills to any of: `.claude/skills/`, `.agents/skills/`, `.cursor/skills/`, or `.github/skills/` with a `SKILL.md` index file.
-
-<!-- GSD:skills-end -->
-
-<!-- GSD:workflow-start source:GSD defaults -->
-
-## GSD Workflow Enforcement
-
-Before using Edit, Write, or other file-changing tools, start work through a GSD command so planning artifacts and execution context stay in sync.
-
-Use these entry points:
-
-- `/gsd-quick` for small fixes, doc updates, and ad-hoc tasks
-- `/gsd-debug` for investigation and bug fixing
-- `/gsd-execute-phase` for planned phase work
-
-Do not make direct repo edits outside a GSD workflow unless the user explicitly asks to bypass it.
-
-<!-- GSD:workflow-end -->
-
-<!-- GSD:profile-start -->
-
-## Developer Profile
-
-> Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
-> This section is managed by `generate-claude-profile` -- do not edit manually.
-
-<!-- GSD:profile-end -->
+1. Sync local `main` with `origin/main` before implementation. Work on local `main` and push it directly after verification; this project does not use PRs for parity work.
+2. For multi-session work, add one checkable append-only block to `.codex/tasks/todo.md`. Keep a short plan in the task or chat when the change spans components or carries non-obvious regression risk.
+3. Identify the ledger surface and its pinned Knots anchors, expected external behavior, evidence class, and claim limits. Update tests, corpus/oracle evidence, source breadcrumbs, and the ledger with the code change. Seeded fixtures never grant ordinary product or actual daemon-differential authority.
+4. Run focused tests for every changed behavior and inspect the diff. The quick commit hook checks formatting and current ledger/claim metadata. For this repo, the full Rust/build/coverage/Bazel contract is enforced by the automatic pre-push hook for parity-affecting changes; this is the documented local exception to the global Rust pre-commit sequence in `standards-overrides.md`.
+5. Commit coherent changes on local `main`, then push `main`. The push hook checks all outgoing commits, refuses a dirty or divergent checkout, and runs the full default verifier for code, fixtures, parity evidence, and other non-allowlisted paths. Watch CI after the push and fix any failure before considering the change complete.

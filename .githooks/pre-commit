@@ -7,4 +7,4 @@ cd "$repo_root"
 bun run scripts/generate-loc-report.ts --source=index --output=docs/metrics/lines-of-code.md
 git add docs/metrics/lines-of-code.md
 
-OPEN_BITCOIN_LOC_REPORT_SOURCE=index bash scripts/verify.sh
+OPEN_BITCOIN_LOC_REPORT_SOURCE=index bash scripts/verify.sh --quick

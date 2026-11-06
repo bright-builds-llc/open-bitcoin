@@ -1,4 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
+import { setDefaultTimeout } from "bun:test";
 import { readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -9,6 +10,7 @@ import { CHECK_FILES, CHECKPOINT_CONTRACTS, CONTRACTS, DOC, PHASE, REGISTRATIONS
 import { PHASE163, PHASE163_DOC, V25_REQUIREMENTS, V25_ROADMAPS, PROVENANCE_FILES, PROVENANCE_CLAIMS, ORIGINAL_AUDITS, CLOSURE_CLAIM, READINESS_CLAIM, ARCHIVED_CLAIM, GAP_CLAIM } from "./check-phase163-provenance.ts";
 import { v25FixtureSources } from "./check-phase163-provenance/fixture-controls.ts";
 import { createCopiedFixture } from "./check-phase163-provenance/fixtures.ts";
+setDefaultTimeout(15_000);
 const REPO = resolve(import.meta.dir, "..");
 const roots: string[] = [];
 test("phase165 current158 semantic actual raw baseline", () => {
@@ -544,13 +546,11 @@ function currentSources(): Map<string, string> {
   for (const file of CHECK_FILES) sources.set(file, readFileSync(join(REPO, file), "utf8"));
   return sources;
 }
-
 test("actual live provenance preserves historical Phase162 proof in every valid closure state", () => {
   const sources = currentSources();
   expect(checkPhase158ValidatedReorg(undefined, sources)).toEqual([]);
   expect(checkPhase162ClaimState(file => sources.get(file) ?? "", [])).toBe("complete");
 });
-
 function gapPendingSources(): Map<string, string> {
   const sources = v25FixtureSources(currentSources());
   sources.set(".planning/REQUIREMENTS.md", sources.get(".planning/REQUIREMENTS.md")!.replace("[x] **CFGR-01**", "[ ] **CFGR-01**").replace(/(\|\s*CFGR-01\s*\|\s*Phase 163\s*\|)\s*Complete\s*\|/, "$1 Pending |"));

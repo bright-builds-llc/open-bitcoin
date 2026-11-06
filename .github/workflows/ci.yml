@@ -44,6 +44,12 @@ jobs:
       - name: Check Bun version
         run: bun --version
 
+      - name: Check direct-main hooks
+        run: |
+          bun test ./scripts/check-push-verification.test.ts
+          bash scripts/test-ensure-git-hooks.sh
+          bash scripts/test-check-file-lengths.sh
+
       # setup-bazel publishes numeric tags like 0.x.y, not v0.x.y.
       - name: Set up Bazelisk
         uses: bazel-contrib/setup-bazel@0.19.0

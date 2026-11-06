@@ -164,7 +164,11 @@ fn rpc(port: u16, method: &str, params: Value, authorized: bool) -> (u16, Value)
     } else {
         ""
     };
-    write!(stream,"POST / HTTP/1.1\r\nHost: localhost\r\n{auth}Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",body.len()).expect("request");
+    let request = format!(
+        "POST / HTTP/1.1\r\nHost: localhost\r\n{auth}Content-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    stream.write_all(request.as_bytes()).expect("request");
     let deadline = Instant::now() + Duration::from_secs(300);
     let mut bytes = Vec::new();
     let mut chunk = [0u8; 8192];

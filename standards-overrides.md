@@ -8,6 +8,7 @@ Use this file to record deliberate deviations from the canonical coding and arch
 | --- | --- | --- | --- | --- |
 | `REPLACE_WITH_STANDARD` | `REPLACE_WITH_LOCAL_DECISION` | `REPLACE_WITH_REASON` | `REPLACE_WITH_OWNER` | `REPLACE_WITH_DATE` |
 | Rust panic avoidance | Retain only the existing `ManagedRpcContext::from_fixture_runtime_config` expect, identified by exact path and literal in `scripts/panic-sites.allowlist`. | This explicit synthetic fixture API intentionally panics on invalid configuration or failed storage, network configuration or fixture recovery. It is used by tests and benchmark fixtures, never ordinary or sealed canonical startup. Its public Panics documentation names the fallible `from_fixture_runtime_config_with_store(config, None)` alternative. This is a tooling compatibility boundary, not an infallibility claim or permission for new panic sites. | Phase166 code/security review | 2026-10-21 |
+| Global Rust pre-commit sequence | Run the repo's quick formatting, ledger, breadcrumb and claim checks at commit; run the complete Rust, Bazel, benchmark and pure-core coverage contract automatically before parity-affecting pushes to `main`, with full CI after push. | Local `main` commits remain unpublished until the full pre-push gate passes. This keeps focused iteration practical while preserving the complete external parity gate on every affected push. Unknown changed paths take the full gate. | Open Bitcoin maintainers | 2026-11-06 |
 
 ## Notes
 

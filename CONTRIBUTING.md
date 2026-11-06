@@ -61,13 +61,19 @@ git submodule update --init --recursive
 
 ### Verification
 
-Use the repo-native verification entrypoint:
+Use the quick repo-native checks during local work:
+
+```bash
+bash scripts/verify.sh --quick
+```
+
+The full verifier remains the first-party native, Bazel, and pure-core coverage contract:
 
 ```bash
 bash scripts/verify.sh
 ```
 
-This script is the source of truth for local verification and is mirrored in CI. It runs the Rust workspace checks, the Bazel smoke build, and the pure-core coverage gate as one contract.
+The automatic pre-push hook runs the full contract before parity-affecting pushes to `main`; CI runs it again after the push. Follow the [current parity workflow](docs/parity/README.md#current-parity-workflow) for ledger status, evidence classes, and focused-test expectations.
 
 ### Rust toolchain
 
@@ -85,7 +91,7 @@ Install the repo-managed hooks once per clone:
 bash scripts/install-git-hooks.sh
 ```
 
-The committed `.githooks/pre-commit` hook runs `bash scripts/verify.sh` before each commit.
+The committed `.githooks/pre-commit` hook runs `bash scripts/verify.sh --quick`. The `.githooks/pre-push` hook checks all outgoing `main` commits and runs the full verifier for code, fixtures, parity evidence, and other non-allowlisted changes.
 
 ### Parity and deviations
 

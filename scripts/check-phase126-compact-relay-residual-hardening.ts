@@ -6,6 +6,8 @@ import path from "node:path";
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const ACTIVE_TEST = "bun test scripts/check-active-milestone-verification-traceability.test.ts";
 const ACTIVE_CHECK = "bun run scripts/check-active-milestone-verification-traceability.ts";
+const PARITY_TEST = "bun test ./scripts/check-parity-ledger.test.ts";
+const PARITY_CHECK = "bun run scripts/check-parity-ledger.ts";
 const PHASE126_TEST = "bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts";
 const PHASE126_CHECK = "bun run scripts/check-phase126-compact-relay-residual-hardening.ts";
 const PHASE117_TEST = "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
@@ -334,10 +336,15 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
   const bodyStart = start + marker.length;
   const end = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
   const visible = start === -1 || end === -1 ? "" : verifyText.slice(bodyStart, end);
+  const ledgerMode = visible.includes(PARITY_TEST);
+  const activeTest = ledgerMode ? PARITY_TEST : ACTIVE_TEST;
+  const activeCheck = ledgerMode ? PARITY_CHECK : ACTIVE_CHECK;
+  const activeTestLabel = ledgerMode ? "parity ledger" : "active milestone verification traceability checker";
+  const activeCheckLabel = ledgerMode ? "parity ledger" : "active milestone verification traceability";
   if (
     !orderedLines(visible, [
-      ACTIVE_TEST,
-      ACTIVE_CHECK,
+      activeTest,
+      activeCheck,
       PHASE126_TEST,
       PHASE126_CHECK,
       PHASE117_TEST,
@@ -349,8 +356,8 @@ function checkVerifier(texts: TextCorpus, failures: string[]): void {
     );
   }
   const runSteps = [
-    `run_step "test active milestone verification traceability checker" ${ACTIVE_TEST}`,
-    `run_step "check active milestone verification traceability" ${ACTIVE_CHECK}`,
+    `run_step "test ${activeTestLabel}" ${activeTest}`,
+    `run_step "check ${activeCheckLabel}" ${activeCheck}`,
     `run_step "test Phase 126 compact relay residual hardening checker" ${PHASE126_TEST}`,
     `run_step "check Phase 126 compact relay residual hardening" ${PHASE126_CHECK}`,
     `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,

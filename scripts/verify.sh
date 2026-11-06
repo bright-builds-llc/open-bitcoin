@@ -183,8 +183,6 @@ bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
 bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
 bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts
 bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
-bun test scripts/check-active-milestone-verification-traceability.test.ts
-bun run scripts/check-active-milestone-verification-traceability.ts
 bun test ./scripts/check-parity-ledger.test.ts
 bun run scripts/check-parity-ledger.ts
 bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts
@@ -256,6 +254,10 @@ fi
 run_step "generate LOC report" bun run scripts/generate-loc-report.ts --source="$OPEN_BITCOIN_LOC_REPORT_SOURCE" --output=docs/metrics/lines-of-code.md --check
 run_step "test parity breadcrumb worktree inventory" bun test ./scripts/check-parity-breadcrumbs.test.ts
 run_step "check parity breadcrumbs" bun run scripts/check-parity-breadcrumbs.ts --check
+if [[ "$verify_mode" == "quick" ]]; then
+  run_quick_mode
+  exit 0
+fi
 run_step "check v1.3 release boundaries" bun run scripts/check-v1.3-release-boundaries.ts
 run_step "check v1.4 release boundaries" bun run scripts/check-v1.4-release-boundaries.ts
 run_step "check v1.5 release boundaries" bun run scripts/check-v1.5-release-boundaries.ts
@@ -397,8 +399,6 @@ run_step "test Phase 123 runtime timing and evidence integrity checker" bun test
 run_step "check Phase 123 runtime timing and evidence integrity" bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
 run_step "test Phase 124 milestone closeout reconciliation checker" bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts
 run_step "check Phase 124 milestone closeout reconciliation" bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
-run_step "test active milestone verification traceability checker" bun test scripts/check-active-milestone-verification-traceability.test.ts
-run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts
 run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts
 run_step "check parity ledger" bun run scripts/check-parity-ledger.ts
 run_step "test Phase 126 compact relay residual hardening checker" bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts

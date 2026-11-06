@@ -3,12 +3,13 @@
 
 usage() {
   cat >&2 <<'EOF'
-usage: bash scripts/verify.sh [--full | --profile | --fast] [--timings]
+usage: bash scripts/verify.sh [--full | --profile | --fast | --quick] [--timings]
 
 Modes:
   --full      Run the full strict verification contract (default).
   --profile   Run the full strict verification contract and print step timings.
   --fast      Run local fast checks; skip benchmark smoke, Bazel smoke, and coverage.
+  --quick     Run the short pre-commit integrity and formatting checks.
 
 Options:
   --timings   Print step timings for the selected mode.
@@ -166,6 +167,17 @@ parse_args() {
       mode_seen=1
       shift
       ;;
+    --quick)
+      if [[ "$mode_seen" -eq 1 ]]; then
+        echo "error: choose only one verification mode" >&2
+        usage
+        exit 2
+      fi
+      verify_mode="quick"
+      verify_invocation="quick"
+      mode_seen=1
+      shift
+      ;;
     --timings)
       print_timings=1
       shift
@@ -260,6 +272,17 @@ run_step() {
   current_step_label=""
   current_step_started_milliseconds=""
   return "$status"
+}
+
+run_quick_mode() {
+  run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts
+  run_step "check parity ledger" bun run scripts/check-parity-ledger.ts
+  run_step "test push verification" bun test ./scripts/check-push-verification.test.ts
+  run_step "check Bright Builds rules" bun scripts/bright-builds-check.ts all
+  run_step "check Phase 164 canonical identity boundary" bun run scripts/check-phase164-canonical-identity.ts
+  run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts
+  run_step "check current documentation reconciliation" bun run scripts/check-current-documentation-reconciliation.ts
+  run_step "cargo fmt" cargo fmt --manifest-path packages/Cargo.toml --all --check
 }
 
 run_benchmark_list() {

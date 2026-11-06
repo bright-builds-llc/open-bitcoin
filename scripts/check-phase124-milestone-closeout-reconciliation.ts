@@ -29,10 +29,8 @@ const PHASE124_TEST =
   "bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts";
 const PHASE124_CHECK =
   "bun run scripts/check-phase124-milestone-closeout-reconciliation.ts";
-const ACTIVE_TRACEABILITY_TEST =
-  "bun test scripts/check-active-milestone-verification-traceability.test.ts";
-const ACTIVE_TRACEABILITY_CHECK =
-  "bun run scripts/check-active-milestone-verification-traceability.ts";
+const ACTIVE_TRACEABILITY_TEST = "bun test scripts/check-active-milestone-verification-traceability.test.ts";
+const ACTIVE_TRACEABILITY_CHECK = "bun run scripts/check-active-milestone-verification-traceability.ts";
 const PHASE117_TEST =
   "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK =
@@ -471,13 +469,16 @@ function verifyVerifierOrder(
   activeTraceabilityRequired: boolean,
   failures: string[],
 ): void {
+  const ledgerMode = verifyScript.includes("bun test ./scripts/check-parity-ledger.test.ts");
+  const activeTest = ledgerMode ? "bun test ./scripts/check-parity-ledger.test.ts" : ACTIVE_TRACEABILITY_TEST;
+  const activeCheck = ledgerMode ? "bun run scripts/check-parity-ledger.ts" : ACTIVE_TRACEABILITY_CHECK;
   const expected = [
     PHASE123_TEST,
     PHASE123_CHECK,
     PHASE124_TEST,
     PHASE124_CHECK,
     ...(activeTraceabilityRequired
-      ? [ACTIVE_TRACEABILITY_TEST, ACTIVE_TRACEABILITY_CHECK]
+      ? [activeTest, activeCheck]
       : []),
     PHASE117_TEST,
     PHASE117_CHECK,
@@ -506,8 +507,8 @@ function verifyVerifierOrder(
   );
   const expectedActiveCommandCount = activeTraceabilityRequired ? 1 : 0;
   for (const [command, label] of [
-    [ACTIVE_TRACEABILITY_TEST, "test"],
-    [ACTIVE_TRACEABILITY_CHECK, "check"],
+    [activeTest, "test"],
+    [activeCheck, "check"],
   ] as const) {
     requireExactNumber(
       countOccurrences(visible, command),

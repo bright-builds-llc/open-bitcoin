@@ -18,6 +18,11 @@ if [[ ! -x ".githooks/pre-commit" ]]; then
   exit 1
 fi
 
+if [[ ! -x ".githooks/pre-push" ]]; then
+  echo "error: missing required executable hook: .githooks/pre-push" >&2
+  exit 1
+fi
+
 current_hooks_path="$(git config --local --get core.hooksPath || true)"
 if [[ "$current_hooks_path" == ".githooks" ]]; then
   echo "Git hooks already configured: core.hooksPath=.githooks"

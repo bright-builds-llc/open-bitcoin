@@ -1801,9 +1801,9 @@ Completion review: Plan25 is an accepted bounded root-document contribution (50/
 ## task-retire-gsd-parity-workflow | 2026-11-06 13:44 CST | Adopt direct-main parity work
 
 - [x] Add stable approved requirement text and planned parity surfaces; dual-run a ledger validator against the existing GSD traceability gate.
-- [ ] Verify and push the additive evidence cutover on main with the existing full native hook.
-- [ ] Replace active GSD instructions and checks with a documented direct-main parity workflow, quick pre-commit check, and automatic full pre-push gate.
-- [ ] Preserve frozen `.planning/` links and historical behavioral guards; validate the new hook against multi-commit, rename, safe-doc, dirty-tree, and non-fast-forward cases.
+- [x] Verify and push the additive evidence cutover on main with the existing full native hook.
+- [x] Replace active GSD instructions and checks with a documented direct-main parity workflow, quick pre-commit check, and automatic full pre-push gate.
+- [x] Preserve frozen `.planning/` links and historical behavioral guards; validate the new hook against multi-commit, rename, safe-doc, dirty-tree, and non-fast-forward cases.
 - [ ] Complete full native/Bazel/coverage verification, push the workflow cutover to main, confirm CI and remote sync, and stop before actual pinned-Knots differential work.
 
-Completion review: Pending. The current GSD rule is explicitly bypassed only for this migration; historical records remain read-only until a later reference-audited prune.
+Completion review: Stage 1 additive ledger cutover passed the old full hook and was pushed on main as `eb6c09b9`. Stage 2 quick verification and focused historical/hook checks pass. The first pre-push failed one stale Phase 165 historical expectation, and the second passed 2,206/2,206 Phase 165 tests before a Phase 129 command-order false positive; both have narrow tested corrections. The third pre-push passed the complete native/Bazel/coverage verifier in 2h 34m 56s, but Git's idle SSH transport closed before publication (exit 141); the remote did not advance. An exact-refs, clean-HEAD, one-hour verification receipt now allows a safe transport retry. The fourth pre-push reached the native Phase 167 HTTP test target but hit a broken-pipe request and poisoned its sibling scenario tests. The request helper now sends one buffered write; the affected target passed 5/5, including the 301-block reopen case. Final full re-verification, CI, and remote sync remain pending. GSD is explicitly bypassed only for this migration, and `.planning/` remains read-only until a later reference-audited prune.

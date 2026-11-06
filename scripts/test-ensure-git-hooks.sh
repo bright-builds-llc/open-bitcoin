@@ -37,7 +37,12 @@ init_repo() {
 set -euo pipefail
 exit 0
 EOF
-  chmod +x "${repo_dir}/.githooks/pre-commit"
+  cat >"${repo_dir}/.githooks/pre-push" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+exit 0
+EOF
+  chmod +x "${repo_dir}/.githooks/pre-commit" "${repo_dir}/.githooks/pre-push"
   (
     cd "$repo_dir"
     git init -q
@@ -119,6 +124,32 @@ run_missing_hook_case() {
   assert_contains "$output" "missing required executable hook: .githooks/pre-commit"
 }
 
+run_missing_pre_push_case() {
+  local repo_dir="${tmp_root}/missing-pre-push"
+  local output=""
+  local status=""
+
+  init_repo "$repo_dir"
+  rm "${repo_dir}/.githooks/pre-push"
+  (
+    cd "$repo_dir"
+    set +e
+    output="$(bash scripts/ensure-git-hooks.sh 2>&1)"
+    status=$?
+    set -e
+    printf '%s' "$output" >output.txt
+    printf '%s' "$status" >status.txt
+  )
+
+  output="$(cat "${repo_dir}/output.txt")"
+  status="$(cat "${repo_dir}/status.txt")"
+  if [[ "$status" -eq 0 ]]; then
+    echo "missing pre-push hook case should fail" >&2
+    exit 1
+  fi
+  assert_contains "$output" "missing required executable hook: .githooks/pre-push"
+}
+
 run_install_wrapper_case() {
   local repo_dir="${tmp_root}/install-wrapper"
   local output=""
@@ -141,6 +172,7 @@ run_missing_config_case
 run_idempotent_case
 run_wrong_config_case
 run_missing_hook_case
+run_missing_pre_push_case
 run_install_wrapper_case
 
 echo "ensure-git-hooks tests passed."

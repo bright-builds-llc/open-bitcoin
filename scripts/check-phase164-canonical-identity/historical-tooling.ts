@@ -63,6 +63,12 @@ export const CURRENT_VERIFY_ADDITIONS = [
   'run_step "check parity ledger" bun run scripts/check-parity-ledger.ts',
 ];
 
+const LEGACY_VISIBLE_TEST = 'bun test scripts/check-active-milestone-verification-traceability.test.ts';
+const LEGACY_VISIBLE_CHECK = 'bun run scripts/check-active-milestone-verification-traceability.ts';
+const LEGACY_EXECUTED_TEST = 'run_step "test active milestone verification traceability checker" bun test scripts/check-active-milestone-verification-traceability.test.ts';
+const LEGACY_EXECUTED_CHECK = 'run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts';
+const QUICK_MODE_BRANCH = 'if [[ "$verify_mode" == "quick" ]]; then\n  run_quick_mode\n  exit 0\nfi\n';
+
 export const CURRENT_TEMP_PREPARATION = '# Canonicalize the existing process-local temporary parent before any fixture work.\nTMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"\nexport TMPDIR\n';
 
 export const CONTROLLED_NATIVE_PREFIX = [
@@ -119,9 +125,29 @@ export function verificationHistoricalBase(source: string): string {
   if (CURRENT_VERIFY_ADDITIONS.some(line => lines.filter(actual => actual === line).length !== 1)) {
     throw new Error("current verification registrations missing or duplicated");
   }
+  const oldLines = [LEGACY_VISIBLE_TEST, LEGACY_VISIBLE_CHECK, LEGACY_EXECUTED_TEST, LEGACY_EXECUTED_CHECK];
+  const maybeOld = oldLines.some(line => lines.includes(line));
+  if (maybeOld && oldLines.some(line => lines.filter(actual => actual === line).length !== 1)) {
+    throw new Error("legacy active traceability registration is incomplete or duplicated");
+  }
+  if (!maybeOld) {
+    const quickAnchor = 'run_step "check parity breadcrumbs" bun run scripts/check-parity-breadcrumbs.ts --check\n';
+    const nextCheck = 'run_step "check v1.3 release boundaries" bun run scripts/check-v1.3-release-boundaries.ts';
+    if (source.split(QUICK_MODE_BRANCH).length !== 2
+      || !source.includes(quickAnchor + QUICK_MODE_BRANCH + nextCheck)) {
+      throw new Error("current quick verification boundary changed");
+    }
+    projected = projected.replace(QUICK_MODE_BRANCH, "");
+    const newVisible = CURRENT_VERIFY_ADDITIONS.slice(28, 30).join("\n");
+    const newExecuted = CURRENT_VERIFY_ADDITIONS.slice(30, 32).join("\n");
+    projected = projected.replace(newVisible, [LEGACY_VISIBLE_TEST, LEGACY_VISIBLE_CHECK, newVisible].join("\n"));
+    projected = projected.replace(newExecuted, [LEGACY_EXECUTED_TEST, LEGACY_EXECUTED_CHECK, newExecuted].join("\n"));
+  } else if (source.includes(QUICK_MODE_BRANCH)) {
+    throw new Error("legacy traceability and current quick mode cannot be combined");
+  }
   const groups = [
-    [CURRENT_VERIFY_ADDITIONS.slice(28, 30).join("\n"), 'bun run scripts/check-active-milestone-verification-traceability.ts', false],
-    [CURRENT_VERIFY_ADDITIONS.slice(30, 32).join("\n"), 'run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts', false],
+    [CURRENT_VERIFY_ADDITIONS.slice(28, 30).join("\n"), LEGACY_VISIBLE_CHECK, false],
+    [CURRENT_VERIFY_ADDITIONS.slice(30, 32).join("\n"), LEGACY_EXECUTED_CHECK, false],
     [CURRENT_VERIFY_ADDITIONS.slice(12, 20).join("\n"), CURRENT_VERIFY_ADDITIONS[8], false],
     [CURRENT_VERIFY_ADDITIONS.slice(20, 28).join("\n"), CURRENT_VERIFY_ADDITIONS[11], false],
     [CURRENT_VERIFY_ADDITIONS.slice(6, 9).join("\n"), CURRENT_VERIFY_ADDITIONS[2], false],

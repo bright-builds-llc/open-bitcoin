@@ -104,6 +104,9 @@ write_verify_test_fixture() {
   cp "${script_dir}/command-timing-cli.ts" "${repo_dir}/scripts/command-timing-cli.ts"
   cp "${script_dir}/command-timing-lock.ts" "${repo_dir}/scripts/command-timing-lock.ts"
   cp "${script_dir}/process-liveness.ts" "${repo_dir}/scripts/process-liveness.ts"
+  mkdir -p "${repo_dir}/packages/testdata/phase162"
+  cp "${script_dir}/../packages/testdata/phase162/recipe.rs" "${repo_dir}/packages/testdata/phase162/recipe.rs"
+  cp "${script_dir}/../packages/testdata/phase162/process.rs" "${repo_dir}/packages/testdata/phase162/process.rs"
   chmod +x "${repo_dir}/scripts/check-file-lengths.sh"
   chmod +x "${repo_dir}/scripts/ensure-git-hooks.sh"
   chmod +x "${repo_dir}/scripts/verify.sh"
@@ -114,7 +117,12 @@ write_verify_test_fixture() {
 set -euo pipefail
 exit 0
 EOF
-  chmod +x "${repo_dir}/.githooks/pre-commit"
+  cat >"${repo_dir}/.githooks/pre-push" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+exit 0
+EOF
+  chmod +x "${repo_dir}/.githooks/pre-commit" "${repo_dir}/.githooks/pre-push"
 
   cat >"${repo_dir}/scripts/check-pure-core-deps.sh" <<'EOF'
 #!/usr/bin/env bash
@@ -189,7 +197,7 @@ fi
 if [[ "\${1:-}" == "run" && "\${2:-}" == scripts/*.ts ]]; then
   exit 0
 fi
-if [[ "\${1:-}" == "test" && "\${2:-}" == scripts/*.test.ts ]]; then
+if [[ "\${1:-}" == "test" && ( "\${2:-}" == scripts/*.test.ts || "\${2:-}" == ./scripts/*.test.ts ) ]]; then
   exit 0
 fi
 echo "unexpected bun invocation: \$*" >&2

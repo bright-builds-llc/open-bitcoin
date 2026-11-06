@@ -15,6 +15,29 @@ The ledger exists so contributors and reviewers can answer three questions quick
 2. What is the current status of that surface in Open Bitcoin?
 3. Is any difference from Knots intentional, documented, and reviewable?
 
+## Current Parity Workflow
+
+Work on a synced local `main` and commit directly after focused tests and diff review. For multi-session work, keep one checkable block in `.codex/tasks/todo.md`. Each parity change names its ledger surface, pinned Knots source anchors, expected external behavior, evidence class, and claim limits before claiming completion.
+
+`requirements.md` holds the approved v2.6 requirement wording. The `checklist.surfaces` entries in [`index.json`](index.json) own requirement IDs and status exactly once. Update the ledger with the code, tests, corpus/oracle inputs, and intentional differences. Source breadcrumbs remain required for new first-party Rust files. The read-only ledger checker verifies ownership, pinned baseline identity, evidence paths, and source anchors; its pass is a structural check, not a substitute for behavioral or differential results.
+
+The approved CPAR-01 wording uses *lifecycle-valid requirement owners*. Under this workflow, that means an exactly-once ledger owner whose completion is backed by the relevant passing tests and evidence; it does not require a new GSD phase lifecycle.
+
+Use these evidence classes precisely:
+
+| Class | What it supports |
+| --- | --- |
+| `source_derived` | Expectations derived from the pinned Knots source and reviewed local code. |
+| `seeded_historical` | Independent contextual fixtures with explicit ancestry, UTXO, activation, and time prerequisites. |
+| `local_product` | Actual Open Bitcoin runtime behavior on the documented supported route. |
+| `knots_daemon_differential` | An actual pinned-Knots daemon comparison with a tracked parity receipt binding the source commit, binary SHA-256, and passed outcome. |
+
+Seeded fixtures never grant ordinary product or actual daemon-differential authority. Preserve the known gaps on each surface. A completed surface must link to non-GSD evidence and pinned Knots source anchors; planned surfaces carry no evidence credit.
+
+Run focused tests for changed behavior. Use `bun run scripts/command-timings.ts run --key <stable-key> -- <command>` for ad-hoc Cargo and Bazel work. The pre-commit hook runs `bash scripts/verify.sh --quick`; the pre-push hook checks every outgoing `main` commit and runs the default full verifier for code, fixtures, parity evidence, and other non-allowlisted paths. If Git's connection closes during a long verification, retry the same push with the same clean HEAD; the hook accepts its exact verification receipt for one hour. `--fast` remains the older iteration mode and does not replace the full gate. After pushing `main`, inspect CI and fix any failure before calling the change complete.
+
+The `.planning/` tree is frozen historical evidence. Existing links into it remain valid, while new work uses the ledger, source breadcrumbs, tests, and CI reports. The dated delivery notes below remain historical context.
+
 Active v2.2 evidence root: Phase 130
 (`v2-2-resource-time-fee-primitives`) documents resource, fee, metadata,
 context, and lifecycle primitives in the

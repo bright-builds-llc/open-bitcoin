@@ -212,7 +212,7 @@ const EXECUTED_CHECK = 'run_step "check parity ledger" bun run scripts/check-par
 const HISTORICAL_VERIFY_SHA = "2925344e06e3604fbba1821e49a00b0f2f292448eae205107882d0ed65aacc43";
 const verifySource = () => readFileSync(join(ROOT, "scripts/verify.sh"), "utf8");
 
-test("dual-run verifier registrations preserve the frozen historical projection", () => {
+test("new-only verifier registration preserves the frozen historical projection", () => {
   // Arrange
   const source = verifySource();
   // Act
@@ -220,6 +220,32 @@ test("dual-run verifier registrations preserve the frozen historical projection"
   const digest = createHash("sha256").update(projected).digest("hex");
   // Assert
   expect(digest).toBe(HISTORICAL_VERIFY_SHA);
+});
+
+test("current verifier no longer executes active GSD traceability", () => {
+  // Arrange / Act
+  const source = verifySource();
+  // Assert
+  expect(source).not.toContain("bun test scripts/check-active-milestone-verification-traceability.test.ts");
+  expect(source).not.toContain("bun run scripts/check-active-milestone-verification-traceability.ts");
+});
+
+test("restoring active GSD beside the new verifier is rejected", () => {
+  // Arrange
+  const source = verifySource()
+    .replace(VISIBLE_TEST, "bun test scripts/check-active-milestone-verification-traceability.test.ts\n" + VISIBLE_TEST)
+    .replace(EXECUTED_TEST, 'run_step "test active milestone verification traceability checker" bun test scripts/check-active-milestone-verification-traceability.test.ts\n' + EXECUTED_TEST)
+    .replace(VISIBLE_CHECK, "bun run scripts/check-active-milestone-verification-traceability.ts\n" + VISIBLE_CHECK)
+    .replace(EXECUTED_CHECK, 'run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts\n' + EXECUTED_CHECK);
+  // Act / Assert
+  expect(() => verificationHistoricalBase(source)).toThrow("legacy traceability and current quick mode cannot be combined");
+});
+
+test("current quick-mode boundary cannot be disabled", () => {
+  // Arrange
+  const source = verifySource().replace('if [[ "$verify_mode" == "quick" ]]; then', '# if [[ "$verify_mode" == "quick" ]]; then');
+  // Act / Assert
+  expect(() => verificationHistoricalBase(source)).toThrow("current quick verification boundary changed");
 });
 
 test("visible parity ledger test registration cannot be removed", () => {
