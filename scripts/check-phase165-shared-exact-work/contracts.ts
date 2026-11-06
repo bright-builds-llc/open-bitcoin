@@ -9,10 +9,10 @@ export { TEST_OWNERS };
 const CURRENT_SOURCE_ROWS = [
   ["scripts/check-phase164-canonical-identity/historical-tooling.ts",
     "b6b7e98700a2a348725ec4c67db920a7856cd57ff6692ba9fa9b1a5a482235ff",
-    "a0a2a8df363baf6f7d238715b0e980021266dbcde2a18a1291819cdfd2ec6f79"],
+    "ca52e17ae86df5f17e4a7b247cd1dc7e6af9d87afc9cc98439342c6034b5030b"],
   ["scripts/check-phase164-canonical-identity/contracts.ts",
     "0b1ff1dbf481c3d6f9a69d00228e5b9483ad2571fa12124be5c0e009f17906e4",
-    "4d4f33a19474701bdda9aea07b4eda3b9996974ff2e4caf74a7d4371c6198753"],
+    "6973e6f6c2c4642ea443600002f2145cb2ec723953dbe356b91b5acf28bb1072"],
   ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/automatic_prune/fixtures.rs",
     "cd4df12f5658e95ff212ce0f9b6205f58e194ebba2ad0976b39ec65ec957af2c",
     "54c8fc65f6c4cdc4a541d11a8e0c90f645db12b3e7fd9c4e59608aa2c20def77"],

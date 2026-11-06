@@ -899,6 +899,7 @@
         "id": "v2-6-candidate-history-validation",
         "title": "Source-bound candidate history and bounded local default-Regtest canonical continuation",
         "status": "done",
+        "evidence_classes": ["source_derived", "seeded_historical", "local_product"],
         "requirements": [
           "CVLD-01",
           "CVLD-02",
@@ -952,6 +953,7 @@
         "id": "v2-6-canonical-durable-bootstrap",
         "title": "Canonical durable genesis and explicit BASIC observations",
         "status": "done",
+        "evidence_classes": ["source_derived", "local_product"],
         "requirements": [
           "CBOT-02",
           "CBOT-03",
@@ -993,6 +995,7 @@
         "id": "v2-6-shared-exact-work",
         "title": "Exact numerical work, earned live branch authority and non-opening legacy refusal",
         "status": "done",
+        "evidence_classes": ["source_derived", "local_product"],
         "requirements": [
           "CWOR-01",
           "CWOR-02",
@@ -1078,6 +1081,7 @@
         "id": "v2-6-canonical-chain-identity",
         "title": "Exact canonical genesis identity and non-opening ordinary refusal",
         "status": "done",
+        "evidence_classes": ["source_derived", "local_product"],
         "requirements": [
           "CBOT-01",
           "CBOT-04",
@@ -1143,6 +1147,126 @@
           "Exact work is Phase 165-owned, canonical durable bootstrap/reopen is Phase 166-owned, candidate-history rules are Phase 167-owned and actual Knots differential qualification is Phase 168-owned.",
           "No new network selector, automatic repair/conversion/reindex, whole-chain parity, public/default networking, production service/readiness or production-funds claim is introduced."
         ]
+      },
+      {
+        "id": "v2-6-cdif-01",
+        "title": "Actual pinned Knots daemon differential runner",
+        "status": "planned",
+        "requirements": ["CDIF-01"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cdif-02",
+        "title": "Regtest maturity and halving differential",
+        "status": "planned",
+        "requirements": ["CDIF-02"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cdif-03",
+        "title": "Invalid block and spend differential",
+        "status": "planned",
+        "requirements": ["CDIF-03"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cdif-04",
+        "title": "Best-block, UTXO, work and BASIC differential",
+        "status": "planned",
+        "requirements": ["CDIF-04"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cdif-05",
+        "title": "Case-level differential receipts and failure handling",
+        "status": "planned",
+        "requirements": ["CDIF-05"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-crec-01",
+        "title": "Valid branch and equal-work selection differential",
+        "status": "planned",
+        "requirements": ["CREC-01"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-crec-02",
+        "title": "Disconnect, reconnect and replacement-spend differential",
+        "status": "planned",
+        "requirements": ["CREC-02"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-crec-03",
+        "title": "Canonical stop and all-handle reopen",
+        "status": "planned",
+        "requirements": ["CREC-03"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-crec-04",
+        "title": "Interrupted checkpoint and inconsistent-record recovery",
+        "status": "planned",
+        "requirements": ["CREC-04"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cint-01",
+        "title": "Canonical pruning with paired block and undo deletion",
+        "status": "planned",
+        "requirements": ["CINT-01"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cint-02",
+        "title": "Retained BASIC client service after pruning",
+        "status": "planned",
+        "requirements": ["CINT-02"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cint-03",
+        "title": "Canonical operator status across consumers",
+        "status": "planned",
+        "requirements": ["CINT-03"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cint-04",
+        "title": "Finite mainnet historical validation contexts",
+        "status": "planned",
+        "requirements": ["CINT-04"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cpar-01",
+        "title": "Source-bound parity claim and deviation audit",
+        "status": "planned",
+        "requirements": ["CPAR-01"],
+        "evidence": [],
+        "evidence_classes": []
+      },
+      {
+        "id": "v2-6-cpar-02",
+        "title": "Offline verification and qualification invalidation",
+        "status": "planned",
+        "requirements": ["CPAR-02"],
+        "evidence": [],
+        "evidence_classes": []
       },
       {
         "id": "v2-5-integrated-retained-filter-proof",

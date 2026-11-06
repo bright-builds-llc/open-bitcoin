@@ -57,6 +57,10 @@ export const CURRENT_VERIFY_ADDITIONS = [
   'run_step "test Phase 167 Regtest corpus" bun test ./scripts/phase167-regtest-corpus.test.ts',
   'run_step "test Phase 167 candidate history boundary" bun test ./scripts/check-phase167-candidate-history.test.ts',
   'run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts',
+  'bun test ./scripts/check-parity-ledger.test.ts',
+  'bun run scripts/check-parity-ledger.ts',
+  'run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts',
+  'run_step "check parity ledger" bun run scripts/check-parity-ledger.ts',
 ];
 
 export const CURRENT_TEMP_PREPARATION = '# Canonicalize the existing process-local temporary parent before any fixture work.\nTMPDIR="$(cd "${TMPDIR:-/tmp}" && pwd -P)"\nexport TMPDIR\n';
@@ -116,6 +120,8 @@ export function verificationHistoricalBase(source: string): string {
     throw new Error("current verification registrations missing or duplicated");
   }
   const groups = [
+    [CURRENT_VERIFY_ADDITIONS.slice(28, 30).join("\n"), 'bun run scripts/check-active-milestone-verification-traceability.ts', false],
+    [CURRENT_VERIFY_ADDITIONS.slice(30, 32).join("\n"), 'run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts', false],
     [CURRENT_VERIFY_ADDITIONS.slice(12, 20).join("\n"), CURRENT_VERIFY_ADDITIONS[8], false],
     [CURRENT_VERIFY_ADDITIONS.slice(20, 28).join("\n"), CURRENT_VERIFY_ADDITIONS[11], false],
     [CURRENT_VERIFY_ADDITIONS.slice(6, 9).join("\n"), CURRENT_VERIFY_ADDITIONS[2], false],

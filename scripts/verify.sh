@@ -185,6 +185,8 @@ bun test scripts/check-phase124-milestone-closeout-reconciliation.test.ts
 bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
 bun test scripts/check-active-milestone-verification-traceability.test.ts
 bun run scripts/check-active-milestone-verification-traceability.ts
+bun test ./scripts/check-parity-ledger.test.ts
+bun run scripts/check-parity-ledger.ts
 bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts
 bun run scripts/check-phase126-compact-relay-residual-hardening.ts
 bun test scripts/check-phase127-authoritative-network-state-unification.test.ts
@@ -397,6 +399,8 @@ run_step "test Phase 124 milestone closeout reconciliation checker" bun test scr
 run_step "check Phase 124 milestone closeout reconciliation" bun run scripts/check-phase124-milestone-closeout-reconciliation.ts
 run_step "test active milestone verification traceability checker" bun test scripts/check-active-milestone-verification-traceability.test.ts
 run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts
+run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts
+run_step "check parity ledger" bun run scripts/check-parity-ledger.ts
 run_step "test Phase 126 compact relay residual hardening checker" bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts
 run_step "check Phase 126 compact relay residual hardening" bun run scripts/check-phase126-compact-relay-residual-hardening.ts
 run_step "test Phase 127 authoritative network state unification checker" bun test scripts/check-phase127-authoritative-network-state-unification.test.ts

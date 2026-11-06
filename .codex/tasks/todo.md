@@ -1797,3 +1797,13 @@ Completion review: Plan19 is an accepted bounded parity contribution (49/51), no
 - [ ] Run Plan20 default native verifier, fresh coverage/Bazel, independent source/security/goal/lifecycle reviews, reconcile staged-index LOC through the normal hook, then commit and push main. Stop before Phase168.
 
 Completion review: Plan25 is an accepted bounded root-document contribution (50/51), not whole Phase167 acceptance. v2.6 is 120/121 checked plans complete (99%) with three of eight phases verified. All five global CVLD requirements and final native/review/Git gates remain open. No commit or push has occurred.
+
+## task-retire-gsd-parity-workflow | 2026-11-06 13:44 CST | Adopt direct-main parity work
+
+- [x] Add stable approved requirement text and planned parity surfaces; dual-run a ledger validator against the existing GSD traceability gate.
+- [ ] Verify and push the additive evidence cutover on main with the existing full native hook.
+- [ ] Replace active GSD instructions and checks with a documented direct-main parity workflow, quick pre-commit check, and automatic full pre-push gate.
+- [ ] Preserve frozen `.planning/` links and historical behavioral guards; validate the new hook against multi-commit, rename, safe-doc, dirty-tree, and non-fast-forward cases.
+- [ ] Complete full native/Bazel/coverage verification, push the workflow cutover to main, confirm CI and remote sync, and stop before actual pinned-Knots differential work.
+
+Completion review: Pending. The current GSD rule is explicitly bypassed only for this migration; historical records remain read-only until a later reference-audited prune.
