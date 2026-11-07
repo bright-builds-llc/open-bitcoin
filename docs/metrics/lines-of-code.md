@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,795 |
-| Total lines | 557,652 |
-| Code/content lines | 490,835 |
+| Total lines | 557,658 |
+| Code/content lines | 490,841 |
 | Comment-only lines | 28,884 |
 | Blank lines | 37,933 |
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,789 | 15,651 | 30 | 26,470 | 145.1% |
 | open-bitcoin-network | 153 | 18,631 | 27,913 | 30 | 46,574 | 149.8% |
-| open-bitcoin-node | 577 | 72,671 | 122,295 | 42 | 195,834 | 168.3% |
+| open-bitcoin-node | 577 | 72,671 | 122,301 | 42 | 195,840 | 168.3% |
 | open-bitcoin-primitives | 9 | 926 | 0 | 20 | 946 | 0.0% |
 | open-bitcoin-rpc | 167 | 17,136 | 35,032 | 64 | 52,232 | 204.4% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,7 +34,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 764 | 258,445 | 225,658 | 17,177 | 15,610 |
+| Rust tests | 764 | 258,451 | 225,664 | 17,177 | 15,610 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
 | TypeScript/Bun scripts | 362 | 105,987 | 94,614 | 3,766 | 7,607 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
@@ -443,7 +443,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | b7c0446eaec254f95fbf2211bed275fde4dc5c40ca970b9036e33924cbd39b75 |
+| Input fingerprint | a1e407b534d95bcead88f9a508b71bd9b90db42961412e704117a3b75e246175 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

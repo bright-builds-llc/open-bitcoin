@@ -312,7 +312,13 @@ pub(super) fn root_unsafe_and_permanent_refused() {
                 "socket" => {
                     let alias = fs::canonicalize("/tmp")
                         .expect("short parent")
-                        .join(root.file_name().expect("unique owned alias"));
+                        .join(format!(
+                            "{}-alias",
+                            root.file_name()
+                                .expect("owned fixture name")
+                                .to_str()
+                                .expect("ASCII fixture name")
+                        ));
                     symlink(root, &alias).expect("unique alias");
                     let socket = UnixListener::bind(alias.join("x"));
                     fs::remove_file(alias).expect("remove alias before assertion");
