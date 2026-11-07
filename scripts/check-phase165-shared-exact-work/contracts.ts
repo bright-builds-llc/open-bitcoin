@@ -9,10 +9,10 @@ export { TEST_OWNERS };
 const CURRENT_SOURCE_ROWS = [
   ["scripts/check-phase164-canonical-identity/historical-tooling.ts",
     "b6b7e98700a2a348725ec4c67db920a7856cd57ff6692ba9fa9b1a5a482235ff",
-    "ac9bc4b8f33f3c9bc9750bdb985f3d968ac61a10f305fa8c119f5032016bcb07"],
+    "c00577669ea5cb91bf3de22a5714d98f555d33272124eb98ca52939b4ef46446"],
   ["scripts/check-phase164-canonical-identity/contracts.ts",
     "0b1ff1dbf481c3d6f9a69d00228e5b9483ad2571fa12124be5c0e009f17906e4",
-    "55d66458311a10e80fe84a9c54abdac40fa213bb4f025a5ccdf423c473c9beb5"],
+    "9904fb435331cb49630c39eb3892a2d8f894e43f99aff1f79ee4b63b535bd4e0"],
   ["scripts/check-phase158-validated-reorg.test.ts",
     "416bce4cad823d5642c842c06711d26c12082ee3ec055a14ff527923a6a9b755",
     "7c3e24aade409c5c60639d43c83a7e0ff2c7069eae8e79b32ab706379100207b"],

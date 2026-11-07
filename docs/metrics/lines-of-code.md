@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,795 |
-| Total lines | 557,631 |
-| Code/content lines | 490,817 |
-| Comment-only lines | 28,882 |
-| Blank lines | 37,932 |
+| Total lines | 557,652 |
+| Code/content lines | 490,835 |
+| Comment-only lines | 28,884 |
+| Blank lines | 37,933 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,445 | 225,658 | 17,177 | 15,610 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
-| TypeScript/Bun scripts | 362 | 105,966 | 94,596 | 3,764 | 7,606 |
+| TypeScript/Bun scripts | 362 | 105,987 | 94,614 | 3,766 | 7,607 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 23 | 4,665 | 4,178 | 78 | 409 |
 | TOML/config | 16 | 3,472 | 3,105 | 0 | 367 |
@@ -70,7 +70,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-panic-sites.ts | 286 |
 | scripts/check-parity-breadcrumbs.test.ts | 65 |
 | scripts/check-parity-breadcrumbs.ts | 430 |
-| scripts/check-parity-ledger.test.ts | 284 |
+| scripts/check-parity-ledger.test.ts | 298 |
 | scripts/check-parity-ledger.ts | 244 |
 | scripts/check-phase100-relay-activation-boundary.test.ts | 431 |
 | scripts/check-phase100-relay-activation-boundary.ts | 584 |
@@ -272,7 +272,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity/claims.ts | 214 |
 | scripts/check-phase164-canonical-identity/contracts.ts | 374 |
 | scripts/check-phase164-canonical-identity/fixture-source.ts | 187 |
-| scripts/check-phase164-canonical-identity/historical-tooling.ts | 354 |
+| scripts/check-phase164-canonical-identity/historical-tooling.ts | 361 |
 | scripts/check-phase164-canonical-identity/historical.test.ts | 627 |
 | scripts/check-phase164-canonical-identity/regions.ts | 30 |
 | scripts/check-phase164-canonical-identity/source-files.ts | 627 |
@@ -443,7 +443,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 1e25462479150585614414a8b2fa50343ff88c4082940a26b264357ec0105924 |
+| Input fingerprint | b7c0446eaec254f95fbf2211bed275fde4dc5c40ca970b9036e33924cbd39b75 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

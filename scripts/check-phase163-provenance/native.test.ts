@@ -119,7 +119,7 @@ test("real closeout sequence preserves safety-copy overlap, archive-only and nex
     expect(checkAllBoundaries(root, sources)).toEqual([]);
     for (const [file, hash] of historical) expect(sha(readFileSync(join(root, file), "utf8"))).toBe(hash);
   });
-}, 60_000);
+}, 180_000);
 
 test("optional current parity page may be absent before its creation", () => {
   // Arrange

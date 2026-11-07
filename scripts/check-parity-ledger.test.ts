@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { checkCurrentParityLedger, checkParityLedger, type LedgerInputs } from "./check-parity-ledger.ts";
-import { verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { legacyToolingBase, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const COMMIT = "a9aee730466ac67d35a3c03ee24676be5e045878";
@@ -220,6 +220,20 @@ test("new-only verifier registration preserves the frozen historical projection"
   const digest = createHash("sha256").update(projected).digest("hex");
   // Assert
   expect(digest).toBe(HISTORICAL_VERIFY_SHA);
+});
+
+test("reviewed Phase 163 CI timeout retains its historical tooling projection", () => {
+  // Arrange
+  const path = "scripts/check-phase163-provenance/native.test.ts";
+  const source = readFileSync(join(ROOT, path), "utf8");
+  const current = '}, 180_000);\n\ntest("optional current parity page may be absent before its creation"';
+  const previous = '}, 60_000);\n\ntest("optional current parity page may be absent before its creation"';
+  const prior = source.replace(current, previous);
+  const unsupported = source.replace(current, current.replace("180_000", "180_001"));
+  // Act / Assert
+  expect(prior).not.toBe(source);
+  expect(legacyToolingBase(path, source)).toBe(legacyToolingBase(path, prior));
+  expect(legacyToolingBase(path, unsupported)).toBe(unsupported);
 });
 
 test("current verifier no longer executes active GSD traceability", () => {
