@@ -3,6 +3,8 @@ set -euo pipefail
 
 # Synthetic verifier fixtures exercise local timing unless a case sets CI explicitly.
 unset CI GITHUB_ACTIONS
+# Enter the fixture verifier directly; its own step recorder is the behavior under test.
+export OPEN_BITCOIN_TIMING_WRAPPED=1
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 helper_script="${script_dir}/check-file-lengths.sh"

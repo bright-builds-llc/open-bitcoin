@@ -64,6 +64,8 @@ current_time_milliseconds() {
 
 finish_verify() {
   local exit_status="$1"
+  # Keep a failing step from aborting this EXIT-trap reporter before its summary.
+  set +e
   local verify_end_milliseconds=0
   local elapsed_milliseconds=0
   local elapsed_display=""
