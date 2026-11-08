@@ -588,7 +588,7 @@ export const SOURCE_CONTRACTS: readonly (readonly [string, string, string])[] = 
   ["scripts/check-phase164-canonical-identity/historical-tooling.ts","ownership","b6b7e98700a2a348725ec4c67db920a7856cd57ff6692ba9fa9b1a5a482235ff"],
   ["scripts/check-phase164-canonical-identity/contracts.ts","ownership","0b1ff1dbf481c3d6f9a69d00228e5b9483ad2571fa12124be5c0e009f17906e4"],
   ["scripts/check-phase164-canonical-identity.ts","ownership","97815f33e2c0d9b6d0343ac9d667e163d3c9c054ea8f6e5441d4b5b75c40654d"],
-  ["scripts/check-phase164-canonical-identity/historical.test.ts","ownership","a57424fc6f3cf8f628549060a03b83592b5654927ce20900d36e8e197221af94"],
+  ["scripts/check-phase164-canonical-identity/historical.test.ts","ownership","ca5540dfe81ffb4a8a5a7e8090a15face9b6b6dc685ab60c824e9f20700aa732"],
   ["scripts/check-phase165-shared-exact-work/test-support.ts","ownership","a2d1dd28105468e4c82727c3aca5c293ccfb05ee650b428d31975c8a6fdf4c7f"],
   ["scripts/check-phase165-shared-exact-work.ts","ownership","b3007c15cd67c94a1e9b897ec4be1c0ae5338db5ec2059798f66b8cec25ba687"],
   ["scripts/check-phase159-filter-rpcs.ts","ownership","099f9cd23873167c2c156683afc919f8c0d3561d8b31673763b3ca390ba9e325"],

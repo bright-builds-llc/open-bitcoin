@@ -1,4 +1,4 @@
-import { afterEach, expect, test } from "bun:test";
+import { afterEach, expect, setDefaultTimeout, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
@@ -15,7 +15,7 @@ import { checkPhase165, loadInputs as load165Inputs } from "../check-phase165-sh
 import { CLI_MODULES, COPIED_ADAPTER_MUTATIONS, COPIED_CLI_MUTATIONS, expectCopiedAdapterCase } from "../check-phase165-shared-exact-work/test-support.ts";
 import { DOC, loadPhase162OptionalSources } from "../check-phase158-validated-reorg.ts";
 import { ENTRIES, REPO, assertLiveUnchanged, cleanedRoots, cleanupFixtures, copiedCliSources, createCopiedFixture, runtimeSources } from "../check-phase163-provenance/fixtures.ts";
-
+setDefaultTimeout(20_000); // Allow slower CI child-process inverse checks.
 test("original Phase163 receipt digest qualifies only the preserved historical tooling view", () => {
   // Arrange
   const sources = loadSources();
