@@ -50,7 +50,7 @@ export const CURRENT_PINS: readonly (readonly [string, string, "production" | "n
   ["packages/open-bitcoin-node/src/storage/fjall_store/canonical_genesis.rs","4a65e4568b06af964e19b919521151694a864d96ed52bcde2789b3386e1556b9","production"],
   ["packages/open-bitcoin-rpc/src/context/canonical_history.rs","b8e797712a1533baddf56fd38c94c24c6c20573d86f0195a5cb7f54c324f90a9","production"],
   ["packages/open-bitcoin-consensus/src/chain_spec/rules/tests.rs","cd8f200ac0e7f5b72dc9e48f1fbf33bd095192c1ace173741507a003184d2a93","native-test"],
-  ["packages/open-bitcoin-consensus/src/candidate_history/rules/tests.rs","02db06cfc59ec71a6f537cb2bc6fe5bd6132cf1685a157291d524844ee672e48","native-test"],
+  ["packages/open-bitcoin-consensus/src/candidate_history/rules/tests.rs","0e337de9074364dbedced63e7e4b4f7c8c015e60c2752748d1abc47ccf37dc34","native-test"],
   ["packages/open-bitcoin-consensus/src/block/sigops/tests.rs","f167191a10a4ee9cc532b7a2d60f4c50e70e7ba129cbbb4164272bca89ad24b1","native-test"],
   ["packages/open-bitcoin-chainstate/src/engine/tests/phase167_context.rs","eb96b688358bbe332141107b107d514331c9af26a1b43947ac41e41c903d3ba4","native-test"],
   ["packages/open-bitcoin-chainstate/src/engine/tests/phase167_bip30.rs","520359cd2ed7d77976a4a35e24777b807bf042de52ca824a2d8c8a304842f84c","native-test"],

@@ -306,6 +306,10 @@ fn phase167_candidate_rules_public_path_binds_header_and_selected_params() {
     let rules = history.rules();
     let context = history.block_validation_context(1_800_000_000);
     // Assert
+    assert_eq!(
+        rules.network_rules(),
+        CanonicalChain::Regtest.spec().rules()
+    );
     assert_eq!(rules.height(), 11);
     assert_eq!(
         rules.candidate_hash(),
