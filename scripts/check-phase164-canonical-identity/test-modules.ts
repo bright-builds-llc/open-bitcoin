@@ -583,7 +583,7 @@ export const SOURCE_CONTRACTS: readonly (readonly [string, string, string])[] = 
   ["scripts/check-phase157-index-catch-up/contracts.ts","ownership","42d07bb1a29b62b15a8349f9a453a4f0716199e1aef4466db9c49559178d8d9a"],
   ["scripts/check-phase157-index-catch-up.test.ts","ownership","a494810036b3415ea062d101b2d52ecbd95b4396394dc592297a38a1197ebf81"],
   ["scripts/check-phase159-filter-rpcs/contracts.ts","ownership","18428103a58f8a3a9557185989aa53e0152384e7e8ad6cd318adf10348c12614"],
-  ["scripts/check-phase159-filter-rpcs.test.ts","ownership","0c2ed9cc009e322d197d278a098880d82e270f3b2b10a355985c43a6469f4127"],
+  ["scripts/check-phase159-filter-rpcs.test.ts","ownership","9a477ce250d4664f1b10945f119b0d3f79051d35e9264a7ac778bd9fabee7763"],
   ["scripts/check-phase161-operator-index-evidence.ts","ownership","aa3285939ff490a8afed8ddc24f310c6916f76a149521432cc42017a2e67a526"],
   ["scripts/check-phase164-canonical-identity/historical-tooling.ts","ownership","b6b7e98700a2a348725ec4c67db920a7856cd57ff6692ba9fa9b1a5a482235ff"],
   ["scripts/check-phase164-canonical-identity/contracts.ts","ownership","0b1ff1dbf481c3d6f9a69d00228e5b9483ad2571fa12124be5c0e009f17906e4"],

@@ -236,6 +236,18 @@ test("reviewed Phase 163 CI timeout retains its historical tooling projection", 
   expect(legacyToolingBase(path, unsupported)).toBe(unsupported);
 });
 
+test("reviewed Phase 159 CI timeout retains its historical tooling projection", () => {
+  // Arrange
+  const path = "scripts/check-phase159-filter-rpcs.test.ts";
+  const source = readFileSync(join(ROOT, path), "utf8");
+  const current = '}, 20_000);\n\ntest("supplied-map empty discovered source cannot borrow a valid real file"';
+  const unsupported = source.replace(current, current.replace("20_000", "21_000"));
+  // Act / Assert
+  expect(unsupported).not.toBe(source);
+  expect(legacyToolingBase(path, source)).not.toBe(source);
+  expect(legacyToolingBase(path, unsupported)).toBe(unsupported);
+});
+
 test("current verifier no longer executes active GSD traceability", () => {
   // Arrange / Act
   const source = verifySource();

@@ -92,7 +92,7 @@ test("supplied-map discovery enforces extra source registration and exact anchor
   manifest.groups.pop();
   sources.set("docs/parity/source-breadcrumbs.json", JSON.stringify(manifest));
   expect(checkPhase159FilterRpcs(repo, sources)).toContain(`${file}: exact breadcrumb registration`);
-});
+}, 20_000);
 
 test("supplied-map empty discovered source cannot borrow a valid real file", () => {
   // Arrange

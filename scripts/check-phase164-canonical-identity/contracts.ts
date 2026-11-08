@@ -114,12 +114,16 @@ export const FILTER_GUARD_INVERSES: readonly (readonly [string, ExactSourceInver
   [
     "scripts/check-phase159-filter-rpcs.test.ts",
     {
-      "currentRawSha": "0c2ed9cc009e322d197d278a098880d82e270f3b2b10a355985c43a6469f4127",
+      "currentRawSha": "9a477ce250d4664f1b10945f119b0d3f79051d35e9264a7ac778bd9fabee7763",
       "restoredRawSha": "a4762b5de5ca3c79d1ee2a77d2e48ee77cd29424c6c6a1b44dae1c15944dd59d",
       "hunks": [
         [
           "import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from \"./check-phase158-validated-reorg.ts\";\nimport { PHASE163_DOC, PROVENANCE_CLAIMS } from \"./check-phase163-provenance.ts\";\nimport { v25FixtureSources } from \"./check-phase163-provenance/fixture-controls.ts\";\nimport { checkPhase161OperatorIndexEvidence, loadSources as loadPhase161Sources } from \"./check-phase161-operator-index-evidence.ts\";\n\nconst roots: string[] = [];\nconst repo = resolve(import.meta.dir, \"..\");\n",
           "import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from \"./check-phase158-validated-reorg.ts\";\nimport { PHASE163_DOC, PROVENANCE_CLAIMS } from \"./check-phase163-provenance.ts\";\nimport { v25FixtureSources } from \"./check-phase163-provenance/fixture-controls.ts\";\n\nconst roots: string[] = [];\nconst repo = resolve(import.meta.dir, \"..\");\n"
+        ],
+        [
+          "}, 20_000);\n\ntest(\"supplied-map empty discovered source cannot borrow a valid real file\"",
+          "});\n\ntest(\"supplied-map empty discovered source cannot borrow a valid real file\""
         ],
         [
           "  [\"lost accepted reorg fence\", N + \"chainstate/validation_history.rs\", \"self.accept_basic_index_reorg(accepted, prepared.maybe_index)\", \"unrelated_reorg(accepted, prepared.maybe_index)\"],\n  [\"lost prepare admission\", N + \"chainstate.rs\", \"self.admit_validation_acceptance(\", \"self.unchecked_validation_acceptance(\"],\n  [\"raw seed coverage laundering\", N + \"storage/fjall_store/coins.rs\", \"self.invalidate_validation_coverage()?;\\n            control.invalidate_append()?;\", \"control.invalidate_append()?;\"],\n  [\"raw flush sink coverage laundering\", N + \"storage/fjall_store/chain_meta.rs\", \"self.check_validation_coverage_for_metadata(active_chain)?;\", \"skip_validation_coverage(active_chain);\"],\n  [\"parent fields substitute integrity\", N + \"storage/fjall_store/filters/query.rs\", \"codec::parse_record(&parent_key, &parent_bytes),\", \"codec::parse_record_fields(&parent_key, &parent_bytes),\"],\n  [\"lost read bound\", N + \"storage/fjall_store/filters/query.rs\", \"*size <= BASIC_FILTER_QUERY_MAX_READ_BYTES\", \"true\"],\n  [\"lost original captured provenance\", N + \"network/runtime_authority/filter_index/readiness/owner.rs\", \"provenance: completion.request.provenance\", \"provenance: BasicBlockValidationProvenance::NeverConnected\"],\n",
