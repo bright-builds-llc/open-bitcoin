@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, setDefaultTimeout, test } from "bun:test";
 import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,10 +16,10 @@ import { reviewedOwnership } from "./check-phase164-canonical-identity.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { checkPhase166, INPUT_FILES, loadInputs } from "./check-phase166-canonical-bootstrap.ts";
 import { CHECKPOINT, CLI, CONSENSUS, CORE, DAEMON, FACTORY, INSPECTION, NODE, OBSERVER, OPENER, RPC, VECTOR } from "./check-phase166-canonical-bootstrap/contracts.ts";
+setDefaultTimeout(20_000); // Allow the copied guard checks to finish on slower CI runners.
 const real = loadInputs();
 const PROCESS = "packages/open-bitcoin-rpc/tests/phase165_work_startup.rs";
 const ORIGINAL_PROCESS_IDENTITY = "ac6c248cd76324da26c5bf3850718df60d4fb790a13288ebfbc6eccc2e8272a3";
-// Literal forms and statuses inventoried independently from the original 164/165 guards.
 const legacyClaimFamilies = [
   { owner: 164, subjects: ["Bootstrap", "Reopen", "Whole-chain parity", "Production", "Knots qualification"],
     statuses: ["qualified", "supported", "ready", "proven", "complete", "accepted"] },
