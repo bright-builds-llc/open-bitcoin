@@ -98,7 +98,7 @@ const LEGACY_VERSIONS: readonly (readonly [string, string, number, string])[] = 
     "packages/open-bitcoin-node/src/sync/tests/peer_filter_transport/phase162.rs",
     "3610463d888bb31d2319d435270bc59f71448c20d536f7bb0d242ac6f6cd7020",
     11654,
-    "c35b11b189473843d2c34b95a75109c30bb064925019f8bf916c56fdf9241d39"
+    "ebb63f26231fec6005f867e69b0f58afab70c8d70c993d587cacd94f59fba4ac"
   ],
   [
     "packages/open-bitcoin-node/src/sync/tests/filter_index/phase162/missing_history.rs",

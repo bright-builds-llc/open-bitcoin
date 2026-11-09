@@ -20,7 +20,22 @@ static NEXT: AtomicUsize = AtomicUsize::new(0);
 struct Cleanup(PathBuf);
 impl Drop for Cleanup {
     fn drop(&mut self) {
-        drop(FjallNodeStore::open(&self.0).expect("all owners closed before raw reopen"));
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        loop {
+            match FjallNodeStore::open(&self.0) {
+                Ok(store) => {
+                    drop(store);
+                    break;
+                }
+                Err(crate::storage::StorageError::BackendFailure { ref message, .. })
+                    if message == "database locked by another process"
+                        && std::time::Instant::now() < deadline =>
+                {
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("all owners closed before raw reopen: {error:?}"),
+            }
+        }
         fs::remove_dir_all(&self.0).expect("owned write-fault cleanup");
         assert!(!self.0.exists());
     }

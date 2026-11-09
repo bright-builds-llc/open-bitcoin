@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,795 |
-| Total lines | 557,678 |
-| Code/content lines | 490,860 |
+| Total lines | 557,711 |
+| Code/content lines | 490,893 |
 | Comment-only lines | 28,885 |
 | Blank lines | 37,933 |
 
@@ -24,7 +24,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,789 | 15,651 | 30 | 26,470 | 145.1% |
 | open-bitcoin-network | 153 | 18,631 | 27,913 | 30 | 46,574 | 149.8% |
-| open-bitcoin-node | 577 | 72,671 | 122,301 | 42 | 195,840 | 168.3% |
+| open-bitcoin-node | 577 | 72,671 | 122,316 | 42 | 195,855 | 168.3% |
 | open-bitcoin-primitives | 9 | 926 | 0 | 20 | 946 | 0.0% |
 | open-bitcoin-rpc | 167 | 17,136 | 35,032 | 64 | 52,232 | 204.4% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
@@ -34,9 +34,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 764 | 258,455 | 225,668 | 17,177 | 15,610 |
+| Rust tests | 764 | 258,470 | 225,683 | 17,177 | 15,610 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
-| TypeScript/Bun scripts | 362 | 106,003 | 94,629 | 3,767 | 7,607 |
+| TypeScript/Bun scripts | 362 | 106,021 | 94,647 | 3,767 | 7,607 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 23 | 4,665 | 4,178 | 78 | 409 |
 | TOML/config | 16 | 3,472 | 3,105 | 0 | 367 |
@@ -270,7 +270,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity.test.ts | 628 |
 | scripts/check-phase164-canonical-identity.ts | 328 |
 | scripts/check-phase164-canonical-identity/claims.ts | 214 |
-| scripts/check-phase164-canonical-identity/contracts.ts | 378 |
+| scripts/check-phase164-canonical-identity/contracts.ts | 379 |
 | scripts/check-phase164-canonical-identity/fixture-source.ts | 187 |
 | scripts/check-phase164-canonical-identity/historical-tooling.ts | 361 |
 | scripts/check-phase164-canonical-identity/historical.test.ts | 627 |
@@ -279,8 +279,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity/test-modules.ts | 606 |
 | scripts/check-phase165-shared-exact-work.test.ts | 628 |
 | scripts/check-phase165-shared-exact-work.ts | 242 |
-| scripts/check-phase165-shared-exact-work/contracts.ts | 490 |
-| scripts/check-phase165-shared-exact-work/test-support.ts | 281 |
+| scripts/check-phase165-shared-exact-work/contracts.ts | 496 |
+| scripts/check-phase165-shared-exact-work/test-support.ts | 292 |
 | scripts/check-phase166-canonical-bootstrap.test.ts | 628 |
 | scripts/check-phase166-canonical-bootstrap.ts | 252 |
 | scripts/check-phase166-canonical-bootstrap/contracts.ts | 366 |
@@ -443,7 +443,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 7a0dc3373e55f4dc1a6eaa32b258d25e3ccb718b5a2ed1d3daaf69a26dc50d3b |
+| Input fingerprint | 263f1cbdeab50d703620d7216d4c473317ec8aeadf401a6f20d8f01f5e95ef60 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

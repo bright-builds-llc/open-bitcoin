@@ -12,7 +12,7 @@ const CURRENT_SOURCE_ROWS = [
     "c00577669ea5cb91bf3de22a5714d98f555d33272124eb98ca52939b4ef46446"],
   ["scripts/check-phase164-canonical-identity/contracts.ts",
     "0b1ff1dbf481c3d6f9a69d00228e5b9483ad2571fa12124be5c0e009f17906e4",
-    "6a884521b29688848941ab7167eacbc474fbc31bb125e29f88c9f105b9282990"],
+    "8236aa67856d0c2e231001f67126af9d4e1edb05f9994fc04860042540a58691"],
   ["scripts/check-phase158-validated-reorg.test.ts",
     "416bce4cad823d5642c842c06711d26c12082ee3ec055a14ff527923a6a9b755",
     "7c3e24aade409c5c60639d43c83a7e0ff2c7069eae8e79b32ab706379100207b"],
@@ -28,6 +28,12 @@ const CURRENT_SOURCE_ROWS = [
   ["packages/open-bitcoin-consensus/src/block.rs",
     "0de87f0031dd2ad9dea887bd5466908b43b7f57cba1c354ce3a34a8d5b1b45aa",
     "ace16730e06effe36e825c9dee20e65e5e6c4a839beff73b623e3e49d2b6aee6"],
+  ["packages/open-bitcoin-node/src/sync/tests/peer_filter_transport/phase162.rs",
+    "e1677492e54df0b421f1052d1f33561e628ef5ced65ea4e83cfec29086d7ef44",
+    "50444a1a85100d7f0108f2817e5b64cff30ef87eb3f2f11b594fed30534d2331"],
+  ["scripts/check-phase165-shared-exact-work/test-support.ts",
+    "a2d1dd28105468e4c82727c3aca5c293ccfb05ee650b428d31975c8a6fdf4c7f",
+    "05fd6a63b7278558775301e00861dd81224a106914e8600e4a1bda262b9c3fbc"],
 ] as const;
 for (const [file, prior] of CURRENT_SOURCE_ROWS) {
   if (PHASE164_SOURCE_CONTRACTS.find(row => row[0] === file)?.[2] !== prior) {
