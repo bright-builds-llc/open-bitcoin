@@ -73,50 +73,46 @@ struct Daemon {
     diagnostic: PathBuf,
 }
 impl Daemon {
+    #[cfg(unix)]
     fn start(fixture: &Fixture, label: &str) -> Self {
-        let reservation = TcpListener::bind("127.0.0.1:0").expect("local port");
-        let port = reservation.local_addr().expect("port").port();
-        drop(reservation);
-        let diagnostic = fixture.0.join(format!("{label}.stderr"));
-        let output = fs::File::create(&diagnostic).expect("owned diagnostic sink");
-        let child = fixture
-            .command(port)
-            .stdout(Stdio::null())
-            .stderr(Stdio::from(output))
-            .spawn()
-            .expect("fresh Cargo product executable");
-        let mut daemon = Self {
-            child,
-            port,
-            diagnostic,
-        };
-        let deadline = Instant::now() + Duration::from_secs(300);
-        loop {
-            if TcpStream::connect(("127.0.0.1", port)).is_ok() {
-                break;
+        for attempt in 0..8 {
+            let reservation = TcpListener::bind("127.0.0.1:0").expect("local port");
+            let port = reservation.local_addr().expect("port").port();
+            drop(reservation);
+            let diagnostic = fixture.0.join(format!("{label}-{attempt}.stderr"));
+            let output = fs::File::create(&diagnostic).expect("owned diagnostic sink");
+            let child = fixture
+                .command(port)
+                .stdout(Stdio::null())
+                .stderr(Stdio::from(output))
+                .spawn()
+                .expect("fresh Cargo product executable");
+            let mut daemon = Self {
+                child,
+                port,
+                diagnostic,
+            };
+            let deadline = Instant::now() + Duration::from_secs(300);
+            loop {
+                if let Some(status) = daemon.child.try_wait().expect("owned status") {
+                    let diagnostic = daemon.diagnostic();
+                    if diagnostic.contains("Address already in use") {
+                        break;
+                    }
+                    panic!("daemon startup {status}: {diagnostic}");
+                }
+                if basic_evidence::rpc_ready(port) {
+                    return daemon;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "bounded startup: {}",
+                    daemon.diagnostic()
+                );
+                std::thread::sleep(Duration::from_millis(20));
             }
-            if let Some(status) = daemon.child.try_wait().expect("owned status") {
-                panic!("daemon startup {status}: {}", daemon.diagnostic());
-            }
-            assert!(
-                Instant::now() < deadline,
-                "bounded startup: {}",
-                daemon.diagnostic()
-            );
-            std::thread::sleep(Duration::from_millis(20));
         }
-        daemon
-    }
-    fn diagnostic(&self) -> String {
-        let mut bytes = Vec::new();
-        fs::File::open(&self.diagnostic)
-            .expect("diagnostic")
-            .take(16_384)
-            .read_to_end(&mut bytes)
-            .expect("bounded diagnostic");
-        String::from_utf8_lossy(&bytes)
-            .replace("secret", "[redacted]")
-            .replace("cHJpdmF0ZTpzZWNyZXQ=", "[redacted]")
+        panic!("bounded RPC port reservation failed");
     }
     #[cfg(unix)]
     fn stop(mut self) {

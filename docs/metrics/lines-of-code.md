@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,795 |
-| Total lines | 557,711 |
-| Code/content lines | 490,893 |
-| Comment-only lines | 28,885 |
-| Blank lines | 37,933 |
+| Total lines | 557,788 |
+| Code/content lines | 490,964 |
+| Comment-only lines | 28,888 |
+| Blank lines | 37,936 |
 
 ## Per-Crate Modules
 
@@ -26,7 +26,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-network | 153 | 18,631 | 27,913 | 30 | 46,574 | 149.8% |
 | open-bitcoin-node | 577 | 72,671 | 122,316 | 42 | 195,855 | 168.3% |
 | open-bitcoin-primitives | 9 | 926 | 0 | 20 | 946 | 0.0% |
-| open-bitcoin-rpc | 167 | 17,136 | 35,032 | 64 | 52,232 | 204.4% |
+| open-bitcoin-rpc | 167 | 17,136 | 35,109 | 64 | 52,309 | 204.9% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 21 | 3,529 | 2,705 | 34 | 6,268 | 76.7% |
 
@@ -34,7 +34,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 764 | 258,470 | 225,683 | 17,177 | 15,610 |
+| Rust tests | 764 | 258,547 | 225,754 | 17,180 | 15,613 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
 | TypeScript/Bun scripts | 362 | 106,021 | 94,647 | 3,767 | 7,607 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
@@ -430,20 +430,20 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 11 | packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/inbound.rs | Rust tests | 628 |
 | 12 | packages/open-bitcoin-rpc/src/config/loader.rs | Rust production | 628 |
 | 13 | packages/open-bitcoin-rpc/tests/black_box_parity/phase127_composition.rs | Rust tests | 628 |
-| 14 | packages/open-bitcoin-rpc/tests/phase167_canonical_startup.rs | Rust tests | 628 |
-| 15 | scripts/check-phase128-production-compact-announcement-transport.test.ts | TypeScript/Bun scripts | 628 |
-| 16 | scripts/check-phase158-validated-reorg.test.ts | TypeScript/Bun scripts | 628 |
-| 17 | scripts/check-phase162-integrated-filter-proof.test.ts | TypeScript/Bun scripts | 628 |
-| 18 | scripts/check-phase164-canonical-identity.test.ts | TypeScript/Bun scripts | 628 |
-| 19 | scripts/check-phase165-shared-exact-work.test.ts | TypeScript/Bun scripts | 628 |
-| 20 | scripts/check-phase166-canonical-bootstrap.test.ts | TypeScript/Bun scripts | 628 |
+| 14 | scripts/check-phase128-production-compact-announcement-transport.test.ts | TypeScript/Bun scripts | 628 |
+| 15 | scripts/check-phase158-validated-reorg.test.ts | TypeScript/Bun scripts | 628 |
+| 16 | scripts/check-phase162-integrated-filter-proof.test.ts | TypeScript/Bun scripts | 628 |
+| 17 | scripts/check-phase164-canonical-identity.test.ts | TypeScript/Bun scripts | 628 |
+| 18 | scripts/check-phase165-shared-exact-work.test.ts | TypeScript/Bun scripts | 628 |
+| 19 | scripts/check-phase166-canonical-bootstrap.test.ts | TypeScript/Bun scripts | 628 |
+| 20 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
 
 ## Metadata
 
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 263f1cbdeab50d703620d7216d4c473317ec8aeadf401a6f20d8f01f5e95ef60 |
+| Input fingerprint | b2400b1d3fd46456c50927b7aa0aa0759be6568a383e777641acffcb40b54097 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

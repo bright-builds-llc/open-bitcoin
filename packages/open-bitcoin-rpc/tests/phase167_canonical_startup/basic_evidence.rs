@@ -3,9 +3,9 @@
 // - packages/bitcoin-knots/src/index/blockfilterindex.cpp
 // - packages/bitcoin-knots/src/validation.cpp
 
-//! Independent BASIC expectations for the stopped Plan 48 process fixture.
+//! Process fixture support and independent BASIC expectations.
 
-use super::Fixture;
+use super::{Daemon, Fixture};
 use open_bitcoin_node::{
     DurableSyncRuntime, SyncNetwork, SyncRuntimeConfig,
     chainstate::BasicFilterStartupMode,
@@ -23,10 +23,91 @@ use std::{
     collections::BTreeMap,
     fs,
     io::{Read, Write},
+    net::{TcpListener, TcpStream},
     path::Path,
     process::{Command, Stdio},
     time::{Duration, Instant},
 };
+
+pub(super) fn rpc_ready(port: u16) -> bool {
+    let Ok(mut stream) = TcpStream::connect(("127.0.0.1", port)) else {
+        return false;
+    };
+    if stream
+        .set_read_timeout(Some(Duration::from_millis(500)))
+        .is_err()
+        || stream
+            .set_write_timeout(Some(Duration::from_millis(500)))
+            .is_err()
+    {
+        return false;
+    }
+    let body = json!({"jsonrpc":"2.0","id":1,"method":"getblockchaininfo","params":[]}).to_string();
+    let request = format!(
+        "POST / HTTP/1.1\r\nHost: localhost\r\nAuthorization: Basic cHJpdmF0ZTpzZWNyZXQ=\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    if stream.write_all(request.as_bytes()).is_err() {
+        return false;
+    }
+    let mut bytes = Vec::new();
+    if stream.take(65_537).read_to_end(&mut bytes).is_err() || bytes.len() > 65_536 {
+        return false;
+    }
+    let Ok(text) = String::from_utf8(bytes) else {
+        return false;
+    };
+    let Some((head, payload)) = text.split_once("\r\n\r\n") else {
+        return false;
+    };
+    if head.split_whitespace().nth(1) != Some("200") {
+        return false;
+    }
+    matches!(serde_json::from_str::<Value>(payload), Ok(value)
+        if value["result"]["chain"] == "regtest" && value["error"].is_null())
+}
+
+impl Daemon {
+    pub(super) fn diagnostic(&self) -> String {
+        let mut bytes = Vec::new();
+        fs::File::open(&self.diagnostic)
+            .expect("diagnostic")
+            .take(16_384)
+            .read_to_end(&mut bytes)
+            .expect("bounded diagnostic");
+        String::from_utf8_lossy(&bytes)
+            .replace("secret", "[redacted]")
+            .replace("cHJpdmF0ZTpzZWNyZXQ=", "[redacted]")
+    }
+}
+
+#[test]
+fn rpc_ready_rejects_unrelated_listener() {
+    // Arrange
+    let listener = TcpListener::bind("127.0.0.1:0").expect("foreign listener");
+    let port = listener.local_addr().expect("foreign port").port();
+    let foreign = std::thread::spawn(move || {
+        let (mut stream, _) = listener.accept().expect("foreign accept");
+        stream
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .expect("foreign read bound");
+        let mut request = [0u8; 1];
+        stream.read_exact(&mut request).expect("foreign request");
+        let body = r#"{"result":{"chain":"main"},"error":null}"#;
+        let response = format!(
+            "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+            body.len()
+        );
+        stream
+            .write_all(response.as_bytes())
+            .expect("foreign response");
+    });
+    // Act
+    let ready = rpc_ready(port);
+    // Assert
+    assert!(!ready);
+    foreign.join().expect("foreign listener joined");
+}
 
 pub(super) type Rows = BTreeMap<String, BTreeMap<Vec<u8>, Vec<u8>>>;
 pub(super) type Provenance = BTreeMap<
