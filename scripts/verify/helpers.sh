@@ -4,6 +4,7 @@
 usage() {
   cat >&2 <<'EOF'
 usage: bash scripts/verify.sh [--full | --profile | --fast | --quick] [--timings]
+                             [--shard <name>] [--plan] [--list-shards]
 
 Modes:
   --full      Run the full strict verification contract (default).
@@ -13,7 +14,78 @@ Modes:
 
 Options:
   --timings   Print step timings for the selected mode.
+  --shard <name>
+              Run only the steps of one shard of the full contract. The shards
+              partition the contract, so running every shard equals a full run.
+  --plan      Print each step as "<shard><TAB><label>" without running it.
+  --list-shards
+              Print the shard names, one per line, and exit.
 EOF
+}
+
+# Bun's 5s default fails correct mutation cases on slow runners; these suites
+# assert refusal behavior, not speed. Files that set their own default keep it.
+readonly BUN_TEST_DEFAULT_TIMEOUT_MILLISECONDS=60000
+
+# Every step belongs to exactly one shard; unmatched steps fall into "checks"
+# or "checker-tests-other", so a new step can never be left out of CI.
+readonly VERIFY_SHARDS=(
+  checks
+  native-test
+  native-stress
+  native-release
+  checker-tests-158
+  checker-tests-159-163
+  checker-tests-164
+  checker-tests-165
+  checker-tests-other
+)
+maybe_verify_shard=""
+verify_plan_only=0
+
+is_verify_shard() {
+  local candidate="$1"
+  local shard=""
+
+  for shard in "${VERIFY_SHARDS[@]}"; do
+    if [[ "$shard" == "$candidate" ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+bun_test_shard() {
+  local argument=""
+
+  for argument in "$@"; do
+    case "$argument" in
+    *check-phase158-validated-reorg.test.ts) echo "checker-tests-158" && return ;;
+    *check-phase159-filter-rpcs.test.ts | *check-phase163-provenance/native.test.ts) echo "checker-tests-159-163" && return ;;
+    *check-phase164-canonical-identity.test.ts) echo "checker-tests-164" && return ;;
+    *check-phase165-shared-exact-work.test.ts) echo "checker-tests-165" && return ;;
+    esac
+  done
+  echo "checker-tests-other"
+}
+
+step_shard() {
+  local label="$1"
+  shift
+
+  if [[ "${1:-}" == bun && "${2:-}" == test ]]; then
+    bun_test_shard "$@"
+    return
+  fi
+
+  case "$label" in
+  "stress "*) echo "native-stress" ;;
+  "cargo build" | "cargo test" | "cargo test "*) echo "native-test" ;;
+  "benchmark "* | "check benchmark report" | "bazel build" | "check Bazel build provenance" | "cargo llvm-cov "*)
+    echo "native-release"
+    ;;
+  *) echo "checks" ;;
+  esac
 }
 
 format_elapsed_duration() {
@@ -184,6 +256,22 @@ parse_args() {
       print_timings=1
       shift
       ;;
+    --shard)
+      if ! is_verify_shard "${2:-}"; then
+        echo "error: --shard requires one of: ${VERIFY_SHARDS[*]}" >&2
+        exit 2
+      fi
+      maybe_verify_shard="$2"
+      shift 2
+      ;;
+    --plan)
+      verify_plan_only=1
+      shift
+      ;;
+    --list-shards)
+      printf '%s\n' "${VERIFY_SHARDS[@]}"
+      exit 0
+      ;;
     -h | --help)
       usage
       exit 0
@@ -195,6 +283,16 @@ parse_args() {
       ;;
     esac
   done
+
+  if [[ -z "$maybe_verify_shard" ]]; then
+    return
+  fi
+  if [[ "$verify_mode" != "full" ]]; then
+    echo "error: --shard applies only to the full verification contract" >&2
+    exit 2
+  fi
+  # Keep shard runs out of the full-run local timing history.
+  verify_invocation="shard-${maybe_verify_shard}"
 }
 
 record_step_timing() {
@@ -246,6 +344,16 @@ run_step() {
   local status=0
   local command_args=("$@")
   local argument_index=0
+  local shard=""
+
+  shard="$(step_shard "$label" "$@")"
+  if [[ "$verify_plan_only" -eq 1 ]]; then
+    printf '%s\t%s\n' "$shard" "$label"
+    return 0
+  fi
+  if [[ -n "$maybe_verify_shard" && "$shard" != "$maybe_verify_shard" ]]; then
+    return 0
+  fi
 
   if [[ "${command_args[0]:-}" == bun && "${command_args[1]:-}" == test ]]; then
     for ((argument_index = 2; argument_index < ${#command_args[@]}; argument_index++)); do
@@ -259,6 +367,7 @@ run_step() {
         ;;
       esac
     done
+    command_args+=(--timeout "$BUN_TEST_DEFAULT_TIMEOUT_MILLISECONDS")
   fi
 
   step_start_milliseconds="$(current_time_milliseconds)"
@@ -280,6 +389,7 @@ run_quick_mode() {
   run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts
   run_step "check parity ledger" bun run scripts/check-parity-ledger.ts
   run_step "test push verification" bun test ./scripts/check-push-verification.test.ts
+  run_step "test verify shards" bun test ./scripts/verify-shards.test.ts
   run_step "check Bright Builds rules" bun scripts/bright-builds-check.ts all
   run_step "check Phase 164 canonical identity boundary" bun run scripts/check-phase164-canonical-identity.ts
   run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts

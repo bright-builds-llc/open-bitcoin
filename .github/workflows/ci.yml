@@ -11,7 +11,27 @@ env:
 
 jobs:
   verify:
+    name: verify (${{ matrix.shard }})
     runs-on: ubuntu-latest
+
+    # The shards partition the full verification contract, so the union of
+    # these jobs equals one `bash scripts/verify.sh --profile` run.
+    # scripts/verify-shards.test.ts keeps this list equal to
+    # `bash scripts/verify.sh --list-shards`.
+    strategy:
+      # Let every shard report, so one rerun of the failed jobs is enough.
+      fail-fast: false
+      matrix:
+        shard:
+          - checks
+          - native-test
+          - native-stress
+          - native-release
+          - checker-tests-158
+          - checker-tests-159-163
+          - checker-tests-164
+          - checker-tests-165
+          - checker-tests-other
 
     steps:
       - name: Checkout repository
@@ -25,13 +45,15 @@ jobs:
           toolchain: 1.94.1
           components: rustfmt, clippy
 
+      # Checker-test shards do not compile Rust; they only read the checks cache.
       - name: Cache Rust dependencies
         uses: Swatinem/rust-cache@v2
         with:
           prefix-key: v1-open-bitcoin-rust
+          key: ${{ startsWith(matrix.shard, 'checker-tests-') && 'checks' || matrix.shard }}
           workspaces: packages -> target
           cache-bin: "false"
-          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && !startsWith(matrix.shard, 'checker-tests-') }}
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
@@ -45,8 +67,10 @@ jobs:
         run: bun --version
 
       - name: Check direct-main hooks
+        if: matrix.shard == 'checks'
         run: |
           bun test ./scripts/check-push-verification.test.ts
+          bun test ./scripts/verify-shards.test.ts
           bash scripts/test-ensure-git-hooks.sh
           bash scripts/test-check-file-lengths.sh
 
@@ -57,16 +81,16 @@ jobs:
           bazelisk-cache: true
           repository-cache: true
           disk-cache: ${{ github.workflow }}
-          cache-save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          cache-save: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.shard == 'native-release' }}
 
       - name: Run repo verification
-        run: bash scripts/verify.sh --profile
+        run: bash scripts/verify.sh --profile --shard "${{ matrix.shard }}"
 
       - name: Upload parity reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: parity-reports
+          name: parity-reports-${{ matrix.shard }}
           path: packages/target/parity-reports
           if-no-files-found: ignore
 
@@ -74,6 +98,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: benchmark-reports
+          name: benchmark-reports-${{ matrix.shard }}
           path: packages/target/benchmark-reports
           if-no-files-found: ignore
