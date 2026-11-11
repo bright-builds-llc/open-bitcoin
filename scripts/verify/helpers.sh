@@ -29,6 +29,11 @@ EOF
 # assert refusal behavior, not speed. Files that set their own default keep it.
 readonly BUN_TEST_DEFAULT_TIMEOUT_MILLISECONDS=60000
 
+# Phase-checker suites loop one test over large tables; the preload keeps a
+# spread of rows per call site without editing the text-pinned test files.
+# OPEN_BITCOIN_EXHAUSTIVE_CHECKER_TESTS=1 runs every case.
+readonly BUN_TEST_SAMPLING_PRELOAD="./scripts/verify/sample-checker-tests.ts"
+
 # Every step belongs to exactly one shard; unmatched steps fall into "checks"
 # or "checker-tests-other", so a new step can never be left out of CI.
 readonly VERIFY_SHARDS=(
@@ -488,7 +493,7 @@ run_step() {
         ;;
       esac
     done
-    command_args+=(--timeout "$BUN_TEST_DEFAULT_TIMEOUT_MILLISECONDS")
+    command_args+=(--timeout "$BUN_TEST_DEFAULT_TIMEOUT_MILLISECONDS" --preload "$BUN_TEST_SAMPLING_PRELOAD")
   fi
 
   step_start_milliseconds="$(current_time_milliseconds)"
@@ -511,6 +516,7 @@ run_quick_mode() {
   run_step "check parity ledger" bun run scripts/check-parity-ledger.ts
   run_step "test push verification" bun test ./scripts/check-push-verification.test.ts
   run_step "test verify shards" bun test ./scripts/verify-shards.test.ts
+  run_step "test checker case sampling" bun test ./scripts/verify/sample-checker-tests.test.ts
   run_step "check Bright Builds rules" bun scripts/bright-builds-check.ts all
   run_step "check Phase 164 canonical identity boundary" bun run scripts/check-phase164-canonical-identity.ts
   run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts

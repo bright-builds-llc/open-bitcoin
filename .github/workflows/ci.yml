@@ -71,6 +71,7 @@ jobs:
         run: |
           bun test ./scripts/check-push-verification.test.ts
           bun test ./scripts/verify-shards.test.ts
+          bun test ./scripts/verify/sample-checker-tests.test.ts
           bash scripts/test-ensure-git-hooks.sh
           bash scripts/test-check-file-lengths.sh
 
