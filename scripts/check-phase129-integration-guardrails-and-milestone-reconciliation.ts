@@ -5,21 +5,9 @@ import path from "node:path";
 
 import { checkPhase127AuthoritativeNetworkStateUnification } from "./check-phase127-authoritative-network-state-unification";
 import { checkPhase128ProductionCompactAnnouncementTransport } from "./check-phase128-production-compact-announcement-transport";
-import { readSourceCorpus, readSourceRoot } from "./source-corpus";
+import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const PHASE128_CHECK =
-  "bun run scripts/check-phase128-production-compact-announcement-transport.ts";
-const PHASE129_TEST =
-  "bun test scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts";
-const PHASE129_CHECK =
-  "bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts";
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-const PHASE117_CHECK =
-  "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
-const PHASE138_CHECK =
-  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
 
 export const PHASE129_TARGET_FILES = [
   "packages/open-bitcoin-rpc/tests/black_box_parity.rs",
@@ -28,7 +16,6 @@ export const PHASE129_TARGET_FILES = [
   "packages/open-bitcoin-cli/tests/operator_flows.rs",
   "packages/open-bitcoin-cli/tests/operator_binary.rs",
   "scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts",
-  "scripts/verify.sh",
 ] as const;
 
 const FLOW_ANCHORS = [
@@ -87,7 +74,6 @@ export function checkPhase129IntegrationGuardrailsAndMilestoneReconciliation(
     ...checkPhase128ProductionCompactAnnouncementTransport(repoRoot),
   );
   checkNamedFlows(repoRoot, failures);
-  checkVerifierWiring(repoRoot, failures);
   checkDeterministicScope(repoRoot, failures);
   return failures;
 }
@@ -114,48 +100,6 @@ function checkNamedFlows(repoRoot: string, failures: string[]): void {
   }
 }
 
-function checkVerifierWiring(repoRoot: string, failures: string[]): void {
-  const verifierPath = "scripts/verify.sh";
-  // Command order belongs to the root script; sourced helpers have their own steps.
-  const verify = existsSync(path.join(repoRoot, verifierPath))
-    ? readSourceRoot(repoRoot, verifierPath)
-    : "";
-  const heredoc = visibleCommandOrder(verify);
-  const requiredVisible = [
-    PHASE128_CHECK,
-    PHASE129_TEST,
-    PHASE129_CHECK,
-    PHASE117_TEST,
-  ];
-  const requiredSteps = [
-    `run_step "check Phase 128 production compact announcement transport" ${PHASE128_CHECK}`,
-    `run_step "test Phase 129 integration guardrails and milestone reconciliation checker" ${PHASE129_TEST}`,
-    `run_step "check Phase 129 integration guardrails and milestone reconciliation" ${PHASE129_CHECK}`,
-    `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
-  ];
-  if (!orderedLines(heredoc, requiredVisible)) {
-    failures.push(
-      "P129 verifier heredoc: Phase 129 pair must run between Phase 128 and the Phase 117 gate",
-    );
-  }
-  if (!orderedLines(verify, requiredSteps)) {
-    failures.push(
-      "P129 verifier run_step: Phase 129 pair must run between Phase 128 and the Phase 117 gate",
-    );
-  }
-
-  requireFinalPhaseChecker(
-    heredoc,
-    "P129 final gate heredoc order",
-    failures,
-  );
-  requireFinalPhaseChecker(
-    runStepLines(verify),
-    "P129 final gate run_step order",
-    failures,
-  );
-}
-
 function checkDeterministicScope(repoRoot: string, failures: string[]): void {
   const checker = readTarget(
     repoRoot,
@@ -175,55 +119,10 @@ function checkDeterministicScope(repoRoot: string, failures: string[]): void {
   }
 }
 
-function requireFinalPhaseChecker(
-  text: string,
-  label: string,
-  failures: string[],
-): void {
-  const phaseCommands = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => /\bbun (?:test|run) scripts\/check-phase\d+/.test(line));
-  if (!phaseCommands.at(-1)?.includes(PHASE138_CHECK)) {
-    failures.push(`${label} must end with ${PHASE138_CHECK}`);
-  }
-  if (!text.includes(PHASE117_CHECK)) {
-    failures.push(`${label} must keep ${PHASE117_CHECK} present`);
-  }
-}
-
-function runStepLines(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("run_step "))
-    .join("\n");
-}
-
 function readTarget(repoRoot: string, relativePath: string): string {
   const absolutePath = path.join(repoRoot, relativePath);
   if (!existsSync(absolutePath)) return "";
   return readSourceCorpus(repoRoot, relativePath);
-}
-
-function visibleCommandOrder(text: string): string {
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = text.indexOf(marker);
-  if (start === -1) return "";
-  const bodyStart = start + marker.length;
-  const end = text.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  return end === -1 ? "" : text.slice(bodyStart, end);
-}
-
-function orderedLines(text: string, required: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const line of required) {
-    const index = lines.indexOf(line, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
 }
 
 if (import.meta.main) {

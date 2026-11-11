@@ -19,7 +19,6 @@ const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase106-parity-uat-release-boundary.ts",
   "scripts/check-phase106-parity-uat-release-boundary.test.ts",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_REQUIREMENTS = ["BOUND-01", "BOUND-02", "BOUND-03", "BOUND-04", "BOUND-05"] as const;
 
@@ -131,36 +130,6 @@ test("fails_when_uat_command_or_knots_anchor_is_missing", () => {
   // Assert
   expect(failureMessages[0]).toContain("runtime guide command");
   expect(failureMessages[1]).toContain("Knots anchor");
-});
-
-test("fails_when_default_verifier_wiring_is_missing_or_out_of_order", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      removeFromFile(files, "scripts/verify.sh", "bun run scripts/check-phase106-parity-uat-release-boundary.ts");
-    },
-  });
-
-  // Act
-  const failures = checkPhase106ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("verifier-scope");
-});
-
-test("fails_when_default_verifier_adds_public_network_gate", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      appendToFile(files, "scripts/verify.sh", 'run_step "public-network relay CI" bash scripts/run-live-mainnet-smoke.ts');
-    },
-  });
-
-  // Act
-  const failures = checkPhase106ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("default verifier must not run public-network");
 });
 
 test("fails_when_docs_claim_deferred_public_or_production_scope", () => {

@@ -2,25 +2,10 @@ import path from "node:path";
 
 export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
 
-export const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-export const PHASE117_CHECK =
-  "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
 export const PHASE138_TEST =
   "bun test scripts/check-phase138-parity-uat-release-boundary.test.ts";
 export const PHASE138_CHECK =
   "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
-export const RECONCILIATION_TEST =
-  "bun test scripts/check-current-documentation-reconciliation.test.ts";
-export const RECONCILIATION_CHECK =
-  "bun run scripts/check-current-documentation-reconciliation.ts";
-
-export const PHASE117_TEST_STEP = `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`;
-export const PHASE117_CHECK_STEP = `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`;
-export const PHASE138_TEST_STEP = `run_step "test Phase 138 parity UAT release boundary checker" ${PHASE138_TEST}`;
-export const PHASE138_CHECK_STEP = `run_step "check Phase 138 parity UAT release boundary" ${PHASE138_CHECK}`;
-export const RECONCILIATION_TEST_STEP = `run_step "test current documentation reconciliation checker" ${RECONCILIATION_TEST}`;
-export const RECONCILIATION_CHECK_STEP = `run_step "check current documentation reconciliation" ${RECONCILIATION_CHECK}`;
 
 export const D21_SENTENCE =
   "bounded local-package APIs, same-peer 1P1C assembly over ordinary transaction messages, ordinary transaction fanout, and initial-broadcast-retry of locally submitted unbroadcast members";
@@ -95,7 +80,6 @@ export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
   "scripts/check-benchmark-report.ts",
   "packages/open-bitcoin-bench/src/cases/mempool.rs",
   UAT_PACKAGE,
@@ -211,13 +195,6 @@ export const NO_CLAIM_MARKERS = [
 export const FORBIDDEN_BENCH_TOKENS = ["SUSTAINED_PRESSURE_MAX_ELAPSED", "Instant::now"] as const;
 export const REQUIRED_BENCH_TOKEN = "SUSTAINED_PRESSURE_TRIM_CYCLES";
 export const THRESHOLD_FREE = "threshold_free";
-
-export const FORBIDDEN_RUN_STEP_TOKENS = [
-  "public-network",
-  "wall-clock",
-  "run-live-mainnet-smoke",
-  "command-timings.ts",
-] as const;
 
 export const COMPOSITION_FILE =
   "packages/open-bitcoin-node/src/network/tests/recovery_cases/restart_composition.rs";

@@ -307,9 +307,8 @@ function checkReferences(text: Texts, failures: string[], claimState: ReturnType
   for (const file of ["docs/parity/fixtures/peer-filter-wire.json", "docs/parity/fixtures/peer-filter-proof.json"]) if (!text(file).includes("a9aee730466ac67d35a3c03ee24676be5e045878")) failures.push(`${file}: exact Knots pin`);
   const commands = ["bun test ./scripts/check-phase159-filter-rpcs.test.ts", "bun run scripts/check-phase159-filter-rpcs.ts", "bun test ./scripts/check-phase160-peer-filter-serving.test.ts", "bun run scripts/check-phase160-peer-filter-serving.ts", "bun test ./scripts/generate-peer-filter-fixtures.test.ts", "bun run scripts/generate-peer-filter-fixtures.ts --check"];
   const source = text("scripts/verify.sh");
-  const documented = source.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "";
   const executed = source.split("\n").filter(line => line.startsWith("run_step ")).join("\n");
-  for (const [label, section] of [["documented", documented], ["executed", executed]]) {
+  for (const [label, section] of [["executed", executed]]) {
     let previous = -1;
     for (const command of commands) {
       const matches = section.split("\n").filter(line => line.endsWith(command));

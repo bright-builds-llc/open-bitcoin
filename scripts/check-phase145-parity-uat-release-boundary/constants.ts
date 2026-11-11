@@ -20,27 +20,8 @@ export const CSVFY_IDS = ["CSVFY-01", "CSVFY-02"] as const;
 export const CAN_FLUSH_TO_DISK = "CanFlushToDisk";
 export const CHECK_BLOCK_DATA_AVAILABILITY = "CheckBlockDataAvailability";
 
-export const PHASE117_CHECK = "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
-export const PHASE138_CHECK = "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
-export const PHASE144_TEST =
-  "bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts";
-export const PHASE144_CHECK =
-  "bun run scripts/check-phase144-operator-flush-availability-evidence.ts";
 export const PHASE145_TEST = "bun test scripts/check-phase145-parity-uat-release-boundary.test.ts";
 export const PHASE145_CHECK = "bun run scripts/check-phase145-parity-uat-release-boundary.ts";
-
-export const PHASE117_CHECK_STEP =
-  `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`;
-export const PHASE138_CHECK_STEP =
-  `run_step "check Phase 138 parity UAT release boundary" ${PHASE138_CHECK}`;
-export const PHASE144_TEST_STEP =
-  `run_step "test Phase 144 operator flush and availability evidence checker" ${PHASE144_TEST}`;
-export const PHASE144_CHECK_STEP =
-  `run_step "check Phase 144 operator flush and availability evidence" ${PHASE144_CHECK}`;
-export const PHASE145_TEST_STEP =
-  `run_step "test Phase 145 parity UAT release boundary checker" ${PHASE145_TEST}`;
-export const PHASE145_CHECK_STEP =
-  `run_step "check Phase 145 parity UAT release boundary" ${PHASE145_CHECK}`;
 
 export const UAT_PACKAGE =
   ".planning/phases/145-parity-roots-and-no-claim-guardrails/145-UAT.md";
@@ -84,7 +65,6 @@ export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
   UAT_PACKAGE,
   REQUIREMENTS_FILE,
 ] as const;
@@ -182,13 +162,6 @@ export const NO_CLAIM_MARKERS = [
   "future-gated",
   "no claim",
   "optional uat",
-] as const;
-
-export const FORBIDDEN_RUN_STEP_TOKENS = [
-  "public-network",
-  "wall-clock",
-  "run-live-mainnet-smoke",
-  "command-timings.ts",
 ] as const;
 
 export type ClaimFile = (typeof CLAIM_FILES)[number];

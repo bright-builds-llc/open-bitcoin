@@ -18,20 +18,8 @@ export const WALLET_LEFTOVER_SURFACE = "v2-4-wallet-leftover-snapshot-cutover";
 export const GRD01_ID = "GRD-01";
 export const GRD01_CHECKBOX = "- [x] **GRD-01**";
 
-export const PHASE138_CHECK = "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
-export const PHASE145_TEST = "bun test scripts/check-phase145-parity-uat-release-boundary.test.ts";
-export const PHASE145_CHECK = "bun run scripts/check-phase145-parity-uat-release-boundary.ts";
 export const PHASE151_TEST = "bun test scripts/check-phase151-parity-uat-release-boundary.test.ts";
 export const PHASE151_CHECK = "bun run scripts/check-phase151-parity-uat-release-boundary.ts";
-
-export const PHASE145_TEST_STEP =
-  `run_step "test Phase 145 parity UAT release boundary checker" ${PHASE145_TEST}`;
-export const PHASE145_CHECK_STEP =
-  `run_step "check Phase 145 parity UAT release boundary" ${PHASE145_CHECK}`;
-export const PHASE151_TEST_STEP =
-  `run_step "test Phase 151 parity UAT release boundary checker" ${PHASE151_TEST}`;
-export const PHASE151_CHECK_STEP =
-  `run_step "check Phase 151 parity UAT release boundary" ${PHASE151_CHECK}`;
 
 export const UAT_PACKAGE =
   ".planning/phases/151-parity-roots-and-no-claim-guardrails/151-UAT.md";
@@ -86,7 +74,6 @@ export const REQUIRED_DOC_FILES = [
   ...CLAIM_FILES,
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
   UAT_PACKAGE,
   REQUIREMENTS_FILE,
   ROADMAP_FILE,
@@ -218,13 +205,6 @@ export const NO_CLAIM_MARKERS = [
   "future-gated",
   "no claim",
   "optional uat",
-] as const;
-
-export const FORBIDDEN_RUN_STEP_TOKENS = [
-  "public-network",
-  "wall-clock",
-  "run-live-mainnet-smoke",
-  "command-timings.ts",
 ] as const;
 
 export const PUBLIC_NETWORK_NOT_RUN_LINE = "not run";

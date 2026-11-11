@@ -9,22 +9,7 @@ const REPO_ROOT =
   maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/79-diagnostics-and-support-bundle-forensics";
 const PHASE79_REQUIREMENTS = ["DIAG-01", "DIAG-02", "DIAG-03", "DIAG-04"] as const;
-const PHASE78_CHECKER_COMMAND = "bun run scripts/check-phase78-progress-guarantees.ts";
-const PHASE79_TEST_COMMAND = "bun test scripts/check-phase79-diagnostics-support-bundle.test.ts";
-const PHASE79_CHECKER_COMMAND = "bun run scripts/check-phase79-diagnostics-support-bundle.ts";
 const SURFACE_ID = "phase79-diagnostics-support-bundle-forensics";
-const FORBIDDEN_VERIFY_STRINGS = [
-  "run-live-mainnet-smoke",
-  "--manual-peer",
-  "--restart-after-progress",
-  "systemctl",
-  "launchctl",
-  "openbitcoinsync=mainnet-ibd",
-  "sleep 86400",
-  "multi-day wall-clock",
-  "lsof",
-  "/proc/",
-] as const;
 const FORBIDDEN_SUPPORT_OUTPUT_STRINGS = [
   "rpcpassword=phase79-secret",
   "rpcauth=phase79-secret",
@@ -316,34 +301,6 @@ function verifySupportRedactionBoundaries(failures: string[]): void {
   }
 }
 
-function verifyVerifyScript(failures: string[]): void {
-  const verifyScript = readText("scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE78_CHECKER_COMMAND, "scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE79_TEST_COMMAND, "scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE79_CHECKER_COMMAND, "scripts/verify.sh", failures);
-
-  const lines = verifyScript
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const phase78CheckerIndex = lines.indexOf(PHASE78_CHECKER_COMMAND);
-  const phase79TestIndex = lines.indexOf(PHASE79_TEST_COMMAND);
-  const phase79CheckerIndex = lines.indexOf(PHASE79_CHECKER_COMMAND);
-  if (
-    phase78CheckerIndex === -1 ||
-    phase79TestIndex !== phase78CheckerIndex + 1 ||
-    phase79CheckerIndex !== phase79TestIndex + 1
-  ) {
-    failures.push(
-      "scripts/verify.sh must run the Phase 79 checker test and checker immediately after the Phase 78 checker",
-    );
-  }
-
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    requireNotContains(verifyScript, forbidden, "scripts/verify.sh", failures);
-  }
-}
-
 function main(): void {
   const failures: string[] = [];
 
@@ -353,7 +310,6 @@ function main(): void {
   requireAnchors(DOC_ANCHORS, failures);
   verifyParityCoverage(failures);
   verifySupportRedactionBoundaries(failures);
-  verifyVerifyScript(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {

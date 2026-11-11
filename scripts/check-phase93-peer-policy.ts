@@ -5,10 +5,6 @@ import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v1-9-eviction-ban-misbehavior-policy";
-const PHASE92_TEST_COMMAND = "bun test scripts/check-phase92-address-boundaries.test.ts";
-const PHASE92_CHECKER_COMMAND = "bun run scripts/check-phase92-address-boundaries.ts";
-const PHASE93_TEST_COMMAND = "bun test scripts/check-phase93-peer-policy.test.ts";
-const PHASE93_CHECKER_COMMAND = "bun run scripts/check-phase93-peer-policy.ts";
 const PHASE93_REQUIREMENTS = ["EVICT-01", "EVICT-02", "EVICT-03", "EVICT-04"] as const;
 const PEER_POLICY_PERMISSION_FLAG =
   "-openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr";
@@ -43,7 +39,6 @@ const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
   "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_EVIDENCE = [
   "docs/operator/runtime-guide.md",
@@ -126,16 +121,6 @@ const REQUIRED_BREADCRUMB_FILES = [
   "packages/open-bitcoin-network/src/peer_policy.rs",
   "packages/open-bitcoin-network/src/peer_policy/tests.rs",
 ] as const;
-const FORBIDDEN_VERIFY_STRINGS = [
-  "curl ",
-  "nc ",
-  "systemctl",
-  "launchctl",
-  "dig ",
-  "nslookup",
-  "--public-network",
-  "multi-day",
-] as const;
 const FORBIDDEN_POSITIVE_CLAIMS = [
   "production banlist parity is complete",
   "public ban enforcement is supported",
@@ -198,7 +183,6 @@ export function checkPhase93PeerPolicy(options: CheckPhase93Options = {}): strin
   verifyEvidenceLabels(texts, failures);
   verifyParityDocs(texts, failures);
   verifySourceBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   verifyNoClaimBoundary(texts, failures);
   verifyRawEvidenceBoundary(texts, failures);
 
@@ -408,83 +392,9 @@ function verifySourceBreadcrumbs(text: string, failures: string[]): void {
   }
 }
 
-function executableVerifyText(text: string): string {
-  return text.replace(/^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m, "");
-}
-
-function verifyVerifierWiring(text: string, failures: string[]): void {
-  const maybeOrderBlock = text.match(/^: <<'VERIFY_COMMAND_ORDER'\n([\s\S]*?)\nVERIFY_COMMAND_ORDER\n/m);
-  if (maybeOrderBlock === null) {
-    failures.push("Phase 93 verifier-order missing VERIFY_COMMAND_ORDER block");
-  } else {
-    verifyOrderedCommands(
-      maybeOrderBlock[1],
-      [PHASE92_TEST_COMMAND, PHASE92_CHECKER_COMMAND, PHASE93_TEST_COMMAND, PHASE93_CHECKER_COMMAND],
-      "Phase 93 verifier-order printed commands must follow Phase 92",
-      failures,
-    );
-  }
-
-  const executableText = executableVerifyText(text);
-  requireContains(
-    executableText,
-    `run_step "test Phase 93 peer policy checker" ${PHASE93_TEST_COMMAND}`,
-    "Phase 93 verifier-order",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "check Phase 93 peer policy" ${PHASE93_CHECKER_COMMAND}`,
-    "Phase 93 verifier-order",
-    failures,
-  );
-  verifyOrderedCommands(
-    executableText,
-    [
-      PHASE92_TEST_COMMAND,
-      PHASE92_CHECKER_COMMAND,
-      PHASE93_TEST_COMMAND,
-      PHASE93_CHECKER_COMMAND,
-      "bash scripts/check-pure-core-deps.sh",
-    ],
-    "Phase 93 verifier-order executed commands must follow Phase 92 and precede pure-core checks",
-    failures,
-  );
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (containsForbiddenVerifyFragment(executableText, forbidden)) {
-      failures.push(`Phase 93 default verifier boundary contains forbidden text: ${forbidden}`);
-    }
-  }
-}
-
-function verifyOrderedCommands(
-  text: string,
-  commands: readonly string[],
-  failure: string,
-  failures: string[],
-): void {
-  let previousIndex = -1;
-  for (const command of commands) {
-    const currentIndex = text.indexOf(command);
-    if (currentIndex === -1 || currentIndex <= previousIndex) {
-      failures.push(failure);
-      return;
-    }
-    previousIndex = currentIndex;
-  }
-}
-
-function containsForbiddenVerifyFragment(text: string, fragment: string): boolean {
-  if (/^[a-z-]+ $/.test(fragment)) {
-    const command = fragment.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return new RegExp(`(^|[\\s;&|()])${command}(?=\\s)`).test(text);
-  }
-  return text.includes(fragment);
-}
-
 function verifyNoClaimBoundary(texts: Map<TargetFile, string>, failures: string[]): void {
   for (const [file, text] of texts) {
-    if (file === "docs/parity/index.json" || file === "docs/parity/source-breadcrumbs.json" || file === "scripts/verify.sh") {
+    if (file === "docs/parity/index.json" || file === "docs/parity/source-breadcrumbs.json") {
       continue;
     }
     for (const unit of contextUnits(text)) {

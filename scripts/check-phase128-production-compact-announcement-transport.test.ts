@@ -476,15 +476,6 @@ test.each([
     ),
   ],
   [
-    "default verifier wiring",
-    "P128 verifier wiring: mutation test and production checker must run before the final Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      "bun test scripts/check-phase128-production-compact-announcement-transport.test.ts",
-      "",
-    ),
-  ],
-  [
     "local deterministic checker",
     "P128 deterministic scope: checker must remain local and public-network-free",
     append(

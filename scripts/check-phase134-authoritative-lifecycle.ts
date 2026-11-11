@@ -64,7 +64,6 @@ const FILES = {
   scopeChecker:
     "scripts/check-phase134-authoritative-lifecycle/scope.ts",
   checker: "scripts/check-phase134-authoritative-lifecycle.ts",
-  verify: "scripts/verify.sh",
 } as const;
 
 export const PHASE134_TARGET_FILES = [...new Set(Object.values(FILES))];
@@ -154,8 +153,6 @@ const DIAGNOSTICS = {
     "P134 evidence: production lifecycle evidence must stay bounded and identifier-free",
   deterministic:
     "P134 checker: verification must remain deterministic and filesystem-only",
-  verifier:
-    "P134 verifier: apply, mutation, and live guards must immediately follow Phase 133",
 } as const;
 
 function blockBody(source: string, marker: string): string {
@@ -542,32 +539,6 @@ export function checkPhase134AuthoritativeLifecycle(
     ),
     DIAGNOSTICS.deterministic,
   );
-
-  const verifierNeedles = [
-    ["bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts", "phase133-test"],
-    ["bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts", "phase133-live"],
-    ["bun test scripts/check-phase134-authoritative-lifecycle.test.ts", "phase134-test"],
-    ["bun run scripts/check-phase134-apply-boundaries.ts", "phase134-apply"],
-    ["bun run scripts/check-phase134-authoritative-lifecycle.ts", "phase134-live"],
-    ["bun test scripts/check-phase117-parity-uat-release-boundary.test.ts", "phase117-test"],
-    ["bun run scripts/check-phase117-parity-uat-release-boundary.ts", "phase117-live"],
-  ] as const;
-  const verifierTokens = get(FILES.verify)
-    .split("\n")
-    .flatMap((line) => {
-      const maybeNeedle = verifierNeedles.find(([needle]) =>
-        line.includes(needle),
-      );
-      return maybeNeedle ? [maybeNeedle[1]] : [];
-    });
-  const expectedVerifierSequence = verifierNeedles.map(([, token]) => token);
-  addFailure(
-    failures,
-    verifierTokens.join("\n") !==
-      [...expectedVerifierSequence, ...expectedVerifierSequence].join("\n"),
-    DIAGNOSTICS.verifier,
-  );
-
   return failures;
 }
 

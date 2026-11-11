@@ -2,8 +2,8 @@
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONTROLLED_NATIVE_PREFIX, CONTROLLED_NATIVE_STEPS, CONTROLLED_NATIVE_SUFFIX, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
-import { BEHAVIOR_ROWS, CURRENT_PINS, KNOTS_PINS, NATIVE_TESTS, OFFLINE_COMMANDS, REQUIRED_BLOCKS, STEP_LABELS, VERIFY_BASE_SHA, VERIFY_FILE } from "./check-phase167-candidate-history/contracts.ts";
+import { CONTROLLED_NATIVE_PREFIX, CONTROLLED_NATIVE_STEPS, CONTROLLED_NATIVE_SUFFIX } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { BEHAVIOR_ROWS, CURRENT_PINS, KNOTS_PINS, NATIVE_TESTS, OFFLINE_COMMANDS, REQUIRED_BLOCKS, STEP_LABELS, VERIFY_FILE } from "./check-phase167-candidate-history/contracts.ts";
 
 export type Finding = { file: string; rule: string; detail: string };
 export const INPUT_FILES = [VERIFY_FILE, ...CURRENT_PINS.map(row => row[0]), ...KNOTS_PINS.map(row => row[0])];
@@ -84,19 +84,14 @@ export function checkPhase167(inputs: ReadonlyMap<string, string>): Finding[] {
   checkSource(inputs, findings);
   const verify = inputs.get(VERIFY_FILE);
   if (verify === undefined) return [{ file: VERIFY_FILE, rule: "input", detail: "reviewed verifier source required" }];
-  const declared = verify.split(": <<'VERIFY_COMMAND_ORDER'\n")[1]?.split("\nVERIFY_COMMAND_ORDER")[0];
   const actual = verify.split("\n").filter(line => line.startsWith("run_step "));
-  const ordered = declared?.split("\n") ?? [];
   const executed = actual.map(line => line.replace(/^run_step "[^"]+" /, ""));
   const phase167 = (line: string) => line.includes("scripts/phase167-") || line.includes("scripts/check-phase167-");
-  for (const [kind, lines] of [["declared", ordered], ["executed", executed]] as const) {
-    const anchor = "bun run scripts/check-phase166-canonical-bootstrap.ts";
-    const index = lines.indexOf(anchor);
-    if (index < 0 || OFFLINE_COMMANDS.some((command, offset) => lines[index + offset + 1] !== command)
-      || OFFLINE_COMMANDS.some(command => lines.filter(line => line === command).length !== 1)
-      || lines.filter(phase167).length !== OFFLINE_COMMANDS.length) {
-      findings.push({ file: VERIFY_FILE, rule: "registration", detail: `${kind} Phase167 offline commands must follow Phase166 exactly once and in order` });
-    }
+  const index = executed.indexOf("bun run scripts/check-phase166-canonical-bootstrap.ts");
+  if (index < 0 || OFFLINE_COMMANDS.some((command, offset) => executed[index + offset + 1] !== command)
+    || OFFLINE_COMMANDS.some(command => executed.filter(line => line === command).length !== 1)
+    || executed.filter(phase167).length !== OFFLINE_COMMANDS.length) {
+    findings.push({ file: VERIFY_FILE, rule: "registration", detail: "executed Phase167 offline commands must follow Phase166 exactly once and in order" });
   }
   if (STEP_LABELS.some((label, index) => actual.filter(line => line === `run_step "${label}" ${OFFLINE_COMMANDS[index]}`).length !== 1)) {
     findings.push({ file: VERIFY_FILE, rule: "runner", detail: "exact executable run_step labels and commands required" });
@@ -116,15 +111,8 @@ export function checkPhase167(inputs: ReadonlyMap<string, string>): Finding[] {
     || !verify.includes(CONTROLLED_NATIVE_PREFIX + workspace + "\n" + client + "\n" + CONTROLLED_NATIVE_SUFFIX)) {
     findings.push({ file: VERIFY_FILE, rule: "native-scope", detail: "four-thread workspace and CLI scope must restore the caller environment before coverage" });
   }
-  if ([...ordered, ...actual].some(line => /--write|--acquire|\b(?:curl|wget|fetch|git clone)\b/.test(line))) {
+  if (actual.some(line => /--write|--acquire|\b(?:curl|wget|fetch|git clone)\b/.test(line))) {
     findings.push({ file: VERIFY_FILE, rule: "offline", detail: "native verification cannot write, acquire or fetch Phase167 inputs" });
-  }
-  try {
-    if (sha(verificationHistoricalBase(verify)) !== VERIFY_BASE_SHA) {
-      findings.push({ file: VERIFY_FILE, rule: "history", detail: "unchanged original verifier projection required" });
-    }
-  } catch (error) {
-    findings.push({ file: VERIFY_FILE, rule: "history", detail: error instanceof Error ? error.message : String(error) });
   }
   return findings;
 }

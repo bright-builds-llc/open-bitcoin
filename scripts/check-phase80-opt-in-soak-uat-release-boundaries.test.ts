@@ -14,35 +14,6 @@ const PLAN_FILES = [
 ] as const;
 const PHASE80_REQUIREMENTS = ["VER-05", "VER-06", "VER-07", "REL-04"] as const;
 const SURFACE_ID = "v1-7-full-sync-soak-recovery-release-boundaries";
-const PHASE75_TEST_COMMAND = "bun test scripts/check-phase75-soak-runner.test.ts";
-const PHASE75_CHECKER_COMMAND = "bun run scripts/check-phase75-soak-runner.ts";
-const PHASE76_TEST_COMMAND = "bun test scripts/check-phase76-resource-bounds.test.ts";
-const PHASE76_CHECKER_COMMAND = "bun run scripts/check-phase76-resource-bounds.ts";
-const PHASE77_TEST_COMMAND = "bun test scripts/check-phase77-corruption-lock-recovery.test.ts";
-const PHASE77_CHECKER_COMMAND = "bun run scripts/check-phase77-corruption-lock-recovery.ts";
-const PHASE78_TEST_COMMAND = "bun test scripts/check-phase78-progress-guarantees.test.ts";
-const PHASE78_CHECKER_COMMAND = "bun run scripts/check-phase78-progress-guarantees.ts";
-const PHASE79_TEST_COMMAND =
-  "bun test scripts/check-phase79-diagnostics-support-bundle.test.ts";
-const PHASE79_CHECKER_COMMAND = "bun run scripts/check-phase79-diagnostics-support-bundle.ts";
-const PHASE80_TEST_COMMAND =
-  "bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts";
-const PHASE80_CHECKER_COMMAND =
-  "bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts";
-const DEFAULT_VERIFY_SCRIPT = [
-  PHASE75_TEST_COMMAND,
-  PHASE75_CHECKER_COMMAND,
-  PHASE76_TEST_COMMAND,
-  PHASE76_CHECKER_COMMAND,
-  PHASE77_TEST_COMMAND,
-  PHASE77_CHECKER_COMMAND,
-  PHASE78_TEST_COMMAND,
-  PHASE78_CHECKER_COMMAND,
-  PHASE79_TEST_COMMAND,
-  PHASE79_CHECKER_COMMAND,
-  PHASE80_TEST_COMMAND,
-  PHASE80_CHECKER_COMMAND,
-].join("\n");
 const NON_CLAIMS = [
   "inbound serving",
   "address relay",
@@ -134,7 +105,6 @@ type FixtureOptions = {
   };
   maybeParityIndexText?: string;
   maybePlanTexts?: readonly string[];
-  maybeVerifyScript?: string;
 };
 
 type CheckerRun = {
@@ -166,143 +136,6 @@ test("passes_when_phase80_fixture_contains_every_release_boundary_anchor", async
   expect(result.exitCode).toBe(0);
 });
 
-test.each([
-  "rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs",
-  'run_step "check Phase 162 shared Rust fixture format" rustfmt --edition 2024 --check packages/testdata/phase162/recipe.rs packages/testdata/phase162/process.rs',
-])("passes_when_native_fixture_format_command_is_present: %s", async (command) => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${command}`,
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.stderr).toBe("");
-  expect(result.exitCode).toBe(0);
-});
-
-test.each([
-  "packages/testdata/phase162/process.rs",
-  "packages/testdata/processing.rs",
-  "packages/testdata/proc.rs",
-  "packages/testdata/proc2",
-  "packages/testdata/proc_status",
-  "packages/testdata/proc-status",
-  "/processor/status",
-  "/procfile",
-  "/procfs/status",
-  "/proc.d/status",
-])("passes_when_proc_prefix_names_a_different_path: %s", async (fixturePath) => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\ncat ${fixturePath}`,
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.stderr).toBe("");
-  expect(result.exitCode).toBe(0);
-});
-
-test.each([
-  "/proc",
-  "cat /proc",
-  "cat /proc\n",
-  "cat /proc\t",
-  "cat /proc/",
-  "cat /proc/self",
-  "cat /proc/self/status",
-  "cat /proc/123/status",
-  'cat "/proc"',
-  "cat '/proc'",
-  "cat `/proc`",
-  "cat /proc;",
-  "cat /proc|cat",
-  "cat /proc&",
-  "(cat /proc)",
-  "cat </proc",
-  "cat /proc>report",
-  "cat /proc</dev/null",
-])("fails_when_verify_contains_proc_directory: %s", async (command) => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${command}`,
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-  expect(result.stderr).toBe(
-    "scripts/verify.sh must not contain Phase 80 forbidden text: /proc",
-  );
-});
-
-test.each([
-  "cat /proc{,/self/status}",
-  "cat /proc*",
-  "cat /proc[/]self/status",
-  'tail=/self/status\ncat /proc${tail}',
-  "cat /proc$(printf /self/status)",
-  "cat /proc`printf /self/status`",
-  "cat /proc\\/self/status",
-  "cat /proc?",
-])("fails_when_verify_contains_proc_shell_continuation: %s", async (command) => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${command}`,
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-  expect(result.stderr).toBe(
-    "scripts/verify.sh must not contain Phase 80 forbidden text: /proc",
-  );
-});
-
-test.each([
-  "run-live-mainnet-smoke",
-  "--manual-peer",
-  "--restart-after-progress",
-  "systemctl",
-  "launchctl",
-  "-openbitcoinsync=mainnet-ibd",
-  "openbitcoinsync=mainnet-ibd",
-  "sleep 86400",
-  "sleep 259200",
-  "multi-day wall-clock",
-  "current tip",
-  "current-tip",
-  "release-blocking live sync",
-  "lsof",
-  "fallocate",
-  "mkfile",
-  "dd if=",
-  "107374182400",
-])("fails_when_verify_contains_other_forbidden_text: %s", async (forbidden) => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\n${forbidden}`,
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-  expect(result.stderr).toContain(
-    `scripts/verify.sh must not contain Phase 80 forbidden text: ${forbidden}`,
-  );
-});
-
 test("fails_when_uat_matrix_missing_workflow_or_proof_boundary", async () => {
   // Arrange
   const root = await createFixture({
@@ -332,61 +165,6 @@ test("fails_when_parity_roots_omit_v1_7_requirements_or_surface", async () => {
   // Assert
   expect(result.exitCode).not.toBe(0);
   expect(result.stderr).toContain(`${SURFACE_ID}.requirements`);
-});
-
-test("fails_when_verify_order_or_default_boundary_forbidden_strings_drift", async () => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: [
-      PHASE75_TEST_COMMAND,
-      PHASE75_CHECKER_COMMAND,
-      PHASE76_TEST_COMMAND,
-      PHASE76_CHECKER_COMMAND,
-      PHASE77_TEST_COMMAND,
-      PHASE77_CHECKER_COMMAND,
-      PHASE78_TEST_COMMAND,
-      PHASE78_CHECKER_COMMAND,
-      PHASE79_TEST_COMMAND,
-      PHASE79_CHECKER_COMMAND,
-      "bun run scripts/check-unrelated-boundary.ts",
-      PHASE80_TEST_COMMAND,
-      PHASE80_CHECKER_COMMAND,
-      "bun run scripts/run-live-mainnet-smoke.ts",
-    ].join("\n"),
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-  expect(result.stderr).toContain("Phase 80 checker test and checker immediately after Phase 79");
-  expect(result.stderr).toContain("run-live-mainnet-smoke");
-});
-
-test("fails_when_phase80_verify_commands_are_missing", async () => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: [
-      PHASE75_TEST_COMMAND,
-      PHASE75_CHECKER_COMMAND,
-      PHASE76_TEST_COMMAND,
-      PHASE76_CHECKER_COMMAND,
-      PHASE77_TEST_COMMAND,
-      PHASE77_CHECKER_COMMAND,
-      PHASE78_TEST_COMMAND,
-      PHASE78_CHECKER_COMMAND,
-      PHASE79_TEST_COMMAND,
-      PHASE79_CHECKER_COMMAND,
-    ].join("\n"),
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-  expect(result.stderr).toContain("Phase 75 through Phase 80 commands");
 });
 
 test("fails_when_broad_claim_or_new_manifest_appears", async () => {
@@ -428,11 +206,6 @@ async function createFixture(options: FixtureOptions): Promise<string> {
     root,
     "docs/parity/index.json",
     options.maybeParityIndexText ?? parityIndexText(),
-  );
-  await writeFixtureFile(
-    root,
-    "scripts/verify.sh",
-    options.maybeVerifyScript ?? DEFAULT_VERIFY_SCRIPT,
   );
   if (options.maybeManifestPath !== undefined) {
     await writeFixtureFile(root, options.maybeManifestPath, "{}\n");

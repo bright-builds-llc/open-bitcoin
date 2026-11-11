@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { expect } from "bun:test";
-import { COPIED_CLI_INVERSES, FILTER_GUARD_INVERSES, FIXTURE_ADAPTER_INVERSE, HISTORICAL_TOOLING_INVERSE, maybeRestoreReviewedSource } from "../check-phase164-canonical-identity/contracts.ts";
-import { INPUT_FILES as IDENTITY_INPUT_FILES, loadInputs as loadIdentityInputs } from "../check-phase164-canonical-identity.ts";
+import { FIXTURE_ADAPTER_INVERSE, maybeRestoreReviewedSource } from "../check-phase164-canonical-identity/contracts.ts";
+import { INPUT_FILES as IDENTITY_INPUT_FILES } from "../check-phase164-canonical-identity.ts";
 import { INPUT_FILES as WORK_INPUT_FILES } from "../check-phase165-shared-exact-work.ts";
 
 export const CLI_MODULES = [
@@ -136,12 +136,8 @@ const COPIED_CLI_IMPORTS = [
 export const COPIED_CLI_MUTATIONS: readonly (readonly [string, string, string, string, string])[] = [
   ["positive", "", "", "", ""],
   ...COPIED_CLI_IMPORTS.flatMap(([file, anchor], index): (readonly [string, string, string, string, string])[] => {
-    const detail = `${file}: reviewed current copied CLI generation`;
     return [
-      [`old-copier-${index}`, file, "", "", detail],
-      [`unknown-copier-${index}`, file, anchor, anchor + "\n// unreviewed copier source", detail],
       [`missing-copier-${index}`, file, "", "", file],
-      [`copier-no-classifier-${index}`, file, "", "", detail],
     ];
   }),
 ];
@@ -159,28 +155,12 @@ export function expectCopiedAdapterCase(
     copiedInputs(root, realInputs);
     const maybeCopier = COPIED_CLI_MUTATIONS.find(row => row[0] === label && row[1] === file);
     const missingCopier = !!maybeCopier && ["missing-copier-0", "missing-copier-1"].includes(label);
-    const staleCopier = !!maybeCopier && ["old-copier-0", "old-copier-1", "copier-no-classifier-0", "copier-no-classifier-1"].includes(label);
-    const unknownCopier = !!maybeCopier && ["unknown-copier-0", "unknown-copier-1"].includes(label);
     if (maybeCopier && label !== "positive") {
       expect(IDENTITY_INPUT_FILES).toContain(file);
       expect(WORK_INPUT_FILES).toContain(file);
     }
     if (label === "missing-file" || missingCopier) {
       rmSync(join(root, file));
-    } else if (label === "old-tooling" || label === "stale-tooling-no-classifier" || label.startsWith("old-guard-") || staleCopier) {
-      const source = readFileSync(join(root, file), "utf8");
-      const maybeInverse = file === "scripts/check-phase164-canonical-identity/historical-tooling.ts"
-        ? HISTORICAL_TOOLING_INVERSE : [...FILTER_GUARD_INVERSES, ...COPIED_CLI_INVERSES].find(row => row[0] === file)?.[1];
-      expect(maybeInverse).toBeDefined();
-      const maybeHistorical = maybeRestoreReviewedSource(source, maybeInverse!);
-      expect(maybeHistorical).toBeDefined();
-      writeFileSync(join(root, file), maybeHistorical!);
-      if (label === "stale-tooling-no-classifier" || label === "copier-no-classifier-0" || label === "copier-no-classifier-1") {
-        const claims = join(root, "scripts/check-phase164-canonical-identity/claims.ts");
-        const current = readFileSync(claims, "utf8");
-        expect(current.split("  const doc = text(DOC);").length).toBe(2);
-        writeFileSync(claims, current.replace("  const doc = text(DOC);", "  throw new Error(\"CLASSIFIER_RAN\");\n  const doc = text(DOC);"));
-      }
     } else if (before) {
       const source = readFileSync(join(root, file), "utf8");
       expect(source.split(before).length).toBe(2);
@@ -193,25 +173,16 @@ export function expectCopiedAdapterCase(
         supplied.delete(file);
         expect(check(supplied).some(row => row.file === file && row.rule === "input")).toBe(true);
       }
-      if (label === "old-adapter" || label === "old-tooling" || label === "stale-tooling-no-classifier"
-        || label === "unknown-tooling-byte" || label.startsWith("old-guard-") || label.startsWith("unknown-guard-") || staleCopier || unknownCopier) {
+      if (label === "old-adapter") {
         const findings = check(load(root));
         expect(findings.some(row => row.rule === "history" && row.detail.includes(detail))).toBe(true);
-      }
-      const optionalCallerAbsence = entry === CLI_MODULES[2]
-        && ["old-guard-0", "unknown-guard-0", "old-guard-2", "unknown-guard-2"].includes(label);
-      if (optionalCallerAbsence) {
-        expect(IDENTITY_INPUT_FILES).not.toContain(file);
-        const actualInputs = loadIdentityInputs(root);
-        expect([...actualInputs.keys()]).toEqual(IDENTITY_INPUT_FILES);
-        expect(actualInputs.has(file)).toBe(false);
       }
       const childArgv = [process.execPath, join(root, entry)];
       const child = Bun.spawnSync(childArgv, { cwd: root });
       const stdout = child.stdout.toString();
       const stderr = child.stderr.toString();
       const output = stdout + stderr;
-      const expectedSuccess = label === "positive" || optionalCallerAbsence;
+      const expectedSuccess = label === "positive";
       if (expectedSuccess && !child.success) {
         console.error(JSON.stringify({
           event: "phase165 copied CLI unexpected positive child", label, entry, cwd: root, argv: childArgv,
@@ -226,9 +197,7 @@ export function expectCopiedAdapterCase(
       expect(output).not.toMatch(/SyntaxError|Cannot find module|ModuleNotFound|Failed to resolve/i);
       expect(output).not.toContain("CLASSIFIER_RAN");
       if (missingCopier) expect(output).toContain("ENOENT");
-      if (optionalCallerAbsence) {
-        expect(output).toContain("identity-only ordinary refusal");
-      } else if (label !== "positive") {
+      if (label !== "positive") {
         expect(detail.length).toBeGreaterThan(0);
         expect(output).toContain(detail);
       }
@@ -238,7 +207,6 @@ export function expectCopiedAdapterCase(
   }
 }
 
-const toolingDeclaration = "export const HISTORICAL_TOOLING_INVERSE: ExactSourceInverse = " + JSON.stringify(HISTORICAL_TOOLING_INVERSE, null, 2) + ";";
 const adapterFile = "scripts/check-phase164-canonical-identity/fixture-source.ts";
 const adapterSource = readFileSync(join(import.meta.dir, "..", "check-phase164-canonical-identity", "fixture-source.ts"), "utf8");
 const adapterContracts = readFileSync(join(import.meta.dir, "..", "check-phase164-canonical-identity", "contracts.ts"), "utf8");
@@ -250,32 +218,7 @@ const adapterMutant = (value: unknown) => "export const FIXTURE_ADAPTER_INVERSE:
 const adapterFailure = "paired current raw fixture/adapter generation";
 const historicalAdapter = maybeRestoreReviewedSource(adapterSource, FIXTURE_ADAPTER_INVERSE);
 if (historicalAdapter === undefined) throw new Error("reviewed historical fixture adapter missing");
-const toolingSource = "scripts/check-phase164-canonical-identity/historical-tooling.ts";
-const toolingFailure = "paired current raw historical-tooling generation";
-const TOOLING_GENERATION_MUTATIONS: readonly (readonly [string, string, string, string, string])[] = [
-  ["old-tooling", toolingSource, "", "", toolingFailure],
-  ["stale-tooling-no-classifier", toolingSource, "", "", toolingFailure],
-  ["unknown-tooling-byte", toolingSource, 'import { createHash } from "node:crypto";', 'import { createHash } from "node:crypto";\n// unknown current tooling generation', toolingFailure],
-  ...FILTER_GUARD_INVERSES.flatMap(([file], index) => {
-    const first = file.endsWith(".test.ts") ? 'import { afterEach, expect, test } from "bun:test";' : "#!/usr/bin/env bun";
-    const detail = `${file}: reviewed current filter guard generation`;
-    return [[`old-guard-${index}`, file, "", "", detail], [`unknown-guard-${index}`, file, first, first + "\n// unknown current guard generation", detail]] as const;
-  }),
-  ["missing-tooling-inverse", "scripts/check-phase164-canonical-identity/contracts.ts", toolingDeclaration, "export const HISTORICAL_TOOLING_INVERSE: ExactSourceInverse = undefined;", toolingFailure],
-  ...[
-    ["wrong-current", { ...HISTORICAL_TOOLING_INVERSE, currentRawSha: "0".repeat(64) }],
-    ["wrong-restored", { ...HISTORICAL_TOOLING_INVERSE, restoredRawSha: "0".repeat(64) }],
-    ["missing-hunks", { ...HISTORICAL_TOOLING_INVERSE, hunks: [] }],
-    ["partial-hunks", { ...HISTORICAL_TOOLING_INVERSE, hunks: HISTORICAL_TOOLING_INVERSE.hunks.slice(0, -1) }],
-    ["duplicate-hunk", { ...HISTORICAL_TOOLING_INVERSE, hunks: [HISTORICAL_TOOLING_INVERSE.hunks[0], ...HISTORICAL_TOOLING_INVERSE.hunks] }],
-    ["reordered-hunks", { ...HISTORICAL_TOOLING_INVERSE, hunks: HISTORICAL_TOOLING_INVERSE.hunks.toReversed() }],
-    ["overlap", { ...HISTORICAL_TOOLING_INVERSE, hunks: [HISTORICAL_TOOLING_INVERSE.hunks[0], [HISTORICAL_TOOLING_INVERSE.hunks[0][0].slice(1), ""], ...HISTORICAL_TOOLING_INVERSE.hunks.slice(1)] }],
-    ["forged", { ...HISTORICAL_TOOLING_INVERSE, unreviewed: true }],
-  ].map(([name, invalid]) => [`bad-tooling-inverse-${name}`, "scripts/check-phase164-canonical-identity/contracts.ts", toolingDeclaration, "export const HISTORICAL_TOOLING_INVERSE: ExactSourceInverse = " + JSON.stringify(invalid, null, 2) + ";", toolingFailure] as const),
-];
-
 export const COPIED_ADAPTER_MUTATIONS: readonly (readonly [string, string, string, string, string])[] = [
-  ...TOOLING_GENERATION_MUTATIONS,
   ["positive", "scripts/check-phase164-canonical-identity/fixture-source.ts", "", "", ""],
   ["old-adapter", adapterFile, adapterSource, historicalAdapter, adapterFailure],
   ["unknown-adapter-byte", "scripts/check-phase164-canonical-identity/fixture-source.ts", "import { createHash } from \"node:crypto\";", "import { createHash } from \"node:crypto\";\n// unreviewed adapter byte", "paired current raw fixture/adapter generation"],

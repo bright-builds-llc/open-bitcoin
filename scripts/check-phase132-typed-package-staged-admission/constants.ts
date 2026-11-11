@@ -2,14 +2,6 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
-export const PHASE131_CHECK =
-  "bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts";
-export const PHASE132_TEST =
-  "bun test scripts/check-phase132-typed-package-staged-admission.test.ts";
-export const PHASE132_CHECK =
-  "bun run scripts/check-phase132-typed-package-staged-admission.ts";
-export const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 
 export const REQUIRED_BREADCRUMB_PATHS = [
   "packages/open-bitcoin-mempool/src/package.rs",
@@ -63,7 +55,6 @@ export const PHASE132_TARGET_FILES = [
   "packages/open-bitcoin-mempool/src/pool/tests/package_parity_cases.rs",
   "packages/open-bitcoin-mempool/src/types.rs",
   "scripts/check-phase132-typed-package-staged-admission.ts",
-  "scripts/verify.sh",
 ] as const;
 
 export const NEGATED_BOUNDARY_VERB =

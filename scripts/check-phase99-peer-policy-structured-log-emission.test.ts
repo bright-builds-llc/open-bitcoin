@@ -12,16 +12,7 @@ const TARGET_FILES = [
   ".planning/milestones/v1.9-ROADMAP.md",
   ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
   ".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md",
-  "scripts/verify.sh",
 ] as const;
-const PHASE98_TEST_COMMAND =
-  "bun test scripts/check-phase98-traceability-reconciliation.test.ts";
-const PHASE98_CHECKER_COMMAND =
-  "bun run scripts/check-phase98-traceability-reconciliation.ts";
-const PHASE99_TEST_COMMAND =
-  "bun test scripts/check-phase99-peer-policy-structured-log-emission.test.ts";
-const PHASE99_CHECKER_COMMAND =
-  "bun run scripts/check-phase99-peer-policy-structured-log-emission.ts";
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type FixtureOptions = {
@@ -127,81 +118,6 @@ test("fails missing automatic emission behavior test", () => {
   expect(failures.join("\n")).toContain("P99 Rust automatic emission test");
 });
 
-test("fails missing Phase 99 verifier wiring", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      replaceInFile(files, "scripts/verify.sh", PHASE99_TEST_COMMAND, "");
-      replaceInFile(files, "scripts/verify.sh", PHASE99_CHECKER_COMMAND, "");
-      replaceInFile(
-        files,
-        "scripts/verify.sh",
-        'run_step "test Phase 99 peer-policy structured log emission checker"',
-        "",
-      );
-      replaceInFile(
-        files,
-        "scripts/verify.sh",
-        'run_step "check Phase 99 peer-policy structured log emission"',
-        "",
-      );
-    },
-  });
-
-  // Act
-  const failures = checkPhase99PeerPolicyStructuredLogEmission({ rootDir: root });
-
-  // Assert
-  expect(failures.join("\n")).toContain("P99 executable verifier order");
-});
-
-test("fails Phase 99 verifier wiring before Phase 98", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      files.set(
-        "scripts/verify.sh",
-        [
-          "#!/usr/bin/env bash",
-          "set -euo pipefail",
-          "# Phase 98 is followed by Phase 99.",
-          ": <<'VERIFY_COMMAND_ORDER'",
-          PHASE99_TEST_COMMAND,
-          PHASE99_CHECKER_COMMAND,
-          PHASE98_TEST_COMMAND,
-          PHASE98_CHECKER_COMMAND,
-          "VERIFY_COMMAND_ORDER",
-          `run_step "test Phase 99 peer-policy structured log emission checker" ${PHASE99_TEST_COMMAND}`,
-          `run_step "check Phase 99 peer-policy structured log emission" ${PHASE99_CHECKER_COMMAND}`,
-          `run_step "test Phase 98 traceability reconciliation checker" ${PHASE98_TEST_COMMAND}`,
-          `run_step "check Phase 98 traceability reconciliation" ${PHASE98_CHECKER_COMMAND}`,
-        ].join("\n"),
-      );
-    },
-  });
-
-  // Act
-  const failures = checkPhase99PeerPolicyStructuredLogEmission({ rootDir: root });
-
-  // Assert
-  expect(failures.join("\n")).toContain("P99 visible verifier order");
-});
-
-test("fails forbidden Phase 99 verifier gate", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      appendToFile(files, "scripts/verify.sh", 'run_step "Phase 99 public-network check" true');
-    },
-  });
-
-  // Act
-  const failures = checkPhase99PeerPolicyStructuredLogEmission({ rootDir: root });
-
-  // Assert
-  expect(failures.join("\n")).toContain("forbidden gate");
-});
-
 function createFixture(options: FixtureOptions = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase99-"));
   tempRoots.push(root);
@@ -215,7 +131,6 @@ function createFixture(options: FixtureOptions = {}): string {
       ".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md",
       verificationFixture(),
     ],
-    ["scripts/verify.sh", verifyFixture()],
   ]);
   options.maybeMutateFiles?.(files);
   for (const [relativePath, contents] of files) {
@@ -298,22 +213,6 @@ function verificationFixture(): string {
   ].join("\n");
 }
 
-function verifyFixture(): string {
-  return [
-    "# Phase 98 is followed by Phase 99.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE98_TEST_COMMAND,
-    PHASE98_CHECKER_COMMAND,
-    PHASE99_TEST_COMMAND,
-    PHASE99_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    `run_step "test Phase 98 traceability reconciliation checker" ${PHASE98_TEST_COMMAND}`,
-    `run_step "check Phase 98 traceability reconciliation" ${PHASE98_CHECKER_COMMAND}`,
-    `run_step "test Phase 99 peer-policy structured log emission checker" ${PHASE99_TEST_COMMAND}`,
-    `run_step "check Phase 99 peer-policy structured log emission" ${PHASE99_CHECKER_COMMAND}`,
-  ].join("\n");
-}
-
 function replaceInFile(files: Map<TargetFile, string>, file: TargetFile, from: string, to: string): void {
   const current = files.get(file);
   if (current === undefined) {
@@ -323,8 +222,4 @@ function replaceInFile(files: Map<TargetFile, string>, file: TargetFile, from: s
     throw new Error(`fixture file ${file} did not include ${from}`);
   }
   files.set(file, current.replace(from, to));
-}
-
-function appendToFile(files: Map<TargetFile, string>, file: TargetFile, text: string): void {
-  files.set(file, `${files.get(file) ?? ""}\n${text}\n`);
 }

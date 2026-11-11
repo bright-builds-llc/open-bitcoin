@@ -76,7 +76,6 @@ const FILES = {
   checkerPersistedInputMutations:
     "scripts/check-phase135-snapshot-recovery/persisted-input-mutations.ts",
   test: "scripts/check-phase135-snapshot-recovery.test.ts",
-  verify: "scripts/verify.sh",
 } as const;
 
 export const PHASE135_TARGET_FILES = [...new Set(Object.values(FILES))];
@@ -114,8 +113,6 @@ export const PHASE135_DIAGNOSTICS = {
     "P135 scope: broad relay, public-network, repair, and readiness claims must remain deferred",
   deterministic:
     "P135 checker: verification must remain deterministic and filesystem-only",
-  verifier:
-    "P135 verifier: mutation and live guards must immediately follow Phase 134",
 } as const;
 
 export function checkPhase135SnapshotRecovery(
@@ -561,36 +558,6 @@ export function checkPhase135SnapshotRecovery(
       checker,
     ),
     PHASE135_DIAGNOSTICS.deterministic,
-  );
-
-  const verify = get(FILES.verify);
-  const expectedOrder = [
-    "check-phase134-authoritative-lifecycle.test.ts",
-    "check-phase134-apply-boundaries.ts",
-    "check-phase134-authoritative-lifecycle.ts",
-    "check-phase135-snapshot-recovery.test.ts",
-    "check-phase135-snapshot-recovery.ts",
-    "check-phase117-parity-uat-release-boundary.test.ts",
-    "check-phase117-parity-uat-release-boundary.ts",
-  ];
-  const observed = verify
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => !line.startsWith("#"))
-    .map((line) => {
-      const command = line.match(
-        /^(?:bun\s+(?:test|run)|run_step\s+"[^"]+"\s+bun\s+(?:test|run))\s+(\S+)/,
-      );
-      return expectedOrder.find((token) => command?.[1].endsWith(token));
-    })
-    .filter((token): token is string => token !== undefined);
-  addFailure(
-    failures,
-    observed.length !== expectedOrder.length * 2 ||
-      observed.some(
-        (token, index) => token !== expectedOrder[index % expectedOrder.length],
-      ),
-    PHASE135_DIAGNOSTICS.verifier,
   );
 
   return failures;

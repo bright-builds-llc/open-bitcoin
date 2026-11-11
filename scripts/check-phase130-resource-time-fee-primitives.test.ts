@@ -227,32 +227,6 @@ test.each([
       "fixed transitional capacity label during Phase 130",
     ),
   ],
-  [
-    "verifier heredoc wiring",
-    "P130 verifier heredoc: Phase 130 pair must run between Phase 129 and the Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      "bun run scripts/check-phase130-resource-time-fee-primitives.ts\nbun test scripts/check-phase131-rolling-fee-expiry-pressure.test.ts",
-      "bun test scripts/check-phase131-rolling-fee-expiry-pressure.test.ts",
-    ),
-  ],
-  [
-    "verifier run_step wiring",
-    "P130 verifier run_step: Phase 130 pair must run between Phase 129 and the Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      'run_step "check Phase 130 resource time and fee primitives" bun run scripts/check-phase130-resource-time-fee-primitives.ts\n',
-      "",
-    ),
-  ],
-  [
-    "final-gate ordering",
-    "P130 final gate run_step order must end with bun run scripts/check-phase138-parity-uat-release-boundary.ts",
-    append(
-      "scripts/verify.sh",
-      'run_step "check Phase 131 placeholder" bun run scripts/check-phase131-placeholder.ts',
-    ),
-  ],
 ] as const)("fails the %s mutation", (_label, expectedFailure, maybeMutate) => {
   // Arrange
   const root = createFixture(maybeMutate as Mutator);

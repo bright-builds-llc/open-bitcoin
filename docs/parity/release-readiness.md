@@ -187,9 +187,9 @@ SVC-02. Phase 87 adds this release-readiness checklist and narrow deterministic
 checker for the current v1.8 release-review map, including the Phase 88
 guardrail evidence rows for REL-02, REL-03, and REL-04. Phase 95 adds the
 v1.9 closeout matrix here, Phase 97 closes retained inbound metrics evidence,
-and Phase 98 adds `scripts/check-phase98-traceability-reconciliation.ts`
-without making public-network or service operations part of default
-verification.
+and Phase 98 added a traceability reconciliation checker, since retired with
+the phase workflow, without making public-network or service operations part
+of default verification.
 Phase 106 adds the v2.0 parity/UAT/release-boundary guardrail checker without
 making public-network relay review, service-manager operation, production
 deployment, wall-clock soak, or production-funds wallet use part of default
@@ -505,7 +505,7 @@ release manifest.
 | BOUND-03 | Phase 90 through Phase 94 summaries, `scripts/verify.sh`, `docs/parity/production-claim-boundary.md`, and historical release-readiness sections | `bash scripts/verify.sh` remains the repo-native non-regression contract after Phase 95 checker wiring. | Public-network full-sync, soak, real service-manager, and live support-bundle collection remain optional operator evidence only. | Default verification cannot prove public-network reachability or production uptime. | Existing outbound sync, full-sync, soak, support-bundle, production no-claim, and release-boundary behavior must remain non-regressed before any stronger release gate. |
 | BOUND-04 | `docs/operator/runtime-guide.md`, `docs/parity/checklist.md`, and Phase 90 through Phase 94 summaries | Plan 04 aggregate checker verifies repo-local Cargo and Bazel command forms. | Operators use copy-pasteable Cargo and Bazel loopback/synthetic commands; installed aliases are not the only path. | Local hosts can still lack ports, permissions, or build cache state. | Public-network listener exposure and CI remain future-scoped. |
 | BOUND-05 | `packages/open-bitcoin-cli/src/operator/support/redaction.rs`, `packages/open-bitcoin-cli/src/operator/support/tests.rs`, `docs/parity/support-matrix.md`, and Phase 95 Plan 01 summary | Rust support tests and the Phase 95 aggregate checker guard redaction boundaries. | Support bundles are local redacted evidence for diagnosis, not public uploads or release validators by themselves. | New support fields can leak raw peer material unless the redaction tests and checker are kept current. | Automatic support-bundle upload and raw peer/payload/permission evidence remain out of scope. |
-| BOUND-06 | `.planning/milestones/v1.9-REQUIREMENTS.md`, `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-MILESTONE-AUDIT.md`, `.planning/phases/98-traceability-reconciliation/98-VERIFICATION.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and this release matrix | `scripts/check-phase98-traceability-reconciliation.ts` verifies archived Phase 90 through Phase 98 traceability, selected verification notes, audit closure text, and verifier wiring after Phase 97. | Milestone audit and UAT reviewers should cite these roots instead of adding a parallel traceability manifest. | Phase 98 and the archived v1.9 milestone audit are now the canonical traceability closeout for Phase 98-owned requirements. | v1.9 requirement traceability stays exactly once across Phase 90 through Phase 98; new requirement IDs need a future roadmap update. |
+| BOUND-06 | `.planning/milestones/v1.9-REQUIREMENTS.md`, `.planning/milestones/v1.9-ROADMAP.md`, `.planning/milestones/v1.9-MILESTONE-AUDIT.md`, `.planning/phases/98-traceability-reconciliation/98-VERIFICATION.md`, `docs/parity/index.json`, `docs/parity/checklist.md`, and this release matrix | The retired Phase 98 traceability checker verified archived Phase 90 through Phase 98 traceability, selected verification notes, audit closure text, and verifier wiring after Phase 97. | Milestone audit and UAT reviewers should cite these roots instead of adding a parallel traceability manifest. | Phase 98 and the archived v1.9 milestone audit are now the canonical traceability closeout for Phase 98-owned requirements. | v1.9 requirement traceability stays exactly once across Phase 90 through Phase 98; new requirement IDs need a future roadmap update. |
 
 Required deterministic reviewer commands for this closeout:
 
@@ -515,11 +515,8 @@ rg -n "v1-9-network-participation-release-boundary|BOUND-01|BOUND-06|Network Par
 bash scripts/verify.sh
 ```
 
-Phase 98 owns the final traceability reconciliation checker:
-`scripts/check-phase98-traceability-reconciliation.ts` and
-`scripts/check-phase98-traceability-reconciliation.test.ts`. Until the final
-Phase 98 verification report lands, reviewers should treat those paths as the
-next deterministic gate, not as a separate evidence manifest.
+The Phase 98 traceability reconciliation checker was retired with the phase
+workflow. Its frozen planning records remain historical evidence only.
 
 ## v1.8 Release Readiness No-Claim Review
 

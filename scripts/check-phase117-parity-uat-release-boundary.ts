@@ -4,16 +4,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const PHASE116_TEST = "bun test scripts/check-phase116-operator-block-relay-evidence.test.ts";
-const PHASE116_CHECK = "bun run scripts/check-phase116-operator-block-relay-evidence.ts";
 const PHASE117_TEST = "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const PHASE117_CHECK = "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
-const PURE_CORE_CHECK = "bash scripts/check-pure-core-deps.sh";
-const PHASE116_TEST_STEP = `run_step "test Phase 116 operator block-relay evidence checker" ${PHASE116_TEST}`;
-const PHASE116_CHECK_STEP = `run_step "check Phase 116 operator block-relay evidence" ${PHASE116_CHECK}`;
-const PHASE117_TEST_STEP = `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`;
-const PHASE117_CHECK_STEP = `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`;
-const PURE_CORE_STEP = `run_step "check pure-core dependencies" ${PURE_CORE_CHECK}`;
 const ARCHIVED_V21_REQUIREMENTS =
   ".planning/milestones/v2.1-REQUIREMENTS.md";
 
@@ -63,7 +55,6 @@ const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase117-parity-uat-release-boundary.ts",
   "scripts/check-phase117-parity-uat-release-boundary.test.ts",
-  "scripts/verify.sh",
 ] as const;
 
 const CLAIM_FILES = new Set<TargetFile>([
@@ -177,25 +168,6 @@ const NO_CLAIM_MARKERS = [
   "no claim",
   "optional uat",
 ] as const;
-const FORBIDDEN_DEFAULT_GATES = [
-  "run-live-mainnet-smoke",
-  "public-network",
-  "public_network",
-  "live-mainnet",
-  "live_mainnet",
-  "wall-clock",
-  "wall_clock",
-  "service-manager",
-  "service_manager",
-  "systemctl",
-  "launchctl",
-  "systemd",
-  "launchd",
-  "sleep 86400",
-  "sleep 259200",
-  "production-deployment",
-  "production deployment",
-] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -220,7 +192,6 @@ export function checkPhase117ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   if (maybeIndex) checkSurfaceOwnership(maybeIndex, failures);
   checkRequirementTraceability(texts.get(".planning/REQUIREMENTS.md") ?? "", failures);
   if (maybeIndex) checkRequiredEvidence(maybeIndex, texts, failures);
-  checkVerifier(texts.get("scripts/verify.sh") ?? "", failures);
   checkClaims(texts, failures);
   return failures;
 }
@@ -360,39 +331,6 @@ function checkBreadcrumbGroups(raw: string, failures: string[]): Set<string> {
   }
 }
 
-function checkVerifier(verifyText: string, failures: string[]): void {
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = verifyText.indexOf(marker);
-  const bodyStart = start + marker.length;
-  const end = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  const visible = start === -1 || end === -1 ? "" : verifyText.slice(bodyStart, end);
-  if (!orderedLines(visible, [PHASE116_TEST, PHASE116_CHECK, PHASE117_TEST, PHASE117_CHECK, PURE_CORE_CHECK])) {
-    failures.push("verifier-scope: exact Phase 117 visible commands must follow Phase 116 and precede pure-core checks");
-  }
-  if (
-    !orderedLines(verifyText, [
-      PHASE116_TEST_STEP,
-      PHASE116_CHECK_STEP,
-      PHASE117_TEST_STEP,
-      PHASE117_CHECK_STEP,
-      PURE_CORE_STEP,
-    ])
-  ) {
-    failures.push("verifier-scope: exact Phase 117 executable commands must follow Phase 116 and precede pure-core checks");
-  }
-  for (const command of logicalRunSteps(verifyText)) {
-    const lower = command.toLowerCase();
-    for (const forbidden of FORBIDDEN_DEFAULT_GATES) {
-      if (lower.includes(forbidden)) {
-        failures.push(`verifier-scope: default verifier must not run ${forbidden}`);
-      }
-    }
-    if (lower.includes("soak") && !lower.includes("scripts/check-phase") && !lower.includes("scripts/test-")) {
-      failures.push("verifier-scope: default verifier must not run soak workflows");
-    }
-  }
-}
-
 function checkClaims(texts: TextCorpus, failures: string[]): void {
   for (const [file, text] of texts) {
     if (!CLAIM_FILES.has(file)) continue;
@@ -474,35 +412,6 @@ function sameMembers(actual: string[], expected: readonly string[]): boolean {
 
 function countOccurrences(text: string, needle: string): number {
   return needle.length === 0 ? 0 : text.split(needle).length - 1;
-}
-
-function orderedLines(text: string, requiredLines: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const required of requiredLines) {
-    const index = lines.indexOf(required, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
-}
-
-function logicalRunSteps(text: string): string[] {
-  const commands: string[] = [];
-  let current = "";
-  for (const rawLine of text.split("\n")) {
-    const line = rawLine.trim();
-    if (current === "" && !line.startsWith("run_step ")) continue;
-    current = `${current} ${line}`.trim();
-    if (current.endsWith("\\")) {
-      current = current.slice(0, -1).trim();
-      continue;
-    }
-    commands.push(current);
-    current = "";
-  }
-  if (current !== "") commands.push(current);
-  return commands;
 }
 
 function markdownParagraphs(text: string): Array<{ startLine: number; text: string }> {

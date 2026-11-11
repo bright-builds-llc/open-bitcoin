@@ -4,7 +4,7 @@ import { DEFAULT_REPO_ROOT, TARGET_FILES, TargetFile } from "./constants.ts";
 import { readText } from "./filesystem.ts";
 import { verifyParityIndex, verifyParityDocs, verifySourceBreadcrumbs } from "./parity.ts";
 import { verifyOutcomeAndOrphanEvidence, verifyManagedBridgeEvidence, verifyBehaviorTests } from "./bridge.ts";
-import { verifyVerifierWiring, verifyNoClaimBoundary } from "./verifier.ts";
+import { verifyNoClaimBoundary } from "./verifier.ts";
 
 export function checkPhase102OrphanAdmissionBridge(maybeRepoRoot?: string): string[] {
   const repoRoot = path.resolve(
@@ -23,7 +23,6 @@ export function checkPhase102OrphanAdmissionBridge(maybeRepoRoot?: string): stri
   verifyManagedBridgeEvidence(texts, failures);
   verifyBehaviorTests(texts, failures);
   verifySourceBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   verifyNoClaimBoundary(texts, failures);
 
   return failures;

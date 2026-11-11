@@ -4,14 +4,6 @@ import path from "node:path";
 export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
 export const SURFACE_ID = "v2-1-runtime-timing-evidence-integrity";
 export const REQUIREMENTS = ["HARD-02", "HARD-03", "HARD-04"] as const;
-export const PHASE122_CHECK =
-  "bun run scripts/check-phase122-compact-relay-peer-completion.ts";
-export const PHASE123_TEST =
-  "bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts";
-export const PHASE123_CHECK =
-  "bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts";
-export const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 
 export const TARGET_FILES = [
   "packages/open-bitcoin-node/src/sync/types.rs",
@@ -48,7 +40,6 @@ export const TARGET_FILES = [
   "docs/parity/checklist.md",
   "docs/parity/catalog/p2p.md",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
 ] as const;
 
 export type TargetFile = (typeof TARGET_FILES)[number];

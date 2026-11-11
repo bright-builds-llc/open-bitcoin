@@ -7,12 +7,6 @@ import { checkPhase94DosResourceGovernance } from "./check-phase94-dos-resource-
 
 const SURFACE_ID = "v1-9-dos-resource-governance";
 const PHASE94_REQUIREMENTS = ["DOS-01", "DOS-02", "DOS-03", "DOS-04", "DOS-05"] as const;
-const PHASE93_TEST_COMMAND = "bun test scripts/check-phase93-peer-policy.test.ts";
-const PHASE93_CHECKER_COMMAND = "bun run scripts/check-phase93-peer-policy.ts";
-const PHASE94_TEST_COMMAND =
-  "bun test scripts/check-phase94-dos-resource-governance.test.ts";
-const PHASE94_CHECKER_COMMAND =
-  "bun run scripts/check-phase94-dos-resource-governance.ts";
 const REQUIRED_LABELS = [
   "wrong_network_magic",
   "malformed_header",
@@ -78,7 +72,6 @@ const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
   "docs/parity/checklist.md",
   "docs/parity/index.json",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
@@ -228,7 +221,6 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["docs/parity/catalog/p2p.md", p2pCatalogText()],
     ["docs/parity/checklist.md", checklistText()],
     ["docs/parity/index.json", parityIndexText()],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 }
 
@@ -445,27 +437,4 @@ function parityIndexText(): string {
     null,
     2,
   );
-}
-
-function verifyScriptText(): string {
-  return [
-    "#!/usr/bin/env bash",
-    "set -euo pipefail",
-    "run_step() {",
-    "  local label=\"$1\"",
-    "  shift",
-    "  \"$@\"",
-    "}",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE93_TEST_COMMAND,
-    PHASE93_CHECKER_COMMAND,
-    PHASE94_TEST_COMMAND,
-    PHASE94_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    `run_step "test Phase 93 peer policy checker" ${PHASE93_TEST_COMMAND}`,
-    `run_step "check Phase 93 peer policy" ${PHASE93_CHECKER_COMMAND}`,
-    `run_step "Phase 94 DoS/resource governance checker tests" ${PHASE94_TEST_COMMAND}`,
-    `run_step "Phase 94 DoS/resource governance checker" ${PHASE94_CHECKER_COMMAND}`,
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
-  ].join("\n");
 }

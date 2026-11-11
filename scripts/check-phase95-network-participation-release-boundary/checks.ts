@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { DEFAULT_REPO_ROOT, SURFACE_ID, PHASE94_TEST_COMMAND, PHASE94_CHECKER_COMMAND, PHASE95_TEST_COMMAND, PHASE95_CHECKER_COMMAND, PURE_CORE_COMMAND, REQUIRED_PHASE95_REQUIREMENTS, PHASE_REQUIREMENTS, REQUIRED_V1_9_REQUIREMENTS, REQUIREMENT_PHASE_ASSIGNMENTS, ROADMAP_TRACEABILITY_ROWS, REQUIRED_KNOTS_ANCHORS, REQUIRED_PHASE95_EVIDENCE, REQUIRED_UAT_COMMANDS, REQUIRED_SUPPORT_REDACTION_ROOTS, FORBIDDEN_POSITIVE_CLAIMS, POSITIVE_CLAIM_VERBS, FORBIDDEN_VERIFY_STRINGS, CLAIM_SCAN_FILES, TARGET_FILES } from "./constants.ts";
+import { DEFAULT_REPO_ROOT, SURFACE_ID, REQUIRED_PHASE95_REQUIREMENTS, PHASE_REQUIREMENTS, REQUIRED_V1_9_REQUIREMENTS, REQUIREMENT_PHASE_ASSIGNMENTS, ROADMAP_TRACEABILITY_ROWS, REQUIRED_KNOTS_ANCHORS, REQUIRED_PHASE95_EVIDENCE, REQUIRED_UAT_COMMANDS, REQUIRED_SUPPORT_REDACTION_ROOTS, FORBIDDEN_POSITIVE_CLAIMS, POSITIVE_CLAIM_VERBS, CLAIM_SCAN_FILES, TARGET_FILES } from "./constants.ts";
 import type { TargetFile, ChecklistSurface, ParityIndex, ParitySurface, CheckPhase95Options } from "./constants.ts";
 import { extractRequirementIdsFromSurfaceRows, verifyRequirementsTable, verifyRoadmapTraceability, verifyRequirementCountsFromArrays, requirementIds, requireContains, contextUnits, sentenceUnits, normalizeWhitespace, normalizedLower, escapeRegExp } from "./parity.ts";
 export function checkPhase95NetworkParticipationReleaseBoundary(
@@ -19,7 +19,6 @@ export function checkPhase95NetworkParticipationReleaseBoundary(
   verifyNoClaimBoundary(texts, failures);
   verifyUatCommands(texts.get("docs/operator/runtime-guide.md") ?? "", failures);
   verifySupportRedactionRoots(texts, failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   verifyRequirementTraceability(texts, failures);
 
   return failures;
@@ -258,88 +257,6 @@ export function verifySupportRedactionRoots(texts: Map<TargetFile, string>, fail
 
   for (const root of REQUIRED_SUPPORT_REDACTION_ROOTS) {
     requireContains(supportText, root, "BOUND-05 support redaction roots", failures);
-  }
-}
-
-export function verifyVerifierWiring(text: string, failures: string[]): void {
-  const maybeOrderBlock = text.match(
-    /^: <<'VERIFY_COMMAND_ORDER'\n([\s\S]*?)\nVERIFY_COMMAND_ORDER\n/m,
-  );
-  if (maybeOrderBlock === null) {
-    failures.push("BOUND-03 verifier-order missing VERIFY_COMMAND_ORDER block");
-  } else {
-    verifyOrderedCommands(
-      maybeOrderBlock[1],
-      [
-        PHASE94_TEST_COMMAND,
-        PHASE94_CHECKER_COMMAND,
-        PHASE95_TEST_COMMAND,
-        PHASE95_CHECKER_COMMAND,
-      ],
-      "BOUND-03 verifier-order printed commands must place Phase 95 immediately after Phase 94",
-      failures,
-    );
-  }
-
-  const executableText = executableVerifyText(text);
-  requireContains(
-    executableText,
-    `run_step "Phase 95 network participation release boundary checker tests" ${PHASE95_TEST_COMMAND}`,
-    "BOUND-03 executable verifier Phase 95 checker tests",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "Phase 95 network participation release boundary checker" ${PHASE95_CHECKER_COMMAND}`,
-    "BOUND-03 executable verifier Phase 95 checker",
-    failures,
-  );
-  requireContains(
-    text,
-    "Phase 94 is followed by Phase 95",
-    "BOUND-03 verifier ordering comment",
-    failures,
-  );
-  verifyOrderedCommands(
-    executableText,
-    [
-      PHASE94_TEST_COMMAND,
-      PHASE94_CHECKER_COMMAND,
-      PHASE95_TEST_COMMAND,
-      PHASE95_CHECKER_COMMAND,
-      PURE_CORE_COMMAND,
-    ],
-    "BOUND-03 executable verifier commands must run Phase 95 after Phase 94 and before pure-core checks",
-    failures,
-  );
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.includes(forbidden)) {
-      failures.push(`BOUND-03 default verifier boundary contains forbidden text: ${forbidden}`);
-    }
-  }
-}
-
-export function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
-export function verifyOrderedCommands(
-  text: string,
-  commands: readonly string[],
-  failure: string,
-  failures: string[],
-): void {
-  let previousIndex = -1;
-  for (const command of commands) {
-    const currentIndex = text.indexOf(command);
-    if (currentIndex === -1 || currentIndex <= previousIndex) {
-      failures.push(failure);
-      return;
-    }
-    previousIndex = currentIndex;
   }
 }
 

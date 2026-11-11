@@ -63,10 +63,6 @@ export function verifyOrderedCommands(
   }
 }
 
-export function executableVerifyText(text: string): string {
-  return text.replace(/^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m, "");
-}
-
 export function hasNoClaimMarker(lowerUnit: string): boolean {
   return NO_CLAIM_MARKERS.some((marker) => lowerUnit.includes(marker));
 }

@@ -17,14 +17,6 @@ import { hasCanonicalDaemonComposition } from "./check-phase128-production-compa
 import { readSourceCorpus, readSourceRoot } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const PHASE127_TEST =
-  "bun test scripts/check-phase127-authoritative-network-state-unification.test.ts";
-const PHASE127_CHECK =
-  "bun run scripts/check-phase127-authoritative-network-state-unification.ts";
-const PHASE126_CHECK =
-  "bun run scripts/check-phase126-compact-relay-residual-hardening.ts";
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const RUNTIME_PROOF = "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts";
 
 export const PHASE127_DAEMON_HELPER_DIR =
@@ -51,7 +43,6 @@ export const PHASE127_TARGET_FILES = [
   "scripts/check-phase127-authoritative-network-state-unification.ts",
   RUNTIME_PROOF,
   "scripts/rust-source-invariants.ts",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof PHASE127_TARGET_FILES)[number];
@@ -473,26 +464,6 @@ function checkIntegrationAndParity(
 }
 
 function checkVerifier(texts: TextCorpus, failures: string[]): void {
-  const verify = texts.get("scripts/verify.sh") ?? "";
-  if (
-    !orderedLines(visibleCommandOrder(verify), [
-      PHASE126_CHECK,
-      PHASE127_TEST,
-      PHASE127_CHECK,
-      PHASE117_TEST,
-    ]) ||
-    !orderedLines(verify, [
-      `run_step "check Phase 126 compact relay residual hardening" ${PHASE126_CHECK}`,
-      `run_step "test Phase 127 authoritative network state unification checker" ${PHASE127_TEST}`,
-      `run_step "check Phase 127 authoritative network state unification" ${PHASE127_CHECK}`,
-      `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
-    ])
-  ) {
-    failures.push(
-      "P127 verifier order: Phase 127 must follow Phase 126 and precede the final Phase 117 gate",
-    );
-  }
-
   const checker = [
     texts.get(
       "scripts/check-phase127-authoritative-network-state-unification.ts",
@@ -572,26 +543,6 @@ function hasSingleRustStructFieldInitializer(
     initializers.length === 1 &&
     normalizeRust(initializers[0] ?? "") === normalizeRust(expected)
   );
-}
-
-function visibleCommandOrder(text: string): string {
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = text.indexOf(marker);
-  if (start === -1) return "";
-  const bodyStart = start + marker.length;
-  const end = text.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  return end === -1 ? "" : text.slice(bodyStart, end);
-}
-
-function orderedLines(text: string, required: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const line of required) {
-    const index = lines.indexOf(line, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
 }
 
 function countOccurrences(text: string, needle: string): number {

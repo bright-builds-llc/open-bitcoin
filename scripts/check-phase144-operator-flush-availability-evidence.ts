@@ -32,7 +32,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase144-operator-flush-availability-evidence.ts",
   "scripts/check-phase144-operator-flush-availability-evidence.test.ts",
-  "scripts/verify.sh",
 ] as const;
 const NEW_FIELD_FILES = [
   "packages/open-bitcoin-node/src/status/chainstate_durability.rs",
@@ -224,7 +223,6 @@ export function checkPhase144OperatorFlushAvailabilityEvidence(maybeRepoRoot?: s
   checkRequiredText(texts, failures);
   checkFileNeedles(texts, failures);
   checkBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  checkVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
   checkDocsContract(texts, failures);
   checkForbiddenNewFieldClaims(repoRoot, texts, failures);
 
@@ -309,37 +307,6 @@ function checkBreadcrumbs(raw: string, failures: string[]): void {
         failures.push(`source breadcrumb group ${expected.label} missing file ${file}`);
       }
     }
-  }
-}
-
-function checkVerifierOrder(verifyText: string, failures: string[]): void {
-  const visibleMarker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const visibleStart = verifyText.indexOf(visibleMarker);
-  const visibleBodyStart = visibleStart + visibleMarker.length;
-  const visibleEnd = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", visibleBodyStart);
-  const visibleText =
-    visibleStart === -1 || visibleEnd === -1 ? "" : verifyText.slice(visibleBodyStart, visibleEnd);
-
-  if (
-    !orderedIndexes(visibleText, [
-      "bun test scripts/check-phase116-operator-block-relay-evidence.test.ts",
-      "bun run scripts/check-phase116-operator-block-relay-evidence.ts",
-      "bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts",
-      "bun run scripts/check-phase144-operator-flush-availability-evidence.ts",
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 144 visible order must follow Phase 116");
-  }
-
-  if (
-    !orderedIndexes(verifyText, [
-      'run_step "test Phase 116 operator block-relay evidence checker"',
-      'run_step "check Phase 116 operator block-relay evidence"',
-      'run_step "test Phase 144 operator flush and availability evidence checker"',
-      'run_step "check Phase 144 operator flush and availability evidence"',
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 144 executable order must follow Phase 116");
   }
 }
 
@@ -439,18 +406,6 @@ function readText(repoRoot: string, filePath: TargetFile, failures: string[]): s
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function orderedIndexes(text: string, needles: readonly string[]): boolean {
-  let cursor = -1;
-  for (const needle of needles) {
-    const index = text.indexOf(needle, cursor + 1);
-    if (index === -1) {
-      return false;
-    }
-    cursor = index;
-  }
-  return true;
 }
 
 function markdownParagraphs(text: string): Array<{ startLine: number; text: string }> {

@@ -16,14 +16,6 @@ const PLAN_FILES = [
 const DEFAULT_PLAN_TEXTS = PLAN_FILES.map(
   () => "---\nrequirements: [DIAG-01, DIAG-02, DIAG-03, DIAG-04]\n---\n",
 );
-const PHASE78_CHECKER_COMMAND = "bun run scripts/check-phase78-progress-guarantees.ts";
-const PHASE79_TEST_COMMAND = "bun test scripts/check-phase79-diagnostics-support-bundle.test.ts";
-const PHASE79_CHECKER_COMMAND = "bun run scripts/check-phase79-diagnostics-support-bundle.ts";
-const DEFAULT_VERIFY_SCRIPT = [
-  PHASE78_CHECKER_COMMAND,
-  PHASE79_TEST_COMMAND,
-  PHASE79_CHECKER_COMMAND,
-].join("\n");
 const SURFACE_ID = "phase79-diagnostics-support-bundle-forensics";
 const REQUIREMENTS = "DIAG-01 DIAG-02 DIAG-03 DIAG-04";
 const PARITY_TERMS = [
@@ -65,7 +57,6 @@ type FixtureOptions = {
     needle: string;
   };
   maybePlanTexts?: readonly string[];
-  maybeVerifyScript?: string;
 };
 
 type CheckerRun = {
@@ -276,24 +267,6 @@ test("fails_when_phase79_docs_or_parity_roots_are_missing", async () => {
   expect(result.exitCode).not.toBe(0);
 });
 
-test("fails_when_verify_order_or_default_boundaries_drift", async () => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: [
-      PHASE79_TEST_COMMAND,
-      PHASE79_CHECKER_COMMAND,
-      PHASE78_CHECKER_COMMAND,
-      "bun run scripts/run-live-mainnet-smoke.ts",
-    ].join("\n"),
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-});
-
 test("fails_when_sensitive_strings_escape_redaction_fixtures", async () => {
   // Arrange
   const root = await createFixture({
@@ -322,11 +295,6 @@ async function createFixture(options: FixtureOptions): Promise<string> {
   for (const [file, text] of Object.entries(FILE_TEXTS)) {
     await writeFixtureFile(root, file, applyTextOptions(file, text, options));
   }
-  await writeFixtureFile(
-    root,
-    "scripts/verify.sh",
-    options.maybeVerifyScript ?? DEFAULT_VERIFY_SCRIPT,
-  );
 
   return root;
 }

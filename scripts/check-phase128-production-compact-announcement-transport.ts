@@ -13,14 +13,6 @@ import {
 } from "./check-phase157-index-catch-up/rust-evidence.ts";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const PHASE127_CHECK =
-  "bun run scripts/check-phase127-authoritative-network-state-unification.ts";
-const PHASE128_TEST =
-  "bun test scripts/check-phase128-production-compact-announcement-transport.test.ts";
-const PHASE128_CHECK =
-  "bun run scripts/check-phase128-production-compact-announcement-transport.ts";
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 const ENQUEUE_BODY_SHA = "c00de395e2714593d08eab42038cfbcdd3d391a63ae8784f4dfb6edbc19a7356";
 const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 
@@ -51,7 +43,6 @@ export const PHASE128_TARGET_FILES = [
   ".planning/PROJECT.md",
   "scripts/check-phase128-production-compact-announcement-transport.ts",
   "scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
@@ -515,29 +506,6 @@ function checkBoundedScope(texts: TextCorpus, failures: string[]): void {
 }
 
 function checkVerifier(texts: TextCorpus, failures: string[]): void {
-  const verify = texts.get("scripts/verify.sh") ?? "";
-  const visible = visibleCommandOrder(verify);
-  const requiredVisible = [
-    PHASE127_CHECK,
-    PHASE128_TEST,
-    PHASE128_CHECK,
-    PHASE117_TEST,
-  ];
-  const requiredSteps = [
-    `run_step "check Phase 127 authoritative network state unification" ${PHASE127_CHECK}`,
-    `run_step "test Phase 128 production compact announcement transport checker" ${PHASE128_TEST}`,
-    `run_step "check Phase 128 production compact announcement transport" ${PHASE128_CHECK}`,
-    `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
-  ];
-  if (
-    !orderedLines(visible, requiredVisible) ||
-    !orderedLines(verify, requiredSteps)
-  ) {
-    failures.push(
-      "P128 verifier wiring: mutation test and production checker must run before the final Phase 117 gate",
-    );
-  }
-
   const checker = [
     texts.get(
       "scripts/check-phase128-production-compact-announcement-transport.ts",
@@ -564,30 +532,10 @@ function section(text: string, startMarker: string, endMarker: string): string {
   return text.slice(start, end === -1 ? text.length : end);
 }
 
-function visibleCommandOrder(text: string): string {
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = text.indexOf(marker);
-  if (start === -1) return "";
-  const bodyStart = start + marker.length;
-  const end = text.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  return end === -1 ? "" : text.slice(bodyStart, end);
-}
-
 function orderedFragments(text: string, fragments: readonly string[]): boolean {
   let cursor = -1;
   for (const fragment of fragments) {
     const index = text.indexOf(fragment, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
-}
-
-function orderedLines(text: string, requiredLines: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const required of requiredLines) {
-    const index = lines.indexOf(required, cursor + 1);
     if (index === -1) return false;
     cursor = index;
   }

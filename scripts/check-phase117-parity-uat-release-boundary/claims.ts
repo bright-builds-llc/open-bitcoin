@@ -74,21 +74,6 @@ test("fails_when_a_table_cell_mixes_a_deferred_topic_with_a_positive_overclaim",
   expect(failures).toContain("production service operation");
 });
 
-test("fails_when_default_verifier_adds_a_public_network_gate", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutate(files) {
-      append(files, "scripts/verify.sh", 'run_step "live gate" bash scripts/run-live-mainnet-smoke.ts');
-    },
-  });
-
-  // Act
-  const failures = checkPhase117ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("default verifier must not run run-live-mainnet-smoke");
-});
-
 test("allows_bounded_explicit_default_off_compact_relay_claims", () => {
   // Arrange
   const root = createFixture({

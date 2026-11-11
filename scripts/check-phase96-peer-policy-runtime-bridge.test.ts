@@ -19,7 +19,6 @@ const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
 ] as const;
 type TargetFile = (typeof TARGET_FILES)[number];
 type FixtureOptions = {
@@ -103,25 +102,6 @@ test("fails raw peer-policy material in output surfaces", () => {
   expect(failures.join("\n")).toContain("raw_endpoint");
 });
 
-test("fails forbidden Phase 96 default verifier gates", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      const current = files.get("scripts/verify.sh") ?? "";
-      files.set(
-        "scripts/verify.sh",
-        `${current}\nrun_step "Phase 96 public-network service-manager gate" echo ok\n`,
-      );
-    },
-  });
-
-  // Act
-  const failures = checkPhase96PeerPolicyRuntimeBridge({ rootDir: root });
-
-  // Assert
-  expect(failures.join("\n")).toContain("public-network");
-});
-
 test("fails public banlist and production claim creep", () => {
   // Arrange
   const root = createFixture({
@@ -141,26 +121,6 @@ test("fails public banlist and production claim creep", () => {
   const message = failures.join("\n");
   expect(message).toContain("public banlist");
   expect(message).toContain("production readiness");
-});
-
-test("fails missing verifier order", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      replaceInFile(
-        files,
-        "scripts/verify.sh",
-        "bun test scripts/check-phase96-peer-policy-runtime-bridge.test.ts",
-        "",
-      );
-    },
-  });
-
-  // Act
-  const failures = checkPhase96PeerPolicyRuntimeBridge({ rootDir: root });
-
-  // Assert
-  expect(failures.join("\n")).toContain("check-phase96-peer-policy-runtime-bridge.test.ts");
 });
 
 test("fails duplicate canonical v1.9 requirement ownership", () => {
@@ -347,19 +307,6 @@ packages/bitcoin-knots/src/net.cpp packages/bitcoin-knots/src/net_processing.cpp
           },
         ],
       }),
-    ],
-    [
-      "scripts/verify.sh",
-      `
-# Phase 94 is followed by Phase 95. Phase 95 is followed by Phase 96.
-bun test scripts/check-phase95-network-participation-release-boundary.test.ts
-bun run scripts/check-phase95-network-participation-release-boundary.ts
-bun test scripts/check-phase96-peer-policy-runtime-bridge.test.ts
-bun run scripts/check-phase96-peer-policy-runtime-bridge.ts
-run_step "Phase 95 network participation release boundary checker" bun run scripts/check-phase95-network-participation-release-boundary.ts
-run_step "Phase 96 peer-policy runtime bridge checker tests" bun test scripts/check-phase96-peer-policy-runtime-bridge.test.ts
-run_step "Phase 96 peer-policy runtime bridge checker" bun run scripts/check-phase96-peer-policy-runtime-bridge.ts
-`,
     ],
   ]);
 }

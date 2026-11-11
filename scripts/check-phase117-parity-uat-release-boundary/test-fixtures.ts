@@ -51,7 +51,6 @@ export const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase117-parity-uat-release-boundary.ts",
   "scripts/check-phase117-parity-uat-release-boundary.test.ts",
-  "scripts/verify.sh",
 ] as const;
 
 export type TargetFile = (typeof TARGET_FILES)[number];
@@ -94,7 +93,6 @@ export function createFixture(options: FixtureOptions = {}): string {
       : v21Requirements,
   );
   files.set("docs/operator/runtime-guide.md", `${commonText}\n${requiredCommands().join("\n")}`);
-  files.set("scripts/verify.sh", createVerifyScript());
   options.maybeMutate?.(files);
   for (const [file, text] of files) {
     const absolutePath = path.join(root, file);
@@ -196,23 +194,6 @@ export function createRequirements(
       return `| ${requirement} | Phase ${maybeGapPhase ?? phase} | ${maybeGapPhase ? gapStatus : "Complete"} |`;
     })
     .join("\n");
-}
-
-export function createVerifyScript(): string {
-  return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    "bun test scripts/check-phase116-operator-block-relay-evidence.test.ts",
-    "bun run scripts/check-phase116-operator-block-relay-evidence.ts",
-    "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
-    "bun run scripts/check-phase117-parity-uat-release-boundary.ts",
-    "bash scripts/check-pure-core-deps.sh",
-    "VERIFY_COMMAND_ORDER",
-    'run_step "test Phase 116 operator block-relay evidence checker" bun test scripts/check-phase116-operator-block-relay-evidence.test.ts',
-    'run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts',
-    'run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts',
-    'run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts',
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
-  ].join("\n");
 }
 
 export function requiredCommands(): string[] {

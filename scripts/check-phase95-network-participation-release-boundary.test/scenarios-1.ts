@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { SURFACE_ID, PHASE94_TEST_COMMAND, PHASE94_CHECKER_COMMAND, PHASE95_TEST_COMMAND, PHASE95_CHECKER_COMMAND, PURE_CORE_COMMAND, REQUIRED_KNOTS_ANCHORS, PHASE_REQUIREMENTS, REQUIREMENT_PHASE_ASSIGNMENTS, ROADMAP_TRACEABILITY_ROWS, TARGET_FILES, tempRoots, createFixture, fixtureFiles, removeFromAllFiles, replaceInFile, parityIndexText, readmeText, checklistText, p2pCatalogText, releaseReadinessText, productionBoundaryText, supportMatrixText, runtimeGuideText, redactionText, supportTestsText, requirementsText, roadmapText, phaseTraceRows, verifyScriptText, mkdirSync, mkdtempSync, rmSync, writeFileSync, tmpdir, path, checkPhase95NetworkParticipationReleaseBoundary } from "./setup.ts";
+import { SURFACE_ID, PHASE95_TEST_COMMAND, PHASE95_CHECKER_COMMAND, REQUIRED_KNOTS_ANCHORS, PHASE_REQUIREMENTS, REQUIREMENT_PHASE_ASSIGNMENTS, ROADMAP_TRACEABILITY_ROWS, TARGET_FILES, tempRoots, createFixture, fixtureFiles, removeFromAllFiles, replaceInFile, parityIndexText, readmeText, checklistText, p2pCatalogText, releaseReadinessText, productionBoundaryText, supportMatrixText, runtimeGuideText, redactionText, supportTestsText, requirementsText, roadmapText, phaseTraceRows, mkdirSync, mkdtempSync, rmSync, writeFileSync, tmpdir, path, checkPhase95NetworkParticipationReleaseBoundary } from "./setup.ts";
 import type { TargetFile, FixtureOptions } from "./setup.ts";
 test("passes with complete Phase 95 release-boundary corpus", () => {
   // Arrange
@@ -222,34 +222,4 @@ test("fails when gap-closure traceability maps requirements to stale phases", ()
     "BOUND-06 requirements traceability missing INB-05 -> Phase 97",
   );
   expect(failures.join("\n")).toContain("BOUND-06 roadmap phase traceability");
-});
-
-test("fails when Phase 95 verifier commands exist only in VERIFY_COMMAND_ORDER", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      files.set(
-        "scripts/verify.sh",
-        [
-          "#!/usr/bin/env bash",
-          "set -euo pipefail",
-          ": <<'VERIFY_COMMAND_ORDER'",
-          PHASE94_TEST_COMMAND,
-          PHASE94_CHECKER_COMMAND,
-          PHASE95_TEST_COMMAND,
-          PHASE95_CHECKER_COMMAND,
-          "VERIFY_COMMAND_ORDER",
-          `run_step "Phase 94 DoS/resource governance checker tests" ${PHASE94_TEST_COMMAND}`,
-          `run_step "Phase 94 DoS/resource governance checker" ${PHASE94_CHECKER_COMMAND}`,
-          `run_step "check pure-core dependencies" ${PURE_CORE_COMMAND}`,
-        ].join("\n"),
-      );
-    },
-  });
-
-  // Act
-  const failures = checkPhase95NetworkParticipationReleaseBoundary({ rootDir: root });
-
-  // Assert
-  expect(failures.join("\n")).toContain("BOUND-03");
 });

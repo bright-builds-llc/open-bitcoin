@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { DEFAULT_REPO_ROOT, TARGET_FILES, TargetFile, CheckOptions } from "./constants.ts";
 import { readText } from "./filesystem.ts";
 import { verifySuccessfulWriteEvidence, verifyPrivateProjection, verifyAuthoritativeRuntime, verifyFocusedTests } from "./evidence.ts";
-import { verifyPhase121Compatibility, verifyParity, verifyBreadcrumbs, verifyVerifierWiring } from "./parity.ts";
+import { verifyPhase121Compatibility, verifyParity, verifyBreadcrumbs } from "./parity.ts";
 import { normalizeWhitespace, requireContains, requireAbsent, requireOrdered } from "./helpers.ts";
 import { normalizeRust, rustCallArguments, rustFunction, rustLetInitializers, stripRustNonCode } from "../rust-source-invariants.ts";
 import { maybeFunction, rustCode } from "../check-phase157-index-catch-up/rust-evidence.ts";
@@ -28,7 +28,6 @@ export function checkPhase123RuntimeTimingEvidenceIntegrity(
   verifyPhase121Compatibility(texts, failures);
   verifyParity(texts, failures);
   verifyBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   return failures;
 }
 

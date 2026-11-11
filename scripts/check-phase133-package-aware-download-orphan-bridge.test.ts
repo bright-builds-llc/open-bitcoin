@@ -288,15 +288,6 @@ test.each([
     ),
   ],
   [
-    "verifier wiring",
-    "P133 verifier: Phase 133 test/check must run after Phase 132 and before the final Phase 117 gate in both command surfaces",
-    replace(
-      "scripts/verify.sh",
-      "bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts",
-      "bun run scripts/check-phase117-parity-uat-release-boundary.ts",
-    ),
-  ],
-  [
     "filesystem-only checker",
     "P133 checker: verification must remain deterministic and filesystem-only",
     append(

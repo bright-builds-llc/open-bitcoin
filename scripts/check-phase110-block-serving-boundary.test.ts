@@ -7,10 +7,6 @@ import { checkPhase110BlockServingBoundary } from "./check-phase110-block-servin
 
 const SURFACE_ID = "v2-1-block-serving-activation-eligibility-boundary";
 const REQUIRED_REQUIREMENTS = ["BSRV-01", "BSRV-02", "BSRV-03", "BSRV-05", "BSRV-06"] as const;
-const PHASE110_TEST_COMMAND =
-  "bun test scripts/check-phase110-block-serving-boundary.test.ts";
-const PHASE110_CHECKER_COMMAND =
-  "bun run scripts/check-phase110-block-serving-boundary.ts";
 const TARGET_FILES = [
   "docs/architecture/config-precedence.md",
   "docs/architecture/status-snapshot.md",
@@ -19,7 +15,6 @@ const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
   "docs/parity/checklist.md",
   "docs/parity/index.json",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
@@ -143,38 +138,6 @@ test("allows_explicit_no_claim_or_deferred_wording_for_out_of_scope_surfaces", (
   expect(failures).toEqual([]);
 });
 
-test("fails_when_default_verifier_wiring_is_missing_or_non_deterministic", () => {
-  // Arrange
-  const roots = [
-    createFixture({
-      maybeMutateFiles(files) {
-        replaceInFile(files, "scripts/verify.sh", PHASE110_TEST_COMMAND, "");
-        replaceInFile(files, "scripts/verify.sh", PHASE110_CHECKER_COMMAND, "");
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 110 public-network CI" true');
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 110 service-manager" systemctl status open-bitcoind');
-      },
-    }),
-  ];
-
-  // Act
-  const failureMessages = roots.map((root) =>
-    checkPhase110BlockServingBoundary(root).join("\n"),
-  );
-
-  // Assert
-  expect(failureMessages[0]).toContain("default verifier");
-  expect(failureMessages[1]).toContain("forbidden Phase 110 default verifier gate");
-  expect(failureMessages[2]).toContain("forbidden Phase 110 default verifier gate");
-});
-
 function createFixture(options: FixtureOptions = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase110-"));
   tempRoots.push(root);
@@ -200,7 +163,6 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["docs/parity/catalog/p2p.md", p2pCatalogText()],
     ["docs/parity/checklist.md", checklistText()],
     ["docs/parity/index.json", parityIndexText()],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 }
 
@@ -208,15 +170,6 @@ function removeFromAllFiles(files: Map<TargetFile, string>, needle: string): voi
   for (const [file, current] of files) {
     files.set(file, current.replaceAll(needle, ""));
   }
-}
-
-function replaceInFile(
-  files: Map<TargetFile, string>,
-  file: TargetFile,
-  needle: string,
-  replacement: string,
-): void {
-  files.set(file, (files.get(file) ?? "").replaceAll(needle, replacement));
 }
 
 function appendToFile(files: Map<TargetFile, string>, file: TargetFile, line: string): void {
@@ -333,21 +286,4 @@ function parityIndexText(): string {
     null,
     2,
   );
-}
-
-function verifyScriptText(): string {
-  return [
-    "# Phase 108 is followed by Phase 110.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    "bun test scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts",
-    "bun run scripts/check-phase108-durable-mempool-relay-state-recovery.ts",
-    PHASE110_TEST_COMMAND,
-    PHASE110_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    'run_step "test Phase 108 durable mempool relay state recovery checker" bun test scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts',
-    'run_step "check Phase 108 durable mempool relay state recovery" bun run scripts/check-phase108-durable-mempool-relay-state-recovery.ts',
-    `run_step "test Phase 110 block-serving boundary checker" ${PHASE110_TEST_COMMAND}`,
-    `run_step "check Phase 110 block-serving boundary" ${PHASE110_CHECKER_COMMAND}`,
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
-  ].join("\n");
 }

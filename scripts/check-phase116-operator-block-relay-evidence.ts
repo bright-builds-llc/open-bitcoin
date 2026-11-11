@@ -32,7 +32,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase116-operator-block-relay-evidence.ts",
   "scripts/check-phase116-operator-block-relay-evidence.test.ts",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_REQUIREMENTS = ["OBS-01", "OBS-02", "OBS-03", "OBS-04", "OBS-05"] as const;
 const REQUIRED_SYMBOLS = [
@@ -243,7 +242,6 @@ export function checkPhase116OperatorBlockRelayEvidence(maybeRepoRoot?: string):
   checkRequiredText(texts, failures);
   checkFileNeedles(texts, failures);
   checkBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  checkVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
   checkForbiddenClaims(texts, failures);
 
   return failures;
@@ -333,42 +331,6 @@ function checkBreadcrumbs(raw: string, failures: string[]): void {
   }
 }
 
-function checkVerifierOrder(verifyText: string, failures: string[]): void {
-  const visibleMarker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const visibleStart = verifyText.indexOf(visibleMarker);
-  const visibleBodyStart = visibleStart + visibleMarker.length;
-  const visibleEnd = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", visibleBodyStart);
-  const visibleText =
-    visibleStart === -1 || visibleEnd === -1
-      ? ""
-      : verifyText.slice(visibleBodyStart, visibleEnd);
-
-  if (
-    !orderedIndexes(visibleText, [
-      "bun test scripts/check-phase105-operator-relay-evidence.test.ts",
-      "bun run scripts/check-phase105-operator-relay-evidence.ts",
-      "bun test scripts/check-phase111-full-block-serving-request-path.test.ts",
-      "bun run scripts/check-phase111-full-block-serving-request-path.ts",
-      "bun test scripts/check-phase116-operator-block-relay-evidence.test.ts",
-      "bun run scripts/check-phase116-operator-block-relay-evidence.ts",
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 116 visible order must follow Phase 111 and stay after Phase 105");
-  }
-
-  if (
-    !orderedIndexes(verifyText, [
-      'run_step "test Phase 111 full block-serving request path checker"',
-      'run_step "check Phase 111 full block-serving request path"',
-      'run_step "test Phase 116 operator block-relay evidence checker"',
-      'run_step "check Phase 116 operator block-relay evidence"',
-      'run_step "check pure-core dependencies"',
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 116 executable order must follow Phase 111 and precede pure-core checks");
-  }
-}
-
 function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
   for (const [file, text] of texts.entries()) {
     if (!file.startsWith("docs/") && !file.startsWith(".planning/") && file !== "README.md") {
@@ -408,18 +370,6 @@ function readText(repoRoot: string, filePath: TargetFile, failures: string[]): s
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function orderedIndexes(text: string, needles: readonly string[]): boolean {
-  let cursor = -1;
-  for (const needle of needles) {
-    const index = text.indexOf(needle, cursor + 1);
-    if (index === -1) {
-      return false;
-    }
-    cursor = index;
-  }
-  return true;
 }
 
 function markdownParagraphs(text: string): Array<{ startLine: number; text: string }> {

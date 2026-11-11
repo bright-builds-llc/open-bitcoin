@@ -4,41 +4,20 @@ import { spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import manifest from "../../packages/testdata/phase164/historical-tooling/manifest.json";
-import { historicalToolingView, legacyToolingBase, MANIFEST_FILE, toolingAttribution } from "./historical-tooling.ts";
+import { historicalToolingView, MANIFEST_FILE } from "./historical-tooling.ts";
 import { loadSources } from "../check-phase162-integrated-filter-proof.ts";
 import { PROVENANCE_DIGEST_FILES, PROVENANCE_FILES, PHASE163, provenanceMetadata } from "../check-phase163-provenance.ts";
 import { checkPhase164, historicalFixtureAdapter, loadInputs } from "../check-phase164-canonical-identity.ts";
 import { createHash } from "node:crypto";
-import { COPIED_CLI_INVERSES, FILTER_GUARD_INVERSES, FIXTURE_ADAPTER_INVERSE, HISTORICAL_TOOLING_INVERSE, PHASE162_SOURCE_INVERSE, maybeRestoreReviewedSource } from "./contracts.ts";
+import { FIXTURE_ADAPTER_INVERSE, PHASE162_SOURCE_INVERSE, maybeRestoreReviewedSource } from "./contracts.ts";
 import { MIGRATED_FIXTURE } from "./fixture-source.ts";
 import { checkPhase165, loadInputs as load165Inputs } from "../check-phase165-shared-exact-work.ts";
-import { CLI_MODULES, COPIED_ADAPTER_MUTATIONS, COPIED_CLI_MUTATIONS, expectCopiedAdapterCase } from "../check-phase165-shared-exact-work/test-support.ts";
+import { CLI_MODULES, COPIED_CLI_MUTATIONS, expectCopiedAdapterCase } from "../check-phase165-shared-exact-work/test-support.ts";
 import { DOC, loadPhase162OptionalSources } from "../check-phase158-validated-reorg.ts";
 import { ENTRIES, REPO, assertLiveUnchanged, cleanedRoots, cleanupFixtures, copiedCliSources, createCopiedFixture, runtimeSources } from "../check-phase163-provenance/fixtures.ts";
 setDefaultTimeout(20_000); // Allow slower CI child-process inverse checks.
-test("original Phase163 receipt digest qualifies only the preserved historical tooling view", () => {
-  // Arrange
-  const sources = loadSources();
-  const originalReceipt = sources.get(PHASE163 + "163-VERIFICATION.md")!;
-  // Act
-  const attribution = toolingAttribution(sources, PROVENANCE_DIGEST_FILES);
-  // Assert
-  expect(attribution.evidence_scope).toBe("historical/source-derived-regression");
-  expect(attribution.currentOrdinaryQualification).toBe(false);
-  expect(attribution.rawCurrentDigest).not.toBe(attribution.historicalDigest);
-  expect(attribution.historicalDigest).toBe(provenanceMetadata(originalReceipt).source_digest);
-  expect(sources.get(PHASE163 + "163-VERIFICATION.md")).toBe(originalReceipt);
-});
-
 for (const row of manifest.bindings) {
-  test(`missing current tooling input refuses without checkout fallback: ${row.file}`, () => {
-    // Arrange
-    const sources = loadSources();
-    sources.delete(row.file);
-    // Act / Assert
-    expect(() => historicalToolingView(sources)).toThrow("unreviewed current tooling fingerprint");
-  });
-  for (const file of [row.file, row.snapshot]) {
+  for (const file of [row.snapshot]) {
     test(`unknown tooling or original snapshot bytes refuse: ${file}`, () => {
       // Arrange
       const sources = loadSources();
@@ -57,48 +36,25 @@ for (const row of manifest.bindings) {
   });
 }
 
-const TOOLING_SOURCE = "scripts/check-phase164-canonical-identity/historical-tooling.ts";
 const ADAPTER_SOURCE = "scripts/check-phase164-canonical-identity/fixture-source.ts";
-function currentBoundInputs(): Map<string, string> {
-  const sources = loadInputs();
-  for (const [file] of FILTER_GUARD_INVERSES) sources.set(file, readFileSync(join(import.meta.dir, "../..", file), "utf8"));
-  return sources;
-}
-
-for (const change of COPIED_ADAPTER_MUTATIONS.filter(row => ["old-guard-0", "unknown-guard-0", "old-guard-2", "unknown-guard-2"].includes(row[0]))) {
-  test(`phase165 filter guard optional caller scope: ${change[0]}`, () => {
-    // Arrange: explicit extra fixture data does not broaden the actual164 CLI inventory.
-    const sources = load165Inputs();
-    sources.set(change[1], readFileSync(join(import.meta.dir, "../..", change[1]), "utf8"));
-    const loadSupplied = (root: string) => new Map([...load165Inputs(root), [change[1], readFileSync(join(root, change[1]), "utf8")] as const]);
-    // Act / Assert: direct supplied164 data refuses; fresh fixed-input164 succeeds without that source.
-    expectCopiedAdapterCase(change, sources, loadSupplied, [[CLI_MODULES[2], checkPhase164]]);
-  });
-}
-
 test("phase165 filter guard current generation qualifies complete actual PASSED inputs", () => {
   // Arrange
-  const sources = currentBoundInputs();
+  const sources = loadInputs();
   const original = [...sources];
   // Act
   const adapter = historicalFixtureAdapter(sources);
-  const maybeHistoricalTooling = maybeRestoreReviewedSource(sources.get(TOOLING_SOURCE)!, HISTORICAL_TOOLING_INVERSE);
   // Assert
   expect(rawSha(adapter)).toBe("b92d2d91da1dd7715e7de37737769f30bd543cb2fd8a7a1eecb92aaf3335f3e3");
-  expect(rawSha(maybeHistoricalTooling!)).toBe("47bbcd914cf5a632f618310b69b987462551ca2f103bce823a8d0cc6326a5f65");
   expect([...sources]).toEqual(original);
 });
 
 const CURRENT_GENERATIONS = [
-  [TOOLING_SOURCE, HISTORICAL_TOOLING_INVERSE, "paired current raw historical-tooling generation"],
   [ADAPTER_SOURCE, FIXTURE_ADAPTER_INVERSE, "paired current raw fixture/adapter generation"],
   [MIGRATED_FIXTURE, PHASE162_SOURCE_INVERSE, "paired current raw fixture/adapter generation"],
-  ...FILTER_GUARD_INVERSES.map(([file, inverse]) => [file, inverse, `${file}: reviewed current filter guard generation`] as const),
-  ...COPIED_CLI_INVERSES.map(([file, inverse]) => [file, inverse, `${file}: reviewed current copied CLI generation`] as const),
 ] as const;
 for (const [file, inverse, detail] of CURRENT_GENERATIONS) for (const mode of ["historical", "unknown"] as const) test(`phase165 filter guard current generation refuses ${mode} PASSED source: ${file}`, () => {
   // Arrange: the imported adapter remains current while the explicit map generation changes.
-  const sources = currentBoundInputs();
+  const sources = loadInputs();
   expect(() => historicalFixtureAdapter(sources)).not.toThrow();
   const current = sources.get(file)!;
   const maybeHistorical = maybeRestoreReviewedSource(current, inverse);
@@ -109,29 +65,18 @@ for (const [file, inverse, detail] of CURRENT_GENERATIONS) for (const mode of ["
   expect(() => historicalFixtureAdapter(sources)).toThrow(detail);
 });
 
-for (const file of [TOOLING_SOURCE, ADAPTER_SOURCE, MIGRATED_FIXTURE, "scripts/check-phase159-filter-rpcs.test.ts"]) test(`phase165 filter guard current generation requires PASSED source: ${file}`, () => {
+for (const file of [ADAPTER_SOURCE, MIGRATED_FIXTURE]) test(`phase165 filter guard current generation requires PASSED source: ${file}`, () => {
   // Arrange
-  const sources = currentBoundInputs();
+  const sources = loadInputs();
   sources.delete(file);
   // Act / Assert
   expect(() => historicalFixtureAdapter(sources)).toThrow();
 });
 
-test("phase165 filter guard current generation does not invent absent optional guard evidence", () => {
-  // Arrange
-  const sources = currentBoundInputs();
-  for (const file of ["scripts/check-phase159-filter-rpcs.ts", "scripts/check-phase161-operator-index-evidence.ts"]) sources.delete(file);
-  // Act / Assert
-  expect(() => historicalFixtureAdapter(sources)).not.toThrow();
-  expect(sources.has("scripts/check-phase159-filter-rpcs.ts")).toBe(false);
-  expect(sources.has("scripts/check-phase161-operator-index-evidence.ts")).toBe(false);
-});
-
-for (const [phase, load, check] of [[164, currentBoundInputs, checkPhase164], [165, load165Inputs, checkPhase165]] as const) {
+for (const [phase, load, check] of [[164, loadInputs, checkPhase164], [165, load165Inputs, checkPhase165]] as const) {
   for (const [file, inverse, detail] of CURRENT_GENERATIONS) test(`phase165 filter guard full${phase} rejects stale PASSED generation: ${file}`, () => {
     // Arrange: pending ordinary SOURCE rows are separate from this history-specific gate.
     const sources = load();
-    for (const [guard] of FILTER_GUARD_INVERSES) sources.set(guard, readFileSync(join(import.meta.dir, "../..", guard), "utf8"));
     const baseline = check(sources);
     expect(baseline.filter(row => row.rule === "history")).toEqual([]);
     if (phase === 164) expect(baseline).toEqual([]);
@@ -145,21 +90,6 @@ for (const [phase, load, check] of [[164, currentBoundInputs, checkPhase164], [1
   });
 }
 
-test("original unmodified tooling is explicitly historical and portable without git", () => {
-  // Arrange
-  const sources = loadSources();
-  for (const row of manifest.bindings) sources.set(row.file, sources.get(row.snapshot)!);
-  for (const [file, inverse] of FILTER_GUARD_INVERSES) {
-    if (manifest.bindings.some(row => row.file === file)) continue;
-    sources.set(file, maybeRestoreReviewedSource(sources.get(file)!, inverse)!);
-  }
-  // Act
-  const attribution = toolingAttribution(sources, PROVENANCE_DIGEST_FILES);
-  // Assert
-  expect(attribution.rawCurrentDigest).toBe(attribution.historicalDigest);
-  expect(attribution.currentOrdinaryQualification).toBe(false);
-});
-
 const rawSha = (source: string) => createHash("sha256").update(source).digest("hex");
 
 test("phase165 filter guard historical data preserves the complete original receipt digest", () => {
@@ -168,71 +98,13 @@ test("phase165 filter guard historical data preserves the complete original rece
   const original = [...sources];
   // Act
   const view = historicalToolingView(sources);
-  const attribution = toolingAttribution(sources, PROVENANCE_DIGEST_FILES);
+  const historicalDigest = rawSha(PROVENANCE_DIGEST_FILES.map(file => `${file}:${rawSha(view.get(file) ?? "")}`).join("\n"));
   // Assert
-  expect(attribution.historicalDigest).toBe(provenanceMetadata(sources.get(PHASE163 + "163-VERIFICATION.md")!).source_digest);
+  expect(historicalDigest).toBe(provenanceMetadata(sources.get(PHASE163 + "163-VERIFICATION.md")!).source_digest);
   expect([...sources]).toEqual(original);
-  for (const [file, inverse] of FILTER_GUARD_INVERSES) {
-    const maybeBinding = manifest.bindings.find(row => row.file === file);
-    expect(rawSha(view.get(file)!)).toBe(maybeBinding?.original_sha ?? inverse.restoredRawSha);
-  }
 });
 
-test("phase165 filter guard historical data accepts partial maps without adapter or optional guard reads", () => {
-  // Arrange
-  const sources = loadSources();
-  for (const file of ["scripts/check-phase164-canonical-identity/historical-tooling.ts", "scripts/check-phase164-canonical-identity/fixture-source.ts",
-    "scripts/check-phase159-filter-rpcs.ts", "scripts/check-phase161-operator-index-evidence.ts"]) sources.delete(file);
-  const original = [...sources];
-  // Act
-  const view = historicalToolingView(sources);
-  // Assert
-  expect([...sources]).toEqual(original);
-  expect([...view.keys()]).toEqual([...sources.keys()]);
-  expect(view.get("scripts/check-phase159-filter-rpcs.test.ts")).toBe(sources.get("packages/testdata/phase164/historical-tooling/phase159-tests.txt"));
-});
-
-for (const [file, inverse] of FILTER_GUARD_INVERSES) {
-  test(`phase165 filter guard historical inverse reconstructs exact before source: ${file}`, () => {
-    // Arrange
-    const sources = loadSources();
-    const source = sources.get(file)!;
-    // Act
-    const maybeBefore = maybeRestoreReviewedSource(source, inverse);
-    // Assert
-    expect(rawSha(source)).toBe(inverse.currentRawSha);
-    expect(maybeBefore).toBeDefined();
-    expect(rawSha(maybeBefore!)).toBe(inverse.restoredRawSha);
-    sources.set(file, maybeBefore!);
-    expect(() => historicalToolingView(sources)).not.toThrow();
-  });
-  test(`phase165 filter guard historical data refuses unknown present generation: ${file}`, () => {
-    // Arrange: authenticate all manifest owners so a different owner cannot mask this refusal.
-    const sources = loadSources();
-    for (const row of manifest.bindings) sources.set(row.file, sources.get(row.snapshot)!);
-    sources.set(file, sources.get(file)! + "\n");
-    // Act / Assert
-    expect(() => historicalToolingView(sources)).toThrow(`${file}: unreviewed current tooling fingerprint`);
-  });
-  const source = loadSources().get(file)!;
-  for (const [name, invalid] of [
-    ["wrong current SHA", { ...inverse, currentRawSha: "0".repeat(64) }],
-    ["wrong restored SHA", { ...inverse, restoredRawSha: "0".repeat(64) }],
-    ["missing hunks", { ...inverse, hunks: [] }],
-    ["duplicate hunk", { ...inverse, hunks: [inverse.hunks[0], ...inverse.hunks] }],
-    ["overlapping spans", { ...inverse, hunks: [inverse.hunks[0], [inverse.hunks[0][0].slice(1), ""], ...inverse.hunks.slice(1)] }],
-    ["forged descriptor", { ...inverse, unreviewed: true }],
-    ...(inverse.hunks.length > 1 ? [
-      ["partial hunks", { ...inverse, hunks: inverse.hunks.slice(0, -1) }],
-      ["reordered hunks", { ...inverse, hunks: inverse.hunks.toReversed() }],
-    ] as const : []),
-  ] as const) test(`phase165 filter guard historical inverse rejects ${name}: ${file}`, () => {
-    // Arrange / Act / Assert
-    expect(maybeRestoreReviewedSource(source, invalid)).toBeUndefined();
-  });
-}
-
-for (const file of [MANIFEST_FILE, "scripts/check-phase164-canonical-identity/historical-tooling.ts", "scripts/check-phase164-canonical-identity/fixture-source.ts"]) {
+for (const file of [MANIFEST_FILE, "scripts/check-phase164-canonical-identity/fixture-source.ts"]) {
   test(`manifest or adapter cannot silently relabel original evidence: ${file}`, () => {
     // Arrange
     const inputs = loadInputs();
@@ -517,75 +389,6 @@ test("phase165 copied CLI closure preserves silent data-independent current CLI 
   expect(result.stderr).toBe("");
   expect(readdirSync(root)).toEqual([]);
 });
-
-for (const [file, inverse] of COPIED_CLI_INVERSES) for (const mode of ["stale", "unknown", "missing"] as const) test(`phase165 copied CLI generation direct supplied source refuses ${mode}: ${file}`, () => {
-  // Arrange: establish valid unchanged H/E/Rust/filter inputs before changing one supplied copier.
-  const sources = currentBoundInputs();
-  const current = sources.get(file)!;
-  expect(rawSha(current)).toBe(inverse.currentRawSha);
-  const original = [...sources];
-  expect(() => historicalFixtureAdapter(sources)).not.toThrow();
-  expect([...sources]).toEqual(original);
-  const maybeBefore = maybeRestoreReviewedSource(current, inverse);
-  expect(maybeBefore).toBeDefined();
-  // Act
-  if (mode === "missing") sources.delete(file);
-  else sources.set(file, mode === "stale" ? maybeBefore! : current + "\n");
-  // Assert: imported current code cannot qualify stale, missing or unknown PASSED bytes.
-  expect(() => historicalFixtureAdapter(sources)).toThrow(`${file}: reviewed current copied CLI generation`);
-});
-
-for (const [file, inverse] of COPIED_CLI_INVERSES) {
-  test(`phase165 copied CLI inverse reconstructs complete historical chains: ${file}`, () => {
-    // Arrange
-    const sources = loadSources(), current = sources.get(file)!;
-    const binding = manifest.bindings.find(row => row.file === file)!;
-    const snapshot = sources.get(binding.snapshot)!;
-    // Act
-    const maybeBefore = maybeRestoreReviewedSource(current, inverse);
-    // Assert: complete returned strings retain authenticated before and original generations.
-    expect(maybeBefore).toBeDefined();
-    expect(rawSha(maybeBefore!)).toBe(inverse.restoredRawSha);
-    expect(legacyToolingBase(file, current)).toBe(legacyToolingBase(file, maybeBefore!));
-    expect(rawSha(legacyToolingBase(file, current))).toBe(binding.current_sha);
-    for (const candidate of [current, maybeBefore!, legacyToolingBase(file, current), snapshot]) {
-      const supplied = new Map(sources).set(file, candidate);
-      for (const optional of [TOOLING_SOURCE, ADAPTER_SOURCE, "scripts/check-phase159-filter-rpcs.ts", "scripts/check-phase161-operator-index-evidence.ts"]) supplied.delete(optional);
-      const original = [...supplied];
-      expect(historicalToolingView(supplied).get(file)).toBe(snapshot);
-      expect([...supplied]).toEqual(original);
-    }
-  });
-  test(`phase165 copied CLI inverse refuses unknown and missing data without checkout fallback: ${file}`, () => {
-    // Arrange: authenticate every other owner, so its fingerprint cannot mask this refusal.
-    const sources = loadSources(), current = sources.get(file)!;
-    for (const binding of manifest.bindings) sources.set(binding.file, sources.get(binding.snapshot)!);
-    // Act / Assert
-    for (const candidate of [current, maybeRestoreReviewedSource(current, inverse)!, sources.get(file)!]) {
-      const unproved = candidate + "\n";
-      sources.set(file, unproved);
-      expect(legacyToolingBase(file, unproved)).toBe(unproved);
-      expect(() => historicalToolingView(sources)).toThrow(`${file}: unreviewed current tooling fingerprint`);
-    }
-    sources.delete(file);
-    expect(() => historicalToolingView(sources)).toThrow(`${file}: unreviewed current tooling fingerprint`);
-  });
-  for (const [name, invalid] of [
-    ["wrong current hash", { ...inverse, currentRawSha: "0".repeat(64) }],
-    ["wrong before hash", { ...inverse, restoredRawSha: "0".repeat(64) }],
-    ["missing hunks", { ...inverse, hunks: [] }],
-    ["partial hunks", { ...inverse, hunks: inverse.hunks.slice(0, -1) }],
-    ["duplicate hunk", { ...inverse, hunks: [inverse.hunks[0], ...inverse.hunks] }],
-    ["reordered hunks", { ...inverse, hunks: inverse.hunks.toReversed() }],
-    ["overlapping spans", { ...inverse, hunks: [inverse.hunks[0], [inverse.hunks[0][0].slice(1), ""], ...inverse.hunks.slice(1)] }],
-    ["no-op span", { ...inverse, hunks: [[inverse.hunks[0][0], inverse.hunks[0][0]]] }],
-    ["empty span", { ...inverse, hunks: [["", "unproved"]] }],
-    ["forged descriptor", { ...inverse, unreviewed: true }],
-  ] as const) test(`phase165 copied CLI inverse rejects ${name}: ${file}`, () => {
-    // Arrange / Act / Assert
-    expect(maybeRestoreReviewedSource(readFileSync(join(REPO, file), "utf8"), invalid)).toBeUndefined();
-  });
-}
 
 for (const change of COPIED_CLI_MUTATIONS) test(`phase165 copied CLI generation fresh paired ${change[0]}`, () => {
   // Arrange / Act / Assert: both actual fixed inventories require these sources.

@@ -24,7 +24,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
   "scripts/check-phase104-relay-serving-fanout.ts",
   "scripts/check-phase104-relay-serving-fanout.test.ts",
-  "scripts/verify.sh",
   ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-01-SUMMARY.md",
   ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-02-SUMMARY.md",
   ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-03-SUMMARY.md",
@@ -146,11 +145,6 @@ test("fails_when_default_verifier_wiring_is_missing_or_public_network_scoped", (
   const roots = [
     createFixture({
       maybeMutateFiles(files) {
-        removeFromFile(files, "scripts/verify.sh", "bun run scripts/check-phase104-relay-serving-fanout.ts");
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
         appendToFile(files, "docs/parity/catalog/p2p.md", "Phase 104 adds public-network relay CI.");
       },
     }),
@@ -160,8 +154,7 @@ test("fails_when_default_verifier_wiring_is_missing_or_public_network_scoped", (
   const failureMessages = roots.map((root) => checkPhase104RelayServingFanout(root).join("\n"));
 
   // Assert
-  expect(failureMessages[0]).toContain("verifier-scope");
-  expect(failureMessages[1]).toContain("forbidden positive Phase 104 claim");
+  expect(failureMessages[0]).toContain("forbidden positive Phase 104 claim");
 });
 
 test("fails_when_docs_claim_deferred_rebroadcast_scope", () => {

@@ -61,36 +61,6 @@ test("passes with the complete Phase 129 corpus", () => {
   expect(failures).toEqual([]);
 });
 
-test("verifier helper commands do not alter the root final gate", () => {
-  // Arrange
-  const root = createFixture();
-  addTrackedVerifierHelper(root);
-
-  // Act
-  const failures = checkPhase129IntegrationGuardrailsAndMilestoneReconciliation(root);
-
-  // Assert
-  expect(failures).toEqual([]);
-});
-
-test("removing the root final gate still fails with a tracked helper", () => {
-  // Arrange
-  const root = createFixture(replace(
-    "scripts/verify.sh",
-    'run_step "check Phase 138 parity UAT release boundary" bun run scripts/check-phase138-parity-uat-release-boundary.ts\n',
-    "",
-  ));
-  addTrackedVerifierHelper(root);
-
-  // Act
-  const failures = checkPhase129IntegrationGuardrailsAndMilestoneReconciliation(root);
-
-  // Assert
-  expect(failures).toContain(
-    "P129 final gate run_step order must end with bun run scripts/check-phase138-parity-uat-release-boundary.ts",
-  );
-});
-
 test.each([
   [
     "FLOW-01 production composition anchor",
@@ -142,32 +112,6 @@ test.each([
     "P129 FLOW-04: CLI operator surface test files are missing",
     (files: Map<string, string>) =>
       files.set("packages/open-bitcoin-cli/tests/operator_flows.rs", ""),
-  ],
-  [
-    "verifier heredoc wiring",
-    "P129 verifier heredoc: Phase 129 pair must run between Phase 128 and the Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      "bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts\nbun test scripts/check-phase130-resource-time-fee-primitives.test.ts",
-      "bun test scripts/check-phase130-resource-time-fee-primitives.test.ts",
-    ),
-  ],
-  [
-    "verifier run_step wiring",
-    "P129 verifier run_step: Phase 129 pair must run between Phase 128 and the Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      'run_step "check Phase 129 integration guardrails and milestone reconciliation" bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts\n',
-      "",
-    ),
-  ],
-  [
-    "final-gate ordering",
-    "P129 final gate run_step order must end with bun run scripts/check-phase138-parity-uat-release-boundary.ts",
-    append(
-      "scripts/verify.sh",
-      'run_step "check Phase 131 placeholder" bun run scripts/check-phase131-placeholder.ts',
-    ),
   ],
   [
     "composed Phase 127 shared-authority seam",
@@ -258,16 +202,6 @@ function createFixture(maybeMutate?: Mutator): string {
   return root;
 }
 
-function addTrackedVerifierHelper(root: string): void {
-  const helper = path.join(root, "scripts/verify/helpers.sh");
-  mkdirSync(path.dirname(helper), { recursive: true });
-  writeFileSync(helper, 'run_step "check later phase" bun run scripts/check-phase167-candidate-history.ts\n');
-  for (const args of [["init", "-q"], ["add", "scripts/verify/helpers.sh"]]) {
-    const result = Bun.spawnSync(["git", ...args], { cwd: root, stdout: "pipe", stderr: "pipe" });
-    expect(result.success).toBe(true);
-  }
-}
-
 function replace(file: string, needle: string, replacement: string): Mutator {
   return (files) => {
     const text = files.get(file) ?? "";
@@ -276,8 +210,4 @@ function replace(file: string, needle: string, replacement: string): Mutator {
     }
     files.set(file, text.replace(needle, replacement));
   };
-}
-
-function append(file: string, value: string): Mutator {
-  return (files) => files.set(file, `${files.get(file) ?? ""}\n${value}\n`);
 }

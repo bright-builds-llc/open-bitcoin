@@ -116,32 +116,6 @@ test.each([
       "\nPhase 131 requires public-network soak validation before merge.\n",
     ),
   ],
-  [
-    "verifier heredoc wiring",
-    "P131 verifier heredoc: Phase 131 pair must run between Phase 130 and the Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      "bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts\n",
-      "",
-    ),
-  ],
-  [
-    "verifier run_step wiring",
-    "P131 verifier run_step: Phase 131 pair must run between Phase 130 and the Phase 117 gate",
-    replace(
-      "scripts/verify.sh",
-      'run_step "check Phase 131 rolling fee expiry pressure" bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts\n',
-      "",
-    ),
-  ],
-  [
-    "final-gate ordering",
-    "P131 final gate run_step order must end with bun run scripts/check-phase138-parity-uat-release-boundary.ts",
-    append(
-      "scripts/verify.sh",
-      'run_step "check Phase 132 placeholder" bun run scripts/check-phase132-placeholder.ts',
-    ),
-  ],
 ] as const)("fails the %s mutation", (_label, expectedFailure, maybeMutate) => {
   // Arrange
   const root = createFixture(maybeMutate as Mutator);

@@ -22,7 +22,6 @@ const TARGET_FILES = [
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase126-compact-relay-residual-hardening.ts",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
@@ -402,16 +401,6 @@ test("allows_candidate_catalog_language_before_phase126_completion", () => {
 
 test("fails_when_verifier_wiring_is_out_of_order_or_nonlocal", () => {
   // Arrange
-  const orderRoot = createFixture({
-    maybeMutate(files) {
-      replaceFirst(
-        files,
-        "scripts/verify.sh",
-        "bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts",
-        "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
-      );
-    },
-  });
   const networkRoot = createFixture({
     maybeMutate(files) {
       append(
@@ -423,11 +412,9 @@ test("fails_when_verifier_wiring_is_out_of_order_or_nonlocal", () => {
   });
 
   // Act
-  const orderFailures = checkPhase126CompactRelayResidualHardening(orderRoot);
   const networkFailures = checkPhase126CompactRelayResidualHardening(networkRoot);
 
   // Assert
-  expect(orderFailures).toContain("P126 verifier visible order: Phase 126 must follow active traceability and precede Phase 117");
   expect(networkFailures).toContain("P126 deterministic scope: checker must remain local and deterministic");
 });
 

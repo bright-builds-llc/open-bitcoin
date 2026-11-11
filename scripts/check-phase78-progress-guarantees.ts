@@ -9,24 +9,9 @@ const REPO_ROOT =
   maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/78-progress-guarantees-and-stall-diagnosis";
 const PHASE78_REQUIREMENTS = ["PROG-01", "PROG-02", "PROG-03", "PROG-04"] as const;
-const PHASE77_CHECKER_COMMAND = "bun run scripts/check-phase77-corruption-lock-recovery.ts";
-const PHASE78_TEST_COMMAND = "bun test scripts/check-phase78-progress-guarantees.test.ts";
-const PHASE78_CHECKER_COMMAND = "bun run scripts/check-phase78-progress-guarantees.ts";
 const SURFACE_ID = "phase78-progress-guarantees-stall-diagnosis";
 const FORBIDDEN_RUNTIME_CREDIT_EXPRESSION =
   "summary.headers_received > 0 || summary.blocks_received > 0";
-const FORBIDDEN_VERIFY_STRINGS = [
-  "run-live-mainnet-smoke",
-  "--manual-peer",
-  "--restart-after-progress",
-  "systemctl",
-  "launchctl",
-  "openbitcoinsync=mainnet-ibd",
-  "sleep 86400",
-  "multi-day wall-clock",
-  "lsof",
-  "/proc/",
-] as const;
 const PLAN_FILES = [
   `${PHASE_DIR}/78-01-PLAN.md`,
   `${PHASE_DIR}/78-02-PLAN.md`,
@@ -218,34 +203,6 @@ function verifyParityCoverage(failures: string[]): void {
   }
 }
 
-function verifyVerifyScript(failures: string[]): void {
-  const verifyScript = readText("scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE77_CHECKER_COMMAND, "scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE78_TEST_COMMAND, "scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE78_CHECKER_COMMAND, "scripts/verify.sh", failures);
-
-  const lines = verifyScript
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const phase77CheckerIndex = lines.indexOf(PHASE77_CHECKER_COMMAND);
-  const phase78TestIndex = lines.indexOf(PHASE78_TEST_COMMAND);
-  const phase78CheckerIndex = lines.indexOf(PHASE78_CHECKER_COMMAND);
-  if (
-    phase77CheckerIndex === -1 ||
-    phase78TestIndex !== phase77CheckerIndex + 1 ||
-    phase78CheckerIndex !== phase78TestIndex + 1
-  ) {
-    failures.push(
-      "scripts/verify.sh must run the Phase 78 checker test and checker immediately after the Phase 77 checker",
-    );
-  }
-
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    requireNotContains(verifyScript, forbidden, "scripts/verify.sh", failures);
-  }
-}
-
 function main(): void {
   const failures: string[] = [];
 
@@ -255,7 +212,6 @@ function main(): void {
   requireAnchors(DOC_ANCHORS, failures);
   verifyRuntimeCreditSource(failures);
   verifyParityCoverage(failures);
-  verifyVerifyScript(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {

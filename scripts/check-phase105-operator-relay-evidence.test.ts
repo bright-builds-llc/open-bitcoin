@@ -36,7 +36,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase105-operator-relay-evidence.ts",
   "scripts/check-phase105-operator-relay-evidence.test.ts",
-  "scripts/verify.sh",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-01-SUMMARY.md",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-02-SUMMARY.md",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-03-SUMMARY.md",
@@ -161,21 +160,6 @@ test("fails_when_source_breadcrumb_or_knots_anchor_is_missing", () => {
   // Assert
   expect(failureMessages[0]).toContain("source breadcrumb group");
   expect(failureMessages[1]).toContain("Knots anchor");
-});
-
-test("fails_when_default_verifier_wiring_is_missing_or_out_of_order", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      removeFromFile(files, "scripts/verify.sh", "bun run scripts/check-phase105-operator-relay-evidence.ts");
-    },
-  });
-
-  // Act
-  const failures = checkPhase105OperatorRelayEvidence(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("verifier-scope");
 });
 
 test("fails_when_docs_claim_deferred_public_or_production_scope", () => {

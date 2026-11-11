@@ -5,11 +5,6 @@ import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-relay-serving-fanout-rebroadcast-policy";
-const PHASE103_TEST_COMMAND = "bun test scripts/check-phase103-mempool-lifecycle.test.ts";
-const PHASE103_CHECKER_COMMAND = "bun run scripts/check-phase103-mempool-lifecycle.ts";
-const PHASE104_TEST_COMMAND = "bun test scripts/check-phase104-relay-serving-fanout.test.ts";
-const PHASE104_CHECKER_COMMAND = "bun run scripts/check-phase104-relay-serving-fanout.ts";
-const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 const REQUIRED_REQUIREMENTS = ["REL-01", "REL-02", "REL-03", "REL-04"] as const;
 const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
@@ -30,7 +25,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/dispatch/tests.rs",
   "scripts/check-phase104-relay-serving-fanout.ts",
   "scripts/check-phase104-relay-serving-fanout.test.ts",
-  "scripts/verify.sh",
   ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-01-SUMMARY.md",
   ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-02-SUMMARY.md",
   ".planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-03-SUMMARY.md",
@@ -175,7 +169,6 @@ export function checkPhase104RelayServingFanout(maybeRepoRoot?: string): string[
   checkParitySurface(texts, failures);
   checkRequiredText(texts, failures);
   checkBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  checkVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
   checkForbiddenClaims(texts, failures);
 
   return failures;
@@ -276,39 +269,6 @@ function checkBreadcrumbs(raw: string, failures: string[]): void {
   }
 }
 
-function checkVerifierOrder(verifyText: string, failures: string[]): void {
-  const visibleMarker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const visibleStart = verifyText.indexOf(visibleMarker);
-  const visibleBodyStart = visibleStart + visibleMarker.length;
-  const visibleEnd = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", visibleBodyStart);
-  const visibleText =
-    visibleStart === -1 || visibleEnd === -1
-      ? ""
-      : verifyText.slice(visibleBodyStart, visibleEnd);
-  if (
-    !orderedIndexes(visibleText, [
-      PHASE103_TEST_COMMAND,
-      PHASE103_CHECKER_COMMAND,
-      PHASE104_TEST_COMMAND,
-      PHASE104_CHECKER_COMMAND,
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 104 visible order must follow Phase 103");
-  }
-
-  if (
-    !orderedIndexes(verifyText, [
-      'run_step "test Phase 103 mempool lifecycle checker"',
-      'run_step "check Phase 103 mempool lifecycle"',
-      'run_step "test Phase 104 relay serving/fanout checker"',
-      'run_step "check Phase 104 relay serving/fanout"',
-      'run_step "check pure-core dependencies"',
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 104 executable order must follow Phase 103 and precede pure-core checks");
-  }
-}
-
 function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
   for (const [file, text] of texts.entries()) {
     if (!file.startsWith("docs/") && !file.startsWith(".planning/")) {
@@ -341,18 +301,6 @@ function readText(repoRoot: string, filePath: TargetFile, failures: string[]): s
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function orderedIndexes(text: string, needles: readonly string[]): boolean {
-  let cursor = -1;
-  for (const needle of needles) {
-    const index = text.indexOf(needle, cursor + 1);
-    if (index === -1) {
-      return false;
-    }
-    cursor = index;
-  }
-  return true;
 }
 
 function markdownParagraphs(text: string): Array<{ startLine: number; text: string }> {

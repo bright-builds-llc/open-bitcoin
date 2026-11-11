@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -93,6 +93,27 @@ function registeredStepLabels(): string[] {
   return [...verifyScript.matchAll(/^\s*run_step "([^"]+)"/gm)].map((match) => match[1]);
 }
 
+// Checker scripts that are deliberately not gate steps: a library module, the
+// push hook itself, and two tools run by hand.
+const CHECKERS_OUTSIDE_THE_GATE = new Set([
+  "scripts/check-active-milestone-verification-traceability.ts",
+  "scripts/check-panic-sites.ts",
+  "scripts/check-phase163-provenance.ts",
+  "scripts/check-push-verification.ts",
+]);
+
+function checkerScripts(): string[] {
+  return readdirSync(path.join(REPO_ROOT, "scripts"))
+    .filter((name) => name.startsWith("check-") && name.endsWith(".ts") && !name.endsWith(".test.ts"))
+    .map((name) => `scripts/${name}`)
+    .sort();
+}
+
+function gateStepCommands(): string[] {
+  const verifyScript = readFileSync(path.join(REPO_ROOT, "scripts/verify.sh"), "utf8");
+  return verifyScript.split("\n").map((line) => line.trimStart()).filter((line) => line.startsWith("run_step "));
+}
+
 function ciMatrixShards(): string[] {
   const workflow = readFileSync(path.join(REPO_ROOT, ".github/workflows/ci.yml"), "utf8");
   const maybeMatrix = workflow.match(/^ {8}shard:\n((?: {10}- \S+\n)+)/m);
@@ -134,6 +155,18 @@ test("plan_assigns_every_full_contract_step_to_one_known_shard", () => {
   // Assert
   expect(steps.map((step) => step.label)).toEqual(registered);
   expect(steps.filter((step) => !shards.has(step.shard))).toEqual([]);
+});
+
+test("every_checker_script_runs_as_exactly_one_gate_step", () => {
+  // Arrange
+  const steps = gateStepCommands();
+  const expected = checkerScripts().filter((script) => !CHECKERS_OUTSIDE_THE_GATE.has(script));
+
+  // Act
+  const misregistered = expected.filter((script) => steps.filter((step) => step.includes(` bun run ${script}`)).length !== 1);
+
+  // Assert
+  expect(misregistered).toEqual([]);
 });
 
 test("every_shard_owns_at_least_one_step", () => {

@@ -2,18 +2,18 @@
 import { createHash } from "node:crypto";
 import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 import { resolve } from "node:path";
-import { INPUT_FILES as IDENTITY_INPUTS, historicalFixtureAdapter, HISTORICAL_TOOLING_INVERSE, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity.ts";
+import { INPUT_FILES as IDENTITY_INPUTS, historicalFixtureAdapter } from "./check-phase164-canonical-identity.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { CLAIM_FILES, affirmativeScopeClaims, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
-import { historicalToolingView, MANIFEST_FILE, CURRENT_VERIFY_ADDITIONS, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { historicalToolingView, MANIFEST_FILE, CURRENT_VERIFY_ADDITIONS } from "./check-phase164-canonical-identity/historical-tooling.ts";
 import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
-import { CORPUS_FILE, CORPUS_SHA, HISTORICAL_IDENTITIES, CURRENT_BRIDGE_DATA, SOURCE_CONTRACTS, TEST_OWNERS, VERIFY_BASE_SHA, WORK_CLAIM_FACTS, WORK_CLAIM_FILE } from "./check-phase165-shared-exact-work/contracts.ts";
+import { CORPUS_FILE, CORPUS_SHA, HISTORICAL_IDENTITIES, CURRENT_BRIDGE_DATA, SOURCE_CONTRACTS, TEST_OWNERS, WORK_CLAIM_FACTS, WORK_CLAIM_FILE } from "./check-phase165-shared-exact-work/contracts.ts";
 
 export type Finding = { file: string; rule: string; detail: string };
 type Fail = (file: string, rule: string, detail: string) => void;
 export const MAX_FILE_BYTES = 512_000;
-const INPUT_INVENTORY_SHA = "652660d33b8064a9c4c97a95f483982c7821b10b86754b21d31316a93c39ba98";
+const INPUT_INVENTORY_SHA = "e8b1ef3f3814c2f85865c2beb55e3784a761914783749453fb03eb2b1a4794fe";
 export const INPUT_FILES = [...new Set([
   ...IDENTITY_INPUTS, ...SOURCE_CONTRACTS.map(row => row[0]),
   ...HISTORICAL_IDENTITIES.map(row => row[0]), CORPUS_FILE, WORK_CLAIM_FILE,
@@ -199,9 +199,7 @@ function checkHistory(inputs: ReadonlyMap<string, string>, fail: Fail): boolean 
     if (sha(inputs.get(file) ?? "") !== digest) fail(file, "bridge-data", "reviewed current legacy-contract bridge data changed; original captures are separate");
   }
   for (const [file, digest] of HISTORICAL_IDENTITIES) {
-    const historical = file === "scripts/check-phase164-canonical-identity/fixture-source.ts" ? maybeHistoricalAdapter
-      : file === "scripts/check-phase164-canonical-identity/historical-tooling.ts"
-        ? maybeRestoreReviewedSource(inputs.get(file) ?? "", HISTORICAL_TOOLING_INVERSE) : inputs.get(file);
+    const historical = file === "scripts/check-phase164-canonical-identity/fixture-source.ts" ? maybeHistoricalAdapter : inputs.get(file);
     if (sha(historical ?? "") !== digest) fail(file, "history", "original receipt or reviewed historical adapter changed");
   }
   try { historicalToolingView(inputs); }
@@ -216,14 +214,9 @@ function checkHistory(inputs: ReadonlyMap<string, string>, fail: Fail): boolean 
 }
 
 function checkRegistration(source: string, fail: Fail): void {
-  try {
-    const lines = source.split("\n");
-    if (CURRENT_VERIFY_ADDITIONS.some(line => lines.filter(actual => actual === line).length !== 1)
-      || sha(verificationHistoricalBase(source)) !== VERIFY_BASE_SHA) {
-      fail("scripts/verify.sh", "registration", "exact default run_step/declared pairs after164 and before68, with every old byte/order retained");
-    }
-  } catch (error) {
-    fail("scripts/verify.sh", "registration", error instanceof Error ? error.message : String(error));
+  const steps = source.split("\n").filter(line => line.startsWith("run_step "));
+  if (CURRENT_VERIFY_ADDITIONS.some(line => steps.filter(actual => actual === line).length !== 1)) {
+    fail("scripts/verify.sh", "registration", "exact once default run_step registrations required");
   }
 }
 

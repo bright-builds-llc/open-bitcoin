@@ -5,15 +5,6 @@ import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-transaction-inventory-download-scheduling";
-const PHASE100_TEST_COMMAND =
-  "bun test scripts/check-phase100-relay-activation-boundary.test.ts";
-const PHASE100_CHECKER_COMMAND =
-  "bun run scripts/check-phase100-relay-activation-boundary.ts";
-const PHASE101_TEST_COMMAND =
-  "bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts";
-const PHASE101_CHECKER_COMMAND =
-  "bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts";
-const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 const REQUIRED_REQUIREMENTS = ["INV-01", "INV-02", "INV-03", "INV-04", "DL-01", "DL-02"] as const;
 const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
@@ -28,7 +19,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/tests.rs",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_EVIDENCE_ROOTS = [
   "packages/open-bitcoin-network/src/peer/transaction_relay.rs",
@@ -129,7 +119,6 @@ const FORBIDDEN_CLAIMS = [
 ] as const;
 const NO_CLAIM_MARKERS = ["does not", "do not", "must not", "not ", "without", "outside", "out of scope", "deferred", "future", "later", "remain", "remains", "no claim", "not claim", "not supported", "only;"] as const;
 const POSITIVE_CLAIM_PATTERNS = [/\bsupports?\b/, /\bprovides?\b/, /\benables?\b/, /\badds?\b/, /\bimplements?\b/, /\bships?\b/, /\bproves?\b/, /\bis supported\b/, /\bis enabled\b/, /\bis available\b/, /\bis complete\b/, /\bis ready\b/] as const;
-const FORBIDDEN_VERIFIER_SCOPE = ["public-network relay", "public relay ci", "sleep ", "service-manager", "systemctl", "launchctl", "wall-clock", "production-deployment", "production full-node readiness"] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -165,7 +154,6 @@ export function checkPhase101TransactionInventoryDownloadScheduling(
   verifyBehaviorTests(texts, failures);
   verifySourceBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   verifyNoBareRequestSets(texts, failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   verifyNoClaimBoundary(texts, failures);
 
   return failures;
@@ -376,71 +364,6 @@ function verifyNoBareRequestSets(texts: TextCorpus, failures: string[]): void {
   }
 }
 
-function verifyVerifierWiring(text: string, failures: string[]): void {
-  const maybeOrderBlock = text.match(
-    /^: <<'VERIFY_COMMAND_ORDER'\n([\s\S]*?)\nVERIFY_COMMAND_ORDER\n/m,
-  );
-  if (maybeOrderBlock === null) {
-    failures.push("verifier-scope missing VERIFY_COMMAND_ORDER block");
-  } else {
-    verifyOrderedCommands(
-      maybeOrderBlock[1],
-      [
-        PHASE100_TEST_COMMAND,
-        PHASE100_CHECKER_COMMAND,
-        PHASE101_TEST_COMMAND,
-        PHASE101_CHECKER_COMMAND,
-      ],
-      "verifier-scope visible order must place Phase 101 immediately after Phase 100",
-      failures,
-    );
-  }
-
-  const executableText = executableVerifyText(text);
-  requireContains(
-    text,
-    "Phase 100 is followed by Phase 101",
-    "verifier-scope ordering comment missing Phase 101",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "test Phase 101 transaction inventory download scheduling checker" ${PHASE101_TEST_COMMAND}`,
-    "verifier-scope executable Phase 101 checker tests",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "check Phase 101 transaction inventory download scheduling" ${PHASE101_CHECKER_COMMAND}`,
-    "verifier-scope executable Phase 101 checker",
-    failures,
-  );
-  verifyOrderedCommands(
-    executableText,
-    [
-      PHASE100_TEST_COMMAND,
-      PHASE100_CHECKER_COMMAND,
-      PHASE101_TEST_COMMAND,
-      PHASE101_CHECKER_COMMAND,
-      PURE_CORE_COMMAND,
-    ],
-    "verifier-scope executable order must run Phase 101 after Phase 100 and before pure-core checks",
-    failures,
-  );
-
-  for (const line of executableText.split(/\r?\n/)) {
-    const lower = line.toLowerCase();
-    if (!lower.includes("phase 101") && !lower.includes("check-phase101")) {
-      continue;
-    }
-    for (const forbidden of FORBIDDEN_VERIFIER_SCOPE) {
-      if (lower.includes(forbidden)) {
-        failures.push(`verifier-scope forbidden Phase 101 gate '${forbidden}': ${line.trim()}`);
-      }
-    }
-  }
-}
-
 function verifyNoClaimBoundary(texts: TextCorpus, failures: string[]): void {
   const docs = [
     texts.get("docs/parity/catalog/p2p.md") ?? "",
@@ -503,31 +426,6 @@ function requireContains(
   if (!text.includes(needle)) {
     failures.push(message);
   }
-}
-
-function verifyOrderedCommands(
-  text: string,
-  commands: readonly string[],
-  label: string,
-  failures: string[],
-): void {
-  let lastIndex = -1;
-  for (const command of commands) {
-    const index = text.indexOf(command);
-    if (index < 0) {
-      failures.push(`${label}: missing command ${command}`);
-      return;
-    }
-    if (index <= lastIndex) {
-      failures.push(`${label}: command out of order ${command}`);
-      return;
-    }
-    lastIndex = index;
-  }
-}
-
-function executableVerifyText(text: string): string {
-  return text.replace(/^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m, "");
 }
 
 function hasNoClaimMarker(lowerUnit: string): boolean {

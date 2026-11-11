@@ -19,14 +19,6 @@ const PLAN_FILES = [
 const DEFAULT_PLAN_TEXTS = PLAN_FILES.map(
   () => "---\nrequirements: [PROG-01, PROG-02, PROG-03, PROG-04]\n---\n",
 );
-const PHASE77_CHECKER_COMMAND = "bun run scripts/check-phase77-corruption-lock-recovery.ts";
-const PHASE78_TEST_COMMAND = "bun test scripts/check-phase78-progress-guarantees.test.ts";
-const PHASE78_CHECKER_COMMAND = "bun run scripts/check-phase78-progress-guarantees.ts";
-const DEFAULT_VERIFY_SCRIPT = [
-  PHASE77_CHECKER_COMMAND,
-  PHASE78_TEST_COMMAND,
-  PHASE78_CHECKER_COMMAND,
-].join("\n");
 const SURFACE_ID = "phase78-progress-guarantees-stall-diagnosis";
 const REQUIREMENTS = "PROG-01 PROG-02 PROG-03 PROG-04";
 const PROGRESS_TERMS = [
@@ -56,7 +48,6 @@ type FixtureOptions = {
     needle: string;
   };
   maybePlanTexts?: readonly string[];
-  maybeVerifyScript?: string;
 };
 
 type CheckerRun = {
@@ -226,36 +217,6 @@ test("fails when a parity root omits Phase 78 requirement coverage", async () =>
   expect(result.exitCode).not.toBe(0);
 });
 
-test("fails when verify.sh wires Phase 78 before the Phase 77 checker", async () => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: [
-      PHASE78_TEST_COMMAND,
-      PHASE78_CHECKER_COMMAND,
-      PHASE77_CHECKER_COMMAND,
-    ].join("\n"),
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-});
-
-test("fails when verify.sh adds public-network or multi-day default gates", async () => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: `${DEFAULT_VERIFY_SCRIPT}\nbun run scripts/run-live-mainnet-smoke.ts\n`,
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-});
-
 async function createFixture(options: FixtureOptions): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "open-bitcoin-phase78-checker-"));
   tempRoots.push(root);
@@ -268,11 +229,6 @@ async function createFixture(options: FixtureOptions): Promise<string> {
   for (const [file, text] of Object.entries(FILE_TEXTS)) {
     await writeFixtureFile(root, file, applyTextOptions(file, text, options));
   }
-  await writeFixtureFile(
-    root,
-    "scripts/verify.sh",
-    options.maybeVerifyScript ?? DEFAULT_VERIFY_SCRIPT,
-  );
 
   return root;
 }

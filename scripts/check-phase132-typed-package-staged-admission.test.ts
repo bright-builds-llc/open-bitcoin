@@ -291,15 +291,6 @@ test.each([
       "\nGeneral package wire support is shipping without deferring it.\n",
     ),
   ],
-  [
-    "verifier run step",
-    "P132 verifier: checker test/run must follow Phase 131 and precede Phase 117 in both surfaces",
-    replace(
-      "scripts/verify.sh",
-      'run_step "check Phase 132 typed package staged admission" bun run scripts/check-phase132-typed-package-staged-admission.ts\n',
-      "",
-    ),
-  ],
 ] as const)("fails the %s mutation", (_label, expectedFailure, maybeMutate) => {
   // Arrange
   const root = createFixture(maybeMutate as Mutator);

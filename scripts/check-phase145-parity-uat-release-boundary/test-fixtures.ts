@@ -7,18 +7,6 @@ import {
   CLOSEOUT_SURFACE,
   D14_SENTENCE,
   HISTORICAL_PHASE138_DIR,
-  PHASE117_CHECK,
-  PHASE117_CHECK_STEP,
-  PHASE138_CHECK,
-  PHASE138_CHECK_STEP,
-  PHASE144_CHECK,
-  PHASE144_CHECK_STEP,
-  PHASE144_TEST,
-  PHASE144_TEST_STEP,
-  PHASE145_CHECK,
-  PHASE145_CHECK_STEP,
-  PHASE145_TEST,
-  PHASE145_TEST_STEP,
   REQUIRED_BREADCRUMB_GROUPS,
   REQUIRED_DOC_FILES,
   REQUIRED_KNOTS_ANCHORS,
@@ -58,7 +46,6 @@ export function createFixture(options: FixtureOptions = {}): string {
   files.set("docs/operator/runtime-guide.md", createRuntimeGuide(scopedClaim));
   files.set(UAT_PACKAGE, createUatPackage(scopedClaim));
   files.set(REQUIREMENTS_FILE, createRequirements());
-  files.set("scripts/verify.sh", createVerifyScript());
   files.set(
     "scripts/check-phase138-parity-uat-release-boundary.ts",
     `// historical verifier evidence ${HISTORICAL_PHASE138_DIR}\n`,
@@ -130,42 +117,6 @@ export function createRuntimeGuide(scopedClaim: string): string {
 
 export function createUatPackage(scopedClaim: string): string {
   return [scopedClaim, ...REQUIRED_UAT_COMMANDS].join("\n");
-}
-
-export function createVerifyScript(
-  options: {
-    place145Before144?: boolean;
-    omit117?: boolean;
-    omit138?: boolean;
-    addLiveMainnetSmoke?: boolean;
-  } = {},
-): string {
-  const pair144 = [PHASE144_TEST, PHASE144_CHECK];
-  const pair145 = [PHASE145_TEST, PHASE145_CHECK];
-  const visiblePairs = options.place145Before144 ? [...pair145, ...pair144] : [...pair144, ...pair145];
-  const visible = [
-    ...visiblePairs,
-    ...(options.omit117 ? [] : [PHASE117_CHECK]),
-    ...(options.omit138 ? [] : [PHASE138_CHECK]),
-  ];
-  const exec144 = [PHASE144_TEST_STEP, PHASE144_CHECK_STEP];
-  const exec145 = [PHASE145_TEST_STEP, PHASE145_CHECK_STEP];
-  const execPairs = options.place145Before144 ? [...exec145, ...exec144] : [...exec144, ...exec145];
-  const executable = [
-    ...execPairs,
-    ...(options.omit117 ? [] : [PHASE117_CHECK_STEP]),
-    ...(options.omit138 ? [] : [PHASE138_CHECK_STEP]),
-    ...(options.addLiveMainnetSmoke
-      ? ['run_step "live mainnet smoke" bun run scripts/run-live-mainnet-smoke.ts']
-      : []),
-  ];
-  return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    ...visible,
-    `# historical evidence ${HISTORICAL_PHASE138_DIR}`,
-    "VERIFY_COMMAND_ORDER",
-    ...executable,
-  ].join("\n");
 }
 
 export function mutateIndex(files: Map<string, string>, mutate: (index: any) => void): void {

@@ -70,23 +70,3 @@ export function sectionBetween(text: string, startNeedle: string, endNeedle: str
   const end = text.indexOf(endNeedle, start + startNeedle.length);
   return end === -1 ? text.slice(start) : text.slice(start, end);
 }
-
-export function visibleCommandOrder(text: string): string {
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = text.indexOf(marker);
-  if (start === -1) return "";
-  const bodyStart = start + marker.length;
-  const end = text.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  return end === -1 ? "" : text.slice(bodyStart, end);
-}
-
-export function orderedLines(text: string, required: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const line of required) {
-    const index = lines.indexOf(line, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
-}

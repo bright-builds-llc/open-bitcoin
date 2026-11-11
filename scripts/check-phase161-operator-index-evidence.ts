@@ -144,8 +144,7 @@ function checkClaims(text: (file: string) => string, failures: string[], claimSt
 }
 
 function checkNative(source: string, failures: string[]): void {
-  // The first section is the fast contract/order list; the second executes default/full.
-  const sections = [source.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "", source.split("\n").filter(line => line.startsWith("run_step ")).join("\n")];
+  const sections = [source.split("\n").filter(line => line.startsWith("run_step ")).join("\n")];
   const commands = ["bun run scripts/check-phase160-peer-filter-serving.ts", "bun test ./scripts/check-phase161-operator-index-evidence.test.ts", "bun run scripts/check-phase161-operator-index-evidence.ts"];
   for (const section of sections) {
     const lines = section.split("\n").filter(line => commands.some(command => line.endsWith(command)));

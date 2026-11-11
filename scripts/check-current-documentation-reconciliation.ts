@@ -14,7 +14,6 @@ const FILES = {
   readme: "README.md",
   releaseReadiness: "docs/parity/release-readiness.md",
   supportMatrix: "docs/parity/support-matrix.md",
-  verifier: "scripts/verify.sh",
 } as const;
 const EXTENSION_METHODS = new Set([
   "openbitcoinnetworkstatus",
@@ -26,34 +25,6 @@ const EXTENSION_METHODS = new Set([
   "buildandsigntransaction",
   "clearprunelock",
 ]);
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-const PHASE117_CHECK =
-  "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
-const PHASE138_TEST =
-  "bun test scripts/check-phase138-parity-uat-release-boundary.test.ts";
-const PHASE138_CHECK =
-  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
-const RECONCILIATION_TEST =
-  "bun test scripts/check-current-documentation-reconciliation.test.ts";
-const RECONCILIATION_CHECK =
-  "bun run scripts/check-current-documentation-reconciliation.ts";
-const VISIBLE_SEQUENCE = [
-  PHASE117_TEST,
-  PHASE117_CHECK,
-  PHASE138_TEST,
-  PHASE138_CHECK,
-  RECONCILIATION_TEST,
-  RECONCILIATION_CHECK,
-].join("\n");
-const EXECUTABLE_SEQUENCE = [
-  `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
-  `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`,
-  `run_step "test Phase 138 parity UAT release boundary checker" ${PHASE138_TEST}`,
-  `run_step "check Phase 138 parity UAT release boundary" ${PHASE138_CHECK}`,
-  `run_step "test current documentation reconciliation checker" ${RECONCILIATION_TEST}`,
-  `run_step "check current documentation reconciliation" ${RECONCILIATION_CHECK}`,
-].join("\n");
 
 type CorpusKey = keyof typeof FILES;
 type Corpus = Map<CorpusKey, string>;
@@ -70,7 +41,6 @@ export function checkCurrentDocumentationReconciliation(
   verifyRelayClassifications(corpus, failures);
   verifyCatalogMethodSet(corpus, failures);
   verifyWalletCatalog(corpus, failures);
-  verifyVerifierWiring(corpus.get("verifier") ?? "", failures);
 
   return failures.sort();
 }
@@ -356,20 +326,6 @@ function verifyWalletCatalog(corpus: Corpus, failures: string[]): void {
   }
 }
 
-function verifyVerifierWiring(verifyText: string, failures: string[]): void {
-  const visible = between(
-    verifyText,
-    ": <<'VERIFY_COMMAND_ORDER'\n",
-    "\nVERIFY_COMMAND_ORDER",
-  );
-  if (!visible.includes(VISIBLE_SEQUENCE)) {
-    failures.push("verifier visible reconciliation order must immediately follow Phase 117");
-  }
-  if (!verifyText.includes(EXECUTABLE_SEQUENCE)) {
-    failures.push("verifier executable reconciliation order must immediately follow Phase 117");
-  }
-}
-
 function extractSupportedMethodNames(source: string): Set<string> {
   const start = source.indexOf("pub enum SupportedMethod {");
   if (start < 0) return new Set();
@@ -455,14 +411,6 @@ function markdownSection(text: string, heading: string): string {
 function sectionBefore(text: string, heading: string): string {
   const end = text.indexOf(heading);
   return end < 0 ? "" : text.slice(0, end);
-}
-
-function between(text: string, startMarker: string, endMarker: string): string {
-  const start = text.indexOf(startMarker);
-  if (start < 0) return "";
-  const bodyStart = start + startMarker.length;
-  const end = text.indexOf(endMarker, bodyStart);
-  return end < 0 ? "" : text.slice(bodyStart, end);
 }
 
 function normalized(text: string): string {

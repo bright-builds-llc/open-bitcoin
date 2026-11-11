@@ -39,23 +39,3 @@ export function requireOrdered(
     else cursor = index;
   }
 }
-
-export function requireRepeatedOrder(
-  text: string,
-  needles: readonly string[],
-  repetitions: number,
-  label: string,
-  failures: string[],
-): void {
-  let cursor = -1;
-  for (let repetition = 0; repetition < repetitions; repetition += 1) {
-    for (const needle of needles) {
-      const index = text.indexOf(needle, cursor + 1);
-      if (index === -1) {
-        failures.push(`${label} missing repetition ${repetition + 1}: ${needle}`);
-        return;
-      }
-      cursor = index;
-    }
-  }
-}

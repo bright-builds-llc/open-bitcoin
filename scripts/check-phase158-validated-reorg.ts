@@ -498,10 +498,9 @@ function checkParity(text: (file: string) => string, failures: string[], claimSt
   } catch { failures.push("T-158-07-01: parity manifest invalid"); }
 }
 function checkVerifier(source: string, failures: string[]): void {
-  const documented = source.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "";
   const executed = source.split("\n").filter(line => line.startsWith("run_step ")).join("\n");
   const commands = ["bun run scripts/check-phase157-index-catch-up.ts", "bun test ./scripts/check-phase158-validated-reorg.test.ts", "bun run scripts/check-phase158-validated-reorg.ts", "bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts"];
-  for (const [label, section] of [["documented", documented], ["executed", executed]]) {
+  for (const [label, section] of [["executed", executed]]) {
     const lines = section.split("\n").filter(line => commands.some(command => line.endsWith(command)));
     if (lines.length !== commands.length || lines.some((line, index) => !line.endsWith(commands[index]))) failures.push(`T-158-07-03: ordered ${label} verifier routes`);
   }

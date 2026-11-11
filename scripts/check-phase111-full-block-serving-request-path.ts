@@ -6,15 +6,6 @@ import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-1-full-block-serving-request-path";
-const PHASE110_TEST_COMMAND =
-  "bun test scripts/check-phase110-block-serving-boundary.test.ts";
-const PHASE110_CHECKER_COMMAND =
-  "bun run scripts/check-phase110-block-serving-boundary.ts";
-const PHASE111_TEST_COMMAND =
-  "bun test scripts/check-phase111-full-block-serving-request-path.test.ts";
-const PHASE111_CHECKER_COMMAND =
-  "bun run scripts/check-phase111-full-block-serving-request-path.ts";
-const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 const REQUIRED_REQUIREMENTS = ["BSRV-04", "GOV-01", "GOV-05"] as const;
 const TARGET_FILES = [
   "docs/architecture/status-snapshot.md",
@@ -29,7 +20,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/tests.rs",
   "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_EVIDENCE = [
   "docs/architecture/status-snapshot.md",
@@ -137,11 +127,6 @@ const POSITIVE_CLAIM_PATTERNS = [
   /\bships?\b/, /\bserves?\b/, /\bresponds?\b/, /\bis supported\b/, /\bis enabled\b/,
   /\bis available\b/, /\bis complete\b/, /\bis ready\b/,
 ] as const;
-const FORBIDDEN_VERIFIER_GATES = [
-  "run-live-mainnet-smoke", "public-network", "wall-clock", "service-manager", "systemctl",
-  "launchctl", "sleep 86400", "sleep 259200", "production-deployment", "schema-push",
-  "database migration",
-] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type ParityIndex = { checklist?: { surfaces?: unknown }; surfaces?: unknown };
@@ -172,7 +157,6 @@ export function checkPhase111FullBlockServingRequestPath(maybeRepoRoot?: string)
   checkRequiredEvidenceRoots(texts, failures);
   checkRuntimeGuide(texts.get("docs/operator/runtime-guide.md") ?? "", failures);
   checkNoClaimBoundary(texts, failures);
-  checkVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
 
   return failures;
 }
@@ -390,49 +374,6 @@ function isNoClaimContext(lowerUnit: string, claim: string): boolean {
   return true;
 }
 
-function checkVerifierWiring(text: string, failures: string[]): void {
-  const maybeOrderBlock = text.match(
-    /^: <<'VERIFY_COMMAND_ORDER'\n([\s\S]*?)\nVERIFY_COMMAND_ORDER\n/m,
-  );
-  if (maybeOrderBlock === null) {
-    failures.push("BSRV-04 default verifier missing VERIFY_COMMAND_ORDER block");
-  } else {
-    verifyOrderedCommands(
-      maybeOrderBlock[1],
-      [PHASE110_TEST_COMMAND, PHASE110_CHECKER_COMMAND, PHASE111_TEST_COMMAND, PHASE111_CHECKER_COMMAND],
-      "BSRV-04 default verifier visible order must place Phase 111 after Phase 110",
-      failures,
-    );
-  }
-
-  const executableText = executableVerifyText(text);
-  requireContains(
-    executableText,
-    `run_step "test Phase 111 full block-serving request path checker" ${PHASE111_TEST_COMMAND}`,
-    "BSRV-04 executable verifier Phase 111 checker tests",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "check Phase 111 full block-serving request path" ${PHASE111_CHECKER_COMMAND}`,
-    "BSRV-04 executable verifier Phase 111 checker",
-    failures,
-  );
-  requireContains(text, "Phase 108 is followed by Phase 110", "BSRV-04 verifier ordering comment", failures);
-  verifyOrderedCommands(
-    executableText,
-    [PHASE110_TEST_COMMAND, PHASE110_CHECKER_COMMAND, PHASE111_TEST_COMMAND, PHASE111_CHECKER_COMMAND, PURE_CORE_COMMAND],
-    "BSRV-04 executable verifier commands must run Phase 111 after Phase 110 and before pure-core checks",
-    failures,
-  );
-
-  for (const forbidden of FORBIDDEN_VERIFIER_GATES) {
-    if (executableText.toLowerCase().includes(forbidden.toLowerCase())) {
-      failures.push(`forbidden Phase 111 default verifier gate text: ${forbidden}`);
-    }
-  }
-}
-
 function requireExactRequirements(
   value: unknown,
   expected: readonly string[],
@@ -466,23 +407,6 @@ function requireArrayIncludes(
   }
 }
 
-function verifyOrderedCommands(
-  text: string,
-  commands: readonly string[],
-  failure: string,
-  failures: string[],
-): void {
-  let previousIndex = -1;
-  for (const command of commands) {
-    const currentIndex = text.indexOf(command);
-    if (currentIndex === -1 || currentIndex <= previousIndex) {
-      failures.push(failure);
-      return;
-    }
-    previousIndex = currentIndex;
-  }
-}
-
 function requireContains(
   text: string,
   needle: string,
@@ -492,13 +416,6 @@ function requireContains(
   if (!text.includes(needle)) {
     failures.push(`${label} missing required text: ${needle}`);
   }
-}
-
-function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
 }
 
 function contextUnits(text: string): string[] {

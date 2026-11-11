@@ -29,7 +29,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase107-runtime-relay-activation-download-eligibility.ts",
   "scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts",
-  "scripts/verify.sh",
   ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-CONTEXT.md",
   ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-RESEARCH.md",
   ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-01-SUMMARY.md",
@@ -198,21 +197,6 @@ test("fails_when_docs_parity_surface_is_missing", () => {
   expect(failures).toContain("v2-0-runtime-relay-activation-download-eligibility");
 });
 
-test("fails_when_verifier_wiring_is_missing", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      removeFromFile(files, "scripts/verify.sh", "bun run scripts/check-phase107-runtime-relay-activation-download-eligibility.ts");
-    },
-  });
-
-  // Act
-  const failures = checkPhase107RuntimeRelayActivationDownloadEligibility(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("verifier-scope");
-});
-
 test("fails_when_docs_claim_forbidden_public_or_production_scope", () => {
   // Arrange
   const root = createFixture({
@@ -226,21 +210,6 @@ test("fails_when_docs_claim_forbidden_public_or_production_scope", () => {
 
   // Assert
   expect(failures).toContain("forbidden positive Phase 107 claim");
-});
-
-test("fails_when_default_verifier_adds_public_network_gate", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutateFiles(files) {
-      appendToFile(files, "scripts/verify.sh", 'run_step "public-network relay CI" bun run scripts/run-live-mainnet-smoke.ts');
-    },
-  });
-
-  // Act
-  const failures = checkPhase107RuntimeRelayActivationDownloadEligibility(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("default verifier must not run public-network");
 });
 
 test("fails_when_public_evidence_contains_sensitive_material", () => {

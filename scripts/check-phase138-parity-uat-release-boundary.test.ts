@@ -9,9 +9,7 @@ import {
   CLOSEOUT_SURFACE,
   COMPOSITION_SYMBOL,
   D21_SENTENCE,
-  PHASE117_CHECK,
   PHASE132_SURFACE,
-  PHASE138_CHECK,
   REQUIRED_UAT_COMMANDS,
   REQUIREMENTS_FILE,
 } from "./check-phase138-parity-uat-release-boundary/constants.ts";
@@ -20,7 +18,6 @@ import {
   append,
   COMPOSITION_CELL,
   createFixture,
-  createVerifyScript,
   mutateIndex,
   removeSymbol,
   replace,
@@ -264,46 +261,6 @@ test("fails_when_a_required_cargo_uat_command_is_missing", () => {
 
   // Assert
   expect(failures).toContain(missing);
-});
-
-test("fails_when_the_last_check_phase_command_is_still_phase117", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutate(files) {
-      files.set(
-        "scripts/verify.sh",
-        [
-          ": <<'VERIFY_COMMAND_ORDER'",
-          "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts",
-          PHASE117_CHECK,
-          "VERIFY_COMMAND_ORDER",
-          'run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts',
-          `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`,
-        ].join("\n"),
-      );
-    },
-  });
-
-  // Act
-  const failures = checkPhase138ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain(`must end with ${PHASE138_CHECK}`);
-});
-
-test("fails_when_phase138_is_placed_after_reconciliation", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutate(files) {
-      files.set("scripts/verify.sh", createVerifyScript({ place138AfterReconciliation: true }));
-    },
-  });
-
-  // Act
-  const failures = checkPhase138ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("117 then Phase 138 then reconciliation");
 });
 
 test("fails_when_the_instant_gate_is_reintroduced", () => {

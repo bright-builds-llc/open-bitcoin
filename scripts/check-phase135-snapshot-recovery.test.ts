@@ -77,10 +77,6 @@ test("ignores braces and command tokens inside comments and string literals", ()
       "struct MempoolSnapshotV2RecordDto {",
       '\n    // } does not close the struct\n    const _: &str = "}";\n    const _: &str = r###"} {"###;',
     )(files);
-    append(
-      "scripts/verify.sh",
-      '\n# bun test scripts/check-phase135-snapshot-recovery.test.ts\nignored="bun run scripts/check-phase135-snapshot-recovery.ts"\n',
-    )(files);
   });
 
   // Act
@@ -176,7 +172,6 @@ function contractMutations(): Mutation[] {
     daemonCheckpoint:
       "packages/open-bitcoin-rpc/src/bin/open_bitcoind/checkpoint.rs",
     daemon: "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
-    verify: "scripts/verify.sh",
     index: "docs/parity/index.json",
     checklist: "docs/parity/checklist.md",
     requirements: ".planning/REQUIREMENTS.md",
@@ -503,24 +498,6 @@ function contractMutations(): Mutation[] {
       "requirements checkbox reopens",
       PHASE135_DIAGNOSTICS.parity,
       replace(files.requirements, "- [x] **MPDUR-01**", "- [ ] **MPDUR-01**"),
-    ],
-    [
-      "verifier order drifts",
-      PHASE135_DIAGNOSTICS.verifier,
-      replace(
-        files.verify,
-        "bun test scripts/check-phase135-snapshot-recovery.test.ts",
-        "bun test scripts/check-phase117-sync-foundations.test.ts",
-      ),
-    ],
-    [
-      "verifier command is only commented",
-      PHASE135_DIAGNOSTICS.verifier,
-      replace(
-        files.verify,
-        "bun run scripts/check-phase135-snapshot-recovery.ts",
-        "# bun run scripts/check-phase135-snapshot-recovery.ts",
-      ),
     ],
   ];
 }

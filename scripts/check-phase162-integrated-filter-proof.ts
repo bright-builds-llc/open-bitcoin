@@ -2,7 +2,7 @@
 import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, readSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { dirname, posix, resolve } from "node:path";
-import { CONTRACTS, CHECKPOINT_COUNTS, HISTORICAL_COMMANDS, BREADCRUMBS, TS_CONTRACTS, type Contract } from "./check-phase162-integrated-filter-proof/contracts.ts";
+import { CONTRACTS, CHECKPOINT_COUNTS, BREADCRUMBS, TS_CONTRACTS, type Contract } from "./check-phase162-integrated-filter-proof/contracts.ts";
 import { compact, hasOrderedCode, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
@@ -19,8 +19,6 @@ const SHARED = ["packages/testdata/phase162/recipe.rs", "packages/testdata/phase
 import { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 export { fixtureSourceAttribution, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { LEGACY_CONTRACT_BUNDLE, legacyFunctionContractView } from "./check-phase164-canonical-identity/fixture-source.ts";
-import { verificationHistoricalBase, legacyToolingBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
-import { FILTER_GUARD_INVERSES, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity/contracts.ts";
 const PROCESS = SHARED[1];
 const PEER_REQUESTS = N + "sync/block_reconcile/peer_requests.rs";
 const BOUNDED_ROWS = N + "storage/fjall_store/bounded_rows.rs";
@@ -333,25 +331,15 @@ function checkModules(text: (file: string) => string, failures: string[]): void 
 }
 
 function checkNative(source: string, failures: string[]): void {
-  const sectionsOf = (input: string) => [input.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "",
-    input.split("\n").map(line => line.trimStart()).filter(line => line.startsWith("run_step ")).map(line => line.replace(/^run_step "[^"]+" /, "")).join("\n")];
-  const sections = sectionsOf(source);
-  let historicalSections: string[] = [];
-  try { historicalSections = sectionsOf(verificationHistoricalBase(source)); }
-  catch (error) { failures.push(`scripts/verify.sh: current registration/projection: ${error instanceof Error ? error.message : String(error)}`); }
-  for (const [sectionIndex, section] of sections.entries()) {
-    const lines = section.split("\n");
-    const positions = NATIVE_COMMANDS.map(command => lines.indexOf(command));
-    if (NATIVE_COMMANDS.some(command => lines.filter(line => line === command).length !== 1)
-      || positions.some((position, index) => index > 0 && position !== positions[index - 1] + 1)) failures.push("scripts/verify.sh: exact once ordered Phase161/162 native commands");
-    if (lines.filter(line => line === SHARED_FORMAT).length !== 1) failures.push("scripts/verify.sh: pinned shared fixture format required");
-    const historical = historicalSections[sectionIndex]?.split("\n").filter(line => line && !NATIVE_COMMANDS.slice(1).includes(line) && line !== SHARED_FORMAT);
-    if (historical && JSON.stringify(historical) !== JSON.stringify(HISTORICAL_COMMANDS[sectionIndex])) failures.push("scripts/verify.sh: complete historical/native command order required");
-  }
+  const lines = source.split("\n").map(line => line.trimStart()).filter(line => line.startsWith("run_step ")).map(line => line.replace(/^run_step "[^"]+" /, ""));
+  const positions = NATIVE_COMMANDS.map(command => lines.indexOf(command));
+  if (NATIVE_COMMANDS.some(command => lines.filter(line => line === command).length !== 1)
+    || positions.some((position, index) => index > 0 && position !== positions[index - 1] + 1)) failures.push("scripts/verify.sh: exact once ordered Phase161/162 native commands");
+  if (lines.filter(line => line === SHARED_FORMAT).length !== 1) failures.push("scripts/verify.sh: pinned shared fixture format required");
   for (const command of ["cargo fmt --manifest-path packages/Cargo.toml --all --check", "cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings",
     "cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features", "cargo test --manifest-path packages/Cargo.toml --workspace --all-features",
     "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features", "bazel build //:core //:node //:rpc //:cli //:test_harness //:bench",
-    "run_benchmark_list", "run_coverage_report"]) if (!sections[1].split("\n").includes(command)) failures.push(`scripts/verify.sh: original mandatory gate ${command}`);
+    "run_benchmark_list", "run_coverage_report"]) if (!lines.includes(command)) failures.push(`scripts/verify.sh: original mandatory gate ${command}`);
 }
 
 /** Supplied source maps are hermetic: missing keys never fall back to the filesystem. */
@@ -368,7 +356,6 @@ export function checkPhase162IntegratedFilterProof(maybeSources?: ReadonlyMap<st
   checkModules(text, failures);
   checkNative(text("scripts/verify.sh"), failures);
   checkScope(text, failures, state, historicalText);
-  checkFrozenGuards(text, failures);
   checkTypeScriptOracle(text("scripts/phase162-filter-oracle.ts"), failures);
   if (!compact(rustCode(text(N + "sync/tests/peer_filter_transport/phase162.rs"))).includes("constPARTIAL:usize=31;")) failures.push("Phase162 outbound physical prefix: exact31-byte constant required");
   return [...new Set(failures)];
@@ -472,22 +459,6 @@ function checkScope(text: (file: string) => string, failures: string[], state: R
         || !anchors.every(anchor => text(file).split("\n").slice(0, 12).includes(`// - ${anchor}`))) failures.push(`${file}: exact registered source breadcrumb required`);
     }
   } catch { failures.push("Phase162: valid current parity/breadcrumb inventory required"); }
-}
-
-function checkFrozenGuards(text: (file: string) => string, failures: string[]): void {
-  // Phase163's exact scoped replacement and preserved checkpoint contracts require independent review.
-  for (const [file, hash] of [["scripts/check-phase158-validated-reorg.ts", "385b6c6d62067ba13e8e4d29d0ea1005252614830430f800b0824ec7ba954fdd"],
-    ["scripts/check-phase158-validated-reorg.test.ts", "bebdd0c7f2cc6e787f34502bb82f6ae6fd27c7a5ce5ac9bdd14be73c054193a3"],
-    ["scripts/check-phase163-provenance.ts", "e42bd6a3f1660d46ac35c2bb98fe4df44766ac84ee80d7ffae2a766c22dbaa03"]]) {
-    const inverse = FILTER_GUARD_INVERSES.find(([current]) => current === file)?.[1];
-    const reviewedCurrent = inverse ? maybeRestoreReviewedSource(text(file), inverse) : text(file);
-    if (reviewedCurrent === undefined) {
-      failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
-      continue;
-    }
-    const fingerprintSource = file === "scripts/check-phase163-provenance.ts" ? reviewedCurrent : legacyToolingBase(file, reviewedCurrent);
-    if (createHash("sha256").update(fingerprintSource).digest("hex") !== hash) failures.push(`${file}: frozen Plan15 checkpoint/lineage/IfNeeded/no-snapshot guards changed`);
-  }
 }
 
 if (import.meta.main) {

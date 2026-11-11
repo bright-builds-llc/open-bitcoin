@@ -68,11 +68,6 @@ export function completeFiles(): Map<CorpusFile, string> {
     breadcrumb("packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs", false),
     breadcrumb("packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs", true),
   ] });
-  const verifyRegion = `
-bun run scripts/check-phase122-compact-relay-peer-completion.ts
-bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
-bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
-bun test scripts/check-phase117-parity-uat-release-boundary.test.ts`;
   return new Map<CorpusFile, string>([
     ["packages/open-bitcoin-node/src/sync/types.rs", "pub enum SyncPeerReceiveOutcome { Message(WireNetworkMessage), Idle, Closed } fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError>"],
     ["packages/open-bitcoin-node/src/sync/tcp.rs", "fn receive() -> Result<SyncPeerReceiveOutcome, SyncRuntimeError> { Ok(0) if allow_clean_idle && filled == 0 => return Ok(ReadStageOutcome::Closed); allow_clean_idle filled == 0 io::ErrorKind::WouldBlock | io::ErrorKind::TimedOut return Ok(ReadStageOutcome::Idle); unexpected EOF after {filled} of {} frame bytes payload read ended without a complete frame } impl SyncPeerSession for TcpPeerSession { fn send_encoded() { self.stream .write_all(bytes) .map_err(|error| error) } }"],
@@ -453,7 +448,6 @@ authoritative) => { authoritative.maybe_prebuilt_context = Some(context); Ok(Som
     ["docs/parity/checklist.md", parityNarrative],
     ["docs/parity/catalog/p2p.md", parityNarrative],
     ["docs/parity/source-breadcrumbs.json", breadcrumbs],
-    ["scripts/verify.sh", `${verifyRegion}\n${verifyRegion}\nrun_step "test Phase 123 runtime timing and evidence integrity checker"\nrun_step "check Phase 123 runtime timing and evidence integrity"`],
   ]);
 }
 

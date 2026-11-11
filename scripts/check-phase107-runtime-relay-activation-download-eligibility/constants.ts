@@ -3,12 +3,6 @@ import path from "node:path";
 
 export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
 export const SURFACE_ID = "v2-0-runtime-relay-activation-download-eligibility";
-export const PHASE106_TEST_COMMAND = "bun test scripts/check-phase106-parity-uat-release-boundary.test.ts";
-export const PHASE106_CHECKER_COMMAND = "bun run scripts/check-phase106-parity-uat-release-boundary.ts";
-export const PHASE107_TEST_COMMAND =
-  "bun test scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts";
-export const PHASE107_CHECKER_COMMAND =
-  "bun run scripts/check-phase107-runtime-relay-activation-download-eligibility.ts";
 export const REQUIRED_REQUIREMENTS = ["ACT-01", "ACT-02", "INV-02", "INV-03", "DL-01", "DL-02", "REL-03"] as const;
 export const TARGET_FILES = [
   "README.md",
@@ -34,7 +28,6 @@ export const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase107-runtime-relay-activation-download-eligibility.ts",
   "scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts",
-  "scripts/verify.sh",
   ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-CONTEXT.md",
   ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-RESEARCH.md",
   ".planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-01-SUMMARY.md",
@@ -196,18 +189,6 @@ export const POSITIVE_CLAIM_PATTERNS = [
   /\bis available\b/,
   /\bis complete\b/,
   /\bis ready\b/,
-] as const;
-export const FORBIDDEN_DEFAULT_VERIFIER_GATES = [
-  "run-live-mainnet-smoke",
-  "systemctl",
-  "launchctl",
-  "sleep 86400",
-  "sleep 259200",
-  "public-network",
-  "wall-clock",
-  "service-manager",
-  "production-deployment",
-  "production-funds",
 ] as const;
 export const SENSITIVE_PUBLIC_EVIDENCE_PATTERNS = [
   /txid=[0-9a-f]{64}/i,

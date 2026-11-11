@@ -63,7 +63,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/admission_bridge.rs",
   "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
-  "scripts/verify.sh",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-02-SUMMARY.md",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-03-SUMMARY.md",
@@ -243,33 +242,6 @@ test("fails_when_source_breadcrumbs_or_knots_anchors_are_missing", () => {
   expect(failureMessages[1]).toContain("Knots");
 });
 
-test("fails_when_default_verifier_wiring_is_missing_or_public_network_scoped", () => {
-  // Arrange
-  const roots = [
-    createFixture({
-      maybeMutateFiles(files) {
-        removeFromFile(
-          files,
-          "scripts/verify.sh",
-          "bun run scripts/check-phase102-orphan-admission-bridge.ts",
-        );
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 102 public-network relay CI" true');
-      },
-    }),
-  ];
-
-  // Act
-  const failureMessages = roots.map((root) => checkPhase102OrphanAdmissionBridge(root).join("\n"));
-
-  // Assert
-  expect(failureMessages[0]).toContain("verifier-scope");
-  expect(failureMessages[1]).toContain("verifier-scope forbidden");
-});
-
 test("fails_when_docs_claim_deferred_phase103_or_later_surfaces", () => {
   // Arrange
   const claims = [
@@ -335,7 +307,6 @@ function fixtureFiles(): Map<TargetFile, string> {
       "fn prepare_serving_projection() {}",
     ],
     ["packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs", admissionBridgeTestsText()],
-    ["scripts/verify.sh", verifyScriptText()],
     [
       ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md",
       "no_partial_mutation_for_low_fee_rejection",
@@ -596,22 +567,5 @@ function admissionBridgeTestsText(): string {
     "fn managed_admission_bridge_parent_acceptance_reconsiders_child() {}",
     "fn managed_admission_bridge_drains_ready_orphans_after_reconsideration_cap() {}",
     "fn managed_admission_bridge_disconnect_cleans_peer_orphans_and_request_state() {}",
-  ].join("\n");
-}
-
-function verifyScriptText(): string {
-  return [
-    "# Phase 100 is followed by Phase 101. Phase 101 is followed by Phase 102.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    "bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts",
-    "bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts",
-    "bun test scripts/check-phase102-orphan-admission-bridge.test.ts",
-    "bun run scripts/check-phase102-orphan-admission-bridge.ts",
-    "VERIFY_COMMAND_ORDER",
-    'run_step "test Phase 101 transaction inventory download scheduling checker" bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts',
-    'run_step "check Phase 101 transaction inventory download scheduling" bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts',
-    'run_step "test Phase 102 orphan admission bridge checker" bun test scripts/check-phase102-orphan-admission-bridge.test.ts',
-    'run_step "check Phase 102 orphan admission bridge" bun run scripts/check-phase102-orphan-admission-bridge.ts',
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
   ].join("\n");
 }

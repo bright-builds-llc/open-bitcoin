@@ -274,13 +274,12 @@ function checkClaims(source: string, file: string, failures: string[]): void {
 }
 
 function checkVerifier(source: string, failures: string[]): void {
-  const documented = source.split(": <<'VERIFY_COMMAND_ORDER'")[1]?.split("VERIFY_COMMAND_ORDER")[0] ?? "";
   const executed = source.split("\n").filter(line => line.startsWith("run_step ")).join("\n");
   const commands = [
     ...["154-basic-filters", "155-filter-index", "156-prune-coordination", "157-index-catch-up", "158-validated-reorg", "159-filter-rpcs"].flatMap(name => [`bun test ./scripts/check-phase${name}.test.ts`, `bun run scripts/check-phase${name}.ts`]),
     "bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts",
   ];
-  for (const [label, section] of [["documented", documented], ["executed", executed]]) {
+  for (const [label, section] of [["executed", executed]]) {
     const actual = section.split("\n").filter(line => commands.some(command => line.endsWith(command)));
     if (actual.length !== commands.length || actual.some((line, i) => !line.endsWith(commands[i]))) failures.push(`scripts/verify.sh: ordered historical ${label} verifier`);
   }

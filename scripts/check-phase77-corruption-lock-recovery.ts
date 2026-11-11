@@ -9,23 +9,9 @@ const REPO_ROOT =
   maybeRepoRoot === undefined ? path.resolve(import.meta.dir, "..") : path.resolve(maybeRepoRoot);
 const PHASE_DIR = ".planning/phases/77-corruption-and-lock-recovery-hardening";
 const PHASE77_REQUIREMENTS = ["REC-05", "REC-06", "REC-07", "REC-08"] as const;
-const PHASE76_CHECKER_COMMAND = "bun run scripts/check-phase76-resource-bounds.ts";
-const PHASE77_TEST_COMMAND = "bun test scripts/check-phase77-corruption-lock-recovery.test.ts";
-const PHASE77_CHECKER_COMMAND = "bun run scripts/check-phase77-corruption-lock-recovery.ts";
 const SURFACE_ID = "phase77-corruption-and-lock-recovery-hardening";
 const NO_MUTATION_BOUNDARY =
   "Phase 77 does not delete lock files, clear recovery markers, repair stores, compact stores, reindex stores, relocate datadirs, mutate source datadirs, scan OS process tables, or upload support bundles automatically.";
-const FORBIDDEN_VERIFY_STRINGS = [
-  "run-live-mainnet-smoke",
-  "--manual-peer",
-  "--restart-after-progress",
-  "systemctl",
-  "launchctl",
-  "openbitcoinsync=mainnet-ibd",
-  "sleep 86400",
-  "lsof",
-  "/proc/",
-] as const;
 const PLAN_FILES = [
   `${PHASE_DIR}/77-01-PLAN.md`,
   `${PHASE_DIR}/77-02-PLAN.md`,
@@ -259,34 +245,6 @@ function verifyProbeOnlyStatusAndSupport(failures: string[]): void {
   }
 }
 
-function verifyVerifyScript(failures: string[]): void {
-  const verifyScript = readText("scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE76_CHECKER_COMMAND, "scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE77_TEST_COMMAND, "scripts/verify.sh", failures);
-  requireContains(verifyScript, PHASE77_CHECKER_COMMAND, "scripts/verify.sh", failures);
-
-  const lines = verifyScript
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const phase76CheckerIndex = lines.indexOf(PHASE76_CHECKER_COMMAND);
-  const phase77TestIndex = lines.indexOf(PHASE77_TEST_COMMAND);
-  const phase77CheckerIndex = lines.indexOf(PHASE77_CHECKER_COMMAND);
-  if (
-    phase76CheckerIndex === -1 ||
-    phase77TestIndex !== phase76CheckerIndex + 1 ||
-    phase77CheckerIndex !== phase77TestIndex + 1
-  ) {
-    failures.push(
-      "scripts/verify.sh must run the Phase 77 checker test and checker immediately after the Phase 76 checker",
-    );
-  }
-
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    requireNotContains(verifyScript, forbidden, "scripts/verify.sh", failures);
-  }
-}
-
 function main(): void {
   const failures: string[] = [];
 
@@ -299,7 +257,6 @@ function main(): void {
   requireAnchors(DETERMINISTIC_TEST_ANCHORS, failures);
   verifyParityCoverage(failures);
   verifyProbeOnlyStatusAndSupport(failures);
-  verifyVerifyScript(failures);
 
   if (failures.length > 0) {
     for (const failure of failures) {

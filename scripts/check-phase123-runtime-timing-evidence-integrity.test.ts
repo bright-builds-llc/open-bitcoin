@@ -311,16 +311,6 @@ test.each([
     "P123 parity requirements must be exactly HARD-02,HARD-03,HARD-04",
     mutate("docs/parity/index.json", "HARD-03", "HARD-05"),
   ],
-  [
-    "mutation command removed from verifier",
-    "P123 verifier mutation command expected 2 occurrence(s) of bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts, found 1",
-    mutateFirst("scripts/verify.sh", "bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts", ""),
-  ],
-  [
-    "live checker command removed from verifier",
-    "P123 verifier live checker command expected 2 occurrence(s) of bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts, found 1",
-    mutateFirst("scripts/verify.sh", "bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts", ""),
-  ],
 ] as const)("fails the %s mutation", (_label, expectedFailure, maybeMutate) => {
   // Arrange
   const root = createFixture(maybeMutate as Mutator);

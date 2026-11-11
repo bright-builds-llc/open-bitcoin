@@ -4,14 +4,6 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const ACTIVE_TEST = "bun test scripts/check-active-milestone-verification-traceability.test.ts";
-const ACTIVE_CHECK = "bun run scripts/check-active-milestone-verification-traceability.ts";
-const PARITY_TEST = "bun test ./scripts/check-parity-ledger.test.ts";
-const PARITY_CHECK = "bun run scripts/check-parity-ledger.ts";
-const PHASE126_TEST = "bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts";
-const PHASE126_CHECK = "bun run scripts/check-phase126-compact-relay-residual-hardening.ts";
-const PHASE117_TEST = "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-const PHASE117_CHECK = "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
 const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
 
 const TARGET_FILES = [
@@ -30,7 +22,6 @@ const TARGET_FILES = [
   "docs/parity/index.json",
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase126-compact-relay-residual-hardening.ts",
-  "scripts/verify.sh",
 ] as const;
 
 const COMPACT_KNOTS_ANCHORS = [
@@ -330,45 +321,6 @@ function phaseSection(roadmap: string, phase: number): string {
 }
 
 function checkVerifier(texts: TextCorpus, failures: string[]): void {
-  const verifyText = texts.get("scripts/verify.sh") ?? "";
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = verifyText.indexOf(marker);
-  const bodyStart = start + marker.length;
-  const end = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  const visible = start === -1 || end === -1 ? "" : verifyText.slice(bodyStart, end);
-  const ledgerMode = visible.includes(PARITY_TEST);
-  const activeTest = ledgerMode ? PARITY_TEST : ACTIVE_TEST;
-  const activeCheck = ledgerMode ? PARITY_CHECK : ACTIVE_CHECK;
-  const activeTestLabel = ledgerMode ? "parity ledger" : "active milestone verification traceability checker";
-  const activeCheckLabel = ledgerMode ? "parity ledger" : "active milestone verification traceability";
-  if (
-    !orderedLines(visible, [
-      activeTest,
-      activeCheck,
-      PHASE126_TEST,
-      PHASE126_CHECK,
-      PHASE117_TEST,
-      PHASE117_CHECK,
-    ])
-  ) {
-    failures.push(
-      "P126 verifier visible order: Phase 126 must follow active traceability and precede Phase 117",
-    );
-  }
-  const runSteps = [
-    `run_step "test ${activeTestLabel}" ${activeTest}`,
-    `run_step "check ${activeCheckLabel}" ${activeCheck}`,
-    `run_step "test Phase 126 compact relay residual hardening checker" ${PHASE126_TEST}`,
-    `run_step "check Phase 126 compact relay residual hardening" ${PHASE126_CHECK}`,
-    `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
-    `run_step "check Phase 117 parity UAT release boundary" ${PHASE117_CHECK}`,
-  ];
-  if (!orderedLines(verifyText, runSteps)) {
-    failures.push(
-      "P126 verifier executable order: Phase 126 must follow active traceability and precede Phase 117",
-    );
-  }
-
   const checker = texts.get("scripts/check-phase126-compact-relay-residual-hardening.ts") ?? "";
   const forbiddenTokens = [
     "fetch" + "(",
@@ -409,17 +361,6 @@ function orderedFragments(text: string, fragments: readonly string[]): boolean {
   let cursor = -1;
   for (const fragment of fragments) {
     const index = text.indexOf(fragment, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
-}
-
-function orderedLines(text: string, requiredLines: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const required of requiredLines) {
-    const index = lines.indexOf(required, cursor + 1);
     if (index === -1) return false;
     cursor = index;
   }

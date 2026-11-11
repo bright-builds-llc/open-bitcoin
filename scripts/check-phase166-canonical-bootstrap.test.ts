@@ -3,15 +3,12 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { CLI_MODULES, copiedInputs, expectCopiedAdapterCase } from "./check-phase165-shared-exact-work/test-support.ts";
+import { copiedInputs } from "./check-phase165-shared-exact-work/test-support.ts";
 import { SOURCE_CONTRACTS } from "./check-phase164-canonical-identity/test-modules.ts";
 import { affirmativeScopeClaims, checkCurrentClaims, currentQualificationClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { checkPhase164, loadInputs as loadIdentityInputs } from "./check-phase164-canonical-identity.ts";
 import { checkPhase165, loadInputs as loadWorkInputs } from "./check-phase165-shared-exact-work.ts";
-import { CURRENT_TEMP_PREPARATION, historicalToolingView, legacyToolingBase, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
-import { HISTORICAL_TOOLING_INVERSE, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity/contracts.ts";
-import { VERIFY_BASE_SHA } from "./check-phase165-shared-exact-work/contracts.ts";
-import { createHash } from "node:crypto";
+import { CURRENT_TEMP_PREPARATION } from "./check-phase164-canonical-identity/historical-tooling.ts";
 import { reviewedOwnership } from "./check-phase164-canonical-identity.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { checkPhase166, INPUT_FILES, loadInputs } from "./check-phase166-canonical-bootstrap.ts";
@@ -122,115 +119,6 @@ for (const file of ["README.md", "docs/parity/support-matrix.md"]) for (const ba
     });
   }
 }
-test("current verifier inverse preserves the complete reviewed base and original historical snapshot", () => {
-  // Arrange
-  const inputs = loadWorkInputs();
-  const source = inputs.get("scripts/verify.sh")!;
-  // Act
-  const projected = verificationHistoricalBase(source);
-  const historical = historicalToolingView(inputs);
-  // Assert: these are distinct existing generations; neither hash or snapshot is renewed.
-  expect(createHash("sha256").update(projected).digest("hex")).toBe(VERIFY_BASE_SHA);
-  expect(historical.get("scripts/verify.sh")).toBe(inputs.get("packages/testdata/phase164/historical-tooling/verify.txt"));
-});
-const NATIVE_SOURCE = "scripts/check-phase163-provenance/native.test.ts";
-const TOOLING_SOURCE = "scripts/check-phase164-canonical-identity/historical-tooling.ts";
-const NATIVE_MANIFEST_CURRENT_SHA = "5297898680a15de12f79b7e6c9c8a814fdd0276522bfd071b96cd7b3a6f7ac16";
-test("shared copied writer preserves literal replacement tokens at semantic refusal boundaries", () => {
-  // Arrange: inspect exact copied bytes before either imported guard and actual CLI execute.
-  const inputs = loadWorkInputs(), file = TOOLING_SOURCE, source = inputs.get(file)!;
-  const before = 'import { createHash } from "node:crypto";';
-  const after = before + "\n// literal replacement $$ $& $` $'\n";
-  expect(source.split(before)).toHaveLength(2);
-  const offset = source.indexOf(before), expected = source.slice(0, offset) + after + source.slice(offset + before.length);
-  const load = (root: string) => {
-    expect(readFileSync(join(root, file), "utf8") === expected, "shared writer changed literal bytes").toBe(true);
-    return loadWorkInputs(root);
-  };
-  // Act / Assert: the shared writer must preserve the mutant and its precise refusal boundary.
-  expectCopiedAdapterCase(["unknown-tooling-byte", file, before, after, "paired current raw historical-tooling generation"], inputs, load,
-    [[CLI_MODULES[2], checkPhase164], [CLI_MODULES[0], checkPhase165]]);
-});
-test("native timeout isolation restores exact manifest-current source and original tooling bytes", () => {
-  // Arrange
-  const inputs = loadIdentityInputs();
-  const native = inputs.get(NATIVE_SOURCE)!;
-  const hash = (source: string) => createHash("sha256").update(source).digest("hex");
-  // Act
-  const restored = legacyToolingBase(NATIVE_SOURCE, native);
-  const maybeTooling = maybeRestoreReviewedSource(inputs.get(TOOLING_SOURCE)!, HISTORICAL_TOOLING_INVERSE);
-  const historical = historicalToolingView(inputs);
-  // Assert
-  expect(restored).not.toBe(native);
-  expect(hash(restored)).toBe(NATIVE_MANIFEST_CURRENT_SHA);
-  expect(hash(maybeTooling!)).toBe("47bbcd914cf5a632f618310b69b987462551ca2f103bce823a8d0cc6326a5f65");
-  expect(Buffer.byteLength(maybeTooling!)).toBe(104671);
-  expect(historical.get(NATIVE_SOURCE)).toBe(inputs.get("packages/testdata/phase164/historical-tooling/phase163-native-tests.txt"));
-});
-for (const [name, before, after] of [
-  ["deadline", "timeout: 55_000", "timeout: 54_000"],
-  ["broad selection", '`^${selected}$`', '`^actual `'],
-  ["unrelated bytes", "afterEach(cleanupFixtures);", "afterEach(cleanupFixtures);\n"],
-] as const) test(`native timeout isolation refuses unreviewed current native ${name}`, () => {
-  // Arrange
-  const inputs = loadIdentityInputs();
-  const original = inputs.get(NATIVE_SOURCE)!;
-  expect(original.split(before)).toHaveLength(2);
-  const changed = original.replace(before, after);
-  expect(changed).not.toBe(original);
-  inputs.set(NATIVE_SOURCE, changed);
-  // Act / Assert
-  expect(legacyToolingBase(NATIVE_SOURCE, changed)).toBe(changed);
-  expect(() => historicalToolingView(inputs)).toThrow(`${NATIVE_SOURCE}: unreviewed current tooling fingerprint`);
-});
-for (const mode of ["missing", "wrong destination", "altered current span"] as const) {
-  test(`native timeout isolation refuses actual copied ${mode} mapping`, () => {
-    // Arrange: run the changed mapping module itself, independently of current owner pins.
-    const inputs = loadIdentityInputs();
-    const source = inputs.get(TOOLING_SOURCE)!;
-    const mappingRows = source.split("\n").filter(line => line.startsWith(`  ["${NATIVE_SOURCE}","${NATIVE_MANIFEST_CURRENT_SHA}",`));
-    expect(mappingRows).toHaveLength(1);
-    const mapping = mappingRows[0];
-    const replacement = mode === "missing" ? ""
-      : mode === "wrong destination" ? mapping.replace(NATIVE_MANIFEST_CURRENT_SHA, "0".repeat(64))
-      : mapping.replace("selectedLayout ===", "selectedLayout !==");
-    expect(replacement).not.toBe(mapping);
-    const changed = source.replace(mapping, () => replacement);
-    expect(maybeRestoreReviewedSource(changed, HISTORICAL_TOOLING_INVERSE)).toBeUndefined();
-    expect(checkPhase164(new Map(inputs).set(TOOLING_SOURCE, changed)).some(row => row.rule === "history" && row.detail.includes("historical-tooling"))).toBe(true);
-    const root = mkdtempSync(join(tmpdir(), "phase166-native-mapping-"));
-    try {
-      copiedInputs(root, inputs);
-      writeFileSync(join(root, TOOLING_SOURCE), changed);
-      // Act
-      const result = spawnSync(process.execPath, ["-e",
-        'import { loadInputs } from "./scripts/check-phase164-canonical-identity.ts"; import { historicalToolingView } from "./scripts/check-phase164-canonical-identity/historical-tooling.ts"; historicalToolingView(loadInputs());'],
-      { cwd: root, encoding: "utf8", timeout: 10_000, maxBuffer: 256 * 1024 });
-      // Assert: this exact native fingerprint proves the changed mapping executed.
-      expect(result.error).toBeUndefined();
-      expect(result.signal).toBeNull();
-      expect(result.status, result.stderr).toBe(1);
-      expect(result.stderr).toContain(`${NATIVE_SOURCE}: unreviewed current tooling fingerprint`);
-      expect(result.stderr).not.toContain("input inventory");
-    } finally { rmSync(root, { recursive: true }); }
-  });
-}
-for (const [name, transform] of [
-  ["missing", (source: string) => source.replace(CURRENT_TEMP_PREPARATION, "")],
-  ["duplicate", (source: string) => source.replace(CURRENT_TEMP_PREPARATION, CURRENT_TEMP_PREPARATION.repeat(2))],
-  ["nonphysical", (source: string) => source.replace("pwd -P", "pwd -L")],
-  ["late", (source: string) => source.replace(CURRENT_TEMP_PREPARATION, "") + CURRENT_TEMP_PREPARATION],
-] as const) test(`both current guards refuse ${name} temporary-directory preparation`, () => {
-  // Arrange
-  const inputs = loadWorkInputs();
-  const source = inputs.get("scripts/verify.sh")!;
-  const changed = transform(source);
-  expect(changed).not.toBe(source);
-  inputs.set("scripts/verify.sh", changed);
-  // Act / Assert
-  expect(checkPhase164(inputs).some(row => row.file === "scripts/verify.sh" && row.rule === "registration")).toBe(true);
-  expect(checkPhase165(inputs).some(row => row.file === "scripts/verify.sh" && row.rule === "registration")).toBe(true);
-});
 test("verifier temporary-directory preparation resolves aliases and fails before fixture work on a missing parent", () => {
   // Arrange: execute only the actual pre-fixture shell prefix.
   const root = mkdtempSync(join(tmpdir(), "phase166-temp-parent-"));

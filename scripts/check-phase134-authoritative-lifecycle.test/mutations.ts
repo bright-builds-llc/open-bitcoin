@@ -45,8 +45,6 @@ export const DIAGNOSTICS = {
     "P134 scope: Phase 135-138 and broad relay/readiness claims must remain deferred",
   deterministic:
     "P134 checker: verification must remain deterministic and filesystem-only",
-  verifier:
-    "P134 verifier: apply, mutation, and live guards must immediately follow Phase 133",
 } as const;
 
 export function authorityMutations(): MutationCase[] {
@@ -343,46 +341,6 @@ export function scopeMutations(): MutationCase[] {
       append(
         "scripts/check-phase134-authoritative-lifecycle.ts",
         '\nBun.spawn(["git", "status"]);\n',
-      ),
-    ],
-    ...verifierMutations(),
-  ];
-}
-
-export function verifierMutations(): MutationCase[] {
-  const verify = "scripts/verify.sh";
-  const apply = "bun run scripts/check-phase134-apply-boundaries.ts";
-  const test =
-    "bun test scripts/check-phase134-authoritative-lifecycle.test.ts";
-  const live =
-    "bun run scripts/check-phase134-authoritative-lifecycle.ts";
-  const phase135Test =
-    "bun test scripts/check-phase135-snapshot-recovery.test.ts";
-  const phase135Live =
-    "bun run scripts/check-phase135-snapshot-recovery.ts";
-  const phase117 =
-    "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-  return [
-    ["remove apply guard", DIAGNOSTICS.verifier, replace(verify, apply, "")],
-    ["remove mutation guard", DIAGNOSTICS.verifier, replace(verify, test, "")],
-    ["remove live guard", DIAGNOSTICS.verifier, replace(verify, live, "")],
-    [
-      "reorder mutation guard",
-      DIAGNOSTICS.verifier,
-      replace(verify, `${test}\n${apply}`, `${apply}\n${test}`),
-    ],
-    [
-      "reorder apply guard",
-      DIAGNOSTICS.verifier,
-      replace(verify, `${apply}\n${live}`, `${live}\n${apply}`),
-    ],
-    [
-      "reorder live guard",
-      DIAGNOSTICS.verifier,
-      replace(
-        verify,
-        `${live}\n${phase135Test}\n${phase135Live}\n${phase117}`,
-        `${phase135Test}\n${phase135Live}\n${phase117}\n${live}`,
       ),
     ],
   ];

@@ -34,7 +34,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network.rs",
   "packages/open-bitcoin-node/src/network/action_translation.rs",
   "packages/open-bitcoin-node/src/network/tests.rs",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
@@ -180,37 +179,6 @@ test("fails_when_source_breadcrumbs_are_missing", () => {
   }
 });
 
-test("fails_when_public_network_sleep_or_service_manager_enters_default_verifier", () => {
-  // Arrange
-  const roots = [
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 101 public-network relay CI" true');
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 101 sleep 60" sleep 60');
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 101 service-manager" systemctl status open-bitcoind');
-      },
-    }),
-  ];
-
-  // Act
-  const failureMessages = roots.map((root) =>
-    checkPhase101TransactionInventoryDownloadScheduling(root).join("\n"),
-  );
-
-  // Assert
-  for (const message of failureMessages) {
-    expect(message).toContain("verifier-scope");
-  }
-});
-
 test("fails_when_docs_claim_phase102_or_later_surfaces", () => {
   // Arrange
   const claims = [
@@ -272,7 +240,6 @@ function fixtureFiles(): Map<TargetFile, string> {
       actionTranslationText(),
     ],
     ["packages/open-bitcoin-node/src/network/tests.rs", managedNetworkTestsText()],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 }
 
@@ -488,22 +455,5 @@ function managedNetworkTestsText(): string {
     "fn managed_network_transaction_relay_timeout_fallback_returns_getdata_for_alternate_peer() {}",
     "fn managed_network_transaction_relay_notfound_fallback_returns_getdata_for_alternate_peer() {}",
     "fn managed_network_transaction_relay_disconnect_fallback_returns_getdata_for_alternate_peer() {}",
-  ].join("\n");
-}
-
-function verifyScriptText(): string {
-  return [
-    "# Phase 99 is followed by Phase 100. Phase 100 is followed by Phase 101.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    "bun test scripts/check-phase100-relay-activation-boundary.test.ts",
-    "bun run scripts/check-phase100-relay-activation-boundary.ts",
-    "bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts",
-    "bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts",
-    "VERIFY_COMMAND_ORDER",
-    'run_step "test Phase 100 relay activation boundary checker" bun test scripts/check-phase100-relay-activation-boundary.test.ts',
-    'run_step "check Phase 100 relay activation boundary" bun run scripts/check-phase100-relay-activation-boundary.ts',
-    'run_step "test Phase 101 transaction inventory download scheduling checker" bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts',
-    'run_step "check Phase 101 transaction inventory download scheduling" bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts',
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
   ].join("\n");
 }

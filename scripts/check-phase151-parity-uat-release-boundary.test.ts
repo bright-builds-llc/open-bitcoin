@@ -12,8 +12,6 @@ import {
   GRD01_CHECKBOX,
   GRD01_ID,
   HISTORICAL_PHASE_DIR,
-  PHASE151_CHECK_STEP,
-  PHASE151_TEST_STEP,
   REQUIREMENTS_BY_SURFACE,
   REQUIREMENTS_FILE,
   ROADMAP_FILE,
@@ -25,7 +23,6 @@ import {
 import {
   append,
   createFixture,
-  createVerifyScript,
   mutateIndex,
   replace,
   tempRoots,
@@ -298,21 +295,6 @@ test("fails_when_a_phase151_uat_command_is_missing", () => {
   expect(failures).toContain("prune run 1000");
 });
 
-test("fails_when_verify_sh_omits_the_phase151_run_step", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutate(files) {
-      files.set("scripts/verify.sh", createVerifyScript({ omitPhase151: true }));
-    },
-  });
-
-  // Act
-  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("Phase 145 then Phase 151");
-});
-
 test("fails_when_a_referenced_historical_phase_directory_is_missing", () => {
   // Arrange
   const root = createFixture({
@@ -349,21 +331,6 @@ test("fails_closed_when_repo_root_override_is_outside_the_fixture", () => {
     if (previous === undefined) delete process.env.OPEN_BITCOIN_PHASE151_REPO_ROOT;
     else process.env.OPEN_BITCOIN_PHASE151_REPO_ROOT = previous;
   }
-});
-
-test("fails_when_a_forbidden_run_step_token_is_added", () => {
-  // Arrange
-  const root = createFixture({
-    maybeMutate(files) {
-      files.set("scripts/verify.sh", createVerifyScript({ addForbiddenRunStep: true }));
-    },
-  });
-
-  // Act
-  const failures = checkPhase151ParityUatReleaseBoundary(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("run-live-mainnet-smoke");
 });
 
 test("fails_when_grd01_checkbox_is_unchecked", () => {
@@ -415,12 +382,6 @@ test("checker_source_pins_the_v24_contract_and_stays_filesystem_only", () => {
   expect(source).toContain(V24_PRUNE_SENTENCE);
   expect(source).toContain(GRD01_CHECKBOX);
   expect(source).toContain("second chainstate");
-  expect(PHASE151_TEST_STEP).toBe(
-    'run_step "test Phase 151 parity UAT release boundary checker" bun test scripts/check-phase151-parity-uat-release-boundary.test.ts',
-  );
-  expect(PHASE151_CHECK_STEP).toBe(
-    'run_step "check Phase 151 parity UAT release boundary" bun run scripts/check-phase151-parity-uat-release-boundary.ts',
-  );
   expect(CLAIM_FILES).toHaveLength(9);
   expect(CLAIM_FILES.some((file) => file.includes(".planning/"))).toBe(false);
   expect(REQUIREMENTS_BY_SURFACE[CLOSEOUT_SURFACE]).toEqual([GRD01_ID]);

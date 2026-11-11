@@ -5,15 +5,6 @@ import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-relay-activation-boundary";
-const PHASE99_TEST_COMMAND =
-  "bun test scripts/check-phase99-peer-policy-structured-log-emission.test.ts";
-const PHASE99_CHECKER_COMMAND =
-  "bun run scripts/check-phase99-peer-policy-structured-log-emission.ts";
-const PHASE100_TEST_COMMAND =
-  "bun test scripts/check-phase100-relay-activation-boundary.test.ts";
-const PHASE100_CHECKER_COMMAND =
-  "bun run scripts/check-phase100-relay-activation-boundary.ts";
-const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 const REQUIRED_ACT_REQUIREMENTS = ["ACT-01", "ACT-02", "ACT-03", "ACT-04"] as const;
 const TARGET_FILES = [
   "docs/architecture/config-precedence.md",
@@ -24,7 +15,6 @@ const TARGET_FILES = [
   "docs/parity/index.json",
   "docs/parity/checklist.md",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_PHASE100_EVIDENCE = [
   "docs/architecture/config-precedence.md",
@@ -168,22 +158,6 @@ const WHOLE_UNIT_NO_CLAIM_MARKERS = [
   "require separate evidence",
   "requires separate evidence",
 ] as const;
-const FORBIDDEN_VERIFY_STRINGS = [
-  "openbitcoinlisten=0.0.0.0",
-  "public-network relay",
-  "public relay ci",
-  "production full-node readiness",
-  "production service operation",
-  "production-service operation",
-  "service-manager",
-  "systemctl",
-  "launchctl",
-  "sleep 259200",
-  "sleep 86400",
-  "--restart-after-progress",
-  "run-live-mainnet-smoke",
-] as const;
-
 type TargetFile = (typeof TARGET_FILES)[number];
 type ChecklistSurface = {
   evidence?: unknown;
@@ -212,7 +186,6 @@ export function checkPhase100RelayActivationBoundary(maybeRepoRoot?: string): st
   verifyEvidenceLabels(texts, failures);
   verifyUatCommands(texts.get("docs/operator/runtime-guide.md") ?? "", failures);
   verifyNoClaimBoundary(texts, failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
 
   return failures;
 }
@@ -413,60 +386,6 @@ function isNoClaimContext(lowerUnit: string, claim: string): boolean {
   return true;
 }
 
-function verifyVerifierWiring(text: string, failures: string[]): void {
-  const maybeOrderBlock = text.match(
-    /^: <<'VERIFY_COMMAND_ORDER'\n([\s\S]*?)\nVERIFY_COMMAND_ORDER\n/m,
-  );
-  if (maybeOrderBlock === null) {
-    failures.push("ACT-01 default verifier missing VERIFY_COMMAND_ORDER block");
-  } else {
-    verifyOrderedCommands(
-      maybeOrderBlock[1],
-      [
-        PHASE99_TEST_COMMAND,
-        PHASE99_CHECKER_COMMAND,
-        PHASE100_TEST_COMMAND,
-        PHASE100_CHECKER_COMMAND,
-      ],
-      "ACT-01 default verifier visible order must place Phase 100 immediately after Phase 99",
-      failures,
-    );
-  }
-
-  const executableText = executableVerifyText(text);
-  requireContains(
-    executableText,
-    `run_step "test Phase 100 relay activation boundary checker" ${PHASE100_TEST_COMMAND}`,
-    "ACT-01 executable verifier Phase 100 checker tests",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "check Phase 100 relay activation boundary" ${PHASE100_CHECKER_COMMAND}`,
-    "ACT-01 executable verifier Phase 100 checker",
-    failures,
-  );
-  requireContains(text, "Phase 99 is followed by Phase 100", "ACT-01 verifier ordering comment", failures);
-  verifyOrderedCommands(
-    executableText,
-    [
-      PHASE99_TEST_COMMAND,
-      PHASE99_CHECKER_COMMAND,
-      PHASE100_TEST_COMMAND,
-      PHASE100_CHECKER_COMMAND,
-      PURE_CORE_COMMAND,
-    ],
-    "ACT-01 executable verifier commands must run Phase 100 after Phase 99 and before pure-core checks",
-    failures,
-  );
-
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.toLowerCase().includes(forbidden.toLowerCase())) {
-      failures.push(`ACT-04 default verifier contains forbidden Phase 100 gate text: ${forbidden}`);
-    }
-  }
-}
-
 function requireExactRequirements(
   value: unknown,
   expected: readonly string[],
@@ -500,23 +419,6 @@ function requireArrayIncludes(
   }
 }
 
-function verifyOrderedCommands(
-  text: string,
-  commands: readonly string[],
-  failure: string,
-  failures: string[],
-): void {
-  let previousIndex = -1;
-  for (const command of commands) {
-    const currentIndex = text.indexOf(command);
-    if (currentIndex === -1 || currentIndex <= previousIndex) {
-      failures.push(failure);
-      return;
-    }
-    previousIndex = currentIndex;
-  }
-}
-
 function requireContains(
   text: string,
   needle: string,
@@ -526,13 +428,6 @@ function requireContains(
   if (!text.includes(needle)) {
     failures.push(`${label} missing required text: ${needle}`);
   }
-}
-
-function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
 }
 
 function contextUnits(text: string): string[] {

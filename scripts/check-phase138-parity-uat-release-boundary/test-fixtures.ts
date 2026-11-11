@@ -8,18 +8,6 @@ import {
   COMPOSITION_FILE,
   COMPOSITION_SYMBOL,
   D21_SENTENCE,
-  PHASE117_CHECK,
-  PHASE117_CHECK_STEP,
-  PHASE117_TEST,
-  PHASE117_TEST_STEP,
-  PHASE138_CHECK,
-  PHASE138_CHECK_STEP,
-  PHASE138_TEST,
-  PHASE138_TEST_STEP,
-  RECONCILIATION_CHECK,
-  RECONCILIATION_CHECK_STEP,
-  RECONCILIATION_TEST,
-  RECONCILIATION_TEST_STEP,
   REQUIRED_BENCH_TOKEN,
   REQUIRED_BREADCRUMB_GROUPS,
   REQUIRED_DOC_FILES,
@@ -63,7 +51,6 @@ export function createFixture(options: FixtureOptions = {}): string {
   files.set("docs/parity/source-breadcrumbs.json", createBreadcrumbs());
   files.set("docs/operator/runtime-guide.md", createRuntimeGuide(scopedClaim));
   files.set(UAT_PACKAGE, createUatPackage(scopedClaim));
-  files.set("scripts/verify.sh", createVerifyScript());
   files.set("scripts/check-benchmark-report.ts", `${THRESHOLD_FREE}\n`);
   files.set("packages/open-bitcoin-bench/src/cases/mempool.rs", `${REQUIRED_BENCH_TOKEN}\n`);
   for (const cell of MATRIX_CELLS) {
@@ -140,29 +127,6 @@ export function createRuntimeGuide(scopedClaim: string): string {
 
 export function createUatPackage(scopedClaim: string): string {
   return [scopedClaim, ...REQUIRED_UAT_COMMANDS, ...RUNNABLE_CARGO_FILTERS].join("\n");
-}
-
-export function createVerifyScript(options: { place138AfterReconciliation?: boolean } = {}): string {
-  const visible138 = [PHASE138_TEST, PHASE138_CHECK];
-  const visibleReconciliation = [RECONCILIATION_TEST, RECONCILIATION_CHECK];
-  const visibleTail = options.place138AfterReconciliation
-    ? [...visibleReconciliation, ...visible138]
-    : [...visible138, ...visibleReconciliation];
-  const executable138 = [PHASE138_TEST_STEP, PHASE138_CHECK_STEP];
-  const executableReconciliation = [RECONCILIATION_TEST_STEP, RECONCILIATION_CHECK_STEP];
-  const executableTail = options.place138AfterReconciliation
-    ? [...executableReconciliation, ...executable138]
-    : [...executable138, ...executableReconciliation];
-  return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE117_TEST,
-    PHASE117_CHECK,
-    ...visibleTail,
-    "VERIFY_COMMAND_ORDER",
-    PHASE117_TEST_STEP,
-    PHASE117_CHECK_STEP,
-    ...executableTail,
-  ].join("\n");
 }
 
 export function mutateIndex(files: Map<string, string>, mutate: (index: any) => void): void {

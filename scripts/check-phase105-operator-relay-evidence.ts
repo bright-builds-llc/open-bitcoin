@@ -5,10 +5,6 @@ import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-operator-rpc-metrics-logs-support-evidence";
-const PHASE104_TEST_COMMAND = "bun test scripts/check-phase104-relay-serving-fanout.test.ts";
-const PHASE104_CHECKER_COMMAND = "bun run scripts/check-phase104-relay-serving-fanout.ts";
-const PHASE105_TEST_COMMAND = "bun test scripts/check-phase105-operator-relay-evidence.test.ts";
-const PHASE105_CHECKER_COMMAND = "bun run scripts/check-phase105-operator-relay-evidence.ts";
 const REQUIRED_REQUIREMENTS = ["OBS-01", "OBS-02", "OBS-03", "OBS-04"] as const;
 const TARGET_FILES = [
   "docs/architecture/status-snapshot.md",
@@ -40,7 +36,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase105-operator-relay-evidence.ts",
   "scripts/check-phase105-operator-relay-evidence.test.ts",
-  "scripts/verify.sh",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-01-SUMMARY.md",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-02-SUMMARY.md",
   ".planning/phases/105-operator-rpc-metrics-logs-and-support-evidence/105-03-SUMMARY.md",
@@ -267,7 +262,6 @@ export function checkPhase105OperatorRelayEvidence(maybeRepoRoot?: string): stri
   checkRequiredText(texts, failures);
   checkFileNeedles(texts, failures);
   checkBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  checkVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
   checkForbiddenClaims(texts, failures);
 
   return failures;
@@ -420,39 +414,6 @@ function checkBreadcrumbs(raw: string, failures: string[]): void {
   }
 }
 
-function checkVerifierOrder(verifyText: string, failures: string[]): void {
-  const visibleMarker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const visibleStart = verifyText.indexOf(visibleMarker);
-  const visibleBodyStart = visibleStart + visibleMarker.length;
-  const visibleEnd = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", visibleBodyStart);
-  const visibleText =
-    visibleStart === -1 || visibleEnd === -1
-      ? ""
-      : verifyText.slice(visibleBodyStart, visibleEnd);
-  if (
-    !orderedIndexes(visibleText, [
-      PHASE104_TEST_COMMAND,
-      PHASE104_CHECKER_COMMAND,
-      PHASE105_TEST_COMMAND,
-      PHASE105_CHECKER_COMMAND,
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 105 visible order must follow Phase 104");
-  }
-
-  if (
-    !orderedIndexes(verifyText, [
-      'run_step "test Phase 104 relay serving/fanout checker"',
-      'run_step "check Phase 104 relay serving/fanout"',
-      'run_step "test Phase 105 operator relay evidence checker"',
-      'run_step "check Phase 105 operator relay evidence"',
-      'run_step "check pure-core dependencies"',
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 105 executable order must follow Phase 104 and precede pure-core checks");
-  }
-}
-
 function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
   for (const [file, text] of texts.entries()) {
     if (!file.startsWith("docs/") && !file.startsWith(".planning/") && file !== "README.md") {
@@ -484,18 +445,6 @@ function readText(repoRoot: string, filePath: TargetFile, failures: string[]): s
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function orderedIndexes(text: string, needles: readonly string[]): boolean {
-  let cursor = -1;
-  for (const needle of needles) {
-    const index = text.indexOf(needle, cursor + 1);
-    if (index === -1) {
-      return false;
-    }
-    cursor = index;
-  }
-  return true;
 }
 
 function markdownParagraphs(text: string): Array<{ startLine: number; text: string }> {

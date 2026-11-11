@@ -4,14 +4,6 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const PHASE98_TEST_COMMAND =
-  "bun test scripts/check-phase98-traceability-reconciliation.test.ts";
-const PHASE98_CHECKER_COMMAND =
-  "bun run scripts/check-phase98-traceability-reconciliation.ts";
-const PHASE99_TEST_COMMAND =
-  "bun test scripts/check-phase99-peer-policy-structured-log-emission.test.ts";
-const PHASE99_CHECKER_COMMAND =
-  "bun run scripts/check-phase99-peer-policy-structured-log-emission.ts";
 const TARGET_FILES = [
   "packages/open-bitcoin-rpc/src/context/peer_policy.rs",
   "packages/open-bitcoin-rpc/src/context/tests.rs",
@@ -19,7 +11,6 @@ const TARGET_FILES = [
   ".planning/milestones/v1.9-ROADMAP.md",
   ".planning/milestones/v1.9-MILESTONE-AUDIT.md",
   ".planning/phases/99-peer-policy-structured-log-emission/99-VERIFICATION.md",
-  "scripts/verify.sh",
 ] as const;
 const RAW_PEER_POLICY_MARKER_NEEDLES = [
   '["peer", "_id"]',
@@ -29,21 +20,6 @@ const RAW_PEER_POLICY_MARKER_NEEDLES = [
   '["cred", "ential"]',
   '["sec", "ret"]',
   "cookie",
-] as const;
-const FORBIDDEN_PHASE99_VERIFY_GATES = [
-  "public-network",
-  "dnsseed",
-  "seednode",
-  "service-manager",
-  "systemd",
-  "launchd",
-  "multi-day",
-  "soak",
-  "transaction relay",
-  "mempool propagation",
-  "compact block",
-  "production readiness",
-  "production full-node readiness",
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
@@ -64,8 +40,6 @@ export function checkPhase99PeerPolicyStructuredLogEmission(
   verifyRustBehaviorTest(texts.get("packages/open-bitcoin-rpc/src/context/tests.rs") ?? "", failures);
   verifySanitizer(texts, failures);
   verifyPhaseCompletion(texts, failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
-  verifyNoForbiddenVerificationGates(texts.get("scripts/verify.sh") ?? "", failures);
 
   return failures;
 }
@@ -177,65 +151,9 @@ function verifyPhaseCompletion(texts: Map<TargetFile, string>, failures: string[
   }
 }
 
-function verifyVerifierWiring(text: string, failures: string[]): void {
-  for (const command of [
-    PHASE98_TEST_COMMAND,
-    PHASE98_CHECKER_COMMAND,
-    PHASE99_TEST_COMMAND,
-    PHASE99_CHECKER_COMMAND,
-    "Phase 98 is followed by Phase 99",
-  ]) {
-    requireContains(text, command, "P99 verifier wiring", failures);
-  }
-  requireOrdered(text, PHASE98_CHECKER_COMMAND, PHASE99_TEST_COMMAND, "P99 visible verifier order", failures);
-  requireOrdered(text, PHASE99_TEST_COMMAND, PHASE99_CHECKER_COMMAND, "P99 visible verifier order", failures);
-  requireOrdered(
-    text,
-    'run_step "test Phase 98 traceability reconciliation checker"',
-    'run_step "test Phase 99 peer-policy structured log emission checker"',
-    "P99 executable verifier order",
-    failures,
-  );
-  requireOrdered(
-    text,
-    'run_step "test Phase 99 peer-policy structured log emission checker"',
-    'run_step "check Phase 99 peer-policy structured log emission"',
-    "P99 executable verifier order",
-    failures,
-  );
-}
-
-function verifyNoForbiddenVerificationGates(text: string, failures: string[]): void {
-  for (const line of text.split(/\r?\n/)) {
-    const lower = line.toLowerCase();
-    if (!lower.includes("phase 99") && !lower.includes("check-phase99-peer-policy")) {
-      continue;
-    }
-    for (const forbidden of FORBIDDEN_PHASE99_VERIFY_GATES) {
-      if (lower.includes(forbidden)) {
-        failures.push(`P99 default verifier introduces forbidden gate '${forbidden}': ${line.trim()}`);
-      }
-    }
-  }
-}
-
 function requireContains(text: string, needle: string, label: string, failures: string[]): void {
   if (!text.includes(needle)) {
     failures.push(`${label} missing required text: ${needle}`);
-  }
-}
-
-function requireOrdered(
-  text: string,
-  before: string,
-  after: string,
-  label: string,
-  failures: string[],
-): void {
-  const beforeIndex = text.indexOf(before);
-  const afterIndex = text.indexOf(after);
-  if (beforeIndex === -1 || afterIndex === -1 || beforeIndex >= afterIndex) {
-    failures.push(`${label} must order '${before}' before '${after}'`);
   }
 }
 

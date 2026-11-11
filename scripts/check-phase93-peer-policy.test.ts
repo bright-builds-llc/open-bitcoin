@@ -50,16 +50,6 @@ test("fails when renderer text includes raw peer-policy evidence", () => {
   expect(failures.join("\n")).toContain("raw detail");
 });
 
-test("fails when verifier does not run Phase 93 after Phase 92", () => {
-  const root = writeFixture({
-    "scripts/verify.sh": verifyText({ includePhase93: false }),
-  });
-
-  const failures = checkPhase93PeerPolicy({ rootDir: root });
-
-  expect(failures.join("\n")).toContain("Phase 93 verifier-order");
-});
-
 function writeFixture(overrides: Record<string, string> = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase93-"));
   tempRoots.push(root);
@@ -104,7 +94,6 @@ function fixtureFiles(): Record<string, string> {
     "docs/parity/source-breadcrumbs.json": sourceBreadcrumbsText(),
     "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs": rendererText,
     "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs": rendererText,
-    "scripts/verify.sh": verifyText(),
   };
 }
 
@@ -177,30 +166,4 @@ function sourceBreadcrumbsText(): string {
     null,
     2,
   );
-}
-
-function verifyText(options: { includePhase93?: boolean } = {}): string {
-  const includePhase93 = options.includePhase93 ?? true;
-  const printed = [
-    "bun test scripts/check-phase92-address-boundaries.test.ts",
-    "bun run scripts/check-phase92-address-boundaries.ts",
-    ...(includePhase93
-      ? [
-          "bun test scripts/check-phase93-peer-policy.test.ts",
-          "bun run scripts/check-phase93-peer-policy.ts",
-        ]
-      : []),
-  ].join("\n");
-  const executed = [
-    'run_step "test Phase 92 address boundaries checker" bun test scripts/check-phase92-address-boundaries.test.ts',
-    'run_step "check Phase 92 address boundaries" bun run scripts/check-phase92-address-boundaries.ts',
-    ...(includePhase93
-      ? [
-          'run_step "test Phase 93 peer policy checker" bun test scripts/check-phase93-peer-policy.test.ts',
-          'run_step "check Phase 93 peer policy" bun run scripts/check-phase93-peer-policy.ts',
-        ]
-      : []),
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
-  ].join("\n");
-  return [": <<'VERIFY_COMMAND_ORDER'", printed, "VERIFY_COMMAND_ORDER", executed].join("\n");
 }

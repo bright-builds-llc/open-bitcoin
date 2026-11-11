@@ -11,15 +11,6 @@ import {
   FJALL_DIFFERENCE_SENTENCE,
   GRD01_CHECKBOX,
   HISTORICAL_PHASE_DIR,
-  PHASE138_CHECK,
-  PHASE145_CHECK,
-  PHASE145_CHECK_STEP,
-  PHASE145_TEST,
-  PHASE145_TEST_STEP,
-  PHASE151_CHECK,
-  PHASE151_CHECK_STEP,
-  PHASE151_TEST,
-  PHASE151_TEST_STEP,
   PUBLIC_NETWORK_NOT_RUN_LINE,
   REQUIRED_CLOSEOUT_SOURCES,
   REQUIRED_DOC_FILES,
@@ -77,7 +68,6 @@ export function createFixture(options: FixtureOptions = {}): string {
   files.set(UAT_PACKAGE, createUatPackage());
   files.set(REQUIREMENTS_FILE, createRequirements());
   files.set(ROADMAP_FILE, createRoadmap());
-  files.set("scripts/verify.sh", createVerifyScript());
   files.set(
     "scripts/check-phase151-parity-uat-release-boundary.ts",
     `// historical verifier evidence ${HISTORICAL_PHASE_DIR}\n`,
@@ -138,29 +128,6 @@ export function createBreadcrumbs(): string {
 
 export function createUatPackage(): string {
   return [...REQUIRED_UAT_COMMANDS, PUBLIC_NETWORK_NOT_RUN_LINE].join("\n");
-}
-
-export function createVerifyScript(
-  options: { omitPhase151?: boolean; addForbiddenRunStep?: boolean } = {},
-): string {
-  const visible151 = options.omitPhase151 ? [] : [PHASE151_TEST, PHASE151_CHECK];
-  const visible = [PHASE145_TEST, PHASE145_CHECK, ...visible151, PHASE138_CHECK];
-  const executable151 = options.omitPhase151 ? [] : [PHASE151_TEST_STEP, PHASE151_CHECK_STEP];
-  const executable = [
-    PHASE145_TEST_STEP,
-    PHASE145_CHECK_STEP,
-    ...executable151,
-    `run_step "check Phase 138 parity UAT release boundary" ${PHASE138_CHECK}`,
-    ...(options.addForbiddenRunStep
-      ? ['run_step "live mainnet smoke" bun run scripts/run-live-mainnet-smoke.ts']
-      : []),
-  ];
-  return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    ...visible,
-    "VERIFY_COMMAND_ORDER",
-    ...executable,
-  ].join("\n");
 }
 
 export function mutateIndex(files: Map<string, string>, mutate: (index: FixtureIndex) => void): void {

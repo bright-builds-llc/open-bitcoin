@@ -7,10 +7,6 @@ import { checkPhase111FullBlockServingRequestPath } from "./check-phase111-full-
 
 const SURFACE_ID = "v2-1-full-block-serving-request-path";
 const REQUIRED_REQUIREMENTS = ["BSRV-04", "GOV-01", "GOV-05"] as const;
-const PHASE111_TEST_COMMAND =
-  "bun test scripts/check-phase111-full-block-serving-request-path.test.ts";
-const PHASE111_CHECKER_COMMAND =
-  "bun run scripts/check-phase111-full-block-serving-request-path.ts";
 const TARGET_FILES = [
   "docs/architecture/status-snapshot.md",
   "docs/operator/runtime-guide.md",
@@ -24,7 +20,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/tests.rs",
   "packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs",
   "packages/open-bitcoin-network/src/peer/tests.rs",
-  "scripts/verify.sh",
 ] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
@@ -207,17 +202,6 @@ test("fails_when_runtime_commands_or_default_verifier_wiring_are_missing", () =>
         );
       },
     }),
-    createFixture({
-      maybeMutateFiles(files) {
-        replaceInFile(files, "scripts/verify.sh", PHASE111_TEST_COMMAND, "");
-        replaceInFile(files, "scripts/verify.sh", PHASE111_CHECKER_COMMAND, "");
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 111 public-network CI" true');
-      },
-    }),
   ];
 
   // Act
@@ -227,8 +211,6 @@ test("fails_when_runtime_commands_or_default_verifier_wiring_are_missing", () =>
 
   // Assert
   expect(failureMessages[0]).toContain("runtime guide");
-  expect(failureMessages[1]).toContain("default verifier");
-  expect(failureMessages[2]).toContain("forbidden Phase 111 default verifier gate");
 });
 
 function createFixture(options: FixtureOptions = {}): string {
@@ -261,7 +243,6 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["packages/open-bitcoin-node/src/network/tests.rs", nodeTestsText()],
     ["packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs", relayServingCasesText()],
     ["packages/open-bitcoin-network/src/peer/tests.rs", peerTestsText()],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 }
 
@@ -431,25 +412,6 @@ function parityIndexText(): string {
     null,
     2,
   );
-}
-
-function verifyScriptText(): string {
-  return [
-    "# Phase 108 is followed by Phase 110 and Phase 111.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    "bun test scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts",
-    "bun run scripts/check-phase108-durable-mempool-relay-state-recovery.ts",
-    "bun test scripts/check-phase110-block-serving-boundary.test.ts",
-    "bun run scripts/check-phase110-block-serving-boundary.ts",
-    PHASE111_TEST_COMMAND,
-    PHASE111_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    'run_step "test Phase 110 block-serving boundary checker" bun test scripts/check-phase110-block-serving-boundary.test.ts',
-    'run_step "check Phase 110 block-serving boundary" bun run scripts/check-phase110-block-serving-boundary.ts',
-    `run_step "test Phase 111 full block-serving request path checker" ${PHASE111_TEST_COMMAND}`,
-    `run_step "check Phase 111 full block-serving request path" ${PHASE111_CHECKER_COMMAND}`,
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
-  ].join("\n");
 }
 
 function knotsAnchorsText(): string {

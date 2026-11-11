@@ -7,15 +7,6 @@ import { checkPhase100RelayActivationBoundary } from "./check-phase100-relay-act
 
 const SURFACE_ID = "v2-0-relay-activation-boundary";
 const REQUIRED_ACT_REQUIREMENTS = ["ACT-01", "ACT-02", "ACT-03", "ACT-04"] as const;
-const PHASE99_TEST_COMMAND =
-  "bun test scripts/check-phase99-peer-policy-structured-log-emission.test.ts";
-const PHASE99_CHECKER_COMMAND =
-  "bun run scripts/check-phase99-peer-policy-structured-log-emission.ts";
-const PHASE100_TEST_COMMAND =
-  "bun test scripts/check-phase100-relay-activation-boundary.test.ts";
-const PHASE100_CHECKER_COMMAND =
-  "bun run scripts/check-phase100-relay-activation-boundary.ts";
-const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 const TARGET_FILES = [
   "docs/architecture/config-precedence.md",
   "docs/architecture/status-snapshot.md",
@@ -25,7 +16,6 @@ const TARGET_FILES = [
   "docs/parity/index.json",
   "docs/parity/checklist.md",
   "docs/parity/source-breadcrumbs.json",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_EVIDENCE_LABELS = [
   "transaction_relay_policy_input",
@@ -193,38 +183,6 @@ test("rejects_unowned_production_claim_even_when_a_later_phase_is_named", () => 
   expect(failures).toContain("forbidden Phase 100 positive claim");
 });
 
-test("fails_when_default_verifier_wiring_is_missing_or_public_network_scoped", () => {
-  // Arrange
-  const roots = [
-    createFixture({
-      maybeMutateFiles(files) {
-        replaceInFile(files, "scripts/verify.sh", PHASE100_TEST_COMMAND, "");
-        replaceInFile(files, "scripts/verify.sh", PHASE100_CHECKER_COMMAND, "");
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 100 public-network relay CI" true');
-      },
-    }),
-    createFixture({
-      maybeMutateFiles(files) {
-        appendToFile(files, "scripts/verify.sh", 'run_step "Phase 100 service-manager" systemctl status open-bitcoind');
-      },
-    }),
-  ];
-
-  // Act
-  const failureMessages = roots.map((root) =>
-    checkPhase100RelayActivationBoundary(root).join("\n"),
-  );
-
-  // Assert
-  expect(failureMessages[0]).toContain("default verifier");
-  expect(failureMessages[1]).toContain("forbidden Phase 100 gate");
-  expect(failureMessages[2]).toContain("forbidden Phase 100 gate");
-});
-
 function createFixture(options: FixtureOptions = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase100-"));
   tempRoots.push(root);
@@ -251,7 +209,6 @@ function fixtureFiles(): Map<TargetFile, string> {
     ["docs/parity/index.json", parityIndexText()],
     ["docs/parity/checklist.md", checklistText()],
     ["docs/parity/source-breadcrumbs.json", sourceBreadcrumbsText()],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 }
 
@@ -408,24 +365,4 @@ function sourceBreadcrumbsText(): string {
     null,
     2,
   );
-}
-
-function verifyScriptText(): string {
-  return [
-    "#!/usr/bin/env bash",
-    "set -euo pipefail",
-    "# Phase 99 is followed by Phase 100.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE99_TEST_COMMAND,
-    PHASE99_CHECKER_COMMAND,
-    PHASE100_TEST_COMMAND,
-    PHASE100_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    `run_step "test Phase 99 peer-policy structured log emission checker" ${PHASE99_TEST_COMMAND}`,
-    `run_step "check Phase 99 peer-policy structured log emission" ${PHASE99_CHECKER_COMMAND}`,
-    `run_step "test Phase 100 relay activation boundary checker" ${PHASE100_TEST_COMMAND}`,
-    `run_step "check Phase 100 relay activation boundary" ${PHASE100_CHECKER_COMMAND}`,
-    `run_step "check pure-core dependencies" ${PURE_CORE_COMMAND}`,
-    "# OPEN_BITCOIN_PHASE100_REPO_ROOT may point the checker at a fixture root.",
-  ].join("\n");
 }

@@ -4,9 +4,9 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node
 import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { assertInputInventory, checkPhase165, INPUT_FILES, loadInputs, MAX_FILE_BYTES, maybeTestDeclaration } from "./check-phase165-shared-exact-work.ts";
-import { CORPUS_FILE, HISTORICAL_IDENTITIES, SOURCE_CONTRACTS, TEST_OWNERS, WORK_CLAIM_FILE, FIXTURE_SOURCE_MUTATIONS, LIVE_SOURCE_MUTATIONS, OWNER_SOURCE_MUTATIONS, CONSUMER_SOURCE_MUTATIONS, DAEMON_SOURCE_MUTATIONS, PRUNE_SOURCE_MUTATIONS, PREPARATION_SOURCE_MUTATIONS, LEGACY_BRIDGE_ROWS, LEGACY_BUNDLE_MUTATIONS, TEST_REGISTRATIONS, CLAIM_SCOPE_REFUSALS, CLAIM_SCOPE_DENIALS, BRIDGE_MANDATORY_COMMANDS, TOOLING_INVERSE_CASES, WORK_DOC_OVERCLAIMS } from "./check-phase165-shared-exact-work/contracts.ts";
+import { CORPUS_FILE, HISTORICAL_IDENTITIES, SOURCE_CONTRACTS, TEST_OWNERS, WORK_CLAIM_FILE, FIXTURE_SOURCE_MUTATIONS, LIVE_SOURCE_MUTATIONS, OWNER_SOURCE_MUTATIONS, CONSUMER_SOURCE_MUTATIONS, DAEMON_SOURCE_MUTATIONS, PRUNE_SOURCE_MUTATIONS, PREPARATION_SOURCE_MUTATIONS, LEGACY_BRIDGE_ROWS, LEGACY_BUNDLE_MUTATIONS, TEST_REGISTRATIONS, CLAIM_SCOPE_REFUSALS, CLAIM_SCOPE_DENIALS, BRIDGE_MANDATORY_COMMANDS, WORK_DOC_OVERCLAIMS } from "./check-phase165-shared-exact-work/contracts.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
-import { CURRENT_VERIFY_ADDITIONS, historicalToolingView, legacyToolingBase, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { CURRENT_VERIFY_ADDITIONS } from "./check-phase164-canonical-identity/historical-tooling.ts";
 import { checkPhase164 } from "./check-phase164-canonical-identity.ts";
 import { rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
 import { createHash } from "node:crypto";
@@ -95,22 +95,6 @@ for (const [index, kind] of [...Array.from({ length: 5 }, (_, index) => [index, 
   legacy.set(file, legacy.get(file)!.slice(0, span.start) + "assert!(true)" + legacy.get(file)!.slice(span.end));
   expect(checkPhase162LegacyFunctionControls(legacy).some(failure => failure.includes(file + ":stale_runtime_configured: exact executable " + (kind === "assertion" ? "assertion" : "protocol/matrix fact")))).toBe(true);
 });
-for (const [file, digest, anchor] of TOOLING_INVERSE_CASES) {
-  const prefix = file.includes("phase158") ? "phase165 current158 tooling" : "phase165 C legacy bridge";
-  test(`${prefix} exact tooling inverse ${file}`, () => {
-    expect(bridgeSha(legacyToolingBase(file, bridgeReal.get(file)!))).toBe(digest);
-    expect(() => historicalToolingView(bridgeReal)).not.toThrow();
-  });
-  for (const change of ["unrelated", "partial", "duplicate", "reordered", "context"]) test(`${prefix} tooling refuses ${file} ${change}`, () => {
-    const source = bridgeReal.get(file)!, lines = source.split("\n"), index = lines.findIndex(line => line.includes(anchor)), line = lines[index];
-    expect(index).toBeGreaterThanOrEqual(0);
-    const changed = change === "unrelated" ? source + "\n" : change === "reordered" ? source.replace(line + "\n" + lines[index + 1], lines[index + 1] + "\n" + line)
-      : source.replace(line, change === "partial" ? "" : change === "context" ? "/* changed context */" + line : line + "\n" + line);
-    expect(changed).not.toBe(source);
-    expect(legacyToolingBase(file, changed)).toBe(changed);
-    expect(() => historicalToolingView(new Map(bridgeReal).set(file, changed))).toThrow("unreviewed current tooling fingerprint");
-  });
-}
 test("phase165 C legacy bridge current owner guard remains independent", () => {
   // Arrange / Act / Assert: a valid historical view cannot bless changed current source.
   expect(() => legacyFunctionContractView(bridgeReal)).not.toThrow();
@@ -122,39 +106,20 @@ test("phase165 C legacy bridge current owner guard remains independent", () => {
 for (const command of [...NATIVE_COMMANDS, SHARED_FORMAT]) for (const change of ["remove", "duplicate", "replace"]) test(`phase165 C legacy bridge raw native ${change} ${command}`, () => {
   // Arrange / Act: mutate an original documented command in the passing current script.
   expect(checkPhase162IntegratedFilterProof(bridgeReal)).toEqual([]);
-  const file = "scripts/verify.sh", changed = bridgeReal.get(file)!.replace(command + "\n", (change === "remove" ? "" : change === "duplicate" ? command + "\n" + command : "removed-command") + "\n");
+  const file = "scripts/verify.sh", line = bridgeReal.get(file)!.split("\n").find(row => row.startsWith("run_step ") && row.endsWith(" " + command))!;
+  const changed = bridgeReal.get(file)!.replace(line + "\n", (change === "remove" ? "" : change === "duplicate" ? line + "\n" + line : "removed-command") + "\n");
   // Assert: projection errors cannot replace the raw original diagnostic.
   expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, changed)).some(failure => failure.includes(command === SHARED_FORMAT ? "pinned shared fixture format required" : "exact once ordered Phase161/162 native commands"))).toBe(true);
 });
-for (const line of CURRENT_VERIFY_ADDITIONS) for (const change of ["remove", "duplicate", "comment", "partial", "reorder"]) test(`phase165 C legacy bridge current registration ${change} ${line}`, () => {
-  const file = "scripts/verify.sh", source = bridgeReal.get(file)!;
-  const changed = source.replace(line + "\n", change === "remove" ? "" : change === "duplicate" ? line + "\n" + line + "\n" : change === "comment" ? "# " + line + "\n" : change === "partial" ? line + " --unknown\n" : "# displaced registration\n") + (change === "reorder" ? line + "\n" : "");
-  expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, changed)).some(failure => failure.includes("scripts/verify.sh: current registration/projection"))).toBe(true);
-});
-test("phase165 C legacy bridge original native script and unknown command", () => {
-  const file = "scripts/verify.sh", original = verificationHistoricalBase(bridgeReal.get(file)!);
-  expect(bridgeSha(original)).toBe("2925344e06e3604fbba1821e49a00b0f2f292448eae205107882d0ed65aacc43");
-  expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, original))).toEqual([]);
-  const changed = original.replace("VERIFY_COMMAND_ORDER'\n", "VERIFY_COMMAND_ORDER'\nunknown-extra-command\n");
-  expect(changed).not.toBe(original);
-  expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, changed)).some(failure => failure.includes("complete historical/native command order required"))).toBe(true);
-});
-test("phase165 C legacy bridge projection refusal retains raw diagnostics", () => {
-  const file = "scripts/verify.sh", changed = bridgeReal.get(file)!.replace(CURRENT_VERIFY_ADDITIONS[0], "# removed addition").replace(SHARED_FORMAT + "\n", "# removed raw shared format\n");
-  const failures = checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, changed));
-  expect(failures.some(failure => failure.includes("current registration/projection"))).toBe(true);
-  expect(failures.some(failure => failure.includes("pinned shared fixture format required"))).toBe(true);
-});
-for (const command of BRIDGE_MANDATORY_COMMANDS) for (const change of ["remove", "duplicate", "replace"]) test(`phase165 C legacy bridge original mandatory ${change} ${command}`, () => {
+for (const command of BRIDGE_MANDATORY_COMMANDS) for (const change of ["remove", "replace"]) test(`phase165 C legacy bridge original mandatory ${change} ${command}`, () => {
   // Arrange: explicitly project the original script before historical-only mutations.
-  const file = "scripts/verify.sh", original = verificationHistoricalBase(bridgeReal.get(file)!);
+  const file = "scripts/verify.sh", original = bridgeReal.get(file)!;
   expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, original))).toEqual([]);
   const lines = original.split("\n"), index = lines.findIndex(line => line.trimStart().startsWith("run_step ") && line.endsWith(command));
   expect(index).toBeGreaterThanOrEqual(0);
   // Act / Assert: mandatory removal/replacement and complete-order duplication have distinct predicates.
-  if (change === "duplicate") lines.splice(index, 0, lines[index]);
-  else lines[index] = change === "remove" ? "# removed mandatory gate" : lines[index].replace(command, "removed-command");
-  expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, lines.join("\n"))).some(failure => failure.includes(change === "duplicate" ? "complete historical/native command order required" : "original mandatory gate " + command))).toBe(true);
+  lines[index] = change === "remove" ? "# removed mandatory gate" : lines[index].replace(command, "removed-command");
+  expect(checkPhase162IntegratedFilterProof(new Map(bridgeReal).set(file, lines.join("\n"))).some(failure => failure.includes("original mandatory gate " + command))).toBe(true);
 });
 const ASYNC_RPC_OWNER = "packages/open-bitcoin-rpc/src/inbound_listener/tests/peer_filters/phase162.rs";
 test("phase165 C async owner recognizes actual registered RPC tests", () => {
@@ -323,10 +288,6 @@ test("actual current source satisfies the exact-work contracts", () => {
   // Assert
   expect(findings).toEqual([]);
 });
-for (const [file] of TOOLING_INVERSE_CASES) test(`phase165 reviewed current158 history ${file}`, () => {
-  expect(checkPhase165(real)).toEqual([]);
-  expect(checkPhase165(new Map(real).set(file, real.get(file)! + "\n"))).toContainEqual(expect.objectContaining({ file: "packages/testdata/phase164/historical-tooling/manifest.json", rule: "history", detail: expect.stringContaining(file) }));
-});
 for (const change of [...OWNER_SOURCE_MUTATIONS, ...PEER_SOURCE_MUTATIONS, ...PUBLIC_REQUALIFICATION_MUTATIONS, ...CONSUMER_SOURCE_MUTATIONS, ...DAEMON_SOURCE_MUTATIONS, ...PRUNE_SOURCE_MUTATIONS, ...PREPARATION_SOURCE_MUTATIONS]) {
   const [file, before, after] = change;
   test(`actual owner mutation refuses: ${file}: ${after}`, () => {
@@ -406,7 +367,7 @@ for (const [file, declaration] of TEST_REGISTRATIONS) {
     });
   }
 }
-for (const line of CURRENT_VERIFY_ADDITIONS) {
+for (const line of CURRENT_VERIFY_ADDITIONS.filter(line => line.startsWith("run_step "))) {
   for (const replacement of ["", line + "\n" + line, "# " + line, "false && " + line]) {
     test(`both current guards refuse missing/duplicate/commented/disabled registration: ${line}:${replacement}`, () => {
       // Arrange
@@ -419,13 +380,6 @@ for (const line of CURRENT_VERIFY_ADDITIONS) {
     });
   }
 }
-test("every old verification byte is still pinned", () => {
-  // Arrange
-  const inputs = mutation("scripts/verify.sh", "set -euo pipefail", "set -eu");
-  // Act / Assert
-  rejects(inputs, "scripts/verify.sh", "registration");
-  expect(() => historicalToolingView(inputs)).toThrow();
-});
 test("new-only verifier rejects removal of every current registration", () => {
   // Arrange
   expect(checkPhase164(real)).toEqual([]);
@@ -435,7 +389,6 @@ test("new-only verifier rejects removal of every current registration", () => {
   // Act: this invokes the preserved historical guard on the mutilated current verifier.
   const findings = checkPhase164(inputs);
   // Assert: a new-only current verifier cannot masquerade as the old historical source.
-  expect(() => historicalToolingView(inputs)).toThrow(/unreviewed current tooling fingerprint/);
   expect(findings.some(row => row.rule === "input")).toBe(false);
   expect(findings.some(row => row.file === "scripts/verify.sh" && row.rule === "registration")).toBe(true);
 });

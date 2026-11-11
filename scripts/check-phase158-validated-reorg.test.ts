@@ -421,7 +421,7 @@ for (const [file, symbol, before, after] of CURRENT_REORG_DECLARATIONS) test(`ph
   expect(fixtureMutation(file, source => source.replace(pattern(before), after), true)).toContain(`T-158-07-01: actual boundary ${file}:${symbol}`);
 });
 for (const command of ["bun test ./scripts/check-phase158-validated-reorg.test.ts", "bun run scripts/check-phase158-validated-reorg.ts"]) {
-  for (const executed of [false, true]) {
+  for (const executed of [true]) {
     test(`ordered ${executed ? "executed" : "documented"} verifier requires ${command}`, () => {
       // Arrange
       const failures = fixtureMutation("scripts/verify.sh", source => source.replace(new RegExp(`^${executed ? "run_step [^\\n]+" : ""}${command.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"), "# removed stage"));

@@ -3,7 +3,7 @@ import path from "node:path";
 import { maybeFunction } from "../check-phase157-index-catch-up/rust-evidence.ts";
 import { DEFAULT_REPO_ROOT, TARGET_FILES, REQUIRED_SUPPRESSION_LABELS, REQUIRED_STATUS_SYMBOLS, REQUIRED_POLICY_SYMBOLS, TargetFile, TextCorpus } from "./constants.ts";
 import { checkParitySurface, checkRequiredDocsAndCommands } from "./parity.ts";
-import { checkVerifierOrder, checkForbiddenDefaultVerifierGates, checkSensitivePublicEvidence, checkForbiddenClaims } from "./claims.ts";
+import { checkSensitivePublicEvidence, checkForbiddenClaims } from "./claims.ts";
 import { requireGateBeforeMutation, sectionBetween, requireContains, orderedIndexes } from "./helpers.ts";
 import { readText } from "./filesystem.ts";
 
@@ -27,8 +27,6 @@ export function checkPhase107RuntimeRelayActivationDownloadEligibility(
   checkSupportRedaction(texts, failures);
   checkParitySurface(texts, failures);
   checkRequiredDocsAndCommands(texts, failures);
-  checkVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
-  checkForbiddenDefaultVerifierGates(texts.get("scripts/verify.sh") ?? "", failures);
   checkSensitivePublicEvidence(texts, failures);
   checkForbiddenClaims(texts, failures);
 

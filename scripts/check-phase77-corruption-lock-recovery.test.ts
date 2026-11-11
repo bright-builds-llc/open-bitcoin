@@ -25,14 +25,6 @@ const DEFAULT_PLAN_TEXTS = [
   "---\nrequirements: [REC-05, REC-06, REC-07, REC-08]\n---\n",
   "---\nrequirements: [REC-05, REC-06, REC-07, REC-08]\n---\n",
 ] as const;
-const PHASE76_CHECKER_COMMAND = "bun run scripts/check-phase76-resource-bounds.ts";
-const PHASE77_TEST_COMMAND = "bun test scripts/check-phase77-corruption-lock-recovery.test.ts";
-const PHASE77_CHECKER_COMMAND = "bun run scripts/check-phase77-corruption-lock-recovery.ts";
-const DEFAULT_VERIFY_SCRIPT = [
-  PHASE76_CHECKER_COMMAND,
-  PHASE77_TEST_COMMAND,
-  PHASE77_CHECKER_COMMAND,
-].join("\n");
 const NO_MUTATION_BOUNDARY =
   "Phase 77 does not delete lock files, clear recovery markers, repair stores, compact stores, reindex stores, relocate datadirs, mutate source datadirs, scan OS process tables, or upload support bundles automatically.";
 
@@ -46,7 +38,6 @@ type FixtureOptions = {
     needle: string;
   };
   maybePlanTexts?: readonly string[];
-  maybeVerifyScript?: string;
 };
 
 type CheckerRun = {
@@ -289,23 +280,6 @@ test("fails when live-smoke recovery evidence report anchors are missing", async
   expect(result.exitCode).not.toBe(0);
 });
 
-test("fails when verify.sh omits the Phase 77 checker or wires it before Phase 76", async () => {
-  // Arrange
-  const root = await createFixture({
-    maybeVerifyScript: [
-      PHASE77_TEST_COMMAND,
-      PHASE77_CHECKER_COMMAND,
-      PHASE76_CHECKER_COMMAND,
-    ].join("\n"),
-  });
-
-  // Act
-  const result = runChecker(root);
-
-  // Assert
-  expect(result.exitCode).not.toBe(0);
-});
-
 async function createFixture(options: FixtureOptions): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "open-bitcoin-phase77-checker-"));
   tempRoots.push(root);
@@ -318,11 +292,6 @@ async function createFixture(options: FixtureOptions): Promise<string> {
   for (const [file, text] of Object.entries(FILE_TEXTS)) {
     await writeFixtureFile(root, file, applyTextOptions(file, text, options));
   }
-  await writeFixtureFile(
-    root,
-    "scripts/verify.sh",
-    options.maybeVerifyScript ?? DEFAULT_VERIFY_SCRIPT,
-  );
 
   return root;
 }

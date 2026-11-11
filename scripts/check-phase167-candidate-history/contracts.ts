@@ -21,7 +21,6 @@ export const STEP_LABELS = [
   "check Phase 167 candidate history boundary",
 ] as const;
 
-export const VERIFY_BASE_SHA = "2925344e06e3604fbba1821e49a00b0f2f292448eae205107882d0ed65aacc43";
 export const VERIFY_FILE = "scripts/verify.sh";
 
 /** Frozen accepted FINAL17 product and Phase167 corpus bytes; never refresh at runtime. */

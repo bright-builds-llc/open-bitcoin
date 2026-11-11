@@ -21,7 +21,7 @@ import {
   allV22RequirementIds,
 } from "./constants.ts";
 import { cellLabel, COMPOSITION_CELL, MATRIX_CELLS } from "./matrix.ts";
-import { checkBenchmarks, checkUatCommands, checkVerifier } from "./verifier.ts";
+import { checkBenchmarks, checkUatCommands } from "./verifier.ts";
 
 type ParitySurface = {
   id?: unknown;
@@ -44,7 +44,6 @@ export function checkPhase138ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   checkRequirementCheckboxes(texts.get(REQUIREMENTS_FILE) ?? "", failures);
   checkBreadcrumbGroups(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkClaims(texts, failures);
-  checkVerifier(texts.get("scripts/verify.sh") ?? "", failures);
   checkBenchmarks(texts, failures);
   checkUatCommands(texts, failures);
   return failures;

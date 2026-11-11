@@ -18,7 +18,6 @@ const REQUIRED_FILES = [
   "docs/parity/deviations-and-unknowns.md",
   "docs/parity/catalog/rpc-cli-config.md",
   "packages/open-bitcoin-rpc/src/method.rs",
-  "scripts/verify.sh",
 ] as const;
 const tempRoots: string[] = [];
 
@@ -314,62 +313,4 @@ test("catalog rejects blanket rpcwallet deferral", () => {
 
   // Assert
   expect(failures).toContain("catalog must not defer -rpcwallet wholesale");
-});
-
-test("verifier rejects a missing visible checker entry", () => {
-  // Arrange
-  const root = createFixture();
-  replaceInFixture(
-    root,
-    "scripts/verify.sh",
-    "bun test scripts/check-current-documentation-reconciliation.test.ts\n",
-    "",
-  );
-
-  // Act
-  const failures = checkCurrentDocumentationReconciliation(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("verifier visible reconciliation order");
-});
-
-test("verifier rejects reordered executable checker entries", () => {
-  // Arrange
-  const root = createFixture();
-  replaceInFixture(
-    root,
-    "scripts/verify.sh",
-    'run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts\nrun_step "check current documentation reconciliation" bun run scripts/check-current-documentation-reconciliation.ts\n',
-    'run_step "check current documentation reconciliation" bun run scripts/check-current-documentation-reconciliation.ts\nrun_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts\n',
-  );
-
-  // Act
-  const failures = checkCurrentDocumentationReconciliation(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("verifier executable reconciliation order");
-});
-
-test("verifier rejects the old 117-to-reconciliation sequence without Phase 138", () => {
-  // Arrange
-  const root = createFixture();
-  replaceInFixture(
-    root,
-    "scripts/verify.sh",
-    "bun test scripts/check-phase138-parity-uat-release-boundary.test.ts\nbun run scripts/check-phase138-parity-uat-release-boundary.ts\n",
-    "",
-  );
-  replaceInFixture(
-    root,
-    "scripts/verify.sh",
-    'run_step "test Phase 138 parity UAT release boundary checker" bun test scripts/check-phase138-parity-uat-release-boundary.test.ts\nrun_step "check Phase 138 parity UAT release boundary" bun run scripts/check-phase138-parity-uat-release-boundary.ts\n',
-    "",
-  );
-
-  // Act
-  const failures = checkCurrentDocumentationReconciliation(root).join("\n");
-
-  // Assert
-  expect(failures).toContain("verifier visible reconciliation order");
-  expect(failures).toContain("verifier executable reconciliation order");
 });

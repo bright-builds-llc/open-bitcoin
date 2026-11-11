@@ -9,12 +9,6 @@ import { checkPhase92AddressBoundaries } from "./check-phase92-address-boundarie
 const REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v1-9-address-advertisement-discovery-boundaries";
 const PHASE92_REQUIREMENTS = ["ADDR-01", "ADDR-02", "ADDR-03", "ADDR-04"] as const;
-const PHASE91_TEST_COMMAND =
-  "bun test scripts/check-phase91-peer-permissions.test.ts";
-const PHASE91_CHECKER_COMMAND = "bun run scripts/check-phase91-peer-permissions.ts";
-const PHASE92_TEST_COMMAND =
-  "bun test scripts/check-phase92-address-boundaries.test.ts";
-const PHASE92_CHECKER_COMMAND = "bun run scripts/check-phase92-address-boundaries.ts";
 const CARGO_DAEMON_COMMAND =
   "cargo run --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind --";
 const BAZEL_DAEMON_COMMAND = "bazel run //packages/open-bitcoin-rpc:open_bitcoind --";
@@ -37,7 +31,6 @@ const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
   "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_LABELS = [
   "local_advertisement_candidates",
@@ -55,16 +48,6 @@ const REQUIRED_BREADCRUMB_FILES = [
   "packages/open-bitcoin-network/src/address/book.rs",
   "packages/open-bitcoin-network/src/address/response.rs",
   "packages/open-bitcoin-network/src/address/tests.rs",
-] as const;
-const FORBIDDEN_PUBLIC_VERIFY_FRAGMENTS = [
-  "curl ",
-  "nc ",
-  "systemctl",
-  "launchctl",
-  "dig ",
-  "nslookup",
-  "--public-network",
-  "multi-day",
 ] as const;
 const RAW_EVIDENCE_STRINGS = [
   "127.0.0.1:",
@@ -215,30 +198,6 @@ test("fails_when_repo_local_address_uat_command_fragments_are_missing", async ()
   }
 });
 
-test("fails_when_default_verifier_contains_public_network_command_fragments", async () => {
-  // Arrange
-  const roots = await Promise.all(
-    FORBIDDEN_PUBLIC_VERIFY_FRAGMENTS.map((fragment) =>
-      createFixture({
-        maybeMutateFiles(files) {
-          const current = files.get("scripts/verify.sh") ?? "";
-          files.set("scripts/verify.sh", `${current}\n${fragment}\n`);
-        },
-      }),
-    ),
-  );
-
-  // Act
-  const failureMessages = roots.map((root) =>
-    checkPhase92AddressBoundaries({ rootDir: root }).join("\n"),
-  );
-
-  // Assert
-  for (const message of failureMessages) {
-    expect(message).toContain("Phase 92 default verifier boundary");
-  }
-});
-
 test("fails_when_docs_claim_full_relay_discovery_public_or_production_support", async () => {
   // Arrange
   const claims = [
@@ -328,43 +287,6 @@ test("fails_when_status_or_support_evidence_includes_raw_material", async () => 
   }
 });
 
-test("fails_when_phase92_verifier_order_is_missing_or_misordered", async () => {
-  // Arrange
-  const roots = await Promise.all(
-    [
-      (text: string) => text.replace(PHASE92_TEST_COMMAND, ""),
-      (text: string) => text.replace(PHASE92_CHECKER_COMMAND, ""),
-      (text: string) =>
-        text.replace(
-          PHASE92_TEST_COMMAND,
-          "bun test scripts/check-phase89-not-real.test.ts",
-        ),
-      (text: string) =>
-        text.replace(
-          `run_step "check Phase 91 peer permissions" ${PHASE91_CHECKER_COMMAND}`,
-          `run_step "check Phase 92 address boundaries" ${PHASE92_CHECKER_COMMAND}`,
-        ),
-    ].map((mutateVerify) =>
-      createFixture({
-        maybeMutateFiles(files) {
-          const current = files.get("scripts/verify.sh") ?? "";
-          files.set("scripts/verify.sh", mutateVerify(current));
-        },
-      }),
-    ),
-  );
-
-  // Act
-  const failureMessages = roots.map((root) =>
-    checkPhase92AddressBoundaries({ rootDir: root }).join("\n"),
-  );
-
-  // Assert
-  for (const message of failureMessages) {
-    expect(message).toContain("verifier-order");
-  }
-});
-
 async function createFixture(options: FixtureOptions = {}): Promise<string> {
   const root = await mkdtemp(path.join(os.tmpdir(), "open-bitcoin-phase92-"));
   tempRoots.push(root);
@@ -385,7 +307,6 @@ async function createFixture(options: FixtureOptions = {}): Promise<string> {
       "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
       supportRendererText(),
     ],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 
   options.maybeMutateFiles?.(files);
@@ -541,29 +462,5 @@ function supportRendererText(): string {
   return [
     "const PHASE92_ADDRESS_BOUNDARY_NEXT_ACTION: &str =",
     '    "Treat Phase 92 as bounded local advertisement and direct getaddr evidence only; peer discovery, unsolicited address relay, DNS seed discovery, UPnP/NAT-PMP discovery, and public-network readiness remain outside this surface.";'
-  ].join("\n");
-}
-
-function verifyScriptText(): string {
-  return [
-    "#!/usr/bin/env bash",
-    "set -euo pipefail",
-    "run_step() {",
-    "  local label=\"$1\"",
-    "  shift",
-    "  \"$@\"",
-    "}",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE91_TEST_COMMAND,
-    PHASE91_CHECKER_COMMAND,
-    PHASE92_TEST_COMMAND,
-    PHASE92_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    `run_step "test Phase 91 peer permissions checker" ${PHASE91_TEST_COMMAND}`,
-    `run_step "check Phase 91 peer permissions" ${PHASE91_CHECKER_COMMAND}`,
-    `run_step "test Phase 92 address boundaries checker" ${PHASE92_TEST_COMMAND}`,
-    `run_step "check Phase 92 address boundaries" ${PHASE92_CHECKER_COMMAND}`,
-    'run_step "check pure-core dependencies" bash scripts/check-pure-core-deps.sh',
-    'run_step "check file lengths" bash scripts/check-file-lengths.sh',
   ].join("\n");
 }

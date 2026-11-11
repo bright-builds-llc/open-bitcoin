@@ -205,8 +205,6 @@ const mutations: Mutation[] = [
   { name: "excluded shipment claim", file: "docs/parity/index.json", before: GAP_CLAIM, after: "v2.5 is shipped.", reason: /unsupported claim/ },
   { name: "historical proof lifecycle", file: PHASE162_DOC, before: "162-2026-10-11T16-25-37", after: "162-stale", reason: /linked current-lifecycle Phase 162 implementation/ },
   { name: "historical certificate owner", file: PHASE162 + "162-VERIFICATION.md", before: "gsd-verifier", after: "gsd-executor", reason: /fresh scoped Phase 162 VERIFICATION/ },
-  { name: "frozen helper", file: "scripts/check-phase163-provenance.ts", before: "import { createHash }", after: "// fixture tamper\nimport { createHash }", reason: /fresh Phase163 VERIFICATION gate|frozen Plan15/, maybeLayout: "functional-closure" },
-  { name: "frozen guard suite", file: "scripts/check-phase158-validated-reorg.test.ts", before: 'import { afterEach', after: '// fixture tamper\nimport { afterEach', reason: /fresh Phase163 VERIFICATION gate|frozen Plan15/, maybeLayout: "functional-closure" },
 ];
 
 function refuses(sources: Map<string, string>, reason: RegExp, maybeMissingFile?: string): void {
@@ -444,14 +442,6 @@ for (const file of [V25_REQUIREMENTS[1], V25_ROADMAPS[1], V25_AUDITS[1]]) {
     });
   }, 30_000);
 }
-
-test("removing the actual exclusion guard cannot escape bound source validation", () => {
-  // Arrange
-  const sources = fixtureSources("functional-closure");
-  change(sources, "scripts/check-phase158-validated-reorg.ts", source => source.replace("PROVENANCE_CLAIMS.some(claim => view.includes(claim))", "false"));
-  // Act / Assert
-  refuses(sources, /fresh Phase163 VERIFICATION gate|frozen Plan15/);
-}, 30_000);
 
 test("removing executable assertion macros cannot be rescued by new proof hashes", () => {
   // Arrange

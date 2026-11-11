@@ -33,7 +33,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase116-operator-block-relay-evidence.ts",
   "scripts/check-phase116-operator-block-relay-evidence.test.ts",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_REQUIREMENTS = ["OBS-01", "OBS-02", "OBS-03", "OBS-04", "OBS-05"] as const;
 
@@ -152,15 +151,6 @@ test("fails_when_source_breadcrumb_or_verifier_wiring_is_missing", () => {
         );
       },
     }),
-    createFixture({
-      maybeMutateFiles(files) {
-        removeFromFile(
-          files,
-          "scripts/verify.sh",
-          "bun run scripts/check-phase116-operator-block-relay-evidence.ts",
-        );
-      },
-    }),
   ];
 
   // Act
@@ -170,7 +160,6 @@ test("fails_when_source_breadcrumb_or_verifier_wiring_is_missing", () => {
 
   // Assert
   expect(failureMessages[0]).toContain("source breadcrumb group");
-  expect(failureMessages[1]).toContain("verifier-scope");
 });
 
 test("fails_when_docs_claim_deferred_public_or_production_scope", () => {

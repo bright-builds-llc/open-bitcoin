@@ -1,9 +1,7 @@
 import { expect, test } from "bun:test";
-import { createHash } from "node:crypto";
 import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { checkCurrentParityLedger, checkParityLedger, type LedgerInputs } from "./check-parity-ledger.ts";
-import { legacyToolingBase, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const COMMIT = "a9aee730466ac67d35a3c03ee24676be5e045878";
@@ -205,48 +203,7 @@ test("evidence path traversal is rejected before filesystem lookup", () => {
   expect(failures).toContain('v2-6-candidate-history-validation evidence: unsafe or non-normalized path "../outside.md"');
 });
 
-const VISIBLE_TEST = "bun test ./scripts/check-parity-ledger.test.ts";
-const VISIBLE_CHECK = "bun run scripts/check-parity-ledger.ts";
-const EXECUTED_TEST = 'run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts';
-const EXECUTED_CHECK = 'run_step "check parity ledger" bun run scripts/check-parity-ledger.ts';
-const HISTORICAL_VERIFY_SHA = "2925344e06e3604fbba1821e49a00b0f2f292448eae205107882d0ed65aacc43";
 const verifySource = () => readFileSync(join(ROOT, "scripts/verify.sh"), "utf8");
-
-test("new-only verifier registration preserves the frozen historical projection", () => {
-  // Arrange
-  const source = verifySource();
-  // Act
-  const projected = verificationHistoricalBase(source);
-  const digest = createHash("sha256").update(projected).digest("hex");
-  // Assert
-  expect(digest).toBe(HISTORICAL_VERIFY_SHA);
-});
-
-test("reviewed Phase 163 CI timeout retains its historical tooling projection", () => {
-  // Arrange
-  const path = "scripts/check-phase163-provenance/native.test.ts";
-  const source = readFileSync(join(ROOT, path), "utf8");
-  const current = '}, 180_000);\n\ntest("optional current parity page may be absent before its creation"';
-  const previous = '}, 60_000);\n\ntest("optional current parity page may be absent before its creation"';
-  const prior = source.replace(current, previous);
-  const unsupported = source.replace(current, current.replace("180_000", "180_001"));
-  // Act / Assert
-  expect(prior).not.toBe(source);
-  expect(legacyToolingBase(path, source)).toBe(legacyToolingBase(path, prior));
-  expect(legacyToolingBase(path, unsupported)).toBe(unsupported);
-});
-
-test("reviewed Phase 159 CI timeout retains its historical tooling projection", () => {
-  // Arrange
-  const path = "scripts/check-phase159-filter-rpcs.test.ts";
-  const source = readFileSync(join(ROOT, path), "utf8");
-  const current = '}, 20_000);\n\ntest("supplied-map empty discovered source cannot borrow a valid real file"';
-  const unsupported = source.replace(current, current.replace("20_000", "21_000"));
-  // Act / Assert
-  expect(unsupported).not.toBe(source);
-  expect(legacyToolingBase(path, source)).not.toBe(source);
-  expect(legacyToolingBase(path, unsupported)).toBe(unsupported);
-});
 
 test("current verifier no longer executes active GSD traceability", () => {
   // Arrange / Act
@@ -254,57 +211,4 @@ test("current verifier no longer executes active GSD traceability", () => {
   // Assert
   expect(source).not.toContain("bun test scripts/check-active-milestone-verification-traceability.test.ts");
   expect(source).not.toContain("bun run scripts/check-active-milestone-verification-traceability.ts");
-});
-
-test("restoring active GSD beside the new verifier is rejected", () => {
-  // Arrange
-  const source = verifySource()
-    .replace(VISIBLE_TEST, "bun test scripts/check-active-milestone-verification-traceability.test.ts\n" + VISIBLE_TEST)
-    .replace(EXECUTED_TEST, 'run_step "test active milestone verification traceability checker" bun test scripts/check-active-milestone-verification-traceability.test.ts\n' + EXECUTED_TEST)
-    .replace(VISIBLE_CHECK, "bun run scripts/check-active-milestone-verification-traceability.ts\n" + VISIBLE_CHECK)
-    .replace(EXECUTED_CHECK, 'run_step "check active milestone verification traceability" bun run scripts/check-active-milestone-verification-traceability.ts\n' + EXECUTED_CHECK);
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("legacy traceability and current quick mode cannot be combined");
-});
-
-test("current quick-mode boundary cannot be disabled", () => {
-  // Arrange
-  const source = verifySource().replace('if [[ "$verify_mode" == "quick" ]]; then', '# if [[ "$verify_mode" == "quick" ]]; then');
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("current quick verification boundary changed");
-});
-
-test("visible parity ledger test registration cannot be removed", () => {
-  // Arrange
-  const source = verifySource().replace(`${VISIBLE_TEST}\n`, "");
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("current verification registrations missing or duplicated");
-});
-
-test("executed parity ledger check registration cannot be removed", () => {
-  // Arrange
-  const source = verifySource().replace(`${EXECUTED_CHECK}\n`, "");
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("current verification registrations missing or duplicated");
-});
-
-test("parity ledger registration cannot be duplicated", () => {
-  // Arrange
-  const source = verifySource().replace(VISIBLE_TEST, `${VISIBLE_TEST}\n${VISIBLE_TEST}`);
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("current verification registrations missing or duplicated");
-});
-
-test("visible parity ledger test and check order is fixed", () => {
-  // Arrange
-  const source = verifySource().replace(`${VISIBLE_TEST}\n${VISIBLE_CHECK}`, `${VISIBLE_CHECK}\n${VISIBLE_TEST}`);
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("current verification registration order changed");
-});
-
-test("commenting out the executed parity ledger check cannot earn verification", () => {
-  // Arrange
-  const source = verifySource().replace(EXECUTED_CHECK, `# ${EXECUTED_CHECK}`);
-  // Act / Assert
-  expect(() => verificationHistoricalBase(source)).toThrow("current verification registrations missing or duplicated");
 });

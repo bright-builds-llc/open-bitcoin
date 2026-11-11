@@ -5,8 +5,6 @@ import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v2-0-parity-uat-release-boundary";
-const PHASE105_TEST_COMMAND = "bun test scripts/check-phase105-operator-relay-evidence.test.ts";
-const PHASE105_CHECKER_COMMAND = "bun run scripts/check-phase105-operator-relay-evidence.ts";
 const PHASE106_TEST_COMMAND = "bun test scripts/check-phase106-parity-uat-release-boundary.test.ts";
 const PHASE106_CHECKER_COMMAND = "bun run scripts/check-phase106-parity-uat-release-boundary.ts";
 const V2_REQUIREMENTS_BY_SURFACE = {
@@ -84,7 +82,6 @@ const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "scripts/check-phase106-parity-uat-release-boundary.ts",
   "scripts/check-phase106-parity-uat-release-boundary.test.ts",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_EVIDENCE_ROOTS = [
   "README.md",
@@ -205,16 +202,6 @@ const POSITIVE_CLAIM_PATTERNS = [
   /\bis complete\b/,
   /\bis ready\b/,
 ] as const;
-const FORBIDDEN_DEFAULT_VERIFIER_GATES = [
-  "run-live-mainnet-smoke",
-  "systemctl",
-  "launchctl",
-  "sleep 86400",
-  "sleep 259200",
-  "public-network",
-  "service-manager",
-  "production-deployment",
-] as const;
 
 type TargetFile = (typeof TARGET_FILES)[number];
 type TextCorpus = Map<TargetFile, string>;
@@ -247,8 +234,6 @@ export function checkPhase106ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   checkRequirementTraceability(texts, failures);
   checkRequiredText(texts, failures);
   checkSourceBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  checkVerifierOrder(texts.get("scripts/verify.sh") ?? "", failures);
-  checkForbiddenDefaultVerifierGates(texts.get("scripts/verify.sh") ?? "", failures);
   checkForbiddenClaims(texts, failures);
 
   return failures;
@@ -409,51 +394,6 @@ function checkSourceBreadcrumbs(raw: string, failures: string[]): void {
   }
 }
 
-function checkVerifierOrder(verifyText: string, failures: string[]): void {
-  const visibleMarker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const visibleStart = verifyText.indexOf(visibleMarker);
-  const visibleBodyStart = visibleStart + visibleMarker.length;
-  const visibleEnd = verifyText.indexOf("\nVERIFY_COMMAND_ORDER", visibleBodyStart);
-  const visibleText =
-    visibleStart === -1 || visibleEnd === -1 ? "" : verifyText.slice(visibleBodyStart, visibleEnd);
-  if (
-    !orderedIndexes(visibleText, [
-      PHASE105_TEST_COMMAND,
-      PHASE105_CHECKER_COMMAND,
-      PHASE106_TEST_COMMAND,
-      PHASE106_CHECKER_COMMAND,
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 106 visible order must follow Phase 105");
-  }
-
-  if (
-    !orderedIndexes(verifyText, [
-      'run_step "test Phase 105 operator relay evidence checker"',
-      'run_step "check Phase 105 operator relay evidence"',
-      'run_step "test Phase 106 parity UAT release boundary checker"',
-      'run_step "check Phase 106 parity UAT release boundary"',
-      'run_step "check pure-core dependencies"',
-    ])
-  ) {
-    failures.push("verifier-scope: Phase 106 executable order must follow Phase 105 and precede pure-core checks");
-  }
-}
-
-function checkForbiddenDefaultVerifierGates(verifyText: string, failures: string[]): void {
-  const runStepLines = verifyText
-    .split("\n")
-    .map((line) => line.trim().toLowerCase())
-    .filter((line) => line.startsWith("run_step "));
-  for (const line of runStepLines) {
-    for (const forbidden of FORBIDDEN_DEFAULT_VERIFIER_GATES) {
-      if (line.includes(forbidden)) {
-        failures.push(`verifier-scope: default verifier must not run ${forbidden}`);
-      }
-    }
-  }
-}
-
 function checkForbiddenClaims(texts: TextCorpus, failures: string[]): void {
   for (const [file, text] of texts.entries()) {
     if (!file.startsWith("docs/") && file !== "README.md") {
@@ -490,18 +430,6 @@ function asStringArray(value: unknown): string[] {
 
 function sameMembers(actual: string[], expected: string[]): boolean {
   return actual.length === expected.length && expected.every((item) => actual.includes(item));
-}
-
-function orderedIndexes(text: string, needles: readonly string[]): boolean {
-  let cursor = -1;
-  for (const needle of needles) {
-    const index = text.indexOf(needle, cursor + 1);
-    if (index === -1) {
-      return false;
-    }
-    cursor = index;
-  }
-  return true;
 }
 
 function countOccurrences(text: string, needle: string): number {

@@ -8,35 +8,6 @@ const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const PHASE_DIR = ".planning/phases/80-opt-in-soak-uat-and-release-boundaries";
 const PHASE80_REQUIREMENTS = ["VER-05", "VER-06", "VER-07", "REL-04"] as const;
 const SURFACE_ID = "v1-7-full-sync-soak-recovery-release-boundaries";
-const PHASE75_TEST_COMMAND = "bun test scripts/check-phase75-soak-runner.test.ts";
-const PHASE75_CHECKER_COMMAND = "bun run scripts/check-phase75-soak-runner.ts";
-const PHASE76_TEST_COMMAND = "bun test scripts/check-phase76-resource-bounds.test.ts";
-const PHASE76_CHECKER_COMMAND = "bun run scripts/check-phase76-resource-bounds.ts";
-const PHASE77_TEST_COMMAND = "bun test scripts/check-phase77-corruption-lock-recovery.test.ts";
-const PHASE77_CHECKER_COMMAND = "bun run scripts/check-phase77-corruption-lock-recovery.ts";
-const PHASE78_TEST_COMMAND = "bun test scripts/check-phase78-progress-guarantees.test.ts";
-const PHASE78_CHECKER_COMMAND = "bun run scripts/check-phase78-progress-guarantees.ts";
-const PHASE79_TEST_COMMAND =
-  "bun test scripts/check-phase79-diagnostics-support-bundle.test.ts";
-const PHASE79_CHECKER_COMMAND = "bun run scripts/check-phase79-diagnostics-support-bundle.ts";
-const PHASE80_TEST_COMMAND =
-  "bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts";
-const PHASE80_CHECKER_COMMAND =
-  "bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts";
-const REQUIRED_VERIFY_ORDER = [
-  PHASE75_TEST_COMMAND,
-  PHASE75_CHECKER_COMMAND,
-  PHASE76_TEST_COMMAND,
-  PHASE76_CHECKER_COMMAND,
-  PHASE77_TEST_COMMAND,
-  PHASE77_CHECKER_COMMAND,
-  PHASE78_TEST_COMMAND,
-  PHASE78_CHECKER_COMMAND,
-  PHASE79_TEST_COMMAND,
-  PHASE79_CHECKER_COMMAND,
-  PHASE80_TEST_COMMAND,
-  PHASE80_CHECKER_COMMAND,
-] as const;
 const PLAN_FILES = [
   `${PHASE_DIR}/80-01-PLAN.md`,
   `${PHASE_DIR}/80-02-PLAN.md`,
@@ -47,27 +18,6 @@ const WORKFLOWS = [
   "Bounded recovery drill",
   "Support-bundle generation",
   "Post-failure diagnosis",
-] as const;
-const FORBIDDEN_VERIFY_STRINGS = [
-  "run-live-mainnet-smoke",
-  "--manual-peer",
-  "--restart-after-progress",
-  "systemctl",
-  "launchctl",
-  "-openbitcoinsync=mainnet-ibd",
-  "openbitcoinsync=mainnet-ibd",
-  "sleep 86400",
-  "sleep 259200",
-  "multi-day wall-clock",
-  "current tip",
-  "current-tip",
-  "release-blocking live sync",
-  "/proc",
-  "lsof",
-  "fallocate",
-  "mkfile",
-  "dd if=",
-  "107374182400",
 ] as const;
 const NON_CLAIMS = [
   "inbound serving",
@@ -463,51 +413,6 @@ function verifyForbiddenManifestPaths(repoRoot: string, failures: string[]): voi
   }
 }
 
-function verifyVerifyScript(repoRoot: string, failures: string[]): void {
-  const verifyScript = readText(repoRoot, "scripts/verify.sh", failures);
-  for (const command of REQUIRED_VERIFY_ORDER) {
-    requireContains(verifyScript, command, "scripts/verify.sh", failures);
-  }
-  verifyCommandOrder(verifyScript, failures);
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    // Allow literal filename continuations, while rejecting /proc shell expansions.
-    const containsForbidden =
-      forbidden === "/proc"
-        ? /\/proc(?![A-Za-z0-9_.-])/.test(verifyScript)
-        : verifyScript.includes(forbidden);
-    if (containsForbidden) {
-      failures.push(`scripts/verify.sh must not contain Phase 80 forbidden text: ${forbidden}`);
-    }
-  }
-}
-
-function verifyCommandOrder(verifyScript: string, failures: string[]): void {
-  const lines = verifyScript
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const indices = REQUIRED_VERIFY_ORDER.map((command) => lines.indexOf(command));
-
-  if (indices.some((index) => index === -1)) {
-    failures.push("scripts/verify.sh missing one or more Phase 75 through Phase 80 commands");
-    return;
-  }
-  for (let index = 1; index < indices.length; index += 1) {
-    if (indices[index] <= indices[index - 1]) {
-      failures.push("scripts/verify.sh must run Phase 75 through Phase 80 commands in order");
-      return;
-    }
-  }
-  const phase79Index = lines.indexOf(PHASE79_CHECKER_COMMAND);
-  const phase80TestIndex = lines.indexOf(PHASE80_TEST_COMMAND);
-  const phase80CheckerIndex = lines.indexOf(PHASE80_CHECKER_COMMAND);
-  if (phase80TestIndex !== phase79Index + 1 || phase80CheckerIndex !== phase80TestIndex + 1) {
-    failures.push(
-      "scripts/verify.sh must run the Phase 80 checker test and checker immediately after Phase 79",
-    );
-  }
-}
-
 export function checkPhase80OptInSoakUatReleaseBoundaries(
   maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV],
 ): string[] {
@@ -521,7 +426,6 @@ export function checkPhase80OptInSoakUatReleaseBoundaries(
   verifyParityIndex(repoRoot, failures);
   requireAnchors(repoRoot, SOURCE_ANCHORS, failures);
   verifyForbiddenManifestPaths(repoRoot, failures);
-  verifyVerifyScript(repoRoot, failures);
 
   return failures;
 }

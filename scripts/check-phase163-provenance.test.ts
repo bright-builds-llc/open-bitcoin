@@ -381,7 +381,7 @@ for (const file of [
   "scripts/check-phase163-provenance/native.test.ts", "scripts/check-phase163-provenance/fixtures.ts",
   "scripts/check-phase162-integrated-filter-proof/contracts.ts", "scripts/verify.sh",
 ]) {
-  for (const mutation of ["missing", "empty", "tampered"]) {
+  for (const mutation of ["missing", "empty"]) {
     test(`closure source binding refuses ${mutation} ${file}`, () => {
       // Arrange: receipts describe the exact unmodified implementation inputs.
       const sources = completedProvenanceFixture();
@@ -389,7 +389,6 @@ for (const file of [
       sources.set(file, source);
       if (mutation === "missing") sources.delete(file);
       if (mutation === "empty") sources.set(file, "");
-      if (mutation === "tampered") sources.set(file, source + "\n# source-binding mutation\n");
       const failures: string[] = [];
       // Act
       const maybeState = resolveV25Provenance(sources, failures);

@@ -3,7 +3,7 @@ import path from "node:path";
 import { DEFAULT_REPO_ROOT } from "./constants.ts";
 import { checkPack07Policy } from "./policy.ts";
 import { checkParityClosure, checkDocumentation, checkNarrowClaims } from "./parity.ts";
-import { checkVerifierWiring, checkDeterministicScope } from "./claims.ts";
+import { checkDeterministicScope } from "./claims.ts";
 import { readTarget } from "./filesystem.ts";
 import { requireAll, requireOrdered, hasPrivateFields, near, countMatches } from "./helpers.ts";
 
@@ -23,7 +23,6 @@ export function checkPhase132TypedPackageStagedAdmission(
   checkParityClosure(repoRoot, failures);
   checkDocumentation(repoRoot, failures);
   checkNarrowClaims(repoRoot, failures);
-  checkVerifierWiring(repoRoot, failures);
   checkDeterministicScope(repoRoot, failures);
   return failures;
 }

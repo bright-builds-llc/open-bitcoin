@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,799 |
-| Total lines | 558,486 |
-| Code/content lines | 491,467 |
-| Comment-only lines | 28,986 |
-| Blank lines | 38,033 |
+| Included files | 1,765 |
+| Total lines | 544,126 |
+| Code/content lines | 478,717 |
+| Comment-only lines | 28,422 |
+| Blank lines | 36,987 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,547 | 225,754 | 17,180 | 15,613 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
-| TypeScript/Bun scripts | 366 | 106,457 | 94,934 | 3,843 | 7,680 |
+| TypeScript/Bun scripts | 332 | 92,292 | 82,364 | 3,294 | 6,634 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
-| Shell scripts | 23 | 4,902 | 4,376 | 94 | 432 |
+| Shell scripts | 23 | 4,707 | 4,196 | 79 | 432 |
 | TOML/config | 16 | 3,472 | 3,105 | 0 | 367 |
 | Other config | 7 | 1,233 | 1,165 | 0 | 68 |
 | Bazel/Starlark | 18 | 422 | 387 | 0 | 35 |
@@ -64,129 +64,97 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-active-milestone-verification-traceability/test-fixtures.ts | 176 |
 | scripts/check-bazel-build-provenance.ts | 187 |
 | scripts/check-benchmark-report.ts | 210 |
-| scripts/check-current-documentation-reconciliation.test.ts | 375 |
-| scripts/check-current-documentation-reconciliation.ts | 480 |
+| scripts/check-current-documentation-reconciliation.test.ts | 316 |
+| scripts/check-current-documentation-reconciliation.ts | 428 |
 | scripts/check-panic-sites.test.ts | 342 |
 | scripts/check-panic-sites.ts | 286 |
 | scripts/check-parity-breadcrumbs.test.ts | 65 |
 | scripts/check-parity-breadcrumbs.ts | 430 |
-| scripts/check-parity-ledger.test.ts | 310 |
+| scripts/check-parity-ledger.test.ts | 214 |
 | scripts/check-parity-ledger.ts | 244 |
-| scripts/check-phase100-relay-activation-boundary.test.ts | 431 |
-| scripts/check-phase100-relay-activation-boundary.ts | 584 |
-| scripts/check-phase101-transaction-inventory-download-scheduling.test.ts | 509 |
-| scripts/check-phase101-transaction-inventory-download-scheduling.ts | 546 |
-| scripts/check-phase102-orphan-admission-bridge.test.ts | 617 |
+| scripts/check-phase100-relay-activation-boundary.test.ts | 368 |
+| scripts/check-phase100-relay-activation-boundary.ts | 479 |
+| scripts/check-phase101-transaction-inventory-download-scheduling.test.ts | 459 |
+| scripts/check-phase101-transaction-inventory-download-scheduling.ts | 444 |
+| scripts/check-phase102-orphan-admission-bridge.test.ts | 571 |
 | scripts/check-phase102-orphan-admission-bridge.ts | 15 |
 | scripts/check-phase102-orphan-admission-bridge/bridge.ts | 136 |
-| scripts/check-phase102-orphan-admission-bridge/checks.ts | 30 |
-| scripts/check-phase102-orphan-admission-bridge/constants.ts | 250 |
+| scripts/check-phase102-orphan-admission-bridge/checks.ts | 29 |
+| scripts/check-phase102-orphan-admission-bridge/constants.ts | 231 |
 | scripts/check-phase102-orphan-admission-bridge/filesystem.ts | 40 |
-| scripts/check-phase102-orphan-admission-bridge/helpers.ts | 72 |
+| scripts/check-phase102-orphan-admission-bridge/helpers.ts | 68 |
 | scripts/check-phase102-orphan-admission-bridge/parity.ts | 135 |
-| scripts/check-phase102-orphan-admission-bridge/verifier.ts | 88 |
+| scripts/check-phase102-orphan-admission-bridge/verifier.ts | 28 |
 | scripts/check-phase103-mempool-lifecycle.test.ts | 218 |
 | scripts/check-phase103-mempool-lifecycle.ts | 401 |
-| scripts/check-phase104-relay-serving-fanout.test.ts | 215 |
-| scripts/check-phase104-relay-serving-fanout.ts | 401 |
-| scripts/check-phase105-operator-relay-evidence.test.ts | 234 |
-| scripts/check-phase105-operator-relay-evidence.ts | 544 |
-| scripts/check-phase106-parity-uat-release-boundary.test.ts | 234 |
-| scripts/check-phase106-parity-uat-release-boundary.ts | 560 |
-| scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts | 339 |
+| scripts/check-phase104-relay-serving-fanout.test.ts | 208 |
+| scripts/check-phase104-relay-serving-fanout.ts | 349 |
+| scripts/check-phase105-operator-relay-evidence.test.ts | 218 |
+| scripts/check-phase105-operator-relay-evidence.ts | 493 |
+| scripts/check-phase106-parity-uat-release-boundary.test.ts | 203 |
+| scripts/check-phase106-parity-uat-release-boundary.ts | 488 |
+| scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts | 308 |
 | scripts/check-phase107-runtime-relay-activation-download-eligibility.ts | 17 |
-| scripts/check-phase107-runtime-relay-activation-download-eligibility/checks.ts | 148 |
-| scripts/check-phase107-runtime-relay-activation-download-eligibility/claims.ts | 84 |
-| scripts/check-phase107-runtime-relay-activation-download-eligibility/constants.ts | 236 |
+| scripts/check-phase107-runtime-relay-activation-download-eligibility/checks.ts | 146 |
+| scripts/check-phase107-runtime-relay-activation-download-eligibility/claims.ts | 39 |
+| scripts/check-phase107-runtime-relay-activation-download-eligibility/constants.ts | 217 |
 | scripts/check-phase107-runtime-relay-activation-download-eligibility/filesystem.ts | 35 |
 | scripts/check-phase107-runtime-relay-activation-download-eligibility/helpers.ts | 114 |
 | scripts/check-phase107-runtime-relay-activation-download-eligibility/parity.ts | 107 |
 | scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts | 144 |
 | scripts/check-phase108-durable-mempool-relay-state-recovery.ts | 235 |
-| scripts/check-phase110-block-serving-boundary.test.ts | 353 |
-| scripts/check-phase110-block-serving-boundary.ts | 567 |
-| scripts/check-phase111-full-block-serving-request-path.test.ts | 461 |
-| scripts/check-phase111-full-block-serving-request-path.ts | 550 |
-| scripts/check-phase116-operator-block-relay-evidence.test.ts | 239 |
-| scripts/check-phase116-operator-block-relay-evidence.ts | 468 |
+| scripts/check-phase110-block-serving-boundary.test.ts | 289 |
+| scripts/check-phase110-block-serving-boundary.ts | 476 |
+| scripts/check-phase111-full-block-serving-request-path.test.ts | 423 |
+| scripts/check-phase111-full-block-serving-request-path.ts | 467 |
+| scripts/check-phase116-operator-block-relay-evidence.test.ts | 228 |
+| scripts/check-phase116-operator-block-relay-evidence.ts | 418 |
 | scripts/check-phase117-parity-uat-release-boundary.test.ts | 4 |
-| scripts/check-phase117-parity-uat-release-boundary.ts | 580 |
-| scripts/check-phase117-parity-uat-release-boundary/claims.ts | 125 |
+| scripts/check-phase117-parity-uat-release-boundary.ts | 489 |
+| scripts/check-phase117-parity-uat-release-boundary/claims.ts | 110 |
 | scripts/check-phase117-parity-uat-release-boundary/lifecycle-routing.ts | 60 |
 | scripts/check-phase117-parity-uat-release-boundary/success-and-parity.ts | 199 |
-| scripts/check-phase117-parity-uat-release-boundary/test-fixtures.ts | 289 |
-| scripts/check-phase117-parity-uat-release-boundary/verifier.ts | 141 |
+| scripts/check-phase117-parity-uat-release-boundary/test-fixtures.ts | 270 |
+| scripts/check-phase117-parity-uat-release-boundary/verifier.ts | 27 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.test.ts | 440 |
 | scripts/check-phase121-block-relay-metrics-log-runtime.ts | 345 |
 | scripts/check-phase122-compact-relay-peer-completion.test.ts | 263 |
 | scripts/check-phase122-compact-relay-peer-completion.ts | 434 |
-| scripts/check-phase123-runtime-timing-evidence-integrity.test.ts | 562 |
+| scripts/check-phase123-runtime-timing-evidence-integrity.test.ts | 552 |
 | scripts/check-phase123-runtime-timing-evidence-integrity.ts | 14 |
-| scripts/check-phase123-runtime-timing-evidence-integrity/checks.ts | 512 |
-| scripts/check-phase123-runtime-timing-evidence-integrity/constants.ts | 74 |
+| scripts/check-phase123-runtime-timing-evidence-integrity/checks.ts | 511 |
+| scripts/check-phase123-runtime-timing-evidence-integrity/constants.ts | 65 |
 | scripts/check-phase123-runtime-timing-evidence-integrity/evidence.ts | 327 |
 | scripts/check-phase123-runtime-timing-evidence-integrity/filesystem.ts | 53 |
-| scripts/check-phase123-runtime-timing-evidence-integrity/helpers.ts | 61 |
-| scripts/check-phase123-runtime-timing-evidence-integrity/parity.ts | 131 |
-| scripts/check-phase123-runtime-timing-evidence-integrity/test-fixtures.ts | 467 |
-| scripts/check-phase124-archive-ready.ts | 550 |
-| scripts/check-phase124-milestone-closeout-lifecycle.ts | 146 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures.ts | 37 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/base.ts | 357 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/mutations.ts | 29 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/phase125.ts | 333 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/phase126.ts | 158 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/phase127.ts | 158 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/phase128.ts | 83 |
-| scripts/check-phase124-milestone-closeout-reconciliation.fixtures/phase129.ts | 136 |
-| scripts/check-phase124-milestone-closeout-reconciliation.test.ts | 4 |
-| scripts/check-phase124-milestone-closeout-reconciliation.test/scenarios-1.ts | 355 |
-| scripts/check-phase124-milestone-closeout-reconciliation.test/scenarios-2.ts | 380 |
-| scripts/check-phase124-milestone-closeout-reconciliation.test/scenarios-3.ts | 255 |
-| scripts/check-phase124-milestone-closeout-reconciliation.test/setup.ts | 50 |
-| scripts/check-phase124-milestone-closeout-reconciliation.ts | 627 |
-| scripts/check-phase124-milestone-gap-closure.test.ts | 3 |
-| scripts/check-phase124-milestone-gap-closure.test/scenarios-1.ts | 373 |
-| scripts/check-phase124-milestone-gap-closure.test/scenarios-2.ts | 373 |
-| scripts/check-phase124-milestone-gap-closure.test/scenarios-3.ts | 69 |
-| scripts/check-phase124-milestone-gap-closure.test/setup.ts | 362 |
-| scripts/check-phase124-milestone-gap-closure.ts | 5 |
-| scripts/check-phase124-milestone-gap-closure/constants.ts | 104 |
-| scripts/check-phase124-milestone-gap-closure/filesystem.ts | 348 |
-| scripts/check-phase124-milestone-gap-closure/lifecycle.ts | 322 |
-| scripts/check-phase124-milestone-gap-closure/parsing.ts | 106 |
-| scripts/check-phase124-milestone-gap-closure/projection.ts | 323 |
-| scripts/check-phase124-milestone-gap-closure/routing.ts | 360 |
-| scripts/check-phase124-post-audit-gap-planning.ts | 2 |
-| scripts/check-phase124-post-audit-gap-planning/constants.ts | 57 |
-| scripts/check-phase124-post-audit-gap-planning/projection.ts | 358 |
-| scripts/check-phase124-post-audit-gap-planning/routing.ts | 310 |
-| scripts/check-phase126-compact-relay-residual-hardening.test.ts | 478 |
-| scripts/check-phase126-compact-relay-residual-hardening.ts | 441 |
+| scripts/check-phase123-runtime-timing-evidence-integrity/helpers.ts | 41 |
+| scripts/check-phase123-runtime-timing-evidence-integrity/parity.ts | 105 |
+| scripts/check-phase123-runtime-timing-evidence-integrity/test-fixtures.ts | 461 |
+| scripts/check-phase126-compact-relay-residual-hardening.test.ts | 465 |
+| scripts/check-phase126-compact-relay-residual-hardening.ts | 382 |
 | scripts/check-phase127-authoritative-network-state-unification.test.ts | 608 |
-| scripts/check-phase127-authoritative-network-state-unification.ts | 611 |
+| scripts/check-phase127-authoritative-network-state-unification.ts | 562 |
 | scripts/check-phase127-authoritative-network-state-unification/production-proof-tests.ts | 323 |
-| scripts/check-phase128-production-compact-announcement-transport.test.ts | 628 |
-| scripts/check-phase128-production-compact-announcement-transport.ts | 609 |
+| scripts/check-phase128-production-compact-announcement-transport.test.ts | 619 |
+| scripts/check-phase128-production-compact-announcement-transport.ts | 557 |
 | scripts/check-phase128-production-compact-announcement-transport/durable-trigger.ts | 228 |
 | scripts/check-phase128-production-compact-announcement-transport/impl-attributes.ts | 26 |
-| scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts | 283 |
-| scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts | 242 |
-| scripts/check-phase130-resource-time-fee-primitives.test.ts | 295 |
-| scripts/check-phase130-resource-time-fee-primitives.ts | 593 |
-| scripts/check-phase131-rolling-fee-expiry-pressure.test.ts | 184 |
-| scripts/check-phase131-rolling-fee-expiry-pressure.ts | 358 |
-| scripts/check-phase132-typed-package-staged-admission.test.ts | 399 |
+| scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts | 213 |
+| scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts | 141 |
+| scripts/check-phase130-resource-time-fee-primitives.test.ts | 269 |
+| scripts/check-phase130-resource-time-fee-primitives.ts | 499 |
+| scripts/check-phase131-rolling-fee-expiry-pressure.test.ts | 158 |
+| scripts/check-phase131-rolling-fee-expiry-pressure.ts | 264 |
+| scripts/check-phase132-typed-package-staged-admission.test.ts | 390 |
 | scripts/check-phase132-typed-package-staged-admission.ts | 16 |
-| scripts/check-phase132-typed-package-staged-admission/checks.ts | 305 |
-| scripts/check-phase132-typed-package-staged-admission/claims.ts | 77 |
-| scripts/check-phase132-typed-package-staged-admission/constants.ts | 87 |
+| scripts/check-phase132-typed-package-staged-admission/checks.ts | 304 |
+| scripts/check-phase132-typed-package-staged-admission/claims.ts | 51 |
+| scripts/check-phase132-typed-package-staged-admission/constants.ts | 78 |
 | scripts/check-phase132-typed-package-staged-admission/filesystem.ts | 25 |
-| scripts/check-phase132-typed-package-staged-admission/helpers.ts | 92 |
+| scripts/check-phase132-typed-package-staged-admission/helpers.ts | 72 |
 | scripts/check-phase132-typed-package-staged-admission/parity.ts | 179 |
 | scripts/check-phase132-typed-package-staged-admission/policy.ts | 159 |
-| scripts/check-phase133-package-aware-download-orphan-bridge.test.ts | 386 |
-| scripts/check-phase133-package-aware-download-orphan-bridge.ts | 578 |
+| scripts/check-phase133-package-aware-download-orphan-bridge.test.ts | 377 |
+| scripts/check-phase133-package-aware-download-orphan-bridge.ts | 535 |
 | scripts/check-phase134-apply-boundaries.ts | 452 |
 | scripts/check-phase134-apply-boundaries/aggregate-roots.ts | 357 |
 | scripts/check-phase134-apply-boundaries/call-resolution.ts | 239 |
@@ -201,42 +169,42 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/strict-reachability.ts | 256 |
 | scripts/check-phase134-authoritative-lifecycle.test/apply-helpers/token-scanner-reachability.ts | 557 |
 | scripts/check-phase134-authoritative-lifecycle.test/fixture.ts | 149 |
-| scripts/check-phase134-authoritative-lifecycle.test/mutations.ts | 389 |
+| scripts/check-phase134-authoritative-lifecycle.test/mutations.ts | 347 |
 | scripts/check-phase134-authoritative-lifecycle.test/scope-claims.ts | 175 |
-| scripts/check-phase134-authoritative-lifecycle.ts | 585 |
+| scripts/check-phase134-authoritative-lifecycle.ts | 556 |
 | scripts/check-phase134-authoritative-lifecycle/scope.ts | 170 |
-| scripts/check-phase135-snapshot-recovery.test.ts | 625 |
-| scripts/check-phase135-snapshot-recovery.ts | 606 |
+| scripts/check-phase135-snapshot-recovery.test.ts | 602 |
+| scripts/check-phase135-snapshot-recovery.ts | 573 |
 | scripts/check-phase135-snapshot-recovery/persisted-input-mutations.ts | 368 |
 | scripts/check-phase135-snapshot-recovery/persisted-input.ts | 253 |
 | scripts/check-phase135-snapshot-recovery/source.ts | 293 |
-| scripts/check-phase138-parity-uat-release-boundary.test.ts | 369 |
+| scripts/check-phase138-parity-uat-release-boundary.test.ts | 326 |
 | scripts/check-phase138-parity-uat-release-boundary.ts | 14 |
-| scripts/check-phase138-parity-uat-release-boundary/checks.ts | 241 |
+| scripts/check-phase138-parity-uat-release-boundary/checks.ts | 240 |
 | scripts/check-phase138-parity-uat-release-boundary/claims.ts | 93 |
-| scripts/check-phase138-parity-uat-release-boundary/constants.ts | 229 |
+| scripts/check-phase138-parity-uat-release-boundary/constants.ts | 206 |
 | scripts/check-phase138-parity-uat-release-boundary/matrix.ts | 167 |
-| scripts/check-phase138-parity-uat-release-boundary/test-fixtures.ts | 187 |
-| scripts/check-phase138-parity-uat-release-boundary/verifier.ts | 129 |
-| scripts/check-phase144-operator-flush-availability-evidence.test.ts | 189 |
-| scripts/check-phase144-operator-flush-availability-evidence.ts | 495 |
-| scripts/check-phase145-parity-uat-release-boundary.test.ts | 448 |
+| scripts/check-phase138-parity-uat-release-boundary/test-fixtures.ts | 151 |
+| scripts/check-phase138-parity-uat-release-boundary/verifier.ts | 40 |
+| scripts/check-phase144-operator-flush-availability-evidence.test.ts | 145 |
+| scripts/check-phase144-operator-flush-availability-evidence.ts | 450 |
+| scripts/check-phase145-parity-uat-release-boundary.test.ts | 369 |
 | scripts/check-phase145-parity-uat-release-boundary.ts | 14 |
 | scripts/check-phase145-parity-uat-release-boundary/checks.ts | 208 |
 | scripts/check-phase145-parity-uat-release-boundary/claims.ts | 101 |
-| scripts/check-phase145-parity-uat-release-boundary/constants.ts | 196 |
-| scripts/check-phase145-parity-uat-release-boundary/test-fixtures.ts | 185 |
-| scripts/check-phase145-parity-uat-release-boundary/verifier.ts | 142 |
-| scripts/check-phase151-parity-uat-release-boundary.test.ts | 439 |
+| scripts/check-phase145-parity-uat-release-boundary/constants.ts | 169 |
+| scripts/check-phase145-parity-uat-release-boundary/test-fixtures.ts | 136 |
+| scripts/check-phase145-parity-uat-release-boundary/verifier.ts | 58 |
+| scripts/check-phase151-parity-uat-release-boundary.test.ts | 400 |
 | scripts/check-phase151-parity-uat-release-boundary.ts | 14 |
 | scripts/check-phase151-parity-uat-release-boundary/checks.ts | 256 |
 | scripts/check-phase151-parity-uat-release-boundary/claims.ts | 111 |
-| scripts/check-phase151-parity-uat-release-boundary/constants.ts | 234 |
+| scripts/check-phase151-parity-uat-release-boundary/constants.ts | 214 |
 | scripts/check-phase151-parity-uat-release-boundary/gap-closure.test.ts | 477 |
 | scripts/check-phase151-parity-uat-release-boundary/gap-closure.ts | 148 |
 | scripts/check-phase151-parity-uat-release-boundary/planning-sources.ts | 66 |
-| scripts/check-phase151-parity-uat-release-boundary/test-fixtures.ts | 185 |
-| scripts/check-phase151-parity-uat-release-boundary/verifier.ts | 149 |
+| scripts/check-phase151-parity-uat-release-boundary/test-fixtures.ts | 152 |
+| scripts/check-phase151-parity-uat-release-boundary/verifier.ts | 66 |
 | scripts/check-phase154-basic-filters.test.ts | 218 |
 | scripts/check-phase154-basic-filters.ts | 138 |
 | scripts/check-phase155-filter-index.test.ts | 528 |
@@ -250,43 +218,43 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase157-index-catch-up/contracts.ts | 168 |
 | scripts/check-phase157-index-catch-up/rust-evidence.ts | 48 |
 | scripts/check-phase158-validated-reorg.test.ts | 628 |
-| scripts/check-phase158-validated-reorg.ts | 518 |
+| scripts/check-phase158-validated-reorg.ts | 517 |
 | scripts/check-phase159-filter-rpcs.test.ts | 624 |
-| scripts/check-phase159-filter-rpcs.ts | 323 |
+| scripts/check-phase159-filter-rpcs.ts | 322 |
 | scripts/check-phase159-filter-rpcs/contracts.ts | 441 |
 | scripts/check-phase159-filter-rpcs/evidence.ts | 171 |
 | scripts/check-phase160-peer-filter-serving.test.ts | 175 |
-| scripts/check-phase160-peer-filter-serving.ts | 331 |
+| scripts/check-phase160-peer-filter-serving.ts | 330 |
 | scripts/check-phase161-operator-index-evidence.test.ts | 137 |
-| scripts/check-phase161-operator-index-evidence.ts | 164 |
-| scripts/check-phase162-integrated-filter-proof.test.ts | 628 |
-| scripts/check-phase162-integrated-filter-proof.ts | 507 |
-| scripts/check-phase162-integrated-filter-proof/contracts.ts | 592 |
-| scripts/check-phase163-provenance.test.ts | 401 |
+| scripts/check-phase161-operator-index-evidence.ts | 163 |
+| scripts/check-phase162-integrated-filter-proof.test.ts | 614 |
+| scripts/check-phase162-integrated-filter-proof.ts | 478 |
+| scripts/check-phase162-integrated-filter-proof/contracts.ts | 256 |
+| scripts/check-phase163-provenance.test.ts | 400 |
 | scripts/check-phase163-provenance.ts | 301 |
 | scripts/check-phase163-provenance/fixture-controls.ts | 34 |
 | scripts/check-phase163-provenance/fixtures.ts | 374 |
-| scripts/check-phase163-provenance/native.test.ts | 476 |
+| scripts/check-phase163-provenance/native.test.ts | 466 |
 | scripts/check-phase164-canonical-identity.test.ts | 628 |
-| scripts/check-phase164-canonical-identity.ts | 328 |
+| scripts/check-phase164-canonical-identity.ts | 282 |
 | scripts/check-phase164-canonical-identity/claims.ts | 214 |
-| scripts/check-phase164-canonical-identity/contracts.ts | 379 |
+| scripts/check-phase164-canonical-identity/contracts.ts | 98 |
 | scripts/check-phase164-canonical-identity/fixture-source.ts | 187 |
-| scripts/check-phase164-canonical-identity/historical-tooling.ts | 361 |
-| scripts/check-phase164-canonical-identity/historical.test.ts | 627 |
+| scripts/check-phase164-canonical-identity/historical-tooling.ts | 100 |
+| scripts/check-phase164-canonical-identity/historical.test.ts | 430 |
 | scripts/check-phase164-canonical-identity/regions.ts | 30 |
 | scripts/check-phase164-canonical-identity/source-files.ts | 627 |
 | scripts/check-phase164-canonical-identity/test-modules.ts | 606 |
-| scripts/check-phase165-shared-exact-work.test.ts | 628 |
-| scripts/check-phase165-shared-exact-work.ts | 242 |
-| scripts/check-phase165-shared-exact-work/contracts.ts | 496 |
-| scripts/check-phase165-shared-exact-work/test-support.ts | 292 |
-| scripts/check-phase166-canonical-bootstrap.test.ts | 628 |
+| scripts/check-phase165-shared-exact-work.test.ts | 581 |
+| scripts/check-phase165-shared-exact-work.ts | 235 |
+| scripts/check-phase165-shared-exact-work/contracts.ts | 488 |
+| scripts/check-phase165-shared-exact-work/test-support.ts | 235 |
+| scripts/check-phase166-canonical-bootstrap.test.ts | 516 |
 | scripts/check-phase166-canonical-bootstrap.ts | 252 |
 | scripts/check-phase166-canonical-bootstrap/contracts.ts | 366 |
-| scripts/check-phase167-candidate-history.test.ts | 211 |
-| scripts/check-phase167-candidate-history.ts | 168 |
-| scripts/check-phase167-candidate-history/contracts.ts | 165 |
+| scripts/check-phase167-candidate-history.test.ts | 201 |
+| scripts/check-phase167-candidate-history.ts | 156 |
+| scripts/check-phase167-candidate-history/contracts.ts | 164 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
 | scripts/check-phase63-service-lifecycle.ts | 308 |
@@ -308,14 +276,14 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase75-soak-runner.ts | 390 |
 | scripts/check-phase76-resource-bounds.test.ts | 343 |
 | scripts/check-phase76-resource-bounds.ts | 323 |
-| scripts/check-phase77-corruption-lock-recovery.test.ts | 361 |
-| scripts/check-phase77-corruption-lock-recovery.ts | 314 |
-| scripts/check-phase78-progress-guarantees.test.ts | 311 |
-| scripts/check-phase78-progress-guarantees.ts | 270 |
-| scripts/check-phase79-diagnostics-support-bundle.test.ts | 365 |
-| scripts/check-phase79-diagnostics-support-bundle.ts | 368 |
-| scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts | 516 |
-| scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts | 544 |
+| scripts/check-phase77-corruption-lock-recovery.test.ts | 330 |
+| scripts/check-phase77-corruption-lock-recovery.ts | 271 |
+| scripts/check-phase78-progress-guarantees.test.ts | 267 |
+| scripts/check-phase78-progress-guarantees.ts | 226 |
+| scripts/check-phase79-diagnostics-support-bundle.test.ts | 333 |
+| scripts/check-phase79-diagnostics-support-bundle.ts | 324 |
+| scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts | 289 |
+| scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts | 448 |
 | scripts/check-phase82-production-claim-boundary.test.ts | 439 |
 | scripts/check-phase82-production-claim-boundary.ts | 620 |
 | scripts/check-phase83-support-matrix-issue-evidence.test.ts | 601 |
@@ -349,27 +317,25 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase91-peer-permissions/checks.ts | 346 |
 | scripts/check-phase91-peer-permissions/constants.ts | 253 |
 | scripts/check-phase91-peer-permissions/parity.ts | 122 |
-| scripts/check-phase92-address-boundaries.test.ts | 569 |
-| scripts/check-phase92-address-boundaries.ts | 627 |
-| scripts/check-phase93-peer-policy.test.ts | 206 |
-| scripts/check-phase93-peer-policy.ts | 556 |
-| scripts/check-phase94-dos-resource-governance.test.ts | 471 |
-| scripts/check-phase94-dos-resource-governance.ts | 627 |
+| scripts/check-phase92-address-boundaries.test.ts | 466 |
+| scripts/check-phase92-address-boundaries.ts | 513 |
+| scripts/check-phase93-peer-policy.test.ts | 169 |
+| scripts/check-phase93-peer-policy.ts | 466 |
+| scripts/check-phase94-dos-resource-governance.test.ts | 440 |
+| scripts/check-phase94-dos-resource-governance.ts | 521 |
 | scripts/check-phase95-network-participation-release-boundary.test.ts | 1 |
-| scripts/check-phase95-network-participation-release-boundary.test/scenarios-1.ts | 255 |
-| scripts/check-phase95-network-participation-release-boundary.test/setup.ts | 401 |
+| scripts/check-phase95-network-participation-release-boundary.test/scenarios-1.ts | 225 |
+| scripts/check-phase95-network-participation-release-boundary.test/setup.ts | 375 |
 | scripts/check-phase95-network-participation-release-boundary.ts | 14 |
-| scripts/check-phase95-network-participation-release-boundary/checks.ts | 358 |
-| scripts/check-phase95-network-participation-release-boundary/constants.ts | 192 |
+| scripts/check-phase95-network-participation-release-boundary/checks.ts | 275 |
+| scripts/check-phase95-network-participation-release-boundary/constants.ts | 172 |
 | scripts/check-phase95-network-participation-release-boundary/parity.ts | 129 |
-| scripts/check-phase96-peer-policy-runtime-bridge.test.ts | 374 |
-| scripts/check-phase96-peer-policy-runtime-bridge.ts | 428 |
+| scripts/check-phase96-peer-policy-runtime-bridge.test.ts | 321 |
+| scripts/check-phase96-peer-policy-runtime-bridge.ts | 353 |
 | scripts/check-phase97-inbound-metrics.test.ts | 479 |
 | scripts/check-phase97-inbound-metrics.ts | 448 |
-| scripts/check-phase98-traceability-reconciliation.test.ts | 498 |
-| scripts/check-phase98-traceability-reconciliation.ts | 455 |
-| scripts/check-phase99-peer-policy-structured-log-emission.test.ts | 330 |
-| scripts/check-phase99-peer-policy-structured-log-emission.ts | 252 |
+| scripts/check-phase99-peer-policy-structured-log-emission.test.ts | 225 |
+| scripts/check-phase99-peer-policy-structured-log-emission.ts | 170 |
 | scripts/check-push-verification.test.ts | 337 |
 | scripts/check-push-verification.ts | 223 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
@@ -412,7 +378,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/source-corpus.test.ts | 33 |
 | scripts/source-corpus.ts | 121 |
 | scripts/test-run-live-mainnet-smoke/assert-report.ts | 163 |
-| scripts/verify-shards.test.ts | 245 |
+| scripts/verify-shards.test.ts | 278 |
 | scripts/verify/sample-checker-tests.test.ts | 76 |
 | scripts/verify/sample-checker-tests.ts | 19 |
 | scripts/verify/sampled-bun-test.ts | 65 |
@@ -434,20 +400,20 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 11 | packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/phase162/inbound.rs | Rust tests | 628 |
 | 12 | packages/open-bitcoin-rpc/src/config/loader.rs | Rust production | 628 |
 | 13 | packages/open-bitcoin-rpc/tests/black_box_parity/phase127_composition.rs | Rust tests | 628 |
-| 14 | scripts/check-phase128-production-compact-announcement-transport.test.ts | TypeScript/Bun scripts | 628 |
-| 15 | scripts/check-phase158-validated-reorg.test.ts | TypeScript/Bun scripts | 628 |
-| 16 | scripts/check-phase162-integrated-filter-proof.test.ts | TypeScript/Bun scripts | 628 |
-| 17 | scripts/check-phase164-canonical-identity.test.ts | TypeScript/Bun scripts | 628 |
-| 18 | scripts/check-phase165-shared-exact-work.test.ts | TypeScript/Bun scripts | 628 |
-| 19 | scripts/check-phase166-canonical-bootstrap.test.ts | TypeScript/Bun scripts | 628 |
-| 20 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
+| 14 | scripts/check-phase158-validated-reorg.test.ts | TypeScript/Bun scripts | 628 |
+| 15 | scripts/check-phase164-canonical-identity.test.ts | TypeScript/Bun scripts | 628 |
+| 16 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
+| 17 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
+| 18 | packages/open-bitcoin-network/src/filter_serving/policy/tests.rs | Rust tests | 627 |
+| 19 | packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs | Rust production | 627 |
+| 20 | packages/open-bitcoin-node/src/network/relay_fanout.rs | Rust production | 627 |
 
 ## Metadata
 
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | cf048bd33b05f86738accd7607fe8b0bed55261041ed5d0d0a4ea03b8a2bbb6a |
+| Input fingerprint | a9efb0f7ef334e0e7d060fcd5b660c61e0a5d509f45949d2c1930c041c6c0ce0 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

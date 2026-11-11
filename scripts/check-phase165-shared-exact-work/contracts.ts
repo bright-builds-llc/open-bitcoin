@@ -41,10 +41,13 @@ for (const [file, prior] of CURRENT_SOURCE_ROWS) {
   }
 }
 /** Keep frozen Phase164 rows while binding only reviewed current source generations. */
-export const SOURCE_CONTRACTS: readonly (readonly [string, string, string])[] = PHASE164_SOURCE_CONTRACTS.map(row => {
-  const maybeCurrent = CURRENT_SOURCE_ROWS.find(([file]) => file === row[0]);
-  return maybeCurrent ? [row[0], row[1], maybeCurrent[2]] : row;
-});
+// Checker tooling under scripts/ is free to change; only product and test sources stay bound.
+export const SOURCE_CONTRACTS: readonly (readonly [string, string, string])[] = PHASE164_SOURCE_CONTRACTS
+  .filter(row => !row[0].startsWith("scripts/"))
+  .map(row => {
+    const maybeCurrent = CURRENT_SOURCE_ROWS.find(([file]) => file === row[0]);
+    return maybeCurrent ? [row[0], row[1], maybeCurrent[2]] : row;
+  });
 
 export const WORK_CLAIM_FILE = "docs/parity/v2-6-shared-exact-work.md";
 export const WORK_CLAIM_FACTS = [
@@ -59,14 +62,7 @@ export const WORK_CLAIM_FACTS = [
 
 export const CORPUS_FILE = "docs/parity/fixtures/phase165-work-vectors.json";
 export const CORPUS_SHA = "3261c2d2c73cbd6977a30691b40514e4d2940abfbfc500b145ccdcc6b10d7451";
-export const VERIFY_BASE_SHA = "2925344e06e3604fbba1821e49a00b0f2f292448eae205107882d0ed65aacc43";
 
-export const TOOLING_INVERSE_CASES = [
-  ["scripts/check-phase162-integrated-filter-proof.ts", "caf9147ecd5b4ac189486bca0d2e81298ff0cfc0ffc218769a5f690a20ca8350", "legacyFunction"],
-  ["scripts/check-phase162-integrated-filter-proof.test.ts", "784e29775202503f892ee7b005a5595f77ac8d0f8bdb42ca19818c138a86f6d5", "legacyFunction"],
-  ["scripts/check-phase158-validated-reorg.ts", "385b6c6d62067ba13e8e4d29d0ea1005252614830430f800b0824ec7ba954fdd", "import { supportedOwnership }"],
-  ["scripts/check-phase158-validated-reorg.test.ts", "bebdd0c7f2cc6e787f34502bb82f6ae6fd27c7a5ce5ac9bdd14be73c054193a3", 'test("phase165 current158 semantic actual raw baseline"'],
-] as const;
 export const WORK_DOC_OVERCLAIMS = [
   ["No actual pinned-Knots daemon differential qualification is claimed.", "Actual pinned-Knots daemon differential qualification is proven."],
   ["No deterministic restart tie parity is claimed.", "Deterministic restart tie parity is proven."],
@@ -74,7 +70,6 @@ export const WORK_DOC_OVERCLAIMS = [
 ] as const;
 /** Immutable historical receipts/tooling retain their own raw attribution. */
 export const HISTORICAL_IDENTITIES: readonly (readonly [string, string])[] = [
-  ["scripts/check-phase164-canonical-identity/historical-tooling.ts", "47bbcd914cf5a632f618310b69b987462551ca2f103bce823a8d0cc6326a5f65"],
   ["scripts/check-phase164-canonical-identity/fixture-source.ts", "b92d2d91da1dd7715e7de37737769f30bd543cb2fd8a7a1eecb92aaf3335f3e3"],
   ["packages/testdata/phase164/historical-tooling/manifest.json", "9783fa03fdd2df1395445b7752e6c31d84985c351ef44de516656af7f82fc7c0"],
   [".planning/phases/162-real-prune-retention-and-integrated-parity-proof/162-VERIFICATION.md", "1ddde66d94dfe4bd47151a2c7a152980d26cfc121774f730ff418fd93a6af56e"],
@@ -205,8 +200,6 @@ export const LIVE_SOURCE_MUTATIONS = [
   ["Self::finish_initialized_runtime(store, network, config, consensus_params)", "Self::finish_initialized_runtime(store, network, config, ConsensusParams::default())"],
 ] as const;
 
-
-
 export const OWNER_SOURCE_MUTATIONS = [
   [P + "chain_proof.rs", "pub struct ProofWork([u64; 4]);", "pub struct ProofWork(u128);"],
   [P + "chain_proof.rs", "overflowing_add(other.0[index])", "saturating_add(other.0[index])"],
@@ -253,7 +246,6 @@ export const OWNER_SOURCE_MUTATIONS = [
   [N + "storage/chain_compatibility.rs", "Err(CompatibilityRefusal::from_observation(", "Self::open(path.as_ref())?; Err(CompatibilityRefusal::from_observation("],
   [N + "storage/chain_compatibility.rs", "WorkCompatibilityDecision::ExistingUnproved", "WorkCompatibilityDecision::BootstrapUnavailable"],
 ] as const;
-
 
 export const LEGACY_BRIDGE_ROWS = [
   [

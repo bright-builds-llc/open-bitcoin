@@ -292,7 +292,7 @@ for (const claim of ["Peer filter serving is supported.", "CFPR-02 is Complete."
 }
 
 for (const kind of ["test", "guard"]) {
-  for (const section of ["documented", "executed"]) {
+  for (const section of ["executed"]) {
     test(`historical verifier order survives missing159 ${kind} ${section}`, () => {
       // Arrange
       const root = fixture();

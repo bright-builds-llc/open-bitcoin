@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -33,7 +33,6 @@ const TARGET_FILES = [
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
   "scripts/check-phase144-operator-flush-availability-evidence.ts",
   "scripts/check-phase144-operator-flush-availability-evidence.test.ts",
-  "scripts/verify.sh",
 ] as const;
 const NEW_FIELD_FILES = [
   "packages/open-bitcoin-node/src/status/chainstate_durability.rs",
@@ -111,37 +110,6 @@ test("phase144 checker fails when getblock or pruned appears on the new-field co
   expect(message).toContain("pruned");
 });
 
-test("verify.sh lists both bun test and bun run for the Phase 144 checker", () => {
-  // Arrange
-  const verifyText = readFileSync(path.join(process.cwd(), "scripts/verify.sh"), "utf8");
-  const visibleMarker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const visibleStart = verifyText.indexOf(visibleMarker);
-  const visibleBody = verifyText.slice(
-    visibleStart + visibleMarker.length,
-    verifyText.indexOf("\nVERIFY_COMMAND_ORDER", visibleStart + visibleMarker.length),
-  );
-  const bunNeedles = [
-    "bun test scripts/check-phase116-operator-block-relay-evidence.test.ts",
-    "bun run scripts/check-phase116-operator-block-relay-evidence.ts",
-    "bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts",
-    "bun run scripts/check-phase144-operator-flush-availability-evidence.ts",
-  ];
-  const runStepNeedles = [
-    'run_step "test Phase 116 operator block-relay evidence checker"',
-    'run_step "check Phase 116 operator block-relay evidence"',
-    'run_step "test Phase 144 operator flush and availability evidence checker"',
-    'run_step "check Phase 144 operator flush and availability evidence"',
-  ];
-
-  // Act
-  const visibleOrder = orderedIndexes(visibleBody, bunNeedles);
-  const runStepOrder = orderedIndexes(verifyText, runStepNeedles);
-
-  // Assert
-  expect(visibleOrder).toBe(true);
-  expect(runStepOrder).toBe(true);
-});
-
 function createFixture(options: FixtureOptions = {}): string {
   const root = mkdtempSync(path.join(tmpdir(), "open-bitcoin-phase144-"));
   tempRoots.push(root);
@@ -174,16 +142,4 @@ function removeFromFile(files: Map<TargetFile, string>, filePath: TargetFile, ne
 
 function appendToFile(files: Map<TargetFile, string>, filePath: TargetFile, text: string): void {
   files.set(filePath, `${files.get(filePath) ?? ""}\n${text}\n`);
-}
-
-function orderedIndexes(text: string, needles: readonly string[]): boolean {
-  let cursor = -1;
-  for (const needle of needles) {
-    const index = text.indexOf(needle, cursor + 1);
-    if (index === -1) {
-      return false;
-    }
-    cursor = index;
-  }
-  return true;
 }

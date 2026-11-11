@@ -3,11 +3,6 @@ import path from "node:path";
 
 export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
 export const SURFACE_ID = "v1-9-network-participation-release-boundary";
-export const PHASE94_TEST_COMMAND = "bun test scripts/check-phase94-dos-resource-governance.test.ts";
-export const PHASE94_CHECKER_COMMAND = "bun run scripts/check-phase94-dos-resource-governance.ts";
-export const PHASE95_TEST_COMMAND = "bun test scripts/check-phase95-network-participation-release-boundary.test.ts";
-export const PHASE95_CHECKER_COMMAND = "bun run scripts/check-phase95-network-participation-release-boundary.ts";
-export const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 export const REQUIRED_PHASE95_REQUIREMENTS = [
   "BOUND-01", "BOUND-02", "BOUND-03", "BOUND-04", "BOUND-05", "BOUND-06",
 ] as const;
@@ -140,20 +135,6 @@ export const POSITIVE_CLAIM_VERBS = [
   "provides", "provide", "supports", "support", "adds", "add", "enables", "enable",
   "includes", "include", "ships", "ship", "has", "have",
 ] as const;
-export const FORBIDDEN_VERIFY_STRINGS = [
-  "openbitcoinlisten=0.0.0.0",
-  "public-network CI",
-  "production full-node readiness",
-  "production service operation",
-  "production-service operation",
-  "systemctl",
-  "launchctl",
-  "service-manager",
-  "sleep 259200",
-  "sleep 86400",
-  "--restart-after-progress",
-  "run-live-mainnet-smoke",
-] as const;
 export const CLAIM_SCAN_FILES = [
   "README.md",
   "docs/parity/checklist.md",
@@ -176,7 +157,6 @@ export const TARGET_FILES = [
   "docs/operator/runtime-guide.md",
   "packages/open-bitcoin-cli/src/operator/support/redaction.rs",
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
-  "scripts/verify.sh",
 ] as const;
 
 export type TargetFile = (typeof TARGET_FILES)[number];

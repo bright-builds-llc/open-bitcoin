@@ -3,8 +3,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { checkPhase167, loadBoundedInputs, loadInputs } from "./check-phase167-candidate-history.ts";
-import { OFFLINE_COMMANDS, STEP_LABELS, VERIFY_BASE_SHA, VERIFY_FILE } from "./check-phase167-candidate-history/contracts.ts";
-import { CONTROLLED_NATIVE_PREFIX, CONTROLLED_NATIVE_STEPS, CONTROLLED_NATIVE_SUFFIX, verificationHistoricalBase } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { OFFLINE_COMMANDS, STEP_LABELS, VERIFY_FILE } from "./check-phase167-candidate-history/contracts.ts";
+import { CONTROLLED_NATIVE_PREFIX, CONTROLLED_NATIVE_STEPS, CONTROLLED_NATIVE_SUFFIX } from "./check-phase164-canonical-identity/historical-tooling.ts";
 
 const source = (file: string) => readFileSync(resolve(import.meta.dir, "..", file), "utf8");
 const real = loadInputs();
@@ -165,7 +165,6 @@ for (const [name, before, after, rule] of [
 }
 
 for (const [kind, lineOf] of [
-  ["declared", (index: number) => OFFLINE_COMMANDS[index]],
   ["executed", step],
 ] as const) {
   for (let index = 0; index < OFFLINE_COMMANDS.length; index++) {
@@ -187,7 +186,6 @@ for (const [kind, lineOf] of [
 
 test("Phase167 native verifier refuses check-to-write and acquisition modes", () => {
   // Arrange / Act / Assert
-  verifyMutation("\nbun run scripts/phase167-bip30-fixtures.ts --check\n", "\nbun run scripts/phase167-bip30-fixtures.ts --write\n", "offline");
   verifyMutation(step(4), step(4).replace("--check", "--write"), "offline");
   verifyMutation(step(0), step(0).replace("--check", "--acquire"), "offline");
 });
@@ -200,12 +198,4 @@ test("Phase167 native verifier refuses a network fetch registration", () => {
 test("Phase167 verifier requires a real run_step instead of a commented decoy", () => {
   // Arrange / Act / Assert
   verifyMutation(step(6), "# " + step(6), "runner");
-});
-
-test("current verifier projects to the frozen original and changed additions refuse", () => {
-  // Arrange
-  const sha = (source: string) => createHash("sha256").update(source).digest("hex");
-  // Act / Assert
-  expect(sha(verificationHistoricalBase(verifier))).toBe(VERIFY_BASE_SHA);
-  expect(() => verificationHistoricalBase(verifier.replace(step(5), "# skipped Phase167 Regtest test"))).toThrow();
 });

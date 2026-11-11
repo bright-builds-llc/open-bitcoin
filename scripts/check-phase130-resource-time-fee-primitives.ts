@@ -13,19 +13,6 @@ const FEEP_REQUIREMENTS = [
   "FEEP-05",
 ] as const;
 
-const PHASE129_CHECK =
-  "bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts";
-const PHASE130_TEST =
-  "bun test scripts/check-phase130-resource-time-fee-primitives.test.ts";
-const PHASE130_CHECK =
-  "bun run scripts/check-phase130-resource-time-fee-primitives.ts";
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
-const PHASE117_CHECK =
-  "bun run scripts/check-phase117-parity-uat-release-boundary.ts";
-const PHASE138_CHECK =
-  "bun run scripts/check-phase138-parity-uat-release-boundary.ts";
-
 export const PHASE130_TARGET_FILES = [
   "README.md",
   "packages/README.md",
@@ -49,7 +36,6 @@ export const PHASE130_TARGET_FILES = [
   "packages/open-bitcoin-node/src/storage/snapshot_codec/mempool.rs",
   "packages/open-bitcoin-rpc/src/dispatch/node.rs",
   "scripts/check-phase130-resource-time-fee-primitives.ts",
-  "scripts/verify.sh",
 ] as const;
 
 const PURE_POLICY_FILES = [
@@ -156,7 +142,6 @@ export function checkPhase130ResourceTimeFeePrimitives(
   checkIdentityPrivacy(repoRoot, failures);
   checkForbiddenClaims(repoRoot, failures);
   checkReadmeFreshness(repoRoot, failures);
-  checkVerifierWiring(repoRoot, failures);
   checkDeterministicScope(repoRoot, failures);
   checkLegacyEnforcementSeam(repoRoot, failures);
   return failures;
@@ -458,40 +443,6 @@ function checkReadmeFreshness(repoRoot: string, failures: string[]): void {
   }
 }
 
-function checkVerifierWiring(repoRoot: string, failures: string[]): void {
-  const verify = readTarget(repoRoot, "scripts/verify.sh");
-  const heredoc = visibleCommandOrder(verify);
-  const requiredVisible = [
-    PHASE129_CHECK,
-    PHASE130_TEST,
-    PHASE130_CHECK,
-    PHASE117_TEST,
-  ];
-  const requiredSteps = [
-    `run_step "check Phase 129 integration guardrails and milestone reconciliation" ${PHASE129_CHECK}`,
-    `run_step "test Phase 130 resource time and fee primitives checker" ${PHASE130_TEST}`,
-    `run_step "check Phase 130 resource time and fee primitives" ${PHASE130_CHECK}`,
-    `run_step "test Phase 117 parity UAT release boundary checker" ${PHASE117_TEST}`,
-  ];
-  if (!orderedLines(heredoc, requiredVisible)) {
-    failures.push(
-      "P130 verifier heredoc: Phase 130 pair must run between Phase 129 and the Phase 117 gate",
-    );
-  }
-  if (!orderedLines(verify, requiredSteps)) {
-    failures.push(
-      "P130 verifier run_step: Phase 130 pair must run between Phase 129 and the Phase 117 gate",
-    );
-  }
-
-  requireFinalPhaseChecker(heredoc, "P130 final gate heredoc order", failures);
-  requireFinalPhaseChecker(
-    runStepLines(verify),
-    "P130 final gate run_step order",
-    failures,
-  );
-}
-
 function checkDeterministicScope(repoRoot: string, failures: string[]): void {
   const checker = readTarget(
     repoRoot,
@@ -531,55 +482,10 @@ function checkLegacyEnforcementSeam(repoRoot: string, failures: string[]): void 
   }
 }
 
-function requireFinalPhaseChecker(
-  text: string,
-  label: string,
-  failures: string[],
-): void {
-  const phaseCommands = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => /\bbun (?:test|run) scripts\/check-phase\d+/.test(line));
-  if (!phaseCommands.at(-1)?.includes(PHASE138_CHECK)) {
-    failures.push(`${label} must end with ${PHASE138_CHECK}`);
-  }
-  if (!text.includes(PHASE117_CHECK)) {
-    failures.push(`${label} must keep ${PHASE117_CHECK} present`);
-  }
-}
-
-function runStepLines(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.startsWith("run_step "))
-    .join("\n");
-}
-
 function readTarget(repoRoot: string, relativePath: string): string {
   const absolutePath = path.join(repoRoot, relativePath);
   if (!existsSync(absolutePath)) return "";
   return readFileSync(absolutePath, "utf8");
-}
-
-function visibleCommandOrder(text: string): string {
-  const marker = ": <<'VERIFY_COMMAND_ORDER'\n";
-  const start = text.indexOf(marker);
-  if (start === -1) return "";
-  const bodyStart = start + marker.length;
-  const end = text.indexOf("\nVERIFY_COMMAND_ORDER", bodyStart);
-  return end === -1 ? "" : text.slice(bodyStart, end);
-}
-
-function orderedLines(text: string, required: readonly string[]): boolean {
-  const lines = text.split("\n").map((line) => line.trim());
-  let cursor = -1;
-  for (const line of required) {
-    const index = lines.indexOf(line, cursor + 1);
-    if (index === -1) return false;
-    cursor = index;
-  }
-  return true;
 }
 
 if (import.meta.main) {

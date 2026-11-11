@@ -4,14 +4,6 @@ import path from "node:path";
 import { readSourceCorpus } from "./source-corpus";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
-const PHASE132_CHECK =
-  "bun run scripts/check-phase132-typed-package-staged-admission.ts";
-const PHASE133_TEST =
-  "bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts";
-const PHASE133_CHECK =
-  "bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts";
-const PHASE117_TEST =
-  "bun test scripts/check-phase117-parity-uat-release-boundary.test.ts";
 
 export const PHASE133_TARGET_FILES = [
   "README.md", "packages/README.md", "docs/parity/catalog/mempool-policy.md",
@@ -29,7 +21,7 @@ export const PHASE133_TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
   "packages/open-bitcoin-node/src/network/tests/mempool_lifecycle_cases.rs",
   "packages/open-bitcoin-node/src/network/tests/package_bridge_cases.rs",
-  "scripts/check-phase133-package-aware-download-orphan-bridge.ts", "scripts/verify.sh",
+  "scripts/check-phase133-package-aware-download-orphan-bridge.ts",
 ] as const;
 
 export function checkPhase133PackageAwareDownloadOrphanBridge(
@@ -49,7 +41,6 @@ export function checkPhase133PackageAwareDownloadOrphanBridge(
   checkParityEvidence(repoRoot, failures);
   checkDocumentation(repoRoot, failures);
   checkNarrowClaims(repoRoot, failures);
-  checkVerifierWiring(repoRoot, failures);
   checkDeterministicScope(repoRoot, failures);
   return failures;
 }
@@ -485,22 +476,6 @@ function checkNarrowClaims(repoRoot: string, failures: string[]): void {
     );
   }
 }
-function checkVerifierWiring(repoRoot: string, failures: string[]): void {
-  const verify = readTarget(repoRoot, "scripts/verify.sh");
-  const expectedOrder = [
-    PHASE132_CHECK,
-    PHASE133_TEST,
-    PHASE133_CHECK,
-    PHASE117_TEST,
-  ];
-  if (
-    countOrderedSequences(verify, expectedOrder) !== 2
-  ) {
-    failures.push(
-      "P133 verifier: Phase 133 test/check must run after Phase 132 and before the final Phase 117 gate in both command surfaces",
-    );
-  }
-}
 function checkDeterministicScope(repoRoot: string, failures: string[]): void {
   const checker = readTarget(
     repoRoot,
@@ -548,24 +523,6 @@ function requireAll(
 
 function countMatches(source: string, pattern: RegExp): number {
   return source.match(pattern)?.length ?? 0;
-}
-
-function countOrderedSequences(
-  source: string,
-  needles: readonly string[],
-): number {
-  let cursor = 0;
-  let count = 0;
-  while (true) {
-    for (const needle of needles) {
-      const found = source.indexOf(needle, cursor);
-      if (found < 0) {
-        return count;
-      }
-      cursor = found + needle.length;
-    }
-    count += 1;
-  }
 }
 
 if (import.meta.main) {

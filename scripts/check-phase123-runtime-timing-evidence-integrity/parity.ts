@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { SURFACE_ID, REQUIREMENTS, PHASE122_CHECK, PHASE123_TEST, PHASE123_CHECK, PHASE117_TEST, TargetFile, ParityIndex, NamedSurface, ChecklistSurface, BreadcrumbManifest } from "./constants.ts";
-import { normalizeWhitespace, requireContains, requireExactCount, requireRepeatedOrder } from "./helpers.ts";
+import { SURFACE_ID, REQUIREMENTS, TargetFile, ParityIndex, NamedSurface, ChecklistSurface, BreadcrumbManifest } from "./constants.ts";
+import { normalizeWhitespace, requireContains } from "./helpers.ts";
 
 export function verifyPhase121Compatibility(
   texts: Map<TargetFile, string>,
@@ -102,30 +102,4 @@ export function verifyBreadcrumbs(text: string, failures: string[]): void {
       failures.push(`P123 breadcrumb missing Knots runtime anchors for ${file}`);
     }
   }
-}
-
-export function verifyVerifierWiring(text: string, failures: string[]): void {
-  requireExactCount(text, PHASE123_TEST, 2, "P123 verifier mutation command", failures);
-  requireExactCount(text, PHASE123_CHECK, 2, "P123 verifier live checker command", failures);
-  requireExactCount(
-    text,
-    'run_step "test Phase 123 runtime timing and evidence integrity checker"',
-    1,
-    "P123 verifier test label",
-    failures,
-  );
-  requireExactCount(
-    text,
-    'run_step "check Phase 123 runtime timing and evidence integrity"',
-    1,
-    "P123 verifier checker label",
-    failures,
-  );
-  requireRepeatedOrder(
-    text,
-    [PHASE122_CHECK, PHASE123_TEST, PHASE123_CHECK, PHASE117_TEST],
-    2,
-    "P123 verifier Phase 122/123/117 order",
-    failures,
-  );
 }

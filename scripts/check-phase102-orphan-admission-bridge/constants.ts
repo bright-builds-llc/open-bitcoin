@@ -3,13 +3,6 @@ import path from "node:path";
 
 export const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "../..");
 export const SURFACE_ID = "v2-0-orphan-handling-admission-outcome-bridge";
-export const PHASE101_TEST_COMMAND =
-  "bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts";
-export const PHASE101_CHECKER_COMMAND =
-  "bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts";
-export const PHASE102_TEST_COMMAND = "bun test scripts/check-phase102-orphan-admission-bridge.test.ts";
-export const PHASE102_CHECKER_COMMAND = "bun run scripts/check-phase102-orphan-admission-bridge.ts";
-export const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 export const REQUIRED_REQUIREMENTS = ["DL-03", "DL-04", "DL-05", "MEM-01", "MEM-02"] as const;
 export const TARGET_FILES = [
   "docs/parity/catalog/p2p.md",
@@ -31,7 +24,6 @@ export const TARGET_FILES = [
   "packages/open-bitcoin-node/src/network/admission_bridge.rs",
   "packages/open-bitcoin-node/src/network/inventory.rs",
   "packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs",
-  "scripts/verify.sh",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-02-SUMMARY.md",
   ".planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-03-SUMMARY.md",
@@ -221,17 +213,6 @@ export const POSITIVE_CLAIM_PATTERNS = [
   /\bis available\b/,
   /\bis complete\b/,
   /\bis ready\b/,
-] as const;
-export const FORBIDDEN_VERIFIER_SCOPE = [
-  "public-network relay",
-  "public relay ci",
-  "sleep ",
-  "service-manager",
-  "systemctl",
-  "launchctl",
-  "wall-clock",
-  "production-deployment",
-  "production full-node readiness",
 ] as const;
 
 export type TargetFile = (typeof TARGET_FILES)[number];

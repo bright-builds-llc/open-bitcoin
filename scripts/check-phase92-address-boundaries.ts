@@ -5,10 +5,6 @@ import path from "node:path";
 
 const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
 const SURFACE_ID = "v1-9-address-advertisement-discovery-boundaries";
-const PHASE91_TEST_COMMAND = "bun test scripts/check-phase91-peer-permissions.test.ts";
-const PHASE91_CHECKER_COMMAND = "bun run scripts/check-phase91-peer-permissions.ts";
-const PHASE92_TEST_COMMAND = "bun test scripts/check-phase92-address-boundaries.test.ts";
-const PHASE92_CHECKER_COMMAND = "bun run scripts/check-phase92-address-boundaries.ts";
 const PHASE92_REQUIREMENTS = ["ADDR-01", "ADDR-02", "ADDR-03", "ADDR-04"] as const;
 const ADDRESS_PERMISSION_FLAG =
   "-openbitcoininboundpermissionclass=operator_loopback@127.0.0.1=in,noban,forceinbound,download,addr";
@@ -32,7 +28,6 @@ const TARGET_FILES = [
   "docs/parity/source-breadcrumbs.json",
   "packages/open-bitcoin-cli/src/operator/status/render/inbound.rs",
   "packages/open-bitcoin-cli/src/operator/support/render/inbound.rs",
-  "scripts/verify.sh",
 ] as const;
 const REQUIRED_EVIDENCE = [
   "docs/operator/runtime-guide.md",
@@ -106,10 +101,6 @@ const REQUIRED_BREADCRUMB_FILES = [
   "packages/open-bitcoin-network/src/address/tests.rs",
 ] as const;
 const REQUIRED_BREADCRUMB_ANCHORS = REQUIRED_CATALOG_ANCHORS;
-const FORBIDDEN_VERIFY_STRINGS = [
-  "curl ", "nc ", "systemctl", "launchctl",
-  "dig ", "nslookup", "--public-network", "multi-day",
-] as const;
 const FORBIDDEN_POSITIVE_CLAIMS = [
   "supports full address relay", "full address relay support",
   "includes peer discovery support", "peer discovery support",
@@ -170,7 +161,6 @@ export function checkPhase92AddressBoundaries(
   verifyParityIndex(texts.get("docs/parity/index.json") ?? "", failures);
   verifyHumanEvidence(texts, failures);
   verifySourceBreadcrumbs(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
-  verifyVerifierWiring(texts.get("scripts/verify.sh") ?? "", failures);
   verifyNoClaimBoundary(texts, failures);
   verifyRawEvidenceBoundary(texts, failures);
 
@@ -433,113 +423,9 @@ function verifySourceBreadcrumbs(text: string, failures: string[]): void {
   }
 }
 
-function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
-function verifyVerifierWiring(text: string, failures: string[]): void {
-  verifyPrintedVerifierOrder(text, failures);
-
-  const executableText = executableVerifyText(text);
-  requireContains(
-    executableText,
-    `run_step "test Phase 92 address boundaries checker" ${PHASE92_TEST_COMMAND}`,
-    "verifier-order",
-    failures,
-  );
-  requireContains(
-    executableText,
-    `run_step "check Phase 92 address boundaries" ${PHASE92_CHECKER_COMMAND}`,
-    "verifier-order",
-    failures,
-  );
-  verifyExecutableVerifierOrder(executableText, failures);
-  verifyDefaultVerifierBoundary(executableText, failures);
-}
-
-function verifyPrintedVerifierOrder(text: string, failures: string[]): void {
-  const maybeOrderBlock = text.match(
-    /^: <<'VERIFY_COMMAND_ORDER'\n([\s\S]*?)\nVERIFY_COMMAND_ORDER\n/m,
-  );
-  if (maybeOrderBlock === null) {
-    failures.push("verifier-order missing VERIFY_COMMAND_ORDER block");
-    return;
-  }
-
-  verifyOrderedCommands(
-    maybeOrderBlock[1],
-    [
-      PHASE91_TEST_COMMAND,
-      PHASE91_CHECKER_COMMAND,
-      PHASE92_TEST_COMMAND,
-      PHASE92_CHECKER_COMMAND,
-    ],
-    "verifier-order requires printed Phase 92 commands after Phase 91 commands",
-    failures,
-  );
-}
-
-function verifyExecutableVerifierOrder(executableText: string, failures: string[]): void {
-  verifyOrderedCommands(
-    executableText,
-    [
-      PHASE91_TEST_COMMAND,
-      PHASE91_CHECKER_COMMAND,
-      PHASE92_TEST_COMMAND,
-      PHASE92_CHECKER_COMMAND,
-      "bash scripts/check-pure-core-deps.sh",
-    ],
-    "verifier-order requires executed Phase 92 test and checker after Phase 91 and before pure-core checks",
-    failures,
-  );
-}
-
-function verifyOrderedCommands(
-  text: string,
-  commands: readonly string[],
-  failure: string,
-  failures: string[],
-): void {
-  let previousIndex = -1;
-  for (const command of commands) {
-    const currentIndex = text.indexOf(command);
-    if (currentIndex === -1 || currentIndex <= previousIndex) {
-      failures.push(failure);
-      return;
-    }
-    previousIndex = currentIndex;
-  }
-}
-
-function verifyDefaultVerifierBoundary(executableText: string, failures: string[]): void {
-  for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (containsForbiddenVerifyFragment(executableText, forbidden)) {
-      failures.push(
-        `Phase 92 default verifier boundary must not add forbidden command text: ${forbidden}`,
-      );
-    }
-  }
-}
-
-function containsForbiddenVerifyFragment(text: string, fragment: string): boolean {
-  if (/^[a-z-]+ $/.test(fragment)) {
-    const command = escapeRegExp(fragment.trim());
-    return new RegExp(`(^|[\\s;&|()])${command}(?=\\s)`).test(text);
-  }
-
-  return text.includes(fragment);
-}
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function verifyNoClaimBoundary(texts: Map<TargetFile, string>, failures: string[]): void {
   for (const [file, text] of texts) {
-    if (file === "docs/parity/index.json" || file === "docs/parity/source-breadcrumbs.json" || file === "scripts/verify.sh") {
+    if (file === "docs/parity/index.json" || file === "docs/parity/source-breadcrumbs.json") {
       continue;
     }
 

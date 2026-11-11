@@ -6,15 +6,10 @@ import path from "node:path";
 import { checkPhase95NetworkParticipationReleaseBoundary } from "../check-phase95-network-participation-release-boundary";
 
 export const SURFACE_ID = "v1-9-network-participation-release-boundary";
-export const PHASE94_TEST_COMMAND =
-  "bun test scripts/check-phase94-dos-resource-governance.test.ts";
-export const PHASE94_CHECKER_COMMAND =
-  "bun run scripts/check-phase94-dos-resource-governance.ts";
 export const PHASE95_TEST_COMMAND =
   "bun test scripts/check-phase95-network-participation-release-boundary.test.ts";
 export const PHASE95_CHECKER_COMMAND =
   "bun run scripts/check-phase95-network-participation-release-boundary.ts";
-export const PURE_CORE_COMMAND = "bash scripts/check-pure-core-deps.sh";
 export const REQUIRED_KNOTS_ANCHORS = [
   "packages/bitcoin-knots/src/net.cpp",
   "packages/bitcoin-knots/src/net_processing.cpp",
@@ -118,7 +113,6 @@ export const TARGET_FILES = [
   "docs/operator/runtime-guide.md",
   "packages/open-bitcoin-cli/src/operator/support/redaction.rs",
   "packages/open-bitcoin-cli/src/operator/support/tests.rs",
-  "scripts/verify.sh",
 ] as const;
 
 export type TargetFile = (typeof TARGET_FILES)[number];
@@ -186,7 +180,6 @@ export function fixtureFiles(): Map<TargetFile, string> {
     ["docs/operator/runtime-guide.md", runtimeGuideText()],
     ["packages/open-bitcoin-cli/src/operator/support/redaction.rs", redactionText()],
     ["packages/open-bitcoin-cli/src/operator/support/tests.rs", supportTestsText()],
-    ["scripts/verify.sh", verifyScriptText()],
   ]);
 }
 
@@ -377,25 +370,6 @@ export function phaseTraceRows(): string[] {
     rows.push(`| ${requirement} | Phase ${phase} | Complete |`);
   }
   return rows;
-}
-
-export function verifyScriptText(): string {
-  return [
-    "#!/usr/bin/env bash",
-    "set -euo pipefail",
-    "# Phase 93 is followed by Phase 94, and Phase 94 is followed by Phase 95.",
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE94_TEST_COMMAND,
-    PHASE94_CHECKER_COMMAND,
-    PHASE95_TEST_COMMAND,
-    PHASE95_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
-    `run_step "Phase 94 DoS/resource governance checker tests" ${PHASE94_TEST_COMMAND}`,
-    `run_step "Phase 94 DoS/resource governance checker" ${PHASE94_CHECKER_COMMAND}`,
-    `run_step "Phase 95 network participation release boundary checker tests" ${PHASE95_TEST_COMMAND}`,
-    `run_step "Phase 95 network participation release boundary checker" ${PHASE95_CHECKER_COMMAND}`,
-    `run_step "check pure-core dependencies" ${PURE_CORE_COMMAND}`,
-  ].join("\n");
 }
 
 export { mkdirSync, mkdtempSync, rmSync, writeFileSync, tmpdir, path, checkPhase95NetworkParticipationReleaseBoundary };

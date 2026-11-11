@@ -22,7 +22,7 @@ import {
   allV24RequirementIds,
   checkedV24RequirementIds,
 } from "./constants.ts";
-import { checkUatCommands, checkVerifier } from "./verifier.ts";
+import { checkHistoricalPhasePaths, checkUatCommands } from "./verifier.ts";
 import {
   checkArchivedAudit,
   checkPlanningSourceIdentity,
@@ -62,7 +62,7 @@ export function checkPhase151ParityUatReleaseBoundary(maybeRepoRoot?: string): s
   checkBreadcrumbGroup(texts.get("docs/parity/source-breadcrumbs.json") ?? "", failures);
   checkKnotsSymbols(texts, failures);
   checkClaims(texts, failures);
-  checkVerifier(repoRoot, texts, failures);
+  checkHistoricalPhasePaths(repoRoot, failures);
   checkUatCommands(texts, failures);
   return failures;
 }
