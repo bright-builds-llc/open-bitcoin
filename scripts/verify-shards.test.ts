@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 
 // CI runs the full verification contract as one job per shard. These tests keep
@@ -29,6 +30,47 @@ function runVerify(args: string[]): { status: number; stdout: string; stderr: st
     stdout: result.stdout.toString("utf8"),
     stderr: result.stderr.toString("utf8"),
   };
+}
+
+// Stands in for scripts/verify.sh: background shards outlive the native ones,
+// and the shard named by FAKE_FAIL exits non-zero.
+const FAKE_VERIFIER = `#!/usr/bin/env bash
+shard="$2"
+echo "$shard" >>"$FAKE_RAN"
+if [[ "$shard" == "\${FAKE_FAIL:-}" ]]; then
+  echo "fake $shard boom"
+  exit 3
+fi
+if [[ "$shard" == checker-tests-* ]]; then
+  sleep 1 &
+  wait
+fi
+echo "$shard" >>"$FAKE_PASSED"
+`;
+
+function runParallelWithFakeVerifier(maybeFailingShard: string): { status: number; stderr: string; ran: string[]; passed: string[] } {
+  const root = mkdtempSync(path.join(tmpdir(), "verify-parallel-"));
+  try {
+    mkdirSync(path.join(root, "scripts"));
+    writeFileSync(path.join(root, "scripts/verify.sh"), FAKE_VERIFIER);
+    const helpers = path.join(REPO_ROOT, "scripts/verify/helpers.sh");
+    const result = Bun.spawnSync(["bash", "-c", `set -euo pipefail; source "${helpers}"; run_parallel_shards`], {
+      cwd: root,
+      env: { ...process.env, FAKE_FAIL: maybeFailingShard, FAKE_RAN: path.join(root, "ran"), FAKE_PASSED: path.join(root, "passed") },
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const lines = (name: string) => {
+      try {
+        return readFileSync(path.join(root, name), "utf8").trim().split("\n").sort();
+      } catch {
+        return [];
+      }
+    };
+    return { status: result.exitCode, stderr: result.stderr.toString("utf8"), ran: lines("ran"), passed: lines("passed") };
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
 }
 
 function listShards(): string[] {
@@ -126,6 +168,68 @@ test("shard_selection_is_refused_outside_the_full_contract", () => {
   // Assert
   expect(result.status).toBe(2);
   expect(result.stderr).toContain("--shard applies only to the full verification contract");
+});
+
+test("parallel_mode_is_refused_for_a_partial_contract", () => {
+  // Arrange
+  const partialContracts = [["--parallel", "--shard", "checks"], ["--quick", "--parallel"], ["--fast", "--parallel"]];
+
+  // Act
+  const results = partialContracts.map((args) => runVerify(args));
+
+  // Assert
+  expect(results.map((result) => result.status)).toEqual([2, 2, 2]);
+  expect(results.every((result) => result.stderr.includes("--parallel applies only to the whole full verification contract"))).toBe(true);
+});
+
+test("parallel_mode_plans_the_same_steps_as_the_serial_contract", () => {
+  // Arrange
+  const serial = runVerify(["--plan"]);
+
+  // Act
+  const parallel = runVerify(["--parallel", "--plan"]);
+
+  // Assert
+  expect(parallel.status).toBe(0);
+  expect(parallel.stdout).toBe(serial.stdout);
+});
+
+test("parallel_run_passes_only_after_every_shard_passes", () => {
+  // Arrange
+  const shards = listShards().sort();
+
+  // Act
+  const result = runParallelWithFakeVerifier("");
+
+  // Assert
+  expect(result.status).toBe(0);
+  expect(result.passed).toEqual(shards);
+});
+
+test("parallel_run_fails_when_a_native_shard_fails", () => {
+  // Arrange
+  const failingShard = "native-test";
+
+  // Act
+  const result = runParallelWithFakeVerifier(failingShard);
+
+  // Assert
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("shard native-test failed");
+  expect(result.ran).not.toContain("native-stress");
+});
+
+test("parallel_run_fails_when_a_background_shard_fails", () => {
+  // Arrange
+  const failingShard = "checker-tests-164";
+
+  // Act
+  const result = runParallelWithFakeVerifier(failingShard);
+
+  // Assert
+  expect(result.status).toBe(1);
+  expect(result.stderr).toContain("shard checker-tests-164 failed");
+  expect(result.stderr).toContain("fake checker-tests-164 boom");
 });
 
 test("unknown_shard_is_refused", () => {

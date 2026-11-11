@@ -13,6 +13,7 @@ import {
   receiptMatches,
   type GitCommand,
   verifiedReceipt,
+  verifierArguments,
 } from "./check-push-verification.ts";
 
 const REMOTE = "a".repeat(40);
@@ -134,6 +135,30 @@ test("safe Markdown-only push gets quick verification", () => {
   const plan = planMainPush("origin", update(), git);
   // Assert
   expect(plan.mode).toBe("quick");
+});
+
+test("skill Markdown-only push gets quick verification", () => {
+  // Arrange
+  const git = fakeGit({ maybeChanged: Buffer.from("A\0.agents/skills/next-parity-item/SKILL.md\0") });
+  // Act
+  const plan = planMainPush("origin", update(), git);
+  // Assert
+  expect(plan.mode).toBe("quick");
+});
+
+test("non-Markdown skill files require full verification", () => {
+  // Arrange
+  const git = fakeGit({ maybeChanged: Buffer.from("A\0.agents/skills/next-parity-item/run.sh\0") });
+  // Act
+  const plan = planMainPush("origin", update(), git);
+  // Assert
+  expect(plan.mode).toBe("full");
+});
+
+test("full verification runs the whole contract in parallel", () => {
+  // Arrange / Act / Assert
+  expect(verifierArguments("full")).toEqual(["scripts/verify.sh", "--parallel"]);
+  expect(verifierArguments("quick")).toEqual(["scripts/verify.sh", "--quick"]);
 });
 
 test("parity, source, and unknown files require full verification", () => {

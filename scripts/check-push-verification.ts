@@ -82,6 +82,7 @@ export function changedPathsAcrossCommits(git: GitCommand, remoteSha: string, lo
 
 export function isSafeProsePath(relativePath: string): boolean {
   if (/^\.codex\/tasks\/.+\.md$/.test(relativePath)) return true;
+  if (/^\.agents\/skills\/.+\.md$/.test(relativePath)) return true;
   return /^docs\/(?!parity\/).+\.md$/.test(relativePath);
 }
 
@@ -151,6 +152,11 @@ export function executeMainPush(
   return plan;
 }
 
+// The full gate runs the whole contract with its shards side by side.
+export function verifierArguments(mode: Exclude<VerificationMode, "none">): string[] {
+  return ["scripts/verify.sh", mode === "quick" ? "--quick" : "--parallel"];
+}
+
 const RECEIPT_LIFETIME_MS = 60 * 60 * 1000;
 
 export function verifiedReceipt(plan: PushPlan, updatesText: string, now = Date.now()): string {
@@ -197,7 +203,7 @@ if (import.meta.main) {
         console.error("pre-push: reusing recent verification after interrupted transport");
         return;
       }
-      const args = ["scripts/verify.sh", ...(mode === "quick" ? ["--quick"] : [])];
+      const args = verifierArguments(mode);
       console.error(`pre-push: running ${mode} verification for origin/main`);
       const result = spawnSync("bash", args, { cwd: root, stdio: "inherit" });
       if (result.error) throw result.error;

@@ -4,7 +4,7 @@
 usage() {
   cat >&2 <<'EOF'
 usage: bash scripts/verify.sh [--full | --profile | --fast | --quick] [--timings]
-                             [--shard <name>] [--plan] [--list-shards]
+                             [--shard <name>] [--parallel] [--plan] [--list-shards]
 
 Modes:
   --full      Run the full strict verification contract (default).
@@ -17,6 +17,8 @@ Options:
   --shard <name>
               Run only the steps of one shard of the full contract. The shards
               partition the contract, so running every shard equals a full run.
+  --parallel  Run the full contract with the checker-test shards concurrent
+              beside the serial native shards. Same steps as a serial full run.
   --plan      Print each step as "<shard><TAB><label>" without running it.
   --list-shards
               Print the shard names, one per line, and exit.
@@ -42,6 +44,8 @@ readonly VERIFY_SHARDS=(
 )
 maybe_verify_shard=""
 verify_plan_only=0
+verify_parallel=0
+readonly PARALLEL_POLL_SECONDS=1
 
 is_verify_shard() {
   local candidate="$1"
@@ -264,6 +268,10 @@ parse_args() {
       maybe_verify_shard="$2"
       shift 2
       ;;
+    --parallel)
+      verify_parallel=1
+      shift
+      ;;
     --plan)
       verify_plan_only=1
       shift
@@ -284,6 +292,14 @@ parse_args() {
     esac
   done
 
+  if [[ "$verify_parallel" -eq 1 ]]; then
+    if [[ "$verify_mode" != "full" || -n "$maybe_verify_shard" ]]; then
+      echo "error: --parallel applies only to the whole full verification contract" >&2
+      exit 2
+    fi
+    verify_invocation="parallel"
+    return
+  fi
   if [[ -z "$maybe_verify_shard" ]]; then
     return
   fi
@@ -334,6 +350,105 @@ print_step_timings() {
   done
 }
 
+is_background_shard() {
+  [[ "$1" == checker-tests-* ]]
+}
+
+stop_background_shards() {
+  local process_group=""
+
+  for process_group in "$@"; do
+    kill -TERM -- "-${process_group}" 2>/dev/null || true
+  done
+}
+
+# Prints the first background shard whose status file records a failure.
+failed_background_shard() {
+  local log_directory="$1"
+  local status_file=""
+
+  for status_file in "$log_directory"/*.status; do
+    [[ -f "$status_file" ]] || continue
+    if [[ "$(<"$status_file")" != 0 ]]; then
+      basename "$status_file" .status
+      return 0
+    fi
+  done
+  return 1
+}
+
+report_failed_shard() {
+  local log_directory="$1"
+  local shard="$2"
+
+  echo "verify.sh: shard ${shard} failed" >&2
+  if [[ -f "$log_directory/$shard.log" ]]; then
+    echo "verify.sh: last lines of ${shard} (full log: $log_directory/$shard.log)" >&2
+    tail -n 60 "$log_directory/$shard.log" >&2
+  fi
+}
+
+# Runs every shard of the full contract: the Bun checker-test shards in the
+# background, the Cargo and Bazel shards serially because they share one
+# target directory. Children inherit the timing wrapper and its build lock.
+run_parallel_shards() {
+  local log_directory=""
+  local shard=""
+  local maybe_failed=""
+  local background_shards=()
+  local background_groups=()
+  local pending=0
+
+  log_directory="$(mktemp -d)"
+  # Job control gives each background shard its own process group, so a
+  # failure elsewhere can stop its whole process tree.
+  set -m
+  for shard in "${VERIFY_SHARDS[@]}"; do
+    is_background_shard "$shard" || continue
+    (
+      status=0
+      bash scripts/verify.sh --shard "$shard" >"$log_directory/$shard.log" 2>&1 || status="$?"
+      echo "$status" >"$log_directory/$shard.status"
+    ) &
+    background_shards+=("$shard")
+    background_groups+=("$!")
+  done
+  set +m
+  echo "verify.sh: background shards ${background_shards[*]} (logs: $log_directory)" >&2
+
+  for shard in "${VERIFY_SHARDS[@]}"; do
+    is_background_shard "$shard" && continue
+    echo "verify.sh: running shard ${shard}" >&2
+    if ! bash scripts/verify.sh --shard "$shard"; then
+      maybe_failed="$shard"
+    elif maybe_failed="$(failed_background_shard "$log_directory")"; then
+      :
+    fi
+    if [[ -n "$maybe_failed" ]]; then
+      stop_background_shards "${background_groups[@]}"
+      report_failed_shard "$log_directory" "$maybe_failed"
+      return 1
+    fi
+  done
+
+  echo "verify.sh: native shards passed; waiting for ${background_shards[*]}" >&2
+  while :; do
+    if maybe_failed="$(failed_background_shard "$log_directory")"; then
+      stop_background_shards "${background_groups[@]}"
+      report_failed_shard "$log_directory" "$maybe_failed"
+      return 1
+    fi
+    pending=0
+    for shard in "${background_shards[@]}"; do
+      [[ -f "$log_directory/$shard.status" ]] || pending=$((pending + 1))
+    done
+    [[ "$pending" -eq 0 ]] && break
+    sleep "$PARALLEL_POLL_SECONDS"
+  done
+  rm -rf "$log_directory"
+  echo "verify.sh: all ${#VERIFY_SHARDS[@]} shards passed" >&2
+}
+
 run_step() {
   local label="$1"
   shift
@@ -350,6 +465,12 @@ run_step() {
   if [[ "$verify_plan_only" -eq 1 ]]; then
     printf '%s\t%s\n' "$shard" "$label"
     return 0
+  fi
+  # The first step of a parallel run hands the whole contract to the shards.
+  # It starts here, not in parse_args, so it runs inside the timing wrapper.
+  if [[ "$verify_parallel" -eq 1 ]]; then
+    run_parallel_shards || exit "$?"
+    exit 0
   fi
   if [[ -n "$maybe_verify_shard" && "$shard" != "$maybe_verify_shard" ]]; then
     return 0

@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,796 |
-| Total lines | 558,063 |
-| Code/content lines | 491,163 |
-| Comment-only lines | 28,924 |
-| Blank lines | 37,976 |
+| Total lines | 558,319 |
+| Code/content lines | 491,354 |
+| Comment-only lines | 28,957 |
+| Blank lines | 38,008 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,547 | 225,754 | 17,180 | 15,613 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
-| TypeScript/Bun scripts | 363 | 106,162 | 94,735 | 3,792 | 7,635 |
+| TypeScript/Bun scripts | 363 | 106,297 | 94,824 | 3,817 | 7,656 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
-| Shell scripts | 23 | 4,775 | 4,272 | 83 | 420 |
+| Shell scripts | 23 | 4,896 | 4,374 | 91 | 431 |
 | TOML/config | 16 | 3,472 | 3,105 | 0 | 367 |
 | Other config | 7 | 1,233 | 1,165 | 0 | 68 |
 | Bazel/Starlark | 18 | 422 | 387 | 0 | 35 |
@@ -370,8 +370,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase98-traceability-reconciliation.ts | 455 |
 | scripts/check-phase99-peer-policy-structured-log-emission.test.ts | 330 |
 | scripts/check-phase99-peer-policy-structured-log-emission.ts | 252 |
-| scripts/check-push-verification.test.ts | 312 |
-| scripts/check-push-verification.ts | 217 |
+| scripts/check-push-verification.test.ts | 337 |
+| scripts/check-push-verification.ts | 223 |
 | scripts/check-v1.3-release-boundaries.ts | 184 |
 | scripts/check-v1.4-release-boundaries.ts | 241 |
 | scripts/check-v1.5-release-boundaries.ts | 296 |
@@ -412,7 +412,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/source-corpus.test.ts | 33 |
 | scripts/source-corpus.ts | 121 |
 | scripts/test-run-live-mainnet-smoke/assert-report.ts | 163 |
-| scripts/verify-shards.test.ts | 141 |
+| scripts/verify-shards.test.ts | 245 |
 
 ## Largest Included Files
 
@@ -444,7 +444,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 6f4979021e910c82f9767167492eeba562f6b57307d3d72e0cdef26a8031ee37 |
+| Input fingerprint | 22cc63b96a590b8400f8bb593c4893561c30849b34ae578c6a0b7afbf5cc7c7b |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
