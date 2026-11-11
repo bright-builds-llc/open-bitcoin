@@ -151,7 +151,7 @@ for (const [name, before, after, rule] of [
   ["duplicate selector", CONTROLLED_NATIVE_STEPS[0] + "\n", CONTROLLED_NATIVE_STEPS[0] + "\n" + CONTROLLED_NATIVE_STEPS[0] + "\n", "native-stress"],
   ["reordered selectors", CONTROLLED_NATIVE_STEPS[0] + "\n" + CONTROLLED_NATIVE_STEPS[1], CONTROLLED_NATIVE_STEPS[1] + "\n" + CONTROLLED_NATIVE_STEPS[0], "native-stress"],
   ["wrong harness threads", CONTROLLED_NATIVE_STEPS[0], CONTROLLED_NATIVE_STEPS[0].replace("--test-threads=16", "--test-threads=4"), "native-stress"],
-  ["wrong CLI family", CONTROLLED_NATIVE_STEPS[8], CONTROLLED_NATIVE_STEPS[8].replace("phase167_cli", "phase167_cli_missing"), "native-stress"],
+  ["wrong session family", CONTROLLED_NATIVE_STEPS[6], CONTROLLED_NATIVE_STEPS[6].replace("phase167_peer_session", "phase167_peer_session_missing"), "native-stress"],
   ["missing stress block", CONTROLLED_NATIVE_PREFIX, "", "native-scope"],
   ["wrong complete-suite threads", "export RUST_TEST_THREADS=4", "export RUST_TEST_THREADS=16", "native-scope"],
   ["missing inherited-value restore", '  export RUST_TEST_THREADS="$saved_rust_test_threads"', "  unset RUST_TEST_THREADS", "native-scope"],

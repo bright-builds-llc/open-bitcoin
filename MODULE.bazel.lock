@@ -2831,7 +2831,7 @@
         "usagesDigest": "/nVJkqYyyp5wSwKXu/ghcrQcGZQfkhEnUsoCPkltNSg=",
         "recordedFileInputs": {
           "@@//packages/Cargo.lock": "16e3204f2279246ba2911cd965dc325b6e7e99134d3ab6373a4bb238d96ecd73",
-          "@@//packages/Cargo.toml": "6fc738138972ed88e5624b3b8ab2c1c629b409acb08bc93596e1cb2faa09bf2b",
+          "@@//packages/Cargo.toml": "7c6c32d413641793892b067da3b8c242f5aa592c3b130f0d9f02ce4febb3ec2b",
           "@@//packages/open-bitcoin-bench/Cargo.toml": "2b16c2d50e29ab8a414ab0ebf5882c14260de2e8fe29d9b66cae918a596fc6c0",
           "@@//packages/open-bitcoin-chainstate/Cargo.toml": "2431ecf293f5880ac3a5fcbe49c25df364468faf890932809938d005b23d7147",
           "@@//packages/open-bitcoin-cli/Cargo.toml": "d2bcef083a45d400e65c2f4fc39fd93c7eb54cd8385751986137c1735839e8df",

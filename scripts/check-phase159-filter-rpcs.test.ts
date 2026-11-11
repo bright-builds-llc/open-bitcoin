@@ -517,7 +517,7 @@ for (const [name, from, to] of [
 test("CLIguard native execution remains after workspace tests", () => {
   // Arrange
   const root = fixture();
-  edit(root, "scripts/verify.sh", source => source.replace('run_step "cargo test" cargo test --manifest-path packages/Cargo.toml --workspace --all-features', "# removed workspace test stage"));
+  edit(root, "scripts/verify.sh", source => source.replace('run_step "cargo test remainder" cargo test --manifest-path packages/Cargo.toml --workspace --exclude open-bitcoin-node --exclude open-bitcoin-rpc --all-features', "# removed workspace test stage"));
   // Act / Assert
   expect(checkPhase159FilterRpcs(root).some(failure => failure.includes("CLI binary"))).toBe(true);
 });

@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { lstatSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { CONTROLLED_NATIVE_PREFIX, CONTROLLED_NATIVE_STEPS, CONTROLLED_NATIVE_SUFFIX } from "./check-phase164-canonical-identity/historical-tooling.ts";
+import { COMPLETE_NATIVE_SUITES, CONTROLLED_NATIVE_PREFIX, CONTROLLED_NATIVE_STEPS, CONTROLLED_NATIVE_SUFFIX } from "./check-phase164-canonical-identity/historical-tooling.ts";
 import { BEHAVIOR_ROWS, CURRENT_PINS, KNOTS_PINS, NATIVE_TESTS, OFFLINE_COMMANDS, REQUIRED_BLOCKS, STEP_LABELS, VERIFY_FILE } from "./check-phase167-candidate-history/contracts.ts";
 
 export type Finding = { file: string; rule: string; detail: string };
@@ -98,18 +98,17 @@ export function checkPhase167(inputs: ReadonlyMap<string, string>): Finding[] {
   }
   const verifyLines = verify.split("\n");
   const stressLines = verifyLines.filter(line => line.startsWith("run_step ") && line.includes("--test-threads="));
-  const workspace = 'run_step "cargo test" cargo test --manifest-path packages/Cargo.toml --workspace --all-features';
   const client = 'run_step "cargo test CLI RPC client binary" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features';
-  if (CONTROLLED_NATIVE_STEPS.length !== 9 || stressLines.length !== 9
+  if (CONTROLLED_NATIVE_STEPS.length !== 7 || stressLines.length !== 7
     || stressLines.some((line, index) => line !== CONTROLLED_NATIVE_STEPS[index])
     || CONTROLLED_NATIVE_STEPS.some(line => verifyLines.filter(actualLine => actualLine === line).length !== 1)
-    || verifyLines.indexOf(CONTROLLED_NATIVE_STEPS[8]) >= verifyLines.indexOf(workspace)) {
-    findings.push({ file: VERIFY_FILE, rule: "native-stress", detail: "exact once ordered 16-thread node and CLI selectors before complete native suites required" });
+    || verifyLines.indexOf(CONTROLLED_NATIVE_STEPS[6]) >= verifyLines.indexOf(COMPLETE_NATIVE_SUITES.split("\n")[0])) {
+    findings.push({ file: VERIFY_FILE, rule: "native-stress", detail: "exact once ordered 16-thread node selectors before complete native suites required" });
   }
   if (verify.split(CONTROLLED_NATIVE_PREFIX).length !== 2
     || verify.split(CONTROLLED_NATIVE_SUFFIX).length !== 2
-    || !verify.includes(CONTROLLED_NATIVE_PREFIX + workspace + "\n" + client + "\n" + CONTROLLED_NATIVE_SUFFIX)) {
-    findings.push({ file: VERIFY_FILE, rule: "native-scope", detail: "four-thread workspace and CLI scope must restore the caller environment before coverage" });
+    || !verify.includes(CONTROLLED_NATIVE_PREFIX + COMPLETE_NATIVE_SUITES + client + "\n" + CONTROLLED_NATIVE_SUFFIX)) {
+    findings.push({ file: VERIFY_FILE, rule: "native-scope", detail: "four-thread complete native suites must restore the caller environment before coverage" });
   }
   if (actual.some(line => /--write|--acquire|\b(?:curl|wget|fetch|git clone)\b/.test(line))) {
     findings.push({ file: VERIFY_FILE, rule: "offline", detail: "native verification cannot write, acquire or fetch Phase167 inputs" });

@@ -24,5 +24,7 @@ version = "0.1.0"
 
 [profile.test]
 opt-level = 2
+# Backtraces keep file and line; full variable debuginfo only slowed the build.
+debug = "line-tables-only"
 debug-assertions = true
 overflow-checks = true

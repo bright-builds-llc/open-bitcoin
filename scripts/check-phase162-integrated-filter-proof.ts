@@ -337,7 +337,8 @@ function checkNative(source: string, failures: string[]): void {
     || positions.some((position, index) => index > 0 && position !== positions[index - 1] + 1)) failures.push("scripts/verify.sh: exact once ordered Phase161/162 native commands");
   if (lines.filter(line => line === SHARED_FORMAT).length !== 1) failures.push("scripts/verify.sh: pinned shared fixture format required");
   for (const command of ["cargo fmt --manifest-path packages/Cargo.toml --all --check", "cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings",
-    "cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features", "cargo test --manifest-path packages/Cargo.toml --workspace --all-features",
+    "cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features", "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --all-features", "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --all-features",
+    "cargo test --manifest-path packages/Cargo.toml --workspace --exclude open-bitcoin-node --exclude open-bitcoin-rpc --all-features",
     "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features", "bazel build //:core //:node //:rpc //:cli //:test_harness //:bench",
     "run_benchmark_list", "run_coverage_report"]) if (!lines.includes(command)) failures.push(`scripts/verify.sh: original mandatory gate ${command}`);
 }

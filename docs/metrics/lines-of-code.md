@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,765 |
-| Total lines | 544,126 |
-| Code/content lines | 478,717 |
-| Comment-only lines | 28,422 |
-| Blank lines | 36,987 |
+| Total lines | 544,172 |
+| Code/content lines | 478,751 |
+| Comment-only lines | 28,429 |
+| Blank lines | 36,992 |
 
 ## Per-Crate Modules
 
@@ -36,13 +36,13 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,547 | 225,754 | 17,180 | 15,613 |
 | Rust production | 594 | 174,963 | 153,323 | 7,849 | 13,791 |
-| TypeScript/Bun scripts | 332 | 92,292 | 82,364 | 3,294 | 6,634 |
+| TypeScript/Bun scripts | 332 | 92,332 | 82,394 | 3,299 | 6,639 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
-| Shell scripts | 23 | 4,707 | 4,196 | 79 | 432 |
-| TOML/config | 16 | 3,472 | 3,105 | 0 | 367 |
+| Shell scripts | 23 | 4,710 | 4,198 | 80 | 432 |
+| TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
 | Other config | 7 | 1,233 | 1,165 | 0 | 68 |
 | Bazel/Starlark | 18 | 422 | 387 | 0 | 35 |
-| YAML | 3 | 215 | 168 | 13 | 34 |
+| YAML | 3 | 216 | 169 | 13 | 34 |
 | CI/templates | 1 | 28 | 17 | 1 | 10 |
 | Hooks | 1 | 10 | 6 | 1 | 3 |
 
@@ -228,7 +228,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase161-operator-index-evidence.test.ts | 137 |
 | scripts/check-phase161-operator-index-evidence.ts | 163 |
 | scripts/check-phase162-integrated-filter-proof.test.ts | 614 |
-| scripts/check-phase162-integrated-filter-proof.ts | 478 |
+| scripts/check-phase162-integrated-filter-proof.ts | 479 |
 | scripts/check-phase162-integrated-filter-proof/contracts.ts | 256 |
 | scripts/check-phase163-provenance.test.ts | 400 |
 | scripts/check-phase163-provenance.ts | 301 |
@@ -240,20 +240,20 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity/claims.ts | 214 |
 | scripts/check-phase164-canonical-identity/contracts.ts | 98 |
 | scripts/check-phase164-canonical-identity/fixture-source.ts | 187 |
-| scripts/check-phase164-canonical-identity/historical-tooling.ts | 100 |
+| scripts/check-phase164-canonical-identity/historical-tooling.ts | 104 |
 | scripts/check-phase164-canonical-identity/historical.test.ts | 430 |
 | scripts/check-phase164-canonical-identity/regions.ts | 30 |
 | scripts/check-phase164-canonical-identity/source-files.ts | 627 |
 | scripts/check-phase164-canonical-identity/test-modules.ts | 606 |
 | scripts/check-phase165-shared-exact-work.test.ts | 581 |
 | scripts/check-phase165-shared-exact-work.ts | 235 |
-| scripts/check-phase165-shared-exact-work/contracts.ts | 488 |
+| scripts/check-phase165-shared-exact-work/contracts.ts | 490 |
 | scripts/check-phase165-shared-exact-work/test-support.ts | 235 |
 | scripts/check-phase166-canonical-bootstrap.test.ts | 516 |
 | scripts/check-phase166-canonical-bootstrap.ts | 252 |
 | scripts/check-phase166-canonical-bootstrap/contracts.ts | 366 |
 | scripts/check-phase167-candidate-history.test.ts | 201 |
-| scripts/check-phase167-candidate-history.ts | 156 |
+| scripts/check-phase167-candidate-history.ts | 155 |
 | scripts/check-phase167-candidate-history/contracts.ts | 164 |
 | scripts/check-phase61-resource-recovery-boundaries.ts | 152 |
 | scripts/check-phase62-sync-truth-surfaces.ts | 265 |
@@ -378,7 +378,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/source-corpus.test.ts | 33 |
 | scripts/source-corpus.ts | 121 |
 | scripts/test-run-live-mainnet-smoke/assert-report.ts | 163 |
-| scripts/verify-shards.test.ts | 278 |
+| scripts/verify-shards.test.ts | 312 |
 | scripts/verify/sample-checker-tests.test.ts | 76 |
 | scripts/verify/sample-checker-tests.ts | 19 |
 | scripts/verify/sampled-bun-test.ts | 65 |
@@ -413,7 +413,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | a9efb0f7ef334e0e7d060fcd5b660c61e0a5d509f45949d2c1930c041c6c0ce0 |
+| Input fingerprint | a282488b44c0bce5e0a8c12726cba167adb7935b4ab921d65c724f389032cae7 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -283,7 +283,7 @@ function checkVerifier(source: string, failures: string[]): void {
     const actual = section.split("\n").filter(line => commands.some(command => line.endsWith(command)));
     if (actual.length !== commands.length || actual.some((line, i) => !line.endsWith(commands[i]))) failures.push(`scripts/verify.sh: ordered historical ${label} verifier`);
   }
-  const workspace = 'run_step "cargo test" cargo test --manifest-path packages/Cargo.toml --workspace --all-features';
+  const workspace = 'run_step "cargo test remainder" cargo test --manifest-path packages/Cargo.toml --workspace --exclude open-bitcoin-node --exclude open-bitcoin-rpc --all-features';
   const client = 'run_step "cargo test CLI RPC client binary" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features';
   if (!source.includes(`${workspace}\n${client}\n`)) failures.push("scripts/verify.sh: required CLI binary test execution immediately after workspace tests");
 }

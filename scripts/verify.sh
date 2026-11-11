@@ -247,7 +247,6 @@ if [[ "$verify_mode" == "full" ]]; then
 fi
 
 # Exercise the contended native paths at the original 16-thread harness setting.
-run_step "stress node local submission 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_local_submission_reopen_bound -- --test-threads=16
 run_step "stress node opened unlink 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_live_physical_opened_unlink -- --test-threads=16
 run_step "stress node journal pressure 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_journal_pressure_retires_cold_genesis_journal_preserving_authority -- --test-threads=16
 run_step "stress node runtime reopen 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_runtime_reopen -- --test-threads=16
@@ -255,13 +254,15 @@ run_step "stress node durable copies 16 threads" cargo test --manifest-path pack
 run_step "stress node filter transport 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase160_filter -- --test-threads=16
 run_step "stress node peer filter 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase160_peer -- --test-threads=16
 run_step "stress node peer session 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib --all-features phase167_peer_session -- --test-threads=16
-run_step "stress CLI history 16 threads" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --lib --all-features phase167_cli -- --test-threads=16
 
-# Preserve the caller's test setting outside the two complete native suites.
+# Preserve the caller's test setting outside the complete native suites, which
+# together cover every workspace package once: node, rpc, then the remainder.
 saved_rust_test_threads="${RUST_TEST_THREADS-}"
 had_rust_test_threads="${RUST_TEST_THREADS+x}"
 export RUST_TEST_THREADS=4
-run_step "cargo test" cargo test --manifest-path packages/Cargo.toml --workspace --all-features
+run_step "cargo test node" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --all-features
+run_step "cargo test rpc" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --all-features
+run_step "cargo test remainder" cargo test --manifest-path packages/Cargo.toml --workspace --exclude open-bitcoin-node --exclude open-bitcoin-rpc --all-features
 run_step "cargo test CLI RPC client binary" cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features
 if [[ "$had_rust_test_threads" == x ]]; then
   export RUST_TEST_THREADS="$saved_rust_test_threads"

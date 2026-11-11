@@ -24,8 +24,9 @@ jobs:
       matrix:
         shard:
           - checks
+          - native-test-node
+          - native-test-rpc
           - native-test
-          - native-stress
           - native-release
           - checker-tests-158
           - checker-tests-159-163

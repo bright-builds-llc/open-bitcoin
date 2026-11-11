@@ -287,7 +287,9 @@ export const BRIDGE_MANDATORY_COMMANDS = [
   "cargo fmt --manifest-path packages/Cargo.toml --all --check",
   "cargo clippy --manifest-path packages/Cargo.toml --workspace --all-targets --all-features -- -D warnings",
   "cargo build --manifest-path packages/Cargo.toml --workspace --all-targets --all-features",
-  "cargo test --manifest-path packages/Cargo.toml --workspace --all-features",
+  "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --all-features",
+  "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --all-features",
+  "cargo test --manifest-path packages/Cargo.toml --workspace --exclude open-bitcoin-node --exclude open-bitcoin-rpc --all-features",
   "cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --bin open-bitcoin-cli --all-features",
   "bazel build //:core //:node //:rpc //:cli //:test_harness //:bench", "run_benchmark_list", "run_coverage_report",
 ] as const;

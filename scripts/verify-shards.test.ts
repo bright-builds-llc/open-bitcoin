@@ -13,7 +13,10 @@ const HEAVY_SUITE_SHARDS: ReadonlyArray<readonly [string, string]> = [
   ["test Phase 163 native archive transitions", "checker-tests-159-163"],
   ["test Phase 164 canonical identity boundary", "checker-tests-164"],
   ["test Phase 165 shared exact work", "checker-tests-165"],
-  ["cargo test", "native-test"],
+  ["cargo test node", "native-test-node"],
+  ["cargo test rpc", "native-test-rpc"],
+  ["cargo test remainder", "native-test"],
+  ["stress node peer filter 16 threads", "native-test-node"],
   ["cargo clippy", "checks"],
 ];
 
@@ -114,6 +117,23 @@ function gateStepCommands(): string[] {
   return verifyScript.split("\n").map((line) => line.trimStart()).filter((line) => line.startsWith("run_step "));
 }
 
+function workspaceMembers(): string[] {
+  const manifest = readFileSync(path.join(REPO_ROOT, "packages/Cargo.toml"), "utf8");
+  const maybeMembers = manifest.match(/^members = \[\n((?: {4}"[^"]+",\n)+)\]/m);
+  if (!maybeMembers) throw new Error("packages/Cargo.toml has no workspace member list");
+  return [...maybeMembers[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
+}
+
+// Packages one complete native suite step tests: its -p selections, or the
+// whole workspace minus its --exclude selections.
+function packagesTestedBy(step: string, members: string[]): string[] {
+  const selected = [...step.matchAll(/ -p (\S+)/g)].map((match) => match[1]);
+  if (selected.length > 0) return selected;
+  if (!step.includes(" --workspace")) throw new Error(`native suite step selects no packages: ${step}`);
+  const excluded = new Set([...step.matchAll(/ --exclude (\S+)/g)].map((match) => match[1]));
+  return members.filter((member) => !excluded.has(member));
+}
+
 function ciMatrixShards(): string[] {
   const workflow = readFileSync(path.join(REPO_ROOT, ".github/workflows/ci.yml"), "utf8");
   const maybeMatrix = workflow.match(/^ {8}shard:\n((?: {10}- \S+\n)+)/m);
@@ -167,6 +187,20 @@ test("every_checker_script_runs_as_exactly_one_gate_step", () => {
 
   // Assert
   expect(misregistered).toEqual([]);
+});
+
+test("complete_native_suites_test_every_workspace_package_once", () => {
+  // Arrange
+  const members = workspaceMembers();
+  const suites = gateStepCommands().filter((step) => /^run_step "cargo test (node|rpc|remainder)" /.test(step));
+
+  // Act
+  const tested = suites.flatMap((step) => packagesTestedBy(step, members)).sort();
+
+  // Assert
+  expect(suites.length).toBe(3);
+  expect(suites.filter((step) => / -- |--lib|--bins?\b|--tests?\b|--doc/.test(step))).toEqual([]);
+  expect(tested).toEqual([...members].sort());
 });
 
 test("every_shard_owns_at_least_one_step", () => {
@@ -249,7 +283,7 @@ test("parallel_run_fails_when_a_native_shard_fails", () => {
   // Assert
   expect(result.status).toBe(1);
   expect(result.stderr).toContain("shard native-test failed");
-  expect(result.ran).not.toContain("native-stress");
+  expect(result.ran).not.toContain("native-release");
 });
 
 test("parallel_run_fails_when_a_background_shard_fails", () => {

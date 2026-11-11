@@ -38,8 +38,9 @@ readonly BUN_TEST_SAMPLING_PRELOAD="./scripts/verify/sample-checker-tests.ts"
 # or "checker-tests-other", so a new step can never be left out of CI.
 readonly VERIFY_SHARDS=(
   checks
+  native-test-node
+  native-test-rpc
   native-test
-  native-stress
   native-release
   checker-tests-158
   checker-tests-159-163
@@ -88,9 +89,10 @@ step_shard() {
   fi
 
   case "$label" in
-  "stress "*) echo "native-stress" ;;
-  "cargo build" | "cargo test" | "cargo test "*) echo "native-test" ;;
-  "benchmark "* | "check benchmark report" | "bazel build" | "check Bazel build provenance" | "cargo llvm-cov "*)
+  "stress "* | "cargo test node") echo "native-test-node" ;;
+  "cargo test rpc") echo "native-test-rpc" ;;
+  "cargo test "*) echo "native-test" ;;
+  "cargo build" | "benchmark "* | "check benchmark report" | "bazel build" | "check Bazel build provenance" | "cargo llvm-cov "*)
     echo "native-release"
     ;;
   *) echo "checks" ;;
