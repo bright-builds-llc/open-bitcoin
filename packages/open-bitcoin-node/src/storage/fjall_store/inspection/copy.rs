@@ -39,11 +39,10 @@ impl From<StorageError> for CopyFailure {
     }
 }
 
+/// Cumulative entry visits across every attempt of one live observation.
 #[derive(Debug, Default)]
 pub(super) struct WorkLedger {
     pub(super) visits: u64,
-    pub(super) content: u64,
-    pub(super) probes: u64,
 }
 
 impl WorkLedger {
@@ -60,14 +59,6 @@ impl WorkLedger {
 
     pub(super) fn visit(&mut self) -> Result<(), CopyFailure> {
         Self::reserve(&mut self.visits, 1, 2 * MAX_ENTRIES as u64)
-    }
-
-    pub(super) fn content(&mut self, amount: u64) -> Result<(), CopyFailure> {
-        Self::reserve(&mut self.content, amount, 2 * MAX_BYTES)
-    }
-
-    pub(super) fn probe(&mut self) -> Result<(), CopyFailure> {
-        Self::reserve(&mut self.probes, 1, 2 * MAX_ENTRIES as u64)
     }
 }
 
@@ -122,6 +113,9 @@ impl Inventory {
         Self::capture_typed(source, &mut None).map_err(CopyFailure::original)
     }
 
+    /// With a ledger this is the live walk: it opens each file to prove it is
+    /// readable and unchanged but never reads it, because every envelope limit
+    /// is decided by metadata. Without one it also digests file content.
     pub(super) fn capture_typed(
         source: &Path,
         maybe_work: &mut Option<&mut WorkLedger>,
@@ -188,8 +182,11 @@ impl Inventory {
             }
             identity.check_path_typed(&path, descendant)?;
             None
+        } else if maybe_work.is_some() {
+            check_readable(&identity, &path)?;
+            None
         } else {
-            Some(file_digest_typed(&identity, &path, None, maybe_work)?)
+            Some(file_digest(&identity, &path, None)?)
         };
         self.entries.insert(
             relative.to_path_buf(),
@@ -275,10 +272,10 @@ impl Inventory {
                     self.budget.bytes,
                     self.entries
                         .values()
-                        .filter(|entry| entry.maybe_digest.is_some())
+                        .filter(|entry| !entry.identity.directory)
                         .count(),
                 ),
-                (work.visits, work.content, work.probes),
+                work.visits,
                 equal,
             );
         }
@@ -358,25 +355,19 @@ pub(super) fn create_private_directory(path: &Path) -> Result<(), StorageError> 
         .map_err(|_| inspection_error("inspection private directory unavailable"))
 }
 
+fn check_readable(identity: &Identity, path: &Path) -> Result<(), CopyFailure> {
+    let file = identity.open_file_typed(path)?;
+    #[cfg(test)]
+    super::live::observe(super::live::Point::Opened, path);
+    identity.check_opened_typed(&file, path)
+}
+
 fn file_digest(
     identity: &Identity,
     path: &Path,
-    maybe_copy: Option<&mut File>,
-) -> Result<[u8; 32], StorageError> {
-    file_digest_typed(identity, path, maybe_copy, &mut None).map_err(CopyFailure::original)
-}
-
-fn file_digest_typed(
-    identity: &Identity,
-    path: &Path,
     mut maybe_copy: Option<&mut File>,
-    maybe_work: &mut Option<&mut WorkLedger>,
-) -> Result<[u8; 32], CopyFailure> {
-    let mut file = if maybe_work.is_some() {
-        identity.open_file_typed(path)?
-    } else {
-        identity.open_file(path)?
-    };
+) -> Result<[u8; 32], StorageError> {
+    let mut file = identity.open_file(path)?;
     #[cfg(test)]
     super::live::observe(super::live::Point::Opened, path);
     let mut remaining = identity.length;
@@ -393,13 +384,14 @@ fn file_digest_typed(
         };
         #[cfg(test)]
         if maybe_fault == Some(CopyIoFault::Read) {
-            return Err(inspection_error("inspection source read failed").into());
+            return Err(inspection_error("inspection source read failed"));
         }
-        read_requested(&mut file, &mut buffer[..count], maybe_work)?;
+        file.read_exact(&mut buffer[..count])
+            .map_err(|_| inspection_error("inspection source read failed"))?;
         if let Some(copy) = maybe_copy.as_mut() {
             #[cfg(test)]
             if maybe_fault == Some(CopyIoFault::Write) {
-                return Err(inspection_error("inspection private copy failed").into());
+                return Err(inspection_error("inspection private copy failed"));
             }
             copy.write_all(&buffer[..count])
                 .map_err(|_| inspection_error("inspection private copy failed"))?;
@@ -409,45 +401,18 @@ fn file_digest_typed(
         pair[..32].copy_from_slice(&digest);
         pair[32..].copy_from_slice(&Sha256::digest(&buffer[..count]));
         digest = Sha256::digest(&pair);
-        #[cfg(test)]
-        super::live::record_io(count as u64, 0);
         remaining = remaining
             .checked_sub(count as u64)
             .ok_or_else(|| inspection_error("inspection copy arithmetic overflow"))?;
     }
-    if let Some(work) = maybe_work.as_mut() {
-        work.probe()?;
-    }
     let tail = file
         .read(&mut buffer[..1])
         .map_err(|_| inspection_error("inspection source read failed"))?;
-    #[cfg(test)]
-    super::live::record_io(0, 1);
     if tail != 0 {
-        return Err(CopyFailure::Changed(inspection_error(
-            "inspection source content changed",
-        )));
+        return Err(inspection_error("inspection source content changed"));
     }
-    identity.check_opened_typed(&file, path)?;
+    identity.check_opened(&file, path)?;
     Ok(digest)
-}
-
-pub(super) fn read_requested(
-    file: &mut File,
-    buffer: &mut [u8],
-    maybe_work: &mut Option<&mut WorkLedger>,
-) -> Result<(), CopyFailure> {
-    if let Some(work) = maybe_work.as_mut() {
-        work.content(buffer.len() as u64)?;
-    }
-    file.read_exact(buffer).map_err(|error| {
-        let original = inspection_error("inspection source read failed");
-        if error.kind() == std::io::ErrorKind::UnexpectedEof {
-            CopyFailure::Changed(original)
-        } else {
-            CopyFailure::Refused(original)
-        }
-    })
 }
 
 #[cfg(test)]

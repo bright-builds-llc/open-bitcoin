@@ -2,11 +2,7 @@
 // - none: Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified.
 
 use super::*;
-use std::{
-    io::{Read, Seek},
-    os::unix::fs::PermissionsExt,
-    path::Path,
-};
+use std::{os::unix::fs::PermissionsExt, path::Path};
 
 fn socket_at_owned_path(path: &Path) -> std::os::unix::net::UnixListener {
     use std::os::unix::fs::FileTypeExt;
@@ -141,7 +137,7 @@ fn phase167_live_physical_work_bounded_denied_root_precharge_has_one_final_start
         let result = attempts(store, &stamp, &root, &mut work);
         MAYBE_HOOK.set(None);
         TRACE.with_borrow_mut(|trace| trace.active = false);
-        // Assert: anchors may do I/O; no walker metadata/content/EOF is funded.
+        // Assert: anchors may do I/O; no walker metadata is funded.
         root.check(store.datadir()).expect("same held root");
         store
             .database()
@@ -150,7 +146,7 @@ fn phase167_live_physical_work_bounded_denied_root_precharge_has_one_final_start
         assert!(
             matches!(result, Err(StorageError::BackendFailure { message, .. }) if message == "inspection work limit exceeded")
         );
-        assert_eq!((work.visits, work.content, work.probes), (8192, 0, 0));
+        assert_eq!(work.visits, 8192);
         assert_eq!(metadata_calls.load(Ordering::SeqCst), 0);
         TRACE.with_borrow(|trace| {
             assert_eq!(
@@ -163,8 +159,9 @@ fn phase167_live_physical_work_bounded_denied_root_precharge_has_one_final_start
                 ),
                 (1, 0, 0, 0, 0)
             );
-            assert_eq!((trace.hash_bytes, trace.eof_reads), (0, 0));
-            eprintln!("LIVE_TERMINAL_PRECHARGE starts=1 unchanged_visits=8192 walker_hash_bytes=0 EOF_reads=0 anchor_checks_retained=true");
+            eprintln!(
+                "LIVE_TERMINAL_PRECHARGE starts=1 unchanged_visits=8192 anchor_checks_retained=true"
+            );
         });
     });
 }
@@ -192,12 +189,12 @@ fn phase167_live_physical_known_descendant_deletion_is_changed_and_charged() {
         assert!(
             matches!(error, StorageError::BackendFailure { message, .. } if message == "inspection source metadata unavailable")
         );
-        assert_eq!((work.visits, work.content, work.probes), (2, 0, 0));
+        assert_eq!(work.visits, 2);
     });
 }
 
 #[test]
-fn phase167_live_physical_content_replacement_with_restored_metadata_changes_full_hash() {
+fn phase167_live_physical_content_replacement_with_restored_metadata_changes_only_strict_hash() {
     with_tree(|root| {
         // Arrange
         let payload = root.join("payload");
@@ -206,78 +203,22 @@ fn phase167_live_physical_content_replacement_with_restored_metadata_changes_ful
             .modified()
             .expect("mtime");
         let before = copy::Inventory::capture(root).expect("full initial inventory");
+        let live =
+            copy::Inventory::capture_typed(root, &mut Some(&mut copy::WorkLedger::default()))
+                .expect("metadata-only initial inventory");
         // Act
         fs::write(&payload, b"BBBB").expect("same-length replacement");
         fs::File::open(&payload)
             .expect("held file")
             .set_times(fs::FileTimes::new().set_modified(modified))
             .expect("restore mtime");
-        let result = before.recheck_typed(root, &mut Some(&mut copy::WorkLedger::default()));
+        let result = live.recheck_typed(root, &mut Some(&mut copy::WorkLedger::default()));
         let strict = before.recheck(root);
-        // Assert
-        assert!(matches!(result, Err(copy::CopyFailure::Changed(_))));
+        // Assert: content cannot move the envelope, so only the copying walk reads it.
+        result.expect("live walk compares metadata only");
         assert!(
             matches!(strict, Err(StorageError::BackendFailure { message, .. }) if message == "inspection source changed")
         );
-    });
-}
-
-#[test]
-fn phase167_live_physical_actual_partial_read_progress_keeps_requested_charge() {
-    with_tree(|root| {
-        // Arrange
-        let payload = root.join("payload");
-        fs::write(&payload, [7; 4096]).expect("original length");
-        let mut held = fs::File::open(&payload).expect("actual opened endpoint");
-        fs::OpenOptions::new()
-            .write(true)
-            .open(&payload)
-            .expect("truncate held source")
-            .set_len(19)
-            .expect("real truncation");
-        let mut work = copy::WorkLedger::default();
-        // Act
-        let result = copy::read_requested(&mut held, &mut [0; 4096], &mut Some(&mut work));
-        let actual_position = held.stream_position().expect("partial read position");
-        drop(held);
-        // Assert
-        assert!(matches!(result, Err(copy::CopyFailure::Changed(_))));
-        assert_eq!(
-            actual_position, 19,
-            "actual OS partial progress before UnexpectedEof"
-        );
-        assert_eq!((work.content, work.probes), (4096, 0));
-        work.content(2 * copy::MAX_BYTES - 4096)
-            .expect("only remaining content");
-        assert!(work.content(1).is_err());
-    });
-}
-
-#[test]
-fn phase167_live_physical_real_opened_directory_read_is_nontransient_refusal() {
-    with_tree(|root| {
-        // Arrange: a directory fd opens readonly but its read is a real OS error.
-        let mut held = fs::File::open(root).expect("real opened directory endpoint");
-        let natural = held
-            .read(&mut [0; 16])
-            .expect_err("host must reject directory reads");
-        let mut work = copy::WorkLedger::default();
-        // Act: exactly the production requested-read implementation.
-        let result = copy::read_requested(&mut held, &mut [0; 16], &mut Some(&mut work));
-        drop(held);
-        // Assert
-        eprintln!(
-            "LIVE_OS_IO kind={:?} raw_os_error={:?}",
-            natural.kind(),
-            natural.raw_os_error()
-        );
-        assert_ne!(natural.kind(), std::io::ErrorKind::UnexpectedEof);
-        assert_ne!(natural.kind(), std::io::ErrorKind::NotFound);
-        let error = refused(result);
-        assert!(
-            matches!(error, StorageError::BackendFailure { message, .. } if message == "inspection source read failed")
-        );
-        assert_eq!((work.content, work.probes), (16, 0));
     });
 }
 
@@ -497,7 +438,7 @@ fn phase167_live_physical_path_per_source_exact_bounds_and_arithmetic_refuse() {
 }
 
 #[test]
-fn phase167_live_physical_cumulative_exhaustion_precedes_metadata_read_and_eof_io() {
+fn phase167_live_physical_cumulative_exhaustion_precedes_metadata() {
     with_tree(|root| {
         // Arrange
         let observed = Arc::new(AtomicUsize::new(0));
@@ -507,57 +448,18 @@ fn phase167_live_physical_cumulative_exhaustion_precedes_metadata_read_and_eof_i
                 count.fetch_add(1, Ordering::SeqCst);
             }
         })));
-        let mut visits = copy::WorkLedger {
-            visits: 8192,
-            ..Default::default()
-        };
+        let mut visits = copy::WorkLedger { visits: 8192 };
         // Act
         let result = copy::Inventory::capture_typed(root, &mut Some(&mut visits));
         MAYBE_HOOK.set(None);
-        let mut held = fs::File::open(root.join("payload")).expect("real source");
-        let mut content = copy::WorkLedger {
-            content: 2 * copy::MAX_BYTES,
-            ..Default::default()
-        };
-        let read = copy::read_requested(&mut held, &mut [0; 1], &mut Some(&mut content));
-        let position = held.stream_position().expect("unread endpoint");
-        drop(held);
-        TRACE.set(Trace {
-            active: true,
-            ..Default::default()
-        });
-        let mut probes = copy::WorkLedger {
-            probes: 8192,
-            ..Default::default()
-        };
-        let eof = copy::Inventory::capture_typed(root, &mut Some(&mut probes));
-        TRACE.with_borrow_mut(|trace| trace.active = false);
         // Assert
         refused(result);
-        refused(read);
-        refused(eof);
         assert_eq!(
             observed.load(Ordering::SeqCst),
             0,
             "visit reserved before metadata"
         );
-        assert_eq!(
-            position, 0,
-            "failed content reservation precedes actual read"
-        );
-        assert_eq!(
-            (visits.visits, content.content, probes.probes),
-            (8192, 1073741824, 8192)
-        );
-        assert_eq!(
-            probes.content, 4,
-            "failed EOF never refunds completed content"
-        );
-        TRACE.with_borrow(|trace| assert_eq!((trace.hash_bytes, trace.eof_reads), (4, 0)));
-        content
-            .probe()
-            .expect("EOF is independent, never content funding");
-        assert!(content.content(1).is_err());
+        assert_eq!(visits.visits, 8192);
     });
 }
 

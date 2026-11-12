@@ -67,17 +67,28 @@ fn assert_successful_pair() {
     TRACE.with_borrow(|trace| {
         assert!(trace.starts.len() >= 2 && trace.changed >= 1);
         assert_eq!(trace.equals.len(), 1);
-        let l0 = *trace.starts.last().expect("actual successful attempt start");
+        let l0 = *trace
+            .starts
+            .last()
+            .expect("actual successful attempt start");
         let l1 = *trace.captures.last().expect("actual successful capture");
         let l2 = trace.equals[0];
-        assert_eq!(trace.rechecks.last().expect("real recheck capture").ledger, l2.ledger);
-        assert!(l0.ledger.0 > 0, "failed attempts remain charged");
-        for (stage, start, end) in [("successful-capture", l0, l1), ("successful-recheck-full-Eq", l1, l2)] {
+        assert_eq!(
+            trace.rechecks.last().expect("real recheck capture").ledger,
+            l2.ledger
+        );
+        assert!(l0.ledger > 0, "failed attempts remain charged");
+        for (stage, start, end) in [
+            ("successful-capture", l0, l1),
+            ("successful-recheck-full-Eq", l1, l2),
+        ] {
             let (entries, bytes, files) = end.footprint;
             assert!(bytes > 0 && files > 0);
-            assert_eq!((end.ledger.0-start.ledger.0, end.ledger.1-start.ledger.1, end.ledger.2-start.ledger.2), (entries as u64, bytes, files as u64));
-            assert_eq!((end.io.0-start.io.0, end.io.1-start.io.1), (bytes, files as u64));
-            eprintln!("LIVE_SUCCESSFUL_PAIR attempt={} stage={stage} Lbefore={start:?} Lafter={end:?} actual_full_hash_and_EOF=true", trace.starts.len());
+            assert_eq!(end.ledger - start.ledger, entries as u64);
+            eprintln!(
+                "LIVE_SUCCESSFUL_PAIR attempt={} stage={stage} Lbefore={start:?} Lafter={end:?}",
+                trace.starts.len()
+            );
         }
     });
 }
@@ -103,7 +114,7 @@ fn assert_actions_changed(count: usize) {
     });
 }
 
-fn assert_churn_exhausted(work: (u64, u64, u64)) {
+fn assert_churn_exhausted(work: u64) {
     TRACE.with_borrow(|trace| {
         let starts = trace.starts.len();
         let actions = trace.actions.len();
@@ -119,92 +130,34 @@ fn assert_churn_exhausted(work: (u64, u64, u64)) {
             "one terminal Refused, no continuation"
         );
         for pair in trace.starts.windows(2) {
-            let before = pair[0].ledger;
-            let after = pair[1].ledger;
-            assert!(after.0 > before.0 && after.1 >= before.1 && after.2 >= before.2);
+            assert!(pair[1].ledger > pair[0].ledger);
         }
-        assert!(trace.hash_bytes > 0 && trace.hash_bytes <= work.1);
-        assert!(trace.eof_reads > 0 && trace.eof_reads <= work.2);
-        assert!(work.0 <= 8192 && work.1 <= 2 * copy::MAX_BYTES && work.2 <= 8192);
-        let resource = if work.0 == 8192 {
-            "visits"
-        } else if work.2 == 8192 {
-            "EOF"
-        } else {
-            assert!(
-                2 * copy::MAX_BYTES - work.1 < 65536,
-                "actual next content request cannot fit"
-            );
-            "requested-content"
-        };
+        assert_eq!(work, 8192, "visits are the only exhaustible resource");
         eprintln!(
-            "LIVE_DEFAULT_CHURN_EXHAUSTED resource={resource} work={work:?} starts={starts} captures={} changed={} completed_hash_bytes={} completed_EOF_reads={} all9_equal=true original_stamp_valid=true",
+            "LIVE_DEFAULT_CHURN_EXHAUSTED work={work} starts={starts} captures={} changed={} all9_equal=true original_stamp_valid=true",
             trace.captures.len(),
-            trace.changed,
-            trace.hash_bytes,
-            trace.eof_reads
+            trace.changed
         );
     });
 }
 
 #[test]
-fn phase167_live_physical_work_independent_exact_limits_one_over_and_overflow() {
+fn phase167_live_physical_work_exact_limit_one_over_and_overflow() {
     // Arrange
     let mut work = copy::WorkLedger::default();
     // Act
-    work.content(2 * copy::MAX_BYTES)
-        .expect("exact content boundary");
     for _ in 0..2 * copy::MAX_ENTRIES {
         work.visit().expect("entry boundary");
-        work.probe().expect("independent EOF boundary");
     }
     // Assert
-    assert!(matches!(
-        work.content(1),
-        Err(copy::CopyFailure::Refused(_))
-    ));
     assert!(matches!(work.visit(), Err(copy::CopyFailure::Refused(_))));
-    assert!(matches!(work.probe(), Err(copy::CopyFailure::Refused(_))));
-    assert_eq!(
-        (work.visits, work.content, work.probes),
-        (8192, 1073741824, 8192)
-    );
+    assert_eq!(work.visits, 8192);
     let mut overflow = u64::MAX;
     assert!(matches!(
         copy::WorkLedger::reserve(&mut overflow, 1, u64::MAX),
         Err(copy::CopyFailure::Refused(_))
     ));
     assert_eq!(overflow, u64::MAX);
-}
-
-#[test]
-fn phase167_live_physical_work_partial_read_keeps_full_request_charge() {
-    // Arrange
-    let root = source();
-    fs::create_dir(&root).expect("owned root");
-    let path = root.join("partial");
-    fs::write(&path, [7; 4096]).expect("initial file");
-    MAYBE_HOOK.set(Some(Box::new(|point, path| {
-        if point == Point::Opened {
-            fs::OpenOptions::new()
-                .write(true)
-                .open(path)
-                .expect("opened truncation")
-                .set_len(19)
-                .expect("actual partial source");
-        }
-    })));
-    let mut work = copy::WorkLedger::default();
-    // Act
-    let result = copy::Inventory::capture_typed(&root, &mut Some(&mut work));
-    MAYBE_HOOK.set(None);
-    fs::remove_dir_all(root).expect("cleanup");
-    // Assert
-    assert!(matches!(result, Err(copy::CopyFailure::Changed(_))));
-    assert_eq!((work.content, work.probes, work.visits), (4096, 0, 2));
-    work.content(2 * copy::MAX_BYTES - 4096)
-        .expect("only unused allowance");
-    assert!(work.content(1).is_err(), "partial work never refunded");
 }
 
 #[test]

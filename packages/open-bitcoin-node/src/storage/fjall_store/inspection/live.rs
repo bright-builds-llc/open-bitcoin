@@ -32,8 +32,10 @@ fn check_original(store: &FjallNodeStore, stamp: &MutationStamp) -> Result<(), S
     check_stamp(store, stamp)?;
     #[cfg(not(unix))]
     {
-        let result = copy::Inventory::capture(store.datadir())
-            .and_then(|inventory| inventory.recheck(store.datadir()));
+        let mut work = copy::WorkLedger::default();
+        let result = copy::Inventory::capture_typed(store.datadir(), &mut Some(&mut work))
+            .and_then(|inventory| inventory.recheck_typed(store.datadir(), &mut Some(&mut work)))
+            .map_err(copy::CopyFailure::original);
         check_stamp(store, stamp)?;
         result
     }
@@ -50,7 +52,7 @@ fn check_original(store: &FjallNodeStore, stamp: &MutationStamp) -> Result<(), S
         root.check(store.datadir())?;
         check_stamp(store, stamp)?;
         #[cfg(test)]
-        OBSERVED_WORK.set((work.visits, work.content, work.probes));
+        OBSERVED_WORK.set(work.visits);
         result
     }
 }
@@ -80,8 +82,10 @@ fn attempt_once(
     #[cfg(test)]
     TRACE.with_borrow_mut(|trace| {
         trace.rechecking = false;
-        let sample = trace.sample((work.visits, work.content, work.probes), (0, 0, 0));
-        trace.starts.push(sample);
+        trace.starts.push(Sample {
+            ledger: work.visits,
+            footprint: (0, 0, 0),
+        });
     });
     check_stamp(store, stamp)?;
     root.check(store.datadir())?;
@@ -188,15 +192,14 @@ type Hook = Box<dyn FnMut(Point, &std::path::Path)>;
 #[cfg(test)]
 thread_local! {
     static MAYBE_HOOK: std::cell::RefCell<Option<Hook>> = const { std::cell::RefCell::new(None) };
-    static OBSERVED_WORK: std::cell::Cell<(u64, u64, u64)> = const { std::cell::Cell::new((0, 0, 0)) };
+    static OBSERVED_WORK: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
     static TRACE: std::cell::RefCell<Trace> = std::cell::RefCell::new(Trace::default());
 }
 
 #[cfg(test)]
 #[derive(Clone, Copy, Debug)]
 struct Sample {
-    ledger: (u64, u64, u64),
-    io: (u64, u64),
+    ledger: u64,
     footprint: (usize, u64, usize),
 }
 
@@ -205,8 +208,6 @@ struct Sample {
 struct Trace {
     active: bool,
     rechecking: bool,
-    hash_bytes: u64,
-    eof_reads: u64,
     starts: Vec<Sample>,
     captures: Vec<Sample>,
     rechecks: Vec<Sample>,
@@ -218,39 +219,18 @@ struct Trace {
 }
 
 #[cfg(test)]
-impl Trace {
-    fn sample(&self, ledger: (u64, u64, u64), footprint: (usize, u64, usize)) -> Sample {
-        Sample {
-            ledger,
-            footprint,
-            io: (self.hash_bytes, self.eof_reads),
-        }
-    }
-}
-
-#[cfg(test)]
-pub(super) fn record_walk(footprint: (usize, u64, usize), ledger: (u64, u64, u64), equal: bool) {
+pub(super) fn record_walk(footprint: (usize, u64, usize), ledger: u64, equal: bool) {
     TRACE.with_borrow_mut(|trace| {
         if !trace.active {
             return;
         }
-        let sample = trace.sample(ledger, footprint);
+        let sample = Sample { ledger, footprint };
         if equal {
             trace.equals.push(sample);
         } else if trace.rechecking {
             trace.rechecks.push(sample);
         } else {
             trace.captures.push(sample);
-        }
-    });
-}
-
-#[cfg(test)]
-pub(super) fn record_io(hash_bytes: u64, eof_reads: u64) {
-    TRACE.with_borrow_mut(|trace| {
-        if trace.active {
-            trace.hash_bytes += hash_bytes;
-            trace.eof_reads += eof_reads;
         }
     });
 }

@@ -52,7 +52,7 @@ fn phase167_live_physical_opened_unlink_changed_and_charged() {
     fs::remove_dir_all(root).expect("cleanup before intended RED assertion");
     // Assert
     assert_eq!(calls.load(Ordering::SeqCst), 1);
-    assert_eq!((work.visits, work.content, work.probes), (2, 4, 1));
+    assert_eq!(work.visits, 2);
     assert!(
         matches!(&result, Err(copy::CopyFailure::Changed(_))),
         "actual opened-unlink category: {result:?}"
@@ -223,7 +223,7 @@ fn isolated_case(replacement: Replacement, changed: bool) {
                 changed,
                 "case={replacement:?} result={error:?}"
             );
-            assert_eq!((work.visits, work.content, work.probes), (2, 4, 1));
+            assert_eq!(work.visits, 2);
         }
         assert_original(error.original());
     }
@@ -334,7 +334,7 @@ fn phase167_live_physical_opened_unlink_once_fresh_pair_converges() {
         let result = store.check_submission_physical_inventory();
         MAYBE_HOOK.set(None);
         // Assert
-        result.expect("fresh fully hashed equal pair after actual unlink");
+        result.expect("fresh equal pair after actual unlink");
         assert_eq!(calls.load(Ordering::SeqCst), 1);
         assert_eq!(rows(store), expected);
         store
