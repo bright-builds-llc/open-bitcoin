@@ -23,6 +23,8 @@ current_step_started_milliseconds=""
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=verify/helpers.sh
 source "${SCRIPT_DIR}/verify/helpers.sh"
+# shellcheck source=verify/ramdisk.sh
+source "${SCRIPT_DIR}/verify/ramdisk.sh"
 
 trap 'finish_verify $?' EXIT
 
@@ -46,6 +48,7 @@ if [[ "$verify_mode" == "full" ]]; then
 fi
 
 verify_start_milliseconds="$(current_time_milliseconds)"
+start_verify_ramdisk
 export OPEN_BITCOIN_VERIFY_MODE="$verify_invocation"
 if [[ -z "${CI:-}" ]]; then
   timing_batch_file="$(mktemp)"

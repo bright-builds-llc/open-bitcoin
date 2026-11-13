@@ -194,6 +194,7 @@ finish_verify() {
   if [[ -n "$timing_batch_file" ]]; then
     rm -f "$timing_batch_file"
   fi
+  stop_verify_ramdisk
 
   return "$exit_status"
 }
@@ -406,7 +407,7 @@ run_parallel_shards() {
   local background_groups=()
   local pending=0
 
-  log_directory="$(mktemp -d)"
+  log_directory="$(mktemp -d "${verify_host_tmpdir:-$TMPDIR}/open-bitcoin-verify-logs.XXXXXX")"
   # Job control gives each background shard its own process group, so a
   # failure elsewhere can stop its whole process tree.
   set -m
