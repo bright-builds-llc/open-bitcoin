@@ -23,6 +23,16 @@ if [[ ! -x ".githooks/pre-push" ]]; then
   exit 1
 fi
 
+# git push opens its connection before the pre-push gate runs, and GitHub
+# closes one left idle that long. An existing SSH command setting wins.
+ensure_push_keepalive() {
+  [[ -z "$(git config --get core.sshCommand || true)" ]] || return 0
+  git config --local core.sshCommand "ssh -o ServerAliveInterval=30"
+  echo "Configured push keepalive: core.sshCommand=ssh -o ServerAliveInterval=30"
+}
+
+ensure_push_keepalive
+
 current_hooks_path="$(git config --local --get core.hooksPath || true)"
 if [[ "$current_hooks_path" == ".githooks" ]]; then
   echo "Git hooks already configured: core.hooksPath=.githooks"

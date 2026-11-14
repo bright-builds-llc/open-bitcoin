@@ -98,6 +98,33 @@ run_wrong_config_case() {
   assert_eq "$(cat "${repo_dir}/hooks-path.txt")" ".githooks"
 }
 
+run_keepalive_case() {
+  local repo_dir="${tmp_root}/keepalive"
+
+  init_repo "$repo_dir"
+  (
+    cd "$repo_dir"
+    bash scripts/ensure-git-hooks.sh >/dev/null
+    git config --local --get core.sshCommand >ssh-command.txt
+  )
+
+  assert_eq "$(cat "${repo_dir}/ssh-command.txt")" "ssh -o ServerAliveInterval=30"
+}
+
+run_existing_ssh_command_case() {
+  local repo_dir="${tmp_root}/existing-ssh-command"
+
+  init_repo "$repo_dir"
+  (
+    cd "$repo_dir"
+    git config --local core.sshCommand "ssh -i custom"
+    bash scripts/ensure-git-hooks.sh >/dev/null
+    git config --local --get core.sshCommand >ssh-command.txt
+  )
+
+  assert_eq "$(cat "${repo_dir}/ssh-command.txt")" "ssh -i custom"
+}
+
 run_missing_hook_case() {
   local repo_dir="${tmp_root}/missing-hook"
   local output=""
@@ -171,6 +198,8 @@ run_install_wrapper_case() {
 run_missing_config_case
 run_idempotent_case
 run_wrong_config_case
+run_keepalive_case
+run_existing_ssh_command_case
 run_missing_hook_case
 run_missing_pre_push_case
 run_install_wrapper_case

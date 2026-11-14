@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,766 |
-| Total lines | 544,044 |
-| Code/content lines | 478,616 |
-| Comment-only lines | 28,436 |
-| Blank lines | 36,992 |
+| Total lines | 544,081 |
+| Code/content lines | 478,643 |
+| Comment-only lines | 28,438 |
+| Blank lines | 37,000 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,402 | 225,621 | 17,171 | 15,610 |
 | Rust production | 594 | 174,908 | 153,269 | 7,853 | 13,786 |
-| TypeScript/Bun scripts | 332 | 92,332 | 82,394 | 3,299 | 6,639 |
+| TypeScript/Bun scripts | 332 | 92,331 | 82,393 | 3,299 | 6,639 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
-| Shell scripts | 24 | 4,782 | 4,250 | 92 | 440 |
+| Shell scripts | 24 | 4,820 | 4,278 | 94 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
 | Other config | 7 | 1,233 | 1,165 | 0 | 68 |
 | Bazel/Starlark | 18 | 422 | 387 | 0 | 35 |
@@ -378,7 +378,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/source-corpus.test.ts | 33 |
 | scripts/source-corpus.ts | 121 |
 | scripts/test-run-live-mainnet-smoke/assert-report.ts | 163 |
-| scripts/verify-shards.test.ts | 312 |
+| scripts/verify-shards.test.ts | 311 |
 | scripts/verify/sample-checker-tests.test.ts | 76 |
 | scripts/verify/sample-checker-tests.ts | 19 |
 | scripts/verify/sampled-bun-test.ts | 65 |
@@ -413,7 +413,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 94c66e5782097105d6a0dcd4ac1fdc28b4632367bf8d6b5f5134909fcd937667 |
+| Input fingerprint | bfe1bea627ee0148e4ca54299bb512cb97e838c641ecdfe1f848cd3802909596 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

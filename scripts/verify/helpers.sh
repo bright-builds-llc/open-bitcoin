@@ -43,7 +43,7 @@ readonly VERIFY_SHARDS=(
   native-test
   native-release
   checker-tests-158
-  checker-tests-159-163
+  checker-tests-159
   checker-tests-164
   checker-tests-165
   checker-tests-other
@@ -71,7 +71,7 @@ bun_test_shard() {
   for argument in "$@"; do
     case "$argument" in
     *check-phase158-validated-reorg.test.ts) echo "checker-tests-158" && return ;;
-    *check-phase159-filter-rpcs.test.ts | *check-phase163-provenance/native.test.ts) echo "checker-tests-159-163" && return ;;
+    *check-phase159-filter-rpcs.test.ts) echo "checker-tests-159" && return ;;
     *check-phase164-canonical-identity.test.ts) echo "checker-tests-164" && return ;;
     *check-phase165-shared-exact-work.test.ts) echo "checker-tests-165" && return ;;
     esac

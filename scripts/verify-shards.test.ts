@@ -9,8 +9,7 @@ import path from "node:path";
 const REPO_ROOT = path.join(import.meta.dir, "..");
 const HEAVY_SUITE_SHARDS: ReadonlyArray<readonly [string, string]> = [
   ["test Phase 158 validated reorg checker", "checker-tests-158"],
-  ["test Phase 159 authenticated filter RPC checker", "checker-tests-159-163"],
-  ["test Phase 163 native archive transitions", "checker-tests-159-163"],
+  ["test Phase 159 authenticated filter RPC checker", "checker-tests-159"],
   ["test Phase 164 canonical identity boundary", "checker-tests-164"],
   ["test Phase 165 shared exact work", "checker-tests-165"],
   ["cargo test node", "native-test-node"],

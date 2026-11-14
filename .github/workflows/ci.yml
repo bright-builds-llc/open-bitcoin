@@ -29,7 +29,7 @@ jobs:
           - native-test
           - native-release
           - checker-tests-158
-          - checker-tests-159-163
+          - checker-tests-159
           - checker-tests-164
           - checker-tests-165
           - checker-tests-other

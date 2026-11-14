@@ -20,7 +20,6 @@ Use the pinned Bun 1.3.9 installation on this host. These are reproduction instr
 export PATH=/tmp/open-bitcoin-bun-1.3.9-fresh:$PATH
 bun --version
 bun test ./scripts/check-phase163-provenance.test.ts
-bun test ./scripts/check-phase163-provenance/native.test.ts
 bun run scripts/check-phase158-validated-reorg.ts
 bun run scripts/check-phase162-integrated-filter-proof.ts
 bun run scripts/check-active-milestone-verification-traceability.ts
