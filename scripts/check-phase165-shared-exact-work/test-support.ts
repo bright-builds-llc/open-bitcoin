@@ -13,7 +13,7 @@ export const CLI_MODULES = [
   "scripts/check-phase164-canonical-identity/source-files.ts",
   "scripts/check-phase164-canonical-identity/regions.ts", "scripts/check-phase164-canonical-identity/claims.ts",
   "scripts/check-phase164-canonical-identity/historical-tooling.ts", "scripts/check-phase164-canonical-identity/fixture-source.ts",
-  "scripts/check-phase157-index-catch-up/rust-evidence.ts", "scripts/check-phase156-prune-coordination/rust-evidence.ts",
+  "scripts/check-v2-5-index-catch-up/rust-evidence.ts", "scripts/check-v2-5-prune-coordination/rust-evidence.ts",
   "scripts/check-phase159-filter-rpcs/evidence.ts", "scripts/check-phase159-filter-rpcs/contracts.ts",
 ];
 export function copiedInputs(root: string, realInputs: ReadonlyMap<string, string>): void {

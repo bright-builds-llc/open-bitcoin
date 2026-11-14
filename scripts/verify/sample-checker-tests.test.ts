@@ -50,6 +50,18 @@ test("phase_checker_suite_keeps_a_spread_of_rows_per_call_site", () => {
   expect(result.output).not.toContain("looped 90");
 });
 
+test("surface_named_checker_suite_is_sampled", () => {
+  // Arrange
+  const suite = "scripts/check-v9-9-example.test.ts";
+
+  // Act
+  const result = runSuite(suite, { OPEN_BITCOIN_EXHAUSTIVE_CHECKER_TESTS: "" });
+
+  // Assert
+  expect(result.status).toBe(0);
+  expect(result.output).toContain("sampled checker cases: ran 24 of 121");
+});
+
 test("exhaustive_switch_runs_every_case", () => {
   // Arrange
   const suite = "scripts/check-phase999-example.test.ts";

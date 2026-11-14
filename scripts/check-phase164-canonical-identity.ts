@@ -4,7 +4,7 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "
 import { resolve } from "node:path";
 import { EDGES, SOURCE_FILES, TEST_MODULES, PHASE162_SOURCE_INVERSE, FIXTURE_ADAPTER_INVERSE, maybeRestoreReviewedSource } from "./check-phase164-canonical-identity/contracts.ts";
 import { regions, SENSITIVE_CALLS } from "./check-phase164-canonical-identity/regions.ts";
-import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { CLAIM_FILES, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { CURRENT_TOOLING_FILES, HISTORICAL_TOOLING_FILES, MANIFEST_FILE, historicalToolingView, CURRENT_VERIFY_ADDITIONS } from "./check-phase164-canonical-identity/historical-tooling.ts";

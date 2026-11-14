@@ -8,7 +8,7 @@ import { CORPUS_FILE, HISTORICAL_IDENTITIES, SOURCE_CONTRACTS, TEST_OWNERS, WORK
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { CURRENT_VERIFY_ADDITIONS } from "./check-phase164-canonical-identity/historical-tooling.ts";
 import { checkPhase164 } from "./check-phase164-canonical-identity.ts";
-import { rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { createHash } from "node:crypto";
 import { affirmativeScopeClaims, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { LEGACY_CONTRACT_BUNDLE, legacyFunctionContractView, legacyFunctionSources, historicalFixtureView, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";

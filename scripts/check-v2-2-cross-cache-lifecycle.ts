@@ -1,0 +1,556 @@
+#!/usr/bin/env bun
+
+import path from "node:path";
+
+import {
+  ARCHIVED_V22_REQUIREMENTS,
+  V22_REQUIREMENTS_MILESTONE_NEEDLE,
+  readPlanningRequirements,
+  readSourceRoot,
+} from "./source-corpus";
+import { phase134ScopeFailures } from "./check-v2-2-cross-cache-lifecycle/scope";
+import { compact, maybeFunction, ordinaryRust } from "./check-v2-5-index-catch-up/rust-evidence.ts";
+import { hasOrdinaryRuntimeOwner } from "./check-v2-1-compact-announcement/impl-attributes.ts";
+
+const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
+
+const FILES = {
+  network: "packages/open-bitcoin-node/src/network.rs",
+  authority: "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+  dispatcher:
+    "packages/open-bitcoin-node/src/network/runtime_authority/lifecycle.rs",
+  effectFacade:
+    "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+  effects: "packages/open-bitcoin-node/src/network/lifecycle_effects.rs",
+  snapshotEffects:
+    "packages/open-bitcoin-node/src/network/lifecycle_effects/checkpoint.rs",
+  projection:
+    "packages/open-bitcoin-node/src/network/lifecycle_projection.rs",
+  apply:
+    "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs",
+  reconcile:
+    "packages/open-bitcoin-node/src/network/lifecycle_projection/reconciliation.rs",
+  assertions:
+    "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases.rs",
+  admission:
+    "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission.rs",
+  partial:
+    "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/admission/partial_package.rs",
+  maintenance:
+    "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/maintenance.rs",
+  effectTests:
+    "packages/open-bitcoin-node/src/network/tests/lifecycle_projection_cases/effects.rs",
+  rpcPrefix:
+    "packages/open-bitcoin-rpc/src/inbound_listener/tests/announcement_successful_prefix.rs",
+  rpcRuntime:
+    "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+  rpcEmissions:
+    "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+  singleton:
+    "packages/open-bitcoin-node/src/network/admission_bridge/singleton.rs",
+  package: "packages/open-bitcoin-node/src/network/admission_bridge/package.rs",
+  mempool:
+    "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs",
+  announcement:
+    "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+  readme: "README.md",
+  packageReadme: "packages/README.md",
+  mempoolCatalog: "docs/parity/catalog/mempool-policy.md",
+  parityChecklist: "docs/parity/checklist.md",
+  parityIndex: "docs/parity/index.json",
+  requirements: ".planning/REQUIREMENTS.md",
+  gaps:
+    ".planning/phases/134-authoritative-cross-cache-lifecycle-integration/134-GAPS.md",
+  scopeChecker:
+    "scripts/check-v2-2-cross-cache-lifecycle/scope.ts",
+  checker: "scripts/check-v2-2-cross-cache-lifecycle.ts",
+} as const;
+
+export const PHASE134_TARGET_FILES = [...new Set(Object.values(FILES))];
+
+export const PHASE134_CLOSED_TARGETS = [
+  {
+    name: "compact",
+    planField: "pub(super) compact: PreparedCompactProjection,",
+    applyCall: "self.apply_prepared_compact(compact);",
+    reconcileCall: "self.compact_mismatch_count(&canonical),",
+    assertion: "compact_members(network)",
+  },
+  {
+    name: "serving",
+    planField: "pub(super) serving: PreparedServingProjection,",
+    applyCall: "self.apply_prepared_serving(serving);",
+    reconcileCall: "self.serving_mismatch_count(&canonical),",
+    assertion: "network.relay_serving.lifecycle_members_for_test()",
+  },
+  {
+    name: "fanout",
+    planField: "pub(super) fanout: PreparedFanoutProjection,",
+    applyCall: "self.apply_prepared_fanout(fanout);",
+    reconcileCall:
+      "self.relay_fanout.lifecycle_mismatch_count(&canonical),",
+    assertion: "network.relay_fanout.lifecycle_members_for_test()",
+  },
+  {
+    name: "peer",
+    planField: "pub(super) peers: PreparedPeerLifecycleProjection,",
+    applyCall: "self.apply_prepared_peer_lifecycle(peers);",
+    reconcileCall: "self.peer_mismatch_count(&canonical),",
+    assertion: "network.peer_manager.mempool_lifecycle_snapshot()",
+  },
+  {
+    name: "unbroadcast",
+    planField: "pub(super) unbroadcast: PreparedUnbroadcastProjection,",
+    applyCall: "self.apply_prepared_unbroadcast(unbroadcast);",
+    reconcileCall: "self.unbroadcast_mismatch_count(&canonical),",
+    assertion: "network.unbroadcast_members()",
+  },
+  {
+    name: "persistence",
+    planField: "pub(super) persistence: PreparedPersistenceProjection,",
+    applyCall: "self.apply_prepared_persistence(persistence);",
+    reconcileCall: "self.persistence_mismatch_count(),",
+    assertion: "network.dirty_generation()",
+  },
+  {
+    name: "evidence",
+    planField: "pub(super) evidence: PreparedLifecycleEvidence,",
+    applyCall: "self.apply_prepared_evidence(evidence);",
+    reconcileCall: "self.evidence_mismatch_count(),",
+    assertion: "network.lifecycle_evidence_snapshot()",
+  },
+] as const;
+
+const DIAGNOSTICS = {
+  authority:
+    "P134 authority: ManagedNetworkHandle must remain the sole mutable lifecycle authority",
+  dispatcher:
+    "P134 dispatcher: every lifecycle and effect facade must use the shared dispatcher",
+  direct:
+    "P134 authority: adapters must not mutate lifecycle projections directly",
+  io: "P134 authority: storage/network I/O must stay outside the authority lock",
+  construction:
+    "P134 targets: every closed projection target must be constructed",
+  apply: "P134 targets: every closed projection target must be applied once",
+  reconcile:
+    "P134 targets: every closed projection target must be reconciled",
+  assertion:
+    "P134 targets: complete scenario assertions must cover every projection target",
+  receipt:
+    "P134 effects: receipts and write capabilities must remain affine",
+  identity:
+    "P134 effects: receipts must bind epoch, generation, effect, and family identity",
+  bounds: "P134 effects: pending and completed effect ledgers must remain bounded",
+  stale:
+    "P134 effects: stale and duplicate completion must preserve newer authoritative state",
+  prefix:
+    "P134 effects: only each successfully written prefix may receive achieved credit",
+  scenarios:
+    "P134 scenarios: all eleven authoritative lifecycle scenarios must remain",
+  normalReconcile:
+    "P134 reconciliation: full reconciliation must not enter normal mutation paths",
+  evidence:
+    "P134 evidence: production lifecycle evidence must stay bounded and identifier-free",
+  deterministic:
+    "P134 checker: verification must remain deterministic and filesystem-only",
+} as const;
+
+function blockBody(source: string, marker: string): string {
+  const start = source.indexOf(marker);
+  if (start < 0) {
+    return "";
+  }
+  const brace = source.indexOf("{", start);
+  if (brace < 0) {
+    return "";
+  }
+  let depth = 0;
+  for (let index = brace; index < source.length; index += 1) {
+    if (source[index] === "{") {
+      depth += 1;
+    } else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(brace + 1, index);
+      }
+    }
+  }
+  return "";
+}
+
+function structBody(source: string, name: string): string {
+  return blockBody(source, `struct ${name}`);
+}
+
+function lineOccurrenceCount(source: string, line: string): number {
+  return source.split("\n").filter((candidate) => candidate === line).length;
+}
+
+function addFailure(
+  failures: string[],
+  condition: boolean,
+  diagnostic: string,
+): void {
+  if (condition && !failures.includes(diagnostic)) {
+    failures.push(diagnostic);
+  }
+}
+
+function hasAll(source: string, markers: readonly string[]): boolean {
+  return markers.every((marker) => source.includes(marker));
+}
+
+/** Follow the ordinary listener, socket adapter, and affine delegated prefix. */
+export function hasInboundAnnouncementPrefix(runtime: string, delegated: string): boolean {
+  const body = (source: string, name: string): string => compact(maybeFunction(source, name, true)?.body ?? "");
+  const ownedBody = (source: string, marker: string): string => {
+    const start = source.indexOf(marker);
+    if (start < 0 || source.indexOf(marker, start + 1) >= 0) return "";
+    // Reuse the attribute-chain classifier after substituting its fixed owner name.
+    const owner = source.slice(0, start) + "impl DurableSyncRuntime";
+    return hasOrdinaryRuntimeOwner(owner) ? blockBody(source, marker) : "";
+  };
+  const code = ordinaryRust(runtime);
+  const socket = ownedBody(code, "impl<S, V> InboundEmissionExecutor for SocketInboundEmissionExecutor");
+  const helper = ordinaryRust(delegated);
+  const pending = ownedBody(helper, "impl<E: InboundEmissionExecutor> PendingEmissions");
+  const cleanup = ownedBody(helper, "impl<E: InboundEmissionExecutor> Drop for PendingEmissions");
+  const moduleBinding = /#\[\s*path\s*=\s*"filter_serving.rs"\s*\]\s*pub\(super\)\s+mod\s+filter_serving\s*;/;
+  const maybeModule = moduleBinding.exec(runtime);
+  const reexport = /pub\(super\)\s+use\s+filter_serving\s*::\s*\{[^}]*\bexecute_inbound_emissions\s*,/;
+  const maybeReexport = reexport.exec(code);
+  if (maybeModule === null || compact(code.slice(maybeModule.index, maybeModule.index + maybeModule[0].length)) !== "#[path=]pub(super)modfilter_serving;" ||
+      !hasOrdinaryRuntimeOwner(code.slice(0, maybeModule.index) + "impl DurableSyncRuntime") ||
+      maybeReexport === null || !hasOrdinaryRuntimeOwner(code.slice(0, maybeReexport.index) + "impl DurableSyncRuntime") ||
+      !body(runtime, "handle_inbound_stream").includes("if!drain_inbound_announcements(")) return false;
+  const drain = body(runtime, "drain_inbound_announcements");
+  if (!drain.includes("transport.outboxes.take_peer_emissions(peer_id)") ||
+      !drain.includes("letmutexecutor=SocketInboundEmissionExecutor{transport,encoding_network:&encoding_network,stream,peer_id,") ||
+      !drain.endsWith("execute_inbound_emissions(emissions,peer_id,&mutexecutor).await==InboundEmissionExecutionOutcome::Complete")) return false;
+  if (!body(socket, "encode").includes("self.encoding_network.encode_pending_network_message(self.peer_id,message).map_err(")) return false;
+  const write = body(socket, "write");
+  if (!write.includes("letwrite_result=write_all_for_state(self.stream,bytes,self.resource_policy,self.connected_at_unix_seconds,self.last_activity_unix_seconds,self.handshake_state,).await;") ||
+      !write.includes("matchwrite_result{Ok(WriteWireMessageOutcome::Written)=>InboundEmissionWriteResult::Written,") ||
+      (write.match(/InboundEmissionWriteResult::Written/g) ?? []).length !== 1 ||
+      !write.includes("Ok(WriteWireMessageOutcome::Rejected(event))=>{") ||
+      !write.includes("_=>InboundEmissionWriteResult::Failed,") || !write.includes("=>InboundEmissionWriteResult::Disconnected,")) return false;
+  if (!body(socket, "complete").startsWith("self.transport.network.complete_peer_emission(receipt)") ||
+      !body(socket, "abort").startsWith("self.transport.network.abort_peer_emission(capability)")) return false;
+  const expected = `
+    let mut pending = PendingEmissions { executor, suffix: VecDeque::from(emissions), maybe_current: None, };
+    while let Some(emission) = pending.suffix.pop_front() {
+      let (target_peer_id, message, capability) = emission.into_parts();
+      pending.maybe_current = Some(capability);
+      if target_peer_id != peer_id { return pending.fail(InboundEmissionExecutionOutcome::TargetMismatch); }
+      let Ok(bytes) = pending.executor.encode(&message) else { return pending.fail(InboundEmissionExecutionOutcome::EncodeFailed); };
+      let result = pending.executor.write(bytes.bytes()).await; drop(bytes);
+      match result {
+        InboundEmissionWriteResult::Written => {
+          let Some(capability) = pending.maybe_current.take() else { return pending.fail(InboundEmissionExecutionOutcome::CompletionFailed); };
+          if pending.executor.complete(capability.acknowledge_write()).is_err() { return pending.fail(InboundEmissionExecutionOutcome::CompletionFailed); }
+        }
+        InboundEmissionWriteResult::Rejected => { return pending.fail(InboundEmissionExecutionOutcome::Rejected); }
+        InboundEmissionWriteResult::Disconnected => { return pending.fail(InboundEmissionExecutionOutcome::Disconnected); }
+        InboundEmissionWriteResult::Failed => { return pending.fail(InboundEmissionExecutionOutcome::WriteFailed); }
+      }
+    }
+    InboundEmissionExecutionOutcome::Complete`;
+  return body(delegated, "execute_inbound_emissions") === compact(expected) &&
+    body(pending, "retire") === compact(`let mut failed = false;
+      if let Some(current) = self.maybe_current.take() { failed |= !matches!(self.executor.abort(current), Ok(EffectAbort::Aborted)); }
+      for emission in self.suffix.drain(..) { failed |= !matches!(self.executor.abort(emission.into_parts().2), Ok(EffectAbort::Aborted)); } !failed`) &&
+    body(pending, "fail") === compact(`if self.retire() { cause } else { self.executor.cancellation_cleanup_failed(Some(cause)); InboundEmissionExecutionOutcome::AbortFailed }`) &&
+    body(cleanup, "drop") === compact(`if !self.retire() { self.executor.cancellation_cleanup_failed(None); }`);
+}
+
+export function checkPhase134AuthoritativeLifecycle(
+  maybeRepoRoot: string = DEFAULT_REPO_ROOT,
+): string[] {
+  const source = new Map(
+    PHASE134_TARGET_FILES.map((file) => [
+      file,
+      file === FILES.requirements
+        ? readPlanningRequirements(
+            maybeRepoRoot,
+            ARCHIVED_V22_REQUIREMENTS,
+            V22_REQUIREMENTS_MILESTONE_NEEDLE,
+          )
+        : readSourceRoot(maybeRepoRoot, file),
+    ]),
+  );
+  const get = (file: string): string => source.get(file) ?? "";
+  const failures: string[] = [];
+
+  const network = get(FILES.network);
+  const authority = get(FILES.authority);
+  addFailure(
+    failures,
+    authority.split("authority: Arc<Mutex<ManagedPeerNetwork<S, V>>>").length - 1 !==
+      1 ||
+      /shadow_(?:mempool|unbroadcast|lifecycle_generation)/.test(network),
+    DIAGNOSTICS.authority,
+  );
+
+  const dispatcher = get(FILES.dispatcher);
+  const effectFacade = get(FILES.effectFacade);
+  const lifecycleCommands = [
+    "LifecycleCommand::SingletonAdmission(plan)",
+    "LifecycleCommand::PackageAdmission(plan)",
+    "LifecycleCommand::Pressure(plan)",
+    "LifecycleCommand::Expiry(plan)",
+    "LifecycleCommand::ConnectedBlock(plan)",
+    "LifecycleCommand::ReorgStep(plan)",
+    "LifecycleCommand::Maintenance(plan)",
+    "LifecycleCommand::PrepareSnapshot(request)",
+    "LifecycleCommand::PrepareRelay(request)",
+    "LifecycleCommand::CompletePeerEffect(receipt)",
+    "LifecycleCommand::CompletePeerEmission(receipt)",
+    "LifecycleCommand::CompleteSnapshotEffect(receipt)",
+  ];
+  const effectFacadeCalls = [
+    ".apply_lifecycle_command(LifecycleCommand::PrepareRelay(",
+    ".apply_lifecycle_command(LifecycleCommand::PrepareSnapshot(",
+    ".apply_lifecycle_command(LifecycleCommand::CompletePeerEffect(receipt))",
+    ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+    "self.dispatch_checkpoint_completion(receipt)",
+  ];
+  addFailure(
+    failures,
+    !hasAll(dispatcher, lifecycleCommands) ||
+      !hasAll(effectFacade, effectFacadeCalls),
+    DIAGNOSTICS.dispatcher,
+  );
+  const maybePeerEmissionFacade = effectFacade.match(
+    /pub fn complete_peer_emission\([\s\S]*?\n    }\n\n    \/\/\/ Records one achieved typed checkpoint/,
+  )?.[0];
+  addFailure(
+    failures,
+    maybePeerEmissionFacade === undefined ||
+      maybePeerEmissionFacade.includes("try_mutate") ||
+      (
+        maybePeerEmissionFacade.match(
+          /apply_lifecycle_command\(LifecycleCommand::CompletePeerEmission\(receipt\)\)/g,
+        ) ?? []
+      ).length !== 1,
+    DIAGNOSTICS.dispatcher,
+  );
+
+  const adapterCorpus = [
+    FILES.singleton,
+    FILES.package,
+    FILES.mempool,
+    FILES.announcement,
+    FILES.rpcRuntime,
+  ]
+    .map(get)
+    .join("\n");
+  addFailure(
+    failures,
+    /\.(?:mempool_mut)\s*\(|unbroadcast_members\.(?:insert|remove|clear)\s*\(|\.apply_prepared_lifecycle\s*\(/.test(
+      adapterCorpus,
+    ),
+    DIAGNOSTICS.direct,
+  );
+  addFailure(
+    failures,
+    /\b(?:TcpStream|UdpSocket|Fjall|File::|OpenOptions::)|\.(?:read|write|write_all)\s*\(|\bawait\b/.test(
+      dispatcher,
+    ),
+    DIAGNOSTICS.io,
+  );
+
+  const projection = get(FILES.projection);
+  const apply = get(FILES.apply);
+  const reconcile = get(FILES.reconcile);
+  const assertions = blockBody(
+    get(FILES.assertions),
+    "fn assert_complete_projection",
+  );
+  addFailure(
+    failures,
+    PHASE134_CLOSED_TARGETS.some(
+      (target) => !projection.includes(target.planField),
+    ),
+    DIAGNOSTICS.construction,
+  );
+  addFailure(
+    failures,
+    PHASE134_CLOSED_TARGETS.some(
+      (target) => apply.split(target.applyCall).length - 1 !== 1,
+    ),
+    DIAGNOSTICS.apply,
+  );
+  addFailure(
+    failures,
+    PHASE134_CLOSED_TARGETS.some(
+      (target) => !reconcile.includes(target.reconcileCall),
+    ),
+    DIAGNOSTICS.reconcile,
+  );
+  addFailure(
+    failures,
+    PHASE134_CLOSED_TARGETS.some(
+      (target) => !assertions.includes(target.assertion),
+    ),
+    DIAGNOSTICS.assertion,
+  );
+
+  const effects = [get(FILES.effects), get(FILES.snapshotEffects)].join("\n");
+  const affineTypes = [
+    "PeerEffectCapability",
+    "PeerEffectReceipt",
+    "PreparedSnapshotWrite",
+    "SnapshotWriteCapability",
+    "SnapshotWriteReceipt",
+  ];
+  addFailure(
+    failures,
+    affineTypes.some((name) =>
+      new RegExp(
+        `#\\[derive\\([^\\]]*Clone[^\\]]*\\)\\]\\s*pub struct ${name}\\b`,
+      ).test(effects),
+    ),
+    DIAGNOSTICS.receipt,
+  );
+  const identityFieldCounts = [
+    ["    authority_epoch: AuthorityEpoch,", 4],
+    ["    lifecycle_generation: LifecycleGeneration,", 2],
+    ["    effect_id: PeerEffectId,", 2],
+    ["    peer_id: PeerId,", 2],
+    ["    peer_session_generation: PeerSessionGeneration,", 2],
+    ["    persistence_generation: LifecycleGeneration,", 2],
+    ["    effect_id: SnapshotEffectId,", 2],
+    ["    snapshot_identity: SnapshotIdentity,", 2],
+  ] as const;
+  addFailure(
+    failures,
+    identityFieldCounts.some(
+      ([field, expected]) => lineOccurrenceCount(effects, field) !== expected,
+    ),
+    DIAGNOSTICS.identity,
+  );
+  const boundMarkers = [
+    "if self.pending.len() >= MAX_PENDING_PEER_EFFECTS {",
+    "if self.completed_order.len() <= MAX_COMPLETED_PEER_EFFECTS {",
+    "if self.pending.len() >= MAX_PENDING_SNAPSHOT_EFFECTS {",
+    "if self.completed_order.len() <= MAX_COMPLETED_SNAPSHOT_EFFECTS {",
+    "completed_order: VecDeque<PeerEffectId>",
+    "completed_order: VecDeque<SnapshotEffectId>",
+  ];
+  addFailure(
+    failures,
+    !hasAll(effects, boundMarkers),
+    DIAGNOSTICS.bounds,
+  );
+  const staleMarkers = [
+    "if network.peer_effect_ledger.is_completed(effect_id)",
+    "if network.snapshot_effect_ledger.is_completed(effect_id)",
+    "EffectCompletion::AlreadyApplied",
+    "EffectCompletion::AchievedButStale",
+    "if is_fresh && network.dirty_generation == Some(receipt.persistence_generation()) {",
+  ];
+  addFailure(
+    failures,
+    !hasAll(dispatcher, staleMarkers),
+    DIAGNOSTICS.stale,
+  );
+  addFailure(
+    failures,
+    !hasInboundAnnouncementPrefix(get(FILES.rpcRuntime), get(FILES.rpcEmissions)),
+    DIAGNOSTICS.prefix,
+  );
+
+  const scenarioCorpus = [
+    FILES.admission,
+    FILES.partial,
+    FILES.maintenance,
+    FILES.effectTests,
+    FILES.rpcPrefix,
+  ]
+    .map(get)
+    .join("\n");
+  const scenarios = [
+    "full_package_projects_parent_first_final_membership_across_every_target",
+    "partial_package_projects_only_the_parent_survivor",
+    "replacement_package_tears_down_both_victim_aliases_and_fingerprint",
+    "pressure_eviction_tears_down_descendant_before_ancestor_across_every_projection",
+    "expiry_removes_descendants_from_every_projection_and_advances_once",
+    "connected_block_conflict_removes_descendants_from_every_projection",
+    "reorg_steps_apply_sequentially_and_reconcile_each_generation",
+    "failed_package_admission_is_an_all_projection_noop",
+    "stale_snapshot_completion_records_truth_without_clearing_newer_dirty_state",
+    "duplicate_peer_completion_precedes_stale_session_detection",
+    "phase134_rpc_successful_prefix_write_failure_stops_before_third_command",
+  ];
+  addFailure(
+    failures,
+    !hasAll(scenarioCorpus, scenarios),
+    DIAGNOSTICS.scenarios,
+  );
+  addFailure(
+    failures,
+    [
+      FILES.singleton,
+      FILES.package,
+      FILES.mempool,
+      FILES.announcement,
+      FILES.rpcRuntime,
+    ]
+      .map(get)
+      .some((contents) => contents.includes("reconcile_lifecycle_projection(")),
+    DIAGNOSTICS.normalReconcile,
+  );
+
+  const evidence = structBody(projection, "LifecycleEvidenceSnapshot");
+  const evidenceFields = evidence
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("pub(super) "));
+  addFailure(
+    failures,
+    evidenceFields.length === 0 ||
+      evidenceFields.some((field) => !field.endsWith(": u64,")) ||
+      /\b(?:Txid|Wtxid|Vec|String|BTreeMap|BTreeSet)\b/.test(evidence),
+    DIAGNOSTICS.evidence,
+  );
+
+  failures.push(
+    ...phase134ScopeFailures({
+      claimSurfaces: [
+        FILES.readme,
+        FILES.packageReadme,
+        FILES.mempoolCatalog,
+        FILES.parityChecklist,
+        FILES.parityIndex,
+      ].map(get),
+      parityChecklist: get(FILES.parityChecklist),
+      parityIndex: get(FILES.parityIndex),
+      requirements: get(FILES.requirements),
+      gaps: get(FILES.gaps),
+    }),
+  );
+
+  addFailure(
+    failures,
+    [FILES.checker, FILES.scopeChecker].map(get).some(
+      (checker) =>
+        /Bun\s*\.\s*spawn|\bfetch\s*\(|https?:\/\//.test(checker) ||
+        checker.includes(["node", "child_process"].join(":")),
+    ),
+    DIAGNOSTICS.deterministic,
+  );
+  return failures;
+}
+
+if (import.meta.main) {
+  const failures = checkPhase134AuthoritativeLifecycle();
+  if (failures.length > 0) {
+    for (const failure of failures) {
+      console.error(`- ${failure}`);
+    }
+    process.exit(1);
+  }
+  console.log(
+    "Phase 134 authoritative lifecycle authority, targets, effects, scenarios, evidence, and scope are guarded.",
+  );
+}

@@ -84,7 +84,7 @@ Phase 73 opt-in public-mainnet UAT and deterministic verification evidence is
 rooted in [`catalog/p2p.md`](catalog/p2p.md),
 [`catalog/chainstate.md`](catalog/chainstate.md),
 [`catalog/operator-runtime-release-hardening.md`](catalog/operator-runtime-release-hardening.md),
-[`checklist.md`](checklist.md), and `scripts/check-phase73-uat-verification.ts`.
+[`checklist.md`](checklist.md), and `scripts/check-v1-6-opt-in-uat.ts`.
 These roots keep UAT, fixtures, compatibility harness reports, support bundles,
 live-smoke reports, deterministic checkers, and source breadcrumbs local and
 auditable without claiming public-network CI, release-blocking live sync, or
@@ -102,7 +102,7 @@ Phase 76 disk and resource-bound enforcement is rooted in the
 `phase76-disk-and-resource-bound-enforcement` surface. The root links the
 runtime guide, status snapshot contract, operator observability contract,
 support bundle evidence, soak `resource_stop` reports, and deterministic
-`scripts/check-phase76-resource-bounds.ts` checker so disk, file, cache, queue,
+`scripts/check-v1-7-resource-bounds.ts` checker so disk, file, cache, queue,
 peer, in-flight, log, metric, and support-bundle bounds stay auditable without
 public-network or raw-artifact verification.
 
@@ -112,7 +112,7 @@ Phase 77 corruption and lock recovery hardening is rooted in the
 `packages/open-bitcoin-node/src/storage/lock_probe.rs`,
 `packages/open-bitcoin-cli/src/operator/status/recovery_evidence.rs`, the
 runtime guide, status and storage architecture contracts,
-`scripts/check-phase77-corruption-lock-recovery.ts`, and the Phase 77 planning
+`scripts/check-v1-7-corruption-recovery.ts`, and the Phase 77 planning
 directory so REC-05, REC-06, REC-07, and REC-08 stay auditable as diagnosis and
 evidence only.
 
@@ -121,7 +121,7 @@ Phase 78 progress guarantees and stall diagnosis are rooted in the
 progress-credit and stall evidence types, deterministic PROG-01, PROG-02,
 PROG-03, and PROG-04 tests, the runtime guide, status and observability
 contracts, P2P/chainstate/operator-runtime catalogs, and
-`scripts/check-phase78-progress-guarantees.ts` so credited progress and
+`scripts/check-v1-7-progress-guarantees.ts` so credited progress and
 diagnosed stalls stay auditable without adding public-network or multi-day
 default verification.
 

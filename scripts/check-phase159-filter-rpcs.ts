@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { compact, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { CLI, CONTRACTS, DOC, NEW_RUST, NODE, PHASE, RPC, SOURCE_FILES, SURFACE, TEST_ACTIONS, TEST_CONTRACTS, TESTS } from "./check-phase159-filter-rpcs/contracts.ts";
 import { OWNER_FILES, checkModuleOwnership, meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { worktreePaths } from "./check-parity-breadcrumbs.ts";
@@ -276,8 +276,8 @@ function checkClaims(source: string, file: string, failures: string[]): void {
 function checkVerifier(source: string, failures: string[]): void {
   const executed = source.split("\n").filter(line => line.startsWith("run_step ")).join("\n");
   const commands = [
-    ...["154-basic-filters", "155-filter-index", "156-prune-coordination", "157-index-catch-up", "158-validated-reorg", "159-filter-rpcs"].flatMap(name => [`bun test ./scripts/check-phase${name}.test.ts`, `bun run scripts/check-phase${name}.ts`]),
-    "bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts",
+    ...["v2-5-basic-filters", "v2-5-filter-index", "v2-5-prune-coordination", "v2-5-index-catch-up", "phase158-validated-reorg", "phase159-filter-rpcs"].flatMap(name => [`bun test ./scripts/check-${name}.test.ts`, `bun run scripts/check-${name}.ts`]),
+    "bun test scripts/check-v2-1-runtime-metrics-logs.test.ts",
   ];
   for (const [label, section] of [["executed", executed]]) {
     const actual = section.split("\n").filter(line => commands.some(command => line.endsWith(command)));

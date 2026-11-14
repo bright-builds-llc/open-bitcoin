@@ -3,7 +3,7 @@ import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSy
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { CHECK_FILES, CONTRACTS, HELPER_CONTRACTS, MODULE_EDGES, TEST_CONTRACTS, checkPhase160PeerFilterServing, maybeSelector } from "./check-phase160-peer-filter-serving.ts";
-import { compact, maybeFunction, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, maybeFunction, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { createHash } from "node:crypto";
 import { historicalFixtureView } from "./check-phase164-canonical-identity/fixture-source.ts";
 import { PHASE162_DOC, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, PHASE162_EVIDENCE, loadPhase162OptionalSources } from "./check-phase158-validated-reorg.ts";

@@ -678,9 +678,9 @@ Release reviewers should read this surface through
 [`docs/parity/support-matrix.md`](../support-matrix.md), and
 [`docs/operator/runtime-guide.md`](../../operator/runtime-guide.md). The
 deterministic Phase 95 checker paths are
-[`scripts/check-phase95-network-participation-release-boundary.ts`](../../../scripts/check-phase95-network-participation-release-boundary.ts)
+[`scripts/check-v1-9-release-boundary.ts`](../../../scripts/check-v1-9-release-boundary.ts)
 and
-[`scripts/check-phase95-network-participation-release-boundary.test.ts`](../../../scripts/check-phase95-network-participation-release-boundary.test.ts),
+[`scripts/check-v1-9-release-boundary.test.ts`](../../../scripts/check-v1-9-release-boundary.test.ts),
 with final wiring owned by the Phase 95 aggregate checker plan.
 
 Phase 95 does not claim transaction relay, compact block relay, mempool propagation, full address relay beyond Phase 92, public inbound defaults, public-network CI, production service operation, or production full-node readiness. Those surfaces remain deferred until future milestones add scoped parity, release, support, and verification evidence.
@@ -855,8 +855,8 @@ Open Bitcoin intentionally owns the Phase 102 orphan/admission bridge surface:
   `packages/open-bitcoin-node/src/network/action_translation.rs`,
   `packages/open-bitcoin-node/src/network/admission_bridge.rs`,
   `packages/open-bitcoin-node/src/network/tests/admission_bridge_cases.rs`,
-  `scripts/check-phase102-orphan-admission-bridge.ts`,
-  `scripts/check-phase102-orphan-admission-bridge.test.ts`,
+  `scripts/check-v2-0-orphan-admission.ts`,
+  `scripts/check-v2-0-orphan-admission.test.ts`,
   `scripts/verify.sh`,
   `docs/parity/source-breadcrumbs.json`,
   `.planning/phases/102-orphan-handling-and-admission-outcome-bridge/102-01-SUMMARY.md`,
@@ -910,8 +910,8 @@ Open Bitcoin intentionally owns the Phase 104 relay serving/fanout boundary:
   `packages/open-bitcoin-node/src/network/tests/relay_fanout_cases.rs`,
   `packages/open-bitcoin-node/src/network/tests/relay_local_submission_cases.rs`,
   `packages/open-bitcoin-rpc/src/dispatch/tests.rs`,
-  `scripts/check-phase104-relay-serving-fanout.ts`,
-  `scripts/check-phase104-relay-serving-fanout.test.ts`,
+  `scripts/check-v2-0-relay-fanout.ts`,
+  `scripts/check-v2-0-relay-fanout.test.ts`,
   `scripts/verify.sh`,
   `docs/parity/source-breadcrumbs.json`,
   `.planning/phases/104-relay-serving-fanout-and-rebroadcast-policy/104-01-SUMMARY.md`,
@@ -967,7 +967,7 @@ Open Bitcoin intentionally owns the Phase 105 evidence boundary:
   credentials, cookies, secrets, suspicious long hex, and dynamic labels.
 - Evidence roots include operator status, dashboard, RPC, support, metrics,
   logging, source-breadcrumb, and Phase 105 plan-summary files plus
-  `scripts/check-phase105-operator-relay-evidence.ts` and its test.
+  `scripts/check-v2-0-operator-evidence.ts` and its test.
 
 Phase 105 does not claim public propagation, compact block relay, package
 relay, bloom/filter serving, public relay defaults, public-network relay CI,
@@ -1010,7 +1010,7 @@ Open Bitcoin intentionally owns the Phase 106 closeout boundary:
 - `docs/operator/runtime-guide.md` provides repo-local Cargo and Bazel UAT
   commands for status, `openbitcoinnetworkstatus`, and redacted support bundle
   review.
-- `scripts/check-phase106-parity-uat-release-boundary.ts` does not permit
+- `scripts/check-v2-0-release-boundary.ts` does not permit
   supported-surface wording for compact block relay, package relay,
   bloom/filter serving, public relay defaults, public relay by default,
   public-network relay CI, production service operation, production full-node
@@ -1078,8 +1078,8 @@ Open Bitcoin intentionally owns the Phase 107 integration boundary:
   `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-02-SUMMARY.md`,
   `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-03-SUMMARY.md`,
   `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-04-SUMMARY.md`,
-  `scripts/check-phase107-runtime-relay-activation-download-eligibility.ts`,
-  `scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts`,
+  `scripts/check-v2-0-relay-eligibility.ts`,
+  `scripts/check-v2-0-relay-eligibility.test.ts`,
   `scripts/verify.sh`, and
   `.planning/phases/107-runtime-relay-activation-and-download-eligibility-integration/107-VERIFICATION.md`.
 
@@ -1179,8 +1179,8 @@ The Open Bitcoin-owned evidence roots are local and deterministic:
 `packages/open-bitcoin-node/src/status/block_serving/tests.rs`,
 `packages/open-bitcoin-network/src/peer/tests.rs`,
 `packages/open-bitcoin-node/src/sync/tests.rs`,
-`scripts/check-phase110-block-serving-boundary.ts`,
-`scripts/check-phase110-block-serving-boundary.test.ts`, and
+`scripts/check-v2-1-block-serving-boundary.ts`,
+`scripts/check-v2-1-block-serving-boundary.test.ts`, and
 `scripts/verify.sh`.
 
 The boundary terms are `block_serving.enabled`,
@@ -1241,8 +1241,8 @@ The Open Bitcoin-owned evidence roots are local and deterministic:
 `packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`,
 `packages/open-bitcoin-network/src/peer/inventory_state.rs`,
 `packages/open-bitcoin-network/src/peer/tests.rs`,
-`scripts/check-phase111-full-block-serving-request-path.ts`,
-`scripts/check-phase111-full-block-serving-request-path.test.ts`, and
+`scripts/check-v2-1-block-request-path.ts`,
+`scripts/check-v2-1-block-request-path.test.ts`, and
 `scripts/verify.sh`.
 
 The request-path terms are `ManagedBlockServeInput`,
@@ -1381,8 +1381,8 @@ The Open Bitcoin evidence roots are
 `packages/open-bitcoin-node/src/network/tests/relay_serving_cases.rs`,
 `packages/open-bitcoin-node/src/network/tests/compact_cleanup_cases.rs`,
 `packages/open-bitcoin-node/src/network/tests/compact_misbehavior_cases.rs`,
-`scripts/check-phase122-compact-relay-peer-completion.ts`, and
-`scripts/check-phase122-compact-relay-peer-completion.test.ts`.
+`scripts/check-v2-1-compact-peer-completion.ts`, and
+`scripts/check-v2-1-compact-peer-completion.test.ts`.
 
 Pinned Knots anchors are `MAX_BLOCKTXN_DEPTH`, the `GETBLOCKTXN` handler, and
 `SendBlockTransactions` in `packages/bitcoin-knots/src/net_processing.cpp`;
@@ -1427,9 +1427,9 @@ The Open Bitcoin evidence roots are
 `packages/open-bitcoin-node/src/sync/tests/runtime_timing_cases.rs`,
 `packages/open-bitcoin-node/src/sync/tests/runtime_write_evidence_cases.rs`,
 `packages/open-bitcoin-node/src/sync/tests/runtime_projection_cases.rs`,
-`scripts/check-phase121-block-relay-metrics-log-runtime.ts`,
-`scripts/check-phase123-runtime-timing-evidence-integrity.ts`, and
-`scripts/check-phase123-runtime-timing-evidence-integrity.test.ts`.
+`scripts/check-v2-1-runtime-metrics-logs.ts`,
+`scripts/check-v2-1-runtime-timing.ts`, and
+`scripts/check-v2-1-runtime-timing.test.ts`.
 
 The runtime-only served evidence is not serialized, leaving unchanged public
 status, RPC, CLI, dashboard, and support schemas. One authoritative sync-network

@@ -1,0 +1,604 @@
+import {
+  PHASE134_APPLY_BOUNDARY_DIAGNOSTIC,
+  PHASE134_APPLY_SOURCE_FILES,
+} from "../check-v2-2-cross-cache-apply";
+import {
+  aggregateReachabilityMutations,
+  aggregateReachabilityPositiveMutations,
+} from "./apply-helpers/aggregate-reachability";
+import {
+  strictReachabilityMutations,
+  strictReachabilityPositiveMutations,
+} from "./apply-helpers/strict-reachability";
+import {
+  tokenScannerMutations,
+  tokenScannerPositiveMutations,
+} from "./apply-helpers/token-scanner-reachability";
+
+type ApplyFixtureFiles = Map<string, string>;
+
+export type ApplyHelperMutation = {
+  name: string;
+  mutate: (files: ApplyFixtureFiles) => void;
+};
+
+export const APPLY_BOUNDARY_DIAGNOSTIC =
+  PHASE134_APPLY_BOUNDARY_DIAGNOSTIC;
+
+export const APPLY_HELPER_SOURCE_FILES = PHASE134_APPLY_SOURCE_FILES;
+
+const COMPACT_FILE =
+  "packages/open-bitcoin-node/src/network/compact_receive_candidates.rs";
+const AUTHORITY_FILE =
+  "packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs";
+const MEMPOOL_LIFECYCLE_FILE =
+  "packages/open-bitcoin-node/src/network/mempool_lifecycle.rs";
+
+export function applyHelperMutations(): ApplyHelperMutation[] {
+  return [
+    {
+      name: "one-level helper hides filesystem I/O",
+      mutate: addCompactHelper(
+        "hidden_projection_io",
+        'let _ = std::fs::write("state", bytes);',
+      ),
+    },
+    {
+      name: "helper hides a forbidden dependent-target mutation",
+      mutate: addCompactHelper(
+        "hidden_target_mutation",
+        "network.transactions_by_txid.clear();",
+        "network: &mut ManagedPeerNetwork<S>",
+      ),
+    },
+    {
+      name: "multi-level helper hides filesystem I/O",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          COMPACT_FILE,
+          "apply_prepared_compact",
+          "\n        first_projection_helper();",
+        );
+        append(
+          files,
+          COMPACT_FILE,
+          [
+            "",
+            "fn first_projection_helper() {",
+            "    second_projection_helper();",
+            "}",
+            "",
+            "fn second_projection_helper() {",
+            '    let _ = std::fs::write("state", bytes);',
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "unresolved helper fails closed",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          COMPACT_FILE,
+          "apply_prepared_compact",
+          "\n        unresolved_projection_helper();",
+        );
+      },
+    },
+    {
+      name: "removed validated transition API remains forbidden",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          AUTHORITY_FILE,
+          "apply_prepared_lifecycle",
+          "\n        self.mempool.mempool_mut().validate_prepared_mempool_transition(core);",
+        );
+      },
+    },
+    {
+      name: "removed public sealed transition API remains forbidden",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          AUTHORITY_FILE,
+          "apply_prepared_lifecycle",
+          "\n        self.mempool.mempool_mut().commit_sealed_mempool_transition(core);",
+        );
+      },
+    },
+    {
+      name: "atomic commit cannot follow a dependent mutation",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          AUTHORITY_FILE,
+          "commit_sealed_lifecycle",
+          "\n        self.apply_prepared_evidence(evidence);",
+        );
+      },
+    },
+    {
+      name: "atomic commit cannot appear twice",
+      mutate: (files) => {
+        insertAtFunctionEnd(
+          files,
+          AUTHORITY_FILE,
+          "commit_sealed_lifecycle",
+          [
+            "",
+            "        let _ = self",
+            "            .mempool",
+            "            .mempool_mut()",
+            "            .commit_prepared_mempool_transition_with(core, || ());",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "connected-block transaction requires the atomic core commit",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          ".commit_prepared_mempool_transition_with(core, || {",
+          ".removed_mempool_transaction(core, || {",
+        );
+      },
+    },
+    {
+      name: "connected-block transaction requires prepared chainstate commit",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "chainstate.commit_prepared_connect(prepared_chainstate);",
+          "// removed prepared chainstate commit",
+        );
+      },
+    },
+    {
+      name: "connected-block transaction requires active-tip reset",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "peer_manager.on_active_tip_changed(",
+          "peer_manager.removed_active_tip_changed(",
+        );
+      },
+    },
+    {
+      name: "connected-block transaction requires block recording",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "blocks_by_hash.insert(position.block_hash, block.clone());",
+          "// removed block recording",
+        );
+      },
+    },
+    {
+      name: "connected-block transaction requires local-position recording",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "peer_manager.note_local_position(position);",
+          "// removed local-position recording",
+        );
+      },
+    },
+    {
+      name: "connected-block dependent apply must follow the transaction",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        let ((), delta) = self",
+          [
+            "        self.apply_prepared_lifecycle(dependent);",
+            "        let ((), delta) = self",
+          ].join("\n"),
+        );
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        self.apply_prepared_lifecycle(dependent);\n        persist_result.map_err(LifecycleProjectionError::from)?;",
+          "        persist_result.map_err(LifecycleProjectionError::from)?;",
+        );
+      },
+    },
+    {
+      name: "connected-block callback rejects fallible work",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "chainstate.commit_prepared_connect(prepared_chainstate);",
+          [
+            "chainstate.commit_prepared_connect(prepared_chainstate);",
+            "                derive_after_chainstate()?;",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "connected-block post-transaction work remains infallible",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "        self.apply_prepared_lifecycle(dependent);",
+          [
+            "        derive_after_transaction()?;",
+            "        self.apply_prepared_lifecycle(dependent);",
+          ].join("\n"),
+        );
+      },
+    },
+    ...connectedPersistenceMutations(),
+    ...connectedAuthorizationMutations(),
+    ...aggregateReachabilityMutations(),
+    ...strictReachabilityMutations(),
+    ...tokenScannerMutations(),
+    {
+      name: "local block seam cannot bypass the transaction root",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "self.commit_connected_block_lifecycle_transaction(",
+          "self.commit_sealed_lifecycle(",
+        );
+      },
+    },
+    {
+      name: "block seam requires prepared chainstate",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          ".prepare_authorized_connect(",
+          ".removed_prepare_authorized_connect(",
+        );
+      },
+    },
+    {
+      name: "block seam requires prepared mempool lifecycle",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          ".prepare_connected_block_transition(",
+          ".removed_connected_block_transition(",
+        );
+      },
+    },
+    {
+      name: "block seam requires sealed dependent lifecycle",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          ".prepare_maintenance_step(",
+          ".removed_maintenance_step(",
+        );
+      },
+    },
+    {
+      name: "block seam enforces preparation before sealing",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "prepare_connected_block_transition",
+          "temporary_preparation_step",
+        );
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "prepare_maintenance_step",
+          "prepare_connected_block_transition",
+        );
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "temporary_preparation_step",
+          "prepare_maintenance_step",
+        );
+      },
+    },
+    {
+      name: "stored block seam cannot bypass the transaction root",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_stored_block",
+          "self.commit_connected_block_lifecycle_transaction(",
+          "self.commit_sealed_lifecycle(",
+        );
+      },
+    },
+    {
+      name: "block seam cannot mutate between preparation and sealing",
+      mutate: (files) => {
+        replaceInFunction(
+          files,
+          MEMPOOL_LIFECYCLE_FILE,
+          "connect_local_block",
+          "        let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;",
+          [
+            "        self.chainstate.commit_prepared_connect(prepared_chainstate);",
+            "        let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;",
+          ].join("\n"),
+        );
+      },
+    },
+    {
+      name: "recursive helper cycle terminates and preserves violations",
+      mutate: (files) => {
+        insertAtFunctionStart(
+          files,
+          COMPACT_FILE,
+          "apply_prepared_compact",
+          "\n        cyclic_projection_a();",
+        );
+        append(
+          files,
+          COMPACT_FILE,
+          [
+            "",
+            "fn cyclic_projection_a() {",
+            "    cyclic_projection_b();",
+            "}",
+            "",
+            "fn cyclic_projection_b() {",
+            "    cyclic_projection_a();",
+            '    let _ = std::fs::write("state", bytes);',
+            "}",
+            "",
+          ].join("\n"),
+        );
+      },
+    },
+  ];
+}
+
+function connectedPersistenceMutations(): ApplyHelperMutation[] {
+  const apply = "        self.apply_prepared_lifecycle(dependent);";
+  const propagate = "        persist_result.map_err(LifecycleProjectionError::from)?;";
+  const acceptedTail = [apply, propagate].join("\n");
+  const alternatives = [
+    ["persistence error cannot precede accepted effects", [propagate, apply].join("\n")],
+    ["accepted dependent effects cannot be skipped", propagate],
+    [
+      "accepted dependent effects cannot be conditional",
+      [
+        "        if persist_result.is_ok() {",
+        "            self.apply_prepared_lifecycle(dependent);",
+        "        }",
+        propagate,
+      ].join("\n"),
+    ],
+    ["persistence error propagation cannot be skipped", apply],
+    [
+      "persistence error mapper cannot change",
+      acceptedTail.replace("LifecycleProjectionError::from", "hidden_error_mapper"),
+    ],
+    [
+      "additional map_err is not an accepted Result adapter",
+      "        unrelated_result.map_err(LifecycleProjectionError::from)?;\n" + acceptedTail,
+    ],
+    [
+      "commented accepted effects cannot satisfy ordering",
+      acceptedTail.replace("self.apply_prepared_lifecycle", "// self.apply_prepared_lifecycle"),
+    ],
+    [
+      "commented persistence propagation cannot satisfy adapter",
+      acceptedTail.replace("persist_result.map_err", "// persist_result.map_err"),
+    ],
+  ] as const;
+  return alternatives.map(([name, replacement]) => ({
+    name,
+    mutate: (files) =>
+      replaceInFunction(
+        files,
+        AUTHORITY_FILE,
+        "commit_connected_block_lifecycle_transaction",
+        acceptedTail,
+        replacement,
+      ),
+  }));
+}
+
+export function applyHelperPositiveMutations(): ApplyHelperMutation[] {
+  return [
+    {
+      name: "accepts comments and whitespace around the exact accepted persistence adapter",
+      mutate: (files) =>
+        replaceInFunction(
+          files,
+          AUTHORITY_FILE,
+          "commit_connected_block_lifecycle_transaction",
+          "persist_result.map_err(LifecycleProjectionError::from)?;",
+          [
+            "/* accepted effects already applied */ persist_result",
+            "            .map_err( /* exact Result mapper */ LifecycleProjectionError::from ) ? ;",
+          ].join("\n"),
+        ),
+    },
+    ...aggregateReachabilityPositiveMutations(),
+    ...strictReachabilityPositiveMutations(),
+    ...tokenScannerPositiveMutations(),
+  ];
+}
+
+function addCompactHelper(
+  helperName: string,
+  helperBody: string,
+  maybeParameters = "",
+): (files: ApplyFixtureFiles) => void {
+  return (files) => {
+    insertAtFunctionStart(
+      files,
+      COMPACT_FILE,
+      "apply_prepared_compact",
+      `\n        ${helperName}();`,
+    );
+    append(
+      files,
+      COMPACT_FILE,
+      [
+        "",
+        `fn ${helperName}<S: ChainstateStore>(${maybeParameters}) {`,
+        `    ${helperBody}`,
+        "}",
+        "",
+      ].join("\n"),
+    );
+  };
+}
+
+function insertAtFunctionStart(
+  files: ApplyFixtureFiles,
+  relativePath: string,
+  functionName: string,
+  addition: string,
+): void {
+  const source = requireFile(files, relativePath);
+  const body = functionBodyBounds(source, functionName);
+  files.set(
+    relativePath,
+    source.slice(0, body.open + 1) + addition + source.slice(body.open + 1),
+  );
+}
+
+function insertAtFunctionEnd(
+  files: ApplyFixtureFiles,
+  relativePath: string,
+  functionName: string,
+  addition: string,
+): void {
+  const source = requireFile(files, relativePath);
+  const body = functionBodyBounds(source, functionName);
+  files.set(
+    relativePath,
+    source.slice(0, body.close) + addition + source.slice(body.close),
+  );
+}
+
+function connectedAuthorizationMutations(): ApplyHelperMutation[] {
+  const acquisition = "let authorization = self.authorize_connect(block, consensus_params)?;";
+  const cases = [
+    ["missing acquisition", acquisition, "let authorization = forged_authorization;"],
+    ["substituted acquisition receiver", "self.authorize_connect(block, consensus_params)", "other.authorize_connect(block, consensus_params)"],
+    ["substituted authorization block", "self.authorize_connect(block, consensus_params)", "self.authorize_connect(other_block, consensus_params)"],
+    ["substituted consumed capability", "                authorization,", "                forged_authorization,"],
+    ["substituted preparation receiver", ".chainstate\n            .prepare_authorized_connect(", ".other_chainstate\n            .prepare_authorized_connect("],
+    ["authorization after preparation", acquisition, ""],
+    ["effect before transaction", "let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;", "let sealed_lifecycle = self.prepare_maintenance_step(prepared_lifecycle)?;\n        writer.write_all(bytes);"],
+  ] as const;
+  return ["connect_local_block", "connect_stored_block"].flatMap((functionName) =>
+    cases.map(([name, needle, replacement]) => ({
+      name: `${functionName}: ${name}`,
+      mutate: (files: ApplyFixtureFiles) => {
+        replaceInFunction(files, MEMPOOL_LIFECYCLE_FILE, functionName, needle, replacement);
+        if (name === "authorization after preparation") {
+          replaceInFunction(files, MEMPOOL_LIFECYCLE_FILE, functionName,
+            "let position = prepared_chainstate.position().clone();",
+            `${acquisition}\n        let position = prepared_chainstate.position().clone();`);
+        }
+      },
+    })),
+  );
+}
+
+function replaceInFunction(
+  files: ApplyFixtureFiles,
+  relativePath: string,
+  functionName: string,
+  search: string,
+  replacement: string,
+): void {
+  const source = requireFile(files, relativePath);
+  const body = functionBodyBounds(source, functionName);
+  const functionBody = source.slice(body.open + 1, body.close);
+  const match = functionBody.indexOf(search);
+  if (match < 0) {
+    throw new Error(`missing fixture text in ${functionName}: ${search}`);
+  }
+  if (search === replacement || functionBody.indexOf(search, match + search.length) >= 0) {
+    throw new Error(`non-unique or unchanged fixture text in ${functionName}: ${search}`);
+  }
+  const absoluteMatch = body.open + 1 + match;
+  files.set(
+    relativePath,
+    source.slice(0, absoluteMatch) +
+      replacement +
+      source.slice(absoluteMatch + search.length),
+  );
+}
+
+function functionBodyBounds(
+  source: string,
+  functionName: string,
+): { open: number; close: number } {
+  const marker = new RegExp(`\\bfn\\s+${functionName}\\b`).exec(source);
+  if (!marker) {
+    throw new Error(`missing fixture function: ${functionName}`);
+  }
+  const open = source.indexOf("{", marker.index);
+  if (open < 0) {
+    throw new Error(`missing fixture body: ${functionName}`);
+  }
+  let depth = 0;
+  for (let index = open; index < source.length; index += 1) {
+    if (source[index] === "{") {
+      depth += 1;
+    } else if (source[index] === "}") {
+      depth -= 1;
+      if (depth === 0) {
+        return { open, close: index };
+      }
+    }
+  }
+  throw new Error(`unbalanced fixture body: ${functionName}`);
+}
+
+function append(
+  files: ApplyFixtureFiles,
+  relativePath: string,
+  addition: string,
+): void {
+  files.set(relativePath, requireFile(files, relativePath) + addition);
+}
+
+function requireFile(files: ApplyFixtureFiles, relativePath: string): string {
+  const maybeSource = files.get(relativePath);
+  if (maybeSource === undefined) {
+    throw new Error(`missing fixture file: ${relativePath}`);
+  }
+  return maybeSource;
+}

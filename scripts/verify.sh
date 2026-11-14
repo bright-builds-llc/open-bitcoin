@@ -73,104 +73,104 @@ fi
 run_step "check v1.3 release boundaries" bun run scripts/check-v1.3-release-boundaries.ts
 run_step "check v1.4 release boundaries" bun run scripts/check-v1.4-release-boundaries.ts
 run_step "check v1.5 release boundaries" bun run scripts/check-v1.5-release-boundaries.ts
-run_step "check Phase 61 resource recovery boundaries" bun run scripts/check-phase61-resource-recovery-boundaries.ts
-run_step "check Phase 62 sync truth surfaces" bun run scripts/check-phase62-sync-truth-surfaces.ts
-run_step "check Phase 63 service lifecycle" bun run scripts/check-phase63-service-lifecycle.ts
-run_step "check Phase 64 service restart resume" bun run scripts/check-phase64-service-restart-resume.ts
-run_step "check Phase 65 support review" bun run scripts/check-phase65-support-review.ts
-run_step "check Phase 66 compatibility wrapper" bun run scripts/check-phase66-compatibility-wrapper.ts
-run_step "test Phase 68 active chain persistence" bun test ./scripts/check-phase68-active-chain-persistence.test.ts
-run_step "check Phase 68 active chain persistence" bun run scripts/check-phase68-active-chain-persistence.ts
-run_step "check Phase 69 tip stay current" bun run scripts/check-phase69-tip-stay-current.ts
-run_step "check Phase 70 reorg recovery" bun run scripts/check-phase70-reorg-recovery.ts
-run_step "check Phase 71 resource restart" bun run scripts/check-phase71-resource-restart.ts
-run_step "check Phase 72 observability evidence" bun run scripts/check-phase72-observability-evidence.ts
-run_step "test Phase 73 UAT verification checker" bun test scripts/check-phase73-uat-verification.test.ts
-run_step "check Phase 73 UAT verification" env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-phase73-uat-verification.ts
+run_step "check Phase 61 resource recovery boundaries" bun run scripts/check-v1-5-resource-recovery.ts
+run_step "check Phase 62 sync truth surfaces" bun run scripts/check-v1-5-sync-truth.ts
+run_step "check Phase 63 service lifecycle" bun run scripts/check-v1-5-service-lifecycle.ts
+run_step "check Phase 64 service restart resume" bun run scripts/check-v1-5-service-restart.ts
+run_step "check Phase 65 support review" bun run scripts/check-v1-5-support-review.ts
+run_step "check Phase 66 compatibility wrapper" bun run scripts/check-v1-5-compat-wrapper.ts
+run_step "test Phase 68 active chain persistence" bun test ./scripts/check-v1-6-active-chain.test.ts
+run_step "check Phase 68 active chain persistence" bun run scripts/check-v1-6-active-chain.ts
+run_step "check Phase 69 tip stay current" bun run scripts/check-v1-6-tip-current.ts
+run_step "check Phase 70 reorg recovery" bun run scripts/check-v1-6-reorg-recovery.ts
+run_step "check Phase 71 resource restart" bun run scripts/check-v1-6-resource-restart.ts
+run_step "check Phase 72 observability evidence" bun run scripts/check-v1-6-observability.ts
+run_step "test Phase 73 UAT verification checker" bun test scripts/check-v1-6-opt-in-uat.test.ts
+run_step "check Phase 73 UAT verification" env -u OPEN_BITCOIN_PHASE73_REPO_ROOT bun run scripts/check-v1-6-opt-in-uat.ts
 run_step "check v1.6 release boundaries" bun run scripts/check-v1.6-release-boundaries.ts
-run_step "test Phase 75 soak runner checker" bun test scripts/check-phase75-soak-runner.test.ts
-run_step "check Phase 75 soak runner" bun run scripts/check-phase75-soak-runner.ts
-run_step "test Phase 76 resource bounds checker" bun test scripts/check-phase76-resource-bounds.test.ts
-run_step "check Phase 76 resource bounds" bun run scripts/check-phase76-resource-bounds.ts
-run_step "test Phase 77 corruption lock recovery checker" bun test scripts/check-phase77-corruption-lock-recovery.test.ts
-run_step "check Phase 77 corruption lock recovery" bun run scripts/check-phase77-corruption-lock-recovery.ts
-run_step "test Phase 78 progress guarantees checker" bun test scripts/check-phase78-progress-guarantees.test.ts
-run_step "check Phase 78 progress guarantees" bun run scripts/check-phase78-progress-guarantees.ts
-run_step "test Phase 79 diagnostics support bundle checker" bun test scripts/check-phase79-diagnostics-support-bundle.test.ts
-run_step "check Phase 79 diagnostics support bundle" bun run scripts/check-phase79-diagnostics-support-bundle.ts
-run_step "test Phase 80 opt-in soak UAT release boundaries checker" bun test scripts/check-phase80-opt-in-soak-uat-release-boundaries.test.ts
-run_step "check Phase 80 opt-in soak UAT release boundaries" bun run scripts/check-phase80-opt-in-soak-uat-release-boundaries.ts
-run_step "test Phase 82 production claim boundary checker" bun test scripts/check-phase82-production-claim-boundary.test.ts
-run_step "check Phase 82 production claim boundary" bun run scripts/check-phase82-production-claim-boundary.ts
-run_step "test Phase 83 support matrix issue evidence checker" bun test scripts/check-phase83-support-matrix-issue-evidence.test.ts
-run_step "check Phase 83 support matrix issue evidence" bun run scripts/check-phase83-support-matrix-issue-evidence.ts
-run_step "test Phase 84 upgrade rollback policy checker" bun test scripts/check-phase84-upgrade-rollback-policy.test.ts
-run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-phase84-upgrade-rollback-policy.ts
-run_step "test Phase 85 operator runbooks checker" bun test scripts/check-phase85-operator-runbooks.test.ts
-run_step "check Phase 85 operator runbooks" bun run scripts/check-phase85-operator-runbooks.ts
-run_step "test Phase 86 service operation expectations checker" bun test scripts/check-phase86-service-operation-expectations.test.ts
-run_step "check Phase 86 service operation expectations" bun run scripts/check-phase86-service-operation-expectations.ts
-run_step "test Phase 87 release readiness checker" bun test scripts/check-phase87-release-readiness.test.ts
-run_step "check Phase 87 release readiness" bun run scripts/check-phase87-release-readiness.ts
-run_step "test Phase 88 deterministic claim guardrails checker" bun test scripts/check-phase88-deterministic-claim-guardrails.test.ts
-run_step "check Phase 88 deterministic claim guardrails" bun run scripts/check-phase88-deterministic-claim-guardrails.ts
-run_step "test Phase 90 inbound listener admission checker" bun test scripts/check-phase90-inbound-listener-admission.test.ts
-run_step "check Phase 90 inbound listener admission" bun run scripts/check-phase90-inbound-listener-admission.ts
-run_step "test Phase 91 peer permissions checker" bun test scripts/check-phase91-peer-permissions.test.ts
-run_step "check Phase 91 peer permissions" bun run scripts/check-phase91-peer-permissions.ts
-run_step "test Phase 92 address boundaries checker" bun test scripts/check-phase92-address-boundaries.test.ts
-run_step "check Phase 92 address boundaries" bun run scripts/check-phase92-address-boundaries.ts
-run_step "test Phase 93 peer policy checker" bun test scripts/check-phase93-peer-policy.test.ts
-run_step "check Phase 93 peer policy" bun run scripts/check-phase93-peer-policy.ts
-run_step "Phase 94 DoS/resource governance checker tests" bun test scripts/check-phase94-dos-resource-governance.test.ts
-run_step "Phase 94 DoS/resource governance checker" bun run scripts/check-phase94-dos-resource-governance.ts
-run_step "Phase 95 network participation release boundary checker tests" bun test scripts/check-phase95-network-participation-release-boundary.test.ts
-run_step "Phase 95 network participation release boundary checker" bun run scripts/check-phase95-network-participation-release-boundary.ts
-run_step "Phase 96 peer-policy runtime bridge checker tests" bun test scripts/check-phase96-peer-policy-runtime-bridge.test.ts
-run_step "Phase 96 peer-policy runtime bridge checker" bun run scripts/check-phase96-peer-policy-runtime-bridge.ts
-run_step "test Phase 97 inbound metrics checker" bun test scripts/check-phase97-inbound-metrics.test.ts
-run_step "check Phase 97 inbound metrics" bun run scripts/check-phase97-inbound-metrics.ts
-run_step "test Phase 99 peer-policy structured log emission checker" bun test scripts/check-phase99-peer-policy-structured-log-emission.test.ts
-run_step "check Phase 99 peer-policy structured log emission" bun run scripts/check-phase99-peer-policy-structured-log-emission.ts
-run_step "test Phase 100 relay activation boundary checker" bun test scripts/check-phase100-relay-activation-boundary.test.ts
-run_step "check Phase 100 relay activation boundary" bun run scripts/check-phase100-relay-activation-boundary.ts
-run_step "test Phase 101 transaction inventory download scheduling checker" bun test scripts/check-phase101-transaction-inventory-download-scheduling.test.ts
-run_step "check Phase 101 transaction inventory download scheduling" bun run scripts/check-phase101-transaction-inventory-download-scheduling.ts
-run_step "test Phase 102 orphan admission bridge checker" bun test scripts/check-phase102-orphan-admission-bridge.test.ts
-run_step "check Phase 102 orphan admission bridge" bun run scripts/check-phase102-orphan-admission-bridge.ts
-run_step "test Phase 103 mempool lifecycle checker" bun test scripts/check-phase103-mempool-lifecycle.test.ts
-run_step "check Phase 103 mempool lifecycle" bun run scripts/check-phase103-mempool-lifecycle.ts
-run_step "test Phase 104 relay serving/fanout checker" bun test scripts/check-phase104-relay-serving-fanout.test.ts
-run_step "check Phase 104 relay serving/fanout" bun run scripts/check-phase104-relay-serving-fanout.ts
-run_step "test Phase 105 operator relay evidence checker" bun test scripts/check-phase105-operator-relay-evidence.test.ts
-run_step "check Phase 105 operator relay evidence" bun run scripts/check-phase105-operator-relay-evidence.ts
-run_step "test Phase 106 parity UAT release boundary checker" bun test scripts/check-phase106-parity-uat-release-boundary.test.ts
-run_step "check Phase 106 parity UAT release boundary" bun run scripts/check-phase106-parity-uat-release-boundary.ts
-run_step "test Phase 107 runtime relay activation/download eligibility checker" bun test scripts/check-phase107-runtime-relay-activation-download-eligibility.test.ts
-run_step "check Phase 107 runtime relay activation/download eligibility" bun run scripts/check-phase107-runtime-relay-activation-download-eligibility.ts
-run_step "test Phase 108 durable mempool relay state recovery checker" bun test scripts/check-phase108-durable-mempool-relay-state-recovery.test.ts
-run_step "check Phase 108 durable mempool relay state recovery" bun run scripts/check-phase108-durable-mempool-relay-state-recovery.ts
-run_step "test Phase 110 block-serving boundary checker" bun test scripts/check-phase110-block-serving-boundary.test.ts
-run_step "check Phase 110 block-serving boundary" bun run scripts/check-phase110-block-serving-boundary.ts
-run_step "test Phase 111 full block-serving request path checker" bun test scripts/check-phase111-full-block-serving-request-path.test.ts
-run_step "check Phase 111 full block-serving request path" bun run scripts/check-phase111-full-block-serving-request-path.ts
-run_step "test Phase 116 operator block-relay evidence checker" bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
-run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-phase116-operator-block-relay-evidence.ts
-run_step "test Phase 144 operator flush and availability evidence checker" bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
-run_step "check Phase 144 operator flush and availability evidence" bun run scripts/check-phase144-operator-flush-availability-evidence.ts
-run_step "test Phase 145 parity UAT release boundary checker" bun test scripts/check-phase145-parity-uat-release-boundary.test.ts
-run_step "check Phase 145 parity UAT release boundary" bun run scripts/check-phase145-parity-uat-release-boundary.ts
-run_step "test Phase 151 parity UAT release boundary checker" bun test scripts/check-phase151-parity-uat-release-boundary.test.ts
-run_step "check Phase 151 parity UAT release boundary" bun run scripts/check-phase151-parity-uat-release-boundary.ts
-run_step "test Phase 154 BASIC filter evidence checker" bun test ./scripts/check-phase154-basic-filters.test.ts
-run_step "check Phase 154 BASIC filter evidence" bun run scripts/check-phase154-basic-filters.ts
+run_step "test Phase 75 soak runner checker" bun test scripts/check-v1-7-soak-runner.test.ts
+run_step "check Phase 75 soak runner" bun run scripts/check-v1-7-soak-runner.ts
+run_step "test Phase 76 resource bounds checker" bun test scripts/check-v1-7-resource-bounds.test.ts
+run_step "check Phase 76 resource bounds" bun run scripts/check-v1-7-resource-bounds.ts
+run_step "test Phase 77 corruption lock recovery checker" bun test scripts/check-v1-7-corruption-recovery.test.ts
+run_step "check Phase 77 corruption lock recovery" bun run scripts/check-v1-7-corruption-recovery.ts
+run_step "test Phase 78 progress guarantees checker" bun test scripts/check-v1-7-progress-guarantees.test.ts
+run_step "check Phase 78 progress guarantees" bun run scripts/check-v1-7-progress-guarantees.ts
+run_step "test Phase 79 diagnostics support bundle checker" bun test scripts/check-v1-7-support-bundle.test.ts
+run_step "check Phase 79 diagnostics support bundle" bun run scripts/check-v1-7-support-bundle.ts
+run_step "test Phase 80 opt-in soak UAT release boundaries checker" bun test scripts/check-v1-7-release-boundary.test.ts
+run_step "check Phase 80 opt-in soak UAT release boundaries" bun run scripts/check-v1-7-release-boundary.ts
+run_step "test Phase 82 production claim boundary checker" bun test scripts/check-v1-8-production-claim.test.ts
+run_step "check Phase 82 production claim boundary" bun run scripts/check-v1-8-production-claim.ts
+run_step "test Phase 83 support matrix issue evidence checker" bun test scripts/check-v1-8-support-matrix.test.ts
+run_step "check Phase 83 support matrix issue evidence" bun run scripts/check-v1-8-support-matrix.ts
+run_step "test Phase 84 upgrade rollback policy checker" bun test scripts/check-v1-8-upgrade-rollback.test.ts
+run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-v1-8-upgrade-rollback.ts
+run_step "test Phase 85 operator runbooks checker" bun test scripts/check-v1-8-operator-runbooks.test.ts
+run_step "check Phase 85 operator runbooks" bun run scripts/check-v1-8-operator-runbooks.ts
+run_step "test Phase 86 service operation expectations checker" bun test scripts/check-v1-8-service-operation.test.ts
+run_step "check Phase 86 service operation expectations" bun run scripts/check-v1-8-service-operation.ts
+run_step "test Phase 87 release readiness checker" bun test scripts/check-v1-8-release-readiness.test.ts
+run_step "check Phase 87 release readiness" bun run scripts/check-v1-8-release-readiness.ts
+run_step "test Phase 88 deterministic claim guardrails checker" bun test scripts/check-v1-8-claim-guardrails.test.ts
+run_step "check Phase 88 deterministic claim guardrails" bun run scripts/check-v1-8-claim-guardrails.ts
+run_step "test Phase 90 inbound listener admission checker" bun test scripts/check-v1-9-inbound-admission.test.ts
+run_step "check Phase 90 inbound listener admission" bun run scripts/check-v1-9-inbound-admission.ts
+run_step "test Phase 91 peer permissions checker" bun test scripts/check-v1-9-peer-permissions.test.ts
+run_step "check Phase 91 peer permissions" bun run scripts/check-v1-9-peer-permissions.ts
+run_step "test Phase 92 address boundaries checker" bun test scripts/check-v1-9-address-discovery.test.ts
+run_step "check Phase 92 address boundaries" bun run scripts/check-v1-9-address-discovery.ts
+run_step "test Phase 93 peer policy checker" bun test scripts/check-v1-9-peer-policy.test.ts
+run_step "check Phase 93 peer policy" bun run scripts/check-v1-9-peer-policy.ts
+run_step "Phase 94 DoS/resource governance checker tests" bun test scripts/check-v1-9-dos-governance.test.ts
+run_step "Phase 94 DoS/resource governance checker" bun run scripts/check-v1-9-dos-governance.ts
+run_step "Phase 95 network participation release boundary checker tests" bun test scripts/check-v1-9-release-boundary.test.ts
+run_step "Phase 95 network participation release boundary checker" bun run scripts/check-v1-9-release-boundary.ts
+run_step "Phase 96 peer-policy runtime bridge checker tests" bun test scripts/check-v1-9-peer-policy-bridge.test.ts
+run_step "Phase 96 peer-policy runtime bridge checker" bun run scripts/check-v1-9-peer-policy-bridge.ts
+run_step "test Phase 97 inbound metrics checker" bun test scripts/check-v1-9-inbound-metrics.test.ts
+run_step "check Phase 97 inbound metrics" bun run scripts/check-v1-9-inbound-metrics.ts
+run_step "test Phase 99 peer-policy structured log emission checker" bun test scripts/check-v1-9-peer-policy-logs.test.ts
+run_step "check Phase 99 peer-policy structured log emission" bun run scripts/check-v1-9-peer-policy-logs.ts
+run_step "test Phase 100 relay activation boundary checker" bun test scripts/check-v2-0-relay-activation.test.ts
+run_step "check Phase 100 relay activation boundary" bun run scripts/check-v2-0-relay-activation.ts
+run_step "test Phase 101 transaction inventory download scheduling checker" bun test scripts/check-v2-0-tx-download-scheduling.test.ts
+run_step "check Phase 101 transaction inventory download scheduling" bun run scripts/check-v2-0-tx-download-scheduling.ts
+run_step "test Phase 102 orphan admission bridge checker" bun test scripts/check-v2-0-orphan-admission.test.ts
+run_step "check Phase 102 orphan admission bridge" bun run scripts/check-v2-0-orphan-admission.ts
+run_step "test Phase 103 mempool lifecycle checker" bun test scripts/check-v2-0-mempool-lifecycle.test.ts
+run_step "check Phase 103 mempool lifecycle" bun run scripts/check-v2-0-mempool-lifecycle.ts
+run_step "test Phase 104 relay serving/fanout checker" bun test scripts/check-v2-0-relay-fanout.test.ts
+run_step "check Phase 104 relay serving/fanout" bun run scripts/check-v2-0-relay-fanout.ts
+run_step "test Phase 105 operator relay evidence checker" bun test scripts/check-v2-0-operator-evidence.test.ts
+run_step "check Phase 105 operator relay evidence" bun run scripts/check-v2-0-operator-evidence.ts
+run_step "test Phase 106 parity UAT release boundary checker" bun test scripts/check-v2-0-release-boundary.test.ts
+run_step "check Phase 106 parity UAT release boundary" bun run scripts/check-v2-0-release-boundary.ts
+run_step "test Phase 107 runtime relay activation/download eligibility checker" bun test scripts/check-v2-0-relay-eligibility.test.ts
+run_step "check Phase 107 runtime relay activation/download eligibility" bun run scripts/check-v2-0-relay-eligibility.ts
+run_step "test Phase 108 durable mempool relay state recovery checker" bun test scripts/check-v2-0-durable-relay-recovery.test.ts
+run_step "check Phase 108 durable mempool relay state recovery" bun run scripts/check-v2-0-durable-relay-recovery.ts
+run_step "test Phase 110 block-serving boundary checker" bun test scripts/check-v2-1-block-serving-boundary.test.ts
+run_step "check Phase 110 block-serving boundary" bun run scripts/check-v2-1-block-serving-boundary.ts
+run_step "test Phase 111 full block-serving request path checker" bun test scripts/check-v2-1-block-request-path.test.ts
+run_step "check Phase 111 full block-serving request path" bun run scripts/check-v2-1-block-request-path.ts
+run_step "test Phase 116 operator block-relay evidence checker" bun test scripts/check-v2-1-operator-evidence.test.ts
+run_step "check Phase 116 operator block-relay evidence" bun run scripts/check-v2-1-operator-evidence.ts
+run_step "test Phase 144 operator flush and availability evidence checker" bun test scripts/check-v2-3-operator-evidence.test.ts
+run_step "check Phase 144 operator flush and availability evidence" bun run scripts/check-v2-3-operator-evidence.ts
+run_step "test Phase 145 parity UAT release boundary checker" bun test scripts/check-v2-3-release-boundary.test.ts
+run_step "check Phase 145 parity UAT release boundary" bun run scripts/check-v2-3-release-boundary.ts
+run_step "test Phase 151 parity UAT release boundary checker" bun test scripts/check-v2-4-release-boundary.test.ts
+run_step "check Phase 151 parity UAT release boundary" bun run scripts/check-v2-4-release-boundary.ts
+run_step "test Phase 154 BASIC filter evidence checker" bun test ./scripts/check-v2-5-basic-filters.test.ts
+run_step "check Phase 154 BASIC filter evidence" bun run scripts/check-v2-5-basic-filters.ts
 run_step "reproduce Phase 154 independent BASIC vectors" bun run scripts/generate-basic-filter-vectors.ts --check
-run_step "test Phase 155 recoverable filter index checker" bun test ./scripts/check-phase155-filter-index.test.ts
-run_step "check Phase 155 recoverable filter index evidence" bun run scripts/check-phase155-filter-index.ts
-run_step "test Phase 156 prune coordination checker" bun test ./scripts/check-phase156-prune-coordination.test.ts
-run_step "check Phase 156 prune coordination evidence" bun run scripts/check-phase156-prune-coordination.ts
-run_step "test Phase 157 index catch-up checker" bun test ./scripts/check-phase157-index-catch-up.test.ts
-run_step "check Phase 157 index catch-up evidence" bun run scripts/check-phase157-index-catch-up.ts
+run_step "test Phase 155 recoverable filter index checker" bun test ./scripts/check-v2-5-filter-index.test.ts
+run_step "check Phase 155 recoverable filter index evidence" bun run scripts/check-v2-5-filter-index.ts
+run_step "test Phase 156 prune coordination checker" bun test ./scripts/check-v2-5-prune-coordination.test.ts
+run_step "check Phase 156 prune coordination evidence" bun run scripts/check-v2-5-prune-coordination.ts
+run_step "test Phase 157 index catch-up checker" bun test ./scripts/check-v2-5-index-catch-up.test.ts
+run_step "check Phase 157 index catch-up evidence" bun run scripts/check-v2-5-index-catch-up.ts
 run_step "test Phase 158 validated reorg checker" bun test ./scripts/check-phase158-validated-reorg.test.ts
 run_step "check Phase 158 validated reorg evidence" bun run scripts/check-phase158-validated-reorg.ts
 run_step "test Phase 159 authenticated filter RPC checker" bun test ./scripts/check-phase159-filter-rpcs.test.ts
@@ -200,39 +200,39 @@ run_step "test Phase 167 candidate history boundary" bun test ./scripts/check-ph
 run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
-run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts
-run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-phase121-block-relay-metrics-log-runtime.ts
-run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-phase122-compact-relay-peer-completion.test.ts
-run_step "check Phase 122 compact relay peer completion" bun run scripts/check-phase122-compact-relay-peer-completion.ts
-run_step "test Phase 123 runtime timing and evidence integrity checker" bun test scripts/check-phase123-runtime-timing-evidence-integrity.test.ts
-run_step "check Phase 123 runtime timing and evidence integrity" bun run scripts/check-phase123-runtime-timing-evidence-integrity.ts
+run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-v2-1-runtime-metrics-logs.test.ts
+run_step "check Phase 121 block-relay metrics and log runtime" bun run scripts/check-v2-1-runtime-metrics-logs.ts
+run_step "test Phase 122 compact relay peer completion checker" bun test scripts/check-v2-1-compact-peer-completion.test.ts
+run_step "check Phase 122 compact relay peer completion" bun run scripts/check-v2-1-compact-peer-completion.ts
+run_step "test Phase 123 runtime timing and evidence integrity checker" bun test scripts/check-v2-1-runtime-timing.test.ts
+run_step "check Phase 123 runtime timing and evidence integrity" bun run scripts/check-v2-1-runtime-timing.ts
 run_step "test parity ledger" bun test ./scripts/check-parity-ledger.test.ts
 run_step "check parity ledger" bun run scripts/check-parity-ledger.ts
-run_step "test Phase 126 compact relay residual hardening checker" bun test scripts/check-phase126-compact-relay-residual-hardening.test.ts
-run_step "check Phase 126 compact relay residual hardening" bun run scripts/check-phase126-compact-relay-residual-hardening.ts
-run_step "test Phase 127 authoritative network state unification checker" bun test scripts/check-phase127-authoritative-network-state-unification.test.ts
-run_step "check Phase 127 authoritative network state unification" bun run scripts/check-phase127-authoritative-network-state-unification.ts
-run_step "test Phase 128 production compact announcement transport checker" bun test scripts/check-phase128-production-compact-announcement-transport.test.ts
-run_step "check Phase 128 production compact announcement transport" bun run scripts/check-phase128-production-compact-announcement-transport.ts
-run_step "test Phase 129 integration guardrails and milestone reconciliation checker" bun test scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.test.ts
-run_step "check Phase 129 integration guardrails and milestone reconciliation" bun run scripts/check-phase129-integration-guardrails-and-milestone-reconciliation.ts
-run_step "test Phase 130 resource time and fee primitives checker" bun test scripts/check-phase130-resource-time-fee-primitives.test.ts
-run_step "check Phase 130 resource time and fee primitives" bun run scripts/check-phase130-resource-time-fee-primitives.ts
-run_step "test Phase 131 rolling fee expiry pressure checker" bun test scripts/check-phase131-rolling-fee-expiry-pressure.test.ts
-run_step "check Phase 131 rolling fee expiry pressure" bun run scripts/check-phase131-rolling-fee-expiry-pressure.ts
-run_step "test Phase 132 typed package staged admission checker" bun test scripts/check-phase132-typed-package-staged-admission.test.ts
-run_step "check Phase 132 typed package staged admission" bun run scripts/check-phase132-typed-package-staged-admission.ts
-run_step "test Phase 133 package-aware download/orphan bridge checker" bun test scripts/check-phase133-package-aware-download-orphan-bridge.test.ts
-run_step "check Phase 133 package-aware download/orphan bridge" bun run scripts/check-phase133-package-aware-download-orphan-bridge.ts
-run_step "test Phase 134 authoritative lifecycle checker" bun test scripts/check-phase134-authoritative-lifecycle.test.ts
-run_step "check Phase 134 apply boundaries" bun run scripts/check-phase134-apply-boundaries.ts
-run_step "check Phase 134 authoritative lifecycle" bun run scripts/check-phase134-authoritative-lifecycle.ts
-run_step "test Phase 135 snapshot recovery checker" bun test scripts/check-phase135-snapshot-recovery.test.ts
-run_step "check Phase 135 snapshot recovery" bun run scripts/check-phase135-snapshot-recovery.ts
-run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
-run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-phase117-parity-uat-release-boundary.ts
-run_step "test Phase 138 parity UAT release boundary checker" bun test scripts/check-phase138-parity-uat-release-boundary.test.ts
-run_step "check Phase 138 parity UAT release boundary" bun run scripts/check-phase138-parity-uat-release-boundary.ts
+run_step "test Phase 126 compact relay residual hardening checker" bun test scripts/check-v2-1-compact-hardening.test.ts
+run_step "check Phase 126 compact relay residual hardening" bun run scripts/check-v2-1-compact-hardening.ts
+run_step "test Phase 127 authoritative network state unification checker" bun test scripts/check-v2-1-network-state.test.ts
+run_step "check Phase 127 authoritative network state unification" bun run scripts/check-v2-1-network-state.ts
+run_step "test Phase 128 production compact announcement transport checker" bun test scripts/check-v2-1-compact-announcement.test.ts
+run_step "check Phase 128 production compact announcement transport" bun run scripts/check-v2-1-compact-announcement.ts
+run_step "test Phase 129 integration guardrails and milestone reconciliation checker" bun test scripts/check-v2-1-integration-guardrails.test.ts
+run_step "check Phase 129 integration guardrails and milestone reconciliation" bun run scripts/check-v2-1-integration-guardrails.ts
+run_step "test Phase 130 resource time and fee primitives checker" bun test scripts/check-v2-2-fee-primitives.test.ts
+run_step "check Phase 130 resource time and fee primitives" bun run scripts/check-v2-2-fee-primitives.ts
+run_step "test Phase 131 rolling fee expiry pressure checker" bun test scripts/check-v2-2-fee-pressure.test.ts
+run_step "check Phase 131 rolling fee expiry pressure" bun run scripts/check-v2-2-fee-pressure.ts
+run_step "test Phase 132 typed package staged admission checker" bun test scripts/check-v2-2-package-admission.test.ts
+run_step "check Phase 132 typed package staged admission" bun run scripts/check-v2-2-package-admission.ts
+run_step "test Phase 133 package-aware download/orphan bridge checker" bun test scripts/check-v2-2-package-orphan-bridge.test.ts
+run_step "check Phase 133 package-aware download/orphan bridge" bun run scripts/check-v2-2-package-orphan-bridge.ts
+run_step "test Phase 134 authoritative lifecycle checker" bun test scripts/check-v2-2-cross-cache-lifecycle.test.ts
+run_step "check Phase 134 apply boundaries" bun run scripts/check-v2-2-cross-cache-apply.ts
+run_step "check Phase 134 authoritative lifecycle" bun run scripts/check-v2-2-cross-cache-lifecycle.ts
+run_step "test Phase 135 snapshot recovery checker" bun test scripts/check-v2-2-snapshot-recovery.test.ts
+run_step "check Phase 135 snapshot recovery" bun run scripts/check-v2-2-snapshot-recovery.ts
+run_step "test Phase 117 parity UAT release boundary checker" bun test scripts/check-v2-1-release-boundary.test.ts
+run_step "check Phase 117 parity UAT release boundary" bun run scripts/check-v2-1-release-boundary.ts
+run_step "test Phase 138 parity UAT release boundary checker" bun test scripts/check-v2-2-release-boundary.test.ts
+run_step "check Phase 138 parity UAT release boundary" bun run scripts/check-v2-2-release-boundary.ts
 run_step "test current documentation reconciliation checker" bun test scripts/check-current-documentation-reconciliation.test.ts
 run_step "check current documentation reconciliation" bun run scripts/check-current-documentation-reconciliation.ts
 run_step "test local command timing tooling" bun test scripts/command-timings.test.ts

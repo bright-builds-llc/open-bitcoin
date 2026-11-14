@@ -30,7 +30,7 @@ export const EXPECTED_MANIFEST_SHA = "9783fa03fdd2df1395445b7752e6c31d84985c351e
 const sha = (source: string) => createHash("sha256").update(source).digest("hex");
 /** Gate steps the current checkers require exactly once. */
 export const CURRENT_VERIFY_ADDITIONS = [
-  'run_step "test Phase 68 active chain persistence" bun test ./scripts/check-phase68-active-chain-persistence.test.ts',
+  'run_step "test Phase 68 active chain persistence" bun test ./scripts/check-v1-6-active-chain.test.ts',
   'run_step "test Phase 165 shared exact work" bun test ./scripts/check-phase165-shared-exact-work.test.ts',
   'run_step "check Phase 165 shared exact work" bun run scripts/check-phase165-shared-exact-work.ts',
   'run_step "check Phase 166 source-derived genesis vectors" bun run scripts/phase166-genesis-vectors.ts --check',

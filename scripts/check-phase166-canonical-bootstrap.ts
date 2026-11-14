@@ -2,7 +2,7 @@
 import { closeSync, constants, fstatSync, lstatSync, openSync, readSync } from "node:fs";
 import { resolve } from "node:path";
 import { checkVectors } from "./phase166-genesis-vectors.ts";
-import { compact, hasAssertions, hasOrderedCode, maybeFunction, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, hasAssertions, hasOrderedCode, maybeFunction, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { CHECKPOINT, CLI, CONTRACTS, DEPTH_GUARDS, ENTRY_GUARDS, EXTRA_FILES, FACTORY, NODE, OPENER, REGISTRATIONS, RPC, TESTS, VECTOR } from "./check-phase166-canonical-bootstrap/contracts.ts";
 export { DAEMON, OBSERVER } from "./check-phase166-canonical-bootstrap/contracts.ts";

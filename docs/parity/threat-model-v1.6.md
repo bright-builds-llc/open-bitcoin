@@ -33,7 +33,7 @@ full-node or production-funds wallet claim.
 | Reorg and no-progress recovery | Long mainnet review must survive competing branches and peer failures with typed next actions. | Phase 70 verification, `sync.latest_reorg`, `sync.no_progress_diagnosis` |
 | Resource bounds and restart/resume | Operators need bounded runtime envelopes and safe same-datadir recovery. | Phase 71 verification, `sync.resource_pressure`, restart/resume matrix |
 | Observability and support evidence | Status, dashboard, RPC, metrics, logs, live-smoke, and support bundles must agree on the same full-sync truth. | Phase 72 verification, `OpenBitcoinStatusSnapshot`, support evidence |
-| Opt-in UAT and deterministic verification | Public-mainnet UAT must remain explicit while default verification stays local. | Phase 73 verification, runtime guide UAT matrix, `scripts/check-phase73-uat-verification.ts` |
+| Opt-in UAT and deterministic verification | Public-mainnet UAT must remain explicit while default verification stays local. | Phase 73 verification, runtime guide UAT matrix, `scripts/check-v1-6-opt-in-uat.ts` |
 | v1.6 release-boundary roots | Reviewers need one current machine-readable and human-readable closeout. | `docs/parity/index.json`, checklist, release-readiness, this threat model |
 
 ## Trust Boundaries

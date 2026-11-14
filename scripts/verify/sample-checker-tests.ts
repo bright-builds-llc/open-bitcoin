@@ -11,7 +11,7 @@ const BUN_TEST_IMPORT = /from "bun:test"/g;
 plugin({
   name: "sample-checker-tests",
   setup(build) {
-    build.onLoad({ filter: /\/scripts\/check-phase[^/]*(?:\/[^/]+)?\.test\.ts$/ }, async (args) => {
+    build.onLoad({ filter: /\/scripts\/check-(?:phase\d+|v\d+-\d+)-[^/]*(?:\/[^/]+)?\.test\.ts$/ }, async (args) => {
       const source = await Bun.file(args.path).text();
       return { contents: source.replace(BUN_TEST_IMPORT, `from ${JSON.stringify(SAMPLED_BUN_TEST)}`), loader: "ts" };
     });

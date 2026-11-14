@@ -6,7 +6,7 @@ import { INPUT_FILES as IDENTITY_INPUTS, historicalFixtureAdapter } from "./chec
 import { regions } from "./check-phase164-canonical-identity/regions.ts";
 import { CLAIM_FILES, affirmativeScopeClaims, checkCurrentClaims } from "./check-phase164-canonical-identity/claims.ts";
 import { historicalToolingView, MANIFEST_FILE, CURRENT_VERIFY_ADDITIONS } from "./check-phase164-canonical-identity/historical-tooling.ts";
-import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { CORPUS_FILE, CORPUS_SHA, HISTORICAL_IDENTITIES, CURRENT_BRIDGE_DATA, SOURCE_CONTRACTS, TEST_OWNERS, WORK_CLAIM_FACTS, WORK_CLAIM_FILE } from "./check-phase165-shared-exact-work/contracts.ts";
 

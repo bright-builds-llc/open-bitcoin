@@ -5,7 +5,7 @@ import path from "node:path";
 import { readSourceCorpus } from "./source-corpus";
 
 const repoRoot = path.resolve(import.meta.dir, "..");
-const childDirectory = path.join(import.meta.dir, "check-phase73-uat-verification");
+const childDirectory = path.join(import.meta.dir, "check-v1-6-opt-in-uat");
 const untrackedPath = path.join(childDirectory, `source-corpus-untracked-${process.pid}.ts`);
 const ignoredDirectory = path.join(childDirectory, `mutants.out-source-corpus-${process.pid}`);
 const ignoredPath = path.join(ignoredDirectory, "sentinel.ts");
@@ -24,7 +24,7 @@ test("reads tracked children while excluding untracked and ignored children", ()
   writeFileSync(ignoredPath, ignoredToken);
 
   // Act
-  const corpus = readSourceCorpus(repoRoot, "scripts/check-phase73-uat-verification.ts");
+  const corpus = readSourceCorpus(repoRoot, "scripts/check-v1-6-opt-in-uat.ts");
 
   // Assert
   expect(corpus).toContain('export const REPO_ROOT_OVERRIDE_ENV = "OPEN_BITCOIN_PHASE73_REPO_ROOT"');

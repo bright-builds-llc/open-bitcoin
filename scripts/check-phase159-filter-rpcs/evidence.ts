@@ -1,5 +1,5 @@
 import { dirname, join, posix } from "node:path";
-import { compact, maybeFunction, rustCode } from "../check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, maybeFunction, rustCode } from "../check-v2-5-index-catch-up/rust-evidence.ts";
 import { CLI, NODE, RPC, SOURCE_FILES } from "./contracts.ts";
 
 type ModuleEdge = { parent: string; child: string; symbol: string };

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync, readdirSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, normalize, posix } from "node:path";
-import { rustCode } from "./check-phase156-prune-coordination/rust-evidence.ts";
+import { rustCode } from "./check-v2-5-prune-coordination/rust-evidence.ts";
 
 export type PanicFinding = { file: string; line: number; text: string };
 type Span = { start: number; end: number };

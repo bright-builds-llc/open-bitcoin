@@ -165,8 +165,8 @@ Phase 155's [formal verification](./.planning/phases/155-recoverable-index-and-p
 
 ```bash
 bun run scripts/command-timings.ts run --key phase155-production-recovery-matrix -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib filter_index
-bun test ./scripts/check-phase155-filter-index.test.ts
-bun run scripts/check-phase155-filter-index.ts
+bun test ./scripts/check-v2-5-filter-index.test.ts
+bun run scripts/check-v2-5-filter-index.ts
 bash scripts/verify.sh
 ```
 
@@ -194,8 +194,8 @@ client-after-prune proof remain deferred to Phases 159–162. The existing three
 v2.4 advisories remain recorded.
 
 ```bash
-bun test ./scripts/check-phase156-prune-coordination.test.ts
-bun run scripts/check-phase156-prune-coordination.ts
+bun test ./scripts/check-v2-5-prune-coordination.test.ts
+bun run scripts/check-v2-5-prune-coordination.ts
 ```
 
 ## Safe BASIC activation and scheduled catch-up (Phase 157)

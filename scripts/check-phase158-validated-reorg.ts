@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { fixtureSourceAttribution, MIGRATED_FIXTURE } from "./check-phase164-canonical-identity/fixture-source.ts";
-import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, hasAssertions, hasOrderedCode, maybeFunction, ordinaryRust, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { PHASE163_DOC, PROVENANCE_FILES, PROVENANCE_CODE, PROVENANCE_CLAIMS, resolveV25Provenance, provenanceClaimView } from "./check-phase163-provenance.ts";
 
@@ -239,7 +239,7 @@ export const TESTS: [string, string][] = [
 ];
 const GUARDS = ["scripts/check-phase158-validated-reorg.ts", "scripts/check-phase158-validated-reorg.test.ts",
   "scripts/check-phase159-filter-rpcs/evidence.ts", "scripts/check-phase159-filter-rpcs/contracts.ts",
-  "scripts/check-phase157-index-catch-up/rust-evidence.ts", "scripts/check-phase156-prune-coordination/rust-evidence.ts"];
+  "scripts/check-v2-5-index-catch-up/rust-evidence.ts", "scripts/check-v2-5-prune-coordination/rust-evidence.ts"];
 const UPSTREAM = ["index/base.cpp", "index/blockfilterindex.cpp", "validation.cpp", "undo.h"].map(file => "packages/bitcoin-knots/src/" + file);
 export const REGISTRATIONS: [string, string][] = [[NODE + "sync/tests/filter_index.rs", "mod reorg;"],
   [NODE + "chainstate/flush_lifecycle.rs", "mod metadata;"],
@@ -499,7 +499,7 @@ function checkParity(text: (file: string) => string, failures: string[], claimSt
 }
 function checkVerifier(source: string, failures: string[]): void {
   const executed = source.split("\n").filter(line => line.startsWith("run_step ")).join("\n");
-  const commands = ["bun run scripts/check-phase157-index-catch-up.ts", "bun test ./scripts/check-phase158-validated-reorg.test.ts", "bun run scripts/check-phase158-validated-reorg.ts", "bun test scripts/check-phase121-block-relay-metrics-log-runtime.test.ts"];
+  const commands = ["bun run scripts/check-v2-5-index-catch-up.ts", "bun test ./scripts/check-phase158-validated-reorg.test.ts", "bun run scripts/check-phase158-validated-reorg.ts", "bun test scripts/check-v2-1-runtime-metrics-logs.test.ts"];
   for (const [label, section] of [["executed", executed]]) {
     const lines = section.split("\n").filter(line => commands.some(command => line.endsWith(command)));
     if (lines.length !== commands.length || lines.some((line, index) => !line.endsWith(commands[index]))) failures.push(`T-158-07-03: ordered ${label} verifier routes`);

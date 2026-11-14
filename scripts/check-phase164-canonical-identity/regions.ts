@@ -1,4 +1,4 @@
-import { ordinaryRust, rustCode } from "../check-phase157-index-catch-up/rust-evidence.ts";
+import { ordinaryRust, rustCode } from "../check-v2-5-index-catch-up/rust-evidence.ts";
 
 export type Region = { symbol: string; ordinal: number; start: number; end: number; code: string; raw: string; test: boolean };
 

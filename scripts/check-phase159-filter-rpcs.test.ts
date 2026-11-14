@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { CHECK_FILES, checkPhase159FilterRpcs } from "./check-phase159-filter-rpcs.ts";
 import { NEW_RUST, TEST_ACTIONS, TESTS } from "./check-phase159-filter-rpcs/contracts.ts";
-import { maybeFunction } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { maybeFunction } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { MODULE_EDGES, meaningfulAssertions } from "./check-phase159-filter-rpcs/evidence.ts";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";

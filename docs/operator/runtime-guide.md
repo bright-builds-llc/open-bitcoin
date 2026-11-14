@@ -745,8 +745,8 @@ Focused closeout verification uses the Phase 106 checker pair and the
 repo-native contract:
 
 ```bash
-bun test scripts/check-phase106-parity-uat-release-boundary.test.ts
-bun run scripts/check-phase106-parity-uat-release-boundary.ts
+bun test scripts/check-v2-0-release-boundary.test.ts
+bun run scripts/check-v2-0-release-boundary.ts
 bash scripts/verify.sh
 ```
 
@@ -1021,8 +1021,8 @@ Focused closeout verification uses the Phase 116 checker pair and the
 repo-native contract:
 
 ```bash
-bun test scripts/check-phase116-operator-block-relay-evidence.test.ts
-bun run scripts/check-phase116-operator-block-relay-evidence.ts
+bun test scripts/check-v2-1-operator-evidence.test.ts
+bun run scripts/check-v2-1-operator-evidence.ts
 bash scripts/verify.sh
 ```
 
@@ -1070,8 +1070,8 @@ Focused closeout verification uses the Phase 144 checker pair and the
 repo-native contract:
 
 ```bash
-bun test scripts/check-phase144-operator-flush-availability-evidence.test.ts
-bun run scripts/check-phase144-operator-flush-availability-evidence.ts
+bun test scripts/check-v2-3-operator-evidence.test.ts
+bun run scripts/check-v2-3-operator-evidence.ts
 bash scripts/verify.sh
 ```
 
@@ -1188,8 +1188,8 @@ Focused closeout verification uses the Phase 145 checker pair and the
 repo-native contract:
 
 ```bash
-bun test scripts/check-phase145-parity-uat-release-boundary.test.ts
-bun run scripts/check-phase145-parity-uat-release-boundary.ts
+bun test scripts/check-v2-3-release-boundary.test.ts
+bun run scripts/check-v2-3-release-boundary.ts
 bash scripts/verify.sh
 ```
 
@@ -1228,8 +1228,8 @@ Run the release-boundary fixtures, repository checker, and full deterministic
 contract:
 
 ```bash
-bun test scripts/check-phase117-parity-uat-release-boundary.test.ts
-bun run scripts/check-phase117-parity-uat-release-boundary.ts
+bun test scripts/check-v2-1-release-boundary.test.ts
+bun run scripts/check-v2-1-release-boundary.ts
 bash scripts/verify.sh
 ```
 
@@ -1577,8 +1577,8 @@ Focused local closeout verification uses the Phase 95 checker pair and the full
 repo-native non-regression contract:
 
 ```bash
-bun test scripts/check-phase95-network-participation-release-boundary.test.ts
-bun run scripts/check-phase95-network-participation-release-boundary.ts
+bun test scripts/check-v1-9-release-boundary.test.ts
+bun run scripts/check-v1-9-release-boundary.ts
 bash scripts/verify.sh
 ```
 
@@ -2659,7 +2659,7 @@ evidence:
 
 ```bash
 bun run scripts/check-v1.6-release-boundaries.ts
-bun run scripts/check-phase73-uat-verification.ts
+bun run scripts/check-v1-6-opt-in-uat.ts
 bash scripts/verify.sh
 ```
 

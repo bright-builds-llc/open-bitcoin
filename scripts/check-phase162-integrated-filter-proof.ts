@@ -3,7 +3,7 @@ import { closeSync, constants, fstatSync, lstatSync, openSync, readFileSync, rea
 import { createHash } from "node:crypto";
 import { dirname, posix, resolve } from "node:path";
 import { CONTRACTS, CHECKPOINT_COUNTS, BREADCRUMBS, TS_CONTRACTS, type Contract } from "./check-phase162-integrated-filter-proof/contracts.ts";
-import { compact, hasOrderedCode, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, hasOrderedCode, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { CHECKPOINT_CONTRACTS, PHASE162_FILES, PHASE162_EVIDENCE, PHASE162_DOC,

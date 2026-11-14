@@ -5,7 +5,7 @@ import { checkPhase162IntegratedFilterProof, loadSources, assertionSpans, CHECK_
   NATIVE_COMMANDS, SHARED_FORMAT, factSpans, processOwnershipView, defaultRustTestAttributes,
   typeScriptFunction, typeScriptCallSpans, maskTypeScript, checkPhase162LegacyFunctionControls } from "./check-phase162-integrated-filter-proof.ts";
 import { CHECKPOINT_COUNTS, TS_CONTRACTS } from "./check-phase162-integrated-filter-proof/contracts.ts";
-import { compact, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { compact, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { CHECKPOINT_CONTRACTS, PHASE162, PHASE162_DOC, PHASE162_EVIDENCE,
   PHASE162_IMPLEMENTATION, PHASE162_COMPLETE } from "./check-phase158-validated-reorg.ts";

@@ -1,0 +1,557 @@
+#!/usr/bin/env bun
+
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
+import path from "node:path";
+import { hasInboundAnnouncementPrefix } from "./check-v2-2-cross-cache-lifecycle.ts";
+
+import { hasCanonicalDaemonComposition, hasDurableSaveBeforeTip } from "./check-v2-1-compact-announcement/durable-trigger.ts";
+import {
+  compact,
+  maybeFunction,
+  rustCode,
+} from "./check-v2-5-index-catch-up/rust-evidence.ts";
+
+const DEFAULT_REPO_ROOT = path.resolve(import.meta.dir, "..");
+const ENQUEUE_BODY_SHA = "c00de395e2714593d08eab42038cfbcdd3d391a63ae8784f4dfb6edbc19a7356";
+const ARCHIVED_V21_ROADMAP = ".planning/milestones/v2.1-ROADMAP.md";
+
+export const PHASE128_TARGET_FILES = [
+  "packages/open-bitcoin-network/src/peer.rs",
+  "packages/open-bitcoin-network/src/peer/message_dispatch.rs",
+  "packages/open-bitcoin-network/src/peer/compact_relay.rs",
+  "packages/open-bitcoin-node/src/network.rs",
+  "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+  "packages/open-bitcoin-node/src/network/runtime_authority.rs",
+  "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+  "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+  "packages/open-bitcoin-node/src/network/tests/announcement_transport_cases.rs",
+  "packages/open-bitcoin-node/src/sync.rs",
+  "packages/open-bitcoin-node/src/sync/open_runtime.rs",
+  "packages/open-bitcoin-node/src/sync/block_response.rs",
+  "packages/open-bitcoin-node/src/sync/block_reconcile.rs",
+  "packages/open-bitcoin-node/src/sync/session.rs",
+  "packages/open-bitcoin-node/src/sync/session/outbox.rs",
+  "packages/open-bitcoin-node/src/sync/session/emission_terminal.rs",
+  "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+  "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+  "packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs",
+  "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs",
+  ".planning/ROADMAP.md",
+  ".planning/PROJECT.md",
+  "scripts/check-v2-1-compact-announcement.ts",
+  "scripts/check-v2-1-compact-announcement/durable-trigger.ts",
+] as const;
+
+type TargetFile = (typeof PHASE128_TARGET_FILES)[number];
+type TextCorpus = Map<TargetFile, string>;
+
+export function checkPhase128ProductionCompactAnnouncementTransport(
+  maybeRepoRoot?: string,
+): string[] {
+  const repoRoot = path.resolve(
+    maybeRepoRoot ??
+      process.env.OPEN_BITCOIN_PHASE128_REPO_ROOT ??
+      DEFAULT_REPO_ROOT,
+  );
+  const failures: string[] = [];
+  const texts = loadCorpus(repoRoot, failures);
+  checkBilateralNegotiation(texts, failures);
+  checkPostDurableTrigger(texts, failures);
+  checkLiveFactsAndBoundedEmissions(texts, failures);
+  checkProductionWriteBoundaries(texts, failures);
+  checkPostWriteEvidence(texts, failures);
+  checkObservabilityAndProductionProof(texts, failures);
+  checkBoundedScope(texts, failures);
+  checkVerifier(texts, failures);
+  return failures;
+}
+
+function loadCorpus(repoRoot: string, failures: string[]): TextCorpus {
+  const texts = new Map<TargetFile, string>();
+  for (const file of PHASE128_TARGET_FILES) {
+    const sourceFile =
+      file === ".planning/ROADMAP.md" &&
+      existsSync(path.join(repoRoot, ARCHIVED_V21_ROADMAP))
+        ? ARCHIVED_V21_ROADMAP
+        : file;
+    const absolutePath = path.join(repoRoot, sourceFile);
+    if (!existsSync(absolutePath)) {
+      failures.push(`P128 missing target: ${file}`);
+      texts.set(file, "");
+      continue;
+    }
+    texts.set(file, readFileSync(absolutePath, "utf8"));
+  }
+  return texts;
+}
+
+function checkBilateralNegotiation(
+  texts: TextCorpus,
+  failures: string[],
+): void {
+  const relay =
+    texts.get("packages/open-bitcoin-network/src/peer/compact_relay.rs") ?? "";
+  if (
+    !orderedFragments(relay, [
+      "*state = LocalCompactRelayOfferState::Scheduled",
+      "version: BIP152_COMPACT_BLOCKS_VERSION,",
+      "Some(SendCompactMessage {",
+      "announce: false,",
+      "version: BIP152_COMPACT_BLOCKS_VERSION,",
+    ])
+  ) {
+    failures.push(
+      "P128 local offer: production handshake must schedule sendcmpct(false, version 2)",
+    );
+  }
+
+  const dispatch =
+    texts.get("packages/open-bitcoin-network/src/peer/message_dispatch.rs") ??
+    "";
+  const verack = section(dispatch, "fn handle_verack(", "\n    fn handle_headers(");
+  if (
+    !orderedFragments(verack, [
+      "peer.remote_verack_received = true;",
+      "self.maybe_schedule_local_compact_offer(peer_id)?",
+      "actions.push(PeerAction::Send(WireNetworkMessage::SendCompact(message)));",
+    ])
+  ) {
+    failures.push(
+      "P128 post-Verack dispatch: established handshake must enqueue the local compact offer",
+    );
+  }
+
+  const peer = texts.get("packages/open-bitcoin-network/src/peer.rs") ?? "";
+  const directionalAnchors = [
+    "pub local_compact_relay_offer: LocalCompactRelayOfferState,",
+    "pub compact_relay: CompactRelayPeerState,",
+    "peer.maybe_remote_protocol_version,",
+    "peer.local_compact_relay_offer,",
+    "self.high_bandwidth_preference = CompactRelayPreference::Requested;",
+    "self.low_bandwidth_preference = CompactRelayPreference::Requested;",
+  ];
+  if (
+    !directionalAnchors
+      .slice(0, 4)
+      .every((anchor) => peer.includes(anchor)) ||
+    !directionalAnchors.slice(4).every((anchor) => relay.includes(anchor))
+  ) {
+    failures.push(
+      "P128 directional negotiation: remote sendcmpct must retain high and low preference",
+    );
+  }
+}
+
+function checkPostDurableTrigger(
+  texts: TextCorpus,
+  failures: string[],
+): void {
+  const response =
+    texts.get("packages/open-bitcoin-node/src/sync/block_response.rs") ?? "";
+  if (!hasDurableSaveBeforeTip(response)) {
+    failures.push(
+      "P128 durable trigger: accepted best-tip blocks must queue only after durable save",
+    );
+  }
+
+  const sync = texts.get("packages/open-bitcoin-node/src/sync.rs") ?? "";
+  const openRuntime = texts.get("packages/open-bitcoin-node/src/sync/open_runtime.rs") ?? "";
+  const persistAndDispatch = section(
+    response,
+    "pub(super) fn persist_progress_and_dispatch_tip(",
+    "\n    }",
+  );
+  if (
+    !sync.includes("pub struct DurableTipAdvanced") ||
+    !orderedFragments(openRuntime, [
+      "let outboxes = announcement_outboxes_for_sink.snapshots()?;",
+      "announcement_network.prepare_block_announcements(event.block(), &outboxes)?;",
+      "announcement_outboxes_for_sink.enqueue_prepared(&announcement_network, outcomes)",
+    ]) ||
+    !orderedFragments(persistAndDispatch, [
+      "self.persist_progress()",
+      "self.dispatch_pending_durable_tip()",
+    ])
+  ) {
+    failures.push(
+      "P128 durable dispatch: persistence must precede tip announcement dispatch",
+    );
+  }
+
+  const reconcile =
+    texts.get("packages/open-bitcoin-node/src/sync/block_reconcile.rs") ?? "";
+  if (
+    !orderedFragments(reconcile, [
+      "let mut maybe_final_connected_block = None;",
+      "maybe_final_connected_block = Some(block);",
+      "if queue_durable_tip && let Some(block) = maybe_final_connected_block",
+      "runtime.queue_durable_tip_advanced(block);",
+    ])
+  ) {
+    failures.push(
+      "P128 reconciliation trigger: a live multi-block extension must announce only its final durable tip",
+    );
+  }
+}
+
+function checkLiveFactsAndBoundedEmissions(
+  texts: TextCorpus,
+  failures: string[],
+): void {
+  const transport =
+    texts.get(
+      "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+    ) ?? "";
+  const liveFactAnchors = [
+    "let peer_has_previous_header = peer",
+    ".contains(&block.header.previous_block_hash);",
+    "let peer_has_current_header = peer.compact_announcements.contains(&block_hash);",
+    "peer_has_previous_header,",
+    "peer_has_current_header,",
+  ];
+  const hasConstantFacts = [
+    "peer_has_previous_header: true",
+    "peer_has_previous_header: false",
+    "peer_has_current_header: true",
+    "peer_has_current_header: false",
+  ].some((anchor) => transport.includes(anchor));
+  if (
+    !liveFactAnchors.every((anchor) => transport.includes(anchor)) ||
+    hasConstantFacts
+  ) {
+    failures.push(
+      "P128 live peer facts: announcement policy must derive both header facts per peer",
+    );
+  }
+
+  const emission = section(
+    transport,
+    "pub struct PeerEmission {",
+    "\n}\n\nimpl PeerEmission",
+  );
+  const receipt = section(
+    transport,
+    "pub struct PeerEmissionReceipt {",
+    "\n}\n\nimpl PeerEmissionReceipt",
+  );
+  const capability = section(
+    transport,
+    "pub struct PeerEmissionWriteCapability {",
+    "\n}\n\nimpl PeerEmissionWriteCapability",
+  );
+  if (
+    !transport.includes(
+      "#[derive(Debug, PartialEq, Eq)]\npub struct PeerEmission {",
+    ) ||
+    ![
+      "peer_id: PeerId,",
+      "message: WireNetworkMessage,",
+      "capability: PeerEmissionWriteCapability,",
+    ].every((anchor) => emission.includes(anchor)) ||
+    ![
+      "effect_capability: PeerEffectCapability,",
+      "maybe_block_hash: Option<BlockHash>,",
+      "maybe_member: Option<open_bitcoin_mempool::MempoolMemberIdentity>,",
+      "maybe_evidence_reason: Option<CompactAnnouncementReason>,",
+      "write_kind: PeerEmissionWriteKind,",
+    ].every((anchor) => capability.includes(anchor)) ||
+    !transport.includes(
+      "pub fn into_parts(self) -> (PeerId, WireNetworkMessage, PeerEmissionWriteCapability)",
+    ) ||
+    !transport.includes("pub fn acknowledge_write(self) -> PeerEmissionReceipt") ||
+    receipt.includes("Clone")
+  ) {
+    failures.push(
+      "P128 owned emission: PeerEmission must bind message, peer, block, and a consuming receipt",
+    );
+  }
+
+  const session =
+    texts.get("packages/open-bitcoin-node/src/sync/session.rs") ?? "";
+  const outbox =
+    texts.get("packages/open-bitcoin-node/src/sync/session/outbox.rs") ?? "";
+  const enqueue = compact(maybeFunction(outbox, "enqueue_prepared", true)?.body ?? "");
+  if (
+    !transport.includes("PHASE94_MAX_PEER_QUEUED_MESSAGES") ||
+    !transport.includes("if outbox.is_full() {") ||
+    !productionDeclaration(session, "mod outbox;") ||
+    !session.includes("pub use outbox::{AnnouncementOutboxNotification, AnnouncementOutboxRegistry};") ||
+    !outbox.includes("BTreeMap<PeerId, AnnouncementOutbox>") ||
+    !outbox.includes("emissions: VecDeque<PeerEmission>") ||
+    createHash("sha256").update(enqueue).digest("hex") !== ENQUEUE_BODY_SHA ||
+    !orderedFragments(enqueue, [
+      "ifaggregate_queued>=PHASE94_MAX_AGGREGATE_QUEUED_MESSAGES{aborted_emissions.push(*emission);continue;}",
+      "ifoutbox.emissions.len()>=PHASE94_MAX_PEER_QUEUED_MESSAGES{aborted_emissions.push(*emission);continue;}",
+      "outbox.emissions.push_back(*emission);",
+    ])
+  ) {
+    failures.push(
+      "P128 bounded transport: preparation and session outboxes must enforce queue limits",
+    );
+  }
+}
+
+function checkProductionWriteBoundaries(
+  texts: TextCorpus,
+  failures: string[],
+): void {
+  const emissionTerminal =
+    texts.get("packages/open-bitcoin-node/src/sync/session/emission_terminal.rs") ??
+    "";
+  const outbound = compact(maybeFunction(emissionTerminal, "send_peer_emissions", true)?.body ?? "");
+  if (
+    !orderedFragments(outbound, [
+      "letpreparation=emissions.iter().try_for_each(|emission|{",
+      "ifemission.peer_id()!=peer_id{",
+      ".encode_pending_network_message(peer_id,emission.message())",
+      "buffers.push_back(buffer);",
+      "ifletErr(error)=preparation{",
+      "returncombined_error(error,abort_emissions(network,emissions));",
+      "whileletSome(emission)=emissions.pop_front(){",
+      "let(_target_peer_id,message,capability)=emission.into_parts();",
+      "letSome(buffer)=buffers.pop_front()else{",
+      "ifletErr(write_error)=session.send_encoded(buffer.bytes(),network_magic){",
+      "abort_current_and_suffix(network,capability,emissions)",
+      "letreceipt=capability.acknowledge_write();",
+      "ifletErr(completion_error)=network.complete_peer_emission(receipt){",
+      "abort_emissions(network,emissions)",
+    ]) ||
+    !outbound.includes(compact(`if let Err(write_error) = session.send_encoded(buffer.bytes(), network_magic) {
+      drop(buffer); drop(buffers); return combined_error(write_error,
+        abort_current_and_suffix(network, capability, emissions),); }`)) ||
+    (outbound.match(/capability\.acknowledge_write\(\)/g) ?? []).length !== 1 ||
+    (outbound.match(/abort_current_and_suffix\(network,capability,emissions\)/g) ?? []).length !== 3 ||
+    !compact(maybeFunction(emissionTerminal, "abort_current_and_suffix", true)?.body ?? "").includes(
+      "std::iter::once(current).chain(suffix.into_iter().map(|emission|emission.into_parts().2))",
+    ) ||
+    !compact(maybeFunction(emissionTerminal, "abort_capabilities", true)?.body ?? "").includes(".abort_peer_emission(capability)")
+  ) {
+    failures.push(
+      "P128 outbound write boundary: receipt completion must follow the session send",
+    );
+  }
+
+  const inbound =
+    texts.get(
+      "packages/open-bitcoin-rpc/src/inbound_listener/connection_runtime.rs",
+    ) ?? "";
+  if (!hasInboundAnnouncementPrefix(inbound, texts.get(
+    "packages/open-bitcoin-rpc/src/inbound_listener/filter_serving.rs",
+  ) ?? "")) {
+    failures.push(
+      "P128 inbound write boundary: receipt completion must occur only after Written",
+    );
+  }
+
+  const daemon =
+    texts.get("packages/open-bitcoin-rpc/src/bin/open-bitcoind.rs") ?? "";
+  if (
+    !hasAuthoritativeOutboxComposition(daemon, texts.get(
+      "packages/open-bitcoin-rpc/src/bin/open_bitcoind/canonical_startup.rs",
+    ) ?? "")
+  ) {
+    failures.push(
+      "P128 production composition: outbound and inbound sessions must share authoritative outboxes",
+    );
+  }
+}
+
+function hasAuthoritativeOutboxComposition(daemon: string, helper: string): boolean {
+  const legacy = maybeFunction(daemon, "open_authoritative_network_runtime", true);
+  const main = maybeFunction(daemon, "main", true);
+  const declaresCanonical = /\b(?:canonical_startup|maybe_prebuilt_context|run_application)\b/.test(rustCode(daemon));
+  const ordinary = !declaresCanonical && legacy !== undefined
+    && (main?.body.match(/\bopen_authoritative_network_runtime\s*\(/g) ?? []).length === 1
+    && legacy.body.includes("announcement_outboxes: sync_runtime.announcement_outboxes(),");
+  const serve = maybeFunction(daemon, "serve_authoritative_runtime", true);
+  return (ordinary || hasCanonicalDaemonComposition(daemon, helper))
+    && productionDeclaration(serve?.body ?? "", "let mut inbound_listener =")
+    && compact(serve?.body ?? "").includes(compact(`
+      let mut inbound_listener = start_inbound_listener_for_runtime_with_context_and_announcements(
+        &runtime, Arc::clone(&shared_context), authoritative_runtime.peer_identity_authority,
+        authoritative_runtime.announcement_outboxes, authoritative_runtime.network,
+      ).await;
+    `));
+}
+
+function productionDeclaration(source: string, marker: string): boolean {
+  const code = rustCode(source);
+  const start = code.indexOf(marker);
+  if (start < 0 || code.split(marker).length !== 2) return false;
+  const prefix = code.slice(0, start);
+  if (prefix.split("{").length !== prefix.split("}").length) return false;
+  return !/#\[\s*(?:cfg\s*\(|path\s*=)/.test(prefix.slice(Math.max(prefix.lastIndexOf(";"), prefix.lastIndexOf("}")) + 1));
+}
+
+function checkPostWriteEvidence(
+  texts: TextCorpus,
+  failures: string[],
+): void {
+  const evidence =
+    texts.get(
+      "packages/open-bitcoin-node/src/network/block_relay_evidence.rs",
+    ) ?? "";
+  const completion =
+    texts.get(
+      "packages/open-bitcoin-node/src/network/runtime_authority/effects.rs",
+    ) ?? "";
+  if (
+    !orderedFragments(completion, [
+      "pub fn complete_peer_emission(",
+      ".apply_lifecycle_command(LifecycleCommand::CompletePeerEmission(receipt))",
+    ]) ||
+    !completion.includes(
+      "LifecycleCommandResult::PeerEffectCompleted(completion) => Ok(completion),",
+    ) ||
+    completion.includes("try_mutate") ||
+    !orderedFragments(evidence, [
+      "fn record_peer_emission(",
+      "evidence.records_header_provenance()",
+      "evidence.maybe_block_hash()",
+      ".record_compact_block_announcement(peer_id, block_hash)?;",
+      "evidence.maybe_evidence_reason()",
+      ".record_announcement(reason);",
+    ])
+  ) {
+    failures.push(
+      "P128 receipt evidence: consuming completion must bind provenance and fixed achieved outcome",
+    );
+  }
+
+  const network = texts.get("packages/open-bitcoin-node/src/network.rs") ?? "";
+  const preparation =
+    texts.get(
+      "packages/open-bitcoin-node/src/network/announcement_transport.rs",
+    ) ?? "";
+  if (
+    network.includes(".record_compact_block_announcement(") ||
+    preparation.includes(".record_compact_block_announcement(") ||
+    preparation.includes(".record_announcement(")
+  ) {
+    failures.push(
+      "P128 post-write evidence: preparation paths must not mutate achieved announcement evidence",
+    );
+  }
+}
+
+function checkObservabilityAndProductionProof(
+  texts: TextCorpus,
+  failures: string[],
+): void {
+  const productionTests =
+    texts.get(
+      "packages/open-bitcoin-node/src/sync/tests/production_announcement_transport_cases.rs",
+    ) ?? "";
+  if (
+    !productionTests.includes(
+      "production_announcement_transport_cases_fanout_uses_live_peer_facts",
+    ) ||
+    !productionTests.includes(
+      "production_announcement_transport_cases_partial_failure_credits_only_prefix_and_redacts",
+    )
+  ) {
+    failures.push(
+      "P128 production proof: tests must cover live-fact fanout and successful-prefix failure semantics",
+    );
+  }
+  if (
+    !orderedFragments(productionTests, [
+      "let status = runtime",
+      ".block_relay_evidence_status()",
+      "let metrics = block_relay_metric_samples(&status, 0, TRANSPORT_TIMESTAMP as u64);",
+      "let log = block_relay_log_record(&status, 0, TRANSPORT_TIMESTAMP as u64);",
+    ]) ||
+    !productionTests.includes('"compact_announced_count"') ||
+    !productionTests.includes('"compact_headers_fallback_count"') ||
+    !productionTests.includes('"compact_inventory_fallback_count"')
+  ) {
+    failures.push(
+      "P128 observability: end-to-end tests must project fixed metrics and logs from post-write status",
+    );
+  }
+}
+
+function checkBoundedScope(texts: TextCorpus, failures: string[]): void {
+  const roadmap = texts.get(".planning/ROADMAP.md") ?? "";
+  const project = texts.get(".planning/PROJECT.md") ?? "";
+  const requiredRoadmapClaims = [
+    "**Requirements:** CMP-04, CMP-05, OBS-03",
+    "live peer header facts",
+    "written through the real peer transport",
+    "only after a successful transport write",
+  ];
+  const requiredProjectClaims = [
+    "v2.1 does not imply public relay defaults, production service operation, production-funds wallet use, public-network CI, or production full-node readiness.",
+    "package relay, bloom/filter serving, public relay defaults, public-network CI, production full-node readiness, and production-funds wallet use deferred",
+  ];
+  const archivedRoadmapClaims = [
+    "v2.1 Block Serving and Compact Block Relay Boundary shipped",
+    "[v2.1-ROADMAP.md](milestones/v2.1-ROADMAP.md)",
+    "[v2.1-REQUIREMENTS.md](milestones/v2.1-REQUIREMENTS.md)",
+  ];
+  if (
+    !(
+      requiredRoadmapClaims.every((claim) => roadmap.includes(claim)) ||
+      archivedRoadmapClaims.every((claim) => roadmap.includes(claim))
+    ) ||
+    !requiredProjectClaims.every((claim) => project.includes(claim))
+  ) {
+    failures.push(
+      "P128 bounded scope: package, filter, public-default, public-network, and production claims must stay deferred",
+    );
+  }
+}
+
+function checkVerifier(texts: TextCorpus, failures: string[]): void {
+  const checker = [
+    texts.get(
+      "scripts/check-v2-1-compact-announcement.ts",
+    ) ?? "", texts.get("scripts/check-v2-1-compact-announcement/durable-trigger.ts") ?? "",
+  ].join("\n");
+  const forbiddenTokens = [
+    "fetch" + "(",
+    "Bun." + "spawn",
+    "node:" + "child_process",
+    "http" + "://",
+    "https" + "://",
+  ];
+  if (forbiddenTokens.some((token) => checker.includes(token))) {
+    failures.push(
+      "P128 deterministic scope: checker must remain local and public-network-free",
+    );
+  }
+}
+
+function section(text: string, startMarker: string, endMarker: string): string {
+  const start = text.indexOf(startMarker);
+  if (start === -1) return "";
+  const end = text.indexOf(endMarker, start + startMarker.length);
+  return text.slice(start, end === -1 ? text.length : end);
+}
+
+function orderedFragments(text: string, fragments: readonly string[]): boolean {
+  let cursor = -1;
+  for (const fragment of fragments) {
+    const index = text.indexOf(fragment, cursor + 1);
+    if (index === -1) return false;
+    cursor = index;
+  }
+  return true;
+}
+
+if (import.meta.main) {
+  const failures = checkPhase128ProductionCompactAnnouncementTransport();
+  if (failures.length > 0) {
+    console.error(
+      "Phase 128 production compact announcement transport check failed:",
+    );
+    for (const failure of failures) console.error(`- ${failure}`);
+    process.exit(1);
+  }
+  console.log(
+    "Phase 128 production compact announcement transport validated.",
+  );
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { hasOrderedCode, maybeFunction, rustCode } from "./check-phase157-index-catch-up/rust-evidence.ts";
+import { hasOrderedCode, maybeFunction, rustCode } from "./check-v2-5-index-catch-up/rust-evidence.ts";
 import { meaningfulAssertions, supportedOwnership } from "./check-phase159-filter-rpcs/evidence.ts";
 import { maybeSelector } from "./check-phase160-peer-filter-serving.ts";
 import { PHASE162_FILES, PHASE162_IMPLEMENTATION, PHASE162_COMPLETE, checkPhase162ClaimState, checkPhase162ExcludedClaims, loadPhase162OptionalSources, phase162ClaimView, sourceText } from "./check-phase158-validated-reorg.ts";

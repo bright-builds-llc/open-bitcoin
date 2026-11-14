@@ -91,8 +91,8 @@ Rust Bitcoin library or full Knots build is needed. From the repository root:
 ```bash
 bun run scripts/generate-basic-filter-vectors.ts --check
 bun run scripts/generate-basic-filter-vectors.ts --write
-bun test ./scripts/check-phase154-basic-filters.test.ts
-bun run scripts/check-phase154-basic-filters.ts
+bun test ./scripts/check-v2-5-basic-filters.test.ts
+bun run scripts/check-v2-5-basic-filters.ts
 bun run scripts/command-timings.ts run --key phase154-independent-basic-parity -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-consensus --test basic_filter
 bun run scripts/command-timings.ts run --key phase154-historical-basic-parity -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-chainstate block_filter
 ```
@@ -156,8 +156,8 @@ product surfaces, GUI, production readiness and production-funds claims remain d
 
 ```bash
 bun run scripts/command-timings.ts run --key phase155-production-recovery-matrix -- cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib filter_index
-bun test ./scripts/check-phase155-filter-index.test.ts
-bun run scripts/check-phase155-filter-index.ts
+bun test ./scripts/check-v2-5-filter-index.test.ts
+bun run scripts/check-v2-5-filter-index.ts
 bash scripts/verify.sh
 ```
 
@@ -266,8 +266,8 @@ client-after-prune proof (162), V0, BIP37, GUI, production readiness and
 production-funds claims remain deferred.
 
 ```bash
-bun test ./scripts/check-phase156-prune-coordination.test.ts
-bun run scripts/check-phase156-prune-coordination.ts
+bun test ./scripts/check-v2-5-prune-coordination.test.ts
+bun run scripts/check-v2-5-prune-coordination.ts
 bun run scripts/command-timings.ts run --key phase156-cross-boundary-node -- cargo test --locked --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib prune
 bun run scripts/command-timings.ts run --key phase156-cross-boundary-rpc -- cargo test --locked --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --lib prune
 bun run scripts/command-timings.ts run --key phase156-daemon-prune-protection -- cargo test --locked --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind index_protection -- --nocapture
