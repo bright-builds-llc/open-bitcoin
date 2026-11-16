@@ -1071,6 +1071,7 @@
     {
       "label": "phase166-storage-operation-lease",
       "files": [
+        "packages/open-bitcoin-node/src/storage/fjall_store/lock_grace.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/open_lease.rs",
         "packages/open-bitcoin-node/src/storage/fjall_store/open_lease/tests.rs"
       ],

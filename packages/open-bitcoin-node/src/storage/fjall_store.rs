@@ -48,6 +48,7 @@ mod coins;
 mod coins_access;
 pub(crate) mod filters;
 pub(super) mod inspection;
+mod lock_grace;
 mod mempool;
 mod open_lease;
 mod opening;

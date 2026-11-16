@@ -610,7 +610,7 @@ export const EDGES: readonly (readonly [string, string, number, string, boolean]
   ["packages/open-bitcoin-node/src/network/canonical_admission.rs","phase166_runtime_mechanical_append_proof_cannot_promote_raw_chainstate",0,"c8eb4758e3666a99d8ebaba6e3fb3f23c6402a690e66b29d2256ea3e053d4f86",true],
   ["packages/open-bitcoin-rpc/src/context/wallet_state.rs","unavailable_fixture",0,"c48e9ed86ebde5d62207fc6ccac5b6dd8d049570a39e49354dcdc0f8204ca37d",true],
   ["packages/open-bitcoin-node/src/storage/fjall_store/opening.rs","open_with_lease",0,"789005a8b9f0d6ac42855e5ac79ecdb6bfa0f42fa296e74b2dcb289ce4f655fc",false],
-  ["packages/open-bitcoin-node/src/storage/fjall_store/open_lease.rs","acquire",1,"e4fc243d35ca5bd744efcc340977041872ddbb630058a2b804226160675e867d",false],
+  ["packages/open-bitcoin-node/src/storage/fjall_store/open_lease.rs","acquire",1,"d22e944f1602e76a6d6de2204e4edd4818ee63c4739a9cb84da428691e102dda",false],
   ["packages/open-bitcoin-rpc/src/context/canonical_genesis.rs","from_canonical_genesis_runtime_config",0,"2893e53ca13cc59cd68f9584e6e3c9815c59ca7493440c9fd6d7e9b4b4e31f07",false],
   ["packages/open-bitcoin-node/src/sync/block_response.rs","runtime",0,"0bb6efc8723457771864c30de5070268031f994d85aa72126b42504950fd8293",true],
   ["packages/open-bitcoin-node/src/chainstate/live_fixture.rs","phase167_durable_rows_reopen_fixture_counts_preserve_full_synthetic_state_and_proofs",0,"9cdf638700c4465b58cb0e9c14a7911874261cc81626fc651c15c208839ff1f6",true],

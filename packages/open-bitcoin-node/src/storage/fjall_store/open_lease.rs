@@ -3,6 +3,8 @@
 
 //! Cooperative application lease, independent of Fjall's engine lock.
 
+#[cfg(unix)]
+use super::lock_grace::retry_while_locked;
 use super::{StorageError, StorageNamespace, StorageRecoveryAction};
 use std::{
     fs::File,
@@ -70,7 +72,11 @@ impl OperationLease {
                 return Err(lease_error("application lease file changed"));
             }
         }
-        file.try_lock().map_err(|error| match error {
+        retry_while_locked(
+            || file.try_lock(),
+            |error| matches!(error, TryLockError::WouldBlock),
+        )
+        .map_err(|error| match error {
             TryLockError::WouldBlock => lease_error("database locked by another process"),
             TryLockError::Error(_) => lease_error("application lease locking unavailable"),
         })?;

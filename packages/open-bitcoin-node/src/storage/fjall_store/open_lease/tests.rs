@@ -377,3 +377,54 @@ fn phase166_lease_reuses_one_empty_private_inode_across_creation_and_reopen() {
     fs::remove_dir_all(root).expect("cleanup");
     assert!(lock.exists(), "stable inactive lease inode remains");
 }
+
+/// Stands in for a child between fork and exec, which keeps an inherited lock
+/// for a few milliseconds after the owning descriptor closed.
+fn hold_lock_briefly(path: &Path) -> std::thread::JoinHandle<()> {
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)
+        .expect("existing lock file");
+    file.try_lock().expect("uncontended lock");
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(30));
+        drop(file);
+    })
+}
+
+#[test]
+fn lease_is_reacquired_once_a_stale_holder_releases_it() {
+    // Arrange
+    let _scenario = PROCESS_SCENARIO.lock().expect("process scenario");
+    let source = source("stale-lease");
+    drop(OperationLease::acquire(&source).expect("first lease"));
+    let lock = super::external_lock_path(&source).expect("lock identity");
+    let holder = hold_lock_briefly(&lock);
+
+    // Act
+    let result = OperationLease::acquire(&source).map(drop);
+
+    // Assert
+    holder.join().expect("holder");
+    assert!(result.is_ok(), "{result:?}");
+}
+
+// The engine waits for its own lock when reopening an existing database, so
+// this guards that behaviour staying in place across engine upgrades.
+#[test]
+fn store_reopens_once_a_stale_engine_lock_holder_releases_it() {
+    // Arrange
+    let _scenario = PROCESS_SCENARIO.lock().expect("process scenario");
+    let source = source("stale-engine");
+    drop(FjallNodeStore::open(&source).expect("create"));
+    let holder = hold_lock_briefly(&source.join("lock"));
+
+    // Act
+    let result = FjallNodeStore::open(&source).map(drop);
+
+    // Assert
+    holder.join().expect("holder");
+    assert!(result.is_ok(), "{result:?}");
+    fs::remove_dir_all(source).expect("cleanup");
+}

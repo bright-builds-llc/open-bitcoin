@@ -3,6 +3,7 @@
 
 //! Private, bounded inspection; never opens the original engine.
 
+use super::lock_grace::retry_while_locked;
 use super::open_lease::OperationLease;
 use super::{StorageError, StorageNamespace, StorageRecoveryAction};
 #[cfg(unix)]
@@ -180,7 +181,11 @@ fn lock_source(source: &Path) -> Result<File, StorageError> {
         .open(&path)
         .map_err(|_| inspection_error("inspection existing engine lock unavailable"))?;
     identity.check_opened(&file, &path)?;
-    file.try_lock().map_err(|error| match error {
+    retry_while_locked(
+        || file.try_lock(),
+        |error| matches!(error, TryLockError::WouldBlock),
+    )
+    .map_err(|error| match error {
         TryLockError::WouldBlock => inspection_error("database locked by another process"),
         TryLockError::Error(_) => inspection_error("inspection engine locking unavailable"),
     })?;
