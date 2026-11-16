@@ -12,7 +12,7 @@ env:
 jobs:
   verify:
     name: verify (${{ matrix.shard }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
 
     # The shards partition the full verification contract, so the union of
     # these jobs equals one `bash scripts/verify.sh --profile` run.
