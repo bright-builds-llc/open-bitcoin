@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT_OVERRIDE_ENV, DEFAULT_REPO_ROOT, SURFACE_ID, AUDIT_KEY, PHASE86_REQUIREMENTS, SERVICE_DOC_PATH, TABLE_HEADER, PHASE85_CHECKER_COMMAND, PHASE86_TEST_COMMAND, PHASE86_CHECKER_COMMAND, TARGET_FILES, HUMAN_POINTER_FILES, REQUIRED_EVIDENCE, REQUIRED_HEADINGS, SUPPORT_TERMS, SERVICE_SURFACES, SERVICE_COMMANDS, FIELD_EVIDENCE_TERMS, SERVICE_FIELDS, LIFECYCLE_LABELS, RESTART_RESUME_FIELDS, PROOF_SIGNALS, SENSITIVE_EVIDENCE_TERMS, FORBIDDEN_DOC_PERMISSION_STRINGS, FORBIDDEN_VERIFY_STRINGS } from "./constants.ts";
 import type { AuditEntry, ChecklistSurface, ParityIndex, ParitySurface } from "./constants.ts";
-import { verifyHumanRoots, executableVerifyText, verifyVerifierWiring } from "./parity.ts";
+import { verifyHumanRoots, verifyVerifierWiring } from "./parity.ts";
 export function checkPhase86ServiceOperationExpectations(
   maybeRepoRoot = process.env.OPEN_BITCOIN_PHASE86_REPO_ROOT,
 ): string[] {

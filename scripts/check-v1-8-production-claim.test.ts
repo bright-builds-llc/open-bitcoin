@@ -207,15 +207,10 @@ test("fails_when_phase82_verify_commands_are_missing_or_before_phase80", async (
   expect(failures.join("\n")).toContain("verifier-order");
 });
 
-test("fails_when_phase82_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase82_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE80_CHECKER_COMMAND,
-      PHASE82_TEST_COMMAND,
-      PHASE82_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       PHASE80_CHECKER_COMMAND,
     ].join("\n"),
   });

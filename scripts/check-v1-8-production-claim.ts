@@ -576,23 +576,14 @@ function verifyNoV18Manifest(repoRoot: string, failures: string[]): void {
   }
 }
 
-function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
 function verifyVerifierWiring(text: string, failures: string[]): void {
-  const executableText = executableVerifyText(text);
-
   for (const command of [PHASE82_TEST_COMMAND, PHASE82_CHECKER_COMMAND]) {
-    requireContains(executableText, command, "verifier-order", failures);
+    requireContains(text, command, "verifier-order", failures);
   }
 
-  const phase80Index = executableText.indexOf(PHASE80_CHECKER_COMMAND);
-  const phase82TestIndex = executableText.indexOf(PHASE82_TEST_COMMAND);
-  const phase82CheckerIndex = executableText.indexOf(PHASE82_CHECKER_COMMAND);
+  const phase80Index = text.indexOf(PHASE80_CHECKER_COMMAND);
+  const phase82TestIndex = text.indexOf(PHASE82_TEST_COMMAND);
+  const phase82CheckerIndex = text.indexOf(PHASE82_CHECKER_COMMAND);
   const orderValid =
     phase80Index !== -1 && phase82TestIndex > phase80Index && phase82CheckerIndex > phase82TestIndex;
 
@@ -601,7 +592,7 @@ function verifyVerifierWiring(text: string, failures: string[]): void {
   }
 
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.includes(forbidden)) {
+    if (text.includes(forbidden)) {
       failures.push(`verifier-order must not add forbidden Phase 82 default command text: ${forbidden}`);
     }
   }

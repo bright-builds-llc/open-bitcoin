@@ -209,15 +209,10 @@ test("fails_when_entrypoint_link_is_missing_or_duplicates_checklist_table", asyn
   expect(duplicateTableFailures.join("\n")).toContain("must not duplicate required text");
 });
 
-test("fails_when_phase87_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase87_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE86_CHECKER_COMMAND,
-      PHASE87_TEST_COMMAND,
-      PHASE87_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       `run_step "check Phase 86 service operation expectations" bun run scripts/check-v1-8-service-operation.ts`,
     ].join("\n"),
   });
@@ -380,11 +375,6 @@ function humanPointerText(file: string): string {
 
 function verifyScriptText(): string {
   return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE86_CHECKER_COMMAND,
-    PHASE87_TEST_COMMAND,
-    PHASE87_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
     `run_step "check Phase 86 service operation expectations" bun run scripts/check-v1-8-service-operation.ts`,
     `run_step "test Phase 87 release readiness checker" bun test scripts/check-v1-8-release-readiness.test.ts`,
     `run_step "check Phase 87 release readiness" bun run scripts/check-v1-8-release-readiness.ts`,

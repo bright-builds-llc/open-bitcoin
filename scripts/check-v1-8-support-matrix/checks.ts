@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { REPO_ROOT_OVERRIDE_ENV, DEFAULT_REPO_ROOT, SURFACE_ID, PHASE83_REQUIREMENTS, SUPPORT_TERMS, FORBIDDEN_MATURITY_LABELS, MATRIX_COLUMNS, PLACEHOLDER_MATRIX_VALUES, REQUIRED_ENVIRONMENT_FAMILIES, REQUIRED_ISSUE_EVIDENCE, FORBIDDEN_EVIDENCE_ITEMS, RESIDUAL_RISK_SURFACES, REQUIRED_EVIDENCE, TARGET_FILES, HUMAN_POINTER_FILES, PHASE82_CHECKER_COMMAND, PHASE83_TEST_COMMAND, PHASE83_CHECKER_COMMAND, FORBIDDEN_VERIFY_STRINGS } from "./constants.ts";
 import type { AuditEntry, ChecklistSurface, MatrixTable, MatrixRow, ParityIndex, ParitySurface } from "./constants.ts";
-import { verifyEntrypointPointers, verifyCatalogPointers, verifyForbiddenMaturityLabels, containsForbiddenMaturityLabel, executableVerifyText, verifyVerifierWiring } from "./parity.ts";
+import { verifyEntrypointPointers, verifyCatalogPointers, verifyForbiddenMaturityLabels, containsForbiddenMaturityLabel, verifyVerifierWiring } from "./parity.ts";
 export function checkPhase83SupportMatrixIssueEvidence(
   maybeRepoRoot = process.env[REPO_ROOT_OVERRIDE_ENV],
 ): string[] {

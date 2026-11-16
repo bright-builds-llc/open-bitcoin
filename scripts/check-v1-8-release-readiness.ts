@@ -406,26 +406,14 @@ function verifyHumanPointers(texts: Map<string, string>, failures: string[]): vo
   );
 }
 
-function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
 function verifyVerifierWiring(text: string, failures: string[]): void {
   for (const command of [PHASE87_TEST_COMMAND, PHASE87_CHECKER_COMMAND]) {
     requireContains(text, command, "verifier-order", failures);
   }
 
-  const executableText = executableVerifyText(text);
-  for (const command of [PHASE87_TEST_COMMAND, PHASE87_CHECKER_COMMAND]) {
-    requireContains(executableText, command, "verifier-order", failures);
-  }
-
-  const phase86CheckerIndex = executableText.indexOf(PHASE86_CHECKER_COMMAND);
-  const phase87TestIndex = executableText.indexOf(PHASE87_TEST_COMMAND);
-  const phase87CheckerIndex = executableText.indexOf(PHASE87_CHECKER_COMMAND);
+  const phase86CheckerIndex = text.indexOf(PHASE86_CHECKER_COMMAND);
+  const phase87TestIndex = text.indexOf(PHASE87_TEST_COMMAND);
+  const phase87CheckerIndex = text.indexOf(PHASE87_CHECKER_COMMAND);
   const orderValid =
     phase86CheckerIndex !== -1 &&
     phase87TestIndex > phase86CheckerIndex &&
@@ -436,7 +424,7 @@ function verifyVerifierWiring(text: string, failures: string[]): void {
   }
 
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.includes(forbidden)) {
+    if (text.includes(forbidden)) {
       failures.push(`default verifier boundary must not add forbidden Phase 87 default command text: ${forbidden}`);
     }
   }

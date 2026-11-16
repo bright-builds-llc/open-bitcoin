@@ -233,15 +233,10 @@ test("fails_when_parity_roots_omit_upgrade_policy_requirement_or_evidence", asyn
   expect(missingEvidenceFailures.join("\n")).toContain("parity root");
 });
 
-test("fails_when_phase84_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase84_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE83_CHECKER_COMMAND,
-      PHASE84_TEST_COMMAND,
-      PHASE84_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       `run_step "check Phase 83 support matrix issue evidence" bun run scripts/check-v1-8-support-matrix.ts`,
     ].join("\n"),
   });
@@ -449,11 +444,6 @@ function humanPointerText(file: string): string {
 
 function verifyScriptText(): string {
   return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE83_CHECKER_COMMAND,
-    PHASE84_TEST_COMMAND,
-    PHASE84_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
     `run_step "check Phase 83 support matrix issue evidence" bun run scripts/check-v1-8-support-matrix.ts`,
     `run_step "test Phase 84 upgrade rollback policy checker" bun test scripts/check-v1-8-upgrade-rollback.test.ts`,
     `run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-v1-8-upgrade-rollback.ts`,

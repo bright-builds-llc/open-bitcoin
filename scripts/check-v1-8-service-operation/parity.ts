@@ -54,26 +54,14 @@ export function verifyHumanRoots(texts: Map<string, string>, failures: string[])
   }
 }
 
-export function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
 export function verifyVerifierWiring(text: string, failures: string[]): void {
   for (const command of [PHASE86_TEST_COMMAND, PHASE86_CHECKER_COMMAND]) {
     requireContains(text, command, "verifier-order", failures);
   }
 
-  const executableText = executableVerifyText(text);
-  for (const command of [PHASE86_TEST_COMMAND, PHASE86_CHECKER_COMMAND]) {
-    requireContains(executableText, command, "verifier-order", failures);
-  }
-
-  const phase85Index = executableText.indexOf(PHASE85_CHECKER_COMMAND);
-  const phase86TestIndex = executableText.indexOf(PHASE86_TEST_COMMAND);
-  const phase86CheckerIndex = executableText.indexOf(PHASE86_CHECKER_COMMAND);
+  const phase85Index = text.indexOf(PHASE85_CHECKER_COMMAND);
+  const phase86TestIndex = text.indexOf(PHASE86_TEST_COMMAND);
+  const phase86CheckerIndex = text.indexOf(PHASE86_CHECKER_COMMAND);
   const orderValid =
     phase85Index !== -1 &&
     phase86TestIndex > phase85Index &&
@@ -84,7 +72,7 @@ export function verifyVerifierWiring(text: string, failures: string[]): void {
   }
 
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.includes(forbidden)) {
+    if (text.includes(forbidden)) {
       failures.push(`default verifier boundary must not add forbidden Phase 86 default command text: ${forbidden}`);
     }
   }

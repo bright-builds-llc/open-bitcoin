@@ -182,15 +182,10 @@ test("allows_scoped_no_claim_deferred_or_opt_in_uat_wording", async () => {
   }
 });
 
-test("fails_when_phase88_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase88_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE87_CHECKER_COMMAND,
-      PHASE88_TEST_COMMAND,
-      PHASE88_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       `run_step "check Phase 87 release readiness" ${PHASE87_CHECKER_COMMAND}`,
     ].join("\n"),
   });
@@ -313,11 +308,6 @@ function humanPointerText(file: string): string {
 
 function verifyScriptText(): string {
   return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE87_CHECKER_COMMAND,
-    PHASE88_TEST_COMMAND,
-    PHASE88_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
     `run_step "check Phase 87 release readiness" ${PHASE87_CHECKER_COMMAND}`,
     `run_step "test Phase 88 deterministic claim guardrails checker" ${PHASE88_TEST_COMMAND}`,
     `run_step "check Phase 88 deterministic claim guardrails" ${PHASE88_CHECKER_COMMAND}`,

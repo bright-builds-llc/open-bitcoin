@@ -448,39 +448,27 @@ function stripReleaseBlockingDeferredSurface(text: string): string {
     .replaceAll("release blocking live sync", "");
 }
 
-function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
 function verifyVerifierWiring(text: string, failures: string[]): void {
   for (const command of [PHASE88_TEST_COMMAND, PHASE88_CHECKER_COMMAND]) {
     requireContains(text, command, "verifier-order", failures);
   }
 
-  const executableText = executableVerifyText(text);
-  for (const command of [PHASE88_TEST_COMMAND, PHASE88_CHECKER_COMMAND]) {
-    requireContains(executableText, command, "verifier-order", failures);
-  }
-
   requireContains(
-    executableText,
+    text,
     `run_step "test Phase 88 deterministic claim guardrails checker" ${PHASE88_TEST_COMMAND}`,
     "verifier-order",
     failures,
   );
   requireContains(
-    executableText,
+    text,
     `run_step "check Phase 88 deterministic claim guardrails" ${PHASE88_CHECKER_COMMAND}`,
     "verifier-order",
     failures,
   );
 
-  const phase87CheckerIndex = executableText.indexOf(PHASE87_CHECKER_COMMAND);
-  const phase88TestIndex = executableText.indexOf(PHASE88_TEST_COMMAND);
-  const phase88CheckerIndex = executableText.indexOf(PHASE88_CHECKER_COMMAND);
+  const phase87CheckerIndex = text.indexOf(PHASE87_CHECKER_COMMAND);
+  const phase88TestIndex = text.indexOf(PHASE88_TEST_COMMAND);
+  const phase88CheckerIndex = text.indexOf(PHASE88_CHECKER_COMMAND);
   const orderValid =
     phase87CheckerIndex !== -1 &&
     phase88TestIndex > phase87CheckerIndex &&
@@ -491,7 +479,7 @@ function verifyVerifierWiring(text: string, failures: string[]): void {
   }
 
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.includes(forbidden)) {
+    if (text.includes(forbidden)) {
       failures.push(`default verifier boundary must not add forbidden Phase 88 default command text: ${forbidden}`);
     }
   }

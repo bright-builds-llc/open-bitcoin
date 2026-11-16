@@ -240,15 +240,10 @@ test("fails_when_pointer_docs_duplicate_service_table", async () => {
   expect(failures.join("\n")).toContain("must not duplicate required text");
 });
 
-test("fails_when_phase86_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase86_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE85_CHECKER_COMMAND,
-      PHASE86_TEST_COMMAND,
-      PHASE86_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       `run_step "check Phase 85 operator runbooks" bun run scripts/check-v1-8-operator-runbooks.ts`,
     ].join("\n"),
   });
@@ -443,11 +438,6 @@ function humanPointerText(file: string): string {
 
 function verifyScriptText(): string {
   return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE85_CHECKER_COMMAND,
-    PHASE86_TEST_COMMAND,
-    PHASE86_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
     `run_step "check Phase 85 operator runbooks" bun run scripts/check-v1-8-operator-runbooks.ts`,
     `run_step "test Phase 86 service operation expectations checker" bun test scripts/check-v1-8-service-operation.test.ts`,
     `run_step "check Phase 86 service operation expectations" bun run scripts/check-v1-8-service-operation.ts`,

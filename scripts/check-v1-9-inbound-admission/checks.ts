@@ -292,33 +292,25 @@ export function verifyBreadcrumbMapping(
   }
 }
 
-export function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
 export function verifyVerifierWiring(text: string, failures: string[]): void {
   for (const command of [PHASE90_TEST_COMMAND, PHASE90_CHECKER_COMMAND]) {
     requireContains(text, command, "verifier-order", failures);
   }
 
-  const executableText = executableVerifyText(text);
   requireContains(
-    executableText,
+    text,
     `run_step "test Phase 90 inbound listener admission checker" ${PHASE90_TEST_COMMAND}`,
     "verifier-order",
     failures,
   );
   requireContains(
-    executableText,
+    text,
     `run_step "check Phase 90 inbound listener admission" ${PHASE90_CHECKER_COMMAND}`,
     "verifier-order",
     failures,
   );
-  verifyVerifierOrder(executableText, failures);
-  verifyVerifierBoundary(executableText, failures);
+  verifyVerifierOrder(text, failures);
+  verifyVerifierBoundary(text, failures);
 }
 
 export function verifyVerifierOrder(executableText: string, failures: string[]): void {

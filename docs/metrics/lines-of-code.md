@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,766 |
-| Total lines | 544,095 |
-| Code/content lines | 478,649 |
+| Total lines | 543,922 |
+| Code/content lines | 478,492 |
 | Comment-only lines | 28,443 |
-| Blank lines | 37,003 |
+| Blank lines | 36,987 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,402 | 225,621 | 17,171 | 15,610 |
 | Rust production | 594 | 174,908 | 153,269 | 7,853 | 13,786 |
-| TypeScript/Bun scripts | 332 | 92,345 | 82,399 | 3,304 | 6,642 |
+| TypeScript/Bun scripts | 332 | 92,172 | 82,242 | 3,304 | 6,626 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,820 | 4,278 | 94 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -141,43 +141,43 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v1-7-soak-runner.ts | 390 |
 | scripts/check-v1-7-support-bundle.test.ts | 333 |
 | scripts/check-v1-7-support-bundle.ts | 324 |
-| scripts/check-v1-8-claim-guardrails.test.ts | 325 |
-| scripts/check-v1-8-claim-guardrails.ts | 510 |
-| scripts/check-v1-8-operator-runbooks.test.ts | 451 |
+| scripts/check-v1-8-claim-guardrails.test.ts | 315 |
+| scripts/check-v1-8-claim-guardrails.ts | 498 |
+| scripts/check-v1-8-operator-runbooks.test.ts | 441 |
 | scripts/check-v1-8-operator-runbooks.ts | 14 |
 | scripts/check-v1-8-operator-runbooks/checks.ts | 322 |
 | scripts/check-v1-8-operator-runbooks/constants.ts | 237 |
-| scripts/check-v1-8-operator-runbooks/parity.ts | 78 |
-| scripts/check-v1-8-production-claim.test.ts | 439 |
-| scripts/check-v1-8-production-claim.ts | 620 |
-| scripts/check-v1-8-release-readiness.test.ts | 394 |
-| scripts/check-v1-8-release-readiness.ts | 455 |
-| scripts/check-v1-8-service-operation.test.ts | 455 |
+| scripts/check-v1-8-operator-runbooks/parity.ts | 66 |
+| scripts/check-v1-8-production-claim.test.ts | 434 |
+| scripts/check-v1-8-production-claim.ts | 611 |
+| scripts/check-v1-8-release-readiness.test.ts | 384 |
+| scripts/check-v1-8-release-readiness.ts | 443 |
+| scripts/check-v1-8-service-operation.test.ts | 445 |
 | scripts/check-v1-8-service-operation.ts | 14 |
 | scripts/check-v1-8-service-operation/checks.ts | 332 |
 | scripts/check-v1-8-service-operation/constants.ts | 227 |
-| scripts/check-v1-8-service-operation/parity.ts | 91 |
-| scripts/check-v1-8-support-matrix.test.ts | 601 |
+| scripts/check-v1-8-service-operation/parity.ts | 79 |
+| scripts/check-v1-8-support-matrix.test.ts | 589 |
 | scripts/check-v1-8-support-matrix.ts | 14 |
 | scripts/check-v1-8-support-matrix/checks.ts | 342 |
 | scripts/check-v1-8-support-matrix/constants.ts | 192 |
-| scripts/check-v1-8-support-matrix/parity.ts | 153 |
-| scripts/check-v1-8-upgrade-rollback.test.ts | 461 |
-| scripts/check-v1-8-upgrade-rollback.ts | 545 |
+| scripts/check-v1-8-support-matrix/parity.ts | 142 |
+| scripts/check-v1-8-upgrade-rollback.test.ts | 451 |
+| scripts/check-v1-8-upgrade-rollback.ts | 533 |
 | scripts/check-v1-9-address-discovery.test.ts | 466 |
 | scripts/check-v1-9-address-discovery.ts | 513 |
 | scripts/check-v1-9-dos-governance.test.ts | 440 |
 | scripts/check-v1-9-dos-governance.ts | 521 |
-| scripts/check-v1-9-inbound-admission.test.ts | 465 |
+| scripts/check-v1-9-inbound-admission.test.ts | 460 |
 | scripts/check-v1-9-inbound-admission.ts | 14 |
-| scripts/check-v1-9-inbound-admission/checks.ts | 348 |
+| scripts/check-v1-9-inbound-admission/checks.ts | 340 |
 | scripts/check-v1-9-inbound-admission/constants.ts | 268 |
 | scripts/check-v1-9-inbound-admission/parity.ts | 90 |
 | scripts/check-v1-9-inbound-metrics.test.ts | 479 |
 | scripts/check-v1-9-inbound-metrics.ts | 448 |
-| scripts/check-v1-9-peer-permissions.test.ts | 431 |
+| scripts/check-v1-9-peer-permissions.test.ts | 426 |
 | scripts/check-v1-9-peer-permissions.ts | 14 |
-| scripts/check-v1-9-peer-permissions/checks.ts | 346 |
+| scripts/check-v1-9-peer-permissions/checks.ts | 338 |
 | scripts/check-v1-9-peer-permissions/constants.ts | 253 |
 | scripts/check-v1-9-peer-permissions/parity.ts | 122 |
 | scripts/check-v1-9-peer-policy-bridge.test.ts | 321 |
@@ -413,7 +413,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 68fcc0dcdf9a4f903598e7fbc7214e6ec87f3c6b15f1cfc8cd9dc8d7c11a8d9b |
+| Input fingerprint | c7c461486cef41c4c61b14222b50bf4ae0d207f42e9f175a5fa486efe0a4887c |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

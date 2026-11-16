@@ -303,16 +303,10 @@ test("fails_when_parity_roots_omit_requirement_or_support_matrix_evidence", asyn
   expect(missingEvidenceFailures.join("\n")).toContain("parity root");
 });
 
-test("fails_when_phase83_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase83_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE82_TEST_COMMAND,
-      PHASE82_CHECKER_COMMAND,
-      PHASE83_TEST_COMMAND,
-      PHASE83_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       `run_step "test Phase 82 production claim boundary checker" bun test scripts/check-v1-8-production-claim.test.ts`,
       `run_step "check Phase 82 production claim boundary" bun run scripts/check-v1-8-production-claim.ts`,
     ].join("\n"),
@@ -587,12 +581,6 @@ function migrationCatalogText(): string {
 
 function verifyScriptText(): string {
   return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE82_TEST_COMMAND,
-    PHASE82_CHECKER_COMMAND,
-    PHASE83_TEST_COMMAND,
-    PHASE83_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
     `run_step "test Phase 82 production claim boundary checker" bun test scripts/check-v1-8-production-claim.test.ts`,
     `run_step "check Phase 82 production claim boundary" bun run scripts/check-v1-8-production-claim.ts`,
     `run_step "test Phase 83 support matrix issue evidence checker" bun test scripts/check-v1-8-support-matrix.test.ts`,

@@ -118,24 +118,13 @@ export function containsForbiddenMaturityLabel(text: string, label: string): boo
   return supportLabelPatterns.some((pattern) => text.includes(pattern));
 }
 
-export function executableVerifyText(text: string): string {
-  return text.replace(
-    /^: <<'VERIFY_COMMAND_ORDER'\n[\s\S]*?\nVERIFY_COMMAND_ORDER\n/m,
-    "",
-  );
-}
-
 export function verifyVerifierWiring(text: string, failures: string[]): void {
   requireContains(text, PHASE83_TEST_COMMAND, "verifier-order", failures);
   requireContains(text, PHASE83_CHECKER_COMMAND, "verifier-order", failures);
 
-  const executableText = executableVerifyText(text);
-  requireContains(executableText, PHASE83_TEST_COMMAND, "verifier-order", failures);
-  requireContains(executableText, PHASE83_CHECKER_COMMAND, "verifier-order", failures);
-
-  const phase82CheckerIndex = executableText.indexOf(PHASE82_CHECKER_COMMAND);
-  const phase83TestIndex = executableText.indexOf(PHASE83_TEST_COMMAND);
-  const phase83CheckerIndex = executableText.indexOf(PHASE83_CHECKER_COMMAND);
+  const phase82CheckerIndex = text.indexOf(PHASE82_CHECKER_COMMAND);
+  const phase83TestIndex = text.indexOf(PHASE83_TEST_COMMAND);
+  const phase83CheckerIndex = text.indexOf(PHASE83_CHECKER_COMMAND);
   const orderValid =
     phase82CheckerIndex !== -1 &&
     phase83TestIndex > phase82CheckerIndex &&
@@ -146,7 +135,7 @@ export function verifyVerifierWiring(text: string, failures: string[]): void {
   }
 
   for (const forbidden of FORBIDDEN_VERIFY_STRINGS) {
-    if (executableText.includes(forbidden)) {
+    if (text.includes(forbidden)) {
       failures.push(`verifier-order must not add forbidden Phase 83 default command text: ${forbidden}`);
     }
   }

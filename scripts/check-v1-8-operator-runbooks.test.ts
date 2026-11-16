@@ -250,15 +250,10 @@ test("fails_when_parity_roots_omit_runbook_requirement_or_evidence", async () =>
   expect(missingEvidenceFailures.join("\n")).toContain("parity root");
 });
 
-test("fails_when_phase85_verify_commands_exist_only_in_legacy_heredoc", async () => {
+test("fails_when_phase85_verify_commands_are_missing", async () => {
   // Arrange
   const root = await createFixture({
     maybeVerifyScript: [
-      ": <<'VERIFY_COMMAND_ORDER'",
-      PHASE84_CHECKER_COMMAND,
-      PHASE85_TEST_COMMAND,
-      PHASE85_CHECKER_COMMAND,
-      "VERIFY_COMMAND_ORDER",
       `run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-v1-8-upgrade-rollback.ts`,
     ].join("\n"),
   });
@@ -439,11 +434,6 @@ function humanPointerText(file: string): string {
 
 function verifyScriptText(): string {
   return [
-    ": <<'VERIFY_COMMAND_ORDER'",
-    PHASE84_CHECKER_COMMAND,
-    PHASE85_TEST_COMMAND,
-    PHASE85_CHECKER_COMMAND,
-    "VERIFY_COMMAND_ORDER",
     `run_step "check Phase 84 upgrade rollback policy" bun run scripts/check-v1-8-upgrade-rollback.ts`,
     `run_step "test Phase 85 operator runbooks checker" bun test scripts/check-v1-8-operator-runbooks.test.ts`,
     `run_step "check Phase 85 operator runbooks" bun run scripts/check-v1-8-operator-runbooks.ts`,
