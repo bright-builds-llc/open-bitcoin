@@ -126,44 +126,6 @@ export const DENIED_OVERCLAIMS = [
   "destructive reindex",
 ] as const;
 
-export const POSITIVE_PATTERNS = [
-  /\bsupports\b/,
-  /\bprovides?\b/,
-  /\benables?\b/,
-  /\badds?\b/,
-  /\bimplements?\b/,
-  /\bships?\b/,
-  /\bproves?\b/,
-  /\bis supported\b/,
-  /\bis enabled\b/,
-  /\bis ready\b/,
-] as const;
-
-export const NO_CLAIM_MARKERS = [
-  "does not",
-  "do not",
-  "is not",
-  "are not",
-  "not a ",
-  "must not",
-  "not required",
-  "not supported",
-  "not run",
-  "without claiming",
-  "without making",
-  "without turning",
-  "without broadening",
-  "outside",
-  "out of scope",
-  "deferred",
-  "remain deferred",
-  "remains deferred",
-  "future",
-  "future-gated",
-  "no claim",
-  "optional uat",
-] as const;
-
 export type ClaimFile = (typeof CLAIM_FILES)[number];
 export type RequiredDocFile = (typeof REQUIRED_DOC_FILES)[number];
 export type SurfaceId = keyof typeof REQUIREMENTS_BY_SURFACE;

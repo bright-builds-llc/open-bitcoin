@@ -1,12 +1,16 @@
 import {
+  claimClauses,
+  hasNoClaimMarker,
+  hasPositiveClaim,
+  markdownParagraphs,
+  tableRowHasNoClaimStatus,
+} from "../checker-shared/claim-text.ts";
+import {
   CLAIM_FILES,
   D14_REQUIRED_FILES,
   DENIED_OVERCLAIMS,
-  NO_CLAIM_MARKERS,
-  POSITIVE_PATTERNS,
   V23_D14_SENTENCE,
   V24_PRUNE_SENTENCE,
-  type ClaimFile,
 } from "./constants.ts";
 
 export type TextCorpus = Map<string, string>;
@@ -49,63 +53,4 @@ export function checkClaims(texts: TextCorpus, failures: string[]): void {
       }
     }
   }
-}
-
-function markdownParagraphs(text: string): Array<{ startLine: number; text: string }> {
-  const paragraphs: Array<{ startLine: number; text: string }> = [];
-  let current: string[] = [];
-  let startLine = 1;
-  for (const [index, line] of text.split("\n").entries()) {
-    if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
-      if (current.length > 0) paragraphs.push({ startLine, text: current.join(" ") });
-      current = [];
-      paragraphs.push({ startLine: index + 1, text: line.trim() });
-      startLine = index + 2;
-      continue;
-    }
-    if (line.trim() === "") {
-      if (current.length > 0) paragraphs.push({ startLine, text: current.join(" ") });
-      current = [];
-      startLine = index + 2;
-      continue;
-    }
-    if (current.length === 0) startLine = index + 1;
-    current.push(line);
-  }
-  if (current.length > 0) paragraphs.push({ startLine, text: current.join(" ") });
-  return paragraphs;
-}
-
-function claimClauses(paragraph: string): string[] {
-  if (paragraph.startsWith("|") && paragraph.endsWith("|")) {
-    return paragraph
-      .slice(1, -1)
-      .split("|")
-      .map((value) => value.trim())
-      .filter((value) => value !== "");
-  }
-  return paragraph.split(/(?<=[.!?])\s+|\s+\|\s+/).filter((value) => value.trim() !== "");
-}
-
-function tableRowHasNoClaimStatus(paragraph: string): boolean {
-  if (!paragraph.startsWith("|") || !paragraph.endsWith("|")) return false;
-  return paragraph
-    .slice(1, -1)
-    .split("|")
-    .map((value) => value.trim().toLowerCase().replaceAll("`", ""))
-    .some((value) =>
-      ["deferred", "unsupported", "not allowed", "not allowed yet", "not run"].includes(value),
-    );
-}
-
-function hasPositiveClaim(text: string): boolean {
-  return POSITIVE_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-function hasNoClaimMarker(text: string): boolean {
-  return NO_CLAIM_MARKERS.some((marker) => text.includes(marker));
-}
-
-export function claimFiles(): readonly ClaimFile[] {
-  return CLAIM_FILES;
 }

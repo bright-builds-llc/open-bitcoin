@@ -29,6 +29,9 @@ const CHECKER_SOURCES = [
   "scripts/check-v2-3-release-boundary/constants.ts",
   "scripts/check-v2-3-release-boundary/claims.ts",
   "scripts/check-v2-3-release-boundary/verifier.ts",
+  "scripts/checker-shared/claim-text.ts",
+  "scripts/checker-shared/parity-index.ts",
+  "scripts/checker-shared/repo-paths.ts",
 ];
 
 test("passes_on_a_complete_fixture", () => {

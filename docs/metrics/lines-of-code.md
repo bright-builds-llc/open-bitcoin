@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,767 |
-| Total lines | 544,104 |
-| Code/content lines | 478,617 |
-| Comment-only lines | 28,476 |
-| Blank lines | 37,011 |
+| Included files | 1,770 |
+| Total lines | 543,966 |
+| Code/content lines | 478,486 |
+| Comment-only lines | 28,492 |
+| Blank lines | 36,988 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 764 | 258,453 | 225,655 | 17,181 | 15,617 |
 | Rust production | 595 | 175,039 | 153,360 | 7,876 | 13,803 |
-| TypeScript/Bun scripts | 332 | 92,172 | 82,242 | 3,304 | 6,626 |
+| TypeScript/Bun scripts | 335 | 92,034 | 82,111 | 3,320 | 6,603 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,820 | 4,278 | 94 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -313,23 +313,23 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-2-snapshot-recovery/source.ts | 293 |
 | scripts/check-v2-3-operator-evidence.test.ts | 145 |
 | scripts/check-v2-3-operator-evidence.ts | 450 |
-| scripts/check-v2-3-release-boundary.test.ts | 369 |
+| scripts/check-v2-3-release-boundary.test.ts | 372 |
 | scripts/check-v2-3-release-boundary.ts | 14 |
-| scripts/check-v2-3-release-boundary/checks.ts | 208 |
-| scripts/check-v2-3-release-boundary/claims.ts | 101 |
-| scripts/check-v2-3-release-boundary/constants.ts | 169 |
+| scripts/check-v2-3-release-boundary/checks.ts | 179 |
+| scripts/check-v2-3-release-boundary/claims.ts | 48 |
+| scripts/check-v2-3-release-boundary/constants.ts | 131 |
 | scripts/check-v2-3-release-boundary/test-fixtures.ts | 136 |
-| scripts/check-v2-3-release-boundary/verifier.ts | 58 |
-| scripts/check-v2-4-release-boundary.test.ts | 400 |
+| scripts/check-v2-3-release-boundary/verifier.ts | 15 |
+| scripts/check-v2-4-release-boundary.test.ts | 403 |
 | scripts/check-v2-4-release-boundary.ts | 14 |
-| scripts/check-v2-4-release-boundary/checks.ts | 256 |
-| scripts/check-v2-4-release-boundary/claims.ts | 111 |
-| scripts/check-v2-4-release-boundary/constants.ts | 215 |
+| scripts/check-v2-4-release-boundary/checks.ts | 225 |
+| scripts/check-v2-4-release-boundary/claims.ts | 56 |
+| scripts/check-v2-4-release-boundary/constants.ts | 177 |
 | scripts/check-v2-4-release-boundary/gap-closure.test.ts | 477 |
 | scripts/check-v2-4-release-boundary/gap-closure.ts | 148 |
 | scripts/check-v2-4-release-boundary/planning-sources.ts | 66 |
 | scripts/check-v2-4-release-boundary/test-fixtures.ts | 152 |
-| scripts/check-v2-4-release-boundary/verifier.ts | 66 |
+| scripts/check-v2-4-release-boundary/verifier.ts | 20 |
 | scripts/check-v2-5-basic-filters.test.ts | 218 |
 | scripts/check-v2-5-basic-filters.ts | 138 |
 | scripts/check-v2-5-filter-index.test.ts | 528 |
@@ -342,6 +342,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-5-prune-coordination.ts | 331 |
 | scripts/check-v2-5-prune-coordination/contracts.ts | 138 |
 | scripts/check-v2-5-prune-coordination/rust-evidence.ts | 96 |
+| scripts/checker-shared/claim-text.ts | 105 |
+| scripts/checker-shared/parity-index.ts | 35 |
+| scripts/checker-shared/repo-paths.ts | 49 |
 | scripts/command-timing-cli.ts | 90 |
 | scripts/command-timing-lock.ts | 165 |
 | scripts/command-timings.test.ts | 453 |
@@ -413,7 +416,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | adc80783d5eef20ac29c91a38722e3f5f3689d0e5f67329b1ff2b4592a8f453d |
+| Input fingerprint | f72566a688d729e4ba6d52f2b18de9e6e8cfc49f3296dc2bbea0ef07506f1e38 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

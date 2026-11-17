@@ -1,6 +1,14 @@
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 
+import {
+  asStringArray,
+  asSurfaceArray,
+  parseParityIndex,
+  sameMembers,
+  type ParityIndex,
+} from "../checker-shared/parity-index.ts";
+import { checkHistoricalPhasePaths, isInsideRepo } from "../checker-shared/repo-paths.ts";
 import { checkClaims } from "./claims.ts";
 import { checkGapClosureCompletion, pendingGapClosureRequirements } from "./gap-closure.ts";
 import {
@@ -22,21 +30,12 @@ import {
   allV24RequirementIds,
   checkedV24RequirementIds,
 } from "./constants.ts";
-import { checkHistoricalPhasePaths, checkUatCommands } from "./verifier.ts";
+import { checkUatCommands } from "./verifier.ts";
 import {
   checkArchivedAudit,
   checkPlanningSourceIdentity,
   resolvePlanningSource,
 } from "./planning-sources.ts";
-
-type ParitySurface = {
-  id?: unknown;
-  name?: unknown;
-  requirements?: unknown;
-  status?: unknown;
-  upstream?: { sources?: unknown; tests?: unknown };
-};
-type ParityIndex = { surfaces?: unknown; checklist?: { surfaces?: unknown } };
 
 /**
  * Returns Phase 151 parity, UAT, and release-boundary failures.
@@ -223,34 +222,4 @@ function checkRoadmapCoverage(roadmapText: string, failures: string[]): void {
     const requirementId = row.split("|")[1]?.trim() ?? row;
     failures.push(`ROADMAP coverage row ${requirementId} must be Complete`);
   }
-}
-
-function parseParityIndex(raw: string, failures: string[]): ParityIndex | null {
-  try {
-    return JSON.parse(raw) as ParityIndex;
-  } catch (error) {
-    failures.push(`invalid parity index JSON: ${String(error)}`);
-    return null;
-  }
-}
-
-export function isInsideRepo(repoRoot: string, absolutePath: string): boolean {
-  const relative = path.relative(repoRoot, absolutePath);
-  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
-function asSurfaceArray(value: unknown): ParitySurface[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is ParitySurface => typeof item === "object" && item !== null)
-    : [];
-}
-
-function asStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is string => typeof item === "string")
-    : [];
-}
-
-function sameMembers(actual: string[], expected: readonly string[]): boolean {
-  return actual.length === expected.length && expected.every((value) => actual.includes(value));
 }

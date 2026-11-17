@@ -34,6 +34,9 @@ const CHECKER_SOURCES = [
   "scripts/check-v2-4-release-boundary/constants.ts",
   "scripts/check-v2-4-release-boundary/claims.ts",
   "scripts/check-v2-4-release-boundary/verifier.ts",
+  "scripts/checker-shared/claim-text.ts",
+  "scripts/checker-shared/parity-index.ts",
+  "scripts/checker-shared/repo-paths.ts",
   "scripts/check-v2-4-release-boundary/gap-closure.ts",
   "scripts/check-v2-4-release-boundary/planning-sources.ts",
 ];

@@ -6,6 +6,14 @@ import {
   V23_REQUIREMENTS_MILESTONE_NEEDLE,
   resolvePlanningRequirementsSource,
 } from "../source-corpus.ts";
+import {
+  asStringArray,
+  asSurfaceArray,
+  parseParityIndex,
+  sameMembers,
+  type ParityIndex,
+} from "../checker-shared/parity-index.ts";
+import { checkHistoricalPhasePaths, isInsideRepo } from "../checker-shared/repo-paths.ts";
 import { checkClaims } from "./claims.ts";
 import {
   CLOSEOUT_SURFACE,
@@ -21,16 +29,7 @@ import {
   STORED_BLOCK_PRESENCE_GROUP,
   allV23RequirementIds,
 } from "./constants.ts";
-import { checkHistoricalPhasePaths, checkUatCommands } from "./verifier.ts";
-
-type ParitySurface = {
-  id?: unknown;
-  name?: unknown;
-  requirements?: unknown;
-  status?: unknown;
-  upstream?: { sources?: unknown; tests?: unknown };
-};
-type ParityIndex = { surfaces?: unknown; checklist?: { surfaces?: unknown } };
+import { checkUatCommands } from "./verifier.ts";
 
 export function checkPhase145ParityUatReleaseBoundary(maybeRepoRoot?: string): string[] {
   const repoRoot = path.resolve(
@@ -177,32 +176,4 @@ function checkRequirementCheckboxes(requirementsText: string, failures: string[]
       failures.push(`v2.3 requirement ${id} must be checked [x] exactly once`);
     }
   }
-}
-
-function parseParityIndex(raw: string, failures: string[]): ParityIndex | null {
-  try {
-    return JSON.parse(raw) as ParityIndex;
-  } catch (error) {
-    failures.push(`invalid parity index JSON: ${String(error)}`);
-    return null;
-  }
-}
-
-export function isInsideRepo(repoRoot: string, absolutePath: string): boolean {
-  const relative = path.relative(repoRoot, absolutePath);
-  return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
-}
-
-function asSurfaceArray(value: unknown): ParitySurface[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is ParitySurface => typeof item === "object" && item !== null)
-    : [];
-}
-
-function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function sameMembers(actual: string[], expected: readonly string[]): boolean {
-  return actual.length === expected.length && expected.every((value) => actual.includes(value));
 }
