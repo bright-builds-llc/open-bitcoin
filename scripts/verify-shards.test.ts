@@ -18,6 +18,8 @@ const HEAVY_SUITE_SHARDS: ReadonlyArray<readonly [string, string]> = [
   ["stress node peer filter 16 threads", "native-test-node"],
   ["cargo clippy", "checks"],
 ];
+// The node suite runs in two shards, each half selected by test name.
+const SPLIT_STEP = { label: "cargo test node", ownShard: "native-test-node", splitShard: "native-test-node-storage" };
 
 function runVerify(args: string[]): { status: number; stdout: string; stderr: string } {
   const result = Bun.spawnSync(["bash", "scripts/verify.sh", ...args], {
@@ -88,6 +90,21 @@ function planSteps(): Array<{ shard: string; label: string }> {
     const [shard, label] = line.split("\t");
     return { shard, label };
   });
+}
+
+// Plan rows without the second row of the split step, so each step appears once.
+function planStepsInOwnShard(): Array<{ shard: string; label: string }> {
+  return planSteps().filter((step) => !(step.label === SPLIT_STEP.label && step.shard === SPLIT_STEP.splitShard));
+}
+
+// What run_step executes for the split step under one shard ("" for a run
+// without --shard); the cargo command is replaced by a stub that prints it.
+function splitStepCommand(shard: string): string {
+  const helpers = path.join(REPO_ROOT, "scripts/verify/helpers.sh");
+  const script = `set -euo pipefail; source "${helpers}"; record_step_timing() { :; }; maybe_verify_shard="${shard}"; run_step "${SPLIT_STEP.label}" echo cargo test -p open-bitcoin-node`;
+  const result = Bun.spawnSync(["bash", "-c", script], { cwd: REPO_ROOT, stdout: "pipe", stderr: "pipe" });
+  expect(result.exitCode).toBe(0);
+  return result.stdout.toString("utf8").trim();
 }
 
 function registeredStepLabels(): string[] {
@@ -169,7 +186,7 @@ test("plan_assigns_every_full_contract_step_to_one_known_shard", () => {
   const registered = registeredStepLabels().filter((label) => label !== "ensure git hooks");
 
   // Act
-  const steps = planSteps();
+  const steps = planStepsInOwnShard();
 
   // Assert
   expect(steps.map((step) => step.label)).toEqual(registered);
@@ -215,13 +232,44 @@ test("every_shard_owns_at_least_one_step", () => {
 
 test("heavy_suites_stay_in_their_dedicated_shards", () => {
   // Arrange
-  const steps = new Map(planSteps().map((step) => [step.label, step.shard]));
+  const steps = new Map(planStepsInOwnShard().map((step) => [step.label, step.shard]));
 
   // Act
   const actual = HEAVY_SUITE_SHARDS.map(([label]) => [label, steps.get(label)]);
 
   // Assert
   expect(actual).toEqual(HEAVY_SUITE_SHARDS.map(([label, shard]) => [label, shard]));
+});
+
+test("only_the_node_suite_is_planned_in_two_shards", () => {
+  // Arrange
+  const steps = planSteps();
+
+  // Act
+  const repeated = steps.filter((step) => steps.filter((other) => other.label === step.label).length > 1);
+
+  // Assert
+  expect(repeated).toEqual([
+    { shard: SPLIT_STEP.ownShard, label: SPLIT_STEP.label },
+    { shard: SPLIT_STEP.splitShard, label: SPLIT_STEP.label },
+  ]);
+});
+
+test("node_suite_halves_select_and_skip_the_same_test_names", () => {
+  // Arrange
+  const unfiltered = "cargo test -p open-bitcoin-node";
+
+  // Act
+  const whole = splitStepCommand("");
+  const ownHalf = splitStepCommand(SPLIT_STEP.ownShard);
+  const splitHalf = splitStepCommand(SPLIT_STEP.splitShard);
+  const otherShard = splitStepCommand("native-test-rpc");
+
+  // Assert
+  expect(whole).toBe(unfiltered);
+  expect(splitHalf).toBe(`${unfiltered} -- storage::`);
+  expect(ownHalf).toBe(`${unfiltered} -- --skip storage::`);
+  expect(otherShard).toBe("");
 });
 
 test("shard_selection_is_refused_outside_the_full_contract", () => {

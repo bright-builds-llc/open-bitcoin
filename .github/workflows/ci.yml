@@ -25,6 +25,7 @@ jobs:
         shard:
           - checks
           - native-test-node
+          - native-test-node-storage
           - native-test-rpc
           - native-test
           - native-release

@@ -17,9 +17,11 @@ Options:
   --shard <name>
               Run only the steps of one shard of the full contract. The shards
               partition the contract, so running every shard equals a full run.
+              The node suite is split by test name between two shards.
   --parallel  Run the full contract with the checker-test shards concurrent
               beside the serial native shards. Same steps as a serial full run.
-  --plan      Print each step as "<shard><TAB><label>" without running it.
+  --plan      Print each step as "<shard><TAB><label>" without running it. A
+              step split between two shards is printed once per shard.
   --list-shards
               Print the shard names, one per line, and exit.
 EOF
@@ -39,6 +41,7 @@ readonly BUN_TEST_SAMPLING_PRELOAD="./scripts/verify/sample-checker-tests.ts"
 readonly VERIFY_SHARDS=(
   checks
   native-test-node
+  native-test-node-storage
   native-test-rpc
   native-test
   native-release
@@ -48,6 +51,14 @@ readonly VERIFY_SHARDS=(
   checker-tests-165
   checker-tests-other
 )
+# The node suite is the longest step, so shard runs split it in two by libtest
+# name: one shard selects SPLIT_STEP_FILTER, the step's own shard skips it. The
+# halves share one pattern, so together they run every test exactly once. A
+# run without --shard executes the step once, unfiltered. Both halves pass the
+# pattern after "--": Cargo skips doc tests when given a positional test name.
+readonly SPLIT_STEP_LABEL="cargo test node"
+readonly SPLIT_STEP_SHARD="native-test-node-storage"
+readonly SPLIT_STEP_FILTER="storage::"
 maybe_verify_shard=""
 verify_plan_only=0
 verify_parallel=0
@@ -472,6 +483,9 @@ run_step() {
   shard="$(step_shard "$label" "$@")"
   if [[ "$verify_plan_only" -eq 1 ]]; then
     printf '%s\t%s\n' "$shard" "$label"
+    if [[ "$label" == "$SPLIT_STEP_LABEL" ]]; then
+      printf '%s\t%s\n' "$SPLIT_STEP_SHARD" "$label"
+    fi
     return 0
   fi
   # The first step of a parallel run hands the whole contract to the shards.
@@ -479,6 +493,12 @@ run_step() {
   if [[ "$verify_parallel" -eq 1 ]]; then
     run_parallel_shards || exit "$?"
     exit 0
+  fi
+  if [[ "$label" == "$SPLIT_STEP_LABEL" && "$maybe_verify_shard" == "$SPLIT_STEP_SHARD" ]]; then
+    shard="$SPLIT_STEP_SHARD"
+    command_args+=(-- "$SPLIT_STEP_FILTER")
+  elif [[ "$label" == "$SPLIT_STEP_LABEL" && -n "$maybe_verify_shard" ]]; then
+    command_args+=(-- --skip "$SPLIT_STEP_FILTER")
   fi
   if [[ -n "$maybe_verify_shard" && "$shard" != "$maybe_verify_shard" ]]; then
     return 0
