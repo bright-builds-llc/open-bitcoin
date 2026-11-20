@@ -100,7 +100,9 @@ step_shard() {
   fi
 
   case "$label" in
-  "stress "* | "cargo test node") echo "native-test-node" ;;
+  # The stress steps ride with the lighter half of the split node suite.
+  "stress "*) echo "$SPLIT_STEP_SHARD" ;;
+  "cargo test node") echo "native-test-node" ;;
   "cargo test rpc") echo "native-test-rpc" ;;
   "cargo test "*) echo "native-test" ;;
   "cargo build" | "benchmark "* | "check benchmark report" | "bazel build" | "check Bazel build provenance" | "cargo llvm-cov "*)

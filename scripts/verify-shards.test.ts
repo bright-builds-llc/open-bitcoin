@@ -15,7 +15,7 @@ const HEAVY_SUITE_SHARDS: ReadonlyArray<readonly [string, string]> = [
   ["cargo test node", "native-test-node"],
   ["cargo test rpc", "native-test-rpc"],
   ["cargo test remainder", "native-test"],
-  ["stress node peer filter 16 threads", "native-test-node"],
+  ["stress node peer filter 16 threads", "native-test-node-storage"],
   ["cargo clippy", "checks"],
 ];
 // The node suite runs in two shards, each half selected by test name.
