@@ -53,9 +53,14 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 - Integration helpers avoid hard-coded ports and shared data directories so
   tests can run in parallel.
 
-## Known gaps
+## Pinned Knots process evidence
 
-- The harness does not yet build or spawn the vendored Knots daemon itself.
+The [CDIF-01 runner](../v2-6-knots-regtest-differential.md) builds
+`bitcoind` from the pinned Knots tree and manages both daemon processes for an
+isolated, one-block Regtest comparison. The tracked receipt identifies the
+Knots binary and records the observed result.
+
+## Known gaps
 - The upstream Python functional suite has not been translated wholesale.
 - Property-style tests are deterministic generated tests under `cargo test`,
   not a full cargo-fuzz/libFuzzer runtime.

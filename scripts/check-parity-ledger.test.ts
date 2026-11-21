@@ -24,7 +24,7 @@ function fixture(): LedgerInputs {
   return {
     requirementsText,
     index: structuredClone(currentIndex),
-    baseline: { gitlinkCommit: COMMIT, checkoutCommit: COMMIT },
+    baseline: { gitlinkCommit: COMMIT, checkoutCommit: COMMIT, checkoutTree: "643d6c87370510b5193461e37647526369dfe0b3" },
     isRegularFile: (relativePath) => {
       const full = join(ROOT, relativePath);
       return existsSync(full) && lstatSync(full).isFile();
@@ -41,7 +41,7 @@ function surface(inputs: LedgerInputs, id: string): Surface {
 
 test("current checkout has one v2.6 parity surface per approved requirement", () => {
   // Arrange
-  const expected = [];
+  const expected: string[] = [];
   // Act
   const failures = checkCurrentParityLedger(ROOT);
   // Assert
@@ -183,14 +183,35 @@ test("source-bound daemon receipt can qualify its evidence class", () => {
   expect(failures).toEqual([]);
 });
 
+test.each([
+  ["source tree", { source_tree: "0".repeat(40) }, "receipt lacks the pinned tree or daemon build inputs"],
+  ["submitted bytes", { block_sha256: "0".repeat(64) }, "receipt does not match the canonical height-one Regtest input"],
+  ["Knots process result", { knots: { exit_status: 1 } }, "receipt lacks the expected isolated knots process outcome"],
+])("CDIF-01 rejects a passing receipt with a wrong %s", (_field, replacement, expected) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-cdif-01").differential_receipt;
+  const readTextFile = inputs.readTextFile;
+  inputs.readTextFile = (relativePath) => {
+    const text = readTextFile(relativePath);
+    return relativePath === receipt ? JSON.stringify({ ...JSON.parse(text), ...replacement }) : text;
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual([`v2-6-cdif-01: ${expected}`]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-cdif-01").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-cdif-02").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-cdif-01: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-cdif-02: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

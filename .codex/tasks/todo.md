@@ -1819,3 +1819,16 @@ Verification update (2026-11-08): CI on `3606113c` stopped in the Phase 159 Bun 
 Verification update (2026-11-08): CI on `6da3a40c` passed Phase 159, then 26 imported and parent Phase 164 checks exceeded Bun's 5-second default on a slower runner. Pinned Bun 1.3.9 proved that a timeout set after static imports does not affect imported registrations, while setting it inside the imported historical suite covers both imported and parent tests. The Phase 164 suite now uses a 20-second harness limit; three representative timed-out controls and current Phase 164/165 checkers pass. Final full pre-push and CI remain pending.
 
 Final completion review (2026-11-08): The direct-main parity workflow and ledger cutover are on `main` through `6f013da3`; local and remote SHAs match. The latest automatic pre-push gate passed the complete native/Bazel/coverage verifier, and CI run `42475480412` passed its hook and full verifier steps with no uncovered pure-core lines. The ledger retains 15 completed requirement mappings and 15 planned owners against the pinned Knots baseline. The active verifier uses the parity ledger, historical links remain checked, and `.planning/` has no migration changes. This task-note-only closeout is the bounded workflow trial. Residual scope: tracked `.planning/` pruning needs a separate reviewed cleanup, and actual pinned-Knots daemon differential qualification remains future work; no Phase 168 work began.
+
+## task-cdif-01-pinned-knots-runner | 2026-11-21 | Run the pinned Knots daemon differential
+
+- [x] Sync main and identify the pinned build, ordinary RPC route and first canonical Regtest corpus block.
+- [x] Build a reproducible local runner and exercise both real daemons with the same serialized input.
+- [x] Record the bounded receipt and check the ledger, focused regressions and final diff.
+- [x] Confirm the hooks are active and prepare the direct-main delivery.
+
+Completion review (2026-11-21): Both source-built daemons accepted the same
+height-one Regtest block and shut down cleanly. The tracked receipt binds the
+Knots tree and executable to the run. A live tip-mismatch control failed as
+expected. The repo-managed pre-push verifier and the commit's GitHub Actions
+runs track delivery. `CDIF-02` and broader parity remain planned.

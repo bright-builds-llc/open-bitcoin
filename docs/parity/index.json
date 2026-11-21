@@ -1151,10 +1151,35 @@
       {
         "id": "v2-6-cdif-01",
         "title": "Actual pinned Knots daemon differential runner",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CDIF-01"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/cdif-01-regtest.json",
+          "scripts/run-knots-regtest-differential.ts",
+          "scripts/knots-regtest/build.ts",
+          "scripts/knots-regtest/daemon.ts",
+          "scripts/knots-regtest/regtest-case.ts",
+          "packages/testdata/phase167/regtest-history.json"
+        ],
+        "evidence_classes": ["knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/cdif-01-regtest.json",
+        "knots_binary_sha256": "cc936db60787b2a42a99d8760d5f0e16e72cdd2d44f2bcbb4303349df8f2ac98",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/CMakeLists.txt",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/httprpc.cpp",
+            "packages/bitcoin-knots/src/rpc/mining.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/util/fs_helpers.cpp"
+          ]
+        },
+        "rationale": "Actual Knots bitcoind built from the approved Git archive and the ordinary Open Bitcoin daemon each started with canonical Regtest genesis, validated the same serialized height-one block over loopback RPC and exited cleanly.",
+        "known_gaps": [
+          "One bounded, local Regtest case. Maturity and halvings, invalid-case comparisons, UTXO/work/BASIC observations and complete qualification invalidation have separate requirement owners.",
+          "Public networking, whole-chain validation, production service and wallet readiness require separate evidence."
+        ]
       },
       {
         "id": "v2-6-cdif-02",

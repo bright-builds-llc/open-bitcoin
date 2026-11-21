@@ -162,8 +162,8 @@ filesystem effects, while pre-admission incompatible-source refusal preserves
 the source within its finite checks. Networking remains default off. Mainnet,
 testnet3 and Signet ordinary configuration remain refused; default Signet also
 lacks challenge validation. The generic `require_ordinary_history()` gate
-remains false for every selector. Actual pinned-Knots daemon differential,
-whole-chain, public-default networking, unattended full sync,
-production-service and production-funds qualification remain deferred. The
-canonical RPC context carries `WalletState::Unavailable`; no wallet authority
-is claimed. Phase 168 owns actual pinned-daemon differential work.
+remains false for every selector. Whole-chain, public-default networking,
+unattended full sync, production-service and production-funds qualification
+remain deferred. The canonical RPC context carries `WalletState::Unavailable`.
+The [CDIF-01 receipt](v2-6-knots-regtest-differential.md) separately records an
+actual pinned-Knots daemon comparison for one Regtest block.

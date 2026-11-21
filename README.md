@@ -74,6 +74,8 @@ Phase 167 source-bound seeded Mainnet and Testnet3 script cases, Mainnet BIP30 r
 
 Mainnet, testnet3 and Signet ordinary configuration remain refused.
 
+The following limits describe the Phase 167 evidence.
+
 Actual pinned-Knots daemon differential, whole-chain, public-default, production-service and production-funds qualification remain deferred.
 
 Wallet authority remains unavailable.
@@ -85,6 +87,14 @@ exact historical case identities and finite source limits. Use only a disposable
 already proved and closed datadir for operator review. Networking stays off by
 default; no unattended acquisition or wallet authority follows from the
 local route.
+
+## Current v2.6 pinned Knots Regtest runner
+
+CDIF-01 ran Open Bitcoin and the pinned Bitcoin Knots daemon in isolated
+Regtest datadirs. Both accepted the same serialized height-one block and
+reported the same tip. The
+[runner and receipt](./docs/parity/v2-6-knots-regtest-differential.md) cover
+that one-block comparison. CDIF-02 owns the maturity and halving comparison.
 
 ## Archived releases and historical scope
 
@@ -361,7 +371,7 @@ guardrails.
 | P2P networking and sync                   | Handshake, peer lifecycle, headers, blocks, inventory, tx relay          | ✓ done       | [`catalog/p2p.md`](./docs/parity/catalog/p2p.md)                                                     | v2.1 adds bounded, explicit, default-off block serving and compact-block relay with aggregate local evidence; package relay, bloom/filter serving, public defaults, archive/production-scale serving, public-network gates, and production readiness remain deferred.                                                                                                     |
 | Wallet                                    | Descriptors, addresses, balances, UTXOs, coin selection, signing         | ✓ done       | [`catalog/wallet.md`](./docs/parity/catalog/wallet.md)                                               | HD, multisig, PSBT, encryption, and external signers remain follow-up surfaces.                                                                                                                                                                                                                                                                                           |
 | RPC, CLI, and config                      | Local JSON-RPC, `bitcoin-cli`-style flags, config, auth, operator flows  | ✓ done       | [`catalog/rpc-cli-config.md`](./docs/parity/catalog/rpc-cli-config.md)                               | The supported slice is single-wallet and local-operator focused. Phase 137 adds Knots-named `testmempoolaccept`/`submitpackage` plus the `openbitcoinpackage` / `open-bitcoin package` extension.                                                                                                                                                                         |
-| Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets                      | ✓ done       | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md)               | Managed Knots process spawning and full upstream Python-suite coverage are deferred.                                                                                                                                                                                                                                                                                      |
+| Verification harnesses and property tests | Functional-suite concepts and fuzz/property targets                      | ✓ done       | [`catalog/verification-harnesses.md`](./docs/parity/catalog/verification-harnesses.md)               | CDIF-01 manages both daemon processes for one Regtest case. Full upstream Python-suite coverage is deferred.                                                                                                                                                                                                                                                                                      |
 | Benchmarks and audit readiness            | Benchmark mappings and release-review evidence                           | ✓ done       | [`docs/parity/release-readiness.md`](./docs/parity/release-readiness.md)                             | Benchmarks are audit and trend evidence, not release timing gates.                                                                                                                                                                                                                                                                                                        |
 
 ## Open Bitcoin Differentiators
