@@ -28,3 +28,8 @@ opt-level = 2
 debug = "line-tables-only"
 debug-assertions = true
 overflow-checks = true
+
+# The node crate is most of the workspace's build time. Level 1 builds it about
+# a quarter faster than level 2 and its tests run at the same speed.
+[profile.test.package.open-bitcoin-node]
+opt-level = 1
