@@ -4,9 +4,11 @@
 //! Same-executable scratch recovery. The parent alone owns source and cleanup.
 
 use super::{
-    InspectedRecords, OperationLease, ScratchGuard, StorageError, copy, inspection_error,
+    InspectedRecords, LogicalInventory, OperationLease, ScratchGuard, StorageError, copy,
+    inspection_error,
     protocol::{self, OwnedScratchJob, WorkerJob},
 };
+use crate::storage::fjall_store::tracked::RecordSource;
 #[cfg(unix)]
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::{
@@ -76,7 +78,7 @@ fn run_child() -> Result<(), StorageError> {
     drop(inventory);
     let records = {
         let _scratch_lease = OperationLease::acquire(&database)?;
-        raw_recover(&database)?
+        recover_inventory(&database, operation.inventory())?
     };
     // DatabaseInner::drop stops and joins Fjall workers before returning. No
     // database/keyspace/lease owner escapes the scope above, even on refusal.
@@ -87,7 +89,7 @@ fn run_child() -> Result<(), StorageError> {
         #[cfg(test)]
         history_stage(job, 2)?;
     }
-    let mut output = job.result_file(true)?;
+    let mut output = operation.result_file(true)?;
     #[cfg(test)]
     if tests::child_output(job, &mut output)? {
         return Ok(());
@@ -119,15 +121,22 @@ fn check_private_layout(root: &Path) -> Result<(), StorageError> {
     Ok(())
 }
 
-// Only run_child and the separately controlled raw-pin characterization call
-// this adapter. The live inspecting parent never opens a scratch backend.
+#[cfg(test)]
 pub(super) fn raw_recover(database_path: &Path) -> Result<InspectedRecords, StorageError> {
+    recover_inventory(database_path, LogicalInventory::Ordinary)
+}
+
+// The inspecting parent never opens a scratch backend.
+fn recover_inventory(
+    database_path: &Path,
+    inventory: LogicalInventory,
+) -> Result<InspectedRecords, StorageError> {
     let database = fjall::Database::builder(database_path)
         .worker_threads(1)
         .cache_size(8 * 1024 * 1024)
         .open()
         .map_err(|_| refused())?;
-    InspectedRecords::read_existing(&database)
+    database.read_existing_records(inventory)
 }
 
 fn job(scratch: &ScratchGuard) -> Result<OwnedScratchJob, StorageError> {
@@ -163,26 +172,26 @@ fn job(scratch: &ScratchGuard) -> Result<OwnedScratchJob, StorageError> {
 }
 
 pub(super) fn recover(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
-    recover_operation(scratch, None)
+    recover_operation(scratch, WorkerJob::Generic)
+}
+
+pub(super) fn recover_prune_proof(scratch: &ScratchGuard) -> Completion<InspectedRecords> {
+    recover_operation(scratch, WorkerJob::PruneProof)
 }
 
 pub(super) fn recover_history(
     scratch: &ScratchGuard,
     selected: open_bitcoin_core::consensus::CanonicalChain,
 ) -> Completion<InspectedRecords> {
-    recover_operation(scratch, Some(selected))
+    recover_operation(scratch, |job| WorkerJob::history(job, selected))
 }
 
 fn recover_operation(
     scratch: &ScratchGuard,
-    maybe_selected: Option<open_bitcoin_core::consensus::CanonicalChain>,
+    wrap: impl FnOnce(OwnedScratchJob) -> WorkerJob,
 ) -> Completion<InspectedRecords> {
     let result = (|| {
-        let job = job(scratch)?;
-        let operation = match maybe_selected {
-            None => WorkerJob::Generic(job),
-            Some(selected) => WorkerJob::history(job, selected),
-        };
+        let operation = wrap(job(scratch)?);
         let bytes = operation.encode()?;
         let executable = std::env::current_exe().map_err(|_| refused())?;
         let mut command = Command::new(executable);
@@ -224,7 +233,7 @@ fn recover_operation(
     });
     let outcome = monitor(&mut child, &operation, started, &receiver);
     #[cfg(test)]
-    if maybe_selected.is_some() {
+    if operation.maybe_history_selection().is_some() {
         let stage = fs::read(scratch.root.join("history-stage"))
             .ok()
             .and_then(|bytes| {
@@ -253,6 +262,7 @@ fn monitor(
     started: Instant,
     receiver: &mpsc::Receiver<std::io::Result<()>>,
 ) -> Completion<InspectedRecords> {
+    #[cfg(test)]
     let job = operation.owned();
     let mut delivered = false;
     loop {
@@ -273,7 +283,7 @@ fn monitor(
                 inspection_error("inspection worker deadline exceeded"),
             );
         }
-        if job.result_file(false).is_err() {
+        if operation.result_file(false).is_err() {
             return terminate(child, refused());
         }
         #[cfg(test)]
@@ -296,15 +306,14 @@ fn finish(
     delivered: bool,
     operation: &WorkerJob,
 ) -> Result<InspectedRecords, StorageError> {
-    let job = operation.owned();
     if !status.success() || !delivered {
         return Err(refused());
     }
-    let file = job.result_file(false)?;
+    let file = operation.result_file(false)?;
     let length = file.metadata().map_err(|_| refused())?.len();
     let records = operation.read_result(&file, length)?;
     // Recheck both opened and selected metadata after bounded decoding.
-    let selected = job.result_file(false)?;
+    let selected = operation.result_file(false)?;
     if selected.metadata().map_err(|_| refused())?.len() != length {
         return Err(refused());
     }

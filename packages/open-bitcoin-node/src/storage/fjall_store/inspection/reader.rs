@@ -7,8 +7,24 @@ use fjall::{Database, KeyspaceCreateOptions, Readable};
 use std::collections::BTreeMap;
 
 /// Complete untrusted logical bytes, with missing namespaces and rows preserved.
+#[derive(PartialEq, Eq)]
 pub(in crate::storage) struct InspectedRecords {
     pub(super) namespaces: BTreeMap<String, BTreeMap<Vec<u8>, Vec<u8>>>,
+}
+
+#[derive(Clone, Copy)]
+pub(in crate::storage) enum LogicalInventory {
+    Ordinary,
+    RegtestPruneProof,
+}
+
+impl LogicalInventory {
+    pub(in crate::storage) fn entry_limit(self) -> usize {
+        match self {
+            Self::Ordinary => copy::MAX_ENTRIES,
+            Self::RegtestPruneProof => 8192,
+        }
+    }
 }
 
 impl InspectedRecords {
@@ -40,14 +56,17 @@ impl InspectedRecords {
     pub(in crate::storage) fn read_existing(
         database: &impl RecordSource,
     ) -> Result<Self, StorageError> {
-        database.read_existing_records()
+        database.read_existing_records(LogicalInventory::Ordinary)
     }
 }
 
 impl sealed::Sealed for Database {}
 
 impl RecordSource for Database {
-    fn read_existing_records(&self) -> Result<InspectedRecords, StorageError> {
+    fn read_existing_records(
+        &self,
+        inventory: LogicalInventory,
+    ) -> Result<InspectedRecords, StorageError> {
         let database = self;
         if database.keyspace_count() > copy::MAX_ENTRIES {
             return Err(inspection_error(
@@ -58,7 +77,7 @@ impl RecordSource for Database {
         let mut namespaces = BTreeMap::new();
         let snapshot = database.snapshot();
         for name in database.list_keyspace_names() {
-            budget.add(name.len() as u64, 0)?;
+            budget.add_with_entry_limit(name.len() as u64, 0, inventory.entry_limit())?;
             if !database.keyspace_exists(&name) {
                 return Err(inspection_error("inspection existing namespace changed"));
             }
@@ -72,7 +91,11 @@ impl RecordSource for Database {
                 let (key, value) = guard
                     .into_inner()
                     .map_err(|_| inspection_error("inspection existing record unreadable"))?;
-                budget.add(record_length(&key, &value)?, 0)?;
+                budget.add_with_entry_limit(
+                    record_length(&key, &value)?,
+                    0,
+                    inventory.entry_limit(),
+                )?;
                 records.insert(key.to_vec(), value.to_vec());
             }
             namespaces.insert(name.to_string(), records);

@@ -85,12 +85,21 @@ pub(super) struct Budget {
 
 impl Budget {
     pub(super) fn add(&mut self, length: u64, depth: usize) -> Result<(), StorageError> {
+        self.add_with_entry_limit(length, depth, MAX_ENTRIES)
+    }
+
+    pub(super) fn add_with_entry_limit(
+        &mut self,
+        length: u64,
+        depth: usize,
+        entry_limit: usize,
+    ) -> Result<(), StorageError> {
         let maybe_entries = self.entries.checked_add(1);
         let maybe_bytes = self.bytes.checked_add(length);
         let (Some(entries), Some(bytes)) = (maybe_entries, maybe_bytes) else {
             return Err(inspection_error("inspection inventory arithmetic overflow"));
         };
-        if entries > MAX_ENTRIES || bytes > MAX_BYTES || depth > MAX_DEPTH {
+        if entries > entry_limit || bytes > MAX_BYTES || depth > MAX_DEPTH {
             return Err(inspection_error("inspection inventory limit exceeded"));
         }
         self.entries = entries;

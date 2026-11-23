@@ -30,6 +30,7 @@ pub(super) type Rows = BTreeMap<Vec<u8>, Vec<u8>>;
 pub(super) type Namespaces = BTreeMap<String, Rows>;
 /// Total bounded graph, including the retained replacement and its next block.
 pub(in crate::storage) const MAX_HISTORY_BLOCKS: usize = 306;
+const MAX_PRUNED_REGTEST_REPLAY_BLOCKS: usize = 1024;
 
 impl crate::FjallNodeStore {
     /// Existing total retained graph envelope of safe canonical-history reopen.
@@ -49,6 +50,7 @@ pub(in crate::storage) struct CanonicalHistoryRecords {
     pub(super) validation: HashMap<BlockHash, history::ValidationHistoryRecord>,
     pub(super) coverage: history::ValidationCoverage,
     pub(super) basic: Rows,
+    pub(super) replay_limit: usize,
     source: [u8; 32],
 }
 
@@ -70,7 +72,25 @@ impl CanonicalHistoryRecords {
     }
 
     pub(super) fn parse_rows(namespaces: &Namespaces) -> Result<Self, Refusal> {
-        inventory(namespaces)?;
+        Self::parse_with_limits(namespaces, MAX_HISTORY_BLOCKS, 4096)
+    }
+
+    pub(super) fn parse_pruned_regtest_archive(namespaces: &Namespaces) -> Result<Self, Refusal> {
+        let entries = fjall_store::inspection::LogicalInventory::RegtestPruneProof.entry_limit();
+        let records =
+            Self::parse_with_limits(namespaces, MAX_PRUNED_REGTEST_REPLAY_BLOCKS, entries)?;
+        if records.chain != CanonicalChain::Regtest {
+            return Err(Refusal::InconsistentGenesis);
+        }
+        Ok(records)
+    }
+
+    fn parse_with_limits(
+        namespaces: &Namespaces,
+        replay_limit: usize,
+        entry_limit: usize,
+    ) -> Result<Self, Refusal> {
+        inventory_with_limit(namespaces, entry_limit)?;
         let schema = namespace(namespaces, "schema")?;
         if required(schema, "schema_version")? != b"2" {
             return Err(Refusal::MalformedRecord);
@@ -104,9 +124,9 @@ impl CanonicalHistoryRecords {
             snapshots::encode_chain_meta(&active_chain, Some(&counts)),
         )?;
         if active_chain.is_empty()
-            || active_chain.len() > MAX_HISTORY_BLOCKS
-            || headers.len() > MAX_HISTORY_BLOCKS
-            || index.len() > MAX_HISTORY_BLOCKS
+            || active_chain.len() > replay_limit
+            || headers.len() > replay_limit
+            || index.len() > replay_limit
         {
             return Err(Refusal::UnsupportedHistory);
         }
@@ -175,6 +195,7 @@ impl CanonicalHistoryRecords {
             validation,
             coverage,
             basic,
+            replay_limit,
             source: source_digest(namespaces),
         })
     }
@@ -229,6 +250,10 @@ fn strict_json(bytes: &[u8], encoded: Result<Vec<u8>, crate::StorageError>) -> R
 }
 
 fn inventory(all: &Namespaces) -> Result<(), Refusal> {
+    inventory_with_limit(all, 4096)
+}
+
+fn inventory_with_limit(all: &Namespaces, entry_limit: usize) -> Result<(), Refusal> {
     let mut entries = 0usize;
     let mut bytes = 0usize;
     for (namespace, rows) in all {
@@ -256,7 +281,7 @@ fn inventory(all: &Namespaces) -> Result<(), Refusal> {
                 .checked_add(key.len())
                 .and_then(|n| n.checked_add(value.len()))
                 .ok_or(Refusal::MalformedRecord)?;
-            if entries > 4096 || bytes > 536870912 || key.len() > 4096 {
+            if entries > entry_limit || bytes > 536870912 || key.len() > 4096 {
                 return Err(Refusal::MalformedRecord);
             }
             let authority = matches!(

@@ -22,6 +22,19 @@ pub use outbox::{AnnouncementOutboxNotification, AnnouncementOutboxRegistry};
 pub(super) mod filter_serving;
 use block_reconcile::PeerRequests;
 
+fn retained_peer_control(message: &WireNetworkMessage) -> bool {
+    matches!(
+        message,
+        WireNetworkMessage::Version(_)
+            | WireNetworkMessage::Verack
+            | WireNetworkMessage::WtxidRelay
+            | WireNetworkMessage::SendHeaders
+            | WireNetworkMessage::SendCompact(_)
+            | WireNetworkMessage::Ping { .. }
+            | WireNetworkMessage::Pong { .. }
+    )
+}
+
 struct PeerTurn<'turn> {
     peer_id: PeerId,
     progress: &'turn mut PeerProgress,
@@ -138,7 +151,11 @@ impl DurableSyncRuntime {
         mut outbound: Vec<WireNetworkMessage>,
         controls: (&mut C, &mut K),
     ) -> Result<(), SyncRuntimeError> {
-        outbound.extend(turn.requests.request_missing(self)?);
+        if self.pruned_regtest_serving {
+            outbound.retain(retained_peer_control);
+        } else {
+            outbound.extend(turn.requests.request_missing(self)?);
+        }
         if !turn.requests.renew(self, &outbound)? {
             return turn.requests.complete(self, turn.progress);
         }
@@ -177,6 +194,9 @@ impl DurableSyncRuntime {
                     }
                 }
                 SyncPeerReceiveOutcome::Idle => {
+                    if self.pruned_regtest_serving {
+                        return turn.requests.complete(self, turn.progress);
+                    }
                     let timestamp = (controls.0)();
                     if (controls.1)() {
                         return turn.requests.complete(self, turn.progress);
@@ -216,6 +236,21 @@ impl DurableSyncRuntime {
         current_timestamp: i64,
         should_cancel: &mut K,
     ) -> Result<bool, SyncRuntimeError> {
+        if self.pruned_regtest_serving
+            && !retained_peer_control(&message)
+            && !matches!(
+                message,
+                WireNetworkMessage::GetCFilters(_)
+                    | WireNetworkMessage::GetCFHeaders(_)
+                    | WireNetworkMessage::GetCFCheckpt(_)
+                    | WireNetworkMessage::MalformedCFRequest(_)
+            )
+        {
+            return Err(SyncRuntimeError::InvalidData {
+                message: "archive-backed peer session only accepts handshake and BASIC requests"
+                    .into(),
+            });
+        }
         let PeerTurn {
             peer_id,
             progress,
@@ -292,6 +327,7 @@ impl DurableSyncRuntime {
             sync_result
                 .outbound
                 .into_iter()
+                .filter(|message| !self.pruned_regtest_serving || retained_peer_control(message))
                 .map(|message| (peer_id, message))
                 .collect(),
         )?;
@@ -332,14 +368,16 @@ impl DurableSyncRuntime {
                 block_response_is_best_chain,
             )?;
         }
-        let reconcile_progress =
-            block_reconcile::reconcile_best_chain_for_live_session(self, current_timestamp)?;
-        should_persist_progress |= reconcile_progress.should_persist_progress();
-        self.record_reconcile_progress(reconcile_progress);
-        if should_persist_progress {
-            self.persist_progress_and_dispatch_tip()?;
+        if !self.pruned_regtest_serving {
+            let reconcile_progress =
+                block_reconcile::reconcile_best_chain_for_live_session(self, current_timestamp)?;
+            should_persist_progress |= reconcile_progress.should_persist_progress();
+            self.record_reconcile_progress(reconcile_progress);
+            if should_persist_progress {
+                self.persist_progress_and_dispatch_tip()?;
+            }
+            outbound.extend(requests.request_missing(self)?);
         }
-        outbound.extend(requests.request_missing(self)?);
         if !requests.renew(self, &outbound)? {
             return Ok(false);
         }

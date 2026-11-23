@@ -19,7 +19,7 @@ mod live;
 mod protocol;
 mod reader;
 mod worker;
-pub(in crate::storage) use reader::InspectedRecords;
+pub(in crate::storage) use reader::{InspectedRecords, LogicalInventory};
 pub(super) use worker::maybe_run;
 
 pub(in crate::storage) fn require_existing_namespaces(
@@ -67,6 +67,20 @@ pub(super) fn with_inspection<T>(
         worker::recover,
         |_, _, _| Ok(()),
         |records| validate(&records),
+    )
+}
+
+pub(super) fn inspect_prune_proof(
+    lease: &OperationLease,
+) -> Result<InspectedRecords, StorageError> {
+    inspect_owned_then(
+        lease,
+        worker::recover_prune_proof,
+        |_, _, _| Ok(()),
+        |records| {
+            require_existing_namespaces(&records)?;
+            Ok(records)
+        },
     )
 }
 

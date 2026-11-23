@@ -17,7 +17,7 @@ use super::super::{FjallNodeStore, StorageError, StorageNamespace, backend_failu
 pub(in crate::storage) const PRUNE_LOCKS_KEY: &str = "prune_locks";
 
 /// Fixed block-index key for the support-evidence summary.
-pub(in crate::storage::fjall_store) const PRUNE_SUMMARY_KEY: &str = "prune_summary";
+pub(in crate::storage) const PRUNE_SUMMARY_KEY: &str = "prune_summary";
 
 const MAX_LOCK_NAME_BYTES: usize = 1024;
 

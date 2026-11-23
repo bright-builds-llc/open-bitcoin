@@ -12,6 +12,9 @@ use open_bitcoin_node::core::chainstate::{PruneMode, filter_index::lifecycle::In
 pub(crate) mod fixtures;
 use fixtures::History;
 
+#[path = "filter_index/cint02.rs"]
+mod cint02;
+
 #[path = "filter_index/phase162.rs"]
 pub(crate) mod phase162;
 

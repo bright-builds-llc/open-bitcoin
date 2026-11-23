@@ -102,7 +102,8 @@ fn sync_connected_peer_with_cancel() {
   request_cleanup_result(result, cleanup);
 }
 fn run_peer_messages() {
-outbound.extend(turn.requests.request_missing(self)?); if !turn.requests.renew(self, &outbound)? { return turn.requests.complete(self,
+if self.pruned_regtest_serving { outbound.retain(retained_peer_control); } else { outbound.extend(turn.requests.request_missing(self)?); }
+if !turn.requests.renew(self, &outbound)? { return turn.requests.complete(self,
 turn.progress); } if !self.send_all_for_registered_peer_with_cancel( session, turn.peer_id, &outbound, controls.1, turn.registration,
 turn.requests, )? { return turn.requests.complete(self, turn.progress); } let mut messages_received = 0_usize; while messages_received <
 self.config.max_messages_per_peer { if (controls.1)() { return turn.requests.complete(self, turn.progress); } let received = match
@@ -110,7 +111,8 @@ session.receive(self.config.network.magic()) { Ok(received) => received, Err(err
 progress::peer_failure_reason_for_error(&error); if reason == PeerFailureReason::MalformedBlock { turn.progress.record_malformed_block();
 *turn.maybe_failure_reason_override = Some(reason); } return Err(error); } }; match received { SyncPeerReceiveOutcome::Message(message) => {
 let timestamp = (controls.0)(); messages_received = messages_received.saturating_add(1); if !self.process_peer_message(session, turn,
-message, timestamp, controls.1)? { return turn.requests.complete(self, turn.progress); } } SyncPeerReceiveOutcome::Idle => { let timestamp =
+message, timestamp, controls.1)? { return turn.requests.complete(self, turn.progress); } } SyncPeerReceiveOutcome::Idle => {
+if self.pruned_regtest_serving { return turn.requests.complete(self, turn.progress); } let timestamp =
 (controls.0)(); if (controls.1)() { return turn.requests.complete(self, turn.progress); } let outbound = turn.requests.expire(self,
 timestamp)?; if !turn.requests.renew(self, &outbound)? { return turn.requests.complete(self, turn.progress); } if
 !self.send_all_for_registered_peer_with_cancel( session, turn.peer_id, &outbound, controls.1, turn.registration, turn.requests, )? { return
@@ -119,6 +121,7 @@ SyncPeerReceiveOutcome::Closed => { return turn.requests.complete(self, turn.pro
 PeerSyncState::Connected; turn.requests.observe_capabilities(self, turn.progress)
 }
 fn process_peer_message() {
+if self.pruned_regtest_serving && !retained_peer_control(&message) && !matches!(message, WireNetworkMessage::GetCFilters(_) | WireNetworkMessage::GetCFHeaders(_) | WireNetworkMessage::GetCFCheckpt(_) | WireNetworkMessage::MalformedCFRequest(_)) { return Err(SyncRuntimeError::InvalidData { message: "archive-backed peer session only accepts handshake and BASIC requests".into(), }); }
 let PeerTurn { peer_id, progress, requests, maybe_failure_reason_override, registration, } = turn; let peer_id = *peer_id; if
 !requests.renew(self, &[])? { return Ok(false); } let maybe_header_count = match &message { WireNetworkMessage::Headers(headers) =>
 Some(headers.headers.len()), _ => None, }; let maybe_terminal_header_hash = match &message { WireNetworkMessage::Headers(headers) =>
@@ -135,7 +138,7 @@ self.record_unrequested_block_response(progress, block, block_response_is_best_c
 should_cancel, registration, requests, ); } let received = requests.dispatch(self, message, current_timestamp, &receipt_hashes, progress)?;
 let sync_result = match received { Ok(result) => result, Err(error) => { if maybe_block_hash.is_some() { progress.record_invalid_block();
 **maybe_failure_reason_override = Some(PeerFailureReason::InvalidBlock); } return Err(error); } }; let mut outbound = requests.handoff(
-self, sync_result .outbound .into_iter() .map(|message| (peer_id, message)) .collect(), )?; if !requests.renew(self, &outbound)? { return
+self, sync_result .outbound .into_iter() .filter(|message| !self.pruned_regtest_serving || retained_peer_control(message)) .map(|message| (peer_id, message)) .collect(), )?; if !requests.renew(self, &outbound)? { return
 Ok(false); } filter_serving::send_filter_plans( &self.network, session, peer_id, self.config.network.magic(),
 sync_result.inbound_response_plan, should_cancel, )?; if let Some(header_count) = maybe_header_count {
 progress.record_validated_headers(header_count); let peer_manager = self.network.peer_manager_snapshot()?; tip::record_peer_terminal_tip(
@@ -143,10 +146,10 @@ progress, peer_manager.header_store(), maybe_terminal_header_hash, ); } if notfo
 mut should_persist_progress = maybe_header_count.is_some_and(|count| count > 0); if let Some(disposition) =
 sync_result.maybe_block_disposition { should_persist_progress = matches!(disposition, BlockConnectDisposition::Connected(_));
 self.record_block_disposition( progress, sync_result .maybe_completed_block .as_ref() .or(maybe_block.as_ref()), disposition,
-block_response_was_requested, block_response_is_best_chain, )?; } let reconcile_progress =
+block_response_was_requested, block_response_is_best_chain, )?; } if !self.pruned_regtest_serving { let reconcile_progress =
 block_reconcile::reconcile_best_chain_for_live_session(self, current_timestamp)?; should_persist_progress |=
 reconcile_progress.should_persist_progress(); self.record_reconcile_progress(reconcile_progress); if should_persist_progress {
-self.persist_progress_and_dispatch_tip()?; } outbound.extend(requests.request_missing(self)?); if !requests.renew(self, &outbound)? { return
+self.persist_progress_and_dispatch_tip()?; } outbound.extend(requests.request_missing(self)?); } if !requests.renew(self, &outbound)? { return
 Ok(false); } self.send_all_for_registered_peer_with_cancel( session, peer_id, &outbound, should_cancel, registration, requests, )
 }
 }

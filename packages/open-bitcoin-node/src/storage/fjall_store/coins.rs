@@ -393,7 +393,7 @@ impl FjallNodeStore {
     }
 }
 
-pub(super) fn undo_key(block_hash: BlockHash) -> String {
+pub(in crate::storage) fn undo_key(block_hash: BlockHash) -> String {
     const HEX: &[u8; 16] = b"0123456789abcdef";
 
     let mut key = String::with_capacity(UNDO_KEY_PREFIX.len() + 64);

@@ -112,7 +112,9 @@ refusals through those same operator paths.
 The [canonical Regtest pruning check](./docs/parity/v2-6-canonical-pruning.md)
 extends an isolated managed runtime through height 1001. Manual pruning
 preserves the block and undo pairs BASIC still needs, deletes eligible pairs
-after catch-up, and leaves the trailing 288 pairs in place.
+after catch-up, and leaves the trailing 288 pairs in place. An archive-backed
+reopen also verifies branch-specific BASIC responses through authenticated
+RPC and both loopback peer directions while deleted bodies stay unavailable.
 
 ## Archived releases and historical scope
 

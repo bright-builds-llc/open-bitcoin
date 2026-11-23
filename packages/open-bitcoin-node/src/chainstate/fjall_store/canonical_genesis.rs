@@ -28,9 +28,24 @@ impl ManagedChainstate<FjallChainstateStore, FjallCoinsView> {
         ),
         StorageError,
     > {
-        let (genesis, headers, replay) = recovered
+        let owners = recovered
             .into_parts(&store)
             .map_err(|_| receipt_error("canonical history store proof changed"))?;
+        Self::from_replayed_history(store, owners, mode)
+    }
+
+    pub(crate) fn from_replayed_history(
+        store: FjallNodeStore,
+        (genesis, headers, replay): crate::storage::fjall_store::canonical_genesis::HistoryOwners,
+        mode: BasicFilterStartupMode,
+    ) -> Result<
+        (
+            Self,
+            CanonicalGenesisProof,
+            open_bitcoin_network::HeaderStore,
+        ),
+        StorageError,
+    > {
         let active = replay
             .admission_snapshot()
             .map_err(|_| receipt_error("canonical history active snapshot unavailable"))?;

@@ -34,9 +34,9 @@ use std::{
 const DEADLINE: Duration = Duration::from_secs(20);
 const MAX_FRAME_BYTES: usize = 16 * 1024;
 
-struct Exchange {
-    request: WireNetworkMessage,
-    expected: Vec<Vec<u8>>,
+pub(crate) struct Exchange {
+    pub request: WireNetworkMessage,
+    pub expected: Vec<Vec<u8>>,
 }
 
 #[derive(Debug, Default)]
@@ -197,7 +197,7 @@ fn exchanges(oracle: &Value) -> Vec<Exchange> {
     exchanges
 }
 
-fn config(endpoint: SocketAddr, requests: usize) -> SyncRuntimeConfig {
+pub(crate) fn config(endpoint: SocketAddr, requests: usize) -> SyncRuntimeConfig {
     assert!(endpoint.ip().is_loopback() && endpoint.port() != 0);
     let config = SyncRuntimeConfig {
         network: SyncNetwork::Regtest,
@@ -229,7 +229,7 @@ fn remaining(started: Instant) -> io::Result<Duration> {
         .ok_or_else(|| io::Error::new(io::ErrorKind::TimedOut, "total peer deadline"))
 }
 
-fn read_frame(stream: &mut TcpStream, started: Instant) -> io::Result<Vec<u8>> {
+pub(crate) fn read_frame(stream: &mut TcpStream, started: Instant) -> io::Result<Vec<u8>> {
     let mut bytes = vec![0; 24];
     exact(stream, started, &mut bytes)?;
     let header = open_bitcoin_codec::parse_message_header(&bytes).map_err(io::Error::other)?;
@@ -263,7 +263,11 @@ fn exact(stream: &mut TcpStream, started: Instant, mut bytes: &mut [u8]) -> io::
     Ok(())
 }
 
-fn send(stream: &mut TcpStream, started: Instant, message: WireNetworkMessage) -> io::Result<()> {
+pub(crate) fn send(
+    stream: &mut TcpStream,
+    started: Instant,
+    message: WireNetworkMessage,
+) -> io::Result<()> {
     let frame = message
         .encode_wire(SyncNetwork::Regtest.magic())
         .map_err(io::Error::other)?;
@@ -346,7 +350,7 @@ fn handshake(stream: &mut TcpStream, started: Instant) -> io::Result<()> {
     Err(io::Error::other("handshake fence missing"))
 }
 
-fn remote(listener: TcpListener, exchanges: Vec<Exchange>) -> io::Result<Observed> {
+pub(crate) fn remote(listener: TcpListener, exchanges: Vec<Exchange>) -> io::Result<Observed> {
     let started = Instant::now();
     let (mut stream, endpoint) = loop {
         remaining(started)?;
@@ -553,7 +557,7 @@ fn assert_retained_history(runtime: &DurableSyncRuntime, handoff: &Phase162Hando
     }
 }
 
-fn assert_summary(summary: &SyncRunSummary, requests: usize) {
+pub(crate) fn assert_summary(summary: &SyncRunSummary, requests: usize) {
     assert_eq!(summary.attempted_peers, 1);
     assert_eq!(summary.connected_peers, 1);
     assert_eq!(summary.failed_peers, 0);

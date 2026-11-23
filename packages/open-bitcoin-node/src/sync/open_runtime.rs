@@ -227,6 +227,7 @@ impl DurableSyncRuntime {
             config,
             verify_flags: ScriptVerifyFlags::P2SH,
             consensus_params,
+            pruned_regtest_serving: false,
             peer_identity_authority: super::PeerIdentityAuthority::default(),
             peer_backoff: std::collections::BTreeMap::new(),
             inflight_blocks: std::collections::BTreeSet::new(),

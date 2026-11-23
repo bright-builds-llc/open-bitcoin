@@ -117,9 +117,13 @@ export const CONTRACTS: readonly Contract[] = [
   ], ["scratch.cleanup()?;", "source_check?;", "recovered_check?;", "validate(result?)"]),
   row(INSPECTION, "lock_source", "engine-lock", ["identity.check_opened(&file, &path)?;", "file.try_lock()"]),
   row(NODE + "storage/fjall_store/inspection/worker.rs", "recover", "child-process-delegate", [
-    "recover_operation(scratch, None)",
+    "recover_operation(scratch, WorkerJob::Generic)",
+  ]),
+  row(NODE + "storage/fjall_store/inspection/worker.rs", "recover_prune_proof", "child-process-delegate", [
+    "recover_operation(scratch, WorkerJob::PruneProof)",
   ]),
   row(NODE + "storage/fjall_store/inspection/worker.rs", "recover_operation", "child-process", [
+    "let operation = wrap(job(scratch)?);", "let bytes = operation.encode()?;",
     "std::env::current_exe()", "Command::new(executable)", ".args(ARGS)", "command.spawn()",
     "monitor(&mut child, &operation, started, &receiver)", "Completion::Uncertain(_)", "writer.join()",
   ], undefined, ["raw_recover("]),

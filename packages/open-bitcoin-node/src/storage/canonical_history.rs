@@ -22,6 +22,7 @@ pub(in crate::storage) fn validate_history_records(
     proof::validate_history_records(selected, records, now)
 }
 
+pub(in crate::storage) mod pruned;
 #[cfg(test)]
 mod tests;
 

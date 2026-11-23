@@ -47,3 +47,48 @@ bun run scripts/command-timings.ts run --key cint-01-canonical-regtest-pruning -
   canonical_regtest_pruning_deletes_pairs_after_basic_catch_up -- --nocapture
 bun run scripts/check-parity-ledger.ts
 ```
+
+## Retained BASIC clients after reopen
+
+`v2-6-cint-02` supplies `local_product` evidence for `CINT-02`. The
+[client test](../../packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/cint02.rs)
+builds two independently validated instances of the same default Regtest
+history. A stronger branch replaces heights 999–1001 and brings the active
+tip to height 1002. The active and displaced height-1000 blocks have
+different BASIC checkpoint headers. Manual pruning deletes both payload
+records at heights 1–714. Each database is fully closed before reopen.
+
+The [archive-backed opener](../../packages/open-bitcoin-node/src/storage/fjall_store/pruned_regtest.rs)
+takes separate paths to the original closed pruned source and a complete
+unpruned archive of its accepted history, including the displaced branch.
+Isolated workers inspect detached copies. Replay from genesis independently
+rebuilds coins, exact work, undo, and BASIC. Before opening the original
+backend, the proof compares chain and index authority rows, allowing eligible
+paired deletion and prune bookkeeping. Proven rows and a mutation stamp
+bind authority to the original store through runtime construction. A
+correct archive supplies validation inputs during startup. The service
+test removes that archive before any client makes a request.
+
+| Client | Observed after reopen |
+| --- | --- |
+| Authenticated `getblockfilter` | Exact filters and headers for pruned height 714, retained height 715, and both height-1000 blocks. A request without credentials returns HTTP 401. |
+| Authenticated `getindexinfo` | BASIC is synchronized at height 1002. |
+| Inbound and outbound TCP peers | Five BASIC frames per direction. `cfilter` and `cfheaders` cross the prune boundary, and `cfcheckpt` returns each branch’s own checkpoint. |
+| Inbound block requests | A permissioned peer receives block 715 and `notfound` for block 714 on the same session. |
+| Wallet RPC | `getwalletinfo` and `rescanblockchain` refuse with the canonical wallet-unavailable error even after the filter queries succeed. |
+
+The [RPC context](../../packages/open-bitcoin-rpc/src/context/canonical_history.rs)
+accepts explicit Regtest manual pruning and numeric loopback service. The
+outbound session accepts handshake and BASIC requests and refuses an
+unsolicited header without advancing the chain. The proof envelope permits
+up to 1024 replay positions and 8192 logical inspection entries. This
+exercise uses the authenticated HTTP handler and physical TCP peer adapters.
+It covers the archive-backed managed startup API and its bounded service
+route. CLI configuration, automatic pruning, and Knots daemon pruning are
+outside this evidence.
+
+```sh
+bun run scripts/command-timings.ts run --key cint-02-client-service -- \
+  cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind \
+  cint02_authenticated_rpc_and_both_peer_directions_after_canonical_pruning -- --nocapture
+```

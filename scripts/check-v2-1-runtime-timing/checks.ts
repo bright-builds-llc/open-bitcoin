@@ -328,9 +328,9 @@ function verifySessionHandoff(session: string, requests: string, failures: strin
   const connected = productionBody(session, "sync_connected_peer_with_cancel", "P123 session registration", failures);
   const run = productionBody(session, "run_peer_messages", "P123 idle clock target send order", failures);
   const process = productionBody(session, "process_peer_message", "P123 post-manager message wake", failures);
-  reviewedBody(run, "c1d7fe1522d29dfef4ab69e5a45ec78ae579f3da27b843866c3202d139d3038e",
+  reviewedBody(run, "ee5b3cd56668e129dbc67d6e13996a802813c63b40583c909c2f5c616ad5eeed",
     "P123 reviewed session message loop", failures);
-  reviewedBody(process, "b4699e6c8cd85d8a0d42aab843a76866126253c8baa593cfca701169ee7db97a",
+  reviewedBody(process, "d3f44a7495e864e546ab7bb2a606065ea0e125c2ff00e86aa80934cfadcbb581",
     "P123 reviewed post-manager message flow", failures);
   requireAbsent(normalizeRust(process), "block_reconcile::release_inflight_for_message",
     "P123 raw pre-manager release", failures);

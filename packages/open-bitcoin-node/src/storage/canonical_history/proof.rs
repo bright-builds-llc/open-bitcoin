@@ -178,7 +178,7 @@ fn replay_graph(
                     .map_err(|_| Refusal::UnsupportedHistory)?;
             }
             ReplayEvent::Connect(hash) => {
-                if !seen.insert(hash) || seen.len() > super::records::MAX_HISTORY_BLOCKS {
+                if !seen.insert(hash) || seen.len() > records.replay_limit {
                     return Err(Refusal::UnsupportedHistory);
                 }
                 let entry = stored.get(&hash).ok_or(Refusal::MissingRecord)?;
@@ -246,7 +246,7 @@ fn replay_graph(
                     }
                     events.push(ReplayEvent::Connect(child));
                 }
-                if events.len() > 2 * super::records::MAX_HISTORY_BLOCKS {
+                if events.len() > 2 * records.replay_limit {
                     return Err(Refusal::UnsupportedHistory);
                 }
             }

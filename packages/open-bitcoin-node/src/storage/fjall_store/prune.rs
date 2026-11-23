@@ -30,8 +30,7 @@ use crate::storage::coins_view::FjallCoinsView;
 
 mod records;
 
-#[cfg(test)]
-pub(in crate::storage::fjall_store) use records::PRUNE_SUMMARY_KEY;
+pub(in crate::storage) use records::PRUNE_SUMMARY_KEY;
 pub(in crate::storage) use records::{PRUNE_LOCKS_KEY, decode_prune_locks, encode_prune_locks};
 
 /// Block-index key recorded only inside a committed non-empty paired delete.

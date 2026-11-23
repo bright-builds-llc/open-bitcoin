@@ -90,6 +90,7 @@ pub struct DurableSyncRuntime {
     config: SyncRuntimeConfig,
     verify_flags: ScriptVerifyFlags,
     consensus_params: ConsensusParams,
+    pruned_regtest_serving: bool,
     peer_identity_authority: PeerIdentityAuthority,
     peer_backoff: BTreeMap<String, PeerRetryState>,
     inflight_blocks: BTreeSet<BlockHash>,
@@ -255,7 +256,20 @@ impl DurableSyncRuntime {
         clock: &mut C,
         should_cancel: &mut K,
     ) -> Result<SyncRunSummary, SyncRuntimeError> {
-        if let Some(chain) = self.network.maybe_canonical_chain()? {
+        if self.pruned_regtest_serving {
+            if !self.config.dns_seeds.is_empty()
+                || self.config.manual_peers.iter().any(|peer| {
+                    !peer
+                        .host
+                        .parse::<std::net::IpAddr>()
+                        .is_ok_and(|address| address.is_loopback())
+                })
+            {
+                return Err(SyncRuntimeError::InvalidData {
+                    message: "pruned Regtest peer service requires numeric loopback peers".into(),
+                });
+            }
+        } else if let Some(chain) = self.network.maybe_canonical_chain()? {
             chain.spec().require_ordinary_history().map_err(|error| {
                 SyncRuntimeError::InvalidData {
                     message: error.to_string(),
@@ -264,7 +278,9 @@ impl DurableSyncRuntime {
         }
         self.maybe_reconcile_progress = None;
         block_reconcile::validate_block_limits(self)?;
-        block_reconcile::reconcile_and_persist_best_chain(self, timestamp)?;
+        if !self.pruned_regtest_serving {
+            block_reconcile::reconcile_and_persist_best_chain(self, timestamp)?;
+        }
 
         let peers = self.config.candidate_peers();
         if peers.is_empty() {
@@ -288,6 +304,15 @@ impl DurableSyncRuntime {
         summary.maybe_reconcile_progress = self.maybe_reconcile_progress.clone();
         self.refresh_summary_progress(&mut summary)?;
         let resolved_peers = self.resolve_candidates(peers, resolver, &mut summary);
+        if self.pruned_regtest_serving
+            && resolved_peers
+                .iter()
+                .any(|peer| !peer.endpoint.ip().is_loopback())
+        {
+            return Err(SyncRuntimeError::InvalidData {
+                message: "pruned Regtest peer resolution left loopback".into(),
+            });
+        }
         let mut completed_outbound_slots = 0_usize;
         for peer in resolved_peers {
             if should_cancel() || completed_outbound_slots >= self.config.target_outbound_peers {

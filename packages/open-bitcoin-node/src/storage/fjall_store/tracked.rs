@@ -345,17 +345,23 @@ pub(super) mod sealed {
 
 /// A private source yielding only detached records through the bounded reader.
 pub(in crate::storage) trait RecordSource: sealed::Sealed {
-    fn read_existing_records(&self) -> Result<InspectedRecords, StorageError>;
+    fn read_existing_records(
+        &self,
+        inventory: super::inspection::LogicalInventory,
+    ) -> Result<InspectedRecords, StorageError>;
 }
 
 impl sealed::Sealed for Database {}
 
 impl RecordSource for Database {
-    fn read_existing_records(&self) -> Result<InspectedRecords, StorageError> {
+    fn read_existing_records(
+        &self,
+        inventory: super::inspection::LogicalInventory,
+    ) -> Result<InspectedRecords, StorageError> {
         let _catalog = self.shared.catalog.lock().map_err(|_| {
             super::corruption(super::StorageNamespace::Runtime, "catalog lock poisoned")
         })?;
-        self.raw.read_existing_records()
+        self.raw.read_existing_records(inventory)
     }
 }
 

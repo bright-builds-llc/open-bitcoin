@@ -10,6 +10,8 @@ use crate::{
     storage::fjall_store::canonical_genesis::OpenedCanonicalHistory,
 };
 
+mod pruned;
+
 impl DurableSyncRuntime {
     /// Consume a complete original-store history proof before runtime effects.
     pub fn open_canonical_history_configured(

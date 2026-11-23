@@ -1451,10 +1451,29 @@
       {
         "id": "v2-6-cint-02",
         "title": "Retained BASIC client service after pruning",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CINT-02"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-canonical-pruning.md",
+          "packages/open-bitcoin-node/src/storage/fjall_store/pruned_regtest.rs",
+          "packages/open-bitcoin-node/src/sync/tests/canonical_pruning.rs",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/cint02.rs"
+        ],
+        "evidence_classes": ["local_product"],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/node/chainstate.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp",
+            "packages/bitcoin-knots/src/index/blockfilterindex.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/net_processing.cpp",
+            "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+          ]
+        },
+        "rationale": "After genuine pruning and all-handle reopen, authenticated BASIC queries and both physical peer directions preserve the replacement and displaced branches' separate commitments. The same permissioned inbound peer receives the retained boundary block and a notfound for the deleted block. Wallet requests remain unavailable.",
+        "known_gaps": [
+          "Evidence covers the bounded archive-backed Regtest API, manual pruning, authenticated HTTP handler and physical loopback peer sessions. Separate evidence is required for CLI archive configuration, automatic pruning and actual Knots daemon pruning."
+        ]
       },
       {
         "id": "v2-6-cint-03",

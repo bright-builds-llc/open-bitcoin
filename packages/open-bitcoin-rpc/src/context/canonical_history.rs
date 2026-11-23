@@ -15,6 +15,32 @@ use open_bitcoin_node::storage::coins_view::FjallCoinsView;
 use open_bitcoin_node::{DurableSyncRuntime, FjallChainstateStore};
 
 impl ManagedRpcContext<FjallChainstateStore, FjallCoinsView> {
+    /// Build the authenticated context for an explicitly configured, loopback-only pruned Regtest owner.
+    pub fn from_pruned_regtest_runtime_config(
+        config: &RuntimeConfig,
+        archive: impl AsRef<std::path::Path>,
+    ) -> Result<(Self, DurableSyncRuntime), CanonicalContextError> {
+        let chain = super::canonical_chain::selected_chain(config)?;
+        validate_pruned_services(config, chain)?;
+        let directory = config
+            .maybe_data_dir
+            .as_ref()
+            .ok_or(CanonicalContextError::InvalidGenesisConfiguration)?;
+        let spec = chain.spec();
+        let genesis = CanonicalGenesisProof::prove(spec, &spec.genesis_block())
+            .map_err(|_| CanonicalContextError::InvalidGenesisConfiguration)?;
+        let runtime = DurableSyncRuntime::reopen_pruned_regtest_with_archive(
+            directory,
+            archive,
+            config.sync.runtime.clone(),
+            config.block_serving.block_serving,
+            config.inbound.enabled,
+        )
+        .map_err(CanonicalContextError::GenesisRuntime)?;
+        let context = assemble(config, &runtime, consensus_params(&genesis), None)?;
+        Ok((context, runtime))
+    }
+
     /// Acquire one safe selected owner and bind only its paired submission command.
     pub fn from_canonical_history_runtime_config(
         config: &RuntimeConfig,
@@ -94,6 +120,40 @@ impl ManagedRpcContext<FjallChainstateStore, FjallCoinsView> {
         let context = assemble(config, &runtime, consensus_params(&proof), maybe_bridge)?;
         Ok((context, runtime))
     }
+}
+
+fn validate_pruned_services(
+    config: &RuntimeConfig,
+    chain: open_bitcoin_node::core::consensus::CanonicalChain,
+) -> Result<(), CanonicalContextError> {
+    use open_bitcoin_node::core::{chainstate::PruneMode, consensus::CanonicalChain};
+    config
+        .validate_peer_block_filters()
+        .map_err(|_| CanonicalContextError::InvalidGenesisConfiguration)?;
+    if chain != CanonicalChain::Regtest
+        || config.prune_mode != PruneMode::ManualOnly
+        || config.block_filter_index == BasicFilterIndexSetting::Disabled
+        || !config.rpc_server.bind_address.ip().is_loopback()
+        || config.inbound.allow_public
+        || config.relay.enabled
+        || config.block_serving.compact_relay.enabled
+        || !config.sync.runtime.dns_seeds.is_empty()
+        || config.sync.runtime.manual_peers.iter().any(|peer| {
+            !peer
+                .host
+                .parse::<std::net::IpAddr>()
+                .is_ok_and(|ip| ip.is_loopback())
+        })
+        || (config.inbound.enabled
+            && config.inbound.listen_addresses.iter().any(|address| {
+                !address
+                    .parse::<std::net::SocketAddr>()
+                    .is_ok_and(|endpoint| endpoint.ip().is_loopback())
+            }))
+    {
+        return Err(CanonicalContextError::InvalidGenesisConfiguration);
+    }
+    Ok(())
 }
 
 pub(super) fn preflight(

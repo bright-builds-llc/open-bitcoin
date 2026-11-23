@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,795 |
-| Total lines | 548,076 |
-| Code/content lines | 482,224 |
-| Comment-only lines | 28,607 |
-| Blank lines | 37,245 |
+| Included files | 1,801 |
+| Total lines | 549,923 |
+| Code/content lines | 483,955 |
+| Comment-only lines | 28,645 |
+| Blank lines | 37,323 |
 
 ## Per-Crate Modules
 
@@ -24,9 +24,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | open-bitcoin-core | 3 | 39 | 0 | 36 | 75 | 0.0% |
 | open-bitcoin-mempool | 82 | 10,789 | 15,651 | 30 | 26,470 | 145.1% |
 | open-bitcoin-network | 153 | 18,631 | 27,913 | 30 | 46,574 | 149.8% |
-| open-bitcoin-node | 582 | 73,244 | 122,873 | 42 | 196,985 | 167.8% |
+| open-bitcoin-node | 586 | 73,795 | 123,397 | 42 | 198,060 | 167.2% |
 | open-bitcoin-primitives | 9 | 926 | 0 | 20 | 946 | 0.0% |
-| open-bitcoin-rpc | 169 | 17,136 | 35,285 | 64 | 52,485 | 205.9% |
+| open-bitcoin-rpc | 171 | 17,196 | 35,975 | 64 | 53,235 | 209.2% |
 | open-bitcoin-test-harness | 7 | 662 | 0 | 28 | 690 | 0.0% |
 | open-bitcoin-wallet | 21 | 3,529 | 2,705 | 34 | 6,268 | 76.7% |
 
@@ -34,9 +34,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Category | Files | Total | Code/Content | Comments | Blank |
 | --- | --- | --- | --- | --- | --- |
-| Rust tests | 769 | 259,321 | 226,445 | 17,213 | 15,663 |
-| Rust production | 597 | 175,559 | 153,849 | 7,890 | 13,820 |
-| TypeScript/Bun scripts | 353 | 94,733 | 84,553 | 3,383 | 6,797 |
+| Rust tests | 772 | 260,535 | 227,589 | 17,247 | 15,699 |
+| Rust production | 600 | 176,170 | 154,414 | 7,894 | 13,862 |
+| TypeScript/Bun scripts | 353 | 94,755 | 84,575 | 3,383 | 6,797 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,842 | 4,294 | 100 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -102,11 +102,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity/test-modules.ts | 606 |
 | scripts/check-phase165-shared-exact-work.test.ts | 581 |
 | scripts/check-phase165-shared-exact-work.ts | 235 |
-| scripts/check-phase165-shared-exact-work/contracts.ts | 496 |
+| scripts/check-phase165-shared-exact-work/contracts.ts | 511 |
 | scripts/check-phase165-shared-exact-work/test-support.ts | 235 |
 | scripts/check-phase166-canonical-bootstrap.test.ts | 516 |
 | scripts/check-phase166-canonical-bootstrap.ts | 252 |
-| scripts/check-phase166-canonical-bootstrap/contracts.ts | 366 |
+| scripts/check-phase166-canonical-bootstrap/contracts.ts | 370 |
 | scripts/check-phase167-candidate-history.test.ts | 201 |
 | scripts/check-phase167-candidate-history.ts | 155 |
 | scripts/check-phase167-candidate-history/contracts.ts | 164 |
@@ -264,7 +264,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-1-runtime-timing/filesystem.ts | 53 |
 | scripts/check-v2-1-runtime-timing/helpers.ts | 41 |
 | scripts/check-v2-1-runtime-timing/parity.ts | 105 |
-| scripts/check-v2-1-runtime-timing/test-fixtures.ts | 461 |
+| scripts/check-v2-1-runtime-timing/test-fixtures.ts | 464 |
 | scripts/check-v2-2-cross-cache-apply.ts | 452 |
 | scripts/check-v2-2-cross-cache-apply/aggregate-roots.ts | 357 |
 | scripts/check-v2-2-cross-cache-apply/call-resolution.ts | 239 |
@@ -434,7 +434,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | b0af149854c9d8498895c0929813dcb0f2335873cd07793b4b2314e8ab75913c |
+| Input fingerprint | 76b31011185dcdba05514408bc12e61644a48591ffb1cec6d267901f1e1b71e4 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

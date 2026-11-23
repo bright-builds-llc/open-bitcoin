@@ -1984,3 +1984,51 @@ protection blocked all 713 requested paired deletions. After catch-up the
 same plan deleted all 713 pairs and retained the trailing 288. A later flush
 preserved the deletion. The scope covers manual pruning before restart. Full
 pre-push and exact-head CI attest delivery.
+
+## task-cint-02-canonical-pruned-basic-reopen | 2026-11-23 | Serve branch-correct BASIC after canonical pruning and reopen
+
+- [x] Exercise a canonical replacement above the pruning threshold and capture the current cold-open behavior after paired deletion.
+- [x] Replay a complete detached archive and prove the cold store is its eligible paired-deletion projection.
+- [x] Carry that proof through bounded detached inspection and bind it to the original pruned store before runtime construction.
+- [x] Verify authenticated BASIC RPC, both physical peer directions, deleted-body unavailability and wallet eligibility on the reopened datadir.
+- [x] Record local product evidence and update the parity ledger for direct-main verification and CI.
+
+Baseline review: The managed runtime activated the stronger branch at height
+1002, retained distinct BASIC records for both height-1000 blocks, and deleted
+both payload records for active heights 1 through 714. After all handles
+closed, canonical reopen refused and preserved the original file inventory
+and digests. A fresh storage-only open found the same active projection,
+both immutable BASIC records, the same coins tip, and the expected pair
+absence. The existing complete-replay route bounds history at 306 positions,
+shares the 4096-entry inspection limit, and requires accepted bodies and
+undo. The next implementation needs a bounded authority proof for a cold
+pruned store. The retained BASIC records and prune marker are observations
+from that store and cannot authenticate its historical acceptance.
+
+Projection review: The native test independently replayed the complete
+continuous and displaced history from an unpruned logical archive. The cold
+store matched the archive's headers, coins, chain metadata and branch-index
+records, with 714 eligible pairs absent. The proof's core retained only the
+288 active undo records in the keep window. Detached controls refused an
+incomplete replay input, a one-sided deletion, a missing keep-window pair,
+a displaced BASIC projection, and missing coins best-block metadata. The
+runtime still needs the pre-effect worker, same-source proof consumption,
+and the RPC and peer checks.
+
+Cold runtime review: Both closed directories went through supervised
+detached inspection. Replay proved the overlap before the original retained
+backend opened. Exact rows and mutation freshness bound the proof to that
+backend through consumption. The managed runtime recovered height 1002,
+branch work and the 288 retained active undo records. An attempt using the
+pruned source as its own archive refused before changing the source. After
+the independent archive was removed, the reopened runtime still returned
+the active, displaced and pruned-ancestor BASIC records through the managed
+query, and the deleted block had neither a stored body nor cache availability.
+
+Client review: Authenticated RPC returned four retained BASIC records and
+reported the synced height 1002. Inbound and outbound loopback peers each
+received five BASIC frames, including distinct checkpoints for the two
+height-1000 blocks. A permissioned inbound peer received block 715 and a
+notfound for block 714. Both wallet calls refused, and an unsolicited outbound
+header closed its session without advancing the chain. The local verifier
+and exact-head CI attest delivery.

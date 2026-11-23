@@ -190,7 +190,56 @@
         "packages/bitcoin-knots/src/rpc/blockchain.cpp",
         "packages/bitcoin-knots/src/node/blockstorage.cpp",
         "packages/bitcoin-knots/src/validation.h",
-        "packages/bitcoin-knots/src/index/base.cpp"
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "canonical-regtest-pruned-replay-projection",
+      "files": ["packages/open-bitcoin-node/src/storage/canonical_history/pruned.rs"],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/chainstate.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/index/blockfilterindex.cpp"
+      ]
+    },
+    {
+      "label": "pruned-regtest-original-store-binding",
+      "files": ["packages/open-bitcoin-node/src/storage/fjall_store/pruned_regtest.rs"],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/chainstate.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
+      "label": "pruned-regtest-runtime-reopen",
+      "files": ["packages/open-bitcoin-node/src/sync/canonical_history/pruned.rs"],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
+      "label": "inspection-protocol-tests",
+      "files": ["packages/open-bitcoin-node/src/storage/fjall_store/inspection/protocol/tests.rs"],
+      "breadcrumbs": []
+    },
+    {
+      "label": "pruned-regtest-client-services",
+      "files": ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/cint02.rs"],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/net_processing.cpp",
+        "packages/bitcoin-knots/test/functional/p2p_blockfilters.py"
+      ]
+    },
+    {
+      "label": "pruned-regtest-client-fixture",
+      "files": ["packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/cint02/fixture.rs"],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
       ]
     },
     {

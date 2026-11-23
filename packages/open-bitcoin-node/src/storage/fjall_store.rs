@@ -54,16 +54,19 @@ mod open_lease;
 mod opening;
 mod payload_usage;
 mod prune;
+mod pruned_regtest;
 pub(in crate::storage) mod tracked;
 pub(crate) mod validation_history;
 pub use mempool::{MempoolSnapshotDecodeLimits, SnapshotWriteExecutionError};
 pub use payload_usage::{PayloadUsageRevision, RetainedPayloadUsage};
+pub(crate) use prune::HAVE_PRUNED_KEY;
 pub use prune::PairedDeleteOutcome;
-pub(crate) use prune::resume_prune_intent;
 #[cfg(test)]
-pub(crate) use prune::{HAVE_PRUNED_KEY, PruneIntent};
+pub(crate) use prune::PruneIntent;
+pub(crate) use prune::resume_prune_intent;
 pub(in crate::storage) use prune::{PRUNE_LOCKS_KEY, decode_prune_locks, encode_prune_locks};
 use tracked::{Database, Keyspace};
+pub(in crate::storage) use {coins::undo_key as prune_proof_undo_key, prune::PRUNE_SUMMARY_KEY};
 
 const SNAPSHOT_KEY: &str = "snapshot";
 const SCHEMA_VERSION_KEY: &str = "schema_version";
