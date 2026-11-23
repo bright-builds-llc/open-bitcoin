@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,787 |
-| Total lines | 546,635 |
-| Code/content lines | 480,887 |
+| Included files | 1,786 |
+| Total lines | 546,630 |
+| Code/content lines | 480,883 |
 | Comment-only lines | 28,581 |
-| Blank lines | 37,167 |
+| Blank lines | 37,166 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 766 | 258,658 | 225,823 | 17,197 | 15,638 |
 | Rust production | 597 | 175,559 | 153,849 | 7,890 | 13,820 |
-| TypeScript/Bun scripts | 348 | 93,955 | 83,838 | 3,373 | 6,744 |
+| TypeScript/Bun scripts | 347 | 93,950 | 83,834 | 3,373 | 6,743 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,842 | 4,294 | 100 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -97,9 +97,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity/fixture-source.ts | 187 |
 | scripts/check-phase164-canonical-identity/historical-tooling.ts | 104 |
 | scripts/check-phase164-canonical-identity/historical.test.ts | 430 |
-| scripts/check-phase164-canonical-identity/mempool-lifecycle-edges.ts | 7 |
 | scripts/check-phase164-canonical-identity/regions.ts | 30 |
-| scripts/check-phase164-canonical-identity/source-files.ts | 626 |
+| scripts/check-phase164-canonical-identity/source-files.ts | 628 |
 | scripts/check-phase164-canonical-identity/test-modules.ts | 606 |
 | scripts/check-phase165-shared-exact-work.test.ts | 581 |
 | scripts/check-phase165-shared-exact-work.ts | 235 |
@@ -418,18 +417,18 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | 13 | packages/open-bitcoin-rpc/tests/black_box_parity/phase127_composition.rs | Rust tests | 628 |
 | 14 | scripts/check-phase158-validated-reorg.test.ts | TypeScript/Bun scripts | 628 |
 | 15 | scripts/check-phase164-canonical-identity.test.ts | TypeScript/Bun scripts | 628 |
-| 16 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
-| 17 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
-| 18 | packages/open-bitcoin-network/src/filter_serving/policy/tests.rs | Rust tests | 627 |
-| 19 | packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs | Rust production | 627 |
-| 20 | packages/open-bitcoin-node/src/network/relay_fanout.rs | Rust production | 627 |
+| 16 | scripts/check-phase164-canonical-identity/source-files.ts | TypeScript/Bun scripts | 628 |
+| 17 | packages/open-bitcoin-cli/src/operator/soak/runtime/helpers.rs | Rust production | 627 |
+| 18 | packages/open-bitcoin-mempool/src/pool/prospective.rs | Rust production | 627 |
+| 19 | packages/open-bitcoin-network/src/filter_serving/policy/tests.rs | Rust tests | 627 |
+| 20 | packages/open-bitcoin-node/src/network/lifecycle_projection/authority.rs | Rust production | 627 |
 
 ## Metadata
 
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 23b439c13f381aa5bfd54124eb5a7637d4542d34ad7d2324e481403c4100aa9f |
+| Input fingerprint | 043546788318d5d9599e44bc7d4aaf11f82847eefeea126da86cabd275e3eb5e |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
