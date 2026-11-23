@@ -4,7 +4,7 @@ import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { BASELINE_COMMIT } from "../check-parity-ledger.ts";
 import { resolveTarget } from "../command-timings.ts";
-import { CLOSED_STATE_OBSERVER } from "./state.ts";
+import { CLOSED_STATE_OBSERVER, SPEND_STATE_OBSERVER } from "./state.ts";
 import { loggedCommand } from "./process.ts";
 
 const KNOTS_PATH = "packages/bitcoin-knots";
@@ -103,9 +103,9 @@ export async function buildKnots(root: string, run: string, label: string) {
 }
 
 function productSource(root: string): string {
-  // The standalone Cargo test is fingerprinted separately from the daemon.
+  // The standalone Cargo observers are fingerprinted separately from the daemon.
   const changes = capture(root, ["git", "status", "--porcelain", "--untracked-files=all", "--",
-    "packages", "rust-toolchain.toml", `:(exclude)${CLOSED_STATE_OBSERVER}`]);
+    "packages", "rust-toolchain.toml", `:(exclude)${CLOSED_STATE_OBSERVER}`, `:(exclude)${SPEND_STATE_OBSERVER}`]);
   if (changes) throw new Error("Open Bitcoin runtime source and toolchain must match the checked-out commit");
   return capture(root, ["git", "rev-parse", "HEAD"]);
 }

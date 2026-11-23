@@ -1930,3 +1930,17 @@ both mirrored schedules, the paired persisted-active restart, and the
 separately classified Knots pointer fallback. The receipt and mutation
 checks bind the observed results. Full pre-push and exact-head CI attest the
 delivery. The branch tests use a bounded coinbase-only Regtest history.
+
+## task-crec-02-regtest-replacement-spends | 2026-11-23 | Compare reorg spend and undo outcomes
+
+- [x] Sync main and derive the mature funding outpoint and both forks from canonical Regtest inputs.
+- [x] Run the actual daemons through the original spend, rejected replacement, winning replacement and reconnect.
+- [x] Check all live UTXOs, work and BASIC against the expected stage and each daemon, and record the receipt.
+- [x] Prepare direct-main delivery through the repo-managed gates.
+
+Qualification review: Both actual daemons matched the rejection reason and
+all four observations. Active tip, work, complete coins and BASIC matched
+before and after rejection. The mature funding input led to branch-correct
+coins after replacement and reconnect. The receipt binds the stage
+observations and offline observer. Full pre-push and exact-head CI attest
+delivery.

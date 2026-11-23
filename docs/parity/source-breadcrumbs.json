@@ -887,6 +887,16 @@
       ]
     },
     {
+      "label": "crec-02-closed-regtest-state",
+      "files": [
+        "packages/open-bitcoin-rpc/tests/crec02_closed_state.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/node/chainstate.cpp"
+      ]
+    },
+    {
       "label": "cdif-04-closed-regtest-state",
       "files": [
         "packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs"

@@ -11,6 +11,7 @@ import { isRejectionState, normalizeRejection, readRejectionCorpus, REJECTION_NO
 import { readStateCorpus, verifyState } from "./knots-regtest/state.ts";
 import { QUALIFICATION_FORMAT } from "./knots-regtest/receipt.ts";
 import { BRANCH_CLASSIFICATION, BRANCH_FORMAT, readBranches } from "./knots-regtest/branches.ts";
+import { readSpendCorpus, SPEND_FORMAT } from "./knots-regtest/replacement-spends.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -23,6 +24,7 @@ const CDIF_03 = "v2-6-cdif-03";
 const CDIF_04 = "v2-6-cdif-04";
 const CDIF_05 = "v2-6-cdif-05";
 const CREC_01 = "v2-6-crec-01";
+const CREC_02 = "v2-6-crec-02";
 const SHA256 = /^[0-9a-f]{64}$/;
 const CLASSES = new Set([
   "source_derived",
@@ -380,6 +382,57 @@ function checkCREC01Receipt(record: RecordValue, inputs: LedgerInputs, failures:
   failures.push(...checkBranchRecord(record, inputs));
 }
 
+export function checkSpendRecord(
+  record: RecordValue, inputs: Pick<LedgerInputs, "baseline" | "readTextFile">,
+): string[] {
+  const failures: string[] = [];
+  checkDifferentialBuild(CREC_02, record, inputs, failures);
+  const corpus = readSpendCorpus(inputs.readTextFile);
+  if (record.format !== SPEND_FORMAT || record.status !== "passed" || record.source_commit !== BASELINE_COMMIT
+    || typeof record.binary_sha256 !== "string" || !SHA256.test(record.binary_sha256)
+    || !matchesRegtestCorpus(record, corpus.corpusSha256) || record.spend_sha256 !== corpus.spendSha256
+    || record.open_bitcoin_observer_sha256 !== corpus.observerSha256
+    || !isDeepStrictEqual(record.spend_facts, corpus.spendFacts)) {
+    failures.push(`${CREC_02}: receipt does not bind the spend corpus and observer`);
+  }
+  const observedFilters: Record<ProcessName, unknown[]> = { knots: [], open_bitcoin: [] };
+  for (const name of ["knots", "open_bitcoin"] as const) {
+    const daemon = record[name];
+    if (!isRecord(daemon) || !Array.isArray(daemon.runs) || daemon.runs.length !== corpus.runs.length) {
+      failures.push(`${CREC_02}: missing or incomplete ${name} spend runs`);
+      continue;
+    }
+    for (const [index, expected] of corpus.runs.entries()) {
+      const run = daemon.runs[index];
+      const steps = expected.schedule.map(({ block, reason, active }) => ({
+        hash: block.hash, submitblock: reason, active: { height: active.height, hash: active.hash },
+      }));
+      if (!matchesProcess(run, name, corpus.genesisHash, expected.end, expected.start) || run.name !== expected.name
+        || !strings(run.flags)?.includes("-blockfilterindex=1")
+        || !isDeepStrictEqual(run.steps, steps) || run.chainwork !== expected.chainwork
+        || !isDeepStrictEqual(run.utxos, expected.utxos)
+        || !Array.isArray(run.basic) || run.basic.length !== 3 || run.basic[0] !== expected.end.hash
+        || typeof run.basic[1] !== "string" || run.basic[1].length > 65_536
+        || run.basic[1].length === 0 || run.basic[1].length % 2 !== 0 || !/^[a-f0-9]+$/.test(run.basic[1])
+        || typeof run.basic[2] !== "string" || !SHA256.test(run.basic[2])) {
+        failures.push(`${CREC_02}: invalid ${name} spend observation for ${expected.name}`);
+      }
+      observedFilters[name].push(isRecord(run) ? run.basic : null);
+    }
+    if (!isDeepStrictEqual(observedFilters[name][0], observedFilters[name][1])) {
+      failures.push(`${CREC_02}: rejected replacement changed ${name} active BASIC state`);
+    }
+  }
+  if (!isDeepStrictEqual(observedFilters.knots, observedFilters.open_bitcoin)) {
+    failures.push(`${CREC_02}: active BASIC observations differ across daemons`);
+  }
+  return failures;
+}
+
+function checkCREC02Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  failures.push(...checkSpendRecord(record, inputs));
+}
+
 /** Validate active v2.6 ownership and evidence without reading GSD lifecycle state. */
 export function checkParityLedger(inputs: LedgerInputs): string[] {
   const failures: string[] = [];
@@ -456,7 +509,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
     const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt
-      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : id === CDIF_05 ? checkCDIF05Receipt : id === CREC_01 ? checkCREC01Receipt : null;
+      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : id === CDIF_05 ? checkCDIF05Receipt : id === CREC_01 ? checkCREC01Receipt : id === CREC_02 ? checkCREC02Receipt : null;
     if (checkRegtestReceipt && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
       failures.push(`${id}: done runner requires actual Knots daemon evidence`);
     }
@@ -476,7 +529,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
               || record.binary_sha256 !== value.knots_binary_sha256 || record.status !== "passed") {
               failures.push(`${id}: actual Knots differential receipt lacks pinned source, binary and passed outcome`);
             } else if (checkRegtestReceipt) {
-              if (id !== CDIF_05 && id !== CREC_01) checkDifferentialBuild(id, record, inputs, failures);
+              if (id !== CDIF_05 && id !== CREC_01 && id !== CREC_02) checkDifferentialBuild(id, record, inputs, failures);
               checkRegtestReceipt(record, inputs, failures);
             }
           } catch (error) {

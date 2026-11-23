@@ -1341,10 +1341,31 @@
       {
         "id": "v2-6-crec-02",
         "title": "Disconnect, reconnect and replacement-spend differential",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CREC-02"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/crec-02-regtest.json",
+          "scripts/knots-regtest/replacement-spends.ts",
+          "scripts/knots-regtest/spend-qualification.ts",
+          "packages/open-bitcoin-rpc/tests/crec02_closed_state.rs",
+          "scripts/check-parity-ledger.test.ts"
+        ],
+        "evidence_classes": ["knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/crec-02-regtest.json",
+        "knots_binary_sha256": "157df57bbb38c24130679e006e4e1a92c5ed6d516f31cafe9a1dbbdb8f329ed6",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+            "packages/bitcoin-knots/src/coins.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp"
+          ]
+        },
+        "rationale": "The two daemons rejected the stronger double-spend candidate with matching reasons and preserved the observed active tip, exact work, complete coins and BASIC. Both matched independently derived coin sets when activating the replacement spend and reconnecting the original.",
+        "known_gaps": [
+          "Default-Regtest through height 103, with explicit BASIC. The receipt projects consensus UTXOs; mempool resurrection and policy have separate evidence."
+        ]
       },
       {
         "id": "v2-6-crec-03",

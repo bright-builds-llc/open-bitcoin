@@ -1,0 +1,470 @@
+{
+  "format": "open-bitcoin-crec-02-v1",
+  "status": "passed",
+  "recorded_at": "2026-11-23T16:17:15.936Z",
+  "bun": "1.3.9",
+  "source_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "source_tree": "643d6c87370510b5193461e37647526369dfe0b3",
+  "binary_sha256": "157df57bbb38c24130679e006e4e1a92c5ed6d516f31cafe9a1dbbdb8f329ed6",
+  "knots_build": {
+    "archive_sha256": "7906c472d15d6d5d68849911db8e8b210ac2f863750b45ef06c42683706e071e",
+    "version": "Bitcoin Knots daemon version v29.3.0.knots20260210",
+    "platform": "Darwin arm64",
+    "cmake": "cmake version 3.27.9",
+    "ninja": "1.13.2",
+    "cxx": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+    "macos_sdk": "27.2",
+    "dependencies": [
+      "-- Found Boost: <path> (found suitable version \"1.90.0\", minimum required is \"1.73.0\")  ",
+      "-- Found Libevent: <path> (found suitable version \"2.1.12-stable\", minimum required is \"2.1.8\") "
+    ],
+    "cmake_cache_sha256": "32e1b784caac039cffa2c8fae187f582e92213d4154c3e8318314cba071a2dc7",
+    "configure_log_sha256": "34fa4ca26b03a9055d055c0ae486729d1b31fe47c30ea833c9ad3e88ccc64ecb",
+    "build_log_sha256": "004ea5b1152f516f3182ed249fbd0e1ea7e5797d32867b5461be33ce4ecc2685",
+    "git_build_info": "archive",
+    "configure_options": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DBUILD_DAEMON=ON",
+      "-DBUILD_GUI=OFF",
+      "-DBUILD_CLI=OFF",
+      "-DBUILD_TESTS=OFF",
+      "-DENABLE_WALLET=OFF",
+      "-DENABLE_TOR_SUBPROCESS=OFF",
+      "-DWITH_CCACHE=OFF",
+      "-DWITH_ZMQ=OFF"
+    ],
+    "build_options": [
+      "--target",
+      "bitcoind",
+      "--parallel",
+      "12"
+    ]
+  },
+  "open_bitcoin_build": {
+    "source_commit": "3c9811e6a96620842a511daa7f6fbfb003fc3bc8",
+    "binary_sha256": "d1d8cdf9e40827c5c83506b844d5ccb1136f443a43a34f5a3cda25b6c6658776",
+    "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+    "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
+    "cargo_options": [
+      "--locked",
+      "--manifest-path",
+      "packages/Cargo.toml",
+      "-p",
+      "open-bitcoin-rpc",
+      "--bin",
+      "open-bitcoind"
+    ],
+    "build_log_sha256": "8a2933ae25e59188be988ea6218274cb341f13d8bc4b533f57b12ececd4be8b3"
+  },
+  "network": "regtest",
+  "corpus": "packages/testdata/phase167/regtest-history.json",
+  "corpus_sha256": "1104ddd93f61b91ed0e8d531dc7e2df347162b473fa9936fa47668623edd3377",
+  "spend_sha256": "1b6543ffd32a96b99444d94dd28d19afc9ce9d007d60dbbc16a209e35fef5866",
+  "open_bitcoin_observer_sha256": "95ff376bb129b82448d08a35c5b3dfd09d000ea0aff9b505568a1e79c36ec68a",
+  "spend_facts": {
+    "funding": {
+      "txid": "8fe7463f3f898abf4287f382489e19b45c59f16c54adb9ea7975c4f315c64673",
+      "vout": 0
+    },
+    "original_txid": "2ea56d3a7f1b6d351eee30b9beef784d054fcd0d6b6858b47f0297b8d72ebc68",
+    "replacement_txid": "517fec34bf4871c83d0c0ea99efdf67f65af44f7afedde00aeb34fe49d2758d6"
+  },
+  "knots": {
+    "runs": [
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-assumevalid=0",
+          "-networkactive=0",
+          "-listen=0",
+          "-listenonion=0",
+          "-discover=0",
+          "-dnsseed=0",
+          "-fixedseeds=0",
+          "-natpmp=0",
+          "-blockfilterindex=1"
+        ],
+        "nofile_soft_limit": 1024,
+        "initial_tip": {
+          "height": 0,
+          "hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+        },
+        "peer_count": 0,
+        "name": "original",
+        "final_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "steps": [
+          {
+            "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994",
+            "submitblock": null,
+            "active": {
+              "height": 101,
+              "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+            }
+          },
+          {
+            "hash": "3d43fdbeef905e2d5c8370b3b0b4d7db0fe10826ebee94697a4f47526772ebcc",
+            "submitblock": "inconclusive",
+            "active": {
+              "height": 101,
+              "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+            }
+          }
+        ],
+        "basic": [
+          "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994",
+          "016bba80",
+          "1dce95a62f8a525ec2241c29f13a7aa833ee6b86420675ee00d755e8954d19cb"
+        ],
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000cc",
+        "utxos": {
+          "count": 103,
+          "total_sats": "505000000000",
+          "sha256": "3c68f8ec721185a4c0ff4dedb0dbcbd70f4d651632a10e75d7f57ebc38ce3112"
+        },
+        "exit_status": 0
+      },
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-assumevalid=0",
+          "-networkactive=0",
+          "-listen=0",
+          "-listenonion=0",
+          "-discover=0",
+          "-dnsseed=0",
+          "-fixedseeds=0",
+          "-natpmp=0",
+          "-blockfilterindex=1"
+        ],
+        "nofile_soft_limit": 1024,
+        "initial_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "peer_count": 0,
+        "name": "reject",
+        "final_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "steps": [
+          {
+            "hash": "6daecd510ddd9934122e35e5d98c0e4d3758e64a78a89f2e4d119f613f4c2042",
+            "submitblock": "bad-txns-inputs-missingorspent",
+            "active": {
+              "height": 101,
+              "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+            }
+          }
+        ],
+        "basic": [
+          "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994",
+          "016bba80",
+          "1dce95a62f8a525ec2241c29f13a7aa833ee6b86420675ee00d755e8954d19cb"
+        ],
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000cc",
+        "utxos": {
+          "count": 103,
+          "total_sats": "505000000000",
+          "sha256": "3c68f8ec721185a4c0ff4dedb0dbcbd70f4d651632a10e75d7f57ebc38ce3112"
+        },
+        "exit_status": 0
+      },
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-assumevalid=0",
+          "-networkactive=0",
+          "-listen=0",
+          "-listenonion=0",
+          "-discover=0",
+          "-dnsseed=0",
+          "-fixedseeds=0",
+          "-natpmp=0",
+          "-blockfilterindex=1"
+        ],
+        "nofile_soft_limit": 1024,
+        "initial_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "peer_count": 0,
+        "name": "replacement",
+        "final_tip": {
+          "height": 102,
+          "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+        },
+        "steps": [
+          {
+            "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211",
+            "submitblock": null,
+            "active": {
+              "height": 102,
+              "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+            }
+          }
+        ],
+        "basic": [
+          "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211",
+          "01662560",
+          "1066a17bccf85088bfd05b5e527208f20be391a8a7a28582d140a5cce0b5e94a"
+        ],
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000ce",
+        "utxos": {
+          "count": 104,
+          "total_sats": "510000000000",
+          "sha256": "a34580bba8ef193f62b3958a0cf5f27cb830a79dc354a0b138ebc9beb74119f1"
+        },
+        "exit_status": 0
+      },
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-assumevalid=0",
+          "-networkactive=0",
+          "-listen=0",
+          "-listenonion=0",
+          "-discover=0",
+          "-dnsseed=0",
+          "-fixedseeds=0",
+          "-natpmp=0",
+          "-blockfilterindex=1"
+        ],
+        "nofile_soft_limit": 1024,
+        "initial_tip": {
+          "height": 102,
+          "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+        },
+        "peer_count": 0,
+        "name": "reconnect",
+        "final_tip": {
+          "height": 103,
+          "hash": "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8"
+        },
+        "steps": [
+          {
+            "hash": "437a942c5542e58995b32f00663a6ec0e90c487eee1a9369734907cd5d3e7abf",
+            "submitblock": "inconclusive",
+            "active": {
+              "height": 102,
+              "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+            }
+          },
+          {
+            "hash": "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8",
+            "submitblock": null,
+            "active": {
+              "height": 103,
+              "hash": "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8"
+            }
+          }
+        ],
+        "basic": [
+          "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8",
+          "01498410",
+          "3bf8c813e107a7a0c669be4571f217b0d00130aaf08d906a8e1dc2b8e4b002d3"
+        ],
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000d0",
+        "utxos": {
+          "count": 105,
+          "total_sats": "515000000000",
+          "sha256": "e6bc0c5e7b1b9722c69b1ff8771911557c47c60f833ff81b723282927ebd9048"
+        },
+        "exit_status": 0
+      }
+    ]
+  },
+  "open_bitcoin": {
+    "runs": [
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-blockfilterindex=1"
+        ],
+        "initial_tip": {
+          "height": 0,
+          "hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+        },
+        "peer_count": 0,
+        "name": "original",
+        "final_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "steps": [
+          {
+            "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994",
+            "submitblock": null,
+            "active": {
+              "height": 101,
+              "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+            }
+          },
+          {
+            "hash": "3d43fdbeef905e2d5c8370b3b0b4d7db0fe10826ebee94697a4f47526772ebcc",
+            "submitblock": "inconclusive",
+            "active": {
+              "height": 101,
+              "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+            }
+          }
+        ],
+        "basic": [
+          "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994",
+          "016bba80",
+          "1dce95a62f8a525ec2241c29f13a7aa833ee6b86420675ee00d755e8954d19cb"
+        ],
+        "exit_status": 0,
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000cc",
+        "utxos": {
+          "count": 103,
+          "total_sats": "505000000000",
+          "sha256": "3c68f8ec721185a4c0ff4dedb0dbcbd70f4d651632a10e75d7f57ebc38ce3112"
+        }
+      },
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-blockfilterindex=1"
+        ],
+        "initial_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "peer_count": 0,
+        "name": "reject",
+        "final_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "steps": [
+          {
+            "hash": "6daecd510ddd9934122e35e5d98c0e4d3758e64a78a89f2e4d119f613f4c2042",
+            "submitblock": "bad-txns-inputs-missingorspent",
+            "active": {
+              "height": 101,
+              "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+            }
+          }
+        ],
+        "basic": [
+          "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994",
+          "016bba80",
+          "1dce95a62f8a525ec2241c29f13a7aa833ee6b86420675ee00d755e8954d19cb"
+        ],
+        "exit_status": 0,
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000cc",
+        "utxos": {
+          "count": 103,
+          "total_sats": "505000000000",
+          "sha256": "3c68f8ec721185a4c0ff4dedb0dbcbd70f4d651632a10e75d7f57ebc38ce3112"
+        }
+      },
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-blockfilterindex=1"
+        ],
+        "initial_tip": {
+          "height": 101,
+          "hash": "499db5737ae5fd8875684543824afc91b9830a95dc41e0738e9d7056e3ed0994"
+        },
+        "peer_count": 0,
+        "name": "replacement",
+        "final_tip": {
+          "height": 102,
+          "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+        },
+        "steps": [
+          {
+            "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211",
+            "submitblock": null,
+            "active": {
+              "height": 102,
+              "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+            }
+          }
+        ],
+        "basic": [
+          "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211",
+          "01662560",
+          "1066a17bccf85088bfd05b5e527208f20be391a8a7a28582d140a5cce0b5e94a"
+        ],
+        "exit_status": 0,
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000ce",
+        "utxos": {
+          "count": 104,
+          "total_sats": "510000000000",
+          "sha256": "a34580bba8ef193f62b3958a0cf5f27cb830a79dc354a0b138ebc9beb74119f1"
+        }
+      },
+      {
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-blockfilterindex=1"
+        ],
+        "initial_tip": {
+          "height": 102,
+          "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+        },
+        "peer_count": 0,
+        "name": "reconnect",
+        "final_tip": {
+          "height": 103,
+          "hash": "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8"
+        },
+        "steps": [
+          {
+            "hash": "437a942c5542e58995b32f00663a6ec0e90c487eee1a9369734907cd5d3e7abf",
+            "submitblock": "inconclusive",
+            "active": {
+              "height": 102,
+              "hash": "7fd02bc1b18ee46851da9e273bbf17f3eac71cd0bc5e373a25b6b55c375ce211"
+            }
+          },
+          {
+            "hash": "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8",
+            "submitblock": null,
+            "active": {
+              "height": 103,
+              "hash": "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8"
+            }
+          }
+        ],
+        "basic": [
+          "6ba55183505231eff88ba3997e3348b708f34696d42bfc970fc0f0c99b6561c8",
+          "01498410",
+          "3bf8c813e107a7a0c669be4571f217b0d00130aaf08d906a8e1dc2b8e4b002d3"
+        ],
+        "exit_status": 0,
+        "chainwork": "00000000000000000000000000000000000000000000000000000000000000d0",
+        "utxos": {
+          "count": 105,
+          "total_sats": "515000000000",
+          "sha256": "e6bc0c5e7b1b9722c69b1ff8771911557c47c60f833ff81b723282927ebd9048"
+        }
+      }
+    ]
+  }
+}

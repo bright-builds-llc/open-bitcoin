@@ -102,6 +102,8 @@ The integrated qualification receipt records each case and requires clean
 process exits before publishing a pass. The branch comparison covers two
 live arrival orders, stronger-branch activation, and the persisted tip at
 restart. A separate Knots-only probe records the equal-sequence fallback.
+The replacement-spend run checks the complete coin sets after a rejected
+double spend, a successful reorg, and reconnection of the original spend.
 
 ## Archived releases and historical scope
 

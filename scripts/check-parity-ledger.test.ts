@@ -435,14 +435,51 @@ test.each([
   expect(failures).toEqual([diagnostic]);
 });
 
+type SpendReceiptFixture = {
+  open_bitcoin: { runs: { utxos: { sha256: string }; basic: [string, string, string] }[] };
+};
+
+test.each([
+  ["changed post-rejection coins", (record: SpendReceiptFixture) => {
+    record.open_bitcoin.runs[1].utxos.sha256 = "0".repeat(64);
+  }, ["v2-6-crec-02: invalid open_bitcoin spend observation for reject"]],
+  ["changed post-rejection BASIC", (record: SpendReceiptFixture) => {
+    record.open_bitcoin.runs[1].basic[2] = "0".repeat(64);
+  }, [
+    "v2-6-crec-02: rejected replacement changed open_bitcoin active BASIC state",
+    "v2-6-crec-02: active BASIC observations differ across daemons",
+  ]],
+  ["wrong reconnected coins", (record: SpendReceiptFixture) => {
+    record.open_bitcoin.runs[3].utxos.sha256 = record.open_bitcoin.runs[2].utxos.sha256;
+  }, ["v2-6-crec-02: invalid open_bitcoin spend observation for reconnect"]],
+])("CREC-02 rejects a receipt with %s", (_name, mutate, expected) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-crec-02").differential_receipt;
+  const readText = inputs.readTextFile;
+  inputs.readTextFile = (path) => {
+    const text = readText(path);
+    if (path !== receipt) return text;
+    const record = JSON.parse(text);
+    mutate(record);
+    return JSON.stringify(record);
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual(expected);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-crec-02").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-crec-03").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-crec-02: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-crec-03: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

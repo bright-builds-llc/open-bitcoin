@@ -140,6 +140,30 @@ Pinned anchors include
 [body link and restart rules](../../packages/bitcoin-knots/src/validation.cpp),
 and [submitblock](../../packages/bitcoin-knots/src/rpc/mining.cpp).
 
+## Replacement spends and reconnect
+
+`v2-6-crec-02` builds both branches on the canonical positive prefix
+through height 100. Each branch spends the same height-one coinbase output
+at maturity, with a distinct spending transaction and resulting output.
+A stronger candidate on the side branch attempts to spend that input a
+second time. The runner then submits a valid stronger replacement, followed
+by an equal-work extension and then a stronger extension of the original
+branch to exercise reconnect.
+
+The [spend receipt](receipts/crec-02-regtest.json) compares four checkpoints
+for each actual daemon. The original and post-rejection checkpoints must
+agree on active tip, exact work, all UTXOs, and the tip's BASIC filter and
+header. The later checkpoints must match complete coin sets independently
+derived from the replacement and reconnected branches. Each process exits
+cleanly between checkpoints.
+
+Knots uses its active-tip UTXO dump and chainwork RPC. Open Bitcoin uses a
+[test observer](../../packages/open-bitcoin-rpc/tests/crec02_closed_state.rs)
+that reopens the same closed datadir through the proved canonical-history
+path. Both report live tip and BASIC data, and the comparison uses
+consensus UTXOs. Mempool admission and resurrection behavior have distinct
+evidence.
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -158,6 +182,7 @@ bun run scripts/run-knots-regtest-differential.ts --cdif-03
 bun run scripts/run-knots-regtest-differential.ts --cdif-04
 bun run scripts/run-knots-regtest-differential.ts --cdif-05
 TMPDIR=/tmp bun run scripts/run-knots-regtest-differential.ts --crec-01
+bun run scripts/run-knots-regtest-differential.ts --crec-02
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -180,8 +205,8 @@ zero peers. The default command submits row 1 of the
 [canonical Regtest corpus](../../packages/testdata/phase167/regtest-history.json).
 The extended commands check the serialized positive blocks and parent links.
 The `--cdif-02` command submits positive rows 1 through 301. The
-`--cdif-03` through `--cdif-05` commands additionally enable Knots BASIC
-indexing for the observed-state checks. The commands use the ordinary
+`--cdif-03` through `--cdif-05` and `--crec-02` commands additionally
+enable Knots BASIC indexing for the observed-state checks. The commands use the ordinary
 default Regtest rules and submit only the block bytes.
 
 The runner allocates disposable datadirs under the system temporary
@@ -191,7 +216,8 @@ extended run.
 
 The command writes a fresh `run-*/receipt.json` under the corresponding ignored
 `.local/open-bitcoin-dev/cdif-01/` through
-`.local/open-bitcoin-dev/cdif-05/`, or `.local/open-bitcoin-dev/crec-01/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/cdif-05/`, or `.local/open-bitcoin-dev/crec-01/` through
+`.local/open-bitcoin-dev/crec-02/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The
