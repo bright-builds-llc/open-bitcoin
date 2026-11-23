@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,787 |
-| Total lines | 546,669 |
-| Code/content lines | 480,922 |
+| Total lines | 546,675 |
+| Code/content lines | 480,928 |
 | Comment-only lines | 28,580 |
 | Blank lines | 37,167 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 766 | 258,713 | 225,877 | 17,198 | 15,638 |
 | Rust production | 597 | 175,544 | 153,836 | 7,888 | 13,820 |
-| TypeScript/Bun scripts | 348 | 93,949 | 83,832 | 3,373 | 6,744 |
+| TypeScript/Bun scripts | 348 | 93,955 | 83,838 | 3,373 | 6,744 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,842 | 4,294 | 100 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -75,7 +75,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase158-validated-reorg.test.ts | 628 |
 | scripts/check-phase158-validated-reorg.ts | 520 |
 | scripts/check-phase159-filter-rpcs.test.ts | 624 |
-| scripts/check-phase159-filter-rpcs.ts | 322 |
+| scripts/check-phase159-filter-rpcs.ts | 328 |
 | scripts/check-phase159-filter-rpcs/contracts.ts | 441 |
 | scripts/check-phase159-filter-rpcs/evidence.ts | 171 |
 | scripts/check-phase160-peer-filter-serving.test.ts | 175 |
@@ -429,7 +429,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | f8fed6ae1d2f68762593129e0962299f48469438eebaa8a04337c077e58de68c |
+| Input fingerprint | b65a81d324d4689f7ac84d5ef46e161a43626f35d1b71d4029f9ad65d454c038 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

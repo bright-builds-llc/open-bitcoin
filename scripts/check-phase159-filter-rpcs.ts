@@ -109,7 +109,13 @@ function checkSource(text: Texts, failures: string[]): void {
   }
   const mempool = NODE + "network/mempool_lifecycle.rs";
   const maybeReorg = maybeFunction(text(mempool), "reorg_to_branch", true);
-  if (!maybeReorg || !hasOrderedCode(maybeReorg.body, ["prepare_reorg(", "install_prepared_reorg_preview(", "apply_reorg_mempool_lifecycle(", "commit_prepared_reorg("])) failures.push(`${mempool}: preflight before preview/mempool`);
+  const maybePrepare = maybeFunction(text(mempool), "prepare_live_reorg", true);
+  const maybeCommit = maybeFunction(text(mempool), "commit_live_reorg", true);
+  if (!maybeReorg || !hasOrderedCode(maybeReorg.body, ["self.prepare_live_reorg(", "self.commit_live_reorg("])
+    || !maybePrepare || !hasOrderedCode(maybePrepare.body, ["authorize_reorg(", "prepare_reorg("])
+    || !maybeCommit || !hasOrderedCode(maybeCommit.body, ["install_prepared_reorg_preview(", "apply_reorg_mempool_lifecycle(", "commit_prepared_reorg("])) {
+    failures.push(`${mempool}: preflight before preview/mempool`);
+  }
   const lifecycle = NODE + "network/runtime_authority/lifecycle.rs";
   for (const symbol of ["apply_lifecycle_command", "dispatch_checkpoint_completion", "dispatch_checkpoint_abort"]) {
     // apply_lifecycle_command also has the pure network dispatcher; select the handle impl.
