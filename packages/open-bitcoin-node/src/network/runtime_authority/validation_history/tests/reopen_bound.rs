@@ -345,82 +345,27 @@ fn phase167_local_submission_reopen_bound_existing_members_and_stale_receipts() 
     first.header.time += 100;
     remine(&mut first);
     let second = child(&first.header, 2);
-    for block in [&first, &second] {
-        assert!(
-            command.submit(wire(block)).is_err(),
-            "known side bodies are not accepted"
-        );
-    }
-    let entries = command
-        .network
-        .header_entries()
-        .expect("actual admitted work");
-    let replacements =
-        [&first, &second].map(|block| open_bitcoin_core::chainstate::AnchoredBlock {
-            block: block.clone(),
-            chain_work: entries
-                .iter()
-                .find(|entry| entry.block_hash == block_hash(&block.header))
-                .expect("earned work")
-                .chain_work,
-        });
-    let flags = command
-        .network
-        .read(|network| {
-            network
-                .peer_manager
-                .header_store()
-                .canonical_header_history(block_hash(&second.header))
-                .expect("actual branch history")
-                .rules()
-                .script_flags()
-        })
-        .expect("held authority");
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .expect("shell clock")
-        .as_secs();
-    // The direct reorg adapter consumes acceptance; its caller retains the real bodies.
-    for body in [&first, &second] {
+    assert!(matches!(
         command
-            .store
-            .save_block(body, crate::PersistMode::Sync)
-            .expect("durable actual replacement body");
-    }
-    command
-        .store
-        .inspect_submission_inventory()
-        .expect("supported actual replacement source");
-    command
-        .network
-        .reorg_to_branch(
-            std::slice::from_ref(&active),
-            &replacements,
-            open_bitcoin_mempool::ReorgLifecycleContext::new(
-                open_bitcoin_mempool::PolicyTime::from_unix_seconds(
-                    i64::try_from(now).expect("clock range"),
-                ),
-            ),
-            flags,
-            command.params,
-        )
-        .expect("genuine preferred branch acceptance");
-    command
-        .network
-        .flush_coins(
-            FlushMode::Always,
-            FlushPolicyTime::from_unix_seconds(now),
-            crate::chainstate::probe_disk_free_bytes(&path),
-        )
-        .expect("actual full flush with disk probe");
-    for replacement in &replacements {
-        let hash = block_hash(&replacement.block.header);
+            .submit(wire(&first))
+            .expect("retained first side block"),
+        CanonicalSubmissionOutcome::Inconclusive
+    ));
+    let winning = accepted(
+        command
+            .submit(wire(&second))
+            .expect("genuine preferred branch"),
+    );
+    assert_eq!(winning.block_hash, block_hash(&second.header));
+    for replacement in [&first, &second] {
+        let hash = block_hash(&replacement.header);
         assert_eq!(
             command
                 .store
                 .load_block(hash)
-                .expect("actual reorg body source"),
-            Some(replacement.block.clone()),
+                .expect("actual reorg body source")
+                .as_ref(),
+            Some(replacement),
             "actual accepted reorg requires durable body retention"
         );
     }

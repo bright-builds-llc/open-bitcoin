@@ -152,13 +152,39 @@ impl CanonicalSubmissionCommand {
     ) -> SubmissionResult<Option<BranchPaths>> {
         let headers = network.peer_manager.header_store();
         let active = network.chainstate().chainstate().active_chain();
-        let mut hash = block_hash(&candidate.header);
-        let mut replacements = Vec::new();
+        let candidate_hash = block_hash(&candidate.header);
+        let mut hash = candidate_hash;
+        let mut path: Vec<&open_bitcoin_network::HeaderEntry> = Vec::new();
         for _ in 0..FjallNodeStore::canonical_history_reopen_limit() {
             if let Some(ancestor) = active
                 .iter()
                 .position(|position| position.block_hash == hash)
             {
+                let mut replacements = Vec::with_capacity(path.len());
+                for entry in path.into_iter().rev() {
+                    let block = if entry.block_hash == candidate_hash {
+                        candidate.clone()
+                    } else {
+                        let Some(body) = self
+                            .store
+                            .load_block(entry.block_hash)
+                            .map_err(operational("side ancestor body read"))?
+                        else {
+                            return Ok(None);
+                        };
+                        body
+                    };
+                    if block.header != entry.header || block_hash(&block.header) != entry.block_hash
+                    {
+                        return Err(CanonicalSubmissionError::support(
+                            "replacement body identity changed",
+                        ));
+                    }
+                    replacements.push(AnchoredBlock {
+                        block,
+                        chain_work: entry.chain_work,
+                    });
+                }
                 let disconnect = active[ancestor + 1..]
                     .iter()
                     .rev()
@@ -172,37 +198,26 @@ impl CanonicalSubmissionCommand {
                             })
                     })
                     .collect::<SubmissionResult<Vec<_>>>()?;
-                replacements.reverse();
                 return Ok(Some(BranchPaths {
                     disconnect,
                     replacements,
                 }));
             }
+            // Follow the whole header path before testing payload availability. A
+            // missing intermediate body must not conceal a known failed ancestor.
+            if headers
+                .maybe_body_eligibility(hash)
+                .is_some_and(|facts| facts.failed)
+            {
+                return Err(CanonicalSubmissionError::support(
+                    "replacement crosses failed branch ancestry",
+                ));
+            }
             let entry = headers.entry(&hash).ok_or_else(|| {
                 CanonicalSubmissionError::support("replacement header unavailable")
             })?;
-            let block = if replacements.is_empty() {
-                candidate.clone()
-            } else {
-                let Some(block) = self
-                    .store
-                    .load_block(hash)
-                    .map_err(operational("side ancestor body read"))?
-                else {
-                    return Ok(None);
-                };
-                block
-            };
-            if block.header != entry.header || block_hash(&block.header) != hash {
-                return Err(CanonicalSubmissionError::support(
-                    "replacement body identity changed",
-                ));
-            }
+            path.push(entry);
             hash = entry.header.previous_block_hash;
-            replacements.push(AnchoredBlock {
-                block,
-                chain_work: entry.chain_work,
-            });
         }
         Err(CanonicalSubmissionError::support(
             "replacement ancestry exceeds retained bound",
