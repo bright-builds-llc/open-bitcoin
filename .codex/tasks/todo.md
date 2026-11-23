@@ -1971,3 +1971,16 @@ managed reopen and CLI agreed on two proved prefixes and three explicit
 refusals. The refusal tests preserved each file path and byte digest. The
 receipt binds the fixture source, canonical corpus, operator executable
 and native execution log. Full pre-push and exact-head CI attest delivery.
+
+## task-cint-01-canonical-paired-pruning | 2026-11-23 | Reproduce paired deletion on canonical Regtest
+
+- [x] Sync main and trace the pinned eligibility threshold, keep window and index protection.
+- [x] Extend the admitted canonical chain through height 1001 in a disposable managed runtime.
+- [x] Verify durable paired deletion, retained records and protection before and after BASIC catch-up.
+- [x] Re-run the focused test and check the ledger, breadcrumbs, and final diff before direct-main delivery.
+
+Qualification review: On the canonical managed chain at height 1001, BASIC
+protection blocked all 713 requested paired deletions. After catch-up the
+same plan deleted all 713 pairs and retained the trailing 288. A later flush
+preserved the deletion. The scope covers manual pruning before restart. Full
+pre-push and exact-head CI attest delivery.

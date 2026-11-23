@@ -109,6 +109,11 @@ status preserve the earned tip, coins, exact work, and BASIC checkpoint.
 Software checkpoint controls verify proved prefixes and byte-preserving
 refusals through those same operator paths.
 
+The [canonical Regtest pruning check](./docs/parity/v2-6-canonical-pruning.md)
+extends an isolated managed runtime through height 1001. Manual pruning
+preserves the block and undo pairs BASIC still needs, deletes eligible pairs
+after catch-up, and leaves the trailing 288 pairs in place.
+
 ## Archived releases and historical scope
 
 > Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).

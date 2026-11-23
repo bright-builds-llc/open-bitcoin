@@ -543,11 +543,14 @@ test.each([
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-cint-01").evidence.push("docs/parity/requirements.md");
+  const entry = surface(inputs, "v2-6-cint-01");
+  entry.status = "planned";
+  entry.evidence = ["docs/parity/requirements.md"];
+  entry.evidence_classes = [];
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-cint-01: planned surface cannot claim evidence");
+  expect(failures).toEqual(["v2-6-cint-01: planned surface cannot claim evidence"]);
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

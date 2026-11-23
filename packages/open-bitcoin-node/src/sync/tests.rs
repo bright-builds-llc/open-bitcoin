@@ -532,6 +532,7 @@ use crate::{
     },
 };
 
+mod canonical_pruning;
 mod peer_filter_transport;
 mod phase165_candidates;
 mod phase165_live_fixture;

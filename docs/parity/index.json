@@ -1425,10 +1425,28 @@
       {
         "id": "v2-6-cint-01",
         "title": "Canonical pruning with paired block and undo deletion",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CINT-01"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-canonical-pruning.md",
+          "packages/open-bitcoin-node/src/sync/tests/canonical_pruning.rs",
+          "packages/testdata/phase167/regtest-history.json"
+        ],
+        "evidence_classes": ["local_product"],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp",
+            "packages/bitcoin-knots/src/validation.h",
+            "packages/bitcoin-knots/src/index/base.cpp"
+          ]
+        },
+        "rationale": "An explicit canonical managed Regtest run reached height 1001. BASIC protection preserved all 713 requested pairs until catch-up. The same eligible plan then removed both durable keys at heights 1 through 713, retained 288 trailing pairs and preserved the durable coins tip and BASIC checkpoint.",
+        "known_gaps": [
+          "Evidence covers managed-runtime admission and manual planning/application. Ordinary daemon submission and full-history reopen retain their 306-position bound.",
+          "Canonical automatic size-triggered deletion, post-prune reopen and serving, and actual Knots daemon pruning are outside this evidence."
+        ]
       },
       {
         "id": "v2-6-cint-02",

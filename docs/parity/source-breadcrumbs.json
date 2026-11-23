@@ -181,6 +181,19 @@
       ]
     },
     {
+      "label": "canonical-regtest-paired-pruning-test",
+      "files": [
+        "packages/open-bitcoin-node/src/sync/tests/canonical_pruning.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.h",
+        "packages/bitcoin-knots/src/index/base.cpp"
+      ]
+    },
+    {
       "label": "phase167-bounded-fjall-row-family",
       "files": [
         "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows.rs",

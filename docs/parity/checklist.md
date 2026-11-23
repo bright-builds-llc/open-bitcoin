@@ -126,6 +126,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-crec-02` | `done` | `CREC-02` | [Spend scope](v2-6-knots-regtest-differential.md#replacement-spends-and-reconnect), [tracked receipt](receipts/crec-02-regtest.json) | Both daemons preserved active state after the rejected double spend and matched complete UTXOs after replacement and reconnect. |
 | `v2-6-crec-03` | `done` | `CREC-03` | [Reopen scope](v2-6-knots-regtest-differential.md#canonical-stop-and-reopen), [tracked receipt](receipts/crec-03-regtest.json) | Ordinary local daemon and offline status preserved earned tip, complete coins, work and BASIC after clean stop and reopen. The restarted daemon spent a recovered output. |
 | `v2-6-crec-04` | `done` | `CREC-04` | [Checkpoint scope](v2-6-knots-regtest-differential.md#interrupted-checkpoint-and-inconsistent-records), [tracked receipt](receipts/crec-04-regtest.json) | Managed reopen and the CLI agreed on two proved prefixes and three byte-preserving compatibility refusals. |
+| `v2-6-cint-01` | `done` | `CINT-01` | [Canonical pruning and reproduction](v2-6-canonical-pruning.md) | At canonical Regtest height 1001, the managed runtime preserved 713 pairs under BASIC protection, then deleted them after catch-up and retained the last 288 pairs. |
 
 ## Evidence Rules
 
