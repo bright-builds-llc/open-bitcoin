@@ -1,0 +1,105 @@
+{
+  "format": "open-bitcoin-crec-04-v1",
+  "status": "passed",
+  "recorded_at": "2026-11-23T17:21:17.778Z",
+  "bun": "1.3.9",
+  "network": "regtest",
+  "corpus": "packages/testdata/phase167/regtest-history.json",
+  "corpus_sha256": "1104ddd93f61b91ed0e8d531dc7e2df347162b473fa9936fa47668623edd3377",
+  "fixture_sha256": "abea29fb34e44112106dc639b9fc1e9af78a6655aa0655a5595d29f0b1870633",
+  "native_log_sha256": "25fbd0d2a63fd4fb27464223740a605e6d9b0b363b63e41f852cf7b0cab2a06c",
+  "cli_build": {
+    "source_commit": "a7459b1bae8cec0c9cfad9a05c0f507b67dbd249",
+    "binary_sha256": "02e52160508f067a5cf34c27da8ed44747da00890b5c149c4ab28eea7446ee71",
+    "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+    "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
+    "cargo_options": [
+      "--locked",
+      "--manifest-path",
+      "packages/Cargo.toml",
+      "-p",
+      "open-bitcoin-cli",
+      "--bin",
+      "open-bitcoin"
+    ],
+    "build_log_sha256": "81499021b4983cceb69073c3471887a73cd7f43152bf1a77b273ccbbed03aca2"
+  },
+  "cases": [
+    {
+      "fixture_exit_status": 75,
+      "name": "before-body",
+      "operator": {
+        "chainwork": "0000000000000000000000000000000000000000000000000000000000000004",
+        "exit_status": 0,
+        "tip": {
+          "hash": "194ad8077ee474b008cc5fb29bade1fd6cda566c44972e2d614f1bf586762d24",
+          "height": 1
+        }
+      },
+      "outcome": "proved_prefix",
+      "state": {
+        "basic_height": 1,
+        "chainwork": "0000000000000000000000000000000000000000000000000000000000000004",
+        "coins_count": 3,
+        "coins_sha256": "475461f8d884f96f41a9cb48572da3adb3b26ece711e30afc0da1611dc1e9a50",
+        "tip": {
+          "hash": "194ad8077ee474b008cc5fb29bade1fd6cda566c44972e2d614f1bf586762d24",
+          "height": 1
+        }
+      }
+    },
+    {
+      "fixture_exit_status": 75,
+      "name": "before-chain-meta",
+      "operator": {
+        "error": "chain_compatibility_refused",
+        "exit_status": 1
+      },
+      "outcome": "refused",
+      "source_unchanged": true
+    },
+    {
+      "fixture_exit_status": 75,
+      "name": "after-basic-commit",
+      "operator": {
+        "chainwork": "0000000000000000000000000000000000000000000000000000000000000006",
+        "exit_status": 0,
+        "tip": {
+          "hash": "25e40cf47de8f2854a128bfe8a8274291c6522103a88820e57ed03e7877f174e",
+          "height": 2
+        }
+      },
+      "outcome": "proved_prefix",
+      "state": {
+        "basic_height": 2,
+        "chainwork": "0000000000000000000000000000000000000000000000000000000000000006",
+        "coins_count": 4,
+        "coins_sha256": "e7ceddef5e2ac3d1a88940aa6709b9e849f9b6b1fb5a43779def572767a09f4f",
+        "tip": {
+          "hash": "25e40cf47de8f2854a128bfe8a8274291c6522103a88820e57ed03e7877f174e",
+          "height": 2
+        }
+      }
+    },
+    {
+      "fixture_exit_status": 0,
+      "name": "inconsistent-coins-tip",
+      "operator": {
+        "error": "chain_compatibility_refused",
+        "exit_status": 1
+      },
+      "outcome": "refused",
+      "source_unchanged": true
+    },
+    {
+      "fixture_exit_status": 0,
+      "name": "inconsistent-header-work",
+      "operator": {
+        "error": "chain_compatibility_refused",
+        "exit_status": 1
+      },
+      "outcome": "refused",
+      "source_unchanged": true
+    }
+  ]
+}

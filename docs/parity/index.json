@@ -1398,10 +1398,29 @@
       {
         "id": "v2-6-crec-04",
         "title": "Interrupted checkpoint and inconsistent-record recovery",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CREC-04"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/crec-04-regtest.json",
+          "scripts/knots-regtest/checkpoint-qualification.ts",
+          "scripts/knots-regtest/checkpoint-recovery.ts",
+          "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/observation/recovery.rs",
+          "scripts/check-parity-ledger.test.ts"
+        ],
+        "evidence_classes": ["local_product"],
+        "recovery_receipt": "docs/parity/receipts/crec-04-regtest.json",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/txdb.cpp",
+            "packages/bitcoin-knots/src/init.cpp"
+          ]
+        },
+        "rationale": "The ordinary managed reopen and operator CLI agree on the proved height-one prefix before body retention and height-two prefix after the BASIC commit. They refuse interrupted chain metadata, a mismatched coins tip, and inconsistent paired header work. Both refusal paths preserve source files and byte digests.",
+        "known_gaps": [
+          "Bounded canonical Regtest through height two with explicit BASIC and injected software publication failures in owned processes. Physical power-loss testing has separate evidence requirements."
+        ]
       },
       {
         "id": "v2-6-cint-01",

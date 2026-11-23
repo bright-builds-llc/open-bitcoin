@@ -106,6 +106,8 @@ The replacement-spend run checks the complete coin sets after a rejected
 double spend, a successful reorg, and reconnection of the original spend.
 The local stop-and-reopen run verifies that the ordinary daemon and offline
 status preserve the earned tip, coins, exact work, and BASIC checkpoint.
+Software checkpoint controls verify proved prefixes and byte-preserving
+refusals through those same operator paths.
 
 ## Archived releases and historical scope
 

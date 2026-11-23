@@ -507,14 +507,47 @@ test.each([
   expect(failures).toEqual([expected]);
 });
 
+type CheckpointReceiptFixture = {
+  cases: { source_unchanged?: boolean; state?: { chainwork: string } }[];
+};
+
+test.each([
+  ["changed refused source", (record: CheckpointReceiptFixture) => {
+    record.cases[1].source_unchanged = false;
+  }, "v2-6-crec-04: invalid refused-source observation for before-chain-meta"],
+  ["invented checkpoint progress", (record: CheckpointReceiptFixture) => {
+    const state = record.cases[0].state;
+    if (!state) throw new Error("missing proved-prefix fixture");
+    state.chainwork = "0".repeat(64);
+  }, "v2-6-crec-04: invalid proved prefix for before-body"],
+])("CREC-04 rejects a receipt with %s", (_name, mutate, expected) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = "docs/parity/receipts/crec-04-regtest.json";
+  const readText = inputs.readTextFile;
+  inputs.readTextFile = (path) => {
+    const text = readText(path);
+    if (path !== receipt) return text;
+    const record = JSON.parse(text);
+    mutate(record);
+    return JSON.stringify(record);
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual([expected]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-crec-04").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-cint-01").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-crec-04: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-cint-01: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

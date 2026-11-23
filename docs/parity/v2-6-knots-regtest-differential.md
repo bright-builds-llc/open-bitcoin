@@ -183,6 +183,29 @@ The [reopen receipt](receipts/crec-03-regtest.json) binds the clean exits,
 CLI and daemon builds, canonical inputs, and offline observer. Its evidence
 class is `local_product`.
 
+## Interrupted checkpoint and inconsistent records
+
+`v2-6-crec-04` uses disposable processes that earn a canonical Regtest
+checkpoint through the ordinary submission command. At existing injected
+software fault points, a fixture process exits with the runtime handles
+still in scope so ordinary reopen must use the committed store. The
+[checkpoint receipt](receipts/crec-04-regtest.json) records these outcomes.
+
+| Case | Ordinary reopen |
+| --- | --- |
+| Interrupted before candidate body retention | Proves the earlier height-one prefix |
+| Interrupted before chain metadata publication | Explicit compatibility refusal with source bytes preserved |
+| Interrupted after the BASIC checkpoint commit | Proves the height-two prefix |
+| Closed coins tip inconsistent with chain metadata | Explicit compatibility refusal with source bytes preserved |
+| Closed header and index records with inconsistent work | Explicit compatibility refusal with source bytes preserved |
+
+On proved prefixes, the managed runtime checks complete coins and the BASIC
+checkpoint. The source-built `sync status` process independently reports the
+same tip and exact work, or the structured refusal. Both refusal paths check the
+original source file inventory and byte digests. This is `local_product`
+evidence for the bounded software interruption and inconsistent-record
+fixtures, with the test source, corpus and CLI build bound in the receipt.
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -203,6 +226,7 @@ bun run scripts/run-knots-regtest-differential.ts --cdif-05
 TMPDIR=/tmp bun run scripts/run-knots-regtest-differential.ts --crec-01
 bun run scripts/run-knots-regtest-differential.ts --crec-02
 bun run scripts/run-knots-regtest-differential.ts --crec-03
+TMPDIR=/tmp bun run scripts/run-knots-regtest-differential.ts --crec-04
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -237,7 +261,7 @@ extended run.
 The command writes a fresh `run-*/receipt.json` under the corresponding ignored
 `.local/open-bitcoin-dev/cdif-01/` through
 `.local/open-bitcoin-dev/cdif-05/`, or `.local/open-bitcoin-dev/crec-01/` through
-`.local/open-bitcoin-dev/crec-03/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/crec-04/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The

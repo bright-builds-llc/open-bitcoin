@@ -1962,5 +1962,12 @@ resulting state. Full pre-push and exact-head CI attest delivery.
 
 - [x] Sync main and trace the ordinary stop/reopen and actual BASIC fault boundaries.
 - [x] Exercise the native interrupted-checkpoint and inconsistent-record matrix in disposable subprocesses.
-- [ ] Compare the ordinary operator CLI at each recovered or refused checkpoint and record the receipt.
-- [ ] Guard the receipt and deliver on main through the full pre-push and CI gates.
+- [x] Compare the ordinary operator CLI at each recovered or refused checkpoint and record the receipt.
+- [x] Guard the receipt and prepare direct-main delivery through the repo-managed gates.
+
+Qualification review: Fixture subprocesses exited with their runtime handles
+still held after three actual software checkpoint failures. The ordinary
+managed reopen and CLI agreed on two proved prefixes and three explicit
+refusals. The refusal tests preserved each file path and byte digest. The
+receipt binds the fixture source, canonical corpus, operator executable
+and native execution log. Full pre-push and exact-head CI attest delivery.
