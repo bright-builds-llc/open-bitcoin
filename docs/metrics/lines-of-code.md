@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,806 |
-| Total lines | 550,664 |
-| Code/content lines | 484,615 |
-| Comment-only lines | 28,676 |
-| Blank lines | 37,373 |
+| Included files | 1,809 |
+| Total lines | 550,877 |
+| Code/content lines | 484,800 |
+| Comment-only lines | 28,683 |
+| Blank lines | 37,394 |
 
 ## Per-Crate Modules
 
@@ -36,9 +36,9 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 773 | 260,745 | 227,784 | 17,255 | 15,706 |
 | Rust production | 600 | 176,235 | 154,472 | 7,897 | 13,866 |
-| TypeScript/Bun scripts | 357 | 95,211 | 84,973 | 3,403 | 6,835 |
+| TypeScript/Bun scripts | 360 | 95,422 | 85,156 | 3,410 | 6,856 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
-| Shell scripts | 24 | 4,846 | 4,298 | 100 | 448 |
+| Shell scripts | 24 | 4,848 | 4,300 | 100 | 448 |
 | TOML/config | 16 | 3,480 | 3,111 | 1 | 368 |
 | Other config | 7 | 1,233 | 1,165 | 0 | 68 |
 | Bazel/Starlark | 18 | 422 | 387 | 0 | 35 |
@@ -344,6 +344,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-5-prune-coordination.ts | 331 |
 | scripts/check-v2-5-prune-coordination/contracts.ts | 138 |
 | scripts/check-v2-5-prune-coordination/rust-evidence.ts | 96 |
+| scripts/check-v2-6-qualification.test.ts | 42 |
+| scripts/check-v2-6-qualification.ts | 74 |
 | scripts/check-v2-6-traceability.test.ts | 58 |
 | scripts/check-v2-6-traceability.ts | 176 |
 | scripts/checker-shared/claim-text.ts | 105 |
@@ -359,14 +361,15 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/generate-loc-report.ts | 571 |
 | scripts/generate-peer-filter-fixtures.test.ts | 286 |
 | scripts/generate-peer-filter-fixtures.ts | 366 |
-| scripts/knots-regtest/branch-qualification.ts | 60 |
+| scripts/knots-regtest/branch-qualification.ts | 63 |
 | scripts/knots-regtest/branches.ts | 122 |
 | scripts/knots-regtest/build.ts | 151 |
 | scripts/knots-regtest/checkpoint-qualification.ts | 33 |
 | scripts/knots-regtest/checkpoint-recovery.ts | 95 |
 | scripts/knots-regtest/daemon.ts | 211 |
 | scripts/knots-regtest/process.ts | 58 |
-| scripts/knots-regtest/qualification.ts | 91 |
+| scripts/knots-regtest/qualification-inputs.ts | 84 |
+| scripts/knots-regtest/qualification.ts | 94 |
 | scripts/knots-regtest/receipt.ts | 38 |
 | scripts/knots-regtest/recovery-qualification.ts | 116 |
 | scripts/knots-regtest/recovery.ts | 100 |
@@ -374,7 +377,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/knots-regtest/regtest-history.ts | 95 |
 | scripts/knots-regtest/rejections.ts | 133 |
 | scripts/knots-regtest/replacement-spends.ts | 151 |
-| scripts/knots-regtest/spend-qualification.ts | 67 |
+| scripts/knots-regtest/spend-qualification.ts | 70 |
 | scripts/knots-regtest/state.ts | 179 |
 | scripts/phase162-filter-oracle.test.ts | 250 |
 | scripts/phase162-filter-oracle.ts | 232 |
@@ -388,7 +391,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/phase167-regtest-corpus.ts | 615 |
 | scripts/phase167-regtest-serialization.ts | 245 |
 | scripts/process-liveness.ts | 53 |
-| scripts/run-knots-regtest-differential.ts | 166 |
+| scripts/run-knots-regtest-differential.ts | 168 |
 | scripts/run-live-mainnet-smoke.ts | 9 |
 | scripts/run-live-mainnet-smoke/cli.ts | 285 |
 | scripts/run-live-mainnet-smoke/command.ts | 167 |
@@ -438,7 +441,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | d8abdb2709ab810bb3ff26dfce2afa76d4f50f8d5d13560ed95621401d3358ee |
+| Input fingerprint | e48bf0e74151c810390da7775ac535402acd129aac2326fa0326e48a0225be1f |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

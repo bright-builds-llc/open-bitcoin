@@ -10,6 +10,7 @@ import { runBranchQualification } from "./knots-regtest/branch-qualification.ts"
 import { runQualification } from "./knots-regtest/qualification.ts";
 import { BASELINE_COMMIT } from "./check-parity-ledger.ts";
 import { buildKnots, buildOpenBitcoin, sha256File } from "./knots-regtest/build.ts";
+import { beginQualification } from "./knots-regtest/qualification-inputs.ts";
 import { compareDaemon, type DaemonRpc } from "./knots-regtest/daemon.ts";
 import { readRegtestCase, REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
 import {
@@ -90,6 +91,7 @@ async function runDifferential() {
     console.log(`${label}: passed. Receipt: ${receipt}`);
     return;
   }
+  const seal = beginQualification(root);
   const readText = (path: string) => readFileSync(join(root, path), "utf8");
   const maybeRejections = id === "cdif-03" ? readRejectionCorpus(readText) : null;
   const maybeState = id === "cdif-04" ? readStateCorpus(readText) : null;
@@ -128,7 +130,7 @@ async function runDifferential() {
       throw new Error("A daemon executable changed during qualification");
     }
 
-    const receipt = {
+    const receipt = seal({
       format: `open-bitcoin-${id}-v1`,
       status: "passed",
       recorded_at: new Date().toISOString(),
@@ -147,7 +149,7 @@ async function runDifferential() {
       } : scenario.inputFacts),
       knots: knotsResult,
       open_bitcoin: openBitcoinResult,
-    };
+    });
     const pending = join(run, "receipt.tmp");
     const destination = join(run, "receipt.json");
     writeFileSync(pending, `${JSON.stringify(receipt, null, 2)}\n`, { flag: "wx", mode: 0o600 });

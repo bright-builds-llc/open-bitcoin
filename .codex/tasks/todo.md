@@ -2067,3 +2067,10 @@ Qualification review: The trace verified all current owner and evidence
 routes, seven scoped Regtest receipts, and the unchanged bytes of ten v2.5
 archive files. The existing archive scope is preserved. Full pre-push and
 exact-head CI attest delivery.
+
+## task-cpar-02-qualification-freshness | 2026-11-23 | Bind qualification to current inputs and renew observed comparisons
+
+- [x] Capture the qualification inputs before launch and check the binding again before receipt publication.
+- [x] Add deterministic freshness and bounded-claim checks to the offline verifier.
+- [ ] Rerun all seven actual comparisons, validate the tracked receipts, and record closure.
+- [ ] Pass the full direct-main delivery gate and exact-head CI.

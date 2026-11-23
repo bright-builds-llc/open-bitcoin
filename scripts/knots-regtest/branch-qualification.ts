@@ -6,12 +6,14 @@ import { BRANCH_FORMAT, observeBranchSchedule, observeRestart, readBranches } fr
 import { buildKnots, buildOpenBitcoin, sha256File } from "./build.ts";
 import { compareDaemon } from "./daemon.ts";
 import { qualify } from "./receipt.ts";
+import { beginQualification } from "./qualification-inputs.ts";
 import { REGTEST_CORPUS } from "./regtest-case.ts";
 
 export async function runBranchQualification(root: string, run: string) {
   const readTextFile = (path: string) => readFileSync(join(root, path), "utf8");
   let checkoutTree = "";
   return qualify(run, async (stage) => {
+    const seal = beginQualification(root);
     const corpus = readBranches(readTextFile);
     stage("knots_build");
     const knots = await buildKnots(root, run, "CREC-01");
@@ -43,14 +45,15 @@ export async function runBranchQualification(root: string, run: string) {
         || await sha256File(openBitcoin.executable) !== openBitcoin.build.binary_sha256) {
         throw new Error("A daemon executable changed during branch qualification");
       }
-      return {
+      stage("input_binding");
+      return seal({
         format: BRANCH_FORMAT, status: "passed",
         recorded_at: new Date().toISOString(), bun: Bun.version,
         source_commit: BASELINE_COMMIT, source_tree: knots.sourceTree, binary_sha256: knots.binarySha256,
         knots_build: knots.build, open_bitcoin_build: openBitcoin.build,
         network: "regtest", corpus: REGTEST_CORPUS, corpus_sha256: corpus.corpusSha256,
         branch_sha256: corpus.branchSha256, knots: knotsResult, open_bitcoin: openResult,
-      };
+      });
     } finally {
       rmSync(runtime, { recursive: true, force: true });
     }

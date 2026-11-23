@@ -5,6 +5,7 @@ import { BASELINE_COMMIT, checkQualificationRecord } from "../check-parity-ledge
 import { buildKnots, buildOpenBitcoin, sha256File } from "./build.ts";
 import { compareDaemon } from "./daemon.ts";
 import { qualify, QUALIFICATION_FORMAT } from "./receipt.ts";
+import { beginQualification } from "./qualification-inputs.ts";
 import { REGTEST_CORPUS } from "./regtest-case.ts";
 import { observeRejections, readRejectionCorpus, REJECTION_NORMALIZATION } from "./rejections.ts";
 import { observeClosedState, observeStateAtTip, readStateCorpus } from "./state.ts";
@@ -19,6 +20,7 @@ export async function runQualification(root: string, run: string) {
   };
   let checkoutTree = "";
   return qualify(run, async (stage) => {
+    const seal = beginQualification(root);
     const rejections = readRejectionCorpus(readTextFile);
     const state = readStateCorpus(readTextFile);
     stage("knots_build");
@@ -72,7 +74,8 @@ export async function runQualification(root: string, run: string) {
         || await sha256File(openBitcoin.executable) !== openBitcoin.build.binary_sha256) {
         throw new Error("A daemon executable changed during qualification");
       }
-      return {
+      stage("input_binding");
+      return seal({
         format: QUALIFICATION_FORMAT, status: "passed",
         recorded_at: new Date().toISOString(), bun: Bun.version,
         source_commit: BASELINE_COMMIT, source_tree: knots.sourceTree, binary_sha256: knots.binarySha256,
@@ -81,7 +84,7 @@ export async function runQualification(root: string, run: string) {
         normalization: REJECTION_NORMALIZATION, expectation_sha256: state.expectationSha256,
         open_bitcoin_observer_sha256: state.observerSha256,
         knots: knotsResult, open_bitcoin: openBitcoinResult,
-      };
+      });
     } finally {
       rmSync(runtime, { recursive: true, force: true });
     }

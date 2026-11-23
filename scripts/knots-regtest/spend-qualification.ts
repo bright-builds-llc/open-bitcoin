@@ -5,6 +5,7 @@ import { BASELINE_COMMIT, checkSpendRecord } from "../check-parity-ledger.ts";
 import { buildKnots, buildOpenBitcoin, sha256File } from "./build.ts";
 import { compareDaemon } from "./daemon.ts";
 import { qualify } from "./receipt.ts";
+import { beginQualification } from "./qualification-inputs.ts";
 import { REGTEST_CORPUS } from "./regtest-case.ts";
 import { observeSpends, readSpendCorpus, SPEND_FORMAT } from "./replacement-spends.ts";
 import { observeClosedCoins } from "./state.ts";
@@ -13,6 +14,7 @@ export async function runSpendQualification(root: string, run: string) {
   const readTextFile = (path: string) => readFileSync(join(root, path), "utf8");
   let checkoutTree = "";
   return qualify(run, async (stage) => {
+    const seal = beginQualification(root);
     const corpus = readSpendCorpus(readTextFile);
     stage("knots_build");
     const knots = await buildKnots(root, run, "CREC-02");
@@ -49,7 +51,8 @@ export async function runSpendQualification(root: string, run: string) {
         || await sha256File(openBitcoin.executable) !== openBitcoin.build.binary_sha256) {
         throw new Error("A daemon executable changed during spend qualification");
       }
-      return {
+      stage("input_binding");
+      return seal({
         format: SPEND_FORMAT, status: "passed",
         recorded_at: new Date().toISOString(), bun: Bun.version,
         source_commit: BASELINE_COMMIT, source_tree: knots.sourceTree, binary_sha256: knots.binarySha256,
@@ -57,7 +60,7 @@ export async function runSpendQualification(root: string, run: string) {
         network: "regtest", corpus: REGTEST_CORPUS, corpus_sha256: corpus.corpusSha256,
         spend_sha256: corpus.spendSha256, open_bitcoin_observer_sha256: corpus.observerSha256, spend_facts: corpus.spendFacts,
         knots: knotsResult, open_bitcoin: openResult,
-      };
+      });
     } finally {
       rmSync(runtime, { recursive: true, force: true });
     }
