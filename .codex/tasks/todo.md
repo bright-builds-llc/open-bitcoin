@@ -1957,3 +1957,10 @@ shutdown and an ordinary restart, the same proved datadir reported identical
 height-102 tip, work, complete coins and BASIC. The final restart accepted a
 height-103 spend of the recovered output, and both offline paths observed the
 resulting state. Full pre-push and exact-head CI attest delivery.
+
+## task-crec-04-interrupted-checkpoint-recovery | 2026-11-23 | Qualify interrupted and inconsistent canonical records
+
+- [x] Sync main and trace the ordinary stop/reopen and actual BASIC fault boundaries.
+- [x] Exercise the native interrupted-checkpoint and inconsistent-record matrix in disposable subprocesses.
+- [ ] Compare the ordinary operator CLI at each recovered or refused checkpoint and record the receipt.
+- [ ] Guard the receipt and deliver on main through the full pre-push and CI gates.

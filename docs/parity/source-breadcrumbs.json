@@ -887,6 +887,16 @@
       ]
     },
     {
+      "label": "crec-04-interrupted-checkpoint-recovery",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/observation/recovery.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/txdb.cpp"
+      ]
+    },
+    {
       "label": "crec-02-closed-regtest-state",
       "files": [
         "packages/open-bitcoin-rpc/tests/crec02_closed_state.rs"

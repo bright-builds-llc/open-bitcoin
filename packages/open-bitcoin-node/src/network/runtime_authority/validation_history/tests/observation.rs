@@ -4,6 +4,8 @@
 
 use super::*;
 
+#[cfg(unix)]
+mod recovery;
 mod reorg;
 
 type Facts = (

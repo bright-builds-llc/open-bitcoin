@@ -13,6 +13,7 @@ import { QUALIFICATION_FORMAT } from "./knots-regtest/receipt.ts";
 import { BRANCH_CLASSIFICATION, BRANCH_FORMAT, readBranches } from "./knots-regtest/branches.ts";
 import { readSpendCorpus, SPEND_FORMAT } from "./knots-regtest/replacement-spends.ts";
 import { checkRecoveryReceipt, RECOVERY_ID } from "./knots-regtest/recovery.ts";
+import { CHECKPOINT_ID, checkCheckpointReceipt } from "./knots-regtest/checkpoint-recovery.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -509,14 +510,15 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     }
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
-    if (id === RECOVERY_ID && value.status === "done") {
+    if ((id === RECOVERY_ID || id === CHECKPOINT_ID) && value.status === "done") {
       const receipt = value.recovery_receipt;
-      if (receipt !== "docs/parity/receipts/crec-03-regtest.json" || !evidence?.includes(receipt)
+      if (receipt !== `docs/parity/receipts/${id.slice("v2-6-".length)}-regtest.json` || !evidence?.includes(receipt)
         || !classes?.includes("local_product") || !inputs.isRegularFile(receipt)) {
         failures.push(`${id}: canonical reopen needs a referenced local-product receipt`);
       } else {
         try {
-          failures.push(...checkRecoveryReceipt(JSON.parse(inputs.readTextFile(receipt)), inputs.readTextFile));
+          const checker = id === RECOVERY_ID ? checkRecoveryReceipt : checkCheckpointReceipt;
+          failures.push(...checker(JSON.parse(inputs.readTextFile(receipt)), inputs.readTextFile));
         } catch {
           failures.push(`${id}: missing or malformed recovery receipt or corpus`);
         }
