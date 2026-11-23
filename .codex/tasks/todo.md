@@ -1845,3 +1845,16 @@ genesis and matched all 301 accepted tips, including the mature coinbase spend
 at height 101 and both fee-free halvings. The original one-block mode passed
 again. The repo-managed pre-push verifier and GitHub Actions track delivery.
 `CDIF-03` remains planned.
+
+## task-cdif-03-regtest-rejections | 2026-11-23 | Compare Regtest invalid blocks and spends
+
+- [x] Sync main and identify all 19 pinned positive-prefix rejection controls.
+- [x] Run both daemons against the same bounded cases and inspect any rejection differences.
+- [x] Bind the receipt to the raw results, versioned normalization and unchanged active observations.
+- [x] Verify the diff and prepare the direct-main delivery through the repo-managed hooks.
+
+Completion review (2026-11-23): All 19 pinned cases matched exact BIP22
+rejection strings and preserved the observed active tip, BASIC commitment and
+empty mempool on both daemons. The positive successors and the original
+one-block mode passed. The pre-push verifier and GitHub Actions track
+delivery. Broader cross-daemon state projections belong to `CDIF-04`.

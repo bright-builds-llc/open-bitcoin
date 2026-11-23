@@ -59,7 +59,8 @@ The [pinned Knots runner](../v2-6-knots-regtest-differential.md) builds
 `bitcoind` from the pinned Knots tree and manages both daemon processes in
 isolated Regtest datadirs. The tracked receipts identify the Knots binary and
 record one-block runner verification and a separate maturity and halving
-comparison through height 301.
+comparison through height 301. The rejection run binds 19 raw results to
+their serialized cases and compares active state before and after submission.
 
 ## Known gaps
 - The upstream Python functional suite has not been translated wholesale.

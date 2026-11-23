@@ -94,7 +94,9 @@ The pinned Knots daemon and Open Bitcoin matched active tips from canonical
 Regtest genesis through height 301. The
 [runner and tracked receipts](./docs/parity/v2-6-knots-regtest-differential.md)
 cover the one-block runner check, the height-101 coinbase spend, and the
-subsidy halvings at heights 150 and 300.
+subsidy halvings at heights 150 and 300. Both daemons also matched specific
+reasons for 19 rejected blocks and spends while preserving the observed
+active state.
 
 ## Archived releases and historical scope
 

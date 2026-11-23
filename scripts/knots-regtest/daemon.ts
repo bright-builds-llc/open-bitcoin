@@ -2,7 +2,12 @@ import { randomBytes } from "node:crypto";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
-import type { RegtestBlock } from "./regtest-history.ts";
+import type { RegtestBlock, RegtestTip } from "./regtest-history.ts";
+
+export type DaemonRpc = {
+  call: (method: string, params?: string[]) => Promise<unknown>;
+  submit: (block: RegtestBlock) => Promise<RegtestTip>;
+};
 
 type DaemonName = "knots" | "open-bitcoin";
 const LOOPBACK = "127.0.0.1";
@@ -126,7 +131,8 @@ export async function compareDaemon(
   run: string,
   runtimeRoot: string,
   genesisHash: string,
-  exercise: (submit: (block: RegtestBlock) => Promise<{ height: number; hash: string }>) => Promise<Record<string, unknown>>,
+  exercise: (rpc: DaemonRpc) => Promise<Record<string, unknown>>,
+  indexKnots = false,
 ) {
   // Keep both the home and the datadir fresh so no host configuration or chain can leak in.
   const home = join(runtimeRoot, name);
@@ -135,7 +141,8 @@ export async function compareDaemon(
   const port = await localPort();
   const password = randomBytes(24).toString("hex");
   const flags = ["-chain=regtest", "-server=1", `-rpcbind=${LOOPBACK}`,
-    ...(name === "knots" ? KNOTS_FLAGS : OPEN_BITCOIN_FLAGS)];
+    ...(name === "knots" ? KNOTS_FLAGS : []),
+    ...(name === "open-bitcoin" || indexKnots ? OPEN_BITCOIN_FLAGS : [])];
   const log = join(run, `${name}-daemon.log`);
   const fd = openSync(log, "wx", 0o600);
   const signals = ["SIGINT", "SIGTERM"] as const;
@@ -160,7 +167,7 @@ export async function compareDaemon(
       if (network.connections !== 0 || (name === "knots" && network.networkactive !== false)) {
         throw new Error("Daemon has unexpected P2P activity");
       }
-      const outcome = await exercise(async ({ height, hash, blockHex }) => {
+      const submit: DaemonRpc["submit"] = async ({ height, hash, blockHex }) => {
         try {
           const submitted = await call("submitblock", [blockHex]);
           if (submitted !== null) throw new Error(`submitblock returned ${JSON.stringify(submitted)}`);
@@ -169,7 +176,8 @@ export async function compareDaemon(
           const detail = error instanceof Error ? error.message : String(error);
           throw new Error(`Regtest height ${height} (${hash}): ${detail}`, { cause: error });
         }
-      });
+      };
+      const outcome = await exercise({ call, submit });
       const shutdown = await gracefulExit(child);
       return {
         flags,

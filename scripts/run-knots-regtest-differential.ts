@@ -5,16 +5,15 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { BASELINE_COMMIT } from "./check-parity-ledger.ts";
 import { buildKnots, buildOpenBitcoin, sha256File } from "./knots-regtest/build.ts";
-import { compareDaemon } from "./knots-regtest/daemon.ts";
+import { compareDaemon, type DaemonRpc } from "./knots-regtest/daemon.ts";
 import { readRegtestCase, REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
 import {
   readRegtestHistory,
   summarizeAcceptedTips,
-  type RegtestBlock,
   type RegtestTip,
 } from "./knots-regtest/regtest-history.ts";
 
-type Submit = (block: RegtestBlock) => Promise<RegtestTip>;
+import { observeRejections, readRejectionCorpus, REJECTION_NORMALIZATION } from "./knots-regtest/rejections.ts";
 
 function singleBlockCase(readText: (path: string) => string) {
   const block = readRegtestCase(readText);
@@ -22,7 +21,7 @@ function singleBlockCase(readText: (path: string) => string) {
     genesisHash: block.genesisHash,
     corpusSha256: block.corpusSha256,
     inputFacts: { block_sha256: block.blockSha256 },
-    exercise: async (submit: Submit) => ({
+    exercise: async ({ submit }: DaemonRpc) => ({
       submitblock: null,
       final_tip: await submit({ height: 1, hash: block.blockHash, blockHex: block.blockHex }),
     }),
@@ -35,7 +34,7 @@ function maturityHalvingCase(readText: (path: string) => string) {
     genesisHash: history.genesisHash,
     corpusSha256: history.corpusSha256,
     inputFacts: history.monetaryFacts,
-    exercise: async (submit: Submit) => {
+    exercise: async ({ submit }: DaemonRpc) => {
       const tips: RegtestTip[] = [];
       for (const block of history.blocks) {
         const tip = await submit(block);
@@ -49,15 +48,15 @@ function maturityHalvingCase(readText: (path: string) => string) {
 
 async function runDifferential() {
   const args = process.argv.slice(2);
-  const maturityAndHalvings = args.length === 1 && args[0] === "--cdif-02";
-  if (args.length && !maturityAndHalvings) {
-    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02]");
+  const id = args[0]?.slice(2) ?? "cdif-01";
+  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03"].includes(args[0]))) {
+    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03]");
   }
-  const id = maturityAndHalvings ? "cdif-02" : "cdif-01";
   const label = id.toUpperCase();
   const root = resolve(import.meta.dir, "..");
   const readText = (path: string) => readFileSync(join(root, path), "utf8");
-  const scenario = maturityAndHalvings ? maturityHalvingCase(readText) : singleBlockCase(readText);
+  const maybeRejections = id === "cdif-03" ? readRejectionCorpus(readText) : null;
+  const scenario = id === "cdif-02" ? maturityHalvingCase(readText) : singleBlockCase(readText);
   const output = join(root, ".local", "open-bitcoin-dev", id);
   mkdirSync(output, { recursive: true, mode: 0o700 });
   const run = mkdtempSync(join(output, "run-"));
@@ -67,10 +66,21 @@ async function runDifferential() {
   const openBitcoin = await buildOpenBitcoin(root, run, label);
   const runtimeRoot = mkdtempSync(join(realpathSync(tmpdir()), `open-bitcoin-${id}-`));
   try {
-    console.log(`${label}: submitting to Knots`);
-    const knotsResult = await compareDaemon("knots", knots.executable, run, runtimeRoot, scenario.genesisHash, scenario.exercise);
-    console.log(`${label}: submitting to Open Bitcoin`);
-    const openBitcoinResult = await compareDaemon("open-bitcoin", openBitcoin.executable, run, runtimeRoot, scenario.genesisHash, scenario.exercise);
+    async function runDaemon(name: "knots" | "open-bitcoin", executable: string) {
+      console.log(`${label}: submitting to ${name}`);
+      if (!maybeRejections) return compareDaemon(name, executable, run, runtimeRoot, scenario.genesisHash, scenario.exercise);
+      const runs = [];
+      for (const group of maybeRejections.runs) {
+        const logRoot = join(run, group.name);
+        mkdirSync(logRoot, { recursive: true });
+        const result = await compareDaemon(name, executable, logRoot, join(runtimeRoot, group.name),
+          maybeRejections.genesisHash, (rpc) => observeRejections(rpc, group), true);
+        runs.push({ name: group.name, ...result });
+      }
+      return { runs };
+    }
+    const knotsResult = await runDaemon("knots", knots.executable);
+    const openBitcoinResult = await runDaemon("open-bitcoin", openBitcoin.executable);
     if (await sha256File(knots.executable) !== knots.binarySha256
       || await sha256File(openBitcoin.executable) !== openBitcoin.build.binary_sha256) {
       throw new Error("A daemon executable changed during qualification");
@@ -88,8 +98,8 @@ async function runDifferential() {
       open_bitcoin_build: openBitcoin.build,
       network: "regtest",
       corpus: REGTEST_CORPUS,
-      corpus_sha256: scenario.corpusSha256,
-      ...scenario.inputFacts,
+      corpus_sha256: (maybeRejections ?? scenario).corpusSha256,
+      ...(maybeRejections ? { normalization: REJECTION_NORMALIZATION } : scenario.inputFacts),
       knots: knotsResult,
       open_bitcoin: openBitcoinResult,
     };

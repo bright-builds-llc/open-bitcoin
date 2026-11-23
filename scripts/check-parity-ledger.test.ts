@@ -3,6 +3,7 @@ import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
 import { readRegtestHistory } from "./knots-regtest/regtest-history.ts";
+import { normalizeRejection, type observeRejections } from "./knots-regtest/rejections.ts";
 import { checkCurrentParityLedger, checkParityLedger, type LedgerInputs } from "./check-parity-ledger.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -261,14 +262,54 @@ test("CDIF-02 rejects monetary evidence missing the maturity spend", () => {
   expect(failures).toEqual(["v2-6-cdif-02: receipt does not match the canonical Regtest monetary evidence"]);
 });
 
+test.each([null, "inconclusive", "duplicate", "rejected", { code: -22 }])(
+  "CDIF-03 requires a specific consensus reason, rejecting %j", (result) => {
+    // Arrange / Act
+    const normalize = () => normalizeRejection(result);
+
+    // Assert
+    expect(normalize).toThrow("Unexpected submitblock result");
+  },
+);
+
+type RejectionReceiptFixture = { knots: { runs: Awaited<ReturnType<typeof observeRejections>>[] } };
+
+test.each([
+  ["missing case", (result: RejectionReceiptFixture) => result.knots.runs[0].cases.pop()],
+  ["different rejection", (result: RejectionReceiptFixture) => {
+    result.knots.runs[0].cases[0].submitblock = "bad-cb-amount";
+  }],
+  ["state mutation", (result: RejectionReceiptFixture) => {
+    result.knots.runs[0].cases[0].after.mempool_count = 1;
+  }],
+])("CDIF-03 refuses a receipt with %s", (_field, mutate) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-cdif-03").differential_receipt;
+  const readText = inputs.readTextFile;
+  inputs.readTextFile = (path) => {
+    const text = readText(path);
+    if (path !== receipt) return text;
+    const result = JSON.parse(text);
+    mutate(result);
+    return JSON.stringify(result);
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual(["v2-6-cdif-03: invalid knots rejection evidence for through-201"]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-cdif-03").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-cdif-04").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-cdif-03: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-cdif-04: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

@@ -1,0 +1,1163 @@
+{
+  "format": "open-bitcoin-cdif-03-v1",
+  "status": "passed",
+  "recorded_at": "2026-11-23T13:29:03.105Z",
+  "bun": "1.3.9",
+  "source_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "source_tree": "643d6c87370510b5193461e37647526369dfe0b3",
+  "binary_sha256": "89103b6bc699ae5e26a94db3179a611a99a61e6fff0badee5474931600d706d6",
+  "knots_build": {
+    "archive_sha256": "7906c472d15d6d5d68849911db8e8b210ac2f863750b45ef06c42683706e071e",
+    "version": "Bitcoin Knots daemon version v29.3.0.knots20260210",
+    "platform": "Darwin arm64",
+    "cmake": "cmake version 3.27.9",
+    "ninja": "1.13.2",
+    "cxx": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+    "macos_sdk": "27.2",
+    "dependencies": [
+      "-- Found Boost: <path> (found suitable version \"1.90.0\", minimum required is \"1.73.0\")  ",
+      "-- Found Libevent: <path> (found suitable version \"2.1.12-stable\", minimum required is \"2.1.8\") "
+    ],
+    "cmake_cache_sha256": "3c0d4133d6775b873e656c6c312471a66ed2f088139e6c6d43c37a6b2c63e59a",
+    "configure_log_sha256": "4d4b373554a6d3bd191478f8046224bc20d8fdf54026809f71509eaf4e2c11e3",
+    "build_log_sha256": "c9cd39d45cced7056d74492fc0582038ea8cb45276245a84cc6bcb4ac141e63b",
+    "git_build_info": "archive",
+    "configure_options": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DBUILD_DAEMON=ON",
+      "-DBUILD_GUI=OFF",
+      "-DBUILD_CLI=OFF",
+      "-DBUILD_TESTS=OFF",
+      "-DENABLE_WALLET=OFF",
+      "-DENABLE_TOR_SUBPROCESS=OFF",
+      "-DWITH_CCACHE=OFF",
+      "-DWITH_ZMQ=OFF"
+    ],
+    "build_options": [
+      "--target",
+      "bitcoind",
+      "--parallel",
+      "12"
+    ]
+  },
+  "open_bitcoin_build": {
+    "source_commit": "b509707f1a1cf97b335979ba3db126406a6c9222",
+    "binary_sha256": "f7f4b3bfc462ae49210fa89d1b69e78f939bddc94db3ad78e287b2b10bc50908",
+    "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+    "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
+    "cargo_options": [
+      "--locked",
+      "--manifest-path",
+      "packages/Cargo.toml",
+      "-p",
+      "open-bitcoin-rpc",
+      "--bin",
+      "open-bitcoind"
+    ],
+    "build_log_sha256": "a178c7902ac24dda0e2c0cd4cf0e47a2a6976ef30481cb4015f2f71620380d8b"
+  },
+  "network": "regtest",
+  "corpus": "packages/testdata/phase167/regtest-history.json",
+  "corpus_sha256": "1104ddd93f61b91ed0e8d531dc7e2df347162b473fa9936fa47668623edd3377",
+  "normalization": "submitblock-regtest-v1",
+  "knots": {
+    "runs": [
+      {
+        "name": "through-201",
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-assumevalid=0",
+          "-networkactive=0",
+          "-listen=0",
+          "-listenonion=0",
+          "-discover=0",
+          "-dnsseed=0",
+          "-fixedseeds=0",
+          "-natpmp=0",
+          "-blockfilterindex=1"
+        ],
+        "nofile_soft_limit": 1024,
+        "initial_tip": {
+          "height": 0,
+          "hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+        },
+        "peer_count": 0,
+        "final_tip": {
+          "height": 201,
+          "hash": "06ffd403e4df4be0147b8c9096cd77f8d87c2ca2fe2b0180dcdd8ebeb3cab527"
+        },
+        "cases": [
+          {
+            "name": "depth99-at100",
+            "height": 100,
+            "candidate_hash": "2fcdee75619a2f9977d2647dbfa21e2234f99640a1a34dd8076fc276f77612fb",
+            "wire_sha256": "d3047751e84598ca8088178768fdd18ccb3ad8099f54d51283a1dfb820374a6a",
+            "submitblock": "bad-txns-premature-spend-of-coinbase",
+            "normalized_reason": "bad-txns-premature-spend-of-coinbase",
+            "before": {
+              "tip": {
+                "height": 99,
+                "hash": "29d3bf91a0debaf3938abc15394f5bd78f362887b35a0623d50580d7441136d7"
+              },
+              "basic_header": "cd1d7793547aea0f1048bb0b4a2f5d1fc3f963298492f70c5b2dbd14b755059d",
+              "basic_filter_sha256": "94a7b78ee68de124d96589e3930735cbf22df9edabe1bed04e9dd17cc75bdf28",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 99,
+                "hash": "29d3bf91a0debaf3938abc15394f5bd78f362887b35a0623d50580d7441136d7"
+              },
+              "basic_header": "cd1d7793547aea0f1048bb0b4a2f5d1fc3f963298492f70c5b2dbd14b755059d",
+              "basic_filter_sha256": "94a7b78ee68de124d96589e3930735cbf22df9edabe1bed04e9dd17cc75bdf28",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "absolute-nonfinal",
+            "height": 101,
+            "candidate_hash": "4c95715b65005ac71e5db6e28a64fb061521f74344a7d09cbe16e2e3b67c75f7",
+            "wire_sha256": "968bdfd74422749d5a35b2695c4df71026f455178b1493883c6fd8342a280cbd",
+            "submitblock": "bad-txns-nonfinal",
+            "normalized_reason": "bad-txns-nonfinal",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "bip68-height-nonfinal",
+            "height": 101,
+            "candidate_hash": "3bd1bb1dc77236505682f9321de961713c0bad6b427bb94b07532ffbcb2b6abb",
+            "wire_sha256": "bd6295941ebb87b2ed04b2c6337a707c486ddef4830ac49fb7311a963a5368e1",
+            "submitblock": "bad-txns-nonfinal",
+            "normalized_reason": "bad-txns-nonfinal",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-without-commitment",
+            "height": 101,
+            "candidate_hash": "4c9860e2b05c1431909411d9c4ee8cb62d3f66862e3da670399554006bf9573b",
+            "wire_sha256": "8dfb3029789c00c0b38206934489e897f8a08450604c1aee950e5a1604ced7b6",
+            "submitblock": "unexpected-witness",
+            "normalized_reason": "unexpected-witness",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "missing-input",
+            "height": 101,
+            "candidate_hash": "341426b536bc4d381b8f3b54beef4c015ca534f07520401ef0704604414f6e55",
+            "wire_sha256": "64ed9ff2eaa0d489fea5d1babdb646ea3d45166727bceee9a58b42765c8d66b7",
+            "submitblock": "bad-txns-inputs-missingorspent",
+            "normalized_reason": "bad-txns-inputs-missingorspent",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "aggregate-sigops-80004",
+            "height": 101,
+            "candidate_hash": "2aa8585a38c100888492b4b65d4ec3ebd0be656077ffcd9a042fc108f4518bc3",
+            "wire_sha256": "4ea4d104e706db54afb1e2ce5ebec44356eeca57c55bc367da9bd689033b150d",
+            "submitblock": "bad-blk-sigops",
+            "normalized_reason": "bad-blk-sigops",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "overpay-one-satoshi-149",
+            "height": 149,
+            "candidate_hash": "5a072714f633cf5e38085e6a371bfe578ea6acbc9d891f23e1cc42f98d6e1627",
+            "wire_sha256": "a22826b65445bd75b2ad06e955b5969ff0acce2ae70815b788863a7fe9b11916",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "wrong-version",
+            "height": 149,
+            "candidate_hash": "6eb36cfdc7cc850204d366d8e0b8d0abec5902dd7c92dfc6ed67668cf2102eed",
+            "wire_sha256": "b53ff9e15bb2578ad24334362c78204487c92619a2d5403725c9a2c507685727",
+            "submitblock": "bad-version(0x00000003)",
+            "normalized_reason": "bad-version(0x00000003)",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "wrong-difficulty",
+            "height": 149,
+            "candidate_hash": "6f9c81fbd64a509766d5eb43ca1cbd6e8f34f7528a5859274a4abc62d3ce77c6",
+            "wire_sha256": "b74fc4205a5e2ad50ef1f691fb973458e02eff69568541858ce8091df8232a14",
+            "submitblock": "bad-diffbits",
+            "normalized_reason": "bad-diffbits",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "time-equals-parent-mtp",
+            "height": 149,
+            "candidate_hash": "6667449143f4b24f319a2eb2c02d3914a2734e423e61ac54f4e6be18ee666f22",
+            "wire_sha256": "11972661e491d5703181abf7de95d61dbbe1539d7b7d32d96466ce7a5716ec70",
+            "submitblock": "time-too-old",
+            "normalized_reason": "time-too-old",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "invalid-pow",
+            "height": 149,
+            "candidate_hash": "850e7f9194b440ec981090dbf02de6b08d53f4646621d7fe392ea17b920d7614",
+            "wire_sha256": "8c0b780728288dab7ac7784276e647c7abc4d54fe0ab18959ec1615fba7679fb",
+            "submitblock": "high-hash",
+            "normalized_reason": "high-hash",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "overpay-one-satoshi-150",
+            "height": 150,
+            "candidate_hash": "4fc5f85b9f133f1d3fa4b120e92aa9936e60814b8bedb2e76384ea467562fb15",
+            "wire_sha256": "755275e6c7cc6896f72dc46f43cea3eb278c2f57440a2907b45da309a83f5d60",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "wrong-bip34-height",
+            "height": 150,
+            "candidate_hash": "7c25b12c5900a183fab7e8ce0a04bfbd78a62bfc6f42341c144e34ce4459d307",
+            "wire_sha256": "db0aded79a0d7f18854484fc99511116e2f4d195bf9357f70e44226fe47374c7",
+            "submitblock": "bad-cb-height",
+            "normalized_reason": "bad-cb-height",
+            "before": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-reserve-31",
+            "height": 151,
+            "candidate_hash": "6e157b2fccad9f58cc65c4a5afb2d4702be4e67ce8f6c31a58548798aeff0360",
+            "wire_sha256": "8f0772d3bf9a8130ca56941b64f78eab63def20fb8b705cd76ef6a5971a18491",
+            "submitblock": "bad-witness-nonce-size",
+            "normalized_reason": "bad-witness-nonce-size",
+            "before": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-reserve-33",
+            "height": 151,
+            "candidate_hash": "6e157b2fccad9f58cc65c4a5afb2d4702be4e67ce8f6c31a58548798aeff0360",
+            "wire_sha256": "7c7909af6e7c34bd54a52b58c4f3be8fead6e4c66aa6c0f60edcd09dd623e42a",
+            "submitblock": "bad-witness-nonce-size",
+            "normalized_reason": "bad-witness-nonce-size",
+            "before": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-commitment-mismatch",
+            "height": 151,
+            "candidate_hash": "6e157b2fccad9f58cc65c4a5afb2d4702be4e67ce8f6c31a58548798aeff0360",
+            "wire_sha256": "fd8b4a17935dda283078f392b3458ad32f38daaf20940d0d083f1a5476293f9c",
+            "submitblock": "bad-witness-merkle-match",
+            "normalized_reason": "bad-witness-merkle-match",
+            "before": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "bip68-time-nonfinal",
+            "height": 201,
+            "candidate_hash": "5ab31a0c5dca4557183edb9be572e74c6493477a4c2d6bef8efae9d6ebeeff78",
+            "wire_sha256": "83a2de86680027dae0f41155b17fe47b7b3cd0bb56da0aefd5e060a7d3304899",
+            "submitblock": "bad-txns-nonfinal",
+            "normalized_reason": "bad-txns-nonfinal",
+            "before": {
+              "tip": {
+                "height": 200,
+                "hash": "0321a717111c56d3ab9e0ebea1bedce2baf2ada86210b076a26779d80badf7d1"
+              },
+              "basic_header": "5a3d500359d3667b0fe16368a8067dfbee8368a1b54f74dfbd5adb95de8fc215",
+              "basic_filter_sha256": "0b37b65d8ac2f45d62f18e0590002e4cee7706591fb53ed5f8aa841a343f4978",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 200,
+                "hash": "0321a717111c56d3ab9e0ebea1bedce2baf2ada86210b076a26779d80badf7d1"
+              },
+              "basic_header": "5a3d500359d3667b0fe16368a8067dfbee8368a1b54f74dfbd5adb95de8fc215",
+              "basic_filter_sha256": "0b37b65d8ac2f45d62f18e0590002e4cee7706591fb53ed5f8aa841a343f4978",
+              "mempool_count": 0
+            }
+          }
+        ],
+        "exit_status": 0
+      },
+      {
+        "name": "through-301",
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-assumevalid=0",
+          "-networkactive=0",
+          "-listen=0",
+          "-listenonion=0",
+          "-discover=0",
+          "-dnsseed=0",
+          "-fixedseeds=0",
+          "-natpmp=0",
+          "-blockfilterindex=1"
+        ],
+        "nofile_soft_limit": 1024,
+        "initial_tip": {
+          "height": 0,
+          "hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+        },
+        "peer_count": 0,
+        "final_tip": {
+          "height": 301,
+          "hash": "16a9cf775599115321b844e6958517819bfe7ce67191e4012738406a3a1f3810"
+        },
+        "cases": [
+          {
+            "name": "overpay-one-satoshi-299",
+            "height": 299,
+            "candidate_hash": "425096ad5f8dc00c8fb684f60ea37b324db838a9519581ae87a2b8761586f40c",
+            "wire_sha256": "404594b878807b5dd50c32f76a31214324c2b25286023baa2770b4b686b83f1a",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 298,
+                "hash": "45a094684e311609a15b2c96b1986706f50d07f6007af1c9a550ec0a507f096c"
+              },
+              "basic_header": "61f7081b5084bfec010feb28852dc566df23c214c67745303df10fa57d0e75c3",
+              "basic_filter_sha256": "5ac785e4569ace3afb06de8140594cb57260e2f63e183578bd52197997393d60",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 298,
+                "hash": "45a094684e311609a15b2c96b1986706f50d07f6007af1c9a550ec0a507f096c"
+              },
+              "basic_header": "61f7081b5084bfec010feb28852dc566df23c214c67745303df10fa57d0e75c3",
+              "basic_filter_sha256": "5ac785e4569ace3afb06de8140594cb57260e2f63e183578bd52197997393d60",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "overpay-one-satoshi-300",
+            "height": 300,
+            "candidate_hash": "7abe3e69a7294dd701d7c546d35bd0f6eec42100a888ae5ace4b1ff2c27699b1",
+            "wire_sha256": "077c5915268b55eb49add83a175c457b61155d860da96ed5a3e12e4d5d38e769",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 299,
+                "hash": "635bf20c46021b26e443bd9a0432c08a476ab07d2ced70a873f13d64ee7bd444"
+              },
+              "basic_header": "f413d512ed2d7c5a46de54ffda00dedb76fde1218b1103a8d49777c45d438e9f",
+              "basic_filter_sha256": "b2d0d1ea47059477c8243fa0e2130d5553c5f17a1b1ed8d08f11b0b03dde8ef6",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 299,
+                "hash": "635bf20c46021b26e443bd9a0432c08a476ab07d2ced70a873f13d64ee7bd444"
+              },
+              "basic_header": "f413d512ed2d7c5a46de54ffda00dedb76fde1218b1103a8d49777c45d438e9f",
+              "basic_filter_sha256": "b2d0d1ea47059477c8243fa0e2130d5553c5f17a1b1ed8d08f11b0b03dde8ef6",
+              "mempool_count": 0
+            }
+          }
+        ],
+        "exit_status": 0
+      }
+    ]
+  },
+  "open_bitcoin": {
+    "runs": [
+      {
+        "name": "through-201",
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-blockfilterindex=1"
+        ],
+        "initial_tip": {
+          "height": 0,
+          "hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+        },
+        "peer_count": 0,
+        "final_tip": {
+          "height": 201,
+          "hash": "06ffd403e4df4be0147b8c9096cd77f8d87c2ca2fe2b0180dcdd8ebeb3cab527"
+        },
+        "cases": [
+          {
+            "name": "depth99-at100",
+            "height": 100,
+            "candidate_hash": "2fcdee75619a2f9977d2647dbfa21e2234f99640a1a34dd8076fc276f77612fb",
+            "wire_sha256": "d3047751e84598ca8088178768fdd18ccb3ad8099f54d51283a1dfb820374a6a",
+            "submitblock": "bad-txns-premature-spend-of-coinbase",
+            "normalized_reason": "bad-txns-premature-spend-of-coinbase",
+            "before": {
+              "tip": {
+                "height": 99,
+                "hash": "29d3bf91a0debaf3938abc15394f5bd78f362887b35a0623d50580d7441136d7"
+              },
+              "basic_header": "cd1d7793547aea0f1048bb0b4a2f5d1fc3f963298492f70c5b2dbd14b755059d",
+              "basic_filter_sha256": "94a7b78ee68de124d96589e3930735cbf22df9edabe1bed04e9dd17cc75bdf28",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 99,
+                "hash": "29d3bf91a0debaf3938abc15394f5bd78f362887b35a0623d50580d7441136d7"
+              },
+              "basic_header": "cd1d7793547aea0f1048bb0b4a2f5d1fc3f963298492f70c5b2dbd14b755059d",
+              "basic_filter_sha256": "94a7b78ee68de124d96589e3930735cbf22df9edabe1bed04e9dd17cc75bdf28",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "absolute-nonfinal",
+            "height": 101,
+            "candidate_hash": "4c95715b65005ac71e5db6e28a64fb061521f74344a7d09cbe16e2e3b67c75f7",
+            "wire_sha256": "968bdfd74422749d5a35b2695c4df71026f455178b1493883c6fd8342a280cbd",
+            "submitblock": "bad-txns-nonfinal",
+            "normalized_reason": "bad-txns-nonfinal",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "bip68-height-nonfinal",
+            "height": 101,
+            "candidate_hash": "3bd1bb1dc77236505682f9321de961713c0bad6b427bb94b07532ffbcb2b6abb",
+            "wire_sha256": "bd6295941ebb87b2ed04b2c6337a707c486ddef4830ac49fb7311a963a5368e1",
+            "submitblock": "bad-txns-nonfinal",
+            "normalized_reason": "bad-txns-nonfinal",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-without-commitment",
+            "height": 101,
+            "candidate_hash": "4c9860e2b05c1431909411d9c4ee8cb62d3f66862e3da670399554006bf9573b",
+            "wire_sha256": "8dfb3029789c00c0b38206934489e897f8a08450604c1aee950e5a1604ced7b6",
+            "submitblock": "unexpected-witness",
+            "normalized_reason": "unexpected-witness",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "missing-input",
+            "height": 101,
+            "candidate_hash": "341426b536bc4d381b8f3b54beef4c015ca534f07520401ef0704604414f6e55",
+            "wire_sha256": "64ed9ff2eaa0d489fea5d1babdb646ea3d45166727bceee9a58b42765c8d66b7",
+            "submitblock": "bad-txns-inputs-missingorspent",
+            "normalized_reason": "bad-txns-inputs-missingorspent",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "aggregate-sigops-80004",
+            "height": 101,
+            "candidate_hash": "2aa8585a38c100888492b4b65d4ec3ebd0be656077ffcd9a042fc108f4518bc3",
+            "wire_sha256": "4ea4d104e706db54afb1e2ce5ebec44356eeca57c55bc367da9bd689033b150d",
+            "submitblock": "bad-blk-sigops",
+            "normalized_reason": "bad-blk-sigops",
+            "before": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 100,
+                "hash": "2996107e1407c2cb1df195aae067f61441a90b41ed059e6f4964d201d6e65b7d"
+              },
+              "basic_header": "3dcd5d556248e3d159cde0848e0b1325a53e95689138077031fba749fc0572c3",
+              "basic_filter_sha256": "645d26f7a72225603e5fb3b3c894153ed0200d5338597a44a9aaf46cb659d70a",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "overpay-one-satoshi-149",
+            "height": 149,
+            "candidate_hash": "5a072714f633cf5e38085e6a371bfe578ea6acbc9d891f23e1cc42f98d6e1627",
+            "wire_sha256": "a22826b65445bd75b2ad06e955b5969ff0acce2ae70815b788863a7fe9b11916",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "wrong-version",
+            "height": 149,
+            "candidate_hash": "6eb36cfdc7cc850204d366d8e0b8d0abec5902dd7c92dfc6ed67668cf2102eed",
+            "wire_sha256": "b53ff9e15bb2578ad24334362c78204487c92619a2d5403725c9a2c507685727",
+            "submitblock": "bad-version(0x00000003)",
+            "normalized_reason": "bad-version(0x00000003)",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "wrong-difficulty",
+            "height": 149,
+            "candidate_hash": "6f9c81fbd64a509766d5eb43ca1cbd6e8f34f7528a5859274a4abc62d3ce77c6",
+            "wire_sha256": "b74fc4205a5e2ad50ef1f691fb973458e02eff69568541858ce8091df8232a14",
+            "submitblock": "bad-diffbits",
+            "normalized_reason": "bad-diffbits",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "time-equals-parent-mtp",
+            "height": 149,
+            "candidate_hash": "6667449143f4b24f319a2eb2c02d3914a2734e423e61ac54f4e6be18ee666f22",
+            "wire_sha256": "11972661e491d5703181abf7de95d61dbbe1539d7b7d32d96466ce7a5716ec70",
+            "submitblock": "time-too-old",
+            "normalized_reason": "time-too-old",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "invalid-pow",
+            "height": 149,
+            "candidate_hash": "850e7f9194b440ec981090dbf02de6b08d53f4646621d7fe392ea17b920d7614",
+            "wire_sha256": "8c0b780728288dab7ac7784276e647c7abc4d54fe0ab18959ec1615fba7679fb",
+            "submitblock": "high-hash",
+            "normalized_reason": "high-hash",
+            "before": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 148,
+                "hash": "4ee2bf6757592a21469a627b2882b0361393fa21a7f143c98d76a1fe0dae53aa"
+              },
+              "basic_header": "04f50d3dbb752a431dec9dd307d13606a871a4b59f63e5be1c41acf3352cb6f8",
+              "basic_filter_sha256": "a1340fa52cba969868369b71035709071554a9a97c09573b2a66dcdfd9a20e8d",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "overpay-one-satoshi-150",
+            "height": 150,
+            "candidate_hash": "4fc5f85b9f133f1d3fa4b120e92aa9936e60814b8bedb2e76384ea467562fb15",
+            "wire_sha256": "755275e6c7cc6896f72dc46f43cea3eb278c2f57440a2907b45da309a83f5d60",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "wrong-bip34-height",
+            "height": 150,
+            "candidate_hash": "7c25b12c5900a183fab7e8ce0a04bfbd78a62bfc6f42341c144e34ce4459d307",
+            "wire_sha256": "db0aded79a0d7f18854484fc99511116e2f4d195bf9357f70e44226fe47374c7",
+            "submitblock": "bad-cb-height",
+            "normalized_reason": "bad-cb-height",
+            "before": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 149,
+                "hash": "5298ef84588c510e3ff498f812b1d53a53ac2bde85aa996f4dd2d82fa7e1692d"
+              },
+              "basic_header": "803088fa92ab3295762b5559a24609d6cbe530926d48075a64095281878455ca",
+              "basic_filter_sha256": "c5cbd163ebb372a684859ef72f4012daf94988f3f4d0c41415d6c90aa4cb0d66",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-reserve-31",
+            "height": 151,
+            "candidate_hash": "6e157b2fccad9f58cc65c4a5afb2d4702be4e67ce8f6c31a58548798aeff0360",
+            "wire_sha256": "8f0772d3bf9a8130ca56941b64f78eab63def20fb8b705cd76ef6a5971a18491",
+            "submitblock": "bad-witness-nonce-size",
+            "normalized_reason": "bad-witness-nonce-size",
+            "before": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-reserve-33",
+            "height": 151,
+            "candidate_hash": "6e157b2fccad9f58cc65c4a5afb2d4702be4e67ce8f6c31a58548798aeff0360",
+            "wire_sha256": "7c7909af6e7c34bd54a52b58c4f3be8fead6e4c66aa6c0f60edcd09dd623e42a",
+            "submitblock": "bad-witness-nonce-size",
+            "normalized_reason": "bad-witness-nonce-size",
+            "before": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "witness-commitment-mismatch",
+            "height": 151,
+            "candidate_hash": "6e157b2fccad9f58cc65c4a5afb2d4702be4e67ce8f6c31a58548798aeff0360",
+            "wire_sha256": "fd8b4a17935dda283078f392b3458ad32f38daaf20940d0d083f1a5476293f9c",
+            "submitblock": "bad-witness-merkle-match",
+            "normalized_reason": "bad-witness-merkle-match",
+            "before": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 150,
+                "hash": "0e287a8791b99c73526c494f25518358a9fbb4acf09423c3a2fda4b8591af1eb"
+              },
+              "basic_header": "dfde4970257ca3d90643ac730aac4359bac750635d03b8ac8731ae045493c119",
+              "basic_filter_sha256": "b461374b7dcdbc32974f230580837441b3056641dc8eb823248dbc402b4d8deb",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "bip68-time-nonfinal",
+            "height": 201,
+            "candidate_hash": "5ab31a0c5dca4557183edb9be572e74c6493477a4c2d6bef8efae9d6ebeeff78",
+            "wire_sha256": "83a2de86680027dae0f41155b17fe47b7b3cd0bb56da0aefd5e060a7d3304899",
+            "submitblock": "bad-txns-nonfinal",
+            "normalized_reason": "bad-txns-nonfinal",
+            "before": {
+              "tip": {
+                "height": 200,
+                "hash": "0321a717111c56d3ab9e0ebea1bedce2baf2ada86210b076a26779d80badf7d1"
+              },
+              "basic_header": "5a3d500359d3667b0fe16368a8067dfbee8368a1b54f74dfbd5adb95de8fc215",
+              "basic_filter_sha256": "0b37b65d8ac2f45d62f18e0590002e4cee7706591fb53ed5f8aa841a343f4978",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 200,
+                "hash": "0321a717111c56d3ab9e0ebea1bedce2baf2ada86210b076a26779d80badf7d1"
+              },
+              "basic_header": "5a3d500359d3667b0fe16368a8067dfbee8368a1b54f74dfbd5adb95de8fc215",
+              "basic_filter_sha256": "0b37b65d8ac2f45d62f18e0590002e4cee7706591fb53ed5f8aa841a343f4978",
+              "mempool_count": 0
+            }
+          }
+        ],
+        "exit_status": 0
+      },
+      {
+        "name": "through-301",
+        "flags": [
+          "-chain=regtest",
+          "-server=1",
+          "-rpcbind=127.0.0.1",
+          "-blockfilterindex=1"
+        ],
+        "initial_tip": {
+          "height": 0,
+          "hash": "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"
+        },
+        "peer_count": 0,
+        "final_tip": {
+          "height": 301,
+          "hash": "16a9cf775599115321b844e6958517819bfe7ce67191e4012738406a3a1f3810"
+        },
+        "cases": [
+          {
+            "name": "overpay-one-satoshi-299",
+            "height": 299,
+            "candidate_hash": "425096ad5f8dc00c8fb684f60ea37b324db838a9519581ae87a2b8761586f40c",
+            "wire_sha256": "404594b878807b5dd50c32f76a31214324c2b25286023baa2770b4b686b83f1a",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 298,
+                "hash": "45a094684e311609a15b2c96b1986706f50d07f6007af1c9a550ec0a507f096c"
+              },
+              "basic_header": "61f7081b5084bfec010feb28852dc566df23c214c67745303df10fa57d0e75c3",
+              "basic_filter_sha256": "5ac785e4569ace3afb06de8140594cb57260e2f63e183578bd52197997393d60",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 298,
+                "hash": "45a094684e311609a15b2c96b1986706f50d07f6007af1c9a550ec0a507f096c"
+              },
+              "basic_header": "61f7081b5084bfec010feb28852dc566df23c214c67745303df10fa57d0e75c3",
+              "basic_filter_sha256": "5ac785e4569ace3afb06de8140594cb57260e2f63e183578bd52197997393d60",
+              "mempool_count": 0
+            }
+          },
+          {
+            "name": "overpay-one-satoshi-300",
+            "height": 300,
+            "candidate_hash": "7abe3e69a7294dd701d7c546d35bd0f6eec42100a888ae5ace4b1ff2c27699b1",
+            "wire_sha256": "077c5915268b55eb49add83a175c457b61155d860da96ed5a3e12e4d5d38e769",
+            "submitblock": "bad-cb-amount",
+            "normalized_reason": "bad-cb-amount",
+            "before": {
+              "tip": {
+                "height": 299,
+                "hash": "635bf20c46021b26e443bd9a0432c08a476ab07d2ced70a873f13d64ee7bd444"
+              },
+              "basic_header": "f413d512ed2d7c5a46de54ffda00dedb76fde1218b1103a8d49777c45d438e9f",
+              "basic_filter_sha256": "b2d0d1ea47059477c8243fa0e2130d5553c5f17a1b1ed8d08f11b0b03dde8ef6",
+              "mempool_count": 0
+            },
+            "after": {
+              "tip": {
+                "height": 299,
+                "hash": "635bf20c46021b26e443bd9a0432c08a476ab07d2ced70a873f13d64ee7bd444"
+              },
+              "basic_header": "f413d512ed2d7c5a46de54ffda00dedb76fde1218b1103a8d49777c45d438e9f",
+              "basic_filter_sha256": "b2d0d1ea47059477c8243fa0e2130d5553c5f17a1b1ed8d08f11b0b03dde8ef6",
+              "mempool_count": 0
+            }
+          }
+        ],
+        "exit_status": 0
+      }
+    ]
+  }
+}

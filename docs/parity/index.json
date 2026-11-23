@@ -1215,10 +1215,33 @@
       {
         "id": "v2-6-cdif-03",
         "title": "Invalid block and spend differential",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CDIF-03"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/cdif-03-regtest.json",
+          "scripts/run-knots-regtest-differential.ts",
+          "scripts/knots-regtest/rejections.ts",
+          "scripts/check-parity-ledger.test.ts",
+          "packages/testdata/phase167/regtest-history.json"
+        ],
+        "evidence_classes": ["knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/cdif-03-regtest.json",
+        "knots_binary_sha256": "89103b6bc699ae5e26a94db3179a611a99a61e6fff0badee5474931600d706d6",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/rpc/mining.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/rpc/mempool.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/consensus/tx_verify.cpp"
+          ]
+        },
+        "rationale": "The two actual daemons matched 19 exact submitblock rejection reasons and preserved the observed active tip, BASIC filter and empty mempool for every case. The pinned positive successors remained admissible.",
+        "known_gaps": [
+          "Default-Regtest and the checked-in case set only. Known rejected header retention can differ from active-chain state.",
+          "The receipt checks active observations within each daemon. General cross-daemon UTXO, chainwork and BASIC comparisons have a separate requirement owner."
+        ]
       },
       {
         "id": "v2-6-cdif-04",

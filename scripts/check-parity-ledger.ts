@@ -6,6 +6,8 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { readRegtestCase, REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
 import { readRegtestHistory, summarizeAcceptedTips, type RegtestTip } from "./knots-regtest/regtest-history.ts";
+import { isRejectionState, normalizeRejection, readRejectionCorpus, REJECTION_NORMALIZATION,
+  type RejectionRun } from "./knots-regtest/rejections.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -14,6 +16,7 @@ export const BASELINE_COMMIT = "a9aee730466ac67d35a3c03ee24676be5e045878";
 const REQUIREMENT_COUNT = 30;
 const CDIF_01 = "v2-6-cdif-01";
 const CDIF_02 = "v2-6-cdif-02";
+const CDIF_03 = "v2-6-cdif-03";
 const SHA256 = /^[0-9a-f]{64}$/;
 const CLASSES = new Set([
   "source_derived",
@@ -117,19 +120,29 @@ function checkDifferentialBuild(id: string, record: RecordValue, inputs: LedgerI
   }
 }
 
+const PROCESS_FLAGS = {
+  knots: ["-assumevalid=0", "-networkactive=0", "-listen=0"],
+  open_bitcoin: ["-blockfilterindex=1"],
+} as const;
+type ProcessName = keyof typeof PROCESS_FLAGS;
+
+function matchesProcess(
+  result: unknown, name: ProcessName, genesisHash: string, finalTip: RegtestTip,
+): result is RecordValue {
+  if (!isRecord(result)) return false;
+  const flags = strings(result.flags);
+  return !!flags && ["-chain=regtest", "-rpcbind=127.0.0.1", ...PROCESS_FLAGS[name]].every((flag) => flags.includes(flag))
+    && tipMatches(result.initial_tip, 0, genesisHash) && tipMatches(result.final_tip, finalTip.height, finalTip.hash)
+    && result.peer_count === 0 && result.exit_status === 0;
+}
+
 function checkDifferentialProcesses(
   id: string, record: RecordValue, genesisHash: string, finalTip: RegtestTip,
   hasExpectedObservations: (result: RecordValue) => boolean, failures: string[],
 ) {
-  for (const [name, extraFlags] of [
-    ["knots", ["-assumevalid=0", "-networkactive=0", "-listen=0"]],
-    ["open_bitcoin", ["-blockfilterindex=1"]],
-  ] as const) {
+  for (const name of ["knots", "open_bitcoin"] as const) {
     const result = record[name];
-    const flags = isRecord(result) ? strings(result.flags) : null;
-    if (!isRecord(result) || !flags || !["-chain=regtest", "-rpcbind=127.0.0.1", ...extraFlags].every((flag) => flags.includes(flag))
-      || !tipMatches(result.initial_tip, 0, genesisHash) || !tipMatches(result.final_tip, finalTip.height, finalTip.hash)
-      || result.peer_count !== 0 || result.exit_status !== 0 || !hasExpectedObservations(result)) {
+    if (!matchesProcess(result, name, genesisHash, finalTip) || !hasExpectedObservations(result)) {
       failures.push(`${id}: receipt lacks the expected isolated ${name} process outcome`);
     }
   }
@@ -173,6 +186,55 @@ function checkCDIF02Receipt(record: RecordValue, inputs: LedgerInputs, failures:
     result.accepted_count === expected.accepted_count
     && result.accepted_tips_sha256 === expected.accepted_tips_sha256
     && isDeepStrictEqual(result.checkpoints, expected.checkpoints), failures);
+}
+
+function matchesRejectionCase(
+  result: unknown, candidate: RejectionRun["cases"][number],
+) {
+  if (!isRecord(result) || result.name !== candidate.name || result.height !== candidate.height
+    || result.candidate_hash !== candidate.hash || result.wire_sha256 !== candidate.wireSha256
+    || !isRejectionState(result.before, candidate.height - 1, candidate.parentHash)
+    || !isDeepStrictEqual(result.before, result.after)) return false;
+  try {
+    return normalizeRejection(result.submitblock) === candidate.expectedReason
+      && result.normalized_reason === candidate.expectedReason;
+  } catch {
+    return false;
+  }
+}
+
+function matchesRejectionCases(results: unknown[], candidates: RejectionRun["cases"]) {
+  return results.length === candidates.length
+    && candidates.every((candidate, index) => matchesRejectionCase(results[index], candidate));
+}
+
+function checkCDIF03Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  let corpus;
+  try {
+    corpus = readRejectionCorpus(inputs.readTextFile);
+  } catch {
+    failures.push(`${CDIF_03}: cannot read the canonical Regtest rejection inputs`);
+    return;
+  }
+  if (!matchesRegtestCorpus(record, corpus.corpusSha256) || record.normalization !== REJECTION_NORMALIZATION) {
+    failures.push(`${CDIF_03}: receipt does not match the Regtest rejection corpus or normalization`);
+  }
+  for (const name of ["knots", "open_bitcoin"] as const) {
+    const process = record[name];
+    if (!isRecord(process) || !Array.isArray(process.runs) || process.runs.length !== corpus.runs.length) {
+      failures.push(`${CDIF_03}: receipt lacks the isolated ${name} runs`);
+      continue;
+    }
+    for (const [index, group] of corpus.runs.entries()) {
+      const result = process.runs[index];
+      const finalTip = group.blocks[group.blocks.length - 1];
+      if (!matchesProcess(result, name, corpus.genesisHash, finalTip) || result.name !== group.name
+        || !strings(result.flags)?.includes("-blockfilterindex=1") || !Array.isArray(result.cases)
+        || !matchesRejectionCases(result.cases, group.cases)) {
+        failures.push(`${CDIF_03}: invalid ${name} rejection evidence for ${group.name}`);
+      }
+    }
+  }
 }
 
 /** Validate active v2.6 ownership and evidence without reading GSD lifecycle state. */
@@ -250,7 +312,8 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     }
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
-    const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt : null;
+    const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt
+      : id === CDIF_03 ? checkCDIF03Receipt : null;
     if (checkRegtestReceipt && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
       failures.push(`${id}: done runner requires actual Knots daemon evidence`);
     }
