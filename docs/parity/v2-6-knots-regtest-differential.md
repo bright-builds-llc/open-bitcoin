@@ -107,6 +107,39 @@ with the stage and outcome in the per-run evidence directory. Missing or
 incorrect oracle, timeout, incomplete execution, or a mismatch leaves the
 run without a passing receipt. Tests exercise all four failure classes.
 
+## Branch order and restart ties
+
+`v2-6-crec-01` compares valid branches sharing canonical genesis and a common
+height-one block. The runner deterministically generates and mines sibling
+blocks under the existing Regtest target. Two mirrored arrival schedules
+observe the active tip after every submission. The first eligible branch
+remains active at equal work. An extension of the other branch switches the
+tip when its work becomes strictly greater. Later equal arrivals still
+preserve the incumbent, and a stronger extension can switch back.
+
+Both daemons retain the previously active tip across a clean restart when
+the competing branches have equal work. Knots reloads the persisted active
+chain with sequence ID zero and the other disk candidates with sequence ID
+one. The runner then uses a Knots-only invalidation probe in its disposable
+datadir to exclude that active branch. Either of the two remaining equal-work,
+equal-sequence candidates is a valid outcome for the pointer-address fallback.
+The receipt records the observed winner and the allowed set. The Open Bitcoin
+restart observation covers its ordinary submission surface.
+
+Open Bitcoin derives the replacement from held headers and exact retained
+bodies. It stages the coins, undo and BASIC replacements, checks prospective
+rows and then compares the achieved checkpoint before returning acceptance.
+Equal-work side bodies remain durable with KnownOnly validation status
+until the branch actually activates.
+
+The [branch receipt](receipts/crec-01-regtest.json) records the generated
+branch input digest, exact RPC results, observed tips and all process exits.
+Pinned anchors include
+[the comparator](../../packages/bitcoin-knots/src/node/blockstorage.cpp),
+[disk sequence defaults](../../packages/bitcoin-knots/src/chain.h),
+[body link and restart rules](../../packages/bitcoin-knots/src/validation.cpp),
+and [submitblock](../../packages/bitcoin-knots/src/rpc/mining.cpp).
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -124,6 +157,7 @@ bun run scripts/run-knots-regtest-differential.ts --cdif-02
 bun run scripts/run-knots-regtest-differential.ts --cdif-03
 bun run scripts/run-knots-regtest-differential.ts --cdif-04
 bun run scripts/run-knots-regtest-differential.ts --cdif-05
+TMPDIR=/tmp bun run scripts/run-knots-regtest-differential.ts --crec-01
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -157,7 +191,7 @@ extended run.
 
 The command writes a fresh `run-*/receipt.json` under the corresponding ignored
 `.local/open-bitcoin-dev/cdif-01/` through
-`.local/open-bitcoin-dev/cdif-05/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/cdif-05/`, or `.local/open-bitcoin-dev/crec-01/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The

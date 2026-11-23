@@ -7,10 +7,10 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,787 |
-| Total lines | 546,637 |
-| Code/content lines | 480,897 |
-| Comment-only lines | 28,577 |
-| Blank lines | 37,163 |
+| Total lines | 546,669 |
+| Code/content lines | 480,922 |
+| Comment-only lines | 28,580 |
+| Blank lines | 37,167 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 766 | 258,713 | 225,877 | 17,198 | 15,638 |
 | Rust production | 597 | 175,544 | 153,836 | 7,888 | 13,820 |
-| TypeScript/Bun scripts | 348 | 93,917 | 83,807 | 3,370 | 6,740 |
+| TypeScript/Bun scripts | 348 | 93,949 | 83,832 | 3,373 | 6,744 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,842 | 4,294 | 100 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -70,7 +70,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-panic-sites.ts | 286 |
 | scripts/check-parity-breadcrumbs.test.ts | 65 |
 | scripts/check-parity-breadcrumbs.ts | 430 |
-| scripts/check-parity-ledger.test.ts | 434 |
+| scripts/check-parity-ledger.test.ts | 466 |
 | scripts/check-parity-ledger.ts | 542 |
 | scripts/check-phase158-validated-reorg.test.ts | 628 |
 | scripts/check-phase158-validated-reorg.ts | 520 |
@@ -429,7 +429,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 03628cf85f6e50b245fe1a185cec0f9801c3899ba98f3fd2e1bddf80f8052721 |
+| Input fingerprint | f8fed6ae1d2f68762593129e0962299f48469438eebaa8a04337c077e58de68c |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

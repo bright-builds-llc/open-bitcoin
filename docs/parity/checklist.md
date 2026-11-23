@@ -122,6 +122,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-cdif-03` | `done` | `CDIF-03` | [Case scope](v2-6-knots-regtest-differential.md#invalid-blocks-and-spends), [tracked receipt](receipts/cdif-03-regtest.json) | Both daemons matched 19 specific rejection reasons, preserved the observed active tip, BASIC state and empty mempool, and accepted the corresponding canonical successors. |
 | `v2-6-cdif-04` | `done` | `CDIF-04` | [State scope](v2-6-knots-regtest-differential.md#best-block-chainwork-utxos-and-basic), [tracked receipt](receipts/cdif-04-regtest.json) | Live tip and 302 BASIC records agreed. Knots RPC and the Open Bitcoin closed-state observer matched exact work and all 303 live outpoints at height 301. |
 | `v2-6-cdif-05` | `done` | `CDIF-05` | [Qualification scope](v2-6-knots-regtest-differential.md#case-level-qualification), [tracked receipt](receipts/cdif-05-regtest.json) | Both real daemons matched all 502 accepted observations, 19 rejection cases, and final state. Failure controls cannot publish a passing receipt. |
+| `v2-6-crec-01` | `done` | `CREC-01` | [Branch scope](v2-6-knots-regtest-differential.md#branch-order-and-restart-ties), [tracked receipt](receipts/crec-01-regtest.json) | Both daemons matched first activation and stronger-work switches in both live orders and retained the active tip after restart. The Knots-only equal-sequence probe records one allowed fallback. |
 
 ## Evidence Rules
 

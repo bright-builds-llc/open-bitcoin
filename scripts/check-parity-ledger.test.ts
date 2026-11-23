@@ -403,14 +403,46 @@ test.each([
   }
 });
 
+type BranchReceiptFixture = {
+  open_bitcoin: { runs: { steps: { active: { hash: string } }[] }[] };
+  knots: { restart: { ambiguous: { selected: string } } };
+};
+
+test.each([
+  ["wrong live tie winner", (record: BranchReceiptFixture) => {
+    record.open_bitcoin.runs[0].steps[2].active.hash = "0".repeat(64);
+  }, "v2-6-crec-01: invalid open_bitcoin branch observations for a-first"],
+  ["winner outside the restart tie", (record: BranchReceiptFixture) => {
+    record.knots.restart.ambiguous.selected = "0".repeat(64);
+  }, "v2-6-crec-01: invalid Knots restart fallback classification"],
+])("CREC-01 rejects a receipt with %s", (_case, mutate, diagnostic) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-crec-01").differential_receipt;
+  const readText = inputs.readTextFile;
+  inputs.readTextFile = (path) => {
+    const text = readText(path);
+    if (path !== receipt) return text;
+    const record = JSON.parse(text);
+    mutate(record);
+    return JSON.stringify(record);
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual([diagnostic]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-crec-01").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-crec-02").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-crec-01: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-crec-02: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

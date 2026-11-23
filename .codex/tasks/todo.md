@@ -1893,7 +1893,7 @@ verifier and GitHub Actions track delivery.
 - [x] Build a fail-closed real-daemon comparison with both live arrival orders, paired restart and a Knots-only disk-tie probe.
 - [x] Retain checked side bodies through the ordinary submission path without changing active authority on equal work.
 - [x] Activate winning branches through the authorized staged reorg path with prospective native and BASIC inventory checks.
-- [ ] Run the real comparison, verify restart and both reorg directions, then publish the receipt and deliver through main and CI.
+- [x] Qualify the pinned daemons, verify restart and both reorg directions, and record the receipt for direct-main delivery.
 
 Progress review: The pinned Knots daemon passed both mirrored schedules.
 It kept the previously active tip across restart and chose one of the two
@@ -1923,3 +1923,10 @@ on invalid replacement, and a pure projected/achieved state match. The
 reviewed source guards now cover the preparer and committer and preserve
 the previous authority checks. A clean committed product build is needed
 for the final pinned differential receipt.
+
+
+Qualification review: The pinned executable and clean product build passed
+both mirrored schedules, the paired persisted-active restart, and the
+separately classified Knots pointer fallback. The receipt and mutation
+checks bind the observed results. Full pre-push and exact-head CI attest the
+delivery. The branch tests use a bounded coinbase-only Regtest history.

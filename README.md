@@ -99,7 +99,9 @@ reasons for 19 rejected blocks and spends while preserving the observed
 active state. The state comparison matched exact chainwork, the complete
 final UTXO projection, and all BASIC filters and headers through height 301.
 The integrated qualification receipt records each case and requires clean
-process exits before publishing a pass.
+process exits before publishing a pass. The branch comparison covers two
+live arrival orders, stronger-branch activation, and the persisted tip at
+restart. A separate Knots-only probe records the equal-sequence fallback.
 
 ## Archived releases and historical scope
 
