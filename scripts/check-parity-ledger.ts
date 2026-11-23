@@ -9,6 +9,7 @@ import { readRegtestHistory, summarizeAcceptedTips, type RegtestTip } from "./kn
 import { isRejectionState, normalizeRejection, readRejectionCorpus, REJECTION_NORMALIZATION,
   type RejectionRun } from "./knots-regtest/rejections.ts";
 import { readStateCorpus, verifyState } from "./knots-regtest/state.ts";
+import { QUALIFICATION_FORMAT } from "./knots-regtest/receipt.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -19,6 +20,7 @@ const CDIF_01 = "v2-6-cdif-01";
 const CDIF_02 = "v2-6-cdif-02";
 const CDIF_03 = "v2-6-cdif-03";
 const CDIF_04 = "v2-6-cdif-04";
+const CDIF_05 = "v2-6-cdif-05";
 const SHA256 = /^[0-9a-f]{64}$/;
 const CLASSES = new Set([
   "source_derived",
@@ -107,7 +109,9 @@ function tipMatches(tip: unknown, height: number, hash: string): boolean {
   return isRecord(tip) && tip.height === height && tip.hash === hash;
 }
 
-function checkDifferentialBuild(id: string, record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+function checkDifferentialBuild(
+  id: string, record: RecordValue, inputs: Pick<LedgerInputs, "baseline">, failures: string[],
+) {
   const knotsBuild = record.knots_build;
   const openBuild = record.open_bitcoin_build;
   if (record.format !== `open-bitcoin-${id.slice("v2-6-".length)}-v1` || record.source_tree !== inputs.baseline.checkoutTree
@@ -263,6 +267,58 @@ function checkCDIF04Receipt(record: RecordValue, inputs: LedgerInputs, failures:
   }, failures);
 }
 
+export function checkQualificationRecord(
+  record: RecordValue, inputs: Pick<LedgerInputs, "baseline" | "readTextFile">,
+): string[] {
+  const failures: string[] = [];
+  checkDifferentialBuild(CDIF_05, record, inputs, failures);
+  const { readTextFile } = inputs;
+  let rejections, state;
+  try {
+    rejections = readRejectionCorpus(readTextFile);
+    state = readStateCorpus(readTextFile);
+  } catch {
+    return [`${CDIF_05}: missing or invalid qualification inputs`];
+  }
+  if (record.format !== QUALIFICATION_FORMAT || record.status !== "passed" || record.source_commit !== BASELINE_COMMIT
+    || record.source_tree !== inputs.baseline.checkoutTree
+    || typeof record.binary_sha256 !== "string" || !SHA256.test(record.binary_sha256)
+    || !isRecord(record.knots_build) || !/^Bitcoin Knots daemon version v29\.3(?:\.0)?\.knots20260210$/.test(String(record.knots_build.version))
+    || !matchesRegtestCorpus(record, state.corpusSha256) || record.normalization !== REJECTION_NORMALIZATION
+    || record.expectation_sha256 !== state.expectationSha256 || record.open_bitcoin_observer_sha256 !== state.observerSha256) {
+    failures.push(`${CDIF_05}: qualification does not match its pinned oracle, corpus or observer`);
+  }
+  for (const name of ["knots", "open_bitcoin"] as const) {
+    const daemon = record[name];
+    if (!isRecord(daemon) || !Array.isArray(daemon.runs) || daemon.runs.length !== rejections.runs.length) {
+      failures.push(`${CDIF_05}: missing or incomplete ${name} process runs`);
+      continue;
+    }
+    for (const [index, expected] of rejections.runs.entries()) {
+      const run = daemon.runs[index];
+      const final = expected.blocks[expected.blocks.length - 1];
+      if (!matchesProcess(run, name, rejections.genesisHash, final) || run.name !== expected.name
+        || !strings(run.flags)?.includes("-blockfilterindex=1")
+        || !isDeepStrictEqual(run.accepted, expected.blocks.map((block) => block.hash))
+        || !Array.isArray(run.cases) || !matchesRejectionCases(run.cases, expected.cases)) {
+        failures.push(`${CDIF_05}: incomplete or mismatched ${name} cases in ${expected.name}`);
+      }
+    }
+    const final = daemon.runs.at(-1);
+    try {
+      if (!isRecord(final)) throw new Error("missing final observation");
+      verifyState(final, state, name);
+    } catch {
+      failures.push(`${CDIF_05}: missing or mismatched ${name} final state`);
+    }
+  }
+  return failures;
+}
+
+function checkCDIF05Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  failures.push(...checkQualificationRecord(record, inputs));
+}
+
 /** Validate active v2.6 ownership and evidence without reading GSD lifecycle state. */
 export function checkParityLedger(inputs: LedgerInputs): string[] {
   const failures: string[] = [];
@@ -339,7 +395,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
     const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt
-      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : null;
+      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : id === CDIF_05 ? checkCDIF05Receipt : null;
     if (checkRegtestReceipt && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
       failures.push(`${id}: done runner requires actual Knots daemon evidence`);
     }
@@ -359,7 +415,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
               || record.binary_sha256 !== value.knots_binary_sha256 || record.status !== "passed") {
               failures.push(`${id}: actual Knots differential receipt lacks pinned source, binary and passed outcome`);
             } else if (checkRegtestReceipt) {
-              checkDifferentialBuild(id, record, inputs, failures);
+              if (id !== CDIF_05) checkDifferentialBuild(id, record, inputs, failures);
               checkRegtestReceipt(record, inputs, failures);
             }
           } catch (error) {

@@ -98,6 +98,8 @@ subsidy halvings at heights 150 and 300. Both daemons also matched specific
 reasons for 19 rejected blocks and spends while preserving the observed
 active state. The state comparison matched exact chainwork, the complete
 final UTXO projection, and all BASIC filters and headers through height 301.
+The integrated qualification receipt records each case and requires clean
+process exits before publishing a pass.
 
 ## Archived releases and historical scope
 

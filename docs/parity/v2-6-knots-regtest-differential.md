@@ -82,6 +82,31 @@ interfaces. Open Bitcoin's creating-parent median time is store metadata
 outside the common coin projection. The comparison treats a difference in a
 common field as a mismatch.
 
+## Case-level qualification
+
+`v2-6-cdif-05` runs both of the bounded Regtest histories from fresh
+datadirs on each daemon. The [qualification receipt](receipts/cdif-05-regtest.json)
+records a hash for every successful submit and active-tip observation.
+Within each isolated run, the position in `accepted` is the block height
+minus one. The two runs accept 201 and 301 blocks per daemon. Each also
+records its named rejections, serialized input digests, raw RPC outcomes,
+and before-and-after active state. The height-301 run includes the complete
+final coin and BASIC projections and exact work.
+
+Each passing receipt binds the pinned Knots source and build, both daemon
+binaries, the Open Bitcoin product commit, the Regtest corpus, the independent
+expectations, and the offline observer. The runner validates the exact case
+set, expected outcomes and clean exits before publishing. Receipt validation
+is also available through the offline parity ledger checker.
+
+Each build command has a 20-minute deadline, each daemon run has 15 minutes,
+and the offline state observer has three minutes. RPC requests have a
+five-second deadline. Startup and shutdown have separate 30-second bounds.
+The runner stops its owned subprocesses on failure and keeps a `failure.json`
+with the stage and outcome in the per-run evidence directory. Missing or
+incorrect oracle, timeout, incomplete execution, or a mismatch leaves the
+run without a passing receipt. Tests exercise all four failure classes.
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -98,6 +123,7 @@ bun run scripts/run-knots-regtest-differential.ts
 bun run scripts/run-knots-regtest-differential.ts --cdif-02
 bun run scripts/run-knots-regtest-differential.ts --cdif-03
 bun run scripts/run-knots-regtest-differential.ts --cdif-04
+bun run scripts/run-knots-regtest-differential.ts --cdif-05
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -120,7 +146,7 @@ zero peers. The default command submits row 1 of the
 [canonical Regtest corpus](../../packages/testdata/phase167/regtest-history.json).
 The extended commands check the serialized positive blocks and parent links.
 The `--cdif-02` command submits positive rows 1 through 301. The
-`--cdif-03` and `--cdif-04` commands additionally enable Knots BASIC
+`--cdif-03` through `--cdif-05` commands additionally enable Knots BASIC
 indexing for the observed-state checks. The commands use the ordinary
 default Regtest rules and submit only the block bytes.
 
@@ -131,7 +157,7 @@ extended run.
 
 The command writes a fresh `run-*/receipt.json` under the corresponding ignored
 `.local/open-bitcoin-dev/cdif-01/` through
-`.local/open-bitcoin-dev/cdif-04/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/cdif-05/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The
@@ -143,7 +169,8 @@ above performs the actual two-daemon comparison.
 The evidence class is `knots_daemon_differential` for one positive block in
 CDIF-01, the positive chain through height 301 in CDIF-02, and the
 bounded rejection and unchanged-state cases in CDIF-03, and the shared
-chain-state projection in CDIF-04. Qualification invalidation has a separate
+chain-state projection in CDIF-04. CDIF-05 covers the integrated case matrix
+and its failure handling. Qualification invalidation has a separate
 requirement owner. Public networking, whole-chain
 validation, service operation, and wallet readiness require separate evidence.
 

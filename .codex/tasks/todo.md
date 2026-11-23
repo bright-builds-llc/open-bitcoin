@@ -1872,3 +1872,17 @@ tip and exact work at height 301, all 303 UTXOs by common coin fields and all
 corpus, and standalone Open Bitcoin observer. The full pre-push verifier and
 GitHub Actions track delivery. The comparison is scoped to default Regtest
 and uses distinct observation interfaces for durable state.
+
+## task-cdif-05-regtest-qualification | 2026-11-23 | Qualify the full bounded differential matrix
+
+- [x] Sync main and identify the existing process, corpus and state observations.
+- [x] Qualify the pinned daemons with the complete case matrix and verified process outcomes.
+- [x] Check the failure publication contract for missing/wrong oracle, timeout, incomplete runs, and mismatches.
+- [x] Record the receipt and prepare direct-main delivery through the repo-managed hooks.
+
+Completion review (2026-11-23): The integrated qualification recorded 502
+accepted block observations and 19 matching rejection cases per daemon, a
+matching final state and four clean exits. Live missing/wrong-oracle and
+timeout controls and receipt mutations verified that failures cannot publish
+a pass. The original single-block runner still passes. The repo's pre-push
+verifier and GitHub Actions track delivery.

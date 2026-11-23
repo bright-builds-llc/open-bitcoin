@@ -1,11 +1,15 @@
 import { expect, test } from "bun:test";
-import { existsSync, lstatSync, readFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
 import { readRegtestHistory } from "./knots-regtest/regtest-history.ts";
 import { normalizeRejection, type observeRejections } from "./knots-regtest/rejections.ts";
-import { checkCurrentParityLedger, checkParityLedger, type LedgerInputs } from "./check-parity-ledger.ts";
+import { checkCurrentParityLedger, checkParityLedger, checkQualificationRecord, type LedgerInputs } from "./check-parity-ledger.ts";
 import { summarizeKnotsCoins } from "./knots-regtest/state.ts";
+import { identifyKnotsOracle } from "./knots-regtest/build.ts";
+import { loggedCommand } from "./knots-regtest/process.ts";
+import { qualify, QUALIFICATION_FORMAT } from "./knots-regtest/receipt.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const COMMIT = "a9aee730466ac67d35a3c03ee24676be5e045878";
@@ -331,14 +335,82 @@ test("CDIF-04 rejects a UTXO mismatch at the same height and best block", () => 
   expect(failures).toEqual(["v2-6-cdif-04: receipt lacks the expected isolated open_bitcoin process outcome"]);
 });
 
+test.each([
+  ["missing oracle", "error", async (dir: string) => {
+    identifyKnotsOracle(join(dir, "absent-knots"), dir);
+  }],
+  ["wrong oracle", "error", async (dir: string) => {
+    const executable = join(dir, "wrong-knots");
+    writeFileSync(executable, "#!/bin/sh\nprintf '%s\\n' 'not the pinned Knots daemon'\n", { mode: 0o700 });
+    identifyKnotsOracle(executable, dir);
+  }],
+  ["process timeout", "timeout", async (dir: string) => {
+    await loggedCommand(dir, ["/bin/sh", "-c", "sleep 10 & wait"], join(dir, "timeout.log"), process.env, 25);
+  }],
+])("CDIF-05 writes failure evidence for %s", async (_case, outcome, action) => {
+  // Arrange
+  const dir = mkdtempSync(join(tmpdir(), "cdif05-failure-"));
+  try {
+    // Act
+    const attempt = qualify(dir, async (stage) => {
+      stage("negative_control");
+      await action(dir);
+      return { format: QUALIFICATION_FORMAT, status: "passed" };
+    }, () => []);
+    await expect(attempt).rejects.toThrow();
+
+    // Assert
+    expect(existsSync(join(dir, "receipt.json"))).toBe(false);
+    const failure = JSON.parse(readFileSync(join(dir, "failure.json"), "utf8"));
+    expect(failure).toMatchObject({ status: "failed", stage: "negative_control", outcome });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+type QualificationFixture = {
+  knots_build: { version: string };
+  knots: { runs: { accepted: string[]; exit_status: number }[] };
+  open_bitcoin: { runs: { chainwork: string }[] };
+  corpus_sha256: string;
+};
+
+test.each([
+  ["missing accepted case", (record: QualificationFixture) => record.knots.runs[1].accepted.pop()],
+  ["wrong oracle", (record: QualificationFixture) => { record.knots_build.version = "not Knots"; }],
+  ["wrong corpus digest", (record: QualificationFixture) => { record.corpus_sha256 = "0".repeat(64); }],
+  ["failed process", (record: QualificationFixture) => { record.knots.runs[1].exit_status = 137; }],
+  ["mismatched state", (record: QualificationFixture) => { record.open_bitcoin.runs[1].chainwork = "0".repeat(64); }],
+])("CDIF-05 refuses to publish a passing receipt with %s", async (_case, mutate) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-cdif-05").differential_receipt;
+  if (!receipt) throw new Error("CDIF-05 fixture has no passing receipt");
+  const record = JSON.parse(inputs.readTextFile(receipt));
+  mutate(record);
+  const dir = mkdtempSync(join(tmpdir(), "cdif05-invalid-receipt-"));
+  try {
+    // Act
+    await expect(qualify(dir, async () => record, (result) =>
+      checkQualificationRecord(result, inputs))).rejects.toThrow("v2-6-cdif-05");
+
+    // Assert
+    expect(existsSync(join(dir, "receipt.json"))).toBe(false);
+    const failure = JSON.parse(readFileSync(join(dir, "failure.json"), "utf8"));
+    expect(failure).toMatchObject({ status: "failed", stage: "validation", outcome: "error" });
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-cdif-05").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-crec-01").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-cdif-05: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-crec-01: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

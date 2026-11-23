@@ -1,10 +1,11 @@
 import { createHash } from "node:crypto";
-import { closeSync, createReadStream, mkdirSync, openSync, readFileSync } from "node:fs";
+import { createReadStream, mkdirSync, readFileSync } from "node:fs";
 import { availableParallelism } from "node:os";
 import { join } from "node:path";
 import { BASELINE_COMMIT } from "../check-parity-ledger.ts";
 import { resolveTarget } from "../command-timings.ts";
 import { CLOSED_STATE_OBSERVER } from "./state.ts";
+import { loggedCommand } from "./process.ts";
 
 const KNOTS_PATH = "packages/bitcoin-knots";
 const KNOTS_OPTIONS = [
@@ -26,19 +27,17 @@ export async function sha256File(file: string): Promise<string> {
 }
 
 function capture(cwd: string, command: string[], env = process.env): string {
-  const result = Bun.spawnSync(command, { cwd, env, stdout: "pipe", stderr: "pipe" });
+  const result = Bun.spawnSync(command, { cwd, env, stdout: "pipe", stderr: "pipe", timeout: 30_000, killSignal: "SIGKILL" });
   if (!result.success) throw new Error(`${command[0]} ${command[1]} failed: ${result.stderr.toString().trim()}`);
   return result.stdout.toString().trim();
 }
 
-async function loggedCommand(cwd: string, command: string[], log: string, env = process.env) {
-  const fd = openSync(log, "wx", 0o600);
-  try {
-    const child = Bun.spawn(command, { cwd, env, stdout: fd, stderr: fd });
-    if (await child.exited !== 0) throw new Error(`${command[0]} ${command[1]} failed. See ${log}`);
-  } finally {
-    closeSync(fd);
+export function identifyKnotsOracle(executable: string, cwd: string, env = process.env) {
+  const version = capture(cwd, [executable, "--version"], env).split("\n")[0];
+  if (!/^Bitcoin Knots daemon version v29\.3(?:\.0)?\.knots20260210$/.test(version)) {
+    throw new Error(`Unexpected Knots version: ${version}`);
   }
+  return version;
 }
 
 export async function buildKnots(root: string, run: string, label: string) {
@@ -76,8 +75,7 @@ export async function buildKnots(root: string, run: string, label: string) {
   const cache = join(build, "CMakeCache.txt");
   const compiler = /^CMAKE_CXX_COMPILER:FILEPATH=(.+)$/m.exec(readFileSync(cache, "utf8"))?.[1];
   if (!compiler) throw new Error(`CMake did not identify the C++ compiler in ${cache}`);
-  const version = capture(run, [executable, "--version"], env).split("\n")[0];
-  if (!/^Bitcoin Knots daemon version v29\.3(?:\.0)?\.knots20260210$/.test(version)) throw new Error(`Unexpected Knots version: ${version}`);
+  const version = identifyKnotsOracle(executable, run, env);
   const configureOutput = readFileSync(configureLog, "utf8");
   return {
     executable,

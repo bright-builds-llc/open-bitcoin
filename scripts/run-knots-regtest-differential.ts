@@ -3,6 +3,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { runQualification } from "./knots-regtest/qualification.ts";
 import { BASELINE_COMMIT } from "./check-parity-ledger.ts";
 import { buildKnots, buildOpenBitcoin, sha256File } from "./knots-regtest/build.ts";
 import { compareDaemon, type DaemonRpc } from "./knots-regtest/daemon.ts";
@@ -50,19 +51,25 @@ function maturityHalvingCase(readText: (path: string) => string) {
 async function runDifferential() {
   const args = process.argv.slice(2);
   const id = args[0]?.slice(2) ?? "cdif-01";
-  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03", "--cdif-04"].includes(args[0]))) {
-    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03 | --cdif-04]");
+  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03", "--cdif-04", "--cdif-05"].includes(args[0]))) {
+    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03 | --cdif-04 | --cdif-05]");
   }
   const label = id.toUpperCase();
   const root = resolve(import.meta.dir, "..");
-  const readText = (path: string) => readFileSync(join(root, path), "utf8");
-  const maybeRejections = id === "cdif-03" ? readRejectionCorpus(readText) : null;
-  const maybeState = id === "cdif-04" ? readStateCorpus(readText) : null;
-  const scenario = id === "cdif-02" ? maturityHalvingCase(readText) : singleBlockCase(readText);
   const output = join(root, ".local", "open-bitcoin-dev", id);
   mkdirSync(output, { recursive: true, mode: 0o700 });
   const run = mkdtempSync(join(output, "run-"));
   console.log(`${label}: evidence directory ${run}`);
+
+  if (id === "cdif-05") {
+    const receipt = await runQualification(root, run);
+    console.log(`${label}: passed. Receipt: ${receipt}`);
+    return;
+  }
+  const readText = (path: string) => readFileSync(join(root, path), "utf8");
+  const maybeRejections = id === "cdif-03" ? readRejectionCorpus(readText) : null;
+  const maybeState = id === "cdif-04" ? readStateCorpus(readText) : null;
+  const scenario = id === "cdif-02" ? maturityHalvingCase(readText) : singleBlockCase(readText);
 
   const knots = await buildKnots(root, run, label);
   const openBitcoin = await buildOpenBitcoin(root, run, label);

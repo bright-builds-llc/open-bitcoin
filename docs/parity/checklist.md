@@ -121,6 +121,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-cdif-02` | `done` | `CDIF-02` | [Runner and reproduction](v2-6-knots-regtest-differential.md#maturity-and-halvings), [tracked receipt](receipts/cdif-02-regtest.json) | Both daemons accepted the canonical positive chain through height 301, including the height-101 coinbase spend and both subsidy halvings. |
 | `v2-6-cdif-03` | `done` | `CDIF-03` | [Case scope](v2-6-knots-regtest-differential.md#invalid-blocks-and-spends), [tracked receipt](receipts/cdif-03-regtest.json) | Both daemons matched 19 specific rejection reasons, preserved the observed active tip, BASIC state and empty mempool, and accepted the corresponding canonical successors. |
 | `v2-6-cdif-04` | `done` | `CDIF-04` | [State scope](v2-6-knots-regtest-differential.md#best-block-chainwork-utxos-and-basic), [tracked receipt](receipts/cdif-04-regtest.json) | Live tip and 302 BASIC records agreed. Knots RPC and the Open Bitcoin closed-state observer matched exact work and all 303 live outpoints at height 301. |
+| `v2-6-cdif-05` | `done` | `CDIF-05` | [Qualification scope](v2-6-knots-regtest-differential.md#case-level-qualification), [tracked receipt](receipts/cdif-05-regtest.json) | Both real daemons matched all 502 accepted observations, 19 rejection cases, and final state. Failure controls cannot publish a passing receipt. |
 
 ## Evidence Rules
 

@@ -6,11 +6,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 
 | Metric | Value |
 | --- | --- |
-| Included files | 1,778 |
-| Total lines | 545,369 |
-| Code/content lines | 479,724 |
-| Comment-only lines | 28,542 |
-| Blank lines | 37,103 |
+| Included files | 1,781 |
+| Total lines | 545,696 |
+| Code/content lines | 480,028 |
+| Comment-only lines | 28,549 |
+| Blank lines | 37,119 |
 
 ## Per-Crate Modules
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 765 | 258,541 | 225,733 | 17,184 | 15,624 |
 | Rust production | 595 | 175,039 | 153,360 | 7,876 | 13,803 |
-| TypeScript/Bun scripts | 342 | 93,326 | 83,254 | 3,361 | 6,711 |
+| TypeScript/Bun scripts | 345 | 93,653 | 83,558 | 3,368 | 6,727 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,842 | 4,294 | 100 | 448 |
 | TOML/config | 16 | 3,474 | 3,106 | 1 | 367 |
@@ -70,8 +70,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-panic-sites.ts | 286 |
 | scripts/check-parity-breadcrumbs.test.ts | 65 |
 | scripts/check-parity-breadcrumbs.ts | 430 |
-| scripts/check-parity-ledger.test.ts | 362 |
-| scripts/check-parity-ledger.ts | 425 |
+| scripts/check-parity-ledger.test.ts | 434 |
+| scripts/check-parity-ledger.ts | 481 |
 | scripts/check-phase158-validated-reorg.test.ts | 628 |
 | scripts/check-phase158-validated-reorg.ts | 517 |
 | scripts/check-phase159-filter-rpcs.test.ts | 624 |
@@ -355,12 +355,15 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/generate-loc-report.ts | 571 |
 | scripts/generate-peer-filter-fixtures.test.ts | 286 |
 | scripts/generate-peer-filter-fixtures.ts | 366 |
-| scripts/knots-regtest/build.ts | 145 |
-| scripts/knots-regtest/daemon.ts | 202 |
+| scripts/knots-regtest/build.ts | 143 |
+| scripts/knots-regtest/daemon.ts | 209 |
+| scripts/knots-regtest/process.ts | 58 |
+| scripts/knots-regtest/qualification.ts | 91 |
+| scripts/knots-regtest/receipt.ts | 37 |
 | scripts/knots-regtest/regtest-case.ts | 41 |
 | scripts/knots-regtest/regtest-history.ts | 95 |
 | scripts/knots-regtest/rejections.ts | 133 |
-| scripts/knots-regtest/state.ts | 164 |
+| scripts/knots-regtest/state.ts | 165 |
 | scripts/phase162-filter-oracle.test.ts | 250 |
 | scripts/phase162-filter-oracle.ts | 232 |
 | scripts/phase166-genesis-vectors.test.ts | 47 |
@@ -373,7 +376,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/phase167-regtest-corpus.ts | 615 |
 | scripts/phase167-regtest-serialization.ts | 245 |
 | scripts/process-liveness.ts | 53 |
-| scripts/run-knots-regtest-differential.ts | 135 |
+| scripts/run-knots-regtest-differential.ts | 142 |
 | scripts/run-live-mainnet-smoke.ts | 9 |
 | scripts/run-live-mainnet-smoke/cli.ts | 285 |
 | scripts/run-live-mainnet-smoke/command.ts | 167 |
@@ -423,7 +426,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 7fce68a06ac1b1966e35e8beb3a646ff478c8fd940d2c729f646687ab1b50773 |
+| Input fingerprint | 8b721a13bfc927052a3633538d731d5d90bd574a33b3a66048dd4eae463da020 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

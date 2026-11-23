@@ -1280,10 +1280,33 @@
       {
         "id": "v2-6-cdif-05",
         "title": "Case-level differential receipts and failure handling",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CDIF-05"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/cdif-05-regtest.json",
+          "scripts/knots-regtest/qualification.ts",
+          "scripts/knots-regtest/receipt.ts",
+          "scripts/knots-regtest/process.ts",
+          "scripts/check-parity-ledger.test.ts",
+          "packages/testdata/phase167/regtest-history.json"
+        ],
+        "evidence_classes": ["knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/cdif-05-regtest.json",
+        "knots_binary_sha256": "a30f77128f0fd98f3723d405a1673f8d4d2e336583ac056cc511d3d0204a9d1c",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/bitcoind.cpp",
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/rpc/mining.cpp",
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp"
+          ]
+        },
+        "rationale": "One live qualification validates the exact accepted and rejected case set, the final common state, and all four clean process exits before publishing a receipt. Negative tests demonstrate missing and wrong oracles, timeouts, incomplete or failed runs and mismatches cannot publish a pass.",
+        "known_gaps": [
+          "The case matrix is bounded to the two checked-in default-Regtest histories and explicit BASIC indexing.",
+          "Qualification freshness and cross-receipt invalidation are tracked by CPAR-02."
+        ]
       },
       {
         "id": "v2-6-crec-01",

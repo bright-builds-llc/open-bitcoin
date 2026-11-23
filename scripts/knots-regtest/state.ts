@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { sha256 } from "../phase167-historical-corpus.ts";
 import type { DaemonRpc } from "./daemon.ts";
+import { loggedCommand, OBSERVER_TIMEOUT_MS } from "./process.ts";
 import { readRegtestHistory, type RegtestTip } from "./regtest-history.ts";
 
 export const CLOSED_STATE_OBSERVER = "packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs";
@@ -111,6 +112,12 @@ export async function observeLiveState(
     finalTip = await rpc.submit(block);
     if (block.height % 50 === 0) console.log(`CDIF-04: ${name} accepted height ${block.height}`);
   }
+  return observeStateAtTip(rpc, corpus, run, name, finalTip);
+}
+
+export async function observeStateAtTip(
+  rpc: DaemonRpc, corpus: StateCorpus, run: string, name: "knots" | "open-bitcoin", finalTip: RegtestTip,
+) {
   const rows: BasicRow[] = [];
   for (const hash of [corpus.genesisHash, ...corpus.blocks.map((block) => block.hash)]) {
     rows.push(basicRow(hash, await rpc.call("getblockfilter", [hash, "basic"])));
@@ -139,15 +146,9 @@ export async function observeClosedState(root: string, datadir: string, run: str
   const command = [process.execPath, "run", "scripts/command-timings.ts", "run", "--key", "cdif04-closed-state", "--",
     "cargo", "test", "--locked", "--manifest-path", "packages/Cargo.toml", "-p", "open-bitcoin-rpc",
     "--test", "cdif04_closed_state", "observe_closed_regtest_state", "--", "--ignored", "--exact"];
-  const child = Bun.spawn(command, { cwd: root, stderr: "pipe", stdout: "pipe",
-    env: { ...process.env, OPEN_BITCOIN_CDIF04_DATADIR: datadir, OPEN_BITCOIN_CDIF04_OUTPUT: target } });
-  const [stdout, stderr, status] = await Promise.all([
-    new Response(child.stdout).text(),
-    new Response(child.stderr).text(),
-    child.exited,
-  ]);
-  writeFileSync(log, stdout + stderr, { flag: "wx", mode: 0o600 });
-  if (status !== 0) throw new Error(`Open Bitcoin closed-state observer failed; see ${log}`);
+  await loggedCommand(root, command, log, {
+    ...process.env, OPEN_BITCOIN_CDIF04_DATADIR: datadir, OPEN_BITCOIN_CDIF04_OUTPUT: target,
+  }, OBSERVER_TIMEOUT_MS);
   if (sha256(readFileSync(join(root, CLOSED_STATE_OBSERVER))) !== corpus.observerSha256 || statSync(target).size > 1_048_576) {
     throw new Error("Open Bitcoin observer source changed or report exceeded evidence bounds");
   }

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
+import { DAEMON_TIMEOUT_MS } from "./process.ts";
 import type { RegtestBlock, RegtestTip } from "./regtest-history.ts";
 
 export type DaemonRpc = {
@@ -48,7 +49,7 @@ function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function connectRpc(port: number, password: string) {
+function connectRpc(port: number, password: string, deadline: AbortSignal) {
   const url = `http://${LOOPBACK}:${port}/`;
   const authorization = `Basic ${Buffer.from(`cdif01:${password}`).toString("base64")}`;
   return (method: string, params: unknown[] = []) => fetch(url, {
@@ -56,7 +57,7 @@ function connectRpc(port: number, password: string) {
     redirect: "error",
     headers: { authorization, "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }),
-    signal: AbortSignal.timeout(5_000),
+    signal: AbortSignal.any([deadline, AbortSignal.timeout(5_000)]),
   });
 }
 
@@ -77,10 +78,11 @@ function rpcResult(envelope: Record<string, unknown>, method: string): unknown {
   return envelope.result;
 }
 
-async function ready(child: Bun.Subprocess, rpc: ReturnType<typeof connectRpc>) {
+async function ready(child: Bun.Subprocess, rpc: ReturnType<typeof connectRpc>, runDeadline: AbortSignal) {
   const deadline = performance.now() + 30_000;
   let maybeFailure: unknown;
   while (performance.now() < deadline) {
+    runDeadline.throwIfAborted();
     if (child.exitCode !== null || child.signalCode !== null) break;
     const maybeResponse = await rpc("getblockchaininfo").catch((error: unknown) => {
       maybeFailure = error;
@@ -94,7 +96,10 @@ async function ready(child: Bun.Subprocess, rpc: ReturnType<typeof connectRpc>) 
     }
     await Bun.sleep(50);
   }
-  throw new Error("Daemon did not become RPC-ready within the startup limit", { cause: maybeFailure });
+  if (child.exitCode !== null || child.signalCode !== null) {
+    throw new Error("Daemon exited before RPC readiness", { cause: maybeFailure });
+  }
+  throw new DOMException("Daemon did not become RPC-ready within the startup limit", "TimeoutError");
 }
 
 function tip(value: unknown, height: number, hash: string) {
@@ -116,7 +121,7 @@ async function gracefulExit(child: Bun.Subprocess) {
     const exit = await Promise.race([
       child.exited,
       new Promise<never>((_resolve, reject) => {
-        maybeTimeout = setTimeout(() => reject(new Error("Daemon shutdown timed out")), 30_000);
+        maybeTimeout = setTimeout(() => reject(new DOMException("Daemon shutdown timed out", "TimeoutError")), 30_000);
       }),
     ]);
     if (exit !== 0) throw new Error(`Daemon shutdown returned exit status ${exit}`);
@@ -160,10 +165,11 @@ export async function compareDaemon(
     const interrupt = () => child.kill("SIGKILL");
     for (const signal of signals) process.once(signal, interrupt);
     try {
-      const rpc = connectRpc(port, password);
+      const deadline = AbortSignal.timeout(DAEMON_TIMEOUT_MS);
+      const rpc = connectRpc(port, password, deadline);
       const call = async (method: string, params?: unknown[]) =>
         rpcResult(await rpcEnvelope(await rpc(method, params), method), method);
-      const genesis = tip(await ready(child, rpc), 0, genesisHash);
+      const genesis = tip(await ready(child, rpc, deadline), 0, genesisHash);
       const network = object(await call("getnetworkinfo"));
       if (network.connections !== 0 || (name === "knots" && network.networkactive !== false)) {
         throw new Error("Daemon has unexpected P2P activity");
@@ -180,6 +186,7 @@ export async function compareDaemon(
       };
       const outcome = await exercise({ call, submit, datadir });
       const shutdown = await gracefulExit(child);
+      deadline.throwIfAborted();
       return {
         flags,
         ...(maybeSoftLimit === null ? {} : { nofile_soft_limit: maybeSoftLimit }),
