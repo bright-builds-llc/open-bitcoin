@@ -7,12 +7,13 @@ export async function qualify(
   run: string,
   exercise: (stage: (value: string) => void) => Promise<Record<string, unknown>>,
   validate: (record: Record<string, unknown>) => string[],
+  format = QUALIFICATION_FORMAT,
 ) {
   let stage = "inputs";
   try {
     const record = await exercise((value) => { stage = value; });
     stage = "validation";
-    if (record.format !== QUALIFICATION_FORMAT || record.status !== "passed") {
+    if (record.format !== format || record.status !== "passed") {
       throw new Error("Qualification did not yield a complete passing record");
     }
     const failures = validate(record);
@@ -29,7 +30,7 @@ export async function qualify(
       cause = cause.cause;
     }
     const timeout = cause instanceof Error && cause.name === "TimeoutError";
-    const failure = { format: QUALIFICATION_FORMAT, status: "failed", stage,
+    const failure = { format, status: "failed", stage,
       outcome: timeout ? "timeout" : "error" };
     writeFileSync(join(run, "failure.json"), `${JSON.stringify(failure, null, 2)}\n`, { flag: "wx", mode: 0o600 });
     throw error;

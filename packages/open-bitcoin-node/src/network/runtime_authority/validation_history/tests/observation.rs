@@ -4,6 +4,8 @@
 
 use super::*;
 
+mod reorg;
+
 type Facts = (
     ObservedCoins,
     Option<BasicIndexProgress>,
@@ -255,6 +257,51 @@ fn phase167_submission_observation_contextual_refusal_keeps_real_known_only_delt
             )
         );
     }
+}
+
+#[test]
+fn crec01_equal_work_side_body_survives_reopen_without_active_authority() {
+    // Arrange
+    let mode = BasicFilterStartupMode::Enabled;
+    let (path, runtime, command) = runtime(mode);
+    let parent = child(&CanonicalChain::Regtest.spec().genesis_header(), 1);
+    accepted(command.submit(wire(&parent)).expect("common parent"));
+    let active = child(&parent.header, 2);
+    accepted(command.submit(wire(&active)).expect("first eligible child"));
+    let mut side = active;
+    side.transactions[0].outputs[0].script_pubkey =
+        open_bitcoin_core::primitives::ScriptBuf::from_serialized_bytes(vec![0x52]);
+    remine(&mut side);
+    let hash = block_hash(&side.header);
+    let before = observe(&command, &[hash]);
+
+    // Act
+    let outcome = command.submit(wire(&side)).expect("equal-work side body");
+    let after = observe(&command, &[hash]);
+    let (runtime, command) = reopen(&path, runtime, command, mode);
+    let reopened = observe(&command, &[hash]);
+
+    // Assert
+    assert!(matches!(outcome, CanonicalSubmissionOutcome::Inconclusive));
+    assert_eq!(after.0, before.0);
+    assert_eq!(after.1, before.1);
+    assert_eq!(after.2, before.2);
+    assert_eq!(reopened.0, before.0);
+    assert_eq!(reopened.2, before.2);
+    assert_eq!(
+        command.store.load_block(hash).expect("retained side body"),
+        Some(side)
+    );
+    assert_eq!(
+        command
+            .store
+            .maybe_validation_history_record(hash)
+            .expect("side record")
+            .expect("known side identity")
+            .status(),
+        crate::storage::validation_history::StoredValidationStatus::KnownOnly
+    );
+    close(path, runtime, command);
 }
 
 #[test]

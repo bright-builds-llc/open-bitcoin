@@ -10,6 +10,7 @@ import { isRejectionState, normalizeRejection, readRejectionCorpus, REJECTION_NO
   type RejectionRun } from "./knots-regtest/rejections.ts";
 import { readStateCorpus, verifyState } from "./knots-regtest/state.ts";
 import { QUALIFICATION_FORMAT } from "./knots-regtest/receipt.ts";
+import { BRANCH_CLASSIFICATION, BRANCH_FORMAT, readBranches } from "./knots-regtest/branches.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -21,6 +22,7 @@ const CDIF_02 = "v2-6-cdif-02";
 const CDIF_03 = "v2-6-cdif-03";
 const CDIF_04 = "v2-6-cdif-04";
 const CDIF_05 = "v2-6-cdif-05";
+const CREC_01 = "v2-6-crec-01";
 const SHA256 = /^[0-9a-f]{64}$/;
 const CLASSES = new Set([
   "source_derived",
@@ -134,11 +136,12 @@ type ProcessName = keyof typeof PROCESS_FLAGS;
 
 function matchesProcess(
   result: unknown, name: ProcessName, genesisHash: string, finalTip: RegtestTip,
+  initialTip = { height: 0, hash: genesisHash },
 ): result is RecordValue {
   if (!isRecord(result)) return false;
   const flags = strings(result.flags);
   return !!flags && ["-chain=regtest", "-rpcbind=127.0.0.1", ...PROCESS_FLAGS[name]].every((flag) => flags.includes(flag))
-    && tipMatches(result.initial_tip, 0, genesisHash) && tipMatches(result.final_tip, finalTip.height, finalTip.hash)
+    && tipMatches(result.initial_tip, initialTip.height, initialTip.hash) && tipMatches(result.final_tip, finalTip.height, finalTip.hash)
     && result.peer_count === 0 && result.exit_status === 0;
 }
 
@@ -319,6 +322,64 @@ function checkCDIF05Receipt(record: RecordValue, inputs: LedgerInputs, failures:
   failures.push(...checkQualificationRecord(record, inputs));
 }
 
+export function checkBranchRecord(
+  record: RecordValue, inputs: Pick<LedgerInputs, "baseline" | "readTextFile">,
+): string[] {
+  const failures: string[] = [];
+  checkDifferentialBuild(CREC_01, record, inputs, failures);
+  const corpus = readBranches(inputs.readTextFile);
+  if (record.format !== BRANCH_FORMAT || record.status !== "passed" || record.source_commit !== BASELINE_COMMIT
+    || typeof record.binary_sha256 !== "string" || !SHA256.test(record.binary_sha256)
+    || !matchesRegtestCorpus(record, corpus.corpusSha256) || record.branch_sha256 !== corpus.branchSha256) {
+    failures.push(`${CREC_01}: receipt does not bind the pinned oracle and branch bytes`);
+  }
+  for (const name of ["knots", "open_bitcoin"] as const) {
+    const process = record[name];
+    if (!isRecord(process) || !Array.isArray(process.runs) || process.runs.length !== corpus.runs.length) {
+      failures.push(`${CREC_01}: missing or incomplete ${name} branch runs`);
+      continue;
+    }
+    for (const [index, expected] of corpus.runs.entries()) {
+      const run = process.runs[index];
+      const finalTip = expected.steps[expected.steps.length - 1].tip;
+      const steps = expected.steps.map((step) => ({
+        submitted: step.submit, hash: step.block.hash,
+        submitblock: step.submit === step.active ? null : "inconclusive",
+        active: { height: step.tip.height, hash: step.tip.hash },
+      }));
+      if (!matchesProcess(run, name, corpus.genesisHash, finalTip) || run.name !== expected.name
+        || !isDeepStrictEqual(run.steps, steps)) {
+        failures.push(`${CREC_01}: invalid ${name} branch observations for ${expected.name}`);
+      }
+    }
+    const restart = process.restart;
+    const active = corpus.blocks.a2;
+    if (!isRecord(restart) || !tipMatches(restart.retained_tip, active.height, active.hash)) {
+      failures.push(`${CREC_01}: ${name} did not retain the active branch at restart`);
+      continue;
+    }
+    if (name === "open_bitcoin") {
+      if (!matchesProcess(restart, name, corpus.genesisHash, active, active) || Object.hasOwn(restart, "ambiguous")) {
+        failures.push(`${CREC_01}: invalid Open Bitcoin restart observation`);
+      }
+      continue;
+    }
+    const ambiguous = restart.ambiguous;
+    const candidates = [corpus.blocks.b2.hash, corpus.blocks.c2.hash].sort();
+    if (!isRecord(ambiguous) || ambiguous.classification !== BRANCH_CLASSIFICATION
+      || !isDeepStrictEqual(ambiguous.candidates, candidates) || typeof ambiguous.selected !== "string"
+      || !candidates.includes(ambiguous.selected) || ambiguous.chainwork !== corpus.tiedChainwork
+      || !matchesProcess(restart, name, corpus.genesisHash, { height: active.height, hash: ambiguous.selected }, active)) {
+      failures.push(`${CREC_01}: invalid Knots restart fallback classification`);
+    }
+  }
+  return failures;
+}
+
+function checkCREC01Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  failures.push(...checkBranchRecord(record, inputs));
+}
+
 /** Validate active v2.6 ownership and evidence without reading GSD lifecycle state. */
 export function checkParityLedger(inputs: LedgerInputs): string[] {
   const failures: string[] = [];
@@ -395,7 +456,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
     const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt
-      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : id === CDIF_05 ? checkCDIF05Receipt : null;
+      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : id === CDIF_05 ? checkCDIF05Receipt : id === CREC_01 ? checkCREC01Receipt : null;
     if (checkRegtestReceipt && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
       failures.push(`${id}: done runner requires actual Knots daemon evidence`);
     }
@@ -415,7 +476,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
               || record.binary_sha256 !== value.knots_binary_sha256 || record.status !== "passed") {
               failures.push(`${id}: actual Knots differential receipt lacks pinned source, binary and passed outcome`);
             } else if (checkRegtestReceipt) {
-              if (id !== CDIF_05) checkDifferentialBuild(id, record, inputs, failures);
+              if (id !== CDIF_05 && id !== CREC_01) checkDifferentialBuild(id, record, inputs, failures);
               checkRegtestReceipt(record, inputs, failures);
             }
           } catch (error) {

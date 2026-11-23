@@ -1886,3 +1886,40 @@ matching final state and four clean exits. Live missing/wrong-oracle and
 timeout controls and receipt mutations verified that failures cannot publish
 a pass. The original single-block runner still passes. The repo's pre-push
 verifier and GitHub Actions track delivery.
+
+## task-crec-01-regtest-branch-preference | 2026-11-23 | Compare live branch preference and restart ties
+
+- [x] Sync main and identify Knots work, live sequence and loaded sequence/pointer precedence.
+- [x] Build a fail-closed real-daemon comparison with both live arrival orders, paired restart and a Knots-only disk-tie probe.
+- [x] Retain checked side bodies through the ordinary submission path without changing active authority on equal work.
+- [x] Activate winning branches through the authorized staged reorg path with prospective native and BASIC inventory checks.
+- [ ] Run the real comparison, verify restart and both reorg directions, then publish the receipt and deliver through main and CI.
+
+Progress review: The pinned Knots daemon passed both mirrored schedules.
+It kept the previously active tip across restart and chose one of the two
+equal-work side candidates after the Knots-only invalidation control. The
+ordinary Open Bitcoin daemon now retains equal-work side bodies as KnownOnly
+without changing the live tip, and the retained body and active tip survived
+a full process restart. The targeted native test also verifies unchanged
+Coins and BASIC state. A stronger off-tip submission still reaches the
+existing ordinary-RPC refusal. The differential runner records failure and
+does not publish a passing CREC-01 receipt.
+
+Remaining implementation: derive the replacement path and disconnect suffix
+from earned headers and retained bodies. Revalidate side-body linkage after
+reopen. Use the existing reorg authorization and staged transition to project
+coin, undo and validation records, include the BASIC replacement and catch-up
+bounds, and preserve the current achieved-inventory and checkpoint checks
+before returning success. Keep the live, persisted-active, and reference
+disk-sequence cases separate.
+
+
+Activation update: The stronger-branch path now preflights the projected
+coins, undo, validation and BASIC rows, runs the existing staged reorg,
+flushes the winning branch and checks the achieved rows before RPC success.
+Both mirrored schedules and restart retention passed on the live development
+daemon. Focused Rust tests verified replacement after reopen, preservation
+on invalid replacement, and a pure projected/achieved state match. The
+reviewed source guards now cover the preparer and committer and preserve
+the previous authority checks. A clean committed product build is needed
+for the final pinned differential receipt.

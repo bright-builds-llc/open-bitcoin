@@ -14,6 +14,7 @@ use open_bitcoin_core::chainstate::{
 use open_bitcoin_core::codec::block::wire::WireBlock;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+mod branch;
 mod workflow;
 
 type SubmissionNetwork = ManagedPeerNetwork<FjallChainstateStore, FjallCoinsView>;
@@ -425,7 +426,7 @@ impl CanonicalSubmissionCommand {
             .map_err(operational("authority"))??;
         if let CanonicalSubmissionOutcome::Accepted(position) = &outcome {
             use super::filter_index::BasicFilterQuery;
-            let maybe_barrier = match self
+            let mut maybe_barrier = match self
                 .network
                 .basic_filter_query(position.block_hash)
                 .map_err(operational("accepted BASIC capture"))?
@@ -438,23 +439,31 @@ impl CanonicalSubmissionCommand {
                     ));
                 }
             };
-            self.network
-                .drive_basic_filter_index_turn()
-                .map_err(operational("accepted BASIC turn"))?;
-            if let Some(mut barrier) = maybe_barrier {
+            for _ in 0..FjallNodeStore::canonical_history_reopen_limit() {
+                let turn = self
+                    .network
+                    .drive_basic_filter_index_turn()
+                    .map_err(operational("accepted BASIC turn"))?;
+                let Some(barrier) = &mut maybe_barrier else {
+                    break;
+                };
                 use std::future::Future;
-                match std::pin::Pin::new(&mut barrier)
+                match std::pin::Pin::new(barrier)
                     .poll(&mut std::task::Context::from_waker(std::task::Waker::noop()))
                 {
                     std::task::Poll::Ready(result) => {
                         result.map_err(operational("accepted BASIC barrier"))?;
+                        maybe_barrier = None;
+                        break;
                     }
-                    std::task::Poll::Pending => {
-                        return Err(CanonicalSubmissionError::support(
-                            "accepted BASIC work remains pending",
-                        ));
-                    }
+                    std::task::Poll::Pending if turn.persistence_batches == 0 => break,
+                    std::task::Poll::Pending => {}
                 }
+            }
+            if maybe_barrier.is_some() {
+                return Err(CanonicalSubmissionError::support(
+                    "accepted BASIC work remains pending",
+                ));
             }
             #[cfg(test)]
             tests::after_basic(self);

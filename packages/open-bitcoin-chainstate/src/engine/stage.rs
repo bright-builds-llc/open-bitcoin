@@ -20,6 +20,8 @@ use crate::{
 use open_bitcoin_primitives::Txid;
 use std::collections::HashMap;
 
+mod reorg_projection;
+
 /// A connect stage can only be produced by its chainstate owner.
 /// ```compile_fail
 /// use open_bitcoin_chainstate::StagedChainstateConnect;

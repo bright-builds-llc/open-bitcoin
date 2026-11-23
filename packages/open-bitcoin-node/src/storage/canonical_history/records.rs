@@ -24,6 +24,7 @@ use open_bitcoin_network::HeaderEntry;
 use std::collections::{BTreeMap, HashMap};
 
 mod projection;
+pub(crate) use projection::SubmissionInventory;
 
 pub(super) type Rows = BTreeMap<Vec<u8>, Vec<u8>>;
 pub(super) type Namespaces = BTreeMap<String, Rows>;

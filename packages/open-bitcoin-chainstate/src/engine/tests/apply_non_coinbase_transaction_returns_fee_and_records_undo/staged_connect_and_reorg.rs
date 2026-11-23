@@ -315,3 +315,44 @@ fn phase158_reorg_disconnect_to_empty_receipt_has_no_new_endpoint() {
     assert_eq!(accepted.maybe_common_ancestor_endpoint(), None);
     assert_eq!(chainstate.tip(), None);
 }
+
+#[test]
+fn crec01_projected_replacement_matches_absorption_without_mutation() {
+    // Arrange
+    let mut owner = Chainstate::new();
+    let genesis = build_block(
+        BlockHash::default(),
+        1_231_006_500,
+        vec![coinbase_transaction(0, 50)],
+    );
+    connect_block(&mut owner, &genesis, 1);
+    let ancestor = owner.tip().expect("genesis").block_hash;
+    let displaced = build_block(ancestor, 1_231_006_600, vec![coinbase_transaction(1, 50)]);
+    connect_block(&mut owner, &displaced, 2);
+    let replacement = build_block(ancestor, 1_231_006_601, vec![coinbase_transaction(1, 49)]);
+    let before = owner.admission_snapshot().expect("old chainstate");
+    let staged = owner
+        .stage_reorg(
+            &[displaced],
+            &[crate::AnchoredBlock {
+                block: replacement,
+                chain_work: crate::ChainPosition::untrusted_fixture_work(3),
+            }],
+            ScriptVerifyFlags::P2SH,
+            ConsensusParams {
+                coinbase_maturity: 1,
+                ..ConsensusParams::default()
+            },
+        )
+        .expect("replacement stage");
+
+    // Act
+    let projected = owner.project_staged_reorg(&staged).expect("forecast");
+
+    // Assert
+    assert_eq!(owner.admission_snapshot().expect("unchanged"), before);
+    owner
+        .absorb_staged_reorg(staged)
+        .expect("valid replacement");
+    assert_eq!(owner.admission_snapshot().expect("achieved"), projected);
+}

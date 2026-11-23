@@ -173,7 +173,10 @@ export const CONTRACTS: Contract[] = [
   row(CORE + "engine/stage.rs", "absorb", ["self.owner.absorb_validated_reorg(self.staged)"], false, "ValidatedChainstateReorg<'_, V>"),
   row(CORE + "engine/stage.rs", "absorb_validated_reorg", ["self.absorb_overlay(overlay, maybe_best_block)", "self.active_chain = next_active_chain", "self.undo_by_block = next_undo_by_block", "self.maybe_confirmed_txid_counts = next_confirmed_txid_counts", "self.work_authority.accept(&binding)", "let receipt = AcceptedChainstateReorg", "(transition, receipt)"]),
   row(NODE + "network/runtime_authority.rs", "reorg_to_branch", ["self.try_mutate", "network.reorg_to_branch("]),
-  row(NODE + "network/mempool_lifecycle.rs", "reorg_to_branch", ["filter_index::reorg::prepare_reorg(", "install_prepared_reorg_preview(&prepared_chainstate)?", "apply_reorg_mempool_lifecycle(", "commit_prepared_reorg(prepared_chainstate)"]),
+  row(NODE + "network/mempool_lifecycle.rs", "reorg_to_branch", ["self.prepare_live_reorg(", "self.commit_live_reorg("]),
+  row(NODE + "network/mempool_lifecycle.rs", "prepare_live_reorg", ["self.admit_replacement_contexts(", "self.authorize_reorg(", "self.retain_authorized_reorg(", "filter_index::reorg::prepare_reorg("]),
+  row(NODE + "network/mempool_lifecycle.rs", "commit_live_reorg", ["install_prepared_reorg_preview(&prepared_chainstate)?", "apply_reorg_mempool_lifecycle(", "commit_prepared_reorg(prepared_chainstate)"]),
+  row(NODE + "network/runtime_authority/validation_history/branch.rs", "activate_stronger_branch", ["network.prepare_live_reorg(", ".project_prepared_submission_reorg(", ".project_prepared_reorg(", ".project_basic_reorg(", ".check_current_source()", "self.check_owner(network)?", "inventory.into_achieved_check()", ".save_block(", ".commit_live_reorg(", "self.accepted_identity(", "automatic_prune::flush("]),
   row(NODE + "network/runtime_authority/filter_index/reorg.rs", "prepare_reorg", ["manager.prepare_authorized_reorg(authorization, disconnect, replacements, flags, params)"]),
   row(NODE + "chainstate/work_authority.rs", "prepare_reorg", ["Err(ChainstateError::PreferenceAuthorizationRequired)"]),
   row(NODE + "chainstate/work_authority.rs", "prepare_authorized_reorg", ["authorization.check_before_prepare(", "self.chainstate.stage_reorg(", "authorization.check_stage(&self.chainstate, &staged)?", "self.prepare_validation_reorg(&staged)?", "self.prepare_basic_index_reorg(&staged, replacement_branch)?", "Ok(PreparedChainstateReorg", "authorization,"]),
@@ -348,7 +351,7 @@ export function checkCurrentReorgBoundaries(text: (file: string) => string): str
   const failures: string[] = [];
   for (const contract of CONTRACTS) {
     const maybeBody = maybeBoundary(text(contract.file), contract);
-    const currentOwner = [CORE + "engine/stage.rs", CORE + "engine/work_authority.rs", NODE + "chainstate/work_authority.rs", NODE + "chainstate/validation_history.rs", NODE + "network/runtime_authority/filter_index/reorg.rs", NODE + "storage/fjall_store/filters/turn_inputs.rs", NODE + "chainstate/flush_lifecycle/metadata.rs"].includes(contract.file);
+    const currentOwner = [CORE + "engine/stage.rs", NODE + "network/runtime_authority/validation_history/branch.rs", CORE + "engine/work_authority.rs", NODE + "chainstate/work_authority.rs", NODE + "chainstate/validation_history.rs", NODE + "network/runtime_authority/filter_index/reorg.rs", NODE + "storage/fjall_store/filters/turn_inputs.rs", NODE + "chainstate/flush_lifecycle/metadata.rs"].includes(contract.file);
     const currentDigest = contract.file === NODE + "storage/fjall_store/filters/turn_inputs.rs" && contract.symbol === "maybe_basic_filter_turn_body"
       ? "b43e38732094296003e9aa5ea82c1504127e656a3ea79ababf638083b7aa5b17"
       : contract.file === NODE + "chainstate/flush_lifecycle/metadata.rs" && contract.symbol === "complete_coins_write"

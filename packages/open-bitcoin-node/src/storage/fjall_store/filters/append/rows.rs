@@ -164,6 +164,122 @@ impl FjallNodeStore {
             ),
         ])
     }
+
+    /// Forecast the final synchronized BASIC projection of a staged stronger branch.
+    pub(crate) fn submission_reorg_basic_rows(
+        &self,
+        replacements: &[open_bitcoin_core::chainstate::AnchoredBlock],
+        snapshot: &open_bitcoin_core::chainstate::ChainstateSnapshot,
+        maybe_progress: Option<
+            open_bitcoin_core::chainstate::filter_index::catch_up::BasicIndexProgress,
+        >,
+    ) -> Result<Vec<(String, Vec<u8>)>, StorageError> {
+        use open_bitcoin_core::chainstate::{
+            BasicFilterInputs, HistoricalBlockUndo,
+            filter_index::{
+                catch_up::BasicIndexState,
+                lifecycle::{IndexGeneration, IndexLifecycle},
+            },
+        };
+        let Some(IndexLifecycle::Active { generation }) = self.maybe_basic_filter_lifecycle()?
+        else {
+            if maybe_progress.is_some_and(|progress| progress.state() != BasicIndexState::Disabled)
+            {
+                return Err(codec::index_corruption("BASIC reorg lifecycle mismatch"));
+            }
+            return Ok(Vec::new());
+        };
+        let progress = maybe_progress
+            .ok_or_else(|| codec::index_corruption("missing BASIC reorg progress"))?;
+        let current = progress
+            .maybe_safe_durable_endpoint()
+            .ok_or_else(|| codec::index_corruption("missing BASIC reorg checkpoint"))?;
+        if progress.state() != BasicIndexState::Active
+            || progress.generation() != generation
+            || progress.maybe_processed_endpoint() != Some(current)
+            || progress.accepted_target().block_hash() != current.block_hash()
+        {
+            return Err(codec::index_corruption(
+                "BASIC reorg requires a synchronized source",
+            ));
+        }
+        let start = snapshot
+            .active_chain
+            .len()
+            .checked_sub(replacements.len())
+            .filter(|start| *start > 0 && *start < snapshot.active_chain.len())
+            .ok_or_else(|| codec::index_corruption("missing BASIC reorg ancestor"))?;
+        let ancestor = &snapshot.active_chain[start - 1];
+        let mut work = Default::default();
+        let maximum = crate::chainstate::basic_filter_turn_budget()?.absolute_singleton();
+        let mut previous =
+            self.read_basic_filter_local_identity(ancestor.block_hash, &mut work, Some(maximum))?;
+        let shared = FilterCheckpoint::new(IndexPrefix::Committed(previous));
+        let mut rows = Vec::new();
+        for (position, candidate) in snapshot.active_chain[start..].iter().zip(replacements) {
+            let undo = snapshot
+                .undo_by_block
+                .get(&position.block_hash)
+                .ok_or_else(|| codec::index_corruption("missing projected replacement undo"))?;
+            let inputs = BasicFilterInputs::from_historical(
+                &candidate.block,
+                position,
+                Some(HistoricalBlockUndo {
+                    block_hash: position.block_hash,
+                    undo,
+                }),
+            )
+            .map_err(codec::index_corruption)?;
+            let record = codec::StoredFilterRecord::generate(&inputs, position, Some(&previous))?;
+            let key = codec::record_key(position.block_hash);
+            let bytes = codec::encode_record(&record);
+            if self
+                .get_bytes(crate::StorageNamespace::BlockIndex, &key)?
+                .is_some_and(|existing| existing != bytes)
+            {
+                return Err(codec::index_corruption(
+                    "conflicting replacement BASIC record",
+                ));
+            }
+            rows.push((key, bytes));
+            rows.push((
+                codec::active_key(position.height),
+                codec::encode_projection(position.height, position.block_hash),
+            ));
+            previous = record.identity();
+        }
+        let achieved = FilterCheckpoint::new(IndexPrefix::Committed(previous));
+        let (state, locks) = checkpoint_rows(
+            shared,
+            achieved,
+            progress.protection(),
+            previous.height(),
+            previous.block_hash(),
+            self.load_prune_locks()?,
+        )?
+        .encode()?;
+        let next_generation = IndexGeneration::new(
+            generation
+                .value()
+                .checked_add(1)
+                .ok_or_else(|| codec::index_corruption("BASIC reorg generation exhausted"))?,
+        );
+        rows.extend([
+            (codec::STATE_KEY.to_owned(), state),
+            (
+                crate::storage::fjall_store::PRUNE_LOCKS_KEY.to_owned(),
+                locks,
+            ),
+            (
+                codec::ownership::OWNER_KEY.to_owned(),
+                codec::ownership::encode_owner(IndexLifecycle::Active {
+                    generation: next_generation,
+                })
+                .to_vec(),
+            ),
+        ]);
+        Ok(rows)
+    }
 }
 
 impl CheckpointRows {

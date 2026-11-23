@@ -4,7 +4,8 @@
 
 use super::*;
 
-type AchievedCheck<'a> = Box<dyn FnOnce(&FjallNodeStore) -> Result<(), crate::StorageError> + 'a>;
+pub(super) type AchievedCheck<'a> =
+    Box<dyn FnOnce(&FjallNodeStore) -> Result<(), crate::StorageError> + 'a>;
 
 impl CanonicalSubmissionCommand {
     pub(super) fn execute<'a>(
@@ -145,17 +146,24 @@ impl CanonicalSubmissionCommand {
             };
         }
         network.peer_manager.seed_header_store(headers);
-        network.blocks_by_hash.insert(hash, block.clone());
-        if network
+        let tip = network
             .chainstate()
             .chainstate()
             .tip()
-            .is_none_or(|tip| tip.block_hash != block.header.previous_block_hash)
-        {
-            return Err(CanonicalSubmissionError::support(
-                "candidate does not extend actual accepted tip",
-            ));
+            .ok_or_else(|| CanonicalSubmissionError::support("accepted tip unavailable"))?;
+        if tip.block_hash != block.header.previous_block_hash {
+            if inserted.chain_work > tip.chain_work {
+                return self.activate_stronger_branch(
+                    network,
+                    block,
+                    observed,
+                    inventory,
+                    maybe_achieved,
+                );
+            }
+            return self.retain_side_body(network, block, inventory);
         }
+        network.blocks_by_hash.insert(hash, block.clone());
         network
             .chainstate_mut()
             .admit_canonical_body_header(&block.header, context.current_time)
@@ -299,7 +307,7 @@ impl CanonicalSubmissionCommand {
     }
 }
 
-fn connection_failure(
+pub(super) fn connection_failure(
     network: &mut SubmissionNetwork,
     hash: BlockHash,
     error: open_bitcoin_core::chainstate::ChainstateError,

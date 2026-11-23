@@ -1,3 +1,4 @@
+import { MEMPOOL_LIFECYCLE_EDGES } from "./mempool-lifecycle-edges.ts";
 export { SOURCE_FILES } from "./test-modules.ts";
 
 export const EDGES: readonly (readonly [string, string, number, string, boolean])[] = [
@@ -184,9 +185,7 @@ export const EDGES: readonly (readonly [string, string, number, string, boolean]
   ["packages/open-bitcoin-node/src/network/canonical_admission/tests.rs","canonical_chain_owner_fixture_has_no_binding",0,"9db148816025326356e11045a507e2a228e5b4bbdbe02650373f1326f7a41d8f",false],
   ["packages/open-bitcoin-node/src/network/canonical_admission/tests.rs","canonical_chain_owner_preserves_first_binding_across_clones_and_wrapping",0,"e18338cf6645ce93d3e910365971b66816b70ffdd288faa1a345534f21aff16d",false],
   ["packages/open-bitcoin-node/src/network/canonical_admission/tests.rs","canonical_chain_owner_ordinary_startup_preserves_all_namespace_bytes",0,"02efbc6566628cfba4fd46fff00a475d22502494c57cdff865881d3b1768dfda",false],
-  ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","connect_local_block",0,"c1326998d83ccfd2b20d1f8583fb7a05cd5593903ed2b62c02baa9c21581fb9e",false],
-  ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","connect_stored_block",0,"e2f15510c8763d6433ca134c7560bbdc3fa7a7c879f54a212f4a4a73ecf4c878",false],
-  ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","reorg_to_branch",0,"61558e0d617c1055c015f9dbc9821199fe084249892a1da20625abbcffcb8f28",false],
+  ...MEMPOOL_LIFECYCLE_EDGES,
   ["packages/open-bitcoin-node/src/network/runtime_authority.rs","receive_message",0,"39b0cc9e394d93ffa422bb97062f794e5d606706f8fb8601cb7d306be24b20b5",false],
   ["packages/open-bitcoin-node/src/network/runtime_authority.rs","receive_message_for_durable_serving",0,"14304a06652cbc7aee5e6a4781f7c53e6be1d5728856b21332b214b4058f5b24",false],
   ["packages/open-bitcoin-node/src/network/runtime_authority.rs","connect_stored_block",0,"7b1e015369372b38564513785822da4f06d75070e28f1b2d4ab63b86195aa249",false],

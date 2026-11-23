@@ -170,6 +170,29 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         verify_flags: ScriptVerifyFlags,
         consensus_params: ConsensusParams,
     ) -> ManagedResult<ChainTransition> {
+        let prepared = self.prepare_live_reorg(
+            disconnect_blocks,
+            replacement_branch,
+            verify_flags,
+            consensus_params,
+        )?;
+        self.commit_live_reorg(
+            prepared,
+            disconnect_blocks,
+            replacement_branch,
+            context,
+            verify_flags,
+            consensus_params,
+        )
+    }
+
+    pub(super) fn prepare_live_reorg(
+        &mut self,
+        disconnect_blocks: &[Block],
+        replacement_branch: &[AnchoredBlock],
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> ManagedResult<crate::chainstate::PreparedChainstateReorg> {
         for candidate in replacement_branch {
             if candidate.block.header.previous_block_hash.to_byte_array() == [0; 32] {
                 self.guard_body(&candidate.block)?;
@@ -180,7 +203,7 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
         let mut authorization =
             self.authorize_reorg(disconnect_blocks, replacement_branch, consensus_params)?;
         self.retain_authorized_reorg(&mut authorization)?;
-        let prepared_chainstate = super::runtime_authority::filter_index::reorg::prepare_reorg(
+        let prepared = super::runtime_authority::filter_index::reorg::prepare_reorg(
             &self.chainstate,
             authorization,
             disconnect_blocks,
@@ -197,6 +220,18 @@ impl<S: ChainstateStore, V: CoinsView> ManagedPeerNetwork<S, V> {
                 self.note_candidate_connection_failure(*block_hash, source);
             }
         })?;
+        Ok(prepared)
+    }
+
+    pub(super) fn commit_live_reorg(
+        &mut self,
+        prepared_chainstate: crate::chainstate::PreparedChainstateReorg,
+        disconnect_blocks: &[Block],
+        replacement_branch: &[AnchoredBlock],
+        context: ReorgLifecycleContext,
+        verify_flags: ScriptVerifyFlags,
+        consensus_params: ConsensusParams,
+    ) -> ManagedResult<ChainTransition> {
         let transition = prepared_chainstate.transition().clone();
         self.chainstate
             .install_prepared_reorg_preview(&prepared_chainstate)?;

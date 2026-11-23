@@ -176,6 +176,27 @@ impl<'a> SubmissionInventory<'a> {
         validate_rows(&self.rows)
     }
 
+    /// Forecast a retained body without granting ScriptsValid, Coins, or BASIC authority.
+    pub(crate) fn project_retained_side_body(
+        &mut self,
+        block: &Block,
+    ) -> Result<bool, StorageError> {
+        let hash = open_bitcoin_core::consensus::block_hash(&block.header);
+        let key = block_key(hash).into_bytes();
+        let bytes = open_bitcoin_core::codec::encode_block(block)
+            .map_err(|error| history_corruption(error.to_string()))?;
+        let rows = self.namespace_mut("block_index")?;
+        if let Some(existing) = rows.get(&key) {
+            if existing != &bytes {
+                return Err(history_corruption("conflicting retained side body"));
+            }
+            return Ok(false);
+        }
+        rows.insert(key, bytes);
+        validate_rows(&self.rows)?;
+        Ok(true)
+    }
+
     /// Encode complete genuine staged state; this neither absorbs nor publishes it.
     pub(crate) fn project_prepared_connect(
         &mut self,
@@ -189,6 +210,43 @@ impl<'a> SubmissionInventory<'a> {
         if position.header != block.header || snapshot.maybe_confirmed_txid_counts.is_none() {
             return Err(history_corruption("prospective block/state mismatch"));
         }
+        self.project_chainstate(snapshot, headers)?;
+        self.project_accepted_block(block, position)?;
+        validate_rows(&self.rows)
+    }
+
+    /// Forecast the reorg's native chainstate and every replacement acceptance record.
+    pub(crate) fn project_prepared_reorg(
+        &mut self,
+        replacements: &[open_bitcoin_core::chainstate::AnchoredBlock],
+        snapshot: &ChainstateSnapshot,
+        headers: &[HeaderEntry],
+    ) -> Result<(), StorageError> {
+        let start = snapshot
+            .active_chain
+            .len()
+            .checked_sub(replacements.len())
+            .ok_or_else(|| history_corruption("prospective replacement exceeds chain"))?;
+        if replacements.is_empty() || start == 0 || snapshot.maybe_confirmed_txid_counts.is_none() {
+            return Err(history_corruption(
+                "missing prospective reorg ancestry or counts",
+            ));
+        }
+        self.project_chainstate(snapshot, headers)?;
+        for (position, candidate) in snapshot.active_chain[start..].iter().zip(replacements) {
+            self.project_accepted_block(&candidate.block, position)?;
+        }
+        validate_rows(&self.rows)
+    }
+
+    fn project_chainstate(
+        &mut self,
+        snapshot: &ChainstateSnapshot,
+        headers: &[HeaderEntry],
+    ) -> Result<(), StorageError> {
+        let position = snapshot
+            .tip()
+            .ok_or_else(|| history_corruption("missing prospective accepted tip"))?;
         self.header_rows(headers)?;
         let coins = self.namespace_mut("coins")?;
         if coins.contains_key(coins_codec::encode_head_blocks_key().as_slice()) {
@@ -219,6 +277,21 @@ impl<'a> SubmissionInventory<'a> {
             self.namespace_mut("chainstate")?
                 .insert(key.into_bytes(), bytes);
         }
+        Ok(())
+    }
+
+    fn project_accepted_block(
+        &mut self,
+        block: &Block,
+        position: &open_bitcoin_core::chainstate::ChainPosition,
+    ) -> Result<(), StorageError> {
+        if position.header != block.header
+            || position.block_hash != open_bitcoin_core::consensus::block_hash(&block.header)
+        {
+            return Err(history_corruption(
+                "prospective replacement identity mismatch",
+            ));
+        }
         self.namespace_mut("block_index")?.insert(
             block_key(position.block_hash).into_bytes(),
             open_bitcoin_core::codec::encode_block(block)
@@ -231,8 +304,7 @@ impl<'a> SubmissionInventory<'a> {
                 position.height,
             )?,
             history::StoredValidationStatus::ScriptsValid,
-        )?;
-        validate_rows(&self.rows)
+        )
     }
 
     /// Add exact BASIC bytes without obtaining a future append proof or fence.
@@ -247,6 +319,24 @@ impl<'a> SubmissionInventory<'a> {
         let rows = self
             .store
             .submission_basic_rows(position, maybe_inputs, maybe_progress)?;
+        self.namespace_mut("block_index")?.extend(
+            rows.into_iter()
+                .map(|(key, bytes)| (key.into_bytes(), bytes)),
+        );
+        validate_rows(&self.rows)
+    }
+
+    pub(crate) fn project_basic_reorg(
+        &mut self,
+        replacements: &[open_bitcoin_core::chainstate::AnchoredBlock],
+        snapshot: &ChainstateSnapshot,
+        maybe_progress: Option<
+            open_bitcoin_core::chainstate::filter_index::catch_up::BasicIndexProgress,
+        >,
+    ) -> Result<(), StorageError> {
+        let rows =
+            self.store
+                .submission_reorg_basic_rows(replacements, snapshot, maybe_progress)?;
         self.namespace_mut("block_index")?.extend(
             rows.into_iter()
                 .map(|(key, bytes)| (key.into_bytes(), bytes)),

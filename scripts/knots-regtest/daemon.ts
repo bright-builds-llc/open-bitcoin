@@ -139,6 +139,7 @@ export async function compareDaemon(
   genesisHash: string,
   exercise: (rpc: DaemonRpc) => Promise<Record<string, unknown>>,
   indexKnots = false,
+  maybeStartupTip?: RegtestTip,
 ) {
   // Keep both the home and the datadir fresh so no host configuration or chain can leak in.
   const home = join(runtimeRoot, name);
@@ -169,7 +170,8 @@ export async function compareDaemon(
       const rpc = connectRpc(port, password, deadline);
       const call = async (method: string, params?: unknown[]) =>
         rpcResult(await rpcEnvelope(await rpc(method, params), method), method);
-      const genesis = tip(await ready(child, rpc, deadline), 0, genesisHash);
+      const expectedTip = maybeStartupTip ?? { height: 0, hash: genesisHash };
+      const initialTip = tip(await ready(child, rpc, deadline), expectedTip.height, expectedTip.hash);
       const network = object(await call("getnetworkinfo"));
       if (network.connections !== 0 || (name === "knots" && network.networkactive !== false)) {
         throw new Error("Daemon has unexpected P2P activity");
@@ -190,7 +192,7 @@ export async function compareDaemon(
       return {
         flags,
         ...(maybeSoftLimit === null ? {} : { nofile_soft_limit: maybeSoftLimit }),
-        initial_tip: genesis,
+        initial_tip: initialTip,
         peer_count: network.connections,
         ...outcome,
         exit_status: shutdown,

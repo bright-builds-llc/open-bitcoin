@@ -11,6 +11,7 @@ use open_bitcoin_core::consensus::CanonicalChain;
 mod proof;
 pub(in crate::storage) mod records;
 pub(in crate::storage) use proof::ProvedHistoryRecords;
+pub(crate) use records::SubmissionInventory;
 
 /// Replay with the fresh shell observation captured by canonical_bootstrap.
 pub(in crate::storage) fn validate_history_records(

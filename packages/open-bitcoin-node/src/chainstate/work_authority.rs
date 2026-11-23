@@ -136,6 +136,17 @@ impl<S: ChainstateStore, V: CoinsView> ManagedChainstate<S, V> {
         Err(ChainstateError::PreferenceAuthorizationRequired)
     }
 
+    /// Inspect a prepared branch's exact transition while the old authority is held.
+    pub(crate) fn project_prepared_submission_reorg(
+        &self,
+        prepared: &PreparedChainstateReorg,
+    ) -> Result<ChainstateSnapshot, ChainstateError> {
+        prepared
+            .authorization
+            .check_stage(&self.chainstate, &prepared.staged)?;
+        self.chainstate.project_staged_reorg(&prepared.staged)
+    }
+
     pub(crate) fn prepare_authorized_reorg(
         &self,
         authorization: ReorgAuthorization,

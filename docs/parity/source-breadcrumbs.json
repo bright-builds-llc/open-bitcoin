@@ -60,6 +60,27 @@
       "reason": "Open Bitcoin-only support/infrastructure; no direct Bitcoin Knots source anchor identified."
     },
     {
+      "label": "crec-01-staged-reorg-projection",
+      "files": [
+        "packages/open-bitcoin-chainstate/src/engine/stage/reorg_projection.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/coins.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
+      "label": "crec-01-submission-branch-activation",
+      "files": [
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/branch.rs",
+        "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/observation/reorg.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/node/blockstorage.cpp",
+        "packages/bitcoin-knots/src/validation.cpp"
+      ]
+    },
+    {
       "label": "phase167-validation-history-workflow",
       "files": [
         "packages/open-bitcoin-node/src/network/runtime_authority/validation_history/tests/observation.rs",
