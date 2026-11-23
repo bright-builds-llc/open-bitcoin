@@ -1858,3 +1858,17 @@ rejection strings and preserved the observed active tip, BASIC commitment and
 empty mempool on both daemons. The positive successors and the original
 one-block mode passed. The pre-push verifier and GitHub Actions track
 delivery. Broader cross-daemon state projections belong to `CDIF-04`.
+
+## task-cdif-04-regtest-state | 2026-11-23 | Compare final Regtest coins, exact work and BASIC commitments
+
+- [x] Sync main and map both daemon observation paths to the proved Regtest corpus.
+- [x] Compare both live tips, 302 BASIC records and the complete final UTXO projection and chainwork.
+- [x] Bind and check the receipt, document the offline and RPC observation boundaries, and review the diff.
+- [x] Prepare the direct-main delivery through the repo-managed hooks.
+
+Completion review (2026-11-23): The pinned daemon run matched the canonical
+tip and exact work at height 301, all 303 UTXOs by common coin fields and all
+302 BASIC filters and headers. The receipt binds the actual daemon builds,
+corpus, and standalone Open Bitcoin observer. The full pre-push verifier and
+GitHub Actions track delivery. The comparison is scoped to default Regtest
+and uses distinct observation interfaces for durable state.

@@ -5,7 +5,8 @@ import { join } from "node:path";
 import type { RegtestBlock, RegtestTip } from "./regtest-history.ts";
 
 export type DaemonRpc = {
-  call: (method: string, params?: string[]) => Promise<unknown>;
+  datadir: string;
+  call: (method: string, params?: unknown[]) => Promise<unknown>;
   submit: (block: RegtestBlock) => Promise<RegtestTip>;
 };
 
@@ -50,7 +51,7 @@ function object(value: unknown): Record<string, unknown> {
 function connectRpc(port: number, password: string) {
   const url = `http://${LOOPBACK}:${port}/`;
   const authorization = `Basic ${Buffer.from(`cdif01:${password}`).toString("base64")}`;
-  return (method: string, params: string[] = []) => fetch(url, {
+  return (method: string, params: unknown[] = []) => fetch(url, {
     method: "POST",
     redirect: "error",
     headers: { authorization, "content-type": "application/json" },
@@ -160,7 +161,7 @@ export async function compareDaemon(
     for (const signal of signals) process.once(signal, interrupt);
     try {
       const rpc = connectRpc(port, password);
-      const call = async (method: string, params?: string[]) =>
+      const call = async (method: string, params?: unknown[]) =>
         rpcResult(await rpcEnvelope(await rpc(method, params), method), method);
       const genesis = tip(await ready(child, rpc), 0, genesisHash);
       const network = object(await call("getnetworkinfo"));
@@ -177,7 +178,7 @@ export async function compareDaemon(
           throw new Error(`Regtest height ${height} (${hash}): ${detail}`, { cause: error });
         }
       };
-      const outcome = await exercise({ call, submit });
+      const outcome = await exercise({ call, submit, datadir });
       const shutdown = await gracefulExit(child);
       return {
         flags,

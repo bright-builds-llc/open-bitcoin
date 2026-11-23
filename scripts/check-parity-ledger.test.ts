@@ -5,6 +5,7 @@ import { REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
 import { readRegtestHistory } from "./knots-regtest/regtest-history.ts";
 import { normalizeRejection, type observeRejections } from "./knots-regtest/rejections.ts";
 import { checkCurrentParityLedger, checkParityLedger, type LedgerInputs } from "./check-parity-ledger.ts";
+import { summarizeKnotsCoins } from "./knots-regtest/state.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const COMMIT = "a9aee730466ac67d35a3c03ee24676be5e045878";
@@ -302,14 +303,42 @@ test.each([
   expect(failures).toEqual(["v2-6-cdif-03: invalid knots rejection evidence for through-201"]);
 });
 
+test("CDIF-04 rejects a duplicate outpoint in a Knots ASCII projection", () => {
+  // Arrange
+  const row = `${"1".repeat(64)},0,1250000000,1,301,51`;
+
+  // Act / Assert
+  expect(() => summarizeKnotsCoins(`${row}\n${row}\n`, 301)).toThrow("Duplicate projected outpoint");
+});
+
+test("CDIF-04 rejects a UTXO mismatch at the same height and best block", () => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-cdif-04").differential_receipt;
+  const readText = inputs.readTextFile;
+  inputs.readTextFile = (path) => {
+    const text = readText(path);
+    if (path !== receipt) return text;
+    const result = JSON.parse(text);
+    result.open_bitcoin.utxos.sha256 = "0".repeat(64);
+    return JSON.stringify(result);
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual(["v2-6-cdif-04: receipt lacks the expected isolated open_bitcoin process outcome"]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-cdif-04").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-cdif-05").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-cdif-04: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-cdif-05: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

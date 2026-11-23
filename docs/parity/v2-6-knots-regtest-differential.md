@@ -55,6 +55,33 @@ are unchanged on each daemon. The subsequent positive acceptance exercises
 the still-usable active history, including valid blocks that share a header
 with malformed witness variants.
 
+## Best block, chainwork, UTXOs and BASIC
+
+`v2-6-cdif-04` compares observed state on the same accepted chain through
+height 301. Both daemons supply the live active tip and all 302 BASIC
+filter and header pairs through RPC, including the genesis filter.
+
+Knots supplies exact chainwork through `getblockchaininfo` and the complete
+UTXO set through its ASCII `dumptxoutset` RPC at the active tip. Open Bitcoin
+supplies exact chainwork and all coins after its daemon exits and a
+[test-only observer](../../packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs)
+reopens the same datadir through the ordinary proved canonical-history path.
+The observer checks the closed tip against the live tip. This is an offline
+evidence reader.
+
+The [state receipt](receipts/cdif-04-regtest.json) records exact work,
+the complete sorted UTXO projection digest, and the height-ordered BASIC
+projection digest for each process. The common coin fields are display-order
+txid, output index, integer satoshis, raw script bytes, coinbase status,
+and creation height. The runner checks both observations against the
+[independent corpus expectations](fixtures/phase167-regtest-expectations.json).
+The raw projections remain in the ignored run directory for diagnosis.
+
+Knots and Open Bitcoin use different storage formats and observation
+interfaces. Open Bitcoin's creating-parent median time is store metadata
+outside the common coin projection. The comparison treats a difference in a
+common field as a mismatch.
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -70,6 +97,7 @@ git submodule update --init --recursive
 bun run scripts/run-knots-regtest-differential.ts
 bun run scripts/run-knots-regtest-differential.ts --cdif-02
 bun run scripts/run-knots-regtest-differential.ts --cdif-03
+bun run scripts/run-knots-regtest-differential.ts --cdif-04
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -92,8 +120,8 @@ zero peers. The default command submits row 1 of the
 [canonical Regtest corpus](../../packages/testdata/phase167/regtest-history.json).
 The extended commands check the serialized positive blocks and parent links.
 The `--cdif-02` command submits positive rows 1 through 301. The
-`--cdif-03` command additionally enables Knots BASIC indexing for the
-before-and-after checks. The commands use the ordinary
+`--cdif-03` and `--cdif-04` commands additionally enable Knots BASIC
+indexing for the observed-state checks. The commands use the ordinary
 default Regtest rules and submit only the block bytes.
 
 The runner allocates disposable datadirs under the system temporary
@@ -102,8 +130,8 @@ writable RAM-backed volume on macOS to speed up the storage syncs during the
 extended run.
 
 The command writes a fresh `run-*/receipt.json` under the corresponding ignored
-`.local/open-bitcoin-dev/cdif-01/`, `.local/open-bitcoin-dev/cdif-02/` or
-`.local/open-bitcoin-dev/cdif-03/` directory after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/cdif-01/` through
+`.local/open-bitcoin-dev/cdif-04/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The
@@ -114,9 +142,9 @@ above performs the actual two-daemon comparison.
 
 The evidence class is `knots_daemon_differential` for one positive block in
 CDIF-01, the positive chain through height 301 in CDIF-02, and the
-bounded rejection and unchanged-state cases in CDIF-03. Cross-daemon UTXO,
-work and BASIC comparisons and qualification invalidation have separate
-requirement owners. Public networking, whole-chain
+bounded rejection and unchanged-state cases in CDIF-03, and the shared
+chain-state projection in CDIF-04. Qualification invalidation has a separate
+requirement owner. Public networking, whole-chain
 validation, service operation, and wallet readiness require separate evidence.
 
 Pinned Knots source anchors include

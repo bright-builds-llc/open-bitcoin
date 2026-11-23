@@ -14,6 +14,7 @@ import {
 } from "./knots-regtest/regtest-history.ts";
 
 import { observeRejections, readRejectionCorpus, REJECTION_NORMALIZATION } from "./knots-regtest/rejections.ts";
+import { observeClosedState, observeLiveState, readStateCorpus, verifyState } from "./knots-regtest/state.ts";
 
 function singleBlockCase(readText: (path: string) => string) {
   const block = readRegtestCase(readText);
@@ -49,13 +50,14 @@ function maturityHalvingCase(readText: (path: string) => string) {
 async function runDifferential() {
   const args = process.argv.slice(2);
   const id = args[0]?.slice(2) ?? "cdif-01";
-  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03"].includes(args[0]))) {
-    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03]");
+  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03", "--cdif-04"].includes(args[0]))) {
+    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03 | --cdif-04]");
   }
   const label = id.toUpperCase();
   const root = resolve(import.meta.dir, "..");
   const readText = (path: string) => readFileSync(join(root, path), "utf8");
   const maybeRejections = id === "cdif-03" ? readRejectionCorpus(readText) : null;
+  const maybeState = id === "cdif-04" ? readStateCorpus(readText) : null;
   const scenario = id === "cdif-02" ? maturityHalvingCase(readText) : singleBlockCase(readText);
   const output = join(root, ".local", "open-bitcoin-dev", id);
   mkdirSync(output, { recursive: true, mode: 0o700 });
@@ -68,6 +70,15 @@ async function runDifferential() {
   try {
     async function runDaemon(name: "knots" | "open-bitcoin", executable: string) {
       console.log(`${label}: submitting to ${name}`);
+      if (maybeState) {
+        const online = await compareDaemon(name, executable, run, runtimeRoot, maybeState.genesisHash,
+          (rpc) => observeLiveState(rpc, maybeState, run, name), true);
+        const state = name === "knots" ? online : {
+          ...online, ...await observeClosedState(root, join(runtimeRoot, name, "data"), run, maybeState),
+        };
+        verifyState(state, maybeState, name);
+        return state;
+      }
       if (!maybeRejections) return compareDaemon(name, executable, run, runtimeRoot, scenario.genesisHash, scenario.exercise);
       const runs = [];
       for (const group of maybeRejections.runs) {
@@ -98,8 +109,11 @@ async function runDifferential() {
       open_bitcoin_build: openBitcoin.build,
       network: "regtest",
       corpus: REGTEST_CORPUS,
-      corpus_sha256: (maybeRejections ?? scenario).corpusSha256,
-      ...(maybeRejections ? { normalization: REJECTION_NORMALIZATION } : scenario.inputFacts),
+      corpus_sha256: (maybeState ?? maybeRejections ?? scenario).corpusSha256,
+      ...(maybeRejections ? { normalization: REJECTION_NORMALIZATION } : maybeState ? {
+        expectation_sha256: maybeState.expectationSha256,
+        open_bitcoin_observer_sha256: maybeState.observerSha256,
+      } : scenario.inputFacts),
       knots: knotsResult,
       open_bitcoin: openBitcoinResult,
     };

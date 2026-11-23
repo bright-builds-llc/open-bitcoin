@@ -8,6 +8,7 @@ import { readRegtestCase, REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts
 import { readRegtestHistory, summarizeAcceptedTips, type RegtestTip } from "./knots-regtest/regtest-history.ts";
 import { isRejectionState, normalizeRejection, readRejectionCorpus, REJECTION_NORMALIZATION,
   type RejectionRun } from "./knots-regtest/rejections.ts";
+import { readStateCorpus, verifyState } from "./knots-regtest/state.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -17,6 +18,7 @@ const REQUIREMENT_COUNT = 30;
 const CDIF_01 = "v2-6-cdif-01";
 const CDIF_02 = "v2-6-cdif-02";
 const CDIF_03 = "v2-6-cdif-03";
+const CDIF_04 = "v2-6-cdif-04";
 const SHA256 = /^[0-9a-f]{64}$/;
 const CLASSES = new Set([
   "source_derived",
@@ -237,6 +239,30 @@ function checkCDIF03Receipt(record: RecordValue, inputs: LedgerInputs, failures:
   }
 }
 
+function checkCDIF04Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  let corpus;
+  try {
+    corpus = readStateCorpus(inputs.readTextFile);
+  } catch {
+    failures.push(`${CDIF_04}: cannot read canonical Regtest state inputs`);
+    return;
+  }
+  if (!matchesRegtestCorpus(record, corpus.corpusSha256)
+    || record.expectation_sha256 !== corpus.expectationSha256
+    || record.open_bitcoin_observer_sha256 !== corpus.observerSha256) {
+    failures.push(`${CDIF_04}: receipt does not match its state corpus or offline observer`);
+  }
+  checkDifferentialProcesses(CDIF_04, record, corpus.genesisHash, corpus.expected.tip, (result) => {
+    if (!strings(result.flags)?.includes("-blockfilterindex=1")) return false;
+    try {
+      verifyState(result, corpus, CDIF_04);
+      return true;
+    } catch {
+      return false;
+    }
+  }, failures);
+}
+
 /** Validate active v2.6 ownership and evidence without reading GSD lifecycle state. */
 export function checkParityLedger(inputs: LedgerInputs): string[] {
   const failures: string[] = [];
@@ -313,7 +339,7 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
     const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt
-      : id === CDIF_03 ? checkCDIF03Receipt : null;
+      : id === CDIF_03 ? checkCDIF03Receipt : id === CDIF_04 ? checkCDIF04Receipt : null;
     if (checkRegtestReceipt && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
       failures.push(`${id}: done runner requires actual Knots daemon evidence`);
     }

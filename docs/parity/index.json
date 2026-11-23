@@ -1246,10 +1246,36 @@
       {
         "id": "v2-6-cdif-04",
         "title": "Best-block, UTXO, work and BASIC differential",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CDIF-04"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/cdif-04-regtest.json",
+          "scripts/run-knots-regtest-differential.ts",
+          "scripts/knots-regtest/state.ts",
+          "packages/open-bitcoin-rpc/tests/cdif04_closed_state.rs",
+          "packages/testdata/phase167/regtest-history.json",
+          "docs/parity/fixtures/phase167-regtest-expectations.json"
+        ],
+        "evidence_classes": ["knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/cdif-04-regtest.json",
+        "knots_binary_sha256": "627cbe3b5cb24d4595595457296e085805013da584c4c2422f641fe0c34b2b21",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/node/chainstate.cpp",
+            "packages/bitcoin-knots/src/chain.cpp",
+            "packages/bitcoin-knots/src/blockfilter.cpp"
+          ]
+        },
+        "rationale": "The actual daemons matched the canonical tip, exact chainwork, all 303 live coin projections and all 302 BASIC filters and headers through height 301. Both projections also matched the independent checked-in expectations.",
+        "intentional_differences": [
+          "Knots supplies work and UTXOs through RPC. The Open Bitcoin test observer reads work and UTXOs from the same daemon datadir after a proved canonical reopen. These are separate observation interfaces over the same consensus fields."
+        ],
+        "known_gaps": [
+          "The common comparison covers coin identity, value, script, coinbase flag and creation height. Storage metadata including Open Bitcoin's creating-parent median time is outside the common projection.",
+          "The receipt covers the bounded default-Regtest corpus and explicit BASIC indexing."
+        ]
       },
       {
         "id": "v2-6-cdif-05",

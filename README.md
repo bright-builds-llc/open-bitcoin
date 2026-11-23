@@ -96,7 +96,8 @@ Regtest genesis through height 301. The
 cover the one-block runner check, the height-101 coinbase spend, and the
 subsidy halvings at heights 150 and 300. Both daemons also matched specific
 reasons for 19 rejected blocks and spends while preserving the observed
-active state.
+active state. The state comparison matched exact chainwork, the complete
+final UTXO projection, and all BASIC filters and headers through height 301.
 
 ## Archived releases and historical scope
 
