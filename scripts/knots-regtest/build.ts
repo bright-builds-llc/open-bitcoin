@@ -40,7 +40,7 @@ async function loggedCommand(cwd: string, command: string[], log: string, env = 
   }
 }
 
-export async function buildKnots(root: string, run: string) {
+export async function buildKnots(root: string, run: string, label: string) {
   const submodule = join(root, KNOTS_PATH);
   const gitlink = capture(root, ["git", "rev-parse", `HEAD:${KNOTS_PATH}`]);
   const checkout = capture(submodule, ["git", "rev-parse", "HEAD"]);
@@ -66,9 +66,9 @@ export async function buildKnots(root: string, run: string) {
   const configureLog = join(run, "knots-configure.log");
   const buildLog = join(run, "knots-build.log");
   const jobs = Math.min(availableParallelism(), 12);
-  console.log("CDIF-01: configuring pinned Knots source");
+  console.log(`${label}: configuring pinned Knots source`);
   await loggedCommand(root, ["cmake", "-S", source, "-B", build, "-G", "Ninja", ...KNOTS_OPTIONS], configureLog, env);
-  console.log(`CDIF-01: building bitcoind (see ${buildLog})`);
+  console.log(`${label}: building bitcoind (see ${buildLog})`);
   await loggedCommand(root, ["cmake", "--build", build, "--target", "bitcoind", "--parallel", String(jobs)], buildLog, env);
 
   const executable = join(build, "bin", "bitcoind");
@@ -109,7 +109,7 @@ function productSource(root: string): string {
   return capture(root, ["git", "rev-parse", "HEAD"]);
 }
 
-export async function buildOpenBitcoin(root: string, run: string) {
+export async function buildOpenBitcoin(root: string, run: string, label: string) {
   const commit = productSource(root);
   const targetDir = resolveTarget(root).directory;
   const options = ["--locked", "--manifest-path", "packages/Cargo.toml", "-p", "open-bitcoin-rpc", "--bin", "open-bitcoind"];
@@ -117,12 +117,12 @@ export async function buildOpenBitcoin(root: string, run: string) {
   const executable = join(run, "open-bitcoind");
   const builtExecutable = join(targetDir, "debug", "open-bitcoind");
   // Snapshot the binary before the timing wrapper releases the shared target lock.
-  console.log(`CDIF-01: building ordinary open-bitcoind (see ${log})`);
+  console.log(`${label}: building ordinary open-bitcoind (see ${log})`);
   await loggedCommand(
     root,
-    ["bun", "run", "scripts/command-timings.ts", "run", "--key", "cdif-01-build-open-bitcoind", "--",
+    ["bun", "run", "scripts/command-timings.ts", "run", "--key", "knots-regtest-build-open-bitcoind", "--",
       "bash", "-c", 'source_bin="$1"; dest_bin="$2"; shift 2; cargo build "$@" && cp "$source_bin" "$dest_bin"',
-      "cdif-01-copy-product", builtExecutable, executable, ...options],
+      "knots-regtest-copy-product", builtExecutable, executable, ...options],
     log,
     process.env.CARGO_TARGET_DIR ? { ...process.env, CARGO_TARGET_DIR: targetDir } : process.env,
   );

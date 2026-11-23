@@ -1184,10 +1184,33 @@
       {
         "id": "v2-6-cdif-02",
         "title": "Regtest maturity and halving differential",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CDIF-02"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/cdif-02-regtest.json",
+          "scripts/run-knots-regtest-differential.ts",
+          "scripts/knots-regtest/regtest-history.ts",
+          "scripts/check-parity-ledger.test.ts",
+          "packages/testdata/phase167/regtest-history.json"
+        ],
+        "evidence_classes": ["knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/cdif-02-regtest.json",
+        "knots_binary_sha256": "ffb00c6ba2639555a4727391d43398e8bb547f377e07ac2f33478879cbfaa6e4",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/consensus/consensus.h",
+            "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/rpc/mining.cpp"
+          ]
+        },
+        "rationale": "Both source-built daemons accepted the same continuous canonical Regtest history through height 301, including the first mature spend of the height-one coinbase and the fee-free reward transitions at heights 150 and 300. Both active tips matched each submitted block.",
+        "known_gaps": [
+          "Positive default-Regtest history through height 301. Invalid inputs and rejection normalization belong to CDIF-03.",
+          "UTXO, chainwork and BASIC comparisons have a separate requirement owner."
+        ]
       },
       {
         "id": "v2-6-cdif-03",

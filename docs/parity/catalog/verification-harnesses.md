@@ -55,10 +55,11 @@ The behavioral baseline remains Bitcoin Knots `29.3.knots20260210`.
 
 ## Pinned Knots process evidence
 
-The [CDIF-01 runner](../v2-6-knots-regtest-differential.md) builds
-`bitcoind` from the pinned Knots tree and manages both daemon processes for an
-isolated, one-block Regtest comparison. The tracked receipt identifies the
-Knots binary and records the observed result.
+The [pinned Knots runner](../v2-6-knots-regtest-differential.md) builds
+`bitcoind` from the pinned Knots tree and manages both daemon processes in
+isolated Regtest datadirs. The tracked receipts identify the Knots binary and
+record one-block runner verification and a separate maturity and halving
+comparison through height 301.
 
 ## Known gaps
 - The upstream Python functional suite has not been translated wholesale.

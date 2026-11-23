@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { closeSync, mkdirSync, openSync } from "node:fs";
 import { createServer } from "node:net";
 import { join } from "node:path";
-import type { RegtestCase } from "./regtest-case.ts";
+import type { RegtestBlock } from "./regtest-history.ts";
 
 type DaemonName = "knots" | "open-bitcoin";
 const LOOPBACK = "127.0.0.1";
@@ -121,10 +121,15 @@ async function gracefulExit(child: Bun.Subprocess) {
 }
 
 export async function compareDaemon(
-  name: DaemonName, executable: string, run: string, singleBlock: RegtestCase,
+  name: DaemonName,
+  executable: string,
+  run: string,
+  runtimeRoot: string,
+  genesisHash: string,
+  exercise: (submit: (block: RegtestBlock) => Promise<{ height: number; hash: string }>) => Promise<Record<string, unknown>>,
 ) {
   // Keep both the home and the datadir fresh so no host configuration or chain can leak in.
-  const home = join(run, name);
+  const home = join(runtimeRoot, name);
   const datadir = join(home, "data");
   mkdirSync(datadir, { recursive: true, mode: 0o700 });
   const port = await localPort();
@@ -142,7 +147,7 @@ export async function compareDaemon(
     const command = maybeSoftLimit === null ? args
       : ["/bin/bash", "-c", 'ulimit -Sn "$1" && shift && exec "$@"', "cdif-01", String(maybeSoftLimit), ...args];
     const child = Bun.spawn(command, {
-      cwd: home, env: { HOME: home }, stdin: "ignore", stdout: fd, stderr: fd,
+      cwd: home, env: { HOME: home, TMPDIR: runtimeRoot }, stdin: "ignore", stdout: fd, stderr: fd,
     });
     const interrupt = () => child.kill("SIGKILL");
     for (const signal of signals) process.once(signal, interrupt);
@@ -150,17 +155,30 @@ export async function compareDaemon(
       const rpc = connectRpc(port, password);
       const call = async (method: string, params?: string[]) =>
         rpcResult(await rpcEnvelope(await rpc(method, params), method), method);
-      const genesis = tip(await ready(child, rpc), 0, singleBlock.genesisHash);
+      const genesis = tip(await ready(child, rpc), 0, genesisHash);
       const network = object(await call("getnetworkinfo"));
       if (network.connections !== 0 || (name === "knots" && network.networkactive !== false)) {
         throw new Error("Daemon has unexpected P2P activity");
       }
-      const submitted = await call("submitblock", [singleBlock.blockHex]);
-      if (submitted !== null) throw new Error(`submitblock did not accept the block: ${JSON.stringify(submitted)}`);
-      const best = tip(await call("getblockchaininfo"), 1, singleBlock.blockHash);
+      const outcome = await exercise(async ({ height, hash, blockHex }) => {
+        try {
+          const submitted = await call("submitblock", [blockHex]);
+          if (submitted !== null) throw new Error(`submitblock returned ${JSON.stringify(submitted)}`);
+          return tip(await call("getblockchaininfo"), height, hash);
+        } catch (error) {
+          const detail = error instanceof Error ? error.message : String(error);
+          throw new Error(`Regtest height ${height} (${hash}): ${detail}`, { cause: error });
+        }
+      });
       const shutdown = await gracefulExit(child);
-      return { flags, ...(maybeSoftLimit === null ? {} : { nofile_soft_limit: maybeSoftLimit }), initial_tip: genesis, peer_count: network.connections, submitblock: submitted,
-        final_tip: best, exit_status: shutdown };
+      return {
+        flags,
+        ...(maybeSoftLimit === null ? {} : { nofile_soft_limit: maybeSoftLimit }),
+        initial_tip: genesis,
+        peer_count: network.connections,
+        ...outcome,
+        exit_status: shutdown,
+      };
     } finally {
       for (const signal of signals) process.off(signal, interrupt);
       if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");

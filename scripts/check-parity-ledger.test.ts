@@ -1,6 +1,8 @@
 import { expect, test } from "bun:test";
 import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
+import { readRegtestHistory } from "./knots-regtest/regtest-history.ts";
 import { checkCurrentParityLedger, checkParityLedger, type LedgerInputs } from "./check-parity-ledger.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
@@ -204,14 +206,69 @@ test.each([
   expect(failures).toEqual([`v2-6-cdif-01: ${expected}`]);
 });
 
+test("CDIF-02 rejects a tampered halving block with the original header", () => {
+  // Arrange
+  const inputs = fixture();
+  const history = JSON.parse(inputs.readTextFile(REGTEST_CORPUS));
+  const row = history.rows[149];
+  row.block_hex = row.block_hex.slice(0, -2) + "01";
+
+  // Act / Assert
+  expect(() => readRegtestHistory(() => JSON.stringify(history))).toThrow("merkle mismatch");
+});
+
+test.each([
+  ["accepted count", { accepted_count: 300 }],
+  ["accepted tips digest", { accepted_tips_sha256: "0".repeat(64) }],
+  ["checkpoint list", { checkpoints: [] }],
+])("CDIF-02 rejects a mismatched %s in either process result", (_field, replacement) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-cdif-02").differential_receipt;
+  const readTextFile = inputs.readTextFile;
+  inputs.readTextFile = (relativePath) => {
+    const text = readTextFile(relativePath);
+    if (relativePath !== receipt) return text;
+    const document = JSON.parse(text);
+    return JSON.stringify({ ...document, knots: { ...document.knots, ...replacement },
+      open_bitcoin: { ...document.open_bitcoin, ...replacement } });
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual([
+    "v2-6-cdif-02: receipt lacks the expected isolated knots process outcome",
+    "v2-6-cdif-02: receipt lacks the expected isolated open_bitcoin process outcome",
+  ]);
+});
+
+test("CDIF-02 rejects monetary evidence missing the maturity spend", () => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = surface(inputs, "v2-6-cdif-02").differential_receipt;
+  const readTextFile = inputs.readTextFile;
+  inputs.readTextFile = (relativePath) => {
+    const text = readTextFile(relativePath);
+    return relativePath === receipt ? JSON.stringify({ ...JSON.parse(text), maturity: null }) : text;
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual(["v2-6-cdif-02: receipt does not match the canonical Regtest monetary evidence"]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-cdif-02").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-cdif-03").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-cdif-02: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-cdif-03: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

@@ -9,6 +9,32 @@ reported best block
 `194ad8077ee474b008cc5fb29bade1fd6cda566c44972e2d614f1bf586762d24`
 at height 1, and exited cleanly.
 
+## Maturity and halvings
+
+`v2-6-cdif-02` owns `CDIF-02`. The
+[history receipt](receipts/cdif-02-regtest.json) records both daemons starting
+at canonical Regtest genesis and accepting the same 301 serialized descendants
+in order. The runner calls `getblockchaininfo` after each successful
+`submitblock` and checks the active height and hash against the submitted
+block. Both processes exited cleanly after reaching height 301.
+
+The accepted block at height 101 spends output zero of the height-one
+coinbase at the default 100-block maturity boundary. The runner decodes
+the checked-in input bytes to derive that outpoint, its spending transaction,
+and the following fee-free coinbase rewards.
+
+| Height | Subsidy |
+| -- | -- |
+| 149 | 50 BTC |
+| 150 | 25 BTC |
+| 299 | 25 BTC |
+| 300 | 12.5 BTC |
+
+Each process receipt records the accepted count, matching checkpoints, and a
+SHA-256 of the JSON array of `[height, hash]` pairs observed after all 301 RPC
+submissions. The offline ledger checker checks that digest, the checkpoint
+tips, and the maturity and subsidy facts against the canonical corpus.
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -22,6 +48,7 @@ source tree:
 ```sh
 git submodule update --init --recursive
 bun run scripts/run-knots-regtest-differential.ts
+bun run scripts/run-knots-regtest-differential.ts --cdif-02
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -40,14 +67,20 @@ Knots' process-local soft file-descriptor limit at 1024 to avoid the pinned
 daemon's conversion of an unlimited inherited limit to a negative integer.
 Open Bitcoin starts through its default-off networking route with an explicit
 BASIC index, which selects ordinary durable Regtest validation. Both report
-zero peers. The input is row 1 of the
+zero peers. The default command submits row 1 of the
 [canonical Regtest corpus](../../packages/testdata/phase167/regtest-history.json).
-The runner verifies its genesis parent and header hash before submitting the
-same complete bytes to each process.
+The `--cdif-02` command submits positive rows 1 through 301 after checking
+their serialized blocks and parent links. Both commands use the ordinary
+default Regtest rules and submit only the block bytes.
+
+The runner allocates disposable datadirs under the system temporary
+directory and removes them after both daemons exit. Point `TMPDIR` at a
+writable RAM-backed volume on macOS to speed up the storage syncs during the
+extended run.
 
 The command writes a fresh `run-*/receipt.json` under the ignored
-`.local/open-bitcoin-dev/cdif-01/` directory after both successful RPC outcomes
-and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/cdif-01/` or `.local/open-bitcoin-dev/cdif-02/`
+directory after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The
@@ -56,10 +89,10 @@ above performs the actual two-daemon comparison.
 
 ## Evidence scope
 
-The evidence class is `knots_daemon_differential` for the one-block runner.
-`CDIF-02` owns maturity and the height-150 and height-300 halvings.
-Subsequent requirements own rejection normalization, UTXO/work/BASIC
-comparisons, and qualification invalidation. Public networking, whole-chain
+The evidence class is `knots_daemon_differential` for one positive block in
+CDIF-01 and the positive chain through height 301 in CDIF-02. CDIF-03 owns
+invalid-input comparison and rejection normalization. UTXO, work and BASIC
+comparisons and qualification invalidation have separate requirement owners. Public networking, whole-chain
 validation, service operation, and wallet readiness require separate evidence.
 
 Pinned Knots source anchors include
@@ -69,4 +102,11 @@ Pinned Knots source anchors include
 [`rpc/mining.cpp`](../../packages/bitcoin-knots/src/rpc/mining.cpp) for
 `submitblock`, and
 [`rpc/blockchain.cpp`](../../packages/bitcoin-knots/src/rpc/blockchain.cpp) for
-best-block observations.
+best-block observations. The monetary rules anchor to
+[`kernel/chainparams.cpp`](../../packages/bitcoin-knots/src/kernel/chainparams.cpp)
+for the Regtest halving interval,
+[`consensus/consensus.h`](../../packages/bitcoin-knots/src/consensus/consensus.h)
+and [`consensus/tx_verify.cpp`](../../packages/bitcoin-knots/src/consensus/tx_verify.cpp)
+for coinbase maturity, and
+[`validation.cpp`](../../packages/bitcoin-knots/src/validation.cpp) for the
+subsidy schedule and coinbase reward check.

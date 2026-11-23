@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 export const REGTEST_CORPUS = "packages/testdata/phase167/regtest-history.json";
-const GENESIS_HASH = "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206";
+export const REGTEST_GENESIS = "0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206";
 
 export type RegtestCase = {
   genesisHash: string;
@@ -20,7 +18,7 @@ function sha256(bytes: Uint8Array) {
 export function readRegtestCase(readText: (path: string) => string): RegtestCase {
   const text = readText(REGTEST_CORPUS);
   const { rows } = JSON.parse(text);
-  const genesis = Buffer.from(GENESIS_HASH, "hex").reverse().toString("hex");
+  const genesis = Buffer.from(REGTEST_GENESIS, "hex").reverse().toString("hex");
   const block = rows?.[1];
   if (rows?.[0]?.height !== 0 || rows[0].block_hash_raw !== genesis
     || block?.height !== 1 || block.parent_hash_raw !== genesis
@@ -34,14 +32,10 @@ export function readRegtestCase(readText: (path: string) => string): RegtestCase
     throw new Error("Regtest corpus height-one header has the wrong parent or hash");
   }
   return {
-    genesisHash: GENESIS_HASH,
+    genesisHash: REGTEST_GENESIS,
     blockHash: hash.reverse().toString("hex"),
     blockHex: block.block_hex,
     blockSha256: sha256(bytes).toString("hex"),
     corpusSha256: sha256(Buffer.from(text)).toString("hex"),
   };
-}
-
-export function loadRegtestCase(root: string): RegtestCase {
-  return readRegtestCase((path) => readFileSync(join(root, path), "utf8"));
 }

@@ -1832,3 +1832,16 @@ height-one Regtest block and shut down cleanly. The tracked receipt binds the
 Knots tree and executable to the run. A live tip-mismatch control failed as
 expected. The repo-managed pre-push verifier and the commit's GitHub Actions
 runs track delivery. `CDIF-02` and broader parity remain planned.
+
+## task-cdif-02-regtest-maturity-halvings | 2026-11-23 | Compare canonical Regtest through height 301
+
+- [x] Sync main and identify the pinned corpus and both monetary rule boundaries.
+- [x] Replay the same positive history on both actual daemons and record their accepted tips.
+- [x] Guard the tracked receipt against incomplete history or mismatched monetary evidence, then review the diff.
+- [x] Confirm the hooks are active and prepare the direct-main delivery.
+
+Completion review (2026-11-23): Both daemons started at canonical Regtest
+genesis and matched all 301 accepted tips, including the mature coinbase spend
+at height 101 and both fee-free halvings. The original one-block mode passed
+again. The repo-managed pre-push verifier and GitHub Actions track delivery.
+`CDIF-03` remains planned.

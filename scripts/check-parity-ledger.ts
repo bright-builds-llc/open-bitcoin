@@ -3,7 +3,9 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { readRegtestCase, REGTEST_CORPUS } from "./knots-regtest/regtest-case.ts";
+import { readRegtestHistory, summarizeAcceptedTips, type RegtestTip } from "./knots-regtest/regtest-history.ts";
 
 // Shallow CI checkouts may omit tag objects; the fixed label and both commit identities remain authoritative.
 const BASELINE_TAG = "29.3.knots20260210";
@@ -11,6 +13,7 @@ export const BASELINE_COMMIT = "a9aee730466ac67d35a3c03ee24676be5e045878";
 // A changed cardinality requires an explicit new requirement approval, not silent ledger drift.
 const REQUIREMENT_COUNT = 30;
 const CDIF_01 = "v2-6-cdif-01";
+const CDIF_02 = "v2-6-cdif-02";
 const SHA256 = /^[0-9a-f]{64}$/;
 const CLASSES = new Set([
   "source_derived",
@@ -99,10 +102,10 @@ function tipMatches(tip: unknown, height: number, hash: string): boolean {
   return isRecord(tip) && tip.height === height && tip.hash === hash;
 }
 
-function checkCDIF01Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+function checkDifferentialBuild(id: string, record: RecordValue, inputs: LedgerInputs, failures: string[]) {
   const knotsBuild = record.knots_build;
   const openBuild = record.open_bitcoin_build;
-  if (record.format !== "open-bitcoin-cdif-01-v1" || record.source_tree !== inputs.baseline.checkoutTree
+  if (record.format !== `open-bitcoin-${id.slice("v2-6-".length)}-v1` || record.source_tree !== inputs.baseline.checkoutTree
     || !isRecord(knotsBuild) || !isRecord(openBuild)
     || typeof knotsBuild.archive_sha256 !== "string" || !SHA256.test(knotsBuild.archive_sha256)
     || typeof knotsBuild.cmake_cache_sha256 !== "string" || !SHA256.test(knotsBuild.cmake_cache_sha256)
@@ -110,21 +113,14 @@ function checkCDIF01Receipt(record: RecordValue, inputs: LedgerInputs, failures:
     || !strings(knotsBuild.build_options)?.includes("bitcoind")
     || typeof openBuild.source_commit !== "string" || !/^[0-9a-f]{40}$/.test(openBuild.source_commit)
     || typeof openBuild.binary_sha256 !== "string" || !SHA256.test(openBuild.binary_sha256)) {
-    failures.push(`${CDIF_01}: receipt lacks the pinned tree or daemon build inputs`);
+    failures.push(`${id}: receipt lacks the pinned tree or daemon build inputs`);
   }
+}
 
-  let evidence;
-  try {
-    evidence = readRegtestCase(inputs.readTextFile);
-  } catch {
-    failures.push(`${CDIF_01}: cannot read the canonical height-one Regtest input`);
-    return;
-  }
-  if (record.network !== "regtest" || record.corpus !== REGTEST_CORPUS
-    || record.corpus_sha256 !== evidence.corpusSha256 || record.block_sha256 !== evidence.blockSha256) {
-    failures.push(`${CDIF_01}: receipt does not match the canonical height-one Regtest input`);
-  }
-
+function checkDifferentialProcesses(
+  id: string, record: RecordValue, genesisHash: string, finalTip: RegtestTip,
+  hasExpectedObservations: (result: RecordValue) => boolean, failures: string[],
+) {
   for (const [name, extraFlags] of [
     ["knots", ["-assumevalid=0", "-networkactive=0", "-listen=0"]],
     ["open_bitcoin", ["-blockfilterindex=1"]],
@@ -132,11 +128,51 @@ function checkCDIF01Receipt(record: RecordValue, inputs: LedgerInputs, failures:
     const result = record[name];
     const flags = isRecord(result) ? strings(result.flags) : null;
     if (!isRecord(result) || !flags || !["-chain=regtest", "-rpcbind=127.0.0.1", ...extraFlags].every((flag) => flags.includes(flag))
-      || !tipMatches(result.initial_tip, 0, evidence.genesisHash) || !tipMatches(result.final_tip, 1, evidence.blockHash)
-      || result.peer_count !== 0 || result.submitblock !== null || result.exit_status !== 0) {
-      failures.push(`${CDIF_01}: receipt lacks the expected isolated ${name} process outcome`);
+      || !tipMatches(result.initial_tip, 0, genesisHash) || !tipMatches(result.final_tip, finalTip.height, finalTip.hash)
+      || result.peer_count !== 0 || result.exit_status !== 0 || !hasExpectedObservations(result)) {
+      failures.push(`${id}: receipt lacks the expected isolated ${name} process outcome`);
     }
   }
+}
+
+function matchesRegtestCorpus(record: RecordValue, corpusSha256: string) {
+  return record.network === "regtest" && record.corpus === REGTEST_CORPUS && record.corpus_sha256 === corpusSha256;
+}
+
+function checkCDIF01Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  let evidence;
+  try {
+    evidence = readRegtestCase(inputs.readTextFile);
+  } catch {
+    failures.push(`${CDIF_01}: cannot read the canonical height-one Regtest input`);
+    return;
+  }
+  if (!matchesRegtestCorpus(record, evidence.corpusSha256) || record.block_sha256 !== evidence.blockSha256) {
+    failures.push(`${CDIF_01}: receipt does not match the canonical height-one Regtest input`);
+  }
+  checkDifferentialProcesses(CDIF_01, record, evidence.genesisHash, { height: 1, hash: evidence.blockHash },
+    (result) => result.submitblock === null, failures);
+}
+
+function checkCDIF02Receipt(record: RecordValue, inputs: LedgerInputs, failures: string[]) {
+  let history;
+  try {
+    history = readRegtestHistory(inputs.readTextFile);
+  } catch {
+    failures.push(`${CDIF_02}: cannot read canonical Regtest maturity and halving inputs`);
+    return;
+  }
+  if (!matchesRegtestCorpus(record, history.corpusSha256)
+    || !isDeepStrictEqual(record.maturity, history.monetaryFacts.maturity)
+    || !isDeepStrictEqual(record.subsidy_boundaries, history.monetaryFacts.subsidy_boundaries)) {
+    failures.push(`${CDIF_02}: receipt does not match the canonical Regtest monetary evidence`);
+  }
+  const expected = summarizeAcceptedTips(history.blocks);
+  const finalTip = history.blocks[history.blocks.length - 1];
+  checkDifferentialProcesses(CDIF_02, record, history.genesisHash, finalTip, (result) =>
+    result.accepted_count === expected.accepted_count
+    && result.accepted_tips_sha256 === expected.accepted_tips_sha256
+    && isDeepStrictEqual(result.checkpoints, expected.checkpoints), failures);
 }
 
 /** Validate active v2.6 ownership and evidence without reading GSD lifecycle state. */
@@ -214,7 +250,8 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
     }
     if (evidence?.length) checkFiles(`${id} evidence`, evidence, inputs.isRegularFile, failures);
 
-    if (id === CDIF_01 && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
+    const checkRegtestReceipt = id === CDIF_01 ? checkCDIF01Receipt : id === CDIF_02 ? checkCDIF02Receipt : null;
+    if (checkRegtestReceipt && value.status === "done" && !classes?.includes("knots_daemon_differential")) {
       failures.push(`${id}: done runner requires actual Knots daemon evidence`);
     }
     if (classes?.includes("knots_daemon_differential")) {
@@ -232,8 +269,9 @@ export function checkParityLedger(inputs: LedgerInputs): string[] {
             if (!isRecord(record) || record.source_commit !== BASELINE_COMMIT
               || record.binary_sha256 !== value.knots_binary_sha256 || record.status !== "passed") {
               failures.push(`${id}: actual Knots differential receipt lacks pinned source, binary and passed outcome`);
-            } else if (id === CDIF_01) {
-              checkCDIF01Receipt(record, inputs, failures);
+            } else if (checkRegtestReceipt) {
+              checkDifferentialBuild(id, record, inputs, failures);
+              checkRegtestReceipt(record, inputs, failures);
             }
           } catch (error) {
             if (!(error instanceof SyntaxError)) throw error;
