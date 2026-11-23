@@ -1417,7 +1417,7 @@
             "packages/bitcoin-knots/src/init.cpp"
           ]
         },
-        "rationale": "The ordinary managed reopen and operator CLI agree on the proved height-one prefix before body retention and height-two prefix after the BASIC commit. They refuse interrupted chain metadata, a mismatched coins tip, and inconsistent paired header work. Both refusal paths preserve source files and byte digests.",
+        "rationale": "The managed runtime and sync status report the same height-one state before body retention and height-two state after the BASIC commit. They refuse interrupted chain metadata, a mismatched coins tip, and inconsistent paired header work. Both refusal paths preserve source files and byte digests.",
         "known_gaps": [
           "Bounded canonical Regtest through height two with explicit BASIC and injected software publication failures in owned processes. Physical power-loss testing has separate evidence requirements."
         ]
