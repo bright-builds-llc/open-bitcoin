@@ -2056,3 +2056,14 @@ Qualification review: The offline audit bound six exact Mainnet bodies to
 their checked header windows, external outputs with inclusion proofs, script
 flags and any original BIP30 coinbases. All 23 native historical tests passed.
 Full pre-push and exact-head CI attest delivery.
+
+## task-cpar-01-v2-6-parity-trace | 2026-11-23 | Trace parity claims and preserve prior attribution
+
+- [x] Map all 30 approved requirements to their exactly-once owners and pinned source anchors.
+- [x] Record six intentional differences, seven observed Knots results, and the separate restart ambiguity.
+- [x] Check the v2.5 archived controls and receipts against their original commit and add traceability controls to the verifier.
+
+Qualification review: The trace verified all current owner and evidence
+routes, seven scoped Regtest receipts, and the unchanged bytes of ten v2.5
+archive files. The existing archive scope is preserved. Full pre-push and
+exact-head CI attest delivery.

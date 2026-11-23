@@ -130,6 +130,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-cint-02` | `done` | `CINT-02` | [Retained BASIC clients after reopen](v2-6-canonical-pruning.md#retained-basic-clients-after-reopen) | After archive-backed canonical reopen, authenticated RPC and both physical peer directions observe branch-correct BASIC. The deleted block remains unavailable and wallet RPC refuses. |
 | `v2-6-cint-03` | `done` | `CINT-03` | [Canonical operator status](v2-6-canonical-pruning.md#canonical-operator-status) | RPC, CLI status, dashboard and redacted support agree on the current tip, work, BASIC progress, prune boundary and keep-window refusal. |
 | `v2-6-cint-04` | `done` | `CINT-04` | [Finite Mainnet audit](v2-6-candidate-history-validation.md#finite-mainnet-fixture-audit), [case manifest](fixtures/cint-04-mainnet-audit.json) | Six exact Mainnet bodies bind bounded ancestry, previous outputs and creation proofs, selected flags and BIP30 originals to the pinned source. |
+| `v2-6-cpar-01` | `done` | `CPAR-01` | [Parity traceability](v2-6-parity-traceability.md) | Approved claims join exactly-once owners, pinned paths, explicit differences, actual receipts, and original v2.5 archive bytes. |
 
 ## Evidence Rules
 

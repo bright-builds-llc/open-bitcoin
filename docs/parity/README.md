@@ -23,6 +23,10 @@ Work on a synced local `main` and commit directly after focused tests and diff r
 
 The approved CPAR-01 wording uses *lifecycle-valid requirement owners*. Under this workflow, that means an exactly-once ledger owner whose completion is backed by the relevant passing tests and evidence; it does not require a new GSD phase lifecycle.
 
+Use the [v2.6 parity trace](v2-6-parity-traceability.md) to look up current
+owners, intentional differences, recorded Knots outcomes, and v2.5 archive
+attribution.
+
 Use these evidence classes precisely:
 
 | Class | What it supports |

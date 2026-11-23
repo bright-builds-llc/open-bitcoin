@@ -200,6 +200,8 @@ run_step "test Phase 167 candidate history boundary" bun test ./scripts/check-ph
 run_step "check Phase 167 candidate history boundary" bun run scripts/check-phase167-candidate-history.ts
 run_step "check CINT-04 Mainnet historical audit" bun run scripts/check-cint-04-mainnet.ts --check
 run_step "test CINT-04 Mainnet historical audit" bun test ./scripts/check-cint-04-mainnet.test.ts
+run_step "check CPAR-01 parity traceability" bun run scripts/check-v2-6-traceability.ts --check
+run_step "test CPAR-01 parity traceability" bun test ./scripts/check-v2-6-traceability.test.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-v2-1-runtime-metrics-logs.test.ts

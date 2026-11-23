@@ -122,6 +122,10 @@ The [finite Mainnet audit](./docs/parity/v2-6-candidate-history-validation.md#fi
 records six historical blocks with their seeded ancestry, previous-output
 proofs, activation facts, and exact BIP30 originals where applicable.
 
+The [v2.6 parity trace](./docs/parity/v2-6-parity-traceability.md) links the
+approved claims and intentional differences to their evidence, including the
+recorded Knots comparisons and the original v2.5 archive.
+
 ## Archived releases and historical scope
 
 > Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).

@@ -53,6 +53,11 @@ differences from Bitcoin Knots `29.3.knots20260210`:
 See [`catalog/drop-in-audit-and-migration.md`](catalog/drop-in-audit-and-migration.md)
 for the evidence matrix behind those differences.
 
+The v2.6 entries in [the ledger](index.json) carry the `v2.6` scope and
+link each difference to the pinned Knots source, completed requirement
+owners, and evidence. The [traceability guide](v2-6-parity-traceability.md)
+indexes those entries and the separate observed restart ambiguity.
+
 ## Deferred Surfaces
 
 The Phase 8 operator catalog records these deferred RPC, CLI, and config
