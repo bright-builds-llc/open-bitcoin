@@ -118,6 +118,10 @@ RPC and both loopback peer directions while deleted bodies stay unavailable.
 The live status, dashboard and redacted support bundle report the same
 canonical tip, exact work, BASIC progress and pruning refusal.
 
+The [finite Mainnet audit](./docs/parity/v2-6-candidate-history-validation.md#finite-mainnet-fixture-audit)
+records six historical blocks with their seeded ancestry, previous-output
+proofs, activation facts, and exact BIP30 originals where applicable.
+
 ## Archived releases and historical scope
 
 > Current release: [v2.5 Prune-Aware Compact-Filter Serving](./.planning/milestones/v2.5-ROADMAP.md).

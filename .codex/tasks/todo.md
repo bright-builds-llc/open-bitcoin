@@ -2045,3 +2045,14 @@ CLI, dashboard and redacted support output agreed with RPC, including BASIC
 progress, prune height 715, 714 deleted pairs and the keep-window refusal.
 Support output removed the private prune-lock marker. Full pre-push and
 exact-head CI attest delivery.
+
+## task-cint-04-finite-mainnet-fixture-audit | 2026-11-23 | Audit exact seeded Mainnet historical contexts
+
+- [x] Inventory the six pinned Mainnet bodies and verify their ancestry, outputs and activation prerequisites offline.
+- [x] Publish the deterministic case audit and rerun the native historical tests and audit controls.
+- [x] Record the bounded claim and verifier entry point for direct-main delivery.
+
+Qualification review: The offline audit bound six exact Mainnet bodies to
+their checked header windows, external outputs with inclusion proofs, script
+flags and any original BIP30 coinbases. All 23 native historical tests passed.
+Full pre-push and exact-head CI attest delivery.

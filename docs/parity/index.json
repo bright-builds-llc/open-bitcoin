@@ -1502,10 +1502,28 @@
       {
         "id": "v2-6-cint-04",
         "title": "Finite mainnet historical validation contexts",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CINT-04"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-candidate-history-validation.md",
+          "docs/parity/fixtures/cint-04-mainnet-audit.json",
+          "docs/parity/fixtures/phase167-historical-results.json",
+          "scripts/check-cint-04-mainnet.ts",
+          "packages/testdata/phase167/manifest.json"
+        ],
+        "evidence_classes": ["source_derived", "seeded_historical"],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/kernel/chainparams.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/consensus/tx_verify.cpp",
+            "packages/bitcoin-knots/src/pow.cpp"
+          ]
+        },
+        "rationale": "The offline audit reproduces six Mainnet cases using the pinned source and checked-in bodies and context data. It binds each candidate with its bounded header windows, external outputs and creating proofs, script flags, BIP34 prerequisite and any BIP30 original. Named native tests exercise the seeded bodies, refusals and undo behavior.",
+        "known_gaps": [
+          "Six checked-in Mainnet bodies with bounded seeded ancestry and candidate-input/known-overwrite UTXO evidence. Whole-chain Mainnet, ordinary Mainnet acceptance and daemon differential remain separate claims."
+        ]
       },
       {
         "id": "v2-6-cpar-01",

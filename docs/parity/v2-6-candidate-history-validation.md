@@ -124,6 +124,47 @@ preserves those fields so disconnect and retained reopen restore the old coin
 losslessly. This stronger CVLD-06 contract is explicit parity difference, not
 an assertion that Knots itself restores the old coin.
 
+## Finite Mainnet fixture audit
+
+`v2-6-cint-04` records six exact Mainnet cases in the
+[tracked audit](fixtures/cint-04-mainnet-audit.json). The audit runs offline.
+It verifies the pinned Knots source and regenerates the detached rule
+expectations, then checks the serialized blocks, header links, previous
+transactions, output values and scripts, creation MTP windows, and Merkle
+inclusion proofs. It reads the activation heights, BIP34 hash, and BIP30
+recheck height from the pinned C++ source. The expected BIP30 decision is
+conditional on the recorded ancestry prerequisites.
+
+Each row identifies the exact block and parent and commits to its linked
+candidate, difficulty, and expiry windows. The external-input commitment
+binds each outpoint to its value, script, coinbase status, creation block and
+MTP, and inclusion proof. The matching BIP34 prerequisite for height 692,261
+is a detached seeded anchor. The two BIP30 repeat rows identify their exact
+original coinbases and bind the separate checked overwrite fixture.
+
+| Height | Fixture | Referenced external outputs |
+| --- | --- | --- |
+| 91,722 | Original coinbase for the 91,880 repeat | 0 |
+| 91,812 | Original coinbase for the 91,842 repeat | 2 |
+| 91,842 | Exact BIP30 repeat | 0 |
+| 91,880 | Exact BIP30 repeat | 1 |
+| 170,060 | P2SH flag exception | 61 |
+| 692,261 | Taproot flag exception | 6,157 |
+
+The 23 named native historical tests passed, including the exact seeded
+exception bodies, repeated-coinbase overwrite and reopen checks, and wrong
+context controls. The suite also exercises Testnet3, Regtest, and synthetic
+rule controls. The audit supports `source_derived` rule expectations and
+`seeded_historical` body evidence. Its ancestry proof covers the checked
+segments, and its coin evidence covers candidate inputs and known overwrites.
+
+```sh
+bun run scripts/check-cint-04-mainnet.ts --check
+bun run scripts/command-timings.ts run --key cint-04-historical-native -- \
+  cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-node --lib \
+  phase167_historical -- --test-threads=1
+```
+
 ## Bounded local default-Regtest route and limits
 
 The [actual Plan 14 RPC/CLI process test](../../packages/open-bitcoin-cli/src/operator/runtime/support/phase167_tests.rs)

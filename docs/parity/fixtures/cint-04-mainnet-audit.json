@@ -1,0 +1,419 @@
+{
+  "schema": 1,
+  "source_pin": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "network": "mainnet",
+  "evidence_class": "seeded_historical",
+  "scope": "finite seeded candidate contexts and referenced outputs",
+  "rules": {
+    "activation_heights": {
+      "bip34": 227931,
+      "dersig": 363725,
+      "cltv": 388381,
+      "csv": 419328,
+      "segwit": 481824
+    },
+    "bip34_hash": "000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8",
+    "bip30_recheck_height": 1983702
+  },
+  "inputs": {
+    "packages/testdata/phase167/manifest.json": "16649d2cee73bfd769632bd8b59a06af50ee2d8bb69a2a71dcaad8be88d53b09",
+    "packages/testdata/phase167/blocks.json": "6e81f7f06037d8c1e18b75ddef67d16aa6ab09a505ca616db612de1f29e0c335",
+    "packages/testdata/phase167/contexts.json": "3067e98fb235c97226482a6c1b9fad2484fe58610f5ed1c25e8860a0a970fd5a",
+    "docs/parity/fixtures/phase167-rule-expectations.json": "4dddecfbb11a93eac11474d23f80bfff08736713a02941f7f21feb32b7a88c24",
+    "packages/testdata/phase167/bip30-fixtures.txt": "7b91df3ceee0f702c46f98911f4dc92a85c85a0327697e424810c46a379fff5a"
+  },
+  "cases": [
+    {
+      "height": 91722,
+      "hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+      "purpose": "bip30-original-91722",
+      "raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e",
+      "parent": "00000000000a30044feb1a9010445c5b6d4cdc3f32ca747cff2525c32976ba42",
+      "parent_median_time": 1289721830,
+      "ancestry": {
+        "count": 155,
+        "first": {
+          "height": 91567,
+          "hash": "00000000000710e3f786d8c301df8b751e8cf098327992b205dca8671ce94918"
+        },
+        "last": {
+          "height": 91721,
+          "hash": "00000000000a30044feb1a9010445c5b6d4cdc3f32ca747cff2525c32976ba42"
+        },
+        "ordered_headers_sha256": "5ddd4d1bf4ac51fbe063d4fbc3dc445cb02b720c0f352a028c2d6fc0bba7ef21"
+      },
+      "expiry": {
+        "median_time": 1289670404,
+        "count": 11,
+        "first": {
+          "height": 91567,
+          "hash": "00000000000710e3f786d8c301df8b751e8cf098327992b205dca8671ce94918"
+        },
+        "last": {
+          "height": 91577,
+          "hash": "00000000000bd7a15c2df15128960831436551c0467914eadcc28e6567cbafc4"
+        },
+        "ordered_headers_sha256": "69316e99c5c0316b2ff85555ed2784d49e2474c5993867344e3493298262692a"
+      },
+      "difficulty": {
+        "bits": "1b0e7256",
+        "count": 1,
+        "first": {
+          "height": 91721,
+          "hash": "00000000000a30044feb1a9010445c5b6d4cdc3f32ca747cff2525c32976ba42"
+        },
+        "last": {
+          "height": 91721,
+          "hash": "00000000000a30044feb1a9010445c5b6d4cdc3f32ca747cff2525c32976ba42"
+        },
+        "ordered_headers_sha256": "946345f3d066360b9122d0bc7a3392696d1f12f47a44d10d296b24ef1e1d3694"
+      },
+      "external_inputs": {
+        "count": 0,
+        "coinbase_inputs": 0,
+        "outpoints_and_creation_proofs_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "activation": {
+        "bip34": {
+          "kind": "absent-parent-below-height"
+        },
+        "script_flags": [
+          "P2SH",
+          "WITNESS",
+          "TAPROOT"
+        ]
+      },
+      "bip30_scan_expected": true,
+      "overwrite_originals": []
+    },
+    {
+      "height": 91812,
+      "hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+      "purpose": "bip30-original-91812",
+      "raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e",
+      "parent": "000000000002afe839294d4e038b5c831bc09632fd717c0980f8f216dc2b360f",
+      "parent_median_time": 1289756038,
+      "ancestry": {
+        "count": 155,
+        "first": {
+          "height": 91657,
+          "hash": "00000000000900ed5c23aae271c118f64aa918ecb83c0edf3d197db10a9918bb"
+        },
+        "last": {
+          "height": 91811,
+          "hash": "000000000002afe839294d4e038b5c831bc09632fd717c0980f8f216dc2b360f"
+        },
+        "ordered_headers_sha256": "2c562f5355c623e8c5870c42e0433919bf2f65077c44278482ef23d0b84bef3b"
+      },
+      "expiry": {
+        "median_time": 1289706199,
+        "count": 11,
+        "first": {
+          "height": 91657,
+          "hash": "00000000000900ed5c23aae271c118f64aa918ecb83c0edf3d197db10a9918bb"
+        },
+        "last": {
+          "height": 91667,
+          "hash": "0000000000073926d1d816cb1e8b4f32a3bca9021a1b4752c60a0774b2ff0f1d"
+        },
+        "ordered_headers_sha256": "360aeec9bf09988212790075f783d9e89a9392d47afa3c1cbae592b3e9587ee7"
+      },
+      "difficulty": {
+        "bits": "1b0e7256",
+        "count": 1,
+        "first": {
+          "height": 91811,
+          "hash": "000000000002afe839294d4e038b5c831bc09632fd717c0980f8f216dc2b360f"
+        },
+        "last": {
+          "height": 91811,
+          "hash": "000000000002afe839294d4e038b5c831bc09632fd717c0980f8f216dc2b360f"
+        },
+        "ordered_headers_sha256": "e3d43be2e301fb5e6dcfbab872de8116d026d1aa7c07f7402a99e4a610999225"
+      },
+      "external_inputs": {
+        "count": 2,
+        "coinbase_inputs": 0,
+        "outpoints_and_creation_proofs_sha256": "1a0b78dfa79015f051211f01ea2c2b5eee59dcc6124636bb75c19cf0322619fc"
+      },
+      "activation": {
+        "bip34": {
+          "kind": "absent-parent-below-height"
+        },
+        "script_flags": [
+          "P2SH",
+          "WITNESS",
+          "TAPROOT"
+        ]
+      },
+      "bip30_scan_expected": true,
+      "overwrite_originals": []
+    },
+    {
+      "height": 91842,
+      "hash": "00000000000a4d0a398161ffc163c503763b1f4360639393e0e4c8e300e0caec",
+      "purpose": "bip30-repeat-91842",
+      "raw_block_sha256": "95434eb656dd8feb2611648dc54f4d85d5fad64eaa6a892c89b09888c60fcd93",
+      "parent": "00000000000a1e92acbcbdf594cac25d1095544d5fbf5113bfec85a9eb4b1120",
+      "parent_median_time": 1289767733,
+      "ancestry": {
+        "count": 155,
+        "first": {
+          "height": 91687,
+          "hash": "00000000000c591f9dae0989ce57c39f614319d5647d4e70a9fd6dcf872dfdb1"
+        },
+        "last": {
+          "height": 91841,
+          "hash": "00000000000a1e92acbcbdf594cac25d1095544d5fbf5113bfec85a9eb4b1120"
+        },
+        "ordered_headers_sha256": "cf842156787560ba5d7dedb2ff45c1bc6a872b82156776eefea68d6e8ad8ddcc"
+      },
+      "expiry": {
+        "median_time": 1289713700,
+        "count": 11,
+        "first": {
+          "height": 91687,
+          "hash": "00000000000c591f9dae0989ce57c39f614319d5647d4e70a9fd6dcf872dfdb1"
+        },
+        "last": {
+          "height": 91697,
+          "hash": "00000000000992ab9b69992898609239f0616edc8c2ce4625d31c62da7da93b9"
+        },
+        "ordered_headers_sha256": "d299cff5502cce3e1ecf26158e098d772142924196ffffb618ee0ed0d2d92535"
+      },
+      "difficulty": {
+        "bits": "1b0e7256",
+        "count": 1,
+        "first": {
+          "height": 91841,
+          "hash": "00000000000a1e92acbcbdf594cac25d1095544d5fbf5113bfec85a9eb4b1120"
+        },
+        "last": {
+          "height": 91841,
+          "hash": "00000000000a1e92acbcbdf594cac25d1095544d5fbf5113bfec85a9eb4b1120"
+        },
+        "ordered_headers_sha256": "50c9a804aee01b231fac9e4ed62e97e97ba7eb543862609453083d47124b437c"
+      },
+      "external_inputs": {
+        "count": 0,
+        "coinbase_inputs": 0,
+        "outpoints_and_creation_proofs_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      },
+      "activation": {
+        "bip34": {
+          "kind": "absent-parent-below-height"
+        },
+        "script_flags": [
+          "P2SH",
+          "WITNESS",
+          "TAPROOT"
+        ]
+      },
+      "bip30_scan_expected": false,
+      "overwrite_originals": [
+        {
+          "height": 91812,
+          "hash": "00000000000af0aed4792b1acee3d966af36cf5def14935db8de83d6f9306f2f",
+          "raw_block_sha256": "19e5a91add4003e8a102b9392fdf3e53c422ed9deae39b519dd353a70555695e",
+          "coinbase_txid": "d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599"
+        }
+      ]
+    },
+    {
+      "height": 91880,
+      "hash": "00000000000743f190a18c5577a3c2d2a1f610ae9601ac046a38084ccb7cd721",
+      "purpose": "bip30-repeat-91880",
+      "raw_block_sha256": "f93f123ca5a9fb01cef7cf5b9caec38619b3c9a6d13eaa8dc65c1753c253f4a2",
+      "parent": "000000000004099656bf4a3fda4db1b25630634afa2a201e975e4df9772df3f3",
+      "parent_median_time": 1289778307,
+      "ancestry": {
+        "count": 155,
+        "first": {
+          "height": 91725,
+          "hash": "00000000000cc9917f3391d33f91ce4d1ad17f2faf0a06d2c8350541b09afd02"
+        },
+        "last": {
+          "height": 91879,
+          "hash": "000000000004099656bf4a3fda4db1b25630634afa2a201e975e4df9772df3f3"
+        },
+        "ordered_headers_sha256": "6f5a2eab8a2928eb76c8e55d54a501cb90e22ce43814b2994bc144b02377cc72"
+      },
+      "expiry": {
+        "median_time": 1289728088,
+        "count": 11,
+        "first": {
+          "height": 91725,
+          "hash": "00000000000cc9917f3391d33f91ce4d1ad17f2faf0a06d2c8350541b09afd02"
+        },
+        "last": {
+          "height": 91735,
+          "hash": "00000000000971166bf306e362f31c91ab34e30f18283437fdc89cabb9c78ed2"
+        },
+        "ordered_headers_sha256": "118377127251f794a9b84f3ffd25c618a09f3ac8a9af2b524be173b9aa29ee0d"
+      },
+      "difficulty": {
+        "bits": "1b0e7256",
+        "count": 1,
+        "first": {
+          "height": 91879,
+          "hash": "000000000004099656bf4a3fda4db1b25630634afa2a201e975e4df9772df3f3"
+        },
+        "last": {
+          "height": 91879,
+          "hash": "000000000004099656bf4a3fda4db1b25630634afa2a201e975e4df9772df3f3"
+        },
+        "ordered_headers_sha256": "ddb2a5917d0363322f1da654fe8e16329dcd53daafd956bcce080990fa728ae4"
+      },
+      "external_inputs": {
+        "count": 1,
+        "coinbase_inputs": 0,
+        "outpoints_and_creation_proofs_sha256": "2d3fd5250b7e34f208e9a7973e9d7324abb3b3d1f285581a6c0894c988bbec65"
+      },
+      "activation": {
+        "bip34": {
+          "kind": "absent-parent-below-height"
+        },
+        "script_flags": [
+          "P2SH",
+          "WITNESS",
+          "TAPROOT"
+        ]
+      },
+      "bip30_scan_expected": false,
+      "overwrite_originals": [
+        {
+          "height": 91722,
+          "hash": "00000000000271a2dc26e7667f8419f2e15416dc6955e5a6c6cdf3f2574dd08e",
+          "raw_block_sha256": "c7acdfd2acb2da89dfbdb01f3c6405cf7100108aaf09b4f1031592e79d244e8e",
+          "coinbase_txid": "e3bf3d07d4b0375638d5f1db5255fe07ba2c4cb067cd81b84ee974b6585fb468"
+        }
+      ]
+    },
+    {
+      "height": 170060,
+      "hash": "00000000000002dc756eebf4f49723ed8d30cc28a5f108eb94b1ba88ac4f9c22",
+      "purpose": "script-p2sh-exception",
+      "raw_block_sha256": "8a9d3b50ff5138d79f98c1c3803fa6fae5b71880037d9b6136fe80b27eccc4a4",
+      "parent": "00000000000003bd2bf59124b97f3878a52a641d8ab9e9e7ec8628b381d32ad6",
+      "parent_median_time": 1331136335,
+      "ancestry": {
+        "count": 155,
+        "first": {
+          "height": 169905,
+          "hash": "000000000000063a42a6d8c6363a317d4418cca7fadaa394255b44093d817d4f"
+        },
+        "last": {
+          "height": 170059,
+          "hash": "00000000000003bd2bf59124b97f3878a52a641d8ab9e9e7ec8628b381d32ad6"
+        },
+        "ordered_headers_sha256": "831ef93183eb293bdca2075231307bfa11376e7541fd165c18a8212ccd2fbcfc"
+      },
+      "expiry": {
+        "median_time": 1331050410,
+        "count": 11,
+        "first": {
+          "height": 169905,
+          "hash": "000000000000063a42a6d8c6363a317d4418cca7fadaa394255b44093d817d4f"
+        },
+        "last": {
+          "height": 169915,
+          "hash": "000000000000069a713050b4fc488e27f6525f3e33d0caa86bf7268f35db865d"
+        },
+        "ordered_headers_sha256": "8fb37b4a8db6c82c48d7220ffdfc90ee686791f40f9c0c1cd0bd76b986f4af3b"
+      },
+      "difficulty": {
+        "bits": "1a0b350c",
+        "count": 1,
+        "first": {
+          "height": 170059,
+          "hash": "00000000000003bd2bf59124b97f3878a52a641d8ab9e9e7ec8628b381d32ad6"
+        },
+        "last": {
+          "height": 170059,
+          "hash": "00000000000003bd2bf59124b97f3878a52a641d8ab9e9e7ec8628b381d32ad6"
+        },
+        "ordered_headers_sha256": "2420c7658c3f5fa35cfb00cf1a4dd598ccc6d6b9c4c69efccf65cc31102064b3"
+      },
+      "external_inputs": {
+        "count": 61,
+        "coinbase_inputs": 0,
+        "outpoints_and_creation_proofs_sha256": "98bde6f2d6af3f5d794b8a9b835d2cbed8e626ab34aa225a87ad35118696d9c6"
+      },
+      "activation": {
+        "bip34": {
+          "kind": "absent-parent-below-height"
+        },
+        "script_flags": []
+      },
+      "bip30_scan_expected": true,
+      "overwrite_originals": []
+    },
+    {
+      "height": 692261,
+      "hash": "0000000000000000000f14c35b2d841e986ab5441de8c585d5ffe55ea1e395ad",
+      "purpose": "script-taproot-exception",
+      "raw_block_sha256": "72d2133ced94c1c63e4944831f6d8fa5652c90393eb32305488f94e5ab43bd7c",
+      "parent": "0000000000000000000067b17a4c0ffd77c29941b15ad356ca8f980af137a25d",
+      "parent_median_time": 1627020976,
+      "ancestry": {
+        "count": 155,
+        "first": {
+          "height": 692106,
+          "hash": "00000000000000000013d3d9993bacaf3e804bbaf75792ec557a503ccb7ce9aa"
+        },
+        "last": {
+          "height": 692260,
+          "hash": "0000000000000000000067b17a4c0ffd77c29941b15ad356ca8f980af137a25d"
+        },
+        "ordered_headers_sha256": "8b674bb72a8152078526242c111fa2e53a333da089b9f9d400b76d19297f6423"
+      },
+      "expiry": {
+        "median_time": 1626932829,
+        "count": 11,
+        "first": {
+          "height": 692106,
+          "hash": "00000000000000000013d3d9993bacaf3e804bbaf75792ec557a503ccb7ce9aa"
+        },
+        "last": {
+          "height": 692116,
+          "hash": "0000000000000000000451f230f77ff253634dfda7d40a320bc0b4f11182bc65"
+        },
+        "ordered_headers_sha256": "dbef28bf48b71e4517fe5abd19b1ce2c3973484f97f902c142adea2ec639d18c"
+      },
+      "difficulty": {
+        "bits": "17149624",
+        "count": 1,
+        "first": {
+          "height": 692260,
+          "hash": "0000000000000000000067b17a4c0ffd77c29941b15ad356ca8f980af137a25d"
+        },
+        "last": {
+          "height": 692260,
+          "hash": "0000000000000000000067b17a4c0ffd77c29941b15ad356ca8f980af137a25d"
+        },
+        "ordered_headers_sha256": "73287881654b835a8493c0f62bd8b17010087adddf22083b55ac8d996142a77f"
+      },
+      "external_inputs": {
+        "count": 6157,
+        "coinbase_inputs": 0,
+        "outpoints_and_creation_proofs_sha256": "d5536388bbfe6a42734d10d30827ffba25c34977dab7a8cc6498fec6f61fdee7"
+      },
+      "activation": {
+        "bip34": {
+          "kind": "independent-seeded-anchor",
+          "hash": "000000000000024b89b42a942fe0d9fea3bb44ab7bd1b19115dd6a759c0808b8"
+        },
+        "script_flags": [
+          "P2SH",
+          "WITNESS",
+          "DERSIG",
+          "CHECKLOCKTIMEVERIFY",
+          "CHECKSEQUENCEVERIFY",
+          "NULLDUMMY"
+        ]
+      },
+      "bip30_scan_expected": false,
+      "overwrite_originals": []
+    }
+  ]
+}

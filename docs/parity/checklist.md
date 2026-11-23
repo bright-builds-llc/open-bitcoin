@@ -129,6 +129,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-cint-01` | `done` | `CINT-01` | [Canonical pruning and reproduction](v2-6-canonical-pruning.md) | At canonical Regtest height 1001, the managed runtime preserved 713 pairs under BASIC protection, then deleted them after catch-up and retained the last 288 pairs. |
 | `v2-6-cint-02` | `done` | `CINT-02` | [Retained BASIC clients after reopen](v2-6-canonical-pruning.md#retained-basic-clients-after-reopen) | After archive-backed canonical reopen, authenticated RPC and both physical peer directions observe branch-correct BASIC. The deleted block remains unavailable and wallet RPC refuses. |
 | `v2-6-cint-03` | `done` | `CINT-03` | [Canonical operator status](v2-6-canonical-pruning.md#canonical-operator-status) | RPC, CLI status, dashboard and redacted support agree on the current tip, work, BASIC progress, prune boundary and keep-window refusal. |
+| `v2-6-cint-04` | `done` | `CINT-04` | [Finite Mainnet audit](v2-6-candidate-history-validation.md#finite-mainnet-fixture-audit), [case manifest](fixtures/cint-04-mainnet-audit.json) | Six exact Mainnet bodies bind bounded ancestry, previous outputs and creation proofs, selected flags and BIP30 originals to the pinned source. |
 
 ## Evidence Rules
 
