@@ -1323,7 +1323,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-01-regtest.json",
-        "knots_binary_sha256": "ce13d12436054ede5a80d4de5a9c18ad88cccc36cb5172a29e4d9209400a6ccb",
+        "knots_binary_sha256": "8a0346cb0019adcc72ace03af01f884931ac2a65156068808a48c63ce13416db",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/node/blockstorage.cpp",
