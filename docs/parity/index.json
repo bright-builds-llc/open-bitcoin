@@ -1208,7 +1208,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-01-regtest.json",
-        "knots_binary_sha256": "cc936db60787b2a42a99d8760d5f0e16e72cdd2d44f2bcbb4303349df8f2ac98",
+        "knots_binary_sha256": "09130e8d6767376ec90a473036c3886d3326fefa1903d98ccb298a3f4b5ec23d",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/CMakeLists.txt",
@@ -1240,7 +1240,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-02-regtest.json",
-        "knots_binary_sha256": "ffb00c6ba2639555a4727391d43398e8bb547f377e07ac2f33478879cbfaa6e4",
+        "knots_binary_sha256": "105a617a4947d7a3b2ae4ff2494fa456c9c82dd4139f868b45a2076efa9e7a2c",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/kernel/chainparams.cpp",
@@ -1271,7 +1271,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-03-regtest.json",
-        "knots_binary_sha256": "89103b6bc699ae5e26a94db3179a611a99a61e6fff0badee5474931600d706d6",
+        "knots_binary_sha256": "e37ad223224a7594aacb3ce3b7f17317933d9acd1e72fa47ab943a26054da040",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/mining.cpp",
@@ -1303,7 +1303,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-04-regtest.json",
-        "knots_binary_sha256": "627cbe3b5cb24d4595595457296e085805013da584c4c2422f641fe0c34b2b21",
+        "knots_binary_sha256": "68276b7fc9458cda42735d5fded26da814658beca8af0e8c9220d20eb3a211b6",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/blockchain.cpp",
@@ -1337,7 +1337,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-05-regtest.json",
-        "knots_binary_sha256": "a30f77128f0fd98f3723d405a1673f8d4d2e336583ac056cc511d3d0204a9d1c",
+        "knots_binary_sha256": "a7a6ea088ead1dd759784bc4b7cb81bf8329fa690bd0c0d96ee88a7e48c8a549",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/bitcoind.cpp",
@@ -1367,7 +1367,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-01-regtest.json",
-        "knots_binary_sha256": "8a0346cb0019adcc72ace03af01f884931ac2a65156068808a48c63ce13416db",
+        "knots_binary_sha256": "051952366d3426724bc142d4cacc239a527f4f313caab110026ac6f0c0ecacd8",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/node/blockstorage.cpp",
@@ -1397,7 +1397,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-02-regtest.json",
-        "knots_binary_sha256": "157df57bbb38c24130679e006e4e1a92c5ed6d516f31cafe9a1dbbdb8f329ed6",
+        "knots_binary_sha256": "3bd911107e31e172805a31fb9b2d2fd6221c5c245e00f6715d8da2795229ac18",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/validation.cpp",
@@ -1591,10 +1591,29 @@
       {
         "id": "v2-6-cpar-02",
         "title": "Offline verification and qualification invalidation",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CPAR-02"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/v2-6-parity-traceability.md",
+          "scripts/check-v2-6-qualification.ts",
+          "scripts/check-v2-6-qualification.test.ts",
+          "scripts/knots-regtest/qualification-inputs.ts",
+          "docs/parity/receipts/cdif-01-regtest.json",
+          "docs/parity/receipts/cdif-02-regtest.json",
+          "docs/parity/receipts/cdif-03-regtest.json",
+          "docs/parity/receipts/cdif-04-regtest.json",
+          "docs/parity/receipts/cdif-05-regtest.json",
+          "docs/parity/receipts/crec-01-regtest.json",
+          "docs/parity/receipts/crec-02-regtest.json"
+        ],
+        "evidence_classes": ["source_derived"],
+        "qualification_scope": {"network": "regtest", "whole_chain": false, "public_default": false, "production_ready": false},
+        "upstream": {
+          "sources": ["packages/bitcoin-knots/CMakeLists.txt", "packages/bitcoin-knots/src/init.cpp", "packages/bitcoin-knots/src/validation.cpp"]
+        },
+        "rationale": "The offline verifier checks seven renewed Regtest receipts against their actual recorded outcomes and the checkout's versioned qualification inputs. Launch and publication bind identical inputs to the product build commit. Regression controls reject stale inputs and unsupported qualification scope.",
+        "known_gaps": ["Freshness covers the shared versioned inputs. Each actual run separately records its host tools, build options and executable digests. The observed scope is isolated, bounded Regtest."]
       },
       {
         "id": "v2-5-integrated-retained-filter-proof",

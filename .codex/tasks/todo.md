@@ -2072,5 +2072,11 @@ exact-head CI attest delivery.
 
 - [x] Capture the qualification inputs before launch and check the binding again before receipt publication.
 - [x] Add deterministic freshness and bounded-claim checks to the offline verifier.
-- [ ] Rerun all seven actual comparisons, validate the tracked receipts, and record closure.
-- [ ] Pass the full direct-main delivery gate and exact-head CI.
+- [x] Rerun all seven actual comparisons, validate the tracked receipts, and record closure.
+- [x] Prepare the scoped closure and refreshed receipts for direct-main verification and CI.
+
+Qualification review: The two actual daemons passed CDIF-01 through CDIF-05
+and CREC-01 through CREC-02. Their recorded Open Bitcoin build commit and
+shared input digest match the launch binding. The offline gate checks
+freshness, observed outcomes and the bounded claim scope. Full pre-push and
+exact-head CI attest delivery.

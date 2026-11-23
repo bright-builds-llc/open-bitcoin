@@ -125,6 +125,8 @@ proofs, activation facts, and exact BIP30 originals where applicable.
 The [v2.6 parity trace](./docs/parity/v2-6-parity-traceability.md) links the
 approved claims and intentional differences to their evidence, including the
 recorded Knots comparisons and the original v2.5 archive.
+The offline verifier checks [receipt freshness](./docs/parity/v2-6-knots-regtest-differential.md#qualification-freshness)
+for all seven actual Regtest comparisons.
 
 ## Archived releases and historical scope
 

@@ -27,6 +27,11 @@ Use the [v2.6 parity trace](v2-6-parity-traceability.md) to look up current
 owners, intentional differences, recorded Knots outcomes, and v2.5 archive
 attribution.
 
+The [qualification freshness check](v2-6-knots-regtest-differential.md#qualification-freshness)
+verifies the shared input digest for all seven actual Regtest receipts in
+the default offline gate. Run the separate daemon comparisons to renew them
+after a qualification-input change.
+
 Use these evidence classes precisely:
 
 | Class | What it supports |

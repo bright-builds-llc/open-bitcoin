@@ -268,6 +268,38 @@ executable digest due to toolchain and build-environment differences. The
 offline ledger checker checks the tracked receipt and corpus. The command
 above performs the actual two-daemon comparison.
 
+## Qualification freshness
+
+Each of the seven actual comparison commands captures its versioned inputs
+before it builds either daemon. The input digest covers the workspace and
+toolchain files, the Knots gitlink, the runner and normalization code, and
+the checked-in state expectations. The runner rechecks those inputs before
+publication and binds the digest to the recorded Open Bitcoin build commit.
+All seven comparisons share the input set. Changes to those inputs require
+renewed runs for the set. Documentation and receipt publication are outside
+that input set, so their commits can preserve qualification.
+
+```sh
+bun run scripts/check-v2-6-qualification.ts --status
+bun run scripts/check-v2-6-qualification.ts --check
+```
+
+`--status` reports the receipts that need renewal. `--check` also validates
+the recorded outcomes through the parity ledger and fails on a missing,
+invalid, or stale input binding. The default repository verifier runs the
+read-only check. The actual commands in [Reproduce](#reproduce) separately
+build and launch the pinned daemon and Open Bitcoin. Their receipts bind the
+versioned inputs as well as their observed executable hashes and build facts.
+The qualification scope is isolated, bounded Regtest execution.
+
+All seven actual comparisons were renewed from Open Bitcoin build commit
+`b346a29bca16ba25ad1ae4f1fd93646e60b5cf92`. The tracked receipts carry the
+same input SHA-256, `cbffff9a9b5a9984613445a248a85fe9aeee5481da0bd33b456b12ce781eff91`.
+The focused tests cover runtime, runner, corpus and oracle-build changes,
+including checkout edits during a run and a mismatched build commit. The
+ledger's qualification scope rejects whole-chain, public-default and
+production-readiness claims.
+
 ## Evidence scope
 
 The evidence class is `knots_daemon_differential` for one positive block in

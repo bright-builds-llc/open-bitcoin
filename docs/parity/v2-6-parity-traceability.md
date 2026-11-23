@@ -54,5 +54,6 @@ synthetic root, caller-supplied work, the inherited subsidy interval, the
 soft logical prune target and missing-history refusal. The v2.6 Regtest
 receipts apply to their own source identities and scopes.
 
-CPAR-02 tracks qualification freshness and invalidation. The traceability
-check reports recorded results with their existing evidence classes.
+The [qualification freshness check](v2-6-knots-regtest-differential.md#qualification-freshness)
+verifies current inputs for CPAR-02. The traceability check reports recorded
+results with their existing evidence classes.

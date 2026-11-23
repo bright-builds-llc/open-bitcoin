@@ -131,6 +131,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-cint-03` | `done` | `CINT-03` | [Canonical operator status](v2-6-canonical-pruning.md#canonical-operator-status) | RPC, CLI status, dashboard and redacted support agree on the current tip, work, BASIC progress, prune boundary and keep-window refusal. |
 | `v2-6-cint-04` | `done` | `CINT-04` | [Finite Mainnet audit](v2-6-candidate-history-validation.md#finite-mainnet-fixture-audit), [case manifest](fixtures/cint-04-mainnet-audit.json) | Six exact Mainnet bodies bind bounded ancestry, previous outputs and creation proofs, selected flags and BIP30 originals to the pinned source. |
 | `v2-6-cpar-01` | `done` | `CPAR-01` | [Parity traceability](v2-6-parity-traceability.md) | Approved claims join exactly-once owners, pinned paths, explicit differences, actual receipts, and original v2.5 archive bytes. |
+| `v2-6-cpar-02` | `done` | `CPAR-02` | [Qualification freshness](v2-6-knots-regtest-differential.md#qualification-freshness) | The offline verifier requires seven passing, input-bound Regtest receipts and checks the bounded claim scope. |
 
 ## Evidence Rules
 
