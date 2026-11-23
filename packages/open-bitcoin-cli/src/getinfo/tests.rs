@@ -92,6 +92,7 @@ fn getinfo_json_mode_is_stable_for_automation() {
             blocks: 144,
             headers: 144,
             maybe_best_block_hash: Some("00".repeat(32)),
+            maybe_chain_work: None,
             maybe_median_time_past: Some(1_714_007_000),
             verificationprogress: 0.995,
             initialblockdownload: false,

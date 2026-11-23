@@ -37,6 +37,8 @@ use open_bitcoin_rpc::{
 };
 use serde_json::{Value, json};
 
+open_bitcoin_node::register_inspection_worker!();
+
 #[path = "operator_flows/rpc_harness.rs"]
 mod rpc_harness;
 use rpc_harness::*;

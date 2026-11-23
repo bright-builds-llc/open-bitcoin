@@ -7,6 +7,9 @@ import { SOURCE_CONTRACTS as PHASE164_SOURCE_CONTRACTS, TEST_OWNERS } from "../c
 export { TEST_OWNERS };
 
 const CURRENT_SOURCE_ROWS = [
+  ["packages/open-bitcoin-cli/tests/operator_flows/basic_index.rs",
+    "29035231e3de98250492eea27b4d29a0797183da92fb233c82c942a5b3bdcff3",
+    "c91c5fde3dede30921311242c04e9f3240fc1f3eb1e9aa75a4cae1726e05d293"],
   ["packages/open-bitcoin-node/src/network/mempool_lifecycle.rs","41b5b69acce5f07d2f05b05c7335cc2d31b1939ab44e2179ad2530e6d6445a75","7737b8afce05532e2cc6c01af664b0b49a59b86f98a780f1942c874d8336bc3a"],
   ["packages/open-bitcoin-chainstate/src/engine/stage.rs","1c226f56801343e3645a7f05f151193ce052f71d1f8b2d13cbe2ac6bf4f2749d","ac8eb30cfe7027269d76ecaac614e329e27f3d8d9e9fb50ae4dc0f2c5b846ce7"],
   ["packages/open-bitcoin-node/src/chainstate/work_authority.rs","e4f63a32948efe206b984cf1f376b3e49aa9ccc16dee9eb92bc78febdf9911bd","5c5752dd98fac7e581958861f72032cf98fbe421e30a4217f8585140a7aba7d5"],

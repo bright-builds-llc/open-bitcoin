@@ -352,6 +352,7 @@ impl StatusRpcClient for FakeStatusRpcClient {
             blocks: 144,
             headers: 150,
             maybe_best_block_hash: Some("00aabb".to_string()),
+            maybe_chain_work: None,
             maybe_median_time_past: Some(1_777_225_000),
             verificationprogress: 0.96,
             initialblockdownload: false,

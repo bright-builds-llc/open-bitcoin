@@ -115,6 +115,8 @@ preserves the block and undo pairs BASIC still needs, deletes eligible pairs
 after catch-up, and leaves the trailing 288 pairs in place. An archive-backed
 reopen also verifies branch-specific BASIC responses through authenticated
 RPC and both loopback peer directions while deleted bodies stay unavailable.
+The live status, dashboard and redacted support bundle report the same
+canonical tip, exact work, BASIC progress and pruning refusal.
 
 ## Archived releases and historical scope
 

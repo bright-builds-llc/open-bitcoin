@@ -59,6 +59,7 @@ impl Drop for Source {
 }
 
 pub(super) struct Evidence {
+    pub tip_hash: BlockHash,
     pub pruned: BasicFilterRecordView,
     pub retained: BasicFilterRecordView,
     pub retained_block: Block,
@@ -176,6 +177,16 @@ pub(super) fn build(source: &Source, prune: bool) -> Evidence {
         blocks.push(block);
     }
     checkpoint(&handle, ORIGINAL_TIP);
+    let prior_status = runtime
+        .durable_sync_state(
+            open_bitcoin_node::SyncLifecycleState::Stopped,
+            None,
+            2_000_000_000,
+        )
+        .expect("genuine pre-reorg status");
+    runtime
+        .persist_durable_sync_state(prior_status)
+        .expect("retain the earlier persisted tip across the reorg");
     let displaced = query(&handle, block_hash(&blocks[1000].header));
     let mut parent = blocks[FORK as usize].header.clone();
     let replacement = (FORK + 1..=TIP)
@@ -219,6 +230,7 @@ pub(super) fn build(source: &Source, prune: bool) -> Evidence {
     assert_ne!(active.filter_header(), displaced.filter_header());
     let retained_block = blocks[(BOUNDARY + 1) as usize].clone();
     let evidence = Evidence {
+        tip_hash: block_hash(&branch.last().expect("replacement tip").block.header),
         pruned: query(&handle, block_hash(&blocks[BOUNDARY as usize].header)),
         retained: query(&handle, block_hash(&retained_block.header)),
         retained_block,

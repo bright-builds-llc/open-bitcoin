@@ -2032,3 +2032,16 @@ height-1000 blocks. A permissioned inbound peer received block 715 and a
 notfound for block 714. Both wallet calls refused, and an unsolicited outbound
 header closed its session without advancing the chain. The local verifier
 and exact-head CI attest delivery.
+
+## task-cint-03-canonical-operator-status | 2026-11-23 | Publish coherent canonical status across operator consumers
+
+- [x] Report the proved canonical tip and exact work through authenticated RPC after archive-backed reopen, including when persisted metadata describes the displaced branch.
+- [x] Carry the tip, work, BASIC progress and prune/refusal facts through actual CLI, dashboard and redacted support consumers.
+- [x] Record the scoped evidence for direct-main verification and CI.
+
+Qualification review: The archive-backed Regtest owner exposed its replacement
+tip, height 1002 and exact work despite saved pre-reorg status. The actual
+CLI, dashboard and redacted support output agreed with RPC, including BASIC
+progress, prune height 715, 714 deleted pairs and the keep-window refusal.
+Support output removed the private prune-lock marker. Full pre-push and
+exact-head CI attest delivery.

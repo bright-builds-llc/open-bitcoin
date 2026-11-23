@@ -456,6 +456,7 @@ fn get_blockchain_info_does_not_expose_phase72_support_fields() {
         "support_evidence",
         "evidence_verdict",
         "validated_active_chain_work",
+        "chainwork",
     ] {
         assert!(
             !serialized.contains(forbidden),

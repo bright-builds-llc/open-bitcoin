@@ -4,6 +4,8 @@
 // - packages/bitcoin-knots/src/node/blockstorage.cpp
 
 use super::*;
+#[path = "basic_index/canonical_status.rs"]
+mod canonical_status;
 #[path = "basic_index/captured.rs"]
 mod captured;
 use open_bitcoin_node::{

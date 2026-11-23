@@ -1478,10 +1478,26 @@
       {
         "id": "v2-6-cint-03",
         "title": "Canonical operator status across consumers",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CINT-03"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-canonical-pruning.md",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/tests/filter_index/cint02.rs",
+          "packages/open-bitcoin-cli/tests/operator_flows/basic_index/canonical_status.rs",
+          "packages/open-bitcoin-cli/src/operator/status/sync_state.rs"
+        ],
+        "evidence_classes": ["local_product"],
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+            "packages/bitcoin-knots/src/index/base.cpp",
+            "packages/bitcoin-knots/src/node/blockstorage.cpp"
+          ]
+        },
+        "rationale": "The archive-backed Regtest owner reports its current canonical tip and exact cumulative work despite saved metadata from a displaced tip. The actual CLI, dashboard, and redacted support bundle agree with live RPC on the tip, BASIC progress, prune boundary and keep-window refusal.",
+        "known_gaps": [
+          "Evidence covers one stable observation of the bounded local archive-backed Regtest route after manual pruning. The support bundle intentionally clears prune-lock names."
+        ]
       },
       {
         "id": "v2-6-cint-04",

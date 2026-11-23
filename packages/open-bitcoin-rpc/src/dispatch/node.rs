@@ -70,7 +70,13 @@ where
         let mut display = tip.block_hash.to_byte_array();
         display.reverse();
         response.maybe_best_block_hash = Some(decode::encode_hex(&display));
+        response.maybe_chain_work = Some(tip.chain_work.to_hex());
         response.maybe_median_time_past = Some(tip.median_time_past);
+        response.verificationprogress = if headers == 0 {
+            1.0
+        } else {
+            f64::from(tip.height.min(headers)) / f64::from(headers)
+        };
     }
     Ok(response)
 }
@@ -102,6 +108,7 @@ where
             decode::encode_hex(&display)
         }),
         maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
+        maybe_chain_work: None,
         verificationprogress: if maybe_tip.is_some() { 1.0 } else { 0.0 },
         initialblockdownload: false,
         pruned: projection.pruned,
@@ -151,6 +158,7 @@ where
             decode::encode_hex(&display)
         }),
         maybe_median_time_past: maybe_tip.as_ref().map(|tip| tip.median_time_past),
+        maybe_chain_work: None,
         verificationprogress: durable_verification_progress(maybe_sync_progress),
         initialblockdownload: durable_initial_block_download(headers, blocks, lifecycle),
         pruned: projection.pruned,

@@ -30,6 +30,9 @@ pub struct GetBlockchainInfoResponse {
     pub headers: u32,
     #[serde(rename = "bestblockhash", skip_serializing_if = "Option::is_none")]
     pub maybe_best_block_hash: Option<String>,
+    /// Exact cumulative work for the reported active block, when available.
+    #[serde(rename = "chainwork", default, skip_serializing_if = "Option::is_none")]
+    pub maybe_chain_work: Option<String>,
     #[serde(rename = "mediantime", skip_serializing_if = "Option::is_none")]
     pub maybe_median_time_past: Option<i64>,
     pub verificationprogress: f64,

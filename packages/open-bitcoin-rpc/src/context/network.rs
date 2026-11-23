@@ -212,10 +212,24 @@ impl<S: open_bitcoin_node::ChainstateStore, V: open_bitcoin_node::core::chainsta
     pub(crate) fn maybe_canonical_active_tip(
         &self,
     ) -> Result<Option<open_bitcoin_node::core::chainstate::ChainPosition>, RpcFailure> {
-        self.maybe_canonical_submission
-            .as_ref()
-            .map(|bridge| (bridge.active_tip)())
-            .transpose()
+        if let Some(bridge) = &self.maybe_canonical_submission {
+            return (bridge.active_tip)().map(Some);
+        }
+        let unavailable = |_| RpcFailure::verify_error("canonical active tip unavailable");
+        if self
+            .network
+            .maybe_canonical_chain()
+            .map_err(unavailable)?
+            .is_none()
+        {
+            return Ok(None);
+        }
+        let tip = self
+            .network
+            .maybe_chain_tip()
+            .map_err(unavailable)?
+            .ok_or_else(|| RpcFailure::verify_error("canonical active tip unavailable"))?;
+        Ok(Some(tip))
     }
 
     pub(crate) fn best_header_height(&self) -> Result<Option<u32>, ManagedNetworkAuthorityError> {

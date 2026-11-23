@@ -26,7 +26,7 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
             maybe_downloaded_block_hash: blockchain_info.maybe_best_block_hash.clone(),
             maybe_connected_block_hash: blockchain_info.maybe_best_block_hash.clone(),
             maybe_validated_active_chain_hash: blockchain_info.maybe_best_block_hash.clone(),
-            maybe_validated_active_chain_work: None,
+            maybe_validated_active_chain_work: rpc_tip_work(blockchain_info),
             progress_ratio: blockchain_info.verificationprogress,
             messages_processed: 0,
             headers_received: u64::from(blockchain_info.headers),
@@ -86,6 +86,18 @@ pub(super) fn rpc_sync_status(blockchain_info: &GetBlockchainInfoResponse) -> Sy
     }
 }
 
+fn rpc_tip_work(info: &GetBlockchainInfoResponse) -> Option<String> {
+    let is_hex_256 =
+        |value: &str| value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit());
+    info.maybe_best_block_hash
+        .as_deref()
+        .filter(|hash| is_hex_256(hash))?;
+    info.maybe_chain_work
+        .as_deref()
+        .filter(|work| is_hex_256(work))
+        .map(str::to_ascii_lowercase)
+}
+
 pub(super) fn unavailable_sync_status(reason: &str) -> SyncStatus {
     SyncStatus {
         network: FieldAvailability::unavailable(reason),
@@ -132,4 +144,31 @@ fn rpc_progress_signal(blockchain_info: &GetBlockchainInfoResponse) -> SyncProgr
         return SyncProgressSignal::AwaitingBlocks;
     }
     SyncProgressSignal::Steady
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn live_exact_work_requires_a_hash_and_a_complete_hex_value() {
+        // Arrange
+        let mut info: GetBlockchainInfoResponse = serde_json::from_value(json!({
+            "chain": "regtest", "blocks": 1002, "headers": 1002,
+            "bestblockhash": "12".repeat(32), "verificationprogress": 1.0,
+            "initialblockdownload": false, "warnings": []
+        }))
+        .expect("legacy blockchain response");
+
+        // Act and assert
+        assert_eq!(rpc_tip_work(&info), None);
+        info.maybe_chain_work = Some("fF".repeat(32));
+        assert_eq!(rpc_tip_work(&info), Some("ff".repeat(32)));
+        info.maybe_best_block_hash = None;
+        assert_eq!(rpc_tip_work(&info), None);
+        info.maybe_best_block_hash = Some("12".repeat(32));
+        info.maybe_chain_work = Some("ff".repeat(31));
+        assert_eq!(rpc_tip_work(&info), None);
+    }
 }

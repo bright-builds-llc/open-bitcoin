@@ -92,3 +92,28 @@ bun run scripts/command-timings.ts run --key cint-02-client-service -- \
   cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-rpc --bin open-bitcoind \
   cint02_authenticated_rpc_and_both_peer_directions_after_canonical_pruning -- --nocapture
 ```
+
+## Canonical operator status
+
+`v2-6-cint-03` supplies `local_product` evidence for `CINT-03`. The
+[operator test](../../packages/open-bitcoin-cli/tests/operator_flows/basic_index/canonical_status.rs)
+runs the repo-local CLI against a loopback listener dispatching RPC on the
+same archive-backed pruned Regtest owner. The saved runtime metadata still
+describes the pre-reorg tip. `getblockchaininfo` reports the replacement tip
+at height 1002 and its exact cumulative work, `0x7d6`, as a 64-digit
+`chainwork` field. The CLI copies a well-formed work value paired with its
+reported block hash into the shared status model.
+
+`openbitcoinnetworkstatus` supplies BASIC progress and live pruning facts.
+The test requests `pruneblockchain 715` and observes the keep-window refusal.
+CLI `status`, the dashboard, and the support bundle agree on the tip, work,
+BASIC progress, prune height 715, 714 removed pairs, and `keep_window`.
+The support bundle retains those facts and clears private prune-lock names
+from its JSON and Markdown. The measurements use a stable local snapshot
+of the bounded Regtest role.
+
+```sh
+bun run scripts/command-timings.ts run --key cint-03-operator-status -- \
+  cargo test --manifest-path packages/Cargo.toml -p open-bitcoin-cli --test operator_flows \
+  cint03_operator_exports_observe_the_same_canonical_tip_and_refusal -- --nocapture
+```

@@ -281,6 +281,19 @@ async fn rpc_requests(shared: Arc<tokio::sync::Mutex<Context>>, evidence: &Evide
         summary["result"]["basic block filter index"],
         json!({"synced":true,"best_block_height":TIP})
     );
+    let result = invoke(request("getblockchaininfo", json!([]))).await;
+    let chain = &result["result"];
+    assert_eq!(chain["blocks"], TIP);
+    assert_eq!(chain["headers"], TIP);
+    assert_eq!(
+        chain["bestblockhash"],
+        display_hash(evidence.tip_hash.as_bytes())
+    );
+    // This fixed-target fixture earns two units of work per block, including genesis.
+    assert_eq!(chain["chainwork"], format!("{:064x}", 2 * (TIP + 1)));
+    assert_eq!(chain["verificationprogress"], 1.0);
+    assert_eq!(chain["pruned"], true);
+    assert_eq!(chain["pruneheight"], BOUNDARY + 1);
     for (method, params) in [
         ("getwalletinfo", json!([])),
         ("rescanblockchain", json!([BOUNDARY + 1, TIP])),

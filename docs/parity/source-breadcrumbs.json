@@ -243,6 +243,15 @@
       ]
     },
     {
+      "label": "canonical-operator-client-evidence",
+      "files": ["packages/open-bitcoin-cli/tests/operator_flows/basic_index/canonical_status.rs"],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/rpc/blockchain.cpp",
+        "packages/bitcoin-knots/src/index/base.cpp",
+        "packages/bitcoin-knots/src/node/blockstorage.cpp"
+      ]
+    },
+    {
       "label": "phase167-bounded-fjall-row-family",
       "files": [
         "packages/open-bitcoin-node/src/storage/fjall_store/bounded_rows.rs",

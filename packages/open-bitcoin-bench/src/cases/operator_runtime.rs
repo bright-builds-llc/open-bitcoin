@@ -248,6 +248,7 @@ impl RunningStatusRpcClient {
                     "0000000000000000000000000000000000000000000000000000000000000001".to_string(),
                 ),
                 maybe_median_time_past: Some(1_700_000_120),
+                maybe_chain_work: None,
                 verificationprogress: 1.0,
                 initialblockdownload: false,
                 pruned: false,
