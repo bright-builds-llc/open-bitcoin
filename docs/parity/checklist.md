@@ -124,6 +124,7 @@ Checklist statuses are exactly `planned`, `in_progress`, `done`, `deferred`, `ou
 | `v2-6-cdif-05` | `done` | `CDIF-05` | [Qualification scope](v2-6-knots-regtest-differential.md#case-level-qualification), [tracked receipt](receipts/cdif-05-regtest.json) | Both real daemons matched all 502 accepted observations, 19 rejection cases, and final state. Failure controls cannot publish a passing receipt. |
 | `v2-6-crec-01` | `done` | `CREC-01` | [Branch scope](v2-6-knots-regtest-differential.md#branch-order-and-restart-ties), [tracked receipt](receipts/crec-01-regtest.json) | Both daemons matched first activation and stronger-work switches in both live orders and retained the active tip after restart. The Knots-only equal-sequence probe records one allowed fallback. |
 | `v2-6-crec-02` | `done` | `CREC-02` | [Spend scope](v2-6-knots-regtest-differential.md#replacement-spends-and-reconnect), [tracked receipt](receipts/crec-02-regtest.json) | Both daemons preserved active state after the rejected double spend and matched complete UTXOs after replacement and reconnect. |
+| `v2-6-crec-03` | `done` | `CREC-03` | [Reopen scope](v2-6-knots-regtest-differential.md#canonical-stop-and-reopen), [tracked receipt](receipts/crec-03-regtest.json) | Ordinary local daemon and offline status preserved earned tip, complete coins, work and BASIC after clean stop and reopen. The restarted daemon spent a recovered output. |
 
 ## Evidence Rules
 

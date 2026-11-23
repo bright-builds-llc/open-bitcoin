@@ -104,6 +104,8 @@ live arrival orders, stronger-branch activation, and the persisted tip at
 restart. A separate Knots-only probe records the equal-sequence fallback.
 The replacement-spend run checks the complete coin sets after a rejected
 double spend, a successful reorg, and reconnection of the original spend.
+The local stop-and-reopen run verifies that the ordinary daemon and offline
+status preserve the earned tip, coins, exact work, and BASIC checkpoint.
 
 ## Archived releases and historical scope
 

@@ -472,14 +472,49 @@ test.each([
   expect(failures).toEqual(expected);
 });
 
+type RecoveryReceiptFixture = {
+  reopened: { cli: { chainwork: string }; utxos: { sha256: string } };
+  initial: { live_cli: { exit_status: number } };
+};
+
+test.each([
+  ["wrong reopened work", (record: RecoveryReceiptFixture) => {
+    record.reopened.cli.chainwork = "0".repeat(64);
+  }, "v2-6-crec-03: invalid reopened CLI or durable coins observation"],
+  ["wrong reopened coins", (record: RecoveryReceiptFixture) => {
+    record.reopened.utxos.sha256 = "0".repeat(64);
+  }, "v2-6-crec-03: invalid reopened CLI or durable coins observation"],
+  ["an accepted live owner", (record: RecoveryReceiptFixture) => {
+    record.initial.live_cli.exit_status = 0;
+  }, "v2-6-crec-03: live owner refusal is missing"],
+])("CREC-03 rejects a receipt with %s", (_name, mutate, expected) => {
+  // Arrange
+  const inputs = fixture();
+  const receipt = "docs/parity/receipts/crec-03-regtest.json";
+  const readText = inputs.readTextFile;
+  inputs.readTextFile = (path) => {
+    const text = readText(path);
+    if (path !== receipt) return text;
+    const record = JSON.parse(text);
+    mutate(record);
+    return JSON.stringify(record);
+  };
+
+  // Act
+  const failures = checkParityLedger(inputs);
+
+  // Assert
+  expect(failures).toEqual([expected]);
+});
+
 test("planned surface cannot claim evidence prematurely", () => {
   // Arrange
   const inputs = fixture();
-  surface(inputs, "v2-6-crec-03").evidence.push("docs/parity/requirements.md");
+  surface(inputs, "v2-6-crec-04").evidence.push("docs/parity/requirements.md");
   // Act
   const failures = checkParityLedger(inputs);
   // Assert
-  expect(failures).toContain("v2-6-crec-03: planned surface cannot claim evidence");
+  expect(failures).toContain("v2-6-crec-04: planned surface cannot claim evidence");
 });
 
 test("evidence path traversal is rejected before filesystem lookup", () => {

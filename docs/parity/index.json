@@ -1370,10 +1370,30 @@
       {
         "id": "v2-6-crec-03",
         "title": "Canonical stop and all-handle reopen",
-        "status": "planned",
+        "status": "done",
         "requirements": ["CREC-03"],
-        "evidence": [],
-        "evidence_classes": []
+        "evidence": [
+          "docs/parity/v2-6-knots-regtest-differential.md",
+          "docs/parity/receipts/crec-03-regtest.json",
+          "scripts/knots-regtest/recovery-qualification.ts",
+          "scripts/knots-regtest/recovery.ts",
+          "packages/open-bitcoin-rpc/tests/crec02_closed_state.rs",
+          "packages/open-bitcoin-cli/src/operator/runtime/support/canonical_genesis.rs",
+          "scripts/check-parity-ledger.test.ts"
+        ],
+        "evidence_classes": ["local_product"],
+        "recovery_receipt": "docs/parity/receipts/crec-03-regtest.json",
+        "upstream": {
+          "sources": [
+            "packages/bitcoin-knots/src/init.cpp",
+            "packages/bitcoin-knots/src/validation.cpp",
+            "packages/bitcoin-knots/src/node/chainstate.cpp"
+          ]
+        },
+        "rationale": "The source-built daemon refused simultaneous offline observation through its live lease, stopped cleanly, and retained its earned replacement tip, exact work, complete coins and BASIC across ordinary daemon reopen. The repo-local CLI and closed-state observer confirmed the same authority. A later daemon accepted a spend of the recovered output.",
+        "known_gaps": [
+          "Clean shutdown and reopen on bounded default Regtest with explicit BASIC. Interrupted checkpoint recovery and inconsistent-record refusal are separately owned by CREC-04."
+        ]
       },
       {
         "id": "v2-6-crec-04",

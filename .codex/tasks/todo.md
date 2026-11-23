@@ -1944,3 +1944,16 @@ before and after rejection. The mature funding input led to branch-correct
 coins after replacement and reconnect. The receipt binds the stage
 observations and offline observer. Full pre-push and exact-head CI attest
 delivery.
+
+## task-crec-03-canonical-stop-reopen | 2026-11-23 | Verify ordinary daemon stop and operator reopen
+
+- [x] Sync main and trace the canonical status path, daemon ownership and existing closed-coins observer.
+- [x] Run the daemon and CLI against one earned Regtest datadir through shutdown, restart and a recovered-output spend.
+- [x] Verify the retained tip, work, coins and BASIC checkpoints and guard the receipt against inconsistent observations.
+- [x] Record the evidence and prepare direct-main delivery through the repo-managed hooks.
+
+Qualification review: The ordinary CLI refused the live owner. After clean
+shutdown and an ordinary restart, the same proved datadir reported identical
+height-102 tip, work, complete coins and BASIC. The final restart accepted a
+height-103 spend of the recovered output, and both offline paths observed the
+resulting state. Full pre-push and exact-head CI attest delivery.

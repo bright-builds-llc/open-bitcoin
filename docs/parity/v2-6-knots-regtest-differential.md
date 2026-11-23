@@ -164,6 +164,25 @@ path. Both report live tip and BASIC data, and the comparison uses
 consensus UTXOs. Mempool admission and resurrection behavior have distinct
 evidence.
 
+## Canonical stop and reopen
+
+`v2-6-crec-03` follows the ordinary Open Bitcoin daemon and operator CLI on
+the bounded default-Regtest replacement branch through height 102. The
+runner exercises `sync status` against the live owner's datadir and records
+the compatibility refusal. After the daemon exits, the source-built CLI
+reports the earned tip, exact work, and BASIC fence from that same datadir.
+The existing closed-state observer independently checks all consensus
+UTXOs through the proved canonical-history reopen.
+
+A new daemon process reopens the same datadir, reports the same tip and
+BASIC commitment, and recognizes the last accepted block as a duplicate.
+After its clean stop, both offline observations must again match. A final
+restart accepts a height-103 spend of the recovered replacement output.
+The final offline observation checks the resulting coins and exact work.
+The [reopen receipt](receipts/crec-03-regtest.json) binds the clean exits,
+CLI and daemon builds, canonical inputs, and offline observer. Its evidence
+class is `local_product`.
+
 ## Reproduce
 
 Use the repo-pinned Bun and Rust toolchains, Git, CMake, Ninja, and Knots'
@@ -183,6 +202,7 @@ bun run scripts/run-knots-regtest-differential.ts --cdif-04
 bun run scripts/run-knots-regtest-differential.ts --cdif-05
 TMPDIR=/tmp bun run scripts/run-knots-regtest-differential.ts --crec-01
 bun run scripts/run-knots-regtest-differential.ts --crec-02
+bun run scripts/run-knots-regtest-differential.ts --crec-03
 bun run scripts/check-parity-ledger.ts
 ```
 
@@ -217,7 +237,7 @@ extended run.
 The command writes a fresh `run-*/receipt.json` under the corresponding ignored
 `.local/open-bitcoin-dev/cdif-01/` through
 `.local/open-bitcoin-dev/cdif-05/`, or `.local/open-bitcoin-dev/crec-01/` through
-`.local/open-bitcoin-dev/crec-02/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
+`.local/open-bitcoin-dev/crec-03/` directories after both successful RPC outcomes and clean shutdowns. Log files and build artifacts remain in that run
 directory. A failed run exits nonzero and leaves its logs. The committed
 receipt pins one observed run. A reproduction can yield a different
 executable digest due to toolchain and build-environment differences. The

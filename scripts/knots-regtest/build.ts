@@ -111,17 +111,25 @@ function productSource(root: string): string {
 }
 
 export async function buildOpenBitcoin(root: string, run: string, label: string) {
+  return buildProduct(root, run, label, "open-bitcoind", "open-bitcoin-rpc", "open-bitcoin-build.log");
+}
+
+export async function buildOpenBitcoinCli(root: string, run: string, label: string) {
+  return buildProduct(root, run, label, "open-bitcoin", "open-bitcoin-cli", "open-bitcoin-cli-build.log");
+}
+
+async function buildProduct(root: string, run: string, label: string, binary: string, crate: string, logName: string) {
   const commit = productSource(root);
   const targetDir = resolveTarget(root).directory;
-  const options = ["--locked", "--manifest-path", "packages/Cargo.toml", "-p", "open-bitcoin-rpc", "--bin", "open-bitcoind"];
-  const log = join(run, "open-bitcoin-build.log");
-  const executable = join(run, "open-bitcoind");
-  const builtExecutable = join(targetDir, "debug", "open-bitcoind");
+  const options = ["--locked", "--manifest-path", "packages/Cargo.toml", "-p", crate, "--bin", binary];
+  const log = join(run, logName);
+  const executable = join(run, binary);
+  const builtExecutable = join(targetDir, "debug", binary);
   // Snapshot the binary before the timing wrapper releases the shared target lock.
-  console.log(`${label}: building ordinary open-bitcoind (see ${log})`);
+  console.log(`${label}: building ordinary ${binary} (see ${log})`);
   await loggedCommand(
     root,
-    ["bun", "run", "scripts/command-timings.ts", "run", "--key", "knots-regtest-build-open-bitcoind", "--",
+    ["bun", "run", "scripts/command-timings.ts", "run", "--key", `knots-regtest-build-${binary}`, "--",
       "bash", "-c", 'source_bin="$1"; dest_bin="$2"; shift 2; cargo build "$@" && cp "$source_bin" "$dest_bin"',
       "knots-regtest-copy-product", builtExecutable, executable, ...options],
     log,

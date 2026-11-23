@@ -3,6 +3,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { runRecoveryQualification } from "./knots-regtest/recovery-qualification.ts";
 import { runSpendQualification } from "./knots-regtest/spend-qualification.ts";
 import { runBranchQualification } from "./knots-regtest/branch-qualification.ts";
 import { runQualification } from "./knots-regtest/qualification.ts";
@@ -53,8 +54,8 @@ function maturityHalvingCase(readText: (path: string) => string) {
 async function runDifferential() {
   const args = process.argv.slice(2);
   const id = args[0]?.slice(2) ?? "cdif-01";
-  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03", "--cdif-04", "--cdif-05", "--crec-01", "--crec-02"].includes(args[0]))) {
-    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03 | --cdif-04 | --cdif-05 | --crec-01 | --crec-02]");
+  if (args.length && (args.length !== 1 || !["--cdif-02", "--cdif-03", "--cdif-04", "--cdif-05", "--crec-01", "--crec-02", "--crec-03"].includes(args[0]))) {
+    throw new Error("Usage: bun run scripts/run-knots-regtest-differential.ts [--cdif-02 | --cdif-03 | --cdif-04 | --cdif-05 | --crec-01 | --crec-02 | --crec-03]");
   }
   const label = id.toUpperCase();
   const root = resolve(import.meta.dir, "..");
@@ -75,6 +76,11 @@ async function runDifferential() {
   }
   if (id === "crec-02") {
     const receipt = await runSpendQualification(root, run);
+    console.log(`${label}: passed. Receipt: ${receipt}`);
+    return;
+  }
+  if (id === "crec-03") {
+    const receipt = await runRecoveryQualification(root, run);
     console.log(`${label}: passed. Receipt: ${receipt}`);
     return;
   }

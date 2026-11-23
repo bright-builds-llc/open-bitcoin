@@ -106,6 +106,25 @@ export function readSpendCorpus(readText: (path: string) => string) {
   };
 }
 
+/** Use the actually retained replacement output for a new post-reopen spend. */
+export function readRecoveryCorpus(readText: (path: string) => string) {
+  const spend = readSpendCorpus(readText);
+  const replacement = spend.runs[2];
+  const coins = new Map<string, Coin>();
+  for (const block of [...spend.prefix, ...replacement.active]) addBlockCoins(coins, block);
+  const key = outpoint(spend.spendFacts.replacement_txid, 0);
+  const funding = coins.get(key);
+  if (!funding || funding.coinbase || funding.height !== 101) throw new Error("Missing replacement output for recovery");
+  const resumed = generate(replacement.end, "53", { coin: funding, fee: 1_000n });
+  addBlockCoins(coins, resumed);
+  return {
+    spend, replacement, resumed, funding: key,
+    resumeSha256: sha256(Buffer.from(resumed.blockHex, "hex")),
+    resumedCoins: summarizeCoins([...coins.values()], resumed.height),
+    resumedWork: ((BigInt(resumed.height) + 1n) * proof(BITS)).toString(16).padStart(64, "0"),
+  };
+}
+
 export type SpendCorpus = ReturnType<typeof readSpendCorpus>;
 export type SpendRun = SpendCorpus["runs"][number];
 
