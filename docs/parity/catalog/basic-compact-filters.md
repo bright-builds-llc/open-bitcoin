@@ -108,8 +108,9 @@ alone. Full coverage, native verification and Bazel smoke passed as Phase 154 ga
 
 Phase 155 addresses CFIX-02, CFIX-04 and CFPR-03 through existing-crate internal
 storage and startup foundations. Its [formal verification](../../../.planning/phases/155-recoverable-index-and-pre-prune-startup-protection/155-VERIFICATION.md)
-records 10/10 distinct truths after full native verification; the v2.5 milestone
-is not complete. The unique parity owner is
+records 10/10 distinct truths after full native verification. The later
+[v2.5 milestone audit](../../../.planning/milestones/v2.5-MILESTONE-AUDIT.md)
+marks all three requirements satisfied. The unique parity owner is
 `v2-5-recoverable-basic-index-and-startup-protection` in
 [index.json](../index.json).
 
