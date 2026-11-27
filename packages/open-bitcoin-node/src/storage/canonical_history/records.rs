@@ -10,7 +10,7 @@ use crate::storage::{
     fjall_store::{
         self,
         bounded_rows::{RowFamily, decode_detached_rows},
-        inspection::InspectedRecords,
+        inspection::{InspectedRecords, LogicalInventory},
     },
     snapshot_codec as snapshots, validation_history as history,
 };
@@ -37,6 +37,16 @@ impl crate::FjallNodeStore {
     pub(crate) const fn canonical_history_reopen_limit() -> usize {
         MAX_HISTORY_BLOCKS
     }
+
+    pub(crate) const fn submission_history_limit(chain: CanonicalChain) -> usize {
+        match chain {
+            CanonicalChain::Mainnet => {
+                open_bitcoin_core::consensus::chain_spec::MAINNET_OFFLINE_PREFIX_MAX_HEIGHT as usize
+                    + 1
+            }
+            _ => MAX_HISTORY_BLOCKS,
+        }
+    }
 }
 
 /// Detached untrusted data. This parser never creates an accepted owner.
@@ -55,7 +65,15 @@ pub(in crate::storage) struct CanonicalHistoryRecords {
 }
 
 impl CanonicalHistoryRecords {
+    #[cfg(test)]
     pub(in crate::storage) fn decode(records: &InspectedRecords) -> Result<Self, Refusal> {
+        Self::decode_for(records, CanonicalChain::Regtest)
+    }
+
+    pub(in crate::storage) fn decode_for(
+        records: &InspectedRecords,
+        selected: CanonicalChain,
+    ) -> Result<Self, Refusal> {
         let rows = records
             .namespaces()
             .map(|name| {
@@ -68,6 +86,13 @@ impl CanonicalHistoryRecords {
                 ))
             })
             .collect::<Result<Namespaces, Refusal>>()?;
+        if selected == CanonicalChain::Mainnet {
+            return Self::parse_with_limits(
+                &rows,
+                crate::FjallNodeStore::submission_history_limit(selected),
+                LogicalInventory::for_history(selected).entry_limit(),
+            );
+        }
         Self::parse_rows(&rows)
     }
 
@@ -249,6 +274,7 @@ fn strict_json(bytes: &[u8], encoded: Result<Vec<u8>, crate::StorageError>) -> R
     Ok(())
 }
 
+#[cfg(test)]
 fn inventory(all: &Namespaces) -> Result<(), Refusal> {
     inventory_with_limit(all, 4096)
 }

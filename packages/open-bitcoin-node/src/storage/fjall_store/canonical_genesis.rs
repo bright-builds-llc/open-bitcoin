@@ -257,9 +257,13 @@ impl RecoveredCanonicalHistory {
         if store.db.check_stamp(&self.stamp).is_err() {
             return Err(Refusal::ChangedStore);
         }
-        let actual = inspection::InspectedRecords::read_existing(&store.db).map_err(unavailable)?;
+        let actual = inspection::InspectedRecords::read_history(&store.db, self.selected)
+            .map_err(unavailable)?;
         let actual =
-            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode(&actual)?;
+            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode_for(
+                &actual,
+                self.selected,
+            )?;
         if actual.source_digest() != self.records.source_digest()
             || store.db.check_stamp(&self.stamp).is_err()
         {
@@ -292,7 +296,8 @@ impl FjallNodeStore {
         // No original backend is opened until child completion and source gates.
         let store = Self::open_with_lease(lease).map_err(unavailable)?;
         let stamp = store.db.stamp().map_err(|_| Refusal::ChangedStore)?;
-        let actual = inspection::InspectedRecords::read_existing(&store.db).map_err(unavailable)?;
+        let actual =
+            inspection::InspectedRecords::read_history(&store.db, selected).map_err(unavailable)?;
         if !expected.namespaces().eq(actual.namespaces())
             || expected
                 .namespaces()
@@ -301,9 +306,13 @@ impl FjallNodeStore {
             return Err(Refusal::ChangedStore);
         }
         let records =
-            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode(&actual)?;
+            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode_for(
+                &actual, selected,
+            )?;
         let expected =
-            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode(&expected)?;
+            crate::storage::canonical_history::records::CanonicalHistoryRecords::decode_for(
+                &expected, selected,
+            )?;
         if records.source_digest() != expected.source_digest() {
             return Err(Refusal::ChangedStore);
         }

@@ -91,8 +91,8 @@ local route.
 ## Bounded offline Mainnet replay
 
 The [bounded offline Mainnet route](./docs/parity/mainnet-offline-prefix.md)
-covers direct tip extensions from genesis through height 200 via loopback
-RPC. The generic peer activation gate remains closed.
+covers direct tip extensions from genesis through the first retarget at
+height 2016 via loopback RPC. The generic peer activation gate remains closed.
 
 ## Current v2.6 pinned Knots Regtest runner
 

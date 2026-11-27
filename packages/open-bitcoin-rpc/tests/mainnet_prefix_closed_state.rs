@@ -78,6 +78,7 @@ fn observe_closed_mainnet_state() -> Result<(), Box<dyn std::error::Error>> {
             "hash": hex(tip.block_hash.to_byte_array().into_iter().rev()),
         },
         "chainwork": tip.chain_work.to_hex(),
+        "bits": format!("{:08x}", tip.header.bits),
         "utxos": utxos,
     });
     let file = OpenOptions::new()

@@ -2091,3 +2091,10 @@ exact-head CI attest delivery.
 - [x] Review the diff and prepare the two commits for the normal main push and CI watch.
 
 Completion review: Both isolated daemons accepted heights 1–200 with the same active tips, exact work and complete 204-coin projection. Open Bitcoin refused height 201 and reopened with the same state. All seven affected Regtest comparisons passed again from the same committed inputs. Scope is bounded local Mainnet RPC and complete retained-state reopen.
+
+## task-mainnet-prefix-02 | 2026-11-27 | Compare offline Mainnet through the first retarget
+
+- [x] Bind the historical extension through height 2016 and the height-2017 refusal input.
+- [x] Extend the selected ancestry and storage bounds, and exercise them with direct tests.
+- [ ] Verify the retarget, exact work, and reopened UTXOs in both pinned-daemon runs.
+- [ ] Renew affected Regtest receipts, pass the full verifier, push main, and watch CI.

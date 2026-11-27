@@ -291,7 +291,7 @@ impl CanonicalSubmissionCommand {
         &self,
         queried_hashes: &[BlockHash],
     ) -> SubmissionResult<CanonicalAcceptedStateObservation> {
-        let limit = FjallNodeStore::canonical_history_reopen_limit();
+        let limit = FjallNodeStore::submission_history_limit(self.chain);
         if queried_hashes.len() > limit {
             return Err(CanonicalSubmissionError::support(
                 "observation query bound exceeded",
@@ -307,7 +307,7 @@ impl CanonicalSubmissionCommand {
                     self.check_owner(network)?;
                     let inventory = self
                         .store
-                        .inspect_submission_inventory()
+                        .inspect_canonical_submission_inventory(self.chain)
                         .map_err(operational("observation native inventory"))?;
                     let headers = network.peer_manager.header_store();
                     if headers.entries().count() > limit {

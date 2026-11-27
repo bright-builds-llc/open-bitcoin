@@ -13,8 +13,10 @@ mod rules;
 pub use bootstrap::CanonicalGenesisProof;
 pub use rules::{NetworkRules, ScriptFlagException};
 
+const MAINNET_FIRST_RETARGET_HEIGHT: u32 = 2016;
+
 /// Highest descendant supported by the offline Mainnet prefix route.
-pub const MAINNET_OFFLINE_PREFIX_MAX_HEIGHT: u32 = 200;
+pub const MAINNET_OFFLINE_PREFIX_MAX_HEIGHT: u32 = MAINNET_FIRST_RETARGET_HEIGHT;
 
 /// The four pinned profiles already exposed by Open Bitcoin's selectors.
 /// Signet denotes the default challenge only; custom Signets are outside this contract.
@@ -35,6 +37,14 @@ impl CanonicalChain {
     /// Whether this profile has a bounded local admission and reopen implementation.
     pub const fn supports_bounded_local_history(self) -> bool {
         matches!(self, Self::Mainnet | Self::Regtest)
+    }
+
+    /// Context span for a child in a bounded canonical owner.
+    pub fn canonical_header_lookback(self, parent_height: u32) -> usize {
+        if self == Self::Mainnet && parent_height == MAINNET_FIRST_RETARGET_HEIGHT - 1 {
+            return MAINNET_FIRST_RETARGET_HEIGHT as usize;
+        }
+        155
     }
 
     /// Canonical identity spelling; operator adapters retain their existing `testnet` selector.

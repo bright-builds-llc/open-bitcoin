@@ -165,13 +165,17 @@ export async function observeClosedCoins(
     "--test", `${observer}_closed_state`, entry, "--", "--ignored", "--exact"];
   await loggedCommand(root, command, log, {
     ...process.env, [`${flag}_DATADIR`]: datadir, [`${flag}_OUTPUT`]: target,
-  }, OBSERVER_TIMEOUT_MS);
+  }, observer === "mainnet_prefix" ? 6 * 60_000 : OBSERVER_TIMEOUT_MS);
   if (sha256(readFileSync(join(root, source))) !== observerSha256 || statSync(target).size > 1_048_576) {
     throw new Error("Open Bitcoin observer source changed or report exceeded evidence bounds");
   }
-  const observed = JSON.parse(readFileSync(target, "utf8")) as { tip: unknown; chainwork: unknown; utxos: unknown };
+  const observed = JSON.parse(readFileSync(target, "utf8")) as { tip: unknown; chainwork: unknown; utxos: unknown; bits?: unknown };
   if (!isDeepStrictEqual(observed.tip, expectedTip)) throw new Error("Open Bitcoin closed tip disagrees with live RPC");
-  return { chainwork: checkWork(observed.chainwork), utxos: summarizeCoins(observed.utxos, expectedTip.height) };
+  return {
+    chainwork: checkWork(observed.chainwork),
+    utxos: summarizeCoins(observed.utxos, expectedTip.height),
+    ...(observer === "mainnet_prefix" ? { bits: observed.bits } : {}),
+  };
 }
 
 export function verifyState(result: Record<string, unknown>, corpus: StateCorpus, name: string) {

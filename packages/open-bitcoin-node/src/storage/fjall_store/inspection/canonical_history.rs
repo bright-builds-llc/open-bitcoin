@@ -13,7 +13,7 @@ pub(super) fn validate_in_child(
     records: &InspectedRecords,
 ) -> Result<(), StorageError> {
     require_existing_namespaces(records)?;
-    let records = CanonicalHistoryRecords::decode(records).map_err(refused)?;
+    let records = CanonicalHistoryRecords::decode_for(records, selected).map_err(refused)?;
     let proof =
         canonical_bootstrap::validate_history_records(selected, &records).map_err(refused)?;
     // No earned owner or serialized authority escapes the child.
@@ -35,7 +35,7 @@ pub(in crate::storage::fjall_store) fn inspect_history(
             // The copied full proof has completed, exited and reaped. This parent
             // callback parses bounded data only, after all source/cleanup gates.
             require_existing_namespaces(&records)?;
-            CanonicalHistoryRecords::decode(&records).map_err(refused)?;
+            CanonicalHistoryRecords::decode_for(&records, selected).map_err(refused)?;
             Ok(records)
         },
     );

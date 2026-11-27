@@ -49,7 +49,7 @@ function object(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
-function connectRpc(port: number, password: string, deadline: AbortSignal) {
+function connectRpc(port: number, password: string, deadline: AbortSignal, requestTimeout: number) {
   const url = `http://${LOOPBACK}:${port}/`;
   const authorization = `Basic ${Buffer.from(`cdif01:${password}`).toString("base64")}`;
   return (method: string, params: unknown[] = []) => fetch(url, {
@@ -57,7 +57,7 @@ function connectRpc(port: number, password: string, deadline: AbortSignal) {
     redirect: "error",
     headers: { authorization, "content-type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: method, method, params }),
-    signal: AbortSignal.any([deadline, AbortSignal.timeout(5_000)]),
+    signal: AbortSignal.any([deadline, AbortSignal.timeout(requestTimeout)]),
   });
 }
 
@@ -78,8 +78,8 @@ function rpcResult(envelope: Record<string, unknown>, method: string): unknown {
   return envelope.result;
 }
 
-async function ready(child: Bun.Subprocess, rpc: ReturnType<typeof connectRpc>, runDeadline: AbortSignal) {
-  const deadline = performance.now() + 30_000;
+async function ready(child: Bun.Subprocess, rpc: ReturnType<typeof connectRpc>, runDeadline: AbortSignal, startupTimeout: number) {
+  const deadline = performance.now() + startupTimeout;
   let maybeFailure: unknown;
   while (performance.now() < deadline) {
     runDeadline.throwIfAborted();
@@ -167,12 +167,13 @@ export async function compareDaemon<T extends Record<string, unknown>>(
     const interrupt = () => child.kill("SIGKILL");
     for (const signal of signals) process.once(signal, interrupt);
     try {
-      const deadline = AbortSignal.timeout(DAEMON_TIMEOUT_MS);
-      const rpc = connectRpc(port, password, deadline);
+      const mainnet = chain === "main";
+      const deadline = AbortSignal.timeout(mainnet ? 3 * 60 * 60_000 : DAEMON_TIMEOUT_MS);
+      const rpc = connectRpc(port, password, deadline, mainnet ? 60_000 : 5_000);
       const call = async (method: string, params?: unknown[]) =>
         rpcResult(await rpcEnvelope(await rpc(method, params), method), method);
       const expectedTip = maybeStartupTip ?? { height: 0, hash: genesisHash };
-      const initialTip = tip(await ready(child, rpc, deadline), expectedTip.height, expectedTip.hash, chain);
+      const initialTip = tip(await ready(child, rpc, deadline, mainnet ? 120_000 : 30_000), expectedTip.height, expectedTip.hash, chain);
       const network = object(await call("getnetworkinfo"));
       if (network.connections !== 0 || (name === "knots" && network.networkactive !== false)) {
         throw new Error("Daemon has unexpected P2P activity");

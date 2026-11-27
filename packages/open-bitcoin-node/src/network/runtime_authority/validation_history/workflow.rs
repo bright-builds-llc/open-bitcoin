@@ -106,7 +106,7 @@ impl CanonicalSubmissionCommand {
                 .map_err(operational("admitted identity"))?;
         let mut early = self
             .store
-            .inspect_submission_inventory()
+            .inspect_canonical_submission_inventory(self.chain)
             .map_err(operational("early native inventory"))?;
         early
             .project_admitted_headers(&headers.entries().cloned().collect::<Vec<_>>(), identity)
@@ -127,7 +127,7 @@ impl CanonicalSubmissionCommand {
         // Own early writes require a new source observation before the full forecast.
         let mut inventory = self
             .store
-            .inspect_submission_inventory()
+            .inspect_canonical_submission_inventory(self.chain)
             .map_err(operational("prepared native inventory"))?;
         let headers = network.peer_manager.header_store();
         let history = headers
@@ -315,7 +315,7 @@ impl CanonicalSubmissionCommand {
     ) -> SubmissionResult<()> {
         let headers = network.peer_manager.header_store();
         let count = headers.entries().count();
-        let limit = FjallNodeStore::canonical_history_reopen_limit();
+        let limit = FjallNodeStore::submission_history_limit(self.chain);
         if count > limit || (count == limit && headers.entry(&hash).is_none()) {
             return Err(CanonicalSubmissionError::support(
                 "canonical history reopen capacity unavailable",

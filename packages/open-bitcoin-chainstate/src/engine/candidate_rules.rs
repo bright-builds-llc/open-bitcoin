@@ -112,6 +112,8 @@ pub(super) fn history_from_chain(
     active_chain: &[ChainPosition],
     lookback: usize,
 ) -> Result<CandidateHistory, ChainstateError> {
+    let parent = active_chain.last().ok_or(ChainstateError::MissingTip)?;
+    let lookback = lookback.max(rules.chain().canonical_header_lookback(parent.height));
     let mut rows = active_chain
         .iter()
         .rev()

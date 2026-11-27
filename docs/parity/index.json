@@ -1590,13 +1590,14 @@
       },
       {
         "id": "mainnet-offline-prefix",
-        "title": "Bounded Offline Mainnet Genesis-to-200 Differential",
-        "status": "done",
-        "requirements": ["MAINNET-PREFIX-01"],
+        "title": "Bounded Offline Mainnet Through the First Retarget",
+        "status": "in_progress",
+        "requirements": ["MAINNET-PREFIX-01", "MAINNET-PREFIX-02"],
         "evidence": [
           "docs/parity/mainnet-offline-prefix.md",
           "docs/parity/fixtures/mainnet-prefix-200.hex",
-          "docs/parity/fixtures/mainnet-block-201.hex",
+          "docs/parity/fixtures/mainnet-retarget-201-2016.hex",
+          "docs/parity/fixtures/mainnet-block-2017.hex",
           "docs/parity/receipts/mainnet-prefix.json",
           "scripts/run-knots-mainnet-prefix.ts",
           "packages/open-bitcoin-chainstate/tests/mainnet_prefix.rs",
@@ -1607,7 +1608,7 @@
         "evidence_classes": ["local_product", "knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/mainnet-prefix.json",
         "knots_binary_sha256": "251fe52dde2ce9add5ff7cb71d63ebc2c8a739c859ddd8325b6d5a807aaa0f0a",
-        "rationale": "Compare ordinary local Mainnet validation from genesis through height 200, exact active chainwork and the final UTXO set, with Open Bitcoin restart and a height-201 refusal.",
+        "rationale": "Compare ordinary local Mainnet validation from genesis through the first difficulty retarget at height 2016. Verify the target, exact chainwork and final UTXOs after Open Bitcoin restarts, and confirm that height 2017 leaves the tip intact.",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/kernel/chainparams.cpp",
@@ -1618,10 +1619,10 @@
           "tests": []
         },
         "intentional_differences": [
-          "Open Bitcoin's offline Mainnet path checks direct active-tip extensions only and refuses beyond height 200."
+          "Open Bitcoin's offline Mainnet path checks direct active-tip extensions only and refuses beyond height 2016."
         ],
         "known_gaps": [
-          "No Mainnet reorg, retarget, whole-chain, public-default, pruning, production, or wallet qualification."
+          "Scope covers the first, PoW-limit-capped retarget only. Mainnet reorg, later retargets, peer sync, whole-chain, public-default, pruning, production, and wallet evidence remain separate."
         ],
         "suspected_unknowns": []
       },

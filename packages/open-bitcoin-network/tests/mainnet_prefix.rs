@@ -18,7 +18,7 @@ fn mainnet_header_store_refuses_a_child_beyond_the_prefix() -> Result<(), Box<dy
     let proof = CanonicalGenesisProof::prove(spec, &spec.genesis_block())?;
     let mut store = HeaderStore::from_canonical_genesis(&proof)?;
     let mut headers = prefix::mainnet_prefix_headers()?;
-    let boundary = headers.pop().ok_or("expected height-201 header")?;
+    let boundary = headers.pop().ok_or("expected height-2017 header")?;
     for header in headers {
         store
             .insert_canonical_header_detailed(header, 2_000_000_000)
@@ -37,5 +37,35 @@ fn mainnet_header_store_refuses_a_child_beyond_the_prefix() -> Result<(), Box<dy
             if reject_reason == "mainnet-offline-prefix-limit"
     ));
     assert_eq!(store.best_tip(), Some(&before));
+    Ok(())
+}
+
+#[test]
+fn mainnet_retarget_uses_genesis_as_its_earned_anchor() -> Result<(), Box<dyn std::error::Error>> {
+    // Arrange
+    let spec = CanonicalChain::Mainnet.spec();
+    let proof = CanonicalGenesisProof::prove(spec, &spec.genesis_block())?;
+    let mut store = HeaderStore::from_canonical_genesis(&proof)?;
+
+    // Act
+    for header in prefix::mainnet_prefix_headers()?
+        .into_iter()
+        .take(MAINNET_OFFLINE_PREFIX_MAX_HEIGHT as usize)
+    {
+        store
+            .insert_canonical_header_detailed(header, 2_000_000_000)
+            .map_err(|error| error.into_network_error())?;
+    }
+    let tip = store.best_tip().ok_or("expected retarget tip")?;
+    let history = store.canonical_header_history(tip.block_hash)?;
+
+    // Assert
+    let anchor = history
+        .maybe_retarget_anchor()
+        .ok_or("expected retarget anchor")?;
+    assert_eq!(anchor.height, 0);
+    assert_eq!(anchor.block_hash, proof.hash());
+    assert_eq!(history.parent().height, 2015);
+    assert_eq!(history.candidate().bits, 0x1d00_ffff);
     Ok(())
 }

@@ -17,6 +17,7 @@ use std::{
 };
 
 pub(super) const MAX_JOB: u64 = 16 * 1024;
+#[cfg(test)]
 pub(super) const MAX_RESULT: u64 = copy::MAX_BYTES + copy::MAX_ENTRIES as u64 * 24 + 64;
 const MAGIC: &[u8; 8] = b"OBIR\x01\0\0\0";
 const PRUNE_PROOF: &[u8; 8] = b"OBIP\x01\0\0\0";
@@ -110,7 +111,8 @@ impl WorkerJob {
     pub(super) fn inventory(&self) -> LogicalInventory {
         match self {
             Self::PruneProof(_) => LogicalInventory::RegtestPruneProof,
-            Self::Generic(_) | Self::History(_) => LogicalInventory::Ordinary,
+            Self::History(job) => LogicalInventory::for_history(job.selected()),
+            Self::Generic(_) => LogicalInventory::Ordinary,
         }
     }
 

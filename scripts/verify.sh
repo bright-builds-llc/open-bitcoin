@@ -204,7 +204,7 @@ run_step "check CPAR-01 parity traceability" bun run scripts/check-v2-6-traceabi
 run_step "test CPAR-01 parity traceability" bun test ./scripts/check-v2-6-traceability.test.ts
 run_step "check CPAR-02 qualification freshness" bun run scripts/check-v2-6-qualification.ts --check
 run_step "test CPAR-02 qualification invalidation" bun test ./scripts/check-v2-6-qualification.test.ts
-run_step "check MAINNET-PREFIX-01 qualification" bun run scripts/check-mainnet-prefix.ts
+run_step "check MAINNET-PREFIX-02 qualification" bun run scripts/check-mainnet-prefix.ts
 run_step "test Phase 160 independent peer fixture generator" bun test ./scripts/generate-peer-filter-fixtures.test.ts
 run_step "reproduce Phase 160 independent peer wire and proof fixtures" bun run scripts/generate-peer-filter-fixtures.ts --check
 run_step "test Phase 121 block-relay metrics and log runtime checker" bun test scripts/check-v2-1-runtime-metrics-logs.test.ts

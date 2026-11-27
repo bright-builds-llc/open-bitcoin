@@ -2,6 +2,7 @@
 // - packages/bitcoin-knots/src/validation.cpp
 // - packages/bitcoin-knots/src/txdb.cpp
 
+use super::super::inventory;
 use super::*;
 use crate::chainstate::BasicFilterStartupMode;
 use crate::chainstate::validation_history::tests::phase167 as genuine;
@@ -167,7 +168,7 @@ fn phase167_submission_inventory_count_and_total_bytes_use_existing_policy() {
         rows.get_mut("runtime")
             .expect("runtime")
             .insert(b"snapshot".to_vec(), bytes);
-        assert!(validate_rows(&rows).is_ok());
+        assert!(validate_rows(&rows, LogicalInventory::Ordinary).is_ok());
         rows.get_mut("runtime")
             .expect("runtime")
             .get_mut(b"snapshot".as_slice())
@@ -178,7 +179,7 @@ fn phase167_submission_inventory_count_and_total_bytes_use_existing_policy() {
             "unchanged row policy omits the trailing empty namespace cost"
         );
         assert!(
-            validate_rows(&rows).is_err(),
+            validate_rows(&rows, LogicalInventory::Ordinary).is_err(),
             "actual reader budget checks every namespace and row"
         );
         drop(manager);

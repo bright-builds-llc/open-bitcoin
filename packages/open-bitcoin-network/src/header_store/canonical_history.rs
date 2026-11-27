@@ -270,8 +270,7 @@ impl HeaderStore {
         }
         let parent_work = parent.chain_work;
         let mut rows = Vec::new();
-        // A 155-header suffix covers the retained Regtest lookbacks.
-        for _ in 0..155 {
+        for _ in 0..lineage.chain.canonical_header_lookback(parent.height) {
             if !lineage.admitted.contains_key(&hash) {
                 return Err(invalid_header("unproved-canonical-header-parent").into());
             }

@@ -110,21 +110,21 @@ function productSource(root: string): string {
   return capture(root, ["git", "rev-parse", "HEAD"]);
 }
 
-export async function buildOpenBitcoin(root: string, run: string, label: string) {
-  return buildProduct(root, run, label, "open-bitcoind", "open-bitcoin-rpc", "open-bitcoin-build.log");
+export async function buildOpenBitcoin(root: string, run: string, label: string, release = false) {
+  return buildProduct(root, run, label, "open-bitcoind", "open-bitcoin-rpc", "open-bitcoin-build.log", release);
 }
 
 export async function buildOpenBitcoinCli(root: string, run: string, label: string) {
   return buildProduct(root, run, label, "open-bitcoin", "open-bitcoin-cli", "open-bitcoin-cli-build.log");
 }
 
-async function buildProduct(root: string, run: string, label: string, binary: string, crate: string, logName: string) {
+async function buildProduct(root: string, run: string, label: string, binary: string, crate: string, logName: string, release = false) {
   const commit = productSource(root);
   const targetDir = resolveTarget(root).directory;
-  const options = ["--locked", "--manifest-path", "packages/Cargo.toml", "-p", crate, "--bin", binary];
+  const options = ["--locked", "--manifest-path", "packages/Cargo.toml", "-p", crate, "--bin", binary, ...(release ? ["--release"] : [])];
   const log = join(run, logName);
   const executable = join(run, binary);
-  const builtExecutable = join(targetDir, "debug", binary);
+  const builtExecutable = join(targetDir, release ? "release" : "debug", binary);
   // Snapshot the binary before the timing wrapper releases the shared target lock.
   console.log(`${label}: building ordinary ${binary} (see ${log})`);
   await loggedCommand(

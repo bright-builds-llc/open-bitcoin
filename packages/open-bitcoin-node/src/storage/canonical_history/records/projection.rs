@@ -4,32 +4,38 @@
 
 //! Detached row observations confer no work, acceptance or publication authority.
 
-use super::{Namespaces, inventory, source_digest};
-use crate::storage::fjall_store::inspection::{InspectedRecords, require_existing_namespaces};
+use super::{Namespaces, inventory_with_limit, source_digest};
+use crate::storage::fjall_store::inspection::{
+    InspectedRecords, LogicalInventory, require_existing_namespaces,
+};
 use crate::storage::fjall_store::{
     block_key,
     bounded_rows::{self, RowFamily},
-    tracked::MutationStamp,
+    tracked::{MutationStamp, RecordSource},
 };
 use crate::storage::validation_history::history_corruption;
 use crate::storage::{coins_codec, snapshot_codec, validation_history as history};
 use crate::{FjallNodeStore, StorageError};
-use open_bitcoin_core::{chainstate::ChainstateSnapshot, primitives::Block};
+use open_bitcoin_core::{
+    chainstate::ChainstateSnapshot, consensus::CanonicalChain, primitives::Block,
+};
 use open_bitcoin_network::HeaderEntry;
 
 type AchievedCheck<'a> = Box<dyn FnOnce(&FjallNodeStore) -> Result<(), StorageError> + 'a>;
 
-fn validate_rows(rows: &Namespaces) -> Result<(), StorageError> {
+fn validate_rows(rows: &Namespaces, inventory: LogicalInventory) -> Result<(), StorageError> {
     crate::storage::fjall_store::inspection::require_existing_namespace_catalog(
         rows.keys().map(String::as_str),
     )?;
-    InspectedRecords::check_submission_budget(rows)?;
-    inventory(rows).map_err(|_| history_corruption("unsupported native inventory"))
+    InspectedRecords::check_submission_budget(rows, inventory)?;
+    inventory_with_limit(rows, inventory.entry_limit())
+        .map_err(|_| history_corruption("unsupported native inventory"))
 }
 
 /// Same-store observation; fields and construction are private.
 pub(crate) struct SubmissionInventory<'a> {
     store: &'a FjallNodeStore,
+    inventory: LogicalInventory,
     catalog: Vec<String>,
     stamp: MutationStamp,
     rows: Namespaces,
@@ -48,16 +54,31 @@ fn catalog(store: &FjallNodeStore) -> Vec<String> {
 }
 
 impl FjallNodeStore {
-    /// Borrow one bounded actual inventory; this never opens or repairs a database.
+    #[cfg(test)]
     pub(crate) fn inspect_submission_inventory(
         &self,
+    ) -> Result<SubmissionInventory<'_>, StorageError> {
+        self.capture_submission_inventory(LogicalInventory::Ordinary)
+    }
+
+    /// Observe a bounded inventory from the network owner; never opens or repairs a store.
+    pub(crate) fn inspect_canonical_submission_inventory(
+        &self,
+        chain: CanonicalChain,
+    ) -> Result<SubmissionInventory<'_>, StorageError> {
+        self.capture_submission_inventory(LogicalInventory::for_history(chain))
+    }
+
+    fn capture_submission_inventory(
+        &self,
+        inventory: LogicalInventory,
     ) -> Result<SubmissionInventory<'_>, StorageError> {
         let stamp = self
             .database()
             .stamp()
             .map_err(|_| history_corruption("native inventory observation unavailable"))?;
         let before_catalog = catalog(self);
-        let records = InspectedRecords::read_existing(self.database())?;
+        let records = self.database().read_existing_records(inventory)?;
         require_existing_namespaces(&records)?;
         let rows = records
             .namespaces()
@@ -71,7 +92,7 @@ impl FjallNodeStore {
                 ))
             })
             .collect::<Result<Namespaces, StorageError>>()?;
-        validate_rows(&rows)?;
+        validate_rows(&rows, inventory)?;
         #[cfg(test)]
         tests::during_capture(self);
         let source = source_digest(&rows);
@@ -85,6 +106,7 @@ impl FjallNodeStore {
             .map_err(|_| history_corruption("native inventory changed during capture"))?;
         Ok(SubmissionInventory {
             store: self,
+            inventory,
             catalog: before_catalog,
             stamp,
             rows,
@@ -173,7 +195,7 @@ impl<'a> SubmissionInventory<'a> {
     ) -> Result<(), StorageError> {
         self.header_rows(headers)?;
         self.validation_row(identity, history::StoredValidationStatus::KnownOnly)?;
-        validate_rows(&self.rows)
+        validate_rows(&self.rows, self.inventory)
     }
 
     /// Forecast a retained body without granting ScriptsValid, Coins, or BASIC authority.
@@ -193,7 +215,7 @@ impl<'a> SubmissionInventory<'a> {
             return Ok(false);
         }
         rows.insert(key, bytes);
-        validate_rows(&self.rows)?;
+        validate_rows(&self.rows, self.inventory)?;
         Ok(true)
     }
 
@@ -212,7 +234,7 @@ impl<'a> SubmissionInventory<'a> {
         }
         self.project_chainstate(snapshot, headers)?;
         self.project_accepted_block(block, position)?;
-        validate_rows(&self.rows)
+        validate_rows(&self.rows, self.inventory)
     }
 
     /// Forecast the reorg's native chainstate and every replacement acceptance record.
@@ -236,7 +258,7 @@ impl<'a> SubmissionInventory<'a> {
         for (position, candidate) in snapshot.active_chain[start..].iter().zip(replacements) {
             self.project_accepted_block(&candidate.block, position)?;
         }
-        validate_rows(&self.rows)
+        validate_rows(&self.rows, self.inventory)
     }
 
     fn project_chainstate(
@@ -323,7 +345,7 @@ impl<'a> SubmissionInventory<'a> {
             rows.into_iter()
                 .map(|(key, bytes)| (key.into_bytes(), bytes)),
         );
-        validate_rows(&self.rows)
+        validate_rows(&self.rows, self.inventory)
     }
 
     pub(crate) fn project_basic_reorg(
@@ -341,7 +363,7 @@ impl<'a> SubmissionInventory<'a> {
             rows.into_iter()
                 .map(|(key, bytes)| (key.into_bytes(), bytes)),
         );
-        validate_rows(&self.rows)
+        validate_rows(&self.rows, self.inventory)
     }
 
     /// Validate the current source tuple immediately before consumer effects.
@@ -353,7 +375,7 @@ impl<'a> SubmissionInventory<'a> {
         if catalog(self.store) != self.catalog {
             return Err(history_corruption("stale native inventory source"));
         }
-        let current = self.store.inspect_submission_inventory()?;
+        let current = self.store.capture_submission_inventory(self.inventory)?;
         if catalog(self.store) != self.catalog {
             return Err(history_corruption("stale native inventory source"));
         }
@@ -377,7 +399,7 @@ impl<'a> SubmissionInventory<'a> {
         if !self.store.shares_validation_history_store(store) {
             return Err(history_corruption("foreign achieved inventory store"));
         }
-        let achieved = store.inspect_submission_inventory()?;
+        let achieved = store.capture_submission_inventory(self.inventory)?;
         if achieved.rows != self.rows {
             return Err(history_corruption(
                 "projected and achieved native rows differ",

@@ -12,6 +12,7 @@ const INPUT_SCOPE = [
   "docs/parity/fixtures/phase167-regtest-expectations.json",
   "scripts/run-knots-mainnet-prefix.ts", "scripts/mainnet-prefix.ts", "scripts/check-mainnet-prefix.ts",
   "docs/parity/fixtures/mainnet-prefix-200.hex", "docs/parity/fixtures/mainnet-block-201.hex",
+  "docs/parity/fixtures/mainnet-retarget-201-2016.hex", "docs/parity/fixtures/mainnet-block-2017.hex",
 ] as const;
 const MAX_FILE_BYTES = 128 * 1024 * 1024;
 

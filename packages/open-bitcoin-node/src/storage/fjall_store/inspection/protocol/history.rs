@@ -98,13 +98,14 @@ pub(super) fn write_result(
     job: &HistoryJob,
     records: &InspectedRecords,
 ) -> Result<(), StorageError> {
+    let inventory = LogicalInventory::for_history(job.selected);
     let mut output = BoundedWriter {
         output,
-        remaining: MAX_RESULT,
+        remaining: super::result_limit(inventory),
     };
     io(output.write_all(RESPONSE))?;
     io(output.write_all(&[MODE, selector(job.selected)]))?;
-    super::write_result(&mut output, &job.owned, records)
+    super::write_inventory(&mut output, &job.owned, records, inventory)
 }
 
 pub(super) fn read_result(
@@ -112,13 +113,14 @@ pub(super) fn read_result(
     length: u64,
     job: &HistoryJob,
 ) -> Result<InspectedRecords, StorageError> {
-    if !(ENVELOPE..=MAX_RESULT).contains(&length) {
+    let inventory = LogicalInventory::for_history(job.selected);
+    if !(ENVELOPE..=super::result_limit(inventory)).contains(&length) {
         return Err(refused());
     }
     if read_envelope(&mut input, RESPONSE)? != job.selected {
         return Err(refused());
     }
-    super::read_result(input, length - ENVELOPE, &job.owned)
+    super::read_inventory(input, length - ENVELOPE, &job.owned, inventory)
 }
 
 #[cfg(test)]
@@ -186,6 +188,32 @@ mod tests {
             );
             assert!(read_result(v1.as_slice(), v1.len() as u64, &job).is_err());
         }
+    }
+
+    #[test]
+    fn mainnet_history_result_expands_only_the_selected_logical_budget() -> Result<(), StorageError>
+    {
+        // Arrange
+        let records = InspectedRecords {
+            namespaces: BTreeMap::from([(
+                "rows".into(),
+                (0..copy::MAX_ENTRIES as u32)
+                    .map(|key| (key.to_be_bytes().to_vec(), vec![1]))
+                    .collect(),
+            )]),
+        };
+        let mainnet = job(CanonicalChain::Mainnet);
+        let regtest = job(CanonicalChain::Regtest);
+        let mut encoded = Vec::new();
+
+        // Act
+        write_result(&mut encoded, &mainnet, &records)?;
+        let decoded = read_result(encoded.as_slice(), encoded.len() as u64, &mainnet)?;
+
+        // Assert
+        assert_eq!(decoded.namespaces, records.namespaces);
+        assert!(write_result(&mut Vec::new(), &regtest, &records).is_err());
+        Ok(())
     }
 
     #[test]

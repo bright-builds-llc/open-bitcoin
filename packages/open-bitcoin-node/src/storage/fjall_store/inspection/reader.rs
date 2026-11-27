@@ -4,6 +4,7 @@
 use super::super::tracked::{RecordSource, sealed};
 use super::{StorageError, copy, inspection_error};
 use fjall::{Database, KeyspaceCreateOptions, Readable};
+use open_bitcoin_core::consensus::CanonicalChain;
 use std::collections::BTreeMap;
 
 /// Complete untrusted logical bytes, with missing namespaces and rows preserved.
@@ -15,13 +16,23 @@ pub(in crate::storage) struct InspectedRecords {
 #[derive(Clone, Copy)]
 pub(in crate::storage) enum LogicalInventory {
     Ordinary,
+    MainnetPrefix,
     RegtestPruneProof,
 }
 
 impl LogicalInventory {
+    pub(in crate::storage) fn for_history(chain: CanonicalChain) -> Self {
+        if chain == CanonicalChain::Mainnet {
+            Self::MainnetPrefix
+        } else {
+            Self::Ordinary
+        }
+    }
+
     pub(in crate::storage) fn entry_limit(self) -> usize {
         match self {
             Self::Ordinary => copy::MAX_ENTRIES,
+            Self::MainnetPrefix => 16_384,
             Self::RegtestPruneProof => 8192,
         }
     }
@@ -31,12 +42,17 @@ impl InspectedRecords {
     /// Apply the existing streamed reader budget to detached prospective bytes.
     pub(in crate::storage) fn check_submission_budget(
         namespaces: &BTreeMap<String, BTreeMap<Vec<u8>, Vec<u8>>>,
+        inventory: LogicalInventory,
     ) -> Result<(), StorageError> {
         let mut budget = copy::Budget::default();
         for (name, rows) in namespaces {
-            budget.add(name.len() as u64, 0)?;
+            budget.add_with_entry_limit(name.len() as u64, 0, inventory.entry_limit())?;
             for (key, value) in rows {
-                budget.add(record_length(key, value)?, 0)?;
+                budget.add_with_entry_limit(
+                    record_length(key, value)?,
+                    0,
+                    inventory.entry_limit(),
+                )?;
             }
         }
         Ok(())
@@ -50,6 +66,13 @@ impl InspectedRecords {
         name: &str,
     ) -> Option<&BTreeMap<Vec<u8>, Vec<u8>>> {
         self.namespaces.get(name)
+    }
+
+    pub(in crate::storage) fn read_history(
+        database: &impl RecordSource,
+        chain: CanonicalChain,
+    ) -> Result<Self, StorageError> {
+        database.read_existing_records(LogicalInventory::for_history(chain))
     }
 
     /// Uses only enumerated, already existing keyspaces and returns no engine owners.

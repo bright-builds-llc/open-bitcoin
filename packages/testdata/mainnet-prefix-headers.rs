@@ -2,9 +2,11 @@ use open_bitcoin_primitives::BlockHeader;
 
 pub(super) fn mainnet_prefix_headers() -> Result<Vec<BlockHeader>, Box<dyn std::error::Error>> {
     let prefix = include_str!("../../docs/parity/fixtures/mainnet-prefix-200.hex");
-    let boundary = include_str!("../../docs/parity/fixtures/mainnet-block-201.hex");
+    let extension = include_str!("../../docs/parity/fixtures/mainnet-retarget-201-2016.hex");
+    let boundary = include_str!("../../docs/parity/fixtures/mainnet-block-2017.hex");
     prefix
         .lines()
+        .chain(extension.lines())
         .chain(boundary.lines())
         .map(|block| {
             let hex = block.get(..160).ok_or("expected a full wire header")?;
