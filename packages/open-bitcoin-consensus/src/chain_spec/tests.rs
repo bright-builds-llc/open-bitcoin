@@ -614,3 +614,15 @@ fn implementation_status_codes_follow_bounded_selector_facts() {
         assert!(!scope.ordinary_history());
     }
 }
+
+#[test]
+fn canonical_header_lookback_expands_only_at_the_mainnet_retarget() {
+    // Arrange
+    let parent = std::hint::black_box(2015);
+    let lookback = |chain: CanonicalChain, height| chain.canonical_header_lookback(height);
+
+    // Act / Assert
+    assert_eq!(lookback(CanonicalChain::Mainnet, parent), 2016);
+    assert_eq!(lookback(CanonicalChain::Mainnet, parent - 1), 155);
+    assert_eq!(lookback(CanonicalChain::Regtest, parent), 155);
+}
