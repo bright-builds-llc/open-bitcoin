@@ -137,6 +137,12 @@ See the [v2.6 closeout](v2-6-closeout.md) for the verified commit and CI.
 | `v2-6-cpar-01` | `done` | `CPAR-01` | [Parity traceability](v2-6-parity-traceability.md) | Approved claims join exactly-once owners, pinned paths, explicit differences, actual receipts, and original v2.5 archive bytes. |
 | `v2-6-cpar-02` | `done` | `CPAR-02` | [Qualification freshness](v2-6-knots-regtest-differential.md#qualification-freshness) | The offline verifier requires seven passing, input-bound Regtest receipts and checks the bounded claim scope. |
 
+## Bounded offline Mainnet
+
+| Surface ID | Status | Requirement | Evidence | Scope and limits |
+| -- | -- | -- | -- | -- |
+| `mainnet-offline-prefix` | `done` | `MAINNET-PREFIX-01` | [Mainnet prefix](mainnet-offline-prefix.md), [actual receipt](receipts/mainnet-prefix.json) | Matches Knots through height 200 and checks exact work, final UTXOs, clean reopen, and refusal at height 201. |
+
 ## Evidence Rules
 
 - `done` surfaces must link to concise existing evidence, such as catalog pages,

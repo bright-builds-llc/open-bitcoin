@@ -35,7 +35,8 @@ Blockstream's Esplora API. The height-200 hash was corroborated with the
 mempool.space API. The reader verifies sequential header linkage from the
 pinned genesis, the fixed endpoint identities, and compact target bits.
 Knots and Open Bitcoin each independently validate the full block bodies.
-No network access is needed to read the fixture or submit the blocks.
+The daemon comparison runs entirely offline.
+[Esplora API](https://github.com/Blockstream/esplora/blob/master/API.md#blocks).
 
 ```sh
 bun run scripts/run-knots-mainnet-prefix.ts
@@ -54,3 +55,15 @@ integer satoshis, raw script bytes, coinbase status, and creation height.
 Knots supplies it through `dumptxoutset`. The test-only Open Bitcoin observer
 opens the closed datadir through the complete retained-history proof and reads
 its detached snapshot. The digest covers every projected row.
+
+## Recorded result
+
+The [passing receipt](receipts/mainnet-prefix.json) records both daemons
+accepting all 200 blocks and reaching tip
+`000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320`
+with exact chainwork
+`000000000000000000000000000000000000000000000000000000c900c900c9`.
+The reopened Open Bitcoin datadir yielded the same 204 coins and
+1,000,000,000,000 satoshis as Knots. Open Bitcoin refused the actual
+height-201 block with `mainnet-offline-prefix-limit` and preserved the
+active tip, header height, and chainwork. The daemons each observed zero peers.

@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,813 |
-| Total lines | 551,424 |
-| Code/content lines | 485,296 |
+| Total lines | 551,430 |
+| Code/content lines | 485,302 |
 | Comment-only lines | 28,697 |
 | Blank lines | 37,431 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 774 | 260,829 | 227,858 | 17,258 | 15,713 |
 | Rust production | 600 | 176,385 | 154,603 | 7,906 | 13,876 |
-| TypeScript/Bun scripts | 363 | 95,734 | 85,446 | 3,412 | 6,876 |
+| TypeScript/Bun scripts | 363 | 95,740 | 85,452 | 3,412 | 6,876 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,849 | 4,301 | 100 | 448 |
 | TOML/config | 16 | 3,480 | 3,111 | 1 | 368 |
@@ -105,11 +105,11 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-phase164-canonical-identity/test-modules.ts | 606 |
 | scripts/check-phase165-shared-exact-work.test.ts | 581 |
 | scripts/check-phase165-shared-exact-work.ts | 235 |
-| scripts/check-phase165-shared-exact-work/contracts.ts | 514 |
+| scripts/check-phase165-shared-exact-work/contracts.ts | 518 |
 | scripts/check-phase165-shared-exact-work/test-support.ts | 235 |
 | scripts/check-phase166-canonical-bootstrap.test.ts | 516 |
 | scripts/check-phase166-canonical-bootstrap.ts | 252 |
-| scripts/check-phase166-canonical-bootstrap/contracts.ts | 370 |
+| scripts/check-phase166-canonical-bootstrap/contracts.ts | 372 |
 | scripts/check-phase167-candidate-history.test.ts | 201 |
 | scripts/check-phase167-candidate-history.ts | 155 |
 | scripts/check-phase167-candidate-history/contracts.ts | 164 |
@@ -444,7 +444,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | c34804733d67fab1e3bcb3b3df4c25919662b1cd0455cbb14efd99e7829d5593 |
+| Input fingerprint | 564882bcfd09f9b6a1ba5ba3cfb7005d1ca3505c7284288109095e91aaf8a276 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

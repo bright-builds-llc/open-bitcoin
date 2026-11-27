@@ -1,0 +1,148 @@
+{
+  "format": "open-bitcoin-mainnet-prefix-v1",
+  "status": "passed",
+  "recorded_at": "2026-11-27T09:35:17.640Z",
+  "network": "mainnet",
+  "network_enabled": false,
+  "corpus": "docs/parity/fixtures/mainnet-prefix-200.hex",
+  "corpus_sha256": "0c2dac8afc5591338af74745ab7f76fa6d0ca3222da17a23dbaf5cf6b3cf20a9",
+  "boundary_input": "docs/parity/fixtures/mainnet-block-201.hex",
+  "boundary_sha256": "d10a21ca361772d6acc22c25230e8f6933536dac8a8b86c1c746fee8b0c612d9",
+  "source_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
+  "source_tree": "643d6c87370510b5193461e37647526369dfe0b3",
+  "binary_sha256": "35642c07766c10e92bc672327f741e67274a9c3064c18086aa6184c60dc000a3",
+  "knots_build": {
+    "archive_sha256": "7906c472d15d6d5d68849911db8e8b210ac2f863750b45ef06c42683706e071e",
+    "version": "Bitcoin Knots daemon version v29.3.0.knots20260210",
+    "platform": "Darwin arm64",
+    "cmake": "cmake version 3.27.9",
+    "ninja": "1.13.2",
+    "cxx": "Apple clang version 21.0.0 (clang-2100.4.1.1)",
+    "macos_sdk": "27.2",
+    "dependencies": [
+      "-- Found Boost: <path> (found suitable version \"1.90.0\", minimum required is \"1.73.0\")  ",
+      "-- Found Libevent: <path> (found suitable version \"2.1.12-stable\", minimum required is \"2.1.8\") "
+    ],
+    "cmake_cache_sha256": "1dbc34079e4256a1d3cd3f73a794feb5a5160ab111cbadbf87109873b63e185d",
+    "configure_log_sha256": "64bc9a7a48f6a0f3b8d85230751ebcc332a5b57ecb01a3f831ba9b750dc321ab",
+    "build_log_sha256": "36330165539d7ced7055f4c50c2fd5101db7bf3e4bceb114a716988cea8ad88c",
+    "git_build_info": "archive",
+    "configure_options": [
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DBUILD_DAEMON=ON",
+      "-DBUILD_GUI=OFF",
+      "-DBUILD_CLI=OFF",
+      "-DBUILD_TESTS=OFF",
+      "-DENABLE_WALLET=OFF",
+      "-DENABLE_TOR_SUBPROCESS=OFF",
+      "-DWITH_CCACHE=OFF",
+      "-DWITH_ZMQ=OFF"
+    ],
+    "build_options": [
+      "--target",
+      "bitcoind",
+      "--parallel",
+      "12"
+    ]
+  },
+  "open_bitcoin_build": {
+    "source_commit": "60bb369c030ffd2757517786364ca6c07947536b",
+    "binary_sha256": "08426c4ff0d8dd8e78b912f39615ced9e1967174031288ccdc8ea2d34e5b73af",
+    "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
+    "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
+    "cargo_options": [
+      "--locked",
+      "--manifest-path",
+      "packages/Cargo.toml",
+      "-p",
+      "open-bitcoin-rpc",
+      "--bin",
+      "open-bitcoind"
+    ],
+    "build_log_sha256": "bc11c7a9829f92f5209b48f8bf69146b4e9aea134005de5cd1703803f8df5801"
+  },
+  "open_bitcoin_observer_sha256": "006f2b6a7c1a8141966ad990e882d3245d824d44da8bb0e8a953a76b535baf90",
+  "knots": {
+    "flags": [
+      "-chain=main",
+      "-server=1",
+      "-rpcbind=127.0.0.1",
+      "-assumevalid=0",
+      "-networkactive=0",
+      "-listen=0",
+      "-listenonion=0",
+      "-discover=0",
+      "-dnsseed=0",
+      "-fixedseeds=0",
+      "-natpmp=0"
+    ],
+    "nofile_soft_limit": 1024,
+    "initial_tip": {
+      "height": 0,
+      "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+    },
+    "peer_count": 0,
+    "accepted_count": 200,
+    "accepted_tips_sha256": "e5085fbc76c44241108057e5829dc83f9f2d16215f3f821d2ae3b7dad656f9e0",
+    "final_tip": {
+      "height": 200,
+      "hash": "000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320"
+    },
+    "chainwork": "000000000000000000000000000000000000000000000000000000c900c900c9",
+    "utxos": {
+      "count": 204,
+      "total_sats": "1000000000000",
+      "sha256": "0639b5775fd5012c8471f8328b02b4c6df71e993b255ecf5969f1489832911ea"
+    },
+    "exit_status": 0
+  },
+  "open_bitcoin": {
+    "flags": [
+      "-chain=main",
+      "-server=1",
+      "-rpcbind=127.0.0.1",
+      "-blockfilterindex=0"
+    ],
+    "initial_tip": {
+      "height": 0,
+      "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
+    },
+    "peer_count": 0,
+    "accepted_count": 200,
+    "accepted_tips_sha256": "e5085fbc76c44241108057e5829dc83f9f2d16215f3f821d2ae3b7dad656f9e0",
+    "final_tip": {
+      "height": 200,
+      "hash": "000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320"
+    },
+    "chainwork": "000000000000000000000000000000000000000000000000000000c900c900c9",
+    "boundary_rejection": "mainnet-offline-prefix-limit",
+    "exit_status": 0,
+    "reopened": {
+      "flags": [
+        "-chain=main",
+        "-server=1",
+        "-rpcbind=127.0.0.1",
+        "-blockfilterindex=0"
+      ],
+      "initial_tip": {
+        "height": 200,
+        "hash": "000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320"
+      },
+      "peer_count": 0,
+      "chainwork": "000000000000000000000000000000000000000000000000000000c900c900c9",
+      "exit_status": 0
+    },
+    "utxos": {
+      "count": 204,
+      "total_sats": "1000000000000",
+      "sha256": "0639b5775fd5012c8471f8328b02b4c6df71e993b255ecf5969f1489832911ea"
+    }
+  },
+  "qualification_inputs": {
+    "format": "open-bitcoin-regtest-qualification-inputs-v1",
+    "source_commit": "60bb369c030ffd2757517786364ca6c07947536b",
+    "sha256": "9f83f072086e9d42d77232db576382353bc589bdec98b4f978a5416e8527a525"
+  }
+}

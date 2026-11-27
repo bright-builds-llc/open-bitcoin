@@ -1208,7 +1208,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-01-regtest.json",
-        "knots_binary_sha256": "09130e8d6767376ec90a473036c3886d3326fefa1903d98ccb298a3f4b5ec23d",
+        "knots_binary_sha256": "4bd73c3daafae4ced621c9417c5bc7fd3ccde0e487c2ca8e1ba45b9264443292",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/CMakeLists.txt",
@@ -1240,7 +1240,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-02-regtest.json",
-        "knots_binary_sha256": "105a617a4947d7a3b2ae4ff2494fa456c9c82dd4139f868b45a2076efa9e7a2c",
+        "knots_binary_sha256": "5c1e9377ba41ab9d59dc3b0196ef429a682f7672dc2450be21dbbe0a06f4a7c9",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/kernel/chainparams.cpp",
@@ -1271,7 +1271,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-03-regtest.json",
-        "knots_binary_sha256": "e37ad223224a7594aacb3ce3b7f17317933d9acd1e72fa47ab943a26054da040",
+        "knots_binary_sha256": "3377329f3baa5347797c09913855d300a2361ce125dccba925e9b1198c67df9c",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/mining.cpp",
@@ -1303,7 +1303,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-04-regtest.json",
-        "knots_binary_sha256": "68276b7fc9458cda42735d5fded26da814658beca8af0e8c9220d20eb3a211b6",
+        "knots_binary_sha256": "ddc34e685d41da5d5a82af2be4e4a1e20f8f9ebc8c0dddd1460a1d8f58a82a52",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/blockchain.cpp",
@@ -1337,7 +1337,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-05-regtest.json",
-        "knots_binary_sha256": "a7a6ea088ead1dd759784bc4b7cb81bf8329fa690bd0c0d96ee88a7e48c8a549",
+        "knots_binary_sha256": "642812ac25e303a7e2df6189006aa92d68fcd9ec2698bec31b02b172d3a1ee8e",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/bitcoind.cpp",
@@ -1367,7 +1367,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-01-regtest.json",
-        "knots_binary_sha256": "051952366d3426724bc142d4cacc239a527f4f313caab110026ac6f0c0ecacd8",
+        "knots_binary_sha256": "0e5beae53588013d53c177216bd7e70e44865e9644c8ca5c24f3e54f21c7bc80",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/node/blockstorage.cpp",
@@ -1397,7 +1397,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-02-regtest.json",
-        "knots_binary_sha256": "3bd911107e31e172805a31fb9b2d2fd6221c5c245e00f6715d8da2795229ac18",
+        "knots_binary_sha256": "fadcfafe0ae001c2e3d6eb6affe7dc4b492a4933c456dc81fb4156e16fb72352",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/validation.cpp",
@@ -1591,10 +1591,20 @@
       {
         "id": "mainnet-offline-prefix",
         "title": "Bounded Offline Mainnet Genesis-to-200 Differential",
-        "status": "planned",
+        "status": "done",
         "requirements": ["MAINNET-PREFIX-01"],
-        "evidence": [],
-        "evidence_classes": [],
+        "evidence": [
+          "docs/parity/mainnet-offline-prefix.md",
+          "docs/parity/fixtures/mainnet-prefix-200.hex",
+          "docs/parity/fixtures/mainnet-block-201.hex",
+          "docs/parity/receipts/mainnet-prefix.json",
+          "scripts/run-knots-mainnet-prefix.ts",
+          "packages/open-bitcoin-rpc/src/bin/open_bitcoind/phase167_tests.rs",
+          "packages/open-bitcoin-rpc/tests/mainnet_prefix_closed_state.rs"
+        ],
+        "evidence_classes": ["local_product", "knots_daemon_differential"],
+        "differential_receipt": "docs/parity/receipts/mainnet-prefix.json",
+        "knots_binary_sha256": "35642c07766c10e92bc672327f741e67274a9c3064c18086aa6184c60dc000a3",
         "rationale": "Compare ordinary local Mainnet validation from genesis through height 200, exact active chainwork and the final UTXO set, with Open Bitcoin restart and a height-201 refusal.",
         "upstream": {
           "sources": [

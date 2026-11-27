@@ -2085,7 +2085,9 @@ exact-head CI attest delivery.
 
 - [x] Collect and bind a contiguous raw Mainnet block corpus and a separate height-201 boundary input.
 - [x] Verify proof-based local admission, out-of-order and non-loopback refusal, and durable reopen at height one.
-- [ ] Verify the height-201 refusal during the full comparison.
-- [ ] Run both pinned daemons and record the agreed tip, chainwork and UTXOs after Open Bitcoin restarts.
-- [ ] Renew the affected Regtest receipts and verify the offline receipt gates.
-- [ ] Commit, push to main through the full repo verifier, and watch CI.
+- [x] Verify the height-201 refusal during the full comparison.
+- [x] Run both pinned daemons and record the agreed tip, chainwork and UTXOs after Open Bitcoin restarts.
+- [x] Renew the affected Regtest receipts and verify the offline receipt gates.
+- [x] Review the diff and prepare the two commits for the normal main push and CI watch.
+
+Completion review: Both isolated daemons accepted heights 1–200 with the same active tips, exact work and complete 204-coin projection. Open Bitcoin refused height 201 and reopened with the same state. All seven affected Regtest comparisons passed again from the same committed inputs. Scope is bounded local Mainnet RPC and complete retained-state reopen.

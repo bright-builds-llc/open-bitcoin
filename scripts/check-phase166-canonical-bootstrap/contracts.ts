@@ -174,7 +174,9 @@ export const CONTRACTS: readonly Contract[] = [
     "assemble_durable_runtime(runtime, sync_runtime)?", "authoritative.maybe_prebuilt_context = Some(context)",
   ], undefined, ["from_fixture", "DurableSyncRuntime::open_configured"]),
   row(DAEMON, "open_configured_history_runtime", "daemon-bounded-history", [
-    "let chain = preflight(runtime)?;", "chain != CanonicalChain::Regtest || !trigger", "return Ok(None);",
+    "let chain = preflight(runtime)?;", "CanonicalChain::Regtest => trigger",
+    "runtime.block_filter_index == open_bitcoin_rpc::config::BasicFilterIndexSetting::Disabled",
+    "CanonicalChain::Testnet3 | CanonicalChain::Signet => false", "if !configured_history", "return Ok(None);",
     "ManagedRpcContext::from_canonical_history_runtime_config(runtime)",
     "assemble_durable_runtime(runtime, sync_runtime)?", "authoritative.maybe_prebuilt_context = Some(context)",
   ], undefined, ["from_fixture", "open_ordinary_configured"]),
@@ -233,7 +235,7 @@ export const CONTRACTS: readonly Contract[] = [
   row(OBSERVER, "observe_canonical_status", "existing-observation", [
     "FjallNodeStore::reopen_canonical_genesis_existing(data_dir, selected_chain)",
     "DurableSyncRuntime::open_canonical_genesis_configured(", "opened,", "BasicFilterStartupMode::PreserveSaved",
-    "selected_chain == CanonicalChain::Regtest", "FjallNodeStore::reopen_canonical_history_existing(data_dir, selected_chain)",
+    "selected_chain.supports_bounded_local_history()", "FjallNodeStore::reopen_canonical_history_existing(data_dir, selected_chain)",
     "DurableSyncRuntime::open_canonical_history_configured(",
     "runtime.durable_sync_state(", "runtime.network_handle().operator_snapshot()",
   ], undefined, ["FjallNodeStore::open(", "FjallNodeStore::open_canonical_genesis(", "save_runtime_metadata", "from_fixture"]),

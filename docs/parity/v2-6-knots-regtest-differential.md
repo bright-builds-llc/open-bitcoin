@@ -292,9 +292,15 @@ build and launch the pinned daemon and Open Bitcoin. Their receipts bind the
 versioned inputs as well as their observed executable hashes and build facts.
 The qualification scope is isolated, bounded Regtest execution.
 
-All seven actual comparisons were renewed from Open Bitcoin build commit
+For the v2.6 tag, all seven actual comparisons were renewed from Open Bitcoin build commit
 `b346a29bca16ba25ad1ae4f1fd93646e60b5cf92`. The tracked receipts carry the
 same input SHA-256, `cbffff9a9b5a9984613445a248a85fe9aeee5481da0bd33b456b12ce781eff91`.
+The [offline Mainnet prefix](mainnet-offline-prefix.md) changed shared
+qualification inputs. All seven Regtest comparisons passed again from
+Open Bitcoin build commit `60bb369c030ffd2757517786364ca6c07947536b`.
+The current Mainnet and Regtest receipts share input SHA-256
+`9f83f072086e9d42d77232db576382353bc589bdec98b4f978a5416e8527a525`.
+
 The focused tests cover runtime, runner, corpus and oracle-build changes,
 including checkout edits during a run and a mismatched build commit. The
 ledger's qualification scope rejects whole-chain, public-default and
