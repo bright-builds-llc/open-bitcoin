@@ -306,15 +306,15 @@ fn phase167_local_submission_genesis_seal_and_other_selectors_keep_strict_routin
         .expect("consumes existing lease");
         // Assert
         assert_eq!(command.is_some(), network == SyncNetwork::Regtest);
-        drop(command);
-        drop(runtime);
+        drop((command, runtime));
         let (runtime, command) = DurableSyncRuntime::open_canonical_submission_configured(
             &path,
             config,
             BasicFilterStartupMode::Disabled,
         )
         .expect("strict genesis or proved history reopen");
-        assert_eq!(command.is_some(), network == SyncNetwork::Regtest);
+        let paired = matches!(network, SyncNetwork::Regtest | SyncNetwork::Mainnet);
+        assert_eq!(command.is_some(), paired);
         close(path, runtime, command);
     }
 }
