@@ -297,9 +297,9 @@ For the v2.6 tag, all seven actual comparisons were renewed from Open Bitcoin bu
 same input SHA-256, `cbffff9a9b5a9984613445a248a85fe9aeee5481da0bd33b456b12ce781eff91`.
 The [offline Mainnet prefix](mainnet-offline-prefix.md) changed shared
 qualification inputs. All seven Regtest comparisons passed again from
-Open Bitcoin build commit `7060ba7333c5d57d47dd45cbc7154635562fb7c9`.
+Open Bitcoin build commit `433a2f5a428c9677375d9d523894b2f7988a64fa`.
 The current Mainnet and Regtest receipts share input SHA-256
-`f418e6dddcef2ae79bd9257026e67d3bdee2669ac44e034b2ab07136e3ee13d3`.
+`eed97ebdf5fabcbf9531669e39e95fe8af4bd500fe35cee9f9b14ab978c89576`.
 
 The focused tests cover runtime, runner, corpus and oracle-build changes,
 including checkout edits during a run and a mismatched build commit. The

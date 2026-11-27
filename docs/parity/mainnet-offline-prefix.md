@@ -67,3 +67,8 @@ The reopened Open Bitcoin datadir yielded the same 204 coins and
 1,000,000,000,000 satoshis as Knots. Open Bitcoin refused the actual
 height-201 block with `mainnet-offline-prefix-limit` and preserved the
 active tip, header height, and chainwork. The daemons each observed zero peers.
+
+The [chainstate tests](../../packages/open-bitcoin-chainstate/tests/mainnet_prefix.rs)
+check the height bound and refusal of replacement admission using the
+same historical headers. The [header-store test](../../packages/open-bitcoin-network/tests/mainnet_prefix.rs)
+checks that the height-201 child leaves the height-200 header tip intact.

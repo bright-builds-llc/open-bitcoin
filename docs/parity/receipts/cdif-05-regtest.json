@@ -1,11 +1,11 @@
 {
   "format": "open-bitcoin-cdif-05-v1",
   "status": "passed",
-  "recorded_at": "2026-11-27T10:48:05.926Z",
+  "recorded_at": "2026-11-27T11:53:45.911Z",
   "bun": "1.3.9",
   "source_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
   "source_tree": "643d6c87370510b5193461e37647526369dfe0b3",
-  "binary_sha256": "2b5c8fdc7d7b9c4baef21b16b52801e4f859250af2ab95b8fa528ba0968eddb6",
+  "binary_sha256": "7eb2a60eb1df089a1c19215513b7941749881342fce241f07b1438ba44b413aa",
   "knots_build": {
     "archive_sha256": "7906c472d15d6d5d68849911db8e8b210ac2f863750b45ef06c42683706e071e",
     "version": "Bitcoin Knots daemon version v29.3.0.knots20260210",
@@ -18,9 +18,9 @@
       "-- Found Boost: <path> (found suitable version \"1.90.0\", minimum required is \"1.73.0\")  ",
       "-- Found Libevent: <path> (found suitable version \"2.1.12-stable\", minimum required is \"2.1.8\") "
     ],
-    "cmake_cache_sha256": "c94ebabc31b822d55bb9d1d257880fd43a6ee50a8c8797a6359f2ab92eb4ad41",
-    "configure_log_sha256": "3ff8687e255dac7d976276fe0af45671cabce7ab6f46e82bb1be0d8e5c04224a",
-    "build_log_sha256": "237e280ba15c914b04ec406a6ad599162318bf25f0774a81a7c7df035a15d258",
+    "cmake_cache_sha256": "49ff5d36afbd85e7410245fef243cc3d91c51692997b08f8b59916b4d4526e50",
+    "configure_log_sha256": "4121e5cb2f5ee98a714dcb93173b888569d9a5038bd748f1a973b9b2d9586010",
+    "build_log_sha256": "f5dd20eb8614c2f1830c9944161d445bb3f92dbf6d2459b5e61920a8ab43aef7",
     "git_build_info": "archive",
     "configure_options": [
       "-G",
@@ -43,7 +43,7 @@
     ]
   },
   "open_bitcoin_build": {
-    "source_commit": "7060ba7333c5d57d47dd45cbc7154635562fb7c9",
+    "source_commit": "433a2f5a428c9677375d9d523894b2f7988a64fa",
     "binary_sha256": "08426c4ff0d8dd8e78b912f39615ced9e1967174031288ccdc8ea2d34e5b73af",
     "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
     "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
@@ -2198,7 +2198,7 @@
   },
   "qualification_inputs": {
     "format": "open-bitcoin-regtest-qualification-inputs-v1",
-    "source_commit": "7060ba7333c5d57d47dd45cbc7154635562fb7c9",
-    "sha256": "f418e6dddcef2ae79bd9257026e67d3bdee2669ac44e034b2ab07136e3ee13d3"
+    "source_commit": "433a2f5a428c9677375d9d523894b2f7988a64fa",
+    "sha256": "eed97ebdf5fabcbf9531669e39e95fe8af4bd500fe35cee9f9b14ab978c89576"
   }
 }
