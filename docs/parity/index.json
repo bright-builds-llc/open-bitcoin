@@ -1208,7 +1208,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-01-regtest.json",
-        "knots_binary_sha256": "4bd73c3daafae4ced621c9417c5bc7fd3ccde0e487c2ca8e1ba45b9264443292",
+        "knots_binary_sha256": "2890876c02add58159d83912476bb3b26682cc63a1a71aab78cb3c8c16637195",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/CMakeLists.txt",
@@ -1240,7 +1240,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-02-regtest.json",
-        "knots_binary_sha256": "5c1e9377ba41ab9d59dc3b0196ef429a682f7672dc2450be21dbbe0a06f4a7c9",
+        "knots_binary_sha256": "8289fb4e55904ece0e9e25c05ffe5794bc8ab55195cba70465864e6391163bcb",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/kernel/chainparams.cpp",
@@ -1271,7 +1271,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-03-regtest.json",
-        "knots_binary_sha256": "3377329f3baa5347797c09913855d300a2361ce125dccba925e9b1198c67df9c",
+        "knots_binary_sha256": "d17ed38ffde372775caf3d3eb3d9d6770e6b7012d0e9e96b3de40655fd4831f1",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/mining.cpp",
@@ -1303,7 +1303,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-04-regtest.json",
-        "knots_binary_sha256": "ddc34e685d41da5d5a82af2be4e4a1e20f8f9ebc8c0dddd1460a1d8f58a82a52",
+        "knots_binary_sha256": "15d4c62e054b09ed3ca7c39cb5e57fc8a2ae3f5f986e05bfbe8baeb311a56873",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/blockchain.cpp",
@@ -1337,7 +1337,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-05-regtest.json",
-        "knots_binary_sha256": "642812ac25e303a7e2df6189006aa92d68fcd9ec2698bec31b02b172d3a1ee8e",
+        "knots_binary_sha256": "2b5c8fdc7d7b9c4baef21b16b52801e4f859250af2ab95b8fa528ba0968eddb6",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/bitcoind.cpp",
@@ -1367,7 +1367,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-01-regtest.json",
-        "knots_binary_sha256": "0e5beae53588013d53c177216bd7e70e44865e9644c8ca5c24f3e54f21c7bc80",
+        "knots_binary_sha256": "613df4c40b9b8d6634bc41fbf60c3150ff8d2fd3400bfdb1491d80f224acb71b",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/node/blockstorage.cpp",
@@ -1397,7 +1397,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-02-regtest.json",
-        "knots_binary_sha256": "fadcfafe0ae001c2e3d6eb6affe7dc4b492a4933c456dc81fb4156e16fb72352",
+        "knots_binary_sha256": "97c3edeb77274b623b3448856c12304fd81a7ab34e0a69d608c89bbb7a363f09",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/validation.cpp",
@@ -1604,7 +1604,7 @@
         ],
         "evidence_classes": ["local_product", "knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/mainnet-prefix.json",
-        "knots_binary_sha256": "35642c07766c10e92bc672327f741e67274a9c3064c18086aa6184c60dc000a3",
+        "knots_binary_sha256": "094d5bc43893121b519ce4fe93fb6c535f6cb71d78a541999bbb1927a05bcd0d",
         "rationale": "Compare ordinary local Mainnet validation from genesis through height 200, exact active chainwork and the final UTXO set, with Open Bitcoin restart and a height-201 refusal.",
         "upstream": {
           "sources": [
