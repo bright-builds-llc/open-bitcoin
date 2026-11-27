@@ -75,3 +75,19 @@ check the earned genesis anchor for the retarget and refusal at height 2017.
 
 The original height-200 result remains available at
 [commit 807cba4b](https://github.com/bright-builds-llc/open-bitcoin/blob/807cba4bf4ddff7d54272a961c3499912c5caa57/docs/parity/receipts/mainnet-prefix.json).
+
+## Recorded result
+
+The [passing receipt](receipts/mainnet-prefix.json) records the same active
+tip after each of 2,016 accepted blocks. Both daemons reached height 2016 at
+`00000000a141216a896c54f211301c436e557a8d55900637bbdce14c6c7bddef`
+with exact chainwork
+`000000000000000000000000000000000000000000000000000007e107e107e1`.
+Open Bitcoin reopened at that tip with compact target `0x1d00ffff`.
+Its recovered UTXO projection matched all 1,946 Knots coins. Open Bitcoin
+refused the actual height-2017 block before changing the active tip, header
+height, or chainwork. Both daemons observed zero peers.
+
+The larger detached history allowance applies to the selected Mainnet owner
+and its reopen worker. Reopen still proves both the copied and original
+retained histories before handing the datadir to the runtime.

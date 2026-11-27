@@ -141,7 +141,7 @@ See the [v2.6 closeout](v2-6-closeout.md) for the verified commit and CI.
 
 | Surface ID | Status | Requirement | Evidence | Scope and limits |
 | -- | -- | -- | -- | -- |
-| `mainnet-offline-prefix` | `in_progress` | `MAINNET-PREFIX-01`, `MAINNET-PREFIX-02` | [Mainnet prefix](mainnet-offline-prefix.md) | Compare through the first retarget at height 2016. Check exact work, final UTXOs, clean reopen, and refusal at height 2017. |
+| `mainnet-offline-prefix` | `done` | `MAINNET-PREFIX-01`, `MAINNET-PREFIX-02` | [Mainnet prefix](mainnet-offline-prefix.md), [actual receipt](receipts/mainnet-prefix.json) | Matches Knots through height 2016. Verifies the first retarget, exact work, final UTXOs, clean reopen, and refusal at height 2017. |
 
 ## Evidence Rules
 

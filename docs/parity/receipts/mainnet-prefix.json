@@ -1,16 +1,34 @@
 {
-  "format": "open-bitcoin-mainnet-prefix-v1",
+  "format": "open-bitcoin-mainnet-prefix-v2",
   "status": "passed",
-  "recorded_at": "2026-11-27T11:31:11.607Z",
+  "recorded_at": "2026-11-27T17:21:37.388Z",
   "network": "mainnet",
   "network_enabled": false,
-  "corpus": "docs/parity/fixtures/mainnet-prefix-200.hex",
-  "corpus_sha256": "0c2dac8afc5591338af74745ab7f76fa6d0ca3222da17a23dbaf5cf6b3cf20a9",
-  "boundary_input": "docs/parity/fixtures/mainnet-block-201.hex",
-  "boundary_sha256": "d10a21ca361772d6acc22c25230e8f6933536dac8a8b86c1c746fee8b0c612d9",
+  "corpus": [
+    "docs/parity/fixtures/mainnet-prefix-200.hex",
+    "docs/parity/fixtures/mainnet-retarget-201-2016.hex"
+  ],
+  "corpus_sha256": "beae6ebd613a10f6556411ef92c3309633b539d81dfcd809c9f5065ab31088f9",
+  "boundary_input": "docs/parity/fixtures/mainnet-block-2017.hex",
+  "boundary_sha256": "fc37245af6989896fdab252443e6ad25d784d1d428d1a8782a8aaa5685cb4077",
+  "retarget": {
+    "height": 2016,
+    "anchor_height": 0,
+    "anchor_hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f",
+    "anchor_time": 1231006505,
+    "previous_hash": "00000000693067b0e6b440bc51450b9f3850561b07f6d3c021c54fbd6abb9763",
+    "previous_time": 1233061996,
+    "previous_bits": "1d00ffff",
+    "elapsed_seconds": 2055491,
+    "clamped_seconds": 2055491,
+    "target_timespan_seconds": 1209600,
+    "capped_at_pow_limit": true,
+    "bits": "1d00ffff",
+    "previous_chainwork": "000000000000000000000000000000000000000000000000000007e007e007e0"
+  },
   "source_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
   "source_tree": "643d6c87370510b5193461e37647526369dfe0b3",
-  "binary_sha256": "251fe52dde2ce9add5ff7cb71d63ebc2c8a739c859ddd8325b6d5a807aaa0f0a",
+  "binary_sha256": "6767719f4fd17d1e58e3f065bff555ba69880275bff4f489388f955a2f34be90",
   "knots_build": {
     "archive_sha256": "7906c472d15d6d5d68849911db8e8b210ac2f863750b45ef06c42683706e071e",
     "version": "Bitcoin Knots daemon version v29.3.0.knots20260210",
@@ -23,9 +41,9 @@
       "-- Found Boost: <path> (found suitable version \"1.90.0\", minimum required is \"1.73.0\")  ",
       "-- Found Libevent: <path> (found suitable version \"2.1.12-stable\", minimum required is \"2.1.8\") "
     ],
-    "cmake_cache_sha256": "a83a2cc789558dde53817e7a1f5fdce8e645a072e6666955fb7ff24e576f8188",
-    "configure_log_sha256": "8fe1b63274d277e627602ce5ee00ec6a7d38f44464c07af77c5fa9d40490a639",
-    "build_log_sha256": "5925645d1d9ad6f1a7fdbf197383da9876837ef72f2406a5e59b812dfcdeb928",
+    "cmake_cache_sha256": "2a91f29ae9597098182ad2bc40f9023c002cb24553765b1cbac65138f2237b56",
+    "configure_log_sha256": "b4c2e3de6258a2470545a89e5cca2f50ae14e573d8177d7bf460ecdef6da6524",
+    "build_log_sha256": "a404eb04e54337af7e57b29fd6d8541f122f6032b833d3b39f90fde6261238bb",
     "git_build_info": "archive",
     "configure_options": [
       "-G",
@@ -48,8 +66,8 @@
     ]
   },
   "open_bitcoin_build": {
-    "source_commit": "433a2f5a428c9677375d9d523894b2f7988a64fa",
-    "binary_sha256": "08426c4ff0d8dd8e78b912f39615ced9e1967174031288ccdc8ea2d34e5b73af",
+    "source_commit": "82cb876433285d91a73ea1d5a1b528ae607c4490",
+    "binary_sha256": "1ee3958eed4145c5a9962f93834a54000797870074c4b13cc783b46d136f920f",
     "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
     "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
     "cargo_options": [
@@ -59,11 +77,12 @@
       "-p",
       "open-bitcoin-rpc",
       "--bin",
-      "open-bitcoind"
+      "open-bitcoind",
+      "--release"
     ],
-    "build_log_sha256": "8950be1e8f4499f41b8e38ef15f09a0e2671be53a43aa5dec4d794320908881d"
+    "build_log_sha256": "afb60943c07298e7c2a2f6da3223e4b7cdba6490729dd2ca440217dde3eb6728"
   },
-  "open_bitcoin_observer_sha256": "006f2b6a7c1a8141966ad990e882d3245d824d44da8bb0e8a953a76b535baf90",
+  "open_bitcoin_observer_sha256": "0ea6ad91e0100749109265aa76841d98e423eaefa93abf196df0dc5deba75e28",
   "knots": {
     "flags": [
       "-chain=main",
@@ -84,17 +103,20 @@
       "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
     },
     "peer_count": 0,
-    "accepted_count": 200,
-    "accepted_tips_sha256": "e5085fbc76c44241108057e5829dc83f9f2d16215f3f821d2ae3b7dad656f9e0",
+    "accepted_count": 2016,
+    "accepted_tips_sha256": "e8fd101f40e4c4a8cf6433e4c5b6803a804a8cdaa09ea5d98a3833686bb85d8f",
     "final_tip": {
-      "height": 200,
-      "hash": "000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320"
+      "height": 2016,
+      "hash": "00000000a141216a896c54f211301c436e557a8d55900637bbdce14c6c7bddef"
     },
-    "chainwork": "000000000000000000000000000000000000000000000000000000c900c900c9",
+    "chainwork": "000000000000000000000000000000000000000000000000000007e107e107e1",
+    "previous_chainwork": "000000000000000000000000000000000000000000000000000007e007e007e0",
+    "bits": "1d00ffff",
+    "previous_bits": "1d00ffff",
     "utxos": {
-      "count": 204,
-      "total_sats": "1000000000000",
-      "sha256": "0639b5775fd5012c8471f8328b02b4c6df71e993b255ecf5969f1489832911ea"
+      "count": 1946,
+      "total_sats": "10080000000000",
+      "sha256": "79b9b825a1028bc9c9ab113e1d57936ccc9ba94768000011163f46109189384e"
     },
     "exit_status": 0
   },
@@ -110,13 +132,14 @@
       "hash": "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f"
     },
     "peer_count": 0,
-    "accepted_count": 200,
-    "accepted_tips_sha256": "e5085fbc76c44241108057e5829dc83f9f2d16215f3f821d2ae3b7dad656f9e0",
+    "accepted_count": 2016,
+    "accepted_tips_sha256": "e8fd101f40e4c4a8cf6433e4c5b6803a804a8cdaa09ea5d98a3833686bb85d8f",
     "final_tip": {
-      "height": 200,
-      "hash": "000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320"
+      "height": 2016,
+      "hash": "00000000a141216a896c54f211301c436e557a8d55900637bbdce14c6c7bddef"
     },
-    "chainwork": "000000000000000000000000000000000000000000000000000000c900c900c9",
+    "chainwork": "000000000000000000000000000000000000000000000000000007e107e107e1",
+    "previous_chainwork": "000000000000000000000000000000000000000000000000000007e007e007e0",
     "boundary_rejection": "mainnet-offline-prefix-limit",
     "exit_status": 0,
     "reopened": {
@@ -127,22 +150,23 @@
         "-blockfilterindex=0"
       ],
       "initial_tip": {
-        "height": 200,
-        "hash": "000000008f1a7008320c16b8402b7f11e82951f44ca2663caf6860ab2eeef320"
+        "height": 2016,
+        "hash": "00000000a141216a896c54f211301c436e557a8d55900637bbdce14c6c7bddef"
       },
       "peer_count": 0,
-      "chainwork": "000000000000000000000000000000000000000000000000000000c900c900c9",
+      "chainwork": "000000000000000000000000000000000000000000000000000007e107e107e1",
       "exit_status": 0
     },
+    "bits": "1d00ffff",
     "utxos": {
-      "count": 204,
-      "total_sats": "1000000000000",
-      "sha256": "0639b5775fd5012c8471f8328b02b4c6df71e993b255ecf5969f1489832911ea"
+      "count": 1946,
+      "total_sats": "10080000000000",
+      "sha256": "79b9b825a1028bc9c9ab113e1d57936ccc9ba94768000011163f46109189384e"
     }
   },
   "qualification_inputs": {
     "format": "open-bitcoin-regtest-qualification-inputs-v1",
-    "source_commit": "433a2f5a428c9677375d9d523894b2f7988a64fa",
-    "sha256": "eed97ebdf5fabcbf9531669e39e95fe8af4bd500fe35cee9f9b14ab978c89576"
+    "source_commit": "82cb876433285d91a73ea1d5a1b528ae607c4490",
+    "sha256": "043eeddfe3be17f41c5aa5721ebf5085216f57a927aed99a8010916f8508a7a2"
   }
 }

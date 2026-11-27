@@ -2096,5 +2096,7 @@ Completion review: Both isolated daemons accepted heights 1–200 with the same 
 
 - [x] Bind the historical extension through height 2016 and the height-2017 refusal input.
 - [x] Extend the selected ancestry and storage bounds, and exercise them with direct tests.
-- [ ] Verify the retarget, exact work, and reopened UTXOs in both pinned-daemon runs.
-- [ ] Renew affected Regtest receipts, pass the full verifier, push main, and watch CI.
+- [x] Verify the retarget, exact work, and reopened UTXOs against the pinned daemon.
+- [x] Renew the affected Regtest receipts and prepare the verified evidence for direct-main delivery.
+
+Completion review: Both daemons matched all 2,016 active-tip observations, retarget work, and all 1,946 UTXOs after reopen. The first retarget remained at `0x1d00ffff` because it hit the Mainnet proof-of-work limit. The height-2017 child was refused before state changed. All seven Regtest receipts were renewed from the same input commit. Delivery uses the full pre-push gate and exact-head CI.

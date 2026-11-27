@@ -1,11 +1,11 @@
 {
   "format": "open-bitcoin-cdif-05-v1",
   "status": "passed",
-  "recorded_at": "2026-11-27T11:53:45.911Z",
+  "recorded_at": "2026-11-27T17:32:42.870Z",
   "bun": "1.3.9",
   "source_commit": "a9aee730466ac67d35a3c03ee24676be5e045878",
   "source_tree": "643d6c87370510b5193461e37647526369dfe0b3",
-  "binary_sha256": "7eb2a60eb1df089a1c19215513b7941749881342fce241f07b1438ba44b413aa",
+  "binary_sha256": "db264566e10ec659f6fe97f9fd53b56a00a5d1b5e5b769c119efa4f815a1b303",
   "knots_build": {
     "archive_sha256": "7906c472d15d6d5d68849911db8e8b210ac2f863750b45ef06c42683706e071e",
     "version": "Bitcoin Knots daemon version v29.3.0.knots20260210",
@@ -18,9 +18,9 @@
       "-- Found Boost: <path> (found suitable version \"1.90.0\", minimum required is \"1.73.0\")  ",
       "-- Found Libevent: <path> (found suitable version \"2.1.12-stable\", minimum required is \"2.1.8\") "
     ],
-    "cmake_cache_sha256": "49ff5d36afbd85e7410245fef243cc3d91c51692997b08f8b59916b4d4526e50",
-    "configure_log_sha256": "4121e5cb2f5ee98a714dcb93173b888569d9a5038bd748f1a973b9b2d9586010",
-    "build_log_sha256": "f5dd20eb8614c2f1830c9944161d445bb3f92dbf6d2459b5e61920a8ab43aef7",
+    "cmake_cache_sha256": "e7101c9747a6356b5bd50359d2ae7c2b3761b7d861c1f32026532bf5ebf184a7",
+    "configure_log_sha256": "9f98f190dbc4b77cc7d81d25286b678cafa518d9cc844e2499b6af65b3a6f6e9",
+    "build_log_sha256": "cde75ebf5456caa8cfc8cbda90d0cef525907a1564bb66ec6add9571007f8787",
     "git_build_info": "archive",
     "configure_options": [
       "-G",
@@ -43,8 +43,8 @@
     ]
   },
   "open_bitcoin_build": {
-    "source_commit": "433a2f5a428c9677375d9d523894b2f7988a64fa",
-    "binary_sha256": "08426c4ff0d8dd8e78b912f39615ced9e1967174031288ccdc8ea2d34e5b73af",
+    "source_commit": "82cb876433285d91a73ea1d5a1b528ae607c4490",
+    "binary_sha256": "c257283d8dba0d53bfe6fc15340e57612215a587248128d280cfd2b4a6ac9836",
     "rustc": "rustc 1.94.1 (e408947bf 2026-03-25)",
     "cargo": "cargo 1.94.1 (29ea6fb6a 2026-03-24)",
     "cargo_options": [
@@ -56,7 +56,7 @@
       "--bin",
       "open-bitcoind"
     ],
-    "build_log_sha256": "d7dae192715495fa89ccbe279af3efb9792c1dae1768228e369035e68a1df673"
+    "build_log_sha256": "9a30d54c8b16d7e49510b182028079bca120aeebb7d662e88f8566e6196a49f6"
   },
   "network": "regtest",
   "corpus": "packages/testdata/phase167/regtest-history.json",
@@ -2198,7 +2198,7 @@
   },
   "qualification_inputs": {
     "format": "open-bitcoin-regtest-qualification-inputs-v1",
-    "source_commit": "433a2f5a428c9677375d9d523894b2f7988a64fa",
-    "sha256": "eed97ebdf5fabcbf9531669e39e95fe8af4bd500fe35cee9f9b14ab978c89576"
+    "source_commit": "82cb876433285d91a73ea1d5a1b528ae607c4490",
+    "sha256": "043eeddfe3be17f41c5aa5721ebf5085216f57a927aed99a8010916f8508a7a2"
   }
 }

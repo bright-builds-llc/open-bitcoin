@@ -295,11 +295,11 @@ The qualification scope is isolated, bounded Regtest execution.
 For the v2.6 tag, all seven actual comparisons were renewed from Open Bitcoin build commit
 `b346a29bca16ba25ad1ae4f1fd93646e60b5cf92`. The tracked receipts carry the
 same input SHA-256, `cbffff9a9b5a9984613445a248a85fe9aeee5481da0bd33b456b12ce781eff91`.
-The [offline Mainnet prefix](mainnet-offline-prefix.md) changed shared
-qualification inputs. All seven Regtest comparisons passed again from
-Open Bitcoin build commit `433a2f5a428c9677375d9d523894b2f7988a64fa`.
+Extending the [offline Mainnet prefix](mainnet-offline-prefix.md) to the first
+retarget changed shared qualification inputs. All seven Regtest comparisons passed again from
+Open Bitcoin build commit `82cb876433285d91a73ea1d5a1b528ae607c4490`.
 The current Mainnet and Regtest receipts share input SHA-256
-`eed97ebdf5fabcbf9531669e39e95fe8af4bd500fe35cee9f9b14ab978c89576`.
+`043eeddfe3be17f41c5aa5721ebf5085216f57a927aed99a8010916f8508a7a2`.
 
 The focused tests cover runtime, runner, corpus and oracle-build changes,
 including checkout edits during a run and a mismatched build commit. The
