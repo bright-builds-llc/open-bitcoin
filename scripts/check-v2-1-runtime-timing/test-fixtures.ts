@@ -434,8 +434,13 @@ pub(super) fn open_authoritative_network_runtime(runtime: &RuntimeConfig, maybe_
 }
 pub(super) fn open_configured_history_runtime() {
 let chain = preflight(runtime)?; let trigger = runtime.sync.is_enabled() || runtime.inbound.enabled || runtime.prune_mode !=
-open_bitcoin_node::core::chainstate::PruneMode::Disabled || runtime.block_filter_index.is_explicit(); if chain != CanonicalChain::Regtest ||
-!trigger { return Ok(None); } let (context, sync_runtime) = ManagedRpcContext::from_canonical_history_runtime_config(runtime) .map_err(|_|
+open_bitcoin_node::core::chainstate::PruneMode::Disabled || runtime.block_filter_index.is_explicit();
+let configured_history = match chain {
+  CanonicalChain::Regtest => trigger,
+  CanonicalChain::Mainnet => { runtime.block_filter_index == open_bitcoin_rpc::config::BasicFilterIndexSetting::Disabled }
+  CanonicalChain::Testnet3 | CanonicalChain::Signet => false,
+};
+if !configured_history { return Ok(None); } let (context, sync_runtime) = ManagedRpcContext::from_canonical_history_runtime_config(runtime) .map_err(|_|
 compatibility_refusal(runtime, chain))?; match assemble_durable_runtime(runtime, sync_runtime)? { OpenedAuthoritativeRuntime::Durable(mut
 authoritative) => { authoritative.maybe_prebuilt_context = Some(context); Ok(Some(OpenedAuthoritativeRuntime::Durable(authoritative))) }
 #[cfg(test)] OpenedAuthoritativeRuntime::Transient(_) => Err(compatibility_refusal(runtime, chain)), }

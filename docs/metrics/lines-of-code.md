@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,813 |
-| Total lines | 551,433 |
-| Code/content lines | 485,305 |
+| Total lines | 551,438 |
+| Code/content lines | 485,310 |
 | Comment-only lines | 28,697 |
 | Blank lines | 37,431 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 774 | 260,829 | 227,858 | 17,258 | 15,713 |
 | Rust production | 600 | 176,385 | 154,603 | 7,906 | 13,876 |
-| TypeScript/Bun scripts | 363 | 95,743 | 85,455 | 3,412 | 6,876 |
+| TypeScript/Bun scripts | 363 | 95,748 | 85,460 | 3,412 | 6,876 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,849 | 4,301 | 100 | 448 |
 | TOML/config | 16 | 3,480 | 3,111 | 1 | 368 |
@@ -267,7 +267,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-1-runtime-timing/filesystem.ts | 53 |
 | scripts/check-v2-1-runtime-timing/helpers.ts | 41 |
 | scripts/check-v2-1-runtime-timing/parity.ts | 105 |
-| scripts/check-v2-1-runtime-timing/test-fixtures.ts | 464 |
+| scripts/check-v2-1-runtime-timing/test-fixtures.ts | 469 |
 | scripts/check-v2-2-cross-cache-apply.ts | 452 |
 | scripts/check-v2-2-cross-cache-apply/aggregate-roots.ts | 357 |
 | scripts/check-v2-2-cross-cache-apply/call-resolution.ts | 239 |
@@ -444,7 +444,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | aafa0d287b151297f3f791b7013d4ac282e4c1c18974432db671c8ebe549f455 |
+| Input fingerprint | 301993ff6b3160f11a6c51a79062460b7e7538b7adb6f2af55390c38553522c5 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
