@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,813 |
-| Total lines | 551,430 |
-| Code/content lines | 485,302 |
+| Total lines | 551,433 |
+| Code/content lines | 485,305 |
 | Comment-only lines | 28,697 |
 | Blank lines | 37,431 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 774 | 260,829 | 227,858 | 17,258 | 15,713 |
 | Rust production | 600 | 176,385 | 154,603 | 7,906 | 13,876 |
-| TypeScript/Bun scripts | 363 | 95,740 | 85,452 | 3,412 | 6,876 |
+| TypeScript/Bun scripts | 363 | 95,743 | 85,455 | 3,412 | 6,876 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,849 | 4,301 | 100 | 448 |
 | TOML/config | 16 | 3,480 | 3,111 | 1 | 368 |
@@ -261,7 +261,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-1-runtime-metrics-logs.ts | 345 |
 | scripts/check-v2-1-runtime-timing.test.ts | 552 |
 | scripts/check-v2-1-runtime-timing.ts | 14 |
-| scripts/check-v2-1-runtime-timing/checks.ts | 511 |
+| scripts/check-v2-1-runtime-timing/checks.ts | 514 |
 | scripts/check-v2-1-runtime-timing/constants.ts | 65 |
 | scripts/check-v2-1-runtime-timing/evidence.ts | 327 |
 | scripts/check-v2-1-runtime-timing/filesystem.ts | 53 |
@@ -444,7 +444,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 564882bcfd09f9b6a1ba5ba3cfb7005d1ca3505c7284288109095e91aaf8a276 |
+| Input fingerprint | e88b35aae1413d71d7702d2734eddc2921fdd1ff13fc7aadc29bf91bff20c386 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |

@@ -185,18 +185,21 @@ function verifyDaemonActivation(daemon: string, failures: string[]): void {
   if (normalizeRust(stripRustNonCode(daemon.slice(opened.start, opened.end))) !== normalizeRust(expectedOpener)
     || normalizeRust(preflight.body) !== normalizeRust(expectedPreflight)) fail();
   const historyBody = normalizeRust(history.body);
-  reviewedBody(history.body, "95f185b2202b3ce6eae06180125377107b8bf114a6afcb9beea53eae6dcd2ad9",
-    "P123 bounded Regtest history factory", failures);
+  reviewedBody(history.body, "5cdbb1e8d234695dbb61da0592897cef94dd2d64ab228ded8df68b8da3cbfe07",
+    "P123 bounded local history factory", failures);
   for (const anchor of [
     "let chain = preflight(runtime)?;",
-    "chain != CanonicalChain::Regtest || !trigger { return Ok(None); }",
+    "CanonicalChain::Regtest => trigger",
+    "runtime.block_filter_index == open_bitcoin_rpc::config::BasicFilterIndexSetting::Disabled",
+    "CanonicalChain::Testnet3 | CanonicalChain::Signet => false",
+    "if !configured_history { return Ok(None); }",
     "ManagedRpcContext::from_canonical_history_runtime_config(runtime)",
     "assemble_durable_runtime(runtime, sync_runtime)?",
     "authoritative.maybe_prebuilt_context = Some(context);",
     "Ok(Some(OpenedAuthoritativeRuntime::Durable(authoritative)))",
   ]) if (!historyBody.includes(normalizeRust(anchor))) fail();
-  rustGate(history.body, "if chain != CanonicalChain::Regtest || !trigger { return Ok(None); }", 0,
-    "P123 daemon bounded Regtest activation gate", failures);
+  rustGate(history.body, "if !configured_history { return Ok(None); }", 0,
+    "P123 daemon bounded local activation gate", failures);
   if (rustCallArguments(history.body, "ManagedRpcContext::from_canonical_history_runtime_config")
     .map(args => args.map(normalizeRust).join("|")) .join("|") !== "runtime"
     || /open_ordinary_configured|from_fixture_runtime_config/.test(historyBody)) fail();
