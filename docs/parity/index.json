@@ -1208,7 +1208,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-01-regtest.json",
-        "knots_binary_sha256": "b16a4ca6b49924d310d27a0521b9f7608bcd3e8752484949f85c1050de947141",
+        "knots_binary_sha256": "c0e01d2724463e53ce90585b76a01dddfef7fdfb8eaf748be34a9b3f400d8f29",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/CMakeLists.txt",
@@ -1240,7 +1240,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-02-regtest.json",
-        "knots_binary_sha256": "dbf124ab5230db3a055cc507e3c5760ddcaa186c287faecf86e36fedd828ca33",
+        "knots_binary_sha256": "7c748584239033b240ffbba806376284176798ed5ae74a0713dce0965966fae7",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/kernel/chainparams.cpp",
@@ -1271,7 +1271,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-03-regtest.json",
-        "knots_binary_sha256": "10bc4809f8249dae562e79a801e8b8f569a1973b429c0475fc7ba196ca30a779",
+        "knots_binary_sha256": "b4d7383525154c610afb6a380c3be54de3f3531989d6b9fc6f48d7382aeeb92f",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/mining.cpp",
@@ -1303,7 +1303,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-04-regtest.json",
-        "knots_binary_sha256": "22910b9d0c17896e082517fea64f8fe41d9e45095a4a3c0accb1303ac4ac8e5f",
+        "knots_binary_sha256": "7835a2c5b7524475d78b94e1e30af9f308c298466e047a985ed71fe2b86ced30",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/rpc/blockchain.cpp",
@@ -1337,7 +1337,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/cdif-05-regtest.json",
-        "knots_binary_sha256": "db264566e10ec659f6fe97f9fd53b56a00a5d1b5e5b769c119efa4f815a1b303",
+        "knots_binary_sha256": "d403bf8ecb8af25b2eaa6949864418db12e59bfbfecb69e5d5795b4ad13aaae9",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/bitcoind.cpp",
@@ -1367,7 +1367,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-01-regtest.json",
-        "knots_binary_sha256": "11569f50db42b36ec00371ac33e305556fe9b86fdfb08fbf8251fbd95212925e",
+        "knots_binary_sha256": "97b01e8c6eae0ad34c3d1c5c4374ccfe6025fe49ecb3dd49bdfb4cec209906b8",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/node/blockstorage.cpp",
@@ -1397,7 +1397,7 @@
         ],
         "evidence_classes": ["knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/crec-02-regtest.json",
-        "knots_binary_sha256": "3bfa3fdc3dbb216abc8b0142633ce4f3efa4f8a3e54680fa6f8ea27e6834410c",
+        "knots_binary_sha256": "abfe2a82f6b1c488e0659af4348adeadd9b2be3b1a2ac6f4e0004f2ee01e78fe",
         "upstream": {
           "sources": [
             "packages/bitcoin-knots/src/validation.cpp",
@@ -1607,7 +1607,7 @@
         ],
         "evidence_classes": ["local_product", "knots_daemon_differential"],
         "differential_receipt": "docs/parity/receipts/mainnet-prefix.json",
-        "knots_binary_sha256": "6767719f4fd17d1e58e3f065bff555ba69880275bff4f489388f955a2f34be90",
+        "knots_binary_sha256": "e74a13edc1fe7d2fb3855fe93824ccc38530e51a60fd5bbddd37b8182606292b",
         "rationale": "Compare ordinary local Mainnet validation from genesis through the first difficulty retarget at height 2016. Verify the target, exact chainwork and final UTXOs after Open Bitcoin restarts, and confirm that height 2017 leaves the tip intact.",
         "upstream": {
           "sources": [

@@ -2100,3 +2100,5 @@ Completion review: Both isolated daemons accepted heights 1–200 with the same 
 - [x] Renew the affected Regtest receipts and prepare the verified evidence for direct-main delivery.
 
 Completion review: Both daemons matched all 2,016 active-tip observations, retarget work, and all 1,946 UTXOs after reopen. The first retarget remained at `0x1d00ffff` because it hit the Mainnet proof-of-work limit. The height-2017 child was refused before state changed. All seven Regtest receipts were renewed from the same input commit. Delivery uses the full pre-push gate and exact-head CI.
+
+Linux verification follow-up: GitHub coverage missed the lookback helper in indirect profiles. A direct consensus test exercises the Mainnet retarget window and the ordinary Mainnet and Regtest windows. Linux x86-64 with Rust 1.94.1 and cargo-llvm-cov 0.9.2 reported no uncovered lines after the fix. All eight comparisons passed again against the test commit.
