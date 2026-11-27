@@ -11,3 +11,6 @@ path = "src/lib.rs"
 [dependencies]
 open-bitcoin-consensus = { path = "../open-bitcoin-consensus" }
 open-bitcoin-primitives = { path = "../open-bitcoin-primitives" }
+
+[dev-dependencies]
+open-bitcoin-codec = { path = "../open-bitcoin-codec" }

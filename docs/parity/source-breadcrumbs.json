@@ -12,6 +12,26 @@
   },
   "groups": [
     {
+      "label": "Mainnet prefix chainstate guards",
+      "files": [
+        "packages/open-bitcoin-chainstate/tests/mainnet_prefix.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/kernel/chainparams.cpp"
+      ]
+    },
+    {
+      "label": "Mainnet prefix header guard",
+      "files": [
+        "packages/open-bitcoin-network/tests/mainnet_prefix.rs"
+      ],
+      "breadcrumbs": [
+        "packages/bitcoin-knots/src/validation.cpp",
+        "packages/bitcoin-knots/src/pow.cpp"
+      ]
+    },
+    {
       "label": "phase167-flush-metadata-confirmed-counts",
       "files": [
         "packages/open-bitcoin-node/src/chainstate/flush_lifecycle/metadata.rs"

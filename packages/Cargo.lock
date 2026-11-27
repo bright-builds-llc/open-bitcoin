@@ -1425,6 +1425,7 @@ dependencies = [
 name = "open-bitcoin-chainstate"
 version = "0.1.0"
 dependencies = [
+ "open-bitcoin-codec",
  "open-bitcoin-consensus",
  "open-bitcoin-primitives",
 ]

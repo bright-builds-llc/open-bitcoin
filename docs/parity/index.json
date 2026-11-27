@@ -1599,6 +1599,8 @@
           "docs/parity/fixtures/mainnet-block-201.hex",
           "docs/parity/receipts/mainnet-prefix.json",
           "scripts/run-knots-mainnet-prefix.ts",
+          "packages/open-bitcoin-chainstate/tests/mainnet_prefix.rs",
+          "packages/open-bitcoin-network/tests/mainnet_prefix.rs",
           "packages/open-bitcoin-rpc/src/bin/open_bitcoind/phase167_tests.rs",
           "packages/open-bitcoin-rpc/tests/mainnet_prefix_closed_state.rs"
         ],
