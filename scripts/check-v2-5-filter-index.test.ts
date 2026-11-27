@@ -483,7 +483,9 @@ test("production dependency expansion refuses", () => {
   // Arrange
   const root = fixture();
   const file = join(root, "packages/open-bitcoin-chainstate/Cargo.toml");
-  writeFileSync(file, readFileSync(file, "utf8") + '\nfjall = "3"\n');
+  const manifest = readFileSync(file, "utf8");
+  expect(manifest).toContain("[dependencies]\n");
+  writeFileSync(file, manifest.replace("[dependencies]\n", '[dependencies]\nfjall = "3"\n'));
   // Act
   const failures = checkPhase155FilterIndex(root);
   // Assert

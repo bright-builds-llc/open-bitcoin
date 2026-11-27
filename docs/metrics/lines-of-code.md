@@ -7,8 +7,8 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Metric | Value |
 | --- | --- |
 | Included files | 1,815 |
-| Total lines | 551,557 |
-| Code/content lines | 485,398 |
+| Total lines | 551,559 |
+| Code/content lines | 485,400 |
 | Comment-only lines | 28,712 |
 | Blank lines | 37,447 |
 
@@ -36,7 +36,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | --- | --- | --- | --- | --- | --- |
 | Rust tests | 776 | 260,944 | 227,943 | 17,273 | 15,728 |
 | Rust production | 600 | 176,385 | 154,603 | 7,906 | 13,876 |
-| TypeScript/Bun scripts | 363 | 95,748 | 85,460 | 3,412 | 6,876 |
+| TypeScript/Bun scripts | 363 | 95,750 | 85,462 | 3,412 | 6,876 |
 | Fixture/data | 6 | 8,237 | 8,232 | 5 | 0 |
 | Shell scripts | 24 | 4,849 | 4,301 | 100 | 448 |
 | TOML/config | 16 | 3,484 | 3,114 | 1 | 369 |
@@ -335,7 +335,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | scripts/check-v2-4-release-boundary/verifier.ts | 20 |
 | scripts/check-v2-5-basic-filters.test.ts | 218 |
 | scripts/check-v2-5-basic-filters.ts | 138 |
-| scripts/check-v2-5-filter-index.test.ts | 528 |
+| scripts/check-v2-5-filter-index.test.ts | 530 |
 | scripts/check-v2-5-filter-index.ts | 418 |
 | scripts/check-v2-5-index-catch-up.test.ts | 613 |
 | scripts/check-v2-5-index-catch-up.ts | 267 |
@@ -444,7 +444,7 @@ Deterministic first-party LOC report for Open Bitcoin code and tooling.
 | Field | Value |
 | --- | --- |
 | Source mode | CLI-selected worktree or index; report output is mode-stable |
-| Input fingerprint | 20c90066e10247327a8f370c2de448079a896db1222c68026a8fddc0f225b049 |
+| Input fingerprint | effb547b4e6bb4cc2f71b0f6ec89edfe08cbeee4eaac4a18cc5070eafc1bb3b5 |
 | Generator command | bun run scripts/generate-loc-report.ts --source=MODE --output=docs/metrics/lines-of-code.md |
 | Included scope | open-bitcoin crates under packages/, repo scripts, hooks, CI, and root build/config files |
 | Excluded scope | vendored Knots, generated/build outputs, GSD planning artifacts, docs, and this report |
